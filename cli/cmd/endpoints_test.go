@@ -5,6 +5,7 @@ import (
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/public"
+	"github.com/linkerd/linkerd2/testutil"
 )
 
 type endpointsExp struct {
@@ -135,5 +136,5 @@ func testEndpointsCall(exp endpointsExp, t *testing.T) {
 
 	output := renderEndpoints(endpoints, exp.options)
 
-	diffTestdata(t, exp.file, output)
+	testutil.DiffTestdata(t, exp.file, output, prettyDiff, updateFixtures, rejectPath)
 }

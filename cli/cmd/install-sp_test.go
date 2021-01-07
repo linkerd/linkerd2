@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"testing"
+
+	"github.com/linkerd/linkerd2/testutil"
 )
 
 func TestRenderSP(t *testing.T) {
@@ -24,7 +26,7 @@ func TestRenderSP(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			diffTestdata(t, tc.goldenFileName, buf.String())
+			testutil.DiffTestdata(t, tc.goldenFileName, buf.String(), prettyDiff, updateFixtures, rejectPath)
 		})
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	cnicharts "github.com/linkerd/linkerd2/pkg/charts/cni"
+	"github.com/linkerd/linkerd2/testutil"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/engine"
@@ -89,7 +90,7 @@ func testRenderCniHelm(t *testing.T, chart *chart.Chart, overrideConfig *chartut
 		buf.WriteString(v)
 	}
 
-	diffTestdata(t, goldenFileName, buf.String())
+	testutil.DiffTestdata(t, goldenFileName, buf.String(), prettyDiff, updateFixtures, rejectPath)
 }
 
 func chartCniPlugin(t *testing.T) *chart.Chart {
@@ -123,7 +124,7 @@ func chartCniPlugin(t *testing.T) *chart.Chart {
 
 	for _, template := range cniChart.Templates {
 		filepath := filepath.Join(cniChart.Metadata.Sources[0], template.Name)
-		template.Data = []byte(readTestdata(t, filepath))
+		template.Data = []byte(testutil.ReadTestdata(t, filepath))
 	}
 
 	return cniChart

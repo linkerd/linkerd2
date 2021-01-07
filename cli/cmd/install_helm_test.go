@@ -8,6 +8,7 @@ import (
 
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/testutil"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/engine"
@@ -177,7 +178,7 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
 		}
 	}
 
-	diffTestdata(t, goldenFileName, buf.String())
+	testutil.DiffTestdata(t, goldenFileName, buf.String(), prettyDiff, updateFixtures, rejectPath)
 }
 
 func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOutboundPorts string, ignoreInboundPorts string) *chart.Chart {
@@ -243,7 +244,7 @@ func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOut
 
 	for _, template := range linkerd2Chart.Templates {
 		filepath := filepath.Join(linkerd2Chart.Metadata.Sources[0], template.Name)
-		template.Data = []byte(readTestdata(t, filepath))
+		template.Data = []byte(testutil.ReadTestdata(t, filepath))
 	}
 
 	return linkerd2Chart
@@ -268,7 +269,7 @@ func chartPartials(t *testing.T, paths []string) *chart.Chart {
 	for _, template := range chart.Templates {
 		template := template
 		filepath := filepath.Join(chart.Metadata.Sources[0], template.Name)
-		template.Data = []byte(readTestdata(t, filepath))
+		template.Data = []byte(testutil.ReadTestdata(t, filepath))
 	}
 
 	return chart

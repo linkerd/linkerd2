@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/testutil"
 )
 
 // TestUninjectYAML does the reverse of TestInjectYAML.
@@ -116,8 +117,8 @@ func TestUninjectYAML(t *testing.T) {
 				t.Errorf("Failed to uninject %s\n", tc.inputFileName)
 			}
 
-			diffTestdata(t, tc.goldenFileName, output.String())
-			diffTestdata(t, tc.reportFileName, report.String())
+			testutil.DiffTestdata(t, tc.goldenFileName, output.String(), prettyDiff, updateFixtures, rejectPath)
+			testutil.DiffTestdata(t, tc.reportFileName, report.String(), prettyDiff, updateFixtures, rejectPath)
 		})
 	}
 }

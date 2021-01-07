@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	charts "github.com/linkerd/linkerd2/pkg/charts"
+	"github.com/linkerd/linkerd2/testutil"
 )
 
 func TestRender(t *testing.T) {
@@ -44,7 +45,7 @@ func TestRender(t *testing.T) {
 			if err := render(&buf, charts.MergeMaps(defaultValues, tc.values)); err != nil {
 				t.Fatalf("Failed to render templates: %v", err)
 			}
-			diffTestdata(t, tc.goldenFileName, buf.String())
+			testutil.DiffTestdata(t, tc.goldenFileName, buf.String(), prettyDiff, updateFixtures, rejectPath)
 		})
 	}
 }
