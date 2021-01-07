@@ -180,7 +180,7 @@ func InsertVersionValues(values chartutil.Values) (chartutil.Values, error) {
 func OverrideFromFile(values map[string]interface{}, fs http.FileSystem, chartName, name string) (map[string]interface{}, error) {
 	// Load Values file
 	valuesOverride := loader.BufferedFile{
-		Name: "values-ha.yaml",
+		Name: name,
 	}
 	if err := ReadFile(fs, chartName+"/", &valuesOverride); err != nil {
 		return nil, err
