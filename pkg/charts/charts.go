@@ -176,7 +176,10 @@ func InsertVersionValues(values chartutil.Values) (chartutil.Values, error) {
 	return chartutil.ReadValues(InsertVersion([]byte(raw)))
 }
 
-// MergeMaps returns the resultant map after merging two maps
+// MergeMaps returns the resultant map after merging given two maps of type map[string]interface{}
+// The inputs are not mutated and the second map i.e b's values take predence during merge.
+// This gives semantically correct merge compared with `mergo.Merge` (with boolean values).
+// See https://github.com/imdario/mergo/issues/129
 func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
 	out := make(map[string]interface{}, len(a))
 	for k, v := range a {
@@ -184,9 +187,9 @@ func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
 	}
 	for k, v := range b {
 		if v, ok := v.(map[string]interface{}); ok {
-			if bv, ok := out[k]; ok {
-				if bv, ok := bv.(map[string]interface{}); ok {
-					out[k] = MergeMaps(bv, v)
+			if av, ok := out[k]; ok {
+				if av, ok := av.(map[string]interface{}); ok {
+					out[k] = MergeMaps(av, v)
 					continue
 				}
 			}
