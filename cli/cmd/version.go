@@ -41,10 +41,15 @@ func newCmdVersion() *cobra.Command {
 		Short: "Print the client and server version information",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-			if err != nil {
-				return err
+			var k8sAPI *k8s.KubernetesAPI
+			var err error
+			if !options.onlyClientVersion {
+				k8sAPI, err = k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+				if err != nil {
+					return err
+				}
 			}
+
 			configureAndRunVersion(cmd.Context(), k8sAPI, options, os.Stdout, api.RawPublicAPIClient)
 			return nil
 		},
