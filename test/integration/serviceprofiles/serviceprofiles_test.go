@@ -278,7 +278,7 @@ func assertExpectedRoutes(expected []string, actual []*cmd2.JSONRouteStats, t *t
 }
 
 func getRoutes(deployName, namespace string, additionalArgs []string) ([]*cmd2.JSONRouteStats, error) {
-	cmd := []string{"routes", "--namespace", namespace, deployName}
+	cmd := []string{"viz", "routes", "--namespace", namespace, deployName}
 
 	if len(additionalArgs) > 0 {
 		cmd = append(cmd, additionalArgs...)

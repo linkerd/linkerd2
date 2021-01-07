@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 // smoke test.
 func TestRoutes(t *testing.T) {
 	// control-plane routes
-	cmd := []string{"routes", "--namespace", TestHelper.GetLinkerdNamespace(), "deploy"}
+	cmd := []string{"viz", "routes", "--namespace", TestHelper.GetLinkerdNamespace(), "deploy"}
 	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd routes' command failed", err)
