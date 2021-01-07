@@ -26,7 +26,6 @@ const JaegerLink = ({ PrefixedLink, name, namespace, resource }) => {
   );
 };
 
-
 JaegerLink.propTypes = {
   name: PropTypes.string.isRequired,
   namespace: PropTypes.string,

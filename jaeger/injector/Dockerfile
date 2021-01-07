@@ -19,14 +19,14 @@ COPY controller controller
 COPY charts/partials charts/partials
 
 ARG TARGETARCH
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/proxy-mutator -tags prod -mod=readonly -ldflags "-s -w" ./jaeger/proxy-mutator/cmd
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/injector -tags prod -mod=readonly -ldflags "-s -w" ./jaeger/injector/cmd
 
 ## package runtime
 FROM scratch
 ENV PATH=$PATH:/go/bin
-COPY --from=golang /out/proxy-mutator /go/bin/proxy-mutator
+COPY --from=golang /out/injector /go/bin/injector
 
 ARG LINKERD_VERSION
 ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}
 
-ENTRYPOINT ["/go/bin/proxy-mutator"]
+ENTRYPOINT ["/go/bin/injector"]

@@ -599,7 +599,7 @@ func (conf *ResourceConfig) serviceAccountVolumeMount() *corev1.VolumeMount {
 // annotations.
 func (conf *ResourceConfig) injectObjectMeta(values *patch) {
 
-	values.Annotations[k8s.ProxyVersionAnnotation] = conf.values.GetGlobal().Proxy.Image.Version
+	values.Annotations[k8s.ProxyVersionAnnotation] = values.GetGlobal().Proxy.Image.Version
 
 	if values.Identity == nil || values.GetGlobal().Proxy.DisableIdentity {
 		values.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeDisabled
