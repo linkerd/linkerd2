@@ -36,9 +36,10 @@ this.
   not a failure case for the `linkerd check` command (thanks @cypherfox!)
 * Removed the Prometheus check from the `linkerd check` command since it now
   depends on a component that is installed with the Viz extension
-* Fixed a typo in the healthcheck error message (thanks @pradeepnnv!)
+* Fixed error messages thrown by the cert checks in `linkerd check` (thanks
+  @pradeepnnv!)
 * Added PodDisruptionBudgets to the control plane components so that they cannot
-  be all terminated at the same time during disruptions (thanks tustvold!)
+  be all terminated at the same time during disruptions (thanks @tustvold!)
 * Fixed an issue that displayed the wrong `linkerd.io/proxy-version` when it is
   overridden by annotations (thanks @mateiidavid!)
 * Added support for custom registries in the `linkerd-viz` helm chart (thanks
@@ -50,7 +51,7 @@ this.
 * Introduced the `linkerd identity` command, used to fetch the TLS certificates
   for injected pods (thanks @jimil749)
 * Fixed an issue with the CNI plugin where it was incorrectly terminating and
-  emitting error events
+  emitting error events (thanks @mhulscher!)
 * Re-added support for non-LoadBalancer service types in the
   `linkerd-multicluster` extension
 
