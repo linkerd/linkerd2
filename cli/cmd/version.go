@@ -40,8 +40,13 @@ func newCmdVersion() *cobra.Command {
 		Use:   "version",
 		Short: "Print the client and server version information",
 		Args:  cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			configureAndRunVersion(cmd.Context(), options, os.Stdout, api.RawPublicAPIClient)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			if err != nil {
+				return err
+			}
+			configureAndRunVersion(cmd.Context(), k8sAPI, options, os.Stdout, api.RawPublicAPIClient)
+			return nil
 		},
 	}
 
@@ -55,6 +60,7 @@ func newCmdVersion() *cobra.Command {
 
 func configureAndRunVersion(
 	ctx context.Context,
+	k8sAPI *k8s.KubernetesAPI,
 	options *versionOptions,
 	stdout io.Writer,
 	mkClient func(ctx context.Context, k8sAPI *k8s.KubernetesAPI, controlPlaneNamespace, apiAddr string) (pb.ApiClient, error),
@@ -66,11 +72,6 @@ func configureAndRunVersion(
 		fmt.Fprintf(stdout, "Client version: %s\n", clientVersion)
 	}
 
-	k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-	if err != nil {
-		fmt.Fprint(os.Stderr, err.Error())
-		os.Exit(1)
-	}
 	if !options.onlyClientVersion {
 		serverVersion := defaultVersionString
 		client, clientErr := mkClient(ctx, k8sAPI, controlPlaneNamespace, apiAddr)
