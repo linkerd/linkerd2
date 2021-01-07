@@ -1,6 +1,62 @@
 
 # Changes
 
+## edge-21.1.1
+
+This edge release introduces a new "opaque transport" feature that allows the
+proxy to securely transport server-speaks-first and otherwise opaque TCP
+traffic. Using the `config.linkerd.io/opaque-ports` annotation on pods and
+namespaces, users can configure ports that should skip the proxy's protocol
+detection.
+
+Additionally, a new `linkerd-viz` extension has been introduced that separates
+the installation of the Grafana, Prometheus, web, and tap components. This
+extension closely follows the Jaeger and multicluster extensions; users can
+`install` and `uninstall` with the `linkerd viz ..` command as well as configure
+for HA with the `--ha` flag.
+
+The `linkerd viz install` command does not have any cli flags to customize the
+install directly, but instead follows the Helm way of customization by using
+flags such as `set`, `set-string`, `values`, `set-files`.
+
+Finally, a new `/shutdown` admin endpoint that may only be accessed over the
+loopback network has been added. This allows batch jobs to gracefully terminate
+the proxy on completion. The `linkerd-await` utility can be used to automate
+this.
+
+* Added a new `linkerd multicluster check` command to validate that the
+  `linkerd-multicluster` extension is working correctly
+* Fixed description in the `linkerd edges` command (thanks @jsoref!)
+* Moved the Grafana, Prometheus, web, and tap components into a new Viz chart,
+  following the same extension model that multicluster and Jaeger follow
+* Introduced a new "opaque transport" feature that allows the proxy to securely
+  transport server-speaks-first and otherwise opaque TCP traffic
+* Removed the check comparing the `ca.crt` field in the identity issuer secret
+  and the trust anchors in the Linkerd config; these values being different is
+  not a failure case for the `linkerd check` command (thanks @cypherfox!)
+* Removed the Prometheus check from the `linkerd check` command since it now
+  depends on a component that is installed with the Viz extension
+* Fixed a typo in the healthcheck error message (thanks @pradeepnnv!)
+* Added PodDisruptionBudgets to the control plane components so that they cannot
+  be all terminated at the same time during disruptions (thanks tustvold!)
+* Fixed an issue that displayed the wrong `linkerd.io/proxy-version` when it is
+  overridden by annotations (thanks @mateiidavid!)
+* Added support for custom registries in the `linkerd-viz` helm chart (thanks
+  @jimil749!)
+* Renamed `proxy-mutator` to `jaeger-injector` in the `linkerd-jaeger` extension
+* Added a new `/shutdown` admin endpoint that may only be accessed over the
+  loopback network allowing batch jobs to gracefully terminate the proxy on
+  completion
+* Introduced the `linkerd identity` command, used to fetch the TLS certificates
+  for injected pods (thanks @jimil749)
+* Fixed an issue with the CNI plugin where it was incorrectly terminating and
+  emitting error events
+* Added a new `linkerd viz uninstall` command for uninstalling components of the
+  `linkerd-viz` extension
+* Re-added support for non-LoadBalancer service types in the
+  `linkerd-multicluster` extension
+* Added an HA option to the `linkerd viz install` command
+
 ## edge-20.12.4
 
 This edge release adds support for the `config.linkerd.io/opaque-ports`
