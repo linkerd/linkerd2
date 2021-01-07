@@ -312,24 +312,50 @@ type Checker struct {
 }
 
 // NewChecker returns a new instance of checker type
-func NewChecker(description, hintAnchor string, fatal, warning bool, retryDeadline time.Time, surfaceErrorOnRetry bool) *Checker {
+func NewChecker(description string) *Checker {
 	return &Checker{
-		description:         description,
-		hintAnchor:          hintAnchor,
-		fatal:               fatal,
-		warning:             warning,
-		retryDeadline:       retryDeadline,
-		surfaceErrorOnRetry: surfaceErrorOnRetry,
+		description:   description,
+		retryDeadline: time.Time{},
 	}
 }
 
-// WithCheck Returns a checker with the provided check func
+// WithHintAnchor returns a checker with the given hint anchor
+func (c *Checker) WithHintAnchor(hint string) *Checker {
+	c.hintAnchor = hint
+	return c
+}
+
+// Fatal returns a checker with the fatal field set
+func (c *Checker) Fatal() *Checker {
+	c.fatal = true
+	return c
+}
+
+// Warning returns a checker with the warning field set
+func (c *Checker) Warning() *Checker {
+	c.warning = true
+	return c
+}
+
+// WithRetryDeadline returns a checker with the provided retry timeout
+func (c *Checker) WithRetryDeadline(retryDeadLine time.Time) *Checker {
+	c.retryDeadline = retryDeadLine
+	return c
+}
+
+// SurfaceErrorOnRetry returns a checker with the surfaceErrorOnRetry set
+func (c *Checker) SurfaceErrorOnRetry() *Checker {
+	c.surfaceErrorOnRetry = true
+	return c
+}
+
+// WithCheck returns a checker with the provided check func
 func (c *Checker) WithCheck(check func(context.Context) error) *Checker {
 	c.check = check
 	return c
 }
 
-// WithCheckRPC Returns a checker with the provided checkRPC func
+// WithCheckRPC returns a checker with the provided checkRPC func
 func (c *Checker) WithCheckRPC(checkRPC func(context.Context) (*healthcheckPb.SelfCheckResponse, error)) *Checker {
 	c.checkRPC = checkRPC
 	return c
@@ -1404,30 +1430,6 @@ func (hc *HealthChecker) checkMinReplicasAvailable(ctx context.Context) error {
 	return nil
 }
 
-// Add adds an arbitrary checker. This should only be used for testing. For
-// production code, pass in the desired set of checks when calling
-// NewHealthChecker.
-func (hc *HealthChecker) Add(categoryID CategoryID, description string, hintAnchor string, check func(context.Context) error) {
-	hc.addCategory(
-		Category{
-			id: categoryID,
-			checkers: []Checker{
-				{
-					description: description,
-					check:       check,
-					hintAnchor:  hintAnchor,
-				},
-			},
-		},
-	)
-}
-
-// addCategory is also for testing
-func (hc *HealthChecker) addCategory(c Category) {
-	c.enabled = true
-	hc.categories = append(hc.categories, c)
-}
-
 // RunChecks runs all configured checkers, and passes the results of each
 // check to the observer. If a check fails and is marked as fatal, then all
 // remaining checks are skipped. If at least one check fails, RunChecks returns
@@ -2382,11 +2384,7 @@ const running = "Running"
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
-	names := []string{"controller", "identity", "sp-validator"}
-	// TODO: deprecate this when we drop support for checking pre-default proxy-injector control-planes
-	if _, found := statuses["proxy-injector"]; found {
-		names = append(names, "proxy-injector")
-	}
+	names := []string{"controller", "identity", "sp-validator", "proxy-injector"}
 
 	for _, name := range names {
 		pods, found := statuses[name]

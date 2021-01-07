@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -258,7 +259,6 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		cmd  = "install"
 		args = []string{
 			"--controller-log-level", "debug",
-			"--proxy-log-level", "off",
 			"--proxy-version", TestHelper.GetVersion(),
 			"--skip-inbound-ports", skippedInboundPorts,
 		}
@@ -402,15 +402,6 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
-	}
-
-	// Wait for the proxy injector to be up
-	name := "linkerd-proxy-injector"
-	ns := "linkerd"
-	o, err := TestHelper.Kubectl("", "--namespace="+ns, "wait", "--for=condition=available", "--timeout=120s", "deploy/"+name)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s in namespace %s", name, ns),
-			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
 	}
 
 	// Install Linkerd Viz Extension
@@ -614,6 +605,7 @@ func TestUpgradeHelm(t *testing.T) {
 		"--set", "dashboard.image.tag=" + TestHelper.GetVersion(),
 		"--set", "grafana.image.tag=" + TestHelper.GetVersion(),
 		"--set", "tap.image.tag=" + TestHelper.GetVersion(),
+		"--wait",
 	}
 	// Install Viz Extension Chart
 	if stdout, stderr, err := TestHelper.HelmInstallPlain(vizChart, "l5d-viz", vizArgs...); err != nil {
@@ -814,10 +806,6 @@ func TestInstallSP(t *testing.T) {
 	}
 }
 
-// This test fails because no web component is installed during this phase of
-// the extension split. It should be renabled after the issue below is closed.
-// Issue: https://github.com/linkerd/linkerd2/issues/5478
-/*
 func TestDashboard(t *testing.T) {
 	dashboardPort := 52237
 	dashboardURL := fmt.Sprintf("http://localhost:%d", dashboardPort)
@@ -854,7 +842,6 @@ func TestDashboard(t *testing.T) {
 			resp, TestHelper.GetVersion())
 	}
 }
-*/
 
 func TestInject(t *testing.T) {
 	resources, err := testutil.ReadFile("testdata/smoke_test.yaml")
