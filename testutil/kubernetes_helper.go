@@ -211,33 +211,31 @@ func (h *KubernetesHelper) CheckPods(ctx context.Context, namespace string, depl
 
 	err := h.retryFor(6*time.Minute, func() error {
 		checkedPods = []corev1.Pod{}
-		pods, err := h.clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+		pods, err := h.GetPodsForDeployment(ctx, namespace, deploymentName)
 		if err != nil {
 			return err
 		}
 
 		var deploymentReplicas int
-		for _, pod := range pods.Items {
-			if strings.HasPrefix(pod.Name, deploymentName) {
-				checkedPods = append(checkedPods, pod)
+		for _, pod := range pods {
+			checkedPods = append(checkedPods, pod)
 
-				deploymentReplicas++
-				if pod.Status.Phase != "Running" {
-					return fmt.Errorf("Pod [%s] in namespace [%s] is not running",
-						pod.Name, pod.Namespace)
-				}
-				for _, container := range pod.Status.ContainerStatuses {
-					if !container.Ready {
-						return fmt.Errorf("Container [%s] in pod [%s] in namespace [%s] is not running",
-							container.Name, pod.Name, pod.Namespace)
-					}
+			deploymentReplicas++
+			if pod.Status.Phase != "Running" {
+				return fmt.Errorf("Pod [%s] in namespace [%s] is not running",
+					pod.Name, pod.Namespace)
+			}
+			for _, container := range pod.Status.ContainerStatuses {
+				if !container.Ready {
+					return fmt.Errorf("Container [%s] in pod [%s] in namespace [%s] is not running",
+						container.Name, pod.Name, pod.Namespace)
 				}
 			}
 		}
 
 		if deploymentReplicas != replicas {
-			return fmt.Errorf("Expected deployment [%s] in namespace [%s] to have [%d] running pods, but found [%d]",
-				deploymentName, namespace, replicas, deploymentReplicas)
+			return fmt.Errorf("Expected there to be [%d] pods in deployment [%s] in namespace [%s], but found [%d]",
+				replicas, deploymentName, namespace, deploymentReplicas)
 		}
 
 		return nil

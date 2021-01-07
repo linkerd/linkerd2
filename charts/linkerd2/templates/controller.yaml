@@ -21,6 +21,24 @@ spec:
   - name: http
     port: 8085
     targetPort: 8085
+{{- if .Values.enablePodAntiAffinity }}
+---
+kind: PodDisruptionBudget
+apiVersion: policy/v1beta1
+metadata:
+  name: linkerd-controller-api
+  namespace: {{.Values.global.namespace}}
+  labels:
+    {{.Values.global.controllerComponentLabel}}: controller
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+  annotations:
+    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{.Values.global.controllerComponentLabel}}: controller
+{{- end }}
 ---
 {{- $tree := deepCopy . }}
 {{ $_ := set $tree.Values.global.proxy "workloadKind" "deployment" -}}

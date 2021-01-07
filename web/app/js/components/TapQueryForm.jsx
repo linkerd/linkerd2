@@ -40,7 +40,6 @@ import _uniq from 'lodash/uniq';
 import _values from 'lodash/values';
 import { withStyles } from '@material-ui/core/styles';
 
-
 const getResourceList = (resourcesByNs, ns) => {
   return resourcesByNs[ns] || _uniq(_flatten(_values(resourcesByNs)));
 };
@@ -93,7 +92,6 @@ const styles = theme => ({
     marginLeft: theme.spacing(1),
   },
 });
-
 
 class TapQueryForm extends React.Component {
   static getDerivedStateFromProps(props, state) {

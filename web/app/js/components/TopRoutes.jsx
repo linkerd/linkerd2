@@ -72,7 +72,6 @@ class TopRoutes extends React.Component {
       to_namespace: '',
     }, _pick(props.query, Object.keys(topRoutesQueryProps)));
 
-
     this.state = {
       query,
       error: null,
@@ -318,7 +317,6 @@ class TopRoutes extends React.Component {
       </FormControl>
     );
   }
-
 
   render() {
     const { query, requestInProgress, error } = this.state;

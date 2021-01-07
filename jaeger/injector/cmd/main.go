@@ -8,12 +8,12 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/webhook"
-	"github.com/linkerd/linkerd2/jaeger/proxy-mutator/mutator"
+	"github.com/linkerd/linkerd2/jaeger/injector/mutator"
 	"github.com/linkerd/linkerd2/pkg/flags"
 )
 
 func main() {
-	cmd := flag.NewFlagSet("proxy-mutator", flag.ExitOnError)
+	cmd := flag.NewFlagSet("injector", flag.ExitOnError)
 	metricsAddr := cmd.String("metrics-addr", fmt.Sprintf(":%d", 9995),
 		"address to serve scrapable metrics on")
 	addr := cmd.String("addr", ":8443", "address to serve on")
@@ -29,7 +29,7 @@ func main() {
 		context.Background(),
 		[]k8s.APIResource{k8s.NS},
 		mutator.Mutate(*collectorSvcAddr, *collectorSvcAccount),
-		"linkerd-proxy-mutator",
+		"linkerd-jaeger-injector",
 		*metricsAddr,
 		*addr,
 		*kubeconfig,

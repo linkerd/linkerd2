@@ -809,6 +809,22 @@ spec:
     port: 8080
     targetPort: 8080
 ---
+kind: PodDisruptionBudget
+apiVersion: policy/v1beta1
+metadata:
+  name: linkerd-identity
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      linkerd.io/control-plane-component: identity
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1080,6 +1096,22 @@ spec:
   - name: http
     port: 8085
     targetPort: 8085
+---
+kind: PodDisruptionBudget
+apiVersion: policy/v1beta1
+metadata:
+  name: linkerd-controller-api
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      linkerd.io/control-plane-component: controller
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -1363,6 +1395,22 @@ spec:
   - name: grpc
     port: 8086
     targetPort: 8086
+---
+kind: PodDisruptionBudget
+apiVersion: policy/v1beta1
+metadata:
+  name: linkerd-dst
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      linkerd.io/control-plane-component: destination
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -1930,6 +1978,22 @@ spec:
     port: 443
     targetPort: proxy-injector
 ---
+kind: PodDisruptionBudget
+apiVersion: policy/v1beta1
+metadata:
+  name: linkerd-proxy-injector
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      linkerd.io/control-plane-component: proxy-injector
+---
 ###
 ### Service Profile Validator
 ###
@@ -1952,6 +2016,22 @@ spec:
   - name: sp-validator
     port: 443
     targetPort: sp-validator
+---
+kind: PodDisruptionBudget
+apiVersion: policy/v1beta1
+metadata:
+  name: linkerd-sp-validator
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      linkerd.io/control-plane-component: sp-validator
 ---
 apiVersion: apps/v1
 kind: Deployment

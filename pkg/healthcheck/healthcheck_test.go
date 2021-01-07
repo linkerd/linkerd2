@@ -61,13 +61,14 @@ func (hc *HealthChecker) addCheckAsCategory(
 			for _, ch := range cat.checkers {
 				if ch.description == desc {
 					testCategory.checkers = append(testCategory.checkers, ch)
+					testCategory.enabled = true
 					break
 				}
 			}
 			break
 		}
 	}
-	hc.addCategory(testCategory)
+	hc.AppendCategories(testCategory)
 }
 
 func TestHealthChecker(t *testing.T) {
@@ -84,6 +85,7 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
+		enabled: true,
 	}
 
 	passingCheck2 := Category{
@@ -97,6 +99,7 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
+		enabled: true,
 	}
 
 	failingCheck := Category{
@@ -110,6 +113,7 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
+		enabled: true,
 	}
 
 	passingRPCClient := public.MockAPIClient{
@@ -136,6 +140,7 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
+		enabled: true,
 	}
 
 	failingRPCClient := public.MockAPIClient{
@@ -163,6 +168,7 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
+		enabled: true,
 	}
 
 	fatalCheck := Category{
@@ -177,6 +183,7 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
+		enabled: true,
 	}
 
 	skippingCheck := Category{
@@ -190,6 +197,7 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
+		enabled: true,
 	}
 
 	skippingRPCCheck := Category{
@@ -203,6 +211,7 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
+		enabled: true,
 	}
 
 	t.Run("Notifies observer of all results", func(t *testing.T) {
@@ -210,11 +219,12 @@ func TestHealthChecker(t *testing.T) {
 			[]CategoryID{},
 			&Options{},
 		)
-		hc.addCategory(passingCheck1)
-		hc.addCategory(passingCheck2)
-		hc.addCategory(failingCheck)
-		hc.addCategory(passingRPCCheck)
-		hc.addCategory(failingRPCCheck)
+
+		hc.AppendCategories(passingCheck1)
+		hc.AppendCategories(passingCheck2)
+		hc.AppendCategories(failingCheck)
+		hc.AppendCategories(passingRPCCheck)
+		hc.AppendCategories(failingRPCCheck)
 
 		expectedResults := []string{
 			"cat1 desc1",
@@ -239,9 +249,9 @@ func TestHealthChecker(t *testing.T) {
 			[]CategoryID{},
 			&Options{},
 		)
-		hc.addCategory(passingCheck1)
-		hc.addCategory(passingCheck2)
-		hc.addCategory(passingRPCCheck)
+		hc.AppendCategories(passingCheck1)
+		hc.AppendCategories(passingCheck2)
+		hc.AppendCategories(passingRPCCheck)
 
 		success := hc.RunChecks(nullObserver)
 
@@ -255,9 +265,9 @@ func TestHealthChecker(t *testing.T) {
 			[]CategoryID{},
 			&Options{},
 		)
-		hc.addCategory(passingCheck1)
-		hc.addCategory(failingCheck)
-		hc.addCategory(passingCheck2)
+		hc.AppendCategories(passingCheck1)
+		hc.AppendCategories(failingCheck)
+		hc.AppendCategories(passingCheck2)
 
 		success := hc.RunChecks(nullObserver)
 
@@ -271,9 +281,9 @@ func TestHealthChecker(t *testing.T) {
 			[]CategoryID{},
 			&Options{},
 		)
-		hc.addCategory(passingCheck1)
-		hc.addCategory(failingRPCCheck)
-		hc.addCategory(passingCheck2)
+		hc.AppendCategories(passingCheck1)
+		hc.AppendCategories(failingRPCCheck)
+		hc.AppendCategories(passingCheck2)
 
 		success := hc.RunChecks(nullObserver)
 
@@ -287,9 +297,9 @@ func TestHealthChecker(t *testing.T) {
 			[]CategoryID{},
 			&Options{},
 		)
-		hc.addCategory(passingCheck1)
-		hc.addCategory(fatalCheck)
-		hc.addCategory(passingCheck2)
+		hc.AppendCategories(passingCheck1)
+		hc.AppendCategories(fatalCheck)
+		hc.AppendCategories(passingCheck2)
 
 		expectedResults := []string{
 			"cat1 desc1",
@@ -323,14 +333,15 @@ func TestHealthChecker(t *testing.T) {
 					},
 				},
 			},
+			enabled: true,
 		}
 
 		hc := NewHealthChecker(
 			[]CategoryID{},
 			&Options{},
 		)
-		hc.addCategory(passingCheck1)
-		hc.addCategory(retryCheck)
+		hc.AppendCategories(passingCheck1)
+		hc.AppendCategories(retryCheck)
 
 		observedResults := make([]string, 0)
 		observer := func(result *CheckResult) {
@@ -359,9 +370,9 @@ func TestHealthChecker(t *testing.T) {
 			[]CategoryID{},
 			&Options{},
 		)
-		hc.addCategory(passingCheck1)
-		hc.addCategory(skippingCheck)
-		hc.addCategory(skippingRPCCheck)
+		hc.AppendCategories(passingCheck1)
+		hc.AppendCategories(skippingCheck)
+		hc.AppendCategories(skippingRPCCheck)
 
 		expectedResults := []string{
 			"cat1 desc1",
@@ -1680,6 +1691,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
+			pod("linkerd-proxy-injector-5f79ff4844-", corev1.PodRunning, true),
 		}
 
 		err := validateControlPlanePods(pods)
@@ -1696,6 +1708,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27983", corev1.PodRunning, false),
 			pod("linkerd-identity-6849948664-27984", corev1.PodFailed, false),
+			pod("linkerd-proxy-injector-5f79ff4844-", corev1.PodRunning, true),
 			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
 		}
 
@@ -1709,6 +1722,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 		pods := []corev1.Pod{
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
+			pod("linkerd-proxy-injector-5f79ff4844-", corev1.PodRunning, true),
 			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
 			pod("hello-43c25d", corev1.PodRunning, true),
 		}

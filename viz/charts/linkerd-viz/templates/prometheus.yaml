@@ -242,7 +242,7 @@ spec:
         {{- range $key, $value := .Values.prometheus.args}}
         - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}
         {{- end }}
-        image: {{.Values.prometheus.image.name}}:{{.Values.prometheus.image.tag}}
+        image: {{.Values.prometheus.image.registry}}/{{.Values.prometheus.image.name}}:{{.Values.prometheus.image.tag}}
         imagePullPolicy: {{.Values.prometheus.imagepullPolicy}}
         livenessProbe:
           httpGet:

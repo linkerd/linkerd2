@@ -176,6 +176,24 @@ func InsertVersionValues(values chartutil.Values) (chartutil.Values, error) {
 	return chartutil.ReadValues(InsertVersion([]byte(raw)))
 }
 
+// OverrideFromFile overrides the given map with the given file from FS
+func OverrideFromFile(values map[string]interface{}, fs http.FileSystem, chartName, name string) (map[string]interface{}, error) {
+	// Load Values file
+	valuesOverride := loader.BufferedFile{
+		Name: name,
+	}
+	if err := ReadFile(fs, chartName+"/", &valuesOverride); err != nil {
+		return nil, err
+	}
+
+	var valuesOverrideMap map[string]interface{}
+	err := yaml.Unmarshal(valuesOverride.Data, &valuesOverrideMap)
+	if err != nil {
+		return nil, err
+	}
+	return MergeMaps(valuesOverrideMap, values), nil
+}
+
 // MergeMaps returns the resultant map after merging given two maps of type map[string]interface{}
 // The inputs are not mutated and the second map i.e b's values take predence during merge.
 // This gives semantically correct merge compared with `mergo.Merge` (with boolean values).
