@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	vizChartName            = "linkerd-viz"
 	defaultLinkerdNamespace = "linkerd"
 	defaultVizNamespace     = "linkerd-viz"
 	maxRps                  = 100.0
@@ -70,6 +71,7 @@ func NewCmdViz() *cobra.Command {
 	vizCmd.AddCommand(newCmdTop())
 	vizCmd.AddCommand(newCmdEdges())
 	vizCmd.AddCommand(newCmdDashboard())
+	vizCmd.AddCommand(newCmdUninstall())
 
 	return vizCmd
 }
