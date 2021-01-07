@@ -9,11 +9,12 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 )
 
-func mkMockClient(version string, publicAPIErr error, mkClientErr error) func(ctx context.Context) (pb.ApiClient, error) {
-	return func(ctx context.Context) (pb.ApiClient, error) {
+func mkMockClient(version string, publicAPIErr error, mkClientErr error) func(ctx context.Context, k8sAPI *k8s.KubernetesAPI, controlPlaneNamespace, apiAddr string) (pb.ApiClient, error) {
+	return func(ctx context.Context, k8sAPI *k8s.KubernetesAPI, controlPlaneNamespace, apiAddr string) (pb.ApiClient, error) {
 		return &public.MockAPIClient{
 			ErrorToReturn: publicAPIErr,
 			VersionInfoToReturn: &pb.VersionInfo{
@@ -26,7 +27,7 @@ func mkMockClient(version string, publicAPIErr error, mkClientErr error) func(ct
 func TestConfigureAndRunVersion(t *testing.T) {
 	testCases := []struct {
 		options  *versionOptions
-		mkClient func(ctx context.Context) (pb.ApiClient, error)
+		mkClient func(ctx context.Context, k8sAPI *k8s.KubernetesAPI, controlPlaneNamespace, apiAddr string) (pb.ApiClient, error)
 		out      string
 	}{
 		{
