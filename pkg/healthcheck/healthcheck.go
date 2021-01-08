@@ -517,7 +517,7 @@ func (hc *HealthChecker) allCategories() []Category {
 					description: "control plane namespace does not already exist",
 					hintAnchor:  "pre-ns",
 					check: func(ctx context.Context) error {
-						return hc.checkNamespace(ctx, hc.ControlPlaneNamespace, false)
+						return hc.CheckNamespace(ctx, hc.ControlPlaneNamespace, false)
 					},
 				},
 				{
@@ -767,7 +767,7 @@ func (hc *HealthChecker) allCategories() []Category {
 					hintAnchor:  "l5d-existence-ns",
 					fatal:       true,
 					check: func(ctx context.Context) error {
-						return hc.checkNamespace(ctx, hc.ControlPlaneNamespace, true)
+						return hc.CheckNamespace(ctx, hc.ControlPlaneNamespace, true)
 					},
 				},
 				{
@@ -1269,7 +1269,7 @@ func (hc *HealthChecker) allCategories() []Category {
 							// when checking proxies in all namespaces, this check is a no-op
 							return nil
 						}
-						return hc.checkNamespace(ctx, hc.DataPlaneNamespace, true)
+						return hc.CheckNamespace(ctx, hc.DataPlaneNamespace, true)
 					},
 				},
 				{
@@ -1771,9 +1771,9 @@ func FetchLinkerdConfigMap(ctx context.Context, k kubernetes.Interface, controlP
 	return cm, configPB, nil
 }
 
-// checkNamespace checks whether the given namespace exists, and returns an
+// CheckNamespace checks whether the given namespace exists, and returns an
 // error if it does not match `shouldExist`.
-func (hc *HealthChecker) checkNamespace(ctx context.Context, namespace string, shouldExist bool) error {
+func (hc *HealthChecker) CheckNamespace(ctx context.Context, namespace string, shouldExist bool) error {
 	exists, err := hc.kubeAPI.NamespaceExists(ctx, namespace)
 	if err != nil {
 		return err
@@ -2512,4 +2512,33 @@ func checkControlPlaneReplicaSets(rst []appsv1.ReplicaSet) error {
 	}
 
 	return nil
+}
+
+// CheckPodsRunning checks if the given pods are in running state
+func CheckPodsRunning(pods []corev1.Pod) error {
+	for _, pod := range pods {
+		if pod.Status.Phase != "Running" {
+			return fmt.Errorf("%s status is %s", pod.Name, pod.Status.Phase)
+		}
+	}
+	return nil
+}
+
+// CheckIfDataPlanePodsExist checks if the proxy is present in the given pods
+func CheckIfDataPlanePodsExist(pods []corev1.Pod) error {
+	for _, pod := range pods {
+		if !containsProxy(pod) {
+			return fmt.Errorf("could not find proxy container for %s pod", pod.Name)
+		}
+	}
+	return nil
+}
+
+func containsProxy(pod corev1.Pod) bool {
+	for _, containerSpec := range pod.Spec.Containers {
+		if containerSpec.Name == k8s.ProxyContainerName {
+			return true
+		}
+	}
+	return false
 }

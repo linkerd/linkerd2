@@ -10,20 +10,21 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
 
-	// jaegerExtensionName is the name of jaeger extension
-	jaegerExtensionName = "linkerd-jaeger"
+	// vizExtensionName is the name of Linkerd Viz extension
+	vizExtensionName = "linkerd-viz"
 
-	// linkerdJaegerExtensionCheck adds checks related to the jaeger extension
-	linkerdJaegerExtensionCheck healthcheck.CategoryID = jaegerExtensionName
+	// linkerdVizExtensionCheck adds checks related to the Linkerd Viz etension
+	linkerdVizExtensionCheck healthcheck.CategoryID = vizExtensionName
 )
 
 var (
-	jaegerNamespace string
+	vizNamespace string
 )
 
 type checkOptions struct {
@@ -31,7 +32,7 @@ type checkOptions struct {
 	output string
 }
 
-func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error) {
+func vizCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error) {
 
 	kubeAPI, err := k8s.NewAPI(hc.KubeConfig, hc.KubeContext, hc.Impersonate, hc.ImpersonateGroup, 0)
 	if err != nil {
@@ -40,22 +41,41 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 
 	checkers := []healthcheck.Checker{}
 	checkers = append(checkers,
-		*healthcheck.NewChecker("collector and jaeger service account exists").
-			WithHintAnchor("l5d-jaeger-sc-exists").
+		*healthcheck.NewChecker("linkerd-viz Namespace exists").
+			WithHintAnchor("l5d-viz-ns-exists").
 			Fatal().
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				// Check for Collector Service Account
-				return healthcheck.CheckServiceAccounts(ctx, kubeAPI, []string{"collector", "jaeger"}, jaegerNamespace, "")
+				return hc.CheckNamespace(ctx, vizNamespace, true)
 			}))
 
 	checkers = append(checkers,
+		*healthcheck.NewChecker("linkerd-viz ClusterRoles exist").
+			WithHintAnchor("l5d-viz-sc-exists").
+			Fatal().
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				return healthcheck.CheckClusterRoles(ctx, kubeAPI, true, []string{fmt.Sprintf("linkerd-%s-prometheus", vizNamespace), fmt.Sprintf("linkerd-%s-tap", vizNamespace)}, "")
+			}))
+
+	checkers = append(checkers,
+		*healthcheck.NewChecker("linkerd-viz ClusterRoleBindings exist").
+			WithHintAnchor("l5d-viz-sc-exists").
+			Fatal().
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				return healthcheck.CheckClusterRoleBindings(ctx, kubeAPI, true, []string{fmt.Sprintf("linkerd-%s-prometheus", vizNamespace), fmt.Sprintf("linkerd-%s-tap", vizNamespace), "linkerd-web"}, "")
+			}))
+
+	//TODO: add tap webhook certs check
+
+	checkers = append(checkers,
 		*healthcheck.NewChecker("collector config map exists").
-			WithHintAnchor("l5d-jaeger-oc-cm-exists").
+			WithHintAnchor("l5d-viz-oc-cm-exists").
 			Warning().
 			WithCheck(func(ctx context.Context) error {
 				// Check for Jaeger Service Account
-				_, err = kubeAPI.CoreV1().ConfigMaps(jaegerNamespace).Get(ctx, "collector-config", metav1.GetOptions{})
+				_, err = kubeAPI.CoreV1().ConfigMaps(vizNamespace).Get(ctx, "collector-config", metav1.GetOptions{})
 				if err != nil {
 					return err
 				}
@@ -63,49 +83,32 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 			}))
 
 	checkers = append(checkers,
-		*healthcheck.NewChecker("collector pod is running").
-			WithHintAnchor("l5d-jaeger-collector-running").
+		*healthcheck.NewChecker("viz extension pods are running").
+			WithHintAnchor("l5d-viz-collector-running").
 			Warning().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
-				// Check for Collector pod
-				podList, err := kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: "component=collector"})
+				pods, err := kubeAPI.GetPodsByNamespace(ctx, vizNamespace)
 				if err != nil {
 					return err
 				}
-				return healthcheck.CheckPodsRunning(podList.Items)
+				return healthcheck.CheckPodsRunning(pods)
 			}))
 
 	checkers = append(checkers,
-		*healthcheck.NewChecker("jaeger pod is running").
-			WithHintAnchor("l5d-jaeger-jaeger-running").
-			Warning().
-			WithRetryDeadline(hc.RetryDeadline).
-			SurfaceErrorOnRetry().
-			WithCheck(func(ctx context.Context) error {
-				// Check for Jaeger pod
-				podList, err := kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: "component=jaeger"})
-				if err != nil {
-					return err
-				}
-				return healthcheck.CheckPodsRunning(podList.Items)
-			}))
-
-	checkers = append(checkers,
-		*healthcheck.NewChecker("jaeger extension pods are injected").
-			WithHintAnchor("l5d-jaeger-pods-injection").
+		*healthcheck.NewChecker("linkerd-viz pods are injected").
+			WithHintAnchor("l5d-viz-pods-injection").
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				// Check for Jaeger pod
-				pods, err := kubeAPI.GetPodsByNamespace(ctx, jaegerNamespace)
+				pods, err := kubeAPI.GetPodsByNamespace(ctx, vizNamespace)
 				if err != nil {
 					return err
 				}
 				return healthcheck.CheckIfDataPlanePodsExist(pods)
 			}))
 
-	return healthcheck.NewCategory(linkerdJaegerExtensionCheck, checkers, true), nil
+	return healthcheck.NewCategory(linkerdVizExtensionCheck, checkers, true), nil
 }
 
 func newCheckOptions() *checkOptions {
@@ -127,25 +130,25 @@ func newCmdCheck() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "check [flags]",
 		Args:  cobra.NoArgs,
-		Short: "Check the Jaeger extension for potential problems",
-		Long: `Check the Jaeger extension for potential problems.
+		Short: "Check the Linkerd Viz extension for potential problems",
+		Long: `Check the Linkerd Viz extension for potential problems.
 
-The check command will perform a series of checks to validate that the Jaeger
+The check command will perform a series of checks to validate that the Linkerd Viz
 extension is configured correctly. If the command encounters a failure it will
 print additional information about the failure and exit with a non-zero exit
 code.`,
 		Example: `  # Check that the Jaeger extension is up and running
   linkerd jaeger check`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Get the Jaeger extension namespace
-			kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-			ns, err := kubeAPI.GetNamespaceWithExtensionLabel(context.Background(), jaegerExtensionName)
+
+			// Get jaeger Extension Namespace
+			ns, err := getNamespaceOfExtension(vizExtensionName)
 			if err != nil {
-				err = fmt.Errorf("%w; install by running `linkerd jaeger install | kubectl apply -f -`", err)
 				fmt.Fprintln(os.Stderr, err.Error())
 				os.Exit(1)
 			}
-			jaegerNamespace = ns.Name
+			vizNamespace = ns.Name
+
 			return configureAndRunChecks(stdout, stderr, options)
 		},
 	}
@@ -163,7 +166,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	}
 
 	checks := []healthcheck.CategoryID{
-		linkerdJaegerExtensionCheck,
+		linkerdVizExtensionCheck,
 	}
 
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
@@ -176,10 +179,11 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		RetryDeadline:         time.Now().Add(options.wait),
 	})
 
-	category, err := jaegerCategory(hc)
+	category, err := vizCategory(hc)
 	if err != nil {
 		return err
 	}
+
 	hc.AppendCategories(*category)
 
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
@@ -189,4 +193,23 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	}
 
 	return nil
+}
+
+func getNamespaceOfExtension(name string) (*corev1.Namespace, error) {
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	namespaces, err := kubeAPI.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{LabelSelector: k8s.LinkerdExtensionLabel})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ns := range namespaces.Items {
+		if ns.Labels[k8s.LinkerdExtensionLabel] == name {
+			return &ns, err
+		}
+	}
+	return nil, fmt.Errorf("could not find the linkerd-jaeger extension. it can be installed by running `linkerd jaeger install | kubectl apply -f -`")
 }
