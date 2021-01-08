@@ -16,7 +16,7 @@ set -e
 if [ $# -ne 1 ]; then
   echo "Error: accepts 1 argument"
   echo "Usage:"
-  echo "  "${0##*/}" /path/to/linkerd"
+  echo "  ${0##*/} /path/to/linkerd"
   exit 1
 fi
 
@@ -30,5 +30,5 @@ done
 for CLUSTER in $AKS $DO $EKS $GKE
 do
   printf '\n%s\n' "$CLUSTER"
-  bin/test-cleanup --context "$CLUSTER" $1
+  bin/test-cleanup --context "$CLUSTER" "$1"
 done
