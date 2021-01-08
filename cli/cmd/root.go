@@ -10,11 +10,10 @@ import (
 	"github.com/linkerd/linkerd2/cli/flag"
 	jaeger "github.com/linkerd/linkerd2/jaeger/cmd"
 	multicluster "github.com/linkerd/linkerd2/multicluster/cmd"
+	"github.com/linkerd/linkerd2/pkg/cmd"
 	viz "github.com/linkerd/linkerd2/viz/cmd"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
@@ -93,7 +92,7 @@ var RootCmd = &cobra.Command{
 }
 
 func init() {
-	defaultNamespace = getDefaultNamespace()
+	defaultNamespace = cmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
 	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed ($LINKERD_NAMESPACE)")
 	RootCmd.PersistentFlags().StringVarP(&cniNamespace, "cni-namespace", "", defaultCNINamespace, "Namespace in which the Linkerd CNI plugin is installed")
 	RootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
@@ -124,28 +123,6 @@ func init() {
 	RootCmd.AddCommand(jaeger.NewCmdJaeger())
 	RootCmd.AddCommand(multicluster.NewCmdMulticluster())
 	RootCmd.AddCommand(viz.NewCmdViz())
-}
-
-// getDefaultNamespace fetches the default namespace
-// used in the current KubeConfig context
-func getDefaultNamespace() string {
-	rules := clientcmd.NewDefaultClientConfigLoadingRules()
-
-	if kubeconfigPath != "" {
-		rules.ExplicitPath = kubeconfigPath
-	}
-
-	overrides := &clientcmd.ConfigOverrides{CurrentContext: kubeContext}
-	kubeCfg := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, overrides)
-	ns, _, err := kubeCfg.Namespace()
-
-	if err != nil {
-		log.Warnf(`could not set namespace from kubectl context, using 'default' namespace: %s
-		 ensure the KUBECONFIG path %s is valid`, err, kubeconfigPath)
-		return corev1.NamespaceDefault
-	}
-
-	return ns
 }
 
 // registryOverride replaces the registry-portion of the provided image with the provided registry.

@@ -39,7 +39,7 @@ type statOptionsBase struct {
 
 func newStatOptionsBase() *statOptionsBase {
 	return &statOptionsBase{
-		namespace:    defaultLinkerdNamespace,
+		namespace:    defaultNamespace,
 		timeWindow:   "1m",
 		outputFormat: tableOutput,
 	}
@@ -774,7 +774,7 @@ func (o *statOptions) validateConflictingFlags() error {
 		return fmt.Errorf("--to-namespace and --from-namespace flags are mutually exclusive")
 	}
 
-	if o.allNamespaces && o.namespace != defaultLinkerdNamespace {
+	if o.allNamespaces && o.namespace != defaultNamespace {
 		return fmt.Errorf("--all-namespaces and --namespace flags are mutually exclusive")
 	}
 
@@ -794,7 +794,7 @@ func (o *statOptions) validateNamespaceFlags() error {
 
 	// Note: technically, this allows you to say `stat ns --namespace <default-namespace-from-kubectl-context>`, but that
 	// seems like an edge case.
-	if o.namespace != defaultLinkerdNamespace {
+	if o.namespace != defaultNamespace {
 		return fmt.Errorf("--namespace flag is incompatible with namespace resource type")
 	}
 

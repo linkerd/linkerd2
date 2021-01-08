@@ -260,7 +260,7 @@ const (
 
 func newTopOptions() *topOptions {
 	return &topOptions{
-		namespace:     defaultLinkerdNamespace,
+		namespace:     defaultNamespace,
 		toResource:    "",
 		toNamespace:   "",
 		maxRps:        maxRps,

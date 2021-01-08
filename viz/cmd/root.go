@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/linkerd/linkerd2/pkg/cmd"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -22,7 +23,8 @@ const (
 var (
 	apiAddr               string // An empty value means "use the Kubernetes configuration"
 	controlPlaneNamespace string
-	namespace             string
+	vizNamespace          string
+	defaultNamespace      string
 	kubeconfigPath        string
 	kubeContext           string
 	impersonate           string
@@ -33,6 +35,10 @@ var (
 	// sanity check against illegal characters.
 	alphaNumDash = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
 )
+
+func init() {
+	defaultNamespace = cmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+}
 
 // NewCmdViz returns a new jeager command
 func NewCmdViz() *cobra.Command {
@@ -57,7 +63,7 @@ func NewCmdViz() *cobra.Command {
 	}
 
 	vizCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed")
-	vizCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", defaultVizNamespace, "Namespace in which viz extension is installed")
+	vizCmd.PersistentFlags().StringVarP(&vizNamespace, "namespace", "n", defaultVizNamespace, "Namespace in which viz extension is installed")
 	vizCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
 	vizCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
 	vizCmd.PersistentFlags().StringVar(&impersonate, "as", "", "Username to impersonate for Kubernetes operations")

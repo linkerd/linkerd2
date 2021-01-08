@@ -104,7 +104,7 @@ func newCmdDashboard() *cobra.Command {
 			portforward, err := k8s.NewPortForward(
 				cmd.Context(),
 				k8sAPI,
-				defaultVizNamespace,
+				vizNamespace,
 				webDeployment,
 				options.host,
 				options.port,
