@@ -147,7 +147,7 @@ handle_cleanup_input() {
           echo "Multliple linkerd paths specified:" >&2
           echo "  $linkerd_path" >&2
           echo "  $1" >&2
-          tests_usage "$0" >&2
+          cleanup_usage "$0" >&2
           exit 64
         fi
         linkerd_path="$1"
@@ -158,7 +158,7 @@ handle_cleanup_input() {
 
   if [ -z "$linkerd_path" ]; then
     echo "Error: path to linkerd binary is required" >&2
-    tests_usage "$0" >&2
+    cleanup_usage "$0" >&2
     exit 64
   fi
 }
