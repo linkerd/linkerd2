@@ -2,8 +2,11 @@
 
 set -eu
 
-k8s_context=${1:-""}
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+
+# shellcheck source=_test-helpers.sh
+. "$bindir"/_test-helpers.sh
+handle_cleanup_input "$@"
 
 populate_array() {
   [ $# -ge 3 ] || {
@@ -80,13 +83,13 @@ if [[ ${namespaces_controlplane[*]}   || \
 fi
 
 echo "cleaning up viz extension resources, if present [${k8s_context}]"
-linkerd viz uninstall 2> /dev/null | kubectl --context="$k8s_context" delete -f -
+"$linkerd_path" viz uninstall 2> /dev/null | kubectl --context="$k8s_context" delete -f -
 
 echo "cleaning up multicluster resources, if present [${k8s_context}]"
-linkerd mc uninstall 2> /dev/null | kubectl --context="$k8s_context" delete -f -
+"$linkerd_path" mc uninstall 2> /dev/null | kubectl --context="$k8s_context" delete -f -
 
 echo "cleaning up jaeger extension resources, if present [${k8s_context}]"
-linkerd jaeger uninstall 2> /dev/null | kubectl --context="$k8s_context" delete -f -
+"$linkerd_path" jaeger uninstall 2> /dev/null | kubectl --context="$k8s_context" delete -f -
 
 echo "cleaning up rolebindings in kube-system namespace in k8s-context [${k8s_context}]"
 populate_array rolebindings              rolebindings                    control-plane-ns

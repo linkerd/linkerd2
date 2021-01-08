@@ -4,7 +4,7 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
 # shellcheck source=_test-helpers.sh
 . "$bindir"/_test-helpers.sh
-handle_input "$@"
+handle_tests_input "$@"
 
 if [ -n "$test_name" ]; then
   start_test "$test_name"
