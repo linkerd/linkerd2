@@ -185,7 +185,7 @@ jobs:
     - name: Test cleanup
       if: ${{ always() }}
       # will fail if other steps didn't run, so ignore error
-      run: bin/test-cleanup --linkerd_path "$CMD" || true
+      run: bin/test-cleanup "$CMD" || true
   choco_pack:
     # only runs for stable tags. The conditionals are at each step level instead of the job level
     # otherwise the jobs below that depend on this one won't run

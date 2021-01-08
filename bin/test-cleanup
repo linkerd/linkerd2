@@ -8,6 +8,8 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 . "$bindir"/_test-helpers.sh
 handle_cleanup_input "$@"
 
+check_linkerd_binary
+
 populate_array() {
   [ $# -ge 3 ] || {
     echo "function ${FUNCNAME[0]} expects 3 mandatory inparameters but got $#

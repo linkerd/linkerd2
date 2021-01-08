@@ -45,15 +45,14 @@ cleanup_usage() {
   echo "Cleanup Linkerd integration tests.
 
 Usage:
-    ${progname} [--context k8s_context] [--linkerd_path /path/to/linkerd]
+    ${progname} [--context k8s_context] /path/to/linkerd
 
 Examples:
-    # Cleanup tests using specified Linkerd binary
-    ${progname} --linkerd_path /path/to/linkerd
+    # Cleanup tests in non-default context
+    ${progname} --context k8s_context /path/to/linkerd
 
 Available Commands:
-    --context: use a non-default k8s context
-    --linkerd_path: use a specific Linkerd binary"
+    --context: use a non-default k8s context"
 }
 
 handle_tests_input() {
@@ -138,28 +137,29 @@ handle_cleanup_input() {
         shift
         shift
         ;;
-      --linkerd_path)
-        linkerd_path=$2
-        if [ -z "$linkerd_path" ]; then
-          echo 'Error: the argument for --linkerd_path was not specified' >&2
-          cleanup_usage "$0" >&2
-          exit 64
-        fi
-        shift
-        shift
-        ;;
       *)
         if echo "$1" | grep -q '^-.*' ; then
           echo "Unexpected flag: $1" >&2
           cleanup_usage "$0" >&2
           exit 64
         fi
+        if [ -n "$linkerd_path" ]; then
+          echo "Multliple linkerd paths specified:" >&2
+          echo "  $linkerd_path" >&2
+          echo "  $1" >&2
+          tests_usage "$0" >&2
+          exit 64
+        fi
+        linkerd_path="$1"
+        shift
         ;;
     esac
   done
 
   if [ -z "$linkerd_path" ]; then
-    linkerd_path=linkerd
+    echo "Error: path to linkerd binary is required" >&2
+    tests_usage "$0" >&2
+    exit 64
   fi
 }
 
@@ -206,7 +206,7 @@ delete_cluster() {
 }
 
 cleanup_cluster() {
-  "$bindir"/test-cleanup --linkerd_path "$linkerd_path" --context "$context" > /dev/null 2>&1
+  "$bindir"/test-cleanup --context "$context" "$linkerd_path" > /dev/null 2>&1
   exit_on_err 'error removing existing Linkerd resources'
 }
 
@@ -248,7 +248,7 @@ check_if_l5d_exists() {
 Linkerd resources exist on cluster:
 \n%s\n
 Help:
-    Run: [%s/test-cleanup] --linkerd_path ' "$linkerd_path"
+    Run: [%s/test-cleanup] ' "$linkerd_path"
     exit 1
   fi
   printf '[ok]\n'
