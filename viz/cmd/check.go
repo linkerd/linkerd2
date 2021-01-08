@@ -74,7 +74,7 @@ func vizCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error) {
 			WithHintAnchor("l5d-viz-oc-cm-exists").
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				// Check for Jaeger Service Account
+				// Check for viz Service Account
 				_, err = kubeAPI.CoreV1().ConfigMaps(vizNamespace).Get(ctx, "collector-config", metav1.GetOptions{})
 				if err != nil {
 					return err
@@ -137,11 +137,11 @@ The check command will perform a series of checks to validate that the Linkerd V
 extension is configured correctly. If the command encounters a failure it will
 print additional information about the failure and exit with a non-zero exit
 code.`,
-		Example: `  # Check that the Jaeger extension is up and running
-  linkerd jaeger check`,
+		Example: `  # Check that the viz extension is up and running
+  linkerd viz check`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			// Get jaeger Extension Namespace
+			// Get viz Extension Namespace
 			ns, err := getNamespaceOfExtension(vizExtensionName)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
@@ -211,5 +211,5 @@ func getNamespaceOfExtension(name string) (*corev1.Namespace, error) {
 			return &ns, err
 		}
 	}
-	return nil, fmt.Errorf("could not find the linkerd-jaeger extension. it can be installed by running `linkerd jaeger install | kubectl apply -f -`")
+	return nil, fmt.Errorf("could not find the linkerd-viz extension. it can be installed by running `linkerd viz install | kubectl apply -f -`")
 }
