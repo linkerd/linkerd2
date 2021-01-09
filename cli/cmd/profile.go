@@ -20,6 +20,7 @@ type profileOptions struct {
 	openAPI       string
 	proto         string
 	tap           string
+	ignoreCluster bool
 	tapDuration   time.Duration
 	tapRouteLimit uint
 }
@@ -32,6 +33,7 @@ func newProfileOptions() *profileOptions {
 		openAPI:       "",
 		proto:         "",
 		tap:           "",
+		ignoreCluster: false,
 		tapDuration:   5 * time.Second,
 		tapRouteLimit: 20,
 	}
@@ -55,6 +57,10 @@ func (options *profileOptions) validate() error {
 		return errors.New("You must specify exactly one of --template or --open-api or --proto or --tap")
 	}
 
+	// service profile generation based on tap data requires access to k8s cluster
+	if options.ignoreCluster && options.tap != "" {
+		return errors.New("--ignore-cluster and --tap flags are mutually exclusive; SP generation based on tap data requires access-check to k8s cluster")
+	}
 	// a DNS-1035 label must consist of lower case alphanumeric characters or '-',
 	// start with an alphabetic character, and end with an alphanumeric character
 	if errs := validation.IsDNS1035Label(options.name); len(errs) != 0 {
@@ -94,25 +100,32 @@ func newCmdProfile() *cobra.Command {
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.name = args[0]
+			clusterDomain := defaultClusterDomain
+			var k8sAPI *k8s.KubernetesAPI
 
 			err := options.validate()
 			if err != nil {
 				return err
 			}
+			// performs an online profile generation and access-check to k8s cluster to extract
+			// clusterDomain from linkerd configuration
+			// profile generation based on tap data requires access to k8s cluster
+			if !options.ignoreCluster {
+				var err error
+				k8sAPI, err = k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 
-			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-			if err != nil {
-				return err
-			}
+				if err != nil {
+					return err
+				}
 
-			_, values, err := healthcheck.FetchCurrentConfiguration(cmd.Context(), k8sAPI, controlPlaneNamespace)
-			if err != nil {
-				return err
-			}
+				_, values, err := healthcheck.FetchCurrentConfiguration(cmd.Context(), k8sAPI, controlPlaneNamespace)
+				if err != nil {
+					return err
+				}
 
-			clusterDomain := values.GetGlobal().ClusterDomain
-			if clusterDomain == "" {
-				clusterDomain = defaultClusterDomain
+				if cd := values.GetGlobal().ClusterDomain; cd != "" {
+					clusterDomain = cd
+				}
 			}
 
 			if options.template {
@@ -137,6 +150,7 @@ func newCmdProfile() *cobra.Command {
 	cmd.PersistentFlags().UintVar(&options.tapRouteLimit, "tap-route-limit", options.tapRouteLimit, "Max number of routes to add to the profile")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the service")
 	cmd.PersistentFlags().StringVar(&options.proto, "proto", options.proto, "Output a service profile based on the given Protobuf spec file")
+	cmd.PersistentFlags().BoolVar(&options.ignoreCluster, "ignore-cluster", options.ignoreCluster, "Output a service profile through offline generation")
 
 	return cmd
 }
