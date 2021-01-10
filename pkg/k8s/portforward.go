@@ -25,6 +25,8 @@ type PortForward struct {
 	method     string
 	url        *url.URL
 	host       string
+	namespace  string
+	podName    string
 	localPort  int
 	remotePort int
 	emitLogs   bool
@@ -140,6 +142,8 @@ func newPortForward(
 		method:     "POST",
 		url:        req.URL(),
 		host:       host,
+		namespace:  namespace,
+		podName:    podName,
 		localPort:  localPort,
 		remotePort: remotePort,
 		emitLogs:   emitLogs,
@@ -172,7 +176,12 @@ func (pf *PortForward) run() error {
 		return err
 	}
 
-	return fw.ForwardPorts()
+	err = fw.ForwardPorts()
+	if err != nil {
+		err = fmt.Errorf("%s for %s/%s", err.Error(), pf.namespace, pf.podName)
+		return err
+	}
+	return nil
 }
 
 // Init creates and runs a port-forward connection.
