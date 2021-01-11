@@ -7,11 +7,12 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	healthcheckPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz/healthcheck"
 	promApi "github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	log "github.com/sirupsen/logrus"
@@ -31,7 +32,8 @@ var (
 )
 
 type handler struct {
-	grpcServer APIServer
+	publicGRPCServer PublicAPIServer
+	grpcServer       VizAPIServer
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -155,14 +157,14 @@ func (h *handler) handleTopRoutes(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) handleVersion(w http.ResponseWriter, req *http.Request) {
-	var protoRequest pb.Empty
+	var protoRequest publicPb.Empty
 	err := protohttp.HTTPRequestToProto(req, &protoRequest)
 	if err != nil {
 		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 
-	rsp, err := h.grpcServer.Version(req.Context(), &protoRequest)
+	rsp, err := h.publicGRPCServer.Version(req.Context(), &protoRequest)
 	if err != nil {
 		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
@@ -254,7 +256,7 @@ func (h *handler) handleDestGet(w http.ResponseWriter, req *http.Request) {
 	}
 
 	server := destinationServer{streamServer{w: flushableWriter, req: req}}
-	err = h.grpcServer.Get(&protoRequest, server)
+	err = h.publicGRPCServer.Get(&protoRequest, server)
 	if err != nil {
 		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
@@ -313,15 +315,17 @@ func NewServer(
 		promAPI = promv1.NewAPI(prometheusClient)
 	}
 
+	grpcServer := newGrpcServer(
+		promAPI,
+		destinationClient,
+		k8sAPI,
+		controllerNamespace,
+		clusterDomain,
+		ignoredNamespaces,
+	)
 	baseHandler := &handler{
-		grpcServer: newGrpcServer(
-			promAPI,
-			destinationClient,
-			k8sAPI,
-			controllerNamespace,
-			clusterDomain,
-			ignoredNamespaces,
-		),
+		publicGRPCServer: grpcServer,
+		grpcServer:       grpcServer,
 	}
 
 	instrumentedHandler := prometheus.WithTelemetry(baseHandler)

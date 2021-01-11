@@ -12,9 +12,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/identity"
@@ -22,6 +20,8 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	healthcheckPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz/healthcheck"
 	log "github.com/sirupsen/logrus"
 	admissionRegistration "k8s.io/api/admissionregistration/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -418,7 +418,8 @@ type HealthChecker struct {
 	kubeAPI          *k8s.KubernetesAPI
 	kubeVersion      *k8sVersion.Info
 	controlPlanePods []corev1.Pod
-	apiClient        public.APIClient
+	publicAPIClient  public.PublicAPIClient
+	apiClient        public.VizAPIClient
 	latestVersions   version.Channels
 	serverVersion    string
 	linkerdConfig    *l5dcharts.Values
@@ -740,8 +741,10 @@ func (hc *HealthChecker) allCategories() []Category {
 					fatal:       true,
 					check: func(ctx context.Context) (err error) {
 						if hc.APIAddr != "" {
+							hc.publicAPIClient, err = public.NewInternalPublicClient(hc.ControlPlaneNamespace, hc.APIAddr)
 							hc.apiClient, err = public.NewInternalClient(hc.ControlPlaneNamespace, hc.APIAddr)
 						} else {
+							hc.publicAPIClient, err = public.NewExternalPublicClient(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
 							hc.apiClient, err = public.NewExternalClient(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
 						}
 						return
@@ -753,7 +756,7 @@ func (hc *HealthChecker) allCategories() []Category {
 					retryDeadline: hc.RetryDeadline,
 					fatal:         true,
 					check: func(ctx context.Context) (err error) {
-						hc.serverVersion, err = GetServerVersion(ctx, hc.apiClient)
+						hc.serverVersion, err = GetServerVersion(ctx, hc.publicAPIClient)
 						return
 					},
 				},
@@ -1597,7 +1600,14 @@ func (hc *HealthChecker) KubeAPIClient() *k8s.KubernetesAPI {
 // PublicAPIClient returns a fully configured public API client. This client is
 // only configured if the KubernetesAPIChecks and LinkerdAPIChecks are
 // configured and run first.
-func (hc *HealthChecker) PublicAPIClient() public.APIClient {
+func (hc *HealthChecker) PublicAPIClient() public.PublicAPIClient {
+	return hc.publicAPIClient
+}
+
+// VizAPIClient returns a fully configured Viz API client. This client is
+// only configured if the KubernetesAPIChecks and LinkerdAPIChecks are
+// configured and run first.
+func (hc *HealthChecker) VizAPIClient() public.VizAPIClient {
 	return hc.apiClient
 }
 

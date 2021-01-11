@@ -1,7 +1,7 @@
 package tap
 
 import (
-	pb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"google.golang.org/grpc"
 )
 

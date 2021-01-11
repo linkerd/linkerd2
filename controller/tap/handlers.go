@@ -9,12 +9,11 @@ import (
 
 	"github.com/go-openapi/spec"
 	"github.com/julienschmidt/httprouter"
-	pb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
-	"github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	"github.com/linkerd/linkerd2/pkg/tap"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/metadata"
@@ -147,7 +146,7 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 		return
 	}
 
-	tapReq := public.TapByResourceRequest{}
+	tapReq := pb.TapByResourceRequest{}
 	err = protohttp.HTTPRequestToProto(req, &tapReq)
 	if err != nil {
 		err = fmt.Errorf("Error decoding Tap Request proto: %s", err)
@@ -385,7 +384,7 @@ func (s serverStream) SendMsg(interface{}) error    { return nil }
 func (s serverStream) RecvMsg(interface{}) error    { return nil }
 
 // Satisfy the tap.Tap_TapByResourceServer interface
-func (s *serverStream) Send(m *public.TapEvent) error {
+func (s *serverStream) Send(m *pb.TapEvent) error {
 	err := protohttp.WriteProtoToHTTPResponse(s.w, m)
 	if err != nil {
 		s.log.Errorf("Error writing proto to HTTP Response: %s", err)

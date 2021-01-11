@@ -10,12 +10,13 @@ import (
 	"github.com/golang/protobuf/ptypes/duration"
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/util"
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/version"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	healthcheckPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz/healthcheck"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
@@ -24,10 +25,17 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-// APIServer specifies the interface the Public API server should implement
-type APIServer interface {
-	pb.ApiServer
+// PublicAPIServer specifies the interface the Public API server should implement
+// TODO: remove stuttering name when viz api code moves to /viz
+// nolint
+type PublicAPIServer interface {
+	publicPb.ApiServer
 	destinationPb.DestinationServer
+}
+
+// VizAPIServer specifies the interface the Viz metric API server should implement
+type VizAPIServer interface {
+	pb.ApiServer
 }
 
 type grpcServer struct {
@@ -75,8 +83,8 @@ func newGrpcServer(
 	return grpcServer
 }
 
-func (*grpcServer) Version(ctx context.Context, req *pb.Empty) (*pb.VersionInfo, error) {
-	return &pb.VersionInfo{GoVersion: runtime.Version(), ReleaseVersion: version.Version, BuildDate: "1970-01-01T00:00:00Z"}, nil
+func (*grpcServer) Version(ctx context.Context, req *publicPb.Empty) (*publicPb.VersionInfo, error) {
+	return &publicPb.VersionInfo{GoVersion: runtime.Version(), ReleaseVersion: version.Version, BuildDate: "1970-01-01T00:00:00Z"}, nil
 }
 
 func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb.ListPodsResponse, error) {

@@ -11,7 +11,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/linkerd/linkerd2/controller/api/util"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/spf13/cobra"
 )
 
@@ -82,7 +82,7 @@ func newCmdEdges() *cobra.Command {
 
 			// The gRPC client is concurrency-safe, so we can reuse it in all the following goroutines
 			// https://github.com/grpc/grpc-go/issues/682
-			client := checkPublicAPIClientOrExit()
+			client := checkVizAPIClientOrExit()
 			c := make(chan indexedEdgeResults, len(reqs))
 			for num, req := range reqs {
 				go func(num int, req *pb.EdgesRequest) {

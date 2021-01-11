@@ -93,7 +93,8 @@ func NewServer(
 	clusterDomain string,
 	reload bool,
 	reHost *regexp.Regexp,
-	apiClient public.APIClient,
+	apiClient public.VizAPIClient,
+	publicAPIClient public.PublicAPIClient,
 	k8sAPI *k8s.KubernetesAPI,
 	hc healthChecker,
 ) *http.Server {
@@ -112,6 +113,7 @@ func NewServer(
 	wrappedServer := prometheus.WithTelemetry(server)
 	handler := &handler{
 		apiClient:           apiClient,
+		publicAPIClient:     publicAPIClient,
 		k8sAPI:              k8sAPI,
 		render:              server.RenderTemplate,
 		uuid:                uuid,

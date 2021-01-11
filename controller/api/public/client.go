@@ -11,10 +11,11 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	healthcheckPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz/healthcheck"
 	log "github.com/sirupsen/logrus"
 	"go.opencensus.io/plugin/ochttp"
 	"google.golang.org/grpc"
@@ -30,10 +31,17 @@ const (
 	apiDeployment = "linkerd-controller"
 )
 
-// APIClient wraps one gRPC client interface for public.Api:
-type APIClient interface {
-	pb.ApiClient
+// PublicAPIClient wraps one gRPC client interface for publicPb.Api:
+// TODO: remove stuttering name when viz api code moves to /viz
+// nolint
+type PublicAPIClient interface {
+	publicPb.ApiClient
 	destinationPb.DestinationClient
+}
+
+// VizAPIClient wraps one gRPC client interface for pb.Api:
+type VizAPIClient interface {
+	pb.ApiClient
 }
 
 type grpcOverHTTPClient struct {
@@ -66,8 +74,8 @@ func (c *grpcOverHTTPClient) Gateways(ctx context.Context, req *pb.GatewaysReque
 	return &msg, err
 }
 
-func (c *grpcOverHTTPClient) Version(ctx context.Context, req *pb.Empty, _ ...grpc.CallOption) (*pb.VersionInfo, error) {
-	var msg pb.VersionInfo
+func (c *grpcOverHTTPClient) Version(ctx context.Context, req *publicPb.Empty, _ ...grpc.CallOption) (*publicPb.VersionInfo, error) {
+	var msg publicPb.VersionInfo
 	err := c.apiRequest(ctx, "Version", req, &msg)
 	return &msg, err
 }
@@ -176,7 +184,7 @@ func (c destinationClient) Recv() (*destinationPb.Update, error) {
 	return &msg, err
 }
 
-func newClient(apiURL *url.URL, httpClientToUse *http.Client, controlPlaneNamespace string) (APIClient, error) {
+func newClient(apiURL *url.URL, httpClientToUse *http.Client, controlPlaneNamespace string) (VizAPIClient, error) {
 	if !apiURL.IsAbs() {
 		return nil, fmt.Errorf("server URL must be absolute, was [%s]", apiURL.String())
 	}
@@ -192,9 +200,17 @@ func newClient(apiURL *url.URL, httpClientToUse *http.Client, controlPlaneNamesp
 	}, nil
 }
 
-// NewInternalClient creates a new Public API client intended to run inside a
+func newPublicClient(apiURL *url.URL, httpClientToUse *http.Client, controlPlaneNamespace string) (PublicAPIClient, error) {
+	client, err := newClient(apiURL, httpClientToUse, controlPlaneNamespace)
+	if err != nil {
+		return nil, err
+	}
+	return client.(PublicAPIClient), nil
+}
+
+// NewInternalClient creates a new Viz API client intended to run inside a
 // Kubernetes cluster.
-func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (APIClient, error) {
+func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (VizAPIClient, error) {
 	apiURL, err := url.Parse(fmt.Sprintf("http://%s/", kubeAPIHost))
 	if err != nil {
 		return nil, err
@@ -203,9 +219,19 @@ func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (APICli
 	return newClient(apiURL, &http.Client{Transport: &ochttp.Transport{}}, controlPlaneNamespace)
 }
 
-// NewExternalClient creates a new Public API client intended to run from
+// NewInternalPublicClient creates a new Public API client intended to run inside a
+// Kubernetes cluster.
+func NewInternalPublicClient(controlPlaneNamespace string, kubeAPIHost string) (PublicAPIClient, error) {
+	client, err := NewInternalClient(controlPlaneNamespace, kubeAPIHost)
+	if err != nil {
+		return nil, err
+	}
+	return client.(PublicAPIClient), nil
+}
+
+// NewExternalClient creates a new Viz API client intended to run from
 // outside a Kubernetes cluster.
-func NewExternalClient(ctx context.Context, controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (APIClient, error) {
+func NewExternalClient(ctx context.Context, controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (VizAPIClient, error) {
 	portforward, err := k8s.NewPortForward(
 		ctx,
 		kubeAPI,
@@ -235,4 +261,14 @@ func NewExternalClient(ctx context.Context, controlPlaneNamespace string, kubeAP
 	}
 
 	return newClient(apiURL, httpClientToUse, controlPlaneNamespace)
+}
+
+// NewExternalPublicClient creates a new Public API client intended to run from
+// outside a Kubernetes cluster.
+func NewExternalPublicClient(ctx context.Context, controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (PublicAPIClient, error) {
+	client, err := NewExternalClient(ctx, controlPlaneNamespace, kubeAPI)
+	if err != nil {
+		return nil, err
+	}
+	return client.(PublicAPIClient), nil
 }

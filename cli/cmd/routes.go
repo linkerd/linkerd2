@@ -11,8 +11,8 @@ import (
 	"text/tabwriter"
 
 	"github.com/linkerd/linkerd2/controller/api/util"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -63,7 +63,7 @@ This command will only display traffic which is sent to a service that has a Ser
 				return fmt.Errorf("error creating metrics request while making routes request: %v", err)
 			}
 
-			output, err := requestRouteStatsFromAPI(checkPublicAPIClientOrExit(), req, options)
+			output, err := requestRouteStatsFromAPI(checkVizAPIClientOrExit(), req, options)
 			if err != nil {
 				return err
 			}

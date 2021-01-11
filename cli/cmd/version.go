@@ -7,9 +7,10 @@ import (
 	"os"
 	"time"
 
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/version"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +40,7 @@ func newCmdVersion() *cobra.Command {
 		Short: "Print the client and server version information",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			configureAndRunVersion(cmd.Context(), options, os.Stdout, rawPublicAPIClient)
+			configureAndRunVersion(cmd.Context(), options, os.Stdout, rawPublicAPIClient, rawVizAPIClient)
 		},
 	}
 
@@ -55,7 +56,8 @@ func configureAndRunVersion(
 	ctx context.Context,
 	options *versionOptions,
 	stdout io.Writer,
-	mkClient func(ctx context.Context) (pb.ApiClient, error),
+	mkPublicClient func(ctx context.Context) (publicPb.ApiClient, error),
+	mkVizClient func(ctx context.Context) (pb.ApiClient, error),
 ) {
 	clientVersion := version.Version
 	if options.shortVersion {
@@ -66,12 +68,12 @@ func configureAndRunVersion(
 
 	if !options.onlyClientVersion {
 		serverVersion := defaultVersionString
-		client, clientErr := mkClient(ctx)
+		publicClient, clientErr := mkPublicClient(ctx)
 		if clientErr == nil {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			var err error
-			serverVersion, err = healthcheck.GetServerVersion(ctx, client)
+			serverVersion, err = healthcheck.GetServerVersion(ctx, publicClient)
 			if err != nil {
 				serverVersion = defaultVersionString
 			}
@@ -84,7 +86,7 @@ func configureAndRunVersion(
 		}
 
 		if options.proxy {
-
+			vizClient, clientErr := mkVizClient(ctx)
 			if clientErr != nil {
 				fmt.Fprintln(stdout, "Proxy versions: unavailable")
 			} else {
@@ -99,7 +101,7 @@ func configureAndRunVersion(
 
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
-				resp, err := client.ListPods(ctx, req)
+				resp, err := vizClient.ListPods(ctx, req)
 				if err != nil {
 					fmt.Fprintln(stdout, "Proxy versions: unavailable")
 				} else {
