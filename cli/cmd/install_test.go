@@ -200,24 +200,27 @@ func TestRender(t *testing.T) {
 	testCases := []struct {
 		values         *charts.Values
 		goldenFileName string
+		options        values.Options
 	}{
-		{defaultValues, "install_default.golden"},
-		{metaValues, "install_output.golden"},
-		{haValues, "install_ha_output.golden"},
-		{haWithOverridesValues, "install_ha_with_overrides_output.golden"},
-		{cniEnabledValues, "install_no_init_container.golden"},
-		{withProxyIgnoresValues, "install_proxy_ignores.golden"},
-		{withHeartBeatDisabledValues, "install_heartbeat_disabled_output.golden"},
-		{withControlPlaneTracingValues, "install_controlplane_tracing_output.golden"},
-		{withCustomRegistryValues, "install_custom_registry.golden"},
-		{withCustomDestinationGetNetsValues, "install_default_override_dst_get_nets.golden"},
+		{defaultValues, "install_default.golden", values.Options{}},
+		{metaValues, "install_output.golden", values.Options{}},
+		{haValues, "install_ha_output.golden", values.Options{}},
+		{haWithOverridesValues, "install_ha_with_overrides_output.golden", values.Options{}},
+		{cniEnabledValues, "install_no_init_container.golden", values.Options{}},
+		{withProxyIgnoresValues, "install_proxy_ignores.golden", values.Options{}},
+		{withHeartBeatDisabledValues, "install_heartbeat_disabled_output.golden", values.Options{}},
+		{withControlPlaneTracingValues, "install_controlplane_tracing_output.golden", values.Options{}},
+		{withCustomRegistryValues, "install_custom_registry.golden", values.Options{}},
+		{withCustomDestinationGetNetsValues, "install_default_override_dst_get_nets.golden", values.Options{}},
+		{defaultValues, "install_custom_domain.golden", values.Options{Values: []string{"global.namespace=l5d"}}},
+		{defaultValues, "install_values_file.golden", values.Options{ValueFiles: []string{filepath.Join("testdata", "install_config.yaml")}}},
 	}
 
 	for i, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, tc.goldenFileName), func(t *testing.T) {
 			var buf bytes.Buffer
-			if err := render(&buf, tc.values, "", values.Options{}); err != nil {
+			if err := render(&buf, tc.values, "", tc.options); err != nil {
 				t.Fatalf("Failed to render templates: %v", err)
 			}
 			diffTestdata(t, tc.goldenFileName, buf.String())

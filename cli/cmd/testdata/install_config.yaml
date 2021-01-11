@@ -1,0 +1,5 @@
+global:
+  clusterDomain: example.com
+  namespace: l5d
+
+installNamespace: false
