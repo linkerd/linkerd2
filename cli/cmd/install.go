@@ -387,11 +387,6 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 		}
 	}
 
-	_, err = w.Write(buf.Bytes())
-	if err != nil {
-		return err
-	}
-
 	if stage == "" || stage == controlPlaneStage {
 		overrides, err := renderOverrides(values, values.GetGlobal().Namespace)
 		if err != nil {
