@@ -33,7 +33,6 @@ var (
 		"charts/partials/templates/_nodeselector.tpl",
 		"charts/partials/templates/_tolerations.tpl",
 		"charts/partials/templates/_affinity.tpl",
-		"charts/partials/templates/_addons.tpl",
 		"charts/partials/templates/_validate.tpl",
 		"charts/partials/templates/_pull-secrets.tpl",
 	}
