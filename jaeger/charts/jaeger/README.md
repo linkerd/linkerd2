@@ -21,7 +21,7 @@ Kubernetes: `>=1.15.0-0`
 | collector.image.name | string | `"omnition/opencensus-collector"` |  |
 | collector.image.pullPolicy | string | `"Always"` |  |
 | collector.image.version | string | `"0.1.11"` |  |
-| collector.jaegerAddr | string | `nil` |  |
+| collector.jaegerAddr | string | `nil` | address of the jaeger backend to send traces to |
 | jaeger.image.name | string | `"jaegertracing/all-in-one"` |  |
 | jaeger.image.pullPolicy | string | `"Always"` |  |
 | jaeger.image.version | string | `"1.19.2"` |  |

@@ -8,6 +8,7 @@ collector:
     version: 0.1.11
     pullPolicy: Always
   # resources:
+
   # -- address of the jaeger backend to send traces to
   jaegerAddr:
 
