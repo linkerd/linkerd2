@@ -99,6 +99,11 @@ tap:
       # -- Amount of memory that the tap container requests
       request:
 
+  proxy:
+    # -- If set, overrides default proxy resources for the proxy injected
+    # into the tap component
+    # resources:
+
   UID: *uid
 
 # web dashboard configuration
@@ -137,6 +142,11 @@ dashboard:
       # -- Amount of memory that the web container requests
       request:
 
+  proxy:
+    # -- If set, overrides default proxy resources for the proxy injected
+    # into the tap component
+    # resources:
+
 grafana:
   # -- toggle field to enable or disable grafana
   enabled: true
@@ -159,6 +169,11 @@ grafana:
       limit:
       # -- Amount of memory that the grafana container requests
       request:
+
+  proxy:
+    # -- If set, overrides default proxy resources for the proxy injected
+    # into the grafana component
+    # resources:
 
 prometheus:
   # -- toggle field to enable or disable prometheus
@@ -279,3 +294,8 @@ prometheus:
       limit:
       # -- Amount of memory that the prometheus container requests
       request:
+
+  proxy:
+    # -- If set, overrides default proxy resources for the proxy injected
+    # into the prometheus component
+    # resources:

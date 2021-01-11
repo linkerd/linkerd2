@@ -60,6 +60,9 @@ spec:
         checksum/config: {{ include (print $.Template.BasePath "/tap-rbac.yaml") . | sha256sum }}
         {{- end }}
         {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+        {{- with .Values.tap.proxy }}
+        {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}
+        {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
         {{.Values.extensionAnnotation}}: linkerd-viz
@@ -101,8 +104,8 @@ spec:
           httpGet:
             path: /ready
             port: 9998
-        {{- if .Values.tapResources -}}
-        {{- include "partials.resources" .Values.tapResources | nindent 8 }}
+        {{- if .Values.tap.resources -}}
+        {{- include "partials.resources" .Values.tap.resources | nindent 8 }}
         {{- end }}
         securityContext:
           runAsUser: {{.Values.tap.UID}}
