@@ -11,6 +11,7 @@ import (
 	"github.com/linkerd/linkerd2/cli/flag"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/tls"
+	"helm.sh/helm/v3/pkg/cli/values"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -216,7 +217,7 @@ func TestRender(t *testing.T) {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, tc.goldenFileName), func(t *testing.T) {
 			var buf bytes.Buffer
-			if err := render(&buf, tc.values, ""); err != nil {
+			if err := render(&buf, tc.values, "", values.Options{}); err != nil {
 				t.Fatalf("Failed to render templates: %v", err)
 			}
 			diffTestdata(t, tc.goldenFileName, buf.String())
