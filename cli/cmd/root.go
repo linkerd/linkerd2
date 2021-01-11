@@ -123,6 +123,14 @@ func init() {
 	RootCmd.AddCommand(jaeger.NewCmdJaeger())
 	RootCmd.AddCommand(multicluster.NewCmdMulticluster())
 	RootCmd.AddCommand(viz.NewCmdViz())
+
+	// Viz Extension sub commands
+	RootCmd.AddCommand(viz.NewCmdDashboard())
+	RootCmd.AddCommand(viz.NewCmdEdges())
+	RootCmd.AddCommand(viz.NewCmdRoutes())
+	RootCmd.AddCommand(viz.NewCmdStat())
+	RootCmd.AddCommand(viz.NewCmdTap())
+	RootCmd.AddCommand(viz.NewCmdTop())
 }
 
 // registryOverride replaces the registry-portion of the provided image with the provided registry.

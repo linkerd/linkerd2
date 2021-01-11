@@ -73,7 +73,8 @@ func newStatOptions() *statOptions {
 	}
 }
 
-func newCmdStat() *cobra.Command {
+// NewCmdStat creates a new cobra command `stat` for stat functionality
+func NewCmdStat() *cobra.Command {
 	options := newStatOptions()
 
 	cmd := &cobra.Command{

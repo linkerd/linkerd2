@@ -44,7 +44,8 @@ func newRoutesOptions() *routesOptions {
 	}
 }
 
-func newCmdRoutes() *cobra.Command {
+// NewCmdRoutes creates a new cobra command `routes` for routes functionality
+func NewCmdRoutes() *cobra.Command {
 	options := newRoutesOptions()
 
 	cmd := &cobra.Command{
