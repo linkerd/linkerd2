@@ -5,7 +5,6 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/testutil"
 )
 
 type paramsExp struct {
@@ -232,5 +231,5 @@ func testStatCall(exp paramsExp, resourceType string, t *testing.T) {
 	rows := respToRows(resp)
 	output := renderStatStats(rows, exp.options)
 
-	testutil.DiffTestdata(t, exp.file, output, prettyDiff, updateFixtures, rejectPath)
+	testDataDiffer.DiffTestdata(t, exp.file, output)
 }

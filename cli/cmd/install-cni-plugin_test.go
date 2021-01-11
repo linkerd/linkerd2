@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"testing"
-
-	"github.com/linkerd/linkerd2/testutil"
 )
 
 func TestRenderCNIPlugin(t *testing.T) {
@@ -102,7 +100,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			testutil.DiffTestdata(t, tc.goldenFileName, buf.String(), prettyDiff, updateFixtures, rejectPath)
+			testDataDiffer.DiffTestdata(t, tc.goldenFileName, buf.String())
 		})
 	}
 

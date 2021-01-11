@@ -178,7 +178,7 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
 		}
 	}
 
-	testutil.DiffTestdata(t, goldenFileName, buf.String(), prettyDiff, updateFixtures, rejectPath)
+	testDataDiffer.DiffTestdata(t, goldenFileName, buf.String())
 }
 
 func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOutboundPorts string, ignoreInboundPorts string) *chart.Chart {

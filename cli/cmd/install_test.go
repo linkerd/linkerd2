@@ -11,7 +11,6 @@ import (
 	"github.com/linkerd/linkerd2/cli/flag"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/tls"
-	"github.com/linkerd/linkerd2/testutil"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -220,7 +219,7 @@ func TestRender(t *testing.T) {
 			if err := render(&buf, tc.values, ""); err != nil {
 				t.Fatalf("Failed to render templates: %v", err)
 			}
-			testutil.DiffTestdata(t, tc.goldenFileName, buf.String(), prettyDiff, updateFixtures, rejectPath)
+			testDataDiffer.DiffTestdata(t, tc.goldenFileName, buf.String())
 		})
 	}
 }

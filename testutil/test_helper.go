@@ -17,7 +17,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sergi/go-diff/diffmatchpatch"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -726,59 +725,4 @@ func ParseEvents(out string) ([]*corev1.Event, error) {
 	}
 
 	return events, nil
-}
-
-// DiffTestdata returns a diff with the given options
-func DiffTestdata(t *testing.T, path, actual string, prettyDiff, updateFixtures bool, rejectPath string) {
-	expected := ReadTestdata(t, path)
-	if actual == expected {
-		return
-	}
-	dmp := diffmatchpatch.New()
-	diffs := dmp.DiffMain(expected, actual, true)
-	diffs = dmp.DiffCleanupSemantic(diffs)
-	var diff string
-	if prettyDiff {
-		diff = dmp.DiffPrettyText(diffs)
-	} else {
-		diff = dmp.PatchToText(dmp.PatchMake(diffs))
-	}
-	t.Errorf("mismatch: %s\n%s", path, diff)
-
-	if updateFixtures {
-		writeTestdata(t, path, []byte(actual))
-	}
-
-	if rejectPath != "" {
-		writeRejects(t, path, []byte(actual), rejectPath)
-	}
-}
-
-// ReadTestdata reads a file and returns the contents of that file as a string.
-func ReadTestdata(t *testing.T, fileName string) string {
-	file, err := os.Open(filepath.Join("testdata", fileName))
-	if err != nil {
-		t.Fatalf("Failed to open expected output file: %v", err)
-	}
-
-	fixture, err := ioutil.ReadAll(file)
-	if err != nil {
-		t.Fatalf("Failed to read expected output file: %v", err)
-	}
-
-	return string(fixture)
-}
-
-func writeTestdata(t *testing.T, fileName string, data []byte) {
-	p := filepath.Join("testdata", fileName)
-	if err := ioutil.WriteFile(p, data, 0644); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func writeRejects(t *testing.T, origFileName string, data []byte, rejectPath string) {
-	p := filepath.Join(rejectPath, origFileName+".rej")
-	if err := ioutil.WriteFile(p, data, 0644); err != nil {
-		t.Fatal(err)
-	}
 }

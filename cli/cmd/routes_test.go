@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
-	"github.com/linkerd/linkerd2/testutil"
 )
 
 type routesParamsExp struct {
@@ -65,5 +64,5 @@ func testRoutesCall(exp routesParamsExp, t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	testutil.DiffTestdata(t, exp.file, output, prettyDiff, updateFixtures, rejectPath)
+	testDataDiffer.DiffTestdata(t, exp.file, output)
 }

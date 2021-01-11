@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
-	"github.com/linkerd/linkerd2/testutil"
 )
 
 type edgesParamsExp struct {
@@ -119,5 +118,5 @@ func testEdgesCall(exp edgesParamsExp, t *testing.T) {
 	rows := edgesRespToRows(resp)
 	output := renderEdgeStats(rows, exp.options)
 
-	testutil.DiffTestdata(t, exp.file, output, prettyDiff, updateFixtures, rejectPath)
+	testDataDiffer.DiffTestdata(t, exp.file, output)
 }

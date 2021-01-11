@@ -90,7 +90,7 @@ func testRenderCniHelm(t *testing.T, chart *chart.Chart, overrideConfig *chartut
 		buf.WriteString(v)
 	}
 
-	testutil.DiffTestdata(t, goldenFileName, buf.String(), prettyDiff, updateFixtures, rejectPath)
+	testDataDiffer.DiffTestdata(t, goldenFileName, buf.String())
 }
 
 func chartCniPlugin(t *testing.T) *chart.Chart {
