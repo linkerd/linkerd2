@@ -30,6 +30,8 @@ createdByAnnotation: linkerd.io/created-by
 proxyInjectAnnotation: linkerd.io/inject
 extensionAnnotation: linkerd.io/extension
 
+# -- Create the namespace or not
+installNamespace: true
 # -- Namespace in which the Linkerd Viz extension has to be installed
 namespace: linkerd-viz
 
