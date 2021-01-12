@@ -118,5 +118,5 @@ func testEdgesCall(exp edgesParamsExp, t *testing.T) {
 	rows := edgesRespToRows(resp)
 	output := renderEdgeStats(rows, exp.options)
 
-	diffTestdata(t, exp.file, output)
+	testDataDiffer.DiffTestdata(t, exp.file, output)
 }

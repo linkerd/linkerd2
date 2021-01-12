@@ -157,7 +157,7 @@ If using an existing cluster to run tests, the resources can be cleaned up
 manually with:
 
 ```bash
-bin/test-cleanup
+bin/test-cleanup /path/to/linkerd
 ```
 
 #### Testing against a locally-built version of the CLI
@@ -334,7 +334,7 @@ bin/test-scale `pwd`/bin/linkerd
 ## Cleanup
 
 ```bash
-bin/test-cleanup
+bin/test-cleanup /path/to/linkerd
 ```
 
 ## Test against multiple cloud providers

@@ -1,3 +1,4 @@
+{{- if (.Values.installNamespace) -}}
 ---
 ###
 ### Linkerd Viz Extension Namespace
@@ -11,3 +12,4 @@ metadata:
     {{.Values.extensionAnnotation}}: linkerd-viz
   annotations:
     {{.Values.proxyInjectAnnotation}}: enabled
+{{ end -}}

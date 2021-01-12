@@ -9,7 +9,7 @@ set +e
 export default_test_names=(deep external-issuer helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
 export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}")
 
-usage() {
+tests_usage() {
   progname="${0##*/}"
   echo "Run Linkerd integration tests.
 
@@ -40,8 +40,22 @@ Available Commands:
     --images: by default load images into the cluster from the local docker cache (docker), or from tar files located under the 'image-archives' directory (archive), or completely skip image loading (skip)."
 }
 
+cleanup_usage() {
+  progname="${0##*/}"
+  echo "Cleanup Linkerd integration tests.
 
-handle_input() {
+Usage:
+    ${progname} [--context k8s_context] /path/to/linkerd
+
+Examples:
+    # Cleanup tests in non-default context
+    ${progname} --context k8s_context /path/to/linkerd
+
+Available Commands:
+    --context: use a non-default k8s context"
+}
+
+handle_tests_input() {
   export images="docker"
   export test_name=''
   export skip_cluster_create=''
@@ -50,19 +64,19 @@ handle_input() {
   while  [ "$#" -ne 0 ]; do
     case $1 in
       -h|--help)
-        usage "$0"
+        tests_usage "$0"
         exit 0
         ;;
       --images)
         images=$2
         if [ -z "$images" ]; then
           echo 'Error: the argument for --images was not specified' >&2
-          usage "$0" >&2
+          tests_usage "$0" >&2
           exit 64
         fi
         if [[ $images != "docker" && $images != "archive" && $images != "skip" ]]; then
           echo 'Error: the argument for --images was invalid' >&2
-          usage "$0" >&2
+          tests_usage "$0" >&2
           exit 64
         fi
         shift
@@ -72,7 +86,7 @@ handle_input() {
         test_name=$2
         if [ -z "$test_name" ]; then
           echo 'Error: the argument for --name was not specified' >&2
-          usage "$0" >&2
+          tests_usage "$0" >&2
           exit 64
         fi
         shift
@@ -85,14 +99,14 @@ handle_input() {
       *)
         if echo "$1" | grep -q '^-.*' ; then
           echo "Unexpected flag: $1" >&2
-          usage "$0" >&2
+          tests_usage "$0" >&2
           exit 64
         fi
         if [ -n "$linkerd_path" ]; then
           echo "Multliple linkerd paths specified:" >&2
           echo "  $linkerd_path" >&2
           echo "  $1" >&2
-          usage "$0" >&2
+          tests_usage "$0" >&2
           exit 64
         fi
         linkerd_path="$1"
@@ -103,7 +117,48 @@ handle_input() {
 
   if [ -z "$linkerd_path" ]; then
     echo "Error: path to linkerd binary is required" >&2
-    usage "$0" >&2
+    tests_usage "$0" >&2
+    exit 64
+  fi
+}
+
+handle_cleanup_input() {
+  export k8s_context=""
+  export linkerd_path=""
+
+  while  [ "$#" -ne 0 ]; do
+    case $1 in
+      -h|--help)
+        cleanup_usage "$0"
+        exit 0
+        ;;
+      --context)
+        k8s_context=$2
+        shift
+        shift
+        ;;
+      *)
+        if echo "$1" | grep -q '^-.*' ; then
+          echo "Unexpected flag: $1" >&2
+          cleanup_usage "$0" >&2
+          exit 64
+        fi
+        if [ -n "$linkerd_path" ]; then
+          echo "Multliple linkerd paths specified:" >&2
+          echo "  $linkerd_path" >&2
+          echo "  $1" >&2
+          cleanup_usage "$0" >&2
+          exit 64
+        fi
+        linkerd_path="$1"
+        shift
+        ;;
+    esac
+  done
+
+  if [ -z "$linkerd_path" ]; then
+    echo "Error: path to linkerd binary is required" >&2
+    cleanup_usage "$0" >&2
     exit 64
   fi
 }
@@ -151,7 +206,7 @@ delete_cluster() {
 }
 
 cleanup_cluster() {
-  "$bindir"/test-cleanup "$context" > /dev/null 2>&1
+  "$bindir"/test-cleanup --context "$context" "$linkerd_path" > /dev/null 2>&1
   exit_on_err 'error removing existing Linkerd resources'
 }
 
@@ -193,7 +248,7 @@ check_if_l5d_exists() {
 Linkerd resources exist on cluster:
 \n%s\n
 Help:
-    Run: [%s/test-cleanup]' "$resources" "$bindir"
+    Run: [%s/test-cleanup] ' "$linkerd_path"
     exit 1
   fi
   printf '[ok]\n'
@@ -339,11 +394,6 @@ run_upgrade-edge_test() {
 # Run the upgrade-stable test by upgrading the most-recent stable release to the
 # HEAD of this branch.
 run_upgrade-stable_test() {
-  if [ -n "$RUN_ARM_TEST" ]; then
-    echo "Skipped. Linkerd stable version does not support ARM yet"
-    return
-  fi
-
   stable_install_url="https://run.linkerd.io/install"
   upgrade_test "stable" "$stable_install_url"
 }
@@ -375,11 +425,6 @@ helm_cleanup() {
 }
 
 run_helm-upgrade_test() {
-  if [ -n "$RUN_ARM_TEST" ]; then
-    echo "Skipped. Linkerd stable version does not support ARM yet"
-    return
-  fi
-
   local stable_version
   stable_version=$(latest_release_channel "stable")
 
