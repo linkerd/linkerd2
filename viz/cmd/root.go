@@ -63,7 +63,7 @@ func NewCmdViz() *cobra.Command {
 	}
 
 	vizCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed")
-	vizCmd.PersistentFlags().StringVarP(&vizNamespace, "namespace", "n", defaultVizNamespace, "Namespace in which viz extension is installed")
+	vizCmd.PersistentFlags().StringVarP(&vizNamespace, "viz-namespace", "V", defaultVizNamespace, "Namespace in which viz extension is installed")
 	vizCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
 	vizCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
 	vizCmd.PersistentFlags().StringVar(&impersonate, "as", "", "Username to impersonate for Kubernetes operations")
