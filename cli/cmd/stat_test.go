@@ -231,5 +231,5 @@ func testStatCall(exp paramsExp, resourceType string, t *testing.T) {
 	rows := respToRows(resp)
 	output := renderStatStats(rows, exp.options)
 
-	diffTestdata(t, exp.file, output)
+	testDataDiffer.DiffTestdata(t, exp.file, output)
 }
