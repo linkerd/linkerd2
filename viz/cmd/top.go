@@ -274,8 +274,7 @@ func newTopOptions() *topOptions {
 	}
 }
 
-// NewCmdTop creates a new cobra command `top` for top functionality
-func NewCmdTop() *cobra.Command {
+func newCmdTop() *cobra.Command {
 	options := newTopOptions()
 
 	table := newTopTable()

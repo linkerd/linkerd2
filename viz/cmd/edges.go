@@ -43,8 +43,7 @@ type indexedEdgeResults struct {
 	err  error
 }
 
-// NewCmdEdges creates a new cobra command `edges` for edges functionality
-func NewCmdEdges() *cobra.Command {
+func newCmdEdges() *cobra.Command {
 	options := newEdgesOptions()
 
 	cmd := &cobra.Command{

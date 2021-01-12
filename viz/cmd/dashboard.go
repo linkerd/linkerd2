@@ -61,10 +61,10 @@ func newDashboardOptions() *dashboardOptions {
 	}
 }
 
-// NewCmdDashboard creates a new cobra command `dashboard` which contains commands for visualizing linkerd's dashboards.
+// newCmdDashboard creates a new cobra command `dashboard` which contains commands for visualizing linkerd's dashboards.
 // After validating flag values, it will use the Kubernetes API to portforward requests to the Grafana and Web Deployments
 // until the process gets killed/canceled
-func NewCmdDashboard() *cobra.Command {
+func newCmdDashboard() *cobra.Command {
 	options := newDashboardOptions()
 
 	cmd := &cobra.Command{

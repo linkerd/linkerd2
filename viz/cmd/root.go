@@ -71,12 +71,12 @@ func NewCmdViz() *cobra.Command {
 	vizCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 	vizCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
 	vizCmd.AddCommand(newCmdInstall())
-	vizCmd.AddCommand(NewCmdRoutes())
-	vizCmd.AddCommand(NewCmdStat())
-	vizCmd.AddCommand(NewCmdTap())
-	vizCmd.AddCommand(NewCmdTop())
-	vizCmd.AddCommand(NewCmdEdges())
-	vizCmd.AddCommand(NewCmdDashboard())
+	vizCmd.AddCommand(newCmdRoutes())
+	vizCmd.AddCommand(newCmdStat())
+	vizCmd.AddCommand(newCmdTap())
+	vizCmd.AddCommand(newCmdTop())
+	vizCmd.AddCommand(newCmdEdges())
+	vizCmd.AddCommand(newCmdDashboard())
 	vizCmd.AddCommand(newCmdUninstall())
 
 	return vizCmd

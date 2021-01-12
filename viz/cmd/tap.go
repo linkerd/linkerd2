@@ -125,8 +125,7 @@ func (o *tapOptions) validate() error {
 	return fmt.Errorf("output format \"%s\" not recognized", o.output)
 }
 
-// NewCmdTap creates a new cobra command `tap` for tap functionality
-func NewCmdTap() *cobra.Command {
+func newCmdTap() *cobra.Command {
 	options := newTapOptions()
 
 	cmd := &cobra.Command{
