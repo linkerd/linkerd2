@@ -144,7 +144,7 @@ dashboard:
 
   proxy:
     # -- If set, overrides default proxy resources for the proxy injected
-    # into the tap component
+    # into the dashboard component
     # resources:
 
 grafana:
