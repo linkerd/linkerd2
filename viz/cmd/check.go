@@ -70,19 +70,6 @@ func vizCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error) {
 	//TODO: add tap webhook certs check
 
 	checkers = append(checkers,
-		*healthcheck.NewChecker("collector config map exists").
-			WithHintAnchor("l5d-viz-oc-cm-exists").
-			Warning().
-			WithCheck(func(ctx context.Context) error {
-				// Check for viz Service Account
-				_, err = kubeAPI.CoreV1().ConfigMaps(vizNamespace).Get(ctx, "collector-config", metav1.GetOptions{})
-				if err != nil {
-					return err
-				}
-				return nil
-			}))
-
-	checkers = append(checkers,
 		*healthcheck.NewChecker("viz extension pods are running").
 			WithHintAnchor("l5d-viz-collector-running").
 			Warning().
@@ -166,6 +153,8 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	}
 
 	checks := []healthcheck.CategoryID{
+		healthcheck.KubernetesAPIChecks,
+		healthcheck.LinkerdControlPlaneExistenceChecks,
 		linkerdVizExtensionCheck,
 	}
 
