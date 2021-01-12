@@ -536,6 +536,7 @@ spec:
           httpGet:
             path: /ready
             port: 9998
+        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:

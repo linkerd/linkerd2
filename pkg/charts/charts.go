@@ -22,6 +22,7 @@ var (
 	L5dPartials = []string{
 		"charts/partials/" + chartutil.ChartfileName,
 		"charts/partials/templates/_proxy.tpl",
+		"charts/partials/templates/_proxy-config-ann.tpl",
 		"charts/partials/templates/_proxy-init.tpl",
 		"charts/partials/templates/_volumes.tpl",
 		"charts/partials/templates/_resources.tpl",
