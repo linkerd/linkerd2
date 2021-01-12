@@ -13,6 +13,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/testutil"
 )
 
 type testCase struct {
@@ -52,10 +53,10 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 	if exitCode := uninjectAndInject([]io.Reader{read}, report, output, transformer); exitCode != 0 {
 		t.Errorf("Unexpected error injecting YAML: %v\n", report)
 	}
-	diffTestdata(t, tc.goldenFileName, output.String())
+	testDataDiffer.DiffTestdata(t, tc.goldenFileName, output.String())
 
 	reportFileName := mkFilename(tc.reportFileName, verbose)
-	diffTestdata(t, reportFileName, report.String())
+	testDataDiffer.DiffTestdata(t, reportFileName, report.String())
 }
 
 func defaultConfig() *linkerd2.Values {
@@ -335,13 +336,13 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 		t.Fatalf("Expected exit code to be %d but got: %d", tc.exitCode, exitCode)
 	}
 	if tc.stdOutGoldenFileName != "" {
-		diffTestdata(t, tc.stdOutGoldenFileName, outBuffer.String())
+		testDataDiffer.DiffTestdata(t, tc.stdOutGoldenFileName, outBuffer.String())
 	} else if outBuffer.Len() != 0 {
 		t.Fatalf("Expected no standard output, but got: %s", outBuffer)
 	}
 
 	stdErrGoldenFileName := mkFilename(tc.stdErrGoldenFileName, verbose)
-	diffTestdata(t, stdErrGoldenFileName, errBuffer.String())
+	testDataDiffer.DiffTestdata(t, stdErrGoldenFileName, errBuffer.String())
 }
 
 func TestRunInjectCmd(t *testing.T) {
@@ -427,10 +428,10 @@ func testInjectFilePath(t *testing.T, tc injectFilePath) {
 	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 	}
-	diffTestdata(t, tc.expectedFile, actual.String())
+	testDataDiffer.DiffTestdata(t, tc.expectedFile, actual.String())
 
 	stdErrFile := mkFilename(tc.stdErrFile, verbose)
-	diffTestdata(t, stdErrFile, errBuf.String())
+	testDataDiffer.DiffTestdata(t, stdErrFile, errBuf.String())
 }
 
 func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder string) {
@@ -454,10 +455,10 @@ func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder stri
 	}
 
 	expectedFile := filepath.Join(expectedFolder, "injected_nginx_redis.yaml")
-	diffTestdata(t, expectedFile, actual.String())
+	testDataDiffer.DiffTestdata(t, expectedFile, actual.String())
 
 	stdErrFileName := mkFilename(filepath.Join(expectedFolder, "injected_nginx_redis.stderr"), verbose)
-	diffTestdata(t, stdErrFileName, errBuf.String())
+	testDataDiffer.DiffTestdata(t, stdErrFileName, errBuf.String())
 }
 
 func TestInjectFilePath(t *testing.T) {
@@ -548,7 +549,7 @@ func TestWalk(t *testing.T) {
 	}()
 
 	var (
-		data  = []byte(readTestdata(t, "inject_gettest_deployment.bad.input.yml"))
+		data  = []byte(testutil.ReadTestdata(t, "inject_gettest_deployment.bad.input.yml"))
 		file1 = filepath.Join(tmpFolderRoot, "root.txt")
 		file2 = filepath.Join(tmpFolderData, "data.txt")
 	)
