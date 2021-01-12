@@ -15,6 +15,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/addr"
+	"github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	"github.com/linkerd/linkerd2/pkg/tap"
@@ -260,7 +261,7 @@ const (
 
 func newTopOptions() *topOptions {
 	return &topOptions{
-		namespace:     defaultNamespace,
+		namespace:     cmd.GetDefaultNamespace(kubeconfigPath, kubeContext),
 		toResource:    "",
 		toNamespace:   "",
 		maxRps:        maxRps,

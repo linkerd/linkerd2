@@ -1,18 +1,20 @@
 package cmd
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"regexp"
 
-	"github.com/linkerd/linkerd2/pkg/cmd"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
 	vizChartName            = "linkerd-viz"
 	defaultLinkerdNamespace = "linkerd"
-	defaultVizNamespace     = "linkerd-viz"
 	maxRps                  = 100.0
 
 	jsonOutput  = "json"
@@ -23,8 +25,6 @@ const (
 var (
 	apiAddr               string // An empty value means "use the Kubernetes configuration"
 	controlPlaneNamespace string
-	vizNamespace          string
-	defaultNamespace      string
 	kubeconfigPath        string
 	kubeContext           string
 	impersonate           string
@@ -35,10 +35,6 @@ var (
 	// sanity check against illegal characters.
 	alphaNumDash = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
 )
-
-func init() {
-	defaultNamespace = cmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
-}
 
 // NewCmdViz returns a new jeager command
 func NewCmdViz() *cobra.Command {
@@ -63,7 +59,6 @@ func NewCmdViz() *cobra.Command {
 	}
 
 	vizCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed")
-	vizCmd.PersistentFlags().StringVarP(&vizNamespace, "viz-namespace", "V", defaultVizNamespace, "Namespace in which viz extension is installed")
 	vizCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
 	vizCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
 	vizCmd.PersistentFlags().StringVar(&impersonate, "as", "", "Username to impersonate for Kubernetes operations")
@@ -80,4 +75,15 @@ func NewCmdViz() *cobra.Command {
 	vizCmd.AddCommand(newCmdUninstall())
 
 	return vizCmd
+}
+
+func getVizNamespace(ctx context.Context, k8sAPI *k8s.KubernetesAPI) (string, error) {
+	ns, err := k8sAPI.CoreV1().Namespaces().List(ctx, metav1.ListOptions{LabelSelector: "linkerd.io/extension=linkerd-viz"})
+	if err != nil {
+		return "", err
+	}
+	if len(ns.Items) == 0 {
+		return "", errors.New("linkerd-viz extension not found")
+	}
+	return ns.Items[0].Name, nil
 }

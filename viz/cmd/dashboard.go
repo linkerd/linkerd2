@@ -97,6 +97,11 @@ func newCmdDashboard() *cobra.Command {
 				return err
 			}
 
+			vizNamespace, err := getVizNamespace(cmd.Context(), k8sAPI)
+			if err != nil {
+				return err
+			}
+
 			signals := make(chan os.Signal, 1)
 			signal.Notify(signals, os.Interrupt)
 			defer signal.Stop(signals)

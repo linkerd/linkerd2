@@ -13,6 +13,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	api "github.com/linkerd/linkerd2/pkg/public"
@@ -39,7 +40,7 @@ type statOptionsBase struct {
 
 func newStatOptionsBase() *statOptionsBase {
 	return &statOptionsBase{
-		namespace:    defaultNamespace,
+		namespace:    cmd.GetDefaultNamespace(kubeconfigPath, kubeContext),
 		timeWindow:   "1m",
 		outputFormat: tableOutput,
 	}
@@ -774,7 +775,7 @@ func (o *statOptions) validateConflictingFlags() error {
 		return fmt.Errorf("--to-namespace and --from-namespace flags are mutually exclusive")
 	}
 
-	if o.allNamespaces && o.namespace != defaultNamespace {
+	if o.allNamespaces && o.namespace != cmd.GetDefaultNamespace(kubeconfigPath, kubeContext) {
 		return fmt.Errorf("--all-namespaces and --namespace flags are mutually exclusive")
 	}
 
@@ -794,7 +795,7 @@ func (o *statOptions) validateNamespaceFlags() error {
 
 	// Note: technically, this allows you to say `stat ns --namespace <default-namespace-from-kubectl-context>`, but that
 	// seems like an edge case.
-	if o.namespace != defaultNamespace {
+	if o.namespace != cmd.GetDefaultNamespace(kubeconfigPath, kubeContext) {
 		return fmt.Errorf("--namespace flag is incompatible with namespace resource type")
 	}
 

@@ -13,6 +13,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	api "github.com/linkerd/linkerd2/pkg/public"
 	"github.com/spf13/cobra"
@@ -31,7 +32,7 @@ type edgesOptions struct {
 
 func newEdgesOptions() *edgesOptions {
 	return &edgesOptions{
-		namespace:     defaultNamespace,
+		namespace:     cmd.GetDefaultNamespace(kubeconfigPath, kubeContext),
 		outputFormat:  tableOutput,
 		allNamespaces: false,
 	}
