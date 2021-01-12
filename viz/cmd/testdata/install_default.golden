@@ -841,6 +841,177 @@ spec:
         secret:
           secretName: linkerd-tap-k8s-tls
 
+###
+### Tap Injector RBAC
+###
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-viz-tap-injector
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: tap-injector
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-viz-tap-injector
+  labels:
+    linkerd.io/extension: linkerd-viz
+subjects:
+- kind: ServiceAccount
+  name: tap-injector
+  namespace: linkerd-viz
+roleRef:
+  kind: ClusterRole
+  name: linkerd-viz-tap-injector
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: tap-injector
+  namespace: linkerd-viz
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: tap-injector
+    namespace: linkerd-viz
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: tap-injector-k8s-tls
+  namespace: linkerd-viz
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: tap-injector
+    namespace: linkerd-viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+type: kubernetes.io/tls
+data:
+  tls.crt: dGVzdC10YXAtY3J0LXBlbQ==
+  tls.key: dGVzdC10YXAta2V5LXBlbQ==
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: tap-injector-webhook-config
+  labels:
+    linkerd.io/extension: linkerd-viz
+webhooks:
+- name: tap-injector.linkerd.io
+  clientConfig:
+    service:
+      name: tap-injector
+      namespace: linkerd-viz
+      path: "/"
+    caBundle: dGVzdC10YXAtY2EtYnVuZGxl
+  failurePolicy: 
+  reinvocationPolicy: IfNeeded
+  rules:
+  - operations: [ "CREATE" ]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+  sideEffects: None
+---
+###
+### Tap Injector
+###
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: tap-injector
+  namespace: linkerd-viz
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: tap-injector
+    namespace: linkerd-viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/extension: linkerd-viz
+    component: tap-injector
+  ports:
+  - name: tap-injector
+    port: 443
+    targetPort: tap-injector
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+  labels:
+    linkerd.io/extension: linkerd-viz
+    app.kubernetes.io/name: tap-injector
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: dev-undefined
+    component: tap-injector
+    namespace: linkerd-viz
+  name: tap-injector
+  namespace: linkerd-viz
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      linkerd.io/extension: linkerd-viz
+      component: tap-injector
+      namespace: linkerd-viz
+  template:
+    metadata:
+      annotations:
+        checksum/config: c27d2ae886ae019ce4b5142310de099d4fbb37b1bbf5f6e4a1a4146814e6f887
+        linkerd.io/created-by: linkerd/helm dev-undefined
+      labels:
+        linkerd.io/extension: linkerd-viz
+        component: tap-injector
+        namespace: linkerd-viz
+    spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      containers:
+      - args:
+        - tap-injector
+        - -tap-service-name=linkerd-tap.linkerd-viz.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+        image: ghcr.io/linkerd/controller:dev-undefined
+        imagePullPolicy: 
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9995
+          initialDelaySeconds: 10
+        name: tap-injector
+        ports:
+        - containerPort: 8443
+          name: tap-injector
+        - containerPort: 9995
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9995
+        securityContext:
+          runAsUser: 2103
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: tls
+          readOnly: true
+      serviceAccountName: tap-injector
+      volumes:
+      - name: tls
+        secret:
+          secretName: tap-injector-k8s-tls
 ---
 ###
 ### Web

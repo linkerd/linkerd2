@@ -17,6 +17,11 @@ func TestRender(t *testing.T) {
 			"crtPEM":   "test-tap-crt-pem",
 			"caBundle": "test-tap-ca-bundle",
 		},
+		"tapInjector": map[string]interface{}{
+			"keyPEM":   "test-tap-key-pem",
+			"crtPEM":   "test-tap-crt-pem",
+			"caBundle": "test-tap-ca-bundle",
+		},
 	}
 
 	testCases := []struct {
