@@ -14,6 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/cmd"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	api "github.com/linkerd/linkerd2/pkg/public"
@@ -40,7 +41,6 @@ type statOptionsBase struct {
 
 func newStatOptionsBase() *statOptionsBase {
 	return &statOptionsBase{
-		namespace:    cmd.GetDefaultNamespace(kubeconfigPath, kubeContext),
 		timeWindow:   "1m",
 		outputFormat: tableOutput,
 	}
@@ -167,6 +167,10 @@ If no resource name is specified, displays stats about all resources of the spec
 		Args:      cobra.MinimumNArgs(1),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if options.namespace == "" {
+				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+			}
+
 			reqs, err := buildStatSummaryRequests(args, options)
 			if err != nil {
 				return fmt.Errorf("error creating metrics request while making stats request: %v", err)
