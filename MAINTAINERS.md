@@ -3,7 +3,6 @@
 The Linkerd maintainers are:
 
 * Oliver Gould <ver@buoyant.io> @olix0r (super-maintainer)
-* Kevin Lingerfelt <kl@buoyant.io> @klingerf (super-maintainer)
 * Alejandro Pedraza <alejandro@buoyant.io> @alpeb
 * Alex Leong <alex@buoyant.io> @adleong
 * Andrew Seigner <siggy@buoyant.io> @siggy
@@ -17,7 +16,7 @@ The Linkerd maintainers are:
 
 Former maintainers include:
 
-* ...
+* Kevin Ingleman <ki@buoyant.io> @klingerf
 
 <!--
 # Adding a new maintainer
@@ -26,6 +25,6 @@ Former maintainers include:
 * Add maintainer to .github/CODEOWNERS
 * Obtain approvals per GOVERNANCE.md
 * Invite maintainer to
-  https://github.com/orgs/linkerd/teams/linkerd2-maintainers/members
+  https://github.com/orgs/linkerd/teams/maintainers/members
 * Invite maintainer to https://github.com/orgs/linkerd/people
 -->
