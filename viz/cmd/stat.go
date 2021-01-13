@@ -178,7 +178,7 @@ If no resource name is specified, displays stats about all resources of the spec
 
 			// The gRPC client is concurrency-safe, so we can reuse it in all the following goroutines
 			// https://github.com/grpc/grpc-go/issues/682
-			client := api.CheckVIzAPIClientOrExit(healthcheck.Options{
+			client := api.CheckVizAPIClientOrExit(healthcheck.Options{
 				ControlPlaneNamespace: controlPlaneNamespace,
 				KubeConfig:            kubeconfigPath,
 				Impersonate:           impersonate,

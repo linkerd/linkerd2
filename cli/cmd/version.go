@@ -51,7 +51,7 @@ func newCmdVersion() *cobra.Command {
 				}
 			}
 
-			configureAndRunVersion(cmd.Context(), k8sAPI, options, os.Stdout, api.RawVizAPIClient)
+			configureAndRunVersion(cmd.Context(), k8sAPI, options, os.Stdout, api.RawPublicAPIClient, api.RawVizAPIClient)
 			return nil
 		},
 	}
@@ -99,7 +99,7 @@ func configureAndRunVersion(
 		}
 
 		if options.proxy {
-			vizClient, clientErr := mkVizClient(ctx)
+			vizClient, clientErr := mkVizClient(ctx, k8sAPI, controlPlaneNamespace, apiAddr)
 			if clientErr != nil {
 				fmt.Fprintln(stdout, "Proxy versions: unavailable")
 			} else {

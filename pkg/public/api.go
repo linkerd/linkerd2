@@ -13,22 +13,17 @@ import (
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 )
 
-// rawPublicAPIClient creates a raw public API client with no validation.
-func rawPublicAPIClient(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string, apiAddr string) (publicPb.ApiClient, error) {
+// RawPublicAPIClient creates a raw public API client with no validation.
+func RawPublicAPIClient(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string, apiAddr string) (publicPb.ApiClient, error) {
 	if apiAddr != "" {
 		return public.NewInternalPublicClient(controlPlaneNamespace, apiAddr)
-	}
-
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-	if err != nil {
-		return nil, err
 	}
 
 	return public.NewExternalPublicClient(ctx, controlPlaneNamespace, kubeAPI)
 }
 
-// rawVizAPIClient creates a raw viz API client with no validation.
-func rawVizAPIClient(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string, apiAddr string) (pb.ApiClient, error) {
+// RawVizAPIClient creates a raw viz API client with no validation.
+func RawVizAPIClient(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string, apiAddr string) (pb.ApiClient, error) {
 	if apiAddr != "" {
 		return public.NewInternalClient(controlPlaneNamespace, apiAddr)
 	}
@@ -39,21 +34,24 @@ func rawVizAPIClient(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPla
 // checkPublicAPIClientOrExit builds a new Public API client and executes default status
 // checks to determine if the client can successfully perform cli commands. If the
 // checks fail, then CLI will print an error and exit.
-func checkPublicAPIClientOrExit(hcOptions healthcheck.Options) public.PublicAPIClient {
+func CheckPublicAPIClientOrExit(hcOptions healthcheck.Options) public.PublicAPIClient {
 	hcOptions.RetryDeadline = time.Time{}
-	return checkPublicAPIClientOrRetryOrExit(hcOptions, false)
+	return CheckPublicAPIClientOrRetryOrExit(hcOptions, false)
 }
 
-func checkVizAPIClientOrExit(hcOptions healthcheck.Options) public.VizAPIClient {
+// checkVizAPIClientOrExit builds a new Viz API client and executes default status
+// checks to determine if the client can successfully perform cli commands. If the
+// checks fail, then CLI will print an error and exit.
+func CheckVizAPIClientOrExit(hcOptions healthcheck.Options) public.VizAPIClient {
 	hcOptions.RetryDeadline = time.Time{}
-	return checkVizAPIClientOrRetryOrExit(hcOptions, false)
+	return CheckVizAPIClientOrRetryOrExit(hcOptions, false)
 }
 
-// checkPublicAPIClientWithDeadlineOrExit builds a new Public API client and executes status
+// CheckPublicAPIClientOrRetryOrExit builds a new Public API client and executes status
 // checks to determine if the client can successfully connect to the API. If the
-// checks fail, then CLI will print an error and exit. If the retryDeadline
+// checks fail, then CLI will print an error and exit. If the hcOptions.retryDeadline
 // param is specified, then the CLI will print a message to stderr and retry.
-func checkPublicAPIClientOrRetryOrExit(hcOptions healthcheck.Options, apiChecks bool) public.PublicAPIClient {
+func CheckPublicAPIClientOrRetryOrExit(hcOptions healthcheck.Options, apiChecks bool) public.PublicAPIClient {
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.LinkerdControlPlaneExistenceChecks,
@@ -69,7 +67,11 @@ func checkPublicAPIClientOrRetryOrExit(hcOptions healthcheck.Options, apiChecks 
 	return hc.PublicAPIClient()
 }
 
-func checkVizAPIClientOrRetryOrExit(retryDeadline time.Time, apiChecks bool) public.VizAPIClient {
+// CheckVizAPIClientOrRetryOrExit builds a new Viz API client and executes status
+// checks to determine if the client can successfully connect to the API. If the
+// checks fail, then CLI will print an error and exit. If the hcOptions.retryDeadline
+// param is specified, then the CLI will print a message to stderr and retry.
+func CheckVizAPIClientOrRetryOrExit(hcOptions healthcheck.Options, apiChecks bool) public.VizAPIClient {
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.LinkerdControlPlaneExistenceChecks,
@@ -79,22 +81,10 @@ func checkVizAPIClientOrRetryOrExit(retryDeadline time.Time, apiChecks bool) pub
 		checks = append(checks, healthcheck.LinkerdAPIChecks)
 	}
 
-	hc := newHealthChecker(checks, retryDeadline)
+	hc := healthcheck.NewHealthChecker(checks, &hcOptions)
 
 	hc.RunChecks(exitOnError)
 	return hc.VizAPIClient()
-}
-
-func newHealthChecker(checks []healthcheck.CategoryID, retryDeadline time.Time) *healthcheck.HealthChecker {
-	return healthcheck.NewHealthChecker(checks, &healthcheck.Options{
-		ControlPlaneNamespace: controlPlaneNamespace,
-		KubeConfig:            kubeconfigPath,
-		KubeContext:           kubeContext,
-		Impersonate:           impersonate,
-		ImpersonateGroup:      impersonateGroup,
-		APIAddr:               apiAddr,
-		RetryDeadline:         retryDeadline,
-	})
 }
 
 func exitOnError(result *healthcheck.CheckResult) {
