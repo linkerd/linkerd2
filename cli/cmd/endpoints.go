@@ -16,6 +16,8 @@ import (
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	netPb "github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/public"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	api "github.com/linkerd/linkerd2/pkg/public"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -35,7 +37,9 @@ type (
 )
 
 const (
-	podHeader = "POD"
+	podHeader       = "POD"
+	namespaceHeader = "NAMESPACE"
+	padding         = 3
 )
 
 // validate performs all validation on the command-line options.
@@ -85,7 +89,14 @@ destination.`,
 				return err
 			}
 
-			endpoints, err := requestEndpointsFromAPI(checkPublicAPIClientOrExit(), args)
+			endpoints, err := requestEndpointsFromAPI(api.CheckPublicAPIClientOrExit(healthcheck.Options{
+				ControlPlaneNamespace: controlPlaneNamespace,
+				KubeConfig:            kubeconfigPath,
+				Impersonate:           impersonate,
+				ImpersonateGroup:      impersonateGroup,
+				KubeContext:           kubeContext,
+				APIAddr:               apiAddr,
+			}), args)
 			if err != nil {
 				return fmt.Errorf("Destination API error: %s", err)
 			}

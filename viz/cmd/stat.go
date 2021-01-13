@@ -12,7 +12,11 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/util"
+	"github.com/linkerd/linkerd2/pkg/cmd"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	api "github.com/linkerd/linkerd2/pkg/public"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -27,6 +31,28 @@ type statOptions struct {
 	allNamespaces bool
 	labelSelector string
 	unmeshed      bool
+}
+
+type statOptionsBase struct {
+	namespace    string
+	timeWindow   string
+	outputFormat string
+}
+
+func newStatOptionsBase() *statOptionsBase {
+	return &statOptionsBase{
+		timeWindow:   "1m",
+		outputFormat: tableOutput,
+	}
+}
+
+func (o *statOptionsBase) validateOutputFormat() error {
+	switch o.outputFormat {
+	case tableOutput, jsonOutput, wideOutput:
+		return nil
+	default:
+		return fmt.Errorf("--output currently only supports %s, %s and %s", tableOutput, jsonOutput, wideOutput)
+	}
 }
 
 type indexedResults struct {
@@ -141,6 +167,10 @@ If no resource name is specified, displays stats about all resources of the spec
 		Args:      cobra.MinimumNArgs(1),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if options.namespace == "" {
+				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+			}
+
 			reqs, err := buildStatSummaryRequests(args, options)
 			if err != nil {
 				return fmt.Errorf("error creating metrics request while making stats request: %v", err)
@@ -148,7 +178,14 @@ If no resource name is specified, displays stats about all resources of the spec
 
 			// The gRPC client is concurrency-safe, so we can reuse it in all the following goroutines
 			// https://github.com/grpc/grpc-go/issues/682
-			client := checkVizAPIClientOrExit()
+			client := api.CheckVIzAPIClientOrExit(healthcheck.Options{
+				ControlPlaneNamespace: controlPlaneNamespace,
+				KubeConfig:            kubeconfigPath,
+				Impersonate:           impersonate,
+				ImpersonateGroup:      impersonateGroup,
+				KubeContext:           kubeContext,
+				APIAddr:               apiAddr,
+			})
 			c := make(chan indexedResults, len(reqs))
 			for num, req := range reqs {
 				go func(num int, req *pb.StatSummaryRequest) {
@@ -742,7 +779,7 @@ func (o *statOptions) validateConflictingFlags() error {
 		return fmt.Errorf("--to-namespace and --from-namespace flags are mutually exclusive")
 	}
 
-	if o.allNamespaces && o.namespace != defaultNamespace {
+	if o.allNamespaces && o.namespace != cmd.GetDefaultNamespace(kubeconfigPath, kubeContext) {
 		return fmt.Errorf("--all-namespaces and --namespace flags are mutually exclusive")
 	}
 
@@ -762,7 +799,7 @@ func (o *statOptions) validateNamespaceFlags() error {
 
 	// Note: technically, this allows you to say `stat ns --namespace <default-namespace-from-kubectl-context>`, but that
 	// seems like an edge case.
-	if o.namespace != defaultNamespace {
+	if o.namespace != cmd.GetDefaultNamespace(kubeconfigPath, kubeContext) {
 		return fmt.Errorf("--namespace flag is incompatible with namespace resource type")
 	}
 
@@ -777,4 +814,21 @@ func getByteRate(bytes uint64, timeWindow string) float64 {
 		return 0.0
 	}
 	return float64(bytes) / windowLength.Seconds()
+}
+
+func renderStats(buffer bytes.Buffer, options *statOptionsBase) string {
+	var out string
+	switch options.outputFormat {
+	case jsonOutput:
+		out = buffer.String()
+	default:
+		// strip left padding on the first column
+		b := buffer.Bytes()
+		if len(b) > padding {
+			out = string(b[padding:])
+		}
+		out = strings.Replace(out, "\n"+strings.Repeat(" ", padding), "\n", -1)
+	}
+
+	return out
 }

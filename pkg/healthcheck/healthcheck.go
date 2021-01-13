@@ -2394,11 +2394,7 @@ const running = "Running"
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
-	names := []string{"controller", "identity", "sp-validator"}
-	// TODO: deprecate this when we drop support for checking pre-default proxy-injector control-planes
-	if _, found := statuses["proxy-injector"]; found {
-		names = append(names, "proxy-injector")
-	}
+	names := []string{"controller", "identity", "sp-validator", "proxy-injector"}
 
 	for _, name := range names {
 		pods, found := statuses[name]

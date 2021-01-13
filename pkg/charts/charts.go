@@ -22,6 +22,7 @@ var (
 	L5dPartials = []string{
 		"charts/partials/" + chartutil.ChartfileName,
 		"charts/partials/templates/_proxy.tpl",
+		"charts/partials/templates/_proxy-config-ann.tpl",
 		"charts/partials/templates/_proxy-init.tpl",
 		"charts/partials/templates/_volumes.tpl",
 		"charts/partials/templates/_resources.tpl",
@@ -174,4 +175,45 @@ func InsertVersionValues(values chartutil.Values) (chartutil.Values, error) {
 		return nil, err
 	}
 	return chartutil.ReadValues(InsertVersion([]byte(raw)))
+}
+
+// OverrideFromFile overrides the given map with the given file from FS
+func OverrideFromFile(values map[string]interface{}, fs http.FileSystem, chartName, name string) (map[string]interface{}, error) {
+	// Load Values file
+	valuesOverride := loader.BufferedFile{
+		Name: name,
+	}
+	if err := ReadFile(fs, chartName+"/", &valuesOverride); err != nil {
+		return nil, err
+	}
+
+	var valuesOverrideMap map[string]interface{}
+	err := yaml.Unmarshal(valuesOverride.Data, &valuesOverrideMap)
+	if err != nil {
+		return nil, err
+	}
+	return MergeMaps(valuesOverrideMap, values), nil
+}
+
+// MergeMaps returns the resultant map after merging given two maps of type map[string]interface{}
+// The inputs are not mutated and the second map i.e b's values take predence during merge.
+// This gives semantically correct merge compared with `mergo.Merge` (with boolean values).
+// See https://github.com/imdario/mergo/issues/129
+func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{}, len(a))
+	for k, v := range a {
+		out[k] = v
+	}
+	for k, v := range b {
+		if v, ok := v.(map[string]interface{}); ok {
+			if av, ok := out[k]; ok {
+				if av, ok := av.(map[string]interface{}); ok {
+					out[k] = MergeMaps(av, v)
+					continue
+				}
+			}
+		}
+		out[k] = v
+	}
+	return out
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/pkg/addr"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	"github.com/linkerd/linkerd2/pkg/tap"
@@ -260,7 +261,6 @@ const (
 
 func newTopOptions() *topOptions {
 	return &topOptions{
-		namespace:     defaultNamespace,
 		toResource:    "",
 		toNamespace:   "",
 		maxRps:        maxRps,
@@ -319,6 +319,10 @@ func newCmdTop() *cobra.Command {
 		Args:      cobra.RangeArgs(1, 2),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if options.namespace == "" {
+				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+			}
+
 			requestParams := util.TapRequestParams{
 				Resource:      strings.Join(args, "/"),
 				Namespace:     options.namespace,

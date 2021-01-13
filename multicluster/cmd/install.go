@@ -28,6 +28,7 @@ type (
 		gatewayNginxImage       string
 		gatewayNginxVersion     string
 		remoteMirrorCredentials bool
+		gatewayServiceType      string
 	}
 )
 
@@ -91,6 +92,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	cmd.Flags().StringVar(&options.gatewayNginxImage, "gateway-nginx-image", options.gatewayNginxImage, "The nginx image to be used")
 	cmd.Flags().StringVar(&options.gatewayNginxVersion, "gateway-nginx-image-version", options.gatewayNginxVersion, "The version of nginx to be used")
 	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "service-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the service account which can be used by service mirror components in source clusters to discover exported services")
+	cmd.Flags().StringVar(&options.gatewayServiceType, "gateway-service-type", options.gatewayServiceType, "Overwrite Service type for gateway service")
 
 	// Hide developer focused flags in release builds.
 	release, err := version.IsReleaseChannel(version.Version)
@@ -121,6 +123,7 @@ func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, er
 		gatewayNginxImage:       defaults.GatewayNginxImage,
 		gatewayNginxVersion:     defaults.GatewayNginxImageVersion,
 		remoteMirrorCredentials: true,
+		gatewayServiceType:      defaults.GatewayServiceType,
 	}, nil
 }
 
@@ -159,6 +162,7 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 	defaults.ProxyOutboundPort = uint32(values.GetGlobal().Proxy.Ports.Outbound)
 	defaults.LinkerdVersion = version.Version
 	defaults.RemoteMirrorServiceAccount = opts.remoteMirrorCredentials
+	defaults.GatewayServiceType = opts.gatewayServiceType
 
 	return defaults, nil
 }
