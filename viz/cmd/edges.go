@@ -43,7 +43,8 @@ type indexedEdgeResults struct {
 	err  error
 }
 
-func newCmdEdges() *cobra.Command {
+// NewCmdEdges creates a new cobra command `edges` for edges functionality
+func NewCmdEdges() *cobra.Command {
 	options := newEdgesOptions()
 
 	cmd := &cobra.Command{
@@ -73,13 +74,13 @@ func newCmdEdges() *cobra.Command {
   * replicationcontrollers
   * statefulsets`,
 		Example: `  # Get all edges between pods that either originate from or terminate in the test namespace.
-  linkerd edges po -n test
+  linkerd viz edges po -n test
 
   # Get all edges between pods that either originate from or terminate in the default namespace.
-  linkerd edges po
+  linkerd viz edges po
 
   # Get all edges between pods in all namespaces.
-  linkerd edges po --all-namespaces`,
+  linkerd viz edges po --all-namespaces`,
 		Args:      cobra.ExactArgs(1),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {

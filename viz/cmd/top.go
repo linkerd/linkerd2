@@ -274,7 +274,8 @@ func newTopOptions() *topOptions {
 	}
 }
 
-func newCmdTop() *cobra.Command {
+// NewCmdTop creates a new cobra command `top` for top functionality
+func NewCmdTop() *cobra.Command {
 	options := newTopOptions()
 
 	table := newTopTable()
@@ -312,10 +313,10 @@ func newCmdTop() *cobra.Command {
   * statefulsets
   * services (only supported as a --to resource)`,
 		Example: `  # display traffic for the web deployment in the default namespace
-  linkerd top deploy/web
+  linkerd viz top deploy/web
 
   # display traffic for the web-dlbvj pod in the default namespace
-  linkerd top pod/web-dlbvj`,
+  linkerd viz top pod/web-dlbvj`,
 		Args:      cobra.RangeArgs(1, 2),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
