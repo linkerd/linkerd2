@@ -171,6 +171,10 @@ func newCmdTap() *cobra.Command {
 		Args:      cobra.RangeArgs(1, 2),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if options.namespace == "" {
+				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+			}
+
 			requestParams := util.TapRequestParams{
 				Resource:      strings.Join(args, "/"),
 				Namespace:     options.namespace,
@@ -183,10 +187,6 @@ func newCmdTap() *cobra.Command {
 				Path:          options.path,
 				Extract:       options.output == jsonOutput,
 				LabelSelector: options.labelSelector,
-			}
-
-			if options.namespace == "" {
-				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
 			}
 
 			err := options.validate()
