@@ -12,13 +12,12 @@ import (
 	httpPb "github.com/linkerd/linkerd2-proxy-api/go/http_types"
 	proxy "github.com/linkerd/linkerd2-proxy-api/go/tap"
 	apiUtil "github.com/linkerd/linkerd2/controller/api/util"
-	pb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
-	"github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/util"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -45,12 +44,12 @@ var (
 )
 
 // Tap is deprecated, use TapByResource.
-func (s *GRPCTapServer) Tap(req *public.TapRequest, stream pb.Tap_TapServer) error {
+func (s *GRPCTapServer) Tap(req *pb.TapRequest, stream pb.Tap_TapServer) error {
 	return status.Error(codes.Unimplemented, "Tap is deprecated, use TapByResource")
 }
 
 // TapByResource taps all resources matched by the request object.
-func (s *GRPCTapServer) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_TapByResourceServer) error {
+func (s *GRPCTapServer) TapByResource(req *pb.TapByResourceRequest, stream pb.Tap_TapByResourceServer) error {
 	if req == nil {
 		return status.Error(codes.InvalidArgument, "TapByResource received nil TapByResourceRequest")
 	}
@@ -105,7 +104,7 @@ func (s *GRPCTapServer) TapByResource(req *public.TapByResourceRequest, stream p
 
 	log.Infof("Tapping %d pods for target: %s", len(pods), res.String())
 
-	events := make(chan *public.TapEvent)
+	events := make(chan *pb.TapEvent)
 
 	// divide the rps evenly between all pods to tap
 	rpsPerPod := req.GetMaxRps() / float32(len(pods))
@@ -158,7 +157,7 @@ func (s *GRPCTapServer) TapByResource(req *public.TapByResourceRequest, stream p
 	}
 }
 
-func makeByResourceMatch(match *public.TapByResourceRequest_Match) (*proxy.ObserveRequest_Match, error) {
+func makeByResourceMatch(match *pb.TapByResourceRequest_Match) (*proxy.ObserveRequest_Match, error) {
 	// TODO: for now assume it's always a single, flat `All` match list
 	seq := match.GetAll()
 	if seq == nil {
@@ -169,7 +168,7 @@ func makeByResourceMatch(match *public.TapByResourceRequest_Match) (*proxy.Obser
 
 	for _, reqMatch := range seq.Matches {
 		switch typed := reqMatch.Match.(type) {
-		case *public.TapByResourceRequest_Match_Destinations:
+		case *pb.TapByResourceRequest_Match_Destinations:
 
 			for k, v := range destinationLabels(typed.Destinations.Resource) {
 				matches = append(matches, &proxy.ObserveRequest_Match{
@@ -182,24 +181,24 @@ func makeByResourceMatch(match *public.TapByResourceRequest_Match) (*proxy.Obser
 				})
 			}
 
-		case *public.TapByResourceRequest_Match_Http_:
+		case *pb.TapByResourceRequest_Match_Http_:
 
 			httpMatch := proxy.ObserveRequest_Match_Http{}
 
 			switch httpTyped := typed.Http.Match.(type) {
-			case *public.TapByResourceRequest_Match_Http_Scheme:
+			case *pb.TapByResourceRequest_Match_Http_Scheme:
 				httpMatch = proxy.ObserveRequest_Match_Http{
 					Match: &proxy.ObserveRequest_Match_Http_Scheme{
 						Scheme: util.ParseScheme(httpTyped.Scheme),
 					},
 				}
-			case *public.TapByResourceRequest_Match_Http_Method:
+			case *pb.TapByResourceRequest_Match_Http_Method:
 				httpMatch = proxy.ObserveRequest_Match_Http{
 					Match: &proxy.ObserveRequest_Match_Http_Method{
 						Method: util.ParseMethod(httpTyped.Method),
 					},
 				}
-			case *public.TapByResourceRequest_Match_Http_Authority:
+			case *pb.TapByResourceRequest_Match_Http_Authority:
 				httpMatch = proxy.ObserveRequest_Match_Http{
 					Match: &proxy.ObserveRequest_Match_Http_Authority{
 						Authority: &proxy.ObserveRequest_Match_Http_StringMatch{
@@ -209,7 +208,7 @@ func makeByResourceMatch(match *public.TapByResourceRequest_Match) (*proxy.Obser
 						},
 					},
 				}
-			case *public.TapByResourceRequest_Match_Http_Path:
+			case *pb.TapByResourceRequest_Match_Http_Path:
 				httpMatch = proxy.ObserveRequest_Match_Http{
 					Match: &proxy.ObserveRequest_Match_Http_Path{
 						Path: &proxy.ObserveRequest_Match_Http_StringMatch{
@@ -244,7 +243,7 @@ func makeByResourceMatch(match *public.TapByResourceRequest_Match) (*proxy.Obser
 }
 
 // TODO: factor out with `promLabels` in public-api
-func destinationLabels(resource *public.Resource) map[string]string {
+func destinationLabels(resource *pb.Resource) map[string]string {
 	dstLabels := map[string]string{}
 	if resource.Name != "" {
 		l5dLabel := pkgK8s.KindToL5DLabel(resource.Type)
@@ -256,7 +255,7 @@ func destinationLabels(resource *public.Resource) map[string]string {
 	return dstLabels
 }
 
-func buildExtractHTTP(extract *public.TapByResourceRequest_Extract_Http) *proxy.ObserveRequest_Extract {
+func buildExtractHTTP(extract *pb.TapByResourceRequest_Extract_Http) *proxy.ObserveRequest_Extract {
 	if extract.GetHeaders() != nil {
 		return &proxy.ObserveRequest_Extract{
 			Extract: &proxy.ObserveRequest_Extract_Http_{
@@ -279,7 +278,7 @@ func buildExtractHTTP(extract *public.TapByResourceRequest_Extract_Http) *proxy.
 // of maxRps * 1s at most once per 1s window.  If this limit is reached in
 // less than 1s, we sleep until the end of the window before calling Observe
 // again.
-func (s *GRPCTapServer) tapProxy(ctx context.Context, maxRps float32, match *proxy.ObserveRequest_Match, extract *proxy.ObserveRequest_Extract, addr string, events chan *public.TapEvent) {
+func (s *GRPCTapServer) tapProxy(ctx context.Context, maxRps float32, match *proxy.ObserveRequest_Match, extract *proxy.ObserveRequest_Extract, addr string, events chan *pb.TapEvent) {
 	tapAddr := fmt.Sprintf("%s:%d", addr, s.tapPort)
 	log.Infof("Establishing tap on %s", tapAddr)
 	conn, err := grpc.DialContext(ctx, tapAddr, grpc.WithInsecure())
@@ -331,37 +330,37 @@ func (s *GRPCTapServer) tapProxy(ctx context.Context, maxRps float32, match *pro
 	}
 }
 
-func (s *GRPCTapServer) translateEvent(ctx context.Context, orig *proxy.TapEvent) *public.TapEvent {
-	direction := func(orig proxy.TapEvent_ProxyDirection) public.TapEvent_ProxyDirection {
+func (s *GRPCTapServer) translateEvent(ctx context.Context, orig *proxy.TapEvent) *pb.TapEvent {
+	direction := func(orig proxy.TapEvent_ProxyDirection) pb.TapEvent_ProxyDirection {
 		switch orig {
 		case proxy.TapEvent_INBOUND:
-			return public.TapEvent_INBOUND
+			return pb.TapEvent_INBOUND
 		case proxy.TapEvent_OUTBOUND:
-			return public.TapEvent_OUTBOUND
+			return pb.TapEvent_OUTBOUND
 		default:
-			return public.TapEvent_UNKNOWN
+			return pb.TapEvent_UNKNOWN
 		}
 	}
 
-	event := func(orig *proxy.TapEvent_Http) *public.TapEvent_Http_ {
-		id := func(orig *proxy.TapEvent_Http_StreamId) *public.TapEvent_Http_StreamId {
-			return &public.TapEvent_Http_StreamId{
+	event := func(orig *proxy.TapEvent_Http) *pb.TapEvent_Http_ {
+		id := func(orig *proxy.TapEvent_Http_StreamId) *pb.TapEvent_Http_StreamId {
+			return &pb.TapEvent_Http_StreamId{
 				Base:   orig.GetBase(),
 				Stream: orig.GetStream(),
 			}
 		}
 
-		method := func(orig *httpPb.HttpMethod) *public.HttpMethod {
+		method := func(orig *httpPb.HttpMethod) *pb.HttpMethod {
 			switch m := orig.GetType().(type) {
 			case *httpPb.HttpMethod_Registered_:
-				return &public.HttpMethod{
-					Type: &public.HttpMethod_Registered_{
-						Registered: public.HttpMethod_Registered(m.Registered),
+				return &pb.HttpMethod{
+					Type: &pb.HttpMethod_Registered_{
+						Registered: pb.HttpMethod_Registered(m.Registered),
 					},
 				}
 			case *httpPb.HttpMethod_Unregistered:
-				return &public.HttpMethod{
-					Type: &public.HttpMethod_Unregistered{
+				return &pb.HttpMethod{
+					Type: &pb.HttpMethod_Unregistered{
 						Unregistered: m.Unregistered,
 					},
 				}
@@ -370,17 +369,17 @@ func (s *GRPCTapServer) translateEvent(ctx context.Context, orig *proxy.TapEvent
 			}
 		}
 
-		scheme := func(orig *httpPb.Scheme) *public.Scheme {
+		scheme := func(orig *httpPb.Scheme) *pb.Scheme {
 			switch s := orig.GetType().(type) {
 			case *httpPb.Scheme_Registered_:
-				return &public.Scheme{
-					Type: &public.Scheme_Registered_{
-						Registered: public.Scheme_Registered(s.Registered),
+				return &pb.Scheme{
+					Type: &pb.Scheme_Registered_{
+						Registered: pb.Scheme_Registered(s.Registered),
 					},
 				}
 			case *httpPb.Scheme_Unregistered:
-				return &public.Scheme{
-					Type: &public.Scheme_Unregistered{
+				return &pb.Scheme{
+					Type: &pb.Scheme_Unregistered{
 						Unregistered: s.Unregistered,
 					},
 				}
@@ -389,31 +388,31 @@ func (s *GRPCTapServer) translateEvent(ctx context.Context, orig *proxy.TapEvent
 			}
 		}
 
-		headers := func(orig *httpPb.Headers) *public.Headers {
+		headers := func(orig *httpPb.Headers) *pb.Headers {
 			if orig == nil {
 				return nil
 			}
-			var headers []*public.Headers_Header
+			var headers []*pb.Headers_Header
 			for _, header := range orig.GetHeaders() {
 				n := header.GetName()
 				b := header.GetValue()
-				h := public.Headers_Header{Name: n, Value: &public.Headers_Header_ValueBin{ValueBin: b}}
+				h := pb.Headers_Header{Name: n, Value: &pb.Headers_Header_ValueBin{ValueBin: b}}
 				if utf8.Valid(b) {
-					h = public.Headers_Header{Name: n, Value: &public.Headers_Header_ValueStr{ValueStr: string(b)}}
+					h = pb.Headers_Header{Name: n, Value: &pb.Headers_Header_ValueStr{ValueStr: string(b)}}
 				}
 				headers = append(headers, &h)
 			}
-			return &public.Headers{
+			return &pb.Headers{
 				Headers: headers,
 			}
 		}
 
 		switch orig := orig.GetEvent().(type) {
 		case *proxy.TapEvent_Http_RequestInit_:
-			return &public.TapEvent_Http_{
-				Http: &public.TapEvent_Http{
-					Event: &public.TapEvent_Http_RequestInit_{
-						RequestInit: &public.TapEvent_Http_RequestInit{
+			return &pb.TapEvent_Http_{
+				Http: &pb.TapEvent_Http{
+					Event: &pb.TapEvent_Http_RequestInit_{
+						RequestInit: &pb.TapEvent_Http_RequestInit{
 							Id:        id(orig.RequestInit.GetId()),
 							Method:    method(orig.RequestInit.GetMethod()),
 							Scheme:    scheme(orig.RequestInit.GetScheme()),
@@ -426,10 +425,10 @@ func (s *GRPCTapServer) translateEvent(ctx context.Context, orig *proxy.TapEvent
 			}
 
 		case *proxy.TapEvent_Http_ResponseInit_:
-			return &public.TapEvent_Http_{
-				Http: &public.TapEvent_Http{
-					Event: &public.TapEvent_Http_ResponseInit_{
-						ResponseInit: &public.TapEvent_Http_ResponseInit{
+			return &pb.TapEvent_Http_{
+				Http: &pb.TapEvent_Http{
+					Event: &pb.TapEvent_Http_ResponseInit_{
+						ResponseInit: &pb.TapEvent_Http_ResponseInit{
 							Id:               id(orig.ResponseInit.GetId()),
 							SinceRequestInit: orig.ResponseInit.GetSinceRequestInit(),
 							HttpStatus:       orig.ResponseInit.GetHttpStatus(),
@@ -440,17 +439,17 @@ func (s *GRPCTapServer) translateEvent(ctx context.Context, orig *proxy.TapEvent
 			}
 
 		case *proxy.TapEvent_Http_ResponseEnd_:
-			eos := func(orig *proxy.Eos) *public.Eos {
+			eos := func(orig *proxy.Eos) *pb.Eos {
 				switch e := orig.GetEnd().(type) {
 				case *proxy.Eos_ResetErrorCode:
-					return &public.Eos{
-						End: &public.Eos_ResetErrorCode{
+					return &pb.Eos{
+						End: &pb.Eos_ResetErrorCode{
 							ResetErrorCode: e.ResetErrorCode,
 						},
 					}
 				case *proxy.Eos_GrpcStatusCode:
-					return &public.Eos{
-						End: &public.Eos_GrpcStatusCode{
+					return &pb.Eos{
+						End: &pb.Eos_GrpcStatusCode{
 							GrpcStatusCode: e.GrpcStatusCode,
 						},
 					}
@@ -459,10 +458,10 @@ func (s *GRPCTapServer) translateEvent(ctx context.Context, orig *proxy.TapEvent
 				}
 			}
 
-			return &public.TapEvent_Http_{
-				Http: &public.TapEvent_Http{
-					Event: &public.TapEvent_Http_ResponseEnd_{
-						ResponseEnd: &public.TapEvent_Http_ResponseEnd{
+			return &pb.TapEvent_Http_{
+				Http: &pb.TapEvent_Http{
+					Event: &pb.TapEvent_Http_ResponseEnd_{
+						ResponseEnd: &pb.TapEvent_Http_ResponseEnd{
 							Id:                id(orig.ResponseEnd.GetId()),
 							SinceRequestInit:  orig.ResponseEnd.GetSinceRequestInit(),
 							SinceResponseInit: orig.ResponseEnd.GetSinceResponseInit(),
@@ -488,16 +487,16 @@ func (s *GRPCTapServer) translateEvent(ctx context.Context, orig *proxy.TapEvent
 		destinationLabels = make(map[string]string)
 	}
 
-	ev := &public.TapEvent{
+	ev := &pb.TapEvent{
 		Source: addr.NetToPublic(orig.GetSource()),
-		SourceMeta: &public.TapEvent_EndpointMeta{
+		SourceMeta: &pb.TapEvent_EndpointMeta{
 			Labels: sourceLabels,
 		},
 		Destination: addr.NetToPublic(orig.GetDestination()),
-		DestinationMeta: &public.TapEvent_EndpointMeta{
+		DestinationMeta: &pb.TapEvent_EndpointMeta{
 			Labels: destinationLabels,
 		},
-		RouteMeta: &public.TapEvent_RouteMeta{
+		RouteMeta: &pb.TapEvent_RouteMeta{
 			Labels: orig.GetRouteMeta().GetLabels(),
 		},
 		ProxyDirection: direction(orig.GetProxyDirection()),
@@ -564,13 +563,13 @@ func indexByIP(obj interface{}) ([]string, error) {
 //
 // Since errors encountered while hydrating metadata are non-fatal and result
 // only in missing labels, any errors are logged at the WARN level.
-func (s *GRPCTapServer) hydrateEventLabels(ctx context.Context, ev *public.TapEvent) {
+func (s *GRPCTapServer) hydrateEventLabels(ctx context.Context, ev *pb.TapEvent) {
 	err := s.hydrateIPLabels(ctx, ev.GetSource().GetIp(), ev.GetSourceMeta().GetLabels())
 	if err != nil {
 		log.Warnf("error hydrating source labels: %s", err)
 	}
 
-	if ev.ProxyDirection == public.TapEvent_INBOUND {
+	if ev.ProxyDirection == pb.TapEvent_INBOUND {
 		// Events emitted by an inbound proxies don't have destination labels,
 		// since the inbound proxy _is_ the destination, and proxies don't know
 		// their own labels.
@@ -584,7 +583,7 @@ func (s *GRPCTapServer) hydrateEventLabels(ctx context.Context, ev *public.TapEv
 
 // hydrateIPMeta attempts to determine the metadata labels for `ip` and, if
 // successful, adds them to `labels`.
-func (s *GRPCTapServer) hydrateIPLabels(ctx context.Context, ip *public.IPAddress, labels map[string]string) error {
+func (s *GRPCTapServer) hydrateIPLabels(ctx context.Context, ip *pb.IPAddress, labels map[string]string) error {
 	res, err := s.resourceForIP(ip)
 	if err != nil {
 		return err
@@ -614,7 +613,7 @@ func (s *GRPCTapServer) hydrateIPLabels(ctx context.Context, ip *public.IPAddres
 // node if that's the case. Otherwise it checks the running pods that match the
 // IP. If exactly one is found, it's returned. Otherwise it returns nil. Errors
 // are returned only in the event of an error searching the indices.
-func (s *GRPCTapServer) resourceForIP(ip *public.IPAddress) (runtime.Object, error) {
+func (s *GRPCTapServer) resourceForIP(ip *pb.IPAddress) (runtime.Object, error) {
 	ipStr := addr.PublicIPToString(ip)
 
 	nodes, err := s.k8sAPI.Node().Informer().GetIndexer().ByIndex(ipIndex, ipStr)
@@ -655,7 +654,7 @@ func (s *GRPCTapServer) resourceForIP(ip *public.IPAddress) (runtime.Object, err
 	return singleRunningPod, nil
 }
 
-func getLabelSelector(req *public.TapByResourceRequest) (labels.Selector, error) {
+func getLabelSelector(req *pb.TapByResourceRequest) (labels.Selector, error) {
 	labelSelector := labels.Everything()
 	if s := req.GetTarget().GetLabelSelector(); s != "" {
 		var err error

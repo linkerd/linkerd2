@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/duration"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/prometheus/common/model"
 )
 

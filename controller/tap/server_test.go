@@ -10,10 +10,10 @@ import (
 
 	proxy "github.com/linkerd/linkerd2-proxy-api/go/tap"
 	"github.com/linkerd/linkerd2/controller/api/util"
-	"github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -23,7 +23,7 @@ import (
 type tapExpected struct {
 	err       error
 	k8sRes    []string
-	req       *public.TapByResourceRequest
+	req       *pb.TapByResourceRequest
 	requireID string
 }
 
@@ -32,7 +32,7 @@ type mockTapByResourceServer struct {
 	util.MockServerStream
 }
 
-func (m *mockTapByResourceServer) Send(event *public.TapEvent) error {
+func (m *mockTapByResourceServer) Send(event *pb.TapEvent) error {
 	return nil
 }
 
@@ -53,7 +53,7 @@ func TestTapByResource(t *testing.T) {
 		{
 			err:    status.Error(codes.InvalidArgument, "TapByResource received nil target ResourceSelection"),
 			k8sRes: []string{},
-			req:    &public.TapByResourceRequest{},
+			req:    &pb.TapByResourceRequest{},
 		},
 		{
 			err: status.Errorf(codes.Unimplemented, "unexpected match specified: any:<> "),
@@ -73,17 +73,17 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: &public.TapByResourceRequest{
-				Target: &public.ResourceSelection{
-					Resource: &public.Resource{
+			req: &pb.TapByResourceRequest{
+				Target: &pb.ResourceSelection{
+					Resource: &pb.Resource{
 						Namespace: "emojivoto",
 						Type:      pkgK8s.Pod,
 						Name:      "emojivoto-meshed",
 					},
 				},
-				Match: &public.TapByResourceRequest_Match{
-					Match: &public.TapByResourceRequest_Match_Any{
-						Any: &public.TapByResourceRequest_Match_Seq{},
+				Match: &pb.TapByResourceRequest_Match{
+					Match: &pb.TapByResourceRequest_Match_Any{
+						Any: &pb.TapByResourceRequest_Match_Seq{},
 					},
 				},
 			},
@@ -103,9 +103,9 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: &public.TapByResourceRequest{
-				Target: &public.ResourceSelection{
-					Resource: &public.Resource{
+			req: &pb.TapByResourceRequest{
+				Target: &pb.ResourceSelection{
+					Resource: &pb.Resource{
 						Namespace: "emojivoto",
 						Type:      pkgK8s.Pod,
 						Name:      "emojivoto-not-meshed",
@@ -116,9 +116,9 @@ status:
 		{
 			err:    status.Errorf(codes.Unimplemented, "unimplemented resource type: bad-type"),
 			k8sRes: []string{},
-			req: &public.TapByResourceRequest{
-				Target: &public.ResourceSelection{
-					Resource: &public.Resource{
+			req: &pb.TapByResourceRequest{
+				Target: &pb.ResourceSelection{
+					Resource: &pb.Resource{
 						Namespace: "emojivoto",
 						Type:      "bad-type",
 						Name:      "emojivoto-meshed-not-found",
@@ -143,9 +143,9 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: &public.TapByResourceRequest{
-				Target: &public.ResourceSelection{
-					Resource: &public.Resource{
+			req: &pb.TapByResourceRequest{
+				Target: &pb.ResourceSelection{
+					Resource: &pb.Resource{
 						Namespace: "emojivoto",
 						Type:      pkgK8s.Pod,
 						Name:      "emojivoto-meshed-not-found",
@@ -170,9 +170,9 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: &public.TapByResourceRequest{
-				Target: &public.ResourceSelection{
-					Resource: &public.Resource{
+			req: &pb.TapByResourceRequest{
+				Target: &pb.ResourceSelection{
+					Resource: &pb.Resource{
 						Namespace: "emojivoto",
 						Type:      pkgK8s.Pod,
 						Name:      "emojivoto-meshed",
@@ -199,17 +199,17 @@ status:
   podIP: 127.0.0.1
     `,
 			},
-			req: &public.TapByResourceRequest{
-				Target: &public.ResourceSelection{
-					Resource: &public.Resource{
+			req: &pb.TapByResourceRequest{
+				Target: &pb.ResourceSelection{
+					Resource: &pb.Resource{
 						Namespace: "emojivoto",
 						Type:      pkgK8s.Pod,
 						Name:      "emojivoto-meshed-tap-disabled",
 					},
 				},
-				Match: &public.TapByResourceRequest_Match{
-					Match: &public.TapByResourceRequest_Match_All{
-						All: &public.TapByResourceRequest_Match_Seq{},
+				Match: &pb.TapByResourceRequest_Match{
+					Match: &pb.TapByResourceRequest_Match_All{
+						All: &pb.TapByResourceRequest_Match_Seq{},
 					},
 				},
 			},
@@ -233,17 +233,17 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: &public.TapByResourceRequest{
-				Target: &public.ResourceSelection{
-					Resource: &public.Resource{
+			req: &pb.TapByResourceRequest{
+				Target: &pb.ResourceSelection{
+					Resource: &pb.Resource{
 						Namespace: "emojivoto",
 						Type:      pkgK8s.Pod,
 						Name:      "emojivoto-meshed",
 					},
 				},
-				Match: &public.TapByResourceRequest_Match{
-					Match: &public.TapByResourceRequest_Match_All{
-						All: &public.TapByResourceRequest_Match_Seq{},
+				Match: &pb.TapByResourceRequest_Match{
+					Match: &pb.TapByResourceRequest_Match_All{
+						All: &pb.TapByResourceRequest_Match_Seq{},
 					},
 				},
 			},
@@ -269,17 +269,17 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: &public.TapByResourceRequest{
-				Target: &public.ResourceSelection{
-					Resource: &public.Resource{
+			req: &pb.TapByResourceRequest{
+				Target: &pb.ResourceSelection{
+					Resource: &pb.Resource{
 						Namespace: "emojivoto",
 						Type:      pkgK8s.Pod,
 						Name:      "emojivoto-meshed",
 					},
 				},
-				Match: &public.TapByResourceRequest_Match{
-					Match: &public.TapByResourceRequest_Match_All{
-						All: &public.TapByResourceRequest_Match_Seq{},
+				Match: &pb.TapByResourceRequest_Match{
+					Match: &pb.TapByResourceRequest_Match_All{
+						All: &pb.TapByResourceRequest_Match_Seq{},
 					},
 				},
 			},
@@ -310,17 +310,17 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: &public.TapByResourceRequest{
-				Target: &public.ResourceSelection{
-					Resource: &public.Resource{
+			req: &pb.TapByResourceRequest{
+				Target: &pb.ResourceSelection{
+					Resource: &pb.Resource{
 						Namespace: "",
 						Type:      pkgK8s.Namespace,
 						Name:      "emojivoto",
 					},
 				},
-				Match: &public.TapByResourceRequest_Match{
-					Match: &public.TapByResourceRequest_Match_All{
-						All: &public.TapByResourceRequest_Match_Seq{},
+				Match: &pb.TapByResourceRequest_Match{
+					Match: &pb.TapByResourceRequest_Match_All{
+						All: &pb.TapByResourceRequest_Match_Seq{},
 					},
 				},
 			},

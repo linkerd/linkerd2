@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/multicluster"
 	"github.com/linkerd/linkerd2/pkg/servicemirror"
 	"github.com/linkerd/linkerd2/pkg/tls"
+	public "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -469,7 +469,7 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context)
 			TimeWindow:        "1m",
 			RemoteClusterName: link.TargetClusterName,
 		}
-		rsp, err := hc.linkerdHC.PublicAPIClient().Gateways(ctx, &req)
+		rsp, err := hc.linkerdHC.VizAPIClient().Gateways(ctx, &req)
 		if err != nil {
 			errors = append(errors, fmt.Errorf("failed to fetch gateway metrics for %s.%s: %s", svc.Name, svc.Namespace, err))
 			continue
