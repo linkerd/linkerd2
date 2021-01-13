@@ -73,6 +73,24 @@ metadata:
     phase: Running
     podIP: 172.17.0.12`,
 		`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name2-2
+  namespace: ns
+status:
+  phase: Succeeded
+  podIP: 172.17.0.13`,
+		`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name2-3
+  namespace: ns
+status:
+  phase: Failed
+  podIP: 172.17.0.13`,
+		`
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:

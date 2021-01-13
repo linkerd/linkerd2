@@ -154,10 +154,23 @@ func (iw *IPWatcher) GetPod(podIP string) (*corev1.Pod, error) {
 }
 
 func getResource(ip string, informer cache.SharedIndexInformer) (interface{}, error) {
-	objs, err := informer.GetIndexer().ByIndex(podIPIndex, ip)
+	matchingObjs, err := informer.GetIndexer().ByIndex(podIPIndex, ip)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
+
+	objs := make([]interface{}, 0)
+	for _, obj := range matchingObjs {
+		// Ignore terminated pods,
+		// their IPs can be reused for new Running pods
+		pod, ok := obj.(*corev1.Pod)
+		if ok && podTerminated(pod) {
+			continue
+		}
+
+		objs = append(objs, obj)
+	}
+
 	if len(objs) > 1 {
 		return nil, status.Errorf(codes.FailedPrecondition, "IP address conflict: %v, %v", objs[0], objs[1])
 	}
@@ -165,6 +178,11 @@ func getResource(ip string, informer cache.SharedIndexInformer) (interface{}, er
 		return objs[0], nil
 	}
 	return nil, nil
+}
+
+func podTerminated(pod *corev1.Pod) bool {
+	phase := pod.Status.Phase
+	return phase == corev1.PodSucceeded || phase == corev1.PodFailed
 }
 
 func (iw *IPWatcher) addService(obj interface{}) {
@@ -285,10 +303,18 @@ func (iw *IPWatcher) getOrNewServiceSubscriptions(clusterIP string) *serviceSubs
 			pods := []*corev1.Pod{}
 			for _, obj := range objs {
 				if pod, ok := obj.(*corev1.Pod); ok {
-					// Skip pods with HostNetwork.
-					if !pod.Spec.HostNetwork {
-						pods = append(pods, pod)
+					// Skip pods with HostNetwork
+					if pod.Spec.HostNetwork {
+						continue
 					}
+
+					// Ignore terminated pods,
+					// their IPs can be reused for new Running pods
+					if podTerminated(pod) {
+						continue
+					}
+
+					pods = append(pods, pod)
 				}
 			}
 			if len(pods) > 1 {

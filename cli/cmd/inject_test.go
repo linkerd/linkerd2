@@ -587,7 +587,7 @@ func TestWalk(t *testing.T) {
 }
 
 func TestProxyConfigurationAnnotations(t *testing.T) {
-	baseValues, err := linkerd2.NewValues(false)
+	baseValues, err := linkerd2.NewValues()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -643,7 +643,7 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 }
 
 func TestProxyImageAnnotations(t *testing.T) {
-	baseValues, err := linkerd2.NewValues(false)
+	baseValues, err := linkerd2.NewValues()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -669,7 +669,7 @@ func TestProxyImageAnnotations(t *testing.T) {
 }
 
 func TestProxyInitImageAnnotations(t *testing.T) {
-	baseValues, err := linkerd2.NewValues(false)
+	baseValues, err := linkerd2.NewValues()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -693,7 +693,7 @@ func TestProxyInitImageAnnotations(t *testing.T) {
 }
 
 func TestNoAnnotations(t *testing.T) {
-	baseValues, err := linkerd2.NewValues(false)
+	baseValues, err := linkerd2.NewValues()
 	if err != nil {
 		t.Fatal(err)
 	}
