@@ -125,15 +125,15 @@ func init() {
 	RootCmd.AddCommand(viz.NewCmdViz())
 
 	// Viz Extension sub commands
-	RootCmd.AddCommand(depreciateCmd(viz.NewCmdDashboard()))
-	RootCmd.AddCommand(depreciateCmd(viz.NewCmdEdges()))
-	RootCmd.AddCommand(depreciateCmd(viz.NewCmdRoutes()))
-	RootCmd.AddCommand(depreciateCmd(viz.NewCmdStat()))
-	RootCmd.AddCommand(depreciateCmd(viz.NewCmdTap()))
-	RootCmd.AddCommand(depreciateCmd(viz.NewCmdTop()))
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdDashboard()))
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdEdges()))
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdRoutes()))
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdStat()))
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdTap()))
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdTop()))
 }
 
-func depreciateCmd(cmd *cobra.Command) *cobra.Command {
+func deprecateCmd(cmd *cobra.Command) *cobra.Command {
 	cmd.Deprecated = fmt.Sprintf("use instead 'linkerd viz %s'", cmd.Use)
 	return cmd
 }
