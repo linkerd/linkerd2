@@ -65,7 +65,7 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 	checkers = append(checkers,
 		*healthcheck.NewChecker("collector pod is running").
 			WithHintAnchor("l5d-jaeger-collector-running").
-			Warning().
+			Fatal().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
@@ -74,13 +74,13 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 				if err != nil {
 					return err
 				}
-				return healthcheck.CheckPodsRunning(podList.Items)
+				return healthcheck.CheckPodsRunning(podList.Items, fmt.Sprintf("No collector pods found in the %s namespace", namespace))
 			}))
 
 	checkers = append(checkers,
 		*healthcheck.NewChecker("jaeger pod is running").
 			WithHintAnchor("l5d-jaeger-jaeger-running").
-			Warning().
+			Fatal().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
@@ -89,7 +89,22 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 				if err != nil {
 					return err
 				}
-				return healthcheck.CheckPodsRunning(podList.Items)
+				return healthcheck.CheckPodsRunning(podList.Items, fmt.Sprintf("No jaeger pods found in the %s namespace", namespace))
+			}))
+
+	checkers = append(checkers,
+		*healthcheck.NewChecker("jaeger injector pod is running").
+			WithHintAnchor("l5d-jaeger-jaeger-running").
+			Fatal().
+			WithRetryDeadline(hc.RetryDeadline).
+			SurfaceErrorOnRetry().
+			WithCheck(func(ctx context.Context) error {
+				// Check for Jaeger Injector pod
+				podList, err := kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: "component=jaeger-injector"})
+				if err != nil {
+					return err
+				}
+				return healthcheck.CheckPodsRunning(podList.Items, fmt.Sprintf("No jaeger injector pods found in the %s namespace", namespace))
 			}))
 
 	checkers = append(checkers,
@@ -97,7 +112,7 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 			WithHintAnchor("l5d-jaeger-pods-injection").
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				// Check for Jaeger pod
+				// Check if Jaeger Extension pods have been injected
 				pods, err := kubeAPI.GetPodsByNamespace(ctx, jaegerNamespace)
 				if err != nil {
 					return err
