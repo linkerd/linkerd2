@@ -1,5 +1,13 @@
 # Changes
 
+## stable-2.9.2
+
+This stable release fixes an issue that stops traffic to a pod when there is an
+IP address conflict with another pod that is not in a running state.
+
+It also fixes an upgrade issue when using HA that would lead to values being
+overridden.
+
 ## stable-2.9.1
 
 This stable release contains a number of proxy enhancements: better support for
