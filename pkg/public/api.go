@@ -31,7 +31,7 @@ func RawVizAPIClient(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPla
 	return public.NewExternalClient(ctx, controlPlaneNamespace, kubeAPI)
 }
 
-// checkPublicAPIClientOrExit builds a new Public API client and executes default status
+// CheckPublicAPIClientOrExit builds a new Public API client and executes default status
 // checks to determine if the client can successfully perform cli commands. If the
 // checks fail, then CLI will print an error and exit.
 func CheckPublicAPIClientOrExit(hcOptions healthcheck.Options) public.PublicAPIClient {
@@ -39,7 +39,7 @@ func CheckPublicAPIClientOrExit(hcOptions healthcheck.Options) public.PublicAPIC
 	return CheckPublicAPIClientOrRetryOrExit(hcOptions, false)
 }
 
-// checkVizAPIClientOrExit builds a new Viz API client and executes default status
+// CheckVizAPIClientOrExit builds a new Viz API client and executes default status
 // checks to determine if the client can successfully perform cli commands. If the
 // checks fail, then CLI will print an error and exit.
 func CheckVizAPIClientOrExit(hcOptions healthcheck.Options) public.VizAPIClient {
