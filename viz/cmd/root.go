@@ -1,18 +1,26 @@
 package cmd
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"regexp"
 
 	"github.com/fatih/color"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
 	vizChartName            = "linkerd-viz"
 	defaultLinkerdNamespace = "linkerd"
-	defaultVizNamespace     = "linkerd-viz"
+	maxRps                  = 100.0
+
+	jsonOutput  = "json"
+	tableOutput = "table"
+	wideOutput  = "wide"
 )
 
 var (
@@ -24,7 +32,6 @@ var (
 
 	apiAddr               string // An empty value means "use the Kubernetes configuration"
 	controlPlaneNamespace string
-	namespace             string
 	kubeconfigPath        string
 	kubeContext           string
 	impersonate           string
@@ -59,7 +66,6 @@ func NewCmdViz() *cobra.Command {
 	}
 
 	vizCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed")
-	vizCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", defaultVizNamespace, "Namespace in which viz extension is installed")
 	vizCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
 	vizCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
 	vizCmd.PersistentFlags().StringVar(&impersonate, "as", "", "Username to impersonate for Kubernetes operations")
@@ -67,8 +73,25 @@ func NewCmdViz() *cobra.Command {
 	vizCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 	vizCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
 	vizCmd.AddCommand(newCmdInstall())
+	vizCmd.AddCommand(newCmdRoutes())
+	vizCmd.AddCommand(newCmdStat())
+	vizCmd.AddCommand(newCmdTap())
+	vizCmd.AddCommand(newCmdTop())
+	vizCmd.AddCommand(newCmdEdges())
+	vizCmd.AddCommand(newCmdDashboard())
 	vizCmd.AddCommand(newCmdUninstall())
 	vizCmd.AddCommand(newCmdCheck())
 
 	return vizCmd
+}
+
+func getVizNamespace(ctx context.Context, k8sAPI *k8s.KubernetesAPI) (string, error) {
+	ns, err := k8sAPI.CoreV1().Namespaces().List(ctx, metav1.ListOptions{LabelSelector: "linkerd.io/extension=linkerd-viz"})
+	if err != nil {
+		return "", err
+	}
+	if len(ns.Items) == 0 {
+		return "", errors.New("linkerd-viz extension not found")
+	}
+	return ns.Items[0].Name, nil
 }

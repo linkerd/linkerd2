@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	cmd2 "github.com/linkerd/linkerd2/cli/cmd"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/testutil"
+	cmd2 "github.com/linkerd/linkerd2/viz/cmd"
 	"sigs.k8s.io/yaml"
 )
 
@@ -278,7 +278,7 @@ func assertExpectedRoutes(expected []string, actual []*cmd2.JSONRouteStats, t *t
 }
 
 func getRoutes(deployName, namespace string, additionalArgs []string) ([]*cmd2.JSONRouteStats, error) {
-	cmd := []string{"routes", "--namespace", namespace, deployName}
+	cmd := []string{"viz", "routes", "--namespace", namespace, deployName}
 
 	if len(additionalArgs) > 0 {
 		cmd = append(cmd, additionalArgs...)

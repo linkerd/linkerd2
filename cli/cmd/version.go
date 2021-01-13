@@ -9,6 +9,8 @@ import (
 
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/k8s"
+	api "github.com/linkerd/linkerd2/pkg/public"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -38,8 +40,18 @@ func newCmdVersion() *cobra.Command {
 		Use:   "version",
 		Short: "Print the client and server version information",
 		Args:  cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			configureAndRunVersion(cmd.Context(), options, os.Stdout, rawPublicAPIClient)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var k8sAPI *k8s.KubernetesAPI
+			var err error
+			if !options.onlyClientVersion {
+				k8sAPI, err = k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+				if err != nil {
+					return err
+				}
+			}
+
+			configureAndRunVersion(cmd.Context(), k8sAPI, options, os.Stdout, api.RawPublicAPIClient)
+			return nil
 		},
 	}
 
@@ -53,9 +65,10 @@ func newCmdVersion() *cobra.Command {
 
 func configureAndRunVersion(
 	ctx context.Context,
+	k8sAPI *k8s.KubernetesAPI,
 	options *versionOptions,
 	stdout io.Writer,
-	mkClient func(ctx context.Context) (pb.ApiClient, error),
+	mkClient func(ctx context.Context, k8sAPI *k8s.KubernetesAPI, controlPlaneNamespace, apiAddr string) (pb.ApiClient, error),
 ) {
 	clientVersion := version.Version
 	if options.shortVersion {
@@ -66,7 +79,7 @@ func configureAndRunVersion(
 
 	if !options.onlyClientVersion {
 		serverVersion := defaultVersionString
-		client, clientErr := mkClient(ctx)
+		client, clientErr := mkClient(ctx, k8sAPI, controlPlaneNamespace, apiAddr)
 		if clientErr == nil {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()

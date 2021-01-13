@@ -20,7 +20,7 @@ type TapEvent struct {
 // Tap executes a tap command and converts the command's streaming output into tap
 // events using each line's "id" field
 func Tap(target string, h *TestHelper, arg ...string) ([]*TapEvent, error) {
-	cmd := append([]string{"tap", target}, arg...)
+	cmd := append([]string{"viz", "tap", target}, arg...)
 	outputStream, err := h.LinkerdRunStream(cmd...)
 	if err != nil {
 		return nil, err
