@@ -9,10 +9,13 @@ import (
 	"sort"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	api "github.com/linkerd/linkerd2/pkg/public"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -63,7 +66,18 @@ This command will only display traffic which is sent to a service that has a Ser
 				return fmt.Errorf("error creating metrics request while making routes request: %v", err)
 			}
 
-			output, err := requestRouteStatsFromAPI(checkPublicAPIClientOrExit(), req, options)
+			output, err := requestRouteStatsFromAPI(
+				api.CheckPublicAPIClientOrExit(healthcheck.Options{
+					ControlPlaneNamespace: controlPlaneNamespace,
+					KubeConfig:            kubeconfigPath,
+					Impersonate:           impersonate,
+					ImpersonateGroup:      impersonateGroup,
+					KubeContext:           kubeContext,
+					APIAddr:               apiAddr,
+				}),
+				req,
+				options,
+			)
 			if err != nil {
 				return err
 			}
@@ -242,6 +256,24 @@ func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *route
 			fmt.Fprintf(w, emptyTemplateString, values...)
 		}
 	}
+}
+
+// getRequestRate calculates request rate from Public API BasicStats.
+func getRequestRate(success, failure uint64, timeWindow string) float64 {
+	windowLength, err := time.ParseDuration(timeWindow)
+	if err != nil {
+		log.Error(err.Error())
+		return 0.0
+	}
+	return float64(success+failure) / windowLength.Seconds()
+}
+
+// getSuccessRate calculates success rate from Public API BasicStats.
+func getSuccessRate(success, failure uint64) float64 {
+	if success+failure == 0 {
+		return 0.0
+	}
+	return float64(success) / float64(success+failure)
 }
 
 // JSONRouteStats represents the JSON output of the routes command
