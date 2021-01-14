@@ -144,6 +144,7 @@ Kubernetes: `>=1.13.0-0`
 | tapInjector.caBundle | string | `""` | Bundle of CA certificates for the tapInjector. If not provided then Helm will use the certificate generated  for `tapInjector.crtPEM`. If `tapInjector.externalSecret` is set to true, this value must be set, as no certificate will be generated.  |
 | tapInjector.crtPEM | string | `""` | Certificate for the tapInjector. If not provided then Helm will generate one. |
 | tapInjector.externalSecret | bool | `false` |  |
+| tapInjector.failurePolicy | string | `"Ignore"` |  |
 | tapInjector.image.name | string | `"controller"` | Docker image name for the tapInjector instance |
 | tapInjector.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the tapInjector instance |
 | tapInjector.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the tapInjector instance |
