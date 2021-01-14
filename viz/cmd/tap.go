@@ -125,7 +125,8 @@ func (o *tapOptions) validate() error {
 	return fmt.Errorf("output format \"%s\" not recognized", o.output)
 }
 
-func newCmdTap() *cobra.Command {
+// NewCmdTap creates a new cobra command `tap` for tap functionality
+func NewCmdTap() *cobra.Command {
 	options := newTapOptions()
 
 	cmd := &cobra.Command{
@@ -161,13 +162,13 @@ func newCmdTap() *cobra.Command {
   * statefulsets
   * services (only supported as a --to resource)`,
 		Example: `  # tap the web deployment in the default namespace
-  linkerd tap deploy/web
+  linkerd viz tap deploy/web
 
   # tap the web-dlbvj pod in the default namespace
-  linkerd tap pod/web-dlbvj
+  linkerd viz tap pod/web-dlbvj
 
   # tap the test namespace, filter by request to prod namespace
-  linkerd tap ns/test --to ns/prod`,
+  linkerd viz tap ns/test --to ns/prod`,
 		Args:      cobra.RangeArgs(1, 2),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {

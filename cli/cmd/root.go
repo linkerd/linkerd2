@@ -123,6 +123,19 @@ func init() {
 	RootCmd.AddCommand(jaeger.NewCmdJaeger())
 	RootCmd.AddCommand(multicluster.NewCmdMulticluster())
 	RootCmd.AddCommand(viz.NewCmdViz())
+
+	// Viz Extension sub commands
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdDashboard()))
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdEdges()))
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdRoutes()))
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdStat()))
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdTap()))
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdTop()))
+}
+
+func deprecateCmd(cmd *cobra.Command) *cobra.Command {
+	cmd.Deprecated = fmt.Sprintf("use instead 'linkerd viz %s'\n", cmd.Use)
+	return cmd
 }
 
 // registryOverride replaces the registry-portion of the provided image with the provided registry.
