@@ -134,7 +134,7 @@ func init() {
 }
 
 func deprecateCmd(cmd *cobra.Command) *cobra.Command {
-	cmd.Deprecated = fmt.Sprintf("use instead 'linkerd viz %s'", cmd.Use)
+	cmd.Deprecated = fmt.Sprintf("use instead 'linkerd viz %s'\n", cmd.Use)
 	return cmd
 }
 
