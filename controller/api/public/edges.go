@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/prometheus/common/model"
 	log "github.com/sirupsen/logrus"
 )

@@ -26,7 +26,7 @@ data:
         retry-on-failure: true
         sender-type: jaeger-thrift-http
         jaeger-thrift-http:
-          collector-endpoint: {{printf "http://%s.%s:14268/api/traces" "jaeger" .Values.namespace }}
+          collector-endpoint: {{.Values.collector.jaegerAddr | default (printf "http://%s.%s:14268/api/traces" "jaeger" .Values.namespace) }}
           timeout: 5s
 ---
 apiVersion: v1

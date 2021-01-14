@@ -11,8 +11,9 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 )
 
 type mockTransport struct {
@@ -42,12 +43,12 @@ func TestNewInternalClient(t *testing.T) {
 			Host:   "some-hostname",
 			Path:   "/",
 		}
-		client, err := newClient(apiURL, mockHTTPClient, "linkerd")
+		client, err := newPublicClient(apiURL, mockHTTPClient, "linkerd")
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		_, err = client.Version(context.Background(), &pb.Empty{})
+		_, err = client.Version(context.Background(), &publicPb.Empty{})
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -62,13 +63,13 @@ func TestNewInternalClient(t *testing.T) {
 
 func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 	t.Run("Correctly marshalls an valid object", func(t *testing.T) {
-		versionInfo := pb.VersionInfo{
+		versionInfo := publicPb.VersionInfo{
 			GoVersion:      "1.9.1",
 			BuildDate:      "2017.11.17",
 			ReleaseVersion: "1.2.3",
 		}
 
-		var protobufMessageToBeFilledWithData pb.VersionInfo
+		var protobufMessageToBeFilledWithData publicPb.VersionInfo
 		reader := bufferedReader(t, &versionInfo)
 
 		err := protohttp.FromByteStreamToProtocolBuffers(reader, &protobufMessageToBeFilledWithData)
@@ -138,7 +139,7 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 	})
 
 	t.Run("Returns error if byte stream contains wrong object", func(t *testing.T) {
-		versionInfo := &pb.VersionInfo{
+		versionInfo := &publicPb.VersionInfo{
 			GoVersion:      "1.9.1",
 			BuildDate:      "2017.11.17",
 			ReleaseVersion: "1.2.3",

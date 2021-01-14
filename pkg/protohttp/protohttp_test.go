@@ -14,7 +14,8 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -217,7 +218,7 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 
 func TestWriteProtoToHttpResponse(t *testing.T) {
 	t.Run("Writes valid payload", func(t *testing.T) {
-		expectedMessage := pb.VersionInfo{
+		expectedMessage := publicPb.VersionInfo{
 			ReleaseVersion: "0.0.1",
 			BuildDate:      "02/21/1983",
 			GoVersion:      "10.2.45",
@@ -236,7 +237,7 @@ func TestWriteProtoToHttpResponse(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		var actualMessage pb.VersionInfo
+		var actualMessage publicPb.VersionInfo
 		err = proto.Unmarshal(payloadRead, &actualMessage)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
@@ -302,7 +303,7 @@ func TestDeserializePayloadFromReader(t *testing.T) {
 	})
 
 	t.Run("Can write and read marshalled protobuf messages", func(t *testing.T) {
-		expectedMessage := &pb.VersionInfo{
+		expectedMessage := &publicPb.VersionInfo{
 			GoVersion:      "1.9.1",
 			BuildDate:      "2017.11.17",
 			ReleaseVersion: "1.2.3",
@@ -334,7 +335,7 @@ func TestDeserializePayloadFromReader(t *testing.T) {
 			t.Fatalf("Expecting read byte array to be equal to written byte array, but they were different. xor: [%v]", xor)
 		}
 
-		actualMessage := &pb.VersionInfo{}
+		actualMessage := &publicPb.VersionInfo{}
 		err = proto.Unmarshal(actualReadArray, actualMessage)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
@@ -456,7 +457,7 @@ func TestCheckIfResponseHasError(t *testing.T) {
 	})
 
 	t.Run("returns error if response contains linkerd-error header but body isn't error message", func(t *testing.T) {
-		protoInBytes, err := proto.Marshal(&pb.VersionInfo{ReleaseVersion: "0.0.1"})
+		protoInBytes, err := proto.Marshal(&publicPb.VersionInfo{ReleaseVersion: "0.0.1"})
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}

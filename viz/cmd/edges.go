@@ -12,10 +12,10 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/linkerd/linkerd2/controller/api/util"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	api "github.com/linkerd/linkerd2/pkg/public"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/spf13/cobra"
 )
 
@@ -43,7 +43,8 @@ type indexedEdgeResults struct {
 	err  error
 }
 
-func newCmdEdges() *cobra.Command {
+// NewCmdEdges creates a new cobra command `edges` for edges functionality
+func NewCmdEdges() *cobra.Command {
 	options := newEdgesOptions()
 
 	cmd := &cobra.Command{
@@ -73,13 +74,13 @@ func newCmdEdges() *cobra.Command {
   * replicationcontrollers
   * statefulsets`,
 		Example: `  # Get all edges between pods that either originate from or terminate in the test namespace.
-  linkerd edges po -n test
+  linkerd viz edges po -n test
 
   # Get all edges between pods that either originate from or terminate in the default namespace.
-  linkerd edges po
+  linkerd viz edges po
 
   # Get all edges between pods in all namespaces.
-  linkerd edges po --all-namespaces`,
+  linkerd viz edges po --all-namespaces`,
 		Args:      cobra.ExactArgs(1),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -94,7 +95,7 @@ func newCmdEdges() *cobra.Command {
 
 			// The gRPC client is concurrency-safe, so we can reuse it in all the following goroutines
 			// https://github.com/grpc/grpc-go/issues/682
-			client := api.CheckPublicAPIClientOrExit(healthcheck.Options{
+			client := api.CheckVizAPIClientOrExit(healthcheck.Options{
 				ControlPlaneNamespace: controlPlaneNamespace,
 				KubeConfig:            kubeconfigPath,
 				Impersonate:           impersonate,

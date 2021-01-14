@@ -7,11 +7,12 @@ import (
 	"os"
 	"time"
 
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	api "github.com/linkerd/linkerd2/pkg/public"
 	"github.com/linkerd/linkerd2/pkg/version"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/spf13/cobra"
 )
 
@@ -50,7 +51,7 @@ func newCmdVersion() *cobra.Command {
 				}
 			}
 
-			configureAndRunVersion(cmd.Context(), k8sAPI, options, os.Stdout, api.RawPublicAPIClient)
+			configureAndRunVersion(cmd.Context(), k8sAPI, options, os.Stdout, api.RawPublicAPIClient, api.RawVizAPIClient)
 			return nil
 		},
 	}
@@ -68,7 +69,8 @@ func configureAndRunVersion(
 	k8sAPI *k8s.KubernetesAPI,
 	options *versionOptions,
 	stdout io.Writer,
-	mkClient func(ctx context.Context, k8sAPI *k8s.KubernetesAPI, controlPlaneNamespace, apiAddr string) (pb.ApiClient, error),
+	mkPublicClient func(ctx context.Context, k8sAPI *k8s.KubernetesAPI, controlPlaneNamespace, apiAddr string) (publicPb.ApiClient, error),
+	mkVizClient func(ctx context.Context, k8sAPI *k8s.KubernetesAPI, controlPlaneNamespace, apiAddr string) (pb.ApiClient, error),
 ) {
 	clientVersion := version.Version
 	if options.shortVersion {
@@ -79,12 +81,12 @@ func configureAndRunVersion(
 
 	if !options.onlyClientVersion {
 		serverVersion := defaultVersionString
-		client, clientErr := mkClient(ctx, k8sAPI, controlPlaneNamespace, apiAddr)
+		publicClient, clientErr := mkPublicClient(ctx, k8sAPI, controlPlaneNamespace, apiAddr)
 		if clientErr == nil {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			var err error
-			serverVersion, err = healthcheck.GetServerVersion(ctx, client)
+			serverVersion, err = healthcheck.GetServerVersion(ctx, publicClient)
 			if err != nil {
 				serverVersion = defaultVersionString
 			}
@@ -97,7 +99,7 @@ func configureAndRunVersion(
 		}
 
 		if options.proxy {
-
+			vizClient, clientErr := mkVizClient(ctx, k8sAPI, controlPlaneNamespace, apiAddr)
 			if clientErr != nil {
 				fmt.Fprintln(stdout, "Proxy versions: unavailable")
 			} else {
@@ -112,7 +114,7 @@ func configureAndRunVersion(
 
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
-				resp, err := client.ListPods(ctx, req)
+				resp, err := vizClient.ListPods(ctx, req)
 				if err != nil {
 					fmt.Fprintln(stdout, "Proxy versions: unavailable")
 				} else {

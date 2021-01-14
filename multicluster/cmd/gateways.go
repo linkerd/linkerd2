@@ -7,8 +7,8 @@ import (
 
 	"github.com/linkerd/linkerd2/cli/table"
 	"github.com/linkerd/linkerd2/controller/api/public"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 )
