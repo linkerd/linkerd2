@@ -9,8 +9,7 @@ Commands that use the viz extension i.e, `dashboard`, `edges`, `routes`,
 available under root but are marked as deprecated and will be removed in a
 later stable release.
 
-This release also features proxy's dependencies upgrade to the
-Tokio v1 ecosystem.
+This release also upgrades the proxy's dependencies to the Tokio v1 ecosystem.
 
 * Moved sub-commands that use the viz extension under `viz`
 * Started ignoring pods with `Succeeded` status when watching IP addresses
@@ -28,10 +27,7 @@ Tokio v1 ecosystem.
   resource in the viz extension (thanks @nlamirault)
 * Made service-profile generation work offline with `--ignore-cluster`
   flag (thanks @piyushsingariya)
-* Proxy's Tap API is disabled by default and it is enabled only when
-  `LINKERD2_PROXY_TAP_SVC_NAME` configuration is set. This means that
-  `LINKERD2_PROXY_TAP_DISABLED` is no longer honored
-* Upgraded the proxy's dependencies to Tokio v1 ecosystem
+* Upgraded the proxy's dependencies to the Tokio v1 ecosystem
 
 ## edge-21.1.1
 
