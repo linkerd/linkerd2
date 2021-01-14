@@ -17,7 +17,7 @@ func Main(args []string) {
 	metricsAddr := cmd.String("metrics-addr", fmt.Sprintf(":%d", 9995), "address to serve scrapable metrics on")
 	addr := cmd.String("addr", ":8443", "address to serve on")
 	kubeconfig := cmd.String("kubeconfig", "", "path to kubeconfig")
-	tapSvcName := cmd.String("tap-service-name", "", "service name of the tap service")
+	tapSvcName := cmd.String("tap-service-name", "", "name of the tap service")
 	flags.ConfigureAndParse(cmd, args)
 	webhook.Launch(
 		context.Background(),

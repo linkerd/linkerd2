@@ -22,8 +22,7 @@ type Params struct {
 }
 
 // Mutate mutates an AdmissionRequest and adds the LINKERD2_PROXY_TAP_SVC_NAME
-// env var to a pod's proxy container; it adds the LINKERD2_PROXY_TAP_DISABLED
-// env var to a pod's proxy container if tap disabled via annotation on the
+// env var to a pod's proxy container if tap is not disabled via annotation on the
 // pod or the namespace.
 func Mutate(tapSvcName string) webhook.Handler {
 	return func(
@@ -57,10 +56,9 @@ func Mutate(tapSvcName string) webhook.Handler {
 		}
 		var t *template.Template
 		if labels.IsTapDisabled(namespace) || labels.IsTapDisabled(pod) {
-			t, err = template.New("tpl").Parse(disabledTPL)
-		} else {
-			t, err = template.New("tpl").Parse(enabledTPL)
+			return admissionResponse, nil
 		}
+		t, err = template.New("tpl").Parse(tpl)
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +84,7 @@ func getProxyContainerIndex(containers []corev1.Container) int {
 
 func alreadyMutated(container corev1.Container) bool {
 	for _, envVar := range container.Env {
-		if envVar.Name == "LINKERD2_PROXY_TAP_SVC_NAME" || envVar.Name == "LINKERD2_PROXY_TAP_DISABLED" {
+		if envVar.Name == "LINKERD2_PROXY_TAP_SVC_NAME" {
 			return true
 		}
 	}
