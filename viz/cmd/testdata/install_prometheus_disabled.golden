@@ -620,7 +620,7 @@ webhooks:
       namespace: linkerd-viz
       path: "/"
     caBundle: dGVzdC10YXAtY2EtYnVuZGxl
-  failurePolicy: 
+  failurePolicy: Ignore
   reinvocationPolicy: IfNeeded
   rules:
   - operations: [ "CREATE" ]
@@ -678,7 +678,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: c27d2ae886ae019ce4b5142310de099d4fbb37b1bbf5f6e4a1a4146814e6f887
+        checksum/config: 9743576849a377b2869592fd55aa4a934b539f3f8a5ae954981e97dbcde82687
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
         linkerd.io/extension: linkerd-viz
