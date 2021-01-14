@@ -79,7 +79,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				{Name: "templates/link-crd.yaml"},
 			}
 
-			// Load all Viz chart files into buffer
+			// Load all multicluster install chart files into buffer
 			if err := charts.FilesReader(static.Templates, helmMulticlusterDefaultChartName+"/", files); err != nil {
 				return err
 			}
