@@ -3,10 +3,9 @@
 
 ## edge-21.1.2
 
-This edge release continues the work on de-coupling non-core Linkerd components,
-with good amount of clean up work in th CLI and proxy. This release also moves
-sub-commands that use the viz-extension i.e `dashboard`, `edges`, `routes`,
-`stat`, `tap` and `top` under the `viz` sub-command. These commands are still
+This edge release continues the work on de-coupling non-core Linkerd components.
+Commands that use the viz-extension i.e `dashboard`, `edges`, `routes`,
+`stat`, `tap` and `top` are moved to the `viz` sub-command. These commands are still
 available under root but are marked depreciated and will be removed in a
 later stable release.
 
