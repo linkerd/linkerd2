@@ -4,19 +4,19 @@
 ## edge-21.1.2
 
 This edge release continues the work on decoupling non-core Linkerd components.
-Commands that use the viz-extension i.e, `dashboard`, `edges`, `routes`,
+Commands that use the viz extension i.e, `dashboard`, `edges`, `routes`,
 `stat`, `tap` and `top` are moved to the `viz` sub-command. These commands are still
-available under root but are marked deprecated and will be removed in a
+available under root but are marked as deprecated and will be removed in a
 later stable release.
 
 This release also features proxy's dependencies upgrade to the
 Tokio v1 ecosystem.
 
-* Moved sub-commands that use the viz-extension under `viz`
-* Started ignoring pods with status.phase=Succeeded when watching IP addresses
-  in destination. This is useful for re-use of IPs of terminated pods
+* Moved sub-commands that use the viz extension under `viz`
+* Started ignoring pods with `Succeeded` status when watching IP addresses
+  in destination. This allows the re-use of IPs of terminated pods
 * Support Bring your own Jaeger use-case by adding `collector.jaegerAddr` in
-  the jaeger extension.
+  the Jaeger extension.
 * Fixed an issue with the generation of working manifests in the
   `podAntiAffinity` use-case
 * Added support for the modification of proxy resources in the viz
