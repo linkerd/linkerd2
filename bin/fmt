@@ -4,7 +4,7 @@ set -eu
 
 # go list will exclude the vendor directory.  We use grep to exclude generated
 # code.
-while IFS= read -r line; do dirs+=("$line"); done <<< "$(go list -f \{\{.Dir\}\} ./... | grep -v controller/gen)"
+while IFS= read -r line; do dirs+=("$line"); done <<< "$(go list -f \{\{.Dir\}\} ./... | grep -v controller/gen | grep -v viz/metrics-api/gen )"
 
 # go list will list all subdirectories and goimports acts recursively.  This
 # results in certain files being reported multiple time.  Therefore, we must

@@ -8,8 +8,8 @@ import (
 
 	proto "github.com/golang/protobuf/proto"
 	"github.com/linkerd/linkerd2/controller/api/util"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/prometheus/common/model"
 	"github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha1"
 	corev1 "k8s.io/api/core/v1"

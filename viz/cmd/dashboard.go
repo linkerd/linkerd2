@@ -6,7 +6,9 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	api "github.com/linkerd/linkerd2/pkg/public"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
@@ -59,10 +61,10 @@ func newDashboardOptions() *dashboardOptions {
 	}
 }
 
-// newCmdDashboard creates a new cobra command `dashboard` which contains commands for visualizing linkerd's dashboards.
+// NewCmdDashboard creates a new cobra command `dashboard` which contains commands for visualizing linkerd's dashboards.
 // After validating flag values, it will use the Kubernetes API to portforward requests to the Grafana and Web Deployments
 // until the process gets killed/canceled
-func newCmdDashboard() *cobra.Command {
+func NewCmdDashboard() *cobra.Command {
 	options := newDashboardOptions()
 
 	cmd := &cobra.Command{
@@ -80,9 +82,22 @@ func newCmdDashboard() *cobra.Command {
 			}
 
 			// ensure we can connect to the public API before starting the proxy
-			checkPublicAPIClientOrRetryOrExit(time.Now().Add(options.wait), true)
+			api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
+				ControlPlaneNamespace: controlPlaneNamespace,
+				KubeConfig:            kubeconfigPath,
+				Impersonate:           impersonate,
+				ImpersonateGroup:      impersonateGroup,
+				KubeContext:           kubeContext,
+				APIAddr:               apiAddr,
+				RetryDeadline:         time.Now().Add(options.wait),
+			}, true)
 
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			if err != nil {
+				return err
+			}
+
+			vizNamespace, err := getVizNamespace(cmd.Context(), k8sAPI)
 			if err != nil {
 				return err
 			}
@@ -94,7 +109,7 @@ func newCmdDashboard() *cobra.Command {
 			portforward, err := k8s.NewPortForward(
 				cmd.Context(),
 				k8sAPI,
-				defaultLinkerdVizNamespace,
+				vizNamespace,
 				webDeployment,
 				options.host,
 				options.port,

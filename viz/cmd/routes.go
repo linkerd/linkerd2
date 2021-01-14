@@ -9,10 +9,13 @@ import (
 	"sort"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/util"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	api "github.com/linkerd/linkerd2/pkg/public"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -41,7 +44,8 @@ func newRoutesOptions() *routesOptions {
 	}
 }
 
-func newCmdRoutes() *cobra.Command {
+// NewCmdRoutes creates a new cobra command `routes` for routes functionality
+func NewCmdRoutes() *cobra.Command {
 	options := newRoutesOptions()
 
 	cmd := &cobra.Command{
@@ -51,10 +55,10 @@ func newCmdRoutes() *cobra.Command {
 
 This command will only display traffic which is sent to a service that has a Service Profile defined.`,
 		Example: `  # Routes for the webapp service in the test namespace.
-  linkerd routes service/webapp -n test
+  linkerd viz routes service/webapp -n test
 
   # Routes for calls from the traffic deployment to the webapp service in the test namespace.
-  linkerd routes deploy/traffic -n test --to svc/webapp`,
+  linkerd viz routes deploy/traffic -n test --to svc/webapp`,
 		Args:      cobra.ExactArgs(1),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -63,7 +67,18 @@ This command will only display traffic which is sent to a service that has a Ser
 				return fmt.Errorf("error creating metrics request while making routes request: %v", err)
 			}
 
-			output, err := requestRouteStatsFromAPI(checkPublicAPIClientOrExit(), req, options)
+			output, err := requestRouteStatsFromAPI(
+				api.CheckVizAPIClientOrExit(healthcheck.Options{
+					ControlPlaneNamespace: controlPlaneNamespace,
+					KubeConfig:            kubeconfigPath,
+					Impersonate:           impersonate,
+					ImpersonateGroup:      impersonateGroup,
+					KubeContext:           kubeContext,
+					APIAddr:               apiAddr,
+				}),
+				req,
+				options,
+			)
 			if err != nil {
 				return err
 			}
@@ -242,6 +257,24 @@ func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *route
 			fmt.Fprintf(w, emptyTemplateString, values...)
 		}
 	}
+}
+
+// getRequestRate calculates request rate from Public API BasicStats.
+func getRequestRate(success, failure uint64, timeWindow string) float64 {
+	windowLength, err := time.ParseDuration(timeWindow)
+	if err != nil {
+		log.Error(err.Error())
+		return 0.0
+	}
+	return float64(success+failure) / windowLength.Seconds()
+}
+
+// getSuccessRate calculates success rate from Public API BasicStats.
+func getSuccessRate(success, failure uint64) float64 {
+	if success+failure == 0 {
+		return 0.0
+	}
+	return float64(success) / float64(success+failure)
 }
 
 // JSONRouteStats represents the JSON output of the routes command

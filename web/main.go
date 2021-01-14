@@ -47,7 +47,11 @@ func main() {
 	}
 	client, err := public.NewInternalClient(*controllerNamespace, *apiAddr)
 	if err != nil {
-		log.Fatalf("failed to construct client for API server URL %s", *apiAddr)
+		log.Fatalf("failed to construct client for viz API server URL %s", *apiAddr)
+	}
+	publicClient, err := public.NewInternalPublicClient(*controllerNamespace, *apiAddr)
+	if err != nil {
+		log.Fatalf("failed to construct client for public API server URL %s", *apiAddr)
 	}
 
 	if *clusterDomain == "" {
@@ -97,7 +101,7 @@ func main() {
 	}
 
 	server := srv.NewServer(*addr, *grafanaAddr, *jaegerAddr, *templateDir, *staticDir, uuid,
-		*controllerNamespace, *clusterDomain, *reload, reHost, client, k8sAPI, hc)
+		*controllerNamespace, *clusterDomain, *reload, reHost, client, publicClient, k8sAPI, hc)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)

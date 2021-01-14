@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/prometheus/common/model"
 	log "github.com/sirupsen/logrus"
 	"go.opencensus.io/trace"

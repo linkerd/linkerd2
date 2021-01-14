@@ -12,9 +12,10 @@ import (
 
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	healthcheckPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz/healthcheck"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	"google.golang.org/grpc"
@@ -23,7 +24,7 @@ import (
 // MockAPIClient satisfies the Public API's gRPC interfaces (public.APIClient).
 type MockAPIClient struct {
 	ErrorToReturn                  error
-	VersionInfoToReturn            *pb.VersionInfo
+	VersionInfoToReturn            *publicPb.VersionInfo
 	ListPodsResponseToReturn       *pb.ListPodsResponse
 	ListServicesResponseToReturn   *pb.ListServicesResponse
 	StatSummaryResponseToReturn    *pb.StatSummaryResponse
@@ -57,7 +58,7 @@ func (c *MockAPIClient) Edges(ctx context.Context, in *pb.EdgesRequest, opts ...
 }
 
 // Version provides a mock of a Public API method.
-func (c *MockAPIClient) Version(ctx context.Context, in *pb.Empty, opts ...grpc.CallOption) (*pb.VersionInfo, error) {
+func (c *MockAPIClient) Version(ctx context.Context, in *publicPb.Empty, opts ...grpc.CallOption) (*publicPb.VersionInfo, error) {
 	return c.VersionInfoToReturn, c.ErrorToReturn
 }
 

@@ -133,7 +133,7 @@ func TestCliTap(t *testing.T) {
 		})
 
 		t.Run("tap a disabled deployment", func(t *testing.T) {
-			out, stderr, err := TestHelper.PipeToLinkerdRun("", "tap", "deploy/t4", "--namespace", prefixedNs)
+			out, stderr, err := TestHelper.PipeToLinkerdRun("", "viz", "tap", "deploy/t4", "--namespace", prefixedNs)
 			if out != "" {
 				testutil.AnnotatedFatalf(t, "unexpected output",
 					"unexpected output: %s", out)

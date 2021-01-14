@@ -9,8 +9,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	healcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	healthcheckPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz/healthcheck"
 )
 
 type mockServer struct {
@@ -45,9 +46,9 @@ func (m *mockGrpcServer) Edges(ctx context.Context, req *pb.EdgesRequest) (*pb.E
 	return m.ResponseToReturn.(*pb.EdgesResponse), m.ErrorToReturn
 }
 
-func (m *mockGrpcServer) Version(ctx context.Context, req *pb.Empty) (*pb.VersionInfo, error) {
+func (m *mockGrpcServer) Version(ctx context.Context, req *publicPb.Empty) (*publicPb.VersionInfo, error) {
 	m.LastRequestReceived = req
-	return m.ResponseToReturn.(*pb.VersionInfo), m.ErrorToReturn
+	return m.ResponseToReturn.(*publicPb.VersionInfo), m.ErrorToReturn
 }
 
 func (m *mockGrpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb.ListPodsResponse, error) {
@@ -60,9 +61,9 @@ func (m *mockGrpcServer) ListServices(ctx context.Context, req *pb.ListServicesR
 	return m.ResponseToReturn.(*pb.ListServicesResponse), m.ErrorToReturn
 }
 
-func (m *mockGrpcServer) SelfCheck(ctx context.Context, req *healcheckPb.SelfCheckRequest) (*healcheckPb.SelfCheckResponse, error) {
+func (m *mockGrpcServer) SelfCheck(ctx context.Context, req *healthcheckPb.SelfCheckRequest) (*healthcheckPb.SelfCheckResponse, error) {
 	m.LastRequestReceived = req
-	return m.ResponseToReturn.(*healcheckPb.SelfCheckResponse), m.ErrorToReturn
+	return m.ResponseToReturn.(*healthcheckPb.SelfCheckResponse), m.ErrorToReturn
 }
 
 func (m *mockGrpcServer) Tap(req *pb.TapRequest, tapServer pb.Api_TapServer) error {
@@ -109,7 +110,7 @@ type grpcCallTestCase struct {
 
 func TestServer(t *testing.T) {
 	t.Run("Delegates all non-streaming RPC messages to the underlying grpc server", func(t *testing.T) {
-		mockGrpcServer, client := getServerClient(t)
+		mockGrpcServer, client := getServerVizClient(t)
 
 		listPodsReq := &pb.ListPodsRequest{}
 		testListPods := grpcCallTestCase{
@@ -129,22 +130,27 @@ func TestServer(t *testing.T) {
 			functionCall:     func() (proto.Message, error) { return client.StatSummary(context.TODO(), statSummaryReq) },
 		}
 
-		versionReq := &pb.Empty{}
-		testVersion := grpcCallTestCase{
-			expectedRequest: versionReq,
-			expectedResponse: &pb.VersionInfo{
-				BuildDate: "02/21/1983",
-			},
-			functionCall: func() (proto.Message, error) { return client.Version(context.TODO(), versionReq) },
-		}
-
-		for _, testCase := range []grpcCallTestCase{testListPods, testStatSummary, testVersion} {
+		for _, testCase := range []grpcCallTestCase{testListPods, testStatSummary} {
 			assertCallWasForwarded(t, &mockGrpcServer.mockServer, testCase.expectedRequest, testCase.expectedResponse, testCase.functionCall)
 		}
+
+		mockGrpcServer, clientPublic := getServerPublicClient(t)
+
+		versionReq := &publicPb.Empty{}
+		testVersion := grpcCallTestCase{
+			expectedRequest: versionReq,
+			expectedResponse: &publicPb.VersionInfo{
+				BuildDate: "02/21/1983",
+			},
+			functionCall: func() (proto.Message, error) { return clientPublic.Version(context.TODO(), versionReq) },
+		}
+
+		assertCallWasForwarded(t, &mockGrpcServer.mockServer, testVersion.expectedRequest, testVersion.expectedResponse, testVersion.functionCall)
+
 	})
 
 	t.Run("Delegates all streaming Destination RPC messages to the underlying grpc server", func(t *testing.T) {
-		mockGrpcServer, client := getServerClient(t)
+		mockGrpcServer, client := getServerPublicClient(t)
 
 		expectedDestinationGetResponses := []*destinationPb.Update{
 			{
@@ -203,7 +209,7 @@ func TestServer(t *testing.T) {
 	})
 
 	t.Run("Handles Tap route errors before opening keep-alive response", func(t *testing.T) {
-		mockGrpcServer, client := getServerClient(t)
+		mockGrpcServer, client := getServerVizClient(t)
 
 		mockGrpcServer.ErrorToReturn = errors.New("expected error")
 
@@ -214,7 +220,7 @@ func TestServer(t *testing.T) {
 	})
 
 	t.Run("Handles TapByResource route errors before opening keep-alive response", func(t *testing.T) {
-		mockGrpcServer, client := getServerClient(t)
+		mockGrpcServer, client := getServerVizClient(t)
 
 		mockGrpcServer.ErrorToReturn = errors.New("expected error")
 
@@ -226,7 +232,33 @@ func TestServer(t *testing.T) {
 
 }
 
-func getServerClient(t *testing.T) (*mockGrpcServer, APIClient) {
+func getServerPublicClient(t *testing.T) (*mockGrpcServer, PublicAPIClient) {
+	mockGrpcServer := &mockGrpcServer{}
+
+	listener, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatalf("Could not start listener: %v", err)
+	}
+
+	go func() {
+		handler := &handler{
+			publicGRPCServer: mockGrpcServer,
+		}
+		err := http.Serve(listener, handler)
+		if err != nil {
+			t.Fatalf("Could not start server: %v", err)
+		}
+	}()
+
+	client, err := NewInternalPublicClient("linkerd", listener.Addr().String())
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	return mockGrpcServer, client
+}
+
+func getServerVizClient(t *testing.T) (*mockGrpcServer, VizAPIClient) {
 	mockGrpcServer := &mockGrpcServer{}
 
 	listener, err := net.Listen("tcp", "localhost:0")

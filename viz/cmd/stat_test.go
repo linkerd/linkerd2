@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 )
 
@@ -120,6 +121,9 @@ func TestStat(t *testing.T) {
 	t.Run("Returns an error for named resource queries with the --all-namespaces flag", func(t *testing.T) {
 		options := newStatOptions()
 		options.allNamespaces = true
+		if options.namespace == "" {
+			options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+		}
 		args := []string{"po", "web"}
 		expectedError := "stats for a resource cannot be retrieved by name across all namespaces"
 
@@ -131,6 +135,9 @@ func TestStat(t *testing.T) {
 
 	t.Run("Rejects commands with both --to and --from flags", func(t *testing.T) {
 		options := newStatOptions()
+		if options.namespace == "" {
+			options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+		}
 		options.toResource = "deploy/foo"
 		options.fromResource = "deploy/bar"
 		args := []string{"ns", "test"}
@@ -144,6 +151,9 @@ func TestStat(t *testing.T) {
 
 	t.Run("Rejects commands with both --to-namespace and --from-namespace flags", func(t *testing.T) {
 		options := newStatOptions()
+		if options.namespace == "" {
+			options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+		}
 		options.toNamespace = "foo"
 		options.fromNamespace = "bar"
 		args := []string{"po"}
@@ -157,6 +167,9 @@ func TestStat(t *testing.T) {
 
 	t.Run("Rejects commands with both --all-namespaces and --namespace flags", func(t *testing.T) {
 		options := newStatOptions()
+		if options.namespace == "" {
+			options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+		}
 		options.allNamespaces = true
 		options.namespace = "ns"
 		args := []string{"po"}
@@ -170,6 +183,9 @@ func TestStat(t *testing.T) {
 
 	t.Run("Rejects --to-namespace flag when the target is a namespace", func(t *testing.T) {
 		options := newStatOptions()
+		if options.namespace == "" {
+			options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+		}
 		options.toNamespace = "bar"
 		args := []string{"ns", "foo"}
 		expectedError := "--to-namespace flag is incompatible with namespace resource type"
@@ -182,6 +198,9 @@ func TestStat(t *testing.T) {
 
 	t.Run("Rejects --from-namespace flag when the target is a namespace", func(t *testing.T) {
 		options := newStatOptions()
+		if options.namespace == "" {
+			options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+		}
 		options.fromNamespace = "foo"
 		args := []string{"ns/bar"}
 		expectedError := "--from-namespace flag is incompatible with namespace resource type"
@@ -194,6 +213,9 @@ func TestStat(t *testing.T) {
 
 	t.Run("Returns an error if --time-window is not more than 15s", func(t *testing.T) {
 		options := newStatOptions()
+		if options.namespace == "" {
+			options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+		}
 		options.timeWindow = "10s"
 		args := []string{"ns/bar"}
 		expectedError := "metrics time window needs to be at least 15s"
@@ -217,6 +239,9 @@ func testStatCall(exp paramsExp, resourceType string, t *testing.T) {
 	args := []string{"ns"}
 	if resourceType == k8s.TrafficSplit {
 		args = []string{"trafficsplit"}
+	}
+	if exp.options.namespace == "" {
+		exp.options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
 	}
 	reqs, err := buildStatSummaryRequests(args, exp.options)
 	if err != nil {
