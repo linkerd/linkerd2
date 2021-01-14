@@ -133,6 +133,7 @@ spec:
       - args:
         - identity
         - -log-level={{.Values.global.controllerLogLevel}}
+        - -log-format={{.Values.global.controllerLogFormat}}
         - -controller-namespace={{.Values.global.namespace}}
         - -identity-trust-domain={{.Values.global.identityTrustDomain}}
         - -identity-issuance-lifetime={{.Values.identity.issuer.issuanceLifetime}}

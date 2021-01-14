@@ -573,6 +573,7 @@ data:
       controlPlaneTracingNamespace: linkerd-jaeger
       controllerComponentLabel: linkerd.io/control-plane-component
       controllerImageVersion: install-control-plane-version
+      controllerLogFormat: plain
       controllerLogLevel: info
       controllerNamespaceLabel: linkerd.io/control-plane-ns
       createdByAnnotation: linkerd.io/created-by
@@ -811,6 +812,7 @@ spec:
       - args:
         - identity
         - -log-level=info
+        - -log-format=plain
         - -controller-namespace=linkerd
         - -identity-trust-domain=cluster.local
         - -identity-issuance-lifetime=24h0m0s
@@ -1051,6 +1053,7 @@ spec:
         - -destination-addr=linkerd-dst.linkerd.svc.cluster.local:8086
         - -controller-namespace=linkerd
         - -log-level=info
+        - -log-format=plain
         - -cluster-domain=cluster.local
         - -prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.cluster.local:9090
         image: ghcr.io/linkerd/controller:install-control-plane-version
@@ -1301,6 +1304,7 @@ spec:
         - -controller-namespace=linkerd
         - -enable-h2-upgrade=true
         - -log-level=info
+        - -log-format=plain
         - -enable-endpoint-slices=false
         - -cluster-domain=cluster.local
         - -identity-trust-domain=cluster.local
@@ -1511,6 +1515,7 @@ spec:
             - "heartbeat"
             - "-controller-namespace=linkerd"
             - "-log-level=info"
+            - "-log-format=plain"
             - "-prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.cluster.local:9090"
             securityContext:
               runAsUser: 2103
@@ -1556,6 +1561,7 @@ spec:
       - args:
         - proxy-injector
         - -log-level=info
+        - -log-format=plain
         image: ghcr.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1812,6 +1818,7 @@ spec:
       - args:
         - sp-validator
         - -log-level=info
+        - -log-format=plain
         image: ghcr.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

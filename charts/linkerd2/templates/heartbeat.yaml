@@ -46,6 +46,7 @@ spec:
             - "heartbeat"
             - "-controller-namespace={{.Values.global.namespace}}"
             - "-log-level={{.Values.global.controllerLogLevel}}"
+            - "-log-format={{.Values.global.controllerLogFormat}}"
             {{- if .Values.global.prometheusUrl }}
             - "-prometheus-url={{.Values.global.prometheusUrl}}"
             {{- else }}
