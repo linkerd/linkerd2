@@ -27,6 +27,9 @@ kubectl --context="$k8s_context" delete ns -l linkerd.io/is-test-data-plane
 
 # Helm cleanup. Just the entries in `helm ls` as the resources should have already been cleaned up by the code above.
 releases=$(helm ls -A -q)
+if [[ "${releases[*]}" =~ 'l5d-viz' ]]; then
+  "$bindir/helm" --kube-context="$k8s_context" delete l5d-viz
+fi
 if [[ "${releases[*]}" =~ 'helm-test' ]]; then
   "$bindir/helm" --kube-context="$k8s_context" delete helm-test
 fi
