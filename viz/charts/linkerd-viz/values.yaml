@@ -126,6 +126,7 @@ tapInjector:
     # matchLabels:
     #   foo: bar
   UID: *uid
+  failurePolicy: Ignore
   # resources:
   # -- Do not create a secret resource for the tapInjector webhook. If this is
   # set to `true`, the value `tapInjector.caBundle` must be set (see below)
