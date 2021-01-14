@@ -1,6 +1,39 @@
 
 # Changes
 
+## edge-21.1.2
+
+This edge release continues the work on de-coupling non-core Linkerd components,
+with good amount of clean up work in th CLI and proxy. This release also moves
+sub-commands that use the viz-extension i.e `dashboard`, `edges`, `routes`,
+`stat`, `tap` and `top` under the `viz` sub-command. These commands are still
+available under root but are marked depreciated and will be removed in a
+later stable release.
+
+This release also features proxy's dependencies upgrade to the
+Tokio v1 ecosystem.
+
+* Moves sub-commands that use the viz-extension under `viz`
+* Ignore pods with status.phase=Succeeded when watching IP addresses
+  in destination. This is useful for re-use of IPs of terminated pods
+* Support Bring your own Jaeger use-case by adding `collector.jaegerAddr` in
+  the jaeger extension.
+* Fixed an issue with the generation of working manifests in the
+  `podAntiAffinity` use-case
+* Added support for the modification of proxy resources in the viz
+  extension through `Values.yaml` in Helm and flags in CLI.
+* Better error reporting for port-forward logic with namespace
+  and pod data, used across dashboard, checks, etc
+  (thanks @piyushsingariya)
+* Added support to disable the rendering of `linkerd-viz` namespace
+  resource in the viz extension (thanks @nlamirault)
+* Make service-profile generation work offline with `--ignore-cluster`
+  flag (thanks @piyushsingariya)
+* Proxy's Tap API is disabled by default and it is enabled only when
+  `LINKERD2_PROXY_TAP_SVC_NAME` configuration is set. This means that
+  `LINKERD2_PROXY_TAP_DISABLED` is no longer honored
+* Upgraded the proxy's dependencies to Tokio v1 ecosystem
+
 ## edge-21.1.1
 
 This edge release introduces a new "opaque transport" feature that allows the
