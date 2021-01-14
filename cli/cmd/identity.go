@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/grantae/certinfo"
-	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -34,8 +33,9 @@ type identityOptions struct {
 
 func newIdentityOptions() *identityOptions {
 	return &identityOptions{
-		pod:      "",
-		selector: "",
+		pod:       "",
+		namespace: "",
+		selector:  "",
 	}
 }
 
@@ -58,9 +58,6 @@ This command initiates a port-forward to a given pod or a set of pods and fetche
  linkerd identity -l name=nginx
 		`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if options.namespace == "" {
-				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
-			}
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 			if err != nil {
 				return err
@@ -99,7 +96,7 @@ This command initiates a port-forward to a given pod or a set of pods and fetche
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the pod")
+	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy versions (default: all namespaces)")
 	cmd.PersistentFlags().StringVarP(&options.selector, "selector", "l", options.selector, "Selector (label query) to filter on, supports ‘=’, ‘==’, and ‘!=’ ")
 	return cmd
 }
