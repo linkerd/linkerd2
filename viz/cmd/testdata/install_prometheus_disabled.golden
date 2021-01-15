@@ -556,7 +556,7 @@ spec:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-viz-tap-injector
+  name: linkerd-linkerd-viz-tap-injector
   labels:
     linkerd.io/extension: linkerd-viz
     component: tap-injector
@@ -596,7 +596,6 @@ metadata:
   name: tap-injector-k8s-tls
   namespace: linkerd-viz
   labels:
-    linkerd.io/extension: linkerd-viz
     component: tap-injector
     namespace: linkerd-viz
   annotations:
@@ -672,18 +671,14 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      linkerd.io/extension: linkerd-viz
       component: tap-injector
-      namespace: linkerd-viz
   template:
     metadata:
       annotations:
-        checksum/config: 9b9409670152c6b2a823ad42310af7dac6df572274b70812262fb6effa44eb7c
+        checksum/config: 78c435e90b8e5c685fdb0b71dd9aabe973d53baad35b1c13bea0d427165d778c
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
-        linkerd.io/extension: linkerd-viz
         component: tap-injector
-        namespace: linkerd-viz
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux

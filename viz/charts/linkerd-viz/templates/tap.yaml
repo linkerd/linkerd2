@@ -84,7 +84,7 @@ spec:
         - -controller-namespace={{.Values.linkerdNamespace}}
         - -log-level={{.Values.tap.logLevel}}
         - -identity-trust-domain={{.Values.identityTrustDomain}}
-        image: {{.Values.tap.image.registry}}/{{.Values.tap.image.name}}:{{ default (default .Values.linkerdVersion .Values.controllerImageVersion) .Values.tap.image.tag}}
+        image: {{.Values.tap.image.registry}}/{{.Values.tap.image.name}}:{{.Values.tap.image.tag}}
         imagePullPolicy: {{.Values.tap.image.pullPolicy}}
         livenessProbe:
           httpGet:

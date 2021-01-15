@@ -42,9 +42,7 @@ spec:
   replicas: {{.Values.tapInjector.replicas}}
   selector:
     matchLabels:
-      {{.Values.extensionAnnotation}}: linkerd-viz
       component: tap-injector
-      namespace: {{.Values.namespace}}
   {{- if .Values.enablePodAntiAffinity }}
   strategy:
     rollingUpdate:
@@ -59,9 +57,7 @@ spec:
         {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
-        {{.Values.extensionAnnotation}}: linkerd-viz
         component: tap-injector
-        namespace: {{.Values.namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.tolerations -}}
@@ -69,14 +65,14 @@ spec:
       {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- if .Values.enablePodAntiAffinity -}}
-      {{- $local := dict "component" "tap-injector" "label" .Values.controllerComponentLabel -}}
+      {{- $local := dict "component" "tap-injector" "label" "component" -}}
       {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
       {{- end }}
       containers:
       - args:
         - tap-injector
         - -tap-service-name=linkerd-tap.{{.Values.namespace}}.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: {{.Values.tapInjector.image.registry}}/{{.Values.tapInjector.image.name}}:{{ default (default .Values.linkerdVersion .Values.controllerImageVersion) .Values.tapInjector.image.tag}}
+        image: {{.Values.tapInjector.image.registry}}/{{.Values.tapInjector.image.name}}:{{.Values.tapInjector.image.tag}}
         imagePullPolicy: {{.Values.tapInjector.image.pullPolicy}}
         livenessProbe:
           httpGet:
@@ -95,7 +91,7 @@ spec:
             path: /ready
             port: 9995
         {{- if .Values.tapInjector.resources -}}
-        {{- include "partials.resources" .tapInjector.resources | nindent 8 }}
+        {{- include "partials.resources" .Values.tapInjector.resources | nindent 8 }}
         {{- end }}
         securityContext:
           runAsUser: {{.Values.tapInjector.UID}}
