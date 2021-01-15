@@ -35,6 +35,7 @@ import (
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
+	apiregistrationv1client "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/typed/apiregistration/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -1091,16 +1092,16 @@ func (hc *HealthChecker) allCategories() []Category {
 						if err != nil {
 							return err
 						}
-						cert, err := hc.fetchCredsFromSecret(ctx, proxyInjectorTLSSecretName)
+						cert, err := hc.FetchCredsFromSecret(ctx, hc.ControlPlaneNamespace, proxyInjectorTLSSecretName)
 						if kerrors.IsNotFound(err) {
-							cert, err = hc.fetchCredsFromOldSecret(ctx, proxyInjectorOldTLSSecretName)
+							cert, err = hc.FetchCredsFromOldSecret(ctx, hc.ControlPlaneNamespace, proxyInjectorOldTLSSecretName)
 						}
 						if err != nil {
 							return err
 						}
 
 						identityName := fmt.Sprintf("linkerd-proxy-injector.%s.svc", hc.ControlPlaneNamespace)
-						return hc.checkCertAndAnchors(cert, anchors, identityName)
+						return hc.CheckCertAndAnchors(cert, anchors, identityName)
 					},
 				},
 				{
@@ -1108,14 +1109,14 @@ func (hc *HealthChecker) allCategories() []Category {
 					warning:     true,
 					hintAnchor:  "l5d-webhook-cert-not-expiring-soon",
 					check: func(ctx context.Context) error {
-						cert, err := hc.fetchCredsFromSecret(ctx, proxyInjectorTLSSecretName)
+						cert, err := hc.FetchCredsFromSecret(ctx, hc.ControlPlaneNamespace, proxyInjectorTLSSecretName)
 						if kerrors.IsNotFound(err) {
-							cert, err = hc.fetchCredsFromOldSecret(ctx, proxyInjectorOldTLSSecretName)
+							cert, err = hc.FetchCredsFromOldSecret(ctx, hc.ControlPlaneNamespace, proxyInjectorOldTLSSecretName)
 						}
 						if err != nil {
 							return err
 						}
-						return hc.checkCertAndAnchorsExpiringSoon(cert)
+						return hc.CheckCertAndAnchorsExpiringSoon(cert)
 
 					},
 				},
@@ -1128,15 +1129,15 @@ func (hc *HealthChecker) allCategories() []Category {
 						if err != nil {
 							return err
 						}
-						cert, err := hc.fetchCredsFromSecret(ctx, spValidatorTLSSecretName)
+						cert, err := hc.FetchCredsFromSecret(ctx, hc.ControlPlaneNamespace, spValidatorTLSSecretName)
 						if kerrors.IsNotFound(err) {
-							cert, err = hc.fetchCredsFromOldSecret(ctx, spValidatorOldTLSSecretName)
+							cert, err = hc.FetchCredsFromOldSecret(ctx, hc.ControlPlaneNamespace, spValidatorOldTLSSecretName)
 						}
 						if err != nil {
 							return err
 						}
 						identityName := fmt.Sprintf("linkerd-sp-validator.%s.svc", hc.ControlPlaneNamespace)
-						return hc.checkCertAndAnchors(cert, anchors, identityName)
+						return hc.CheckCertAndAnchors(cert, anchors, identityName)
 					},
 				},
 				{
@@ -1144,14 +1145,14 @@ func (hc *HealthChecker) allCategories() []Category {
 					warning:     true,
 					hintAnchor:  "l5d-webhook-cert-not-expiring-soon",
 					check: func(ctx context.Context) error {
-						cert, err := hc.fetchCredsFromSecret(ctx, spValidatorTLSSecretName)
+						cert, err := hc.FetchCredsFromSecret(ctx, hc.ControlPlaneNamespace, spValidatorTLSSecretName)
 						if kerrors.IsNotFound(err) {
-							cert, err = hc.fetchCredsFromOldSecret(ctx, spValidatorOldTLSSecretName)
+							cert, err = hc.FetchCredsFromOldSecret(ctx, hc.ControlPlaneNamespace, spValidatorOldTLSSecretName)
 						}
 						if err != nil {
 							return err
 						}
-						return hc.checkCertAndAnchorsExpiringSoon(cert)
+						return hc.CheckCertAndAnchorsExpiringSoon(cert)
 
 					},
 				},
@@ -1365,7 +1366,8 @@ func (hc *HealthChecker) allCategories() []Category {
 	}
 }
 
-func (hc *HealthChecker) checkCertAndAnchors(cert *tls.Cred, trustAnchors []*x509.Certificate, identityName string) error {
+// CheckCertAndAnchors checks if the given cert and anchors are valid
+func (hc *HealthChecker) CheckCertAndAnchors(cert *tls.Cred, trustAnchors []*x509.Certificate, identityName string) error {
 
 	// check anchors time validity
 	var expiredAnchors []string
@@ -1390,7 +1392,9 @@ func (hc *HealthChecker) checkCertAndAnchors(cert *tls.Cred, trustAnchors []*x50
 	return nil
 }
 
-func (hc *HealthChecker) checkCertAndAnchorsExpiringSoon(cert *tls.Cred) error {
+// CheckCertAndAnchorsExpiringSoon checks if the given cert and anchors expire soon, and returns an
+// error if they do.
+func (hc *HealthChecker) CheckCertAndAnchorsExpiringSoon(cert *tls.Cred) error {
 	// check anchors not expiring soon
 	var expiringAnchors []string
 	for _, anchor := range cert.TrustChain {
@@ -1408,6 +1412,30 @@ func (hc *HealthChecker) checkCertAndAnchorsExpiringSoon(cert *tls.Cred) error {
 		return fmt.Errorf("certificate %s", err)
 	}
 	return nil
+}
+
+// CheckAPIService checks the status of the given API Service and returns a error if its not running
+func (hc *HealthChecker) CheckAPIService(ctx context.Context, serviceName string) error {
+	apiServiceClient, err := apiregistrationv1client.NewForConfig(hc.kubeAPI.Config)
+	if err != nil {
+		return err
+	}
+
+	apiStatus, err := apiServiceClient.APIServices().Get(ctx, serviceName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, condition := range apiStatus.Status.Conditions {
+		if condition.Type == "Available" {
+			if condition.Status == "True" {
+				return nil
+			}
+			return fmt.Errorf("%s: %s", condition.Reason, condition.Message)
+		}
+	}
+
+	return fmt.Errorf("%s service not available", apiStatus.Name)
 }
 
 func (hc *HealthChecker) checkMinReplicasAvailable(ctx context.Context) error {
@@ -1700,8 +1728,9 @@ func (hc *HealthChecker) fetchSpValidatorCaBundle(ctx context.Context) ([]*x509.
 	return caBundle, nil
 }
 
-func (hc *HealthChecker) fetchCredsFromSecret(ctx context.Context, secretName string) (*tls.Cred, error) {
-	secret, err := hc.kubeAPI.CoreV1().Secrets(hc.ControlPlaneNamespace).Get(ctx, secretName, metav1.GetOptions{})
+// FetchCredsFromSecret retrieves the TLS creds given a secret name
+func (hc *HealthChecker) FetchCredsFromSecret(ctx context.Context, namespace string, secretName string) (*tls.Cred, error) {
+	secret, err := hc.kubeAPI.CoreV1().Secrets(namespace).Get(ctx, secretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -1724,11 +1753,11 @@ func (hc *HealthChecker) fetchCredsFromSecret(ctx context.Context, secretName st
 	return cred, nil
 }
 
-// this function can be removed in later versions, once eihter all webhook secrets are recreated for each update
+// FetchCredsFromOldSecret function can be removed in later versions, once eihter all webhook secrets are recreated for each update
 // (see https://github.com/linkerd/linkerd2/issues/4813)
 // or later releases are only expected to update from the new names.
-func (hc *HealthChecker) fetchCredsFromOldSecret(ctx context.Context, secretName string) (*tls.Cred, error) {
-	secret, err := hc.kubeAPI.CoreV1().Secrets(hc.ControlPlaneNamespace).Get(ctx, secretName, metav1.GetOptions{})
+func (hc *HealthChecker) FetchCredsFromOldSecret(ctx context.Context, namespace string, secretName string) (*tls.Cred, error) {
+	secret, err := hc.kubeAPI.CoreV1().Secrets(namespace).Get(ctx, secretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -1842,6 +1871,26 @@ func CheckClusterRoleBindings(ctx context.Context, kubeAPI *k8s.KubernetesAPI, s
 	}
 
 	return checkResources("ClusterRoleBindings", objects, expectedNames, shouldExist)
+}
+
+// CheckConfigMaps checks that the expected ConfigMaps  exist.
+func CheckConfigMaps(ctx context.Context, kubeAPI *k8s.KubernetesAPI, namespace string, shouldExist bool, expectedNames []string, labelSelector string) error {
+	options := metav1.ListOptions{
+		LabelSelector: labelSelector,
+	}
+	crbList, err := kubeAPI.CoreV1().ConfigMaps(namespace).List(ctx, options)
+	if err != nil {
+		return err
+	}
+
+	objects := []runtime.Object{}
+
+	for _, item := range crbList.Items {
+		item := item // pin
+		objects = append(objects, &item)
+	}
+
+	return checkResources("ConfigMaps", objects, expectedNames, shouldExist)
 }
 
 func (hc *HealthChecker) isHA() bool {

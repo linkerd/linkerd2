@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"os"
@@ -9,9 +10,12 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apiregistrationv1client "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/typed/apiregistration/v1"
 )
 
 const (
@@ -21,6 +25,14 @@ const (
 
 	// linkerdVizExtensionCheck adds checks related to the Linkerd Viz etension
 	linkerdVizExtensionCheck healthcheck.CategoryID = vizExtensionName
+
+	// linkerdTapAPIServiceName is the name of the tap api service
+	// This key is passed to checkApiService method to check whether
+	// the api service is available or not
+	linkerdTapAPIServiceName = "v1alpha1.tap.linkerd.io"
+
+	tapOldTLSSecretName = "linkerd-tap-tls"
+	tapTLSSecretName    = "linkerd-tap-k8s-tls"
 )
 
 var (
@@ -32,13 +44,7 @@ type checkOptions struct {
 	output string
 }
 
-func vizCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error) {
-
-	kubeAPI, err := k8s.NewAPI(hc.KubeConfig, hc.KubeContext, hc.Impersonate, hc.ImpersonateGroup, 0)
-	if err != nil {
-		return nil, err
-	}
-
+func vizCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 	checkers := []healthcheck.Checker{}
 	checkers = append(checkers,
 		*healthcheck.NewChecker("linkerd-viz Namespace exists").
@@ -51,23 +57,74 @@ func vizCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error) {
 
 	checkers = append(checkers,
 		*healthcheck.NewChecker("linkerd-viz ClusterRoles exist").
-			WithHintAnchor("l5d-viz-sc-exists").
+			WithHintAnchor("l5d-viz-cr-exists").
 			Fatal().
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				return healthcheck.CheckClusterRoles(ctx, kubeAPI, true, []string{fmt.Sprintf("linkerd-%s-prometheus", vizNamespace), fmt.Sprintf("linkerd-%s-tap", vizNamespace)}, "")
+				return healthcheck.CheckClusterRoles(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-prometheus", vizNamespace), fmt.Sprintf("linkerd-%s-tap", vizNamespace)}, "")
 			}))
 
 	checkers = append(checkers,
 		*healthcheck.NewChecker("linkerd-viz ClusterRoleBindings exist").
-			WithHintAnchor("l5d-viz-sc-exists").
+			WithHintAnchor("l5d-viz-crb-exists").
 			Fatal().
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				return healthcheck.CheckClusterRoleBindings(ctx, kubeAPI, true, []string{fmt.Sprintf("linkerd-%s-prometheus", vizNamespace), fmt.Sprintf("linkerd-%s-tap", vizNamespace), "linkerd-web"}, "")
+				return healthcheck.CheckClusterRoleBindings(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-prometheus", vizNamespace), fmt.Sprintf("linkerd-%s-tap", vizNamespace)}, "")
 			}))
 
-	//TODO: add tap webhook certs check
+	checkers = append(checkers,
+		*healthcheck.NewChecker("linkerd-viz ConfigMaps exist").
+			WithHintAnchor("l5d-viz-cm-exists").
+			Fatal().
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				return healthcheck.CheckConfigMaps(ctx, hc.KubeAPIClient(), vizNamespace, true, []string{"linkerd-prometheus-config", "linkerd-grafana-config"}, "")
+			}))
+
+	checkers = append(checkers,
+		*healthcheck.NewChecker("tap API server has valid cert").
+			WithHintAnchor("l5d-tap-cert-valid").
+			Fatal().
+			WithCheck(func(ctx context.Context) error {
+				anchors, err := fetchTapCaBundle(ctx, hc.KubeAPIClient())
+				if err != nil {
+					return err
+				}
+				cert, err := hc.FetchCredsFromSecret(ctx, vizNamespace, tapTLSSecretName)
+				if kerrors.IsNotFound(err) {
+					cert, err = hc.FetchCredsFromOldSecret(ctx, vizNamespace, tapOldTLSSecretName)
+				}
+				if err != nil {
+					return err
+				}
+
+				identityName := fmt.Sprintf("linkerd-tap.%s.svc", vizNamespace)
+				return hc.CheckCertAndAnchors(cert, anchors, identityName)
+			}))
+
+	checkers = append(checkers,
+		*healthcheck.NewChecker("tap API server cert is valid for at least 60 days").
+			WithHintAnchor("l5d-webhook-cert-not-expiring-soon").
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				cert, err := hc.FetchCredsFromSecret(ctx, vizNamespace, tapTLSSecretName)
+				if kerrors.IsNotFound(err) {
+					cert, err = hc.FetchCredsFromOldSecret(ctx, vizNamespace, tapOldTLSSecretName)
+				}
+				if err != nil {
+					return err
+				}
+				return hc.CheckCertAndAnchorsExpiringSoon(cert)
+			}))
+
+	checkers = append(checkers,
+		*healthcheck.NewChecker("tap api service is running").
+			WithHintAnchor("l5d-tap-api").
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				return hc.CheckAPIService(ctx, linkerdTapAPIServiceName)
+			}))
 
 	checkers = append(checkers,
 		*healthcheck.NewChecker("viz extension pods are running").
@@ -76,7 +133,7 @@ func vizCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error) {
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
-				pods, err := kubeAPI.GetPodsByNamespace(ctx, vizNamespace)
+				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, vizNamespace)
 				if err != nil {
 					return err
 				}
@@ -88,14 +145,15 @@ func vizCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error) {
 			WithHintAnchor("l5d-viz-pods-injection").
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				pods, err := kubeAPI.GetPodsByNamespace(ctx, vizNamespace)
+				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, vizNamespace)
 				if err != nil {
 					return err
 				}
 				return healthcheck.CheckIfDataPlanePodsExist(pods)
 			}))
 
-	return healthcheck.NewCategory(linkerdVizExtensionCheck, checkers, true), nil
+	// TODO: Add dataplane metrics in prometheus check
+	return healthcheck.NewCategory(linkerdVizExtensionCheck, checkers, true)
 }
 
 func newCheckOptions() *checkOptions {
@@ -168,12 +226,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		RetryDeadline:         time.Now().Add(options.wait),
 	})
 
-	category, err := vizCategory(hc)
-	if err != nil {
-		return err
-	}
-
-	hc.AppendCategories(*category)
+	hc.AppendCategories(*vizCategory(hc))
 
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
@@ -201,4 +254,22 @@ func getNamespaceOfExtension(name string) (*corev1.Namespace, error) {
 		}
 	}
 	return nil, fmt.Errorf("could not find the linkerd-viz extension. it can be installed by running `linkerd viz install | kubectl apply -f -`")
+}
+
+func fetchTapCaBundle(ctx context.Context, kubeAPI *k8s.KubernetesAPI) ([]*x509.Certificate, error) {
+	apiServiceClient, err := apiregistrationv1client.NewForConfig(kubeAPI.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	apiService, err := apiServiceClient.APIServices().Get(ctx, linkerdTapAPIServiceName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	caBundle, err := tls.DecodePEMCertificates(string(apiService.Spec.CABundle))
+	if err != nil {
+		return nil, err
+	}
+	return caBundle, nil
 }
