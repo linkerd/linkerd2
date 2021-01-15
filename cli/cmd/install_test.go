@@ -47,6 +47,7 @@ func TestRender(t *testing.T) {
 			CliVersion:               "CliVersion",
 			ControllerComponentLabel: "ControllerComponentLabel",
 			ControllerLogLevel:       "ControllerLogLevel",
+			ControllerLogFormat:      "ControllerLogFormat",
 			ControllerImageVersion:   "ControllerImageVersion",
 			ControllerNamespaceLabel: "ControllerNamespaceLabel",
 			WorkloadNamespaceLabel:   "WorkloadNamespaceLabel",

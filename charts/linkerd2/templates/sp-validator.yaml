@@ -95,6 +95,7 @@ spec:
       - args:
         - sp-validator
         - -log-level={{.Values.global.controllerLogLevel}}
+        - -log-format={{.Values.global.controllerLogFormat}}
         image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
