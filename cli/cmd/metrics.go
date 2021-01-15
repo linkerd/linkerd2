@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/util"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -23,8 +24,7 @@ type metricsOptions struct {
 
 func newMetricsOptions() *metricsOptions {
 	return &metricsOptions{
-		namespace: defaultNamespace,
-		pod:       "",
+		pod: "",
 	}
 }
 
@@ -74,6 +74,9 @@ func newCmdMetrics() *cobra.Command {
   )`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if options.namespace == "" {
+				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+			}
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 			if err != nil {
 				return err

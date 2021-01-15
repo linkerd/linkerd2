@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/util"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	api "github.com/linkerd/linkerd2/pkg/public"
@@ -21,6 +22,7 @@ import (
 )
 
 type routesOptions struct {
+	namespace string
 	statOptionsBase
 	toResource    string
 	toNamespace   string
@@ -62,6 +64,9 @@ This command will only display traffic which is sent to a service that has a Ser
 		Args:      cobra.ExactArgs(1),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if options.namespace == "" {
+				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+			}
 			req, err := buildTopRoutesRequest(args[0], options)
 			if err != nil {
 				return fmt.Errorf("error creating metrics request while making routes request: %v", err)
