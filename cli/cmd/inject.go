@@ -32,6 +32,7 @@ const (
 	unsupportedDesc                  = "at least one resource injected"
 	udpDesc                          = "pod specs do not include UDP ports"
 	automountServiceAccountTokenDesc = "pods do not have automountServiceAccountToken set to \"false\""
+	serviceAccountAutomountTokenDesc = "injected workloads do not use service account with automountServiceAccountToken set to \"false\""
 	slash                            = "/"
 )
 
@@ -230,6 +231,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	udp := []string{}
 	injectDisabled := []string{}
 	automountServiceAccountTokenFalse := []string{}
+	serviceAccountAutomountTokenFalse := []string{}
 	warningsPrinted := verbose
 
 	for _, r := range reports {
@@ -259,6 +261,11 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 
 		if !r.AutomountServiceAccountToken {
 			automountServiceAccountTokenFalse = append(automountServiceAccountTokenFalse, r.ResName())
+			warningsPrinted = true
+		}
+
+		if !r.ServiceAccountAutomountToken {
+			serviceAccountAutomountTokenFalse = append(serviceAccountAutomountTokenFalse, r.ResName())
 			warningsPrinted = true
 		}
 	}
@@ -308,6 +315,10 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 
 	if len(automountServiceAccountTokenFalse) == 0 && verbose {
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, automountServiceAccountTokenDesc)))
+	}
+
+	if len(serviceAccountAutomountTokenFalse) == 0 && verbose {
+		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, serviceAccountAutomountTokenDesc)))
 	}
 	//
 	// Summary
