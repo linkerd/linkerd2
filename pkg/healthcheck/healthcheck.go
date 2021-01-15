@@ -1279,7 +1279,7 @@ func (hc *HealthChecker) allCategories() []Category {
 					retryDeadline: hc.RetryDeadline,
 					fatal:         true,
 					check: func(ctx context.Context) error {
-						pods, err := hc.getDataPlanePods(ctx)
+						pods, err := hc.GetDataPlanePods(ctx)
 						if err != nil {
 							return err
 						}
@@ -1292,7 +1292,7 @@ func (hc *HealthChecker) allCategories() []Category {
 					hintAnchor:  "l5d-data-plane-version",
 					warning:     true,
 					check: func(ctx context.Context) error {
-						pods, err := hc.getDataPlanePods(ctx)
+						pods, err := hc.GetDataPlanePods(ctx)
 						if err != nil {
 							return err
 						}
@@ -1316,7 +1316,7 @@ func (hc *HealthChecker) allCategories() []Category {
 					hintAnchor:  "l5d-data-plane-cli-version",
 					warning:     true,
 					check: func(ctx context.Context) error {
-						pods, err := hc.getDataPlanePods(ctx)
+						pods, err := hc.GetDataPlanePods(ctx)
 						if err != nil {
 							return err
 						}
@@ -2151,7 +2151,8 @@ func checkResources(resourceName string, objects []runtime.Object, expectedNames
 	return nil
 }
 
-func (hc *HealthChecker) getDataPlanePods(ctx context.Context) ([]*pb.Pod, error) {
+// GetDataPlanePods returns all the pods with data plane
+func (hc *HealthChecker) GetDataPlanePods(ctx context.Context) ([]*pb.Pod, error) {
 	req := &pb.ListPodsRequest{}
 	if hc.DataPlaneNamespace != "" {
 		req.Selector = &pb.ResourceSelection{
@@ -2558,6 +2559,25 @@ func checkControlPlaneReplicaSets(rst []appsv1.ReplicaSet) error {
 
 	if len(errors) > 0 {
 		return fmt.Errorf("%s", strings.Join(errors, "\n   "))
+	}
+
+	return nil
+}
+
+// CheckForPods checks if the given deployments have pod resources present
+func CheckForPods(pods []corev1.Pod, deployNames []string) error {
+	exists := make(map[string]bool)
+
+	for _, pod := range pods {
+		// Strip randomized suffix and take the deployment name
+		deployName := strings.Join(strings.Split(pod.Name, "-")[:2], "-")
+		exists[deployName] = true
+	}
+
+	for _, expected := range deployNames {
+		if !exists[expected] {
+			return fmt.Errorf("Could not find pods for deployment %s", expected)
+		}
 	}
 
 	return nil

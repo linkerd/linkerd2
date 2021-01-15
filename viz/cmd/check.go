@@ -128,7 +128,7 @@ func vizCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 
 	checkers = append(checkers,
 		*healthcheck.NewChecker("viz extension pods are running").
-			WithHintAnchor("l5d-viz-collector-running").
+			WithHintAnchor("l5d-viz-pods-running").
 			Warning().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
@@ -137,6 +137,13 @@ func vizCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 				if err != nil {
 					return err
 				}
+
+				// Check for relevant pods to be present
+				err = healthcheck.CheckForPods(pods, []string{"linkerd-grafana", "linkerd-prometheus", "linkerd-web", "linkerd-tap"})
+				if err != nil {
+					return err
+				}
+
 				return healthcheck.CheckPodsRunning(pods)
 			}))
 
