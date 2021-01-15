@@ -35,10 +35,6 @@ const (
 	tapTLSSecretName    = "linkerd-tap-k8s-tls"
 )
 
-var (
-	vizNamespace string
-)
-
 type checkOptions struct {
 	wait   time.Duration
 	output string
@@ -52,7 +48,13 @@ func vizCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			Fatal().
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				return hc.CheckNamespace(ctx, vizNamespace, true)
+				// Get viz Extension Namespace
+				ns, err := getNamespaceOfExtension(vizExtensionName)
+				if err != nil {
+					return err
+				}
+				hc.VizNamespace = ns.Name
+				return nil
 			}))
 
 	checkers = append(checkers,
@@ -61,7 +63,7 @@ func vizCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			Fatal().
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				return healthcheck.CheckClusterRoles(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-prometheus", vizNamespace), fmt.Sprintf("linkerd-%s-tap", vizNamespace)}, "")
+				return healthcheck.CheckClusterRoles(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-prometheus", hc.VizNamespace), fmt.Sprintf("linkerd-%s-tap", hc.VizNamespace)}, "")
 			}))
 
 	checkers = append(checkers,
@@ -70,7 +72,7 @@ func vizCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			Fatal().
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				return healthcheck.CheckClusterRoleBindings(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-prometheus", vizNamespace), fmt.Sprintf("linkerd-%s-tap", vizNamespace)}, "")
+				return healthcheck.CheckClusterRoleBindings(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-prometheus", hc.VizNamespace), fmt.Sprintf("linkerd-%s-tap", hc.VizNamespace)}, "")
 			}))
 
 	checkers = append(checkers,
@@ -79,7 +81,7 @@ func vizCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			Fatal().
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				return healthcheck.CheckConfigMaps(ctx, hc.KubeAPIClient(), vizNamespace, true, []string{"linkerd-prometheus-config", "linkerd-grafana-config"}, "")
+				return healthcheck.CheckConfigMaps(ctx, hc.KubeAPIClient(), hc.VizNamespace, true, []string{"linkerd-prometheus-config", "linkerd-grafana-config"}, "")
 			}))
 
 	checkers = append(checkers,
@@ -91,15 +93,15 @@ func vizCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 				if err != nil {
 					return err
 				}
-				cert, err := hc.FetchCredsFromSecret(ctx, vizNamespace, tapTLSSecretName)
+				cert, err := hc.FetchCredsFromSecret(ctx, hc.VizNamespace, tapTLSSecretName)
 				if kerrors.IsNotFound(err) {
-					cert, err = hc.FetchCredsFromOldSecret(ctx, vizNamespace, tapOldTLSSecretName)
+					cert, err = hc.FetchCredsFromOldSecret(ctx, hc.VizNamespace, tapOldTLSSecretName)
 				}
 				if err != nil {
 					return err
 				}
 
-				identityName := fmt.Sprintf("linkerd-tap.%s.svc", vizNamespace)
+				identityName := fmt.Sprintf("linkerd-tap.%s.svc", hc.VizNamespace)
 				return hc.CheckCertAndAnchors(cert, anchors, identityName)
 			}))
 
@@ -108,9 +110,9 @@ func vizCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			WithHintAnchor("l5d-webhook-cert-not-expiring-soon").
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				cert, err := hc.FetchCredsFromSecret(ctx, vizNamespace, tapTLSSecretName)
+				cert, err := hc.FetchCredsFromSecret(ctx, hc.VizNamespace, tapTLSSecretName)
 				if kerrors.IsNotFound(err) {
-					cert, err = hc.FetchCredsFromOldSecret(ctx, vizNamespace, tapOldTLSSecretName)
+					cert, err = hc.FetchCredsFromOldSecret(ctx, hc.VizNamespace, tapOldTLSSecretName)
 				}
 				if err != nil {
 					return err
@@ -133,7 +135,7 @@ func vizCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
-				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, vizNamespace)
+				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, hc.VizNamespace)
 				if err != nil {
 					return err
 				}
@@ -152,7 +154,7 @@ func vizCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			WithHintAnchor("l5d-viz-pods-injection").
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, vizNamespace)
+				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, hc.VizNamespace)
 				if err != nil {
 					return err
 				}
@@ -192,14 +194,6 @@ code.`,
 		Example: `  # Check that the viz extension is up and running
   linkerd viz check`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-
-			// Get viz Extension Namespace
-			ns, err := getNamespaceOfExtension(vizExtensionName)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err.Error())
-				os.Exit(1)
-			}
-			vizNamespace = ns.Name
 
 			return configureAndRunChecks(stdout, stderr, options)
 		},

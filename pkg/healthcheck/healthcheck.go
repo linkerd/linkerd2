@@ -396,6 +396,7 @@ func NewCategory(id CategoryID, checkers []Checker, enabled bool) *Category {
 // Options specifies configuration for a HealthChecker.
 type Options struct {
 	ControlPlaneNamespace string
+	VizNamespace          string
 	CNINamespace          string
 	DataPlaneNamespace    string
 	KubeConfig            string
