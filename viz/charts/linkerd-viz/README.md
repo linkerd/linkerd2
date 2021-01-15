@@ -1,7 +1,7 @@
 # linkerd-viz
 
-Linkerd Viz extension contains the observability and visualization
-components that can be integrated directly.
+The Linkerd-Viz extension contains observability and visualization
+components for Linkerd.
 
 ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square)
 

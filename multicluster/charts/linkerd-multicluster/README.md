@@ -1,11 +1,63 @@
-# linkerd2-multicluster
+# linkerd-multicluster
 
-A helm chart containing the resources to support multicluster
+The Linkerd-Multicluster extension contains resources to support multicluster
 linking to remote clusters
 
 ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
+
+**Homepage:** <https://linkerd.io>
+
+## Quickstart and documentation
+
+You can run Linkerd on any Kubernetes 1.13+ cluster in a matter of seconds. See
+the [Linkerd Getting Started Guide][getting-started] for how.
+
+For more comprehensive documentation, start with the [Linkerd
+docs][linkerd-docs].
+
+## Prerequisite: Linkerd Core Control-Plane
+
+Before installing the Linkerd Multicluster extension, The core control-plane has
+to be installed first by following the [Linkerd Install
+Guide](https://linkerd.io/2/tasks/install/).
+
+## Adding Linkerd's Helm repository
+
+```bash
+# To add the repo for Linkerd2 stable releases:
+helm repo add linkerd https://helm.linkerd.io/stable
+# To add the repo for Linkerd2 edge releases:
+helm repo add linkerd-edge https://helm.linkerd.io/edge
+```
+
+The following instructions use the `linkerd` repo. For installing an edge
+release, just replace with `linkerd-edge`.
+
+## Installing the Multicluster Extension Chart
+
+```bash
+helm install linkerd/linkerd-multicluster
+```
+
+## Get involved
+
+* Check out Linkerd's source code at [Github][linkerd2].
+* Join Linkerd's [user mailing list][linkerd-users], [developer mailing
+  list][linkerd-dev], and [announcements mailing list][linkerd-announce].
+* Follow [@linkerd][twitter] on Twitter.
+* Join the [Linkerd Slack][slack].
+
+[cncf]: https://www.cncf.io/
+[getting-started]: https://linkerd.io/2/getting-started/
+[linkerd2]: https://github.com/linkerd/linkerd2
+[linkerd-announce]: https://lists.cncf.io/g/cncf-linkerd-announce
+[linkerd-dev]: https://lists.cncf.io/g/cncf-linkerd-dev
+[linkerd-docs]: https://linkerd.io/2/overview/
+[linkerd-users]: https://lists.cncf.io/g/cncf-linkerd-users
+[slack]: http://slack.linkerd.io
+[twitter]: https://twitter.com/linkerd
 
 ## Requirements
 

@@ -16,8 +16,8 @@ const (
 	defaultLinkerdNamespace              = "linkerd"
 	defaultMulticlusterNamespace         = "linkerd-multicluster"
 	defaultGatewayName                   = "linkerd-gateway"
-	helmMulticlusterDefaultChartName     = "linkerd2-multicluster"
-	helmMulticlusterLinkDefaultChartName = "linkerd2-multicluster-link"
+	helmMulticlusterDefaultChartName     = "linkerd-multicluster"
+	helmMulticlusterLinkDefaultChartName = "linkerd-multicluster-link"
 	tokenKey                             = "token"
 
 	defaultServiceAccountName = "linkerd-service-mirror-remote-access-default"
