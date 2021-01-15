@@ -119,7 +119,7 @@ func vizCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			}))
 
 	checkers = append(checkers,
-		*healthcheck.NewChecker("tap api service is running").
+		*healthcheck.NewChecker("tap API service is running").
 			WithHintAnchor("l5d-tap-api").
 			Warning().
 			WithCheck(func(ctx context.Context) error {
@@ -260,7 +260,7 @@ func getNamespaceOfExtension(name string) (*corev1.Namespace, error) {
 			return &ns, err
 		}
 	}
-	return nil, fmt.Errorf("could not find the linkerd-viz extension. it can be installed by running `linkerd viz install | kubectl apply -f -`")
+	return nil, fmt.Errorf("could not find the linkerd-viz extension. It can be installed by running `linkerd viz install | kubectl apply -f -`")
 }
 
 func fetchTapCaBundle(ctx context.Context, kubeAPI *k8s.KubernetesAPI) ([]*x509.Certificate, error) {

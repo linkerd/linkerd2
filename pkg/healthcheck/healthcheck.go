@@ -1414,7 +1414,7 @@ func (hc *HealthChecker) CheckCertAndAnchorsExpiringSoon(cert *tls.Cred) error {
 	return nil
 }
 
-// CheckAPIService checks the status of the given API Service and returns a error if its not running
+// CheckAPIService checks the status of the given API Service and returns an error if it's not running
 func (hc *HealthChecker) CheckAPIService(ctx context.Context, serviceName string) error {
 	apiServiceClient, err := apiregistrationv1client.NewForConfig(hc.kubeAPI.Config)
 	if err != nil {
