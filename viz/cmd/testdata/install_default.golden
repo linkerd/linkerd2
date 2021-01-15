@@ -860,7 +860,7 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-viz-tap-injector
+  name: linkerd-linkerd-viz-tap-injector
   labels:
     linkerd.io/extension: linkerd-viz
 subjects:
@@ -869,7 +869,7 @@ subjects:
   namespace: linkerd-viz
 roleRef:
   kind: ClusterRole
-  name: linkerd-viz-tap-injector
+  name: linkerd-linkerd-viz-tap-injector
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: ServiceAccount
@@ -967,7 +967,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 78c435e90b8e5c685fdb0b71dd9aabe973d53baad35b1c13bea0d427165d778c
+        checksum/config: f8b6ad7cf319e3280cf8175fa980087e39723782c6f508debc6afbf6eed7cf91
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
         component: tap-injector
