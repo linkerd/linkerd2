@@ -10,7 +10,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -75,7 +74,7 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 				if err != nil {
 					return err
 				}
-				return checkPodsRunning(podList.Items)
+				return healthcheck.CheckPodsRunning(podList.Items)
 			}))
 
 	checkers = append(checkers,
@@ -90,7 +89,7 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 				if err != nil {
 					return err
 				}
-				return checkPodsRunning(podList.Items)
+				return healthcheck.CheckPodsRunning(podList.Items)
 			}))
 
 	checkers = append(checkers,
@@ -103,7 +102,7 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 				if err != nil {
 					return err
 				}
-				return checkIfDataPlanePodsExist(pods)
+				return healthcheck.CheckIfDataPlanePodsExist(pods)
 			}))
 
 	return healthcheck.NewCategory(linkerdJaegerExtensionCheck, checkers, true), nil
@@ -189,33 +188,5 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		os.Exit(1)
 	}
 
-	return nil
-}
-
-func checkIfDataPlanePodsExist(pods []corev1.Pod) error {
-	for _, pod := range pods {
-		if !containsProxy(pod) {
-			return fmt.Errorf("could not find proxy container for %s pod", pod.Name)
-		}
-	}
-	return nil
-}
-
-func containsProxy(pod corev1.Pod) bool {
-	for _, containerSpec := range pod.Spec.Containers {
-		if containerSpec.Name == k8s.ProxyContainerName {
-			return true
-		}
-	}
-	return false
-}
-
-// checkPodsRunning checks if the given pods are in running state
-func checkPodsRunning(pods []corev1.Pod) error {
-	for _, pod := range pods {
-		if pod.Status.Phase != "Running" {
-			return fmt.Errorf("%s status is %s", pod.Name, pod.Status.Phase)
-		}
-	}
 	return nil
 }
