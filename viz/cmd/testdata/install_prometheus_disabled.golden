@@ -563,7 +563,7 @@ metadata:
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
-  verbs: ["get", "list"]
+  verbs: ["get", "list", "watch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -678,7 +678,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 9743576849a377b2869592fd55aa4a934b539f3f8a5ae954981e97dbcde82687
+        checksum/config: 9b9409670152c6b2a823ad42310af7dac6df572274b70812262fb6effa44eb7c
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
         linkerd.io/extension: linkerd-viz
