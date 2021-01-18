@@ -87,7 +87,7 @@ Kubernetes: `>=1.13.0-0`
 | dashboard.resources.memory.request | string | `nil` | Amount of memory that the web container requests |
 | dashboard.restrictPrivileges | bool | `false` | Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check |
 | defaultLogLevel | string | `"info"` | Log level for all the viz components |
-| defaultRegistry | string | `"ghcr.io/linkerd"` |  |
+| defaultRegistry | string | `"ghcr.io/linkerd"` | docker registry for all viz components |
 | defaultUID | int | `2103` | UID for all the viz components |
 | extensionAnnotation | string | `"linkerd.io/extension"` |  |
 | grafana.enabled | bool | `true` | toggle field to enable or disable grafana |

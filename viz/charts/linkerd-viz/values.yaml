@@ -15,9 +15,7 @@ createdByAnnotation: linkerd.io/created-by
 proxyInjectAnnotation: linkerd.io/inject
 extensionAnnotation: linkerd.io/extension
 
-# Default Values
-
-# -- Default docker registry for all viz components
+# -- docker registry for all viz components
 defaultRegistry: &registry ghcr.io/linkerd
 # -- Log level for all the viz components
 defaultLogLevel: &log_level info
