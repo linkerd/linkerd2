@@ -179,7 +179,6 @@ func configureAndRunChecks(ctx context.Context, wout io.Writer, werr io.Writer, 
 			checks = append(checks, healthcheck.LinkerdWebhooksAndAPISvcTLS)
 
 			if options.dataPlaneOnly {
-				checks = append(checks, healthcheck.LinkerdDataPlaneChecks)
 				checks = append(checks, healthcheck.LinkerdIdentityDataPlane)
 			} else {
 				checks = append(checks, healthcheck.LinkerdControlPlaneVersionChecks)

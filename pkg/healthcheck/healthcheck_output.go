@@ -29,14 +29,14 @@ var (
 )
 
 // RunChecks runs the checks that are part of hc
-func RunChecks(wout io.Writer, werr io.Writer, hc *HealthChecker, output string) bool {
+func RunChecks(wout io.Writer, werr io.Writer, hc Runner, output string) bool {
 	if output == JSONOutput {
 		return runChecksJSON(wout, werr, hc)
 	}
 	return runChecksTable(wout, hc)
 }
 
-func runChecksTable(wout io.Writer, hc *HealthChecker) bool {
+func runChecksTable(wout io.Writer, hc Runner) bool {
 	var lastCategory CategoryID
 	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	spin.Writer = wout
@@ -119,7 +119,7 @@ const (
 	checkErr     checkResult = "error"
 )
 
-func runChecksJSON(wout io.Writer, werr io.Writer, hc *HealthChecker) bool {
+func runChecksJSON(wout io.Writer, werr io.Writer, hc Runner) bool {
 	var categories []*checkCategory
 
 	collectJSONOutput := func(result *CheckResult) {

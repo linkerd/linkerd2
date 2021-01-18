@@ -21,7 +21,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
-	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	log "github.com/sirupsen/logrus"
 	admissionRegistration "k8s.io/api/admissionregistration/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -125,14 +124,6 @@ const (
 	// 2) `latestVersions` from LinkerdVersionChecks
 	// 3) `serverVersion` from `LinkerdControlPlaneExistenceChecks`
 	LinkerdControlPlaneVersionChecks CategoryID = "control-plane-version"
-
-	// LinkerdDataPlaneChecks adds data plane checks to validate that the data
-	// plane namespace exists, and that the proxy containers are in a ready
-	// state and running the latest available version.
-	// These checks are dependent on the output of KubernetesAPIChecks,
-	// `apiClient` from LinkerdControlPlaneExistenceChecks, and `latestVersions`
-	// from LinkerdVersionChecks, so those checks must be added first.
-	LinkerdDataPlaneChecks CategoryID = "linkerd-data-plane"
 
 	// LinkerdHAChecks adds checks to validate that the HA configuration
 	// is correct. These checks are no ops if linkerd is not in HA mode
@@ -396,7 +387,6 @@ func NewCategory(id CategoryID, checkers []Checker, enabled bool) *Category {
 // Options specifies configuration for a HealthChecker.
 type Options struct {
 	ControlPlaneNamespace string
-	VizNamespace          string
 	CNINamespace          string
 	DataPlaneNamespace    string
 	KubeConfig            string
@@ -420,8 +410,7 @@ type HealthChecker struct {
 	kubeAPI          *k8s.KubernetesAPI
 	kubeVersion      *k8sVersion.Info
 	controlPlanePods []corev1.Pod
-	publicAPIClient  public.PublicAPIClient
-	apiClient        public.VizAPIClient
+	apiClient        public.Client
 	latestVersions   version.Channels
 	serverVersion    string
 	linkerdConfig    *l5dcharts.Values
@@ -429,6 +418,11 @@ type HealthChecker struct {
 	issuerCert       *tls.Cred
 	trustAnchors     []*x509.Certificate
 	cniDaemonSet     *appsv1.DaemonSet
+}
+
+// Runner is implemented by any health-checkers that can be triggered with RunChecks()
+type Runner interface {
+	RunChecks(observer CheckObserver) bool
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -456,6 +450,11 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 func (hc *HealthChecker) AppendCategories(categories ...Category) *HealthChecker {
 	hc.categories = append(hc.categories, categories...)
 	return hc
+}
+
+// GetCategories returns all the categories
+func (hc *HealthChecker) GetCategories() []Category {
+	return hc.categories
 }
 
 // allCategories is the global, ordered list of all checkers, grouped by
@@ -743,11 +742,9 @@ func (hc *HealthChecker) allCategories() []Category {
 					fatal:       true,
 					check: func(ctx context.Context) (err error) {
 						if hc.APIAddr != "" {
-							hc.publicAPIClient, err = public.NewInternalPublicClient(hc.ControlPlaneNamespace, hc.APIAddr)
-							hc.apiClient, err = public.NewInternalClient(hc.ControlPlaneNamespace, hc.APIAddr)
+							hc.apiClient, err = public.NewInternalPublicClient(hc.ControlPlaneNamespace, hc.APIAddr)
 						} else {
-							hc.publicAPIClient, err = public.NewExternalPublicClient(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
-							hc.apiClient, err = public.NewExternalClient(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
+							hc.apiClient, err = public.NewExternalPublicClient(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
 						}
 						return
 					},
@@ -758,7 +755,7 @@ func (hc *HealthChecker) allCategories() []Category {
 					retryDeadline: hc.RetryDeadline,
 					fatal:         true,
 					check: func(ctx context.Context) (err error) {
-						hc.serverVersion, err = GetServerVersion(ctx, hc.publicAPIClient)
+						hc.serverVersion, err = GetServerVersion(ctx, hc.apiClient)
 						return
 					},
 				},
@@ -1193,19 +1190,6 @@ func (hc *HealthChecker) allCategories() []Category {
 						return validateControlPlanePods(hc.controlPlanePods)
 					},
 				},
-				{
-					description: "control plane self-check",
-					hintAnchor:  "l5d-api-control-api",
-					// to avoid confusing users with a prometheus readiness error, we only show
-					// "waiting for check to complete" while things converge. If after the timeout
-					// it still hasn't converged, we show the real error (a 503 usually).
-					surfaceErrorOnRetry: false,
-					fatal:               true,
-					retryDeadline:       hc.RetryDeadline,
-					checkRPC: func(ctx context.Context) (*healthcheckPb.SelfCheckResponse, error) {
-						return hc.apiClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
-					},
-				},
 			},
 		},
 		{
@@ -1256,79 +1240,6 @@ func (hc *HealthChecker) allCategories() []Category {
 					check: func(context.Context) error {
 						if hc.serverVersion != version.Version {
 							return fmt.Errorf("control plane running %s but cli running %s", hc.serverVersion, version.Version)
-						}
-						return nil
-					},
-				},
-			},
-		},
-		{
-			id: LinkerdDataPlaneChecks,
-			checkers: []Checker{
-				{
-					description: "data plane namespace exists",
-					hintAnchor:  "l5d-data-plane-exists",
-					fatal:       true,
-					check: func(ctx context.Context) error {
-						if hc.DataPlaneNamespace == "" {
-							// when checking proxies in all namespaces, this check is a no-op
-							return nil
-						}
-						return hc.CheckNamespace(ctx, hc.DataPlaneNamespace, true)
-					},
-				},
-				{
-					description:   "data plane proxies are ready",
-					hintAnchor:    "l5d-data-plane-ready",
-					retryDeadline: hc.RetryDeadline,
-					fatal:         true,
-					check: func(ctx context.Context) error {
-						pods, err := hc.GetDataPlanePods(ctx)
-						if err != nil {
-							return err
-						}
-
-						return validateDataPlanePods(pods, hc.DataPlaneNamespace)
-					},
-				},
-				{
-					description: "data plane is up-to-date",
-					hintAnchor:  "l5d-data-plane-version",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						pods, err := hc.GetDataPlanePods(ctx)
-						if err != nil {
-							return err
-						}
-
-						outdatedPods := []string{}
-						for _, pod := range pods {
-							err = hc.latestVersions.Match(pod.ProxyVersion)
-							if err != nil {
-								outdatedPods = append(outdatedPods, fmt.Sprintf("\t* %s (%s)", pod.Name, pod.ProxyVersion))
-							}
-						}
-						if len(outdatedPods) > 0 {
-							podList := strings.Join(outdatedPods, "\n")
-							return fmt.Errorf("Some data plane pods are not running the current version:\n%s", podList)
-						}
-						return nil
-					},
-				},
-				{
-					description: "data plane and cli versions match",
-					hintAnchor:  "l5d-data-plane-cli-version",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						pods, err := hc.GetDataPlanePods(ctx)
-						if err != nil {
-							return err
-						}
-
-						for _, pod := range pods {
-							if pod.ProxyVersion != version.Version {
-								return fmt.Errorf("%s running %s but cli running %s", pod.Name, pod.ProxyVersion, version.Version)
-							}
 						}
 						return nil
 					},
@@ -1629,15 +1540,13 @@ func (hc *HealthChecker) KubeAPIClient() *k8s.KubernetesAPI {
 // PublicAPIClient returns a fully configured public API client. This client is
 // only configured if the KubernetesAPIChecks and LinkerdAPIChecks are
 // configured and run first.
-func (hc *HealthChecker) PublicAPIClient() public.PublicAPIClient {
-	return hc.publicAPIClient
+func (hc *HealthChecker) PublicAPIClient() public.Client {
+	return hc.apiClient
 }
 
-// VizAPIClient returns a fully configured Viz API client. This client is
-// only configured if the KubernetesAPIChecks and LinkerdAPIChecks are
-// configured and run first.
-func (hc *HealthChecker) VizAPIClient() public.VizAPIClient {
-	return hc.apiClient
+// LatestVersions returns the latest from Linkerd release channels
+func (hc *HealthChecker) LatestVersions() version.Channels {
+	return hc.latestVersions
 }
 
 func (hc *HealthChecker) checkLinkerdConfigConfigMap(ctx context.Context) (string, *l5dcharts.Values, error) {
@@ -2162,32 +2071,6 @@ func checkResources(resourceName string, objects []runtime.Object, expectedNames
 	return nil
 }
 
-// GetDataPlanePods returns all the pods with data plane
-func (hc *HealthChecker) GetDataPlanePods(ctx context.Context) ([]*pb.Pod, error) {
-	req := &pb.ListPodsRequest{}
-	if hc.DataPlaneNamespace != "" {
-		req.Selector = &pb.ResourceSelection{
-			Resource: &pb.Resource{
-				Namespace: hc.DataPlaneNamespace,
-			},
-		}
-	}
-
-	resp, err := hc.apiClient.ListPods(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	pods := make([]*pb.Pod, 0)
-	for _, pod := range resp.GetPods() {
-		if pod.ControllerNamespace == hc.ControlPlaneNamespace {
-			pods = append(pods, pod)
-		}
-	}
-
-	return pods, nil
-}
-
 func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace(ctx context.Context) error {
 	ns, err := hc.kubeAPI.CoreV1().Namespaces().Get(ctx, "kube-system", metav1.GetOptions{})
 	if err != nil {
@@ -2492,52 +2375,6 @@ func checkContainerRunning(pods []corev1.Pod, container string) error {
 		}
 		return fmt.Errorf("No running pods for \"%s\"", container)
 	}
-	return nil
-}
-
-func validateDataPlanePods(pods []*pb.Pod, targetNamespace string) error {
-	if len(pods) == 0 {
-		msg := fmt.Sprintf("No \"%s\" containers found", k8s.ProxyContainerName)
-		if targetNamespace != "" {
-			msg += fmt.Sprintf(" in the \"%s\" namespace", targetNamespace)
-		}
-		return fmt.Errorf(msg)
-	}
-
-	for _, pod := range pods {
-		if pod.Status != "Running" && pod.Status != "Evicted" {
-			return fmt.Errorf("The \"%s\" pod is not running",
-				pod.Name)
-		}
-
-		if !pod.ProxyReady {
-			return fmt.Errorf("The \"%s\" container in the \"%s\" pod is not ready",
-				k8s.ProxyContainerName, pod.Name)
-		}
-	}
-
-	return nil
-}
-
-func validateDataPlanePodReporting(pods []*pb.Pod) error {
-	notInPrometheus := []string{}
-
-	for _, p := range pods {
-		// the `Added` field indicates the pod was found in Prometheus
-		if !p.Added {
-			notInPrometheus = append(notInPrometheus, p.Name)
-		}
-	}
-
-	errMsg := ""
-	if len(notInPrometheus) > 0 {
-		errMsg = fmt.Sprintf("Data plane metrics not found for %s.", strings.Join(notInPrometheus, ", "))
-	}
-
-	if errMsg != "" {
-		return fmt.Errorf(errMsg)
-	}
-
 	return nil
 }
 
