@@ -1,4 +1,4 @@
-package public
+package api
 
 import (
 	"context"
@@ -1414,7 +1414,6 @@ status:
 		for _, exp := range expectations {
 			fakeGrpcServer := newGrpcServer(
 				&MockProm{Res: exp.mockPromResponse},
-				nil,
 				k8sAPI,
 				"linkerd",
 				"mycluster.local",
@@ -1439,7 +1438,6 @@ status:
 		}
 		fakeGrpcServer := newGrpcServer(
 			&MockProm{Res: model.Vector{}},
-			nil,
 			k8sAPI,
 			"linkerd",
 			"mycluster.local",

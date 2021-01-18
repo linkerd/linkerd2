@@ -1,4 +1,4 @@
-package public
+package api
 
 import (
 	"context"
@@ -398,7 +398,6 @@ status:
 
 			fakeGrpcServer := newGrpcServer(
 				&mProm,
-				nil,
 				k8sAPI,
 				"linkerd",
 				"mycluster.local",
@@ -500,7 +499,6 @@ metadata:
 
 			fakeGrpcServer := newGrpcServer(
 				&MockProm{},
-				nil,
 				k8sAPI,
 				"linkerd",
 				"mycluster.local",
