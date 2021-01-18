@@ -54,19 +54,10 @@ linkerd-identity-data-plane
 linkerd-api
 -----------
 √ control plane pods are ready
-√ control plane self-check
-√ [kubernetes] control plane can talk to Kubernetes
 
 linkerd-version
 ---------------
 √ can determine the latest version
 √ cli is up-to-date
-
-linkerd-data-plane
-------------------
-√ data plane namespace exists
-√ data plane proxies are ready
-√ data plane is up-to-date
-√ data plane and cli versions match
 
 Status check results are √

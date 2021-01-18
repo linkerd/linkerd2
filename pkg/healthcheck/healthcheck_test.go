@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
-	"github.com/linkerd/linkerd2/controller/api/public"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
@@ -21,7 +20,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/testutil"
-	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -116,61 +114,6 @@ func TestHealthChecker(t *testing.T) {
 		enabled: true,
 	}
 
-	passingRPCClient := public.MockAPIClient{
-		SelfCheckResponseToReturn: &healthcheckPb.SelfCheckResponse{
-			Results: []*healthcheckPb.CheckResult{
-				{
-					SubsystemName:    "rpc1",
-					CheckDescription: "rpc desc1",
-					Status:           healthcheckPb.CheckStatus_OK,
-				},
-			},
-		},
-	}
-
-	passingRPCCheck := Category{
-		id: "cat4",
-		checkers: []Checker{
-			{
-				description: "desc4",
-				checkRPC: func(context.Context) (*healthcheckPb.SelfCheckResponse, error) {
-					return passingRPCClient.SelfCheck(context.Background(),
-						&healthcheckPb.SelfCheckRequest{})
-				},
-				retryDeadline: time.Time{},
-			},
-		},
-		enabled: true,
-	}
-
-	failingRPCClient := public.MockAPIClient{
-		SelfCheckResponseToReturn: &healthcheckPb.SelfCheckResponse{
-			Results: []*healthcheckPb.CheckResult{
-				{
-					SubsystemName:         "rpc2",
-					CheckDescription:      "rpc desc2",
-					Status:                healthcheckPb.CheckStatus_FAIL,
-					FriendlyMessageToUser: "rpc error",
-				},
-			},
-		},
-	}
-
-	failingRPCCheck := Category{
-		id: "cat5",
-		checkers: []Checker{
-			{
-				description: "desc5",
-				checkRPC: func(context.Context) (*healthcheckPb.SelfCheckResponse, error) {
-					return failingRPCClient.SelfCheck(context.Background(),
-						&healthcheckPb.SelfCheckRequest{})
-				},
-				retryDeadline: time.Time{},
-			},
-		},
-		enabled: true,
-	}
-
 	fatalCheck := Category{
 		id: "cat6",
 		checkers: []Checker{
@@ -223,17 +166,11 @@ func TestHealthChecker(t *testing.T) {
 		hc.AppendCategories(passingCheck1)
 		hc.AppendCategories(passingCheck2)
 		hc.AppendCategories(failingCheck)
-		hc.AppendCategories(passingRPCCheck)
-		hc.AppendCategories(failingRPCCheck)
 
 		expectedResults := []string{
 			"cat1 desc1",
 			"cat2 desc2",
 			"cat3 desc3: error",
-			"cat4 desc4",
-			"cat4 [rpc1] rpc desc1",
-			"cat5 desc5",
-			"cat5 [rpc2] rpc desc2: rpc error",
 		}
 
 		obs := newObserver()
@@ -251,7 +188,6 @@ func TestHealthChecker(t *testing.T) {
 		)
 		hc.AppendCategories(passingCheck1)
 		hc.AppendCategories(passingCheck2)
-		hc.AppendCategories(passingRPCCheck)
 
 		success := hc.RunChecks(nullObserver)
 
@@ -267,22 +203,6 @@ func TestHealthChecker(t *testing.T) {
 		)
 		hc.AppendCategories(passingCheck1)
 		hc.AppendCategories(failingCheck)
-		hc.AppendCategories(passingCheck2)
-
-		success := hc.RunChecks(nullObserver)
-
-		if success {
-			t.Fatalf("Expecting checks to not be successful, but got [%t]", success)
-		}
-	})
-
-	t.Run("Is not successful if one RPC check fails", func(t *testing.T) {
-		hc := NewHealthChecker(
-			[]CategoryID{},
-			&Options{},
-		)
-		hc.AppendCategories(passingCheck1)
-		hc.AppendCategories(failingRPCCheck)
 		hc.AppendCategories(passingCheck2)
 
 		success := hc.RunChecks(nullObserver)
@@ -1782,7 +1702,7 @@ func TestValidateDataPlaneNamespace(t *testing.T) {
 func TestValidateDataPlanePods(t *testing.T) {
 
 	t.Run("Returns an error if no inject pods were found", func(t *testing.T) {
-		err := validateDataPlanePods([]*pb.Pod{}, "emojivoto")
+		err := validateDataPlanePods([]corev1.Pod{}, "emojivoto")
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
@@ -1792,11 +1712,55 @@ func TestValidateDataPlanePods(t *testing.T) {
 	})
 
 	t.Run("Returns an error if not all pods are running", func(t *testing.T) {
-		pods := []*pb.Pod{
-			{Name: "emoji-d9c7866bb-7v74n", Status: "Running", ProxyReady: true},
-			{Name: "vote-bot-644b8cb6b4-g8nlr", Status: "Running", ProxyReady: true},
-			{Name: "voting-65b9fffd77-rlwsd", Status: "Failed", ProxyReady: false},
-			{Name: "web-6cfbccc48-5g8px", Status: "Running", ProxyReady: true},
+		pods := []corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "emoji-d9c7866bb-7v74n"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "vote-bot-644b8cb6b4-g8nlr"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "voting-65b9fffd77-rlwsd"},
+				Status: corev1.PodStatus{
+					Phase: "Failed",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: false,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "web-6cfbccc48-5g8px"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
 		}
 
 		err := validateDataPlanePods(pods, "emojivoto")
@@ -1809,8 +1773,19 @@ func TestValidateDataPlanePods(t *testing.T) {
 	})
 
 	t.Run("Does not return an error if the pod is Evicted", func(t *testing.T) {
-		pods := []*pb.Pod{
-			{Name: "emoji-d9c7866bb-7v74n", Status: "Evicted", ProxyReady: true},
+		pods := []corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "emoji-d9c7866bb-7v74n"},
+				Status: corev1.PodStatus{
+					Phase: "Evicted",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
 		}
 
 		err := validateDataPlanePods(pods, "emojivoto")
@@ -1820,11 +1795,55 @@ func TestValidateDataPlanePods(t *testing.T) {
 	})
 
 	t.Run("Returns an error if the proxy container is not ready", func(t *testing.T) {
-		pods := []*pb.Pod{
-			{Name: "emoji-d9c7866bb-7v74n", Status: "Running", ProxyReady: true},
-			{Name: "vote-bot-644b8cb6b4-g8nlr", Status: "Running", ProxyReady: false},
-			{Name: "voting-65b9fffd77-rlwsd", Status: "Running", ProxyReady: true},
-			{Name: "web-6cfbccc48-5g8px", Status: "Running", ProxyReady: true},
+		pods := []corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "emoji-d9c7866bb-7v74n"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "vote-bot-644b8cb6b4-g8nlr"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: false,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "voting-65b9fffd77-rlwsd"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: false,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "web-6cfbccc48-5g8px"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
 		}
 
 		err := validateDataPlanePods(pods, "emojivoto")
@@ -1837,11 +1856,55 @@ func TestValidateDataPlanePods(t *testing.T) {
 	})
 
 	t.Run("Returns nil if all pods are running and all proxy containers are ready", func(t *testing.T) {
-		pods := []*pb.Pod{
-			{Name: "emoji-d9c7866bb-7v74n", Status: "Running", ProxyReady: true},
-			{Name: "vote-bot-644b8cb6b4-g8nlr", Status: "Running", ProxyReady: true},
-			{Name: "voting-65b9fffd77-rlwsd", Status: "Running", ProxyReady: true},
-			{Name: "web-6cfbccc48-5g8px", Status: "Running", ProxyReady: true},
+		pods := []corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "emoji-d9c7866bb-7v74n"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "vote-bot-644b8cb6b4-g8nlr"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "voting-65b9fffd77-rlwsd"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "web-6cfbccc48-5g8px"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
 		}
 
 		err := validateDataPlanePods(pods, "emojivoto")
@@ -1850,43 +1913,6 @@ func TestValidateDataPlanePods(t *testing.T) {
 		}
 	})
 }
-
-func TestValidateDataPlanePodReporting(t *testing.T) {
-	t.Run("Returns success if no pods present", func(t *testing.T) {
-		err := validateDataPlanePodReporting([]*pb.Pod{})
-		if err != nil {
-			t.Fatalf("Unexpected error message: %s", err.Error())
-		}
-	})
-
-	t.Run("Returns success if all pods are added", func(t *testing.T) {
-		pods := []*pb.Pod{
-			{Name: "ns1/test1", Added: true},
-			{Name: "ns2/test2", Added: true},
-		}
-
-		err := validateDataPlanePodReporting(pods)
-		if err != nil {
-			t.Fatalf("Unexpected error message: %s", err.Error())
-		}
-	})
-
-	t.Run("Returns an error if any of the pod was not added to Prometheus", func(t *testing.T) {
-		pods := []*pb.Pod{
-			{Name: "ns1/test1", Added: true},
-			{Name: "ns2/test2", Added: false},
-		}
-
-		err := validateDataPlanePodReporting(pods)
-		if err == nil {
-			t.Fatal("Expected error, got nothing")
-		}
-		if err.Error() != "Data plane metrics not found for ns2/test2." {
-			t.Fatalf("Unexpected error message: %s", err.Error())
-		}
-	})
-}
-
 func TestLinkerdPreInstallGlobalResourcesChecks(t *testing.T) {
 	hc := NewHealthChecker(
 		[]CategoryID{LinkerdPreInstallGlobalResourcesChecks},

@@ -16,6 +16,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/servicemirror"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	public "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	vizHealthCheck "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,13 +56,13 @@ func (options *checkOptions) validate() error {
 }
 
 type healthChecker struct {
-	linkerdHC *healthcheck.HealthChecker
-	links     []multicluster.Link
+	vizHC *vizHealthCheck.HealthChecker
+	links []multicluster.Link
 }
 
-func newHealthChecker(linkerdHC *healthcheck.HealthChecker) *healthChecker {
+func newHealthChecker(vizHC *vizHealthCheck.HealthChecker) *healthChecker {
 	return &healthChecker{
-		linkerdHC: linkerdHC,
+		vizHC: vizHC,
 	}
 }
 
@@ -106,7 +107,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		healthcheck.LinkerdControlPlaneExistenceChecks,
 		linkerdMulticlusterExtensionCheck,
 	}
-	linkerdHC := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+	vizHC := vizHealthCheck.NewHealthChecker(checks, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		KubeContext:           kubeContext,
@@ -115,13 +116,13 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		APIAddr:               apiAddr,
 		RetryDeadline:         time.Now().Add(options.wait),
 	})
-	hc := newHealthChecker(linkerdHC)
+	hc := newHealthChecker(vizHC)
 	category := multiclusterCategory(hc)
 	if err != nil {
 		return err
 	}
-	hc.linkerdHC.AppendCategories(*category)
-	success := healthcheck.RunChecks(wout, werr, hc.linkerdHC, options.output)
+	hc.vizHC.AppendCategories(*category)
+	success := healthcheck.RunChecks(wout, werr, hc.vizHC, options.output)
 	if !success {
 		os.Exit(1)
 	}
@@ -148,7 +149,7 @@ func multiclusterCategory(hc *healthChecker) *healthcheck.Category {
 		*healthcheck.NewChecker("clusters share trust anchors").
 			WithHintAnchor("l5d-multicluster-clusters-share-anchors").
 			WithCheck(func(ctx context.Context) error {
-				localAnchors, err := tls.DecodePEMCertificates(hc.linkerdHC.LinkerdConfigGlobal().IdentityTrustAnchorsPEM)
+				localAnchors, err := tls.DecodePEMCertificates(hc.vizHC.LinkerdConfigGlobal().IdentityTrustAnchorsPEM)
 				if err != nil {
 					return fmt.Errorf("Cannot parse source trust anchors: %s", err)
 				}
@@ -163,7 +164,7 @@ func multiclusterCategory(hc *healthChecker) *healthcheck.Category {
 	checkers = append(checkers,
 		*healthcheck.NewChecker("service mirror controllers are running").
 			WithHintAnchor("l5d-multicluster-service-mirror-running").
-			WithRetryDeadline(hc.linkerdHC.RetryDeadline).
+			WithRetryDeadline(hc.vizHC.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
 				return hc.checkServiceMirrorController(ctx)
@@ -199,14 +200,14 @@ func (hc *healthChecker) checkLinkCRD(ctx context.Context) error {
 }
 
 func (hc *healthChecker) linkAccess(ctx context.Context) error {
-	res, err := hc.linkerdHC.KubeAPIClient().Discovery().ServerResourcesForGroupVersion(k8s.LinkAPIGroupVersion)
+	res, err := hc.vizHC.KubeAPIClient().Discovery().ServerResourcesForGroupVersion(k8s.LinkAPIGroupVersion)
 	if err != nil {
 		return err
 	}
 	if res.GroupVersion == k8s.LinkAPIGroupVersion {
 		for _, apiRes := range res.APIResources {
 			if apiRes.Kind == k8s.LinkKind {
-				return k8s.ResourceAuthz(ctx, hc.linkerdHC.KubeAPIClient(), "", "list", k8s.LinkAPIGroup, k8s.LinkAPIVersion, "links", "")
+				return k8s.ResourceAuthz(ctx, hc.vizHC.KubeAPIClient(), "", "list", k8s.LinkAPIGroup, k8s.LinkAPIVersion, "links", "")
 			}
 		}
 	}
@@ -214,7 +215,7 @@ func (hc *healthChecker) linkAccess(ctx context.Context) error {
 }
 
 func (hc *healthChecker) checkLinks(ctx context.Context) error {
-	links, err := multicluster.GetLinks(ctx, hc.linkerdHC.KubeAPIClient().DynamicClient)
+	links, err := multicluster.GetLinks(ctx, hc.vizHC.KubeAPIClient().DynamicClient)
 	if err != nil {
 		return err
 	}
@@ -234,7 +235,7 @@ func (hc *healthChecker) checkRemoteClusterConnectivity(ctx context.Context) err
 	links := []string{}
 	for _, link := range hc.links {
 		// Load the credentials secret
-		secret, err := hc.linkerdHC.KubeAPIClient().Interface.CoreV1().Secrets(link.Namespace).Get(ctx, link.ClusterCredentialsSecret, metav1.GetOptions{})
+		secret, err := hc.vizHC.KubeAPIClient().Interface.CoreV1().Secrets(link.Namespace).Get(ctx, link.ClusterCredentialsSecret, metav1.GetOptions{})
 		if err != nil {
 			errors = append(errors, fmt.Errorf("* secret: [%s/%s]: %s", link.Namespace, link.ClusterCredentialsSecret, err))
 			continue
@@ -282,7 +283,7 @@ func (hc *healthChecker) checkRemoteClusterAnchors(ctx context.Context, localAnc
 	links := []string{}
 	for _, link := range hc.links {
 		// Load the credentials secret
-		secret, err := hc.linkerdHC.KubeAPIClient().Interface.CoreV1().Secrets(link.Namespace).Get(ctx, link.ClusterCredentialsSecret, metav1.GetOptions{})
+		secret, err := hc.vizHC.KubeAPIClient().Interface.CoreV1().Secrets(link.Namespace).Get(ctx, link.ClusterCredentialsSecret, metav1.GetOptions{})
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("* secret: [%s/%s]: %s", link.Namespace, link.ClusterCredentialsSecret, err))
 			continue
@@ -347,7 +348,7 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 	for _, link := range hc.links {
 		err := healthcheck.CheckServiceAccounts(
 			ctx,
-			hc.linkerdHC.KubeAPIClient(),
+			hc.vizHC.KubeAPIClient(),
 			[]string{fmt.Sprintf(linkerdServiceMirrorServiceAccountName, link.TargetClusterName)},
 			link.Namespace,
 			serviceMirrorComponentsSelector(link.TargetClusterName),
@@ -357,7 +358,7 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 		}
 		err = healthcheck.CheckClusterRoles(
 			ctx,
-			hc.linkerdHC.KubeAPIClient(),
+			hc.vizHC.KubeAPIClient(),
 			true,
 			[]string{fmt.Sprintf(linkerdServiceMirrorClusterRoleName, link.TargetClusterName)},
 			serviceMirrorComponentsSelector(link.TargetClusterName),
@@ -367,7 +368,7 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 		}
 		err = healthcheck.CheckClusterRoleBindings(
 			ctx,
-			hc.linkerdHC.KubeAPIClient(),
+			hc.vizHC.KubeAPIClient(),
 			true,
 			[]string{fmt.Sprintf(linkerdServiceMirrorClusterRoleName, link.TargetClusterName)},
 			serviceMirrorComponentsSelector(link.TargetClusterName),
@@ -377,7 +378,7 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 		}
 		err = healthcheck.CheckRoles(
 			ctx,
-			hc.linkerdHC.KubeAPIClient(),
+			hc.vizHC.KubeAPIClient(),
 			true,
 			link.Namespace,
 			[]string{fmt.Sprintf(linkerdServiceMirrorRoleName, link.TargetClusterName)},
@@ -388,7 +389,7 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 		}
 		err = healthcheck.CheckRoleBindings(
 			ctx,
-			hc.linkerdHC.KubeAPIClient(),
+			hc.vizHC.KubeAPIClient(),
 			true,
 			link.Namespace,
 			[]string{fmt.Sprintf(linkerdServiceMirrorRoleName, link.TargetClusterName)},
@@ -415,7 +416,7 @@ func (hc *healthChecker) checkServiceMirrorController(ctx context.Context) error
 		options := metav1.ListOptions{
 			LabelSelector: serviceMirrorComponentsSelector(link.TargetClusterName),
 		}
-		result, err := hc.linkerdHC.KubeAPIClient().AppsV1().Deployments(corev1.NamespaceAll).List(ctx, options)
+		result, err := hc.vizHC.KubeAPIClient().AppsV1().Deployments(corev1.NamespaceAll).List(ctx, options)
 		if err != nil {
 			return err
 		}
@@ -448,7 +449,7 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context)
 	errors := []error{}
 	for _, link := range hc.links {
 		selector := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s,%s=%s", k8s.MirroredGatewayLabel, k8s.RemoteClusterNameLabel, link.TargetClusterName)}
-		gatewayMirrors, err := hc.linkerdHC.KubeAPIClient().CoreV1().Services(metav1.NamespaceAll).List(ctx, selector)
+		gatewayMirrors, err := hc.vizHC.KubeAPIClient().CoreV1().Services(metav1.NamespaceAll).List(ctx, selector)
 		if err != nil {
 			errors = append(errors, err)
 			continue
@@ -459,7 +460,7 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context)
 		}
 		svc := gatewayMirrors.Items[0]
 		// Check if there is a relevant end-point
-		endpoints, err := hc.linkerdHC.KubeAPIClient().CoreV1().Endpoints(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{})
+		endpoints, err := hc.vizHC.KubeAPIClient().CoreV1().Endpoints(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{})
 		if err != nil || len(endpoints.Subsets) == 0 {
 			errors = append(errors, fmt.Errorf("%s.%s mirrored from cluster [%s] has no endpoints", svc.Name, svc.Namespace, svc.Labels[k8s.RemoteClusterNameLabel]))
 			continue
@@ -469,7 +470,7 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context)
 			TimeWindow:        "1m",
 			RemoteClusterName: link.TargetClusterName,
 		}
-		rsp, err := hc.linkerdHC.VizAPIClient().Gateways(ctx, &req)
+		rsp, err := hc.vizHC.VizAPIClient().Gateways(ctx, &req)
 		if err != nil {
 			errors = append(errors, fmt.Errorf("failed to fetch gateway metrics for %s.%s: %s", svc.Name, svc.Namespace, err))
 			continue
@@ -502,13 +503,13 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context)
 func (hc *healthChecker) checkIfMirrorServicesHaveEndpoints(ctx context.Context) error {
 	var servicesWithNoEndpoints []string
 	selector := fmt.Sprintf("%s, !%s", k8s.MirroredResourceLabel, k8s.MirroredGatewayLabel)
-	mirrorServices, err := hc.linkerdHC.KubeAPIClient().CoreV1().Services(metav1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: selector})
+	mirrorServices, err := hc.vizHC.KubeAPIClient().CoreV1().Services(metav1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: selector})
 	if err != nil {
 		return err
 	}
 	for _, svc := range mirrorServices.Items {
 		// Check if there is a relevant end-point
-		endpoint, err := hc.linkerdHC.KubeAPIClient().CoreV1().Endpoints(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{})
+		endpoint, err := hc.vizHC.KubeAPIClient().CoreV1().Endpoints(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{})
 		if err != nil || len(endpoint.Subsets) == 0 {
 			servicesWithNoEndpoints = append(servicesWithNoEndpoints, fmt.Sprintf("%s.%s mirrored from cluster [%s]", svc.Name, svc.Namespace, svc.Labels[k8s.RemoteClusterNameLabel]))
 		}
@@ -525,11 +526,11 @@ func (hc *healthChecker) checkIfMirrorServicesHaveEndpoints(ctx context.Context)
 func (hc *healthChecker) checkForOrphanedServices(ctx context.Context) error {
 	errors := []error{}
 	selector := fmt.Sprintf("%s, !%s", k8s.MirroredResourceLabel, k8s.MirroredGatewayLabel)
-	mirrorServices, err := hc.linkerdHC.KubeAPIClient().CoreV1().Services(metav1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: selector})
+	mirrorServices, err := hc.vizHC.KubeAPIClient().CoreV1().Services(metav1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: selector})
 	if err != nil {
 		return err
 	}
-	links, err := multicluster.GetLinks(ctx, hc.linkerdHC.KubeAPIClient().DynamicClient)
+	links, err := multicluster.GetLinks(ctx, hc.vizHC.KubeAPIClient().DynamicClient)
 	if err != nil {
 		return err
 	}
