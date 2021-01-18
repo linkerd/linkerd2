@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
+	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
@@ -21,7 +22,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
-	healthcheckPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz/healthcheck"
 	log "github.com/sirupsen/logrus"
 	admissionRegistration "k8s.io/api/admissionregistration/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"

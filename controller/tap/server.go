@@ -12,6 +12,7 @@ import (
 	httpPb "github.com/linkerd/linkerd2-proxy-api/go/http_types"
 	proxy "github.com/linkerd/linkerd2-proxy-api/go/tap"
 	apiUtil "github.com/linkerd/linkerd2/controller/api/util"
+	netPb "github.com/linkerd/linkerd2/controller/gen/common/net"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
@@ -583,7 +584,7 @@ func (s *GRPCTapServer) hydrateEventLabels(ctx context.Context, ev *pb.TapEvent)
 
 // hydrateIPMeta attempts to determine the metadata labels for `ip` and, if
 // successful, adds them to `labels`.
-func (s *GRPCTapServer) hydrateIPLabels(ctx context.Context, ip *pb.IPAddress, labels map[string]string) error {
+func (s *GRPCTapServer) hydrateIPLabels(ctx context.Context, ip *netPb.IPAddress, labels map[string]string) error {
 	res, err := s.resourceForIP(ip)
 	if err != nil {
 		return err
@@ -613,7 +614,7 @@ func (s *GRPCTapServer) hydrateIPLabels(ctx context.Context, ip *pb.IPAddress, l
 // node if that's the case. Otherwise it checks the running pods that match the
 // IP. If exactly one is found, it's returned. Otherwise it returns nil. Errors
 // are returned only in the event of an error searching the indices.
-func (s *GRPCTapServer) resourceForIP(ip *pb.IPAddress) (runtime.Object, error) {
+func (s *GRPCTapServer) resourceForIP(ip *netPb.IPAddress) (runtime.Object, error) {
 	ipStr := addr.PublicIPToString(ip)
 
 	nodes, err := s.k8sAPI.Node().Informer().GetIndexer().ByIndex(ipIndex, ipStr)

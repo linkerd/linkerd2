@@ -9,9 +9,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
-	healthcheckPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz/healthcheck"
 )
 
 type mockServer struct {

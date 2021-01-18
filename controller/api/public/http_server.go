@@ -7,12 +7,12 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
-	healthcheckPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz/healthcheck"
 	promApi "github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	log "github.com/sirupsen/logrus"
