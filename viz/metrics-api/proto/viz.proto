@@ -3,8 +3,8 @@ syntax = "proto3";
 package linkerd2.viz;
 
 import "google/protobuf/duration.proto";
-
-import "healthcheck.proto";
+import "common/healthcheck.proto";
+import "common/net.proto";
 
 option go_package = "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz";
 
@@ -181,23 +181,6 @@ message Headers {
   repeated Header headers = 1;
 }
 
-message IPAddress {
-  oneof ip {
-    fixed32 ipv4 = 1;
-    IPv6 ipv6 = 2;
-  }
-}
-
-message IPv6 {
-  fixed64 first = 1; // hextets 1-4
-  fixed64 last = 2; // hextets 5-8
-}
-
-message TcpAddress {
-  IPAddress ip = 1;
-  uint32 port = 2;
-}
-
 message Eos {
   oneof end {
     uint32 grpc_status_code = 1;
@@ -207,10 +190,10 @@ message Eos {
 
 // This is used only by the tap APIServer.
 message TapEvent {
-  TcpAddress source = 1;
+  linkerd2.common.net.TcpAddress source = 1;
   EndpointMeta source_meta = 5;
 
-  TcpAddress   destination      = 2;
+  linkerd2.common.net.TcpAddress   destination      = 2;
   EndpointMeta destination_meta = 4;
 
   RouteMeta route_meta = 7;
@@ -527,7 +510,7 @@ service Api {
   // Superseded by tap APIServer.
   rpc TapByResource(TapByResourceRequest) returns (stream TapEvent) { option deprecated = true; }
 
-  rpc SelfCheck(healthcheck.SelfCheckRequest) returns (healthcheck.SelfCheckResponse) {}
+  rpc SelfCheck(linkerd2.common.healthcheck.SelfCheckRequest) returns (linkerd2.common.healthcheck.SelfCheckResponse) {}
 
 }
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	netPb "github.com/linkerd/linkerd2/controller/gen/common/net"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"google.golang.org/grpc/codes"
@@ -571,17 +572,17 @@ func contains(list []string, s string) bool {
 func CreateTapEvent(eventHTTP *pb.TapEvent_Http, dstMeta map[string]string, proxyDirection pb.TapEvent_ProxyDirection) *pb.TapEvent {
 	event := &pb.TapEvent{
 		ProxyDirection: proxyDirection,
-		Source: &pb.TcpAddress{
-			Ip: &pb.IPAddress{
-				Ip: &pb.IPAddress_Ipv4{
+		Source: &netPb.TcpAddress{
+			Ip: &netPb.IPAddress{
+				Ip: &netPb.IPAddress_Ipv4{
 					Ipv4: uint32(1),
 				},
 			},
 		},
-		Destination: &pb.TcpAddress{
-			Ip: &pb.IPAddress{
-				Ip: &pb.IPAddress_Ipv6{
-					Ipv6: &pb.IPv6{
+		Destination: &netPb.TcpAddress{
+			Ip: &netPb.IPAddress{
+				Ip: &netPb.IPAddress_Ipv6{
+					Ipv6: &netPb.IPv6{
 						// All nodes address: https://www.iana.org/assignments/ipv6-multicast-addresses/ipv6-multicast-addresses.xhtml
 						First: binary.BigEndian.Uint64([]byte{0xff, 0x01, 0, 0, 0, 0, 0, 0}),
 						Last:  binary.BigEndian.Uint64([]byte{0, 0, 0, 0, 0, 0, 0, 0x01}),

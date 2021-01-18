@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/linkerd/linkerd2/controller/api/util"
+	netPb "github.com/linkerd/linkerd2/controller/gen/common/net"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -536,7 +537,7 @@ func dst(event *pb.TapEvent) peer {
 }
 
 type peer struct {
-	address   *pb.TcpAddress
+	address   *netPb.TcpAddress
 	labels    map[string]string
 	direction string
 }

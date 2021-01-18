@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package linkerd2.common.net;
+
+option go_package = "github.com/linkerd/linkerd2/controller/gen/common/net";
+
+message IPAddress {
+  oneof ip {
+    fixed32 ipv4 = 1;
+    IPv6 ipv6 = 2;
+  }
+}
+
+message IPv6 {
+  fixed64 first = 1; // hextets 1-4
+  fixed64 last = 2; // hextets 5-8
+}
+
+message TcpAddress {
+  IPAddress ip = 1;
+  uint32 port = 2;
+}
+
