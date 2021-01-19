@@ -1,0 +1,26 @@
+kubernetes-api
+--------------
+√ can initialize the client
+√ can query the Kubernetes API
+
+linkerd-existence
+-----------------
+√ 'linkerd-config' config map exists
+√ heartbeat ServiceAccount exist
+√ control plane replica sets are ready
+√ no unschedulable pods
+√ controller pod is running
+√ can initialize the client
+√ can query the control plane API
+
+linkerd-jaeger
+--------------
+√ linkerd-jaeger extension Namespace exists
+√ collector and jaeger service account exists
+√ collector config map exists
+√ collector pod is running
+√ jaeger pod is running
+√ jaeger injector pod is running
+√ jaeger extension pods are injected
+
+Status check results are √

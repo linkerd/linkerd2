@@ -779,6 +779,26 @@ func TestCheckPostInstall(t *testing.T) {
 	testCheckCommand(t, "", TestHelper.GetVersion(), "", "", true)
 }
 
+func TestCheckViz(t *testing.T) {
+	cmd := []string{"viz", "check", "--wait=0"}
+	golden := "check.viz.golden"
+	timeout := time.Minute
+	err := TestHelper.RetryFor(timeout, func() error {
+		out, err := TestHelper.LinkerdRun(cmd...)
+		if err != nil {
+			return fmt.Errorf("'linkerd viz check' command failed\n%s", err)
+		}
+		err = TestHelper.ValidateOutput(out, golden)
+		if err != nil {
+			return fmt.Errorf("received unexpected output\n%s", err.Error())
+		}
+		return nil
+	})
+	if err != nil {
+		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd viz check' command timed-out (%s)", timeout), err)
+	}
+}
+
 func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 	if TestHelper.UpgradeFromVersion() != "" {
 		testAppNamespace := "upgrade-test"

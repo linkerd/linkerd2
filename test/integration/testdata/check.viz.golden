@@ -1,0 +1,28 @@
+kubernetes-api
+--------------
+√ can initialize the client
+√ can query the Kubernetes API
+
+linkerd-existence
+-----------------
+√ 'linkerd-config' config map exists
+√ heartbeat ServiceAccount exist
+√ control plane replica sets are ready
+√ no unschedulable pods
+√ controller pod is running
+√ can initialize the client
+√ can query the control plane API
+
+linkerd-viz
+-----------
+√ linkerd-viz Namespace exists
+√ linkerd-viz ClusterRoles exist
+√ linkerd-viz ClusterRoleBindings exist
+√ linkerd-viz ConfigMaps exist
+√ tap API server has valid cert
+√ tap API server cert is valid for at least 60 days
+√ tap API service is running
+√ viz extension pods are running
+√ linkerd-viz pods are injected
+
+Status check results are √
