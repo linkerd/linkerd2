@@ -80,6 +80,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 				"linkerd-prometheus": "1/1",
 				"linkerd-tap":        "1/1",
 				"linkerd-web":        "1/1",
+				"tap-injector":       "1/1",
 			},
 		},
 		{
@@ -116,7 +117,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 		{
 			args: []string{"viz", "stat", "ns", TestHelper.GetVizNamespace()},
 			expectedRows: map[string]string{
-				TestHelper.GetVizNamespace(): "4/4",
+				TestHelper.GetVizNamespace(): "5/5",
 			},
 		},
 		{
