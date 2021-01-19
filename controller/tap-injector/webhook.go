@@ -41,7 +41,7 @@ func Mutate(tapSvcName string) webhook.Handler {
 			return nil, err
 		}
 		params := Params{
-			ProxyIndex:      getProxyContainerIndex(pod.Spec.Containers),
+			ProxyIndex:      webhook.GetProxyContainerIndex(pod.Spec.Containers),
 			ProxyTapSvcName: tapSvcName,
 		}
 		if params.ProxyIndex < 0 {
@@ -71,15 +71,6 @@ func Mutate(tapSvcName string) webhook.Handler {
 		admissionResponse.PatchType = &patchType
 		return admissionResponse, nil
 	}
-}
-
-func getProxyContainerIndex(containers []corev1.Container) int {
-	for i, c := range containers {
-		if c.Name == labels.ProxyContainerName {
-			return i
-		}
-	}
-	return -1
 }
 
 func alreadyMutated(container corev1.Container) bool {
