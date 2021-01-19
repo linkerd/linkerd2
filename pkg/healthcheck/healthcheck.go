@@ -1502,8 +1502,8 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 }
 
 // LinkerdConfigGlobal gets the Linkerd global configuration values.
-func (hc *HealthChecker) LinkerdConfigGlobal() *l5dcharts.Global {
-	return hc.linkerdConfig.GetGlobal()
+func (hc *HealthChecker) LinkerdConfigGlobal() l5dcharts.Global {
+	return hc.linkerdConfig.Global
 }
 
 func (hc *HealthChecker) runCheck(categoryID CategoryID, c *Checker, observer CheckObserver) bool {

@@ -283,8 +283,8 @@ func readTestValues(ha bool, ignoreOutboundPorts string, ignoreInboundPorts stri
 			return nil, err
 		}
 	}
-	values.GetGlobal().ProxyInit.IgnoreOutboundPorts = ignoreOutboundPorts
-	values.GetGlobal().ProxyInit.IgnoreInboundPorts = ignoreInboundPorts
+	values.Global.ProxyInit.IgnoreOutboundPorts = ignoreOutboundPorts
+	values.Global.ProxyInit.IgnoreInboundPorts = ignoreInboundPorts
 
 	return values, nil
 }

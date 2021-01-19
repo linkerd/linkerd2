@@ -39,7 +39,7 @@ func TestRender(t *testing.T) {
 		Identity:               defaultValues.Identity,
 		NodeSelector:           defaultValues.NodeSelector,
 		Tolerations:            defaultValues.Tolerations,
-		Global: &charts.Global{
+		Global: charts.Global{
 			Namespace:                "Namespace",
 			ClusterDomain:            "cluster.local",
 			ClusterNetworks:          "ClusterNetworks",
@@ -57,19 +57,19 @@ func TestRender(t *testing.T) {
 			LinkerdNamespaceLabel:    "LinkerdNamespaceLabel",
 			ProxyContainerName:       "ProxyContainerName",
 			CNIEnabled:               false,
-			IdentityTrustDomain:      defaultValues.GetGlobal().IdentityTrustDomain,
-			IdentityTrustAnchorsPEM:  defaultValues.GetGlobal().IdentityTrustAnchorsPEM,
+			IdentityTrustDomain:      defaultValues.Global.IdentityTrustDomain,
+			IdentityTrustAnchorsPEM:  defaultValues.Global.IdentityTrustAnchorsPEM,
 			PodAnnotations:           map[string]string{},
 			PodLabels:                map[string]string{},
-			Proxy: &charts.Proxy{
-				Image: &charts.Image{
+			Proxy: charts.Proxy{
+				Image: charts.Image{
 					Name:       "ProxyImageName",
 					PullPolicy: "ImagePullPolicy",
 					Version:    "ProxyVersion",
 				},
 				LogLevel:  "warn,linkerd=info",
 				LogFormat: "plain",
-				Resources: &charts.Resources{
+				Resources: charts.Resources{
 					CPU: charts.Constraints{
 						Limit:   "cpu-limit",
 						Request: "cpu-request",
@@ -79,7 +79,7 @@ func TestRender(t *testing.T) {
 						Request: "memory-request",
 					},
 				},
-				Ports: &charts.Ports{
+				Ports: charts.Ports{
 					Admin:    4191,
 					Control:  4190,
 					Inbound:  4143,
@@ -87,14 +87,14 @@ func TestRender(t *testing.T) {
 				},
 				UID: 2102,
 			},
-			ProxyInit: &charts.ProxyInit{
-				Image: &charts.Image{
+			ProxyInit: charts.ProxyInit{
+				Image: charts.Image{
 					Name:       "ProxyInitImageName",
 					PullPolicy: "ImagePullPolicy",
 					Version:    "ProxyInitVersion",
 				},
 				IgnoreOutboundPorts: "443",
-				Resources: &charts.Resources{
+				Resources: charts.Resources{
 					CPU: charts.Constraints{
 						Limit:   "100m",
 						Request: "10m",
@@ -104,7 +104,7 @@ func TestRender(t *testing.T) {
 						Request: "10Mi",
 					},
 				},
-				XTMountPath: &charts.VolumeMountPath{
+				XTMountPath: charts.VolumeMountPath{
 					MountPath: "/run",
 					Name:      "linkerd-proxy-init-xtables-lock",
 				},
@@ -115,8 +115,8 @@ func TestRender(t *testing.T) {
 			Proxy:   "ProxyConfig",
 			Install: "InstallConfig",
 		},
-		DebugContainer: &charts.DebugContainer{
-			Image: &charts.Image{
+		DebugContainer: charts.DebugContainer{
+			Image: charts.Image{
 				Name:       "DebugImageName",
 				PullPolicy: "DebugImagePullPolicy",
 				Version:    "DebugVersion",
@@ -138,10 +138,10 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 
-	haWithOverridesValues.GetGlobal().HighAvailability = true
+	haWithOverridesValues.Global.HighAvailability = true
 	haWithOverridesValues.ControllerReplicas = 2
-	haWithOverridesValues.GetGlobal().Proxy.Resources.CPU.Request = "400m"
-	haWithOverridesValues.GetGlobal().Proxy.Resources.Memory.Request = "300Mi"
+	haWithOverridesValues.Global.Proxy.Resources.CPU.Request = "400m"
+	haWithOverridesValues.Global.Proxy.Resources.Memory.Request = "300Mi"
 	addFakeTLSSecrets(haWithOverridesValues)
 
 	cniEnabledValues, err := testInstallOptions()
@@ -149,15 +149,15 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 
-	cniEnabledValues.GetGlobal().CNIEnabled = true
+	cniEnabledValues.Global.CNIEnabled = true
 	addFakeTLSSecrets(cniEnabledValues)
 
 	withProxyIgnoresValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withProxyIgnoresValues.GetGlobal().ProxyInit.IgnoreInboundPorts = "22,8100-8102"
-	withProxyIgnoresValues.GetGlobal().ProxyInit.IgnoreOutboundPorts = "5432"
+	withProxyIgnoresValues.Global.ProxyInit.IgnoreInboundPorts = "22,8100-8102"
+	withProxyIgnoresValues.Global.ProxyInit.IgnoreOutboundPorts = "5432"
 	addFakeTLSSecrets(withProxyIgnoresValues)
 
 	withHeartBeatDisabledValues, err := testInstallOptions()
@@ -171,7 +171,7 @@ func TestRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withControlPlaneTracingValues.GetGlobal().ControlPlaneTracing = true
+	withControlPlaneTracingValues.Global.ControlPlaneTracing = true
 	addFakeTLSSecrets(withControlPlaneTracingValues)
 
 	customRegistryOverride := "my.custom.registry/linkerd-io"
@@ -194,7 +194,7 @@ func TestRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withCustomDestinationGetNetsValues.GetGlobal().ClusterNetworks = "10.0.0.0/8,100.64.0.0/10,172.0.0.0/8"
+	withCustomDestinationGetNetsValues.Global.ClusterNetworks = "10.0.0.0/8,100.64.0.0/10,172.0.0.0/8"
 	addFakeTLSSecrets(withCustomDestinationGetNetsValues)
 
 	testCases := []struct {
@@ -231,7 +231,7 @@ func TestValidateAndBuild_Errors(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
-		values.GetGlobal().ProxyInit.IgnoreInboundPorts = "-25"
+		values.Global.ProxyInit.IgnoreInboundPorts = "-25"
 		err = validateValues(context.Background(), nil, values)
 		if err == nil {
 			t.Fatal("expected error but got nothing")
@@ -243,7 +243,7 @@ func TestValidateAndBuild_Errors(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
-		values.GetGlobal().ProxyInit.IgnoreOutboundPorts = "-25"
+		values.Global.ProxyInit.IgnoreOutboundPorts = "-25"
 		err = validateValues(context.Background(), nil, values)
 		if err == nil {
 			t.Fatal("expected error but got nothing")
@@ -283,7 +283,7 @@ func testInstallOptionsHA(ha bool) (*charts.Values, error) {
 	if err != nil {
 		return nil, err
 	}
-	values.GetGlobal().IdentityTrustAnchorsPEM = string(data)
+	values.Global.IdentityTrustAnchorsPEM = string(data)
 
 	return values, nil
 }
@@ -299,9 +299,9 @@ func testInstallOptionsNoCerts(ha bool) (*charts.Values, error) {
 		}
 	}
 
-	values.GetGlobal().Proxy.Image.Version = installProxyVersion
+	values.Global.Proxy.Image.Version = installProxyVersion
 	values.DebugContainer.Image.Version = installDebugVersion
-	values.GetGlobal().ControllerImageVersion = installControlPlaneVersion
+	values.Global.ControllerImageVersion = installControlPlaneVersion
 	values.HeartbeatSchedule = fakeHeartbeatSchedule()
 
 	return values, nil
@@ -313,10 +313,10 @@ func testInstallValues() (*charts.Values, error) {
 		return nil, err
 	}
 
-	values.GetGlobal().Proxy.Image.Version = installProxyVersion
+	values.Global.Proxy.Image.Version = installProxyVersion
 	values.DebugContainer.Image.Version = installDebugVersion
-	values.GetGlobal().LinkerdVersion = installControlPlaneVersion
-	values.GetGlobal().ControllerImageVersion = installControlPlaneVersion
+	values.Global.LinkerdVersion = installControlPlaneVersion
+	values.Global.ControllerImageVersion = installControlPlaneVersion
 	values.HeartbeatSchedule = fakeHeartbeatSchedule()
 
 	identityCert, err := ioutil.ReadFile(filepath.Join("testdata", "valid-crt.pem"))
@@ -334,7 +334,7 @@ func testInstallValues() (*charts.Values, error) {
 
 	values.Identity.Issuer.TLS.CrtPEM = string(identityCert)
 	values.Identity.Issuer.TLS.KeyPEM = string(identityKey)
-	values.GetGlobal().IdentityTrustAnchorsPEM = string(trustAnchorsPEM)
+	values.Global.IdentityTrustAnchorsPEM = string(trustAnchorsPEM)
 	return values, nil
 }
 
@@ -356,7 +356,7 @@ func TestValidate(t *testing.T) {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
 
-		values.GetGlobal().ClusterNetworks = "wrong"
+		values.Global.ClusterNetworks = "wrong"
 		expected := "cannot parse destination get networks: invalid CIDR address: wrong"
 
 		err = validateValues(context.Background(), nil, values)
@@ -374,7 +374,7 @@ func TestValidate(t *testing.T) {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
 
-		values.GetGlobal().ControllerLogLevel = "super"
+		values.Global.ControllerLogLevel = "super"
 		expected := "--controller-log-level must be one of: panic, fatal, error, warn, info, debug"
 
 		err = validateValues(context.Background(), nil, values)
@@ -410,7 +410,7 @@ func TestValidate(t *testing.T) {
 		}
 
 		for _, tc := range testCases {
-			values.GetGlobal().Proxy.LogLevel = tc.input
+			values.Global.Proxy.LogLevel = tc.input
 			err := validateValues(context.Background(), nil, values)
 			if tc.valid && err != nil {
 				t.Fatalf("Error not expected: %s", err)
@@ -462,7 +462,7 @@ func TestValidate(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			values.GetGlobal().IdentityTrustAnchorsPEM = string(ca)
+			values.Global.IdentityTrustAnchorsPEM = string(ca)
 
 			err = validateValues(context.Background(), nil, values)
 

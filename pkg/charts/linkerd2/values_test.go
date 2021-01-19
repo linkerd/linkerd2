@@ -17,7 +17,7 @@ func TestNewValues(t *testing.T) {
 
 	testVersion := "linkerd-dev"
 
-	namespaceSelector := &metav1.LabelSelector{
+	namespaceSelector := metav1.LabelSelector{
 		MatchExpressions: []metav1.LabelSelectorRequirement{
 			{
 				Key:      "config.linkerd.io/admission-webhooks",
@@ -38,7 +38,7 @@ func TestNewValues(t *testing.T) {
 		DisableHeartBeat:       false,
 		HeartbeatSchedule:      "0 0 * * *",
 		InstallNamespace:       true,
-		Global: &Global{
+		Global: Global{
 			Namespace:                    "linkerd",
 			ClusterDomain:                "cluster.local",
 			ClusterNetworks:              "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16",
@@ -63,22 +63,22 @@ func TestNewValues(t *testing.T) {
 			IdentityTrustDomain:          "cluster.local",
 			PodAnnotations:               map[string]string{},
 			PodLabels:                    map[string]string{},
-			Proxy: &Proxy{
+			Proxy: Proxy{
 				EnableExternalProfiles: false,
-				Image: &Image{
+				Image: Image{
 					Name:       "ghcr.io/linkerd/proxy",
 					PullPolicy: "IfNotPresent",
 					Version:    testVersion,
 				},
 				LogLevel:  "warn,linkerd=info",
 				LogFormat: "plain",
-				Ports: &Ports{
+				Ports: Ports{
 					Admin:    4191,
 					Control:  4190,
 					Inbound:  4143,
 					Outbound: 4140,
 				},
-				Resources: &Resources{
+				Resources: Resources{
 					CPU: Constraints{
 						Limit:   "",
 						Request: "",
@@ -93,15 +93,15 @@ func TestNewValues(t *testing.T) {
 				OutboundConnectTimeout: "1000ms",
 				InboundConnectTimeout:  "100ms",
 			},
-			ProxyInit: &ProxyInit{
+			ProxyInit: ProxyInit{
 				IgnoreInboundPorts:  "25,443,587,3306,11211",
 				IgnoreOutboundPorts: "25,443,587,3306,11211",
-				Image: &Image{
+				Image: Image{
 					Name:       "ghcr.io/linkerd/proxy-init",
 					PullPolicy: "IfNotPresent",
 					Version:    testVersion,
 				},
-				Resources: &Resources{
+				Resources: Resources{
 					CPU: Constraints{
 						Limit:   "100m",
 						Request: "10m",
@@ -111,34 +111,33 @@ func TestNewValues(t *testing.T) {
 						Request: "10Mi",
 					},
 				},
-				XTMountPath: &VolumeMountPath{
+				XTMountPath: VolumeMountPath{
 					Name:      "linkerd-proxy-init-xtables-lock",
 					MountPath: "/run",
 				},
 			},
 		},
-		Identity: &Identity{
-			Issuer: &Issuer{
+		Identity: Identity{
+			Issuer: Issuer{
 				ClockSkewAllowance:  "20s",
 				IssuanceLifetime:    "24h0m0s",
 				CrtExpiryAnnotation: "linkerd.io/identity-issuer-expiry",
-				TLS:                 &IssuerTLS{},
 				Scheme:              "linkerd.io/tls",
 			},
 		},
 		NodeSelector: map[string]string{
 			"beta.kubernetes.io/os": "linux",
 		},
-		DebugContainer: &DebugContainer{
-			Image: &Image{
+		DebugContainer: DebugContainer{
+			Image: Image{
 				Name:       "ghcr.io/linkerd/debug",
 				PullPolicy: "IfNotPresent",
 				Version:    testVersion,
 			},
 		},
 
-		ProxyInjector:    &ProxyInjector{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
-		ProfileValidator: &ProfileValidator{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
+		ProxyInjector:    ProxyInjector{NamespaceSelector: namespaceSelector},
+		ProfileValidator: ProfileValidator{NamespaceSelector: namespaceSelector},
 	}
 
 	// pin the versions to ensure consistent test result.
@@ -167,7 +166,7 @@ func TestNewValues(t *testing.T) {
 		expected.EnablePodAntiAffinity = true
 		expected.WebhookFailurePolicy = "Fail"
 
-		controllerResources := &Resources{
+		controllerResources := Resources{
 			CPU: Constraints{
 				Request: "100m",
 			},
@@ -182,7 +181,7 @@ func TestNewValues(t *testing.T) {
 		expected.SPValidatorResources = controllerResources
 		expected.HeartbeatResources = controllerResources
 
-		expected.IdentityResources = &Resources{
+		expected.IdentityResources = Resources{
 			CPU: Constraints{
 				Limit:   controllerResources.CPU.Limit,
 				Request: controllerResources.CPU.Request,
@@ -193,7 +192,7 @@ func TestNewValues(t *testing.T) {
 			},
 		}
 
-		expected.Global.Proxy.Resources = &Resources{
+		expected.Global.Proxy.Resources = Resources{
 			CPU: Constraints{
 				Limit:   "",
 				Request: controllerResources.CPU.Request,

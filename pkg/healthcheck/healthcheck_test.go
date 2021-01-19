@@ -2352,7 +2352,7 @@ data:
 				InstallNamespace:       true,
 				NodeSelector:           defaultValues.NodeSelector,
 				Tolerations:            defaultValues.Tolerations,
-				Global: &linkerd2.Global{
+				Global: linkerd2.Global{
 					Namespace:                "Namespace",
 					ClusterDomain:            "cluster.local",
 					ClusterNetworks:          "ClusterNetworks",
@@ -2370,15 +2370,15 @@ data:
 					ProxyContainerName:       "ProxyContainerName",
 					CNIEnabled:               false,
 					IdentityTrustDomain:      defaultValues.GetGlobal().IdentityTrustDomain,
-					Proxy: &linkerd2.Proxy{
-						Image: &linkerd2.Image{
+					Proxy: linkerd2.Proxy{
+						Image: linkerd2.Image{
 							Name:       "ProxyImageName",
 							PullPolicy: "ImagePullPolicy",
 							Version:    "ProxyVersion",
 						},
 						LogLevel:  "warn,linkerd=info",
 						LogFormat: "plain",
-						Ports: &linkerd2.Ports{
+						Ports: linkerd2.Ports{
 							Admin:    4191,
 							Control:  4190,
 							Inbound:  4143,
@@ -2386,13 +2386,13 @@ data:
 						},
 						UID: 2102,
 					},
-					ProxyInit: &linkerd2.ProxyInit{
-						Image: &linkerd2.Image{
+					ProxyInit: linkerd2.ProxyInit{
+						Image: linkerd2.Image{
 							Name:       "ProxyInitImageName",
 							PullPolicy: "ImagePullPolicy",
 							Version:    "ProxyInitVersion",
 						},
-						Resources: &linkerd2.Resources{
+						Resources: linkerd2.Resources{
 							CPU: linkerd2.Constraints{
 								Limit:   "100m",
 								Request: "10m",
@@ -2402,7 +2402,7 @@ data:
 								Request: "10Mi",
 							},
 						},
-						XTMountPath: &linkerd2.VolumeMountPath{
+						XTMountPath: linkerd2.VolumeMountPath{
 							MountPath: "/run",
 							Name:      "linkerd-proxy-init-xtables-lock",
 						},
@@ -2428,32 +2428,17 @@ data:
     {"flags":[{"name":"ha","value":"true"}]}`,
 			},
 			&linkerd2.Values{
-				Global: &linkerd2.Global{
+				Global: linkerd2.Global{
 					Namespace:        "ns",
 					CNIEnabled:       true,
 					HighAvailability: true,
-					Proxy: &linkerd2.Proxy{
+					Proxy: linkerd2.Proxy{
 						EnableExternalProfiles: true,
-						Image: &linkerd2.Image{
+						Image: linkerd2.Image{
 							Name:       "registry",
 							PullPolicy: "Always",
 						},
-						LogLevel: "",
-						Ports:    &linkerd2.Ports{},
-						Resources: &linkerd2.Resources{
-							CPU:    linkerd2.Constraints{},
-							Memory: linkerd2.Constraints{},
-						},
 					},
-					ProxyInit: &linkerd2.ProxyInit{
-						Image: &linkerd2.Image{},
-					},
-				},
-				Identity: &linkerd2.Identity{
-					Issuer: &linkerd2.Issuer{},
-				},
-				DebugContainer: &linkerd2.DebugContainer{
-					Image: &linkerd2.Image{},
 				},
 			},
 			nil,

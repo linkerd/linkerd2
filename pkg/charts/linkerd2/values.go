@@ -34,27 +34,27 @@ type (
 		HeartbeatSchedule      string            `json:"heartbeatSchedule"`
 		InstallNamespace       bool              `json:"installNamespace"`
 		Configs                ConfigJSONs       `json:"configs"`
-		Global                 *Global           `json:"global"`
-		Identity               *Identity         `json:"identity"`
-		DebugContainer         *DebugContainer   `json:"debugContainer"`
-		ProxyInjector          *ProxyInjector    `json:"proxyInjector"`
-		ProfileValidator       *ProfileValidator `json:"profileValidator"`
+		Global                 Global            `json:"global"`
+		Identity               Identity          `json:"identity"`
+		DebugContainer         DebugContainer    `json:"debugContainer"`
+		ProxyInjector          ProxyInjector     `json:"proxyInjector"`
+		ProfileValidator       ProfileValidator  `json:"profileValidator"`
 		NodeSelector           map[string]string `json:"nodeSelector"`
 		Tolerations            []interface{}     `json:"tolerations"`
 		Stage                  string            `json:"stage"`
 
-		DestinationResources   *Resources `json:"destinationResources"`
-		HeartbeatResources     *Resources `json:"heartbeatResources"`
-		IdentityResources      *Resources `json:"identityResources"`
-		ProxyInjectorResources *Resources `json:"proxyInjectorResources"`
-		PublicAPIResources     *Resources `json:"publicAPIResources"`
-		SPValidatorResources   *Resources `json:"spValidatorResources"`
+		DestinationResources   Resources `json:"destinationResources"`
+		HeartbeatResources     Resources `json:"heartbeatResources"`
+		IdentityResources      Resources `json:"identityResources"`
+		ProxyInjectorResources Resources `json:"proxyInjectorResources"`
+		PublicAPIResources     Resources `json:"publicAPIResources"`
+		SPValidatorResources   Resources `json:"spValidatorResources"`
 
-		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
-		IdentityProxyResources      *Resources `json:"identityProxyResources"`
-		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
-		PublicAPIProxyResources     *Resources `json:"publicAPIProxyResources"`
-		SPValidatorProxyResources   *Resources `json:"spValidatorProxyResources"`
+		DestinationProxyResources   Resources `json:"destinationProxyResources"`
+		IdentityProxyResources      Resources `json:"identityProxyResources"`
+		ProxyInjectorProxyResources Resources `json:"proxyInjectorProxyResources"`
+		PublicAPIProxyResources     Resources `json:"publicAPIProxyResources"`
+		SPValidatorProxyResources   Resources `json:"spValidatorProxyResources"`
 	}
 
 	// Global values common across all charts
@@ -90,8 +90,8 @@ type (
 		PodAnnotations map[string]string `json:"podAnnotations"`
 		PodLabels      map[string]string `json:"podLabels"`
 
-		Proxy     *Proxy     `json:"proxy"`
-		ProxyInit *ProxyInit `json:"proxyInit"`
+		Proxy     Proxy     `json:"proxy"`
+		ProxyInit ProxyInit `json:"proxyInit"`
 	}
 
 	// ConfigJSONs is the JSON encoding of the Linkerd configuration
@@ -103,43 +103,43 @@ type (
 
 	// Proxy contains the fields to set the proxy sidecar container
 	Proxy struct {
-		Capabilities *Capabilities `json:"capabilities"`
+		Capabilities Capabilities `json:"capabilities"`
 		// This should match .Resources.CPU.Limit, but must be a whole number
-		Cores                         int64            `json:"cores,omitempty"`
-		DisableIdentity               bool             `json:"disableIdentity"`
-		DisableTap                    bool             `json:"disableTap"`
-		EnableExternalProfiles        bool             `json:"enableExternalProfiles"`
-		Image                         *Image           `json:"image"`
-		LogLevel                      string           `json:"logLevel"`
-		LogFormat                     string           `json:"logFormat"`
-		SAMountPath                   *VolumeMountPath `json:"saMountPath"`
-		Ports                         *Ports           `json:"ports"`
-		Resources                     *Resources       `json:"resources"`
-		UID                           int64            `json:"uid"`
-		WaitBeforeExitSeconds         uint64           `json:"waitBeforeExitSeconds"`
-		IsGateway                     bool             `json:"isGateway"`
-		IsIngress                     bool             `json:"isIngress"`
-		RequireIdentityOnInboundPorts string           `json:"requireIdentityOnInboundPorts"`
-		OutboundConnectTimeout        string           `json:"outboundConnectTimeout"`
-		InboundConnectTimeout         string           `json:"inboundConnectTimeout"`
-		OpaquePorts                   string           `json:"opaquePorts"`
+		Cores                         int64           `json:"cores,omitempty"`
+		DisableIdentity               bool            `json:"disableIdentity"`
+		DisableTap                    bool            `json:"disableTap"`
+		EnableExternalProfiles        bool            `json:"enableExternalProfiles"`
+		Image                         Image           `json:"image"`
+		LogLevel                      string          `json:"logLevel"`
+		LogFormat                     string          `json:"logFormat"`
+		SAMountPath                   VolumeMountPath `json:"saMountPath"`
+		Ports                         Ports           `json:"ports"`
+		Resources                     Resources       `json:"resources"`
+		UID                           int64           `json:"uid"`
+		WaitBeforeExitSeconds         uint64          `json:"waitBeforeExitSeconds"`
+		IsGateway                     bool            `json:"isGateway"`
+		IsIngress                     bool            `json:"isIngress"`
+		RequireIdentityOnInboundPorts string          `json:"requireIdentityOnInboundPorts"`
+		OutboundConnectTimeout        string          `json:"outboundConnectTimeout"`
+		InboundConnectTimeout         string          `json:"inboundConnectTimeout"`
+		OpaquePorts                   string          `json:"opaquePorts"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container
 	ProxyInit struct {
-		Capabilities         *Capabilities    `json:"capabilities"`
-		IgnoreInboundPorts   string           `json:"ignoreInboundPorts"`
-		IgnoreOutboundPorts  string           `json:"ignoreOutboundPorts"`
-		Image                *Image           `json:"image"`
-		SAMountPath          *VolumeMountPath `json:"saMountPath"`
-		XTMountPath          *VolumeMountPath `json:"xtMountPath"`
-		Resources            *Resources       `json:"resources"`
-		CloseWaitTimeoutSecs int64            `json:"closeWaitTimeoutSecs"`
+		Capabilities         Capabilities    `json:"capabilities"`
+		IgnoreInboundPorts   string          `json:"ignoreInboundPorts"`
+		IgnoreOutboundPorts  string          `json:"ignoreOutboundPorts"`
+		Image                Image           `json:"image"`
+		SAMountPath          VolumeMountPath `json:"saMountPath"`
+		XTMountPath          VolumeMountPath `json:"xtMountPath"`
+		Resources            Resources       `json:"resources"`
+		CloseWaitTimeoutSecs int64           `json:"closeWaitTimeoutSecs"`
 	}
 
 	// DebugContainer contains the fields to set the debugging sidecar
 	DebugContainer struct {
-		Image *Image `json:"image"`
+		Image Image `json:"image"`
 	}
 
 	// Image contains the details to define a container image
@@ -186,29 +186,29 @@ type (
 	// Identity contains the fields to set the identity variables in the proxy
 	// sidecar container
 	Identity struct {
-		Issuer *Issuer `json:"issuer"`
+		Issuer Issuer `json:"issuer"`
 	}
 
 	// Issuer has the Helm variables of the identity issuer
 	Issuer struct {
-		Scheme              string     `json:"scheme"`
-		ClockSkewAllowance  string     `json:"clockSkewAllowance"`
-		IssuanceLifetime    string     `json:"issuanceLifetime"`
-		CrtExpiryAnnotation string     `json:"crtExpiryAnnotation"`
-		CrtExpiry           time.Time  `json:"crtExpiry"`
-		TLS                 *IssuerTLS `json:"tls"`
+		Scheme              string    `json:"scheme"`
+		ClockSkewAllowance  string    `json:"clockSkewAllowance"`
+		IssuanceLifetime    string    `json:"issuanceLifetime"`
+		CrtExpiryAnnotation string    `json:"crtExpiryAnnotation"`
+		CrtExpiry           time.Time `json:"crtExpiry"`
+		TLS                 IssuerTLS `json:"tls"`
 	}
 
 	// ProxyInjector has all the proxy injector's Helm variables
 	ProxyInjector struct {
-		*TLS
-		NamespaceSelector *metav1.LabelSelector `json:"namespaceSelector"`
+		TLS
+		NamespaceSelector metav1.LabelSelector `json:"namespaceSelector"`
 	}
 
 	// ProfileValidator has all the profile validator's Helm variables
 	ProfileValidator struct {
-		*TLS
-		NamespaceSelector *metav1.LabelSelector `json:"namespaceSelector"`
+		TLS
+		NamespaceSelector metav1.LabelSelector `json:"namespaceSelector"`
 	}
 
 	// TLS has a pair of PEM-encoded key and certificate variables used in the
@@ -239,8 +239,6 @@ func NewValues() (*Values, error) {
 	v.Global.Proxy.Image.Version = version.Version
 	v.DebugContainer.Image.Version = version.Version
 	v.Global.CliVersion = k8s.CreatedByAnnotationValue()
-	v.ProfileValidator.TLS = &TLS{}
-	v.ProxyInjector.TLS = &TLS{}
 	v.Global.ProxyContainerName = k8s.ProxyContainerName
 
 	return v, nil
@@ -313,9 +311,6 @@ func (v *Values) String() string {
 
 // GetGlobal is a safe accessor for Global. It initializes Global on the first
 // access.
-func (v *Values) GetGlobal() *Global {
-	if v.Global == nil {
-		v.Global = &Global{}
-	}
+func (v *Values) GetGlobal() Global {
 	return v.Global
 }

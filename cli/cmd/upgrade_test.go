@@ -69,7 +69,7 @@ func TestUpgradeDefault(t *testing.T) {
 
 func TestUpgradeHA(t *testing.T) {
 	installOpts, upgradeOpts, _ := testOptions(t)
-	installOpts.GetGlobal().HighAvailability = true
+	installOpts.Global.HighAvailability = true
 	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts)
 	if err != nil {
 		t.Fatal(err)
@@ -106,7 +106,7 @@ func TestUpgradeExternalIssuer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	installOpts.GetGlobal().IdentityTrustAnchorsPEM = string(ca)
+	installOpts.Global.IdentityTrustAnchorsPEM = string(ca)
 	install := renderInstall(t, installOpts)
 	upgrade, err := renderUpgrade(install.String()+externalIssuerSecret(issuer), upgradeOpts)
 
@@ -133,8 +133,8 @@ func TestUpgradeIssuerWithExternalIssuerFails(t *testing.T) {
 	issuer := generateIssuerCerts(t, true)
 	defer issuer.cleanup()
 
-	installOpts.GetGlobal().IdentityTrustDomain = "cluster.local"
-	installOpts.GetGlobal().IdentityTrustDomain = issuer.ca
+	installOpts.Global.IdentityTrustDomain = "cluster.local"
+	installOpts.Global.IdentityTrustDomain = issuer.ca
 	installOpts.Identity.Issuer.Scheme = string(corev1.SecretTypeTLS)
 	installOpts.Identity.Issuer.TLS.CrtPEM = issuer.crt
 	installOpts.Identity.Issuer.TLS.KeyPEM = issuer.key
@@ -281,7 +281,7 @@ func TestUpgradeWebhookCrtsNameChange(t *testing.T) {
 
 	injectorCerts := generateCerts(t, "linkerd-proxy-injector.linkerd.svc", false)
 	defer injectorCerts.cleanup()
-	installOpts.ProxyInjector.TLS = &linkerd2.TLS{
+	installOpts.ProxyInjector.TLS = linkerd2.TLS{
 		CaBundle: injectorCerts.ca,
 		CrtPEM:   injectorCerts.crt,
 		KeyPEM:   injectorCerts.key,
@@ -289,7 +289,7 @@ func TestUpgradeWebhookCrtsNameChange(t *testing.T) {
 
 	validatorCerts := generateCerts(t, "linkerd-sp-validator.linkerd.svc", false)
 	defer validatorCerts.cleanup()
-	installOpts.ProfileValidator.TLS = &linkerd2.TLS{
+	installOpts.ProfileValidator.TLS = linkerd2.TLS{
 		CaBundle: validatorCerts.ca,
 		CrtPEM:   validatorCerts.crt,
 		KeyPEM:   validatorCerts.key,
@@ -333,7 +333,7 @@ func TestUpgradeTwoLevelWebhookCrts(t *testing.T) {
 	// This tests the case where the webhook certs are not self-signed.
 	injectorCerts := generateCerts(t, "linkerd-proxy-injector.linkerd.svc", false)
 	defer injectorCerts.cleanup()
-	installOpts.ProxyInjector.TLS = &linkerd2.TLS{
+	installOpts.ProxyInjector.TLS = linkerd2.TLS{
 		CaBundle: injectorCerts.ca,
 		CrtPEM:   injectorCerts.crt,
 		KeyPEM:   injectorCerts.key,
@@ -341,7 +341,7 @@ func TestUpgradeTwoLevelWebhookCrts(t *testing.T) {
 
 	validatorCerts := generateCerts(t, "linkerd-sp-validator.linkerd.svc", false)
 	defer validatorCerts.cleanup()
-	installOpts.ProfileValidator.TLS = &linkerd2.TLS{
+	installOpts.ProfileValidator.TLS = linkerd2.TLS{
 		CaBundle: validatorCerts.ca,
 		CrtPEM:   validatorCerts.crt,
 		KeyPEM:   validatorCerts.key,
