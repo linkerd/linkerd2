@@ -56,7 +56,7 @@ func Mutate(collectorSvcAddr, collectorSvcAccount string) webhook.Handler {
 		}
 
 		params := Params{
-			ProxyIndex:          webhook.GetProxyContainerIndex(pod.Spec.Containers),
+			ProxyIndex:          getProxyContainerIndex(pod.Spec.Containers),
 			CollectorSvcAddr:    collectorSvcAddr,
 			CollectorSvcAccount: collectorSvcAccount,
 		}
@@ -86,6 +86,15 @@ func Mutate(collectorSvcAddr, collectorSvcAccount string) webhook.Handler {
 
 		return admissionResponse, nil
 	}
+}
+
+func getProxyContainerIndex(containers []corev1.Container) int {
+	for i, c := range containers {
+		if c.Name == labels.ProxyContainerName {
+			return i
+		}
+	}
+	return -1
 }
 
 func alreadyMutated(pod *corev1.Pod, proxyIndex int) bool {

@@ -87,7 +87,7 @@ spec:
         {{- $hostAbbrev := replace "." "\\." (printf "linkerd-web.%s.svc" .Values.namespace) }}
         - -enforced-host=^(localhost|127\.0\.0\.1|{{ $hostFull }}|{{ $hostAbbrev }}|\[::1\])(:\d+)?$
         {{- end}}
-        image: {{.Values.dashboard.image.registry}}/{{.Values.dashboard.image.name}}:{{.Values.dashboard.image.tag}}
+        image: {{.Values.dashboard.image.registry}}/{{.Values.dashboard.image.name}}:{{ default (default .Values.linkerdVersion .Values.controllerImageVersion) .Values.dashboard.image.tag}}
         imagePullPolicy: {{.Values.dashboard.image.pullPolicy}}
         livenessProbe:
           httpGet:

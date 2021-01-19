@@ -10,10 +10,10 @@ linkerdVersion: &linkerd_version linkerdVersionValue
 # -- Default Docker Registry
 defaultRegistry: &default_registry ghcr.io/linkerd
 
-# -- Kubernetes DNS Domain name to use
+# -- Kubernetes DNS Domain name to use  
 clusterDomain: &cluster_domain cluster.local
 
-# -- Trust domain used for identity
+# -- Trust domain used for identity 
 identityTrustDomain: *cluster_domain
 
 # -- Namespace of the Linkerd core control-plane install
@@ -46,7 +46,7 @@ nodeSelector:
 imagePullSecrets: []
 # - name: my-private-docker-registry-login-secret
 
-# -|- Tolerations section, See the
+# -|- Tolerations section, See the 
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
 # for more information
 # tolerations:
@@ -78,7 +78,7 @@ tap:
   crtPEM: |
 
   # -- Certificate key for Tap component. If not provided then Helm will
-  # generate one.
+  # generate one. 
   keyPEM: |
 
   # -- Bundle of CA certificates for Tap component. If not provided then Helm
@@ -128,7 +128,6 @@ tapInjector:
   UID: *uid
   failurePolicy: Ignore
   # resources:
-
   # -- Do not create a secret resource for the tapInjector webhook. If this is
   # set to `true`, the value `tapInjector.caBundle` must be set (see below)
   externalSecret: false
@@ -143,7 +142,7 @@ tapInjector:
   # -- Bundle of CA certificates for the tapInjector. If not provided then
   # Helm will use the certificate generated  for `tapInjector.crtPEM`. If
   # `tapInjector.externalSecret` is set to true, this value must be set, as no
-  # certificate will be generated.
+  # certificate will be generated. 
   caBundle: |
 
 # web dashboard configuration
