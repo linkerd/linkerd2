@@ -2595,7 +2595,10 @@ func CheckForPods(pods []corev1.Pod, deployNames []string) error {
 }
 
 // CheckPodsRunning checks if the given pods are in running state
-func CheckPodsRunning(pods []corev1.Pod) error {
+func CheckPodsRunning(pods []corev1.Pod, podsNotFoundMsg string) error {
+	if len(pods) == 0 && podsNotFoundMsg != "" {
+		return fmt.Errorf(podsNotFoundMsg)
+	}
 	for _, pod := range pods {
 		if pod.Status.Phase != "Running" {
 			return fmt.Errorf("%s status is %s", pod.Name, pod.Status.Phase)
