@@ -245,7 +245,10 @@ control plane.`,
   linkerd install -l linkerdtest | kubectl apply -f -
 
   # Installation may also be broken up into two stages by user privilege, via
-  # subcommands.`,
+  # subcommands.
+
+The installation can be configured by using the --set, --values, --set-string and --set-file flags.
+A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return install(cmd.Context(), os.Stdout, values, flags, "", options)
 		},
@@ -343,7 +346,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 		)
 	}
 
-	// Load all Viz chart files into buffer
+	// Load all chart files into buffer
 	if err := charts.FilesReader(static.Templates, helmDefaultChartDir+"/", files); err != nil {
 		return err
 	}
