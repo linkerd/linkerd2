@@ -5,10 +5,9 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: {{.Values.namespace}}-tap-injector
+  name: linkerd-tap-injector
   labels:
-    {{.Values.extensionAnnotation}}: {{.Values.namespace}}
-    component: tap-injector
+    {{.Values.extensionAnnotation}}: linkerd-viz
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -17,16 +16,16 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: {{.Values.namespace}}-tap-injector
+  name: linkerd-tap-injector
   labels:
-    {{.Values.extensionAnnotation}}: {{.Values.namespace}}
+    {{.Values.extensionAnnotation}}: linkerd-viz
 subjects:
 - kind: ServiceAccount
   name: tap-injector
   namespace: {{.Values.namespace}}
 roleRef:
   kind: ClusterRole
-  name: {{.Values.namespace}}-tap-injector
+  name: linkerd-tap-injector
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: ServiceAccount
@@ -34,10 +33,6 @@ apiVersion: v1
 metadata:
   name: tap-injector
   namespace: {{.Values.namespace}}
-  labels:
-    {{.Values.extensionAnnotation}}: {{.Values.namespace}}
-    component: tap-injector
-    namespace: {{.Values.namespace}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 ---
 {{- $host := printf "tap-injector.%s.svc" .Values.namespace }}
@@ -48,10 +43,6 @@ apiVersion: v1
 metadata:
   name: tap-injector-k8s-tls
   namespace: {{ .Values.namespace }}
-  labels:
-    {{.Values.extensionAnnotation}}: {{.Values.namespace}}
-    component: tap-injector
-    namespace: {{.Values.namespace}}
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 type: kubernetes.io/tls
@@ -63,17 +54,17 @@ data:
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: tap-injector-webhook-config
+  name: linkerd-tap-injector-webhook-config
   labels:
-    {{.Values.extensionAnnotation}}: {{.Values.namespace}}
+    {{.Values.extensionAnnotation}}: linkerd-viz
 webhooks:
 - name: tap-injector.linkerd.io
   {{- if .Values.tapInjector.namespaceSelector }}
-  namespaceSelector: 
+  namespaceSelector:
 {{ toYaml .Values.tapInjector.namespaceSelector | trim | indent 4 -}}
   {{- end }}
   {{- if .Values.tapInjector.objectSelector }}
-  objectSelector: 
+  objectSelector:
 {{ toYaml .Values.tapInjector.objectSelector | trim | indent 4 -}}
   {{- end }}
   clientConfig:

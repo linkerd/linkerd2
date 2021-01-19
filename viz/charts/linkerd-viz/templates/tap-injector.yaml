@@ -11,13 +11,11 @@ metadata:
   labels:
     {{.Values.extensionAnnotation}}: linkerd-viz
     component: tap-injector
-    namespace: {{.Values.namespace}}
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.extensionAnnotation}}: linkerd-viz
     component: tap-injector
   ports:
   - name: tap-injector
@@ -33,18 +31,14 @@ metadata:
     {{.Values.extensionAnnotation}}: linkerd-viz
     app.kubernetes.io/name: tap-injector
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
     component: tap-injector
-    namespace: {{.Values.namespace}}
   name: tap-injector
   namespace: {{.Values.namespace}}
 spec:
   replicas: {{.Values.tapInjector.replicas}}
   selector:
     matchLabels:
-      {{.Values.extensionAnnotation}}: linkerd-viz
       component: tap-injector
-      namespace: {{.Values.namespace}}
   {{- if .Values.enablePodAntiAffinity }}
   strategy:
     rollingUpdate:
@@ -61,7 +55,6 @@ spec:
       labels:
         {{.Values.extensionAnnotation}}: linkerd-viz
         component: tap-injector
-        namespace: {{.Values.namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.tolerations -}}

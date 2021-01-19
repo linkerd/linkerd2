@@ -556,10 +556,9 @@ spec:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-viz-tap-injector
+  name: linkerd-tap-injector
   labels:
     linkerd.io/extension: linkerd-viz
-    component: tap-injector
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -568,7 +567,7 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-viz-tap-injector
+  name: linkerd-tap-injector
   labels:
     linkerd.io/extension: linkerd-viz
 subjects:
@@ -577,7 +576,7 @@ subjects:
   namespace: linkerd-viz
 roleRef:
   kind: ClusterRole
-  name: linkerd-viz-tap-injector
+  name: linkerd-tap-injector
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: ServiceAccount
@@ -585,20 +584,12 @@ apiVersion: v1
 metadata:
   name: tap-injector
   namespace: linkerd-viz
-  labels:
-    linkerd.io/extension: linkerd-viz
-    component: tap-injector
-    namespace: linkerd-viz
 ---
 kind: Secret
 apiVersion: v1
 metadata:
   name: tap-injector-k8s-tls
   namespace: linkerd-viz
-  labels:
-    linkerd.io/extension: linkerd-viz
-    component: tap-injector
-    namespace: linkerd-viz
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 type: kubernetes.io/tls
@@ -609,7 +600,7 @@ data:
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: tap-injector-webhook-config
+  name: linkerd-tap-injector-webhook-config
   labels:
     linkerd.io/extension: linkerd-viz
 webhooks:
@@ -641,13 +632,11 @@ metadata:
   labels:
     linkerd.io/extension: linkerd-viz
     component: tap-injector
-    namespace: linkerd-viz
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
   type: ClusterIP
   selector:
-    linkerd.io/extension: linkerd-viz
     component: tap-injector
   ports:
   - name: tap-injector
@@ -663,27 +652,22 @@ metadata:
     linkerd.io/extension: linkerd-viz
     app.kubernetes.io/name: tap-injector
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: dev-undefined
     component: tap-injector
-    namespace: linkerd-viz
   name: tap-injector
   namespace: linkerd-viz
 spec:
   replicas: 1
   selector:
     matchLabels:
-      linkerd.io/extension: linkerd-viz
       component: tap-injector
-      namespace: linkerd-viz
   template:
     metadata:
       annotations:
-        checksum/config: 9b9409670152c6b2a823ad42310af7dac6df572274b70812262fb6effa44eb7c
+        checksum/config: 33e988bace52d67983db9661563009d9e7f2a4877dd05add7300d2f25d2579ba
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
         linkerd.io/extension: linkerd-viz
         component: tap-injector
-        namespace: linkerd-viz
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
