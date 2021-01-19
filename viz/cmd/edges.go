@@ -93,16 +93,20 @@ func NewCmdEdges() *cobra.Command {
 				return fmt.Errorf("Error creating edges request: %s", err)
 			}
 
-			// The gRPC client is concurrency-safe, so we can reuse it in all the following goroutines
-			// https://github.com/grpc/grpc-go/issues/682
-			client := api.CheckVizAPIClientOrExit(healthcheck.Options{
+			hcOptions := healthcheck.Options{
 				ControlPlaneNamespace: controlPlaneNamespace,
 				KubeConfig:            kubeconfigPath,
 				Impersonate:           impersonate,
 				ImpersonateGroup:      impersonateGroup,
 				KubeContext:           kubeContext,
 				APIAddr:               apiAddr,
-			})
+			}
+			// ensure linkerd-viz
+			checkForViz(hcOptions)
+			// The gRPC client is concurrency-safe, so we can reuse it in all the following goroutines
+			// https://github.com/grpc/grpc-go/issues/682
+			client := api.CheckVizAPIClientOrExit(hcOptions)
+
 			c := make(chan indexedEdgeResults, len(reqs))
 			for num, req := range reqs {
 				go func(num int, req *pb.EdgesRequest) {

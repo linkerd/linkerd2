@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 
 	"github.com/fatih/color"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -70,4 +72,48 @@ func NewCmdJaeger() *cobra.Command {
 	jaegerCmd.AddCommand(newCmdDashboard())
 
 	return jaegerCmd
+}
+
+func checkForJaeger(hcOptions healthcheck.Options) {
+	checks := []healthcheck.CategoryID{
+		healthcheck.KubernetesAPIChecks,
+		healthcheck.LinkerdControlPlaneExistenceChecks,
+		linkerdJaegerExtensionCheck,
+	}
+
+	hc := healthcheck.NewHealthChecker(checks, &hcOptions)
+
+	category, err := jaegerCategory(hc)
+	if err != nil {
+		fmt.Fprint(os.Stderr, err)
+		os.Exit(1)
+	}
+	hc.AppendCategories(*category)
+
+	hc.RunChecks(exitOnError)
+}
+
+func exitOnError(result *healthcheck.CheckResult) {
+	if result.Retry {
+		fmt.Fprintln(os.Stderr, "Waiting for linkerd-jaeger to become available")
+		return
+	}
+
+	if result.Err != nil && !result.Warning {
+		var msg string
+		switch result.Category {
+		case healthcheck.KubernetesAPIChecks:
+			msg = "Cannot connect to Kubernetes"
+		case healthcheck.LinkerdControlPlaneExistenceChecks:
+			msg = "Cannot find Linkerd"
+		case linkerdJaegerExtensionCheck:
+			msg = "Cannot find jaeger extension"
+		}
+		fmt.Fprintf(os.Stderr, "%s: %s\n", msg, result.Err)
+
+		checkCmd := "linkerd jaeger check"
+		fmt.Fprintf(os.Stderr, "Validate linkerd-jaeger install with: %s\n", checkCmd)
+
+		os.Exit(1)
+	}
 }

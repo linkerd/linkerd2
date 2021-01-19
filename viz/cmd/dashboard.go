@@ -81,8 +81,7 @@ func NewCmdDashboard() *cobra.Command {
 					options.show, showLinkerd, showGrafana, showURL)
 			}
 
-			// ensure we can connect to the public API before starting the proxy
-			api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
+			hcOptions := healthcheck.Options{
 				ControlPlaneNamespace: controlPlaneNamespace,
 				KubeConfig:            kubeconfigPath,
 				Impersonate:           impersonate,
@@ -90,7 +89,13 @@ func NewCmdDashboard() *cobra.Command {
 				KubeContext:           kubeContext,
 				APIAddr:               apiAddr,
 				RetryDeadline:         time.Now().Add(options.wait),
-			}, true)
+			}
+
+			// ensure we can connect to the public API before starting the proxy
+			api.CheckPublicAPIClientOrRetryOrExit(hcOptions, true)
+
+			// ensure linkerd-viz
+			checkForViz(hcOptions)
 
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 			if err != nil {

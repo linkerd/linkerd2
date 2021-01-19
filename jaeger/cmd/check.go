@@ -39,6 +39,7 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 	}
 
 	checkers := []healthcheck.Checker{}
+	// TODO: Make ns check fatal
 	checkers = append(checkers,
 		*healthcheck.NewChecker("collector and jaeger service account exists").
 			WithHintAnchor("l5d-jaeger-sc-exists").

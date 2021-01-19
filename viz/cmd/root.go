@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 
 	"github.com/fatih/color"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -94,4 +96,42 @@ func getVizNamespace(ctx context.Context, k8sAPI *k8s.KubernetesAPI) (string, er
 		return "", errors.New("linkerd-viz extension not found")
 	}
 	return ns.Items[0].Name, nil
+}
+
+func checkForViz(hcOptions healthcheck.Options) {
+	checks := []healthcheck.CategoryID{
+		healthcheck.KubernetesAPIChecks,
+		healthcheck.LinkerdControlPlaneExistenceChecks,
+		linkerdVizExtensionCheck,
+	}
+
+	hc := healthcheck.NewHealthChecker(checks, &hcOptions)
+	hc.AppendCategories(*vizCategory(hc))
+
+	hc.RunChecks(exitOnError)
+}
+
+func exitOnError(result *healthcheck.CheckResult) {
+	if result.Retry {
+		fmt.Fprintln(os.Stderr, "Waiting for viz to become available")
+		return
+	}
+
+	if result.Err != nil && !result.Warning {
+		var msg string
+		switch result.Category {
+		case healthcheck.KubernetesAPIChecks:
+			msg = "Cannot connect to Kubernetes"
+		case healthcheck.LinkerdControlPlaneExistenceChecks:
+			msg = "Cannot find Linkerd"
+		case linkerdVizExtensionCheck:
+			msg = "Cannot find viz extension"
+		}
+		fmt.Fprintf(os.Stderr, "%s: %s\n", msg, result.Err)
+
+		checkCmd := "linkerd viz check"
+		fmt.Fprintf(os.Stderr, "Validate linkerd-viz install with: %s\n", checkCmd)
+
+		os.Exit(1)
+	}
 }

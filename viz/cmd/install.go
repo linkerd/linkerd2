@@ -200,31 +200,3 @@ func checkInjectorRunningOrRetryOrExit(retryDeadline time.Duration) {
 
 	hc.RunChecks(exitOnError)
 }
-
-func exitOnError(result *healthcheck.CheckResult) {
-	if result.Retry {
-		fmt.Fprintln(os.Stderr, "Waiting for core control plane to become available")
-		return
-	}
-
-	if result.Err != nil && !result.Warning {
-		var msg string
-		switch result.Category {
-		case healthcheck.KubernetesAPIChecks:
-			msg = "Cannot connect to Kubernetes"
-		case healthcheck.LinkerdControlPlaneExistenceChecks:
-			msg = "Cannot find Linkerd"
-		case healthcheck.LinkerdAPIChecks:
-			msg = "Cannot connect to Linkerd"
-		}
-		fmt.Fprintf(os.Stderr, "%s: %s\n", msg, result.Err)
-
-		checkCmd := "linkerd check"
-		if controlPlaneNamespace != defaultLinkerdNamespace {
-			checkCmd += fmt.Sprintf(" --linkerd-namespace %s", controlPlaneNamespace)
-		}
-		fmt.Fprintf(os.Stderr, "Validate the install with: %s\n", checkCmd)
-
-		os.Exit(1)
-	}
-}

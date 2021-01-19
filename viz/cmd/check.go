@@ -46,7 +46,6 @@ func vizCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 		*healthcheck.NewChecker("linkerd-viz Namespace exists").
 			WithHintAnchor("l5d-viz-ns-exists").
 			Fatal().
-			Warning().
 			WithCheck(func(ctx context.Context) error {
 				// Get viz Extension Namespace
 				ns, err := getNamespaceOfExtension(vizExtensionName)
