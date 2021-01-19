@@ -407,7 +407,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	// Wait for the proxy injector to be up
 	name := "linkerd-proxy-injector"
 	ns := "linkerd"
-	o, err := TestHelper.Kubectl("", "--namespace="+ns, "wait", "--for=condition=available", "--timeout=120s", "deploy/"+name)
+	o, err := TestHelper.Kubectl("", "--namespace="+ns, "rollout", "status", "--timeout=120s", "deploy/"+name)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s in namespace %s", name, ns),
 			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
