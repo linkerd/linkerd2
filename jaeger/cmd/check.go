@@ -31,14 +31,25 @@ type checkOptions struct {
 	output string
 }
 
-func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error) {
-
-	kubeAPI, err := k8s.NewAPI(hc.KubeConfig, hc.KubeContext, hc.Impersonate, hc.ImpersonateGroup, 0)
-	if err != nil {
-		return nil, err
-	}
+func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 
 	checkers := []healthcheck.Checker{}
+
+	checkers = append(checkers,
+		*healthcheck.NewChecker("linkerd-jaeger extension Namespace exists").
+			WithHintAnchor("l5d-jaeger-ns-exists").
+			Fatal().
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				// Get  jaeger Extension Namespace
+				ns, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, jaegerExtensionName)
+				if err != nil {
+					return err
+				}
+				jaegerNamespace = ns.Name
+				return nil
+			}))
+
 	checkers = append(checkers,
 		*healthcheck.NewChecker("collector and jaeger service account exists").
 			WithHintAnchor("l5d-jaeger-sc-exists").
@@ -46,7 +57,7 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 			Warning().
 			WithCheck(func(ctx context.Context) error {
 				// Check for Collector Service Account
-				return healthcheck.CheckServiceAccounts(ctx, kubeAPI, []string{"collector", "jaeger"}, jaegerNamespace, "")
+				return healthcheck.CheckServiceAccounts(ctx, hc.KubeAPIClient(), []string{"collector", "jaeger"}, jaegerNamespace, "")
 			}))
 
 	checkers = append(checkers,
@@ -55,7 +66,7 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 			Warning().
 			WithCheck(func(ctx context.Context) error {
 				// Check for Jaeger Service Account
-				_, err = kubeAPI.CoreV1().ConfigMaps(jaegerNamespace).Get(ctx, "collector-config", metav1.GetOptions{})
+				_, err := hc.KubeAPIClient().CoreV1().ConfigMaps(jaegerNamespace).Get(ctx, "collector-config", metav1.GetOptions{})
 				if err != nil {
 					return err
 				}
@@ -70,11 +81,11 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
 				// Check for Collector pod
-				podList, err := kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: "component=collector"})
+				podList, err := hc.KubeAPIClient().CoreV1().Pods(jaegerNamespace).List(ctx, metav1.ListOptions{LabelSelector: "component=collector"})
 				if err != nil {
 					return err
 				}
-				return healthcheck.CheckPodsRunning(podList.Items, fmt.Sprintf("No collector pods found in the %s namespace", namespace))
+				return healthcheck.CheckPodsRunning(podList.Items, fmt.Sprintf("No collector pods found in the %s namespace", jaegerNamespace))
 			}))
 
 	checkers = append(checkers,
@@ -85,11 +96,11 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
 				// Check for Jaeger pod
-				podList, err := kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: "component=jaeger"})
+				podList, err := hc.KubeAPIClient().CoreV1().Pods(jaegerNamespace).List(ctx, metav1.ListOptions{LabelSelector: "component=jaeger"})
 				if err != nil {
 					return err
 				}
-				return healthcheck.CheckPodsRunning(podList.Items, fmt.Sprintf("No jaeger pods found in the %s namespace", namespace))
+				return healthcheck.CheckPodsRunning(podList.Items, fmt.Sprintf("No jaeger pods found in the %s namespace", jaegerNamespace))
 			}))
 
 	checkers = append(checkers,
@@ -100,11 +111,11 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
 				// Check for Jaeger Injector pod
-				podList, err := kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: "component=jaeger-injector"})
+				podList, err := hc.KubeAPIClient().CoreV1().Pods(jaegerNamespace).List(ctx, metav1.ListOptions{LabelSelector: "component=jaeger-injector"})
 				if err != nil {
 					return err
 				}
-				return healthcheck.CheckPodsRunning(podList.Items, fmt.Sprintf("No jaeger injector pods found in the %s namespace", namespace))
+				return healthcheck.CheckPodsRunning(podList.Items, fmt.Sprintf("No jaeger injector pods found in the %s namespace", jaegerNamespace))
 			}))
 
 	checkers = append(checkers,
@@ -113,14 +124,14 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 			Warning().
 			WithCheck(func(ctx context.Context) error {
 				// Check if Jaeger Extension pods have been injected
-				pods, err := kubeAPI.GetPodsByNamespace(ctx, jaegerNamespace)
+				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, jaegerNamespace)
 				if err != nil {
 					return err
 				}
 				return healthcheck.CheckIfDataPlanePodsExist(pods)
 			}))
 
-	return healthcheck.NewCategory(linkerdJaegerExtensionCheck, checkers, true), nil
+	return healthcheck.NewCategory(linkerdJaegerExtensionCheck, checkers, true)
 }
 
 func newCheckOptions() *checkOptions {
@@ -191,12 +202,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		RetryDeadline:         time.Now().Add(options.wait),
 	})
 
-	category, err := jaegerCategory(hc)
-	if err != nil {
-		return err
-	}
-	hc.AppendCategories(*category)
-
+	hc.AppendCategories(*jaegerCategory(hc))
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
 	if !success {

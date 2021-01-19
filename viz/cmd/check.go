@@ -12,7 +12,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/spf13/cobra"
-	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiregistrationv1client "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/typed/apiregistration/v1"
@@ -49,7 +48,7 @@ func vizCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			Warning().
 			WithCheck(func(ctx context.Context) error {
 				// Get viz Extension Namespace
-				ns, err := getNamespaceOfExtension(vizExtensionName)
+				ns, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, vizExtensionName)
 				if err != nil {
 					return err
 				}
@@ -236,25 +235,6 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	}
 
 	return nil
-}
-
-func getNamespaceOfExtension(name string) (*corev1.Namespace, error) {
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	namespaces, err := kubeAPI.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{LabelSelector: k8s.LinkerdExtensionLabel})
-	if err != nil {
-		return nil, err
-	}
-
-	for _, ns := range namespaces.Items {
-		if ns.Labels[k8s.LinkerdExtensionLabel] == name {
-			return &ns, err
-		}
-	}
-	return nil, fmt.Errorf("could not find the linkerd-viz extension. It can be installed by running `linkerd viz install | kubectl apply -f -`")
 }
 
 func fetchTapCaBundle(ctx context.Context, kubeAPI *k8s.KubernetesAPI) ([]*x509.Certificate, error) {
