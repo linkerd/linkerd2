@@ -40,8 +40,8 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-buildx-${{ matrix.target }}-
     - name: Build docker images
-      env:
-        DOCKER_TRACE: 1
+      #env:
+      #  DOCKER_TRACE: 1
       run: |
         docker buildx create --driver docker-container --use
         bin/docker-build-${{ matrix.target }}

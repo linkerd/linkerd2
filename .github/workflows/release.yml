@@ -39,7 +39,7 @@ jobs:
       uses: crazy-max/ghaction-docker-buildx@552c9de
     - name: Build & Push Multi Arch Images
       env:
-        DOCKER_TRACE: 1
+        #DOCKER_TRACE: 1
         DOCKER_MULTIARCH: 1
         DOCKER_PUSH: 1
       run: |
