@@ -34,7 +34,6 @@ metadata:
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
     component: metrics-api
-    namespace: {{.Values.namespace}}
   name: linkerd-metrics-api
   namespace: {{.Values.namespace}}
 spec:
@@ -43,7 +42,6 @@ spec:
     matchLabels:
       {{.Values.extensionAnnotation}}: linkerd-viz
       component: metrics-api
-      namespace: {{.Values.namespace}}
   template:
     metadata:
       annotations:
@@ -58,7 +56,6 @@ spec:
       labels:
         {{.Values.extensionAnnotation}}: linkerd-viz
         component: metrics-api
-        namespace: {{.Values.namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.tolerations -}}
@@ -79,7 +76,7 @@ spec:
         {{- else }}
         - -prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.{{.Values.clusterDomain}}:9090
         {{- end }}
-        image: {{.Values.metricsAPI.image.registry}}/{{.Values.metricsAPI.image.name}}:{{ default (default .Values.linkerdVersion .Values.controllerImageVersion) .Values.metricsAPI.image.tag}}
+        image: {{.Values.metricsAPI.image.registry}}/{{.Values.metricsAPI.image.name}}:{{.Values.metricsAPI.image.tag}}
         imagePullPolicy: {{.Values.metricsAPI.pullPolicy}}
         livenessProbe:
           httpGet:
