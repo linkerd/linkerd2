@@ -74,6 +74,9 @@ func NewCmdJaeger() *cobra.Command {
 	return jaegerCmd
 }
 
+// checkForJaeger runs the kubernetesAPI, LinkerdControlPlaneExistence and the JaegerExtension category checks
+// with a HealthChecker created by the passed options.
+// For check failures, The process is exited with an error message based on the failed category
 func checkForJaeger(hcOptions healthcheck.Options) {
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,

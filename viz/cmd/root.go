@@ -98,6 +98,9 @@ func getVizNamespace(ctx context.Context, k8sAPI *k8s.KubernetesAPI) (string, er
 	return ns.Items[0].Name, nil
 }
 
+// checkForViz runs the kubernetesAPI, LinkerdControlPlaneExistence and the VizExtension category checks
+// with a HealthChecker created by the passed options.
+// For check failures, The process is exited with an error message based on the failed category
 func checkForViz(hcOptions healthcheck.Options) {
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
