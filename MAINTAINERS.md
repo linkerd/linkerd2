@@ -9,7 +9,6 @@ The Linkerd maintainers are:
 * Eliza Weisman <eliza@buoyant.io> @hawkw
 * Hema Lee <Hemalekha.Lee@nordstrom.com> @hemakl
 * Kevin Leimkuhler <kevinl@buoyant.io> @kleimkuhler
-* Risha Mars <mars@buoyant.io> @rmars
 * Zahari Dichev <zahari@buoyant.io> @zaharidichev
 
 ## Emeritus
@@ -17,6 +16,7 @@ The Linkerd maintainers are:
 Former maintainers include:
 
 * Kevin Ingleman <ki@buoyant.io> @klingerf
+* Risha Mars <mars@buoyant.io> @rmars
 
 <!--
 # Adding a new maintainer
