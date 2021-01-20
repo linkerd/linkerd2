@@ -87,8 +87,9 @@ Kubernetes: `>=1.13.0-0`
 | dashboard.resources.memory.request | string | `nil` | Amount of memory that the web container requests |
 | dashboard.restrictPrivileges | bool | `false` | Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check |
 | defaultLogLevel | string | `"info"` | Log level for all the viz components |
-| defaultRegistry | string | `"ghcr.io/linkerd"` | docker registry for all viz components |
+| defaultRegistry | string | `"ghcr.io/linkerd"` | Docker registry for all viz components |
 | defaultUID | int | `2103` | UID for all the viz components |
+| enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
 | extensionAnnotation | string | `"linkerd.io/extension"` |  |
 | grafana.enabled | bool | `true` | toggle field to enable or disable grafana |
 | grafana.image.name | string | `"grafana"` | Docker image name for the grafana instance |
@@ -137,7 +138,7 @@ Kubernetes: `>=1.13.0-0`
 | tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided then Helm will generate one.  |
 | tap.logLevel | string | `"info"` | log level of the tap component |
 | tap.proxy | string | `nil` |  |
-| tap.replicas | int | `1` | Number of replicas of tap |
+| tap.replicas | int | `1` | Number of tap component replicas |
 | tap.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the tap container can use |
 | tap.resources.cpu.request | string | `nil` | Amount of CPU units that the tap container requests |
 | tap.resources.memory.limit | string | `nil` | Maximum amount of memory that tap container can use |

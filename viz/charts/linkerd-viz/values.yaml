@@ -15,7 +15,7 @@ createdByAnnotation: linkerd.io/created-by
 proxyInjectAnnotation: linkerd.io/inject
 extensionAnnotation: linkerd.io/extension
 
-# -- docker registry for all viz components
+# -- Docker registry for all viz components
 defaultRegistry: &registry ghcr.io/linkerd
 # -- Log level for all the viz components
 defaultLogLevel: &log_level info
@@ -44,6 +44,11 @@ imagePullSecrets: []
 # for more information
 tolerations:
 
+# -- Enables Pod Anti Affinity logic to balance the placement of replicas
+# across hosts and zones for High Availability.
+# Enable this only when you have multiple replicas of components.
+enablePodAntiAffinity: false
+
 # -- url of external prometheus instance
 prometheusUrl: ""
 
@@ -53,7 +58,7 @@ jaegerUrl: ""
 
 # tap configuration
 tap:
-    # -- Number of replicas of tap
+    # -- Number of tap component replicas
   replicas: 1
   # -- log level of the tap component
   logLevel: *log_level
