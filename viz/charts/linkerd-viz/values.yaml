@@ -129,15 +129,20 @@ tapInjector:
   failurePolicy: Ignore
   resources:
     cpu:
-      # -- Maximum amount of CPU units that the tap container can use
+      # -- Maximum amount of CPU units that the tapInjector container can use
       limit:
-      # -- Amount of CPU units that the tap container requests
+      # -- Amount of CPU units that the tapInjector container requests
       request:
     memory:
-      # -- Maximum amount of memory that tap container can use
+      # -- Maximum amount of memory that tapInjector container can use
       limit:
-      # -- Amount of memory that the tap container requests
+      # -- Amount of memory that the tapInjector container requests
       request:
+  proxy:
+    # -- If set, overrides default proxy resources for the proxy injected
+    # into the tapInjector component
+    # resources:
+
   # -- Do not create a secret resource for the tapInjector webhook. If this is
   # set to `true`, the value `tapInjector.caBundle` must be set (see below)
   externalSecret: false
