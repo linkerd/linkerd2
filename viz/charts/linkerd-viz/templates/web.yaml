@@ -68,7 +68,8 @@ spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
       containers:
       - args:
-        - -api-addr=linkerd-controller-api.{{.Values.linkerdNamespace}}.svc.{{.Values.clusterDomain}}:8085
+        - -linkerd-controller-api-addr=linkerd-controller-api.{{.Values.linkerdNamespace}}.svc.{{.Values.clusterDomain}}:8085
+        - -linkerd-metrics-api-addr=linkerd-metrics-api.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:8085
         - -cluster-domain={{.Values.clusterDomain}}
         {{- if .Values.grafanaUrl }}
         - -grafana-addr={{.Values.grafanaUrl}}
@@ -79,6 +80,7 @@ spec:
         - -jaeger-addr={{.Values.jaegerUrl}}
         {{- end}}
         - -controller-namespace={{.Values.linkerdNamespace}}
+        - -viz-namespace={{.Values.namespace}}
         - -log-level={{.Values.dashboard.logLevel}}
         {{- if .Values.dashboard.enforcedHostRegexp }}
         - -enforced-host={{.Values.dashboard.enforcedHostRegexp}}

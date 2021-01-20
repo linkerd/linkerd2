@@ -15,13 +15,14 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
-	"github.com/linkerd/linkerd2/controller/api/util"
+	coreUtil "github.com/linkerd/linkerd2/controller/api/util"
 	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	"github.com/linkerd/linkerd2/pkg/tap"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	vizUtil "github.com/linkerd/linkerd2/viz/metrics-api/util"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
@@ -137,8 +138,8 @@ func (h *handler) handleAPIStat(w http.ResponseWriter, req *http.Request, p http
 
 	trueStr := fmt.Sprintf("%t", true)
 
-	requestParams := util.StatsSummaryRequestParams{
-		StatsBaseRequestParams: util.StatsBaseRequestParams{
+	requestParams := vizUtil.StatsSummaryRequestParams{
+		StatsBaseRequestParams: vizUtil.StatsBaseRequestParams{
 			TimeWindow:    req.FormValue("window"),
 			ResourceName:  req.FormValue("resource_name"),
 			ResourceType:  req.FormValue("resource_type"),
@@ -160,7 +161,7 @@ func (h *handler) handleAPIStat(w http.ResponseWriter, req *http.Request, p http
 		requestParams.ResourceType = defaultResourceType
 	}
 
-	statRequest, err := util.BuildStatSummaryRequest(requestParams)
+	statRequest, err := vizUtil.BuildStatSummaryRequest(requestParams)
 	if err != nil {
 		renderJSONError(w, err, http.StatusInternalServerError)
 		return
@@ -184,8 +185,8 @@ func (h *handler) handleAPIStat(w http.ResponseWriter, req *http.Request, p http
 }
 
 func (h *handler) handleAPITopRoutes(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	requestParams := util.TopRoutesRequestParams{
-		StatsBaseRequestParams: util.StatsBaseRequestParams{
+	requestParams := vizUtil.TopRoutesRequestParams{
+		StatsBaseRequestParams: vizUtil.StatsBaseRequestParams{
 			TimeWindow:   req.FormValue("window"),
 			ResourceName: req.FormValue("resource_name"),
 			ResourceType: req.FormValue("resource_type"),
@@ -196,7 +197,7 @@ func (h *handler) handleAPITopRoutes(w http.ResponseWriter, req *http.Request, p
 		ToNamespace: req.FormValue("to_namespace"),
 	}
 
-	topReq, err := util.BuildTopRoutesRequest(requestParams)
+	topReq, err := vizUtil.BuildTopRoutesRequest(requestParams)
 	if err != nil {
 		renderJSONError(w, err, http.StatusBadRequest)
 		return
@@ -256,14 +257,14 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 		return
 	}
 
-	var requestParams util.TapRequestParams
+	var requestParams coreUtil.TapRequestParams
 	err = json.Unmarshal(message, &requestParams)
 	if err != nil {
 		websocketError(ws, websocket.CloseInternalServerErr, err)
 		return
 	}
 
-	tapReq, err := util.BuildTapByResourceRequest(requestParams)
+	tapReq, err := coreUtil.BuildTapByResourceRequest(requestParams)
 	if err != nil {
 		websocketError(ws, websocket.CloseInternalServerErr, err)
 		return
@@ -328,12 +329,12 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 }
 
 func (h *handler) handleAPIEdges(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	requestParams := util.EdgesRequestParams{
+	requestParams := vizUtil.EdgesRequestParams{
 		Namespace:    req.FormValue("namespace"),
 		ResourceType: req.FormValue("resource_type"),
 	}
 
-	edgesRequest, err := util.BuildEdgesRequest(requestParams)
+	edgesRequest, err := vizUtil.BuildEdgesRequest(requestParams)
 	if err != nil {
 		renderJSONError(w, err, http.StatusInternalServerError)
 		return
