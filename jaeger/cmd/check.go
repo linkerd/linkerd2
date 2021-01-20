@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -163,15 +162,6 @@ code.`,
 		Example: `  # Check that the Jaeger extension is up and running
   linkerd jaeger check`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Get the Jaeger extension namespace
-			kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-			ns, err := kubeAPI.GetNamespaceWithExtensionLabel(context.Background(), jaegerExtensionName)
-			if err != nil {
-				err = fmt.Errorf("%w; install by running `linkerd jaeger install | kubectl apply -f -`", err)
-				fmt.Fprintln(os.Stderr, err.Error())
-				os.Exit(1)
-			}
-			jaegerNamespace = ns.Name
 			return configureAndRunChecks(stdout, stderr, options)
 		},
 	}
