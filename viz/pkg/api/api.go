@@ -1,22 +1,14 @@
 package api
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/viz/metrics-api/client"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	vizHealthCheck "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
 )
-
-// RawClient creates a raw viz API client with no validation.
-func RawClient(ctx context.Context, kubeAPI *k8s.KubernetesAPI, namespace string) (pb.ApiClient, error) {
-	return client.NewExternalClient(ctx, namespace, kubeAPI)
-}
 
 // CheckClientOrExit builds a new Viz API client and executes default status
 // checks to determine if the client can successfully perform cli commands. If the
