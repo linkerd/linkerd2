@@ -125,6 +125,14 @@ const (
 	// 3) `serverVersion` from `LinkerdControlPlaneExistenceChecks`
 	LinkerdControlPlaneVersionChecks CategoryID = "control-plane-version"
 
+	// LinkerdDataPlaneChecks adds data plane checks to validate that the data
+	// plane namespace exists, and that the proxy containers are in a ready
+	// state and running the latest available version.
+	// These checks are dependent on the output of KubernetesAPIChecks,
+	// `apiClient` from LinkerdControlPlaneExistenceChecks, and `latestVersions`
+	// from LinkerdVersionChecks, so those checks must be added first.
+	LinkerdDataPlaneChecks CategoryID = "linkerd-data-plane"
+
 	// LinkerdHAChecks adds checks to validate that the HA configuration
 	// is correct. These checks are no ops if linkerd is not in HA mode
 	LinkerdHAChecks CategoryID = "linkerd-ha-checks"
@@ -1223,6 +1231,80 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
+			id: LinkerdDataPlaneChecks,
+			checkers: []Checker{
+				{
+					description: "data plane namespace exists",
+					hintAnchor:  "l5d-data-plane-exists",
+					fatal:       true,
+					check: func(ctx context.Context) error {
+						if hc.DataPlaneNamespace == "" {
+							// when checking proxies in all namespaces, this check is a no-op
+							return nil
+						}
+						return hc.CheckNamespace(ctx, hc.DataPlaneNamespace, true)
+					},
+				},
+				{
+					description:   "data plane proxies are ready",
+					hintAnchor:    "l5d-data-plane-ready",
+					retryDeadline: hc.RetryDeadline,
+					fatal:         true,
+					check: func(ctx context.Context) error {
+						pods, err := hc.GetDataPlanePods(ctx)
+						if err != nil {
+							return err
+						}
+
+						return validateDataPlanePods(pods, hc.DataPlaneNamespace)
+					},
+				},
+				{
+					description: "data plane is up-to-date",
+					hintAnchor:  "l5d-data-plane-version",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						pods, err := hc.GetDataPlanePods(ctx)
+						if err != nil {
+							return err
+						}
+
+						outdatedPods := []string{}
+						for _, pod := range pods {
+							proxyVersion := k8s.GetProxyVersion(pod)
+							if err = hc.latestVersions.Match(proxyVersion); err != nil {
+								outdatedPods = append(outdatedPods, fmt.Sprintf("\t* %s (%s)", pod.Name, proxyVersion))
+							}
+						}
+						if len(outdatedPods) > 0 {
+							podList := strings.Join(outdatedPods, "\n")
+							return fmt.Errorf("Some data plane pods are not running the current version:\n%s", podList)
+						}
+						return nil
+					},
+				},
+				{
+					description: "data plane and cli versions match",
+					hintAnchor:  "l5d-data-plane-cli-version",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						pods, err := hc.GetDataPlanePods(ctx)
+						if err != nil {
+							return err
+						}
+
+						for _, pod := range pods {
+							proxyVersion := k8s.GetProxyVersion(pod)
+							if proxyVersion != version.Version {
+								return fmt.Errorf("%s running %s but cli running %s", pod.Name, proxyVersion, version.Version)
+							}
+						}
+						return nil
+					},
+				},
+			},
+		},
+		{
 			id: LinkerdControlPlaneVersionChecks,
 			checkers: []Checker{
 				{
@@ -2071,6 +2153,16 @@ func checkResources(resourceName string, objects []runtime.Object, expectedNames
 	return nil
 }
 
+// GetDataPlanePods returns all the pods with data plane
+func (hc *HealthChecker) GetDataPlanePods(ctx context.Context) ([]corev1.Pod, error) {
+	selector := fmt.Sprintf("%s=%s", k8s.ControllerNSLabel, hc.ControlPlaneNamespace)
+	podList, err := hc.kubeAPI.CoreV1().Pods(hc.DataPlaneNamespace).List(ctx, metav1.ListOptions{LabelSelector: selector})
+	if err != nil {
+		return nil, err
+	}
+	return podList.Items, nil
+}
+
 func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace(ctx context.Context) error {
 	ns, err := hc.kubeAPI.CoreV1().Namespaces().Get(ctx, "kube-system", metav1.GetOptions{})
 	if err != nil {
@@ -2375,6 +2467,30 @@ func checkContainerRunning(pods []corev1.Pod, container string) error {
 		}
 		return fmt.Errorf("No running pods for \"%s\"", container)
 	}
+	return nil
+}
+
+func validateDataPlanePods(pods []corev1.Pod, targetNamespace string) error {
+	if len(pods) == 0 {
+		msg := fmt.Sprintf("No \"%s\" containers found", k8s.ProxyContainerName)
+		if targetNamespace != "" {
+			msg += fmt.Sprintf(" in the \"%s\" namespace", targetNamespace)
+		}
+		return fmt.Errorf(msg)
+	}
+
+	for _, pod := range pods {
+		status := k8s.GetPodStatus(pod)
+		if status != "Running" && status != "Evicted" {
+			return fmt.Errorf("The \"%s\" pod is not running", pod.Name)
+		}
+
+		if !k8s.GetProxyReady(pod) {
+			return fmt.Errorf("The \"%s\" container in the \"%s\" pod is not ready",
+				k8s.ProxyContainerName, pod.Name)
+		}
+	}
+
 	return nil
 }
 

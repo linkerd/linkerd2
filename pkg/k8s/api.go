@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/prometheus"
@@ -242,6 +243,27 @@ func GetPodStatus(pod corev1.Pod) string {
 	}
 
 	return reason
+}
+
+// GetProxyReady returns true if the pod contains a proxy that is ready
+func GetProxyReady(pod corev1.Pod) bool {
+	for _, container := range pod.Status.ContainerStatuses {
+		if container.Name == ProxyContainerName {
+			return container.Ready
+		}
+	}
+	return false
+}
+
+// GetProxyVersion returns the container proxy's version, if any
+func GetProxyVersion(pod corev1.Pod) string {
+	for _, container := range pod.Spec.Containers {
+		if container.Name == ProxyContainerName {
+			parts := strings.Split(container.Image, ":")
+			return parts[1]
+		}
+	}
+	return ""
 }
 
 // GetAddOnsConfigMap returns the data in the add-ons configmap

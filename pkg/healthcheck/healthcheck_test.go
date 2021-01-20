@@ -1654,6 +1654,265 @@ func TestValidateControlPlanePods(t *testing.T) {
 	})
 }
 
+func TestValidateDataPlaneNamespace(t *testing.T) {
+	testCases := []struct {
+		ns     string
+		result string
+	}{
+		{
+			"",
+			"data-plane-ns-test-cat data plane namespace exists",
+		},
+		{
+			"bad-ns",
+			"data-plane-ns-test-cat data plane namespace exists: The \"bad-ns\" namespace does not exist",
+		},
+	}
+
+	for i, tc := range testCases {
+		tc := tc // pin
+		t.Run(fmt.Sprintf("%d/%s", i, tc.ns), func(t *testing.T) {
+			hc := NewHealthChecker(
+				[]CategoryID{},
+				&Options{
+					DataPlaneNamespace: tc.ns,
+				},
+			)
+			var err error
+			hc.kubeAPI, err = k8s.NewFakeAPI()
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+
+			// create a synthetic category that only includes the "data plane namespace exists" check
+			hc.addCheckAsCategory("data-plane-ns-test-cat", LinkerdDataPlaneChecks, "data plane namespace exists")
+
+			expectedResults := []string{
+				tc.result,
+			}
+			obs := newObserver()
+			hc.RunChecks(obs.resultFn)
+			if !reflect.DeepEqual(obs.results, expectedResults) {
+				t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
+			}
+		})
+	}
+}
+
+func TestValidateDataPlanePods(t *testing.T) {
+
+	t.Run("Returns an error if no inject pods were found", func(t *testing.T) {
+		err := validateDataPlanePods([]corev1.Pod{}, "emojivoto")
+		if err == nil {
+			t.Fatal("Expected error, got nothing")
+		}
+		if err.Error() != "No \"linkerd-proxy\" containers found in the \"emojivoto\" namespace" {
+			t.Fatalf("Unexpected error message: %s", err.Error())
+		}
+	})
+
+	t.Run("Returns an error if not all pods are running", func(t *testing.T) {
+		pods := []corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "emoji-d9c7866bb-7v74n"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "vote-bot-644b8cb6b4-g8nlr"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "voting-65b9fffd77-rlwsd"},
+				Status: corev1.PodStatus{
+					Phase: "Failed",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: false,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "web-6cfbccc48-5g8px"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
+		}
+
+		err := validateDataPlanePods(pods, "emojivoto")
+		if err == nil {
+			t.Fatal("Expected error, got nothing")
+		}
+		if err.Error() != "The \"voting-65b9fffd77-rlwsd\" pod is not running" {
+			t.Fatalf("Unexpected error message: %s", err.Error())
+		}
+	})
+
+	t.Run("Does not return an error if the pod is Evicted", func(t *testing.T) {
+		pods := []corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "emoji-d9c7866bb-7v74n"},
+				Status: corev1.PodStatus{
+					Phase: "Evicted",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
+		}
+
+		err := validateDataPlanePods(pods, "emojivoto")
+		if err != nil {
+			t.Fatalf("Expected no error, got %s", err)
+		}
+	})
+
+	t.Run("Returns an error if the proxy container is not ready", func(t *testing.T) {
+		pods := []corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "emoji-d9c7866bb-7v74n"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "vote-bot-644b8cb6b4-g8nlr"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: false,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "voting-65b9fffd77-rlwsd"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: false,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "web-6cfbccc48-5g8px"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
+		}
+
+		err := validateDataPlanePods(pods, "emojivoto")
+		if err == nil {
+			t.Fatal("Expected error, got nothing")
+		}
+		if err.Error() != "The \"linkerd-proxy\" container in the \"vote-bot-644b8cb6b4-g8nlr\" pod is not ready" {
+			t.Fatalf("Unexpected error message: %s", err.Error())
+		}
+	})
+
+	t.Run("Returns nil if all pods are running and all proxy containers are ready", func(t *testing.T) {
+		pods := []corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "emoji-d9c7866bb-7v74n"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "vote-bot-644b8cb6b4-g8nlr"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "voting-65b9fffd77-rlwsd"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "web-6cfbccc48-5g8px"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
+		}
+
+		err := validateDataPlanePods(pods, "emojivoto")
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+	})
+}
 func TestLinkerdPreInstallGlobalResourcesChecks(t *testing.T) {
 	hc := NewHealthChecker(
 		[]CategoryID{LinkerdPreInstallGlobalResourcesChecks},

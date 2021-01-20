@@ -9,7 +9,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/viz/metrics-api/client"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
-	vizPkg "github.com/linkerd/linkerd2/viz/pkg"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -44,12 +43,12 @@ func newGatewaysCommand() *cobra.Command {
 
 			ctx := cmd.Context()
 
-			vizNamespace, err := vizPkg.GetVizNamespace(ctx, k8sAPI)
+			vizNs, err := k8sAPI.GetNamespaceWithExtensionLabel(ctx, "linkerd-viz")
 			if err != nil {
 				return err
 			}
 
-			client, err := client.NewExternalClient(ctx, vizNamespace, k8sAPI)
+			client, err := client.NewExternalClient(ctx, vizNs.Name, k8sAPI)
 			if err != nil {
 				return err
 			}
