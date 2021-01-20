@@ -1626,7 +1626,7 @@ func (hc *HealthChecker) PublicAPIClient() public.Client {
 	return hc.apiClient
 }
 
-// LatestVersions returns the latest from Linkerd release channels
+// LatestVersions returns the latest versions from Linkerd release channels
 func (hc *HealthChecker) LatestVersions() version.Channels {
 	return hc.latestVersions
 }

@@ -11,13 +11,13 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	"github.com/linkerd/linkerd2/pkg/tap"
+	api "github.com/linkerd/linkerd2/viz/metrics-api"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	runewidth "github.com/mattn/go-runewidth"
 	termbox "github.com/nsf/termbox-go"
@@ -544,7 +544,7 @@ func newRow(req topRequest) (tableRow, error) {
 	path := req.reqInit.GetPath()
 	route := req.event.GetRouteMeta().GetLabels()["route"]
 	if route == "" {
-		route = public.DefaultRouteName
+		route = api.DefaultRouteName
 	}
 	method := req.reqInit.GetMethod().GetRegistered().String()
 	source := stripPort(addr.PublicAddressToString(req.event.GetSource()))

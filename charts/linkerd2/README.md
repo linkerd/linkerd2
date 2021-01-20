@@ -153,7 +153,6 @@ Kubernetes: `>=1.13.0-0`
 | global.namespace | string | `"linkerd"` | Control plane namespace |
 | global.podAnnotations | object | `{}` | Additional annotations to add to all pods |
 | global.podLabels | object | `{}` | Additional labels to add to all pods |
-| global.prometheusUrl | string | `""` | url of existing prometheus |
 | global.proxy.cores | int | `0` | The `cpu.limit` and `cores` should be kept in sync. The value of `cores` must be an integer and should typically be set by rounding up from the limit. E.g. if cpu.limit is '1500m', cores should be 2. |
 | global.proxy.enableExternalProfiles | bool | `false` | Enable service profiles for non-Kubernetes services |
 | global.proxy.image.name | string | `"ghcr.io/linkerd/proxy"` | Docker image for the proxy |

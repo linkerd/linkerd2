@@ -104,6 +104,18 @@ Kubernetes: `>=1.13.0-0`
 | installNamespace | bool | `true` | Set to false when installing in a custom namespace. |
 | linkerdNamespace | string | `"linkerd"` | Namespace of the Linkerd core control-plane install |
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
+| metricsAPI.UID | int | `2103` |  |
+| metricsAPI.image.name | string | `"metrics-api"` | Docker image name for the metrics-api component |
+| metricsAPI.image.pullPolicy | string | `"Always"` | Pull policy for the metrics-api component |
+| metricsAPI.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the metrics-api component |
+| metricsAPI.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the metrics-api component |
+| metricsAPI.logLevel | string | `"info"` | log level of the metrics-api component |
+| metricsAPI.proxy | string | `nil` |  |
+| metricsAPI.replicas | int | `1` | number of replicas of the metrics-api component |
+| metricsAPI.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the metrics-api container can use |
+| metricsAPI.resources.cpu.request | string | `nil` | Amount of CPU units that the metrics-api container requests |
+| metricsAPI.resources.memory.limit | string | `nil` | Maximum amount of memory that metrics-api container can use |
+| metricsAPI.resources.memory.request | string | `nil` | Amount of memory that the metrics-api container requests |
 | namespace | string | `"linkerd-viz"` | Namespace in which the Linkerd Viz extension has to be installed |
 | nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | prometheus.alertManagers | string | `nil` | Alertmanager instances the Prometheus server sends alerts to configured via the static_configs parameter. |
@@ -112,7 +124,7 @@ Kubernetes: `>=1.13.0-0`
 | prometheus.enabled | bool | `true` | toggle field to enable or disable prometheus |
 | prometheus.globalConfig | object | `{"evaluation_interval":"10s","scrape_interval":"10s","scrape_timeout":"10s"}` | The global configuration specifies parameters that are valid in all other configuration contexts. |
 | prometheus.image.name | string | `"prometheus"` | Docker image name for the prometheus instance |
-| prometheus.image.pullPolicy | string | `"Always"` |  |
+| prometheus.image.pullPolicy | string | `"Always"` | Pull policy for the prometheus instance |
 | prometheus.image.registry | string | `"prom"` | Docker registry for the prometheus instance |
 | prometheus.image.tag | string | `"v2.19.3"` | Docker image tag for the prometheus instance |
 | prometheus.proxy | string | `nil` |  |

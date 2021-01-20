@@ -155,7 +155,7 @@ func (hc *HealthChecker) vizCategory() *healthcheck.Category {
 					return err
 				}
 
-				return healthcheck.CheckPodsRunning(pods)
+				return healthcheck.CheckPodsRunning(pods, "")
 			}))
 
 	checkers = append(checkers,

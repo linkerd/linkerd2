@@ -13,6 +13,7 @@ import (
 	api "github.com/linkerd/linkerd2/pkg/public"
 	"github.com/linkerd/linkerd2/pkg/version"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	vizApi "github.com/linkerd/linkerd2/viz/pkg/api"
 	"github.com/spf13/cobra"
 )
 
@@ -51,7 +52,7 @@ func newCmdVersion() *cobra.Command {
 				}
 			}
 
-			configureAndRunVersion(cmd.Context(), k8sAPI, options, os.Stdout, api.RawPublicAPIClient, api.RawVizAPIClient)
+			configureAndRunVersion(cmd.Context(), k8sAPI, options, os.Stdout, api.RawPublicAPIClient, vizApi.RawClient)
 			return nil
 		},
 	}
@@ -70,7 +71,7 @@ func configureAndRunVersion(
 	options *versionOptions,
 	stdout io.Writer,
 	mkPublicClient func(ctx context.Context, k8sAPI *k8s.KubernetesAPI, controlPlaneNamespace, apiAddr string) (publicPb.ApiClient, error),
-	mkVizClient func(ctx context.Context, k8sAPI *k8s.KubernetesAPI, controlPlaneNamespace, apiAddr string) (pb.ApiClient, error),
+	mkVizClient func(ctx context.Context, k8sAPI *k8s.KubernetesAPI, controlPlaneNamespace string) (pb.ApiClient, error),
 ) {
 	clientVersion := version.Version
 	if options.shortVersion {
@@ -99,8 +100,12 @@ func configureAndRunVersion(
 		}
 
 		if options.proxy {
-			vizClient, clientErr := mkVizClient(ctx, k8sAPI, controlPlaneNamespace, apiAddr)
-			if clientErr != nil {
+			var vizClient pb.ApiClient
+			vizNs, err := k8sAPI.GetNamespaceWithExtensionLabel(ctx, "linkerd-viz")
+			if err == nil {
+				vizClient, err = mkVizClient(ctx, k8sAPI, vizNs.Name)
+			}
+			if err != nil {
 				fmt.Fprintln(stdout, "Proxy versions: unavailable")
 			} else {
 				req := &pb.ListPodsRequest{}

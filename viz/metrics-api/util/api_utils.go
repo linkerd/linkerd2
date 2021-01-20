@@ -2,7 +2,6 @@ package util
 
 import (
 	"errors"
-	"strings"
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -285,29 +284,14 @@ func K8sPodToPublicPod(pod corev1.Pod, ownerKind string, ownerName string) *pb.P
 	controllerComponent := pod.Labels[k8s.ControllerComponentLabel]
 	controllerNS := pod.Labels[k8s.ControllerNSLabel]
 
-	proxyReady := false
-	for _, container := range pod.Status.ContainerStatuses {
-		if container.Name == k8s.ProxyContainerName {
-			proxyReady = container.Ready
-		}
-	}
-
-	proxyVersion := ""
-	for _, container := range pod.Spec.Containers {
-		if container.Name == k8s.ProxyContainerName {
-			parts := strings.Split(container.Image, ":")
-			proxyVersion = parts[1]
-		}
-	}
-
 	item := &pb.Pod{
 		Name:                pod.Namespace + "/" + pod.Name,
 		Status:              status,
 		PodIP:               pod.Status.PodIP,
 		ControllerNamespace: controllerNS,
 		ControlPlane:        controllerComponent != "",
-		ProxyReady:          proxyReady,
-		ProxyVersion:        proxyVersion,
+		ProxyReady:          k8s.GetProxyReady(pod),
+		ProxyVersion:        k8s.GetProxyVersion(pod),
 		ResourceVersion:     pod.ResourceVersion,
 	}
 

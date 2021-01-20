@@ -45,7 +45,7 @@ func newGatewaysCommand() *cobra.Command {
 
 			vizNs, err := k8sAPI.GetNamespaceWithExtensionLabel(ctx, "linkerd-viz")
 			if err != nil {
-				return err
+				return fmt.Errorf("make sure the linkerd-viz extension is installed, using 'linkerd viz install' (%s)", err)
 			}
 
 			client, err := client.NewExternalClient(ctx, vizNs.Name, k8sAPI)

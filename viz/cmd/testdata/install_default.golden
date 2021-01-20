@@ -424,7 +424,6 @@ metadata:
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: dev-undefined
     component: metrics-api
-    namespace: linkerd-viz
   name: linkerd-metrics-api
   namespace: linkerd-viz
 spec:
@@ -433,7 +432,6 @@ spec:
     matchLabels:
       linkerd.io/extension: linkerd-viz
       component: metrics-api
-      namespace: linkerd-viz
   template:
     metadata:
       annotations:
@@ -442,7 +440,6 @@ spec:
       labels:
         linkerd.io/extension: linkerd-viz
         component: metrics-api
-        namespace: linkerd-viz
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
