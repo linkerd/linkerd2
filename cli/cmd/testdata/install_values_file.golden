@@ -558,6 +558,7 @@ data:
       controlPlaneTracingNamespace: linkerd-jaeger
       controllerComponentLabel: linkerd.io/control-plane-component
       controllerImageVersion: install-control-plane-version
+      controllerLogFormat: plain
       controllerLogLevel: info
       controllerNamespaceLabel: linkerd.io/control-plane-ns
       createdByAnnotation: linkerd.io/created-by
@@ -796,6 +797,7 @@ spec:
       - args:
         - identity
         - -log-level=info
+        - -log-format=plain
         - -controller-namespace=l5d
         - -identity-trust-domain=cluster.local
         - -identity-issuance-lifetime=24h0m0s
@@ -1036,6 +1038,7 @@ spec:
         - -destination-addr=linkerd-dst.l5d.svc.example.com:8086
         - -controller-namespace=l5d
         - -log-level=info
+        - -log-format=plain
         - -cluster-domain=example.com
         - -prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.example.com:9090
         image: ghcr.io/linkerd/controller:install-control-plane-version
@@ -1286,6 +1289,7 @@ spec:
         - -controller-namespace=l5d
         - -enable-h2-upgrade=true
         - -log-level=info
+        - -log-format=plain
         - -enable-endpoint-slices=false
         - -cluster-domain=example.com
         - -identity-trust-domain=cluster.local
@@ -1496,6 +1500,7 @@ spec:
             - "heartbeat"
             - "-controller-namespace=l5d"
             - "-log-level=info"
+            - "-log-format=plain"
             - "-prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.example.com:9090"
             securityContext:
               runAsUser: 2103
@@ -1541,6 +1546,7 @@ spec:
       - args:
         - proxy-injector
         - -log-level=info
+        - -log-format=plain
         image: ghcr.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1797,6 +1803,7 @@ spec:
       - args:
         - sp-validator
         - -log-level=info
+        - -log-format=plain
         image: ghcr.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
