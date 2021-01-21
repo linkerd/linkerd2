@@ -697,7 +697,7 @@ data:
           values:
           - disabled
     prometheus:
-      alertManagers:
+      alertmanagers:
       - scheme: http
         static_configs:
         - targets:

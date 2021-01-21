@@ -264,7 +264,7 @@ prometheus:
 
   # -- Alertmanager instances the Prometheus server sends alerts to configured via
   # the static_configs parameter.
-  alertManagers:
+  alertmanagers:
   # Ex:
   # - scheme: http
   #   static_configs:
