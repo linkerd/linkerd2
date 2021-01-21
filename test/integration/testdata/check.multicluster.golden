@@ -16,6 +16,5 @@ linkerd-existence
 linkerd-multicluster
 --------------------
 √ Link CRD exists
-√ all gateway mirrors are healthy
 
 Status check results are √
