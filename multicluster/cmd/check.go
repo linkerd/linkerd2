@@ -469,8 +469,7 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context)
 
 		vizNs, err := hc.linkerdHC.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, vizCmd.ExtensionName)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("failed to fetch gateway metrics: %s", err))
-			break
+			return &healthcheck.SkipError{Reason: "failed to fetch gateway metrics"}
 		}
 
 		// Check gateway liveness according to probes
