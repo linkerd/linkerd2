@@ -1226,7 +1226,6 @@ spec:
         - -log-level=info
         - -log-format=plain
         - -cluster-domain=cluster.local
-        - -prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.cluster.local:9090
         image: my.custom.registry/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

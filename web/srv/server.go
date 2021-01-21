@@ -17,6 +17,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
+	vizPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
 )
@@ -93,8 +94,8 @@ func NewServer(
 	clusterDomain string,
 	reload bool,
 	reHost *regexp.Regexp,
-	apiClient public.VizAPIClient,
-	publicAPIClient public.PublicAPIClient,
+	apiClient vizPb.ApiClient,
+	publicAPIClient public.Client,
 	k8sAPI *k8s.KubernetesAPI,
 	hc healthChecker,
 ) *http.Server {

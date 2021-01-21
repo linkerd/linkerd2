@@ -98,11 +98,6 @@ spec:
         - -log-level={{.Values.global.controllerLogLevel}}
         - -log-format={{.Values.global.controllerLogFormat}}
         - -cluster-domain={{.Values.global.clusterDomain}}
-        {{- if .Values.global.prometheusUrl }}
-        - -prometheus-url={{.Values.global.prometheusUrl}}
-        {{- else }}
-        - -prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.{{.Values.global.clusterDomain}}:9090
-        {{- end }}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}

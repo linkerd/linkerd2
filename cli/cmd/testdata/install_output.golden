@@ -1228,7 +1228,6 @@ spec:
         - -log-level=ControllerLogLevel
         - -log-format=ControllerLogFormat
         - -cluster-domain=cluster.local
-        - -prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.cluster.local:9090
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:

@@ -11,11 +11,12 @@ import (
 	"text/tabwriter"
 
 	"github.com/fatih/color"
-	"github.com/linkerd/linkerd2/controller/api/util"
+	coreUtil "github.com/linkerd/linkerd2/controller/api/util"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	api "github.com/linkerd/linkerd2/pkg/public"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	"github.com/linkerd/linkerd2/viz/metrics-api/util"
+	"github.com/linkerd/linkerd2/viz/pkg/api"
 	"github.com/spf13/cobra"
 )
 
@@ -82,7 +83,7 @@ func NewCmdEdges() *cobra.Command {
   # Get all edges between pods in all namespaces.
   linkerd viz edges po --all-namespaces`,
 		Args:      cobra.ExactArgs(1),
-		ValidArgs: util.ValidTargets,
+		ValidArgs: coreUtil.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
@@ -95,7 +96,7 @@ func NewCmdEdges() *cobra.Command {
 
 			// The gRPC client is concurrency-safe, so we can reuse it in all the following goroutines
 			// https://github.com/grpc/grpc-go/issues/682
-			client := api.CheckVizAPIClientOrExit(healthcheck.Options{
+			client := api.CheckClientOrExit(healthcheck.Options{
 				ControlPlaneNamespace: controlPlaneNamespace,
 				KubeConfig:            kubeconfigPath,
 				Impersonate:           impersonate,
@@ -159,7 +160,7 @@ func validateEdgesRequestInputs(targets []*pb.Resource, options *edgesOptions) e
 }
 
 func buildEdgesRequests(resources []string, options *edgesOptions) ([]*pb.EdgesRequest, error) {
-	targets, err := util.BuildResources(options.namespace, resources)
+	targets, err := coreUtil.BuildResources(options.namespace, resources)
 
 	if err != nil {
 		return nil, err

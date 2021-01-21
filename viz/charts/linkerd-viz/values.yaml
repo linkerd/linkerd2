@@ -56,6 +56,41 @@ prometheusUrl: ""
 # Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>` if you plan to use jaeger extension
 jaegerUrl: ""
 
+# metrics API configuration
+metricsAPI:
+  # -- number of replicas of the metrics-api component
+  replicas: 1
+  # -- log level of the metrics-api component
+  logLevel: *log_level
+  image:
+    # -- Docker registry for the metrics-api component
+    registry: ghcr.io/linkerd
+    # -- Docker image name for the metrics-api component
+    name: metrics-api
+    # -- Docker image tag for the metrics-api component
+    tag: *linkerd_version
+    # -- Pull policy for the metrics-api component
+    pullPolicy: Always
+
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the metrics-api container can use
+      limit:
+      # -- Amount of CPU units that the metrics-api container requests
+      request:
+    memory:
+      # -- Maximum amount of memory that metrics-api container can use
+      limit:
+      # -- Amount of memory that the metrics-api container requests
+      request:
+
+  proxy:
+    # -- If set, overrides default proxy resources for the proxy injected
+    # into the metrics-api component
+    # resources:
+
+  UID: *uid
+
 # tap configuration
 tap:
     # -- Number of tap component replicas
@@ -239,7 +274,7 @@ prometheus:
     name: prometheus
     # -- Docker image tag for the prometheus instance
     tag: v2.19.3
-    # == Pull policy for the prometheus instance
+    # -- Pull policy for the prometheus instance
     pullPolicy: Always
 
   # -- Command line options for Prometheus binary

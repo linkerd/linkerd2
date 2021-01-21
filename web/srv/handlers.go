@@ -11,6 +11,7 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	profiles "github.com/linkerd/linkerd2/pkg/profiles"
+	vizPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
 )
@@ -22,8 +23,8 @@ type (
 
 	handler struct {
 		render              renderTemplate
-		apiClient           public.VizAPIClient
-		publicAPIClient     public.PublicAPIClient
+		apiClient           vizPb.ApiClient
+		publicAPIClient     public.Client
 		k8sAPI              *k8s.KubernetesAPI
 		uuid                string
 		controllerNamespace string

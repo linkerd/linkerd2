@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package linkerd2.viz.healthcheck;
+package linkerd2.common.healthcheck;
 
-option go_package = "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz/healthcheck";
+option go_package = "github.com/linkerd/linkerd2/controller/gen/common/healthcheck";
 
 enum CheckStatus {
     OK = 0;
