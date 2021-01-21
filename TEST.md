@@ -167,7 +167,7 @@ You can also test a locally-built version of the `linkerd` CLI.
 First build all of the Linkerd images by running:
 
 ```bash
-DOCKER_TRACE=1 bin/docker-build
+bin/docker-build
 ```
 
 That command also copies the corresponding `linkerd` binaries into the
