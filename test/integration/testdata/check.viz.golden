@@ -22,7 +22,7 @@ linkerd-viz
 √ tap API server has valid cert
 √ tap API server cert is valid for at least 60 days
 √ tap API service is running
-√ viz extension pods are running
 √ linkerd-viz pods are injected
+√ viz extension pods are running
 
 Status check results are √

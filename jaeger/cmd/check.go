@@ -73,6 +73,19 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			}))
 
 	checkers = append(checkers,
+		*healthcheck.NewChecker("jaeger extension pods are injected").
+			WithHintAnchor("l5d-jaeger-pods-injection").
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				// Check if Jaeger Extension pods have been injected
+				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, jaegerNamespace)
+				if err != nil {
+					return err
+				}
+				return healthcheck.CheckIfDataPlanePodsExist(pods)
+			}))
+
+	checkers = append(checkers,
 		*healthcheck.NewChecker("collector pod is running").
 			WithHintAnchor("l5d-jaeger-collector-running").
 			Fatal().
@@ -115,19 +128,6 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 					return err
 				}
 				return healthcheck.CheckPodsRunning(podList.Items, fmt.Sprintf("No jaeger injector pods found in the %s namespace", jaegerNamespace))
-			}))
-
-	checkers = append(checkers,
-		*healthcheck.NewChecker("jaeger extension pods are injected").
-			WithHintAnchor("l5d-jaeger-pods-injection").
-			Warning().
-			WithCheck(func(ctx context.Context) error {
-				// Check if Jaeger Extension pods have been injected
-				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, jaegerNamespace)
-				if err != nil {
-					return err
-				}
-				return healthcheck.CheckIfDataPlanePodsExist(pods)
 			}))
 
 	return healthcheck.NewCategory(linkerdJaegerExtensionCheck, checkers, true)
