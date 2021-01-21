@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
+	"regexp"
 	"testing"
 	"time"
 
@@ -17,9 +17,9 @@ var TestHelper *testutil.TestHelper
 var (
 	appName = "app"
 
-	// With the app's port marked as opaque, we expect to find a single open
-	// TCP connection that is not TLS'd because the port is skipped.
-	tcpMetric = "tcp_open_connections{peer=\"src\",direction=\"inbound\",tls=\"true\",client_id=\"default.linkerd-opaque-ports-test.serviceaccount.identity.linkerd.cluster.local\"}"
+	tcpMetricRE = regexp.MustCompile(
+		`^tcp_open_total\{direction="inbound",peer="src",target_addr=".*:4143",tls="true",client_id="default\.linkerd-opaque-ports-test\.serviceaccount\.identity\.linkerd\.cluster\.local"\}$`,
+	)
 )
 
 func TestMain(m *testing.M) {
@@ -78,7 +78,7 @@ func TestOpaquePorts(t *testing.T) {
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "error getting metrics for pod", "error getting metrics for pod\n%s", err)
 		}
-		if !strings.Contains(metrics, tcpMetric) {
+		if tcpMetricRE.MatchString(metrics) {
 			testutil.AnnotatedFatalf(t, "failed to find expected TCP metric when port is marked as opaque", "failed to find expected TCP metric when port is marked as opaque\n%s", metrics)
 		}
 	})
