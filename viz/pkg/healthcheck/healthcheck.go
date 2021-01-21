@@ -135,6 +135,7 @@ func (hc *HealthChecker) vizCategory() *healthcheck.Category {
 		*healthcheck.NewChecker("tap API service is running").
 			WithHintAnchor("l5d-tap-api").
 			Warning().
+			WithRetryDeadline(hc.RetryDeadline).
 			WithCheck(func(ctx context.Context) error {
 				return hc.CheckAPIService(ctx, linkerdTapAPIServiceName)
 			}))
