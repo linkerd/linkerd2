@@ -34,6 +34,8 @@ var (
 		"templates/grafana.yaml",
 		"templates/prometheus.yaml",
 		"templates/tap.yaml",
+		"templates/tap-injector-rbac.yaml",
+		"templates/tap-injector.yaml",
 		"templates/web.yaml",
 	}
 )

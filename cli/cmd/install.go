@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -13,12 +15,15 @@ import (
 	"github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/charts/static"
+	flagspkg "github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tree"
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
+	valuespkg "helm.sh/helm/v3/pkg/cli/values"
+	"helm.sh/helm/v3/pkg/engine"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -94,6 +99,7 @@ var (
 
 func newCmdInstallConfig(values *l5dcharts.Values) *cobra.Command {
 	flags, flagSet := makeAllStageFlags(values)
+	var options valuespkg.Options
 
 	cmd := &cobra.Command{
 		Use:   "config [flags]",
@@ -108,7 +114,10 @@ resources for the Linkerd control plane. This command should be followed by
   linkerd install config | kubectl apply -f -
 
   # Install Linkerd into a non-default namespace.
-  linkerd install config -L linkerdtest | kubectl apply -f -`,
+  linkerd install config -L linkerdtest | kubectl apply -f -
+
+The installation can be configured by using the --set, --values, --set-string and --set-file flags.
+A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := flag.ApplySetFlags(values, flags)
 			if err != nil {
@@ -126,9 +135,10 @@ resources for the Linkerd control plane. This command should be followed by
 				}
 			}
 
-			return render(os.Stdout, values, configStage)
+			return render(os.Stdout, values, configStage, options)
 		},
 	}
+	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
 
 	cmd.Flags().AddFlagSet(flagSet)
 
@@ -137,6 +147,7 @@ resources for the Linkerd control plane. This command should be followed by
 
 func newCmdInstallControlPlane(values *l5dcharts.Values) *cobra.Command {
 	var skipChecks bool
+	var options valuespkg.Options
 
 	allStageFlags, allStageFlagSet := makeAllStageFlags(values)
 	installOnlyFlags, installOnlyFlagSet := makeInstallFlags(values)
@@ -161,7 +172,11 @@ control plane. It should be run after "linkerd install config".`,
   linkerd install control-plane | kubectl apply -f -
 
   # Install Linkerd into a non-default namespace.
-  linkerd install control-plane -l linkerdtest | kubectl apply -f -`,
+  linkerd install control-plane -l linkerdtest | kubectl apply -f -
+
+The installation can be configured by using the --set, --values, --set-string and --set-file flags.
+A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md
+  `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !skipChecks {
 				// check if global resources exist to determine if the `install config`
@@ -184,7 +199,7 @@ control plane. It should be run after "linkerd install config".`,
 
 			}
 
-			return install(cmd.Context(), os.Stdout, values, flags, controlPlaneStage)
+			return install(cmd.Context(), os.Stdout, values, flags, controlPlaneStage, options)
 		},
 	}
 
@@ -192,6 +207,7 @@ control plane. It should be run after "linkerd install config".`,
 	cmd.Flags().AddFlagSet(installOnlyFlagSet)
 	cmd.Flags().AddFlagSet(installUpgradeFlagSet)
 	cmd.Flags().AddFlagSet(proxyFlagSet)
+	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
 
 	cmd.Flags().BoolVar(
 		&skipChecks, "skip-checks", false,
@@ -203,6 +219,7 @@ control plane. It should be run after "linkerd install config".`,
 
 func newCmdInstall() *cobra.Command {
 	values, err := l5dcharts.NewValues()
+	var options valuespkg.Options
 
 	allStageFlags, allStageFlagSet := makeAllStageFlags(values)
 	installOnlyFlags, installOnlyFlagSet := makeInstallFlags(values)
@@ -230,9 +247,12 @@ control plane.`,
   linkerd install -l linkerdtest | kubectl apply -f -
 
   # Installation may also be broken up into two stages by user privilege, via
-  # subcommands.`,
+  # subcommands.
+
+The installation can be configured by using the --set, --values, --set-string and --set-file flags.
+A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return install(cmd.Context(), os.Stdout, values, flags, "")
+			return install(cmd.Context(), os.Stdout, values, flags, "", options)
 		},
 	}
 
@@ -246,10 +266,12 @@ control plane.`,
 	cmd.AddCommand(newCmdInstallConfig(values))
 	cmd.AddCommand(newCmdInstallControlPlane(values))
 
+	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
+
 	return cmd
 }
 
-func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, stage string) error {
+func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, stage string, options valuespkg.Options) error {
 	err := flag.ApplySetFlags(values, flags)
 	if err != nil {
 		return err
@@ -284,16 +306,16 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 		return err
 	}
 
-	return render(w, values, stage)
+	return render(w, values, stage, options)
 }
 
-func render(w io.Writer, values *l5dcharts.Values, stage string) error {
+func render(w io.Writer, values *l5dcharts.Values, stage string, options valuespkg.Options) error {
 
 	// Set any global flags if present, common with install and upgrade
 	values.GetGlobal().Namespace = controlPlaneNamespace
 	values.Stage = stage
 
-	// Render raw values and create chart config
+	// Render raw values
 	rawValues, err := yaml.Marshal(values)
 	if err != nil {
 		return err
@@ -319,18 +341,59 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 		}
 	}
 
-	// TODO refactor to use l5dcharts.LoadChart()
-	chart := &charts.Chart{
-		Name:      helmDefaultChartName,
-		Dir:       helmDefaultChartDir,
-		Namespace: controlPlaneNamespace,
-		RawValues: rawValues,
-		Files:     files,
-		Fs:        static.Templates,
+	var partialFiles []*loader.BufferedFile
+	for _, template := range charts.L5dPartials {
+		partialFiles = append(partialFiles,
+			&loader.BufferedFile{Name: template},
+		)
 	}
-	buf, err := chart.Render()
+
+	// Load all chart files into buffer
+	if err := charts.FilesReader(static.Templates, helmDefaultChartDir+"/", files); err != nil {
+		return err
+	}
+
+	// Load all partial chart files into buffer
+	if err := charts.FilesReader(static.Templates, "", partialFiles); err != nil {
+		return err
+	}
+
+	// Create a Chart obj from the files
+	chart, err := loader.LoadFiles(append(files, partialFiles...))
 	if err != nil {
 		return err
+	}
+
+	// Store final Values generated from values.yaml and CLI flags
+	err = yaml.Unmarshal(rawValues, &chart.Values)
+	if err != nil {
+		return err
+	}
+
+	// Create values override
+	valuesOverrides, err := options.MergeValues(nil)
+	if err != nil {
+		return err
+	}
+
+	vals, err := chartutil.CoalesceValues(chart, valuesOverrides)
+	if err != nil {
+		return err
+	}
+
+	// Attach the final values into the `Values` field for rendering to work
+	renderedTemplates, err := engine.Render(chart, map[string]interface{}{"Values": vals})
+	if err != nil {
+		return err
+	}
+
+	// Merge templates and inject
+	var buf bytes.Buffer
+	for _, tmpl := range chart.Templates {
+		t := path.Join(chart.Metadata.Name, tmpl.Name)
+		if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
+			return err
+		}
 	}
 
 	if stage == "" || stage == controlPlaneStage {

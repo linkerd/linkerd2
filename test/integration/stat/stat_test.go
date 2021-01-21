@@ -81,6 +81,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 				"linkerd-prometheus":  "1/1",
 				"linkerd-tap":         "1/1",
 				"linkerd-web":         "1/1",
+				"tap-injector":        "1/1",
 			},
 		},
 		{
