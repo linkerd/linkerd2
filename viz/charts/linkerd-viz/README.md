@@ -86,10 +86,11 @@ Kubernetes: `>=1.13.0-0`
 | dashboard.resources.memory.limit | string | `nil` | Maximum amount of memory that web container can use |
 | dashboard.resources.memory.request | string | `nil` | Amount of memory that the web container requests |
 | dashboard.restrictPrivileges | bool | `false` | Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check |
-| defaultRegistry | string | `"ghcr.io/linkerd"` | Default Docker Registry |
+| defaultLogLevel | string | `"info"` | Log level for all the viz components |
+| defaultRegistry | string | `"ghcr.io/linkerd"` | Docker registry for all viz components |
+| defaultUID | int | `2103` | UID for all the viz components |
+| enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
 | extensionAnnotation | string | `"linkerd.io/extension"` |  |
-| globalLogLevel | string | `"info"` | Log level for all the viz components |
-| globalUID | int | `2103` | UID for all the viz components |
 | grafana.enabled | bool | `true` | toggle field to enable or disable grafana |
 | grafana.image.name | string | `"grafana"` | Docker image name for the grafana instance |
 | grafana.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the grafana instance |
@@ -102,12 +103,13 @@ Kubernetes: `>=1.13.0-0`
 | identityTrustDomain | string | `"cluster.local"` | Trust domain used for identity  |
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
 | installNamespace | bool | `true` | Set to false when installing in a custom namespace. |
+| jaegerUrl | string | `""` | url of external jaeger instance Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>` if you plan to use jaeger extension |
 | linkerdNamespace | string | `"linkerd"` | Namespace of the Linkerd core control-plane install |
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
 | namespace | string | `"linkerd-viz"` | Namespace in which the Linkerd Viz extension has to be installed |
 | nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
-| prometheus.alertManagers | string | `nil` | Alertmanager instances the Prometheus server sends alerts to configured via the static_configs parameter. |
 | prometheus.alertRelabelConfigs | string | `nil` | Alert relabeling is applied to alerts before they are sent to the Alertmanager. |
+| prometheus.alertmanagers | string | `nil` | Alertmanager instances the Prometheus server sends alerts to configured via the static_configs parameter. |
 | prometheus.args | object | `{"config.file":"/etc/prometheus/prometheus.yml","log.level":"info","storage.tsdb.path":"/data","storage.tsdb.retention.time":"6h"}` | Command line options for Prometheus binary |
 | prometheus.enabled | bool | `true` | toggle field to enable or disable prometheus |
 | prometheus.globalConfig | object | `{"evaluation_interval":"10s","scrape_interval":"10s","scrape_timeout":"10s"}` | The global configuration specifies parameters that are valid in all other configuration contexts. |
@@ -124,6 +126,7 @@ Kubernetes: `>=1.13.0-0`
 | prometheus.ruleConfigMapMounts | string | `nil` | Alerting/recording rule ConfigMap mounts (sub-path names must end in ´_rules.yml´ or ´_rules.yaml´) |
 | prometheus.scrapeConfigs | string | `nil` | A scrapeConfigs section specifies a set of targets and parameters describing how to scrape them. |
 | prometheus.sideCarContainers | string | `nil` | A sidecarContainers section specifies a list of secondary containers to run in the prometheus pod e.g. to export data to non-prometheus systems |
+| prometheusUrl | string | `""` | url of external prometheus instance |
 | proxyInjectAnnotation | string | `"linkerd.io/inject"` |  |
 | tap.UID | int | `2103` |  |
 | tap.caBundle | string | `""` | Bundle of CA certificates for Tap component. If not provided then Helm will use the certificate generated  for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
@@ -132,14 +135,32 @@ Kubernetes: `>=1.13.0-0`
 | tap.image.name | string | `"controller"` | Docker image name for the tap instance |
 | tap.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the tap instance |
 | tap.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the tap instance |
-| tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided then Helm will generate one.  |
+| tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided then Helm will generate one. |
 | tap.logLevel | string | `"info"` | log level of the tap component |
 | tap.proxy | string | `nil` |  |
-| tap.replicas | int | `1` |  |
+| tap.replicas | int | `1` | Number of tap component replicas |
 | tap.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the tap container can use |
 | tap.resources.cpu.request | string | `nil` | Amount of CPU units that the tap container requests |
 | tap.resources.memory.limit | string | `nil` | Maximum amount of memory that tap container can use |
 | tap.resources.memory.request | string | `nil` | Amount of memory that the tap container requests |
+| tapInjector.UID | int | `2103` |  |
+| tapInjector.caBundle | string | `""` | Bundle of CA certificates for the tapInjector. If not provided then Helm will use the certificate generated  for `tapInjector.crtPEM`. If `tapInjector.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
+| tapInjector.crtPEM | string | `""` | Certificate for the tapInjector. If not provided then Helm will generate one. |
+| tapInjector.externalSecret | bool | `false` | Do not create a secret resource for the tapInjector webhook. If this is set to `true`, the value `tapInjector.caBundle` must be set (see below) |
+| tapInjector.failurePolicy | string | `"Ignore"` |  |
+| tapInjector.image.name | string | `"controller"` | Docker image name for the tapInjector instance |
+| tapInjector.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the tapInjector instance |
+| tapInjector.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the tapInjector instance |
+| tapInjector.keyPEM | string | `""` | Certificate key for the tapInjector. If not provided then Helm will generate one. |
+| tapInjector.namespaceSelector | string | `nil` |  |
+| tapInjector.objectSelector | string | `nil` |  |
+| tapInjector.proxy | string | `nil` |  |
+| tapInjector.replicas | int | `1` | Number of replicas of tapInjector |
+| tapInjector.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the tapInjector container can use |
+| tapInjector.resources.cpu.request | string | `nil` | Amount of CPU units that the tapInjector container requests |
+| tapInjector.resources.memory.limit | string | `nil` | Maximum amount of memory that tapInjector container can use |
+| tapInjector.resources.memory.request | string | `nil` | Amount of memory that the tapInjector container requests |
+| tolerations | string | `nil` | Tolerations section, See the  [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.4.0](https://github.com/norwoodj/helm-docs/releases/v1.4.0)

@@ -478,10 +478,17 @@ func IsMeshed(pod *corev1.Pod, controllerNS string) bool {
 	return pod.Labels[ControllerNSLabel] == controllerNS
 }
 
-// IsTapDisabled returns true if the pod has an annotation for explicitly
-// disabling tap
-func IsTapDisabled(pod *corev1.Pod) bool {
-	if valStr := pod.Annotations[ProxyDisableTapAnnotation]; valStr != "" {
+// IsTapDisabled returns true if a namespace or pod has an annotation for
+// explicitly disabling tap
+func IsTapDisabled(obj interface{}) bool {
+	var valStr string
+	switch resource := obj.(type) {
+	case *corev1.Pod:
+		valStr = resource.GetAnnotations()[ProxyDisableTapAnnotation]
+	case *corev1.Namespace:
+		valStr = resource.GetAnnotations()[ProxyDisableTapAnnotation]
+	}
+	if valStr != "" {
 		valBool, err := strconv.ParseBool(valStr)
 		if err == nil && valBool {
 			return true

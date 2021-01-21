@@ -440,6 +440,10 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/helm dev-undefined
+        config.linkerd.io/proxy-cpu-request: "500m"
+        config.linkerd.io/proxy-cpu-limit: "100m"
+        config.linkerd.io/proxy-memory-request: "20Mi"
+        config.linkerd.io/proxy-memory-limit: "250Mi"
       labels:
         linkerd.io/extension: linkerd-viz
         component: grafana
@@ -688,6 +692,10 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/helm dev-undefined
+        config.linkerd.io/proxy-cpu-request: "500m"
+        config.linkerd.io/proxy-cpu-limit: "100m"
+        config.linkerd.io/proxy-memory-request: "20Mi"
+        config.linkerd.io/proxy-memory-limit: "250Mi"
       labels:
         linkerd.io/extension: linkerd-viz
         component: prometheus
@@ -795,6 +803,10 @@ spec:
       annotations:
         checksum/config: 1396a8de42cb50dca5caf85bdb2b7ae7ad08152d0c107ec3586c366912d36aff
         linkerd.io/created-by: linkerd/helm dev-undefined
+        config.linkerd.io/proxy-cpu-request: "500m"
+        config.linkerd.io/proxy-cpu-limit: "100m"
+        config.linkerd.io/proxy-memory-request: "20Mi"
+        config.linkerd.io/proxy-memory-limit: "250Mi"
       labels:
         linkerd.io/extension: linkerd-viz
         component: tap
@@ -1051,6 +1063,10 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/helm dev-undefined
+        config.linkerd.io/proxy-cpu-request: "500m"
+        config.linkerd.io/proxy-cpu-limit: "100m"
+        config.linkerd.io/proxy-memory-request: "20Mi"
+        config.linkerd.io/proxy-memory-limit: "250Mi"
       labels:
         linkerd.io/extension: linkerd-viz
         component: web

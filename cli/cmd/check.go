@@ -11,11 +11,11 @@ import (
 
 	"github.com/linkerd/linkerd2/cli/flag"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
-	"github.com/linkerd/linkerd2/pkg/version"
-
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	valuespkg "helm.sh/helm/v3/pkg/cli/values"
 )
 
 type checkOptions struct {
@@ -221,7 +221,7 @@ func renderInstallManifest(ctx context.Context) (string, error) {
 	}
 
 	var b strings.Builder
-	err = install(ctx, &b, values, []flag.Flag{}, "")
+	err = install(ctx, &b, values, []flag.Flag{}, "", valuespkg.Options{})
 	if err != nil {
 		return "", err
 	}

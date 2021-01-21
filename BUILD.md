@@ -121,7 +121,7 @@ Started](https://linkerd.io/2/getting-started/)
 bin/k3d cluster create
 
 # build all docker images
-DOCKER_TRACE=1 bin/docker-build
+bin/docker-build
 
 # load all the images into k3d
 bin/image-load --k3d
@@ -431,7 +431,7 @@ The `bin/docker-build-proxy` script builds the proxy by pulling a pre-published
 proxy binary:
 
 ```bash
-DOCKER_TRACE=1 bin/docker-build-proxy
+bin/docker-build-proxy
 ```
 
 ### Multi-architecture builds

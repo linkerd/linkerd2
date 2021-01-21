@@ -1,31 +1,26 @@
 ---
 ###
-### Tap
+### Tap Injector
 ###
 ---
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-tap
+  name: tap-injector
   namespace: {{.Values.namespace}}
   labels:
     {{.Values.extensionAnnotation}}: linkerd-viz
-    component: tap
-    namespace: {{.Values.namespace}}
+    component: tap-injector
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.extensionAnnotation}}: linkerd-viz
-    component: tap
+    component: tap-injector
   ports:
-  - name: grpc
-    port: 8088
-    targetPort: 8088
-  - name: apiserver
+  - name: tap-injector
     port: 443
-    targetPort: apiserver
+    targetPort: tap-injector
 ---
 kind: Deployment
 apiVersion: apps/v1
@@ -34,20 +29,16 @@ metadata:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
   labels:
     {{.Values.extensionAnnotation}}: linkerd-viz
-    app.kubernetes.io/name: tap
+    app.kubernetes.io/name: tap-injector
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
-    component: tap
-    namespace: {{.Values.namespace}}
-  name: linkerd-tap
+    component: tap-injector
+  name: tap-injector
   namespace: {{.Values.namespace}}
 spec:
-  replicas: {{.Values.tap.replicas}}
+  replicas: {{.Values.tapInjector.replicas}}
   selector:
     matchLabels:
-      {{.Values.extensionAnnotation}}: linkerd-viz
-      component: tap
-      namespace: {{.Values.namespace}}
+      component: tap-injector
   {{- if .Values.enablePodAntiAffinity }}
   strategy:
     rollingUpdate:
@@ -57,17 +48,16 @@ spec:
     metadata:
       annotations:
         {{- if empty .Values.cliVersion }}
-        checksum/config: {{ include (print $.Template.BasePath "/tap-rbac.yaml") . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/tap-injector-rbac.yaml") . | sha256sum }}
         {{- end }}
         {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
-        {{- with .Values.tap.proxy }}
+        {{- with .Values.tapInjector.proxy }}
         {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
         {{.Values.extensionAnnotation}}: linkerd-viz
-        component: tap
-        namespace: {{.Values.namespace}}
+        component: tap-injector
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.tolerations -}}
@@ -75,47 +65,42 @@ spec:
       {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- if .Values.enablePodAntiAffinity -}}
-      {{- $local := dict "component" "tap" "label" "component" -}}
+      {{- $local := dict "component" "tap-injector" "label" "component" -}}
       {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
       {{- end }}
       containers:
       - args:
-        - tap
-        - -controller-namespace={{.Values.linkerdNamespace}}
-        - -log-level={{.Values.tap.logLevel}}
-        - -identity-trust-domain={{.Values.identityTrustDomain}}
-        image: {{.Values.tap.image.registry}}/{{.Values.tap.image.name}}:{{.Values.tap.image.tag}}
-        imagePullPolicy: {{.Values.tap.image.pullPolicy}}
+        - tap-injector
+        - -tap-service-name=linkerd-tap.{{.Values.namespace}}.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+        image: {{.Values.tapInjector.image.registry}}/{{.Values.tapInjector.image.name}}:{{.Values.tapInjector.image.tag}}
+        imagePullPolicy: {{.Values.tapInjector.image.pullPolicy}}
         livenessProbe:
           httpGet:
             path: /ping
-            port: 9998
+            port: 9995
           initialDelaySeconds: 10
-        name: tap
+        name: tap-injector
         ports:
-        - containerPort: 8088
-          name: grpc
-        - containerPort: 8089
-          name: apiserver
-        - containerPort: 9998
+        - containerPort: 8443
+          name: tap-injector
+        - containerPort: 9995
           name: admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: 9998
-        {{- if .Values.tap.resources -}}
-        {{- include "partials.resources" .Values.tap.resources | nindent 8 }}
+            port: 9995
+        {{- if .Values.tapInjector.resources -}}
+        {{- include "partials.resources" .Values.tapInjector.resources | nindent 8 }}
         {{- end }}
         securityContext:
-          runAsUser: {{.Values.tap.UID}}
+          runAsUser: {{.Values.tapInjector.UID}}
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
-      serviceAccountName: linkerd-tap
+      serviceAccountName: tap-injector
       volumes:
       - name: tls
         secret:
-          secretName: linkerd-tap-k8s-tls
-
+          secretName: tap-injector-k8s-tls
