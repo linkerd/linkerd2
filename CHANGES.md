@@ -3,40 +3,38 @@
 
 ## edge-21.1.3
 
-This edge release improves proxy diagnostics and handling for the failfast state
-by improving log output and enhancing the proxy's ability to recover when it is
-in failfast. In addition, the commands and sub-commands for `linkerd viz` have
-been updated to be consistent with the `linkerd` core commands. Also, the
-install commands for the core and multicluster components have been modified to
-accept helm-style customization flags.
+This edge release improves proxy diagnostics and recovery in situations where
+the proxy is temporarily unable to route requests. Additionally, the `viz` and
+`multicluster` CLI sub-commands have been updated for consistency.
 
 Full release notes:
 
-* Added helm `set`, `set-string`, `values`, `set-files` customization flags for
-  the `linkerd install` and `linkerd multicluster install` commands
-* Fixed `linkerd metrics` resource selector to differentiate between owner
-  resource names
+* Added Helm-style `set`, `set-string`, `values`, `set-files` customization
+  flags for the `linkerd install` and `linkerd multicluster install` commands
+* Fixed an issue where `linkerd metrics` could return metrics for the incorrect
+  set of pods when there are overlapping label selectors
 * Added tap-injector to linkerd-viz which is responsible for adding the tap
   service name environment variable to the Linkerd proxy container
-* Improved proxy diagnostics about the proxy's failfast state
-* Made failfast recovery for a service more robust when new requests are being
-  received
-* Improved metric labeling for TCP server metrics, as well as inbound and
-  outbound tls metrics
-* Added `client` and `server` prefixes to socket-level errors to indicate which
-  side of the proxy encountered the error
-* Added a watch to jaeger-injector to prevent errors in environments with high
-  pod or namespace churn
-* Added check to confirm whether the jaeger injector pod is in running state
+* Improved diagnostics when the proxy is temporarily unable to route requests
+* Made proxy recovery for a service more robust when the proxy is unable to
+  route requests, even when new requests are being received
+* Added `client` and `server` prefixes in the proxy logs for socket-level errors
+  to indicate which side of the proxy encountered the error
+* Improved jaeger-injector reliability in environments with many resources by
+  adding watch RBAC permissions
+* Added check to confirm whether the jaeger-injector pod is in running state
   (thanks @yashvardhan-kukreja!)
-* Fixed some logic that caused a crash when EndpointSlices were enabled
+* Fixed a crash in the destination controller when EndpointSlices are enabled
   (thanks @oleh-ozimok!)
 * Added a `linkerd viz check` sub-command to verify the states of the
   `linkerd-viz` components
 * Added a `log-format` flag to optionally output the control plane component log
   output as JSON (thanks @mo4islona!)
-* Added logic to use the configured default namespace for `metrics` and
-  `profile` subcommands
+* Updated the logic in the `metrics` and `profile` subcommands to use the
+  `namespace` specified by the `current-context` of the KUBECONFIG so that it is
+  no longer necessary to use the `--namespace` flag to query resources in the
+  current namespace. Queries for resources in namespaces other than the
+  current namespace still require the `--namespace` flag
 
 ## edge-21.1.2
 
