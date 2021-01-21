@@ -6,38 +6,31 @@
 
 # -- control plane version. See Proxy section for proxy version
 linkerdVersion: &linkerd_version linkerdVersionValue
-
-# -- Default Docker Registry
-defaultRegistry: &default_registry ghcr.io/linkerd
-
-# -- Kubernetes DNS Domain name to use
+# -- Kubernetes DNS Domain name to use  
 clusterDomain: &cluster_domain cluster.local
-
-# -- Trust domain used for identity
+# -- Trust domain used for identity 
 identityTrustDomain: *cluster_domain
-
-# -- Namespace of the Linkerd core control-plane install
-linkerdNamespace: linkerd
-
-# -- Log level for all the viz components
-globalLogLevel: &log_level info
-
-# -- UID for all the viz components
-globalUID: &uid 2103
-
 #  Annotation labels. Do not edit.
 createdByAnnotation: linkerd.io/created-by
 proxyInjectAnnotation: linkerd.io/inject
 extensionAnnotation: linkerd.io/extension
 
+# -- Docker registry for all viz components
+defaultRegistry: &registry ghcr.io/linkerd
+# -- Log level for all the viz components
+defaultLogLevel: &log_level info
+# -- UID for all the viz components
+defaultUID: &uid 2103
+
+# -- Namespace of the Linkerd core control-plane install
+linkerdNamespace: linkerd
 # -- Set to false when installing in a custom namespace.
 installNamespace: true
 # -- Namespace in which the Linkerd Viz extension has to be installed
 namespace: linkerd-viz
 
-# -- NodeSelector section, See the [K8S
-# documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector)
-# for more information
+# -- NodeSelector section, See the
+# [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
 nodeSelector:
   beta.kubernetes.io/os: linux
 
@@ -46,17 +39,22 @@ nodeSelector:
 imagePullSecrets: []
 # - name: my-private-docker-registry-login-secret
 
-# -|- Tolerations section, See the
+# -- Tolerations section, See the 
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
 # for more information
-# tolerations:
+tolerations:
+
+# -- Enables Pod Anti Affinity logic to balance the placement of replicas
+# across hosts and zones for High Availability.
+# Enable this only when you have multiple replicas of components.
+enablePodAntiAffinity: false
 
 # -- url of external prometheus instance
-# prometheusUrl:
+prometheusUrl: ""
 
 # -- url of external jaeger instance
 # Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>` if you plan to use jaeger extension
-# jaegerUrl:
+jaegerUrl: ""
 
 # metrics API configuration
 metricsAPI:
@@ -95,12 +93,13 @@ metricsAPI:
 
 # tap configuration
 tap:
+    # -- Number of tap component replicas
   replicas: 1
   # -- log level of the tap component
   logLevel: *log_level
   image:
     # -- Docker registry for the tap instance
-    registry: *default_registry
+    registry: *registry
     # -- Docker image name for the tap instance
     name: controller
     # -- Docker image tag for the tap instance
@@ -139,6 +138,7 @@ tap:
     # into the tap component
     # resources:
 
+  # UID for the dashboard resource
   UID: *uid
 
 # tapInjector configuration
@@ -147,7 +147,7 @@ tapInjector:
   replicas: 1
   image:
     # -- Docker registry for the tapInjector instance
-    registry: *default_registry
+    registry: *registry
     # -- Docker image name for the tapInjector instance
     name: controller
     # -- Docker image tag for the tapInjector instance
@@ -203,7 +203,7 @@ dashboard:
   logLevel: *log_level
   image:
     # -- Docker registry for the web instance
-    registry: *default_registry
+    registry: *registry
     # -- Docker image name for the web instance
     name: web
     # -- Docker image tag for the web instance
@@ -241,7 +241,7 @@ grafana:
   enabled: true
   image:
     # -- Docker registry for the grafana instance
-    registry: *default_registry
+    registry: *registry
     # -- Docker image name for the grafana instance
     name: grafana
     # -- Docker image tag for the grafana instance
