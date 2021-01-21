@@ -98,7 +98,7 @@ func NewCmdDashboard() *cobra.Command {
 				return err
 			}
 
-			vizNs, err := k8sAPI.GetNamespaceWithExtensionLabel(context.Background(), "linkerd-viz")
+			vizNs, err := k8sAPI.GetNamespaceWithExtensionLabel(context.Background(), ExtensionName)
 			if err != nil {
 				return err
 			}

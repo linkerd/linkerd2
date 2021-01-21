@@ -150,12 +150,6 @@ func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (Client
 	return newClient(apiURL, &http.Client{Transport: &ochttp.Transport{}}, controlPlaneNamespace)
 }
 
-// NewInternalPublicClient creates a new Public API client intended to run inside a
-// Kubernetes cluster.
-func NewInternalPublicClient(controlPlaneNamespace string, kubeAPIHost string) (Client, error) {
-	return NewInternalClient(controlPlaneNamespace, kubeAPIHost)
-}
-
 // NewExternalClient creates a new public API client intended to run from
 // outside a Kubernetes cluster.
 func NewExternalClient(ctx context.Context, controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (Client, error) {
@@ -188,10 +182,4 @@ func NewExternalClient(ctx context.Context, controlPlaneNamespace string, kubeAP
 	}
 
 	return newClient(apiURL, httpClientToUse, controlPlaneNamespace)
-}
-
-// NewExternalPublicClient creates a new Public API client intended to run from
-// outside a Kubernetes cluster.
-func NewExternalPublicClient(ctx context.Context, controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (Client, error) {
-	return NewExternalClient(ctx, controlPlaneNamespace, kubeAPI)
 }

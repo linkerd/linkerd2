@@ -62,7 +62,9 @@ func (hc *HealthChecker) vizCategory() *healthcheck.Category {
 			Fatal().
 			WithCheck(func(ctx context.Context) error {
 				vizNs, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, "linkerd-viz")
-				hc.vizNamespace = vizNs.Name
+				if err == nil {
+					hc.vizNamespace = vizNs.Name
+				}
 				return err
 			}))
 

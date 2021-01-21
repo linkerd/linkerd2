@@ -57,7 +57,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to parse public API server address: %s", *publicAPIAddr)
 	}
-	publicClient, err := public.NewInternalPublicClient(*controllerNamespace, *publicAPIAddr)
+	publicClient, err := public.NewInternalClient(*controllerNamespace, *publicAPIAddr)
 	if err != nil {
 		log.Fatalf("failed to construct client for public API server URL %s", *publicAPIAddr)
 	}

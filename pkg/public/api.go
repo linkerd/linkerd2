@@ -15,10 +15,10 @@ import (
 // RawPublicAPIClient creates a raw public API client with no validation.
 func RawPublicAPIClient(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string, apiAddr string) (pb.ApiClient, error) {
 	if apiAddr != "" {
-		return public.NewInternalPublicClient(controlPlaneNamespace, apiAddr)
+		return public.NewInternalClient(controlPlaneNamespace, apiAddr)
 	}
 
-	return public.NewExternalPublicClient(ctx, controlPlaneNamespace, kubeAPI)
+	return public.NewExternalClient(ctx, controlPlaneNamespace, kubeAPI)
 }
 
 // CheckPublicAPIClientOrExit builds a new Public API client and executes default status

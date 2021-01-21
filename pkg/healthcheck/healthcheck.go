@@ -750,9 +750,9 @@ func (hc *HealthChecker) allCategories() []Category {
 					fatal:       true,
 					check: func(ctx context.Context) (err error) {
 						if hc.APIAddr != "" {
-							hc.apiClient, err = public.NewInternalPublicClient(hc.ControlPlaneNamespace, hc.APIAddr)
+							hc.apiClient, err = public.NewInternalClient(hc.ControlPlaneNamespace, hc.APIAddr)
 						} else {
-							hc.apiClient, err = public.NewExternalPublicClient(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
+							hc.apiClient, err = public.NewExternalClient(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
 						}
 						return
 					},
@@ -1231,6 +1231,30 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
+			id: LinkerdControlPlaneVersionChecks,
+			checkers: []Checker{
+				{
+					description: "control plane is up-to-date",
+					hintAnchor:  "l5d-version-control",
+					warning:     true,
+					check: func(context.Context) error {
+						return hc.latestVersions.Match(hc.serverVersion)
+					},
+				},
+				{
+					description: "control plane and cli versions match",
+					hintAnchor:  "l5d-version-control",
+					warning:     true,
+					check: func(context.Context) error {
+						if hc.serverVersion != version.Version {
+							return fmt.Errorf("control plane running %s but cli running %s", hc.serverVersion, version.Version)
+						}
+						return nil
+					},
+				},
+			},
+		},
+		{
 			id: LinkerdDataPlaneChecks,
 			checkers: []Checker{
 				{
@@ -1298,30 +1322,6 @@ func (hc *HealthChecker) allCategories() []Category {
 							if proxyVersion != version.Version {
 								return fmt.Errorf("%s running %s but cli running %s", pod.Name, proxyVersion, version.Version)
 							}
-						}
-						return nil
-					},
-				},
-			},
-		},
-		{
-			id: LinkerdControlPlaneVersionChecks,
-			checkers: []Checker{
-				{
-					description: "control plane is up-to-date",
-					hintAnchor:  "l5d-version-control",
-					warning:     true,
-					check: func(context.Context) error {
-						return hc.latestVersions.Match(hc.serverVersion)
-					},
-				},
-				{
-					description: "control plane and cli versions match",
-					hintAnchor:  "l5d-version-control",
-					warning:     true,
-					check: func(context.Context) error {
-						if hc.serverVersion != version.Version {
-							return fmt.Errorf("control plane running %s but cli running %s", hc.serverVersion, version.Version)
 						}
 						return nil
 					},

@@ -7,6 +7,7 @@ import (
 
 	"github.com/linkerd/linkerd2/cli/table"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	vizCmd "github.com/linkerd/linkerd2/viz/cmd"
 	"github.com/linkerd/linkerd2/viz/metrics-api/client"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/spf13/cobra"
@@ -43,7 +44,7 @@ func newGatewaysCommand() *cobra.Command {
 
 			ctx := cmd.Context()
 
-			vizNs, err := k8sAPI.GetNamespaceWithExtensionLabel(ctx, "linkerd-viz")
+			vizNs, err := k8sAPI.GetNamespaceWithExtensionLabel(ctx, vizCmd.ExtensionName)
 			if err != nil {
 				return fmt.Errorf("make sure the linkerd-viz extension is installed, using 'linkerd viz install' (%s)", err)
 			}

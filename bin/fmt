@@ -6,7 +6,7 @@ while IFS= read -r line; do dirs+=("$line"); done <<< "$(go list -f \{\{.Dir\}\}
 
 # go list will list all subdirectories and goimports acts recursively.  This
 # results in certain files being reported multiple time.  Therefore, we must
-# dedup them.
+# dedup them. We also ignore protobuf auto-generated code.
 files=$(bin/goimports -l "${dirs[@]}" | sort -u | grep -v pb.go)
 
 if [ -n "$files" ]; then

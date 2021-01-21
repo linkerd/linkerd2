@@ -10,6 +10,9 @@ import (
 )
 
 const (
+	// ExtensionName is the value that the viz extension resources should be labeled with
+	ExtensionName = "linkerd-viz"
+
 	vizChartName            = "linkerd-viz"
 	defaultLinkerdNamespace = "linkerd"
 	maxRps                  = 100.0

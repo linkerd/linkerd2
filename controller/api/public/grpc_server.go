@@ -49,30 +49,6 @@ func (*grpcServer) Version(ctx context.Context, req *pb.Empty) (*pb.VersionInfo,
 	return &pb.VersionInfo{GoVersion: runtime.Version(), ReleaseVersion: version.Version, BuildDate: "1970-01-01T00:00:00Z"}, nil
 }
 
-// TODO: Reenable this check just for checking the control plane can
-// talk to k8s
-/*func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckRequest) (*healthcheckPb.SelfCheckResponse, error) {
-	k8sClientCheck := &healthcheckPb.CheckResult{
-		SubsystemName:    k8sClientSubsystemName,
-		CheckDescription: k8sClientCheckDescription,
-		Status:           healthcheckPb.CheckStatus_OK,
-	}
-	_, err := s.k8sAPI.Pod().Lister().List(labels.Everything())
-	if err != nil {
-		k8sClientCheck.Status = healthcheckPb.CheckStatus_ERROR
-		k8sClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error calling the Kubernetes API: %s", err)
-	}
-
-	response := &healthcheckPb.SelfCheckResponse{
-		Results: []*healthcheckPb.CheckResult{
-			k8sClientCheck,
-		},
-	}
-
-	return response, nil
-}
-*/
-
 // Pass through to Destination service
 func (s *grpcServer) Get(req *destinationPb.GetDestination, stream destinationPb.Destination_GetServer) error {
 	destinationStream := stream.(destinationServer)

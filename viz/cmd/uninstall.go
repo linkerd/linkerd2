@@ -34,7 +34,7 @@ func uninstallRunE(ctx context.Context) error {
 		return err
 	}
 
-	vizNs, err := k8sAPI.GetNamespaceWithExtensionLabel(ctx, "linkerd-viz")
+	vizNs, err := k8sAPI.GetNamespaceWithExtensionLabel(ctx, ExtensionName)
 	if err != nil {
 		return err
 	}
