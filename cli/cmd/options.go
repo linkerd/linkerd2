@@ -23,7 +23,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation"
-	"sigs.k8s.io/yaml"
 )
 
 // makeInstallUpgradeFlags builds the set of flags which are used during the
@@ -226,22 +225,6 @@ func makeAllStageFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet)
 			"Omit the NET_ADMIN capability in the PSP and the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed",
 			func(values *l5dcharts.Values, value bool) error {
 				values.GetGlobal().CNIEnabled = value
-				return nil
-			}),
-
-		flag.NewStringFlag(allStageFlags, "config", "",
-			"A path to a yaml configuration file. The fields in this file will override the values used to install or upgrade Linkerd.",
-			func(values *l5dcharts.Values, value string) error {
-				if value != "" {
-					data, err := ioutil.ReadFile(value)
-					if err != nil {
-						return err
-					}
-					err = yaml.Unmarshal(data, &values)
-					if err != nil {
-						return err
-					}
-				}
 				return nil
 			}),
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	valuespkg "helm.sh/helm/v3/pkg/cli/values"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,6 +50,7 @@ var (
 // newCmdUpgradeConfig is a subcommand for `linkerd upgrade config`
 func newCmdUpgradeConfig(values *l5dcharts.Values) *cobra.Command {
 	allStageFlags, allStageFlagSet := makeAllStageFlags(values)
+	var options valuespkg.Options
 
 	cmd := &cobra.Command{
 		Use:   "config [flags]",
@@ -65,7 +67,7 @@ Note that this command should be followed by "linkerd upgrade control-plane".`,
 			if err != nil {
 				return err
 			}
-			return upgradeRunE(cmd.Context(), k, allStageFlags, configStage)
+			return upgradeRunE(cmd.Context(), k, allStageFlags, configStage, options)
 		},
 	}
 
@@ -76,6 +78,8 @@ Note that this command should be followed by "linkerd upgrade control-plane".`,
 
 // newCmdUpgradeControlPlane is a subcommand for `linkerd upgrade control-plane`
 func newCmdUpgradeControlPlane(values *l5dcharts.Values) *cobra.Command {
+	var options valuespkg.Options
+
 	allStageFlags, allStageFlagSet := makeAllStageFlags(values)
 	installUpgradeFlags, installUpgradeFlagSet, err := makeInstallUpgradeFlags(values)
 	if err != nil {
@@ -102,7 +106,7 @@ install command. It should be run after "linkerd upgrade config".`,
 			if err != nil {
 				return err
 			}
-			return upgradeRunE(cmd.Context(), k, flags, controlPlaneStage)
+			return upgradeRunE(cmd.Context(), k, flags, controlPlaneStage, options)
 		},
 	}
 
@@ -120,6 +124,7 @@ func newCmdUpgrade() *cobra.Command {
 		os.Exit(1)
 	}
 
+	var options valuespkg.Options
 	allStageFlags, allStageFlagSet := makeAllStageFlags(values)
 	installUpgradeFlags, installUpgradeFlagSet, err := makeInstallUpgradeFlags(values)
 	if err != nil {
@@ -151,7 +156,7 @@ install command.`,
 			if err != nil {
 				return err
 			}
-			return upgradeRunE(cmd.Context(), k, flags, "")
+			return upgradeRunE(cmd.Context(), k, flags, "", options)
 		},
 	}
 
@@ -211,9 +216,9 @@ func makeUpgradeFlags() *pflag.FlagSet {
 	return upgradeFlags
 }
 
-func upgradeRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, stage string) error {
+func upgradeRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, stage string, options valuespkg.Options) error {
 
-	buf, err := upgrade(ctx, k, flags, stage)
+	buf, err := upgrade(ctx, k, flags, stage, options)
 	if err != nil {
 		return err
 	}
@@ -232,7 +237,7 @@ func upgradeRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, s
 	return nil
 }
 
-func upgrade(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, stage string) (bytes.Buffer, error) {
+func upgrade(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, stage string, options valuespkg.Options) (bytes.Buffer, error) {
 	values, err := loadStoredValues(ctx, k)
 	if err != nil {
 		return bytes.Buffer{}, err
@@ -274,7 +279,7 @@ func upgrade(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, stage
 	// rendering to a buffer and printing full contents of buffer after
 	// render is complete, to ensure that okStatus prints separately
 	var buf bytes.Buffer
-	if err = render(&buf, values, stage); err != nil {
+	if err = render(&buf, values, stage, options); err != nil {
 		upgradeErrorf("Could not render upgrade configuration: %s", err)
 	}
 

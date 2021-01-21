@@ -17,6 +17,26 @@ func TestRender(t *testing.T) {
 			"crtPEM":   "test-tap-crt-pem",
 			"caBundle": "test-tap-ca-bundle",
 		},
+		"tapInjector": map[string]interface{}{
+			"keyPEM":   "test-tap-key-pem",
+			"crtPEM":   "test-tap-crt-pem",
+			"caBundle": "test-tap-ca-bundle",
+		},
+	}
+
+	proxyResources := map[string]interface{}{
+		"proxy": map[string]interface{}{
+			"resources": map[string]interface{}{
+				"cpu": map[string]interface{}{
+					"request": "500m",
+					"limit":   "100m",
+				},
+				"memory": map[string]interface{}{
+					"request": "20Mi",
+					"limit":   "250Mi",
+				},
+			},
+		},
 	}
 
 	testCases := []struct {
@@ -33,6 +53,15 @@ func TestRender(t *testing.T) {
 				"prometheusUrl": "external-prom.com",
 			},
 			"install_prometheus_disabled.golden",
+		},
+		{
+			map[string]interface{}{
+				"prometheus": proxyResources,
+				"tap":        proxyResources,
+				"grafana":    proxyResources,
+				"dashboard":  proxyResources,
+			},
+			"install_proxy_resources.golden",
 		},
 	}
 
