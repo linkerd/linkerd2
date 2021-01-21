@@ -135,6 +135,8 @@ type (
 		XTMountPath          *VolumeMountPath `json:"xtMountPath"`
 		Resources            *Resources       `json:"resources"`
 		CloseWaitTimeoutSecs int64            `json:"closeWaitTimeoutSecs"`
+		RunAsNonRoot         bool             `json:"runAsNonRoot"`
+		RunAsUser            int64            `json:"runAsUser"`
 	}
 
 	// DebugContainer contains the fields to set the debugging sidecar

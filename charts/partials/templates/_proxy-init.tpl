@@ -21,11 +21,7 @@ imagePullPolicy: {{.Values.global.proxyInit.image.pullPolicy}}
 name: linkerd-init
 {{ include "partials.resources" .Values.global.proxyInit.resources }}
 securityContext:
-  {{- if .Values.global.proxyInit.closeWaitTimeoutSecs }}
   allowPrivilegeEscalation: true
-  {{- else }}
-  allowPrivilegeEscalation: false
-  {{- end }}
   capabilities:
     add:
     - NET_ADMIN
@@ -44,8 +40,8 @@ securityContext:
   privileged: false
   {{- end }}
   readOnlyRootFilesystem: true
-  runAsNonRoot: false
-  runAsUser: 0
+  runAsNonRoot: {{.Values.global.proxyInit.runAsNonRoot}}
+  runAsUser: {{.Values.global.proxyInit.runAsUser}}
 terminationMessagePolicy: FallbackToLogsOnError
 {{- if or (not .Values.global.cniEnabled) .Values.global.proxyInit.saMountPath }}
 volumeMounts:
@@ -58,5 +54,5 @@ volumeMounts:
 - mountPath: {{.Values.global.proxyInit.saMountPath.mountPath}}
   name: {{.Values.global.proxyInit.saMountPath.name}}
   readOnly: {{.Values.global.proxyInit.saMountPath.readOnly}}
-{{- end -}}  
+{{- end -}}
 {{- end -}}

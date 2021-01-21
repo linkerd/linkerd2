@@ -146,6 +146,8 @@ global:
     xtMountPath:
       mountPath: /run
       name: linkerd-proxy-init-xtables-lock
+    runAsNonRoot: false
+    runAsUser: 0
 
   # -- Annotation label for the proxy create. Do not edit.
   createdByAnnotation: linkerd.io/created-by
