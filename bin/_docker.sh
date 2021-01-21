@@ -51,8 +51,8 @@ docker_build() {
     shift
 
     output=/dev/null
-    if [ -n "$DOCKER_TRACE" ]; then
-        output=/dev/stderr
+    if [ -n "$DOCKER_TRACE" ] && [ -w /dev/stderr ]; then
+        output="/dev/stderr"
     fi
 
     rootdir=$( cd "$bindir"/.. && pwd )
