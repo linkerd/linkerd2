@@ -15,8 +15,6 @@ import (
 	"github.com/linkerd/linkerd2/viz/metrics-api/util"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -211,14 +209,6 @@ func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckR
 	}
 
 	return response, nil
-}
-
-func (s *grpcServer) Tap(req *pb.TapRequest, stream pb.Api_TapServer) error {
-	return status.Error(codes.Unimplemented, "Tap is deprecated in public API, use tap APIServer")
-}
-
-func (s *grpcServer) TapByResource(req *pb.TapByResourceRequest, stream pb.Api_TapByResourceServer) error {
-	return status.Error(codes.Unimplemented, "Tap is deprecated in public API, use tap APIServer")
 }
 
 func (s *grpcServer) shouldIgnore(pod *corev1.Pod) bool {

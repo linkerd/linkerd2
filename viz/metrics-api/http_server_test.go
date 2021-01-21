@@ -58,26 +58,6 @@ func (m *mockGrpcServer) SelfCheck(ctx context.Context, req *healthcheckPb.SelfC
 	return m.ResponseToReturn.(*healthcheckPb.SelfCheckResponse), m.ErrorToReturn
 }
 
-func (m *mockGrpcServer) Tap(req *pb.TapRequest, tapServer pb.Api_TapServer) error {
-	m.LastRequestReceived = req
-	if m.ErrorToReturn != nil {
-		// Not implemented in public API. Instead, use tap APIServer.
-		return errors.New("Not implemented")
-	}
-
-	return m.ErrorToReturn
-}
-
-func (m *mockGrpcServer) TapByResource(req *pb.TapByResourceRequest, tapServer pb.Api_TapByResourceServer) error {
-	m.LastRequestReceived = req
-	if m.ErrorToReturn != nil {
-		// Not implemented in public API. Instead, use tap APIServer.
-		return errors.New("Not implemented")
-	}
-
-	return m.ErrorToReturn
-}
-
 type grpcCallTestCase struct {
 	expectedRequest  proto.Message
 	expectedResponse proto.Message
@@ -110,29 +90,6 @@ func TestServer(t *testing.T) {
 			assertCallWasForwarded(t, &mockGrpcServer.mockServer, testCase.expectedRequest, testCase.expectedResponse, testCase.functionCall)
 		}
 	})
-
-	t.Run("Handles Tap route errors before opening keep-alive response", func(t *testing.T) {
-		mockGrpcServer, client := getServerVizClient(t)
-
-		mockGrpcServer.ErrorToReturn = errors.New("expected error")
-
-		_, err := client.Tap(context.TODO(), &pb.TapRequest{})
-		if err == nil {
-			t.Fatalf("Expecting error, got nothing")
-		}
-	})
-
-	t.Run("Handles TapByResource route errors before opening keep-alive response", func(t *testing.T) {
-		mockGrpcServer, client := getServerVizClient(t)
-
-		mockGrpcServer.ErrorToReturn = errors.New("expected error")
-
-		_, err := client.TapByResource(context.TODO(), &pb.TapByResourceRequest{})
-		if err == nil {
-			t.Fatalf("Expecting error, got nothing")
-		}
-	})
-
 }
 
 func getServerVizClient(t *testing.T) (*mockGrpcServer, pb.ApiClient) {

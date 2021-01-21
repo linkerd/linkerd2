@@ -504,12 +504,6 @@ service Api {
 
   rpc ListServices(ListServicesRequest) returns (ListServicesResponse) {}
 
-  // Superseded by `TapByResource`.
-  rpc Tap(TapRequest) returns (stream TapEvent) { option deprecated = true; }
-
-  // Superseded by tap APIServer.
-  rpc TapByResource(TapByResourceRequest) returns (stream TapEvent) { option deprecated = true; }
-
   rpc SelfCheck(linkerd2.common.healthcheck.SelfCheckRequest) returns (linkerd2.common.healthcheck.SelfCheckResponse) {}
 
 }

@@ -18,16 +18,14 @@ import (
 
 // MockAPIClient satisfies the Public API's gRPC interfaces (public.APIClient).
 type MockAPIClient struct {
-	ErrorToReturn                  error
-	ListPodsResponseToReturn       *pb.ListPodsResponse
-	ListServicesResponseToReturn   *pb.ListServicesResponse
-	StatSummaryResponseToReturn    *pb.StatSummaryResponse
-	GatewaysResponseToReturn       *pb.GatewaysResponse
-	TopRoutesResponseToReturn      *pb.TopRoutesResponse
-	EdgesResponseToReturn          *pb.EdgesResponse
-	SelfCheckResponseToReturn      *healthcheckPb.SelfCheckResponse
-	APITapClientToReturn           pb.Api_TapClient
-	APITapByResourceClientToReturn pb.Api_TapByResourceClient
+	ErrorToReturn                error
+	ListPodsResponseToReturn     *pb.ListPodsResponse
+	ListServicesResponseToReturn *pb.ListServicesResponse
+	StatSummaryResponseToReturn  *pb.StatSummaryResponse
+	GatewaysResponseToReturn     *pb.GatewaysResponse
+	TopRoutesResponseToReturn    *pb.TopRoutesResponse
+	EdgesResponseToReturn        *pb.EdgesResponse
+	SelfCheckResponseToReturn    *healthcheckPb.SelfCheckResponse
 }
 
 // StatSummary provides a mock of a Public API method.
@@ -58,16 +56,6 @@ func (c *MockAPIClient) ListPods(ctx context.Context, in *pb.ListPodsRequest, op
 // ListServices provides a mock of a Public API method.
 func (c *MockAPIClient) ListServices(ctx context.Context, in *pb.ListServicesRequest, opts ...grpc.CallOption) (*pb.ListServicesResponse, error) {
 	return c.ListServicesResponseToReturn, c.ErrorToReturn
-}
-
-// Tap provides a mock of a Public API method.
-func (c *MockAPIClient) Tap(ctx context.Context, in *pb.TapRequest, opts ...grpc.CallOption) (pb.Api_TapClient, error) {
-	return c.APITapClientToReturn, c.ErrorToReturn
-}
-
-// TapByResource provides a mock of a Public API method.
-func (c *MockAPIClient) TapByResource(ctx context.Context, in *pb.TapByResourceRequest, opts ...grpc.CallOption) (pb.Api_TapByResourceClient, error) {
-	return c.APITapByResourceClientToReturn, c.ErrorToReturn
 }
 
 // SelfCheck provides a mock of a Public API method.

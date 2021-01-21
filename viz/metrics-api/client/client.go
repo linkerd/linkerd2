@@ -16,8 +16,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"go.opencensus.io/plugin/ochttp"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 const (
@@ -80,14 +78,6 @@ func (c *grpcOverHTTPClient) ListServices(ctx context.Context, req *pb.ListServi
 	var msg pb.ListServicesResponse
 	err := c.apiRequest(ctx, "ListServices", req, &msg)
 	return &msg, err
-}
-
-func (c *grpcOverHTTPClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...grpc.CallOption) (pb.Api_TapClient, error) {
-	return nil, status.Error(codes.Unimplemented, "Tap is deprecated in public API, use tap APIServer")
-}
-
-func (c *grpcOverHTTPClient) TapByResource(ctx context.Context, req *pb.TapByResourceRequest, _ ...grpc.CallOption) (pb.Api_TapByResourceClient, error) {
-	return nil, status.Error(codes.Unimplemented, "Tap is deprecated in public API, use tap APIServer")
 }
 
 func (c *grpcOverHTTPClient) apiRequest(ctx context.Context, endpoint string, req proto.Message, protoResponse proto.Message) error {
