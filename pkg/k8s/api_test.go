@@ -132,7 +132,7 @@ status:
 		},
 		{
 			desc:     "Pod has a running container",
-			expected: "Running",
+			expected: "NotReady",
 			pod: `
 apiVersion: v1
 kind: Pod
@@ -203,7 +203,7 @@ status:
 		},
 		{
 			desc:     "Pod init container terminated with signal",
-			expected: "Init:Signal:9",
+			expected: "Running",
 			pod: `
 apiVersion: v1
 kind: Pod

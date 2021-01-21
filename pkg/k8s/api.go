@@ -181,7 +181,7 @@ func (kubeAPI *KubernetesAPI) GetNamespaceWithExtensionLabel(ctx context.Context
 
 // GetPodStatus receives a pod and returns the pod status, based on `kubectl` logic.
 // This logic is imported and adapted from the github.com/kubernetes/kubernetes project:
-// https://github.com/kubernetes/kubernetes/blob/33a3e325f754d179b25558dee116fca1c67d353a/pkg/printers/internalversion/printers.go#L558-L640
+// https://github.com/kubernetes/kubernetes/blob/6a161bf6d378e495b3e853a2bb6fdb9f9c1d17ac/pkg/printers/internalversion/printers.go#L740
 func GetPodStatus(pod corev1.Pod) string {
 	reason := string(pod.Status.Phase)
 	if pod.Status.Reason != "" {
@@ -192,7 +192,7 @@ func GetPodStatus(pod corev1.Pod) string {
 	for i := range pod.Status.InitContainerStatuses {
 		container := pod.Status.InitContainerStatuses[i]
 		switch {
-		case container.State.Terminated != nil && container.State.Terminated.ExitCode == 0 && container.State.Terminated.Signal == 0:
+		case container.State.Terminated != nil && container.State.Terminated.ExitCode == 0:
 			continue
 		case container.State.Terminated != nil:
 			// initialization is failed
@@ -237,11 +237,30 @@ func GetPodStatus(pod corev1.Pod) string {
 
 		// change pod status back to "Running" if there is at least one container still reporting as "Running" status
 		if reason == "Completed" && hasRunning {
-			reason = "Running"
+			if hasPodReadyCondition(pod.Status.Conditions) {
+				reason = "Running"
+			} else {
+				reason = "NotReady"
+			}
 		}
 	}
 
+	if pod.DeletionTimestamp != nil && pod.Status.Reason == "NodeLost" {
+		reason = "Unknown"
+	} else if pod.DeletionTimestamp != nil {
+		reason = "Terminating"
+	}
+
 	return reason
+}
+
+func hasPodReadyCondition(conditions []corev1.PodCondition) bool {
+	for _, condition := range conditions {
+		if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
 }
 
 // GetAddOnsConfigMap returns the data in the add-ons configmap
