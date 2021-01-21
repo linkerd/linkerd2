@@ -1,6 +1,43 @@
 
 # Changes
 
+## edge-21.1.3
+
+This edge release improves proxy diagnostics and handling for the failfast state
+by improving log output and enhancing the proxy's ability to recover when it is
+in failfast. In addition, the commands and sub-commands for `linkerd viz` have
+been updated to be consistent with the `linkerd` core commands. Also, the
+install commands for the core and multicluster components have been modified to
+accept helm-style customization flags.
+
+Full release notes:
+
+* Added helm `set`, `set-string`, `values`, `set-files` customization flags for
+  the `linkerd install` and `linkerd multicluster install` commands
+* Fixed `linkerd metrics` resource selector to differentiate between owner
+  resource names
+* Added tap-injector to linkerd-viz which is responsible for adding the tap
+  service name environment variable to the Linkerd proxy container
+* Improved proxy diagnostics about the proxy's failfast state
+* Made failfast recovery for a service more robust when new requests are being
+  received
+* Improved metric labeling for TCP server metrics, as well as inbound and
+  outbound tls metrics
+* Added `client` and `server` prefixes to socket-level errors to indicate which
+  side of the proxy encountered the error
+* Added a watch to jaeger-injector to prevent errors in environments with high
+  pod or namespace churn
+* Added check to confirm whether the jaeger injector pod is in running state
+  (thanks @yashvardhan-kukreja!)
+* Fixed some logic that caused a crash when EndpointSlices were enabled
+  (thanks @oleh-ozimok!)
+* Added a `linkerd viz check` sub-command to verify the states of the
+  `linkerd-viz` components
+* Added a `log-format` flag to optionally output the control plane component log
+  output as JSON (thanks @mo4islona!)
+* Added logic to use the configured default namespace for `metrics` and
+  `profile` subcommands
+
 ## edge-21.1.2
 
 This edge release continues the work on decoupling non-core Linkerd components.
