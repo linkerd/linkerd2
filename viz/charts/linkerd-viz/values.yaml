@@ -112,7 +112,7 @@ tapInjector:
   replicas: 1
   image:
     # -- Docker registry for the tapInjector instance
-    registry: *default_registry
+    registry: *registry
     # -- Docker image name for the tapInjector instance
     name: controller
     # -- Docker image tag for the tapInjector instance
