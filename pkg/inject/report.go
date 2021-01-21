@@ -21,7 +21,6 @@ const (
 	invalidInjectAnnotationWorkload      = "invalid_inject_annotation_at_workload"
 	invalidInjectAnnotationNamespace     = "invalid_inject_annotation_at_ns"
 	disabledAutomountServiceAccountToken = "disabled_automount_service_account_token_account"
-	disabledServiceAccountAutomountToken = "disabled_service_account_automount_token"
 	udpPortsEnabled                      = "udp_ports_enabled"
 )
 
@@ -36,7 +35,6 @@ var (
 		invalidInjectAnnotationWorkload:      fmt.Sprintf("invalid value for annotation \"%s\" at workload", k8s.ProxyInjectAnnotation),
 		invalidInjectAnnotationNamespace:     fmt.Sprintf("invalid value for annotation \"%s\" at namespace", k8s.ProxyInjectAnnotation),
 		disabledAutomountServiceAccountToken: fmt.Sprintf("automountServiceAccountToken set to \"false\""),
-		disabledServiceAccountAutomountToken: fmt.Sprintf("injected workload's service account has automountServiceAccountToken set to \"false\""),
 		udpPortsEnabled:                      "UDP port(s) configured on pod spec",
 	}
 )
@@ -54,7 +52,6 @@ type Report struct {
 	InjectDisabledReason         string
 	InjectAnnotationAt           string
 	AutomountServiceAccountToken bool
-	ServiceAccountAutomountToken bool
 
 	// Uninjected consists of two boolean flags to indicate if a proxy and
 	// proxy-init containers have been uninjected in this report
@@ -84,7 +81,6 @@ func newReport(conf *ResourceConfig) *Report {
 		Kind:                         strings.ToLower(conf.workload.metaType.Kind),
 		Name:                         name,
 		AutomountServiceAccountToken: true,
-		ServiceAccountAutomountToken: true,
 	}
 
 	if conf.pod.meta != nil && conf.pod.spec != nil {
@@ -94,9 +90,6 @@ func newReport(conf *ResourceConfig) *Report {
 		report.UDP = checkUDPPorts(conf.pod.spec)
 		if conf.pod.spec.AutomountServiceAccountToken != nil {
 			report.AutomountServiceAccountToken = *conf.pod.spec.AutomountServiceAccountToken
-		}
-		if conf.origin == OriginWebhook {
-			report.ServiceAccountAutomountToken = checkServiceAccountVolumeMount(conf.pod.spec)
 		}
 	} else if report.Kind != k8s.Namespace {
 		report.UnsupportedResource = true
@@ -132,27 +125,10 @@ func (r *Report) Injectable() (bool, []string) {
 		reasons = append(reasons, disabledAutomountServiceAccountToken)
 	}
 
-	if !r.ServiceAccountAutomountToken {
-		reasons = append(reasons, disabledServiceAccountAutomountToken)
-	}
-
 	if len(reasons) > 0 {
 		return false, reasons
 	}
 	return true, nil
-}
-
-func checkServiceAccountVolumeMount(t *v1.PodSpec) bool {
-	// Check for service account volume mount
-	if containers := t.Containers; len(containers) > 0 {
-		for _, vm := range containers[0].VolumeMounts {
-			if vm.MountPath == k8s.MountPathServiceAccount {
-				// service account volume mount exists
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func checkUDPPorts(t *v1.PodSpec) bool {
@@ -233,10 +209,6 @@ func (r *Report) ThrowInjectError() []error {
 
 	if !r.AutomountServiceAccountToken {
 		errs = append(errs, errors.New(Reasons[disabledAutomountServiceAccountToken]))
-	}
-
-	if !r.ServiceAccountAutomountToken {
-		errs = append(errs, errors.New(Reasons[disabledServiceAccountAutomountToken]))
 	}
 
 	if r.HostNetwork {
