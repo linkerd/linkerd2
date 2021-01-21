@@ -1211,7 +1211,6 @@ spec:
         - -log-level=info
         - -log-format=plain
         - -cluster-domain=example.com
-        - -prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.example.com:9090
         image: ghcr.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
