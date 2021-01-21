@@ -35,6 +35,11 @@ Full release notes:
   no longer necessary to use the `--namespace` flag to query resources in the
   current namespace. Queries for resources in namespaces other than the
   current namespace still require the `--namespace` flag
+* Added new pod 'linkerd-metrics-api' set up by `linkerd viz install` that
+  manages all functionality dependent on Prometheus, thus removing most of the
+  dependencies on Prometheus from the linkerd core installation
+* Removed need to have linkerd-viz installed for the
+  `linkerd multicluster check` command to properly work.
 
 ## edge-21.1.2
 
