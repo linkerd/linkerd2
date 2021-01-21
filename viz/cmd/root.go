@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/fatih/color"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -23,6 +24,12 @@ const (
 )
 
 var (
+
+	// special handling for Windows, on all other platforms these resolve to
+	// os.Stdout and os.Stderr, thanks to https://github.com/mattn/go-colorable
+	stdout = color.Output
+	stderr = color.Error
+
 	apiAddr               string // An empty value means "use the Kubernetes configuration"
 	controlPlaneNamespace string
 	kubeconfigPath        string
@@ -73,6 +80,7 @@ func NewCmdViz() *cobra.Command {
 	vizCmd.AddCommand(NewCmdEdges())
 	vizCmd.AddCommand(NewCmdDashboard())
 	vizCmd.AddCommand(newCmdUninstall())
+	vizCmd.AddCommand(newCmdCheck())
 
 	return vizCmd
 }

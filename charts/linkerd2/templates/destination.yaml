@@ -116,6 +116,7 @@ spec:
         - -controller-namespace={{.Values.global.namespace}}
         - -enable-h2-upgrade={{.Values.enableH2Upgrade}}
         - -log-level={{.Values.global.controllerLogLevel}}
+        - -log-format={{.Values.global.controllerLogFormat}}
         - -enable-endpoint-slices={{.Values.global.enableEndpointSlices}}
         - -cluster-domain={{.Values.global.clusterDomain}}
         - -identity-trust-domain={{.Values.global.identityTrustDomain}}

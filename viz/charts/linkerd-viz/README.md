@@ -71,7 +71,7 @@ Kubernetes: `>=1.13.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use   |
+| clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use |
 | createdByAnnotation | string | `"linkerd.io/created-by"` |  |
 | dashboard.UID | int | `2103` |  |
 | dashboard.enforcedHostRegexp | string | `""` | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information |
@@ -100,7 +100,7 @@ Kubernetes: `>=1.13.0-0`
 | grafana.resources.cpu.request | string | `nil` | Amount of CPU units that the grafana container requests |
 | grafana.resources.memory.limit | string | `nil` | Maximum amount of memory that grafana container can use |
 | grafana.resources.memory.request | string | `nil` | Amount of memory that the grafana container requests |
-| identityTrustDomain | string | `"cluster.local"` | Trust domain used for identity  |
+| identityTrustDomain | string | `"cluster.local"` | Trust domain used for identity |
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
 | installNamespace | bool | `true` | Set to false when installing in a custom namespace. |
 | jaegerUrl | string | `""` | url of external jaeger instance Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>` if you plan to use jaeger extension |
@@ -108,8 +108,8 @@ Kubernetes: `>=1.13.0-0`
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
 | namespace | string | `"linkerd-viz"` | Namespace in which the Linkerd Viz extension has to be installed |
 | nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
-| prometheus.alertManagers | string | `nil` | Alertmanager instances the Prometheus server sends alerts to configured via the static_configs parameter. |
 | prometheus.alertRelabelConfigs | string | `nil` | Alert relabeling is applied to alerts before they are sent to the Alertmanager. |
+| prometheus.alertmanagers | string | `nil` | Alertmanager instances the Prometheus server sends alerts to configured via the static_configs parameter. |
 | prometheus.args | object | `{"config.file":"/etc/prometheus/prometheus.yml","log.level":"info","storage.tsdb.path":"/data","storage.tsdb.retention.time":"6h"}` | Command line options for Prometheus binary |
 | prometheus.enabled | bool | `true` | toggle field to enable or disable prometheus |
 | prometheus.globalConfig | object | `{"evaluation_interval":"10s","scrape_interval":"10s","scrape_timeout":"10s"}` | The global configuration specifies parameters that are valid in all other configuration contexts. |
@@ -135,7 +135,7 @@ Kubernetes: `>=1.13.0-0`
 | tap.image.name | string | `"controller"` | Docker image name for the tap instance |
 | tap.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the tap instance |
 | tap.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the tap instance |
-| tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided then Helm will generate one.  |
+| tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided then Helm will generate one. |
 | tap.logLevel | string | `"info"` | log level of the tap component |
 | tap.proxy | string | `nil` |  |
 | tap.replicas | int | `1` | Number of tap component replicas |
@@ -144,6 +144,23 @@ Kubernetes: `>=1.13.0-0`
 | tap.resources.memory.limit | string | `nil` | Maximum amount of memory that tap container can use |
 | tap.resources.memory.request | string | `nil` | Amount of memory that the tap container requests |
 | tolerations | string | `nil` | Tolerations section, See the  [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
+| tapInjector.UID | int | `2103` |  |
+| tapInjector.caBundle | string | `""` | Bundle of CA certificates for the tapInjector. If not provided then Helm will use the certificate generated  for `tapInjector.crtPEM`. If `tapInjector.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
+| tapInjector.crtPEM | string | `""` | Certificate for the tapInjector. If not provided then Helm will generate one. |
+| tapInjector.externalSecret | bool | `false` | Do not create a secret resource for the tapInjector webhook. If this is set to `true`, the value `tapInjector.caBundle` must be set (see below) |
+| tapInjector.failurePolicy | string | `"Ignore"` |  |
+| tapInjector.image.name | string | `"controller"` | Docker image name for the tapInjector instance |
+| tapInjector.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the tapInjector instance |
+| tapInjector.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the tapInjector instance |
+| tapInjector.keyPEM | string | `""` | Certificate key for the tapInjector. If not provided then Helm will generate one. |
+| tapInjector.namespaceSelector | string | `nil` |  |
+| tapInjector.objectSelector | string | `nil` |  |
+| tapInjector.proxy | string | `nil` |  |
+| tapInjector.replicas | int | `1` | Number of replicas of tapInjector |
+| tapInjector.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the tapInjector container can use |
+| tapInjector.resources.cpu.request | string | `nil` | Amount of CPU units that the tapInjector container requests |
+| tapInjector.resources.memory.limit | string | `nil` | Maximum amount of memory that tapInjector container can use |
+| tapInjector.resources.memory.request | string | `nil` | Amount of memory that the tapInjector container requests |
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.4.0](https://github.com/norwoodj/helm-docs/releases/v1.4.0)

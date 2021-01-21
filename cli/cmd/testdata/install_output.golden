@@ -231,6 +231,132 @@ spec:
     served: true
     storage: true
   scope: Namespaced
+  preserveUnknownFields: false
+  validation:
+    openAPIV3Schema:
+      type: object
+      properties:
+        spec:
+          type: object
+          description: Spec is the custom resource spec
+          required:
+          - routes
+          properties:
+            dstOverrides:
+              type: array
+              required:
+              - authority
+              - weight
+              items:
+                type: object
+                description: WeightedDst is a weighted alternate destination.
+                properties:
+                  authority:
+                    type: string
+                  weight:
+                    x-kubernetes-int-or-string: true
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+            opaquePorts:
+              type: array
+              items:
+                type: string
+            retryBudget:
+              type: object
+              required:
+              - minRetriesPerSecond
+              - retryRatio
+              - ttl
+              description: RetryBudget describes the maximum number of retries that should be issued to this service.
+              properties:
+                minRetriesPerSecond:
+                  format: int32
+                  type: integer
+                retryRatio: 
+                  type: number
+                  format: float
+                ttl:
+                  type: string
+            routes:
+              type: array
+              items:
+                type: object
+                description: RouteSpec specifies a Route resource.
+                required:
+                - condition
+                - name
+                properties:
+                  condition:
+                    type: object
+                    description: RequestMatch describes the conditions under which to match a Route.
+                    properties:
+                      pathRegex: 
+                        type: string
+                      method: 
+                        type: string
+                      all:
+                        type: array
+                        items:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                      any:
+                        type: array
+                        items:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                      not: 
+                        type: array
+                        items:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                  isRetryable:
+                    type: boolean
+                  name:
+                    type: string
+                  timeout:
+                    type: string
+                  responseClasses:
+                    type: array 
+                    items:
+                      type: object
+                      required:
+                      - condition
+                      description: ResponseClass describes how to classify a response (e.g. success or failures).
+                      properties:
+                        condition:
+                          type: object
+                          description: ResponseMatch describes the conditions under
+                            which to classify a response.
+                          properties:
+                            all:
+                              type: array
+                              items: 
+                                type: object
+                                x-kubernetes-preserve-unknown-fields: true
+                            any:
+                              type: array
+                              items:
+                                type: object
+                                x-kubernetes-preserve-unknown-fields: true
+                            not: 
+                              type: array
+                              items:
+                                type: object
+                                x-kubernetes-preserve-unknown-fields: true
+                            status:
+                              type: object
+                              description: Range describes a range of integers (e.g. status codes).
+                              properties:
+                                max:
+                                  format: int32
+                                  type: integer
+                                min:
+                                  format: int32
+                                  type: integer
+                        isFailure:
+                          type: boolean
   names:
     plural: serviceprofiles
     singular: serviceprofile
@@ -240,7 +366,7 @@ spec:
 ---
 ###
 ### TrafficSplit CRD
-### Copied from https://github.com/deislabs/smi-sdk-go/blob/cea7e1e9372304bbb6c74a3f6ca788d9eaa9cc58/crds/split.yaml
+### Copied from github.com/servicemeshinterface/smi-sdk-go/blob/d4e76b1cd7a33ead5f38d1262dd838a31c80f4e5/crds/split.yaml
 ###
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
@@ -253,14 +379,61 @@ metadata:
     ControllerNamespaceLabel: linkerd
 spec:
   group: split.smi-spec.io
-  version: v1alpha1
   scope: Namespaced
   names:
     kind: TrafficSplit
+    listKind: TrafficSplitList
     shortNames:
       - ts
     plural: trafficsplits
     singular: trafficsplit
+  version: v1alpha1
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+  preserveUnknownFields: false
+  validation:
+    openAPIV3Schema:
+      type: object
+      properties:
+        spec:
+          type: object
+          required:
+            - service
+            - backends
+          properties:
+            service:
+              description: The apex service of this split.
+              type: string
+            matches:
+              description: The HTTP route groups that this traffic split should match.
+              type: array
+              items:
+                type: object
+                required: ['kind', 'name']
+                properties:
+                  kind:
+                    description: Kind of the matching group.
+                    type: string
+                    enum:
+                      - HTTPRouteGroup
+                  name:
+                    description: Name of the matching group.
+                    type: string
+            backends:
+              description: The backend services of this split.
+              type: array
+              items:
+                type: object
+                required: ['service', 'weight']
+                properties:
+                  service:
+                    description: Name of the Kubernetes service.
+                    type: string
+                  weight:
+                    description: Traffic weight value of this backend.
+                    x-kubernetes-int-or-string: true
   additionalPrinterColumns:
   - name: Service
     type: string
@@ -573,6 +746,7 @@ data:
       controlPlaneTracingNamespace: ""
       controllerComponentLabel: ControllerComponentLabel
       controllerImageVersion: ControllerImageVersion
+      controllerLogFormat: ControllerLogFormat
       controllerLogLevel: ControllerLogLevel
       controllerNamespaceLabel: ControllerNamespaceLabel
       createdByAnnotation: CreatedByAnnotation
@@ -811,6 +985,7 @@ spec:
       - args:
         - identity
         - -log-level=ControllerLogLevel
+        - -log-format=ControllerLogFormat
         - -controller-namespace=linkerd
         - -identity-trust-domain=cluster.local
         - -identity-issuance-lifetime=24h0m0s
@@ -908,8 +1083,6 @@ spec:
           value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_TAP_SVC_NAME
-          value: linkerd-tap.linkerd-viz.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: ProxyImageName:ProxyVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1053,6 +1226,7 @@ spec:
         - -destination-addr=linkerd-dst.linkerd.svc.cluster.local:8086
         - -controller-namespace=linkerd
         - -log-level=ControllerLogLevel
+        - -log-format=ControllerLogFormat
         - -cluster-domain=cluster.local
         - -prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.cluster.local:9090
         image: ControllerImage:ControllerImageVersion
@@ -1143,8 +1317,6 @@ spec:
           value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_TAP_SVC_NAME
-          value: linkerd-tap.linkerd-viz.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: ProxyImageName:ProxyVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1305,6 +1477,7 @@ spec:
         - -controller-namespace=linkerd
         - -enable-h2-upgrade=true
         - -log-level=ControllerLogLevel
+        - -log-format=ControllerLogFormat
         - -enable-endpoint-slices=false
         - -cluster-domain=cluster.local
         - -identity-trust-domain=cluster.local
@@ -1396,8 +1569,6 @@ spec:
           value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_TAP_SVC_NAME
-          value: linkerd-tap.linkerd-viz.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: ProxyImageName:ProxyVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1517,6 +1688,7 @@ spec:
             - "heartbeat"
             - "-controller-namespace=linkerd"
             - "-log-level=ControllerLogLevel"
+            - "-log-format=ControllerLogFormat"
             - "-prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.cluster.local:9090"
             securityContext:
               runAsUser: 2103
@@ -1562,6 +1734,7 @@ spec:
       - args:
         - proxy-injector
         - -log-level=ControllerLogLevel
+        - -log-format=ControllerLogFormat
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1656,8 +1829,6 @@ spec:
           value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_TAP_SVC_NAME
-          value: linkerd-tap.linkerd-viz.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: ProxyImageName:ProxyVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1820,6 +1991,7 @@ spec:
       - args:
         - sp-validator
         - -log-level=ControllerLogLevel
+        - -log-format=ControllerLogFormat
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1912,8 +2084,6 @@ spec:
           value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_TAP_SVC_NAME
-          value: linkerd-tap.linkerd-viz.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: ProxyImageName:ProxyVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1996,7 +2166,7 @@ spec:
 ---
 apiVersion: v1
 data:
-  linkerd-config-overrides: Y29udHJvbGxlckltYWdlOiBDb250cm9sbGVySW1hZ2UKZGVidWdDb250YWluZXI6CiAgaW1hZ2U6CiAgICBuYW1lOiBEZWJ1Z0ltYWdlTmFtZQogICAgcHVsbFBvbGljeTogRGVidWdJbWFnZVB1bGxQb2xpY3kKICAgIHZlcnNpb246IERlYnVnVmVyc2lvbgpnbG9iYWw6CiAgY2xpVmVyc2lvbjogQ2xpVmVyc2lvbgogIGNsdXN0ZXJOZXR3b3JrczogQ2x1c3Rlck5ldHdvcmtzCiAgY29udHJvbFBsYW5lVHJhY2luZ05hbWVzcGFjZTogIiIKICBjb250cm9sbGVyQ29tcG9uZW50TGFiZWw6IENvbnRyb2xsZXJDb21wb25lbnRMYWJlbAogIGNvbnRyb2xsZXJJbWFnZVZlcnNpb246IENvbnRyb2xsZXJJbWFnZVZlcnNpb24KICBjb250cm9sbGVyTG9nTGV2ZWw6IENvbnRyb2xsZXJMb2dMZXZlbAogIGNvbnRyb2xsZXJOYW1lc3BhY2VMYWJlbDogQ29udHJvbGxlck5hbWVzcGFjZUxhYmVsCiAgY3JlYXRlZEJ5QW5ub3RhdGlvbjogQ3JlYXRlZEJ5QW5ub3RhdGlvbgogIGlkZW50aXR5VHJ1c3RBbmNob3JzUEVNOiB8CiAgICAtLS0tLUJFR0lOIENFUlRJRklDQVRFLS0tLS0KICAgIE1JSUJ3VENDQVdhZ0F3SUJBZ0lRZURacDVsRGFJeWdRNVVmTUtackZBVEFLQmdncWhrak9QUVFEQWpBcE1TY3cKICAgIEpRWURWUVFERXg1cFpHVnVkR2wwZVM1c2FXNXJaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dIaGNOTWpBd09ESTQKICAgIE1EY3hNalEzV2hjTk16QXdPREkyTURjeE1qUTNXakFwTVNjd0pRWURWUVFERXg1cFpHVnVkR2wwZVM1c2FXNXIKICAgIFpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d1dUQVRCZ2NxaGtqT1BRSUJCZ2dxaGtqT1BRTUJCd05DQUFScWM3MFoKICAgIGwxdmd3NzlyakI1dVNJVElDVUE2R3lmdlNGZmN1SWlzN0IvWEZTa2t3QUhVNVMvczFBQVArUjBUWDdIQldVQzQKICAgIHVhRzRXV3Npd0pLTm43bWdvM0F3YmpBT0JnTlZIUThCQWY4RUJBTUNBUVl3RWdZRFZSMFRBUUgvQkFnd0JnRUIKICAgIC93SUJBVEFkQmdOVkhRNEVGZ1FVNVl0alZWUGZkN0k3TkxIc24yQzI2RUJ5R1Ywd0tRWURWUjBSQkNJd0lJSWUKICAgIGFXUmxiblJwZEhrdWJHbHVhMlZ5WkM1amJIVnpkR1Z5TG14dlkyRnNNQW9HQ0NxR1NNNDlCQU1DQTBrQU1FWUMKICAgIElRQ043bEJGTEREdmp4NlYwK1hranBLRVJSc0pZZjVhZE12bmxvRmw0OGlsSmdJaEFOdHhobmRjcitRSlB1QzgKICAgIHZnVUMwZDIvOUZNdWVJVk1iKzQ2V1RDT2pzcXIKICAgIC0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KICBpbWFnZVB1bGxQb2xpY3k6IEltYWdlUHVsbFBvbGljeQogIGltYWdlUHVsbFNlY3JldHM6IG51bGwKICBsaW5rZXJkTmFtZXNwYWNlTGFiZWw6IExpbmtlcmROYW1lc3BhY2VMYWJlbAogIGxpbmtlcmRWZXJzaW9uOiAiIgogIHByb3h5OgogICAgaW1hZ2U6CiAgICAgIG5hbWU6IFByb3h5SW1hZ2VOYW1lCiAgICAgIHB1bGxQb2xpY3k6IEltYWdlUHVsbFBvbGljeQogICAgICB2ZXJzaW9uOiBQcm94eVZlcnNpb24KICAgIGluYm91bmRDb25uZWN0VGltZW91dDogIiIKICAgIG91dGJvdW5kQ29ubmVjdFRpbWVvdXQ6ICIiCiAgICByZXNvdXJjZXM6CiAgICAgIGNwdToKICAgICAgICBsaW1pdDogY3B1LWxpbWl0CiAgICAgICAgcmVxdWVzdDogY3B1LXJlcXVlc3QKICAgICAgbWVtb3J5OgogICAgICAgIGxpbWl0OiBtZW1vcnktbGltaXQKICAgICAgICByZXF1ZXN0OiBtZW1vcnktcmVxdWVzdAogIHByb3h5Q29udGFpbmVyTmFtZTogUHJveHlDb250YWluZXJOYW1lCiAgcHJveHlJbml0OgogICAgaWdub3JlSW5ib3VuZFBvcnRzOiAiIgogICAgaWdub3JlT3V0Ym91bmRQb3J0czogIjQ0MyIKICAgIGltYWdlOgogICAgICBuYW1lOiBQcm94eUluaXRJbWFnZU5hbWUKICAgICAgcHVsbFBvbGljeTogSW1hZ2VQdWxsUG9saWN5CiAgICAgIHZlcnNpb246IFByb3h5SW5pdFZlcnNpb24KICBwcm94eUluamVjdEFubm90YXRpb246IFByb3h5SW5qZWN0QW5ub3RhdGlvbgogIHByb3h5SW5qZWN0RGlzYWJsZWQ6IFByb3h5SW5qZWN0RGlzYWJsZWQKICB3b3JrbG9hZE5hbWVzcGFjZUxhYmVsOiBXb3JrbG9hZE5hbWVzcGFjZUxhYmVsCmhlYXJ0YmVhdFNjaGVkdWxlOiAiIgppZGVudGl0eToKICBpc3N1ZXI6CiAgICBjcnRFeHBpcnk6ICIyMDMwLTA4LTI2VDA3OjEzOjQ3WiIKICAgIHRsczoKICAgICAgY3J0UEVNOiB8CiAgICAgICAgLS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCiAgICAgICAgTUlJQndEQ0NBV2VnQXdJQkFnSVJBSlJJZ1o4UnRPOEV3ZzFYZXBmOFQ0NHdDZ1lJS29aSXpqMEVBd0l3S1RFbgogICAgICAgIE1DVUdBMVVFQXhNZWFXUmxiblJwZEhrdWJHbHVhMlZ5WkM1amJIVnpkR1Z5TG14dlkyRnNNQjRYRFRJd01EZ3kKICAgICAgICBPREEzTVRNME4xb1hEVE13TURneU5qQTNNVE0wTjFvd0tURW5NQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1CiAgICAgICAgYTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFMS9GcAogICAgICAgIGZjUm5EY2VkTDZBalVhWFlQdjRESU1CYUp1Zk9JNU5XdHkrWFNYN0pqWGdadE03MmRRdlJhWWFudXhEMzZEdDEKICAgICAgICAyL0p4eWlTZ3hLV1Jkb2F5K2FOd01HNHdEZ1lEVlIwUEFRSC9CQVFEQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCCiAgICAgICAgQWY4Q0FRQXdIUVlEVlIwT0JCWUVGSTFXbnJxTVlLYUhIT28renB5aWlEcTJwTzBLTUNrR0ExVWRFUVFpTUNDQwogICAgICAgIEhtbGtaVzUwYVhSNUxteHBibXRsY21RdVkyeDFjM1JsY2k1c2IyTmhiREFLQmdncWhrak9QUVFEQWdOSEFEQkUKICAgICAgICBBaUF0dW9JNVh1Q3RyR1ZSelNtUlRsMnJhMjhhVjlNeVRVN2Q1cW5UQUZIS1NnSWdSS0N2bHVPU2dBNU8yMXA1CiAgICAgICAgNTF0ZHJta0hFWlJyMHFsTFNKZEhZZ0VmTXprPQogICAgICAgIC0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KICAgICAga2V5UEVNOiB8CiAgICAgICAgLS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCiAgICAgICAgTUhjQ0FRRUVJQUFlOG5mYnpadTljL09CMis4eEpNMEZ6N05Vd1RRYXp1bGtGTnM0VEk1K29Bb0dDQ3FHU000OQogICAgICAgIEF3RUhvVVFEUWdBRTEvRnBmY1JuRGNlZEw2QWpVYVhZUHY0RElNQmFKdWZPSTVOV3R5K1hTWDdKalhnWnRNNzIKICAgICAgICBkUXZSYVlhbnV4RDM2RHQxMi9KeHlpU2d4S1dSZG9heStRPT0KICAgICAgICAtLS0tLUVORCBFQyBQUklWQVRFIEtFWS0tLS0tCnByb2ZpbGVWYWxpZGF0b3I6CiAgY2FCdW5kbGU6IHByb2ZpbGUgdmFsaWRhdG9yIENBIGJ1bmRsZQogIGNydFBFTTogcHJvZmlsZSB2YWxpZGF0b3IgY3J0CiAga2V5UEVNOiBwcm9maWxlIHZhbGlkYXRvciBrZXkKcHJveHlJbmplY3RvcjoKICBjYUJ1bmRsZTogcHJveHkgaW5qZWN0b3IgQ0EgYnVuZGxlCiAgY3J0UEVNOiBwcm94eSBpbmplY3RvciBjcnQKICBrZXlQRU06IHByb3h5IGluamVjdG9yIGtleQp3ZWJob29rRmFpbHVyZVBvbGljeTogV2ViaG9va0ZhaWx1cmVQb2xpY3kK
+  linkerd-config-overrides: Y29udHJvbGxlckltYWdlOiBDb250cm9sbGVySW1hZ2UKZGVidWdDb250YWluZXI6CiAgaW1hZ2U6CiAgICBuYW1lOiBEZWJ1Z0ltYWdlTmFtZQogICAgcHVsbFBvbGljeTogRGVidWdJbWFnZVB1bGxQb2xpY3kKICAgIHZlcnNpb246IERlYnVnVmVyc2lvbgpnbG9iYWw6CiAgY2xpVmVyc2lvbjogQ2xpVmVyc2lvbgogIGNsdXN0ZXJOZXR3b3JrczogQ2x1c3Rlck5ldHdvcmtzCiAgY29udHJvbFBsYW5lVHJhY2luZ05hbWVzcGFjZTogIiIKICBjb250cm9sbGVyQ29tcG9uZW50TGFiZWw6IENvbnRyb2xsZXJDb21wb25lbnRMYWJlbAogIGNvbnRyb2xsZXJJbWFnZVZlcnNpb246IENvbnRyb2xsZXJJbWFnZVZlcnNpb24KICBjb250cm9sbGVyTG9nRm9ybWF0OiBDb250cm9sbGVyTG9nRm9ybWF0CiAgY29udHJvbGxlckxvZ0xldmVsOiBDb250cm9sbGVyTG9nTGV2ZWwKICBjb250cm9sbGVyTmFtZXNwYWNlTGFiZWw6IENvbnRyb2xsZXJOYW1lc3BhY2VMYWJlbAogIGNyZWF0ZWRCeUFubm90YXRpb246IENyZWF0ZWRCeUFubm90YXRpb24KICBpZGVudGl0eVRydXN0QW5jaG9yc1BFTTogfAogICAgLS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCiAgICBNSUlCd1RDQ0FXYWdBd0lCQWdJUWVEWnA1bERhSXlnUTVVZk1LWnJGQVRBS0JnZ3Foa2pPUFFRREFqQXBNU2N3CiAgICBKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyWlhKa0xtTnNkWE4wWlhJdWJHOWpZV3d3SGhjTk1qQXdPREk0CiAgICBNRGN4TWpRM1doY05NekF3T0RJMk1EY3hNalEzV2pBcE1TY3dKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyCiAgICBaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBUnFjNzBaCiAgICBsMXZndzc5cmpCNXVTSVRJQ1VBNkd5ZnZTRmZjdUlpczdCL1hGU2trd0FIVTVTL3MxQUFQK1IwVFg3SEJXVUM0CiAgICB1YUc0V1dzaXdKS05uN21nbzNBd2JqQU9CZ05WSFE4QkFmOEVCQU1DQVFZd0VnWURWUjBUQVFIL0JBZ3dCZ0VCCiAgICAvd0lCQVRBZEJnTlZIUTRFRmdRVTVZdGpWVlBmZDdJN05MSHNuMkMyNkVCeUdWMHdLUVlEVlIwUkJDSXdJSUllCiAgICBhV1JsYm5ScGRIa3ViR2x1YTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUFvR0NDcUdTTTQ5QkFNQ0Ewa0FNRVlDCiAgICBJUUNON2xCRkxERHZqeDZWMCtYa2pwS0VSUnNKWWY1YWRNdm5sb0ZsNDhpbEpnSWhBTnR4aG5kY3IrUUpQdUM4CiAgICB2Z1VDMGQyLzlGTXVlSVZNYis0NldUQ09qc3FyCiAgICAtLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCiAgaW1hZ2VQdWxsUG9saWN5OiBJbWFnZVB1bGxQb2xpY3kKICBpbWFnZVB1bGxTZWNyZXRzOiBudWxsCiAgbGlua2VyZE5hbWVzcGFjZUxhYmVsOiBMaW5rZXJkTmFtZXNwYWNlTGFiZWwKICBsaW5rZXJkVmVyc2lvbjogIiIKICBwcm94eToKICAgIGltYWdlOgogICAgICBuYW1lOiBQcm94eUltYWdlTmFtZQogICAgICBwdWxsUG9saWN5OiBJbWFnZVB1bGxQb2xpY3kKICAgICAgdmVyc2lvbjogUHJveHlWZXJzaW9uCiAgICBpbmJvdW5kQ29ubmVjdFRpbWVvdXQ6ICIiCiAgICBvdXRib3VuZENvbm5lY3RUaW1lb3V0OiAiIgogICAgcmVzb3VyY2VzOgogICAgICBjcHU6CiAgICAgICAgbGltaXQ6IGNwdS1saW1pdAogICAgICAgIHJlcXVlc3Q6IGNwdS1yZXF1ZXN0CiAgICAgIG1lbW9yeToKICAgICAgICBsaW1pdDogbWVtb3J5LWxpbWl0CiAgICAgICAgcmVxdWVzdDogbWVtb3J5LXJlcXVlc3QKICBwcm94eUNvbnRhaW5lck5hbWU6IFByb3h5Q29udGFpbmVyTmFtZQogIHByb3h5SW5pdDoKICAgIGlnbm9yZUluYm91bmRQb3J0czogIiIKICAgIGlnbm9yZU91dGJvdW5kUG9ydHM6ICI0NDMiCiAgICBpbWFnZToKICAgICAgbmFtZTogUHJveHlJbml0SW1hZ2VOYW1lCiAgICAgIHB1bGxQb2xpY3k6IEltYWdlUHVsbFBvbGljeQogICAgICB2ZXJzaW9uOiBQcm94eUluaXRWZXJzaW9uCiAgcHJveHlJbmplY3RBbm5vdGF0aW9uOiBQcm94eUluamVjdEFubm90YXRpb24KICBwcm94eUluamVjdERpc2FibGVkOiBQcm94eUluamVjdERpc2FibGVkCiAgd29ya2xvYWROYW1lc3BhY2VMYWJlbDogV29ya2xvYWROYW1lc3BhY2VMYWJlbApoZWFydGJlYXRTY2hlZHVsZTogIiIKaWRlbnRpdHk6CiAgaXNzdWVyOgogICAgY3J0RXhwaXJ5OiAiMjAzMC0wOC0yNlQwNzoxMzo0N1oiCiAgICB0bHM6CiAgICAgIGNydFBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQogICAgICAgIE1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUpSSWdaOFJ0TzhFd2cxWGVwZjhUNDR3Q2dZSUtvWkl6ajBFQXdJd0tURW4KICAgICAgICBNQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1YTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUI0WERUSXdNRGd5CiAgICAgICAgT0RBM01UTTBOMW9YRFRNd01EZ3lOakEzTVRNME4xb3dLVEVuTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdQogICAgICAgIGEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRTEvRnAKICAgICAgICBmY1JuRGNlZEw2QWpVYVhZUHY0RElNQmFKdWZPSTVOV3R5K1hTWDdKalhnWnRNNzJkUXZSYVlhbnV4RDM2RHQxCiAgICAgICAgMi9KeHlpU2d4S1dSZG9heSthTndNRzR3RGdZRFZSMFBBUUgvQkFRREFnRUdNQklHQTFVZEV3RUIvd1FJTUFZQgogICAgICAgIEFmOENBUUF3SFFZRFZSME9CQllFRkkxV25ycU1ZS2FISE9vK3pweWlpRHEycE8wS01Da0dBMVVkRVFRaU1DQ0MKICAgICAgICBIbWxrWlc1MGFYUjVMbXhwYm10bGNtUXVZMngxYzNSbGNpNXNiMk5oYkRBS0JnZ3Foa2pPUFFRREFnTkhBREJFCiAgICAgICAgQWlBdHVvSTVYdUN0ckdWUnpTbVJUbDJyYTI4YVY5TXlUVTdkNXFuVEFGSEtTZ0lnUktDdmx1T1NnQTVPMjFwNQogICAgICAgIDUxdGRybWtIRVpScjBxbExTSmRIWWdFZk16az0KICAgICAgICAtLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCiAgICAgIGtleVBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gRUMgUFJJVkFURSBLRVktLS0tLQogICAgICAgIE1IY0NBUUVFSUFBZThuZmJ6WnU5Yy9PQjIrOHhKTTBGejdOVXdUUWF6dWxrRk5zNFRJNStvQW9HQ0NxR1NNNDkKICAgICAgICBBd0VIb1VRRFFnQUUxL0ZwZmNSbkRjZWRMNkFqVWFYWVB2NERJTUJhSnVmT0k1Tld0eStYU1g3SmpYZ1p0TTcyCiAgICAgICAgZFF2UmFZYW51eEQzNkR0MTIvSnh5aVNneEtXUmRvYXkrUT09CiAgICAgICAgLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQpwcm9maWxlVmFsaWRhdG9yOgogIGNhQnVuZGxlOiBwcm9maWxlIHZhbGlkYXRvciBDQSBidW5kbGUKICBjcnRQRU06IHByb2ZpbGUgdmFsaWRhdG9yIGNydAogIGtleVBFTTogcHJvZmlsZSB2YWxpZGF0b3Iga2V5CnByb3h5SW5qZWN0b3I6CiAgY2FCdW5kbGU6IHByb3h5IGluamVjdG9yIENBIGJ1bmRsZQogIGNydFBFTTogcHJveHkgaW5qZWN0b3IgY3J0CiAga2V5UEVNOiBwcm94eSBpbmplY3RvciBrZXkKd2ViaG9va0ZhaWx1cmVQb2xpY3k6IFdlYmhvb2tGYWlsdXJlUG9saWN5Cg==
 kind: Secret
 metadata:
   creationTimestamp: null

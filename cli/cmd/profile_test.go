@@ -61,6 +61,7 @@ func TestValidateOptions(t *testing.T) {
 	options = newProfileOptions()
 	options.template = true
 	options.name = "template-name"
+	options.namespace = "default"
 	err = options.validate()
 	if err != nil {
 		t.Fatalf("validateOptions returned unexpected error (%s) for options: %+v", err, options)
@@ -78,6 +79,7 @@ func TestValidateOptions(t *testing.T) {
 	options = newProfileOptions()
 	options.openAPI = "openAPI"
 	options.name = "openapi-name"
+	options.namespace = "default"
 	err = options.validate()
 	if err != nil {
 		t.Fatalf("validateOptions returned unexpected error (%s) for options: %+v", err, options)

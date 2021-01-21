@@ -10,7 +10,6 @@ import (
 	"github.com/linkerd/linkerd2/cli/flag"
 	jaeger "github.com/linkerd/linkerd2/jaeger/cmd"
 	multicluster "github.com/linkerd/linkerd2/multicluster/cmd"
-	"github.com/linkerd/linkerd2/pkg/cmd"
 	viz "github.com/linkerd/linkerd2/viz/cmd"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -41,7 +40,6 @@ var (
 	apiAddr               string // An empty value means "use the Kubernetes configuration"
 	kubeconfigPath        string
 	kubeContext           string
-	defaultNamespace      string // Default namespace taken from current kubectl context
 	impersonate           string
 	impersonateGroup      []string
 	verbose               bool
@@ -92,7 +90,6 @@ var RootCmd = &cobra.Command{
 }
 
 func init() {
-	defaultNamespace = cmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
 	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed ($LINKERD_NAMESPACE)")
 	RootCmd.PersistentFlags().StringVarP(&cniNamespace, "cni-namespace", "", defaultCNINamespace, "Namespace in which the Linkerd CNI plugin is installed")
 	RootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")

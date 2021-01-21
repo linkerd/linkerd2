@@ -240,7 +240,7 @@ spec:
 ---
 ###
 ### TrafficSplit CRD
-### Copied from https://github.com/deislabs/smi-sdk-go/blob/cea7e1e9372304bbb6c74a3f6ca788d9eaa9cc58/crds/split.yaml
+### Copied from github.com/servicemeshinterface/smi-sdk-go/blob/d4e76b1cd7a33ead5f38d1262dd838a31c80f4e5/crds/split.yaml
 ###
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
@@ -253,14 +253,61 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: split.smi-spec.io
-  version: v1alpha1
   scope: Namespaced
   names:
     kind: TrafficSplit
+    listKind: TrafficSplitList
     shortNames:
       - ts
     plural: trafficsplits
     singular: trafficsplit
+  version: v1alpha1
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+  preserveUnknownFields: false
+  validation:
+    openAPIV3Schema:
+      type: object
+      properties:
+        spec:
+          type: object
+          required:
+            - service
+            - backends
+          properties:
+            service:
+              description: The apex service of this split.
+              type: string
+            matches:
+              description: The HTTP route groups that this traffic split should match.
+              type: array
+              items:
+                type: object
+                required: ['kind', 'name']
+                properties:
+                  kind:
+                    description: Kind of the matching group.
+                    type: string
+                    enum:
+                      - HTTPRouteGroup
+                  name:
+                    description: Name of the matching group.
+                    type: string
+            backends:
+              description: The backend services of this split.
+              type: array
+              items:
+                type: object
+                required: ['service', 'weight']
+                properties:
+                  service:
+                    description: Name of the Kubernetes service.
+                    type: string
+                  weight:
+                    description: Traffic weight value of this backend.
+                    x-kubernetes-int-or-string: true
   additionalPrinterColumns:
   - name: Service
     type: string
@@ -570,6 +617,7 @@ data:
       controlPlaneTracingNamespace: linkerd-jaeger
       controllerComponentLabel: linkerd.io/control-plane-component
       controllerImageVersion: install-control-plane-version
+      controllerLogFormat: plain
       controllerLogLevel: info
       controllerNamespaceLabel: linkerd.io/control-plane-ns
       createdByAnnotation: linkerd.io/created-by
@@ -817,6 +865,7 @@ spec:
       - args:
         - identity
         - -log-level=info
+        - -log-format=plain
         - -controller-namespace=linkerd
         - -identity-trust-domain=cluster.local
         - -identity-issuance-lifetime=24h0m0s
@@ -1077,6 +1126,7 @@ spec:
         - -controller-namespace=linkerd
         - -enable-h2-upgrade=true
         - -log-level=info
+        - -log-format=plain
         - -enable-endpoint-slices=false
         - -cluster-domain=cluster.local
         - -identity-trust-domain=cluster.local
@@ -1332,6 +1382,7 @@ spec:
       - args:
         - proxy-injector
         - -log-level=info
+        - -log-format=plain
         image: ghcr.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1588,6 +1639,7 @@ spec:
       - args:
         - sp-validator
         - -log-level=info
+        - -log-format=plain
         image: ghcr.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1823,6 +1875,7 @@ spec:
         - -destination-addr=linkerd-dst.linkerd.svc.cluster.local:8086
         - -controller-namespace=linkerd
         - -log-level=info
+        - -log-format=plain
         - -cluster-domain=cluster.local
         - -prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.cluster.local:9090
         image: ghcr.io/linkerd/controller:install-control-plane-version

@@ -496,6 +496,7 @@ func TestInstallHelm(t *testing.T) {
 			"--set", "dashboard.image.tag=" + TestHelper.GetVersion(),
 			"--set", "grafana.image.tag=" + TestHelper.GetVersion(),
 			"--set", "tap.image.tag=" + TestHelper.GetVersion(),
+			"--set", "tapInjector.image.tag=" + TestHelper.GetVersion(),
 		}
 		// Install Viz Extension Chart
 		if stdout, stderr, err := TestHelper.HelmInstallPlain(vizChart, "l5d-viz", vizArgs...); err != nil {
@@ -605,6 +606,7 @@ func TestUpgradeHelm(t *testing.T) {
 		"--set", "dashboard.image.tag=" + TestHelper.GetVersion(),
 		"--set", "grafana.image.tag=" + TestHelper.GetVersion(),
 		"--set", "tap.image.tag=" + TestHelper.GetVersion(),
+		"--set", "tapInjector.image.tag=" + TestHelper.GetVersion(),
 		"--wait",
 	}
 	// Install Viz Extension Chart

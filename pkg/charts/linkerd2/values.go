@@ -67,6 +67,7 @@ type (
 		ControllerComponentLabel     string              `json:"controllerComponentLabel"`
 		ControllerImageVersion       string              `json:"controllerImageVersion"`
 		ControllerLogLevel           string              `json:"controllerLogLevel"`
+		ControllerLogFormat          string              `json:"controllerLogFormat"`
 		ControllerNamespaceLabel     string              `json:"controllerNamespaceLabel"`
 		WorkloadNamespaceLabel       string              `json:"workloadNamespaceLabel"`
 		CreatedByAnnotation          string              `json:"createdByAnnotation"`
