@@ -4,29 +4,17 @@ set -eu
 
 bindir=$( cd "${0%/*}" && pwd )
 
-gen() {
-    for f in "$@"; do
-        "$bindir"/protoc -I proto --go_out=plugins=grpc,paths=source_relative:controller/gen "$f"
-    done
-}
-
 go install -mod=readonly github.com/golang/protobuf/protoc-gen-go
 
-rm -rf controller/gen/common controller/gen/config controller/gen/controller controller/gen/public
+rm -rf controller/gen/public controller/gen/config viz/metrics-api/gen
+mkdir -p controller/gen/public viz/metrics-api/gen/viz/healthcheck
 
-gen proto/common/healthcheck.proto \
-    proto/controller/tap.proto \
-    proto/public.proto \
-    proto/config/config.proto
+"$bindir"/protoc -I proto --go_out=plugins=grpc,paths=source_relative:controller/gen proto/public.proto
+"$bindir"/protoc -I proto --go_out=plugins=grpc,paths=source_relative:controller/gen proto/config/config.proto
+"$bindir"/protoc -I viz/metrics-api/proto --go_out=plugins=grpc,paths=source_relative:viz/metrics-api/gen viz/metrics-api/proto/healthcheck.proto
+"$bindir"/protoc -I proto -I viz/metrics-api/proto --go_out=plugins=grpc,paths=source_relative:viz/metrics-api/gen viz/metrics-api/proto/viz.proto
 
-# TODO: Re-organize the top-level /proto directory to mirror output packages.
-# As a work-around, manually move files after generation.
-mkdir -p controller/gen/common/healthcheck
-mkdir -p controller/gen/controller/tap
-mkdir -p controller/gen/public
+mv controller/gen/public.pb.go controller/gen/public/
+mv viz/metrics-api/gen/healthcheck.pb.go viz/metrics-api/gen/viz/healthcheck/healthcheck.pb.go
+mv viz/metrics-api/gen/viz.pb.go viz/metrics-api/gen/viz/viz.pb.go
 
-mv controller/gen/common/healthcheck.pb.go   controller/gen/common/healthcheck/
-mv controller/gen/controller/tap.pb.go       controller/gen/controller/tap/
-mv controller/gen/public.pb.go               controller/gen/public/
-
-git add controller/gen

@@ -46,6 +46,7 @@ func TestNewValues(t *testing.T) {
 			CliVersion:                   "linkerd/cli dev-undefined",
 			ControllerComponentLabel:     "linkerd.io/control-plane-component",
 			ControllerLogLevel:           "info",
+			ControllerLogFormat:          "plain",
 			ControllerImageVersion:       testVersion,
 			LinkerdVersion:               version.Version,
 			ControllerNamespaceLabel:     "linkerd.io/control-plane-ns",

@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/profiles"
@@ -28,7 +29,6 @@ type profileOptions struct {
 func newProfileOptions() *profileOptions {
 	return &profileOptions{
 		name:          "",
-		namespace:     defaultNamespace,
 		template:      false,
 		openAPI:       "",
 		proto:         "",
@@ -99,6 +99,9 @@ func newCmdProfile() *cobra.Command {
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if options.namespace == "" {
+				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+			}
 			options.name = args[0]
 			clusterDomain := defaultClusterDomain
 			var k8sAPI *k8s.KubernetesAPI

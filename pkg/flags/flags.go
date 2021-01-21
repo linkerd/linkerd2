@@ -23,13 +23,14 @@ func ConfigureAndParse(cmd *flag.FlagSet, args []string) {
 	flag.Set("v", "0")
 	logLevel := cmd.String("log-level", log.InfoLevel.String(),
 		"log level, must be one of: panic, fatal, error, warn, info, debug")
+	logFormat := cmd.String("log-format", "plain",
+		"log format, must be one of: plain, json")
 	printVersion := cmd.Bool("version", false, "print version and exit")
 
 	cmd.Parse(args)
 
 	// set log timestamps
-	formatter := &log.TextFormatter{FullTimestamp: true}
-	log.SetFormatter(formatter)
+	log.SetFormatter(getFormatter(*logFormat))
 
 	setLogLevel(*logLevel)
 	maybePrintVersionAndExit(*printVersion)
@@ -65,6 +66,15 @@ func maybePrintVersionAndExit(printVersion bool) {
 		os.Exit(0)
 	}
 	log.Infof("running version %s", version.Version)
+}
+
+func getFormatter(format string) log.Formatter {
+	switch format {
+	case "json":
+		return &log.JSONFormatter{}
+	default:
+		return &log.TextFormatter{FullTimestamp: true}
+	}
 }
 
 // AddValueOptionsFlags adds flags used to override default values

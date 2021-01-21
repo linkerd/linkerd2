@@ -10,7 +10,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -66,7 +65,7 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 	checkers = append(checkers,
 		*healthcheck.NewChecker("collector pod is running").
 			WithHintAnchor("l5d-jaeger-collector-running").
-			Warning().
+			Fatal().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
@@ -75,13 +74,13 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 				if err != nil {
 					return err
 				}
-				return checkPodsRunning(podList.Items)
+				return healthcheck.CheckPodsRunning(podList.Items, fmt.Sprintf("No collector pods found in the %s namespace", namespace))
 			}))
 
 	checkers = append(checkers,
 		*healthcheck.NewChecker("jaeger pod is running").
 			WithHintAnchor("l5d-jaeger-jaeger-running").
-			Warning().
+			Fatal().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
@@ -90,7 +89,22 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 				if err != nil {
 					return err
 				}
-				return checkPodsRunning(podList.Items)
+				return healthcheck.CheckPodsRunning(podList.Items, fmt.Sprintf("No jaeger pods found in the %s namespace", namespace))
+			}))
+
+	checkers = append(checkers,
+		*healthcheck.NewChecker("jaeger injector pod is running").
+			WithHintAnchor("l5d-jaeger-jaeger-running").
+			Fatal().
+			WithRetryDeadline(hc.RetryDeadline).
+			SurfaceErrorOnRetry().
+			WithCheck(func(ctx context.Context) error {
+				// Check for Jaeger Injector pod
+				podList, err := kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: "component=jaeger-injector"})
+				if err != nil {
+					return err
+				}
+				return healthcheck.CheckPodsRunning(podList.Items, fmt.Sprintf("No jaeger injector pods found in the %s namespace", namespace))
 			}))
 
 	checkers = append(checkers,
@@ -98,12 +112,12 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 			WithHintAnchor("l5d-jaeger-pods-injection").
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				// Check for Jaeger pod
+				// Check if Jaeger Extension pods have been injected
 				pods, err := kubeAPI.GetPodsByNamespace(ctx, jaegerNamespace)
 				if err != nil {
 					return err
 				}
-				return checkIfDataPlanePodsExist(pods)
+				return healthcheck.CheckIfDataPlanePodsExist(pods)
 			}))
 
 	return healthcheck.NewCategory(linkerdJaegerExtensionCheck, checkers, true), nil
@@ -189,33 +203,5 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		os.Exit(1)
 	}
 
-	return nil
-}
-
-func checkIfDataPlanePodsExist(pods []corev1.Pod) error {
-	for _, pod := range pods {
-		if !containsProxy(pod) {
-			return fmt.Errorf("could not find proxy container for %s pod", pod.Name)
-		}
-	}
-	return nil
-}
-
-func containsProxy(pod corev1.Pod) bool {
-	for _, containerSpec := range pod.Spec.Containers {
-		if containerSpec.Name == k8s.ProxyContainerName {
-			return true
-		}
-	}
-	return false
-}
-
-// checkPodsRunning checks if the given pods are in running state
-func checkPodsRunning(pods []corev1.Pod) error {
-	for _, pod := range pods {
-		if pod.Status.Phase != "Running" {
-			return fmt.Errorf("%s status is %s", pod.Name, pod.Status.Phase)
-		}
-	}
 	return nil
 }

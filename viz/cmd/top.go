@@ -13,11 +13,12 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/controller/api/util"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/addr"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	"github.com/linkerd/linkerd2/pkg/tap"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	runewidth "github.com/mattn/go-runewidth"
 	termbox "github.com/nsf/termbox-go"
 	log "github.com/sirupsen/logrus"
@@ -260,7 +261,6 @@ const (
 
 func newTopOptions() *topOptions {
 	return &topOptions{
-		namespace:     defaultNamespace,
 		toResource:    "",
 		toNamespace:   "",
 		maxRps:        maxRps,
@@ -274,7 +274,8 @@ func newTopOptions() *topOptions {
 	}
 }
 
-func newCmdTop() *cobra.Command {
+// NewCmdTop creates a new cobra command `top` for top functionality
+func NewCmdTop() *cobra.Command {
 	options := newTopOptions()
 
 	table := newTopTable()
@@ -312,13 +313,17 @@ func newCmdTop() *cobra.Command {
   * statefulsets
   * services (only supported as a --to resource)`,
 		Example: `  # display traffic for the web deployment in the default namespace
-  linkerd top deploy/web
+  linkerd viz top deploy/web
 
   # display traffic for the web-dlbvj pod in the default namespace
-  linkerd top pod/web-dlbvj`,
+  linkerd viz top pod/web-dlbvj`,
 		Args:      cobra.RangeArgs(1, 2),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if options.namespace == "" {
+				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+			}
+
 			requestParams := util.TapRequestParams{
 				Resource:      strings.Join(args, "/"),
 				Namespace:     options.namespace,

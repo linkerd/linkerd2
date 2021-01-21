@@ -10,24 +10,6 @@ handle_cleanup_input "$@"
 
 check_linkerd_binary
 
-populate_array() {
-  [ $# -ge 3 ] || {
-    echo "function ${FUNCNAME[0]} expects 3 mandatory inparameters but got $#
-Usage: ${FUNCNAME[0]} TARGET_ARRAY RESOURCE_TYPE LINKERD_LABEL (FRIENDLY_NAME)" >&2
-    return
-  }
-
-  # We are using the variable i even if shellsheck does not see it
-  # shellcheck disable=SC2034
-  local i=0
-  unset -v "$1"
-  while IFS= read -r "$1[i++]"; do :; done <<< "$(kubectl --context="$k8s_context" get -A "$2" -oname -l "linkerd.io/$3")"
-  # ensure that the last element isn't empty
-  eval "[[ \${$1[--i]} ]]" || unset "$1[i]" # ensures last element isn't empty
-  # inform user if no results were returned from command
-  [ -z "$(eval "[[ \${$1[0]} ]]")" ] && echo "no ${4:-$2} found" >&2
-}
-
 echo "cleaning up viz extension resources, if present [${k8s_context}]"
 "$linkerd_path" viz uninstall 2> /dev/null | kubectl --context="$k8s_context" delete -f -
 
@@ -37,72 +19,17 @@ echo "cleaning up multicluster resources, if present [${k8s_context}]"
 echo "cleaning up jaeger extension resources, if present [${k8s_context}]"
 "$linkerd_path" jaeger uninstall 2> /dev/null | kubectl --context="$k8s_context" delete -f -
 
-# Initialize empty arrays
-namespaces_controlplane=()
-namespaces_cni=()
-namespaces_dataplane=()
-clusterrolebindings=()
-clusterroles=()
-webhookconfigs=()
-validatingconfigs=()
-podsecuritypolicies=()
-customresourcedefinitions=()
-apiservices=()
-rolebindings=()
+echo "cleaning up linkerd resources [${k8s_context}]"
+"$linkerd_path" uninstall 2> /dev/null | kubectl --context="$k8s_context" delete -f -
 
-echo "cleaning up control-plane namespaces in k8s-context [${k8s_context}]"
-
-populate_array namespaces_controlplane   ns                              is-control-plane 'control-plane namespaces'
-
-echo "cleaning up CNI namespaces in k8s-context [${k8s_context}]"
-
-populate_array namespaces_cni ns         cni-resource                    'CNI namespaces'
-
-echo "cleaning up data-plane namespaces in k8s-context [${k8s_context}]"
-
-populate_array namespaces_dataplane      ns                              is-test-data-plane 'data-plane namespaces'
-populate_array clusterrolebindings       clusterrolebindings             control-plane-ns
-populate_array clusterroles              clusterroles                    control-plane-ns
-populate_array webhookconfigs            mutatingwebhookconfigurations   control-plane-ns
-populate_array validatingconfigs         validatingwebhookconfigurations control-plane-ns
-populate_array podsecuritypolicies       podsecuritypolicies             control-plane-ns
-populate_array customresourcedefinitions customresourcedefinitions       control-plane-ns
-populate_array apiservices               apiservices                     control-plane-ns
-
-# No action if all arrays are empty
-if [[ ${namespaces_controlplane[*]}   || \
-      ${namespaces_cni[*]}            || \
-      ${namespaces_dataplane[*]}      || \
-      ${clusterrolebindings[*]}       || \
-      ${clusterroles[*]}              || \
-      ${webhookconfigs[*]}            || \
-      ${validatingconfigs[*]}         || \
-      ${podsecuritypolicies[*]}       || \
-      ${customresourcedefinitions[*]} || \
-      ${apiservices[*]} ]]; then
-  kubectl --context="$k8s_context" delete \
-    ${namespaces_controlplane:+"${namespaces_controlplane[@]}"}     \
-    ${namespaces_cni:+"${namespaces_cni[@]}"}                       \
-    ${namespaces_dataplane:+"${namespaces_dataplane[@]}"}           \
-    ${clusterrolebindings:+"${clusterrolebindings[@]}"}             \
-    ${clusterroles:+"${clusterroles[@]}"}                           \
-    ${webhookconfigs:+"${webhookconfigs[@]}"}                       \
-    ${validatingconfigs:+"${validatingconfigs[@]}"}                 \
-    ${podsecuritypolicies:+"${podsecuritypolicies[@]}"}             \
-    ${customresourcedefinitions:+"${customresourcedefinitions[@]}"} \
-    ${apiservices:+"${apiservices[@]}"}
-fi
-
-echo "cleaning up rolebindings in kube-system namespace in k8s-context [${k8s_context}]"
-populate_array rolebindings              rolebindings                    control-plane-ns
-
-# No action if array is empty
-if [[ ${rolebindings[*]} ]]; then
-  kubectl --context="$k8s_context" delete "${rolebindings[@]}" -n kube-system
-fi
+echo "cleaning up the all namespaces labelled with linkerd.io/is-test-data-plane"
+kubectl --context="$k8s_context" delete ns -l linkerd.io/is-test-data-plane
 
 # Helm cleanup. Just the entries in `helm ls` as the resources should have already been cleaned up by the code above.
 releases=$(helm ls -A -q)
+if [[ "${releases[*]}" =~ 'l5d-viz' ]]; then
+  "$bindir/helm" --kube-context="$k8s_context" delete l5d-viz
+fi
 if [[ "${releases[*]}" =~ 'helm-test' ]]; then
   "$bindir/helm" --kube-context="$k8s_context" delete helm-test
 fi

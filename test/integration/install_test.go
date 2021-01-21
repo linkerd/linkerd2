@@ -810,7 +810,7 @@ func TestDashboard(t *testing.T) {
 	dashboardPort := 52237
 	dashboardURL := fmt.Sprintf("http://localhost:%d", dashboardPort)
 
-	outputStream, err := TestHelper.LinkerdRunStream("dashboard", "-p",
+	outputStream, err := TestHelper.LinkerdRunStream("viz", "dashboard", "-p",
 		strconv.Itoa(dashboardPort), "--show", "url")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "error running command",

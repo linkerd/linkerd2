@@ -38,6 +38,7 @@ RUN mkdir -p web
 COPY web/main.go web
 COPY web/srv web/srv
 COPY controller controller
+COPY viz/metrics-api/gen/viz viz/metrics-api/gen/viz
 COPY pkg pkg
 ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -mod=readonly -o web/web -ldflags "-s -w" ./web

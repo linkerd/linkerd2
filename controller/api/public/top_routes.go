@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	api "github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/prometheus/common/model"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/labels"

@@ -22,7 +22,8 @@ type (
 
 	handler struct {
 		render              renderTemplate
-		apiClient           public.APIClient
+		apiClient           public.VizAPIClient
+		publicAPIClient     public.PublicAPIClient
 		k8sAPI              *k8s.KubernetesAPI
 		uuid                string
 		controllerNamespace string
@@ -51,7 +52,7 @@ func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httpro
 		Jaeger:              h.jaeger,
 	}
 
-	version, err := h.apiClient.Version(req.Context(), &pb.Empty{}) // TODO: remove and call /api/version from web app
+	version, err := h.publicAPIClient.Version(req.Context(), &pb.Empty{}) // TODO: remove and call /api/version from web app
 	if err != nil {
 		params.Error = true
 		params.ErrorMessage = err.Error()

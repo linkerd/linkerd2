@@ -9,6 +9,9 @@ collector:
     pullPolicy: Always
   # resources:
 
+  # -- address of the jaeger backend to send traces to
+  jaegerAddr:
+
 jaeger:
   image: 
     name: jaegertracing/all-in-one

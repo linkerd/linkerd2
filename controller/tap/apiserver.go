@@ -11,12 +11,12 @@ import (
 	"sync/atomic"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	k8sutils "github.com/linkerd/linkerd2/pkg/k8s"
 	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	pkgTls "github.com/linkerd/linkerd2/pkg/tls"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/prometheus/common/log"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,7 +37,7 @@ func NewAPIServer(
 	ctx context.Context,
 	addr string,
 	k8sAPI *k8s.API,
-	grpcTapServer tap.TapServer,
+	grpcTapServer pb.TapServer,
 	disableCommonNames bool,
 ) (*APIServer, error) {
 	updateEvent := make(chan struct{})

@@ -79,6 +79,7 @@ Kubernetes: `>=1.13.0-0`
 | dashboard.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the web instance |
 | dashboard.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the web instance |
 | dashboard.logLevel | string | `"info"` | log level of the dashboard component |
+| dashboard.proxy | string | `nil` |  |
 | dashboard.replicas | int | `1` | Number of replicas of dashboard |
 | dashboard.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the web container can use |
 | dashboard.resources.cpu.request | string | `nil` | Amount of CPU units that the web container requests |
@@ -93,12 +94,14 @@ Kubernetes: `>=1.13.0-0`
 | grafana.image.name | string | `"grafana"` | Docker image name for the grafana instance |
 | grafana.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the grafana instance |
 | grafana.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the grafana instance |
+| grafana.proxy | string | `nil` |  |
 | grafana.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the grafana container can use |
 | grafana.resources.cpu.request | string | `nil` | Amount of CPU units that the grafana container requests |
 | grafana.resources.memory.limit | string | `nil` | Maximum amount of memory that grafana container can use |
 | grafana.resources.memory.request | string | `nil` | Amount of memory that the grafana container requests |
 | identityTrustDomain | string | `"cluster.local"` | Trust domain used for identity  |
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
+| installNamespace | bool | `true` | Set to false when installing in a custom namespace. |
 | linkerdNamespace | string | `"linkerd"` | Namespace of the Linkerd core control-plane install |
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
 | namespace | string | `"linkerd-viz"` | Namespace in which the Linkerd Viz extension has to be installed |
@@ -112,6 +115,7 @@ Kubernetes: `>=1.13.0-0`
 | prometheus.image.pullPolicy | string | `"Always"` |  |
 | prometheus.image.registry | string | `"prom"` | Docker registry for the prometheus instance |
 | prometheus.image.tag | string | `"v2.19.3"` | Docker image tag for the prometheus instance |
+| prometheus.proxy | string | `nil` |  |
 | prometheus.remoteWrite | string | `nil` | Allows transparently sending samples to an endpoint. Mostly used for long term storage. |
 | prometheus.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the prometheus container can use |
 | prometheus.resources.cpu.request | string | `nil` | Amount of CPU units that the prometheus container requests |
@@ -130,6 +134,7 @@ Kubernetes: `>=1.13.0-0`
 | tap.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the tap instance |
 | tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided then Helm will generate one.  |
 | tap.logLevel | string | `"info"` | log level of the tap component |
+| tap.proxy | string | `nil` |  |
 | tap.replicas | int | `1` |  |
 | tap.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the tap container can use |
 | tap.resources.cpu.request | string | `nil` | Amount of CPU units that the tap container requests |

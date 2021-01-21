@@ -4,7 +4,7 @@
 
 # Values that are passed along to sub-charts
 global:
-  # -- Kubernetes DNS Domain name to use  
+  # -- Kubernetes DNS Domain name to use
   clusterDomain: &cluster_domain cluster.local
 
   # -- The cluster networks for which service discovery is performed. This should
@@ -13,10 +13,12 @@ global:
   # By default, all private networks are specified so that resolution works in
   # typical Kubernetes environments.
   clusterNetworks: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
-  # -- Docker image pull policy 
+  # -- Docker image pull policy
   imagePullPolicy: &image_pull_policy IfNotPresent
   # -- Log level for the control plane components
   controllerLogLevel: &controller_log_level info
+  # -- Log format for the control plane components
+  controllerLogFormat: plain
 
   # -- enables control plane tracing
   controlPlaneTracing: false
@@ -39,10 +41,10 @@ global:
   # requires the linkerd-cni plugin to already be installed
   cniEnabled: false
 
-  # -- Trust root certificate (ECDSA). It must be provided during install. 
+  # -- Trust root certificate (ECDSA). It must be provided during install.
   identityTrustAnchorsPEM: |
 
-  # -- Trust domain used for identity 
+  # -- Trust domain used for identity
   identityTrustDomain: *cluster_domain
 
   # -- url of existing prometheus
@@ -84,7 +86,7 @@ global:
       control: 4190
       # -- Inbound port for the proxy container
       inbound: 4143
-      # -- Outbound port for the proxy container  
+      # -- Outbound port for the proxy container
       outbound: 4140
     # -- The `cpu.limit` and `cores` should be kept in sync. The value of `cores`
     # must be an integer and should typically be set by rounding up from the
@@ -92,18 +94,18 @@ global:
     cores: 0
     resources:
       cpu:
-        # -- Maximum amount of CPU units that the proxy can use 
+        # -- Maximum amount of CPU units that the proxy can use
         limit: ""
         # -- Amount of CPU units that the proxy requests
         request: ""
       memory:
-        # -- Maximum amount of memory that the proxy can use 
+        # -- Maximum amount of memory that the proxy can use
         limit: ""
         # -- Maximum amount of memory that the proxy requests
         request: ""
     # -- User id under which the proxy runs
     uid: 2102
-   
+
     # -- If set the proxy sidecar will stay alive for at
     # least the given period before receiving SIGTERM signal from Kubernetes but
     # no longer than pod's `terminationGracePeriodSeconds`. See [Lifecycle
@@ -145,18 +147,18 @@ global:
       mountPath: /run
       name: linkerd-proxy-init-xtables-lock
 
-  # -- Annotation label for the proxy create. Do not edit. 
+  # -- Annotation label for the proxy create. Do not edit.
   createdByAnnotation: linkerd.io/created-by
   # -- Annotation label to signal injection. Do not edit.
   proxyInjectAnnotation: linkerd.io/inject
-  # -- Annotation value to disable injection. Do not edit. 
+  # -- Annotation value to disable injection. Do not edit.
   proxyInjectDisabled: disabled
 
   # -- Control plane label. Do not edit
   controllerComponentLabel: linkerd.io/control-plane-component
-  # -- Control plane label. Do not edit  
+  # -- Control plane label. Do not edit
   controllerNamespaceLabel: linkerd.io/control-plane-ns
-  # -- Control plane label. Do not edit 
+  # -- Control plane label. Do not edit
   linkerdNamespaceLabel: linkerd.io/is-control-plane
   workloadNamespaceLabel: linkerd.io/workload-ns
 
@@ -165,12 +167,12 @@ global:
   imagePullSecrets: []
   # - name: my-private-docker-registry-login-secret
 
-# -- Allow proxies to perform transparent HTTP/2 upgrading  
+# -- Allow proxies to perform transparent HTTP/2 upgrading
 enableH2Upgrade: true
 
 # -- Omit the `sideEffects` flag in the webhook manifests
 omitWebhookSideEffects: false
-# -- Failure policy for the proxy injector 
+# -- Failure policy for the proxy injector
 webhookFailurePolicy: Ignore
 
 
@@ -188,7 +190,7 @@ controllerUID: 2103
 # see global.proxy.resources for details.
 # destinationResources -- CPU and Memory resources required by destination (see `global.proxy.resources` for sub-fields)
 #destinationResources:
-#destinationProxyResources -- CPU and Memory resources required by proxy 
+#destinationProxyResources -- CPU and Memory resources required by proxy
 # injected into destination pod (see `global.proxy.resources` for sub-fields)
 #destinationProxyResources:
 
@@ -216,8 +218,8 @@ identity:
     crtExpiryAnnotation: linkerd.io/identity-issuer-expiry
     # -- Amount of time for which the Identity issuer should certify identity
     issuanceLifetime: 24h0m0s
-    
-    # -- Which scheme is used for the identity issuer secret format 
+
+    # -- Which scheme is used for the identity issuer secret format
     tls:
       # -- Issuer certificate (ECDSA). It must be provided during install.
       crtPEM: |
@@ -233,7 +235,7 @@ identity:
 #identityProxyResources:
 
 # heartbeat configuration
-# disableHeartBeat -- Set to true to not start the heartbeat cronjob 
+# disableHeartBeat -- Set to true to not start the heartbeat cronjob
 disableHeartBeat: false
 # -- Config for the heartbeat cronjob
 heartbeatSchedule: "0 0 * * *"
@@ -256,7 +258,7 @@ proxyInjector:
   # -- Certificate for the proxy injector. If not provided then Helm will generate one.
   crtPEM: |
 
-  # -- Certificate key for the proxy injector. If not provided then Helm will generate one. 
+  # -- Certificate key for the proxy injector. If not provided then Helm will generate one.
   keyPEM: |
 
   # -- Bundle of CA certificates for proxy injector. If not provided then Helm will use the certificate generated  for `proxyInjector.crtPEM`. If `proxyInjector.externalSecret` is set to true, this value must be set, as no certificate will be generated.
@@ -293,7 +295,7 @@ profileValidator:
   # -- Bundle of CA certificates for service profile validator. If not provided
   # then Helm will use the certificate generated  for `profileValidator.crtPEM`.
   # If `profileValidator.externalSecret` is set to true, this value must be set,
-  # as no certificate will be generated. 
+  # as no certificate will be generated.
   caBundle: |
 
 # -|- CPU and Memory resources required by the SP validator (see
@@ -327,7 +329,7 @@ installNamespace: true
 nodeSelector:
   beta.kubernetes.io/os: linux
 
-# -|- Tolerations section, See the 
+# -|- Tolerations section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
 # for more information
 #tolerations:
