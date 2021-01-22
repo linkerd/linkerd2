@@ -24,14 +24,18 @@ import (
 var (
 	templatesVIz = []string{
 		"templates/namespace.yaml",
+		"templates/metrics-api-rbac.yaml",
 		"templates/grafana-rbac.yaml",
 		"templates/prometheus-rbac.yaml",
 		"templates/tap-rbac.yaml",
 		"templates/web-rbac.yaml",
 		"templates/psp.yaml",
+		"templates/metrics-api.yaml",
 		"templates/grafana.yaml",
 		"templates/prometheus.yaml",
 		"templates/tap.yaml",
+		"templates/tap-injector-rbac.yaml",
+		"templates/tap-injector.yaml",
 		"templates/web.yaml",
 	}
 )

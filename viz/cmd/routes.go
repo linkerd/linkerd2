@@ -11,12 +11,13 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/api/util"
+	coreUtil "github.com/linkerd/linkerd2/controller/api/util"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	api "github.com/linkerd/linkerd2/pkg/public"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	"github.com/linkerd/linkerd2/viz/metrics-api/util"
+	"github.com/linkerd/linkerd2/viz/pkg/api"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -62,7 +63,7 @@ This command will only display traffic which is sent to a service that has a Ser
   # Routes for calls from the traffic deployment to the webapp service in the test namespace.
   linkerd viz routes deploy/traffic -n test --to svc/webapp`,
 		Args:      cobra.ExactArgs(1),
-		ValidArgs: util.ValidTargets,
+		ValidArgs: coreUtil.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
@@ -73,7 +74,7 @@ This command will only display traffic which is sent to a service that has a Ser
 			}
 
 			output, err := requestRouteStatsFromAPI(
-				api.CheckVizAPIClientOrExit(healthcheck.Options{
+				api.CheckClientOrExit(healthcheck.Options{
 					ControlPlaneNamespace: controlPlaneNamespace,
 					KubeConfig:            kubeconfigPath,
 					Impersonate:           impersonate,
@@ -353,7 +354,7 @@ func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRout
 		return nil, err
 	}
 
-	target, err := util.BuildResource(options.namespace, resource)
+	target, err := coreUtil.BuildResource(options.namespace, resource)
 	if err != nil {
 		return nil, err
 	}
@@ -374,7 +375,7 @@ func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRout
 		if options.toNamespace == "" {
 			options.toNamespace = options.namespace
 		}
-		toRes, err := util.BuildResource(options.toNamespace, options.toResource)
+		toRes, err := coreUtil.BuildResource(options.toNamespace, options.toResource)
 		if err != nil {
 			return nil, err
 		}

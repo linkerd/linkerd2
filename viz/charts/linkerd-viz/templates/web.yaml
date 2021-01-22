@@ -68,7 +68,8 @@ spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
       containers:
       - args:
-        - -api-addr=linkerd-controller-api.{{.Values.linkerdNamespace}}.svc.{{.Values.clusterDomain}}:8085
+        - -linkerd-controller-api-addr=linkerd-controller-api.{{.Values.linkerdNamespace}}.svc.{{.Values.clusterDomain}}:8085
+        - -linkerd-metrics-api-addr=linkerd-metrics-api.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:8085
         - -cluster-domain={{.Values.clusterDomain}}
         {{- if .Values.grafanaUrl }}
         - -grafana-addr={{.Values.grafanaUrl}}
@@ -79,6 +80,7 @@ spec:
         - -jaeger-addr={{.Values.jaegerUrl}}
         {{- end}}
         - -controller-namespace={{.Values.linkerdNamespace}}
+        - -viz-namespace={{.Values.namespace}}
         - -log-level={{.Values.dashboard.logLevel}}
         {{- if .Values.dashboard.enforcedHostRegexp }}
         - -enforced-host={{.Values.dashboard.enforcedHostRegexp}}
@@ -87,7 +89,7 @@ spec:
         {{- $hostAbbrev := replace "." "\\." (printf "linkerd-web.%s.svc" .Values.namespace) }}
         - -enforced-host=^(localhost|127\.0\.0\.1|{{ $hostFull }}|{{ $hostAbbrev }}|\[::1\])(:\d+)?$
         {{- end}}
-        image: {{.Values.dashboard.image.registry}}/{{.Values.dashboard.image.name}}:{{ default (default .Values.linkerdVersion .Values.controllerImageVersion) .Values.dashboard.image.tag}}
+        image: {{.Values.dashboard.image.registry}}/{{.Values.dashboard.image.name}}:{{.Values.dashboard.image.tag}}
         imagePullPolicy: {{.Values.dashboard.image.pullPolicy}}
         livenessProbe:
           httpGet:

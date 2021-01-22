@@ -15,6 +15,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/public"
 	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	vizApi "github.com/linkerd/linkerd2/viz/metrics-api"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 )
 
@@ -142,7 +143,7 @@ func TestHandleApiCheck(t *testing.T) {
 }
 
 func TestHandleApiGateway(t *testing.T) {
-	mockAPIClient := &public.MockAPIClient{
+	mockAPIClient := &vizApi.MockAPIClient{
 		GatewaysResponseToReturn: &pb.GatewaysResponse{
 			Response: &pb.GatewaysResponse_Ok_{
 				Ok: &pb.GatewaysResponse_Ok{

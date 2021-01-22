@@ -113,7 +113,7 @@ destination.`,
 	return cmd
 }
 
-func requestEndpointsFromAPI(client public.PublicAPIClient, authorities []string) (endpointsInfo, error) {
+func requestEndpointsFromAPI(client public.Client, authorities []string) (endpointsInfo, error) {
 	info := make(endpointsInfo)
 	// buffered channels to avoid blocking
 	events := make(chan *destinationPb.Update, len(authorities))

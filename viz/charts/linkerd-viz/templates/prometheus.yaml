@@ -154,15 +154,15 @@ data:
     {{- toYaml .Values.prometheus.scrapeConfigs | trim | nindent 4 }}
     {{- end }}
 
-    {{-  if (or .Values.prometheus.alertManagers .Values.prometheus.alertRelabelConfigs) }}
+    {{-  if (or .Values.prometheus.alertmanagers .Values.prometheus.alertRelabelConfigs) }}
     alerting:
       alert_relabel_configs:
         {{- if .Values.prometheus.alertRelabelConfigs }}
         {{- toYaml .Values.prometheus.alertRelabelConfigs | trim | nindent 6 }}
         {{- end }}
       alertmanagers:
-        {{- if .Values.prometheus.alertManagers }}
-        {{- toYaml .Values.prometheus.alertManagers | trim | nindent 6 }}
+        {{- if .Values.prometheus.alertmanagers }}
+        {{- toYaml .Values.prometheus.alertmanagers | trim | nindent 6 }}
         {{- end }}
     {{- end }}
 

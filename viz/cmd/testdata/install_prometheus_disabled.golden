@@ -13,6 +13,59 @@ metadata:
     linkerd.io/inject: enabled
 ---
 ###
+### Metrics API RBAC
+###
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-linkerd-viz-metrics-api
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: metrics-api
+rules:
+- apiGroups: ["extensions", "apps"]
+  resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["extensions", "batch"]
+  resources: ["cronjobs", "jobs"]
+  verbs: ["list" , "get", "watch"]
+- apiGroups: [""]
+  resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["linkerd.io"]
+  resources: ["serviceprofiles"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["split.smi-spec.io"]
+  resources: ["trafficsplits"]
+  verbs: ["list", "get", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-linkerd-viz-metrics-api
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: metrics-api
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-linkerd-viz-metrics-api
+subjects:
+- kind: ServiceAccount
+  name: linkerd-metrics-api
+  namespace: linkerd-viz
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-metrics-api
+  namespace: linkerd-viz
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: metrics-api
+---
+###
 ### Grafana RBAC
 ###
 ---
@@ -292,6 +345,89 @@ subjects:
   namespace: linkerd-viz
 ---
 ###
+### Metrics API
+###
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-metrics-api
+  namespace: linkerd-viz
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: metrics-api
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/extension: linkerd-viz
+    component: metrics-api
+  ports:
+  - name: http
+    port: 8085
+    targetPort: 8085
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+  labels:
+    linkerd.io/extension: linkerd-viz
+    app.kubernetes.io/name: metrics-api
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: dev-undefined
+    component: metrics-api
+  name: linkerd-metrics-api
+  namespace: linkerd-viz
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      linkerd.io/extension: linkerd-viz
+      component: metrics-api
+  template:
+    metadata:
+      annotations:
+        checksum/config: b9049bed0ca52f3d63f34e03d87cfdd38bd81f6066310d0bf64d2d3f380d5733
+        linkerd.io/created-by: linkerd/helm dev-undefined
+      labels:
+        linkerd.io/extension: linkerd-viz
+        component: metrics-api
+    spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      containers:
+      - args:
+        - -controller-namespace=linkerd
+        - -log-level=info
+        - -cluster-domain=cluster.local
+        - -prometheus-url=external-prom.com
+        image: ghcr.io/linkerd/metrics-api:dev-undefined
+        imagePullPolicy: 
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9995
+          initialDelaySeconds: 10
+        name: metrics-api
+        ports:
+        - containerPort: 8085
+          name: http
+        - containerPort: 9995
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9995
+        resources:
+        securityContext:
+          runAsUser: 2103
+      serviceAccountName: linkerd-metrics-api
+---
+###
 ### Grafana
 ###
 ---
@@ -549,6 +685,162 @@ spec:
         secret:
           secretName: linkerd-tap-k8s-tls
 
+###
+### Tap Injector RBAC
+###
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-tap-injector
+  labels:
+    linkerd.io/extension: linkerd-viz
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-tap-injector
+  labels:
+    linkerd.io/extension: linkerd-viz
+subjects:
+- kind: ServiceAccount
+  name: tap-injector
+  namespace: linkerd-viz
+roleRef:
+  kind: ClusterRole
+  name: linkerd-tap-injector
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: tap-injector
+  namespace: linkerd-viz
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: tap-injector-k8s-tls
+  namespace: linkerd-viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+type: kubernetes.io/tls
+data:
+  tls.crt: dGVzdC10YXAtY3J0LXBlbQ==
+  tls.key: dGVzdC10YXAta2V5LXBlbQ==
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: linkerd-tap-injector-webhook-config
+  labels:
+    linkerd.io/extension: linkerd-viz
+webhooks:
+- name: tap-injector.linkerd.io
+  clientConfig:
+    service:
+      name: tap-injector
+      namespace: linkerd-viz
+      path: "/"
+    caBundle: dGVzdC10YXAtY2EtYnVuZGxl
+  failurePolicy: Ignore
+  reinvocationPolicy: IfNeeded
+  rules:
+  - operations: [ "CREATE" ]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+  sideEffects: None
+---
+###
+### Tap Injector
+###
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: tap-injector
+  namespace: linkerd-viz
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: tap-injector
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  type: ClusterIP
+  selector:
+    component: tap-injector
+  ports:
+  - name: tap-injector
+    port: 443
+    targetPort: tap-injector
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+  labels:
+    linkerd.io/extension: linkerd-viz
+    app.kubernetes.io/name: tap-injector
+    app.kubernetes.io/part-of: Linkerd
+    component: tap-injector
+  name: tap-injector
+  namespace: linkerd-viz
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: tap-injector
+  template:
+    metadata:
+      annotations:
+        checksum/config: 33e988bace52d67983db9661563009d9e7f2a4877dd05add7300d2f25d2579ba
+        linkerd.io/created-by: linkerd/helm dev-undefined
+      labels:
+        linkerd.io/extension: linkerd-viz
+        component: tap-injector
+    spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      containers:
+      - args:
+        - tap-injector
+        - -tap-service-name=linkerd-tap.linkerd-viz.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+        image: ghcr.io/linkerd/controller:dev-undefined
+        imagePullPolicy: 
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9995
+          initialDelaySeconds: 10
+        name: tap-injector
+        ports:
+        - containerPort: 8443
+          name: tap-injector
+        - containerPort: 9995
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9995
+        resources:
+        securityContext:
+          runAsUser: 2103
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: tls
+          readOnly: true
+      serviceAccountName: tap-injector
+      volumes:
+      - name: tls
+        secret:
+          secretName: tap-injector-k8s-tls
 ---
 ###
 ### Web
@@ -612,10 +904,12 @@ spec:
         beta.kubernetes.io/os: linux
       containers:
       - args:
-        - -api-addr=linkerd-controller-api.linkerd.svc.cluster.local:8085
+        - -linkerd-controller-api-addr=linkerd-controller-api.linkerd.svc.cluster.local:8085
+        - -linkerd-metrics-api-addr=linkerd-metrics-api.linkerd-viz.svc.cluster.local:8085
         - -cluster-domain=cluster.local
         - -grafana-addr=linkerd-grafana.linkerd-viz.svc.cluster.local:3000
         - -controller-namespace=linkerd
+        - -viz-namespace=linkerd-viz
         - -log-level=info
         - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd-viz\.svc\.cluster\.local|linkerd-web\.linkerd-viz\.svc|\[::1\])(:\d+)?$
         image: ghcr.io/linkerd/web:dev-undefined

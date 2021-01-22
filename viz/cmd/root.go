@@ -10,6 +10,9 @@ import (
 )
 
 const (
+	// ExtensionName is the value that the viz extension resources should be labeled with
+	ExtensionName = "linkerd-viz"
+
 	vizChartName            = "linkerd-viz"
 	defaultLinkerdNamespace = "linkerd"
 	maxRps                  = 100.0
@@ -20,7 +23,6 @@ const (
 )
 
 var (
-
 	// special handling for Windows, on all other platforms these resolve to
 	// os.Stdout and os.Stderr, thanks to https://github.com/mattn/go-colorable
 	stdout = color.Output

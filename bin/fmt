@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 
-set -eu
+set -u
 
-# go list will exclude the vendor directory.  We use grep to exclude generated
-# code.
-while IFS= read -r line; do dirs+=("$line"); done <<< "$(go list -f \{\{.Dir\}\} ./... | grep -v controller/gen | grep -v viz/metrics-api/gen )"
+while IFS= read -r line; do dirs+=("$line"); done <<< "$(go list -f \{\{.Dir\}\} ./...)"
 
 # go list will list all subdirectories and goimports acts recursively.  This
 # results in certain files being reported multiple time.  Therefore, we must
-# dedup them.
-files=$(bin/goimports -l "${dirs[@]}" | sort -u)
+# dedup them. We also ignore protobuf auto-generated code.
+files=$(bin/goimports -l "${dirs[@]}" | sort -u | grep -v pb.go)
 
 if [ -n "$files" ]; then
   for file in "${files[@]}"; do

@@ -3,7 +3,7 @@ package cmd
 import (
 	"testing"
 
-	"github.com/linkerd/linkerd2/controller/api/public"
+	api "github.com/linkerd/linkerd2/viz/metrics-api"
 )
 
 type routesParamsExp struct {
@@ -48,9 +48,9 @@ func TestRoutes(t *testing.T) {
 }
 
 func testRoutesCall(exp routesParamsExp, t *testing.T) {
-	mockClient := &public.MockAPIClient{}
+	mockClient := &api.MockAPIClient{}
 
-	response := public.GenTopRoutesResponse(exp.routes, exp.counts, exp.options.toResource != "", "foobar")
+	response := api.GenTopRoutesResponse(exp.routes, exp.counts, exp.options.toResource != "", "foobar")
 
 	mockClient.TopRoutesResponseToReturn = response
 

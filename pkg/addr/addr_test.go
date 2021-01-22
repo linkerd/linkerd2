@@ -7,20 +7,20 @@ import (
 	"github.com/golang/protobuf/proto"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/net"
 	proxy "github.com/linkerd/linkerd2-proxy-api/go/net"
-	vizPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	l5dNetPb "github.com/linkerd/linkerd2/controller/gen/common/net"
 )
 
 func TestPublicAddressToString(t *testing.T) {
 	cases := []struct {
 		name     string
-		addr     *vizPb.TcpAddress
+		addr     *l5dNetPb.TcpAddress
 		expected string
 	}{
 		{
 			name: "ipv4",
-			addr: &vizPb.TcpAddress{
-				Ip: &vizPb.IPAddress{
-					Ip: &vizPb.IPAddress_Ipv4{
+			addr: &l5dNetPb.TcpAddress{
+				Ip: &l5dNetPb.IPAddress{
+					Ip: &l5dNetPb.IPAddress_Ipv4{
 						Ipv4: 3232235521,
 					},
 				},
@@ -30,10 +30,10 @@ func TestPublicAddressToString(t *testing.T) {
 		},
 		{
 			name: "ipv6",
-			addr: &vizPb.TcpAddress{
-				Ip: &vizPb.IPAddress{
-					Ip: &vizPb.IPAddress_Ipv6{
-						Ipv6: &vizPb.IPv6{
+			addr: &l5dNetPb.TcpAddress{
+				Ip: &l5dNetPb.IPAddress{
+					Ip: &l5dNetPb.IPAddress_Ipv6{
+						Ipv6: &l5dNetPb.IPv6{
 							First: 49320,
 							Last:  1,
 						},
@@ -144,21 +144,21 @@ func TestNetToPublic(t *testing.T) {
 
 	type addrExp struct {
 		proxyAddr     *proxy.TcpAddress
-		publicAddress *vizPb.TcpAddress
+		publicAddress *l5dNetPb.TcpAddress
 	}
 
 	expectations := []addrExp{
 		{
 			proxyAddr:     &proxy.TcpAddress{},
-			publicAddress: &vizPb.TcpAddress{},
+			publicAddress: &l5dNetPb.TcpAddress{},
 		},
 		{
 			proxyAddr: &proxy.TcpAddress{
 				Ip:   &proxy.IPAddress{Ip: &proxy.IPAddress_Ipv4{Ipv4: 1}},
 				Port: 1234,
 			},
-			publicAddress: &vizPb.TcpAddress{
-				Ip:   &vizPb.IPAddress{Ip: &vizPb.IPAddress_Ipv4{Ipv4: 1}},
+			publicAddress: &l5dNetPb.TcpAddress{
+				Ip:   &l5dNetPb.IPAddress{Ip: &l5dNetPb.IPAddress_Ipv4{Ipv4: 1}},
 				Port: 1234,
 			},
 		},
@@ -174,10 +174,10 @@ func TestNetToPublic(t *testing.T) {
 				},
 				Port: 1234,
 			},
-			publicAddress: &vizPb.TcpAddress{
-				Ip: &vizPb.IPAddress{
-					Ip: &vizPb.IPAddress_Ipv6{
-						Ipv6: &vizPb.IPv6{
+			publicAddress: &l5dNetPb.TcpAddress{
+				Ip: &l5dNetPb.IPAddress{
+					Ip: &l5dNetPb.IPAddress_Ipv6{
+						Ipv6: &l5dNetPb.IPv6{
 							First: 2345,
 							Last:  6789,
 						},
@@ -243,7 +243,7 @@ func TestParseProxyIPV4(t *testing.T) {
 func TestParsePublicIPV4(t *testing.T) {
 	var testCases = []struct {
 		ip      string
-		expAddr *vizPb.IPAddress
+		expAddr *l5dNetPb.IPAddress
 		expErr  bool
 	}{
 		{
@@ -258,8 +258,8 @@ func TestParsePublicIPV4(t *testing.T) {
 		},
 		{
 			ip: "10.10.10.11",
-			expAddr: &vizPb.IPAddress{
-				Ip: &vizPb.IPAddress_Ipv4{Ipv4: 168430091},
+			expAddr: &l5dNetPb.IPAddress{
+				Ip: &l5dNetPb.IPAddress_Ipv4{Ipv4: 168430091},
 			},
 			expErr: false,
 		},
