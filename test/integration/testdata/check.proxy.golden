@@ -62,6 +62,7 @@ linkerd-version
 
 linkerd-data-plane
 ------------------
+√ data plane pods have service account volume mounted
 √ data plane namespace exists
 √ data plane proxies are ready
 √ data plane is up-to-date
