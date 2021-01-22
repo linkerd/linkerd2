@@ -5,13 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
+	netPb "github.com/linkerd/linkerd2/controller/gen/common/net"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -21,9 +20,6 @@ import (
 */
 
 var (
-	defaultMetricTimeWindow    = "1m"
-	metricTimeWindowLowerBound = time.Second * 15 //the window value needs to equal or larger than that
-
 	// ValidTargets specifies resource types allowed as a target:
 	// target resource on an inbound query
 	// target resource on an outbound 'to' query
@@ -57,49 +53,6 @@ var (
 	}
 )
 
-// StatsBaseRequestParams contains parameters that are used to build requests
-// for metrics data.  This includes requests to StatSummary and TopRoutes.
-type StatsBaseRequestParams struct {
-	TimeWindow    string
-	Namespace     string
-	ResourceType  string
-	ResourceName  string
-	AllNamespaces bool
-}
-
-// StatsSummaryRequestParams contains parameters that are used to build
-// StatSummary requests.
-type StatsSummaryRequestParams struct {
-	StatsBaseRequestParams
-	ToNamespace   string
-	ToType        string
-	ToName        string
-	FromNamespace string
-	FromType      string
-	FromName      string
-	SkipStats     bool
-	TCPStats      bool
-	LabelSelector string
-}
-
-// EdgesRequestParams contains parameters that are used to build
-// Edges requests.
-type EdgesRequestParams struct {
-	Namespace     string
-	ResourceType  string
-	AllNamespaces bool
-}
-
-// TopRoutesRequestParams contains parameters that are used to build TopRoutes
-// requests.
-type TopRoutesRequestParams struct {
-	StatsBaseRequestParams
-	ToNamespace   string
-	ToType        string
-	ToName        string
-	LabelSelector string
-}
-
 // TapRequestParams contains parameters that are used to build a
 // TapByResourceRequest.
 type TapRequestParams struct {
@@ -114,14 +67,6 @@ type TapRequestParams struct {
 	Path          string
 	Extract       bool
 	LabelSelector string
-}
-
-// GatewayRequestParams contains parameters that are used to build a
-// GatewayRequest
-type GatewayRequestParams struct {
-	RemoteClusterName string
-	GatewayNamespace  string
-	TimeWindow        string
 }
 
 // GRPCError generates a gRPC error code, as defined in
@@ -154,211 +99,6 @@ func GRPCError(err error) error {
 	}
 
 	return err
-}
-
-// BuildStatSummaryRequest builds a Public API StatSummaryRequest from a
-// StatsSummaryRequestParams.
-func BuildStatSummaryRequest(p StatsSummaryRequestParams) (*pb.StatSummaryRequest, error) {
-	window := defaultMetricTimeWindow
-	if p.TimeWindow != "" {
-		w, err := time.ParseDuration(p.TimeWindow)
-		if err != nil {
-			return nil, err
-		}
-
-		if w < metricTimeWindowLowerBound {
-			return nil, errors.New("metrics time window needs to be at least 15s")
-		}
-
-		window = p.TimeWindow
-	}
-
-	if p.AllNamespaces && p.ResourceName != "" {
-		return nil, errors.New("stats for a resource cannot be retrieved by name across all namespaces")
-	}
-
-	targetNamespace := p.Namespace
-	if p.AllNamespaces {
-		targetNamespace = ""
-	} else if p.Namespace == "" {
-		targetNamespace = corev1.NamespaceDefault
-	}
-
-	resourceType, err := k8s.CanonicalResourceNameFromFriendlyName(p.ResourceType)
-	if err != nil {
-		return nil, err
-	}
-
-	statRequest := &pb.StatSummaryRequest{
-		Selector: &pb.ResourceSelection{
-			Resource: &pb.Resource{
-				Namespace: targetNamespace,
-				Name:      p.ResourceName,
-				Type:      resourceType,
-			},
-			LabelSelector: p.LabelSelector,
-		},
-		TimeWindow: window,
-		SkipStats:  p.SkipStats,
-		TcpStats:   p.TCPStats,
-	}
-
-	if p.ToName != "" || p.ToType != "" || p.ToNamespace != "" {
-		if p.ToNamespace == "" {
-			p.ToNamespace = targetNamespace
-		}
-		if p.ToType == "" {
-			p.ToType = resourceType
-		}
-
-		toType, err := k8s.CanonicalResourceNameFromFriendlyName(p.ToType)
-		if err != nil {
-			return nil, err
-		}
-
-		toResource := pb.StatSummaryRequest_ToResource{
-			ToResource: &pb.Resource{
-				Namespace: p.ToNamespace,
-				Type:      toType,
-				Name:      p.ToName,
-			},
-		}
-		statRequest.Outbound = &toResource
-	}
-
-	if p.FromName != "" || p.FromType != "" || p.FromNamespace != "" {
-		if p.FromNamespace == "" {
-			p.FromNamespace = targetNamespace
-		}
-		if p.FromType == "" {
-			p.FromType = resourceType
-		}
-
-		fromType, err := validateFromResourceType(p.FromType)
-		if err != nil {
-			return nil, err
-		}
-
-		fromResource := pb.StatSummaryRequest_FromResource{
-			FromResource: &pb.Resource{
-				Namespace: p.FromNamespace,
-				Type:      fromType,
-				Name:      p.FromName,
-			},
-		}
-		statRequest.Outbound = &fromResource
-	}
-
-	return statRequest, nil
-}
-
-// BuildEdgesRequest builds a Public API EdgesRequest from a
-// EdgesRequestParams.
-func BuildEdgesRequest(p EdgesRequestParams) (*pb.EdgesRequest, error) {
-	namespace := p.Namespace
-
-	// If all namespaces was specified, ignore namespace value.
-	if p.AllNamespaces {
-		namespace = ""
-	}
-
-	resourceType, err := k8s.CanonicalResourceNameFromFriendlyName(p.ResourceType)
-	if err != nil {
-		return nil, err
-	}
-
-	edgesRequest := &pb.EdgesRequest{
-		Selector: &pb.ResourceSelection{
-			Resource: &pb.Resource{
-				Namespace: namespace,
-				Type:      resourceType,
-			},
-		},
-	}
-
-	return edgesRequest, nil
-}
-
-// BuildTopRoutesRequest builds a Public API TopRoutesRequest from a
-// TopRoutesRequestParams.
-func BuildTopRoutesRequest(p TopRoutesRequestParams) (*pb.TopRoutesRequest, error) {
-	window := defaultMetricTimeWindow
-	if p.TimeWindow != "" {
-		_, err := time.ParseDuration(p.TimeWindow)
-		if err != nil {
-			return nil, err
-		}
-		window = p.TimeWindow
-	}
-
-	if p.AllNamespaces && p.ResourceName != "" {
-		return nil, errors.New("routes for a resource cannot be retrieved by name across all namespaces")
-	}
-
-	targetNamespace := p.Namespace
-	if p.AllNamespaces {
-		targetNamespace = ""
-	} else if p.Namespace == "" {
-		targetNamespace = corev1.NamespaceDefault
-	}
-
-	resourceType, err := k8s.CanonicalResourceNameFromFriendlyName(p.ResourceType)
-	if err != nil {
-		return nil, err
-	}
-
-	topRoutesRequest := &pb.TopRoutesRequest{
-		Selector: &pb.ResourceSelection{
-			Resource: &pb.Resource{
-				Namespace: targetNamespace,
-				Name:      p.ResourceName,
-				Type:      resourceType,
-			},
-			LabelSelector: p.LabelSelector,
-		},
-		TimeWindow: window,
-	}
-
-	if p.ToName != "" || p.ToType != "" || p.ToNamespace != "" {
-		if p.ToNamespace == "" {
-			p.ToNamespace = targetNamespace
-		}
-		if p.ToType == "" {
-			p.ToType = resourceType
-		}
-
-		toType, err := k8s.CanonicalResourceNameFromFriendlyName(p.ToType)
-		if err != nil {
-			return nil, err
-		}
-
-		toResource := pb.TopRoutesRequest_ToResource{
-			ToResource: &pb.Resource{
-				Namespace: p.ToNamespace,
-				Type:      toType,
-				Name:      p.ToName,
-			},
-		}
-		topRoutesRequest.Outbound = &toResource
-	} else {
-		topRoutesRequest.Outbound = &pb.TopRoutesRequest_None{
-			None: &pb.Empty{},
-		}
-	}
-
-	return topRoutesRequest, nil
-}
-
-// An authority can only receive traffic, not send it, so it can't be a --from
-func validateFromResourceType(resourceType string) (string, error) {
-	name, err := k8s.CanonicalResourceNameFromFriendlyName(resourceType)
-	if err != nil {
-		return "", err
-	}
-	if name == k8s.Authority {
-		return "", errors.New("cannot query traffic --from an authority")
-	}
-	return name, nil
 }
 
 // BuildResource parses input strings, typically from CLI flags, to build a
@@ -571,17 +311,17 @@ func contains(list []string, s string) bool {
 func CreateTapEvent(eventHTTP *pb.TapEvent_Http, dstMeta map[string]string, proxyDirection pb.TapEvent_ProxyDirection) *pb.TapEvent {
 	event := &pb.TapEvent{
 		ProxyDirection: proxyDirection,
-		Source: &pb.TcpAddress{
-			Ip: &pb.IPAddress{
-				Ip: &pb.IPAddress_Ipv4{
+		Source: &netPb.TcpAddress{
+			Ip: &netPb.IPAddress{
+				Ip: &netPb.IPAddress_Ipv4{
 					Ipv4: uint32(1),
 				},
 			},
 		},
-		Destination: &pb.TcpAddress{
-			Ip: &pb.IPAddress{
-				Ip: &pb.IPAddress_Ipv6{
-					Ipv6: &pb.IPv6{
+		Destination: &netPb.TcpAddress{
+			Ip: &netPb.IPAddress{
+				Ip: &netPb.IPAddress_Ipv6{
+					Ipv6: &netPb.IPv6{
 						// All nodes address: https://www.iana.org/assignments/ipv6-multicast-addresses/ipv6-multicast-addresses.xhtml
 						First: binary.BigEndian.Uint64([]byte{0xff, 0x01, 0, 0, 0, 0, 0, 0}),
 						Last:  binary.BigEndian.Uint64([]byte{0, 0, 0, 0, 0, 0, 0, 0x01}),
@@ -597,64 +337,4 @@ func CreateTapEvent(eventHTTP *pb.TapEvent_Http, dstMeta map[string]string, prox
 		},
 	}
 	return event
-}
-
-// K8sPodToPublicPod converts a Kubernetes Pod to a Public API Pod
-func K8sPodToPublicPod(pod corev1.Pod, ownerKind string, ownerName string) *pb.Pod {
-	status := string(pod.Status.Phase)
-	if pod.DeletionTimestamp != nil {
-		status = "Terminating"
-	}
-
-	if pod.Status.Reason == "Evicted" {
-		status = "Evicted"
-	}
-
-	controllerComponent := pod.Labels[k8s.ControllerComponentLabel]
-	controllerNS := pod.Labels[k8s.ControllerNSLabel]
-
-	proxyReady := false
-	for _, container := range pod.Status.ContainerStatuses {
-		if container.Name == k8s.ProxyContainerName {
-			proxyReady = container.Ready
-		}
-	}
-
-	proxyVersion := ""
-	for _, container := range pod.Spec.Containers {
-		if container.Name == k8s.ProxyContainerName {
-			parts := strings.Split(container.Image, ":")
-			proxyVersion = parts[1]
-		}
-	}
-
-	item := &pb.Pod{
-		Name:                pod.Namespace + "/" + pod.Name,
-		Status:              status,
-		PodIP:               pod.Status.PodIP,
-		ControllerNamespace: controllerNS,
-		ControlPlane:        controllerComponent != "",
-		ProxyReady:          proxyReady,
-		ProxyVersion:        proxyVersion,
-		ResourceVersion:     pod.ResourceVersion,
-	}
-
-	namespacedOwnerName := pod.Namespace + "/" + ownerName
-
-	switch ownerKind {
-	case k8s.Deployment:
-		item.Owner = &pb.Pod_Deployment{Deployment: namespacedOwnerName}
-	case k8s.DaemonSet:
-		item.Owner = &pb.Pod_DaemonSet{DaemonSet: namespacedOwnerName}
-	case k8s.Job:
-		item.Owner = &pb.Pod_Job{Job: namespacedOwnerName}
-	case k8s.ReplicaSet:
-		item.Owner = &pb.Pod_ReplicaSet{ReplicaSet: namespacedOwnerName}
-	case k8s.ReplicationController:
-		item.Owner = &pb.Pod_ReplicationController{ReplicationController: namespacedOwnerName}
-	case k8s.StatefulSet:
-		item.Owner = &pb.Pod_StatefulSet{StatefulSet: namespacedOwnerName}
-	}
-
-	return item
 }

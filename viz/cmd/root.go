@@ -1,21 +1,21 @@
 package cmd
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"os"
 	"regexp"
 
 	"github.com/fatih/color"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	"github.com/linkerd/linkerd2/pkg/k8s"
+	vizHealthCheck "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
+	// ExtensionName is the value that the viz extension resources should be labeled with
+	ExtensionName = "linkerd-viz"
+
 	vizChartName            = "linkerd-viz"
 	defaultLinkerdNamespace = "linkerd"
 	maxRps                  = 100.0
@@ -26,7 +26,6 @@ const (
 )
 
 var (
-
 	// special handling for Windows, on all other platforms these resolve to
 	// os.Stdout and os.Stderr, thanks to https://github.com/mattn/go-colorable
 	stdout = color.Output
@@ -87,17 +86,6 @@ func NewCmdViz() *cobra.Command {
 	return vizCmd
 }
 
-func getVizNamespace(ctx context.Context, k8sAPI *k8s.KubernetesAPI) (string, error) {
-	ns, err := k8sAPI.CoreV1().Namespaces().List(ctx, metav1.ListOptions{LabelSelector: "linkerd.io/extension=linkerd-viz"})
-	if err != nil {
-		return "", err
-	}
-	if len(ns.Items) == 0 {
-		return "", errors.New("linkerd-viz extension not found")
-	}
-	return ns.Items[0].Name, nil
-}
-
 // checkForViz runs the kubernetesAPI, LinkerdControlPlaneExistence and the VizExtension category checks
 // with a HealthChecker created by the passed options.
 // For check failures, the process is exited with an error message based on the failed category.
@@ -105,11 +93,10 @@ func checkForViz(hcOptions healthcheck.Options) {
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.LinkerdControlPlaneExistenceChecks,
-		linkerdVizExtensionCheck,
+		vizHealthCheck.LinkerdVizExtensionCheck,
 	}
 
 	hc := healthcheck.NewHealthChecker(checks, &hcOptions)
-	hc.AppendCategories(*vizCategory(hc))
 
 	hc.RunChecks(exitOnError)
 }
@@ -127,7 +114,7 @@ func exitOnError(result *healthcheck.CheckResult) {
 			msg = "Cannot connect to Kubernetes"
 		case healthcheck.LinkerdControlPlaneExistenceChecks:
 			msg = "Cannot find Linkerd"
-		case linkerdVizExtensionCheck:
+		case vizHealthCheck.LinkerdVizExtensionCheck:
 			msg = "Cannot find viz extension"
 		}
 		fmt.Fprintf(os.Stderr, "%s: %s\n", msg, result.Err)

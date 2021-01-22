@@ -76,7 +76,7 @@ func TestHandleConfigDownload(t *testing.T) {
 
 	handler := &handler{
 		render:              server.RenderTemplate,
-		apiClient:           mockAPIClient,
+		publicAPIClient:     mockAPIClient,
 		controllerNamespace: "linkerd",
 		clusterDomain:       "mycluster.local",
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/spf13/pflag"
+	valuespkg "helm.sh/helm/v3/pkg/cli/values"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -544,7 +545,7 @@ func pathMatch(path []string, template []string) bool {
 
 func renderInstall(t *testing.T, values *linkerd2.Values) bytes.Buffer {
 	var installBuf bytes.Buffer
-	if err := render(&installBuf, values, ""); err != nil {
+	if err := render(&installBuf, values, "", valuespkg.Options{}); err != nil {
 		t.Fatalf("could not render install manifests: %s", err)
 	}
 	return installBuf
@@ -556,7 +557,7 @@ func renderUpgrade(installManifest string, upgradeOpts []flag.Flag) (bytes.Buffe
 		return bytes.Buffer{}, err
 	}
 
-	return upgrade(context.Background(), k, upgradeOpts, "")
+	return upgrade(context.Background(), k, upgradeOpts, "", valuespkg.Options{})
 }
 
 func renderInstallAndUpgrade(t *testing.T, installOpts *charts.Values, upgradeOpts []flag.Flag) (bytes.Buffer, bytes.Buffer, error) {

@@ -3,7 +3,7 @@ package cmd
 import (
 	"testing"
 
-	"github.com/linkerd/linkerd2/controller/api/public"
+	api "github.com/linkerd/linkerd2/viz/metrics-api"
 )
 
 type edgesParamsExp struct {
@@ -99,8 +99,8 @@ func TestEdges(t *testing.T) {
 }
 
 func testEdgesCall(exp edgesParamsExp, t *testing.T) {
-	mockClient := &public.MockAPIClient{}
-	response := public.GenEdgesResponse(exp.resourceType, "all")
+	mockClient := &api.MockAPIClient{}
+	response := api.GenEdgesResponse(exp.resourceType, "all")
 
 	mockClient.EdgesResponseToReturn = response
 

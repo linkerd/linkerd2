@@ -15,7 +15,9 @@ import (
 	"github.com/linkerd/linkerd2/pkg/multicluster"
 	"github.com/linkerd/linkerd2/pkg/servicemirror"
 	"github.com/linkerd/linkerd2/pkg/tls"
-	public "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	vizCmd "github.com/linkerd/linkerd2/viz/cmd"
+	"github.com/linkerd/linkerd2/viz/metrics-api/client"
+	vizPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -464,12 +466,23 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context)
 			errors = append(errors, fmt.Errorf("%s.%s mirrored from cluster [%s] has no endpoints", svc.Name, svc.Namespace, svc.Labels[k8s.RemoteClusterNameLabel]))
 			continue
 		}
+
+		vizNs, err := hc.linkerdHC.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, vizCmd.ExtensionName)
+		if err != nil {
+			return &healthcheck.SkipError{Reason: "failed to fetch gateway metrics"}
+		}
+
 		// Check gateway liveness according to probes
-		req := public.GatewaysRequest{
+		vizClient, err := client.NewExternalClient(ctx, vizNs.Name, hc.linkerdHC.KubeAPIClient())
+		if err != nil {
+			errors = append(errors, fmt.Errorf("failed to initialize viz client: %s", err))
+			break
+		}
+		req := vizPb.GatewaysRequest{
 			TimeWindow:        "1m",
 			RemoteClusterName: link.TargetClusterName,
 		}
-		rsp, err := hc.linkerdHC.VizAPIClient().Gateways(ctx, &req)
+		rsp, err := vizClient.Gateways(ctx, &req)
 		if err != nil {
 			errors = append(errors, fmt.Errorf("failed to fetch gateway metrics for %s.%s: %s", svc.Name, svc.Namespace, err))
 			continue

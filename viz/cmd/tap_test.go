@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/linkerd/linkerd2/controller/api/util"
+	netPb "github.com/linkerd/linkerd2/controller/gen/common/net"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
@@ -264,11 +265,11 @@ func TestEventToString(t *testing.T) {
 
 		return &pb.TapEvent{
 			ProxyDirection: pb.TapEvent_OUTBOUND,
-			Source: &pb.TcpAddress{
+			Source: &netPb.TcpAddress{
 				Ip:   addr.PublicIPV4(1, 2, 3, 4),
 				Port: 5555,
 			},
-			Destination: &pb.TcpAddress{
+			Destination: &netPb.TcpAddress{
 				Ip:   addr.PublicIPV4(2, 3, 4, 5),
 				Port: 6666,
 			},

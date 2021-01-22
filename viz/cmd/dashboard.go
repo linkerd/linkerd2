@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -102,7 +103,7 @@ func NewCmdDashboard() *cobra.Command {
 				return err
 			}
 
-			vizNamespace, err := getVizNamespace(cmd.Context(), k8sAPI)
+			vizNs, err := k8sAPI.GetNamespaceWithExtensionLabel(context.Background(), ExtensionName)
 			if err != nil {
 				return err
 			}
@@ -114,7 +115,7 @@ func NewCmdDashboard() *cobra.Command {
 			portforward, err := k8s.NewPortForward(
 				cmd.Context(),
 				k8sAPI,
-				vizNamespace,
+				vizNs.Name,
 				webDeployment,
 				options.host,
 				options.port,

@@ -43,7 +43,7 @@ func TestNewInternalClient(t *testing.T) {
 			Host:   "some-hostname",
 			Path:   "/",
 		}
-		client, err := newPublicClient(apiURL, mockHTTPClient, "linkerd")
+		client, err := newClient(apiURL, mockHTTPClient, "linkerd")
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}

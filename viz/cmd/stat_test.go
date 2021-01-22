@@ -3,13 +3,13 @@ package cmd
 import (
 	"testing"
 
-	"github.com/linkerd/linkerd2/controller/api/public"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	api "github.com/linkerd/linkerd2/viz/metrics-api"
 )
 
 type paramsExp struct {
-	counts  *public.PodCounts
+	counts  *api.PodCounts
 	options *statOptions
 	resNs   []string
 	file    string
@@ -19,7 +19,7 @@ func TestStat(t *testing.T) {
 	options := newStatOptions()
 	t.Run("Returns namespace stats", func(t *testing.T) {
 		testStatCall(paramsExp{
-			counts: &public.PodCounts{
+			counts: &api.PodCounts{
 				MeshedPods:  1,
 				RunningPods: 2,
 				FailedPods:  0,
@@ -32,7 +32,7 @@ func TestStat(t *testing.T) {
 
 	t.Run("Returns pod stats", func(t *testing.T) {
 		testStatCall(paramsExp{
-			counts: &public.PodCounts{
+			counts: &api.PodCounts{
 				Status:      "Running",
 				MeshedPods:  1,
 				RunningPods: 1,
@@ -55,7 +55,7 @@ func TestStat(t *testing.T) {
 	options.outputFormat = jsonOutput
 	t.Run("Returns namespace stats (json)", func(t *testing.T) {
 		testStatCall(paramsExp{
-			counts: &public.PodCounts{
+			counts: &api.PodCounts{
 				MeshedPods:  1,
 				RunningPods: 2,
 				FailedPods:  0,
@@ -78,7 +78,7 @@ func TestStat(t *testing.T) {
 	options.allNamespaces = true
 	t.Run("Returns all namespace stats", func(t *testing.T) {
 		testStatCall(paramsExp{
-			counts: &public.PodCounts{
+			counts: &api.PodCounts{
 				MeshedPods:  1,
 				RunningPods: 2,
 				FailedPods:  0,
@@ -92,7 +92,7 @@ func TestStat(t *testing.T) {
 	options.outputFormat = jsonOutput
 	t.Run("Returns all namespace stats (json)", func(t *testing.T) {
 		testStatCall(paramsExp{
-			counts: &public.PodCounts{
+			counts: &api.PodCounts{
 				MeshedPods:  1,
 				RunningPods: 2,
 				FailedPods:  0,
@@ -107,7 +107,7 @@ func TestStat(t *testing.T) {
 	options.outputFormat = "wide"
 	t.Run("Returns TCP stats", func(t *testing.T) {
 		testStatCall(paramsExp{
-			counts: &public.PodCounts{
+			counts: &api.PodCounts{
 				MeshedPods:  1,
 				RunningPods: 2,
 				FailedPods:  0,
@@ -228,10 +228,10 @@ func TestStat(t *testing.T) {
 }
 
 func testStatCall(exp paramsExp, resourceType string, t *testing.T) {
-	mockClient := &public.MockAPIClient{}
-	response := public.GenStatSummaryResponse("emoji", resourceType, exp.resNs, exp.counts, true, true)
+	mockClient := &api.MockAPIClient{}
+	response := api.GenStatSummaryResponse("emoji", resourceType, exp.resNs, exp.counts, true, true)
 	if resourceType == k8s.TrafficSplit {
-		response = public.GenStatTsResponse("foo-split", resourceType, exp.resNs, true, true)
+		response = api.GenStatTsResponse("foo-split", resourceType, exp.resNs, true, true)
 	}
 
 	mockClient.StatSummaryResponseToReturn = response
