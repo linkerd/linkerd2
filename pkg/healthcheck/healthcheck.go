@@ -22,7 +22,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
-	admissionRegistration "k8s.io/api/admissionregistration/v1beta1"
+	admissionRegistration "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -1714,7 +1714,7 @@ func (hc *HealthChecker) fetchProxyInjectorCaBundle(ctx context.Context) ([]*x50
 
 func (hc *HealthChecker) fetchSpValidatorCaBundle(ctx context.Context) ([]*x509.Certificate, error) {
 
-	vwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, k8s.SPValidatorWebhookConfigName, metav1.GetOptions{})
+	vwc, err := hc.kubeAPI.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, k8s.SPValidatorWebhookConfigName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -1952,7 +1952,7 @@ func (hc *HealthChecker) checkCustomResourceDefinitions(ctx context.Context, sho
 	options := metav1.ListOptions{
 		LabelSelector: hc.controlPlaneComponentsSelector(),
 	}
-	crdList, err := hc.kubeAPI.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().List(ctx, options)
+	crdList, err := hc.kubeAPI.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().List(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -1967,7 +1967,7 @@ func (hc *HealthChecker) checkCustomResourceDefinitions(ctx context.Context, sho
 }
 
 func (hc *HealthChecker) getProxyInjectorMutatingWebhook(ctx context.Context) (*admissionRegistration.MutatingWebhook, error) {
-	mwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Get(ctx, k8s.ProxyInjectorWebhookConfigName, metav1.GetOptions{})
+	mwc, err := hc.kubeAPI.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(ctx, k8s.ProxyInjectorWebhookConfigName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -1989,7 +1989,7 @@ func (hc *HealthChecker) checkMutatingWebhookConfigurations(ctx context.Context,
 	options := metav1.ListOptions{
 		LabelSelector: hc.controlPlaneComponentsSelector(),
 	}
-	mwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().List(ctx, options)
+	mwc, err := hc.kubeAPI.AdmissionregistrationV1().MutatingWebhookConfigurations().List(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -2007,7 +2007,7 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Contex
 	options := metav1.ListOptions{
 		LabelSelector: hc.controlPlaneComponentsSelector(),
 	}
-	vwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().List(ctx, options)
+	vwc, err := hc.kubeAPI.AdmissionregistrationV1().ValidatingWebhookConfigurations().List(ctx, options)
 	if err != nil {
 		return err
 	}

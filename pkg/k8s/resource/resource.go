@@ -6,11 +6,11 @@ import (
 	"io"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	admissionRegistration "k8s.io/api/admissionregistration/v1beta1"
+	admissionRegistration "k8s.io/api/admissionregistration/v1"
 	core "k8s.io/api/core/v1"
 	policy "k8s.io/api/policy/v1beta1"
 	rbac "k8s.io/api/rbac/v1"
-	apiextension "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	apiextension "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	apiRegistration "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
@@ -181,7 +181,7 @@ func fetchKubeSystemRoleBindings(ctx context.Context, k *k8s.KubernetesAPI, opti
 }
 
 func fetchCustomResourceDefinitions(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]Kubernetes, error) {
-	list, err := k.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().List(ctx, options)
+	list, err := k.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().List(ctx, options)
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +224,7 @@ func fetchPodSecurityPolicy(ctx context.Context, k *k8s.KubernetesAPI, options m
 }
 
 func fetchValidatingWebhooksConfiguration(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]Kubernetes, error) {
-	list, err := k.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().List(ctx, options)
+	list, err := k.AdmissionregistrationV1().ValidatingWebhookConfigurations().List(ctx, options)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +238,7 @@ func fetchValidatingWebhooksConfiguration(ctx context.Context, k *k8s.Kubernetes
 }
 
 func fetchMutatingWebhooksConfiguration(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]Kubernetes, error) {
-	list, err := k.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().List(ctx, options)
+	list, err := k.AdmissionregistrationV1().MutatingWebhookConfigurations().List(ctx, options)
 	if err != nil {
 		return nil, err
 	}

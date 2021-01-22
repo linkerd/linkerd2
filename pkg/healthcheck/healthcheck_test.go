@@ -819,7 +819,7 @@ metadata:
     linkerd.io/control-plane-ns: test-ns
 `,
 				`
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: serviceprofiles.linkerd.io
@@ -971,7 +971,7 @@ metadata:
     linkerd.io/control-plane-ns: test-ns
 `,
 				`
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: serviceprofiles.linkerd.io
@@ -979,7 +979,7 @@ metadata:
     linkerd.io/control-plane-ns: test-ns
 `,
 				`
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
@@ -1132,7 +1132,7 @@ metadata:
     linkerd.io/control-plane-ns: test-ns
 `,
 				`
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: serviceprofiles.linkerd.io
@@ -1140,7 +1140,7 @@ metadata:
     linkerd.io/control-plane-ns: test-ns
 `,
 				`
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
@@ -1148,7 +1148,7 @@ metadata:
     linkerd.io/control-plane-ns: test-ns
 `,
 				`
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: linkerd-sp-validator-webhook-config
@@ -1302,7 +1302,7 @@ metadata:
     linkerd.io/control-plane-ns: test-ns
 `,
 				`
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: serviceprofiles.linkerd.io
@@ -1310,7 +1310,7 @@ metadata:
     linkerd.io/control-plane-ns: test-ns
 `,
 				`
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
@@ -1318,7 +1318,7 @@ metadata:
     linkerd.io/control-plane-ns: test-ns
 `,
 				`
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: linkerd-sp-validator-webhook-config
@@ -1957,19 +1957,19 @@ metadata:
   name: cluster-role-binding
   labels:
     linkerd.io/control-plane-ns: test-ns`,
-			`apiVersion: apiextensions.k8s.io/v1beta1
+			`apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: custom-resource-definition
   labels:
     linkerd.io/control-plane-ns: test-ns`,
-			`apiVersion: admissionregistration.k8s.io/v1beta1
+			`apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: mutating-webhook-configuration
   labels:
     linkerd.io/control-plane-ns: test-ns`,
-			`apiVersion: admissionregistration.k8s.io/v1beta1
+			`apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: validating-webhook-configuration
@@ -2019,7 +2019,7 @@ metadata:
     %s
   name: kube-system`, nsLabel),
 		fmt.Sprintf(`
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config

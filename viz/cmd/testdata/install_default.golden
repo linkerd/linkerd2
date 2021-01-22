@@ -1025,7 +1025,7 @@ data:
   tls.crt: dGVzdC10YXAtY3J0LXBlbQ==
   tls.key: dGVzdC10YXAta2V5LXBlbQ==
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-tap-injector-webhook-config
@@ -1040,6 +1040,7 @@ webhooks:
       path: "/"
     caBundle: dGVzdC10YXAtY2EtYnVuZGxl
   failurePolicy: Ignore
+  admissionReviewVersions: ["v1", "v1beta1"]
   reinvocationPolicy: IfNeeded
   rules:
   - operations: [ "CREATE" ]
@@ -1091,7 +1092,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 33e988bace52d67983db9661563009d9e7f2a4877dd05add7300d2f25d2579ba
+        checksum/config: bc00476e81704f0ff91b91f8c7a9e78ae452f4e003791bb755f2021820b459f8
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
         linkerd.io/extension: linkerd-viz

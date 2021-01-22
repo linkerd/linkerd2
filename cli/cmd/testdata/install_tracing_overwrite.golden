@@ -495,7 +495,7 @@ data:
   tls.crt: cHJveHkgaW5qZWN0b3IgY3J0
   tls.key: cHJveHkgaW5qZWN0b3Iga2V5
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
@@ -517,6 +517,7 @@ webhooks:
       path: "/"
     caBundle: cHJveHkgaW5qZWN0b3IgQ0EgYnVuZGxl
   failurePolicy: Ignore
+  admissionReviewVersions: ["v1", "v1beta1"]
   rules:
   - operations: [ "CREATE" ]
     apiGroups: [""]
@@ -581,7 +582,7 @@ data:
   tls.crt: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
   tls.key: cHJvZmlsZSB2YWxpZGF0b3Iga2V5
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: linkerd-sp-validator-webhook-config
@@ -603,6 +604,7 @@ webhooks:
       path: "/"
     caBundle: cHJvZmlsZSB2YWxpZGF0b3IgQ0EgYnVuZGxl
   failurePolicy: Ignore
+  admissionReviewVersions: ["v1", "v1beta1"]
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
     apiGroups: ["linkerd.io"]
