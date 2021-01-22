@@ -290,6 +290,13 @@ func (in *ServiceProfileSpec) DeepCopyInto(out *ServiceProfileSpec) {
 			}
 		}
 	}
+	if in.OpaquePorts != nil {
+		in, out := &in.OpaquePorts, &out.OpaquePorts
+		*out = make(map[uint32]struct{}, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	return
 }
 
