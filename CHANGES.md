@@ -1,6 +1,46 @@
 
 # Changes
 
+## edge-21.1.3
+
+This edge release improves proxy diagnostics and recovery in situations where
+the proxy is temporarily unable to route requests. Additionally, the `viz` and
+`multicluster` CLI sub-commands have been updated for consistency.
+
+Full release notes:
+
+* Added Helm-style `set`, `set-string`, `values`, `set-files` customization
+  flags for the `linkerd install` and `linkerd multicluster install` commands
+* Fixed an issue where `linkerd metrics` could return metrics for the incorrect
+  set of pods when there are overlapping label selectors
+* Added tap-injector to linkerd-viz which is responsible for adding the tap
+  service name environment variable to the Linkerd proxy container
+* Improved diagnostics when the proxy is temporarily unable to route requests
+* Made proxy recovery for a service more robust when the proxy is unable to
+  route requests, even when new requests are being received
+* Added `client` and `server` prefixes in the proxy logs for socket-level errors
+  to indicate which side of the proxy encountered the error
+* Improved jaeger-injector reliability in environments with many resources by
+  adding watch RBAC permissions
+* Added check to confirm whether the jaeger-injector pod is in running state
+  (thanks @yashvardhan-kukreja!)
+* Fixed a crash in the destination controller when EndpointSlices are enabled
+  (thanks @oleh-ozimok!)
+* Added a `linkerd viz check` sub-command to verify the states of the
+  `linkerd-viz` components
+* Added a `log-format` flag to optionally output the control plane component log
+  output as JSON (thanks @mo4islona!)
+* Updated the logic in the `metrics` and `profile` subcommands to use the
+  `namespace` specified by the `current-context` of the KUBECONFIG so that it is
+  no longer necessary to use the `--namespace` flag to query resources in the
+  current namespace. Queries for resources in namespaces other than the
+  current namespace still require the `--namespace` flag
+* Added new pod 'linkerd-metrics-api' set up by `linkerd viz install` that
+  manages all functionality dependent on Prometheus, thus removing most of the
+  dependencies on Prometheus from the linkerd core installation
+* Removed need to have linkerd-viz installed for the
+  `linkerd multicluster check` command to properly work.
+
 ## edge-21.1.2
 
 This edge release continues the work on decoupling non-core Linkerd components.
