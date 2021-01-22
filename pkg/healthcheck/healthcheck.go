@@ -2600,10 +2600,8 @@ func CheckPodsRunning(pods []corev1.Pod, podsNotFoundMsg string) error {
 		return fmt.Errorf(podsNotFoundMsg)
 	}
 	for _, pod := range pods {
-		// Use k8s.GetPodStatus to check for all containers readiness
-		status := k8s.GetPodStatus(pod)
-		if status != running {
-			return fmt.Errorf("%s status is %s", pod.Name, status)
+		if pod.Status.Phase != "Running" {
+			return fmt.Errorf("%s status is %s", pod.Name, pod.Status.Phase)
 		}
 	}
 	return nil
