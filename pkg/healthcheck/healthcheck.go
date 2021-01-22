@@ -2548,6 +2548,7 @@ func CheckForPods(pods []corev1.Pod, deployNames []string) error {
 }
 
 // CheckPodsRunning checks if the given pods are in running state
+// along with containers to be in ready state
 func CheckPodsRunning(pods []corev1.Pod, podsNotFoundMsg string) error {
 	if len(pods) == 0 && podsNotFoundMsg != "" {
 		return fmt.Errorf(podsNotFoundMsg)
@@ -2555,6 +2556,13 @@ func CheckPodsRunning(pods []corev1.Pod, podsNotFoundMsg string) error {
 	for _, pod := range pods {
 		if pod.Status.Phase != "Running" {
 			return fmt.Errorf("%s status is %s", pod.Name, pod.Status.Phase)
+		}
+
+		// check for container readiness
+		for _, containerStatus := range pod.Status.ContainerStatuses {
+			if !containerStatus.Ready {
+				return fmt.Errorf("container %s in pod %s is not ready ", pod.Name, containerStatus.Name)
+			}
 		}
 	}
 	return nil
