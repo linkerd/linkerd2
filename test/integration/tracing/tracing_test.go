@@ -61,17 +61,23 @@ func TestTracing(t *testing.T) {
 			"'kubectl apply' command failed\n%s", out)
 	}
 
-	// wait for jaeger injector to start
-	if err := TestHelper.CheckPods(ctx, tracingNs, "jaeger-injector", 1); err != nil {
-		if rce, ok := err.(*testutil.RestartCountError); ok {
-			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
-		} else {
-			testutil.AnnotatedError(t, "CheckPods timed-out", err)
+	// wait for the jaeger extension
+	checkCmd := []string{"jaeger", "check", "--wait=0"}
+	golden := "check.jaeger.golden"
+	timeout := time.Minute
+	err = TestHelper.RetryFor(timeout, func() error {
+		out, err := TestHelper.LinkerdRun(checkCmd...)
+		if err != nil {
+			return fmt.Errorf("'linkerd jaeger check' command failed\n%s", err)
 		}
-	}
-
-	if err := TestHelper.CheckDeployment(ctx, tracingNs, "jaeger-injector", 1); err != nil {
-		testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", "jaeger-injector", err)
+		err = TestHelper.ValidateOutput(out, golden)
+		if err != nil {
+			return fmt.Errorf("received unexpected output\n%s", err.Error())
+		}
+		return nil
+	})
+	if err != nil {
+		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd jaeger check' command timed-out (%s)", timeout), err)
 	}
 
 	// Emojivoto components

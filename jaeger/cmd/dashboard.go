@@ -79,6 +79,11 @@ func newCmdDashboard() *cobra.Command {
 				return err
 			}
 
+			jaegerNamespace, err := k8sAPI.GetNamespaceWithExtensionLabel(cmd.Context(), jaegerExtensionName)
+			if err != nil {
+				return err
+			}
+
 			signals := make(chan os.Signal, 1)
 			signal.Notify(signals, os.Interrupt)
 			defer signal.Stop(signals)
@@ -86,7 +91,7 @@ func newCmdDashboard() *cobra.Command {
 			portforward, err := k8s.NewPortForward(
 				cmd.Context(),
 				k8sAPI,
-				namespace,
+				jaegerNamespace.Name,
 				jaegerDeployment,
 				options.host,
 				options.port,

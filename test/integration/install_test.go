@@ -404,6 +404,15 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"'kubectl apply' command failed\n%s", out)
 	}
 
+	// Wait for the proxy injector to be up
+	name := "linkerd-proxy-injector"
+	ns := "linkerd"
+	o, err := TestHelper.Kubectl("", "--namespace="+ns, "rollout", "status", "--timeout=120s", "deploy/"+name)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s in namespace %s", name, ns),
+			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
+	}
+
 	// Install Linkerd Viz Extension
 	exec = append(vizCmd, vizArgs...)
 	out, err = TestHelper.LinkerdRun(exec...)
@@ -781,6 +790,26 @@ func TestCheckConfigPostInstall(t *testing.T) {
 
 func TestCheckPostInstall(t *testing.T) {
 	testCheckCommand(t, "", TestHelper.GetVersion(), "", "", true)
+}
+
+func TestCheckViz(t *testing.T) {
+	cmd := []string{"viz", "check", "--wait=0"}
+	golden := "check.viz.golden"
+	timeout := time.Minute
+	err := TestHelper.RetryFor(timeout, func() error {
+		out, err := TestHelper.LinkerdRun(cmd...)
+		if err != nil {
+			return fmt.Errorf("'linkerd viz check' command failed\n%s", err)
+		}
+		err = TestHelper.ValidateOutput(out, golden)
+		if err != nil {
+			return fmt.Errorf("received unexpected output\n%s", err.Error())
+		}
+		return nil
+	})
+	if err != nil {
+		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd viz check' command timed-out (%s)", timeout), err)
+	}
 }
 
 func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
