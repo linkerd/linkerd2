@@ -141,6 +141,18 @@ func (hc *HealthChecker) vizCategory() *healthcheck.Category {
 			}))
 
 	checkers = append(checkers,
+		*healthcheck.NewChecker("linkerd-viz pods are injected").
+			WithHintAnchor("l5d-viz-pods-injection").
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, hc.vizNamespace)
+				if err != nil {
+					return err
+				}
+				return healthcheck.CheckIfDataPlanePodsExist(pods)
+			}))
+
+	checkers = append(checkers,
 		*healthcheck.NewChecker("viz extension pods are running").
 			WithHintAnchor("l5d-viz-pods-running").
 			Warning().
@@ -159,18 +171,6 @@ func (hc *HealthChecker) vizCategory() *healthcheck.Category {
 				}
 
 				return healthcheck.CheckPodsRunning(pods, "")
-			}))
-
-	checkers = append(checkers,
-		*healthcheck.NewChecker("linkerd-viz pods are injected").
-			WithHintAnchor("l5d-viz-pods-injection").
-			Warning().
-			WithCheck(func(ctx context.Context) error {
-				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, hc.vizNamespace)
-				if err != nil {
-					return err
-				}
-				return healthcheck.CheckIfDataPlanePodsExist(pods)
 			}))
 
 	checkers = append(checkers,
