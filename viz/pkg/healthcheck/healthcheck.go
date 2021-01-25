@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
+	"strings"
 
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -183,6 +184,22 @@ func (hc *HealthChecker) vizCategory() *healthcheck.Category {
 			}))
 
 	checkers = append(checkers,
+		*healthcheck.NewChecker("data plane proxy metrics are present in Prometheus").
+			WithHintAnchor("l5d-data-plane-prom").
+			Warning().
+			WithRetryDeadline(hc.RetryDeadline).
+			WithCheck(func(ctx context.Context) (err error) {
+				pods, err := hc.getDataPlanePodsFromVizAPI(ctx)
+				if err != nil {
+					return err
+				}
+
+				// TODO: Check if prometheus is present
+
+				return validateDataPlanePodReporting(pods)
+			}))
+
+	checkers = append(checkers,
 		*healthcheck.NewChecker("viz extension self-check").
 			WithHintAnchor("l5d-api-control-api").
 			Fatal().
@@ -195,6 +212,54 @@ func (hc *HealthChecker) vizCategory() *healthcheck.Category {
 			}))
 
 	return healthcheck.NewCategory(LinkerdVizExtensionCheck, checkers, true)
+}
+
+func (hc *HealthChecker) getDataPlanePodsFromVizAPI(ctx context.Context) ([]*pb.Pod, error) {
+
+	req := &pb.ListPodsRequest{}
+	if hc.DataPlaneNamespace != "" {
+		req.Selector = &pb.ResourceSelection{
+			Resource: &pb.Resource{
+				Namespace: hc.DataPlaneNamespace,
+			},
+		}
+	}
+
+	resp, err := hc.VizAPIClient().ListPods(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	pods := make([]*pb.Pod, 0)
+	for _, pod := range resp.GetPods() {
+		if pod.ControllerNamespace == hc.ControlPlaneNamespace {
+			pods = append(pods, pod)
+		}
+	}
+
+	return pods, nil
+}
+
+func validateDataPlanePodReporting(pods []*pb.Pod) error {
+	notInPrometheus := []string{}
+
+	for _, p := range pods {
+		// the `Added` field indicates the pod was found in Prometheus
+		if !p.Added {
+			notInPrometheus = append(notInPrometheus, p.Name)
+		}
+	}
+
+	errMsg := ""
+	if len(notInPrometheus) > 0 {
+		errMsg = fmt.Sprintf("Data plane metrics not found for %s.", strings.Join(notInPrometheus, ", "))
+	}
+
+	if errMsg != "" {
+		return fmt.Errorf(errMsg)
+	}
+
+	return nil
 }
 
 func fetchTapCaBundle(ctx context.Context, kubeAPI *k8s.KubernetesAPI) ([]*x509.Certificate, error) {

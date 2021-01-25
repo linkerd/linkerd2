@@ -12,8 +12,9 @@ import (
 )
 
 type checkOptions struct {
-	wait   time.Duration
-	output string
+	wait      time.Duration
+	namespace string
+	output    string
 }
 
 func newCheckOptions() *checkOptions {
@@ -52,7 +53,7 @@ code.`,
 
 	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
 	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
-
+	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	return cmd
 }
 
@@ -76,6 +77,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		ImpersonateGroup:      impersonateGroup,
 		APIAddr:               apiAddr,
 		RetryDeadline:         time.Now().Add(options.wait),
+		DataPlaneNamespace:    options.namespace,
 	})
 
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
