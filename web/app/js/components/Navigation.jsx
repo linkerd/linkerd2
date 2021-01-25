@@ -25,6 +25,7 @@ import Toolbar from '@material-ui/core/Toolbar';
 import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
 import Version from './Version.jsx';
+import _find from 'lodash/find';
 import _maxBy from 'lodash/maxBy';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { faCloud } from '@fortawesome/free-solid-svg-icons/faCloud';
@@ -43,6 +44,7 @@ import { withStyles } from '@material-ui/core/styles';
 import yellow from '@material-ui/core/colors/yellow';
 
 const jsonFeedUrl = 'https://linkerd.io/dashboard/index.json';
+const multiclusterExtensionName = 'linkerd-multicluster';
 const localStorageKey = 'linkerd-updates-last-clicked';
 const minBrowserWidth = 960;
 
@@ -206,12 +208,14 @@ class NavigationBase extends React.Component {
       loaded: false,
       error: null,
       showNamespaceChangeDialog: false,
+      showGatewayLink: false,
     };
   }
 
   componentDidMount() {
     this.startServerPolling();
     this.fetchVersion();
+    this.checkMulticlusterExtension();
     this.fetchLatestCommunityUpdate();
     this.updateWindowDimensions();
     window.addEventListener('resize', this.updateWindowDimensions);
@@ -314,6 +318,17 @@ class NavigationBase extends React.Component {
             }
           }
         }
+      })
+      .catch(this.handleApiError);
+  }
+
+  checkMulticlusterExtension() {
+    this.api.setCurrentRequests([this.api.fetchExtensions()]);
+
+    this.serverPromise = Promise.all(this.api.getCurrentPromises())
+      .then(([extList]) => {
+        const mcExists = _find(extList, e => e.extensionName === multiclusterExtensionName);
+        this.setState({ showGatewayLink: mcExists || false });
       })
       .catch(this.handleApiError);
   }
@@ -430,7 +445,7 @@ class NavigationBase extends React.Component {
   render() {
     const { api, classes, selectedNamespace, ChildComponent, uuid, releaseVersion, ...otherProps } = this.props;
     const { namespaces, formattedNamespaceFilter, hideUpdateBadge, isLatest, latestVersion,
-      showNamespaceChangeDialog, newNamespace, mobileSidebarOpen, error } = this.state;
+      showNamespaceChangeDialog, newNamespace, mobileSidebarOpen, error, showGatewayLink } = this.state;
     const filteredNamespaces = namespaces.filter(ns => {
       return ns.name.match(formattedNamespaceFilter);
     });
@@ -458,7 +473,7 @@ class NavigationBase extends React.Component {
           { this.menuItem('/controlplane', <Trans>menuItemControlPlane</Trans>,
             <FontAwesomeIcon icon={faCloud} className={classes.shrinkCloudIcon} />) }
 
-          { this.menuItem('/gateways', <Trans>menuItemGateway</Trans>,
+          { showGatewayLink && this.menuItem('/gateways', <Trans>menuItemGateway</Trans>,
             <FontAwesomeIcon icon={faDungeon} className={classes.shrinkIcon} />) }
 
         </MenuList>

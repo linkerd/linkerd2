@@ -441,6 +441,28 @@ func (h *handler) handleAPIResourceDefinition(w http.ResponseWriter, req *http.R
 	w.Write(resourceDefinition)
 }
 
+func (h *handler) handleGetExtensions(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	ctx := req.Context()
+	linkerdExtensionLabel := "linkerd.io/extension"
+	nsList, err := h.k8sAPI.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
+		LabelSelector: linkerdExtensionLabel,
+	})
+	if err != nil {
+		renderJSONError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	resp := []map[string]interface{}{}
+	for _, ns := range nsList.Items {
+		resp = append(resp, map[string]interface{}{
+			"extensionName": ns.GetLabels()[linkerdExtensionLabel],
+			"namespace": ns.Name,
+		})
+	}
+
+	renderJSON(w, resp)
+}
+
 func (h *handler) handleAPIGateways(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	window := req.FormValue("window")
 	if window == "" {
