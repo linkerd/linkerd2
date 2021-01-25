@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
-	tap "github.com/linkerd/linkerd2/controller/tap-injector"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/viz/metrics-api/client"
@@ -275,7 +275,7 @@ func (hc *HealthChecker) checkForTapConfiguration(ctx context.Context, pods []co
 			// Check if Tap is disabled
 			if !k8s.IsTapDisabled(pod) && !k8s.IsTapDisabled(ns) {
 				// Check for Configuration
-				if !k8s.CheckForEnv(k8s.GetProxy(pod), tap.TapSvcEnvKey) {
+				if !k8s.CheckForEnv(k8s.GetProxy(pod), inject.TapSvcEnvKey) {
 					podsWithoutTap = append(podsWithoutTap, pod.Name)
 				}
 			}

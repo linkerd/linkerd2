@@ -8,16 +8,12 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/webhook"
+	"github.com/linkerd/linkerd2/pkg/inject"
 	labels "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/common/log"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
-)
-
-const (
-	// TapSvcEnvKey is the environment key that the proxy reads to know the tap svc name
-	TapSvcEnvKey = "LINKERD2_PROXY_TAP_SVC_NAME"
 )
 
 // Params holds the values used in the patch template.
@@ -80,7 +76,7 @@ func Mutate(tapSvcName string) webhook.Handler {
 
 func alreadyMutated(container corev1.Container) bool {
 	for _, envVar := range container.Env {
-		if envVar.Name == TapSvcEnvKey {
+		if envVar.Name == inject.TapSvcEnvKey {
 			return true
 		}
 	}

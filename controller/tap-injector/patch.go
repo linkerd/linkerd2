@@ -1,6 +1,10 @@
 package tapinjector
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/linkerd/linkerd2/pkg/inject"
+)
 
 var tpl = fmt.Sprintf(`[
   {
@@ -11,4 +15,4 @@ var tpl = fmt.Sprintf(`[
       "value": "{{.ProxyTapSvcName}}"
     }
   }
-]`, TapSvcEnvKey)
+]`, inject.TapSvcEnvKey)
