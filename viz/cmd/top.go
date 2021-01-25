@@ -20,6 +20,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/tap"
 	api "github.com/linkerd/linkerd2/viz/metrics-api"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	vizAPI "github.com/linkerd/linkerd2/viz/pkg/api"
 	runewidth "github.com/mattn/go-runewidth"
 	termbox "github.com/nsf/termbox-go"
 	log "github.com/sirupsen/logrus"
@@ -325,17 +326,14 @@ func NewCmdTop() *cobra.Command {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
 			}
 
-			hcOptions := healthcheck.Options{
+			vizAPI.CheckClientOrExit(healthcheck.Options{
 				ControlPlaneNamespace: controlPlaneNamespace,
 				KubeConfig:            kubeconfigPath,
 				Impersonate:           impersonate,
 				ImpersonateGroup:      impersonateGroup,
 				KubeContext:           kubeContext,
 				APIAddr:               apiAddr,
-			}
-
-			// ensure linkerd-viz
-			checkForViz(hcOptions)
+			})
 
 			requestParams := util.TapRequestParams{
 				Resource:      strings.Join(args, "/"),

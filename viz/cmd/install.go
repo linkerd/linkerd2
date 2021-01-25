@@ -13,6 +13,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	api "github.com/linkerd/linkerd2/pkg/public"
 	"github.com/linkerd/linkerd2/viz/static"
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -74,10 +75,18 @@ A full list of configurable values can be found at https://www.github.com/linker
 					return fmt.Errorf("could not find a Linkerd installation")
 				}
 
-				// Wait for the proxy-injector to be up and running
-				checkInjectorRunningOrRetryOrExit(wait)
-			}
+				// Wait for the core extension to be up and running
+				api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
+					ControlPlaneNamespace: controlPlaneNamespace,
+					KubeConfig:            kubeconfigPath,
+					KubeContext:           kubeContext,
+					Impersonate:           impersonate,
+					ImpersonateGroup:      impersonateGroup,
+					APIAddr:               apiAddr,
+					RetryDeadline:         time.Now().Add(wait),
+				}, true)
 
+			}
 			return install(os.Stdout, options, ha)
 		},
 	}
@@ -183,24 +192,4 @@ func render(w io.Writer, valuesOverrides map[string]interface{}) error {
 
 	_, err = w.Write(buf.Bytes())
 	return err
-}
-
-func checkInjectorRunningOrRetryOrExit(retryDeadline time.Duration) {
-	checks := []healthcheck.CategoryID{
-		healthcheck.KubernetesAPIChecks,
-		healthcheck.LinkerdControlPlaneExistenceChecks,
-		healthcheck.LinkerdAPIChecks,
-	}
-
-	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
-		ControlPlaneNamespace: controlPlaneNamespace,
-		KubeConfig:            kubeconfigPath,
-		KubeContext:           kubeContext,
-		Impersonate:           impersonate,
-		ImpersonateGroup:      impersonateGroup,
-		APIAddr:               apiAddr,
-		RetryDeadline:         time.Now().Add(retryDeadline),
-	})
-
-	hc.RunChecks(exitOnError)
 }

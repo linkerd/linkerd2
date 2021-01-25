@@ -2,12 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"regexp"
 
 	"github.com/fatih/color"
-	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	vizHealthCheck "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -84,44 +81,4 @@ func NewCmdViz() *cobra.Command {
 	vizCmd.AddCommand(newCmdCheck())
 
 	return vizCmd
-}
-
-// checkForViz runs the kubernetesAPI, LinkerdControlPlaneExistence and the VizExtension category checks
-// with a HealthChecker created by the passed options.
-// For check failures, the process is exited with an error message based on the failed category.
-func checkForViz(hcOptions healthcheck.Options) {
-	checks := []healthcheck.CategoryID{
-		healthcheck.KubernetesAPIChecks,
-		healthcheck.LinkerdControlPlaneExistenceChecks,
-		vizHealthCheck.LinkerdVizExtensionCheck,
-	}
-
-	hc := healthcheck.NewHealthChecker(checks, &hcOptions)
-
-	hc.RunChecks(exitOnError)
-}
-
-func exitOnError(result *healthcheck.CheckResult) {
-	if result.Retry {
-		fmt.Fprintln(os.Stderr, "Waiting for viz to become available")
-		return
-	}
-
-	if result.Err != nil && !result.Warning {
-		var msg string
-		switch result.Category {
-		case healthcheck.KubernetesAPIChecks:
-			msg = "Cannot connect to Kubernetes"
-		case healthcheck.LinkerdControlPlaneExistenceChecks:
-			msg = "Cannot find Linkerd"
-		case vizHealthCheck.LinkerdVizExtensionCheck:
-			msg = "Cannot find viz extension"
-		}
-		fmt.Fprintf(os.Stderr, "%s: %s\n", msg, result.Err)
-
-		checkCmd := "linkerd viz check"
-		fmt.Fprintf(os.Stderr, "Validate linkerd-viz install with: %s\n", checkCmd)
-
-		os.Exit(1)
-	}
 }

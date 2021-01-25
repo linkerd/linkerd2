@@ -73,17 +73,6 @@ This command will only display traffic which is sent to a service that has a Ser
 				return fmt.Errorf("error creating metrics request while making routes request: %v", err)
 			}
 
-			hcOptions := healthcheck.Options{
-				ControlPlaneNamespace: controlPlaneNamespace,
-				KubeConfig:            kubeconfigPath,
-				Impersonate:           impersonate,
-				ImpersonateGroup:      impersonateGroup,
-				KubeContext:           kubeContext,
-				APIAddr:               apiAddr,
-			}
-			// ensure linkerd-viz
-			checkForViz(hcOptions)
-
 			output, err := requestRouteStatsFromAPI(
 				api.CheckClientOrExit(healthcheck.Options{
 					ControlPlaneNamespace: controlPlaneNamespace,

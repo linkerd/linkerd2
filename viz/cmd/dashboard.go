@@ -9,7 +9,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	api "github.com/linkerd/linkerd2/pkg/public"
+	"github.com/linkerd/linkerd2/viz/pkg/api"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
@@ -82,7 +82,8 @@ func NewCmdDashboard() *cobra.Command {
 					options.show, showLinkerd, showGrafana, showURL)
 			}
 
-			hcOptions := healthcheck.Options{
+			// ensure we can connect to the viz API before starting the proxy
+			api.CheckClientOrRetryOrExit(healthcheck.Options{
 				ControlPlaneNamespace: controlPlaneNamespace,
 				KubeConfig:            kubeconfigPath,
 				Impersonate:           impersonate,
@@ -90,13 +91,7 @@ func NewCmdDashboard() *cobra.Command {
 				KubeContext:           kubeContext,
 				APIAddr:               apiAddr,
 				RetryDeadline:         time.Now().Add(options.wait),
-			}
-
-			// ensure we can connect to the public API before starting the proxy
-			api.CheckPublicAPIClientOrRetryOrExit(hcOptions, true)
-
-			// ensure linkerd-viz
-			checkForViz(hcOptions)
+			}, true)
 
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 			if err != nil {
