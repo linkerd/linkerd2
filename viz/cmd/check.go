@@ -12,6 +12,7 @@ import (
 )
 
 type checkOptions struct {
+	proxy     bool
 	wait      time.Duration
 	namespace string
 	output    string
@@ -52,6 +53,7 @@ code.`,
 	}
 
 	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
+	cmd.PersistentFlags().BoolVar(&options.proxy, "proxy", options.proxy, "Also run data-plane checks, to determine if the data plane is healthy")
 	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	return cmd
@@ -67,6 +69,10 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.LinkerdControlPlaneExistenceChecks,
 		vizHealthCheck.LinkerdVizExtensionCheck,
+	}
+
+	if options.proxy {
+		checks = append(checks, vizHealthCheck.LinkerdVizExtensionDataPlaneCheck)
 	}
 
 	hc := vizHealthCheck.NewHealthChecker(checks, &healthcheck.Options{

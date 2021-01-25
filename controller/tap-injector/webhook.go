@@ -15,6 +15,11 @@ import (
 	"k8s.io/client-go/tools/record"
 )
 
+const (
+	// TapSvcEnvKey is the environment key that the proxy reads to know the tap svc name
+	TapSvcEnvKey = "LINKERD2_PROXY_TAP_SVC_NAME"
+)
+
 // Params holds the values used in the patch template.
 type Params struct {
 	ProxyIndex      int
@@ -75,7 +80,7 @@ func Mutate(tapSvcName string) webhook.Handler {
 
 func alreadyMutated(container corev1.Container) bool {
 	for _, envVar := range container.Env {
-		if envVar.Name == "LINKERD2_PROXY_TAP_SVC_NAME" {
+		if envVar.Name == TapSvcEnvKey {
 			return true
 		}
 	}
