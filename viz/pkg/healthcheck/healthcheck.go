@@ -47,16 +47,15 @@ func NewHealthChecker(categoryIDs []healthcheck.CategoryID, options *healthcheck
 	parentHC := healthcheck.NewHealthChecker(categoryIDs, options)
 	hc := &HealthChecker{HealthChecker: parentHC}
 
-	vizCategories := hc.vizCategory()
-	checkMap := map[healthcheck.CategoryID]struct{}{}
-	for _, category := range categoryIDs {
-		checkMap[category] = struct{}{}
+	vizCheckMap := map[healthcheck.CategoryID]healthcheck.Category{}
+	for _, category := range hc.vizCategories() {
+		vizCheckMap[category.ID] = category
 	}
 
-	// Append Only the categories that aare passed
-	for i := range vizCategories {
-		if _, ok := checkMap[vizCategories[i].ID]; ok {
-			parentHC.AppendCategories(vizCategories[i])
+	// only append incoming check categories that are also in the vizCheckMap
+	for _, id := range categoryIDs {
+		if _, ok := vizCheckMap[id]; ok {
+			parentHC.AppendCategories(vizCheckMap[id])
 		}
 	}
 
@@ -73,7 +72,7 @@ func (hc *HealthChecker) RunChecks(observer healthcheck.CheckObserver) bool {
 	return hc.HealthChecker.RunChecks(observer)
 }
 
-func (hc *HealthChecker) vizCategory() []healthcheck.Category {
+func (hc *HealthChecker) vizCategories() []healthcheck.Category {
 	return []healthcheck.Category{
 		*healthcheck.NewCategory(LinkerdVizExtensionCheck, []healthcheck.Checker{
 			*healthcheck.NewChecker("linkerd-viz Namespace exists").
