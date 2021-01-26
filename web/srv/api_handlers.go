@@ -456,7 +456,7 @@ func (h *handler) handleGetExtensions(w http.ResponseWriter, req *http.Request, 
 	for _, ns := range nsList.Items {
 		resp = append(resp, map[string]interface{}{
 			"extensionName": ns.GetLabels()[linkerdExtensionLabel],
-			"namespace": ns.Name,
+			"namespace":     ns.Name,
 		})
 	}
 
