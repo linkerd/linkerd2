@@ -381,6 +381,18 @@ upgrade_test() {
   fi
 
   install_version "$install_url" "$upgrade_version"
+
+  # Install Viz if the version is edge
+  # TODO: Enable this also for stable once 2.10 is out
+  if [ "$release_channel" == "edge" ]; then
+    local linkerd_path=$tmp/.linkerd2/bin/linkerd
+    (
+        set -x
+        "$linkerd_path" viz install | kubectl --context="$context" apply -f - 2>&1
+    )
+    exit_on_err "upgrade_test() - installing viz extension in $upgrade_version failed"
+  fi
+
   run_test "$test_directory/install_test.go" --upgrade-from-version="$upgrade_version"
 }
 
