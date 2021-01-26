@@ -104,6 +104,7 @@ func NewCmdEdges() *cobra.Command {
 				KubeContext:           kubeContext,
 				APIAddr:               apiAddr,
 			})
+
 			c := make(chan indexedEdgeResults, len(reqs))
 			for num, req := range reqs {
 				go func(num int, req *pb.EdgesRequest) {
