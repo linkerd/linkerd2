@@ -36,7 +36,7 @@ check-for-linkerd() {
   fi
 
   if [[ -z "${grafana_pod// }" ]]; then
-    err 'Controller is not running. Have you installed Linkerd?'
+    err 'Grafana is not running. Have you installed Linkerd-Viz?'
     exit 1
   fi
 }
