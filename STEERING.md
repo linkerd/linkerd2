@@ -6,7 +6,7 @@ voice of the user, and works with the Linkerd maintainers to help guide
 development efforts towards solving concrete and immediate problems for Linkerd
 adopters.
 
-# Responsibilities
+## Responsibilities
 
 The Steering Committee’s responsibilities are to:
 
@@ -19,7 +19,7 @@ The Steering Committee’s responsibilities are to:
 4. Provide neutral mediation for non-technical disputes.
 5. Develop and maintain a project continuity plan.
 
-# Membership
+## Membership
 
 The Steering Committee comprises at most 7 people. To be eligible for
 membership in the Steering Committee, you must:
@@ -39,13 +39,12 @@ Membership expires if any of the eligibility conditions is unmet, or after one
 year. Members may seek reinstatement immediately in accordance with the rules
 above.
 
-# Meetings
+## Meetings
 
 Meetings will happen periodically not less than once a quarter. Recordings and
 minutes will be posted publicly.
 
-# Changes to this charter
+## Changes to this charter
 
 Changes to this charter must be approved by a majority of Steering Committee
 members and a majority of Linkerd maintainers.
-
