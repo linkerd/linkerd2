@@ -181,20 +181,6 @@ func (hc *HealthChecker) vizCategories() []healthcheck.Category {
 					hc.vizAPIClient, err = client.NewExternalClient(ctx, hc.vizNamespace, hc.KubeAPIClient())
 					return
 				}),
-			*healthcheck.NewChecker("data plane proxy metrics are present in Prometheus").
-				WithHintAnchor("l5d-data-plane-prom").
-				Warning().
-				WithRetryDeadline(hc.RetryDeadline).
-				WithCheck(func(ctx context.Context) (err error) {
-					pods, err := hc.getDataPlanePodsFromVizAPI(ctx)
-					if err != nil {
-						return err
-					}
-
-					// TODO: Check if prometheus is present
-
-					return validateDataPlanePodReporting(pods)
-				}),
 			*healthcheck.NewChecker("viz extension self-check").
 				WithHintAnchor("l5d-api-control-api").
 				Fatal().
@@ -218,9 +204,23 @@ func (hc *HealthChecker) vizCategories() []healthcheck.Category {
 					}
 					return hc.CheckNamespace(ctx, hc.DataPlaneNamespace, true)
 				}),
+			*healthcheck.NewChecker("data plane proxy metrics are present in Prometheus").
+				WithHintAnchor("l5d-data-plane-prom").
+				Warning().
+				WithRetryDeadline(hc.RetryDeadline).
+				WithCheck(func(ctx context.Context) (err error) {
+					pods, err := hc.getDataPlanePodsFromVizAPI(ctx)
+					if err != nil {
+						return err
+					}
+
+					// TODO: Check if prometheus is present
+
+					return validateDataPlanePodReporting(pods)
+				}),
 			*healthcheck.NewChecker("data-plane pods have the correct tap configuration").
 				WithHintAnchor("l5d-viz-data-plane-tap").
-				Fatal().
+				Warning().
 				WithCheck(func(ctx context.Context) error {
 					pods, err := hc.GetDataPlanePods(ctx)
 					if err != nil {
