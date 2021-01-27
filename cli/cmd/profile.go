@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"time"
 
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -20,10 +19,7 @@ type profileOptions struct {
 	template      bool
 	openAPI       string
 	proto         string
-	tap           string
 	ignoreCluster bool
-	tapDuration   time.Duration
-	tapRouteLimit uint
 }
 
 func newProfileOptions() *profileOptions {
@@ -32,10 +28,7 @@ func newProfileOptions() *profileOptions {
 		template:      false,
 		openAPI:       "",
 		proto:         "",
-		tap:           "",
 		ignoreCluster: false,
-		tapDuration:   5 * time.Second,
-		tapRouteLimit: 20,
 	}
 }
 
@@ -50,17 +43,10 @@ func (options *profileOptions) validate() error {
 	if options.proto != "" {
 		outputs++
 	}
-	if options.tap != "" {
-		outputs++
-	}
 	if outputs != 1 {
-		return errors.New("You must specify exactly one of --template or --open-api or --proto or --tap")
+		return errors.New("You must specify exactly one of --template or --open-api or --proto")
 	}
 
-	// service profile generation based on tap data requires access to k8s cluster
-	if options.ignoreCluster && options.tap != "" {
-		return errors.New("--ignore-cluster and --tap flags are mutually exclusive; SP generation based on tap data requires access-check to k8s cluster")
-	}
 	// a DNS-1035 label must consist of lower case alphanumeric characters or '-',
 	// start with an alphabetic character, and end with an alphanumeric character
 	if errs := validation.IsDNS1035Label(options.name); len(errs) != 0 {
@@ -82,7 +68,7 @@ func newCmdProfile() *cobra.Command {
 	options := newProfileOptions()
 
 	cmd := &cobra.Command{
-		Use:   "profile [flags] (--template | --open-api file | --proto file | --tap resource) (SERVICE)",
+		Use:   "profile [flags] (--template | --open-api file | --proto file) (SERVICE)",
 		Short: "Output service profile config for Kubernetes",
 		Long:  "Output service profile config for Kubernetes.",
 		Example: `  # Output a basic template to apply after modification.
@@ -93,9 +79,6 @@ func newCmdProfile() *cobra.Command {
 
   # Generate a profile from a protobuf definition.
   linkerd profile -n emojivoto --proto Voting.proto vote-svc
-
-  # Generate a profile by watching live traffic based off tap data.
-  linkerd profile -n emojivoto web-svc --tap deploy/web --tap-duration 10s --tap-route-limit 5
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -112,7 +95,6 @@ func newCmdProfile() *cobra.Command {
 			}
 			// performs an online profile generation and access-check to k8s cluster to extract
 			// clusterDomain from linkerd configuration
-			// profile generation based on tap data requires access to k8s cluster
 			if !options.ignoreCluster {
 				var err error
 				k8sAPI, err = k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
@@ -135,8 +117,6 @@ func newCmdProfile() *cobra.Command {
 				return profiles.RenderProfileTemplate(options.namespace, options.name, clusterDomain, os.Stdout)
 			} else if options.openAPI != "" {
 				return profiles.RenderOpenAPI(options.openAPI, options.namespace, options.name, clusterDomain, os.Stdout)
-			} else if options.tap != "" {
-				return profiles.RenderTapOutputProfile(cmd.Context(), k8sAPI, options.tap, options.namespace, options.name, clusterDomain, options.tapDuration, int(options.tapRouteLimit), os.Stdout)
 			} else if options.proto != "" {
 				return profiles.RenderProto(options.proto, options.namespace, options.name, clusterDomain, os.Stdout)
 			}
@@ -148,9 +128,6 @@ func newCmdProfile() *cobra.Command {
 
 	cmd.PersistentFlags().BoolVar(&options.template, "template", options.template, "Output a service profile template")
 	cmd.PersistentFlags().StringVar(&options.openAPI, "open-api", options.openAPI, "Output a service profile based on the given OpenAPI spec file")
-	cmd.PersistentFlags().StringVar(&options.tap, "tap", options.tap, "Output a service profile based on tap data for the given target resource")
-	cmd.PersistentFlags().DurationVar(&options.tapDuration, "tap-duration", options.tapDuration, "Duration over which tap data is collected (for example: \"10s\", \"1m\", \"10m\")")
-	cmd.PersistentFlags().UintVar(&options.tapRouteLimit, "tap-route-limit", options.tapRouteLimit, "Max number of routes to add to the profile")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the service")
 	cmd.PersistentFlags().StringVar(&options.proto, "proto", options.proto, "Output a service profile based on the given Protobuf spec file")
 	cmd.PersistentFlags().BoolVar(&options.ignoreCluster, "ignore-cluster", options.ignoreCluster, "Output a service profile through offline generation")

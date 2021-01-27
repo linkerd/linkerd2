@@ -1,4 +1,4 @@
-package profiles
+package cmd
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/util"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -95,7 +96,7 @@ func TestTapToServiceProfile(t *testing.T) {
 	kubeAPI.Config.Host = ts.URL
 
 	expectedServiceProfile := sp.ServiceProfile{
-		TypeMeta: serviceProfileMeta,
+		TypeMeta: profiles.ServiceProfileMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name + "." + namespace + ".svc." + clusterDomain,
 			Namespace: namespace,
@@ -125,7 +126,7 @@ func TestTapToServiceProfile(t *testing.T) {
 		t.Fatalf("Failed to create ServiceProfile: %v", err)
 	}
 
-	err = ServiceProfileYamlEquals(actualServiceProfile, expectedServiceProfile)
+	err = profiles.ServiceProfileYamlEquals(actualServiceProfile, expectedServiceProfile)
 	if err != nil {
 		t.Fatalf("ServiceProfiles are not equal: %v", err)
 	}

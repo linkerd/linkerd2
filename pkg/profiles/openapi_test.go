@@ -41,7 +41,7 @@ func TestSwaggerToServiceProfile(t *testing.T) {
 	}
 
 	expectedServiceProfile := sp.ServiceProfile{
-		TypeMeta: serviceProfileMeta,
+		TypeMeta: ServiceProfileMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name + "." + namespace + ".svc." + clusterDomain,
 			Namespace: namespace,

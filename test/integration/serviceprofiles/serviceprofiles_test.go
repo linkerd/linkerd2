@@ -101,6 +101,7 @@ func testProfiles(t *testing.T) {
 			sourceFlag := fmt.Sprintf("--%s", tc.sourceName)
 			cmd := []string{"profile", "--namespace", tc.namespace, tc.spName, sourceFlag}
 			if tc.sourceName == "tap" {
+				cmd = append([]string{"viz"}, cmd...)
 				tc.args = []string{
 					tc.deployName,
 					"--tap-route-limit",

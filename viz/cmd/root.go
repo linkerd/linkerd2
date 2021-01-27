@@ -79,6 +79,7 @@ func NewCmdViz() *cobra.Command {
 	vizCmd.AddCommand(NewCmdDashboard())
 	vizCmd.AddCommand(newCmdUninstall())
 	vizCmd.AddCommand(newCmdCheck())
+	vizCmd.AddCommand(newCmdProfile())
 
 	return vizCmd
 }
