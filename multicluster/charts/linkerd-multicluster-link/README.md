@@ -1,4 +1,4 @@
-# linkerd2-multicluster-link
+# linkerd-multicluster-link
 
 A helm chart containing the resources to enable mirroring
 of services from a remote cluster.
