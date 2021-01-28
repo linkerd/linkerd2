@@ -68,11 +68,6 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.LinkerdControlPlaneExistenceChecks,
-		vizHealthCheck.LinkerdVizExtensionCheck,
-	}
-
-	if options.proxy {
-		checks = append(checks, vizHealthCheck.LinkerdVizExtensionDataPlaneCheck)
 	}
 
 	hc := vizHealthCheck.NewHealthChecker(checks, &healthcheck.Options{
@@ -86,6 +81,10 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		DataPlaneNamespace:    options.namespace,
 	})
 
+	hc.AppendCategories(hc.VizCategory())
+	if options.proxy {
+		hc.AppendCategories(hc.VizDataPlaneCategory())
+	}
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
 	if !success {

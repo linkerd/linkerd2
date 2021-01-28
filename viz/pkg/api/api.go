@@ -25,7 +25,6 @@ func CheckClientOrExit(hcOptions healthcheck.Options) pb.ApiClient {
 func CheckClientOrRetryOrExit(hcOptions healthcheck.Options, apiChecks bool) pb.ApiClient {
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
-		vizHealthCheck.LinkerdVizExtensionCheck,
 	}
 
 	if apiChecks {
@@ -33,6 +32,8 @@ func CheckClientOrRetryOrExit(hcOptions healthcheck.Options, apiChecks bool) pb.
 	}
 
 	hc := vizHealthCheck.NewHealthChecker(checks, &hcOptions)
+
+	hc.AppendCategories(hc.VizCategory())
 
 	hc.RunChecks(exitOnError)
 	return hc.VizAPIClient()
