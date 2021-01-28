@@ -21,6 +21,13 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+// TestTargetTraffic inspects the target cluster's web-svc pod to see if the
+// source cluster's vote-bot has been able to hit it with requests. If it has
+// successfully issued requests, then we'll see log messages indicating that the
+// web-svc can't reach the voting-svc (because it's not running).
+//
+// TODO it may be clearer to invoke `linkerd metrics` to check whether we see
+// connections from the gateway pod to the web-svc?
 func TestTargetTraffic(t *testing.T) {
 	timeout := time.Minute
 	err := TestHelper.RetryFor(timeout, func() error {
