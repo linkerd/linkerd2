@@ -262,17 +262,15 @@ func (hc *HealthChecker) getDataPlanePodsFromVizAPI(ctx context.Context) ([]*pb.
 func (hc *HealthChecker) checkForTapConfiguration(ctx context.Context, pods []corev1.Pod) error {
 	var podsWithoutTap []string
 	for _, pod := range pods {
-		if pod.Namespace != hc.vizNamespace && pod.Namespace != hc.ControlPlaneNamespace {
-			ns, err := hc.KubeAPIClient().CoreV1().Namespaces().Get(ctx, pod.Namespace, metav1.GetOptions{})
-			if err != nil {
-				return err
-			}
-			// Check if Tap is disabled
-			if !k8s.IsTapDisabled(pod) && !k8s.IsTapDisabled(ns) {
-				// Check for Configuration
-				if !k8s.CheckForEnv(k8s.GetProxy(pod), inject.TapSvcEnvKey) {
-					podsWithoutTap = append(podsWithoutTap, fmt.Sprintf("* %s", pod.Name))
-				}
+		ns, err := hc.KubeAPIClient().CoreV1().Namespaces().Get(ctx, pod.Namespace, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		// Check if Tap is disabled
+		if !k8s.IsTapDisabled(pod) && !k8s.IsTapDisabled(ns) {
+			// Check for Configuration
+			if !k8s.CheckForEnv(k8s.GetProxy(pod), inject.TapSvcEnvKey) {
+				podsWithoutTap = append(podsWithoutTap, fmt.Sprintf("* %s", pod.Name))
 			}
 		}
 	}
