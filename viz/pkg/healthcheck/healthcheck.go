@@ -46,7 +46,7 @@ type HealthChecker struct {
 // The parentCheckIDs are the category IDs of the linkerd core checks that
 // are to be ran together with this instance
 // The returned instance does not contain any of the viz Categories and
-// to be explicitely added by using hc.AppendCategories
+// to be explicitly added by using hc.AppendCategories
 func NewHealthChecker(parentCheckIDs []healthcheck.CategoryID, options *healthcheck.Options) *HealthChecker {
 	parentHC := healthcheck.NewHealthChecker(parentCheckIDs, options)
 	return &HealthChecker{HealthChecker: parentHC}
