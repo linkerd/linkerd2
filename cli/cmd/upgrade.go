@@ -251,7 +251,7 @@ func upgrade(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, stage
 			return bytes.Buffer{}, err
 		}
 	}
-	// if we fails to fetch linkerd-config-overrides secret;
+	// if we fail to fetch linkerd-config-overrides secret;
 	// Linkerd maybe installed using Helm installation,
 	// where linkerd-config-overrides secret doesn't exist
 	if values == nil {
