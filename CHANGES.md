@@ -17,8 +17,8 @@ the robustness of the opaque transport.
 * Fixed an issue that could cause the inbound proxy to fail meshed HTTP/1
   requests from older proxies (from the stable-2.8.x vintage)
 * Changed opaque-port transport to be advertised via ALPN so that new proxies
-  will not initiate initiate opaque-transport connections to proxies from prior
-  edge releases
+  will not initiate opaque-transport connections to proxies from prior edge
+  releases
 * Added inbound proxy transport metrics with `tls="passhtru"` when forwarding
   non-mesh TLS connections
 * Thanks to @hs0210 for adding new unit tests!
