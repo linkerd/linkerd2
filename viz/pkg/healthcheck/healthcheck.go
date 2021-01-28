@@ -271,15 +271,14 @@ func (hc *HealthChecker) checkForTapConfiguration(ctx context.Context, pods []co
 			if !k8s.IsTapDisabled(pod) && !k8s.IsTapDisabled(ns) {
 				// Check for Configuration
 				if !k8s.CheckForEnv(k8s.GetProxy(pod), inject.TapSvcEnvKey) {
-					podsWithoutTap = append(podsWithoutTap, pod.Name)
+					podsWithoutTap = append(podsWithoutTap, fmt.Sprintf("* %s", pod.Name))
 				}
 			}
 		}
 	}
 
 	if len(podsWithoutTap) > 0 {
-		podList := strings.Join(podsWithoutTap, "\n")
-		return fmt.Errorf("Some data plane pods do not have tap configured:\n%s", podList)
+		return fmt.Errorf("Some data plane pods do not have tap configured and cannot be tapped:\n\t%s", strings.Join(podsWithoutTap, "\n\t"))
 	}
 	return nil
 }
