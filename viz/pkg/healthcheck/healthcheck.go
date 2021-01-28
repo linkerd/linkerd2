@@ -74,7 +74,7 @@ func (hc *HealthChecker) vizCategory() *healthcheck.Category {
 			Fatal().
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				return healthcheck.CheckClusterRoles(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-prometheus", hc.vizNamespace), fmt.Sprintf("linkerd-%s-tap", hc.vizNamespace)}, "")
+				return healthcheck.CheckClusterRoles(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-tap", hc.vizNamespace), fmt.Sprintf("linkerd-%s-metrics-api", hc.vizNamespace), fmt.Sprintf("linkerd-%s-tap-admin", hc.vizNamespace)}, "")
 			}))
 
 	checkers = append(checkers,
@@ -83,16 +83,7 @@ func (hc *HealthChecker) vizCategory() *healthcheck.Category {
 			Fatal().
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				return healthcheck.CheckClusterRoleBindings(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-prometheus", hc.vizNamespace), fmt.Sprintf("linkerd-%s-tap", hc.vizNamespace)}, "")
-			}))
-
-	checkers = append(checkers,
-		*healthcheck.NewChecker("linkerd-viz ConfigMaps exist").
-			WithHintAnchor("l5d-viz-cm-exists").
-			Fatal().
-			Warning().
-			WithCheck(func(ctx context.Context) error {
-				return healthcheck.CheckConfigMaps(ctx, hc.KubeAPIClient(), hc.vizNamespace, true, []string{"linkerd-prometheus-config", "linkerd-grafana-config"}, "")
+				return healthcheck.CheckClusterRoleBindings(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-tap", hc.vizNamespace), fmt.Sprintf("linkerd-%s-metrics-api", hc.vizNamespace), fmt.Sprintf("linkerd-%s-tap-auth-delegator", hc.vizNamespace)}, "")
 			}))
 
 	checkers = append(checkers,
@@ -165,12 +156,76 @@ func (hc *HealthChecker) vizCategory() *healthcheck.Category {
 				}
 
 				// Check for relevant pods to be present
-				err = healthcheck.CheckForPods(pods, []string{"linkerd-grafana", "linkerd-prometheus", "linkerd-web", "linkerd-tap"})
+				err = healthcheck.CheckForPods(pods, []string{"linkerd-web", "linkerd-tap", "linkerd-metrics-api"})
 				if err != nil {
 					return err
 				}
 
 				return healthcheck.CheckPodsRunning(pods, "")
+			}))
+
+	checkers = append(checkers,
+		*healthcheck.NewChecker("prometheus is installed and configured correctly").
+			WithHintAnchor("l5d-viz-prometheus").
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				// TODO: Skip if prometheus is disabled
+				// Check for ClusterRoles
+				err := healthcheck.CheckClusterRoles(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-prometheus", hc.vizNamespace)}, "")
+				if err != nil {
+					return err
+				}
+
+				// Check for ClusterRoleBindings
+				err = healthcheck.CheckClusterRoleBindings(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-prometheus", hc.vizNamespace)}, "")
+				if err != nil {
+					return err
+				}
+
+				// Check for ConfigMap
+				err = healthcheck.CheckConfigMaps(ctx, hc.KubeAPIClient(), hc.vizNamespace, true, []string{"linkerd-prometheus-config"}, "")
+				if err != nil {
+					return err
+				}
+
+				// Check for relevant pods to be present
+				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, hc.vizNamespace)
+				if err != nil {
+					return err
+				}
+
+				err = healthcheck.CheckForPods(pods, []string{"linkerd-prometheus"})
+				if err != nil {
+					return err
+				}
+
+				return nil
+			}))
+
+	checkers = append(checkers,
+		*healthcheck.NewChecker("grafana is installed and configured correctly").
+			WithHintAnchor("l5d-viz-grafana").
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				// TODO: Skip if grafana is disabled
+				// Check for ConfigMap
+				err := healthcheck.CheckConfigMaps(ctx, hc.KubeAPIClient(), hc.vizNamespace, true, []string{"linkerd-grafana-config"}, "")
+				if err != nil {
+					return err
+				}
+
+				// Check for relevant pods to be present
+				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, hc.vizNamespace)
+				if err != nil {
+					return err
+				}
+
+				err = healthcheck.CheckForPods(pods, []string{"linkerd-grafana"})
+				if err != nil {
+					return err
+				}
+
+				return nil
 			}))
 
 	checkers = append(checkers,
