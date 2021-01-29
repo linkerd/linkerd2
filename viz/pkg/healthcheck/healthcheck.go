@@ -8,11 +8,11 @@ import (
 
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/viz/metrics-api/client"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	vizLabels "github.com/linkerd/linkerd2/viz/pkg/labels"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -224,8 +224,6 @@ func (hc *HealthChecker) VizDataPlaneCategory() healthcheck.Category {
 					return err
 				}
 
-				// Check environment specific configuration based on labels
-				// Do not warn for the viz extension or core cp pods
 				return hc.checkForTapConfiguration(ctx, pods)
 			}),
 	}, true)
@@ -257,7 +255,7 @@ func (hc *HealthChecker) getDataPlanePodsFromVizAPI(ctx context.Context) ([]*pb.
 	return pods, nil
 }
 
-// checkForTapConfiguration checks if the tap env variable is present in the linkerd proxy
+// checkForTapConfiguration checks if the tap annotation is present
 // only for the pods with tap enabled
 func (hc *HealthChecker) checkForTapConfiguration(ctx context.Context, pods []corev1.Pod) error {
 	var podsWithoutTap []string
@@ -268,8 +266,8 @@ func (hc *HealthChecker) checkForTapConfiguration(ctx context.Context, pods []co
 		}
 		// Check if Tap is disabled
 		if !k8s.IsTapDisabled(pod) && !k8s.IsTapDisabled(ns) {
-			// Check for Configuration
-			if !k8s.CheckForEnv(k8s.GetProxy(pod), inject.TapSvcEnvKey) {
+			// Check for tap-injector annotation
+			if _, contains := pod.GetAnnotations()[vizLabels.VizTapEnabled]; !contains {
 				podsWithoutTap = append(podsWithoutTap, fmt.Sprintf("* %s", pod.Name))
 			}
 		}
