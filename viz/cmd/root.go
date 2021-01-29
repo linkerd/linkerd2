@@ -16,8 +16,6 @@ const (
 	vizChartName            = "linkerd-viz"
 	defaultLinkerdNamespace = "linkerd"
 	maxRps                  = 100.0
-	// DefaultClusterDomain is the value of the default cluster domain.
-	DefaultClusterDomain = "cluster.local"
 
 	jsonOutput  = "json"
 	tableOutput = "table"
