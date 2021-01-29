@@ -74,7 +74,7 @@ func (hc *HealthChecker) vizCategory() *healthcheck.Category {
 			Fatal().
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				return healthcheck.CheckClusterRoles(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-tap", hc.vizNamespace), fmt.Sprintf("linkerd-%s-metrics-api", hc.vizNamespace), fmt.Sprintf("linkerd-%s-tap-admin", hc.vizNamespace)}, "")
+				return healthcheck.CheckClusterRoles(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-tap", hc.vizNamespace), fmt.Sprintf("linkerd-%s-metrics-api", hc.vizNamespace), fmt.Sprintf("linkerd-%s-tap-admin", hc.vizNamespace), "linkerd-tap-injector"}, "")
 			}))
 
 	checkers = append(checkers,
@@ -83,7 +83,7 @@ func (hc *HealthChecker) vizCategory() *healthcheck.Category {
 			Fatal().
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				return healthcheck.CheckClusterRoleBindings(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-tap", hc.vizNamespace), fmt.Sprintf("linkerd-%s-metrics-api", hc.vizNamespace), fmt.Sprintf("linkerd-%s-tap-auth-delegator", hc.vizNamespace)}, "")
+				return healthcheck.CheckClusterRoleBindings(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-tap", hc.vizNamespace), fmt.Sprintf("linkerd-%s-metrics-api", hc.vizNamespace), fmt.Sprintf("linkerd-%s-tap-auth-delegator", hc.vizNamespace), "linkerd-tap-injector"}, "")
 			}))
 
 	checkers = append(checkers,
@@ -156,7 +156,7 @@ func (hc *HealthChecker) vizCategory() *healthcheck.Category {
 				}
 
 				// Check for relevant pods to be present
-				err = healthcheck.CheckForPods(pods, []string{"linkerd-web", "linkerd-tap", "linkerd-metrics-api"})
+				err = healthcheck.CheckForPods(pods, []string{"linkerd-web", "linkerd-tap", "linkerd-metrics-api", "tap-injector"})
 				if err != nil {
 					return err
 				}
