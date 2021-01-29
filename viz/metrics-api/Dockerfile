@@ -14,8 +14,10 @@ FROM go-deps as golang
 WORKDIR /linkerd-build
 COPY pkg pkg
 COPY controller controller
+COPY viz/cmd viz/cmd
 COPY viz/metrics-api viz/metrics-api
 COPY viz/pkg viz/pkg
+COPY viz/static viz/static
 
 ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/metrics-api -tags prod -mod=readonly -ldflags "-s -w" ./viz/metrics-api/cmd
