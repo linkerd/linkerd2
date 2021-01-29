@@ -111,6 +111,7 @@ func init() {
 	RootCmd.AddCommand(newCmdInstallSP())
 	RootCmd.AddCommand(newCmdMetrics())
 	RootCmd.AddCommand(newCmdProfile())
+	RootCmd.AddCommand(newCmdRepair())
 	RootCmd.AddCommand(newCmdUninject())
 	RootCmd.AddCommand(newCmdUpgrade())
 	RootCmd.AddCommand(newCmdVersion())
