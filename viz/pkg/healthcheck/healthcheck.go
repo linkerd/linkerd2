@@ -267,7 +267,7 @@ func (hc *HealthChecker) checkForTapConfiguration(ctx context.Context, pods []co
 		// Check if Tap is disabled
 		if !k8s.IsTapDisabled(pod) && !k8s.IsTapDisabled(ns) {
 			// Check for tap-injector annotation
-			if _, contains := pod.GetAnnotations()[vizLabels.VizTapEnabled]; !contains {
+			if !vizLabels.IsTapEnabled(&pod) {
 				podsWithoutTap = append(podsWithoutTap, fmt.Sprintf("* %s", pod.Name))
 			}
 		}
