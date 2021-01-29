@@ -8,7 +8,6 @@ import React from 'react';
 import Spinner from './util/Spinner.jsx';
 import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
-import _find from 'lodash/find';
 import _isEmpty from 'lodash/isEmpty';
 import { processGatewayResults } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
@@ -87,12 +86,11 @@ class Gateways extends React.Component {
   }
 
   checkMulticlusterExtension() {
-    this.api.setCurrentRequests([this.api.fetchExtensions()]);
+    this.api.setCurrentRequests([this.api.fetchExtension(multiclusterExtensionName)]);
 
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
-      .then(([extList]) => {
-        const mcExists = _find(extList, e => e.extensionName === multiclusterExtensionName);
-        this.setState({ multiclusterExists: mcExists || false });
+      .then(([extension]) => {
+        this.setState({ multiclusterExists: !_isEmpty(extension) });
       })
       .catch(this.handleApiError);
   }

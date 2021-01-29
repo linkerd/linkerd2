@@ -25,7 +25,7 @@ import Toolbar from '@material-ui/core/Toolbar';
 import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
 import Version from './Version.jsx';
-import _find from 'lodash/find';
+import _isEmpty from 'lodash/isEmpty';
 import _maxBy from 'lodash/maxBy';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { faCloud } from '@fortawesome/free-solid-svg-icons/faCloud';
@@ -323,12 +323,10 @@ class NavigationBase extends React.Component {
   }
 
   checkMulticlusterExtension() {
-    this.api.setCurrentRequests([this.api.fetchExtensions()]);
-
+    this.api.setCurrentRequests([this.api.fetchExtension(multiclusterExtensionName)]);
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
-      .then(([extList]) => {
-        const mcExists = _find(extList, e => e.extensionName === multiclusterExtensionName);
-        this.setState({ showGatewayLink: mcExists || false });
+      .then(([extension]) => {
+        this.setState({ showGatewayLink: !_isEmpty(extension) });
       })
       .catch(this.handleApiError);
   }
