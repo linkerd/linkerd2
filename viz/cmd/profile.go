@@ -70,7 +70,7 @@ func newCmdProfile() *cobra.Command {
 		Short: "Output service profile config for Kubernetes based off tap data",
 		Long:  "Output service profile config for Kubernetes based off tap data.",
 		Example: `  # Generate a profile by watching live traffic.
-  linkerd profile -n emojivoto web-svc --tap deploy/web --tap-duration 10s --tap-route-limit 5
+  linkerd viz profile -n emojivoto web-svc --tap deploy/web --tap-duration 10s --tap-route-limit 5
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
