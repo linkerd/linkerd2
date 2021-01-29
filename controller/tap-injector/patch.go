@@ -9,6 +9,11 @@ import (
 var tpl = fmt.Sprintf(`[
   {
     "op": "add",
+    "path": "/metadata/annotations/{{.Annotation}}",
+    "value": "true"
+  },
+  {
+    "op": "add",
     "path": "/spec/containers/{{.ProxyIndex}}/env/-",
     "value": {
       "name": "%s",

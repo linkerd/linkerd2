@@ -41,7 +41,7 @@ func CheckClientOrRetryOrExit(hcOptions healthcheck.Options, apiChecks bool) pb.
 
 func exitOnError(result *healthcheck.CheckResult) {
 	if result.Retry {
-		fmt.Fprintln(os.Stderr, "Waiting for control plane to become available")
+		fmt.Fprintln(os.Stderr, "Waiting for linkerd-viz extension to become available")
 		return
 	}
 

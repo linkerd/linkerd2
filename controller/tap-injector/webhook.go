@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"html/template"
+	"strings"
 
 	"github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/webhook"
-	"github.com/linkerd/linkerd2/pkg/inject"
 	labels "github.com/linkerd/linkerd2/pkg/k8s"
+	vizLabels "github.com/linkerd/linkerd2/viz/pkg/labels"
 	"github.com/prometheus/common/log"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -18,6 +19,7 @@ import (
 
 // Params holds the values used in the patch template.
 type Params struct {
+	Annotation      string
 	ProxyIndex      int
 	ProxyTapSvcName string
 }
@@ -41,14 +43,19 @@ func Mutate(tapSvcName string) webhook.Handler {
 		if err := yaml.Unmarshal(request.Object.Raw, &pod); err != nil {
 			return nil, err
 		}
+		// annotation is used in the patch as a JSON pointer, so '/' must be
+		// encoded as '~1' as stated in
+		// https://tools.ietf.org/html/rfc6901#section-3
+		annotation := strings.Replace(vizLabels.VizTapEnabled, "/", "~1", -1)
 		params := Params{
+			Annotation:      annotation,
 			ProxyIndex:      webhook.GetProxyContainerIndex(pod.Spec.Containers),
 			ProxyTapSvcName: tapSvcName,
 		}
 		if params.ProxyIndex < 0 {
 			return admissionResponse, nil
 		}
-		if alreadyMutated(pod.Spec.Containers[params.ProxyIndex]) {
+		if _, contains := pod.GetAnnotations()[vizLabels.VizTapEnabled]; contains {
 			return admissionResponse, nil
 		}
 		namespace, err := k8sAPI.NS().Lister().Get(request.Namespace)
@@ -72,13 +79,4 @@ func Mutate(tapSvcName string) webhook.Handler {
 		admissionResponse.PatchType = &patchType
 		return admissionResponse, nil
 	}
-}
-
-func alreadyMutated(container corev1.Container) bool {
-	for _, envVar := range container.Env {
-		if envVar.Name == inject.TapSvcEnvKey {
-			return true
-		}
-	}
-	return false
 }

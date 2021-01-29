@@ -38,7 +38,6 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 		*healthcheck.NewChecker("linkerd-jaeger extension Namespace exists").
 			WithHintAnchor("l5d-jaeger-ns-exists").
 			Fatal().
-			Warning().
 			WithCheck(func(ctx context.Context) error {
 				// Get  jaeger Extension Namespace
 				ns, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, jaegerExtensionName)

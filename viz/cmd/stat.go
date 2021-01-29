@@ -188,6 +188,7 @@ If no resource name is specified, displays stats about all resources of the spec
 				KubeContext:           kubeContext,
 				APIAddr:               apiAddr,
 			})
+
 			c := make(chan indexedResults, len(reqs))
 			for num, req := range reqs {
 				go func(num int, req *pb.StatSummaryRequest) {

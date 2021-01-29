@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	helmDefaultChartDir     = "linkerd2-multicluster"
-	helmDefaultLinkChartDir = "linkerd2-multicluster-link"
+	helmDefaultChartDir     = "linkerd-multicluster"
+	helmDefaultLinkChartDir = "linkerd-multicluster-link"
 )
 
 // Values contains the top-level elements in the Helm charts

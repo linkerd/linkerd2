@@ -63,7 +63,7 @@ func newLinkCommand() *cobra.Command {
   linkerd --context=east multicluster link --cluster-name east | kubectl --context=west apply -f -
 
 The command can be configured by using the --set, --values, --set-string and --set-file flags.
-A full list of configurable values can be found at https://github.com/linkerd/linkerd2/blob/main/multicluster/charts/linkerd2-multicluster-link/README.md
+A full list of configurable values can be found at https://github.com/linkerd/linkerd2/blob/main/multicluster/charts/linkerd-multicluster-link/README.md
   `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
