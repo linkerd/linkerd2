@@ -12,6 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/trace"
+	vizCmd "github.com/linkerd/linkerd2/viz/cmd"
 	api "github.com/linkerd/linkerd2/viz/metrics-api"
 	promApi "github.com/prometheus/client_golang/api"
 	log "github.com/sirupsen/logrus"
@@ -26,7 +27,7 @@ func main() {
 	metricsAddr := cmd.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	ignoredNamespaces := cmd.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
-	clusterDomain := cmd.String("cluster-domain", "cluster.local", "kubernetes cluster domain")
+	clusterDomain := cmd.String("cluster-domain", vizCmd.DefaultClusterDomain, "kubernetes cluster domain")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 

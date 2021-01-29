@@ -78,7 +78,7 @@ func newCmdProfile() *cobra.Command {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
 			}
 			options.name = args[0]
-			clusterDomain := "cluster.local"
+			clusterDomain := DefaultClusterDomain
 			var k8sAPI *k8s.KubernetesAPI
 			err := options.validate()
 			if err != nil {
