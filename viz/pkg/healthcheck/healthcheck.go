@@ -259,7 +259,8 @@ func (hc *HealthChecker) getDataPlanePodsFromVizAPI(ctx context.Context) ([]*pb.
 // only for the pods with tap enabled
 func (hc *HealthChecker) checkForTapConfiguration(ctx context.Context, pods []corev1.Pod) error {
 	var podsWithoutTap []string
-	for _, pod := range pods {
+	for i := range pods {
+		pod := pods[i]
 		ns, err := hc.KubeAPIClient().CoreV1().Namespaces().Get(ctx, pod.Namespace, metav1.GetOptions{})
 		if err != nil {
 			return err
