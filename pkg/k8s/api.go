@@ -245,27 +245,6 @@ func GetPodStatus(pod corev1.Pod) string {
 	return reason
 }
 
-// CheckForEnv checks for the given key in the given Container env variables
-func CheckForEnv(container *corev1.Container, envKey string) bool {
-	var presence bool
-	for _, env := range container.Env {
-		if env.Name == envKey {
-			presence = true
-		}
-	}
-	return presence
-}
-
-// GetProxy returns the proxy
-func GetProxy(pod corev1.Pod) *corev1.Container {
-	for _, container := range pod.Spec.Containers {
-		if container.Name == ProxyContainerName {
-			return &container
-		}
-	}
-	return nil
-}
-
 // GetProxyReady returns true if the pod contains a proxy that is ready
 func GetProxyReady(pod corev1.Pod) bool {
 	for _, container := range pod.Status.ContainerStatuses {
