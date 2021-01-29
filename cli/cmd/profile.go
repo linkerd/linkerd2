@@ -87,7 +87,6 @@ func newCmdProfile() *cobra.Command {
 			}
 			options.name = args[0]
 			clusterDomain := defaultClusterDomain
-			var k8sAPI *k8s.KubernetesAPI
 
 			err := options.validate()
 			if err != nil {
@@ -97,7 +96,7 @@ func newCmdProfile() *cobra.Command {
 			// clusterDomain from linkerd configuration
 			if !options.ignoreCluster {
 				var err error
-				k8sAPI, err = k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+				k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 
 				if err != nil {
 					return err
