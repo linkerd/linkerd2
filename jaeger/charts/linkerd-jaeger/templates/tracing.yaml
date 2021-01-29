@@ -2,7 +2,6 @@
 ###
 ### Tracing Collector Service
 ###
----
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -119,7 +118,6 @@ spec:
 ###
 ### Tracing Jaeger Service
 ###
----
 apiVersion: v1
 kind: Service
 metadata:
