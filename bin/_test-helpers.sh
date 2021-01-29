@@ -497,7 +497,7 @@ run_cni-calico-deep_test() {
 run_helm-deep_test() {
   local tests=()
   setup_helm
-  helm_multicluster_chart="$( cd "$bindir"/.. && pwd )"/multicluster/charts/linkerd2-multicluster
+  helm_multicluster_chart="$( cd "$bindir"/.. && pwd )"/multicluster/charts/linkerd-multicluster
   helm_viz_chart="$( cd "$bindir"/.. && pwd )"/viz/charts/linkerd-viz
   run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
   --helm-release="$helm_release_name" --multicluster-helm-chart="$helm_multicluster_chart" \

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/util"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	vizLabels "github.com/linkerd/linkerd2/viz/pkg/labels"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -75,7 +77,8 @@ func (s *GRPCTapServer) TapByResource(req *pb.TapByResourceRequest, stream pb.Ta
 	}
 
 	pods := []*corev1.Pod{}
-	foundDisabledPods := false
+	tapDisabled := false
+	tapNotEnabled := false
 	for _, object := range objects {
 		podsFor, err := s.k8sAPI.GetPodsFor(object, false)
 		if err != nil {
@@ -85,7 +88,9 @@ func (s *GRPCTapServer) TapByResource(req *pb.TapByResourceRequest, stream pb.Ta
 		for _, pod := range podsFor {
 			if pkgK8s.IsMeshed(pod, s.controllerNamespace) {
 				if pkgK8s.IsTapDisabled(pod) {
-					foundDisabledPods = true
+					tapDisabled = true
+				} else if !vizLabels.IsTapEnabled(pod) {
+					tapNotEnabled = true
 				} else {
 					pods = append(pods, pod)
 				}
@@ -94,13 +99,18 @@ func (s *GRPCTapServer) TapByResource(req *pb.TapByResourceRequest, stream pb.Ta
 	}
 
 	if len(pods) == 0 {
-		resType := res.GetType()
-		resName := res.GetName()
-		if foundDisabledPods {
-			return status.Errorf(codes.NotFound,
-				"all pods found for %s/%s have tapping disabled", resType, resName)
+		errStrings := []string{}
+		errStr := fmt.Errorf("no pods to tap for %s/%s", res.GetType(), res.GetName())
+		errStrings = append(errStrings, errStr.Error())
+		if tapDisabled {
+			errStr = fmt.Errorf("pods found with tap disabled via the %s annotation", pkgK8s.ProxyDisableTapAnnotation)
+			errStrings = append(errStrings, errStr.Error())
 		}
-		return status.Errorf(codes.NotFound, "no pods found for %s/%s", resType, resName)
+		if tapNotEnabled {
+			errStr = fmt.Errorf("pods found with tap not enabled; try restarting resource so that it can be injected")
+			errStrings = append(errStrings, errStr.Error())
+		}
+		return status.Errorf(codes.NotFound, strings.Join(errStrings, "\n"))
 	}
 
 	log.Infof("Tapping %d pods for target: %s", len(pods), res.String())

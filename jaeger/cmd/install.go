@@ -44,7 +44,7 @@ func newCmdInstall() *cobra.Command {
   linkerd jaeger install --namespace custom | kubectl apply -f -
   
 The installation can be configured by using the --set, --values, --set-string and --set-file flags.
-A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/jaeger/charts/jaeger/README.md
+A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/jaeger/charts/linkerd-jaeger/README.md
   `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !skipChecks {
@@ -112,7 +112,7 @@ func render(w io.Writer, valuesOverrides map[string]interface{}) error {
 	}
 
 	// Load all jaeger chart files into buffer
-	if err := charts.FilesReader(static.Templates, "jaeger/", files); err != nil {
+	if err := charts.FilesReader(static.Templates, "linkerd-jaeger/", files); err != nil {
 		return err
 	}
 

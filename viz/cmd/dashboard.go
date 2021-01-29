@@ -9,7 +9,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	api "github.com/linkerd/linkerd2/pkg/public"
+	"github.com/linkerd/linkerd2/viz/pkg/api"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
@@ -82,8 +82,8 @@ func NewCmdDashboard() *cobra.Command {
 					options.show, showLinkerd, showGrafana, showURL)
 			}
 
-			// ensure we can connect to the public API before starting the proxy
-			api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
+			// ensure we can connect to the viz API before starting the proxy
+			api.CheckClientOrRetryOrExit(healthcheck.Options{
 				ControlPlaneNamespace: controlPlaneNamespace,
 				KubeConfig:            kubeconfigPath,
 				Impersonate:           impersonate,
