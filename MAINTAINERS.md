@@ -21,6 +21,7 @@ Former maintainers include:
 ## Steering Committee
 
 The Linkerd Steering Committee members are:
+
 * Chis Campbell @campbel
 * Christian Hüning @christianhuening
 * Justin Turner @justin-turner-heb
