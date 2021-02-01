@@ -91,8 +91,24 @@ func TestResourcesPostInstall(t *testing.T) {
 }
 
 func TestUninstall(t *testing.T) {
+	var (
+		vizCmd = []string{"viz", "uninstall"}
+	)
+
+	// Uninstall Linkerd Viz Extension
+	out, err := TestHelper.LinkerdRun(vizCmd...)
+	if err != nil {
+		testutil.AnnotatedFatal(t, "'linkerd viz uninstall' command failed", err)
+	}
+
+	out, err = TestHelper.KubectlApply(out, "")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", out)
+	}
+
 	args := []string{"uninstall"}
-	out, err := TestHelper.LinkerdRun(args...)
+	out, err = TestHelper.LinkerdRun(args...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd install' command failed", err)
 	}
