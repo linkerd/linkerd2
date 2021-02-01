@@ -1,7 +1,7 @@
+---
 ###
 ### Tap Injector RBAC
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -51,7 +51,7 @@ data:
   tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.tapInjector.keyPEM)) (empty .Values.tapInjector.keyPEM) }}
 ---
 {{- end }}
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-tap-injector-webhook-config
@@ -77,6 +77,7 @@ webhooks:
 {{- end }}
     caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tapInjector.caBundle)) (empty .Values.tapInjector.caBundle) }}
   failurePolicy: {{.Values.tapInjector.failurePolicy}}
+  admissionReviewVersions: ["v1", "v1beta1"]
   reinvocationPolicy: IfNeeded
   rules:
   - operations: [ "CREATE" ]

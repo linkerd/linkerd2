@@ -3,7 +3,6 @@
 ###
 ### Prometheus
 ###
----
 kind: ConfigMap
 apiVersion: v1
 metadata:

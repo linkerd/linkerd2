@@ -2,7 +2,6 @@
 ###
 ### Linkerd Namespace
 ###
----
 kind: Namespace
 apiVersion: v1
 metadata:
@@ -17,7 +16,6 @@ metadata:
 ###
 ### Identity Controller Service RBAC
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -64,7 +62,6 @@ metadata:
 ###
 ### Controller RBAC
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -117,7 +114,6 @@ metadata:
 ###
 ### Destination Controller Service
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -170,7 +166,6 @@ metadata:
 ###
 ### Heartbeat RBAC
 ###
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -212,8 +207,7 @@ metadata:
 ###
 ### Service Profile CRD
 ###
----
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: serviceprofiles.linkerd.io
@@ -227,136 +221,261 @@ spec:
   - name: v1alpha1
     served: true
     storage: false
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            description: Spec is the custom resource spec
+            required:
+            - routes
+            properties:
+              dstOverrides:
+                type: array
+                required:
+                - authority
+                - weight
+                items:
+                  type: object
+                  description: WeightedDst is a weighted alternate destination.
+                  properties:
+                    authority:
+                      type: string
+                    weight:
+                      x-kubernetes-int-or-string: true
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+              opaquePorts:
+                type: array
+                items:
+                  type: string
+              retryBudget:
+                type: object
+                required:
+                - minRetriesPerSecond
+                - retryRatio
+                - ttl
+                description: RetryBudget describes the maximum number of retries that should be issued to this service.
+                properties:
+                  minRetriesPerSecond:
+                    format: int32
+                    type: integer
+                  retryRatio: 
+                    type: number
+                    format: float
+                  ttl:
+                    type: string
+              routes:
+                type: array
+                items:
+                  type: object
+                  description: RouteSpec specifies a Route resource.
+                  required:
+                  - condition
+                  - name
+                  properties:
+                    condition:
+                      type: object
+                      description: RequestMatch describes the conditions under which to match a Route.
+                      properties:
+                        pathRegex: 
+                          type: string
+                        method: 
+                          type: string
+                        all:
+                          type: array
+                          items:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                        any:
+                          type: array
+                          items:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                        not: 
+                          type: array
+                          items:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                    isRetryable:
+                      type: boolean
+                    name:
+                      type: string
+                    timeout:
+                      type: string
+                    responseClasses:
+                      type: array 
+                      items:
+                        type: object
+                        required:
+                        - condition
+                        description: ResponseClass describes how to classify a response (e.g. success or failures).
+                        properties:
+                          condition:
+                            type: object
+                            description: ResponseMatch describes the conditions under
+                              which to classify a response.
+                            properties:
+                              all:
+                                type: array
+                                items: 
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                              any:
+                                type: array
+                                items:
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                              not: 
+                                type: array
+                                items:
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                              status:
+                                type: object
+                                description: Range describes a range of integers (e.g. status codes).
+                                properties:
+                                  max:
+                                    format: int32
+                                    type: integer
+                                  min:
+                                    format: int32
+                                    type: integer
+                          isFailure:
+                            type: boolean
   - name: v1alpha2
     served: true
     storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            description: Spec is the custom resource spec
+            required:
+            - routes
+            properties:
+              dstOverrides:
+                type: array
+                required:
+                - authority
+                - weight
+                items:
+                  type: object
+                  description: WeightedDst is a weighted alternate destination.
+                  properties:
+                    authority:
+                      type: string
+                    weight:
+                      x-kubernetes-int-or-string: true
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+              opaquePorts:
+                type: array
+                items:
+                  type: string
+              retryBudget:
+                type: object
+                required:
+                - minRetriesPerSecond
+                - retryRatio
+                - ttl
+                description: RetryBudget describes the maximum number of retries that should be issued to this service.
+                properties:
+                  minRetriesPerSecond:
+                    format: int32
+                    type: integer
+                  retryRatio: 
+                    type: number
+                    format: float
+                  ttl:
+                    type: string
+              routes:
+                type: array
+                items:
+                  type: object
+                  description: RouteSpec specifies a Route resource.
+                  required:
+                  - condition
+                  - name
+                  properties:
+                    condition:
+                      type: object
+                      description: RequestMatch describes the conditions under which to match a Route.
+                      properties:
+                        pathRegex: 
+                          type: string
+                        method: 
+                          type: string
+                        all:
+                          type: array
+                          items:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                        any:
+                          type: array
+                          items:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                        not: 
+                          type: array
+                          items:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                    isRetryable:
+                      type: boolean
+                    name:
+                      type: string
+                    timeout:
+                      type: string
+                    responseClasses:
+                      type: array 
+                      items:
+                        type: object
+                        required:
+                        - condition
+                        description: ResponseClass describes how to classify a response (e.g. success or failures).
+                        properties:
+                          condition:
+                            type: object
+                            description: ResponseMatch describes the conditions under
+                              which to classify a response.
+                            properties:
+                              all:
+                                type: array
+                                items: 
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                              any:
+                                type: array
+                                items:
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                              not: 
+                                type: array
+                                items:
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                              status:
+                                type: object
+                                description: Range describes a range of integers (e.g. status codes).
+                                properties:
+                                  max:
+                                    format: int32
+                                    type: integer
+                                  min:
+                                    format: int32
+                                    type: integer
+                          isFailure:
+                            type: boolean
   scope: Namespaced
   preserveUnknownFields: false
-  validation:
-    openAPIV3Schema:
-      type: object
-      properties:
-        spec:
-          type: object
-          description: Spec is the custom resource spec
-          required:
-          - routes
-          properties:
-            dstOverrides:
-              type: array
-              required:
-              - authority
-              - weight
-              items:
-                type: object
-                description: WeightedDst is a weighted alternate destination.
-                properties:
-                  authority:
-                    type: string
-                  weight:
-                    x-kubernetes-int-or-string: true
-                    anyOf:
-                    - type: integer
-                    - type: string
-                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-            opaquePorts:
-              type: array
-              items:
-                type: string
-            retryBudget:
-              type: object
-              required:
-              - minRetriesPerSecond
-              - retryRatio
-              - ttl
-              description: RetryBudget describes the maximum number of retries that should be issued to this service.
-              properties:
-                minRetriesPerSecond:
-                  format: int32
-                  type: integer
-                retryRatio: 
-                  type: number
-                  format: float
-                ttl:
-                  type: string
-            routes:
-              type: array
-              items:
-                type: object
-                description: RouteSpec specifies a Route resource.
-                required:
-                - condition
-                - name
-                properties:
-                  condition:
-                    type: object
-                    description: RequestMatch describes the conditions under which to match a Route.
-                    properties:
-                      pathRegex: 
-                        type: string
-                      method: 
-                        type: string
-                      all:
-                        type: array
-                        items:
-                          type: object
-                          x-kubernetes-preserve-unknown-fields: true
-                      any:
-                        type: array
-                        items:
-                          type: object
-                          x-kubernetes-preserve-unknown-fields: true
-                      not: 
-                        type: array
-                        items:
-                          type: object
-                          x-kubernetes-preserve-unknown-fields: true
-                  isRetryable:
-                    type: boolean
-                  name:
-                    type: string
-                  timeout:
-                    type: string
-                  responseClasses:
-                    type: array 
-                    items:
-                      type: object
-                      required:
-                      - condition
-                      description: ResponseClass describes how to classify a response (e.g. success or failures).
-                      properties:
-                        condition:
-                          type: object
-                          description: ResponseMatch describes the conditions under
-                            which to classify a response.
-                          properties:
-                            all:
-                              type: array
-                              items: 
-                                type: object
-                                x-kubernetes-preserve-unknown-fields: true
-                            any:
-                              type: array
-                              items:
-                                type: object
-                                x-kubernetes-preserve-unknown-fields: true
-                            not: 
-                              type: array
-                              items:
-                                type: object
-                                x-kubernetes-preserve-unknown-fields: true
-                            status:
-                              type: object
-                              description: Range describes a range of integers (e.g. status codes).
-                              properties:
-                                max:
-                                  format: int32
-                                  type: integer
-                                min:
-                                  format: int32
-                                  type: integer
-                        isFailure:
-                          type: boolean
   names:
     plural: serviceprofiles
     singular: serviceprofile
@@ -368,8 +487,7 @@ spec:
 ### TrafficSplit CRD
 ### Copied from github.com/servicemeshinterface/smi-sdk-go/blob/d4e76b1cd7a33ead5f38d1262dd838a31c80f4e5/crds/split.yaml
 ###
----
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: trafficsplits.split.smi-spec.io
@@ -387,63 +505,61 @@ spec:
       - ts
     plural: trafficsplits
     singular: trafficsplit
-  version: v1alpha1
   versions:
     - name: v1alpha1
       served: true
       storage: true
-  preserveUnknownFields: false
-  validation:
-    openAPIV3Schema:
-      type: object
-      properties:
-        spec:
+      schema:
+        openAPIV3Schema:
           type: object
-          required:
-            - service
-            - backends
           properties:
-            service:
-              description: The apex service of this split.
-              type: string
-            matches:
-              description: The HTTP route groups that this traffic split should match.
-              type: array
-              items:
-                type: object
-                required: ['kind', 'name']
-                properties:
-                  kind:
-                    description: Kind of the matching group.
-                    type: string
-                    enum:
-                      - HTTPRouteGroup
-                  name:
-                    description: Name of the matching group.
-                    type: string
-            backends:
-              description: The backend services of this split.
-              type: array
-              items:
-                type: object
-                required: ['service', 'weight']
-                properties:
-                  service:
-                    description: Name of the Kubernetes service.
-                    type: string
-                  weight:
-                    description: Traffic weight value of this backend.
-                    x-kubernetes-int-or-string: true
-  additionalPrinterColumns:
-  - name: Service
-    type: string
-    description: The apex service of this split.
-    JSONPath: .spec.service
+            spec:
+              type: object
+              required:
+                - service
+                - backends
+              properties:
+                service:
+                  description: The apex service of this split.
+                  type: string
+                matches:
+                  description: The HTTP route groups that this traffic split should match.
+                  type: array
+                  items:
+                    type: object
+                    required: ['kind', 'name']
+                    properties:
+                      kind:
+                        description: Kind of the matching group.
+                        type: string
+                        enum:
+                          - HTTPRouteGroup
+                      name:
+                        description: Name of the matching group.
+                        type: string
+                backends:
+                  description: The backend services of this split.
+                  type: array
+                  items:
+                    type: object
+                    required: ['service', 'weight']
+                    properties:
+                      service:
+                        description: Name of the Kubernetes service.
+                        type: string
+                      weight:
+                        description: Traffic weight value of this backend.
+                        x-kubernetes-int-or-string: true
+      additionalPrinterColumns:
+      - name: Service
+        type: string
+        description: The apex service of this split.
+        jsonPath: .spec.service
+  preserveUnknownFields: false
 ---
 ###
 ### Proxy Injector RBAC
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -509,7 +625,7 @@ data:
   tls.crt: cHJveHkgaW5qZWN0b3IgY3J0
   tls.key: cHJveHkgaW5qZWN0b3Iga2V5
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
@@ -531,6 +647,7 @@ webhooks:
       path: "/"
     caBundle: cHJveHkgaW5qZWN0b3IgQ0EgYnVuZGxl
   failurePolicy: Fail
+  admissionReviewVersions: ["v1", "v1beta1"]
   rules:
   - operations: [ "CREATE" ]
     apiGroups: [""]
@@ -541,7 +658,6 @@ webhooks:
 ###
 ### Service Profile Validator RBAC
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -595,7 +711,7 @@ data:
   tls.crt: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
   tls.key: cHJvZmlsZSB2YWxpZGF0b3Iga2V5
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: linkerd-sp-validator-webhook-config
@@ -617,6 +733,7 @@ webhooks:
       path: "/"
     caBundle: cHJvZmlsZSB2YWxpZGF0b3IgQ0EgYnVuZGxl
   failurePolicy: Fail
+  admissionReviewVersions: ["v1", "v1beta1"]
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
     apiGroups: ["linkerd.io"]
@@ -627,7 +744,6 @@ webhooks:
 ###
 ### Control Plane PSP
 ###
----
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
@@ -1250,7 +1366,6 @@ spec:
 ###
 ### Controller
 ###
----
 kind: Service
 apiVersion: v1
 metadata:
@@ -1528,7 +1643,6 @@ spec:
 ###
 ### Destination Controller Service
 ###
----
 kind: Service
 apiVersion: v1
 metadata:
@@ -1828,7 +1942,6 @@ spec:
 ###
 ### Heartbeat
 ###
----
 apiVersion: batch/v1beta1
 kind: CronJob
 metadata:
@@ -1881,7 +1994,6 @@ spec:
 ###
 ### Proxy Injector
 ###
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1906,7 +2018,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 34434799a6867cce161426b50265dfd03620ec94a9f90a01ccc64bc7811af9a5
+        checksum/config: 4dbfc7866518bbc8e9b380aaa65fffb520ae284508e2cca21536b5e8a762a0e6
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
@@ -2167,7 +2279,6 @@ spec:
 ###
 ### Service Profile Validator
 ###
----
 kind: Service
 apiVersion: v1
 metadata:
@@ -2227,7 +2338,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 89b4768cd03ce9a74f021b6b2cb026c1b25980b0fed5d2e15b100b4ef428a2bd
+        checksum/config: 0c0f48b5124f4f4f3198fce6d1b95ff18d85297afbf589be00d3ffecf1108d0c
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version

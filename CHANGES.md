@@ -1,6 +1,28 @@
 
 # Changes
 
+## edge-21.1.4
+
+This edge release continues to polish the Linkerd extension model and improves
+the robustness of the opaque transport.
+
+* Improved the consistency of behavior of the `check` commands between
+  Linkerd extensions
+* Fixed an issue where Linkerd extension commands could be run before the
+  extension was fully installed
+* Renamed some extension Helm charts for consistency:
+  * jaeger -> linkerd-jaeger
+  * linkerd2-multicluster -> linkerd-multicluster
+  * linkerd2-multicluster-link -> linkerd-multicluster-link
+* Fixed an issue that could cause the inbound proxy to fail meshed HTTP/1
+  requests from older proxies (from the stable-2.8.x vintage)
+* Changed opaque-port transport to be advertised via ALPN so that new proxies
+  will not initiate opaque-transport connections to proxies from prior edge
+  releases
+* Added inbound proxy transport metrics with `tls="passhtru"` when forwarding
+  non-mesh TLS connections
+* Thanks to @hs0210 for adding new unit tests!
+
 ## edge-21.1.3
 
 This edge release improves proxy diagnostics and recovery in situations where

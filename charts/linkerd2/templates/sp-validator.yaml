@@ -2,7 +2,6 @@
 ###
 ### Service Profile Validator
 ###
----
 kind: Service
 apiVersion: v1
 metadata:

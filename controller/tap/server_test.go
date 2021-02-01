@@ -56,7 +56,7 @@ func TestTapByResource(t *testing.T) {
 			req:    &pb.TapByResourceRequest{},
 		},
 		{
-			err: status.Errorf(codes.Unimplemented, "unexpected match specified: any:<> "),
+			err: status.Errorf(codes.Unimplemented, "unexpected match specified: any:{}"),
 			k8sRes: []string{`
 apiVersion: v1
 kind: Pod
@@ -67,6 +67,7 @@ metadata:
     app: emoji-svc
     linkerd.io/control-plane-ns: controller-ns
   annotations:
+    viz.linkerd.io/tap-enabled: "true"
     linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
@@ -89,7 +90,7 @@ status:
 			},
 		},
 		{
-			err: status.Errorf(codes.NotFound, "no pods found for pod/emojivoto-not-meshed"),
+			err: status.Errorf(codes.NotFound, "no pods to tap for pod/emojivoto-not-meshed"),
 			k8sRes: []string{`
 apiVersion: v1
 kind: Pod
@@ -137,6 +138,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
+    viz.linkerd.io/tap-enabled: "true"
     linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
@@ -154,7 +156,7 @@ status:
 			},
 		},
 		{
-			err: status.Errorf(codes.NotFound, "no pods found for pod/emojivoto-meshed"),
+			err: status.Errorf(codes.NotFound, "no pods to tap for pod/emojivoto-meshed"),
 			k8sRes: []string{`
 apiVersion: v1
 kind: Pod
@@ -164,6 +166,7 @@ metadata:
   labels:
     app: emoji-svc
   annotations:
+    viz.linkerd.io/tap-enabled: "true"
     linkerd.io/proxy-version: testinjectversion
 status:
   phase: Finished
@@ -181,7 +184,8 @@ status:
 			},
 		},
 		{
-			err: status.Errorf(codes.NotFound, "all pods found for pod/emojivoto-meshed-tap-disabled have tapping disabled"),
+			err: status.Errorf(codes.NotFound, `no pods to tap for pod/emojivoto-meshed-tap-disabled
+pods found with tap disabled via the config.linkerd.io/disable-tap annotation`),
 			k8sRes: []string{`
 apiVersion: v1
 kind: Pod
@@ -215,6 +219,40 @@ status:
 			},
 		},
 		{
+			err: status.Errorf(codes.NotFound, `no pods to tap for pod/emojivoto-meshed-tap-not-enabled
+pods found with tap not enabled; try restarting resource so that it can be injected`),
+			k8sRes: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-tap-not-enabled
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    linkerd.io/control-plane-ns: controller-ns
+  annotations:
+    linkerd.io/proxy-version: testinjectversion
+status:
+  phase: Running
+  podIP: 127.0.0.1
+    `,
+			},
+			req: &pb.TapByResourceRequest{
+				Target: &pb.ResourceSelection{
+					Resource: &pb.Resource{
+						Namespace: "emojivoto",
+						Type:      pkgK8s.Pod,
+						Name:      "emojivoto-meshed-tap-not-enabled",
+					},
+				},
+				Match: &pb.TapByResourceRequest_Match{
+					Match: &pb.TapByResourceRequest_Match_All{
+						All: &pb.TapByResourceRequest_Match_Seq{},
+					},
+				},
+			},
+		},
+		{
 			// success, underlying tap events tested in http_server_test.go
 			err: nil,
 			k8sRes: []string{`
@@ -227,6 +265,7 @@ metadata:
     app: emoji-svc
     linkerd.io/control-plane-ns: controller-ns
   annotations:
+    viz.linkerd.io/tap-enabled: "true"
     linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
@@ -261,6 +300,7 @@ metadata:
     app: emoji-svc
     linkerd.io/control-plane-ns: controller-ns
   annotations:
+    viz.linkerd.io/tap-enabled: "true"
     linkerd.io/proxy-version: testinjectversion
 spec:
   serviceAccountName: emojivoto-meshed-sa
@@ -302,6 +342,7 @@ metadata:
     app: emoji-svc
     linkerd.io/control-plane-ns: controller-ns
   annotations:
+    viz.linkerd.io/tap-enabled: "true"
     linkerd.io/proxy-version: testinjectversion
 spec:
   serviceAccountName: emojivoto-meshed-sa
@@ -385,7 +426,10 @@ status:
 				code := status.Code(err)
 				expCode := status.Code(exp.err)
 				if code != expCode {
-					t.Fatalf("TapByResource returned unexpected: [%s], expected: [%s]", code, expCode)
+					t.Fatalf("TapByResource returned unexpected error code: [%s], expected: [%s]", code, expCode)
+				}
+				if err.Error() != exp.err.Error() {
+					t.Fatalf("TapByResource returned unexpected error message: [%s], expected: [%s]", err.Error(), exp.err.Error())
 				}
 			}
 

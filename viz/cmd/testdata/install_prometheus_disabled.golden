@@ -2,7 +2,6 @@
 ###
 ### Linkerd Viz Extension Namespace
 ###
----
 kind: Namespace
 apiVersion: v1
 metadata:
@@ -15,7 +14,6 @@ metadata:
 ###
 ### Metrics API RBAC
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -68,7 +66,6 @@ metadata:
 ###
 ### Grafana RBAC
 ###
----
 kind: ServiceAccount
 apiVersion: v1
 metadata:
@@ -82,7 +79,6 @@ metadata:
 ###
 ### Tap RBAC
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -209,7 +205,6 @@ spec:
 ###
 ### Web RBAC
 ###
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -347,7 +342,6 @@ subjects:
 ###
 ### Metrics API
 ###
----
 kind: Service
 apiVersion: v1
 metadata:
@@ -390,7 +384,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: b9049bed0ca52f3d63f34e03d87cfdd38bd81f6066310d0bf64d2d3f380d5733
+        checksum/config: 6827b2203b1cd90692d9dd6a973a2162e574dc9fd7b5b9e346ceac7e287204a6
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
         linkerd.io/extension: linkerd-viz
@@ -430,7 +424,6 @@ spec:
 ###
 ### Grafana
 ###
----
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -588,7 +581,6 @@ spec:
 ###
 ### Tap
 ###
----
 kind: Service
 apiVersion: v1
 metadata:
@@ -637,7 +629,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 1396a8de42cb50dca5caf85bdb2b7ae7ad08152d0c107ec3586c366912d36aff
+        checksum/config: bbc82b03e8c9fdc549e1ef5d3f795c07c21fb3b4c089351186f170b722689d86
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
         linkerd.io/extension: linkerd-viz
@@ -685,10 +677,10 @@ spec:
         secret:
           secretName: linkerd-tap-k8s-tls
 
+---
 ###
 ### Tap Injector RBAC
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -733,7 +725,7 @@ data:
   tls.crt: dGVzdC10YXAtY3J0LXBlbQ==
   tls.key: dGVzdC10YXAta2V5LXBlbQ==
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-tap-injector-webhook-config
@@ -748,6 +740,7 @@ webhooks:
       path: "/"
     caBundle: dGVzdC10YXAtY2EtYnVuZGxl
   failurePolicy: Ignore
+  admissionReviewVersions: ["v1", "v1beta1"]
   reinvocationPolicy: IfNeeded
   rules:
   - operations: [ "CREATE" ]
@@ -759,7 +752,6 @@ webhooks:
 ###
 ### Tap Injector
 ###
----
 kind: Service
 apiVersion: v1
 metadata:
@@ -799,7 +791,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 33e988bace52d67983db9661563009d9e7f2a4877dd05add7300d2f25d2579ba
+        checksum/config: 0120b5feafdef04a057ab39fd63ed315ebbcc2bfc0b0657e3007fa34ffb8b7e2
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
         linkerd.io/extension: linkerd-viz
@@ -845,7 +837,6 @@ spec:
 ###
 ### Web
 ###
----
 kind: Service
 apiVersion: v1
 metadata:

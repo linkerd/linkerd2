@@ -22,7 +22,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
-	admissionRegistration "k8s.io/api/admissionregistration/v1beta1"
+	admissionRegistration "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -378,7 +378,7 @@ type CheckObserver func(*CheckResult)
 
 // Category is a group of checkers, to check a particular component or use-case
 type Category struct {
-	id       CategoryID
+	ID       CategoryID
 	checkers []Checker
 	enabled  bool
 }
@@ -386,7 +386,7 @@ type Category struct {
 // NewCategory returns an instance of Category with the specified data
 func NewCategory(id CategoryID, checkers []Checker, enabled bool) *Category {
 	return &Category{
-		id:       id,
+		ID:       id,
 		checkers: checkers,
 		enabled:  enabled,
 	}
@@ -446,7 +446,7 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 		checkMap[category] = struct{}{}
 	}
 	for i := range hc.categories {
-		if _, ok := checkMap[hc.categories[i].id]; ok {
+		if _, ok := checkMap[hc.categories[i].ID]; ok {
 			hc.categories[i].enabled = true
 		}
 	}
@@ -479,7 +479,7 @@ func (hc *HealthChecker) GetCategories() []Category {
 func (hc *HealthChecker) allCategories() []Category {
 	return []Category{
 		{
-			id: KubernetesAPIChecks,
+			ID: KubernetesAPIChecks,
 			checkers: []Checker{
 				{
 					description: "can initialize the client",
@@ -502,7 +502,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: KubernetesVersionChecks,
+			ID: KubernetesVersionChecks,
 			checkers: []Checker{
 				{
 					description: "is running the minimum Kubernetes API version",
@@ -521,7 +521,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdPreInstallChecks,
+			ID: LinkerdPreInstallChecks,
 			checkers: []Checker{
 				{
 					description: "control plane namespace does not already exist",
@@ -604,7 +604,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdPreInstallCapabilityChecks,
+			ID: LinkerdPreInstallCapabilityChecks,
 			checkers: []Checker{
 				{
 					description: "has NET_ADMIN capability",
@@ -625,7 +625,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdPreInstallGlobalResourcesChecks,
+			ID: LinkerdPreInstallGlobalResourcesChecks,
 			checkers: []Checker{
 				{
 					description: "no ClusterRoles exist",
@@ -672,7 +672,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdControlPlaneExistenceChecks,
+			ID: LinkerdControlPlaneExistenceChecks,
 			checkers: []Checker{
 				{
 					description: "'linkerd-config' config map exists",
@@ -770,7 +770,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdConfigChecks,
+			ID: LinkerdConfigChecks,
 			checkers: []Checker{
 				{
 					description: "control plane Namespace exists",
@@ -839,7 +839,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdCNIPluginChecks,
+			ID: LinkerdCNIPluginChecks,
 			checkers: []Checker{
 				{
 					description: "cni plugin ConfigMap exists",
@@ -984,7 +984,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdIdentity,
+			ID: LinkerdIdentity,
 			checkers: []Checker{
 				{
 					description: "certificate config is valid",
@@ -1090,7 +1090,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdWebhooksAndAPISvcTLS,
+			ID: LinkerdWebhooksAndAPISvcTLS,
 			checkers: []Checker{
 				{
 					description: "proxy-injector webhook has valid cert",
@@ -1168,7 +1168,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdIdentityDataPlane,
+			ID: LinkerdIdentityDataPlane,
 			checkers: []Checker{
 				{
 					description: "data plane proxies certificate match CA",
@@ -1181,7 +1181,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdAPIChecks,
+			ID: LinkerdAPIChecks,
 			checkers: []Checker{
 				{
 					description:         "control plane pods are ready",
@@ -1201,7 +1201,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdVersionChecks,
+			ID: LinkerdVersionChecks,
 			checkers: []Checker{
 				{
 					description: "can determine the latest version",
@@ -1231,7 +1231,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdControlPlaneVersionChecks,
+			ID: LinkerdControlPlaneVersionChecks,
 			checkers: []Checker{
 				{
 					description: "control plane is up-to-date",
@@ -1255,7 +1255,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdDataPlaneChecks,
+			ID: LinkerdDataPlaneChecks,
 			checkers: []Checker{
 				{
 					description: "data plane namespace exists",
@@ -1329,7 +1329,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdHAChecks,
+			ID: LinkerdHAChecks,
 			checkers: []Checker{
 				{
 					description: "pod injection disabled on kube-system",
@@ -1467,7 +1467,7 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 			for _, checker := range c.checkers {
 				checker := checker // pin
 				if checker.check != nil {
-					if !hc.runCheck(c.id, &checker, observer) {
+					if !hc.runCheck(c.ID, &checker, observer) {
 						if !checker.warning {
 							success = false
 						}
@@ -1478,7 +1478,7 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 				}
 
 				if checker.checkRPC != nil {
-					if !hc.runCheckRPC(c.id, &checker, observer) {
+					if !hc.runCheckRPC(c.ID, &checker, observer) {
 						if !checker.warning {
 							success = false
 						}
@@ -1714,7 +1714,7 @@ func (hc *HealthChecker) fetchProxyInjectorCaBundle(ctx context.Context) ([]*x50
 
 func (hc *HealthChecker) fetchSpValidatorCaBundle(ctx context.Context) ([]*x509.Certificate, error) {
 
-	vwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, k8s.SPValidatorWebhookConfigName, metav1.GetOptions{})
+	vwc, err := hc.kubeAPI.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, k8s.SPValidatorWebhookConfigName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -1952,7 +1952,7 @@ func (hc *HealthChecker) checkCustomResourceDefinitions(ctx context.Context, sho
 	options := metav1.ListOptions{
 		LabelSelector: hc.controlPlaneComponentsSelector(),
 	}
-	crdList, err := hc.kubeAPI.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().List(ctx, options)
+	crdList, err := hc.kubeAPI.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().List(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -1967,7 +1967,7 @@ func (hc *HealthChecker) checkCustomResourceDefinitions(ctx context.Context, sho
 }
 
 func (hc *HealthChecker) getProxyInjectorMutatingWebhook(ctx context.Context) (*admissionRegistration.MutatingWebhook, error) {
-	mwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Get(ctx, k8s.ProxyInjectorWebhookConfigName, metav1.GetOptions{})
+	mwc, err := hc.kubeAPI.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(ctx, k8s.ProxyInjectorWebhookConfigName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -1989,7 +1989,7 @@ func (hc *HealthChecker) checkMutatingWebhookConfigurations(ctx context.Context,
 	options := metav1.ListOptions{
 		LabelSelector: hc.controlPlaneComponentsSelector(),
 	}
-	mwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().List(ctx, options)
+	mwc, err := hc.kubeAPI.AdmissionregistrationV1().MutatingWebhookConfigurations().List(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -2007,7 +2007,7 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Contex
 	options := metav1.ListOptions{
 		LabelSelector: hc.controlPlaneComponentsSelector(),
 	}
-	vwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().List(ctx, options)
+	vwc, err := hc.kubeAPI.AdmissionregistrationV1().ValidatingWebhookConfigurations().List(ctx, options)
 	if err != nil {
 		return err
 	}

@@ -3,7 +3,6 @@
 ###
 ### Grafana RBAC
 ###
----
 kind: ServiceAccount
 apiVersion: v1
 metadata:

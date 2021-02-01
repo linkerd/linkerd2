@@ -2,7 +2,6 @@
 ###
 ### Proxy Injector RBAC
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -73,7 +72,7 @@ data:
   tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.proxyInjector.keyPEM)) (empty .Values.proxyInjector.keyPEM) }}
 ---
 {{- end }}
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
@@ -94,6 +93,7 @@ webhooks:
 {{- end }}
     caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.proxyInjector.caBundle)) (empty .Values.proxyInjector.caBundle) }}
   failurePolicy: {{.Values.webhookFailurePolicy}}
+  admissionReviewVersions: ["v1", "v1beta1"]
   rules:
   - operations: [ "CREATE" ]
     apiGroups: [""]

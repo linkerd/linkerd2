@@ -2,7 +2,6 @@
 ###
 ### Control Plane PSP
 ###
----
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
