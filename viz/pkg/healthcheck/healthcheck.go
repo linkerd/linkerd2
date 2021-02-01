@@ -20,6 +20,9 @@ import (
 )
 
 const (
+	// VizExtensionName is the name of the viz extension
+	 VizExtensionName = "linkerd-viz"
+	 
 	// LinkerdVizExtensionCheck adds checks related to the Linkerd Viz extension
 	LinkerdVizExtensionCheck healthcheck.CategoryID = "linkerd-viz"
 

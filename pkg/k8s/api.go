@@ -166,13 +166,24 @@ func (kubeAPI *KubernetesAPI) GetReplicaSets(ctx context.Context, namespace stri
 	return replicaSetList.Items, nil
 }
 
-// GetNamespaceWithExtensionLabel gets the namespace with the LinkerdExtensionLabel label value of `value`
-func (kubeAPI *KubernetesAPI) GetNamespaceWithExtensionLabel(ctx context.Context, value string) (*corev1.Namespace, error) {
+// GetAllNamespacesWithExtensionLabel gets all namespaces with the linkerd.io/extension label key
+func (kubeAPI *KubernetesAPI) GetAllNamespacesWithExtensionLabel(ctx context.Context) ([]corev1.Namespace, error){
 	namespaces, err := kubeAPI.CoreV1().Namespaces().List(ctx, metav1.ListOptions{LabelSelector: LinkerdExtensionLabel})
 	if err != nil {
 		return nil, err
 	}
-	for _, ns := range namespaces.Items {
+
+	return namespaces.Items, nil
+}
+
+// GetNamespaceWithExtensionLabel gets the namespace with the LinkerdExtensionLabel label value of `value`
+func (kubeAPI *KubernetesAPI) GetNamespaceWithExtensionLabel(ctx context.Context, value string) (*corev1.Namespace, error) {
+	namespaces, err := kubeAPI.GetAllNamespacesWithExtensionLabel(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ns := range namespaces {
 		if ns.Labels[LinkerdExtensionLabel] == value {
 			return &ns, err
 		}

@@ -14,11 +14,11 @@ import (
 
 const (
 
-	// jaegerExtensionName is the name of jaeger extension
-	jaegerExtensionName = "linkerd-jaeger"
+	// JaegerExtensionName is the name of jaeger extension
+	JaegerExtensionName = "linkerd-jaeger"
 
 	// linkerdJaegerExtensionCheck adds checks related to the jaeger extension
-	linkerdJaegerExtensionCheck healthcheck.CategoryID = jaegerExtensionName
+	linkerdJaegerExtensionCheck healthcheck.CategoryID = JaegerExtensionName
 )
 
 var (
@@ -40,7 +40,7 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			Fatal().
 			WithCheck(func(ctx context.Context) error {
 				// Get  jaeger Extension Namespace
-				ns, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, jaegerExtensionName)
+				ns, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, JaegerExtensionName)
 				if err != nil {
 					return err
 				}
@@ -146,7 +146,8 @@ func (options *checkOptions) validate() error {
 	return nil
 }
 
-func newCmdCheck() *cobra.Command {
+// NewCmdCheck generates a new cobra command for the jaeger extension.
+func NewCmdCheck() *cobra.Command {
 	options := newCheckOptions()
 	cmd := &cobra.Command{
 		Use:   "check [flags]",

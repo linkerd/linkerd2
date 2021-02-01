@@ -10,9 +10,14 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/cli/flag"
+	jaegerCmd "github.com/linkerd/linkerd2/jaeger/cmd"
+	mcCmd "github.com/linkerd/linkerd2/multicluster/cmd"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
+	vizCmd "github.com/linkerd/linkerd2/viz/cmd"
+	vizHealthCheck "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	valuespkg "helm.sh/helm/v3/pkg/cli/values"
@@ -211,6 +216,83 @@ func configureAndRunChecks(ctx context.Context, wout io.Writer, werr io.Writer, 
 		os.Exit(1)
 	}
 
+	err = runExtensionChecks(ctx, options)
+	if err != nil {
+		return fmt.Errorf("Error running extension checks: %v", err)
+	}
+
+	return nil
+}
+
+func runExtensionChecks(ctx context.Context, opts *checkOptions) error {
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+	if err != nil {
+		return err
+	}
+
+	namespaces, err := kubeAPI.GetAllNamespacesWithExtensionLabel(ctx)
+	if err != nil {
+		return err
+	}
+
+	noArgs := []string{}
+	for _, ns := range namespaces {
+		switch ns.Labels[k8s.LinkerdExtensionLabel] {
+		case jaegerCmd.JaegerExtensionName:
+			jaegerCheckCmd := jaegerCmd.NewCmdCheck()
+
+			err = setSubCheckFlags(jaegerCheckCmd, map[string]string{
+				"output": opts.output,
+				"wait":   opts.wait.String(),
+			})
+			if err != nil {
+				return err
+			}
+
+			err = jaegerCheckCmd.RunE(jaegerCheckCmd, noArgs)
+		case vizHealthCheck.VizExtensionName:
+			vizCheckCmd := vizCmd.NewCmdCheck()
+
+			err = setSubCheckFlags(vizCheckCmd, map[string]string{
+				"output":    opts.output,
+				"wait":      opts.wait.String(),
+				"proxy":     fmt.Sprintf("%t", opts.dataPlaneOnly),
+				"namespace": opts.namespace,
+			})
+			if err != nil {
+				return err
+			}
+
+			err = vizCheckCmd.RunE(vizCheckCmd, noArgs)
+		case mcCmd.MulticlusterExtensionName:
+			mcCheckCmd := mcCmd.NewCmdCheck()
+
+			err = setSubCheckFlags(mcCheckCmd, map[string]string{
+				"output": opts.output,
+				"wait":   opts.wait.String(),
+			})
+			if err != nil {
+				return err
+			}
+
+			err = mcCheckCmd.RunE(mcCheckCmd, noArgs)
+		default:
+			// don't run any checks for unknown extensions
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func setSubCheckFlags(cmd *cobra.Command, flags map[string]string) error {
+	for fName, fValue := range flags {
+		err := cmd.PersistentFlags().Set(fName, fValue)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

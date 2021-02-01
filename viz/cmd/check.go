@@ -32,7 +32,8 @@ func (options *checkOptions) validate() error {
 	return nil
 }
 
-func newCmdCheck() *cobra.Command {
+// NewCmdCheck generates a new cobra command for the viz extension.
+func NewCmdCheck() *cobra.Command {
 	options := newCheckOptions()
 	cmd := &cobra.Command{
 		Use:   "check [flags]",

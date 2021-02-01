@@ -25,11 +25,11 @@ import (
 )
 
 const (
-	// multiclusterExtensionName is the name of the multicluster extension
-	multiclusterExtensionName = "linkerd-multicluster"
+	// MulticlusterExtensionName is the name of the multicluster extension
+	MulticlusterExtensionName = "linkerd-multicluster"
 
 	// linkerdMulticlusterExtensionCheck adds checks related to the multicluster extension
-	linkerdMulticlusterExtensionCheck healthcheck.CategoryID = multiclusterExtensionName
+	linkerdMulticlusterExtensionCheck healthcheck.CategoryID = MulticlusterExtensionName
 
 	linkerdServiceMirrorServiceAccountName = "linkerd-service-mirror-%s"
 	linkerdServiceMirrorComponentName      = "service-mirror"
@@ -67,7 +67,8 @@ func newHealthChecker(linkerdHC *healthcheck.HealthChecker) *healthChecker {
 	}
 }
 
-func newCmdCheck() *cobra.Command {
+// NewCmdCheck generates a new cobra command for the multicluster extension.
+func NewCmdCheck() *cobra.Command {
 	options := newCheckOptions()
 	cmd := &cobra.Command{
 		Use:   "check [flags]",
@@ -84,7 +85,7 @@ non-zero exit code.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get the multicluster extension namespace
 			kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-			_, err = kubeAPI.GetNamespaceWithExtensionLabel(context.Background(), multiclusterExtensionName)
+			_, err = kubeAPI.GetNamespaceWithExtensionLabel(context.Background(), MulticlusterExtensionName)
 			if err != nil {
 				err = fmt.Errorf("%w; install by running `linkerd multicluster install | kubectl apply -f -`", err)
 				fmt.Fprintln(os.Stderr, err.Error())
