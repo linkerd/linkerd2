@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/k8s/resource"
 	"github.com/spf13/cobra"
@@ -16,6 +18,7 @@ const (
 )
 
 func newCmdUninstall() *cobra.Command {
+	var force bool
 	cmd := &cobra.Command{
 		Use:   "uninstall",
 		Args:  cobra.NoArgs,
@@ -25,18 +28,34 @@ func newCmdUninstall() *cobra.Command {
 This command provides all Kubernetes namespace-scoped and cluster-scoped resources (e.g services, deployments, RBACs, etc.) necessary to uninstall Linkerd control plane.`,
 		Example: ` linkerd uninstall | kubectl delete -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return uninstallRunE(cmd.Context())
+
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			if err != nil {
+				return err
+			}
+
+			if !force {
+				podsList, err := k8sAPI.CoreV1().Pods("").List(cmd.Context(), metav1.ListOptions{})
+				if err != nil {
+					return err
+				}
+				for _, pod := range podsList.Items {
+					// Skip core control-plane and extension namespaces when checking for proxies
+					if !strings.HasPrefix(pod.Namespace, "linkerd") && healthcheck.ContainsProxy(pod) {
+						return fmt.Errorf("Please uninject proxy containers before uninstalling the control-plane")
+					}
+				}
+			}
+
+			return uninstallRunE(cmd.Context(), k8sAPI)
 		},
 	}
 
+	cmd.Flags().BoolVarP(&force, "force", "f", force, "Enable this to perform a forced uninstall")
 	return cmd
 }
 
-func uninstallRunE(ctx context.Context) error {
-	k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-	if err != nil {
-		return err
-	}
+func uninstallRunE(ctx context.Context, k8sAPI *k8s.KubernetesAPI) error {
 
 	resources, err := resource.FetchKubernetesResources(ctx, k8sAPI,
 		metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel},
