@@ -2,7 +2,6 @@
 ###
 ### Identity Controller Service RBAC
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -49,7 +48,6 @@ metadata:
 ###
 ### Controller RBAC
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -102,7 +100,6 @@ metadata:
 ###
 ### Destination Controller Service
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -155,7 +152,6 @@ metadata:
 ###
 ### Heartbeat RBAC
 ###
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -197,7 +193,6 @@ metadata:
 ###
 ### Service Profile CRD
 ###
----
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -478,7 +473,6 @@ spec:
 ### TrafficSplit CRD
 ### Copied from github.com/servicemeshinterface/smi-sdk-go/blob/d4e76b1cd7a33ead5f38d1262dd838a31c80f4e5/crds/split.yaml
 ###
----
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -552,7 +546,6 @@ spec:
 ###
 ### Proxy Injector RBAC
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -651,7 +644,6 @@ webhooks:
 ###
 ### Service Profile Validator RBAC
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -738,7 +730,6 @@ webhooks:
 ###
 ### Control Plane PSP
 ###
----
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
@@ -1275,7 +1266,6 @@ spec:
 ###
 ### Controller
 ###
----
 kind: Service
 apiVersion: v1
 metadata:
@@ -1503,7 +1493,6 @@ spec:
 ###
 ### Destination Controller Service
 ###
----
 kind: Service
 apiVersion: v1
 metadata:
@@ -1753,7 +1742,6 @@ spec:
 ###
 ### Heartbeat
 ###
----
 apiVersion: batch/v1beta1
 kind: CronJob
 metadata:
@@ -1800,7 +1788,6 @@ spec:
 ###
 ### Proxy Injector
 ###
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1822,7 +1809,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 264325aa8885fa9c7aae576456adcf319a6c6877d8de929481eb757fd3efd1ea
+        checksum/config: c4f75529c02e1cefb90d3ee3f1001e686e4b2286ce2c2226251f613378d23311
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
@@ -2036,7 +2023,6 @@ spec:
 ###
 ### Service Profile Validator
 ###
----
 kind: Service
 apiVersion: v1
 metadata:
@@ -2077,7 +2063,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 7917bc8da431ef8fb46a2d84bddbd08a156d3370a7846c980dced0fc8869d51f
+        checksum/config: 8153cc8e32bed84b94148d753ae870def8dea3e70467b557be14a646f7aad7e5
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
