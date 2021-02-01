@@ -101,13 +101,14 @@ func TestUninstall(t *testing.T) {
 		testutil.AnnotatedFatal(t, "'linkerd viz uninstall' command failed", err)
 	}
 
-	out, err = TestHelper.KubectlApply(out, "")
+	args := []string{"delete", "-f", "-"}
+	out, err = TestHelper.Kubectl(out, args...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-			"'kubectl apply' command failed\n%s", out)
+		testutil.AnnotatedFatalf(t, "'kubectl delete' command failed",
+			"'kubectl delete' command failed\n%s", out)
 	}
 
-	args := []string{"uninstall"}
+	args = []string{"uninstall"}
 	out, err = TestHelper.LinkerdRun(args...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd install' command failed", err)
@@ -116,8 +117,8 @@ func TestUninstall(t *testing.T) {
 	args = []string{"delete", "-f", "-"}
 	out, err = TestHelper.Kubectl(out, args...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-			"'kubectl apply' command failed\n%s", out)
+		testutil.AnnotatedFatalf(t, "'kubectl delete' command failed",
+			"'kubectl delete' command failed\n%s", out)
 	}
 }
 
