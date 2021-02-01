@@ -71,7 +71,7 @@ data:
   tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.webhook.keyPEM)) (empty .Values.webhook.keyPEM) }}
 ---
 {{- end }}
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-jaeger-injector-webhook-config
@@ -97,6 +97,7 @@ webhooks:
 {{- end }}
     caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.webhook.caBundle)) (empty .Values.webhook.caBundle) }}
   failurePolicy: {{.Values.webhook.failurePolicy}}
+  admissionReviewVersions: ["v1", "v1beta1"]
   reinvocationPolicy: IfNeeded
   rules:
   - operations: [ "CREATE" ]
