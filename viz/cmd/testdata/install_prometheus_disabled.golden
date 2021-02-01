@@ -677,10 +677,10 @@ spec:
         secret:
           secretName: linkerd-tap-k8s-tls
 
+---
 ###
 ### Tap Injector RBAC
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -791,7 +791,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: bc00476e81704f0ff91b91f8c7a9e78ae452f4e003791bb755f2021820b459f8
+        checksum/config: 0120b5feafdef04a057ab39fd63ed315ebbcc2bfc0b0657e3007fa34ffb8b7e2
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
         linkerd.io/extension: linkerd-viz
