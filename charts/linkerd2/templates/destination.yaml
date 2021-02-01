@@ -2,7 +2,6 @@
 ###
 ### Destination Controller Service
 ###
----
 kind: Service
 apiVersion: v1
 metadata:

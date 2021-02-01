@@ -3,7 +3,6 @@
 ###
 ### Linkerd Viz Extension Namespace
 ###
----
 kind: Namespace
 apiVersion: v1
 metadata:

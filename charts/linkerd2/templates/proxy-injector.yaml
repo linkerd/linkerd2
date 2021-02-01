@@ -2,7 +2,6 @@
 ###
 ### Proxy Injector
 ###
----
 {{- $tree := deepCopy . }}
 {{ $_ := set $tree.Values.global.proxy "workloadKind" "deployment" -}}
 {{ $_ := set $tree.Values.global.proxy "component" "linkerd-proxy-injector" -}}
