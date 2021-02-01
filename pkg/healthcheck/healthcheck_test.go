@@ -50,12 +50,12 @@ func (hc *HealthChecker) addCheckAsCategory(
 	desc string,
 ) {
 	testCategory := Category{
-		id:       testCategoryID,
+		ID:       testCategoryID,
 		checkers: []Checker{},
 	}
 
 	for _, cat := range hc.categories {
-		if cat.id == categoryID {
+		if cat.ID == categoryID {
 			for _, ch := range cat.checkers {
 				if ch.description == desc {
 					testCategory.checkers = append(testCategory.checkers, ch)
@@ -73,7 +73,7 @@ func TestHealthChecker(t *testing.T) {
 	nullObserver := func(*CheckResult) {}
 
 	passingCheck1 := Category{
-		id: "cat1",
+		ID: "cat1",
 		checkers: []Checker{
 			{
 				description: "desc1",
@@ -87,7 +87,7 @@ func TestHealthChecker(t *testing.T) {
 	}
 
 	passingCheck2 := Category{
-		id: "cat2",
+		ID: "cat2",
 		checkers: []Checker{
 			{
 				description: "desc2",
@@ -101,7 +101,7 @@ func TestHealthChecker(t *testing.T) {
 	}
 
 	failingCheck := Category{
-		id: "cat3",
+		ID: "cat3",
 		checkers: []Checker{
 			{
 				description: "desc3",
@@ -115,7 +115,7 @@ func TestHealthChecker(t *testing.T) {
 	}
 
 	fatalCheck := Category{
-		id: "cat6",
+		ID: "cat6",
 		checkers: []Checker{
 			{
 				description: "desc6",
@@ -130,7 +130,7 @@ func TestHealthChecker(t *testing.T) {
 	}
 
 	skippingCheck := Category{
-		id: "cat7",
+		ID: "cat7",
 		checkers: []Checker{
 			{
 				description: "skip",
@@ -144,7 +144,7 @@ func TestHealthChecker(t *testing.T) {
 	}
 
 	skippingRPCCheck := Category{
-		id: "cat8",
+		ID: "cat8",
 		checkers: []Checker{
 			{
 				description: "skipRpc",
@@ -239,7 +239,7 @@ func TestHealthChecker(t *testing.T) {
 		returnError := true
 
 		retryCheck := Category{
-			id: "cat7",
+			ID: "cat7",
 			checkers: []Checker{
 				{
 					description:   "desc7",

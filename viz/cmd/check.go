@@ -12,8 +12,10 @@ import (
 )
 
 type checkOptions struct {
-	wait   time.Duration
-	output string
+	proxy     bool
+	wait      time.Duration
+	namespace string
+	output    string
 }
 
 func newCheckOptions() *checkOptions {
@@ -51,8 +53,9 @@ code.`,
 	}
 
 	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
+	cmd.PersistentFlags().BoolVar(&options.proxy, "proxy", options.proxy, "Also run data-plane checks, to determine if the data plane is healthy")
 	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
-
+	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	return cmd
 }
 
@@ -65,7 +68,6 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.LinkerdControlPlaneExistenceChecks,
-		vizHealthCheck.LinkerdVizExtensionCheck,
 	}
 
 	hc := vizHealthCheck.NewHealthChecker(checks, &healthcheck.Options{
@@ -76,8 +78,13 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		ImpersonateGroup:      impersonateGroup,
 		APIAddr:               apiAddr,
 		RetryDeadline:         time.Now().Add(options.wait),
+		DataPlaneNamespace:    options.namespace,
 	})
 
+	hc.AppendCategories(hc.VizCategory())
+	if options.proxy {
+		hc.AppendCategories(hc.VizDataPlaneCategory())
+	}
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
 	if !success {
