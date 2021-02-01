@@ -52,10 +52,7 @@ func Mutate(tapSvcName string) webhook.Handler {
 			ProxyIndex:      webhook.GetProxyContainerIndex(pod.Spec.Containers),
 			ProxyTapSvcName: tapSvcName,
 		}
-		if params.ProxyIndex < 0 {
-			return admissionResponse, nil
-		}
-		if _, contains := pod.GetAnnotations()[vizLabels.VizTapEnabled]; contains {
+		if params.ProxyIndex < 0 || vizLabels.IsTapEnabled(pod) {
 			return admissionResponse, nil
 		}
 		namespace, err := k8sAPI.NS().Lister().Get(request.Namespace)
