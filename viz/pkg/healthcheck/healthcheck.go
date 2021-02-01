@@ -215,7 +215,7 @@ func (hc *HealthChecker) VizDataPlaneCategory() healthcheck.Category {
 
 				return validateDataPlanePodReporting(pods)
 			}),
-		*healthcheck.NewChecker("data-plane pods have the correct tap configuration").
+		*healthcheck.NewChecker("data-plane pods have tap enabled").
 			WithHintAnchor("l5d-viz-data-plane-tap").
 			Warning().
 			WithCheck(func(ctx context.Context) error {
