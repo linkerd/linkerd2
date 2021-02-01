@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -40,8 +39,8 @@ This command provides all Kubernetes namespace-scoped and cluster-scoped resourc
 					return err
 				}
 				for _, pod := range podsList.Items {
-					// Skip core control-plane and extension namespaces when checking for proxies
-					if !strings.HasPrefix(pod.Namespace, "linkerd") && healthcheck.ContainsProxy(pod) {
+					// Skip core control-plane namespace
+					if pod.Namespace != controlPlaneNamespace && healthcheck.ContainsProxy(pod) {
 						return fmt.Errorf("Please uninject proxy containers before uninstalling the control-plane")
 					}
 				}
@@ -51,7 +50,7 @@ This command provides all Kubernetes namespace-scoped and cluster-scoped resourc
 		},
 	}
 
-	cmd.Flags().BoolVarP(&force, "force", "f", force, "Enable this to perform a forced uninstall")
+	cmd.Flags().BoolVarP(&force, "force", "f", force, "Force uninstall even if there exist non-control-plane injected pods")
 	return cmd
 }
 
