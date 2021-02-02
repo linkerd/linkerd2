@@ -22,7 +22,7 @@ Former maintainers include:
 
 The Linkerd Steering Committee members are:
 
-* Chis Campbell @campbel
+* Chris Campbell @campbel
 * Christian Hüning @christianhuening
 * Justin Turner @justin-turner-heb
 * William King @quentusrex
