@@ -10,7 +10,7 @@ metadata:
   labels:
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
 spec:
-  allowPrivilegeEscalation: false
+  allowPrivilegeEscalation: true
   readOnlyRootFilesystem: true
   {{- if empty .Values.global.cniEnabled }}
   allowedCapabilities:
@@ -25,11 +25,7 @@ spec:
   seLinux:
     rule: RunAsAny
   runAsUser:
-    {{- if .Values.global.cniEnabled }}
     rule: MustRunAsNonRoot
-    {{- else }}
-    rule: RunAsAny
-    {{- end }}
   supplementalGroups:
     rule: MustRunAs
     ranges:

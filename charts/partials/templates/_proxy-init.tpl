@@ -40,8 +40,8 @@ securityContext:
   privileged: false
   {{- end }}
   readOnlyRootFilesystem: true
-  runAsNonRoot: {{.Values.global.proxyInit.runAsNonRoot}}
-  runAsUser: {{.Values.global.proxyInit.runAsUser}}
+  runAsNonRoot: true
+  runAsUser: 76543
 terminationMessagePolicy: FallbackToLogsOnError
 {{- if or (not .Values.global.cniEnabled) .Values.global.proxyInit.saMountPath }}
 volumeMounts:
