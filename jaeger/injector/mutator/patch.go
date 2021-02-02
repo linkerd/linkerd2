@@ -3,7 +3,7 @@ package mutator
 const tpl = `[
   {
     "op": "add",
-    "path": "/metadata/annotations/{{.Annotation}}",
+    "path": "/metadata/annotations/jaeger.linkerd.io~1tracing-enabled",
     "value": "true"
   },
   {

@@ -26,7 +26,6 @@ const (
 
 // Params holds the values used in the patch template
 type Params struct {
-	Annotation          string
 	ProxyIndex          int
 	CollectorSvcAddr    string
 	CollectorSvcAccount string
@@ -56,13 +55,7 @@ func Mutate(collectorSvcAddr, collectorSvcAccount string) webhook.Handler {
 		if err := yaml.Unmarshal(request.Object.Raw, &pod); err != nil {
 			return nil, err
 		}
-
-		// annotation is used in the patch as a JSON pointer, so '/' must be
-		// encoded as '~1' as stated in
-		// https://tools.ietf.org/html/rfc6901#section-3
-		annotation := strings.Replace(labels.JaegerTracingEnabled, "/", "~1", -1)
 		params := Params{
-			Annotation:          annotation,
 			ProxyIndex:          webhook.GetProxyContainerIndex(pod.Spec.Containers),
 			CollectorSvcAddr:    collectorSvcAddr,
 			CollectorSvcAccount: collectorSvcAccount,
