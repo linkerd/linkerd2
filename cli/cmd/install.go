@@ -423,7 +423,7 @@ func renderOverrides(values chartutil.Values, namespace string) ([]byte, error) 
 	if err != nil {
 		return nil, err
 	}
-	// Remove unecessary fields, including fields added by helm's `chartutil.CoalesceValues`
+	// Remove unnecessary fields, including fields added by helm's `chartutil.CoalesceValues`
 	values["configs"] = l5dcharts.ConfigJSONs{}
 	delete(values, "partials")
 
