@@ -1258,21 +1258,6 @@ func (hc *HealthChecker) allCategories() []Category {
 			ID: LinkerdDataPlaneChecks,
 			checkers: []Checker{
 				{
-					description: "data plane pods have service account volume mounted",
-					hintAnchor:  "",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						vm, podName, err := hc.checkServiceAccountVolumeMount(ctx)
-						if err != nil {
-							return err
-						}
-						if !vm {
-							return fmt.Errorf("%s does not have service account volume mounted", podName)
-						}
-						return nil
-					},
-				},
-				{
 					description: "data plane namespace exists",
 					hintAnchor:  "l5d-data-plane-exists",
 					fatal:       true,
@@ -2332,28 +2317,6 @@ func (hc *HealthChecker) checkClockSkew(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func (hc *HealthChecker) checkServiceAccountVolumeMount(ctx context.Context) (bool, string, error) {
-	// get the data plane pods
-	mountCheck := false
-	pods, err := hc.kubeAPI.CoreV1().Pods(hc.DataPlaneNamespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return false, "", err
-	}
-	for _, pod := range pods.Items {
-		if containers := pod.Spec.Containers; len(containers) > 0 {
-			for _, vm := range containers[0].VolumeMounts {
-				if vm.MountPath == k8s.MountPathServiceAccount {
-					mountCheck = true
-				}
-			}
-			if !mountCheck {
-				return false, pod.Name, nil
-			}
-		}
-	}
-	return true, "", nil
 }
 
 func (cr *CheckResult) alreadyObserved(previousResults []CheckResult) bool {
