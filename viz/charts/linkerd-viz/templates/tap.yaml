@@ -79,7 +79,7 @@ spec:
       {{- end }}
       containers:
       - args:
-        - tap
+        - controller
         - -controller-namespace={{.Values.linkerdNamespace}}
         - -log-level={{.Values.tap.logLevel}}
         - -identity-trust-domain={{.Values.identityTrustDomain}}

@@ -83,7 +83,7 @@ func NewCmdEdges() *cobra.Command {
   # Get all edges between pods in all namespaces.
   linkerd viz edges po --all-namespaces`,
 		Args:      cobra.ExactArgs(1),
-		ValidArgs: coreUtil.ValidTargets,
+		ValidArgs: api.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)

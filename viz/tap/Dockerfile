@@ -9,22 +9,23 @@ RUN go mod download
 ARG TARGETARCH
 RUN ./bin/install-deps $TARGETARCH
 
-## compile metrics-apiservice
+## compile tap
 FROM go-deps as golang
 WORKDIR /linkerd-build
 COPY pkg pkg
 COPY controller controller
-COPY viz/metrics-api viz/metrics-api
-COPY viz/tap/gen/tap viz/tap/gen/tap
+COPY viz/metrics-api/gen/viz viz/metrics-api/gen/viz
+COPY viz/metrics-api/client viz/metrics-api/client
+COPY viz/tap viz/tap
 COPY viz/pkg viz/pkg
 
 ARG TARGETARCH
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/metrics-api -tags prod -mod=readonly -ldflags "-s -w" ./viz/metrics-api/cmd
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/tap -tags prod -mod=readonly -ldflags "-s -w" ./viz/tap/cmd
 
 ## package runtime
 FROM scratch
 ENV PATH=$PATH:/go/bin
 COPY LICENSE /linkerd/LICENSE
-COPY --from=golang /out/metrics-api /go/bin/metrics-api
+COPY --from=golang /out/tap /go/bin/tap
 
-ENTRYPOINT ["/go/bin/metrics-api"]
+ENTRYPOINT ["/go/bin/tap"]

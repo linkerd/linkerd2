@@ -1,4 +1,4 @@
-package tapinjector
+package injector
 
 import (
 	"fmt"

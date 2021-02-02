@@ -1,4 +1,4 @@
-package tap
+package api
 
 import (
 	"context"
@@ -62,7 +62,7 @@ data:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			clientCAPem, allowedNames, usernameHeader, groupHeader, err := apiServerAuth(ctx, k8sAPI)
+			clientCAPem, allowedNames, usernameHeader, groupHeader, err := serverAuth(ctx, k8sAPI)
 			if !reflect.DeepEqual(err, exp.err) {
 				t.Errorf("apiServerAuth returned unexpected error: %s, expected: %s", err, exp.err)
 			}
@@ -90,7 +90,7 @@ func TestValidate(t *testing.T) {
 
 	req := http.Request{TLS: &tls}
 
-	server := APIServer{}
+	server := Server{}
 	if err := server.validate(&req); err != nil {
 		t.Fatalf("No error expected for %q but encountered %q", cert.Subject.CommonName, err.Error())
 	}
@@ -104,7 +104,7 @@ func TestValidate_ClientAllowed(t *testing.T) {
 
 	req := http.Request{TLS: &tls}
 
-	server := APIServer{allowedNames: []string{"name-trusted"}}
+	server := Server{allowedNames: []string{"name-trusted"}}
 	if err := server.validate(&req); err != nil {
 		t.Fatalf("No error expected for %q but encountered %q", cert.Subject.CommonName, err.Error())
 	}
@@ -118,7 +118,7 @@ func TestValidate_ClientAllowedViaSAN(t *testing.T) {
 
 	req := http.Request{TLS: &tls}
 
-	server := APIServer{allowedNames: []string{"linkerd.io"}}
+	server := Server{allowedNames: []string{"linkerd.io"}}
 	if err := server.validate(&req); err != nil {
 		t.Fatalf("No error expected for %q but encountered %q", cert.Subject.CommonName, err.Error())
 	}
@@ -132,7 +132,7 @@ func TestValidate_ClientNotAllowed(t *testing.T) {
 
 	req := http.Request{TLS: &tls}
 
-	server := APIServer{allowedNames: []string{"name-trusted"}}
+	server := Server{allowedNames: []string{"name-trusted"}}
 	if err := server.validate(&req); err == nil {
 		t.Fatalf("Expected request to be rejected for %q", cert.Subject.CommonName)
 	}

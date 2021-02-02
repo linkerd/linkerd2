@@ -6,9 +6,27 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	vizHealthCheck "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
 )
+
+// ValidTargets specifies resource types allowed as a target:
+// - target resource on an inbound query
+// - target resource on an outbound 'to' query
+// - destination resource on an outbound 'from' query
+var ValidTargets = []string{
+	k8s.Authority,
+	k8s.CronJob,
+	k8s.DaemonSet,
+	k8s.Deployment,
+	k8s.Job,
+	k8s.Namespace,
+	k8s.Pod,
+	k8s.ReplicaSet,
+	k8s.ReplicationController,
+	k8s.StatefulSet,
+}
 
 // CheckClientOrExit builds a new Viz API client and executes default status
 // checks to determine if the client can successfully perform cli commands. If the

@@ -11,16 +11,16 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
-	"github.com/linkerd/linkerd2/pkg/tap"
-	api "github.com/linkerd/linkerd2/viz/metrics-api"
-	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
-	vizAPI "github.com/linkerd/linkerd2/viz/pkg/api"
+	metricsAPI "github.com/linkerd/linkerd2/viz/metrics-api"
+	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	"github.com/linkerd/linkerd2/viz/pkg/api"
+	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
+	"github.com/linkerd/linkerd2/viz/tap/pkg"
 	runewidth "github.com/mattn/go-runewidth"
 	termbox "github.com/nsf/termbox-go"
 	log "github.com/sirupsen/logrus"
@@ -43,10 +43,10 @@ type topOptions struct {
 }
 
 type topRequest struct {
-	event   *pb.TapEvent
-	reqInit *pb.TapEvent_Http_RequestInit
-	rspInit *pb.TapEvent_Http_ResponseInit
-	rspEnd  *pb.TapEvent_Http_ResponseEnd
+	event   *tapPb.TapEvent
+	reqInit *tapPb.TapEvent_Http_RequestInit
+	rspInit *tapPb.TapEvent_Http_ResponseInit
+	rspEnd  *tapPb.TapEvent_Http_ResponseEnd
 }
 
 type topRequestID struct {
@@ -320,13 +320,13 @@ func NewCmdTop() *cobra.Command {
   # display traffic for the web-dlbvj pod in the default namespace
   linkerd viz top pod/web-dlbvj`,
 		Args:      cobra.RangeArgs(1, 2),
-		ValidArgs: util.ValidTargets,
+		ValidArgs: api.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
 			}
 
-			vizAPI.CheckClientOrExit(healthcheck.Options{
+			api.CheckClientOrExit(healthcheck.Options{
 				ControlPlaneNamespace: controlPlaneNamespace,
 				KubeConfig:            kubeconfigPath,
 				Impersonate:           impersonate,
@@ -335,7 +335,7 @@ func NewCmdTop() *cobra.Command {
 				APIAddr:               apiAddr,
 			})
 
-			requestParams := util.TapRequestParams{
+			requestParams := pkg.TapRequestParams{
 				Resource:      strings.Join(args, "/"),
 				Namespace:     options.namespace,
 				ToResource:    options.toResource,
@@ -362,7 +362,7 @@ func NewCmdTop() *cobra.Command {
 				table.columns[routeColumn].display = true
 			}
 
-			req, err := util.BuildTapByResourceRequest(requestParams)
+			req, err := pkg.BuildTapByResourceRequest(requestParams)
 			if err != nil {
 				return err
 			}
@@ -399,8 +399,8 @@ func NewCmdTop() *cobra.Command {
 	return cmd
 }
 
-func getTrafficByResourceFromAPI(ctx context.Context, k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, table *topTable) error {
-	reader, body, err := tap.Reader(ctx, k8sAPI, req)
+func getTrafficByResourceFromAPI(ctx context.Context, k8sAPI *k8s.KubernetesAPI, req *tapPb.TapByResourceRequest, table *topTable) error {
+	reader, body, err := pkg.Reader(ctx, k8sAPI, req)
 	if err != nil {
 		return err
 	}
@@ -419,7 +419,7 @@ func getTrafficByResourceFromAPI(ctx context.Context, k8sAPI *k8s.KubernetesAPI,
 	//       processEvents() ->
 	//         requestCh ->
 	//           renderTable()
-	eventCh := make(chan *pb.TapEvent)
+	eventCh := make(chan *tapPb.TapEvent)
 	requestCh := make(chan topRequest, 100)
 
 	// for closing:
@@ -444,14 +444,14 @@ func getTrafficByResourceFromAPI(ctx context.Context, k8sAPI *k8s.KubernetesAPI,
 	return nil
 }
 
-func recvEvents(tapByteStream *bufio.Reader, eventCh chan<- *pb.TapEvent, closing chan<- struct{}) {
+func recvEvents(tapByteStream *bufio.Reader, eventCh chan<- *tapPb.TapEvent, closing chan<- struct{}) {
 	for {
-		event := &pb.TapEvent{}
+		event := &tapPb.TapEvent{}
 		err := protohttp.FromByteStreamToProtocolBuffers(tapByteStream, event)
 		if err != nil {
 			if err == io.EOF {
 				fmt.Println("Tap stream terminated")
-			} else if !strings.HasSuffix(err.Error(), tap.ErrClosedResponseBody) {
+			} else if !strings.HasSuffix(err.Error(), pkg.ErrClosedResponseBody) {
 				fmt.Println(err.Error())
 			}
 
@@ -463,7 +463,7 @@ func recvEvents(tapByteStream *bufio.Reader, eventCh chan<- *pb.TapEvent, closin
 	}
 }
 
-func processEvents(eventCh <-chan *pb.TapEvent, requestCh chan<- topRequest, done <-chan struct{}) {
+func processEvents(eventCh <-chan *tapPb.TapEvent, requestCh chan<- topRequest, done <-chan struct{}) {
 	outstandingRequests := make(map[topRequestID]topRequest)
 
 	for {
@@ -476,14 +476,14 @@ func processEvents(eventCh <-chan *pb.TapEvent, requestCh chan<- topRequest, don
 				dst: addr.PublicAddressToString(event.GetDestination()),
 			}
 			switch ev := event.GetHttp().GetEvent().(type) {
-			case *pb.TapEvent_Http_RequestInit_:
+			case *tapPb.TapEvent_Http_RequestInit_:
 				id.stream = ev.RequestInit.GetId().Stream
 				outstandingRequests[id] = topRequest{
 					event:   event,
 					reqInit: ev.RequestInit,
 				}
 
-			case *pb.TapEvent_Http_ResponseInit_:
+			case *tapPb.TapEvent_Http_ResponseInit_:
 				id.stream = ev.ResponseInit.GetId().Stream
 				if req, ok := outstandingRequests[id]; ok {
 					req.rspInit = ev.ResponseInit
@@ -492,7 +492,7 @@ func processEvents(eventCh <-chan *pb.TapEvent, requestCh chan<- topRequest, don
 					log.Warnf("Got ResponseInit for unknown stream: %s", id)
 				}
 
-			case *pb.TapEvent_Http_ResponseEnd_:
+			case *tapPb.TapEvent_Http_ResponseEnd_:
 				id.stream = ev.ResponseEnd.GetId().Stream
 				if req, ok := outstandingRequests[id]; ok {
 					req.rspEnd = ev.ResponseEnd
@@ -555,7 +555,7 @@ func newRow(req topRequest) (tableRow, error) {
 	path := req.reqInit.GetPath()
 	route := req.event.GetRouteMeta().GetLabels()["route"]
 	if route == "" {
-		route = api.DefaultRouteName
+		route = metricsAPI.DefaultRouteName
 	}
 	method := req.reqInit.GetMethod().GetRegistered().String()
 	source := stripPort(addr.PublicAddressToString(req.event.GetSource()))
@@ -576,7 +576,7 @@ func newRow(req topRequest) (tableRow, error) {
 	success := req.rspInit.GetHttpStatus() < 500
 	if success {
 		switch eos := req.rspEnd.GetEos().GetEnd().(type) {
-		case *pb.Eos_GrpcStatusCode:
+		case *metricsPb.Eos_GrpcStatusCode:
 			switch codes.Code(eos.GrpcStatusCode) {
 			case codes.Unknown,
 				codes.DeadlineExceeded,
@@ -588,7 +588,7 @@ func newRow(req topRequest) (tableRow, error) {
 				success = true
 			}
 
-		case *pb.Eos_ResetErrorCode:
+		case *metricsPb.Eos_ResetErrorCode:
 			success = false
 		}
 	}

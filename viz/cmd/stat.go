@@ -167,7 +167,7 @@ If no resource name is specified, displays stats about all resources of the spec
   # Get all inbound stats to the test namespace.
   linkerd viz stat ns/test`,
 		Args:      cobra.MinimumNArgs(1),
-		ValidArgs: coreUtil.ValidTargets,
+		ValidArgs: api.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)

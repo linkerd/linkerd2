@@ -63,7 +63,7 @@ This command will only display traffic which is sent to a service that has a Ser
   # Routes for calls from the traffic deployment to the webapp service in the test namespace.
   linkerd viz routes deploy/traffic -n test --to svc/webapp`,
 		Args:      cobra.ExactArgs(1),
-		ValidArgs: coreUtil.ValidTargets,
+		ValidArgs: api.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)

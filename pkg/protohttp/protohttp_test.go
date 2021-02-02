@@ -15,7 +15,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
-	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -61,10 +61,10 @@ func TestHttpRequestToProto(t *testing.T) {
 	someMethod := http.MethodPost
 
 	t.Run("Given a valid request, serializes its contents into protobuf object", func(t *testing.T) {
-		expectedProtoMessage := pb.Pod{
+		expectedProtoMessage := metricsPb.Pod{
 			Name:                "some-name",
 			PodIP:               "some-name",
-			Owner:               &pb.Pod_Deployment{Deployment: "some-name"},
+			Owner:               &metricsPb.Pod_Deployment{Deployment: "some-name"},
 			Status:              "some-name",
 			Added:               false,
 			ControllerNamespace: "some-name",
@@ -80,7 +80,7 @@ func TestHttpRequestToProto(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		var actualProtoMessage pb.Pod
+		var actualProtoMessage metricsPb.Pod
 		err = HTTPRequestToProto(req, &actualProtoMessage)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
@@ -92,7 +92,7 @@ func TestHttpRequestToProto(t *testing.T) {
 	})
 
 	t.Run("Given a broken request, returns http error", func(t *testing.T) {
-		var actualProtoMessage pb.Pod
+		var actualProtoMessage metricsPb.Pod
 
 		req, err := http.NewRequest(someMethod, someURL, strings.NewReader("not really protobuf"))
 		if err != nil {
@@ -136,8 +136,8 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		expectedErrorPayload := pb.ApiError{Error: genericError.Error()}
-		var actualErrorPayload pb.ApiError
+		expectedErrorPayload := metricsPb.ApiError{Error: genericError.Error()}
+		var actualErrorPayload metricsPb.ApiError
 		err = proto.Unmarshal(payloadRead, &actualErrorPayload)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
@@ -170,8 +170,8 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		expectedErrorPayload := pb.ApiError{Error: httpError.WrappedError.Error()}
-		var actualErrorPayload pb.ApiError
+		expectedErrorPayload := metricsPb.ApiError{Error: httpError.WrappedError.Error()}
+		var actualErrorPayload metricsPb.ApiError
 		err = proto.Unmarshal(payloadRead, &actualErrorPayload)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
@@ -203,8 +203,8 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		expectedErrorPayload := pb.ApiError{Error: expectedErrorMessage}
-		var actualErrorPayload pb.ApiError
+		expectedErrorPayload := metricsPb.ApiError{Error: expectedErrorMessage}
+		var actualErrorPayload metricsPb.ApiError
 		err = proto.Unmarshal(payloadRead, &actualErrorPayload)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
@@ -432,7 +432,7 @@ func TestCheckIfResponseHasError(t *testing.T) {
 
 	t.Run("returns error in body if response contains linkerd-error header", func(t *testing.T) {
 		expectedErrorMessage := "expected error message"
-		protoInBytes, err := proto.Marshal(&pb.ApiError{Error: expectedErrorMessage})
+		protoInBytes, err := proto.Marshal(&metricsPb.ApiError{Error: expectedErrorMessage})
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -522,51 +522,6 @@ func TestCheckIfResponseHasError(t *testing.T) {
 			t.Fatalf("Expected error message to be [%s], but it was [%s]", expectedErrorMessage, actualErrorMessage)
 		}
 	})
-}
-
-func TestTapReqToURL(t *testing.T) {
-	expectations := []struct {
-		req *pb.TapByResourceRequest
-		url string
-	}{
-		{
-			req: &pb.TapByResourceRequest{},
-			url: "/apis/tap.linkerd.io/v1alpha1/watch/namespaces//s//tap",
-		},
-		{
-			req: &pb.TapByResourceRequest{
-				Target: &pb.ResourceSelection{
-					Resource: &pb.Resource{
-						Type: "namespace",
-						Name: "test-name",
-					},
-				},
-			},
-			url: "/apis/tap.linkerd.io/v1alpha1/watch/namespaces/test-name/tap",
-		},
-		{
-			req: &pb.TapByResourceRequest{
-				Target: &pb.ResourceSelection{
-					Resource: &pb.Resource{
-						Namespace: "test-ns",
-						Type:      "test-type",
-						Name:      "test-name",
-					},
-				},
-			},
-			url: "/apis/tap.linkerd.io/v1alpha1/watch/namespaces/test-ns/test-types/test-name/tap",
-		},
-	}
-	for i, exp := range expectations {
-		exp := exp // pin
-
-		t.Run(fmt.Sprintf("%d constructs the expected URL from a TapRequest", i), func(t *testing.T) {
-			url := TapReqToURL(exp.req)
-			if url != exp.url {
-				t.Fatalf("Unexpected url: %s, Expected: %s", url, exp.url)
-			}
-		})
-	}
 }
 
 func assertResponseHasProtobufContentType(t *testing.T, responseWriter *stubResponseWriter) {

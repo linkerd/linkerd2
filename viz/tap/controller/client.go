@@ -1,7 +1,7 @@
-package tap
+package controller
 
 import (
-	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	pb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	"google.golang.org/grpc"
 )
 
@@ -11,6 +11,5 @@ func NewClient(addr string) (pb.TapClient, *grpc.ClientConn, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-
 	return pb.NewTapClient(conn), conn, nil
 }
