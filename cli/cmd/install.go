@@ -397,7 +397,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 	}
 
 	if stage == "" || stage == controlPlaneStage {
-		overrides, err := renderOverrides(values, values.GetGlobal().Namespace)
+		overrides, err := renderOverrides(vals, vals["global"].(map[string]interface{})["namespace"].(string))
 		if err != nil {
 			return err
 		}
@@ -418,12 +418,14 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 // during upgrade.  Note also that this Secret/linkerd-config-overrides
 // resource is not part of the Helm chart and will not be present when installing
 // with Helm.
-func renderOverrides(values *l5dcharts.Values, namespace string) ([]byte, error) {
+func renderOverrides(values chartutil.Values, namespace string) ([]byte, error) {
 	defaults, err := l5dcharts.NewValues()
 	if err != nil {
 		return nil, err
 	}
-	values.Configs = l5dcharts.ConfigJSONs{}
+	// Remove unecessary fields
+	values["configs"] = l5dcharts.ConfigJSONs{}
+	delete(values, "partials")
 
 	overrides, err := tree.Diff(defaults, values)
 	if err != nil {
@@ -441,7 +443,7 @@ func renderOverrides(values *l5dcharts.Values, namespace string) ([]byte, error)
 			Name:      "linkerd-config-overrides",
 			Namespace: namespace,
 			Labels: map[string]string{
-				k8s.ControllerNSLabel: controlPlaneNamespace,
+				k8s.ControllerNSLabel: namespace,
 			},
 		},
 		Data: map[string][]byte{
