@@ -680,9 +680,10 @@ func (hc *HealthChecker) allCategories() []Category {
 					fatal:       true,
 					check: func(ctx context.Context) (err error) {
 						hc.uuid, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap(ctx)
-						if hc.linkerdConfig != nil {
-							hc.CNIEnabled = hc.linkerdConfig.GetGlobal().CNIEnabled
+						if hc.linkerdConfig == nil {
+							return errors.New("failed to load linkerd-config")
 						}
+						hc.CNIEnabled = hc.linkerdConfig.GetGlobal().CNIEnabled
 						return
 					},
 				},
@@ -1694,6 +1695,9 @@ func FetchCurrentConfiguration(ctx context.Context, k kubernetes.Interface, cont
 		return configMap, &fullValues, nil
 	}
 
+	if configPb == nil {
+		return configMap, nil, nil
+	}
 	// fall back to the older configMap
 	// TODO: remove this once the newer config override secret becomes the default i.e 2.10
 	return configMap, config.ToValues(configPb), nil
