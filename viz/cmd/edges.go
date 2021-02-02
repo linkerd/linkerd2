@@ -16,6 +16,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/metrics-api/util"
+	"github.com/linkerd/linkerd2/viz/pkg"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
 	"github.com/spf13/cobra"
 )
@@ -83,7 +84,7 @@ func NewCmdEdges() *cobra.Command {
   # Get all edges between pods in all namespaces.
   linkerd viz edges po --all-namespaces`,
 		Args:      cobra.ExactArgs(1),
-		ValidArgs: api.ValidTargets,
+		ValidArgs: pkg.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)

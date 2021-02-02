@@ -18,6 +18,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	metricsAPI "github.com/linkerd/linkerd2/viz/metrics-api"
 	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	vizpkg "github.com/linkerd/linkerd2/viz/pkg"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
 	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	"github.com/linkerd/linkerd2/viz/tap/pkg"
@@ -320,7 +321,7 @@ func NewCmdTop() *cobra.Command {
   # display traffic for the web-dlbvj pod in the default namespace
   linkerd viz top pod/web-dlbvj`,
 		Args:      cobra.RangeArgs(1, 2),
-		ValidArgs: api.ValidTargets,
+		ValidArgs: vizpkg.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)

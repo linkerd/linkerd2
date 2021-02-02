@@ -17,6 +17,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	vizpkg "github.com/linkerd/linkerd2/viz/pkg"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
 	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	"github.com/linkerd/linkerd2/viz/tap/pkg"
@@ -173,7 +174,7 @@ func NewCmdTap() *cobra.Command {
   # tap the test namespace, filter by request to prod namespace
   linkerd viz tap ns/test --to ns/prod`,
 		Args:      cobra.RangeArgs(1, 2),
-		ValidArgs: api.ValidTargets,
+		ValidArgs: vizpkg.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
