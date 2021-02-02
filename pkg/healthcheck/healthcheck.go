@@ -2571,15 +2571,14 @@ func CheckPodsRunning(pods []corev1.Pod, podsNotFoundMsg string) error {
 // CheckIfDataPlanePodsExist checks if the proxy is present in the given pods
 func CheckIfDataPlanePodsExist(pods []corev1.Pod) error {
 	for _, pod := range pods {
-		if !ContainsProxy(pod) {
+		if !containsProxy(pod) {
 			return fmt.Errorf("could not find proxy container for %s pod", pod.Name)
 		}
 	}
 	return nil
 }
 
-// ContainsProxy checks if the given pod contains a linkerd proxy container
-func ContainsProxy(pod corev1.Pod) bool {
+func containsProxy(pod corev1.Pod) bool {
 	for _, containerSpec := range pod.Spec.Containers {
 		if containerSpec.Name == k8s.ProxyContainerName {
 			return true

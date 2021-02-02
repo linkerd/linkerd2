@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
-	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/k8s/resource"
 	"github.com/spf13/cobra"
@@ -34,15 +34,22 @@ This command provides all Kubernetes namespace-scoped and cluster-scoped resourc
 			}
 
 			if !force {
-				podsList, err := k8sAPI.CoreV1().Pods("").List(cmd.Context(), metav1.ListOptions{})
+				podList, err := k8sAPI.CoreV1().Pods("").List(cmd.Context(), metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
 				if err != nil {
 					return err
 				}
-				for _, pod := range podsList.Items {
-					// Skip core control-plane namespace
-					if pod.Namespace != controlPlaneNamespace && healthcheck.ContainsProxy(pod) {
-						return fmt.Errorf("Please uninject proxy containers before uninstalling the control-plane")
+
+				var injectedPods []string
+				for _, pod := range podList.Items {
+					// skip core control-plane namespace
+					if pod.Namespace != controlPlaneNamespace {
+						injectedPods = append(injectedPods, fmt.Sprintf("* %s", pod.Name))
 					}
+				}
+
+				if len(injectedPods) > 0 {
+					fmt.Fprintln(os.Stderr, fmt.Sprintf("Please uninject the following pods before uninstalling the control-plane:\n\t%s", strings.Join(injectedPods, "\n\t")))
+					os.Exit(1)
 				}
 			}
 
