@@ -1,12 +1,6 @@
 package injector
 
-import (
-	"fmt"
-
-	"github.com/linkerd/linkerd2/pkg/inject"
-)
-
-var tpl = fmt.Sprintf(`[
+var tpl = `[
   {
     "op": "add",
     "path": "/metadata/annotations/{{.Annotation}}",
@@ -16,8 +10,8 @@ var tpl = fmt.Sprintf(`[
     "op": "add",
     "path": "/spec/containers/{{.ProxyIndex}}/env/-",
     "value": {
-      "name": "%s",
+      "name": LINKERD2_PROXY_TAP_SVC_NAME,
       "value": "{{.ProxyTapSvcName}}"
     }
   }
-]`, inject.TapSvcEnvKey)
+]`

@@ -124,7 +124,7 @@ Kubernetes: `>=1.13.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| controllerImage | string | `"ghcr.io/linkerd/controller"` | Docker image for the controller, tap and identity components |
+| controllerImage | string | `"ghcr.io/linkerd/controller"` | Docker image for the controller and identity components |
 | controllerReplicas | int | `1` | Number of replicas for each control plane pod |
 | controllerUID | int | `2103` | User ID for the control plane components |
 | debugContainer.image.name | string | `"ghcr.io/linkerd/debug"` | Docker image for the debug container |

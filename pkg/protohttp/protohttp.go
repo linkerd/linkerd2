@@ -32,7 +32,7 @@ type HTTPError struct {
 }
 
 // FlushableResponseWriter wraps a ResponseWriter for use in streaming
-// responses, such as Tap.
+// responses
 type FlushableResponseWriter interface {
 	http.ResponseWriter
 	http.Flusher
