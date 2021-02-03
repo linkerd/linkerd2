@@ -34,13 +34,8 @@ func uninstallRunE(ctx context.Context) error {
 		return err
 	}
 
-	vizNs, err := k8sAPI.GetNamespaceWithExtensionLabel(ctx, ExtensionName)
-	if err != nil {
-		return err
-	}
-
 	resources, err := resource.FetchKubernetesResources(ctx, k8sAPI,
-		metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", k8s.LinkerdExtensionLabel, vizNs.Name)},
+		metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", k8s.LinkerdExtensionLabel, ExtensionName)},
 	)
 	if err != nil {
 		return err
