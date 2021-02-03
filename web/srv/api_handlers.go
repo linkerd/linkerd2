@@ -22,7 +22,7 @@ import (
 	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	vizUtil "github.com/linkerd/linkerd2/viz/metrics-api/util"
 	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
-	"github.com/linkerd/linkerd2/viz/tap/pkg"
+	tappkg "github.com/linkerd/linkerd2/viz/tap/pkg"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
@@ -257,27 +257,27 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 		return
 	}
 
-	var requestParams pkg.TapRequestParams
+	var requestParams tappkg.TapRequestParams
 	err = json.Unmarshal(message, &requestParams)
 	if err != nil {
 		websocketError(ws, websocket.CloseInternalServerErr, err)
 		return
 	}
 
-	tapReq, err := pkg.BuildTapByResourceRequest(requestParams)
+	tapReq, err := tappkg.BuildTapByResourceRequest(requestParams)
 	if err != nil {
 		websocketError(ws, websocket.CloseInternalServerErr, err)
 		return
 	}
 
 	go func() {
-		reader, body, err := pkg.Reader(req.Context(), h.k8sAPI, tapReq)
+		reader, body, err := tappkg.Reader(req.Context(), h.k8sAPI, tapReq)
 		if err != nil {
 			// If there was a [403] error when initiating a tap, close the
 			// socket with `ClosePolicyViolation` status code so that the error
 			// renders without the error prefix in the banner
 			if httpErr, ok := err.(protohttp.HTTPError); ok && httpErr.Code == http.StatusForbidden {
-				err := fmt.Errorf("missing authorization, visit %s to remedy", pkg.TapRbacURL)
+				err := fmt.Errorf("missing authorization, visit %s to remedy", tappkg.TapRbacURL)
 				websocketError(ws, websocket.ClosePolicyViolation, err)
 				return
 			}

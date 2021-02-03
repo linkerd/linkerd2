@@ -1,4 +1,4 @@
-package controller
+package api
 
 import (
 	pb "github.com/linkerd/linkerd2/viz/tap/gen/tap"

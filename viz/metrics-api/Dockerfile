@@ -15,7 +15,6 @@ WORKDIR /linkerd-build
 COPY pkg pkg
 COPY controller controller
 COPY viz/metrics-api viz/metrics-api
-COPY viz/tap/gen/tap viz/tap/gen/tap
 COPY viz/pkg viz/pkg
 
 ARG TARGETARCH

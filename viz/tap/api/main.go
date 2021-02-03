@@ -1,4 +1,4 @@
-package controller
+package api
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/trace"
-	"github.com/linkerd/linkerd2/viz/tap/api"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -23,7 +22,7 @@ func Main(args []string) {
 	apiServerAddr := cmd.String("apiserver-addr", ":8089", "address to serve the apiserver on")
 	metricsAddr := cmd.String("metrics-addr", ":9998", "address to serve scrapable metrics on")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
-	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
+	apiNamespace := cmd.String("api-namespace", "linkerd", "namespace in which Linkerd is installed")
 	tapPort := cmd.Uint("tap-port", 4190, "proxy tap port to connect to")
 	disableCommonNames := cmd.Bool("disable-common-names", false, "disable checks for Common Names (for development)")
 	trustDomain := cmd.String("identity-trust-domain", defaultDomain, "configures the name suffix used for identities")
@@ -57,8 +56,8 @@ func Main(args []string) {
 			log.Warnf("failed to initialize tracing: %s", err)
 		}
 	}
-	grpcTapServer := NewGrpcTapServer(*tapPort, *controllerNamespace, *trustDomain, k8sAPI)
-	apiServer, err := api.NewServer(ctx, *apiServerAddr, k8sAPI, grpcTapServer, *disableCommonNames)
+	grpcTapServer := NewGrpcTapServer(*tapPort, *apiNamespace, *trustDomain, k8sAPI)
+	apiServer, err := NewServer(ctx, *apiServerAddr, k8sAPI, grpcTapServer, *disableCommonNames)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

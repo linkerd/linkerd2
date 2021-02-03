@@ -640,8 +640,8 @@ spec:
         beta.kubernetes.io/os: linux
       containers:
       - args:
-        - controller
-        - -controller-namespace=linkerd
+        - api
+        - -api-namespace=linkerd
         - -log-level=info
         - -identity-trust-domain=cluster.local
         image: ghcr.io/linkerd/tap:dev-undefined
