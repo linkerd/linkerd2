@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"html/template"
-	"strings"
 
 	"github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -19,7 +18,6 @@ import (
 
 // Params holds the values used in the patch template.
 type Params struct {
-	Annotation      string
 	ProxyIndex      int
 	ProxyTapSvcName string
 }
@@ -43,19 +41,11 @@ func Mutate(tapSvcName string) webhook.Handler {
 		if err := yaml.Unmarshal(request.Object.Raw, &pod); err != nil {
 			return nil, err
 		}
-		// annotation is used in the patch as a JSON pointer, so '/' must be
-		// encoded as '~1' as stated in
-		// https://tools.ietf.org/html/rfc6901#section-3
-		annotation := strings.Replace(vizLabels.VizTapEnabled, "/", "~1", -1)
 		params := Params{
-			Annotation:      annotation,
 			ProxyIndex:      webhook.GetProxyContainerIndex(pod.Spec.Containers),
 			ProxyTapSvcName: tapSvcName,
 		}
-		if params.ProxyIndex < 0 {
-			return admissionResponse, nil
-		}
-		if _, contains := pod.GetAnnotations()[vizLabels.VizTapEnabled]; contains {
+		if params.ProxyIndex < 0 || vizLabels.IsTapEnabled(pod) {
 			return admissionResponse, nil
 		}
 		namespace, err := k8sAPI.NS().Lister().Get(request.Namespace)

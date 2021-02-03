@@ -3,6 +3,11 @@ package mutator
 const tpl = `[
   {
     "op": "add",
+    "path": "/metadata/annotations/jaeger.linkerd.io~1tracing-enabled",
+    "value": "true"
+  },
+  {
+    "op": "add",
     "path": "/spec/containers/{{.ProxyIndex}}/env/-",
     "value": {
       "name": "LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH",
