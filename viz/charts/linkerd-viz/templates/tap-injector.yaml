@@ -8,7 +8,7 @@ metadata:
   name: tap-injector
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    {{.Values.extensionLabel}}: linkerd-viz
     component: tap-injector
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
@@ -27,7 +27,7 @@ metadata:
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    {{.Values.extensionLabel}}: linkerd-viz
     app.kubernetes.io/name: tap-injector
     app.kubernetes.io/part-of: Linkerd
     component: tap-injector
@@ -55,7 +55,7 @@ spec:
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
-        {{.Values.extensionAnnotation}}: linkerd-viz
+        {{.Values.extensionLabel}}: linkerd-viz
         component: tap-injector
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:

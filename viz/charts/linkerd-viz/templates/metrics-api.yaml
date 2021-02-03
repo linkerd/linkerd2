@@ -8,14 +8,14 @@ metadata:
   name: linkerd-metrics-api
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    {{.Values.extensionLabel}}: linkerd-viz
     component: metrics-api
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    {{.Values.extensionLabel}}: linkerd-viz
     component: metrics-api
   ports:
   - name: http
@@ -28,7 +28,7 @@ metadata:
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    {{.Values.extensionLabel}}: linkerd-viz
     app.kubernetes.io/name: metrics-api
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
@@ -39,7 +39,7 @@ spec:
   replicas: {{.Values.metricsAPI.replicas}}
   selector:
     matchLabels:
-      {{.Values.extensionAnnotation}}: linkerd-viz
+      {{.Values.extensionLabel}}: linkerd-viz
       component: metrics-api
   template:
     metadata:
@@ -53,7 +53,7 @@ spec:
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
-        {{.Values.extensionAnnotation}}: linkerd-viz
+        {{.Values.extensionLabel}}: linkerd-viz
         component: metrics-api
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:

@@ -13,7 +13,7 @@ identityTrustDomain: *cluster_domain
 #  Annotation labels. Do not edit.
 createdByAnnotation: linkerd.io/created-by
 proxyInjectAnnotation: linkerd.io/inject
-extensionAnnotation: linkerd.io/extension
+extensionLabel: linkerd.io/extension
 
 # -- Docker registry for all viz components
 defaultRegistry: &registry ghcr.io/linkerd
