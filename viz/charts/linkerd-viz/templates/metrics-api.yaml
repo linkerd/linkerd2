@@ -74,6 +74,8 @@ spec:
         - -prometheus-url={{.Values.prometheusUrl}}
         {{- else if .Values.prometheus.enabled }}
         - -prometheus-url=http://linkerd-prometheus.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:9090
+        {{- else }}
+        {{ fail "Please enable `linkerd-prometheus` or provide `prometheusUrl` for the viz extension to function properly"}}
         {{- end }}
         image: {{.Values.metricsAPI.image.registry}}/{{.Values.metricsAPI.image.name}}:{{.Values.metricsAPI.image.tag}}
         imagePullPolicy: {{.Values.metricsAPI.pullPolicy}}
