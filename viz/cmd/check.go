@@ -53,10 +53,10 @@ code.`,
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
-	cmd.PersistentFlags().BoolVar(&options.proxy, "proxy", options.proxy, "Also run data-plane checks, to determine if the data plane is healthy")
-	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
-	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
+	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
+	cmd.Flags().BoolVar(&options.proxy, "proxy", options.proxy, "Also run data-plane checks, to determine if the data plane is healthy")
+	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
+	cmd.Flags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	return cmd
 }
 
@@ -66,12 +66,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		return fmt.Errorf("Validation error when executing check command: %v", err)
 	}
 
-	checks := []healthcheck.CategoryID{
-		healthcheck.KubernetesAPIChecks,
-		healthcheck.LinkerdControlPlaneExistenceChecks,
-	}
-
-	hc := vizHealthCheck.NewHealthChecker(checks, &healthcheck.Options{
+	hc := vizHealthCheck.NewHealthChecker([]healthcheck.CategoryID{}, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		KubeContext:           kubeContext,
@@ -81,6 +76,10 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		RetryDeadline:         time.Now().Add(options.wait),
 		DataPlaneNamespace:    options.namespace,
 	})
+	err = hc.InitializeKubeAPIClient()
+	if err != nil {
+		return err
+	}
 
 	hc.AppendCategories(hc.VizCategory())
 	if options.proxy {

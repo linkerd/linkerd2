@@ -94,8 +94,8 @@ non-zero exit code.`,
 			return configureAndRunChecks(stdout, stderr, options)
 		},
 	}
-	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
-	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
+	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
+	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 	return cmd
 }
 
@@ -105,8 +105,6 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		return fmt.Errorf("Validation error when executing check command: %v", err)
 	}
 	checks := []healthcheck.CategoryID{
-		healthcheck.KubernetesAPIChecks,
-		healthcheck.LinkerdControlPlaneExistenceChecks,
 		linkerdMulticlusterExtensionCheck,
 	}
 	linkerdHC := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
@@ -118,6 +116,17 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		APIAddr:               apiAddr,
 		RetryDeadline:         time.Now().Add(options.wait),
 	})
+
+	err = linkerdHC.InitializeKubeAPIClient()
+	if err != nil {
+		return err
+	}
+
+	err = linkerdHC.InitializeLinkerdGlobalConfig(context.Background())
+	if err != nil {
+		return err
+	}
+
 	hc := newHealthChecker(linkerdHC)
 	category := multiclusterCategory(hc)
 	if err != nil {

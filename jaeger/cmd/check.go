@@ -166,8 +166,8 @@ code.`,
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
-	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
+	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
+	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 
 	return cmd
 }
@@ -179,8 +179,6 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	}
 
 	checks := []healthcheck.CategoryID{
-		healthcheck.KubernetesAPIChecks,
-		healthcheck.LinkerdControlPlaneExistenceChecks,
 		linkerdJaegerExtensionCheck,
 	}
 
@@ -193,6 +191,11 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		APIAddr:               apiAddr,
 		RetryDeadline:         time.Now().Add(options.wait),
 	})
+
+	err = hc.InitializeKubeAPIClient()
+	if err != nil {
+		return err
+	}
 
 	hc.AppendCategories(*jaegerCategory(hc))
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)

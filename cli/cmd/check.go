@@ -216,7 +216,7 @@ func configureAndRunChecks(ctx context.Context, wout io.Writer, werr io.Writer, 
 		os.Exit(1)
 	}
 
-	err = runExtensionChecks(ctx, options)
+	err = runExtensionChecks(ctx, wout, werr, options)
 	if err != nil {
 		return fmt.Errorf("Error running extension checks: %v", err)
 	}
@@ -224,7 +224,7 @@ func configureAndRunChecks(ctx context.Context, wout io.Writer, werr io.Writer, 
 	return nil
 }
 
-func runExtensionChecks(ctx context.Context, opts *checkOptions) error {
+func runExtensionChecks(ctx context.Context, wout io.Writer, werr io.Writer, opts *checkOptions) error {
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
 		return err
@@ -235,8 +235,19 @@ func runExtensionChecks(ctx context.Context, opts *checkOptions) error {
 		return err
 	}
 
+	// no extensions to check
+	if len(namespaces) == 0 {
+		return nil
+	}
+
+	headerTxt := "Linkerd extension checks"
+	fmt.Fprintln(wout, "")
+	fmt.Fprintln(wout, headerTxt)
+	fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
+	fmt.Fprintln(wout, "")
+
 	noArgs := []string{}
-	for _, ns := range namespaces {
+	for i, ns := range namespaces {
 		switch ns.Labels[k8s.LinkerdExtensionLabel] {
 		case jaegerCmd.JaegerExtensionName:
 			jaegerCheckCmd := jaegerCmd.NewCmdCheck()
@@ -277,10 +288,45 @@ func runExtensionChecks(ctx context.Context, opts *checkOptions) error {
 
 			err = mcCheckCmd.RunE(mcCheckCmd, noArgs)
 		default:
-			// don't run any checks for unknown extensions
+			// Since we don't have checks for extensions we don't support
+			// create a healthchecker that checks if the namespace exists
+			categoryID := healthcheck.CategoryID(ns.Labels[k8s.LinkerdExtensionLabel])
+			checkers := []healthcheck.Checker{}
+			checkers = append(checkers,
+				*healthcheck.NewChecker(fmt.Sprintf("%s extension Namespace exists", categoryID)).
+					WithHintAnchor(fmt.Sprintf("%s-ns-exists", categoryID)).
+					Fatal().
+					WithCheck(func(ctx context.Context) error {
+						_, err := kubeAPI.GetNamespaceWithExtensionLabel(ctx, string(categoryID))
+						if err != nil {
+							return err
+						}
+						return nil
+					}))
+			hc := healthcheck.NewHealthChecker([]healthcheck.CategoryID{categoryID},
+				&healthcheck.Options{
+					ControlPlaneNamespace: controlPlaneNamespace,
+					CNINamespace:          cniNamespace,
+					DataPlaneNamespace:    opts.namespace,
+					KubeConfig:            kubeconfigPath,
+					KubeContext:           kubeContext,
+					Impersonate:           impersonate,
+					ImpersonateGroup:      impersonateGroup,
+					APIAddr:               apiAddr,
+					VersionOverride:       opts.versionOverride,
+					RetryDeadline:         time.Now().Add(opts.wait),
+					CNIEnabled:            opts.cniEnabled,
+				})
+			hc.AppendCategories(*healthcheck.NewCategory(categoryID, checkers, true))
+			healthcheck.RunChecks(wout, werr, hc, opts.output)
 		}
 		if err != nil {
 			return err
+		}
+
+		if i+1 != len(namespaces) {
+			// add a new line to space out each check output
+			fmt.Fprintln(wout, "")
 		}
 	}
 	return nil
@@ -288,7 +334,7 @@ func runExtensionChecks(ctx context.Context, opts *checkOptions) error {
 
 func setSubCheckFlags(cmd *cobra.Command, flags map[string]string) error {
 	for fName, fValue := range flags {
-		err := cmd.PersistentFlags().Set(fName, fValue)
+		err := cmd.Flags().Set(fName, fValue)
 		if err != nil {
 			return err
 		}
