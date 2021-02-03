@@ -60,7 +60,7 @@ func NewServer(
 	}
 
 	log := logrus.WithFields(logrus.Fields{
-		"component": "tap API server",
+		"component": "tap",
 		"addr":      addr,
 	})
 
