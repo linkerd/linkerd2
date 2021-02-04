@@ -1,5 +1,32 @@
-
 # Changes
+
+## edge-21.2.1
+
+This edge release continues improving the proxy's diagnostics and also avoids
+timing out when the HTTP protocol detection fails. Additionally, old resource
+versions were upgraded to avoid warnings in k8s v1.19. Finally, it comes with
+lots of CLI improvements detailed below.
+
+* Improved the proxy's diagnostic metrics to help us get better insights into
+  services that are in fail-fast
+* Improved the proxy's HTTP protocol detection to prevent timeout errors
+* Upgraded CRD and webhook config resources to get rid of warnings in k8s v1.19
+  (thanks @mateiidavid!)
+* Added viz components into the Linkerd Health Grafana charts
+* Had the tap injector add a `viz.linkerd.io/tap-enabled` annotation when
+  injecting a pod, which allowed providing clearer feedback for the `linkerd
+  tap` command
+* Had the jaeger injector add a `jaeger.linkerd.io/tracing-enabled` annotation
+  when injecting a pod, which also allowed providing better feedback for the
+  `linkerd jaeger check` command
+* Improved the `linkerd uninstall` command so it fails gracefully when there
+  still are injected resources in the cluster (a `--force` flag was provided
+  too)
+* Moved the `linkerd profile --tap` functionality into a new command `linkerd
+  viz profile --tap`, given tap now belongs to the viz extension
+* Expanded the `linkerd viz check` command to include data-plane checks
+* Cleaned-up YAML in templates that was incompatible with SOPS (thanks
+  @tkms0106!)
 
 ## edge-21.1.4
 
