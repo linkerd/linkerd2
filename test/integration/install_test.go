@@ -29,6 +29,7 @@ func TestMain(m *testing.M) {
 
 var (
 	configMapUID string
+	overrides    string
 
 	helmTLSCerts *tls.CA
 
@@ -167,6 +168,17 @@ func TestRetrieveUidPreUpgrade(t *testing.T) {
 	}
 }
 
+func TestRetrieveOverridesPreUpgrade(t *testing.T) {
+	if TestHelper.UpgradeFromVersion() != "" {
+		configOverridesSecret, err := TestHelper.KubernetesHelper.GetSecret(context.Background(), TestHelper.GetLinkerdNamespace(), "linkerd-config-overrides")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "could not retrieve linkerd-config-overrides",
+				"could not retrieve linkerd-config-overrides\n%s", err.Error())
+		}
+
+		overrides = string(configOverridesSecret.Data["linkerd-config-overrides"])
+	}
+}
 func TestInstallCalico(t *testing.T) {
 	if !TestHelper.Calico() {
 		return
@@ -638,6 +650,25 @@ func TestRetrieveUidPostUpgrade(t *testing.T) {
 			testutil.AnnotatedFatalf(t, "linkerd-config's uid after upgrade doesn't match its value before the upgrade",
 				"linkerd-config's uid after upgrade [%s] doesn't match its value before the upgrade [%s]",
 				newConfigMapUID, configMapUID,
+			)
+		}
+	}
+}
+
+func TestOverridesSecretPostUpgrade(t *testing.T) {
+	if TestHelper.UpgradeFromVersion() != "" {
+		configOverridesSecret, err := TestHelper.KubernetesHelper.GetSecret(context.Background(), TestHelper.GetLinkerdNamespace(), "linkerd-config-overrides")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "could not retrieve linkerd-config-overrides",
+				"could not retrieve linkerd-config-overrides\n%s", err.Error())
+		}
+
+		newOverrides := string(configOverridesSecret.Data["linkerd-config-overrides"])
+		// Match the overrides with the before ones
+		if overrides != newOverrides {
+			testutil.AnnotatedFatalf(t, "linkerd-config-overrides after upgrade doesn't match its value before the upgrade",
+				"linkerd-config-overrides after upgrade [%s] doesn't match its value before the upgrade [%s]",
+				newOverrides, overrides,
 			)
 		}
 	}
