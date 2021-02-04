@@ -427,16 +427,21 @@ func renderOverrides(values chartutil.Values) ([]byte, error) {
 	values["configs"] = l5dcharts.ConfigJSONs{}
 	delete(values, "partials")
 
+	// Get Namespace from values
+	valuesTree, err := tree.MarshalToTree(values)
+	if err != nil {
+		return nil, err
+	}
+	namespace, err := valuesTree.GetString("global", "namespace")
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve global.namespace from values: %v", err)
+	}
+
 	overrides, err := tree.Diff(defaults, values)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get Namespace from overrides
-	namespace, err := overrides.GetString("global", "namespace")
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve global.namespace from values: %v", err)
-	}
 	overridesBytes, err := yaml.Marshal(overrides)
 	if err != nil {
 		return nil, err
