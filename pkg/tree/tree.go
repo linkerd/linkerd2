@@ -1,6 +1,9 @@
 package tree
 
 import (
+	"fmt"
+	"reflect"
+
 	"github.com/ghodss/yaml"
 )
 
@@ -25,6 +28,29 @@ func (t Tree) String() string {
 		return err.Error()
 	}
 	return s
+}
+
+// GetString returns the string value at the given path
+func (t Tree) GetString(path ...string) (string, error) {
+	if len(path) == 1 {
+		// check if exists
+		val, exist := t[path[0]]
+		if exist {
+			// check if string
+			if reflect.TypeOf(val).Kind() == reflect.String {
+				return val.(string), nil
+			}
+			return "", fmt.Errorf("expected string but found a different type")
+		}
+		return "", fmt.Errorf("could not find %s node", path[0])
+	}
+
+	// check if exists
+	val, exist := t[path[0]]
+	if exist {
+		return val.(Tree).GetString(path[1:]...)
+	}
+	return "", fmt.Errorf("could not find %s node", path[0])
 }
 
 // Diff returns the subset of other where its values differ from t.
