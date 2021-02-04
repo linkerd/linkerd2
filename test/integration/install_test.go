@@ -270,9 +270,10 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	var (
 		cmd  = "install"
 		args = []string{
+			// Use --set flags once these releases into edge
 			"--controller-log-level", "debug",
-			"--proxy-version", TestHelper.GetVersion(),
 			"--skip-inbound-ports", skippedInboundPorts,
+			"--proxy-version", TestHelper.GetVersion(),
 		}
 		vizCmd  = []string{"viz", "install"}
 		vizArgs = []string{
