@@ -2225,15 +2225,6 @@ func (hc *HealthChecker) checkClockSkew(ctx context.Context) error {
 	return nil
 }
 
-func (cr *CheckResult) alreadyObserved(previousResults []CheckResult) bool {
-	for _, result := range previousResults {
-		if result.Description == cr.Description && result.Err == cr.Err {
-			return true
-		}
-	}
-	return false
-}
-
 // CheckRoles checks that the expected roles exist.
 func CheckRoles(ctx context.Context, kubeAPI *k8s.KubernetesAPI, shouldExist bool, namespace string, expectedNames []string, labelSelector string) error {
 	options := metav1.ListOptions{
