@@ -792,6 +792,7 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 				if err != nil {
 					return fmt.Errorf("received unexpected output\n%s", err.Error())
 				}
+			}
 		}
 
 		return nil
