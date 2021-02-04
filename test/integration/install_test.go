@@ -84,7 +84,9 @@ var (
 
 	//skippedInboundPorts lists some ports to be marked as skipped, which will
 	// be verified in test/integration/inject
-	skippedInboundPorts = "1234,5678"
+	skippedInboundPorts       = "1234,5678"
+	multiclusterExtensionName = "linkerd-multicluster"
+	vizExtensionName          = "linkerd-viz"
 )
 
 //////////////////////
@@ -537,6 +539,7 @@ func TestInstallMulticluster(t *testing.T) {
 			testutil.AnnotatedFatalf(t, "'helm install' command failed",
 				"'helm install' command failed\n%s\n%s", stdout, stderr)
 		}
+		TestHelper.AddInstalledExtension(multiclusterExtensionName)
 	} else if TestHelper.Multicluster() {
 		exec := append([]string{"multicluster"}, []string{
 			"install",
@@ -552,6 +555,7 @@ func TestInstallMulticluster(t *testing.T) {
 			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 				"'kubectl apply' command failed\n%s", out)
 		}
+		TestHelper.AddInstalledExtension(multiclusterExtensionName)
 	}
 }
 
@@ -625,6 +629,7 @@ func TestUpgradeHelm(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'helm install' command failed",
 			"'helm install' command failed\n%s\n%s", stdout, stderr)
 	}
+	TestHelper.AddInstalledExtension(vizExtensionName)
 }
 
 func TestRetrieveUidPostUpgrade(t *testing.T) {
@@ -771,9 +776,22 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 			return nil
 		}
 
-		err = TestHelper.ValidateOutput(out, golden)
+		err = TestHelper.ContainsOutput(out, golden)
 		if err != nil {
 			return fmt.Errorf("received unexpected output\n%s", err.Error())
+		}
+
+		for _, ext := range TestHelper.GetInstalledExtensions() {
+			if ext == multiclusterExtensionName {
+				err = TestHelper.ContainsOutput(out, "check.multicluster.golden")
+				if err != nil {
+					return fmt.Errorf("received unexpected output\n%s", err.Error())
+				}
+			} else if ext == vizExtensionName {
+				err = TestHelper.ContainsOutput(out, "check.viz.golden")
+				if err != nil {
+					return fmt.Errorf("received unexpected output\n%s", err.Error())
+				}
 		}
 
 		return nil
