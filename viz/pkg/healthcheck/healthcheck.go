@@ -91,13 +91,6 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 			WithCheck(func(ctx context.Context) error {
 				return healthcheck.CheckClusterRoleBindings(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-tap", hc.vizNamespace), fmt.Sprintf("linkerd-%s-metrics-api", hc.vizNamespace), fmt.Sprintf("linkerd-%s-tap-auth-delegator", hc.vizNamespace), "linkerd-tap-injector"}, "")
 			}),
-		*healthcheck.NewChecker("linkerd-viz ConfigMaps exist").
-			WithHintAnchor("l5d-viz-cm-exists").
-			Fatal().
-			Warning().
-			WithCheck(func(ctx context.Context) error {
-				return healthcheck.CheckConfigMaps(ctx, hc.KubeAPIClient(), hc.vizNamespace, true, []string{"linkerd-prometheus-config", "linkerd-grafana-config"}, "")
-			}),
 		*healthcheck.NewChecker("tap API server has valid cert").
 			WithHintAnchor("l5d-tap-cert-valid").
 			Fatal().
