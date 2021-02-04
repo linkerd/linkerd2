@@ -3,12 +3,30 @@ syntax = "proto3";
 package linkerd2.viz;
 
 import "google/protobuf/duration.proto";
-import "common/healthcheck.proto";
 import "common/net.proto";
 
 option go_package = "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz";
 
 message Empty {}
+
+enum CheckStatus {
+    OK = 0;
+    FAIL = 1;
+    ERROR = 2;
+}
+
+message CheckResult {
+    string SubsystemName = 1;
+    string CheckDescription = 2;
+    CheckStatus Status = 3;
+    string FriendlyMessageToUser = 4;
+}
+
+message SelfCheckRequest {}
+
+message SelfCheckResponse {
+    repeated CheckResult results = 1;
+}
 
 message ListServicesRequest {
   string namespace = 1;
@@ -504,7 +522,7 @@ service Api {
 
   rpc ListServices(ListServicesRequest) returns (ListServicesResponse) {}
 
-  rpc SelfCheck(linkerd2.common.healthcheck.SelfCheckRequest) returns (linkerd2.common.healthcheck.SelfCheckResponse) {}
+  rpc SelfCheck(SelfCheckRequest) returns (SelfCheckResponse) {}
 
 }
 

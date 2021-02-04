@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
@@ -146,7 +145,7 @@ func (h *handler) handleTopRoutes(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) handleSelfCheck(w http.ResponseWriter, req *http.Request) {
-	var protoRequest healthcheckPb.SelfCheckRequest
+	var protoRequest pb.SelfCheckRequest
 	err := protohttp.HTTPRequestToProto(req, &protoRequest)
 	if err != nil {
 		protohttp.WriteErrorToHTTPResponse(w, err)
