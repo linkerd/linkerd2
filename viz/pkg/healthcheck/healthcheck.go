@@ -185,9 +185,11 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 				if err != nil {
 					return err
 				}
+
 				if len(results.GetResults()) == 0 {
 					return errors.New("No results returned")
 				}
+
 				errs := []string{}
 				for _, res := range results.GetResults() {
 					if res.GetStatus() != pb.CheckStatus_OK {
@@ -197,6 +199,7 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 				if len(errs) == 0 {
 					return nil
 				}
+
 				errsStr := strings.Join(errs, "\n    ")
 				return errors.New(errsStr)
 			}),
