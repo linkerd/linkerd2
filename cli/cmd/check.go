@@ -240,14 +240,20 @@ func runExtensionChecks(ctx context.Context, wout io.Writer, werr io.Writer, opt
 		return nil
 	}
 
-	headerTxt := "Linkerd extension checks"
-	fmt.Fprintln(wout, "")
-	fmt.Fprintln(wout, headerTxt)
-	fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
-	fmt.Fprintln(wout, "")
+	if opts.output != healthcheck.JSONOutput {
+		headerTxt := "Linkerd extension checks"
+		fmt.Fprintln(wout)
+		fmt.Fprintln(wout, headerTxt)
+		fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
+	}
 
 	noArgs := []string{}
 	for i, ns := range namespaces {
+		if opts.output != healthcheck.JSONOutput && i < len(namespaces) {
+			// add a new line to space out each check output
+			fmt.Fprintln(wout)
+		}
+
 		switch ns.Labels[k8s.LinkerdExtensionLabel] {
 		case jaegerCmd.JaegerExtensionName:
 			jaegerCheckCmd := jaegerCmd.NewCmdCheck()
@@ -322,11 +328,6 @@ func runExtensionChecks(ctx context.Context, wout io.Writer, werr io.Writer, opt
 		}
 		if err != nil {
 			return err
-		}
-
-		if i+1 != len(namespaces) {
-			// add a new line to space out each check output
-			fmt.Fprintln(wout, "")
 		}
 	}
 	return nil
