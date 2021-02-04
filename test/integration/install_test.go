@@ -735,7 +735,8 @@ func TestVersionPostInstall(t *testing.T) {
 func testCheckCommand(t *testing.T, stage string, expectedVersion string, namespace string, cliVersionOverride string, compareOutput bool) {
 	var cmd []string
 	var golden string
-	if stage == "proxy" {
+	proxyStage := "proxy"
+	if stage == proxyStage {
 		cmd = []string{"check", "--proxy", "--expected-version", expectedVersion, "--namespace", namespace, "--wait=0"}
 		// if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
 		// golden = "check.multicluster.proxy.golden"
@@ -783,14 +784,28 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 
 		for _, ext := range TestHelper.GetInstalledExtensions() {
 			if ext == multiclusterExtensionName {
-				err = TestHelper.ContainsOutput(out, "check.multicluster.golden")
-				if err != nil {
-					return fmt.Errorf("received unexpected output\n%s", err.Error())
+				if stage == proxyStage {
+					err = TestHelper.ContainsOutput(out, "check.multicluster.proxy.golden")
+					if err != nil {
+						return fmt.Errorf("received unexpected output\n%s", err.Error())
+					}
+				} else {
+					err = TestHelper.ContainsOutput(out, "check.multicluster.golden")
+					if err != nil {
+						return fmt.Errorf("received unexpected output\n%s", err.Error())
+					}
 				}
 			} else if ext == vizExtensionName {
-				err = TestHelper.ContainsOutput(out, "check.viz.golden")
-				if err != nil {
-					return fmt.Errorf("received unexpected output\n%s", err.Error())
+				if stage == proxyStage {
+					err = TestHelper.ContainsOutput(out, "check.viz.proxy.golden")
+					if err != nil {
+						return fmt.Errorf("received unexpected output\n%s", err.Error())
+					}
+				} else {
+					err = TestHelper.ContainsOutput(out, "check.viz.golden")
+					if err != nil {
+						return fmt.Errorf("received unexpected output\n%s", err.Error())
+					}
 				}
 			}
 		}

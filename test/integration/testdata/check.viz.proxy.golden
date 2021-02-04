@@ -1,0 +1,23 @@
+linkerd-viz
+-----------
+√ linkerd-viz Namespace exists
+√ linkerd-viz ClusterRoles exist
+√ linkerd-viz ClusterRoleBindings exist
+√ linkerd-viz ConfigMaps exist
+√ tap API server has valid cert
+√ tap API server cert is valid for at least 60 days
+√ tap API service is running
+√ linkerd-viz pods are injected
+√ viz extension pods are running
+√ can initialize the client
+√ viz extension self-check
+√ [kubernetes] linkerd viz can talk to Kubernetes
+√ [prometheus] linkerd viz can talk to Prometheus
+
+linkerd-viz-data-plane
+----------------------
+√ data plane namespace exists
+√ data plane proxy metrics are present in Prometheus
+√ data-plane pods have tap enabled
+
+Status check results are √
