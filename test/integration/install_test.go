@@ -784,16 +784,11 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 
 		for _, ext := range TestHelper.GetInstalledExtensions() {
 			if ext == multiclusterExtensionName {
-				if stage == proxyStage {
-					err = TestHelper.ContainsOutput(out, "check.multicluster.proxy.golden")
-					if err != nil {
-						return fmt.Errorf("received unexpected output\n%s", err.Error())
-					}
-				} else {
-					err = TestHelper.ContainsOutput(out, "check.multicluster.golden")
-					if err != nil {
-						return fmt.Errorf("received unexpected output\n%s", err.Error())
-					}
+				// multicluster check --proxy and multicluster check have the same output
+				// so use the same golden file.
+				err = TestHelper.ContainsOutput(out, "check.multicluster.golden")
+				if err != nil {
+					return fmt.Errorf("received unexpected output\n%s", err.Error())
 				}
 			} else if ext == vizExtensionName {
 				if stage == proxyStage {
