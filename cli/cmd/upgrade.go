@@ -261,9 +261,10 @@ func upgrade(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, stage
 	// nor the legacy values were found. This means either means that Linkerd
 	// was installed with Helm or that the installation needs to be repaired.
 	if values == nil {
-		return bytes.Buffer{}, errors.New("Could not find the Linkerd config. If Linkerd was installed with Helm, " +
-			"please use Helm to perform upgrades. If Linkerd was not installed with Helm, please use the " +
-			"`linkerd repair` command to repair the Linkerd config")
+		return bytes.Buffer{}, errors.New(
+			`Could not find the Linkerd config. If Linkerd was installed with Helm, please
+use Helm to perform upgrades. If Linkerd was not installed with Helm, please use
+the 'linkerd repair' command to repair the Linkerd config`)
 	}
 
 	err = flag.ApplySetFlags(values, flags)

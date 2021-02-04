@@ -90,7 +90,7 @@ linkerd upgrade.`,
 			}
 
 			// Render
-			overrides, err := renderOverrides(&values, controlPlaneNamespace)
+			overrides, err := renderOverrides(&values, controlPlaneNamespace, true)
 			if err != nil {
 				return fmt.Errorf("Failed to render overrides: %s", err)
 			}
