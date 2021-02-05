@@ -36,31 +36,31 @@ func TestTreeGetString(t *testing.T) {
 			values,
 			[]string{"global", "namespac"},
 			"",
-			fmt.Errorf("could not find namespac node"),
+			fmt.Errorf("could not find node namespac"),
 		},
 		{
 			values,
 			[]string{"namespace"},
 			"",
-			fmt.Errorf("could not find namespace node"),
+			fmt.Errorf("could not find node namespace"),
 		},
 		{
 			values,
 			[]string{"global", "proxy"},
 			"",
-			fmt.Errorf("expected string but found a different type"),
-		},
-		{
-			values,
-			[]string{"global", "proxy"},
-			"",
-			fmt.Errorf("expected string but found a different type"),
+			fmt.Errorf("expected string at node proxy but found a different type"),
 		},
 		{
 			values,
 			[]string{"global", "proxy", "logFormat"},
 			"plain",
 			nil,
+		},
+		{
+			values,
+			[]string{"global", "namespace", "proxy"},
+			"",
+			fmt.Errorf("expected Tree at node namespace but found a different type"),
 		},
 	}
 
