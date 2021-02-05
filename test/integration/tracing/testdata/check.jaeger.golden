@@ -19,8 +19,7 @@ linkerd-jaeger
 √ collector and jaeger service account exists
 √ collector config map exists
 √ jaeger extension pods are injected
-√ collector pod is running
-√ jaeger pod is running
-√ jaeger injector pod is running
+√ jaeger extension pods are running
+√ jaeger extension proxies are healthy
 
 Status check results are √
