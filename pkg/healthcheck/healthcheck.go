@@ -2538,7 +2538,8 @@ func CheckForPods(pods []corev1.Pod, deployNames []string) error {
 
 	for _, pod := range pods {
 		// Strip randomized suffix and take the deployment name
-		deployName := strings.Join(strings.Split(pod.Name, "-")[:2], "-")
+		parts := strings.Split(pod.Name, "-")
+		deployName := strings.Join(parts[:len(parts)-2], "-")
 		exists[deployName] = true
 	}
 
