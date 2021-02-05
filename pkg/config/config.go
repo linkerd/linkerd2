@@ -76,20 +76,30 @@ func unmarshal(json string, msg proto.Message) error {
 	return u.Unmarshal(strings.NewReader(json), msg)
 }
 
-// FromConfigMap builds a configuration by reading a map with the keys "global"
-// and "proxy", each containing JSON values.
+// FromConfigMap builds a configuration by reading a map with the keys "global",
+// "proxy", and "install" each containing JSON values. If none of these keys
+// exist, FromConfigMap will return nil. This likely indicates that the
+// installed version of Linkerd is stable-2.9.0 or later which uses a different
+// config format.
 func FromConfigMap(configMap map[string]string) (*pb.All, error) {
 	c := &pb.All{Global: &pb.Global{}, Proxy: &pb.Proxy{}, Install: &pb.Install{}}
 
-	if err := unmarshal(configMap["global"], c.Global); err != nil {
+	global, globalOk := configMap["global"]
+	proxy, proxyOk := configMap["proxy"]
+	install, installOk := configMap["install"]
+	if !globalOk && !proxyOk && !installOk {
+		return nil, nil
+	}
+
+	if err := unmarshal(global, c.Global); err != nil {
 		return nil, fmt.Errorf("invalid global config: %s", err)
 	}
 
-	if err := unmarshal(configMap["proxy"], c.Proxy); err != nil {
+	if err := unmarshal(proxy, c.Proxy); err != nil {
 		return nil, fmt.Errorf("invalid proxy config: %s", err)
 	}
 
-	if err := unmarshal(configMap["install"], c.Install); err != nil {
+	if err := unmarshal(install, c.Install); err != nil {
 		return nil, fmt.Errorf("invalid install config: %s", err)
 	}
 

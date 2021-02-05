@@ -18,6 +18,15 @@ Former maintainers include:
 * Kevin Ingleman <ki@buoyant.io> @klingerf
 * Risha Mars <mars@buoyant.io> @rmars
 
+## Steering Committee
+
+The Linkerd Steering Committee members are:
+
+* Chris Campbell @campbel
+* Christian Hüning @christianhuening
+* Justin Turner @justin-turner-heb
+* William King @quentusrex
+
 <!--
 # Adding a new maintainer
 

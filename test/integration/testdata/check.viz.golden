@@ -18,13 +18,17 @@ linkerd-viz
 √ linkerd-viz Namespace exists
 √ linkerd-viz ClusterRoles exist
 √ linkerd-viz ClusterRoleBindings exist
-√ linkerd-viz ConfigMaps exist
 √ tap API server has valid cert
 √ tap API server cert is valid for at least 60 days
 √ tap API service is running
 √ linkerd-viz pods are injected
 √ viz extension pods are running
+<<<<<<< HEAD
 √ viz extension proxies are healthy
+=======
+√ prometheus is installed and configured correctly
+√ grafana is installed and configured correctly
+>>>>>>> main
 √ can initialize the client
 √ viz extension self-check
 √ [kubernetes] linkerd viz can talk to Kubernetes
