@@ -1198,6 +1198,16 @@ func (hc *HealthChecker) allCategories() []Category {
 						return validateControlPlanePods(hc.controlPlanePods)
 					},
 				},
+				{
+					description:         "control plane proxies are healthy",
+					hintAnchor:          "l5d-api-cp-proxy-healthy",
+					retryDeadline:       hc.RetryDeadline,
+					surfaceErrorOnRetry: true,
+					fatal:               true,
+					check: func(ctx context.Context) error {
+						return hc.CheckProxyHealth(ctx, hc.ControlPlaneNamespace, hc.ControlPlaneNamespace)
+					},
+				},
 			},
 		},
 		{
@@ -1384,6 +1394,29 @@ func (hc *HealthChecker) CheckCertAndAnchors(cert *tls.Cred, trustAnchors []*x50
 
 	if err := cert.Verify(tls.CertificatesToPool(trustAnchors), identityName, time.Time{}); err != nil {
 		return fmt.Errorf("cert is not issued by the trust anchor: %s", err)
+	}
+
+	return nil
+}
+
+// CheckProxyHealth checks for the data-plane proxies health in the given namespace
+// These checks consist of status and identity
+func (hc *HealthChecker) CheckProxyHealth(ctx context.Context, controlPlaneNamespace, namespace string) error {
+	podList, err := hc.kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
+	if err != nil {
+		return err
+	}
+
+	// Validate the status of the pods
+	err = validateDataPlanePods(podList.Items, controlPlaneNamespace)
+	if err != nil {
+		return err
+	}
+
+	// Check proxy certificates
+	err = checkPodsProxiesCertificate(ctx, *hc.kubeAPI, namespace, controlPlaneNamespace)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -2074,12 +2107,16 @@ func GetMeshedPodsIdentityData(ctx context.Context, api kubernetes.Interface, da
 }
 
 func (hc *HealthChecker) checkDataPlaneProxiesCertificate(ctx context.Context) error {
-	meshedPods, err := GetMeshedPodsIdentityData(ctx, hc.kubeAPI.Interface, hc.DataPlaneNamespace)
+	return checkPodsProxiesCertificate(ctx, *hc.kubeAPI, hc.DataPlaneNamespace, hc.ControlPlaneNamespace)
+}
+
+func checkPodsProxiesCertificate(ctx context.Context, kubeAPI k8s.KubernetesAPI, targetNamespace, controlPlaneNamespace string) error {
+	meshedPods, err := GetMeshedPodsIdentityData(ctx, kubeAPI, targetNamespace)
 	if err != nil {
 		return err
 	}
 
-	_, values, err := FetchCurrentConfiguration(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
+	_, values, err := FetchCurrentConfiguration(ctx, kubeAPI, controlPlaneNamespace)
 	if err != nil {
 		return err
 	}
@@ -2088,7 +2125,7 @@ func (hc *HealthChecker) checkDataPlaneProxiesCertificate(ctx context.Context) e
 	offendingPods := []string{}
 	for _, pod := range meshedPods {
 		if strings.TrimSpace(pod.Anchors) != strings.TrimSpace(trustAnchorsPem) {
-			if hc.DataPlaneNamespace == "" {
+			if targetNamespace == "" {
 				offendingPods = append(offendingPods, fmt.Sprintf("* %s/%s", pod.Namespace, pod.Name))
 			} else {
 				offendingPods = append(offendingPods, fmt.Sprintf("* %s", pod.Name))

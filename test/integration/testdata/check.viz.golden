@@ -24,6 +24,7 @@ linkerd-viz
 √ tap API service is running
 √ linkerd-viz pods are injected
 √ viz extension pods are running
+√ viz extension proxies are healthy
 √ can initialize the client
 √ viz extension self-check
 √ [kubernetes] linkerd viz can talk to Kubernetes

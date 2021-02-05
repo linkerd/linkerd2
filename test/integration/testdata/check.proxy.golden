@@ -54,6 +54,7 @@ linkerd-identity-data-plane
 linkerd-api
 -----------
 √ control plane pods are ready
+√ control plane proxies are healthy
 
 linkerd-version
 ---------------
