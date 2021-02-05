@@ -126,6 +126,9 @@ const (
 	// ProxyConfigAnnotationsPrefix is the prefix of all config-related annotations
 	ProxyConfigAnnotationsPrefix = "config.linkerd.io"
 
+	// VizAnnotationPrefix is the prefix for all viz related annotations
+	VizAnnotationPrefix = "viz.linkerd.io"
+
 	// ProxyConfigAnnotationsPrefixAlpha is the prefix of newly released config-related annotations
 	ProxyConfigAnnotationsPrefixAlpha = "config.alpha.linkerd.io"
 
@@ -226,7 +229,7 @@ const (
 	ProxyDisableIdentityAnnotation = ProxyConfigAnnotationsPrefix + "/disable-identity"
 
 	// ProxyDisableTapAnnotation can be used to disable tap on the injected proxy.
-	ProxyDisableTapAnnotation = ProxyConfigAnnotationsPrefix + "/disable-tap"
+	ProxyDisableTapAnnotation = VizAnnotationPrefix + "/disable-tap"
 
 	// ProxyEnableDebugAnnotation is set to true if the debug container is
 	// injected.
