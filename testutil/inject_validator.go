@@ -424,7 +424,6 @@ func (iv *InjectValidator) GetFlagsAndAnnotations() ([]string, map[string]string
 
 	if iv.DisableTap {
 		annotations[k8s.ProxyDisableTapAnnotation] = enabled
-		flags = append(flags, "--disable-tap")
 	}
 
 	if iv.EnableDebug {
