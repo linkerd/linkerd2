@@ -429,6 +429,7 @@ func renderOverrides(values chartutil.Values, namespace string, stringData bool)
 	// Remove unnecessary fields, including fields added by helm's `chartutil.CoalesceValues`
 	values["configs"] = l5dcharts.ConfigJSONs{}
 	delete(values, "partials")
+	delete(values, "stage")
 
 	if namespace == "" {
 		// Get Namespace from values
