@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
@@ -304,11 +303,6 @@ type Checker struct {
 	// check is the function that's called to execute the check; if the function
 	// returns an error, the check fails
 	check func(context.Context) error
-
-	// checkRPC is an alternative to check that can be used to perform a remote
-	// check using the SelfCheck gRPC endpoint; check status is based on the value
-	// of the gRPC response
-	checkRPC func(context.Context) (*healthcheckPb.SelfCheckResponse, error)
 }
 
 // NewChecker returns a new instance of checker type
@@ -352,12 +346,6 @@ func (c *Checker) SurfaceErrorOnRetry() *Checker {
 // WithCheck returns a checker with the provided check func
 func (c *Checker) WithCheck(check func(context.Context) error) *Checker {
 	c.check = check
-	return c
-}
-
-// WithCheckRPC returns a checker with the provided checkRPC func
-func (c *Checker) WithCheckRPC(checkRPC func(context.Context) (*healthcheckPb.SelfCheckResponse, error)) *Checker {
-	c.checkRPC = checkRPC
 	return c
 }
 
@@ -1477,17 +1465,6 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 						}
 					}
 				}
-
-				if checker.checkRPC != nil {
-					if !hc.runCheckRPC(c.ID, &checker, observer) {
-						if !checker.warning {
-							success = false
-						}
-						if checker.fatal {
-							return success
-						}
-					}
-				}
 			}
 		}
 	}
@@ -1535,77 +1512,6 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *Checker, observer Ch
 		}
 
 		observer(checkResult)
-		return checkResult.Err == nil
-	}
-}
-
-// runCheckRPC calls `c` which itself should make a gRPC call returning `*healthcheckPb.SelfCheckResponse`
-// (which can contain multiple responses) or error.
-// If that call returns an error, we send it to `observer` and return false.
-// Otherwise, we send to `observer` a success message with `c.description` and then proceed to check the
-// multiple responses contained in the response.
-// We keep on retrying the same call until all the responses have an OK status
-// (or until timeout/deadline is reached), sending a message to `observer` for each response,
-// while making sure no duplicate messages are sent.
-func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *Checker, observer CheckObserver) bool {
-	observedResults := []CheckResult{}
-	for {
-		ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-		defer cancel()
-		checkRsp, err := c.checkRPC(ctx)
-		if se, ok := err.(*SkipError); ok {
-			log.Debugf("Skipping check: %s. Reason: %s", c.description, se.Reason)
-			return true
-		}
-
-		checkResult := &CheckResult{
-			Category:    categoryID,
-			Description: c.description,
-			HintAnchor:  c.hintAnchor,
-			Warning:     c.warning,
-		}
-
-		if vs, ok := err.(*VerboseSuccess); ok {
-			checkResult.Description = fmt.Sprintf("%s\n%s", checkResult.Description, vs.Message)
-		} else if err != nil {
-			// errors at the gRPC-call level are not retried
-			// but we do retry below if the response Status is not OK
-			checkResult.Err = &CategoryError{categoryID, err}
-			observer(checkResult)
-			return false
-		}
-
-		// General description, only shown once.
-		// The following calls to `observer()` track specific result entries.
-		if !checkResult.alreadyObserved(observedResults) {
-			observer(checkResult)
-			observedResults = append(observedResults, *checkResult)
-		}
-
-		for _, check := range checkRsp.Results {
-			checkResult.Err = nil
-			checkResult.Description = fmt.Sprintf("[%s] %s", check.SubsystemName, check.CheckDescription)
-			if check.Status != healthcheckPb.CheckStatus_OK {
-				checkResult.Err = &CategoryError{categoryID, fmt.Errorf(check.FriendlyMessageToUser)}
-				checkResult.Retry = time.Now().Before(c.retryDeadline)
-				// only show the waiting message during retries,
-				// and send the underlying error on the last try
-				if !c.surfaceErrorOnRetry && checkResult.Retry {
-					checkResult.Err = errors.New("waiting for check to complete")
-				}
-				observer(checkResult)
-			} else if !checkResult.alreadyObserved(observedResults) {
-				observer(checkResult)
-			}
-			observedResults = append(observedResults, *checkResult)
-		}
-
-		if checkResult.Retry {
-			log.Debug("Retrying on error")
-			time.Sleep(retryWindow)
-			continue
-		}
-
 		return checkResult.Err == nil
 	}
 }
@@ -2321,15 +2227,6 @@ func (hc *HealthChecker) checkClockSkew(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func (cr *CheckResult) alreadyObserved(previousResults []CheckResult) bool {
-	for _, result := range previousResults {
-		if result.Description == cr.Description && result.Err == cr.Err {
-			return true
-		}
-	}
-	return false
 }
 
 // CheckRoles checks that the expected roles exist.

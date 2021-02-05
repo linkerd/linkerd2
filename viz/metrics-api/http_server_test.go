@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	vizClient "github.com/linkerd/linkerd2/viz/metrics-api/client"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 )
@@ -53,9 +52,9 @@ func (m *mockGrpcServer) ListServices(ctx context.Context, req *pb.ListServicesR
 	return m.ResponseToReturn.(*pb.ListServicesResponse), m.ErrorToReturn
 }
 
-func (m *mockGrpcServer) SelfCheck(ctx context.Context, req *healthcheckPb.SelfCheckRequest) (*healthcheckPb.SelfCheckResponse, error) {
+func (m *mockGrpcServer) SelfCheck(ctx context.Context, req *pb.SelfCheckRequest) (*pb.SelfCheckResponse, error) {
 	m.LastRequestReceived = req
-	return m.ResponseToReturn.(*healthcheckPb.SelfCheckResponse), m.ErrorToReturn
+	return m.ResponseToReturn.(*pb.SelfCheckResponse), m.ErrorToReturn
 }
 
 type grpcCallTestCase struct {

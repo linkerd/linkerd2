@@ -27,7 +27,5 @@ linkerd-viz
 √ grafana is installed and configured correctly
 √ can initialize the client
 √ viz extension self-check
-√ [kubernetes] linkerd viz can talk to Kubernetes
-√ [prometheus] linkerd viz can talk to Prometheus
 
 Status check results are √
