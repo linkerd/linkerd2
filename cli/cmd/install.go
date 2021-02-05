@@ -397,7 +397,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 	}
 
 	if stage == "" || stage == controlPlaneStage {
-		overrides, err := renderOverrides(vals)
+		overrides, err := renderOverrides(vals, "", false)
 		if err != nil {
 			return err
 		}
@@ -417,8 +417,11 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 // command, those credentials will be saved here so that they are preserved
 // during upgrade.  Note also that this Secret/linkerd-config-overrides
 // resource is not part of the Helm chart and will not be present when installing
-// with Helm.
-func renderOverrides(values chartutil.Values) ([]byte, error) {
+// with Helm. If stringData is set to true, the secret will be rendered using
+// the StringData field instead of the Data field, making the output more
+// human readable. If namespace is empty, The same is read from the passed
+// Values
+func renderOverrides(values chartutil.Values, namespace string, stringData bool) ([]byte, error) {
 	defaults, err := l5dcharts.NewValues()
 	if err != nil {
 		return nil, err
@@ -428,14 +431,16 @@ func renderOverrides(values chartutil.Values) ([]byte, error) {
 	delete(values, "partials")
 	delete(values, "stage")
 
-	// Get Namespace from values
-	valuesTree, err := tree.MarshalToTree(values)
-	if err != nil {
-		return nil, err
-	}
-	namespace, err := valuesTree.GetString("global", "namespace")
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve global.namespace from values: %v", err)
+	if namespace == "" {
+		// Get Namespace from values
+		valuesTree, err := tree.MarshalToTree(values)
+		if err != nil {
+			return nil, err
+		}
+		namespace, err = valuesTree.GetString("global", "namespace")
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve global.namespace from values: %v", err)
+		}
 	}
 
 	overrides, err := tree.Diff(defaults, values)
@@ -457,9 +462,15 @@ func renderOverrides(values chartutil.Values) ([]byte, error) {
 				k8s.ControllerNSLabel: namespace,
 			},
 		},
-		Data: map[string][]byte{
+	}
+	if stringData {
+		secret.StringData = map[string]string{
+			"linkerd-config-overrides": string(overridesBytes),
+		}
+	} else {
+		secret.Data = map[string][]byte{
 			"linkerd-config-overrides": overridesBytes,
-		},
+		}
 	}
 	bytes, err := yaml.Marshal(secret)
 	if err != nil {

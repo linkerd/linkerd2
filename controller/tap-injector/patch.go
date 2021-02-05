@@ -9,7 +9,7 @@ import (
 var tpl = fmt.Sprintf(`[
   {
     "op": "add",
-    "path": "/metadata/annotations/{{.Annotation}}",
+    "path": "/metadata/annotations/viz.linkerd.io~1tap-enabled",
     "value": "true"
   },
   {
