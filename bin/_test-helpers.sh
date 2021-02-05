@@ -348,7 +348,7 @@ install_version() {
 
     (
         set -x
-        "$linkerd_path" install --skip-inbound-ports '1234,5678' --controller-log-level debug | kubectl --context="$context" apply -f - 2>&1
+        "$linkerd_path" install | kubectl --context="$context" apply -f - 2>&1
     )
     exit_on_err "install_version() - installing $version failed"
 
