@@ -193,6 +193,10 @@ If no resource name is specified, displays stats about all resources of the spec
 			for num, req := range reqs {
 				go func(num int, req *pb.StatSummaryRequest) {
 					resp, err := requestStatsFromAPI(client, req)
+					if err != nil {
+						fmt.Fprint(os.Stderr, err.Error())
+						os.Exit(1)
+					}
 					rows := respToRows(resp)
 					c <- indexedResults{num, rows, err}
 				}(num, req)
