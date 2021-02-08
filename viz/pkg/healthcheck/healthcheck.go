@@ -83,14 +83,14 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 			Fatal().
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				return healthcheck.CheckClusterRoles(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-tap", hc.vizNamespace), fmt.Sprintf("linkerd-%s-metrics-api", hc.vizNamespace.Name), fmt.Sprintf("linkerd-%s-tap-admin", hc.vizNamespace.Name), "linkerd-tap-injector"}, "")
+				return healthcheck.CheckClusterRoles(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-tap", hc.vizNamespace.Name), fmt.Sprintf("linkerd-%s-metrics-api", hc.vizNamespace.Name), fmt.Sprintf("linkerd-%s-tap-admin", hc.vizNamespace.Name), "linkerd-tap-injector"}, "")
 			}),
 		*healthcheck.NewChecker("linkerd-viz ClusterRoleBindings exist").
 			WithHintAnchor("l5d-viz-crb-exists").
 			Fatal().
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				return healthcheck.CheckClusterRoleBindings(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-tap", hc.vizNamespace), fmt.Sprintf("linkerd-%s-metrics-api", hc.vizNamespace), fmt.Sprintf("linkerd-%s-tap-auth-delegator", hc.vizNamespace), "linkerd-tap-injector"}, "")
+				return healthcheck.CheckClusterRoleBindings(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-tap", hc.vizNamespace.Name), fmt.Sprintf("linkerd-%s-metrics-api", hc.vizNamespace.Name), fmt.Sprintf("linkerd-%s-tap-auth-delegator", hc.vizNamespace.Name), "linkerd-tap-injector"}, "")
 			}),
 		*healthcheck.NewChecker("tap API server has valid cert").
 			WithHintAnchor("l5d-tap-cert-valid").
@@ -108,7 +108,7 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 					return err
 				}
 
-				identityName := fmt.Sprintf("linkerd-tap.%s.svc", hc.vizNamespace)
+				identityName := fmt.Sprintf("linkerd-tap.%s.svc", hc.vizNamespace.Name)
 				return hc.CheckCertAndAnchors(cert, anchors, identityName)
 			}),
 		*healthcheck.NewChecker("tap API server cert is valid for at least 60 days").
@@ -169,13 +169,13 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 				}
 
 				// Check for ClusterRoles
-				err := healthcheck.CheckClusterRoles(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-prometheus", hc.vizNamespace)}, "")
+				err := healthcheck.CheckClusterRoles(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-prometheus", hc.vizNamespace.Name)}, "")
 				if err != nil {
 					return err
 				}
 
 				// Check for ClusterRoleBindings
-				err = healthcheck.CheckClusterRoleBindings(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-prometheus", hc.vizNamespace)}, "")
+				err = healthcheck.CheckClusterRoleBindings(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-prometheus", hc.vizNamespace.Name)}, "")
 				if err != nil {
 					return err
 				}
