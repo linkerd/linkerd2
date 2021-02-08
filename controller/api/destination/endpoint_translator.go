@@ -216,7 +216,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			err error
 		)
 		if address.Pod != nil {
-			opaquePorts, getErr := getOpaquePortsAnnotations(address.Pod)
+			opaquePorts, getErr := getPodOpaquePortsAnnotations(address.Pod)
 			if getErr != nil {
 				et.log.Errorf("failed getting opaque ports annotation for pod: %s", getErr)
 			}

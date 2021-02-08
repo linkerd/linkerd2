@@ -11,17 +11,21 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
+	"github.com/linkerd/linkerd2/pkg/util"
 	logging "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type (
 	server struct {
 		endpoints     *watcher.EndpointsWatcher
+		opaquePorts   *watcher.OpaquePortsWatcher
 		profiles      *watcher.ProfileWatcher
 		trafficSplits *watcher.TrafficSplitWatcher
 		ips           *watcher.IPWatcher
@@ -64,12 +68,14 @@ func NewServer(
 		"component": "server",
 	})
 	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log, enableEndpointSlices)
+	opaquePorts := watcher.NewOpaquePortsWatcher(k8sAPI, log)
 	profiles := watcher.NewProfileWatcher(k8sAPI, log)
 	trafficSplits := watcher.NewTrafficSplitWatcher(k8sAPI, log)
 	ips := watcher.NewIPWatcher(k8sAPI, endpoints, log)
 
 	srv := server{
 		endpoints,
+		opaquePorts,
 		profiles,
 		trafficSplits,
 		ips,
@@ -176,8 +182,6 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 	// The stream will subscribe to profile updates for `service`.
 	var service watcher.ServiceID
-	// `instanceID` is used when subscribing to endpoints of `service`.
-	var instanceID string
 	// If `host` is an IP, `fqn` must be constructed from the namespace and
 	// name of the service that the IP maps to.
 	var fqn string
@@ -212,7 +216,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 				if err != nil {
 					log.Errorf("failed to set opaque port annotation on pod: %s", err)
 				}
-				opaquePorts, err = getOpaquePortsAnnotations(pod)
+				opaquePorts, err = getPodOpaquePortsAnnotations(pod)
 				if err != nil {
 					log.Errorf("failed to get opaque ports annotation for pod: %s", err)
 				}
@@ -252,7 +256,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			return nil
 		}
 	} else {
-		service, instanceID, err = parseK8sServiceName(host, s.clusterDomain)
+		service, _, err = parseK8sServiceName(host, s.clusterDomain)
 		if err != nil {
 			log.Debugf("Invalid service %s", path)
 			return status.Errorf(codes.InvalidArgument, "invalid service: %s", err)
@@ -265,21 +269,9 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// and pushes them onto the gRPC stream.
 	translator := newProfileTranslator(stream, log, fqn, port, nil)
 
-	// The opaque ports adaptor merges traffic split updates with opaque ports
-	// updates and publishes the result to the translator
-	opAdaptor := newOpaquePortsAdaptor(translator, s.k8sAPI, log)
-
-	// Subscribe the adaptor to endpoint updates.
-	// TODO: use a hostname?
-	err = s.endpoints.Subscribe(service, port, instanceID, opAdaptor)
-	if err != nil {
-		log.Warnf("Failed to subscribe to endpoint updates for %s: %s", path, err)
-	}
-	defer s.endpoints.Unsubscribe(service, port, instanceID, opAdaptor)
-
 	// The traffic split adaptor merges profile updates with traffic split
-	// updates and publishes the result to the opaque port adaptor.
-	tsAdaptor := newTrafficSplitAdaptor(opAdaptor, service, port, s.clusterDomain)
+	// updates and publishes the result to the profile translator.
+	tsAdaptor := newTrafficSplitAdaptor(translator, service, port, s.clusterDomain)
 
 	// Subscribe the adaptor to traffic split updates.
 	err = s.trafficSplits.Subscribe(service, tsAdaptor)
@@ -289,9 +281,22 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	}
 	defer s.trafficSplits.Unsubscribe(service, tsAdaptor)
 
+	// The opaque ports adaptor merges profile updates with service and
+	// namespace opaque port annotation updates; it then publishes the result
+	// to the traffic split adaptor.
+	opaquePortsAdaptor := newOpaquePortsAdaptor(tsAdaptor)
+
+	// Subscribe the adaptor to service and namespace updates.
+	err = s.opaquePorts.Subscribe(service, opaquePortsAdaptor)
+	if err != nil {
+		log.Warnf("Failed to subscribe to service updates for %s: %s", service, err)
+		return err
+	}
+	defer s.opaquePorts.Unsubscribe(service, opaquePortsAdaptor)
+
 	// The fallback accepts updates from a primary and secondary source and
 	// passes the appropriate profile updates to the adaptor.
-	primary, secondary := newFallbackProfileListener(tsAdaptor)
+	primary, secondary := newFallbackProfileListener(opaquePortsAdaptor)
 
 	// If we have a context token, we create two subscriptions: one with the
 	// context token which sends updates to the primary listener and one without
@@ -447,4 +452,19 @@ func hasSuffix(slice []string, suffix []string) bool {
 		}
 	}
 	return true
+}
+
+func getPodOpaquePortsAnnotations(pod *corev1.Pod) (map[uint32]struct{}, error) {
+	opaquePorts := make(map[uint32]struct{})
+	annotation := pod.Annotations[pkgk8s.ProxyOpaquePortsAnnotation]
+	if annotation != "" {
+		for _, portStr := range util.ParseContainerOpaquePorts(annotation, pod.Spec.Containers) {
+			port, err := strconv.ParseUint(portStr, 10, 32)
+			if err != nil {
+				return nil, err
+			}
+			opaquePorts[uint32(port)] = struct{}{}
+		}
+	}
+	return opaquePorts, nil
 }
