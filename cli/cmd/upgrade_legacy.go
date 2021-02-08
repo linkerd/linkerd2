@@ -30,6 +30,9 @@ func loadStoredValuesLegacy(ctx context.Context, k *k8s.KubernetesAPI) (*charts.
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch configs from kubernetes: %s", err)
 	}
+	if configs == nil {
+		return nil, nil
+	}
 	repairConfigs(configs)
 
 	values, err := charts.NewValues()

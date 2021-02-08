@@ -123,8 +123,8 @@ data:
         "outgoing-proxy-port": 4140,
         "proxy-uid": 2102,
         "ports-to-redirect": [],
-        "inbound-ports-to-ignore": ["4190","4191","25","443","587","3306","11211","80","8080"],
-        "outbound-ports-to-ignore": ["25","443","587","3306","11211","443","1000"],
+        "inbound-ports-to-ignore": ["4190","4191","25","443","587","3306","11211","5432","80","8080"],
+        "outbound-ports-to-ignore": ["25","443","587","3306","11211","5432","443","1000"],
         "simulate": false,
         "use-wait-flag": false
       }

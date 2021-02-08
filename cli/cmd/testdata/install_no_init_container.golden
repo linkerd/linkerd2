@@ -886,8 +886,8 @@ data:
       proxyInit:
         capabilities: null
         closeWaitTimeoutSecs: 0
-        ignoreInboundPorts: 25,443,587,3306,11211
-        ignoreOutboundPorts: 25,443,587,3306,11211
+        ignoreInboundPorts: 25,443,587,3306,11211,5432
+        ignoreOutboundPorts: 25,443,587,3306,11211,5432
         image:
           name: ghcr.io/linkerd/proxy-init
           pullPolicy: IfNotPresent
@@ -3134,5 +3134,7 @@ data:
 kind: Secret
 metadata:
   creationTimestamp: null
+  labels:
+    linkerd.io/control-plane-ns: linkerd
   name: linkerd-config-overrides
   namespace: linkerd

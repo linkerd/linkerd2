@@ -8,19 +8,27 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sync/atomic"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	k8sutils "github.com/linkerd/linkerd2/pkg/k8s"
+	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
+	pkgTls "github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/prometheus/common/log"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type apiServer struct {
+// APIServer holds the underlying http server and its config
+type APIServer struct {
+	*http.Server
+	listener     net.Listener
 	router       *httprouter.Router
 	allowedNames []string
+	certValue    *atomic.Value
 	log          *logrus.Entry
 }
 
@@ -28,14 +36,23 @@ type apiServer struct {
 func NewAPIServer(
 	ctx context.Context,
 	addr string,
-	cert tls.Certificate,
 	k8sAPI *k8s.API,
 	grpcTapServer tap.TapServer,
 	disableCommonNames bool,
-) (*http.Server, net.Listener, error) {
+) (*APIServer, error) {
+	updateEvent := make(chan struct{})
+	errEvent := make(chan error)
+	watcher := pkgTls.NewFsCredsWatcher(pkgk8s.MountPathTLSBase, updateEvent, errEvent).
+		WithFilePaths(pkgk8s.MountPathTLSCrtPEM, pkgk8s.MountPathTLSKeyPEM)
+	go func() {
+		if err := watcher.StartWatching(ctx); err != nil {
+			log.Fatalf("Failed to start creds watcher: %s", err)
+		}
+	}()
+
 	clientCAPem, allowedNames, usernameHeader, groupHeader, err := apiServerAuth(ctx, k8sAPI)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// for development
@@ -48,6 +65,18 @@ func NewAPIServer(
 		"addr":      addr,
 	})
 
+	clientCertPool := x509.NewCertPool()
+	clientCertPool.AppendCertsFromPEM([]byte(clientCAPem))
+
+	httpServer := &http.Server{
+		Addr: addr,
+		TLSConfig: &tls.Config{
+			ClientAuth: tls.VerifyClientCertIfGiven,
+			ClientCAs:  clientCertPool,
+		},
+	}
+
+	var emptyCert atomic.Value
 	h := &handler{
 		k8sAPI:         k8sAPI,
 		usernameHeader: usernameHeader,
@@ -56,39 +85,48 @@ func NewAPIServer(
 		log:            log,
 	}
 
-	router := initRouter(h)
-
-	server := &apiServer{
-		router:       router,
-		allowedNames: allowedNames,
-		log:          log,
-	}
-
-	clientCertPool := x509.NewCertPool()
-	clientCertPool.AppendCertsFromPEM([]byte(clientCAPem))
-
-	wrappedServer := prometheus.WithTelemetry(server)
-
-	s := &http.Server{
-		Addr:    addr,
-		Handler: wrappedServer,
-		TLSConfig: &tls.Config{
-			Certificates: []tls.Certificate{cert},
-			ClientAuth:   tls.VerifyClientCertIfGiven,
-			ClientCAs:    clientCertPool,
-		},
-	}
-
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatalf("net.Listen failed with: %s", err)
+		return nil, fmt.Errorf("net.Listen failed with: %s", err)
 	}
 
-	return s, lis, nil
+	s := &APIServer{
+		Server:       httpServer,
+		listener:     lis,
+		router:       initRouter(h),
+		allowedNames: allowedNames,
+		certValue:    &emptyCert,
+		log:          log,
+	}
+	s.Handler = prometheus.WithTelemetry(s)
+	httpServer.TLSConfig.GetCertificate = s.getCertificate
+
+	if err := watcher.UpdateCert(s.certValue); err != nil {
+		return nil, fmt.Errorf("Failed to initialized certificate: %s", err)
+	}
+
+	go watcher.ProcessEvents(log, s.certValue, updateEvent, errEvent)
+
+	return s, nil
+}
+
+// Start starts the https server
+func (a *APIServer) Start(ctx context.Context) {
+	a.log.Infof("starting APIServer on %s", a.Server.Addr)
+	if err := a.ServeTLS(a.listener, "", ""); err != nil {
+		if err == http.ErrServerClosed {
+			return
+		}
+		a.log.Fatal(err)
+	}
+}
+
+func (a *APIServer) getCertificate(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
+	return a.certValue.Load().(*tls.Certificate), nil
 }
 
 // ServeHTTP handles all routes for the APIServer.
-func (a *apiServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (a *APIServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	a.log.Debugf("ServeHTTP(): %+v", req)
 	if err := a.validate(req); err != nil {
 		a.log.Debug(err)
@@ -99,7 +137,7 @@ func (a *apiServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 // validate ensures that the request should be honored returning an error otherwise.
-func (a *apiServer) validate(req *http.Request) error {
+func (a *APIServer) validate(req *http.Request) error {
 	// if `requestheader-allowed-names` was empty, allow any CN
 	if len(a.allowedNames) > 0 {
 		for _, cn := range a.allowedNames {

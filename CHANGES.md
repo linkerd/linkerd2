@@ -1,5 +1,24 @@
 # Changes
 
+## stable-2.9.3
+
+This stable release fixes an issue that prevented the proxy from being able
+to speak HTTP/1 with older versioned proxies. It also fixes an issue where the
+`linkerd-config-overrides` secret would be deleted during upgrade and provides
+a `linkerd repair` command for restoring it if it has been deleted.
+
+* Fixed an issue that could cause the inbound proxy to fail meshed HTTP/1
+  requests from older proxies (from the stable-2.8.x vintage)
+* Fixed an issue where the Linkerd webhooks and apiservices would not refresh
+  their certs automatically when provided externally — like through cert-manager
+* Added missing label `linkerd.io/control-plane-ns` to the
+ `linkerd-config-overrides` secret to prevent it from being pruned during
+ upgrades
+* Added `linkerd repair` command to restore the `linkerd-config-overrides`
+  secret if it has been pruned
+* Added port 5432 which is used by Amazon RDS and Postgres to the default list
+  of skipped ports
+
 ## stable-2.9.2
 
 This stable release fixes an issue that stops traffic to a pod when there is an

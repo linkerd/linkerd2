@@ -357,11 +357,14 @@ const (
 	// store identity credentials.
 	MountPathEndEntity = MountPathBase + "/identity/end-entity"
 
+	// MountPathTLSBase is the path at which the TLS cert and key PEM files are mounted
+	MountPathTLSBase = MountPathBase + "/tls"
+
 	// MountPathTLSKeyPEM is the path at which the TLS key PEM file is mounted.
-	MountPathTLSKeyPEM = MountPathBase + "/tls/tls.key"
+	MountPathTLSKeyPEM = MountPathTLSBase + "/tls.key"
 
 	// MountPathTLSCrtPEM is the path at which the TLS cert PEM file is mounted.
-	MountPathTLSCrtPEM = MountPathBase + "/tls/tls.crt"
+	MountPathTLSCrtPEM = MountPathTLSBase + "/tls.crt"
 
 	// MountPathXtablesLock is the path at which the proxy init container mounts xtables
 	// This is necessary for xtables-legacy support

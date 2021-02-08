@@ -1792,20 +1792,6 @@ kind: ConfigMap
 metadata:
   name: linkerd-config
   namespace: test-ns
-`,
-			},
-			expected: []string{
-				"cat1 'linkerd-config' config map exists",
-			},
-		},
-		{
-			checkDescription: "'linkerd-config' config map exists",
-			resources: []string{`
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: linkerd-config
-  namespace: test-ns
 data:
   values: |-
     tracing:
