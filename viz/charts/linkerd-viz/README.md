@@ -100,6 +100,7 @@ Kubernetes: `>=1.13.0-0`
 | grafana.resources.cpu.request | string | `nil` | Amount of CPU units that the grafana container requests |
 | grafana.resources.memory.limit | string | `nil` | Maximum amount of memory that grafana container can use |
 | grafana.resources.memory.request | string | `nil` | Amount of memory that the grafana container requests |
+| grafanaUrl | string | `""` | url of external grafana instance with reverse proxy configured. |
 | identityTrustDomain | string | `"cluster.local"` | Trust domain used for identity  |
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
 | installNamespace | bool | `true` | Set to false when installing in a custom namespace. |

@@ -143,7 +143,6 @@ Kubernetes: `>=1.13.0-0`
 | global.controllerNamespaceLabel | string | `"linkerd.io/control-plane-ns"` | Control plane label. Do not edit |
 | global.createdByAnnotation | string | `"linkerd.io/created-by"` | Annotation label for the proxy create. Do not edit. |
 | global.enableEndpointSlices | bool | `false` | enables the use of EndpointSlice informers for the destination service; enableEndpointSlices should be set to true only if EndpointSlice K8s feature gate is on; the feature is still experimental. |
-| global.grafanaUrl | string | `""` | url of external grafana instance with reverse proxy configured. |
 | global.identityTrustAnchorsPEM | string | `""` | Trust root certificate (ECDSA). It must be provided during install. |
 | global.identityTrustDomain | string | `"cluster.local"` | Trust domain used for identity |
 | global.imagePullPolicy | string | `"IfNotPresent"` | Docker image pull policy |
