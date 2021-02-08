@@ -1304,18 +1304,7 @@ func (hc *HealthChecker) allCategories() []Category {
 							return err
 						}
 
-						outdatedPods := []string{}
-						for _, pod := range pods {
-							proxyVersion := k8s.GetProxyVersion(pod)
-							if err = hc.latestVersions.Match(proxyVersion); err != nil {
-								outdatedPods = append(outdatedPods, fmt.Sprintf("\t* %s (%s)", pod.Name, proxyVersion))
-							}
-						}
-						if len(outdatedPods) > 0 {
-							podList := strings.Join(outdatedPods, "\n")
-							return fmt.Errorf("Some data plane pods are not running the current version:\n%s", podList)
-						}
-						return nil
+						return hc.CheckProxyVersionsUpToDate(pods)
 					},
 				},
 				{
@@ -1328,13 +1317,7 @@ func (hc *HealthChecker) allCategories() []Category {
 							return err
 						}
 
-						for _, pod := range pods {
-							proxyVersion := k8s.GetProxyVersion(pod)
-							if proxyVersion != version.Version {
-								return fmt.Errorf("%s running %s but cli running %s", pod.Name, proxyVersion, version.Version)
-							}
-						}
-						return nil
+						return CheckIfProxyVersionsMatchWithCLI(pods)
 					},
 				},
 			},
@@ -1372,6 +1355,35 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 	}
+}
+
+// CheckProxyVersionsUpToDate checks if all the proxies are on the latest
+// installed version
+func (hc *HealthChecker) CheckProxyVersionsUpToDate(pods []corev1.Pod) error {
+	outdatedPods := []string{}
+	for _, pod := range pods {
+		proxyVersion := k8s.GetProxyVersion(pod)
+		if err := hc.latestVersions.Match(proxyVersion); err != nil {
+			outdatedPods = append(outdatedPods, fmt.Sprintf("\t* %s (%s)", pod.Name, proxyVersion))
+		}
+	}
+	if len(outdatedPods) > 0 {
+		podList := strings.Join(outdatedPods, "\n")
+		return fmt.Errorf("Some data plane pods are not running the current version:\n%s", podList)
+	}
+	return nil
+}
+
+// CheckIfProxyVersionsMatchWithCLI checks if the latest proxy version
+// matches that of the CLI
+func CheckIfProxyVersionsMatchWithCLI(pods []corev1.Pod) error {
+	for _, pod := range pods {
+		proxyVersion := k8s.GetProxyVersion(pod)
+		if proxyVersion != version.Version {
+			return fmt.Errorf("%s running %s but cli running %s", pod.Name, proxyVersion, version.Version)
+		}
+	}
+	return nil
 }
 
 // CheckCertAndAnchors checks if the given cert and anchors are valid
@@ -1416,6 +1428,18 @@ func (hc *HealthChecker) CheckProxyHealth(ctx context.Context, controlPlaneNames
 
 	// Check proxy certificates
 	err = checkPodsProxiesCertificate(ctx, *hc.kubeAPI, namespace, controlPlaneNamespace)
+	if err != nil {
+		return err
+	}
+
+	// Check proxy versions are up to date
+	err = hc.CheckProxyVersionsUpToDate(podList.Items)
+	if err != nil {
+		return err
+	}
+
+	// Check if proxy versions match that of CLI
+	err = CheckIfProxyVersionsMatchWithCLI(podList.Items)
 	if err != nil {
 		return err
 	}
