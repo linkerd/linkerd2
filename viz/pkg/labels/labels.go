@@ -13,6 +13,14 @@ const (
 	// VizTapEnabled is set by the tap-injector component when tap has been
 	// enabled on a pod.
 	VizTapEnabled = VizAnnotationsPrefix + "/tap-enabled"
+
+	// VizExternalPrometheus is only set on the namespace by the install
+	// when a external prometheus is being used
+	VizExternalPrometheus = VizAnnotationsPrefix + "/external-prometheus"
+
+	// VizExternalGrafana is only set on the namespace by the install
+	// when az external Grafana is being used.
+	VizExternalGrafana = VizAnnotationsPrefix + "/external-grafana"
 )
 
 // IsTapEnabled returns true if a pod has an annotation indicating that tap
