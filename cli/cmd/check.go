@@ -100,7 +100,7 @@ code.`,
 		Example: `  # Check that the Linkerd cluster-wide resource are installed correctly
   linkerd check config`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return configureAndRunChecks(cmd.Context(), stdout, stderr, configStage, options)
+			return configureAndRunChecks(cmd, stdout, stderr, configStage, options)
 		},
 	}
 
@@ -134,7 +134,7 @@ non-zero exit code.`,
   # Check that the Linkerd data plane proxies in the "app" namespace are up and running
   linkerd check --proxy --namespace app`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return configureAndRunChecks(cmd.Context(), stdout, stderr, "", options)
+			return configureAndRunChecks(cmd, stdout, stderr, "", options)
 		},
 	}
 
@@ -146,7 +146,7 @@ non-zero exit code.`,
 	return cmd
 }
 
-func configureAndRunChecks(ctx context.Context, wout io.Writer, werr io.Writer, stage string, options *checkOptions) error {
+func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, stage string, options *checkOptions) error {
 	err := options.validate()
 	if err != nil {
 		return fmt.Errorf("Validation error when executing check command: %v", err)
@@ -170,7 +170,7 @@ func configureAndRunChecks(ctx context.Context, wout io.Writer, werr io.Writer, 
 		} else {
 			checks = append(checks, healthcheck.LinkerdPreInstallCapabilityChecks)
 		}
-		installManifest, err = renderInstallManifest(ctx)
+		installManifest, err = renderInstallManifest(cmd.Context())
 		if err != nil {
 			return fmt.Errorf("Error rendering install manifest: %v", err)
 		}
@@ -216,21 +216,21 @@ func configureAndRunChecks(ctx context.Context, wout io.Writer, werr io.Writer, 
 		os.Exit(1)
 	}
 
-	err = runExtensionChecks(ctx, wout, werr, options)
+	err = runExtensionChecks(cmd, wout, werr, options)
 	if err != nil {
-		return fmt.Errorf("Error running extension checks: %v", err)
+		os.Exit(1)
 	}
 
 	return nil
 }
 
-func runExtensionChecks(ctx context.Context, wout io.Writer, werr io.Writer, opts *checkOptions) error {
+func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts *checkOptions) error {
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
 		return err
 	}
 
-	namespaces, err := kubeAPI.GetAllNamespacesWithExtensionLabel(ctx)
+	namespaces, err := kubeAPI.GetAllNamespacesWithExtensionLabel(cmd.Context())
 	if err != nil {
 		return err
 	}
@@ -241,13 +241,12 @@ func runExtensionChecks(ctx context.Context, wout io.Writer, werr io.Writer, opt
 	}
 
 	if opts.output != healthcheck.JSONOutput {
-		headerTxt := "Linkerd extension checks"
+		headerTxt := "Linkerd extensions checks"
 		fmt.Fprintln(wout)
 		fmt.Fprintln(wout, headerTxt)
 		fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
 	}
 
-	noArgs := []string{}
 	for i, ns := range namespaces {
 		if opts.output != healthcheck.JSONOutput && i < len(namespaces) {
 			// add a new line to space out each check output
@@ -257,42 +256,13 @@ func runExtensionChecks(ctx context.Context, wout io.Writer, werr io.Writer, opt
 		switch ns.Labels[k8s.LinkerdExtensionLabel] {
 		case jaegerCmd.JaegerExtensionName:
 			jaegerCheckCmd := jaegerCmd.NewCmdCheck()
-
-			err = setSubCheckFlags(jaegerCheckCmd, map[string]string{
-				"output": opts.output,
-				"wait":   opts.wait.String(),
-			})
-			if err != nil {
-				return err
-			}
-
-			err = jaegerCheckCmd.RunE(jaegerCheckCmd, noArgs)
+			executeExtensionCheck(cmd, "jaeger", jaegerCheckCmd.Flags())
 		case vizHealthCheck.VizExtensionName:
-			vizCheckCmd := vizCmd.NewCmdCheck()
-
-			err = setSubCheckFlags(vizCheckCmd, map[string]string{
-				"output":    opts.output,
-				"wait":      opts.wait.String(),
-				"proxy":     fmt.Sprintf("%t", opts.dataPlaneOnly),
-				"namespace": opts.namespace,
-			})
-			if err != nil {
-				return err
-			}
-
-			err = vizCheckCmd.RunE(vizCheckCmd, noArgs)
+			vizCmd := vizCmd.NewCmdCheck()
+			executeExtensionCheck(cmd, "viz", vizCmd.Flags())
 		case mcCmd.MulticlusterExtensionName:
 			mcCheckCmd := mcCmd.NewCmdCheck()
-
-			err = setSubCheckFlags(mcCheckCmd, map[string]string{
-				"output": opts.output,
-				"wait":   opts.wait.String(),
-			})
-			if err != nil {
-				return err
-			}
-
-			err = mcCheckCmd.RunE(mcCheckCmd, noArgs)
+			executeExtensionCheck(cmd, "multicluster", mcCheckCmd.Flags())
 		default:
 			// Since we don't have checks for extensions we don't support
 			// create a healthchecker that checks if the namespace exists
@@ -333,14 +303,47 @@ func runExtensionChecks(ctx context.Context, wout io.Writer, werr io.Writer, opt
 	return nil
 }
 
-func setSubCheckFlags(cmd *cobra.Command, flags map[string]string) error {
-	for fName, fValue := range flags {
-		err := cmd.Flags().Set(fName, fValue)
-		if err != nil {
-			return err
+func getGlobalFlags(lf *pflag.FlagSet) []string {
+	cmdLineFlags := []string{}
+	lf.VisitAll(func(f *pflag.Flag) {
+		val := f.Value.String()
+		if val != "" {
+			cmdLineFlags = append(cmdLineFlags, fmt.Sprintf("--%s=%s", f.Name, val))
 		}
-	}
-	return nil
+	})
+
+	return cmdLineFlags
+}
+
+func getSharedFlags(lf *pflag.FlagSet, lf2 *pflag.FlagSet) []string {
+	cmdLineFlags := []string{}
+	lf.VisitAll(func(f *pflag.Flag) {
+		val := f.Value.String()
+
+		if val == "" {
+			// skip processing empty flags
+			return
+		}
+
+		if lf2.Lookup(f.Name) != nil {
+			cmdLineFlags = append(cmdLineFlags, fmt.Sprintf("--%s=%s", f.Name, val))
+		}
+	})
+
+	return cmdLineFlags
+}
+
+func executeExtensionCheck(currentCmd *cobra.Command, extension string, lf *pflag.FlagSet) {
+	rootCmd := currentCmd.Root()
+	globalFlags := getGlobalFlags(rootCmd.PersistentFlags())
+	localFlags := getSharedFlags(currentCmd.Flags(), lf)
+
+	args := []string{extension, "check"}
+	args = append(args, globalFlags...)
+	args = append(args, localFlags...)
+
+	rootCmd.SetArgs(args)
+	rootCmd.Execute()
 }
 
 func renderInstallManifest(ctx context.Context) (string, error) {

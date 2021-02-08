@@ -455,7 +455,7 @@ func (hc *HealthChecker) InitializeKubeAPIClient() error {
 	return nil
 }
 
-// InitializeLinkerdGlobalConfig populates the linkerd config objecti in the
+// InitializeLinkerdGlobalConfig populates the linkerd config object in the
 // healthchecker. It avoids having to require the LinkerdControlPlaneExistenceChecks
 // check to run before running other checks
 func (hc *HealthChecker) InitializeLinkerdGlobalConfig(ctx context.Context) error {
