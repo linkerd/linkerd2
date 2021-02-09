@@ -13,7 +13,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -36,12 +35,7 @@ func Launch(ctx context.Context, APIResources []k8s.APIResource, metricsPort uin
 		log.Fatalf("failed to initialize Kubernetes API: %s", err)
 	}
 
-	cred, err := tls.ReadPEMCreds(pkgk8s.MountPathTLSKeyPEM, pkgk8s.MountPathTLSCrtPEM)
-	if err != nil {
-		log.Fatalf("failed to read TLS secrets: %s", err)
-	}
-
-	s, err := NewServer(k8sAPI, *addr, cred, handler, component)
+	s, err := NewServer(ctx, k8sAPI, *addr, pkgk8s.MountPathTLSBase, handler, component)
 	if err != nil {
 		log.Fatalf("failed to initialize the webhook server: %s", err)
 	}

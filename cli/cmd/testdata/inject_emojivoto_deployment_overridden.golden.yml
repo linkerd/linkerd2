@@ -145,9 +145,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,1234,25,443,587,3306,11211
+        - 4190,1234,25,443,587,3306,11211,5432
         - --outbound-ports-to-ignore
-        - 25,443,587,3306,11211
+        - 25,443,587,3306,11211,5432
         image: ghcr.io/linkerd/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init

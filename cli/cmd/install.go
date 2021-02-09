@@ -385,7 +385,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 	}
 
 	if stage == "" || stage == controlPlaneStage {
-		overrides, err := renderOverrides(values, values.GetGlobal().Namespace)
+		overrides, err := renderOverrides(values, values.GetGlobal().Namespace, false)
 		if err != nil {
 			return err
 		}
@@ -405,8 +405,10 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 // command, those credentials will be saved here so that they are preserved
 // during upgrade.  Note also that this Secret/linkerd-config-overrides
 // resource is not part of the Helm chart and will not be present when installing
-// with Helm.
-func renderOverrides(values *l5dcharts.Values, namespace string) ([]byte, error) {
+// with Helm. If stringData is set to true, the secret will be rendered using
+// the StringData field instead of the Data field, making the output more
+// human readable.
+func renderOverrides(values *l5dcharts.Values, namespace string, stringData bool) ([]byte, error) {
 	defaults, err := l5dcharts.NewValues()
 	if err != nil {
 		return nil, err
@@ -428,10 +430,19 @@ func renderOverrides(values *l5dcharts.Values, namespace string) ([]byte, error)
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "linkerd-config-overrides",
 			Namespace: namespace,
+			Labels: map[string]string{
+				k8s.ControllerNSLabel: controlPlaneNamespace,
+			},
 		},
-		Data: map[string][]byte{
+	}
+	if stringData {
+		secret.StringData = map[string]string{
+			"linkerd-config-overrides": string(overridesBytes),
+		}
+	} else {
+		secret.Data = map[string][]byte{
 			"linkerd-config-overrides": overridesBytes,
-		},
+		}
 	}
 	bytes, err := yaml.Marshal(secret)
 	if err != nil {

@@ -9,8 +9,9 @@ outboundProxyPort: 4140
 # - HTTPS (443) opaque TLS
 # - MYSQL (3306) server-first
 # - Memcached (11211) clients do not issue any preamble, which breaks detection
-ignoreInboundPorts: "25,443,587,3306,11211"
-ignoreOutboundPorts: "25,443,587,3306,11211"
+# - Postgres (5432) clients do not issue any preamble, which breaks detection
+ignoreInboundPorts: "25,443,587,3306,11211,5432"
+ignoreOutboundPorts: "25,443,587,3306,11211,5432"
 
 createdByAnnotation: linkerd.io/created-by
 cniPluginImage: "ghcr.io/linkerd/cni-plugin"
