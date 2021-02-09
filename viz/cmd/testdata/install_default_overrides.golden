@@ -827,7 +827,7 @@ spec:
         fsGroup: 65534
       containers:
       - args:
-        - --log-level=debug
+        - --log.level=debug
         - --config.file=/etc/prometheus/prometheus.yml
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
