@@ -150,7 +150,7 @@ func multiclusterCategory(hc *healthChecker) *healthcheck.Category {
 		*healthcheck.NewChecker("clusters share trust anchors").
 			WithHintAnchor("l5d-multicluster-clusters-share-anchors").
 			WithCheck(func(ctx context.Context) error {
-				localAnchors, err := tls.DecodePEMCertificates(hc.linkerdHC.LinkerdConfigGlobal().IdentityTrustAnchorsPEM)
+				localAnchors, err := tls.DecodePEMCertificates(hc.linkerdHC.LinkerdConfig().IdentityTrustAnchorsPEM)
 				if err != nil {
 					return fmt.Errorf("Cannot parse source trust anchors: %s", err)
 				}
@@ -309,7 +309,7 @@ func (hc *healthChecker) checkRemoteClusterAnchors(ctx context.Context, localAnc
 			errors = append(errors, fmt.Sprintf("* %s: unable to fetch anchors: %s", link.TargetClusterName, err))
 			continue
 		}
-		remoteAnchors, err := tls.DecodePEMCertificates(values.GetGlobal().IdentityTrustAnchorsPEM)
+		remoteAnchors, err := tls.DecodePEMCertificates(values.IdentityTrustAnchorsPEM)
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("* %s: cannot parse trust anchors", link.TargetClusterName))
 			continue

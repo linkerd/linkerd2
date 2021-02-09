@@ -101,7 +101,7 @@ func newCmdProfile() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if cd := values.GetGlobal().ClusterDomain; cd != "" {
+			if cd := values.ClusterDomain; cd != "" {
 				clusterDomain = cd
 			}
 			return renderTapOutputProfile(cmd.Context(), k8sAPI, options.tap, options.namespace, options.name, clusterDomain, options.tapDuration, int(options.tapRouteLimit), os.Stdout)

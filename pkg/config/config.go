@@ -130,49 +130,47 @@ func ToValues(configs *pb.All) *l5dcharts.Values {
 
 	// convert install flags into values
 	values := &l5dcharts.Values{
-		Global: &l5dcharts.Global{
-			CNIEnabled:              configs.GetGlobal().GetCniEnabled(),
-			Namespace:               configs.GetGlobal().GetLinkerdNamespace(),
-			IdentityTrustAnchorsPEM: configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem(),
-			IdentityTrustDomain:     configs.GetGlobal().GetIdentityContext().GetTrustDomain(),
-			ClusterDomain:           configs.GetGlobal().GetClusterDomain(),
-			ClusterNetworks:         configs.GetProxy().GetDestinationGetNetworks(),
-			LinkerdVersion:          configs.GetGlobal().GetVersion(),
-			Proxy: &l5dcharts.Proxy{
-				Image: &l5dcharts.Image{
-					Name:       configs.GetProxy().GetProxyImage().GetImageName(),
-					PullPolicy: configs.GetProxy().GetProxyImage().GetPullPolicy(),
-					Version:    configs.GetProxy().GetProxyVersion(),
-				},
-				Ports: &l5dcharts.Ports{
-					Control:  int32(configs.GetProxy().GetControlPort().GetPort()),
-					Inbound:  int32(configs.GetProxy().GetInboundPort().GetPort()),
-					Admin:    int32(configs.GetProxy().GetAdminPort().GetPort()),
-					Outbound: int32(configs.GetProxy().GetOutboundPort().GetPort()),
-				},
-				Resources: &l5dcharts.Resources{
-					CPU: l5dcharts.Constraints{
-						Limit:   configs.GetProxy().GetResource().GetLimitCpu(),
-						Request: configs.GetProxy().GetResource().GetRequestCpu(),
-					},
-					Memory: l5dcharts.Constraints{
-						Limit:   configs.GetProxy().GetResource().GetLimitMemory(),
-						Request: configs.GetProxy().GetResource().GetRequestMemory(),
-					},
-				},
-				EnableExternalProfiles: !configs.Proxy.GetDisableExternalProfiles(),
-				LogFormat:              configs.GetProxy().GetLogFormat(),
-				OutboundConnectTimeout: configs.GetProxy().GetOutboundConnectTimeout(),
-				InboundConnectTimeout:  configs.GetProxy().GetInboundConnectTimeout(),
+		CNIEnabled:              configs.GetGlobal().GetCniEnabled(),
+		Namespace:               configs.GetGlobal().GetLinkerdNamespace(),
+		IdentityTrustAnchorsPEM: configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem(),
+		IdentityTrustDomain:     configs.GetGlobal().GetIdentityContext().GetTrustDomain(),
+		ClusterDomain:           configs.GetGlobal().GetClusterDomain(),
+		ClusterNetworks:         configs.GetProxy().GetDestinationGetNetworks(),
+		LinkerdVersion:          configs.GetGlobal().GetVersion(),
+		Proxy: &l5dcharts.Proxy{
+			Image: &l5dcharts.Image{
+				Name:       configs.GetProxy().GetProxyImage().GetImageName(),
+				PullPolicy: configs.GetProxy().GetProxyImage().GetPullPolicy(),
+				Version:    configs.GetProxy().GetProxyVersion(),
 			},
-			ProxyInit: &l5dcharts.ProxyInit{
-				IgnoreInboundPorts:  toString(configs.GetProxy().GetIgnoreInboundPorts()),
-				IgnoreOutboundPorts: toString(configs.GetProxy().GetIgnoreOutboundPorts()),
-				Image: &l5dcharts.Image{
-					Name:       configs.GetProxy().GetProxyInitImage().GetImageName(),
-					PullPolicy: configs.GetProxy().GetProxyInitImage().GetPullPolicy(),
-					Version:    configs.GetProxy().GetProxyInitImageVersion(),
+			Ports: &l5dcharts.Ports{
+				Control:  int32(configs.GetProxy().GetControlPort().GetPort()),
+				Inbound:  int32(configs.GetProxy().GetInboundPort().GetPort()),
+				Admin:    int32(configs.GetProxy().GetAdminPort().GetPort()),
+				Outbound: int32(configs.GetProxy().GetOutboundPort().GetPort()),
+			},
+			Resources: &l5dcharts.Resources{
+				CPU: l5dcharts.Constraints{
+					Limit:   configs.GetProxy().GetResource().GetLimitCpu(),
+					Request: configs.GetProxy().GetResource().GetRequestCpu(),
 				},
+				Memory: l5dcharts.Constraints{
+					Limit:   configs.GetProxy().GetResource().GetLimitMemory(),
+					Request: configs.GetProxy().GetResource().GetRequestMemory(),
+				},
+			},
+			EnableExternalProfiles: !configs.Proxy.GetDisableExternalProfiles(),
+			LogFormat:              configs.GetProxy().GetLogFormat(),
+			OutboundConnectTimeout: configs.GetProxy().GetOutboundConnectTimeout(),
+			InboundConnectTimeout:  configs.GetProxy().GetInboundConnectTimeout(),
+		},
+		ProxyInit: &l5dcharts.ProxyInit{
+			IgnoreInboundPorts:  toString(configs.GetProxy().GetIgnoreInboundPorts()),
+			IgnoreOutboundPorts: toString(configs.GetProxy().GetIgnoreOutboundPorts()),
+			Image: &l5dcharts.Image{
+				Name:       configs.GetProxy().GetProxyInitImage().GetImageName(),
+				PullPolicy: configs.GetProxy().GetProxyInitImage().GetPullPolicy(),
+				Version:    configs.GetProxy().GetProxyInitImageVersion(),
 			},
 		},
 		Identity: &l5dcharts.Identity{
@@ -199,14 +197,14 @@ func ToValues(configs *pb.All) *l5dcharts.Values {
 	}
 
 	if configs.GetProxy().GetLogLevel() != nil {
-		values.GetGlobal().Proxy.LogLevel = configs.GetProxy().GetLogLevel().String()
+		values.Proxy.LogLevel = configs.GetProxy().GetLogLevel().String()
 
 	}
 
 	// set HA, and Heartbeat flags as health-check needs them for old config installs
 	for _, flag := range configs.GetInstall().GetFlags() {
 		if flag.GetName() == "ha" && flag.GetValue() == "true" {
-			values.GetGlobal().HighAvailability = true
+			values.HighAvailability = true
 		}
 
 		if flag.GetName() == "disable-heartbeat" && flag.GetValue() == "true" {

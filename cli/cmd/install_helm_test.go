@@ -37,13 +37,12 @@ func TestRenderHelm(t *testing.T) {
 	t.Run("HA mode with podLabels and podAnnotations", func(t *testing.T) {
 		ha := true
 		additionalConfig := `
-global:
-  podLabels:
-    foo: bar
-    fiz: buz
-  podAnnotations:
-    bingo: bongo
-    asda: fasda
+podLabels:
+  foo: bar
+  fiz: buz
+podAnnotations:
+  bingo: bongo
+  asda: fasda
 `
 		chartControlPlane := chartControlPlane(t, ha, additionalConfig, "333", "444")
 		testRenderHelm(t, chartControlPlane, "install_helm_output_ha_labels.golden")
@@ -80,7 +79,6 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
 
 	// pin values that are changed by Helm functions on each test run
 	overrideJSON := `{
-  "global":{
    "cliVersion":"",
    "linkerdVersion":"linkerd-version",
    "controllerImageVersion":"linkerd-version",
@@ -95,8 +93,7 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
     "image":{
      "version":"test-proxy-init-version"
     }
-   }
-  },
+   },
   "identity":{
     "issuer":{
       "crtExpiry":"Jul 30 17:21:14 2020",
@@ -283,8 +280,8 @@ func readTestValues(ha bool, ignoreOutboundPorts string, ignoreInboundPorts stri
 			return nil, err
 		}
 	}
-	values.GetGlobal().ProxyInit.IgnoreOutboundPorts = ignoreOutboundPorts
-	values.GetGlobal().ProxyInit.IgnoreInboundPorts = ignoreInboundPorts
+	values.ProxyInit.IgnoreOutboundPorts = ignoreOutboundPorts
+	values.ProxyInit.IgnoreInboundPorts = ignoreInboundPorts
 
 	return values, nil
 }

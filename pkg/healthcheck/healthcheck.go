@@ -671,7 +671,7 @@ func (hc *HealthChecker) allCategories() []Category {
 						if hc.linkerdConfig == nil {
 							return errors.New("failed to load linkerd-config")
 						}
-						hc.CNIEnabled = hc.linkerdConfig.GetGlobal().CNIEnabled
+						hc.CNIEnabled = hc.linkerdConfig.CNIEnabled
 						return
 					},
 				},
@@ -1472,9 +1472,9 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 	return success
 }
 
-// LinkerdConfigGlobal gets the Linkerd global configuration values.
-func (hc *HealthChecker) LinkerdConfigGlobal() *l5dcharts.Global {
-	return hc.linkerdConfig.GetGlobal()
+// LinkerdConfig gets the Linkerd configuration values.
+func (hc *HealthChecker) LinkerdConfig() *l5dcharts.Values {
+	return hc.linkerdConfig
 }
 
 func (hc *HealthChecker) runCheck(categoryID CategoryID, c *Checker, observer CheckObserver) bool {
@@ -1561,7 +1561,7 @@ func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred
 	var data *issuercerts.IssuerCertData
 
 	if values.Identity.Issuer.Scheme == "" || values.Identity.Issuer.Scheme == k8s.IdentityIssuerSchemeLinkerd {
-		data, err = issuercerts.FetchIssuerData(ctx, hc.kubeAPI, values.GetGlobal().IdentityTrustAnchorsPEM, hc.ControlPlaneNamespace)
+		data, err = issuercerts.FetchIssuerData(ctx, hc.kubeAPI, values.IdentityTrustAnchorsPEM, hc.ControlPlaneNamespace)
 	} else {
 		data, err = issuercerts.FetchExternalIssuerData(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 	}
@@ -1806,7 +1806,7 @@ func CheckConfigMaps(ctx context.Context, kubeAPI *k8s.KubernetesAPI, namespace 
 }
 
 func (hc *HealthChecker) isHA() bool {
-	return hc.linkerdConfig.GetGlobal().HighAvailability
+	return hc.linkerdConfig.HighAvailability
 }
 
 func (hc *HealthChecker) isHeartbeatDisabled() bool {
@@ -1994,7 +1994,7 @@ func (hc *HealthChecker) checkDataPlaneProxiesCertificate(ctx context.Context) e
 		return err
 	}
 
-	trustAnchorsPem := values.GetGlobal().IdentityTrustAnchorsPEM
+	trustAnchorsPem := values.IdentityTrustAnchorsPEM
 	offendingPods := []string{}
 	for _, pod := range meshedPods {
 		if strings.TrimSpace(pod.Anchors) != strings.TrimSpace(trustAnchorsPem) {
