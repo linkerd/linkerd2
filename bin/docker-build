@@ -22,4 +22,4 @@ fi
 "$bindir"/docker-build-grafana
 "$bindir"/docker-build-jaeger-webhook
 "$bindir"/docker-build-metrics-api
-
+"$bindir"/docker-build-tap

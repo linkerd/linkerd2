@@ -1,4 +1,4 @@
-package tap
+package api
 
 import (
 	"context"
@@ -12,8 +12,8 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
-	"github.com/linkerd/linkerd2/pkg/tap"
-	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	pb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
+	"github.com/linkerd/linkerd2/viz/tap/pkg"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/metadata"
@@ -140,7 +140,7 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 		req.Header[h.groupHeader],
 	)
 	if err != nil {
-		err = fmt.Errorf("tap authorization failed (%s), visit %s for more information", err, tap.TapRbacURL)
+		err = fmt.Errorf("tap authorization failed (%s), visit %s for more information", err, pkg.TapRbacURL)
 		h.log.Error(err)
 		renderJSONError(w, err, http.StatusForbidden)
 		return
@@ -155,7 +155,7 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 		return
 	}
 
-	url := protohttp.TapReqToURL(&tapReq)
+	url := pkg.TapReqToURL(&tapReq)
 	if url != req.URL.Path {
 		err = fmt.Errorf("tap request body did not match APIServer URL: %+v != %+v", url, req.URL.Path)
 		h.log.Error(err)
