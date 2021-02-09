@@ -25,7 +25,7 @@ linkerd-viz
 √ viz extension pods are running
 √ viz extension proxies are healthy
 √ viz extension proxies are up-to-date
-√ viz extension plane proxies and cli versions match
+√ viz extension proxies and cli versions match
 √ prometheus is installed and configured correctly
 √ grafana is installed and configured correctly
 √ can initialize the client
