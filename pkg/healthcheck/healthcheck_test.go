@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/identity"
@@ -148,8 +147,8 @@ func TestHealthChecker(t *testing.T) {
 		checkers: []Checker{
 			{
 				description: "skipRpc",
-				checkRPC: func(context.Context) (*healthcheckPb.SelfCheckResponse, error) {
-					return nil, &SkipError{Reason: "needs skipping"}
+				check: func(context.Context) error {
+					return &SkipError{Reason: "needs skipping"}
 				},
 				retryDeadline: time.Time{},
 			},
@@ -1403,22 +1402,8 @@ kind: ConfigMap
 metadata:
   name: linkerd-config
   namespace: test-ns
-`,
-			},
-			expected: []string{
-				"cat1 'linkerd-config' config map exists",
-			},
-		},
-		{
-			checkDescription: "'linkerd-config' config map exists",
-			resources: []string{`
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: linkerd-config
-  namespace: test-ns
 data:
-  values: |-
+  values: "{}"
 `,
 			},
 			expected: []string{

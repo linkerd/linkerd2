@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
@@ -25,7 +24,7 @@ type MockAPIClient struct {
 	GatewaysResponseToReturn     *pb.GatewaysResponse
 	TopRoutesResponseToReturn    *pb.TopRoutesResponse
 	EdgesResponseToReturn        *pb.EdgesResponse
-	SelfCheckResponseToReturn    *healthcheckPb.SelfCheckResponse
+	SelfCheckResponseToReturn    *pb.SelfCheckResponse
 }
 
 // StatSummary provides a mock of a Public API method.
@@ -59,7 +58,7 @@ func (c *MockAPIClient) ListServices(ctx context.Context, in *pb.ListServicesReq
 }
 
 // SelfCheck provides a mock of a Public API method.
-func (c *MockAPIClient) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckRequest, _ ...grpc.CallOption) (*healthcheckPb.SelfCheckResponse, error) {
+func (c *MockAPIClient) SelfCheck(ctx context.Context, in *pb.SelfCheckRequest, _ ...grpc.CallOption) (*pb.SelfCheckResponse, error) {
 	return c.SelfCheckResponseToReturn, c.ErrorToReturn
 }
 

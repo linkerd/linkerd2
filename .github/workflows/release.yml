@@ -18,7 +18,7 @@ jobs:
     steps:
     - name: Checkout code
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -29,14 +29,14 @@ jobs:
         echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
     - name: Cache docker layers
       # actions/cache@v2.0.0
-      uses: actions/cache@b820478
+      uses: actions/cache@b8204782bbb5f872091ecc5eb9cb7d004e35b1fa
       with:
         path: ${{ env.DOCKER_BUILDKIT_CACHE }}
         key: ${{ runner.os }}-buildx-${{ matrix.target }}-${{ env.TAG }}
         restore-keys: ${{ runner.os }}-buildx-${{ matrix.target }}-
     - name: Set up Docker Buildx
       # crazy-max/ghaction-docker-buildx@v3.2.0
-      uses: crazy-max/ghaction-docker-buildx@552c9de
+      uses: crazy-max/ghaction-docker-buildx@552c9de485482d9bbaa6fa035ee55e518e1e3cb9
     - name: Build & Push Multi Arch Images
       env:
         #DOCKER_TRACE: 1
@@ -66,7 +66,7 @@ jobs:
     - name: Upload artifact
       if: matrix.target == 'cli-bin'
       # actions/upload-artifact@v1
-      uses: actions/upload-artifact@3446296
+      uses: actions/upload-artifact@3446296876d12d4e3a0f3145a3c87e67bf0a16b5
       with:
         name: image-archives
         path: /home/runner/archives
@@ -79,17 +79,17 @@ jobs:
     steps:
     - name: Checkout code
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Try to load cached Go modules
       # actions/cache@v1.1.2
-      uses: actions/cache@70655ec
+      uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: ${{ runner.os }}-go-
     - name: Download image archives
       # actions/download-artifact@v1
-      uses: actions/download-artifact@18f0f59
+      uses: actions/download-artifact@18f0f591fbc635562c815484d73b6e8e3980482e
       with:
         name: image-archives
     - name: Run CLI Integration tests
@@ -114,10 +114,10 @@ jobs:
     steps:
     - name: Checkout code
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Try to load cached Go modules
       # actions/cache@v1.1.2
-      uses: actions/cache@70655ec
+      uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -144,11 +144,11 @@ jobs:
     - name: Checkout code
       #if: startsWith(github.ref, 'refs/tags/stable')
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Try to load cached Go modules
       #if: startsWith(github.ref, 'refs/tags/stable')
       # actions/cache@v1.1.2
-      uses: actions/cache@70655ec
+      uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -197,7 +197,7 @@ jobs:
     - name: Checkout code
       if: startsWith(github.ref, 'refs/tags/stable')
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Chocolatey - update nuspec
       if: startsWith(github.ref, 'refs/tags/stable')
       run: |
@@ -206,13 +206,13 @@ jobs:
     - name: Chocolatey - pack
       if: startsWith(github.ref, 'refs/tags/stable')
       # crazy-max/ghaction-chocolatey@v1.2.2
-      uses: crazy-max/ghaction-chocolatey@55c9188
+      uses: crazy-max/ghaction-chocolatey@55c91883732fd892124a2d957cd02e4682aa6fc5
       with:
         args: pack bin/win/linkerd.nuspec
     - name: Chocolatey - upload package
       if: startsWith(github.ref, 'refs/tags/stable')
       # actions/upload-artifact@v2.01
-      uses: actions/upload-artifact@97b7dac
+      uses: actions/upload-artifact@97b7dace6c8d860ce9708aba808be6a2ee4cbc3a
       with:
         name: choco
         path: ./linkerd.*.nupkg
@@ -225,7 +225,7 @@ jobs:
     steps:
     - name: Checkout code
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -235,7 +235,7 @@ jobs:
     - name: Download choco package
       if: startsWith(github.ref, 'refs/tags/stable')
       # actions/download-artifact@v1
-      uses: actions/download-artifact@18f0f59
+      uses: actions/download-artifact@18f0f591fbc635562c815484d73b6e8e3980482e
       with:
         name: choco
     - name: Pull CLI binaries
@@ -248,7 +248,7 @@ jobs:
     - name: Create release
       id: create_release
       # softprops/action-gh-release@v1
-      uses: softprops/action-gh-release@91409e7
+      uses: softprops/action-gh-release@91409e712cf565ce9eff10c87a8d1b11b81757ae
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -272,7 +272,7 @@ jobs:
     steps:
     - name: Create linkerd/website repository dispatch event
       # peter-evans/repository-dispatch@v1
-      uses: peter-evans/repository-dispatch@0ae1c4b
+      uses: peter-evans/repository-dispatch@0ae1c4b014bff102f1063cd67a53fc4a91311d1b
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
         repository: linkerd/website
@@ -286,7 +286,7 @@ jobs:
     steps:
     - name: Checkout code
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -316,10 +316,10 @@ jobs:
     steps:
     - name: Checkout code
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Configure gsutils
       # linkerd/linkerd2-action-gcloud@v1.0.1
-      uses: linkerd/linkerd2-action-gcloud@308c4df
+      uses: linkerd/linkerd2-action-gcloud@308c4df7314264c90d240e77e27d0d875d3c8ec1
       with:
         cloud_sdk_service_account_key: ${{ secrets.LINKERD_SITE_TOKEN }}
         gcp_project: ${{ secrets.LINKERD_SITE_PROJECT }}
