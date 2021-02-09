@@ -132,6 +132,7 @@ Kubernetes: `>=1.13.0-0`
 | prometheus.image.pullPolicy | string | `""` | Pull policy for the prometheus instance |
 | prometheus.image.registry | string | `"prom"` | Docker registry for the prometheus instance |
 | prometheus.image.tag | string | `"v2.19.3"` | Docker image tag for the prometheus instance |
+| prometheus.logLevel | string | `""` | log level of the prometheus instance |
 | prometheus.proxy | string | `nil` |  |
 | prometheus.remoteWrite | string | `nil` | Allows transparently sending samples to an endpoint. Mostly used for long term storage. |
 | prometheus.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the prometheus container can use |

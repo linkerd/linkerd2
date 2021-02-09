@@ -290,6 +290,8 @@ prometheus:
     # -- Pull policy for the prometheus instance
     pullPolicy: ""
 
+  # -- log level of the prometheus instance
+  logLevel: ""
   # -- Command line options for Prometheus binary
   args:
     storage.tsdb.path: /data
