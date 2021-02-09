@@ -18,7 +18,7 @@ extensionAnnotation: linkerd.io/extension
 # -- Docker registry for all viz components
 defaultRegistry: ghcr.io/linkerd
 # -- Docker imagePullPolicy for all viz components
-defaultImagePullPolicy: Always
+defaultImagePullPolicy: IfNotPresent
 # -- Log level for all the viz components
 defaultLogLevel: info
 # -- UID for all the viz components

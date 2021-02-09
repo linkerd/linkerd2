@@ -87,7 +87,7 @@ Kubernetes: `>=1.13.0-0`
 | dashboard.resources.memory.limit | string | `nil` | Maximum amount of memory that web container can use |
 | dashboard.resources.memory.request | string | `nil` | Amount of memory that the web container requests |
 | dashboard.restrictPrivileges | bool | `false` | Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check |
-| defaultImagePullPolicy | string | `"Always"` | Docker imagePullPolicy for all viz components |
+| defaultImagePullPolicy | string | `"IfNotPresent"` | Docker imagePullPolicy for all viz components |
 | defaultLogLevel | string | `"info"` | Log level for all the viz components |
 | defaultRegistry | string | `"ghcr.io/linkerd"` | Docker registry for all viz components |
 | defaultUID | int | `2103` | UID for all the viz components |
