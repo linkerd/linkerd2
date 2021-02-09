@@ -430,11 +430,11 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 // These need to be updated (if there are changes) once a new stable is released
 func helmOverridesStable(root *tls.CA) []string {
 	return []string{
-		"--set", "controllerLogLevel=debug",
-		"--set", "linkerdVersion=" + TestHelper.UpgradeHelmFromVersion(),
-		"--set", "proxy.image.version=" + TestHelper.UpgradeHelmFromVersion(),
-		"--set", "identityTrustDomain=cluster.local",
-		"--set", "identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "global.controllerLogLevel=debug",
+		"--set", "global.linkerdVersion=" + TestHelper.UpgradeHelmFromVersion(),
+		"--set", "global.proxy.image.version=" + TestHelper.UpgradeHelmFromVersion(),
+		"--set", "global.identityTrustDomain=cluster.local",
+		"--set", "global.identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
 		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
