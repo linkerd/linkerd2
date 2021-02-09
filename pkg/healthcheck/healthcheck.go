@@ -1210,19 +1210,6 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 				{
-					description: "control plane proxies are up-to-date",
-					hintAnchor:  "l5d-api-cp-version",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						podList, err := hc.kubeAPI.CoreV1().Pods(hc.ControlPlaneNamespace).List(ctx, metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
-						if err != nil {
-							return err
-						}
-
-						return hc.CheckProxyVersionsUpToDate(podList.Items)
-					},
-				},
-				{
 					description: "control plane proxies and cli versions match",
 					hintAnchor:  "l5d-api-cp-cli-version",
 					warning:     true,
