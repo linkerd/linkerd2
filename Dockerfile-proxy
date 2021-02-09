@@ -16,7 +16,6 @@ WORKDIR /build
 COPY bin/fetch-proxy bin/fetch-proxy
 COPY .proxy-version proxy-version
 ARG TARGETARCH
-RUN echo bust it
 RUN (proxy=$(bin/fetch-proxy $(cat proxy-version) $TARGETARCH) && \
     mv "$proxy" linkerd2-proxy)
 
