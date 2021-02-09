@@ -92,7 +92,7 @@ metricsAPI:
     # resources:
 
   # UID for the metrics-api resource
-  # UID:
+  UID:
 
 # tap configuration
 tap:
@@ -144,7 +144,7 @@ tap:
     # resources:
 
   # UID for the dashboard resource
-  # UID:
+  UID:
 
 # tapInjector configuration
 tapInjector:
@@ -169,7 +169,7 @@ tapInjector:
     # matchLabels:
     #   foo: bar
   # UID for the tapInjector resource
-  # UID: 
+  UID: 
   failurePolicy: Ignore
   resources:
     cpu:
@@ -221,7 +221,7 @@ dashboard:
     pullPolicy: ""
 
   # UID for the dashboard resource
-  # UID:
+  UID:
 
   # -- Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check
   restrictPrivileges: false

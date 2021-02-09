@@ -73,6 +73,7 @@ Kubernetes: `>=1.13.0-0`
 |-----|------|---------|-------------|
 | clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use   |
 | createdByAnnotation | string | `"linkerd.io/created-by"` |  |
+| dashboard.UID | string | `nil` |  |
 | dashboard.enforcedHostRegexp | string | `""` | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information |
 | dashboard.image.name | string | `"web"` | Docker image name for the web instance |
 | dashboard.image.pullPolicy | string | `""` | Pull policy for the  web component |
@@ -85,7 +86,7 @@ Kubernetes: `>=1.13.0-0`
 | dashboard.resources.cpu.request | string | `nil` | Amount of CPU units that the web container requests |
 | dashboard.resources.memory.limit | string | `nil` | Maximum amount of memory that web container can use |
 | dashboard.resources.memory.request | string | `nil` | Amount of memory that the web container requests |
-| dashboard.restrictPrivileges | bool | `false` |  |
+| dashboard.restrictPrivileges | bool | `false` | Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check |
 | defaultImagePullPolicy | string | `"Always"` | Docker imagePullPolicy for all viz components |
 | defaultLogLevel | string | `"info"` | Log level for all the viz components |
 | defaultRegistry | string | `"ghcr.io/linkerd"` | Docker registry for all viz components |
@@ -108,6 +109,7 @@ Kubernetes: `>=1.13.0-0`
 | jaegerUrl | string | `""` | url of external jaeger instance Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>` if you plan to use jaeger extension |
 | linkerdNamespace | string | `"linkerd"` | Namespace of the Linkerd core control-plane install |
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
+| metricsAPI.UID | string | `nil` |  |
 | metricsAPI.image.name | string | `"metrics-api"` | Docker image name for the metrics-api component |
 | metricsAPI.image.pullPolicy | string | `""` | Pull policy for the metrics-api component |
 | metricsAPI.image.registry | string | `""` | Docker registry for the metrics-api component |
@@ -141,6 +143,7 @@ Kubernetes: `>=1.13.0-0`
 | prometheus.sideCarContainers | string | `nil` | A sidecarContainers section specifies a list of secondary containers to run in the prometheus pod e.g. to export data to non-prometheus systems |
 | prometheusUrl | string | `""` | url of external prometheus instance |
 | proxyInjectAnnotation | string | `"linkerd.io/inject"` |  |
+| tap.UID | string | `nil` |  |
 | tap.caBundle | string | `""` | Bundle of CA certificates for Tap component. If not provided then Helm will use the certificate generated  for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
 | tap.crtPEM | string | `""` | Certificate for the Tap component. If not provided then Helm will generate one. |
 | tap.externalSecret | bool | `false` | Do not create a secret resource for the Tap component. If this is set to `true`, the value `tap.caBundle` must be set (see below). |
@@ -156,6 +159,7 @@ Kubernetes: `>=1.13.0-0`
 | tap.resources.cpu.request | string | `nil` | Amount of CPU units that the tap container requests |
 | tap.resources.memory.limit | string | `nil` | Maximum amount of memory that tap container can use |
 | tap.resources.memory.request | string | `nil` | Amount of memory that the tap container requests |
+| tapInjector.UID | string | `nil` |  |
 | tapInjector.caBundle | string | `""` | Bundle of CA certificates for the tapInjector. If not provided then Helm will use the certificate generated  for `tapInjector.crtPEM`. If `tapInjector.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
 | tapInjector.crtPEM | string | `""` | Certificate for the tapInjector. If not provided then Helm will generate one. |
 | tapInjector.externalSecret | bool | `false` | Do not create a secret resource for the tapInjector webhook. If this is set to `true`, the value `tapInjector.caBundle` must be set (see below) |
