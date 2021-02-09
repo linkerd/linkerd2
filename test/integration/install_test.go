@@ -430,11 +430,11 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 // These need to be updated (if there are changes) once a new stable is released
 func helmOverridesStable(root *tls.CA) []string {
 	return []string{
-		"--set", "global.controllerLogLevel=debug",
-		"--set", "global.linkerdVersion=" + TestHelper.UpgradeHelmFromVersion(),
-		"--set", "global.proxy.image.version=" + TestHelper.UpgradeHelmFromVersion(),
-		"--set", "global.identityTrustDomain=cluster.local",
-		"--set", "global.identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "controllerLogLevel=debug",
+		"--set", "linkerdVersion=" + TestHelper.UpgradeHelmFromVersion(),
+		"--set", "proxy.image.version=" + TestHelper.UpgradeHelmFromVersion(),
+		"--set", "identityTrustDomain=cluster.local",
+		"--set", "identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
 		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
@@ -445,13 +445,13 @@ func helmOverridesStable(root *tls.CA) []string {
 func helmOverridesEdge(root *tls.CA) []string {
 	skippedInboundPortsEscaped := strings.Replace(skippedInboundPorts, ",", "\\,", 1)
 	return []string{
-		"--set", "global.controllerLogLevel=debug",
-		"--set", "global.linkerdVersion=" + TestHelper.GetVersion(),
-		"--set", "global.proxy.image.version=" + TestHelper.GetVersion(),
+		"--set", "controllerLogLevel=debug",
+		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
+		"--set", "proxy.image.version=" + TestHelper.GetVersion(),
 		// these ports will get verified in test/integration/inject
-		"--set", "global.proxyInit.ignoreInboundPorts=" + skippedInboundPortsEscaped,
-		"--set", "global.identityTrustDomain=cluster.local",
-		"--set", "global.identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "proxyInit.ignoreInboundPorts=" + skippedInboundPortsEscaped,
+		"--set", "identityTrustDomain=cluster.local",
+		"--set", "identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
 		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
@@ -531,7 +531,7 @@ func TestInstallMulticluster(t *testing.T) {
 	if TestHelper.GetMulticlusterHelmReleaseName() != "" {
 		flags := []string{
 			"--set", "linkerdVersion=" + TestHelper.GetVersion(),
-			"--set", "global.controllerImageVersion=" + TestHelper.GetVersion(),
+			"--set", "controllerImageVersion=" + TestHelper.GetVersion(),
 		}
 		if stdout, stderr, err := TestHelper.HelmInstallMulticluster(TestHelper.GetMulticlusterHelmChart(), flags...); err != nil {
 			testutil.AnnotatedFatalf(t, "'helm install' command failed",
@@ -583,10 +583,10 @@ func TestUpgradeHelm(t *testing.T) {
 		// Also ensure that the CPU requests are fairly small (<100m) in order
 		// to avoid squeeze-out of other pods in CI tests.
 
-		"--set", "global.proxy.resources.cpu.limit=200m",
-		"--set", "global.proxy.resources.cpu.request=20m",
-		"--set", "global.proxy.resources.memory.limit=200Mi",
-		"--set", "global.proxy.resources.memory.request=100Mi",
+		"--set", "proxy.resources.cpu.limit=200m",
+		"--set", "proxy.resources.cpu.request=20m",
+		"--set", "proxy.resources.memory.limit=200Mi",
+		"--set", "proxy.resources.memory.request=100Mi",
 		// actually sets the value for the controller pod
 		"--set", "publicAPIProxyResources.cpu.limit=1010m",
 		"--set", "publicAPIProxyResources.memory.request=101Mi",

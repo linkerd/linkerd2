@@ -458,7 +458,7 @@ func (h *TestHelper) HelmUpgrade(chart string, arg ...string) (string, string, e
 		"upgrade",
 		h.helm.releaseName,
 		"--kube-context", h.k8sContext,
-		"--set", "global.namespace=" + h.namespace,
+		"--set", "namespace=" + h.namespace,
 		chart,
 	}, arg...)
 	return combinedOutput("", h.helm.path, withParams...)
@@ -471,7 +471,7 @@ func (h *TestHelper) HelmInstall(chart string, arg ...string) (string, string, e
 		h.helm.releaseName,
 		chart,
 		"--kube-context", h.k8sContext,
-		"--set", "global.namespace=" + h.namespace,
+		"--set", "namespace=" + h.namespace,
 	}, arg...)
 	return combinedOutput("", h.helm.path, withParams...)
 }

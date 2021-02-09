@@ -216,7 +216,7 @@ type (
 	}
 
 	// IssuerTLS is a stripped down version of TLS that lacks the integral caBundle.
-	// It is tracked separately in the field 'global.IdentityTrustAnchorsPEM'
+	// It is tracked separately in the field 'IdentityTrustAnchorsPEM'
 	IssuerTLS struct {
 		KeyPEM string `json:"keyPEM"`
 		CrtPEM string `json:"crtPEM"`
