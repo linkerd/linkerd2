@@ -116,6 +116,32 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 				return hc.CheckProxyHealth(ctx, hc.ControlPlaneNamespace, jaegerNamespace)
 			}))
 
+	checkers = append(checkers,
+		*healthcheck.NewChecker("jaeger extension proxies are up-to-date").
+			WithHintAnchor("l5d-jaeger-proxy-cp-version").
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, jaegerNamespace)
+				if err != nil {
+					return err
+				}
+
+				return hc.CheckProxyVersionsUpToDate(pods)
+			}))
+
+	checkers = append(checkers,
+		*healthcheck.NewChecker("jaeger extension proxies and cli versions match").
+			WithHintAnchor("l5d-jaeger-proxy-cli-version").
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, jaegerNamespace)
+				if err != nil {
+					return err
+				}
+
+				return healthcheck.CheckIfProxyVersionsMatchWithCLI(pods)
+			}))
+
 	return healthcheck.NewCategory(linkerdJaegerExtensionCheck, checkers, true)
 }
 

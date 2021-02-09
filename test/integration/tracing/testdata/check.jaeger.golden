@@ -21,5 +21,7 @@ linkerd-jaeger
 √ jaeger extension pods are injected
 √ jaeger extension pods are running
 √ jaeger extension proxies are healthy
+√ jaeger extension plane proxies are up-to-date
+√ jaeger extension plane proxies and cli versions match
 
 Status check results are √
