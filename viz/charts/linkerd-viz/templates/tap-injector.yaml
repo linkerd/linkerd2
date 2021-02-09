@@ -71,8 +71,8 @@ spec:
       - args:
         - tap-injector
         - -tap-service-name=linkerd-tap.{{.Values.namespace}}.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: {{.Values.tapInjector.image.registry}}/{{.Values.tapInjector.image.name}}:{{.Values.tapInjector.image.tag}}
-        imagePullPolicy: {{.Values.tapInjector.image.pullPolicy}}
+        image: {{.Values.tapInjector.image.registry | default .Values.defaultRegistry}}/{{.Values.tapInjector.image.name}}:{{.Values.tapInjector.image.tag | default .Values.linkerdVersion}}
+        imagePullPolicy: {{.Values.tapInjector.image.pullPolicy | default .Values.defaultImagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /ping
@@ -93,7 +93,7 @@ spec:
         {{- include "partials.resources" .Values.tapInjector.resources | nindent 8 }}
         {{- end }}
         securityContext:
-          runAsUser: {{.Values.tapInjector.UID}}
+          runAsUser: {{.Values.tapInjector.UID | default .Values.defaultUID}}
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls

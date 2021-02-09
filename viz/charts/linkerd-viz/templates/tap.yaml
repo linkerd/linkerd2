@@ -81,10 +81,10 @@ spec:
       - args:
         - tap
         - -controller-namespace={{.Values.linkerdNamespace}}
-        - -log-level={{.Values.tap.logLevel}}
+        - -log-level={{.Values.tap.logLevel | default .Values.defaultLogLevel}}
         - -identity-trust-domain={{.Values.identityTrustDomain}}
-        image: {{.Values.tap.image.registry}}/{{.Values.tap.image.name}}:{{.Values.tap.image.tag}}
-        imagePullPolicy: {{.Values.tap.image.pullPolicy}}
+        image: {{.Values.tap.image.registry | default .Values.defaultRegistry}}/{{.Values.tap.image.name}}:{{.Values.tap.image.tag | default .Values.linkerdVersion}}
+        imagePullPolicy: {{.Values.tap.image.pullPolicy | default .Values.defaultImagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /ping
@@ -107,7 +107,7 @@ spec:
         {{- include "partials.resources" .Values.tap.resources | nindent 8 }}
         {{- end }}
         securityContext:
-          runAsUser: {{.Values.tap.UID}}
+          runAsUser: {{.Values.tap.UID | default .Values.defaultUID}}
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls

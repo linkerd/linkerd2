@@ -77,6 +77,47 @@ metadata:
     namespace: linkerd-viz
 ---
 ###
+### Prometheus RBAC
+###
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-linkerd-viz-prometheus
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: prometheus
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "nodes/proxy", "pods"]
+  verbs: ["get", "list", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-linkerd-viz-prometheus
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-linkerd-viz-prometheus
+subjects:
+- kind: ServiceAccount
+  name: linkerd-prometheus
+  namespace: linkerd-viz
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-prometheus
+  namespace: linkerd-viz
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: prometheus
+    namespace: linkerd-viz
+---
+###
 ### Tap RBAC
 ###
 kind: ClusterRole
@@ -338,6 +379,9 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-grafana
   namespace: linkerd-viz
+- kind: ServiceAccount
+  name: linkerd-prometheus
+  namespace: linkerd-viz
 ---
 ###
 ### Metrics API
@@ -395,10 +439,10 @@ spec:
       containers:
       - args:
         - -controller-namespace=linkerd
-        - -log-level=info
+        - -log-level=debug
         - -cluster-domain=cluster.local
-        - -prometheus-url=external-prom.com
-        image: ghcr.io/linkerd/metrics-api:dev-undefined
+        - -prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.cluster.local:9090
+        image: gcr.io/linkerd/metrics-api:dev-undefined
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
@@ -418,7 +462,7 @@ spec:
             port: 9995
         resources:
         securityContext:
-          runAsUser: 2103
+          runAsUser: 1234
       serviceAccountName: linkerd-metrics-api
 ---
 ###
@@ -458,7 +502,7 @@ data:
       type: prometheus
       access: proxy
       orgId: 1
-      url: external-prom.com
+      url: http://linkerd-prometheus.linkerd-viz.svc.cluster.local:9090
       isDefault: true
       jsonData:
         timeInterval: "5s"
@@ -539,7 +583,7 @@ spec:
         # see https://github.com/grafana/grafana/issues/20096
         - name: GODEBUG
           value: netdns=go
-        image: ghcr.io/linkerd/grafana:dev-undefined
+        image: gcr.io/linkerd/grafana:dev-undefined
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
@@ -577,6 +621,252 @@ spec:
             path: provisioning/dashboards/dashboards.yaml
           name: linkerd-grafana-config
         name: grafana-config
+---
+###
+### Prometheus
+###
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-prometheus-config
+  namespace: linkerd-viz
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: prometheus
+    namespace: linkerd-viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+data:
+  prometheus.yml: |-
+    global:
+      evaluation_interval: 10s
+      scrape_interval: 10s
+      scrape_timeout: 10s
+
+    rule_files:
+    - /etc/prometheus/*_rules.yml
+    - /etc/prometheus/*_rules.yaml
+
+    scrape_configs:
+    - job_name: 'prometheus'
+      static_configs:
+      - targets: ['localhost:9090']
+
+    - job_name: 'grafana'
+      kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: ['linkerd-viz']
+      relabel_configs:
+      - source_labels:
+        - __meta_kubernetes_pod_container_name
+        action: keep
+        regex: ^grafana$
+
+    #  Required for: https://grafana.com/grafana/dashboards/315
+    - job_name: 'kubernetes-nodes-cadvisor'
+      scheme: https
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        insecure_skip_verify: true
+      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      kubernetes_sd_configs:
+      - role: node
+      relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        regex: (.+)
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor
+      metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: '(container|machine)_(cpu|memory|network|fs)_(.+)'
+        action: keep
+      - source_labels: [__name__]
+        regex: 'container_memory_failures_total' # unneeded large metric
+        action: drop
+
+    - job_name: 'linkerd-controller'
+      kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+          - 'linkerd'
+          - 'linkerd-viz'
+      relabel_configs:
+      - source_labels:
+        - __meta_kubernetes_pod_container_port_name
+        action: keep
+        regex: admin-http
+      - source_labels: [__meta_kubernetes_pod_container_name]
+        action: replace
+        target_label: component
+
+    - job_name: 'linkerd-service-mirror'
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels:
+        - __meta_kubernetes_pod_label_linkerd_io_control_plane_component
+        - __meta_kubernetes_pod_container_port_name
+        action: keep
+        regex: linkerd-service-mirror;admin-http$
+      - source_labels: [__meta_kubernetes_pod_container_name]
+        action: replace
+        target_label: component
+
+    - job_name: 'linkerd-proxy'
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels:
+        - __meta_kubernetes_pod_container_name
+        - __meta_kubernetes_pod_container_port_name
+        - __meta_kubernetes_pod_label_linkerd_io_control_plane_ns
+        action: keep
+        regex: ^linkerd-proxy;linkerd-admin;linkerd$
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: pod
+      # special case k8s' "job" label, to not interfere with prometheus' "job"
+      # label
+      # __meta_kubernetes_pod_label_linkerd_io_proxy_job=foo =>
+      # k8s_job=foo
+      - source_labels: [__meta_kubernetes_pod_label_linkerd_io_proxy_job]
+        action: replace
+        target_label: k8s_job
+      # drop __meta_kubernetes_pod_label_linkerd_io_proxy_job
+      - action: labeldrop
+        regex: __meta_kubernetes_pod_label_linkerd_io_proxy_job
+      # __meta_kubernetes_pod_label_linkerd_io_proxy_deployment=foo =>
+      # deployment=foo
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_linkerd_io_proxy_(.+)
+      # drop all labels that we just made copies of in the previous labelmap
+      - action: labeldrop
+        regex: __meta_kubernetes_pod_label_linkerd_io_proxy_(.+)
+      # __meta_kubernetes_pod_label_linkerd_io_foo=bar =>
+      # foo=bar
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_linkerd_io_(.+)
+      # Copy all pod labels to tmp labels
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+        replacement: __tmp_pod_label_$1
+      # Take `linkerd_io_` prefixed labels and copy them without the prefix
+      - action: labelmap
+        regex: __tmp_pod_label_linkerd_io_(.+)
+        replacement:  __tmp_pod_label_$1
+      # Drop the `linkerd_io_` originals
+      - action: labeldrop
+        regex: __tmp_pod_label_linkerd_io_(.+)
+      # Copy tmp labels into real labels
+      - action: labelmap
+        regex: __tmp_pod_label_(.+)
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-prometheus
+  namespace: linkerd-viz
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: prometheus
+    namespace: linkerd-viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/extension: linkerd-viz
+    component: prometheus
+  ports:
+  - name: admin-http
+    port: 9090
+    targetPort: 9090
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+  labels:
+    linkerd.io/extension: linkerd-viz
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: dev-undefined
+    component: prometheus
+    namespace: linkerd-viz
+  name: linkerd-prometheus
+  namespace: linkerd-viz
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      linkerd.io/extension: linkerd-viz
+      component: prometheus
+      namespace: linkerd-viz
+  template:
+    metadata:
+      annotations:
+        linkerd.io/created-by: linkerd/helm dev-undefined
+      labels:
+        linkerd.io/extension: linkerd-viz
+        component: prometheus
+        namespace: linkerd-viz
+    spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      securityContext:
+        fsGroup: 65534
+      containers:
+      - args:
+        - --config.file=/etc/prometheus/prometheus.yml
+        - --storage.tsdb.path=/data
+        - --storage.tsdb.retention.time=6h
+        image: prom/prometheus:v2.19.3
+        imagePullPolicy: Always
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+        name: prometheus
+        ports:
+        - containerPort: 9090
+          name: admin-http
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+        resources:
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+          runAsGroup: 65534
+        volumeMounts:
+        - mountPath: /data
+          name: data
+        - mountPath: /etc/prometheus/prometheus.yml
+          name: prometheus-config
+          subPath: prometheus.yml
+          readOnly: true
+      serviceAccountName: linkerd-prometheus
+      volumes:
+      - name: data
+        emptyDir: {}
+      - configMap:
+          name: linkerd-prometheus-config
+        name: prometheus-config
 ---
 ###
 ### Tap
@@ -644,7 +934,7 @@ spec:
         - -controller-namespace=linkerd
         - -log-level=info
         - -identity-trust-domain=cluster.local
-        image: ghcr.io/linkerd/controller:dev-undefined
+        image: ghcr.io/linkerd/controller:stable-9.2
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
@@ -666,7 +956,7 @@ spec:
             port: 9998
         resources:
         securityContext:
-          runAsUser: 2103
+          runAsUser: 5678
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls
@@ -803,7 +1093,7 @@ spec:
       - args:
         - tap-injector
         - -tap-service-name=linkerd-tap.linkerd-viz.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/controller:dev-undefined
+        image: gcr.io/linkerd/controller:dev-undefined
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
@@ -823,7 +1113,7 @@ spec:
             port: 9995
         resources:
         securityContext:
-          runAsUser: 2103
+          runAsUser: 1234
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls
@@ -901,9 +1191,9 @@ spec:
         - -grafana-addr=linkerd-grafana.linkerd-viz.svc.cluster.local:3000
         - -controller-namespace=linkerd
         - -viz-namespace=linkerd-viz
-        - -log-level=info
+        - -log-level=debug
         - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd-viz\.svc\.cluster\.local|linkerd-web\.linkerd-viz\.svc|\[::1\])(:\d+)?$
-        image: ghcr.io/linkerd/web:dev-undefined
+        image: gcr.io/linkerd/web:dev-undefined
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
@@ -923,5 +1213,5 @@ spec:
             port: 9994
         resources:
         securityContext:
-          runAsUser: 2103
+          runAsUser: 1234
       serviceAccountName: linkerd-web
