@@ -137,7 +137,7 @@ Kubernetes: `>=1.13.0-0`
 | prometheus.resources.memory.request | string | `nil` | Amount of memory that the prometheus container requests |
 | prometheus.ruleConfigMapMounts | string | `nil` | Alerting/recording rule ConfigMap mounts (sub-path names must end in ´_rules.yml´ or ´_rules.yaml´) |
 | prometheus.scrapeConfigs | string | `nil` | A scrapeConfigs section specifies a set of targets and parameters describing how to scrape them. |
-| prometheus.sideCarContainers | string | `nil` | A sidecarContainers section specifies a list of secondary containers to run in the prometheus pod e.g. to export data to non-prometheus systems |
+| prometheus.sidecarContainers | string | `nil` | A sidecarContainers section specifies a list of secondary containers to run in the prometheus pod e.g. to export data to non-prometheus systems |
 | prometheusUrl | string | `""` | url of external prometheus instance |
 | proxyInjectAnnotation | string | `"linkerd.io/inject"` |  |
 | tap.UID | int | `2103` |  |

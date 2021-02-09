@@ -338,7 +338,7 @@ prometheus:
 
   # -- A sidecarContainers section specifies a list of secondary containers to run
   # in the prometheus pod e.g. to export data to non-prometheus systems
-  sideCarContainers:
+  sidecarContainers:
   # Ex:
   # - name: sidecar
   #   image: gcr.io/myproject/stackdriver-prometheus-sidecar
