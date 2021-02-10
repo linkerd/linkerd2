@@ -81,7 +81,6 @@ helm install \
   -f linkerd2/values-ha.yaml
   linkerd/linkerd2
 ```
-
 ## Get involved
 
 * Check out Linkerd's source code at [Github][linkerd2].
@@ -100,17 +99,19 @@ helm install \
 [slack]: http://slack.linkerd.io
 [twitter]: https://twitter.com/linkerd
 
-## Addons for linkerd
+## Extensions for Linkerd
 
-For the linkerd application there are some addons that can be configured. The
-documentation for the configurations of the addons can be found in their
-respective readme.md
+The current chart installs the core Linkerd components, which grant you
+reliability and security features. Other functionality is available through
+extensions. Check the corresponding docs for each one of the following
+extensions:
 
-[Prometheus](https://github.com/linkerd/linkerd2/blob/main/charts/add-ons/prometheus/README.md)
-
-[Grafana](https://github.com/linkerd/linkerd2/blob/main/charts/add-ons/grafana/README.md)
-
-[Tracing](https://github.com/linkerd/linkerd2/blob/main/charts/add-ons/tracing/README.md)
+- Observability:
+  [Linkerd-viz](https://github.com/linkerd/linkerd2/blob/main/viz/charts/linkerd-viz/README.md)
+- Multicluster:
+  [Linkerd-multicluster](https://github.com/linkerd/linkerd2/blob/main/multicluster/charts/linkerd-multicluster/README.md)
+- Tracing:
+  [Linkerd-jaeger](https://github.com/linkerd/linkerd2/blob/main/jaeger/charts/linkerd-jaeger/README.md)
 
 ## Requirements
 
