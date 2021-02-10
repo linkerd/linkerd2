@@ -1122,7 +1122,7 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst-headless.l5d.svc.example.com:8086
+          value: linkerd-dst-headless.l5d.svc.example.com.:8086
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -1352,7 +1352,7 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst-headless.l5d.svc.example.com:8086
+          value: linkerd-dst-headless.l5d.svc.example.com.:8086
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -1403,7 +1403,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity-headless.l5d.svc.example.com:8080
+          value: linkerd-identity-headless.l5d.svc.example.com.:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -1652,7 +1652,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity-headless.l5d.svc.example.com:8080
+          value: linkerd-identity-headless.l5d.svc.example.com.:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -1857,7 +1857,7 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst-headless.l5d.svc.example.com:8086
+          value: linkerd-dst-headless.l5d.svc.example.com.:8086
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -1908,7 +1908,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity-headless.l5d.svc.example.com:8080
+          value: linkerd-identity-headless.l5d.svc.example.com.:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -2109,7 +2109,7 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst-headless.l5d.svc.example.com:8086
+          value: linkerd-dst-headless.l5d.svc.example.com.:8086
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -2160,7 +2160,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity-headless.l5d.svc.example.com:8080
+          value: linkerd-identity-headless.l5d.svc.example.com.:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
