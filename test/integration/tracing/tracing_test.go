@@ -62,15 +62,13 @@ func TestTracing(t *testing.T) {
 	}
 
 	// wait for the jaeger extension
-	checkCmd := []string{"jaeger", "check", "--wait=0"}
-	golden := "check.jaeger.golden"
 	timeout := time.Minute
 	err = TestHelper.RetryFor(timeout, func() error {
-		out, err := TestHelper.LinkerdRun(checkCmd...)
+		out, stderr, err := TestHelper.PipeToLinkerdRun("", "jaeger", "check", "--wait=0")
 		if err != nil {
-			return fmt.Errorf("'linkerd jaeger check' command failed\n%s", err)
+			return fmt.Errorf("'linkerd jaeger check' command failed\n%s\n%s", err, stderr)
 		}
-		err = TestHelper.ValidateOutput(out, golden)
+		err = TestHelper.ValidateOutput(out, "check.jaeger.golden")
 		if err != nil {
 			return fmt.Errorf("received unexpected output\n%s", err.Error())
 		}
