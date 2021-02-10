@@ -1106,6 +1106,7 @@ spec:
       - args:
         - injector
         - -tap-service-name=linkerd-tap.linkerd-viz.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+        - -log-level=info
         image: ghcr.io/linkerd/tap:dev-undefined
         imagePullPolicy: 
         livenessProbe:
