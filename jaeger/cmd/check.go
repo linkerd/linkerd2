@@ -194,7 +194,9 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 
 	err = hc.InitializeKubeAPIClient()
 	if err != nil {
-		return err
+		err = fmt.Errorf("Error initializing k8s API client: %s", err)
+		fmt.Fprintln(werr, err)
+		os.Exit(1)
 	}
 
 	hc.AppendCategories(*jaegerCategory(hc))

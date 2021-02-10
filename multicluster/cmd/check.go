@@ -119,12 +119,16 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 
 	err = linkerdHC.InitializeKubeAPIClient()
 	if err != nil {
-		return err
+		err = fmt.Errorf("Error initializing k8s API client: %s", err)
+		fmt.Fprintln(werr, err)
+		os.Exit(1)
 	}
 
 	err = linkerdHC.InitializeLinkerdGlobalConfig(context.Background())
 	if err != nil {
-		return err
+		err = fmt.Errorf("Failed to fetch linkerd config: %s", err)
+		fmt.Fprintln(werr, err)
+		os.Exit(1)
 	}
 
 	hc := newHealthChecker(linkerdHC)

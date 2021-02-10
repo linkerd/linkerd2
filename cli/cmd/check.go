@@ -218,6 +218,8 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 
 	err = runExtensionChecks(cmd, wout, werr, options)
 	if err != nil {
+		err = fmt.Errorf("failed to run extensions checks: %s", err)
+		fmt.Fprintln(werr, err)
 		os.Exit(1)
 	}
 
@@ -256,13 +258,13 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 		switch ns.Labels[k8s.LinkerdExtensionLabel] {
 		case jaegerCmd.JaegerExtensionName:
 			jaegerCheckCmd := jaegerCmd.NewCmdCheck()
-			executeExtensionCheck(cmd, "jaeger", jaegerCheckCmd.Flags())
+			err = executeExtensionCheck(cmd, "jaeger", jaegerCheckCmd.Flags())
 		case vizHealthCheck.VizExtensionName:
 			vizCmd := vizCmd.NewCmdCheck()
-			executeExtensionCheck(cmd, "viz", vizCmd.Flags())
+			err = executeExtensionCheck(cmd, "viz", vizCmd.Flags())
 		case mcCmd.MulticlusterExtensionName:
 			mcCheckCmd := mcCmd.NewCmdCheck()
-			executeExtensionCheck(cmd, "multicluster", mcCheckCmd.Flags())
+			err = executeExtensionCheck(cmd, "multicluster", mcCheckCmd.Flags())
 		default:
 			// Since we don't have checks for extensions we don't support
 			// create a healthchecker that checks if the namespace exists
@@ -294,7 +296,10 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 					CNIEnabled:            opts.cniEnabled,
 				})
 			hc.AppendCategories(*healthcheck.NewCategory(categoryID, checkers, true))
-			healthcheck.RunChecks(wout, werr, hc, opts.output)
+			success := healthcheck.RunChecks(wout, werr, hc, opts.output)
+			if !success {
+				os.Exit(1)
+			}
 		}
 		if err != nil {
 			return err
@@ -333,7 +338,7 @@ func getSharedFlags(lf *pflag.FlagSet, lf2 *pflag.FlagSet) []string {
 	return cmdLineFlags
 }
 
-func executeExtensionCheck(currentCmd *cobra.Command, extension string, lf *pflag.FlagSet) {
+func executeExtensionCheck(currentCmd *cobra.Command, extension string, lf *pflag.FlagSet) error {
 	rootCmd := currentCmd.Root()
 	globalFlags := getGlobalFlags(rootCmd.PersistentFlags())
 	localFlags := getSharedFlags(currentCmd.Flags(), lf)
@@ -343,7 +348,7 @@ func executeExtensionCheck(currentCmd *cobra.Command, extension string, lf *pfla
 	args = append(args, localFlags...)
 
 	rootCmd.SetArgs(args)
-	rootCmd.Execute()
+	return rootCmd.Execute()
 }
 
 func renderInstallManifest(ctx context.Context) (string, error) {
