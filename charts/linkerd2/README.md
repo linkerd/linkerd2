@@ -106,11 +106,11 @@ reliability and security features. Other functionality is available through
 extensions. Check the corresponding docs for each one of the following
 extensions:
 
-- Observability:
+* Observability:
   [Linkerd-viz](https://github.com/linkerd/linkerd2/blob/main/viz/charts/linkerd-viz/README.md)
-- Multicluster:
+* Multicluster:
   [Linkerd-multicluster](https://github.com/linkerd/linkerd2/blob/main/multicluster/charts/linkerd-multicluster/README.md)
-- Tracing:
+* Tracing:
   [Linkerd-jaeger](https://github.com/linkerd/linkerd2/blob/main/jaeger/charts/linkerd-jaeger/README.md)
 
 ## Requirements
