@@ -322,6 +322,11 @@ func loadStoredValues(ctx context.Context, k *k8s.KubernetesAPI) (*charts.Values
 		return nil, errors.New("secret/linkerd-config-overrides is missing linkerd-config-overrides data")
 	}
 
+	bytes, err = removeGlobalFieldIfPresent(bytes)
+	if err != nil {
+		return nil, err
+	}
+
 	// Unmarshal the overrides directly onto the values.  This has the effect
 	// of merging the two with the overrides taking priority.
 	err = yaml.Unmarshal(bytes, values)
@@ -330,6 +335,36 @@ func loadStoredValues(ctx context.Context, k *k8s.KubernetesAPI) (*charts.Values
 	}
 
 	return values, nil
+}
+
+// removeGlobalFieldIfPresent removes the `global` node and
+// attaches the children nodes there.
+func removeGlobalFieldIfPresent(bytes []byte) ([]byte, error) {
+	// Check if Globals is present and remove that node if it has
+	var valuesMap map[string]interface{}
+	err := yaml.Unmarshal(bytes, &valuesMap)
+	if err != nil {
+		return nil, err
+	}
+
+	if globalValues, ok := valuesMap["global"]; ok {
+		// attach those values
+		// Check if its a map
+		if val, ok := globalValues.(map[string]interface{}); ok {
+			for k, v := range val {
+				valuesMap[k] = v
+			}
+		}
+		// Remove global now
+		delete(valuesMap, "global")
+	}
+
+	bytes, err = yaml.Marshal(valuesMap)
+	if err != nil {
+		return nil, err
+	}
+
+	return bytes, nil
 }
 
 // upgradeErrorf prints the error message and quits the upgrade process
