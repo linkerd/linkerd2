@@ -81,6 +81,7 @@ helm install \
   -f linkerd2/values-ha.yaml
   linkerd/linkerd2
 ```
+
 ## Get involved
 
 * Check out Linkerd's source code at [Github][linkerd2].
