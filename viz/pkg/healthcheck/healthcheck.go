@@ -165,6 +165,17 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 			WithCheck(func(ctx context.Context) (err error) {
 				return hc.CheckProxyHealth(ctx, hc.ControlPlaneNamespace, hc.vizNamespace)
 			}),
+		*healthcheck.NewChecker("viz extension proxies are up-to-date").
+			WithHintAnchor("l5d-viz-proxy-cp-version").
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, hc.vizNamespace)
+				if err != nil {
+					return err
+				}
+
+				return hc.CheckProxyVersionsUpToDate(pods)
+			}),
 		*healthcheck.NewChecker("viz extension proxies and cli versions match").
 			WithHintAnchor("l5d-viz-proxy-cli-version").
 			Warning().

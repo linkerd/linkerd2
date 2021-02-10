@@ -67,6 +67,7 @@ linkerd-api
 -----------
 √ control plane pods are ready
 √ control plane proxies are healthy
+√ control plane proxies are up-to-date
 √ control plane proxies and cli versions match
 
 linkerd-version
