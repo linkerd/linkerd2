@@ -62,7 +62,7 @@ func TestTracing(t *testing.T) {
 	}
 
 	// wait for the jaeger extension
-	timeout := time.Minute
+	timeout := 3 * time.Minute
 	err = TestHelper.RetryFor(timeout, func() error {
 		out, stderr, err := TestHelper.PipeToLinkerdRun("", "jaeger", "check", "--wait=0")
 		if err != nil {
