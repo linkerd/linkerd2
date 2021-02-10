@@ -124,6 +124,36 @@ func ToJSON(configs *pb.All) (global, proxy, install string, err error) {
 	return
 }
 
+// RemoveGlobalFieldIfPresent removes the `global` node and
+// attaches the children nodes there.
+func RemoveGlobalFieldIfPresent(bytes []byte) ([]byte, error) {
+	// Check if Globals is present and remove that node if it has
+	var valuesMap map[string]interface{}
+	err := yaml.Unmarshal(bytes, &valuesMap)
+	if err != nil {
+		return nil, err
+	}
+
+	if globalValues, ok := valuesMap["global"]; ok {
+		// attach those values
+		// Check if its a map
+		if val, ok := globalValues.(map[string]interface{}); ok {
+			for k, v := range val {
+				valuesMap[k] = v
+			}
+		}
+		// Remove global now
+		delete(valuesMap, "global")
+	}
+
+	bytes, err = yaml.Marshal(valuesMap)
+	if err != nil {
+		return nil, err
+	}
+
+	return bytes, nil
+}
+
 // ToValues converts configuration into a Values struct, i.e to be consumed by check
 // TODO: Remove this once the newer configuration becomes the default i.e 2.10
 func ToValues(configs *pb.All) *l5dcharts.Values {

@@ -2429,6 +2429,189 @@ metadata:
   namespace: linkerd
 data:
   global: |
+    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
+  proxy: |
+    {"proxyImage":{"imageName":"ghcr.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"ghcr.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.8","debugImage":{"imageName":"ghcr.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+  install: |
+    {"cliVersion":"dev-undefined","flags":[]}
+  values: |
+    controllerImage: ControllerImage
+    controllerReplicas: 1
+    controllerUID: 2103
+    debugContainer: null
+    destinationProxyResources: null
+    destinationResources: null
+    disableHeartBeat: false
+    enableH2Upgrade: true
+    enablePodAntiAffinity: false
+    global:
+      cliVersion: CliVersion
+      clusterDomain: cluster.local
+      clusterNetworks: ClusterNetworks
+      cniEnabled: false
+      controlPlaneTracing: false
+      controllerComponentLabel: ControllerComponentLabel
+      controllerImageVersion: ControllerImageVersion
+      controllerLogLevel: ControllerLogLevel
+      controllerNamespaceLabel: ControllerNamespaceLabel
+      createdByAnnotation: CreatedByAnnotation
+      enableEndpointSlices: false
+      grafanaUrl: ""
+      highAvailability: false
+      identityTrustDomain: cluster.local
+      imagePullPolicy: ImagePullPolicy
+      imagePullSecrets: null
+      linkerdNamespaceLabel: LinkerdNamespaceLabel
+      linkerdVersion: ""
+      namespace: Namespace
+      prometheusUrl: ""
+      proxy:
+        capabilities: null
+        component: linkerd-controller
+        disableIdentity: false
+        disableTap: false
+        enableExternalProfiles: false
+        image:
+          name: ProxyImageName
+          pullPolicy: ImagePullPolicy
+          version: ProxyVersion
+        inboundConnectTimeout: ""
+        isGateway: false
+        logFormat: plain
+        logLevel: warn,linkerd=info
+        opaquePorts: ""
+        outboundConnectTimeout: ""
+        ports:
+          admin: 4191
+          control: 4190
+          inbound: 4143
+          outbound: 4140
+        requireIdentityOnInboundPorts: ""
+        resources: null
+        saMountPath: null
+        uid: 2102
+        waitBeforeExitSeconds: 0
+        workloadKind: deployment
+      proxyContainerName: ProxyContainerName
+      proxyInit:
+        capabilities: null
+        closeWaitTimeoutSecs: 0
+        ignoreInboundPorts: ""
+        ignoreOutboundPorts: ""
+        image:
+          name: ProxyInitImageName
+          pullPolicy: ImagePullPolicy
+          version: ProxyInitVersion
+        resources:
+          cpu:
+            limit: 100m
+            request: 10m
+          memory:
+            limit: 50Mi
+            request: 10Mi
+        saMountPath: null
+        xtMountPath:
+          mountPath: /run
+          name: linkerd-proxy-init-xtables-lock
+          readOnly: false
+      proxyInjectAnnotation: ProxyInjectAnnotation
+      proxyInjectDisabled: ProxyInjectDisabled
+      workloadNamespaceLabel: WorkloadNamespaceLabel
+    heartbeatResources: null
+    heartbeatSchedule: ""
+    identityProxyResources: null
+    identityResources: null
+    installNamespace: true
+    nodeSelector:
+      beta.kubernetes.io/os: linux
+    omitWebhookSideEffects: false
+    proxyInjectorProxyResources: null
+    proxyInjectorResources: null
+    publicAPIProxyResources: null
+    publicAPIResources: null
+    spValidatorProxyResources: null
+    spValidatorResources: null
+    stage: ""
+    tolerations: null
+    webhookFailurePolicy: WebhookFailurePolicy
+`,
+			},
+			&linkerd2.Values{
+				ControllerImage:          "ControllerImage",
+				ControllerUID:            2103,
+				EnableH2Upgrade:          true,
+				WebhookFailurePolicy:     "WebhookFailurePolicy",
+				OmitWebhookSideEffects:   false,
+				InstallNamespace:         true,
+				NodeSelector:             defaultValues.NodeSelector,
+				Tolerations:              defaultValues.Tolerations,
+				Namespace:                "Namespace",
+				ClusterDomain:            "cluster.local",
+				ClusterNetworks:          "ClusterNetworks",
+				ImagePullPolicy:          "ImagePullPolicy",
+				CliVersion:               "CliVersion",
+				ControllerComponentLabel: "ControllerComponentLabel",
+				ControllerLogLevel:       "ControllerLogLevel",
+				ControllerImageVersion:   "ControllerImageVersion",
+				ControllerNamespaceLabel: "ControllerNamespaceLabel",
+				WorkloadNamespaceLabel:   "WorkloadNamespaceLabel",
+				CreatedByAnnotation:      "CreatedByAnnotation",
+				ProxyInjectAnnotation:    "ProxyInjectAnnotation",
+				ProxyInjectDisabled:      "ProxyInjectDisabled",
+				LinkerdNamespaceLabel:    "LinkerdNamespaceLabel",
+				ProxyContainerName:       "ProxyContainerName",
+				CNIEnabled:               false,
+				IdentityTrustDomain:      defaultValues.IdentityTrustDomain,
+				Proxy: &linkerd2.Proxy{
+					Image: &linkerd2.Image{
+						Name:       "ProxyImageName",
+						PullPolicy: "ImagePullPolicy",
+						Version:    "ProxyVersion",
+					},
+					LogLevel:  "warn,linkerd=info",
+					LogFormat: "plain",
+					Ports: &linkerd2.Ports{
+						Admin:    4191,
+						Control:  4190,
+						Inbound:  4143,
+						Outbound: 4140,
+					},
+					UID: 2102,
+				},
+				ProxyInit: &linkerd2.ProxyInit{
+					Image: &linkerd2.Image{
+						Name:       "ProxyInitImageName",
+						PullPolicy: "ImagePullPolicy",
+						Version:    "ProxyInitVersion",
+					},
+					Resources: &linkerd2.Resources{
+						CPU: linkerd2.Constraints{
+							Limit:   "100m",
+							Request: "10m",
+						},
+						Memory: linkerd2.Constraints{
+							Limit:   "50Mi",
+							Request: "10Mi",
+						},
+					},
+					XTMountPath: &linkerd2.VolumeMountPath{
+						MountPath: "/run",
+						Name:      "linkerd-proxy-init-xtables-lock",
+					},
+				},
+				ControllerReplicas: 1,
+			},
+			nil,
+		},
+		{
+			[]string{`
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: linkerd
+data:
+  global: |
     {"linkerdNamespace":"ns","identityContext":null, "cniEnabled": true}
   proxy: |
     {"proxyImage":{"imageName":"registry", "pullPolicy":"Always"}}
