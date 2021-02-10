@@ -764,7 +764,7 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 		out, err := TestHelper.LinkerdRun(cmd...)
 
 		if err != nil {
-			return fmt.Errorf("'linkerd check' command failed\n%s", err)
+			return fmt.Errorf("'linkerd check' command failed\n%s\n%s", err, out)
 		}
 
 		if !compareOutput {
