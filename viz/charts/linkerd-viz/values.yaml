@@ -63,19 +63,19 @@ metricsAPI:
   # -- number of replicas of the metrics-api component
   replicas: 1
   # -- log level of the metrics-api component
-  # @default -- defaults to defaultLogLevel
+  # @default -- defaultLogLevel
   logLevel: ""
   image:
     # -- Docker registry for the metrics-api component
-    # @default -- defaults to defaultRegistry
+    # @default -- defaultRegistry
     registry: ""
     # -- Docker image name for the metrics-api component
     name: metrics-api
     # -- Docker image tag for the metrics-api component
-    # @default -- defaults to linkerdVersion
+    # @default -- linkerdVersion
     tag: ""
     # -- Pull policy for the metrics-api component
-    # @default -- defaults to defaultImagePullPolicy
+    # @default -- defaultImagePullPolicy
     pullPolicy: ""
 
   resources:
@@ -95,7 +95,7 @@ metricsAPI:
     # into the metrics-api component
     # resources:
 
-  # UID for the metrics-api resource
+  # -- UID for the metrics-api resource
   UID:
 
 # tap configuration
@@ -103,19 +103,19 @@ tap:
     # -- Number of tap component replicas
   replicas: 1
   # -- log level of the tap component
-  # @default -- defaults to defaultLogLevel
+  # @default -- defaultLogLevel
   logLevel: ""
   image:
     # -- Docker registry for the tap instance
-    # @default -- defaults to defaultRegistry
+    # @default -- defaultRegistry
     registry: ""
     # -- Docker image name for the tap instance
     name: controller
     # -- Docker image tag for the tap instance
-    # @default -- defaults to linkerdVersion
+    # @default -- linkerdVersion
     tag: ""
     # -- Pull policy for the tap component
-    # @default -- defaults to defaultImagePullPolicy
+    # @default -- defaultImagePullPolicy
     pullPolicy: ""
   # -- Do not create a secret resource for the Tap component. If this is set to
   # `true`, the value `tap.caBundle` must be set (see below).
@@ -151,7 +151,7 @@ tap:
     # into the tap component
     # resources:
 
-  # UID for the dashboard resource
+  # -- UID for the dashboard resource
   UID:
 
 # tapInjector configuration
@@ -160,15 +160,15 @@ tapInjector:
   replicas: 1
   image:
     # -- Docker registry for the tapInjector instance
-    # @default -- defaults to defaultRegistry
+    # @default -- defaultRegistry
     registry: ""
     # -- Docker image name for the tapInjector instance
     name: controller
     # -- Docker image tag for the tapInjector instance
-    # @default -- defaults to linkerdVersion
+    # @default -- linkerdVersion
     tag: ""
     # -- Pull policy for the tapInjector component
-    # @default -- defaults to defaultImagePullPolicy
+    # @default -- defaultImagePullPolicy
     pullPolicy: ""
 
   namespaceSelector:
@@ -179,7 +179,7 @@ tapInjector:
   objectSelector:
     # matchLabels:
     #   foo: bar
-  # UID for the tapInjector resource
+  # -- UID for the tapInjector resource
   UID: 
   failurePolicy: Ignore
   resources:
@@ -220,22 +220,22 @@ dashboard:
   # -- Number of replicas of dashboard
   replicas: 1
   # -- log level of the dashboard component
-  # @default -- defaults to defaultLogLevel
+  # @default -- defaultLogLevel
   logLevel: ""
   image:
     # -- Docker registry for the web instance
-    # @default -- defaults to defaultRegistry
+    # @default -- defaultRegistry
     registry: ""
     # -- Docker image name for the web instance
     name: web
     # -- Docker image tag for the web instance
-    # @default -- defaults to linkerdVersion
+    # @default -- linkerdVersion
     tag: ""
     # -- Pull policy for the  web component
-    # @default -- defaults to defaultImagePullPolicy
+    # @default -- defaultImagePullPolicy
     pullPolicy: ""
 
-  # UID for the dashboard resource
+  # -- UID for the dashboard resource
   UID:
 
   # -- Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check
@@ -267,15 +267,15 @@ grafana:
   enabled: true
   image:
     # -- Docker registry for the grafana instance
-    # @default -- defaults to defaultRegistry
+    # @default -- defaultRegistry
     registry: ""
     # -- Docker image name for the grafana instance
     name: grafana
     # -- Docker image tag for the grafana instance
-    # @default -- defaults to linkerdVersion
+    # @default -- linkerdVersion
     tag: ""
     # -- Pull policy for the grafana instance
-    # @default -- defaults to defaultImagePullPolicy
+    # @default -- defaultImagePullPolicy
     pullPolicy: ""
 
   resources:
@@ -306,11 +306,11 @@ prometheus:
     # -- Docker image tag for the prometheus instance
     tag: v2.19.3
     # -- Pull policy for the prometheus instance
-    # @default -- defaults to defaultImagePullPolicy
+    # @default -- defaultImagePullPolicy
     pullPolicy: ""
 
   # -- log level of the prometheus instance
-  # @default -- defaults to defaultLogLevel
+  # @default -- defaultLogLevel
   logLevel: ""
   # -- Command line options for Prometheus binary
   args:

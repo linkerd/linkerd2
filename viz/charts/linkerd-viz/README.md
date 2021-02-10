@@ -73,13 +73,13 @@ Kubernetes: `>=1.13.0-0`
 |-----|------|---------|-------------|
 | clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use   |
 | createdByAnnotation | string | `"linkerd.io/created-by"` |  |
-| dashboard.UID | string | `nil` |  |
+| dashboard.UID | string | `nil` | UID for the dashboard resource |
 | dashboard.enforcedHostRegexp | string | `""` | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information |
 | dashboard.image.name | string | `"web"` | Docker image name for the web instance |
-| dashboard.image.pullPolicy | string | defaults to defaultImagePullPolicy | Pull policy for the  web component |
-| dashboard.image.registry | string | defaults to defaultRegistry | Docker registry for the web instance |
-| dashboard.image.tag | string | defaults to linkerdVersion | Docker image tag for the web instance |
-| dashboard.logLevel | string | defaults to defaultLogLevel | log level of the dashboard component |
+| dashboard.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the  web component |
+| dashboard.image.registry | string | defaultRegistry | Docker registry for the web instance |
+| dashboard.image.tag | string | linkerdVersion | Docker image tag for the web instance |
+| dashboard.logLevel | string | defaultLogLevel | log level of the dashboard component |
 | dashboard.proxy | string | `nil` |  |
 | dashboard.replicas | int | `1` | Number of replicas of dashboard |
 | dashboard.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the web container can use |
@@ -95,9 +95,9 @@ Kubernetes: `>=1.13.0-0`
 | extensionAnnotation | string | `"linkerd.io/extension"` |  |
 | grafana.enabled | bool | `true` | toggle field to enable or disable grafana |
 | grafana.image.name | string | `"grafana"` | Docker image name for the grafana instance |
-| grafana.image.pullPolicy | string | defaults to defaultImagePullPolicy | Pull policy for the grafana instance |
-| grafana.image.registry | string | defaults to defaultRegistry | Docker registry for the grafana instance |
-| grafana.image.tag | string | defaults to linkerdVersion | Docker image tag for the grafana instance |
+| grafana.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the grafana instance |
+| grafana.image.registry | string | defaultRegistry | Docker registry for the grafana instance |
+| grafana.image.tag | string | linkerdVersion | Docker image tag for the grafana instance |
 | grafana.proxy | string | `nil` |  |
 | grafana.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the grafana container can use |
 | grafana.resources.cpu.request | string | `nil` | Amount of CPU units that the grafana container requests |
@@ -109,12 +109,12 @@ Kubernetes: `>=1.13.0-0`
 | jaegerUrl | string | `""` | url of external jaeger instance Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>` if you plan to use jaeger extension |
 | linkerdNamespace | string | `"linkerd"` | Namespace of the Linkerd core control-plane install |
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
-| metricsAPI.UID | string | `nil` |  |
+| metricsAPI.UID | string | `nil` | UID for the metrics-api resource |
 | metricsAPI.image.name | string | `"metrics-api"` | Docker image name for the metrics-api component |
-| metricsAPI.image.pullPolicy | string | defaults to defaultImagePullPolicy | Pull policy for the metrics-api component |
-| metricsAPI.image.registry | string | defaults to defaultRegistry | Docker registry for the metrics-api component |
-| metricsAPI.image.tag | string | defaults to linkerdVersion | Docker image tag for the metrics-api component |
-| metricsAPI.logLevel | string | defaults to defaultLogLevel | log level of the metrics-api component |
+| metricsAPI.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the metrics-api component |
+| metricsAPI.image.registry | string | defaultRegistry | Docker registry for the metrics-api component |
+| metricsAPI.image.tag | string | linkerdVersion | Docker image tag for the metrics-api component |
+| metricsAPI.logLevel | string | defaultLogLevel | log level of the metrics-api component |
 | metricsAPI.proxy | string | `nil` |  |
 | metricsAPI.replicas | int | `1` | number of replicas of the metrics-api component |
 | metricsAPI.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the metrics-api container can use |
@@ -129,10 +129,10 @@ Kubernetes: `>=1.13.0-0`
 | prometheus.enabled | bool | `true` | toggle field to enable or disable prometheus |
 | prometheus.globalConfig | object | `{"evaluation_interval":"10s","scrape_interval":"10s","scrape_timeout":"10s"}` | The global configuration specifies parameters that are valid in all other configuration contexts. |
 | prometheus.image.name | string | `"prometheus"` | Docker image name for the prometheus instance |
-| prometheus.image.pullPolicy | string | defaults to defaultImagePullPolicy | Pull policy for the prometheus instance |
+| prometheus.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the prometheus instance |
 | prometheus.image.registry | string | `"prom"` | Docker registry for the prometheus instance |
 | prometheus.image.tag | string | `"v2.19.3"` | Docker image tag for the prometheus instance |
-| prometheus.logLevel | string | defaults to defaultLogLevel | log level of the prometheus instance |
+| prometheus.logLevel | string | defaultLogLevel | log level of the prometheus instance |
 | prometheus.proxy | string | `nil` |  |
 | prometheus.remoteWrite | string | `nil` | Allows transparently sending samples to an endpoint. Mostly used for long term storage. |
 | prometheus.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the prometheus container can use |
@@ -144,16 +144,16 @@ Kubernetes: `>=1.13.0-0`
 | prometheus.sideCarContainers | string | `nil` | A sidecarContainers section specifies a list of secondary containers to run in the prometheus pod e.g. to export data to non-prometheus systems |
 | prometheusUrl | string | `""` | url of external prometheus instance |
 | proxyInjectAnnotation | string | `"linkerd.io/inject"` |  |
-| tap.UID | string | `nil` |  |
+| tap.UID | string | `nil` | UID for the dashboard resource |
 | tap.caBundle | string | `""` | Bundle of CA certificates for Tap component. If not provided then Helm will use the certificate generated  for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
 | tap.crtPEM | string | `""` | Certificate for the Tap component. If not provided then Helm will generate one. |
 | tap.externalSecret | bool | `false` | Do not create a secret resource for the Tap component. If this is set to `true`, the value `tap.caBundle` must be set (see below). |
 | tap.image.name | string | `"controller"` | Docker image name for the tap instance |
-| tap.image.pullPolicy | string | defaults to defaultImagePullPolicy | Pull policy for the tap component |
-| tap.image.registry | string | defaults to defaultRegistry | Docker registry for the tap instance |
-| tap.image.tag | string | defaults to linkerdVersion | Docker image tag for the tap instance |
+| tap.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the tap component |
+| tap.image.registry | string | defaultRegistry | Docker registry for the tap instance |
+| tap.image.tag | string | linkerdVersion | Docker image tag for the tap instance |
 | tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided then Helm will generate one. |
-| tap.logLevel | string | defaults to defaultLogLevel | log level of the tap component |
+| tap.logLevel | string | defaultLogLevel | log level of the tap component |
 | tap.proxy | string | `nil` |  |
 | tap.replicas | int | `1` | Number of tap component replicas |
 | tap.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the tap container can use |
@@ -166,9 +166,9 @@ Kubernetes: `>=1.13.0-0`
 | tapInjector.externalSecret | bool | `false` | Do not create a secret resource for the tapInjector webhook. If this is set to `true`, the value `tapInjector.caBundle` must be set (see below) |
 | tapInjector.failurePolicy | string | `"Ignore"` |  |
 | tapInjector.image.name | string | `"controller"` | Docker image name for the tapInjector instance |
-| tapInjector.image.pullPolicy | string | defaults to defaultImagePullPolicy | Pull policy for the tapInjector component |
-| tapInjector.image.registry | string | defaults to defaultRegistry | Docker registry for the tapInjector instance |
-| tapInjector.image.tag | string | defaults to linkerdVersion | Docker image tag for the tapInjector instance |
+| tapInjector.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the tapInjector component |
+| tapInjector.image.registry | string | defaultRegistry | Docker registry for the tapInjector instance |
+| tapInjector.image.tag | string | linkerdVersion | Docker image tag for the tapInjector instance |
 | tapInjector.keyPEM | string | `""` | Certificate key for the tapInjector. If not provided then Helm will generate one. |
 | tapInjector.namespaceSelector | string | `nil` |  |
 | tapInjector.objectSelector | string | `nil` |  |
