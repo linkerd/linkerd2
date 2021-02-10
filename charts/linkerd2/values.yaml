@@ -156,7 +156,7 @@ omitWebhookSideEffects: false
 webhookFailurePolicy: Ignore
 
 
-# controllerImage -- Docker image for the controller, tap and identity
+# controllerImage -- Docker image for the controller and identity
 # components
 controllerImage: ghcr.io/linkerd/controller
 # -- Number of replicas for each control plane pod

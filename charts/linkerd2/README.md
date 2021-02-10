@@ -130,7 +130,7 @@ Kubernetes: `>=1.13.0-0`
 | controlPlaneTracing | bool | `false` | enables control plane tracing |
 | controlPlaneTracingNamespace | string | `"linkerd-jaeger"` | namespace to send control plane traces to |
 | controllerComponentLabel | string | `"linkerd.io/control-plane-component"` | Control plane label. Do not edit |
-| controllerImage | string | `"ghcr.io/linkerd/controller"` | Docker image for the controller, tap and identity components |
+| controllerImage | string | `"ghcr.io/linkerd/controller"` | Docker image for the controller and identity components |
 | controllerLogFormat | string | `"plain"` | Log format for the control plane components |
 | controllerLogLevel | string | `"info"` | Log level for the control plane components |
 | controllerNamespaceLabel | string | `"linkerd.io/control-plane-ns"` | Control plane label. Do not edit |

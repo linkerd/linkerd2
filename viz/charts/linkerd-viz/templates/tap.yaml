@@ -79,8 +79,8 @@ spec:
       {{- end }}
       containers:
       - args:
-        - tap
-        - -controller-namespace={{.Values.linkerdNamespace}}
+        - api
+        - -api-namespace={{.Values.linkerdNamespace}}
         - -log-level={{.Values.tap.logLevel}}
         - -identity-trust-domain={{.Values.identityTrustDomain}}
         image: {{.Values.tap.image.registry}}/{{.Values.tap.image.name}}:{{.Values.tap.image.tag}}

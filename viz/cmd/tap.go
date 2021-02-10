@@ -10,22 +10,23 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/ptypes/duration"
-	"github.com/linkerd/linkerd2/controller/api/util"
 	netPb "github.com/linkerd/linkerd2/controller/gen/common/net"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
-	"github.com/linkerd/linkerd2/pkg/tap"
-	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	vizpkg "github.com/linkerd/linkerd2/viz/pkg"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
+	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
+	"github.com/linkerd/linkerd2/viz/tap/pkg"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
 )
 
-type renderTapEventFunc func(*pb.TapEvent, string) string
+type renderTapEventFunc func(*tapPb.TapEvent, string) string
 
 type tapOptions struct {
 	namespace     string
@@ -173,7 +174,7 @@ func NewCmdTap() *cobra.Command {
   # tap the test namespace, filter by request to prod namespace
   linkerd viz tap ns/test --to ns/prod`,
 		Args:      cobra.RangeArgs(1, 2),
-		ValidArgs: util.ValidTargets,
+		ValidArgs: vizpkg.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
@@ -188,7 +189,7 @@ func NewCmdTap() *cobra.Command {
 				APIAddr:               apiAddr,
 			})
 
-			requestParams := util.TapRequestParams{
+			requestParams := pkg.TapRequestParams{
 				Resource:      strings.Join(args, "/"),
 				Namespace:     options.namespace,
 				ToResource:    options.toResource,
@@ -207,7 +208,7 @@ func NewCmdTap() *cobra.Command {
 				return fmt.Errorf("validation error when executing tap command: %v", err)
 			}
 
-			req, err := util.BuildTapByResourceRequest(requestParams)
+			req, err := pkg.BuildTapByResourceRequest(requestParams)
 			if err != nil {
 				return err
 			}
@@ -245,8 +246,8 @@ func NewCmdTap() *cobra.Command {
 	return cmd
 }
 
-func requestTapByResourceFromAPI(ctx context.Context, w io.Writer, k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, options *tapOptions) error {
-	reader, body, err := tap.Reader(ctx, k8sAPI, req)
+func requestTapByResourceFromAPI(ctx context.Context, w io.Writer, k8sAPI *k8s.KubernetesAPI, req *tapPb.TapByResourceRequest, options *tapOptions) error {
+	reader, body, err := pkg.Reader(ctx, k8sAPI, req)
 	if err != nil {
 		return err
 	}
@@ -255,7 +256,7 @@ func requestTapByResourceFromAPI(ctx context.Context, w io.Writer, k8sAPI *k8s.K
 	return writeTapEventsToBuffer(w, reader, req, options)
 }
 
-func writeTapEventsToBuffer(w io.Writer, tapByteStream *bufio.Reader, req *pb.TapByResourceRequest, options *tapOptions) error {
+func writeTapEventsToBuffer(w io.Writer, tapByteStream *bufio.Reader, req *tapPb.TapByResourceRequest, options *tapOptions) error {
 	var err error
 	switch options.output {
 	case "":
@@ -276,7 +277,7 @@ func writeTapEventsToBuffer(w io.Writer, tapByteStream *bufio.Reader, req *pb.Ta
 func renderTapEvents(tapByteStream *bufio.Reader, w io.Writer, render renderTapEventFunc, resource string) error {
 	for {
 		log.Debug("Waiting for data...")
-		event := pb.TapEvent{}
+		event := tapPb.TapEvent{}
 		err := protohttp.FromByteStreamToProtocolBuffers(tapByteStream, &event)
 		if err == io.EOF {
 			break
@@ -295,17 +296,17 @@ func renderTapEvents(tapByteStream *bufio.Reader, w io.Writer, render renderTapE
 }
 
 // renderTapEvent renders a Public API TapEvent to a string.
-func renderTapEvent(event *pb.TapEvent, resource string) string {
+func renderTapEvent(event *tapPb.TapEvent, resource string) string {
 	dst := dst(event)
 	src := src(event)
 
 	proxy := "???"
 	tls := ""
 	switch event.GetProxyDirection() {
-	case pb.TapEvent_INBOUND:
+	case tapPb.TapEvent_INBOUND:
 		proxy = "in " // A space is added so it aligns with `out`.
 		tls = src.tlsStatus()
-	case pb.TapEvent_OUTBOUND:
+	case tapPb.TapEvent_OUTBOUND:
 		proxy = "out"
 		tls = dst.tlsStatus()
 	default:
@@ -331,7 +332,7 @@ func renderTapEvent(event *pb.TapEvent, resource string) string {
 	}
 
 	switch ev := event.GetHttp().GetEvent().(type) {
-	case *pb.TapEvent_Http_RequestInit_:
+	case *tapPb.TapEvent_Http_RequestInit_:
 		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s%s",
 			ev.RequestInit.GetId().GetBase(),
 			ev.RequestInit.GetId().GetStream(),
@@ -342,7 +343,7 @@ func renderTapEvent(event *pb.TapEvent, resource string) string {
 			resources,
 		)
 
-	case *pb.TapEvent_Http_ResponseInit_:
+	case *tapPb.TapEvent_Http_ResponseInit_:
 		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs%s",
 			ev.ResponseInit.GetId().GetBase(),
 			ev.ResponseInit.GetId().GetStream(),
@@ -352,9 +353,9 @@ func renderTapEvent(event *pb.TapEvent, resource string) string {
 			resources,
 		)
 
-	case *pb.TapEvent_Http_ResponseEnd_:
+	case *tapPb.TapEvent_Http_ResponseEnd_:
 		switch eos := ev.ResponseEnd.GetEos().GetEnd().(type) {
-		case *pb.Eos_GrpcStatusCode:
+		case *metricsPb.Eos_GrpcStatusCode:
 			return fmt.Sprintf(
 				"end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB%s",
 				ev.ResponseEnd.GetId().GetBase(),
@@ -366,7 +367,7 @@ func renderTapEvent(event *pb.TapEvent, resource string) string {
 				resources,
 			)
 
-		case *pb.Eos_ResetErrorCode:
+		case *metricsPb.Eos_ResetErrorCode:
 			return fmt.Sprintf(
 				"end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB%s",
 				ev.ResponseEnd.GetId().GetBase(),
@@ -395,7 +396,7 @@ func renderTapEvent(event *pb.TapEvent, resource string) string {
 }
 
 // renderTapEventJSON renders a Public API TapEvent to a string in JSON format.
-func renderTapEventJSON(event *pb.TapEvent, _ string) string {
+func renderTapEventJSON(event *tapPb.TapEvent, _ string) string {
 	m := mapPublicToDisplayTapEvent(event)
 	e, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
@@ -405,7 +406,7 @@ func renderTapEventJSON(event *pb.TapEvent, _ string) string {
 }
 
 // Map public API `TapEvent`s to `displayTapEvent`s
-func mapPublicToDisplayTapEvent(event *pb.TapEvent) *tapEvent {
+func mapPublicToDisplayTapEvent(event *tapPb.TapEvent) *tapEvent {
 	// Map source endpoint
 	sip := addr.PublicIPToString(event.GetSource().GetIp())
 	src := &endpoint{
@@ -434,7 +435,7 @@ func mapPublicToDisplayTapEvent(event *pb.TapEvent) *tapEvent {
 }
 
 // Attempt to map a `TapEvent_Http_RequestInit event to a `requestInitEvent`
-func getRequestInitEvent(pubEv *pb.TapEvent_Http) *requestInitEvent {
+func getRequestInitEvent(pubEv *tapPb.TapEvent_Http) *requestInitEvent {
 	reqI := pubEv.GetRequestInit()
 	if reqI == nil {
 		return nil
@@ -453,28 +454,28 @@ func getRequestInitEvent(pubEv *pb.TapEvent_Http) *requestInitEvent {
 	}
 }
 
-func formatMethod(m *pb.HttpMethod) string {
-	if x, ok := m.GetType().(*pb.HttpMethod_Registered_); ok {
+func formatMethod(m *metricsPb.HttpMethod) string {
+	if x, ok := m.GetType().(*metricsPb.HttpMethod_Registered_); ok {
 		return x.Registered.String()
 	}
-	if s, ok := m.GetType().(*pb.HttpMethod_Unregistered); ok {
+	if s, ok := m.GetType().(*metricsPb.HttpMethod_Unregistered); ok {
 		return s.Unregistered
 	}
 	return ""
 }
 
-func formatScheme(s *pb.Scheme) string {
-	if x, ok := s.GetType().(*pb.Scheme_Registered_); ok {
+func formatScheme(s *metricsPb.Scheme) string {
+	if x, ok := s.GetType().(*metricsPb.Scheme_Registered_); ok {
 		return x.Registered.String()
 	}
-	if str, ok := s.GetType().(*pb.Scheme_Unregistered); ok {
+	if str, ok := s.GetType().(*metricsPb.Scheme_Unregistered); ok {
 		return str.Unregistered
 	}
 	return ""
 }
 
 // Attempt to map a `TapEvent_Http_ResponseInit` event to a `responseInitEvent`
-func getResponseInitEvent(pubEv *pb.TapEvent_Http) *responseInitEvent {
+func getResponseInitEvent(pubEv *tapPb.TapEvent_Http) *responseInitEvent {
 	resI := pubEv.GetResponseInit()
 	if resI == nil {
 		return nil
@@ -492,7 +493,7 @@ func getResponseInitEvent(pubEv *pb.TapEvent_Http) *responseInitEvent {
 }
 
 // Attempt to map a `TapEvent_Http_ResponseEnd` event to a `responseEndEvent`
-func getResponseEndEvent(pubEv *pb.TapEvent_Http) *responseEndEvent {
+func getResponseEndEvent(pubEv *tapPb.TapEvent_Http) *responseEndEvent {
 	resE := pubEv.GetResponseEnd()
 	if resE == nil {
 		return nil
@@ -512,15 +513,15 @@ func getResponseEndEvent(pubEv *pb.TapEvent_Http) *responseEndEvent {
 	}
 }
 
-func formatHeadersTrailers(hs *pb.Headers) []metadata {
+func formatHeadersTrailers(hs *metricsPb.Headers) []metadata {
 	var fm []metadata
 	for _, h := range hs.GetHeaders() {
 		switch h.GetValue().(type) {
-		case *pb.Headers_Header_ValueStr:
+		case *metricsPb.Headers_Header_ValueStr:
 			fht := &metadataStr{Name: h.GetName(), ValueStr: h.GetValueStr()}
 			fm = append(fm, fht)
 			continue
-		case *pb.Headers_Header_ValueBin:
+		case *metricsPb.Headers_Header_ValueBin:
 			fht := &metadataBin{Name: h.GetName(), ValueBin: h.GetValueBin()}
 			fm = append(fm, fht)
 			continue
@@ -530,7 +531,7 @@ func formatHeadersTrailers(hs *pb.Headers) []metadata {
 }
 
 // src returns the source peer of a `TapEvent`.
-func src(event *pb.TapEvent) peer {
+func src(event *tapPb.TapEvent) peer {
 	return peer{
 		address:   event.GetSource(),
 		labels:    event.GetSourceMeta().GetLabels(),
@@ -539,7 +540,7 @@ func src(event *pb.TapEvent) peer {
 }
 
 // dst returns the destination peer of a `TapEvent`.
-func dst(event *pb.TapEvent) peer {
+func dst(event *tapPb.TapEvent) peer {
 	return peer{
 		address:   event.GetDestination(),
 		labels:    event.GetDestinationMeta().GetLabels(),
@@ -596,7 +597,7 @@ func (p *peer) tlsStatus() string {
 	return p.labels["tls"]
 }
 
-func routeLabels(event *pb.TapEvent) string {
+func routeLabels(event *tapPb.TapEvent) string {
 	out := ""
 	for key, val := range event.GetRouteMeta().GetLabels() {
 		out = fmt.Sprintf("%s rt_%s=%s", out, key, val)

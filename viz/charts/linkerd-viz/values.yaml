@@ -6,9 +6,9 @@
 
 # -- control plane version. See Proxy section for proxy version
 linkerdVersion: &linkerd_version linkerdVersionValue
-# -- Kubernetes DNS Domain name to use  
+# -- Kubernetes DNS Domain name to use
 clusterDomain: &cluster_domain cluster.local
-# -- Trust domain used for identity 
+# -- Trust domain used for identity
 identityTrustDomain: *cluster_domain
 #  Annotation labels. Do not edit.
 createdByAnnotation: linkerd.io/created-by
@@ -39,7 +39,7 @@ nodeSelector:
 imagePullSecrets: []
 # - name: my-private-docker-registry-login-secret
 
-# -- Tolerations section, See the 
+# -- Tolerations section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
 # for more information
 tolerations:
@@ -101,7 +101,7 @@ tap:
     # -- Docker registry for the tap instance
     registry: *registry
     # -- Docker image name for the tap instance
-    name: controller
+    name: tap
     # -- Docker image tag for the tap instance
     tag: *linkerd_version
   # -- Do not create a secret resource for the Tap component. If this is set to
@@ -149,7 +149,7 @@ tapInjector:
     # -- Docker registry for the tapInjector instance
     registry: *registry
     # -- Docker image name for the tapInjector instance
-    name: controller
+    name: tap
     # -- Docker image tag for the tapInjector instance
     tag: *linkerd_version
   namespaceSelector:
@@ -338,7 +338,7 @@ prometheus:
 
   # -- A sidecarContainers section specifies a list of secondary containers to run
   # in the prometheus pod e.g. to export data to non-prometheus systems
-  sideCarContainers:
+  sidecarContainers:
   # Ex:
   # - name: sidecar
   #   image: gcr.io/myproject/stackdriver-prometheus-sidecar
