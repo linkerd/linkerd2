@@ -78,26 +78,33 @@ fi
 # the parallel executions below attempt doing so
 "$bin" version
 
-rm -f load_fail
-for img in proxy controller web metrics-api grafana cli-bin debug cni-plugin jaeger-webhook tap; do
-  printf 'Importing %s...\n' $img
-  if [ $archive ]; then
-    param="image-archives/$img.tar"
-  else
-    param="$DOCKER_REGISTRY/$img:$TAG"
-  fi
+if [ -n "$kind" ]; then
+  rm -f load_fail
+  for img in proxy controller web metrics-api grafana cli-bin debug cni-plugin jaeger-webhook tap; do
+    printf 'Importing %s...\n' $img
+    if [ $archive ]; then
+      param="image-archives/$img.tar"
+    else
+      param="$DOCKER_REGISTRY/$img:$TAG"
+    fi
 
-  if [ -n "$kind" ]; then
     "$bin" "${image_sub_cmd[@]}" "${param[@]}" || touch load_fail &
-  else
-    # "k3d image import" commands don't behave well when parallelized
-    "$bin" "${image_sub_cmd[@]}" "${param[@]}"
-  fi
-done
+  done
 
-wait < <(jobs -p)
-if [ -f load_fail ]; then
-  echo "Loading docker images into the cluster failed."
-  rm load_fail
-  exit 1
+  wait < <(jobs -p)
+  if [ -f load_fail ]; then
+    echo "Loading docker images into the cluster failed."
+    rm load_fail
+    exit 1
+  fi
+else
+  images=()
+  for img in proxy controller web metrics-api grafana cli-bin debug cni-plugin jaeger-webhook tap; do
+    if [ $archive ]; then
+      images+=("image-archives/$img.tar")
+    else
+      images+=("$DOCKER_REGISTRY/$img:$TAG")
+    fi
+  done
+  "$bin" "${image_sub_cmd[@]}" "${images[@]}"
 fi
