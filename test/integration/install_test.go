@@ -793,7 +793,7 @@ func TestCheckPostInstall(t *testing.T) {
 }
 
 func TestCheckViz(t *testing.T) {
-	cmd := []string{"viz", "check", "--wait=0"}
+	cmd := []string{"viz", "check", "--wait=0", "--expected-version", TestHelper.GetVersion()}
 	golden := "check.viz.golden"
 	timeout := time.Minute
 	err := TestHelper.RetryFor(timeout, func() error {
