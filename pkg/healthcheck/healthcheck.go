@@ -419,7 +419,7 @@ type HealthChecker struct {
 	kubeVersion      *k8sVersion.Info
 	controlPlanePods []corev1.Pod
 	apiClient        public.Client
-	latestVersions   version.Channels
+	LatestVersions   version.Channels
 	serverVersion    string
 	linkerdConfig    *l5dcharts.Values
 	uuid             string
@@ -1190,13 +1190,13 @@ func (hc *HealthChecker) allCategories() []Category {
 					warning:     true,
 					check: func(ctx context.Context) (err error) {
 						if hc.VersionOverride != "" {
-							hc.latestVersions, err = version.NewChannels(hc.VersionOverride)
+							hc.LatestVersions, err = version.NewChannels(hc.VersionOverride)
 						} else {
 							uuid := "unknown"
 							if hc.uuid != "" {
 								uuid = hc.uuid
 							}
-							hc.latestVersions, err = version.GetLatestVersions(ctx, uuid, "cli")
+							hc.LatestVersions, err = version.GetLatestVersions(ctx, uuid, "cli")
 						}
 						return
 					},
@@ -1206,7 +1206,7 @@ func (hc *HealthChecker) allCategories() []Category {
 					hintAnchor:  "l5d-version-cli",
 					warning:     true,
 					check: func(context.Context) error {
-						return hc.latestVersions.Match(version.Version)
+						return hc.LatestVersions.Match(version.Version)
 					},
 				},
 			},
@@ -1219,7 +1219,7 @@ func (hc *HealthChecker) allCategories() []Category {
 					hintAnchor:  "l5d-version-control",
 					warning:     true,
 					check: func(context.Context) error {
-						return hc.latestVersions.Match(hc.serverVersion)
+						return hc.LatestVersions.Match(hc.serverVersion)
 					},
 				},
 				{
@@ -1389,7 +1389,7 @@ func (hc *HealthChecker) CheckProxyVersionsUpToDate(pods []corev1.Pod) error {
 	outdatedPods := []string{}
 	for _, pod := range pods {
 		proxyVersion := k8s.GetProxyVersion(pod)
-		if err := hc.latestVersions.Match(proxyVersion); err != nil {
+		if err := hc.LatestVersions.Match(proxyVersion); err != nil {
 			outdatedPods = append(outdatedPods, fmt.Sprintf("\t* %s (%s)", pod.Name, proxyVersion))
 		}
 	}
@@ -1698,9 +1698,9 @@ func (hc *HealthChecker) PublicAPIClient() public.Client {
 	return hc.apiClient
 }
 
-// LatestVersions returns the latest versions from Linkerd release channels
-func (hc *HealthChecker) LatestVersions() version.Channels {
-	return hc.latestVersions
+// UUID returns the UUID of the installation
+func (hc *HealthChecker) UUID() string {
+	return hc.uuid
 }
 
 func (hc *HealthChecker) checkLinkerdConfigConfigMap(ctx context.Context) (string, *l5dcharts.Values, error) {

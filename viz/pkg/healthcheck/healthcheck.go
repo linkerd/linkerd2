@@ -10,6 +10,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/viz/metrics-api/client"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	vizLabels "github.com/linkerd/linkerd2/viz/pkg/labels"
@@ -169,6 +170,20 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 			WithHintAnchor("l5d-viz-proxy-cp-version").
 			Warning().
 			WithCheck(func(ctx context.Context) error {
+				var err error
+				if hc.VersionOverride != "" {
+					hc.LatestVersions, err = version.NewChannels(hc.VersionOverride)
+				} else {
+					uuid := "unknown"
+					if hc.UUID() != "" {
+						uuid = hc.UUID()
+					}
+					hc.LatestVersions, err = version.GetLatestVersions(ctx, uuid, "cli")
+				}
+				if err != nil {
+					return err
+				}
+
 				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, hc.vizNamespace)
 				if err != nil {
 					return err

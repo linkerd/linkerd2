@@ -7,15 +7,18 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/version"
 	vizHealthCheck "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
 	"github.com/spf13/cobra"
 )
 
 type checkOptions struct {
-	proxy     bool
-	wait      time.Duration
-	namespace string
-	output    string
+	proxy              bool
+	wait               time.Duration
+	versionOverride    string
+	cliVersionOverride string
+	namespace          string
+	output             string
 }
 
 func newCheckOptions() *checkOptions {
@@ -56,6 +59,8 @@ code.`,
 	cmd.PersistentFlags().BoolVar(&options.proxy, "proxy", options.proxy, "Also run data-plane checks, to determine if the data plane is healthy")
 	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
+	cmd.PersistentFlags().StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
+	cmd.PersistentFlags().StringVar(&options.cliVersionOverride, "cli-version-override", "", "Used to override the version of the cli (mostly for testing)")
 	return cmd
 }
 
@@ -63,6 +68,10 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	err := options.validate()
 	if err != nil {
 		return fmt.Errorf("Validation error when executing check command: %v", err)
+	}
+
+	if options.cliVersionOverride != "" {
+		version.Version = options.cliVersionOverride
 	}
 
 	checks := []healthcheck.CategoryID{
@@ -79,6 +88,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		APIAddr:               apiAddr,
 		RetryDeadline:         time.Now().Add(options.wait),
 		DataPlaneNamespace:    options.namespace,
+		VersionOverride:       options.versionOverride,
 	})
 
 	hc.AppendCategories(hc.VizCategory())
