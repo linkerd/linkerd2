@@ -1182,6 +1182,60 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
+			ID: LinkerdVersionChecks,
+			checkers: []Checker{
+				{
+					description: "can determine the latest version",
+					hintAnchor:  "l5d-version-latest",
+					warning:     true,
+					check: func(ctx context.Context) (err error) {
+						if hc.VersionOverride != "" {
+							hc.latestVersions, err = version.NewChannels(hc.VersionOverride)
+						} else {
+							uuid := "unknown"
+							if hc.uuid != "" {
+								uuid = hc.uuid
+							}
+							hc.latestVersions, err = version.GetLatestVersions(ctx, uuid, "cli")
+						}
+						return
+					},
+				},
+				{
+					description: "cli is up-to-date",
+					hintAnchor:  "l5d-version-cli",
+					warning:     true,
+					check: func(context.Context) error {
+						return hc.latestVersions.Match(version.Version)
+					},
+				},
+			},
+		},
+		{
+			ID: LinkerdControlPlaneVersionChecks,
+			checkers: []Checker{
+				{
+					description: "control plane is up-to-date",
+					hintAnchor:  "l5d-version-control",
+					warning:     true,
+					check: func(context.Context) error {
+						return hc.latestVersions.Match(hc.serverVersion)
+					},
+				},
+				{
+					description: "control plane and cli versions match",
+					hintAnchor:  "l5d-version-control",
+					warning:     true,
+					check: func(context.Context) error {
+						if hc.serverVersion != version.Version {
+							return fmt.Errorf("control plane running %s but cli running %s", hc.serverVersion, version.Version)
+						}
+						return nil
+					},
+				},
+			},
+		},
+		{
 			ID: LinkerdAPIChecks,
 			checkers: []Checker{
 				{
@@ -1233,60 +1287,6 @@ func (hc *HealthChecker) allCategories() []Category {
 						}
 
 						return CheckIfProxyVersionsMatchWithCLI(podList.Items)
-					},
-				},
-			},
-		},
-		{
-			ID: LinkerdVersionChecks,
-			checkers: []Checker{
-				{
-					description: "can determine the latest version",
-					hintAnchor:  "l5d-version-latest",
-					warning:     true,
-					check: func(ctx context.Context) (err error) {
-						if hc.VersionOverride != "" {
-							hc.latestVersions, err = version.NewChannels(hc.VersionOverride)
-						} else {
-							uuid := "unknown"
-							if hc.uuid != "" {
-								uuid = hc.uuid
-							}
-							hc.latestVersions, err = version.GetLatestVersions(ctx, uuid, "cli")
-						}
-						return
-					},
-				},
-				{
-					description: "cli is up-to-date",
-					hintAnchor:  "l5d-version-cli",
-					warning:     true,
-					check: func(context.Context) error {
-						return hc.latestVersions.Match(version.Version)
-					},
-				},
-			},
-		},
-		{
-			ID: LinkerdControlPlaneVersionChecks,
-			checkers: []Checker{
-				{
-					description: "control plane is up-to-date",
-					hintAnchor:  "l5d-version-control",
-					warning:     true,
-					check: func(context.Context) error {
-						return hc.latestVersions.Match(hc.serverVersion)
-					},
-				},
-				{
-					description: "control plane and cli versions match",
-					hintAnchor:  "l5d-version-control",
-					warning:     true,
-					check: func(context.Context) error {
-						if hc.serverVersion != version.Version {
-							return fmt.Errorf("control plane running %s but cli running %s", hc.serverVersion, version.Version)
-						}
-						return nil
 					},
 				},
 			},

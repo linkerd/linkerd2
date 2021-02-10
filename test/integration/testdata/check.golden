@@ -47,13 +47,6 @@ linkerd-webhooks-and-apisvc-tls
 √ sp-validator webhook has valid cert
 √ sp-validator cert is valid for at least 60 days
 
-linkerd-api
------------
-√ control plane pods are ready
-√ control plane proxies are healthy
-√ control plane proxies are up-to-date
-√ control plane proxies and cli versions match
-
 linkerd-version
 ---------------
 √ can determine the latest version
@@ -63,5 +56,12 @@ control-plane-version
 ---------------------
 √ control plane is up-to-date
 √ control plane and cli versions match
+
+linkerd-api
+-----------
+√ control plane pods are ready
+√ control plane proxies are healthy
+√ control plane proxies are up-to-date
+√ control plane proxies and cli versions match
 
 Status check results are √
