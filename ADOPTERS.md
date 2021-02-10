@@ -21,6 +21,7 @@
 - [HP Inc](https://www8.hp.com/us/en/home.html)
 - [In Loco](https://inloco.com.br/en/)
 - [Just Football](https://justfootball.io)
+- [K3 Business Technologies](https://www.k3btg.com)
 - [Kairos](https://kairos.com)
 - [Kurio](https://kurio.id)
 - [LeadIQ](https://leadiq.com)
