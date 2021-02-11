@@ -101,6 +101,7 @@ jobs:
         - cluster-domain
         - deep
         - external-issuer
+        - external-prometheus
         - helm-deep
         - helm-upgrade
         - uninstall

@@ -49,7 +49,6 @@ var (
 		{Namespace: "linkerd", Name: "linkerd-dst"},
 		{Namespace: "linkerd-viz", Name: "linkerd-grafana"},
 		{Namespace: "linkerd", Name: "linkerd-identity"},
-		{Namespace: "linkerd-viz", Name: "linkerd-prometheus"},
 		{Namespace: "linkerd-viz", Name: "linkerd-web"},
 		{Namespace: "linkerd-viz", Name: "linkerd-tap"},
 		{Namespace: "linkerd", Name: "linkerd-dst-headless"},
@@ -331,6 +330,25 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 	}
 
+	if TestHelper.ExternalPrometheus() {
+
+		// Install external prometheus
+		resources, err := testutil.ReadFile("testdata/external_prometheus.yaml")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "failed to read external_prometheus manifest file",
+				"failed to read external_prometheus manifest file: %s", err)
+		}
+
+		out, err := TestHelper.KubectlApply(resources, "")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+				"kubectl apply command failed\n%s", out)
+		}
+
+		// Update args to use external proemtheus
+		vizArgs = append(vizArgs, "--set", "prometheusUrl=http://prometheus.default.svc.cluster.local:9090", "--set", "prometheus.enabled=false")
+	}
+
 	if TestHelper.UpgradeFromVersion() != "" {
 
 		cmd = "upgrade"
@@ -519,6 +537,11 @@ func TestInstallHelm(t *testing.T) {
 func TestControlPlaneResourcesPostInstall(t *testing.T) {
 	expectedServices := linkerdSvcEdge
 	expectedDeployments := testutil.LinkerdDeployReplicasEdge
+	if !TestHelper.ExternalPrometheus() {
+		expectedServices = append(expectedServices, testutil.Service{Namespace: "linkerd-viz", Name: "linkerd-prometheus"})
+		expectedDeployments["linkerd-prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1, Containers: []string{}}
+	}
+
 	// Upgrade Case
 	if TestHelper.UpgradeHelmFromVersion() != "" {
 		expectedServices = linkerdSvcStable
@@ -995,7 +1018,11 @@ func TestCheckProxy(t *testing.T) {
 }
 
 func TestRestarts(t *testing.T) {
-	for deploy, spec := range testutil.LinkerdDeployReplicasEdge {
+	expectedDeployments := testutil.LinkerdDeployReplicasEdge
+	if !TestHelper.ExternalPrometheus() {
+		expectedDeployments["linkerd-prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1, Containers: []string{}}
+	}
+	for deploy, spec := range expectedDeployments {
 		if err := TestHelper.CheckPods(context.Background(), spec.Namespace, deploy, spec.Replicas); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
