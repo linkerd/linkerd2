@@ -102,7 +102,6 @@ type (
 		// This should match .Resources.CPU.Limit, but must be a whole number
 		Cores                         int64            `json:"cores,omitempty"`
 		DisableIdentity               bool             `json:"disableIdentity"`
-		DisableTap                    bool             `json:"disableTap"`
 		EnableExternalProfiles        bool             `json:"enableExternalProfiles"`
 		Image                         *Image           `json:"image"`
 		LogLevel                      string           `json:"logLevel"`

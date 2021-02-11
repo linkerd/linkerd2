@@ -164,6 +164,7 @@ Kubernetes: `>=1.13.0-0`
 | tapInjector.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the tapInjector instance |
 | tapInjector.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the tapInjector instance |
 | tapInjector.keyPEM | string | `""` | Certificate key for the tapInjector. If not provided then Helm will generate one. |
+| tapInjector.logLevel | string | defaultLogLevel | log level of the tapInjector |
 | tapInjector.namespaceSelector | string | `nil` |  |
 | tapInjector.objectSelector | string | `nil` |  |
 | tapInjector.proxy | string | `nil` |  |

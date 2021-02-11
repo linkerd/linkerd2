@@ -40,7 +40,6 @@ var (
 		k8s.ProxyAdminPortAnnotation,
 		k8s.ProxyControlPortAnnotation,
 		k8s.ProxyDisableIdentityAnnotation,
-		k8s.ProxyDisableTapAnnotation,
 		k8s.ProxyEnableDebugAnnotation,
 		k8s.ProxyEnableExternalProfilesAnnotation,
 		k8s.ProxyImagePullPolicyAnnotation,
@@ -704,13 +703,6 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		value, err := strconv.ParseBool(override)
 		if err == nil {
 			values.Proxy.DisableIdentity = value
-		}
-	}
-
-	if override, ok := annotations[k8s.ProxyDisableTapAnnotation]; ok {
-		value, err := strconv.ParseBool(override)
-		if err == nil {
-			values.Proxy.DisableTap = value
 		}
 	}
 
