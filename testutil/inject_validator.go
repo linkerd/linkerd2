@@ -76,15 +76,6 @@ func (iv *InjectValidator) validateEnvVar(container *v1.Container, envName, expe
 	return fmt.Errorf("cannot find env: %s", envName)
 }
 
-func (iv *InjectValidator) validateNoEnvVar(container *v1.Container, envName string) error {
-	for _, env := range container.Env {
-		if env.Name == envName {
-			return fmt.Errorf("env: %s, expected to not be set, actual %s", envName, env.Value)
-		}
-	}
-	return nil
-}
-
 func (iv *InjectValidator) validatePort(container *v1.Container, portName string, expectedValue int) error {
 	for _, port := range container.Ports {
 		if port.Name == portName {
