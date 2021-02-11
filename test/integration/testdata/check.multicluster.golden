@@ -1,18 +1,3 @@
-kubernetes-api
---------------
-√ can initialize the client
-√ can query the Kubernetes API
-
-linkerd-existence
------------------
-√ 'linkerd-config' config map exists
-√ heartbeat ServiceAccount exist
-√ control plane replica sets are ready
-√ no unschedulable pods
-√ controller pod is running
-√ can initialize the client
-√ can query the control plane API
-
 linkerd-multicluster
 --------------------
 √ Link CRD exists

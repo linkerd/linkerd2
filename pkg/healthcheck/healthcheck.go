@@ -442,6 +442,37 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 	return hc
 }
 
+// InitializeKubeAPIClient creates a client for the HealthChecker. It avoids
+// having to require the KubernetesAPIChecks check to run in order for the
+// HealthChecker to run other checks.
+func (hc *HealthChecker) InitializeKubeAPIClient() error {
+	k8sAPI, err := k8s.NewAPI(hc.KubeConfig, hc.KubeContext, hc.Impersonate, hc.ImpersonateGroup, RequestTimeout)
+	if err != nil {
+		return err
+	}
+	hc.kubeAPI = k8sAPI
+
+	return nil
+}
+
+// InitializeLinkerdGlobalConfig populates the linkerd config object in the
+// healthchecker. It avoids having to require the LinkerdControlPlaneExistenceChecks
+// check to run before running other checks
+func (hc *HealthChecker) InitializeLinkerdGlobalConfig(ctx context.Context) error {
+	uuid, l5dConfig, err := hc.checkLinkerdConfigConfigMap(ctx)
+	if err != nil {
+		return err
+	}
+
+	if l5dConfig != nil {
+		hc.CNIEnabled = l5dConfig.GetGlobal().CNIEnabled
+	}
+	hc.uuid = uuid
+	hc.linkerdConfig = l5dConfig
+
+	return nil
+}
+
 // AppendCategories returns a HealthChecker instance appending the provided Categories
 func (hc *HealthChecker) AppendCategories(categories ...Category) *HealthChecker {
 	hc.categories = append(hc.categories, categories...)
@@ -474,7 +505,7 @@ func (hc *HealthChecker) allCategories() []Category {
 					hintAnchor:  "k8s-api",
 					fatal:       true,
 					check: func(context.Context) (err error) {
-						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext, hc.Impersonate, hc.ImpersonateGroup, RequestTimeout)
+						err = hc.InitializeKubeAPIClient()
 						return
 					},
 				},
@@ -667,11 +698,7 @@ func (hc *HealthChecker) allCategories() []Category {
 					hintAnchor:  "l5d-existence-linkerd-config",
 					fatal:       true,
 					check: func(ctx context.Context) (err error) {
-						hc.uuid, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap(ctx)
-						if hc.linkerdConfig == nil {
-							return errors.New("failed to load linkerd-config")
-						}
-						hc.CNIEnabled = hc.linkerdConfig.GetGlobal().CNIEnabled
+						err = hc.InitializeLinkerdGlobalConfig(ctx)
 						return
 					},
 				},
