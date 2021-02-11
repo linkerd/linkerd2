@@ -145,6 +145,9 @@ tap:
 tapInjector:
   # -- Number of replicas of tapInjector
   replicas: 1
+  # -- log level of the tapInjector
+  # @default -- defaultLogLevel
+  logLevel: ""
   image:
     # -- Docker registry for the tapInjector instance
     registry: *registry
