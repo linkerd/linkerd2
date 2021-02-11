@@ -2,6 +2,10 @@
 
 ## edge-21.2.2
 
+* **Breaking change**: Removed the `Global` field from the Linkerd Helm chart
+  now that it is unused because of the extension model; users doing upgrades
+  with Helm passing customized `values.yaml` will have to take this change into
+  account.
 * Added the `repair` command which will repopulate resources needed for properly
   upgrading a Linkerd installation
 * Fixed the spelling of the `sidecarContainers` key in the Viz extension Helm
@@ -15,9 +19,6 @@
 * Changed the `check` command to include each installed extension's `check`
   output; this allows users to check for proper configuration and installation
   of Linkerd without running a command for each extension
-* Removed the `Global` field from the Linkerd Helm chart now that it is unused
-  because of the extension model; this is not a breaking change and cleanup will
-  occur automatically during upgrade.
 * Added proxy support for TCP traffic to the multicluster gateways which
   completes preparation for supporting opaque traffic in multicluster
   installations; the next edge will support this end-to-end
