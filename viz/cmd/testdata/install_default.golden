@@ -931,11 +931,11 @@ spec:
         beta.kubernetes.io/os: linux
       containers:
       - args:
-        - tap
-        - -controller-namespace=linkerd
+        - api
+        - -api-namespace=linkerd
         - -log-level=info
         - -identity-trust-domain=cluster.local
-        image: ghcr.io/linkerd/controller:dev-undefined
+        image: ghcr.io/linkerd/tap:dev-undefined
         imagePullPolicy: 
         livenessProbe:
           httpGet:
@@ -1092,9 +1092,9 @@ spec:
         beta.kubernetes.io/os: linux
       containers:
       - args:
-        - tap-injector
+        - injector
         - -tap-service-name=linkerd-tap.linkerd-viz.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/controller:dev-undefined
+        image: ghcr.io/linkerd/tap:dev-undefined
         imagePullPolicy: 
         livenessProbe:
           httpGet:

@@ -10,8 +10,6 @@ import (
 	proxyinjector "github.com/linkerd/linkerd2/controller/cmd/proxy-injector"
 	publicapi "github.com/linkerd/linkerd2/controller/cmd/public-api"
 	spvalidator "github.com/linkerd/linkerd2/controller/cmd/sp-validator"
-	"github.com/linkerd/linkerd2/controller/cmd/tap"
-	tapinjector "github.com/linkerd/linkerd2/controller/cmd/tap-injector"
 	servicemirror "github.com/linkerd/linkerd2/multicluster/cmd/service-mirror"
 )
 
@@ -34,10 +32,6 @@ func main() {
 		publicapi.Main(os.Args[2:])
 	case "sp-validator":
 		spvalidator.Main(os.Args[2:])
-	case "tap":
-		tap.Main(os.Args[2:])
-	case "tap-injector":
-		tapinjector.Main(os.Args[2:])
 	case "service-mirror":
 		servicemirror.Main(os.Args[2:])
 	default:

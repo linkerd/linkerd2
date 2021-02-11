@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/identity"
@@ -148,8 +147,8 @@ func TestHealthChecker(t *testing.T) {
 		checkers: []Checker{
 			{
 				description: "skipRpc",
-				checkRPC: func(context.Context) (*healthcheckPb.SelfCheckResponse, error) {
-					return nil, &SkipError{Reason: "needs skipping"}
+				check: func(context.Context) error {
+					return &SkipError{Reason: "needs skipping"}
 				},
 				retryDeadline: time.Time{},
 			},

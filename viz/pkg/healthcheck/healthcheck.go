@@ -3,10 +3,10 @@ package healthcheck
 import (
 	"context"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"strings"
 
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -217,8 +217,28 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 			// "waiting for check to complete" while things converge. If after the timeout
 			// it still hasn't converged, we show the real error (a 503 usually).
 			WithRetryDeadline(hc.RetryDeadline).
-			WithCheckRPC(func(ctx context.Context) (*healthcheckPb.SelfCheckResponse, error) {
-				return hc.vizAPIClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
+			WithCheck(func(ctx context.Context) error {
+				results, err := hc.vizAPIClient.SelfCheck(ctx, &pb.SelfCheckRequest{})
+				if err != nil {
+					return err
+				}
+
+				if len(results.GetResults()) == 0 {
+					return errors.New("No results returned")
+				}
+
+				errs := []string{}
+				for _, res := range results.GetResults() {
+					if res.GetStatus() != pb.CheckStatus_OK {
+						errs = append(errs, res.GetFriendlyMessageToUser())
+					}
+				}
+				if len(errs) == 0 {
+					return nil
+				}
+
+				errsStr := strings.Join(errs, "\n    ")
+				return errors.New(errsStr)
 			}),
 	}, true)
 }
