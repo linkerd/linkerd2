@@ -1,5 +1,27 @@
 # Changes
 
+## edge-21.2.2
+
+* Added the `repair` command which will repopulate resources needed for properly
+  upgrading a Linkerd installation
+* Fixed the spelling of the `sidecarContainers` key in the Viz extension Helm
+  chart to match that of the template (thanks @n-oden!)
+* Added the `tapInjector.logLevel` key to the Viz extension helm chart so that
+  the log level of the component can be configured
+* Removed the `--disable-tap` flag from the `inject` command now that tap is no
+  longer part of the core installation (thanks @mayankshah1607!)
+* Changed proxy configuration to use fully-qualified DNS names to avoid extra
+  search paths in DNS resolutions
+* Changed the `check` command to include each installed extension's `check`
+  output; this allows users to check for proper configuration and installation
+  of Linkerd without running a command for each extension
+* Removed the `Global` field from the Linkerd Helm chart now that it is unused
+  because of the extension model; this is not a breaking change and cleanup will
+  occur automatically during upgrade.
+* Added proxy support for TCP traffic to the multicluster gateways which
+  completes preparation for supporting opaque traffic in multicluster
+  installations; the next edge will support this end-to-end
+
 ## edge-21.2.1
 
 This edge release continues improving the proxy's diagnostics and also avoids
