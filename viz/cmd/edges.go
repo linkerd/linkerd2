@@ -118,7 +118,8 @@ func NewCmdEdges() *cobra.Command {
 			i := 0
 			for res := range c {
 				if res.err != nil {
-					return res.err
+					fmt.Fprint(os.Stderr, res.err.Error())
+					os.Exit(1)
 				}
 				totalRows = append(totalRows, res.rows...)
 				if i++; i == len(reqs) {
