@@ -428,7 +428,7 @@ spec:
         - -cluster-domain=cluster.local
         - -prometheus-url=external-prom.com
         image: ghcr.io/linkerd/metrics-api:dev-undefined
-        imagePullPolicy:
+        imagePullPolicy: 
         livenessProbe:
           httpGet:
             path: /ping
@@ -569,7 +569,7 @@ spec:
         - name: GODEBUG
           value: netdns=go
         image: ghcr.io/linkerd/grafana:dev-undefined
-        imagePullPolicy:
+        imagePullPolicy: 
         livenessProbe:
           httpGet:
             path: /api/health
@@ -674,7 +674,7 @@ spec:
         - -log-level=info
         - -identity-trust-domain=cluster.local
         image: ghcr.io/linkerd/tap:dev-undefined
-        imagePullPolicy:
+        imagePullPolicy: 
         livenessProbe:
           httpGet:
             path: /ping
@@ -834,7 +834,7 @@ spec:
         - -tap-service-name=linkerd-tap.linkerd-viz.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - -log-level=info
         image: ghcr.io/linkerd/tap:dev-undefined
-        imagePullPolicy:
+        imagePullPolicy: 
         livenessProbe:
           httpGet:
             path: /ping
@@ -934,7 +934,7 @@ spec:
         - -log-level=info
         - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd-viz\.svc\.cluster\.local|linkerd-web\.linkerd-viz\.svc|\[::1\])(:\d+)?$
         image: ghcr.io/linkerd/web:dev-undefined
-        imagePullPolicy:
+        imagePullPolicy: 
         livenessProbe:
           httpGet:
             path: /ping
