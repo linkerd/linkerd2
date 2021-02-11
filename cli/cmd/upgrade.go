@@ -59,7 +59,11 @@ func newCmdUpgradeConfig(values *l5dcharts.Values) *cobra.Command {
 		Short: "Output Kubernetes cluster-wide resources to upgrade an existing Linkerd",
 		Long: `Output Kubernetes cluster-wide resources to upgrade an existing Linkerd.
 
-Note that this command should be followed by "linkerd upgrade control-plane".`,
+Note that this command should be followed by "linkerd upgrade control-plane".
+
+The upgrade can be configured by using the --set, --values, --set-string and --set-file flags.
+A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md
+`,
 		Example: `  # Default upgrade.
   linkerd upgrade config | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -100,7 +104,11 @@ func newCmdUpgradeControlPlane(values *l5dcharts.Values) *cobra.Command {
 
 Note that the default flag values for this command come from the Linkerd control
 plane. The default values displayed in the Flags section below only apply to the
-install command. It should be run after "linkerd upgrade config".`,
+install command. It should be run after "linkerd upgrade config".
+
+The upgrade can be configured by using the --set, --values, --set-string and --set-file flags.
+A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md
+`,
 		Example: `  # Default upgrade.
   linkerd upgrade control-plane | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -147,7 +155,11 @@ func newCmdUpgrade() *cobra.Command {
 
 Note that the default flag values for this command come from the Linkerd control
 plane. The default values displayed in the Flags section below only apply to the
-install command.`,
+install command.
+
+The upgrade can be configured by using the --set, --values, --set-string and --set-file flags.
+A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md
+`,
 
 		Example: `  # Default upgrade.
   linkerd upgrade | kubectl apply --prune -l linkerd.io/control-plane-ns=linkerd -f -
