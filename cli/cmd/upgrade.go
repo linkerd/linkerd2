@@ -12,6 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/cli/flag"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	flagspkg "github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -72,6 +73,7 @@ Note that this command should be followed by "linkerd upgrade control-plane".`,
 	}
 
 	cmd.Flags().AddFlagSet(allStageFlagSet)
+	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
 
 	return cmd
 }
@@ -113,6 +115,7 @@ install command. It should be run after "linkerd upgrade config".`,
 	cmd.Flags().AddFlagSet(allStageFlagSet)
 	cmd.Flags().AddFlagSet(installUpgradeFlagSet)
 	cmd.Flags().AddFlagSet(proxyFlagSet)
+	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
 
 	return cmd
 }
@@ -169,6 +172,7 @@ install command.`,
 	cmd.Flags().AddFlagSet(installUpgradeFlagSet)
 	cmd.Flags().AddFlagSet(proxyFlagSet)
 	cmd.PersistentFlags().AddFlagSet(upgradeFlagSet)
+	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
 
 	cmd.AddCommand(newCmdUpgradeConfig(values))
 	cmd.AddCommand(newCmdUpgradeControlPlane(values))
