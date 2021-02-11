@@ -2,12 +2,13 @@
 
 ## edge-21.2.2
 
-This edge release introduces a new `repair` command which will repopulate
-resources needed for upgrading from a `2.9.x` installation. There will be an
-error message during the upgrade process indicating that this command should be
-run so that users do not need to guess.
+This edge release introduces support for multicluster TCP. It prepares support
+for multicluster opaque ports, which will follow-up in a future release.
 
-It also continues to prepare support for multicluster opaque ports.
+The `repair` command was added which will repopulate resources needed for
+upgrading from a `2.9.x` installation. There will be an error message during the
+upgrade process indicating that this command should be run so that users do not
+need to guess.
 
 Lastly, it contains a breaking change for Helm users upgrading with a customized
 `values.yaml`. If upgrading without this customization, there is no action to
