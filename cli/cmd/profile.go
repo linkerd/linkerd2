@@ -107,7 +107,7 @@ func newCmdProfile() *cobra.Command {
 					return err
 				}
 
-				if cd := values.GetGlobal().ClusterDomain; cd != "" {
+				if cd := values.ClusterDomain; cd != "" {
 					clusterDomain = cd
 				}
 			}

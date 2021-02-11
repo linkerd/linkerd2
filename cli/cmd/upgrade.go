@@ -12,6 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/cli/flag"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -320,6 +321,11 @@ func loadStoredValues(ctx context.Context, k *k8s.KubernetesAPI) (*charts.Values
 	bytes, ok := secret.Data["linkerd-config-overrides"]
 	if !ok {
 		return nil, errors.New("secret/linkerd-config-overrides is missing linkerd-config-overrides data")
+	}
+
+	bytes, err = config.RemoveGlobalFieldIfPresent(bytes)
+	if err != nil {
+		return nil, err
 	}
 
 	// Unmarshal the overrides directly onto the values.  This has the effect

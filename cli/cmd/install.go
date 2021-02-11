@@ -125,7 +125,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 			}
 			if !ignoreCluster {
 				// Ensure k8s is reachable and that Linkerd is not already installed.
-				if err := errAfterRunningChecks(values.GetGlobal().CNIEnabled); err != nil {
+				if err := errAfterRunningChecks(values.CNIEnabled); err != nil {
 					if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
 						fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
 					} else {
@@ -181,7 +181,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 			if !skipChecks {
 				// check if global resources exist to determine if the `install config`
 				// stage succeeded
-				if err := errAfterRunningChecks(values.GetGlobal().CNIEnabled); err == nil {
+				if err := errAfterRunningChecks(values.CNIEnabled); err == nil {
 					if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
 						fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
 					} else {
@@ -312,7 +312,7 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 func render(w io.Writer, values *l5dcharts.Values, stage string, options valuespkg.Options) error {
 
 	// Set any global flags if present, common with install and upgrade
-	values.GetGlobal().Namespace = controlPlaneNamespace
+	values.Namespace = controlPlaneNamespace
 	values.Stage = stage
 
 	// Render raw values
@@ -397,7 +397,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 	}
 
 	if stage == "" || stage == controlPlaneStage {
-		overrides, err := renderOverrides(values, values.GetGlobal().Namespace, false)
+		overrides, err := renderOverrides(values, values.Namespace, false)
 		if err != nil {
 			return err
 		}
