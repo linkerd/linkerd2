@@ -166,6 +166,16 @@ func (kubeAPI *KubernetesAPI) GetReplicaSets(ctx context.Context, namespace stri
 	return replicaSetList.Items, nil
 }
 
+// GetAllNamespacesWithExtensionLabel gets all namespaces with the linkerd.io/extension label key
+func (kubeAPI *KubernetesAPI) GetAllNamespacesWithExtensionLabel(ctx context.Context) ([]corev1.Namespace, error) {
+	namespaces, err := kubeAPI.CoreV1().Namespaces().List(ctx, metav1.ListOptions{LabelSelector: LinkerdExtensionLabel})
+	if err != nil {
+		return nil, err
+	}
+
+	return namespaces.Items, nil
+}
+
 // GetNamespaceWithExtensionLabel gets the namespace with the LinkerdExtensionLabel label value of `value`
 func (kubeAPI *KubernetesAPI) GetNamespaceWithExtensionLabel(ctx context.Context, value string) (*corev1.Namespace, error) {
 	namespaces, err := kubeAPI.CoreV1().Namespaces().List(ctx, metav1.ListOptions{LabelSelector: LinkerdExtensionLabel})

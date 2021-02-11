@@ -34,6 +34,23 @@ This command provides all Kubernetes namespace-scoped and cluster-scoped resourc
 			}
 
 			if !force {
+
+				var fail bool
+				// Retrtieve any installed extensions
+				extensionNamespaces, err := k8sAPI.GetAllNamespacesWithExtensionLabel(cmd.Context())
+				if err != nil {
+					return err
+				}
+
+				if len(extensionNamespaces) > 0 {
+					var extensions []string
+					for _, extension := range extensionNamespaces {
+						extensions = append(extensions, fmt.Sprintf("* %s", extension.Labels[k8s.LinkerdExtensionLabel]))
+					}
+					fmt.Fprintln(os.Stderr, fmt.Sprintf("Please uninstall the following extensions before uninstalling the control-plane:\n\t%s", strings.Join(extensions, "\n\t")))
+					fail = true
+				}
+
 				podList, err := k8sAPI.CoreV1().Pods("").List(cmd.Context(), metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
 				if err != nil {
 					return err
@@ -49,6 +66,10 @@ This command provides all Kubernetes namespace-scoped and cluster-scoped resourc
 
 				if len(injectedPods) > 0 {
 					fmt.Fprintln(os.Stderr, fmt.Sprintf("Please uninject the following pods before uninstalling the control-plane:\n\t%s", strings.Join(injectedPods, "\n\t")))
+					fail = true
+				}
+
+				if fail {
 					os.Exit(1)
 				}
 			}
