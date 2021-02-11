@@ -594,7 +594,6 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 	values.GetGlobal().Proxy.LogLevel = "debug"
 	values.GetGlobal().Proxy.LogFormat = "cool"
 	values.GetGlobal().Proxy.DisableIdentity = true
-	values.GetGlobal().Proxy.DisableTap = true
 	values.GetGlobal().Proxy.EnableExternalProfiles = true
 	values.GetGlobal().Proxy.Resources.CPU.Request = "10m"
 	values.GetGlobal().Proxy.Resources.CPU.Limit = "100m"

@@ -707,13 +707,6 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyDisableTapAnnotation]; ok {
-		value, err := strconv.ParseBool(override)
-		if err == nil {
-			values.GetGlobal().Proxy.DisableTap = value
-		}
-	}
-
 	if override, ok := annotations[k8s.ProxyRequireIdentityOnInboundPortsAnnotation]; ok {
 		values.GetGlobal().Proxy.RequireIdentityOnInboundPorts = override
 	}
