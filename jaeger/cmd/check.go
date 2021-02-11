@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/linkerd/linkerd2/jaeger/pkg/labels"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -19,6 +22,9 @@ const (
 
 	// linkerdJaegerExtensionCheck adds checks related to the jaeger extension
 	linkerdJaegerExtensionCheck healthcheck.CategoryID = jaegerExtensionName
+
+	// linkerdJaegerExtensionDataPlaneCheck adds checks related to the jaeger extension
+	linkerdJaegerExtensionDataPlaneCheck healthcheck.CategoryID = jaegerExtensionName + "-data-plane"
 )
 
 var (
@@ -26,8 +32,10 @@ var (
 )
 
 type checkOptions struct {
-	wait   time.Duration
-	output string
+	wait      time.Duration
+	output    string
+	proxy     bool
+	namespace string
 }
 
 func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
@@ -132,6 +140,53 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 	return healthcheck.NewCategory(linkerdJaegerExtensionCheck, checkers, true)
 }
 
+// JaegerDataPlaneCategory returns a healthcheck.Category containing checkers
+// to verify the jaeger injection
+func JaegerDataPlaneCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
+	return healthcheck.NewCategory(linkerdJaegerExtensionDataPlaneCheck, []healthcheck.Checker{
+		*healthcheck.NewChecker("data plane namespace exists").
+			WithHintAnchor("l5d-data-plane-exists").
+			Fatal().
+			WithCheck(func(ctx context.Context) error {
+				if hc.DataPlaneNamespace == "" {
+					// when checking proxies in all namespaces, this check is a no-op
+					return nil
+				}
+				return hc.CheckNamespace(ctx, hc.DataPlaneNamespace, true)
+			}),
+		*healthcheck.NewChecker("data-plane pods have tap enabled").
+			WithHintAnchor("l5d-jaeger-data-plane-trace").
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, hc.DataPlaneNamespace)
+				if err != nil {
+					return err
+				}
+
+				return checkForTraceConfiguration(pods)
+			}),
+	}, true)
+}
+
+// checkForTraceConfiguration checks if the trace annotation is present
+// only for the pods with tracing enabled
+func checkForTraceConfiguration(pods []corev1.Pod) error {
+	var podsWithoutTraceConfig []string
+	for i := range pods {
+		pod := pods[i]
+		// Check for jaeger-injector annotation
+		if !labels.IsTracingEnabled(&pod) {
+			podsWithoutTraceConfig = append(podsWithoutTraceConfig, fmt.Sprintf("* %s", pod.Name))
+		}
+
+	}
+
+	if len(podsWithoutTraceConfig) > 0 {
+		return fmt.Errorf("Some data plane pods do not have tap configured and cannot be tapped:\n\t%s", strings.Join(podsWithoutTraceConfig, "\n\t"))
+	}
+	return nil
+}
+
 func newCheckOptions() *checkOptions {
 	return &checkOptions{
 		wait:   300 * time.Second,
@@ -167,6 +222,8 @@ code.`,
 
 	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
 	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
+	cmd.PersistentFlags().BoolVar(&options.proxy, "proxy", options.proxy, "Also run data-plane checks, to determine if the data plane is healthy")
+	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 
 	return cmd
 }
@@ -180,7 +237,6 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.LinkerdControlPlaneExistenceChecks,
-		linkerdJaegerExtensionCheck,
 	}
 
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
@@ -191,9 +247,14 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		ImpersonateGroup:      impersonateGroup,
 		APIAddr:               apiAddr,
 		RetryDeadline:         time.Now().Add(options.wait),
+		DataPlaneNamespace:    options.namespace,
 	})
 
 	hc.AppendCategories(*jaegerCategory(hc))
+	if options.proxy {
+		hc.AppendCategories(*JaegerDataPlaneCategory(hc))
+	}
+
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
 	if !success {
