@@ -40,7 +40,6 @@ var (
 		k8s.ProxyAdminPortAnnotation,
 		k8s.ProxyControlPortAnnotation,
 		k8s.ProxyDisableIdentityAnnotation,
-		k8s.ProxyDisableTapAnnotation,
 		k8s.ProxyEnableDebugAnnotation,
 		k8s.ProxyEnableExternalProfilesAnnotation,
 		k8s.ProxyImagePullPolicyAnnotation,
