@@ -13,16 +13,15 @@ import (
 	"time"
 
 	"github.com/ghodss/yaml"
-	"github.com/linkerd/linkerd2/controller/api/util"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
-	"github.com/linkerd/linkerd2/pkg/tap"
-	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
+	pb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
+	"github.com/linkerd/linkerd2/viz/tap/pkg"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -101,7 +100,7 @@ func newCmdProfile() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if cd := values.GetGlobal().ClusterDomain; cd != "" {
+			if cd := values.ClusterDomain; cd != "" {
 				clusterDomain = cd
 			}
 			return renderTapOutputProfile(cmd.Context(), k8sAPI, options.tap, options.namespace, options.name, clusterDomain, options.tapDuration, int(options.tapRouteLimit), os.Stdout)
@@ -118,12 +117,12 @@ func newCmdProfile() *cobra.Command {
 // a service profile with routes pre-populated from the tap data
 // Only inbound tap traffic is considered.
 func renderTapOutputProfile(ctx context.Context, k8sAPI *k8s.KubernetesAPI, tapResource, namespace, name, clusterDomain string, tapDuration time.Duration, routeLimit int, w io.Writer) error {
-	requestParams := util.TapRequestParams{
+	requestParams := pkg.TapRequestParams{
 		Resource:  tapResource,
 		Namespace: namespace,
 	}
 	log.Debugf("Running `linkerd tap %s --namespace %s`", tapResource, namespace)
-	req, err := util.BuildTapByResourceRequest(requestParams)
+	req, err := pkg.BuildTapByResourceRequest(requestParams)
 	if err != nil {
 		return err
 	}
@@ -149,7 +148,7 @@ func tapToServiceProfile(ctx context.Context, k8sAPI *k8s.KubernetesAPI, tapReq 
 	}
 	ctxWithTime, cancel := context.WithTimeout(ctx, tapDuration)
 	defer cancel()
-	reader, body, err := tap.Reader(ctxWithTime, k8sAPI, tapReq)
+	reader, body, err := pkg.Reader(ctxWithTime, k8sAPI, tapReq)
 	if err != nil {
 		return profile, err
 	}
@@ -172,7 +171,7 @@ func routeSpecFromTap(tapByteStream *bufio.Reader, routeLimit int) []*sp.RouteSp
 			if err != io.EOF &&
 				!(errors.As(err, &e) && e.Timeout()) &&
 				!errors.Is(err, context.DeadlineExceeded) &&
-				!strings.HasSuffix(err.Error(), tap.ErrClosedResponseBody) {
+				!strings.HasSuffix(err.Error(), pkg.ErrClosedResponseBody) {
 				fmt.Fprintln(os.Stderr, err)
 			}
 			break

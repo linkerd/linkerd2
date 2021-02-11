@@ -70,7 +70,7 @@ func TestUpgradeDefault(t *testing.T) {
 
 func TestUpgradeHA(t *testing.T) {
 	installOpts, upgradeOpts, _ := testOptions(t)
-	installOpts.GetGlobal().HighAvailability = true
+	installOpts.HighAvailability = true
 	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts)
 	if err != nil {
 		t.Fatal(err)
@@ -107,7 +107,7 @@ func TestUpgradeExternalIssuer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	installOpts.GetGlobal().IdentityTrustAnchorsPEM = string(ca)
+	installOpts.IdentityTrustAnchorsPEM = string(ca)
 	install := renderInstall(t, installOpts)
 	upgrade, err := renderUpgrade(install.String()+externalIssuerSecret(issuer), upgradeOpts)
 
@@ -134,8 +134,8 @@ func TestUpgradeIssuerWithExternalIssuerFails(t *testing.T) {
 	issuer := generateIssuerCerts(t, true)
 	defer issuer.cleanup()
 
-	installOpts.GetGlobal().IdentityTrustDomain = "cluster.local"
-	installOpts.GetGlobal().IdentityTrustDomain = issuer.ca
+	installOpts.IdentityTrustDomain = "cluster.local"
+	installOpts.IdentityTrustDomain = issuer.ca
 	installOpts.Identity.Issuer.Scheme = string(corev1.SecretTypeTLS)
 	installOpts.Identity.Issuer.TLS.CrtPEM = issuer.crt
 	installOpts.Identity.Issuer.TLS.KeyPEM = issuer.key

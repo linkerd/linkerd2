@@ -9,7 +9,6 @@ import (
 	"net/url"
 
 	"github.com/golang/protobuf/proto"
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
@@ -62,8 +61,8 @@ func (c *grpcOverHTTPClient) Gateways(ctx context.Context, req *pb.GatewaysReque
 	return &msg, err
 }
 
-func (c *grpcOverHTTPClient) SelfCheck(ctx context.Context, req *healthcheckPb.SelfCheckRequest, _ ...grpc.CallOption) (*healthcheckPb.SelfCheckResponse, error) {
-	var msg healthcheckPb.SelfCheckResponse
+func (c *grpcOverHTTPClient) SelfCheck(ctx context.Context, req *pb.SelfCheckRequest, _ ...grpc.CallOption) (*pb.SelfCheckResponse, error) {
+	var msg pb.SelfCheckResponse
 	err := c.apiRequest(ctx, "SelfCheck", req, &msg)
 	return &msg, err
 }

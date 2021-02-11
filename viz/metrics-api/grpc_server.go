@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
@@ -175,33 +174,33 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 	return &rsp, nil
 }
 
-func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckRequest) (*healthcheckPb.SelfCheckResponse, error) {
-	k8sClientCheck := &healthcheckPb.CheckResult{
+func (s *grpcServer) SelfCheck(ctx context.Context, in *pb.SelfCheckRequest) (*pb.SelfCheckResponse, error) {
+	k8sClientCheck := &pb.CheckResult{
 		SubsystemName:    k8sClientSubsystemName,
 		CheckDescription: k8sClientCheckDescription,
-		Status:           healthcheckPb.CheckStatus_OK,
+		Status:           pb.CheckStatus_OK,
 	}
 	_, err := s.k8sAPI.Pod().Lister().List(labels.Everything())
 	if err != nil {
-		k8sClientCheck.Status = healthcheckPb.CheckStatus_ERROR
+		k8sClientCheck.Status = pb.CheckStatus_ERROR
 		k8sClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error calling the Kubernetes API: %s", err)
 	}
 
-	response := &healthcheckPb.SelfCheckResponse{
-		Results: []*healthcheckPb.CheckResult{
+	response := &pb.SelfCheckResponse{
+		Results: []*pb.CheckResult{
 			k8sClientCheck,
 		},
 	}
 
 	if s.prometheusAPI != nil {
-		promClientCheck := &healthcheckPb.CheckResult{
+		promClientCheck := &pb.CheckResult{
 			SubsystemName:    promClientSubsystemName,
 			CheckDescription: promClientCheckDescription,
-			Status:           healthcheckPb.CheckStatus_OK,
+			Status:           pb.CheckStatus_OK,
 		}
 		_, err = s.queryProm(ctx, fmt.Sprintf(podQuery, ""))
 		if err != nil {
-			promClientCheck.Status = healthcheckPb.CheckStatus_ERROR
+			promClientCheck.Status = pb.CheckStatus_ERROR
 			promClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error calling Prometheus from the control plane: %s", err)
 		}
 

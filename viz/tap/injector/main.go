@@ -1,4 +1,4 @@
-package tapinjector
+package injector
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
-	tapinjector "github.com/linkerd/linkerd2/controller/tap-injector"
 	"github.com/linkerd/linkerd2/controller/webhook"
 	"github.com/linkerd/linkerd2/pkg/flags"
 )
@@ -22,7 +21,7 @@ func Main(args []string) {
 	webhook.Launch(
 		context.Background(),
 		[]k8s.APIResource{k8s.NS},
-		tapinjector.Mutate(*tapSvcName),
+		Mutate(*tapSvcName),
 		"tap-injector",
 		*metricsAddr,
 		*addr,

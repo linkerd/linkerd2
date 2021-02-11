@@ -3,10 +3,10 @@ package healthcheck
 import (
 	"context"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"strings"
 
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -20,6 +20,9 @@ import (
 )
 
 const (
+	// VizExtensionName is the name of the viz extension
+	VizExtensionName = "linkerd-viz"
+
 	// LinkerdVizExtensionCheck adds checks related to the Linkerd Viz extension
 	LinkerdVizExtensionCheck healthcheck.CategoryID = "linkerd-viz"
 
@@ -233,8 +236,28 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 			// "waiting for check to complete" while things converge. If after the timeout
 			// it still hasn't converged, we show the real error (a 503 usually).
 			WithRetryDeadline(hc.RetryDeadline).
-			WithCheckRPC(func(ctx context.Context) (*healthcheckPb.SelfCheckResponse, error) {
-				return hc.vizAPIClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
+			WithCheck(func(ctx context.Context) error {
+				results, err := hc.vizAPIClient.SelfCheck(ctx, &pb.SelfCheckRequest{})
+				if err != nil {
+					return err
+				}
+
+				if len(results.GetResults()) == 0 {
+					return errors.New("No results returned")
+				}
+
+				errs := []string{}
+				for _, res := range results.GetResults() {
+					if res.GetStatus() != pb.CheckStatus_OK {
+						errs = append(errs, res.GetFriendlyMessageToUser())
+					}
+				}
+				if len(errs) == 0 {
+					return nil
+				}
+
+				errsStr := strings.Join(errs, "\n    ")
+				return errors.New(errsStr)
 			}),
 	}, true)
 }
@@ -319,7 +342,7 @@ func (hc *HealthChecker) checkForTapConfiguration(ctx context.Context, pods []co
 			return err
 		}
 		// Check if Tap is disabled
-		if !k8s.IsTapDisabled(pod) && !k8s.IsTapDisabled(ns) {
+		if !vizLabels.IsTapDisabled(pod) && !vizLabels.IsTapDisabled(ns) {
 			// Check for tap-injector annotation
 			if !vizLabels.IsTapEnabled(&pod) {
 				podsWithoutTap = append(podsWithoutTap, fmt.Sprintf("* %s", pod.Name))
