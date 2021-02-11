@@ -2,11 +2,16 @@
 
 ## edge-21.2.2
 
-This edge release continues to prepare support for multicluster opaque ports.
+This edge release introduces a new `repair` command which will repopulate
+resources needed for upgrading from a `2.9.x` installation. There will be an
+error message during the upgrade process indicating that this command should be
+run so that users do not need to guess.
 
-Additionally, it contains a breaking change for Helm users upgrading with a
-customized `values.yaml`. If upgrading without this customization, there is no
-action to take.
+It also continues to prepare support for multicluster opaque ports.
+
+Lastly, it contains a breaking change for Helm users upgrading with a customized
+`values.yaml`. If upgrading without this customization, there is no action to
+take.
 
 * **Breaking change**: Removed the `Global` field from the Linkerd Helm chart
   now that it is unused because of the extension model; users doing upgrades
