@@ -22,7 +22,6 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: override
-        viz.linkerd.io/disable-tap: "true"
       labels:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd

@@ -19,7 +19,6 @@ spec:
         config.linkerd.io/proxy-version: override
         config.linkerd.io/skip-inbound-ports: 7777,8888
         config.linkerd.io/skip-outbound-ports: "9999"
-        viz.linkerd.io/disable-tap: "true"
       labels:
         app: web-svc
     spec:
