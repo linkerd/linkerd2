@@ -347,6 +347,34 @@ subjects:
   name: linkerd-web
   namespace: linkerd-viz
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: linkerd-linkerd-viz-web-api
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: web
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: linkerd-linkerd-viz-web-api
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: web
+roleRef:
+  kind: ClusterRole
+  name: linkerd-linkerd-viz-web-api
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: linkerd-web
+  namespace: linkerd-viz
+---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
@@ -443,7 +471,7 @@ spec:
         - -cluster-domain=cluster.local
         - -prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.cluster.local:9090
         image: ghcr.io/linkerd/metrics-api:dev-undefined
-        imagePullPolicy: 
+        imagePullPolicy:
         livenessProbe:
           httpGet:
             path: /ping
@@ -588,7 +616,7 @@ spec:
         - name: GODEBUG
           value: netdns=go
         image: ghcr.io/linkerd/grafana:dev-undefined
-        imagePullPolicy: 
+        imagePullPolicy:
         livenessProbe:
           httpGet:
             path: /api/health
@@ -840,7 +868,7 @@ spec:
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
         image: prom/prometheus:v2.19.3
-        imagePullPolicy: 
+        imagePullPolicy:
         livenessProbe:
           httpGet:
             path: /-/healthy
@@ -948,7 +976,7 @@ spec:
         - -log-level=info
         - -identity-trust-domain=cluster.local
         image: ghcr.io/linkerd/tap:dev-undefined
-        imagePullPolicy: 
+        imagePullPolicy:
         livenessProbe:
           httpGet:
             path: /ping
@@ -1108,7 +1136,7 @@ spec:
         - -tap-service-name=linkerd-tap.linkerd-viz.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - -log-level=info
         image: ghcr.io/linkerd/tap:dev-undefined
-        imagePullPolicy: 
+        imagePullPolicy:
         livenessProbe:
           httpGet:
             path: /ping
@@ -1212,7 +1240,7 @@ spec:
         - -log-level=info
         - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd-viz\.svc\.cluster\.local|linkerd-web\.linkerd-viz\.svc|\[::1\])(:\d+)?$
         image: ghcr.io/linkerd/web:dev-undefined
-        imagePullPolicy: 
+        imagePullPolicy:
         livenessProbe:
           httpGet:
             path: /ping
