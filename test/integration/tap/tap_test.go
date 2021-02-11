@@ -145,7 +145,7 @@ func TestCliTap(t *testing.T) {
 				testutil.Fatal(t, "expected an error, got none")
 			}
 			expectedErr := `Error: no pods to tap for deployment/t4
-pods found with tap disabled via the config.linkerd.io/disable-tap annotation`
+pods found with tap disabled via the viz.linkerd.io/disable-tap annotation`
 			split := strings.Split(stderr, "\n")
 			actualErr := strings.Join(split[:2], "\n")
 			if actualErr != expectedErr {

@@ -914,7 +914,6 @@ data:
       proxy:
         capabilities: null
         disableIdentity: false
-        disableTap: false
         enableExternalProfiles: false
         image:
           name: ghcr.io/linkerd/proxy
