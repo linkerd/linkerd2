@@ -2,6 +2,12 @@
 
 ## edge-21.2.2
 
+This edge release continues to prepare support for multicluster opaque ports.
+
+Additionally, it contains a breaking change for Helm users upgrading with a
+customized `values.yaml`. If upgrading without this customization, there is no
+action to take.
+
 * **Breaking change**: Removed the `Global` field from the Linkerd Helm chart
   now that it is unused because of the extension model; users doing upgrades
   with Helm passing customized `values.yaml` will have to take this change into
