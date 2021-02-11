@@ -2,22 +2,20 @@
 
 ## edge-21.2.2
 
-This edge release introduces support for multicluster TCP. It prepares support
-for multicluster opaque ports, which will follow-up in a future release.
+This edge release introduces support for multicluster TCP!
 
 The `repair` command was added which will repopulate resources needed for
 upgrading from a `2.9.x` installation. There will be an error message during the
 upgrade process indicating that this command should be run so that users do not
 need to guess.
 
-Lastly, it contains a breaking change for Helm users upgrading with a customized
-`values.yaml`. If upgrading without this customization, there is no action to
-take.
+Lastly, it contains a breaking change for Helm users. The `global` field has
+been removed from the Helm chart now that it is no longer needed. Users will
+need to pass in the identity certificates again—along with any other
+customizations, no longer rooted at `global`.
 
 * **Breaking change**: Removed the `Global` field from the Linkerd Helm chart
-  now that it is unused because of the extension model; users doing upgrades
-  with Helm passing customized `values.yaml` will have to take this change into
-  account.
+  now that it is unused because of the extension model
 * Added the `repair` command which will repopulate resources needed for properly
   upgrading a Linkerd installation
 * Fixed the spelling of the `sidecarContainers` key in the Viz extension Helm
