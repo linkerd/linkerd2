@@ -31,9 +31,7 @@ take.
 * Changed the `check` command to include each installed extension's `check`
   output; this allows users to check for proper configuration and installation
   of Linkerd without running a command for each extension
-* Added proxy support for TCP traffic to the multicluster gateways which
-  completes preparation for supporting opaque traffic in multicluster
-  installations; the next edge will support this end-to-end
+* Added proxy support for TCP traffic to the multicluster gateways
 
 ## edge-21.2.1
 
