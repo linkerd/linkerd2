@@ -129,8 +129,8 @@ spec:
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.cniEnabled -}}
       initContainers:
-      {{- if not (contains "443" ( .Values.global.proxyInit.ignoreOutboundPorts | toString ))}}
-      {{- $_ := set $tree.Values.global.proxyInit "ignoreOutboundPorts" (printf "%s,443" ( .Values.global.proxyInit.ignoreOutboundPorts | toString )) -}}
+      {{- if not (contains "443" ( .Values.proxyInit.ignoreOutboundPorts | toString ))}}
+      {{- $_ := set $tree.Values.proxyInit "ignoreOutboundPorts" (printf "%s,443" ( .Values.proxyInit.ignoreOutboundPorts | toString )) -}}
       {{- end}}      
       - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
