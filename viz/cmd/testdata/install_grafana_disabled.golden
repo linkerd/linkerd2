@@ -9,7 +9,6 @@ metadata:
   labels:
     linkerd.io/extension: linkerd-viz
   annotations:
-    viz.linkerd.io/external-grafana: external-grafana.com
     linkerd.io/inject: enabled
 ---
 ###

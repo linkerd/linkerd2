@@ -13,8 +13,5 @@ metadata:
     {{- if .Values.prometheusUrl }}
     viz.linkerd.io/external-prometheus: {{.Values.prometheusUrl}}
     {{- end }}
-    {{- if .Values.grafanaUrl }}
-    viz.linkerd.io/external-grafana: {{.Values.grafanaUrl}}
-    {{- end }}
     {{.Values.proxyInjectAnnotation}}: enabled
 {{ end -}}

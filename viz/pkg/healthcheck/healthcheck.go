@@ -42,7 +42,6 @@ type HealthChecker struct {
 	vizAPIClient          pb.ApiClient
 	vizNamespace          string
 	externalPrometheusURL string
-	externalGrafanaURL    string
 }
 
 // NewHealthChecker returns an initialized HealthChecker for Viz
@@ -81,7 +80,6 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 
 				hc.vizNamespace = vizNs.Name
 				hc.externalPrometheusURL = vizNs.Annotations[labels.VizExternalPrometheus]
-				hc.externalGrafanaURL = vizNs.Annotations[labels.VizExternalGrafana]
 				return nil
 			}),
 		*healthcheck.NewChecker("linkerd-viz ClusterRoles exist").
@@ -199,33 +197,6 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 				}
 
 				err = healthcheck.CheckForPods(pods, []string{"linkerd-prometheus"})
-				if err != nil {
-					return err
-				}
-
-				return nil
-			}),
-		*healthcheck.NewChecker("grafana is installed and configured correctly").
-			WithHintAnchor("l5d-viz-grafana").
-			Warning().
-			WithCheck(func(ctx context.Context) error {
-				if hc.externalGrafanaURL != "" {
-					return &healthcheck.SkipError{Reason: "linkerd-grafana is disabled"}
-				}
-
-				// Check for ConfigMap
-				err := healthcheck.CheckConfigMaps(ctx, hc.KubeAPIClient(), hc.vizNamespace, true, []string{"linkerd-grafana-config"}, "")
-				if err != nil {
-					return err
-				}
-
-				// Check for relevant pods to be present
-				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, hc.vizNamespace)
-				if err != nil {
-					return err
-				}
-
-				err = healthcheck.CheckForPods(pods, []string{"linkerd-grafana"})
 				if err != nil {
 					return err
 				}
