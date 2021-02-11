@@ -427,10 +427,6 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 		overrideAnnotations[k8s.ProxyRequireIdentityOnInboundPortsAnnotation] = proxy.RequireIdentityOnInboundPorts
 	}
 
-	if proxy.DisableTap != baseProxy.DisableTap {
-		overrideAnnotations[k8s.ProxyDisableTapAnnotation] = strconv.FormatBool(proxy.DisableTap)
-	}
-
 	if proxy.EnableExternalProfiles != baseProxy.EnableExternalProfiles {
 		overrideAnnotations[k8s.ProxyEnableExternalProfilesAnnotation] = strconv.FormatBool(proxy.EnableExternalProfiles)
 	}

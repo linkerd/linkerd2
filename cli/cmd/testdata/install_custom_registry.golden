@@ -894,7 +894,6 @@ data:
       proxy:
         capabilities: null
         disableIdentity: false
-        disableTap: false
         enableExternalProfiles: false
         image:
           name: my.custom.registry/linkerd-io/proxy

@@ -594,7 +594,6 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 	values.GetGlobal().Proxy.LogLevel = "debug"
 	values.GetGlobal().Proxy.LogFormat = "cool"
 	values.GetGlobal().Proxy.DisableIdentity = true
-	values.GetGlobal().Proxy.DisableTap = true
 	values.GetGlobal().Proxy.EnableExternalProfiles = true
 	values.GetGlobal().Proxy.Resources.CPU.Request = "10m"
 	values.GetGlobal().Proxy.Resources.CPU.Limit = "100m"
@@ -603,17 +602,17 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 	values.GetGlobal().Proxy.WaitBeforeExitSeconds = 10
 
 	expectedOverrides := map[string]string{
-		k8s.ProxyIgnoreInboundPortsAnnotation:     "8500-8505",
-		k8s.ProxyIgnoreOutboundPortsAnnotation:    "3306",
-		k8s.ProxyAdminPortAnnotation:              "1234",
-		k8s.ProxyControlPortAnnotation:            "4191",
-		k8s.ProxyInboundPortAnnotation:            "4144",
-		k8s.ProxyOutboundPortAnnotation:           "4141",
-		k8s.ProxyUIDAnnotation:                    "999",
-		k8s.ProxyLogLevelAnnotation:               "debug",
-		k8s.ProxyLogFormatAnnotation:              "cool",
-		k8s.ProxyDisableIdentityAnnotation:        "true",
-		k8s.ProxyDisableTapAnnotation:             "true",
+		k8s.ProxyIgnoreInboundPortsAnnotation:  "8500-8505",
+		k8s.ProxyIgnoreOutboundPortsAnnotation: "3306",
+		k8s.ProxyAdminPortAnnotation:           "1234",
+		k8s.ProxyControlPortAnnotation:         "4191",
+		k8s.ProxyInboundPortAnnotation:         "4144",
+		k8s.ProxyOutboundPortAnnotation:        "4141",
+		k8s.ProxyUIDAnnotation:                 "999",
+		k8s.ProxyLogLevelAnnotation:            "debug",
+		k8s.ProxyLogFormatAnnotation:           "cool",
+		k8s.ProxyDisableIdentityAnnotation:     "true",
+
 		k8s.ProxyEnableExternalProfilesAnnotation: "true",
 		k8s.ProxyCPURequestAnnotation:             "10m",
 		k8s.ProxyCPULimitAnnotation:               "100m",
