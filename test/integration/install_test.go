@@ -847,6 +847,10 @@ func TestCheckPostInstall(t *testing.T) {
 func TestCheckViz(t *testing.T) {
 	cmd := []string{"viz", "check", "--wait=0"}
 	golden := "check.viz.golden"
+	if TestHelper.ExternalPrometheus() {
+		golden = "check.viz.external-prometheus.golden"
+	}
+
 	timeout := time.Minute
 	err := TestHelper.RetryFor(timeout, func() error {
 		out, err := TestHelper.LinkerdRun(cmd...)
