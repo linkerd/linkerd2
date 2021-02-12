@@ -892,7 +892,7 @@ data:
       IQCN7lBFLDDvjx6V0+XkjpKERRsJYf5adMvnloFl48ilJgIhANtxhndcr+QJPuC8
       vgUC0d2/9FMueIVMb+46WTCOjsqr
       -----END CERTIFICATE-----
-    identityTrustDomain: ""
+    identityTrustDomain: example.com
     imagePullPolicy: IfNotPresent
     imagePullSecrets: []
     installNamespace: false
