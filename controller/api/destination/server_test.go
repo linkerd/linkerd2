@@ -132,6 +132,7 @@ spec:
 		profiles,
 		trafficSplits,
 		ips,
+		k8sAPI.Node(),
 		false,
 		"linkerd",
 		"trust.domain",

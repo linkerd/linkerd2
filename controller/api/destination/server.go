@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 )
 
 type (
@@ -24,6 +25,7 @@ type (
 		profiles      *watcher.ProfileWatcher
 		trafficSplits *watcher.TrafficSplitWatcher
 		ips           *watcher.IPWatcher
+		nodes         coreinformers.NodeInformer
 
 		enableH2Upgrade     bool
 		controllerNS        string
@@ -72,6 +74,7 @@ func NewServer(
 		profiles,
 		trafficSplits,
 		ips,
+		k8sAPI.Node(),
 		enableH2Upgrade,
 		controllerNS,
 		identityTrustDomain,
@@ -102,13 +105,12 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	}
 
 	translator := newEndpointTranslator(
-		stream.Context(),
 		s.controllerNS,
 		s.identityTrustDomain,
 		s.enableH2Upgrade,
 		dest.GetPath(),
 		token.NodeName,
-		s.k8sAPI.Client,
+		s.nodes,
 		stream,
 		log,
 	)
