@@ -170,6 +170,11 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 
 	reports := []inject.Report{*report}
 
+	if conf.IsService() {
+		b, err := conf.AnnotateService(rt.overrideAnnotations)
+		return b, reports, err
+	}
+
 	if rt.allowNsInject && conf.IsNamespace() {
 		b, err := conf.InjectNamespace(rt.overrideAnnotations)
 		return b, reports, err
@@ -199,6 +204,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if err != nil {
 		return nil, nil, err
 	}
+
 	if len(patchJSON) == 0 {
 		return bytes, reports, nil
 	}
@@ -319,7 +325,11 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 
 	for _, r := range reports {
 		if b, _ := r.Injectable(); b {
-			output.Write([]byte(fmt.Sprintf("%s \"%s\" injected\n", r.Kind, r.Name)))
+			verb := "injected"
+			if r.Kind == k8s.Service {
+				verb = "annotated"
+			}
+			output.Write([]byte(fmt.Sprintf("%s \"%s\" %s\n", r.Kind, r.Name, verb)))
 		} else {
 			if r.Kind != "" {
 				output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.Kind, r.Name)))
