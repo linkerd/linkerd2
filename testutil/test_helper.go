@@ -39,6 +39,7 @@ type TestHelper struct {
 	httpClient         http.Client
 	KubernetesHelper
 	helm
+	installedExtensions []string
 }
 
 type helm struct {
@@ -363,6 +364,18 @@ func (h *TestHelper) Calico() bool {
 	return h.calico
 }
 
+// AddInstalledExtension adds an extension name to installedExtensions to
+// track the currently installed linkerd extensions.
+func (h *TestHelper) AddInstalledExtension(extensionName string) {
+	h.installedExtensions = append(h.installedExtensions, extensionName)
+}
+
+// GetInstalledExtensions gets a list currently installed extensions
+// in a test run.
+func (h *TestHelper) GetInstalledExtensions() []string {
+	return h.installedExtensions
+}
+
 // CreateTLSSecret creates a TLS Kubernetes secret
 func (h *TestHelper) CreateTLSSecret(name, root, cert, key string) error {
 	secret := fmt.Sprintf(`
@@ -467,7 +480,7 @@ func (h *TestHelper) HelmUpgrade(chart string, arg ...string) (string, string, e
 		"upgrade",
 		h.helm.releaseName,
 		"--kube-context", h.k8sContext,
-		"--set", "global.namespace=" + h.namespace,
+		"--set", "namespace=" + h.namespace,
 		chart,
 	}, arg...)
 	return combinedOutput("", h.helm.path, withParams...)
@@ -480,7 +493,7 @@ func (h *TestHelper) HelmInstall(chart string, arg ...string) (string, string, e
 		h.helm.releaseName,
 		chart,
 		"--kube-context", h.k8sContext,
-		"--set", "global.namespace=" + h.namespace,
+		"--set", "namespace=" + h.namespace,
 	}, arg...)
 	return combinedOutput("", h.helm.path, withParams...)
 }
@@ -529,6 +542,22 @@ func (h *TestHelper) ValidateOutput(out, fixtureFile string) error {
 	}
 
 	if out != expected {
+		return fmt.Errorf(
+			"Expected:\n%s\nActual:\n%s", expected, out)
+	}
+
+	return nil
+}
+
+// ContainsOutput validates that a string is a substring in the contents
+// of a file in the test's testdata directory.
+func (h *TestHelper) ContainsOutput(out, fixtureFile string) error {
+	expected, err := ReadFile("testdata/" + fixtureFile)
+	if err != nil {
+		return err
+	}
+
+	if !strings.Contains(out, expected) {
 		return fmt.Errorf(
 			"Expected:\n%s\nActual:\n%s", expected, out)
 	}

@@ -63,6 +63,13 @@ func TestRender(t *testing.T) {
 			},
 			"install_proxy_resources.golden",
 		},
+		{
+			map[string]interface{}{
+				"grafana":    map[string]interface{}{"enabled": false},
+				"grafanaUrl": "external-grafana.com",
+			},
+			"install_grafana_disabled.golden",
+		},
 	}
 
 	for i, tc := range testCases {

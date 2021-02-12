@@ -52,6 +52,9 @@ enablePodAntiAffinity: false
 # -- url of external prometheus instance
 prometheusUrl: ""
 
+# -- url of external grafana instance with reverse proxy configured.
+grafanaUrl: ""
+
 # -- url of external jaeger instance
 # Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>` if you plan to use jaeger extension
 jaegerUrl: ""
@@ -145,6 +148,9 @@ tap:
 tapInjector:
   # -- Number of replicas of tapInjector
   replicas: 1
+  # -- log level of the tapInjector
+  # @default -- defaultLogLevel
+  logLevel: ""
   image:
     # -- Docker registry for the tapInjector instance
     registry: *registry

@@ -12,4 +12,10 @@ linkerd-viz
 √ can initialize the client
 √ viz extension self-check
 
+linkerd-viz-data-plane
+----------------------
+√ data plane namespace exists
+√ data plane proxy metrics are present in Prometheus
+√ data-plane pods have tap enabled
+
 Status check results are √
