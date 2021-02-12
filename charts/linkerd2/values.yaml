@@ -37,8 +37,6 @@ cniEnabled: false
 identityTrustAnchorsPEM: |
 # -- Trust domain used for identity
 identityTrustDomain: *cluster_domain
-# -- url of external grafana instance with reverse proxy configured.
-grafanaUrl: ""
 # -- Additional annotations to add to all pods
 podAnnotations: {}
 # -- Additional labels to add to all pods
