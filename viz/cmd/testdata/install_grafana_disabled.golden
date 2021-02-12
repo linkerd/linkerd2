@@ -507,6 +507,7 @@ data:
       static_configs:
       - targets: ['localhost:9090']
 
+    
 
     #  Required for: https://grafana.com/grafana/dashboards/315
     - job_name: 'kubernetes-nodes-cadvisor'
