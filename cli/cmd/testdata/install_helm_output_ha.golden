@@ -951,7 +951,7 @@ data:
       enableExternalProfiles: false
       image:
         name: ghcr.io/linkerd/proxy
-        pullPolicy: IfNotPresent
+        pullPolicy: ""
         version: test-proxy-version
       inboundConnectTimeout: 100ms
       isGateway: false
@@ -984,7 +984,7 @@ data:
       ignoreOutboundPorts: "111"
       image:
         name: ghcr.io/linkerd/proxy-init
-        pullPolicy: IfNotPresent
+        pullPolicy: ""
         version: test-proxy-init-version
       resources:
         cpu:

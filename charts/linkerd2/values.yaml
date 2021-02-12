@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 # -- Kubernetes DNS Domain name to use
-clusterDomain: &cluster_domain cluster.local
+clusterDomain: cluster.local
 
 # -- The cluster networks for which service discovery is performed. This should
 # include the pod network but need not include the node network.
@@ -14,7 +14,7 @@ clusterNetworks: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
 # -- Docker image pull policy
 imagePullPolicy: &image_pull_policy IfNotPresent
 # -- Log level for the control plane components
-controllerLogLevel: &controller_log_level info
+controllerLogLevel: info
 # -- Log format for the control plane components
 controllerLogFormat: plain
 # -- enables control plane tracing
@@ -36,7 +36,8 @@ cniEnabled: false
 # -- Trust root certificate (ECDSA). It must be provided during install.
 identityTrustAnchorsPEM: |
 # -- Trust domain used for identity
-identityTrustDomain: *cluster_domain
+# @default -- clusterDomain
+identityTrustDomain: ""
 # -- url of external grafana instance with reverse proxy configured.
 grafanaUrl: ""
 # -- Additional annotations to add to all pods
@@ -57,9 +58,11 @@ proxy:
     # -- Docker image for the proxy
     name: ghcr.io/linkerd/proxy
     # -- Pull policy for the proxy container Docker image
-    pullPolicy: *image_pull_policy
+    # @default -- imagePullPolicy
+    pullPolicy: ""
     # -- Tag for the proxy container Docker image
-    version: *linkerd_version
+    # @default -- linkerdVersion
+    version: ""
   # -- Log level for the proxy
   logLevel: warn,linkerd=info
   # -- Log format (`plain` or `json`) for the proxy
@@ -111,7 +114,8 @@ proxyInit:
     # -- Docker image for the proxy-init container
     name: ghcr.io/linkerd/proxy-init
     # -- Pull policy for the proxy-init container Docker image
-    pullPolicy: *image_pull_policy
+    # @default -- imagePullPolicy
+    pullPolicy: ""
     # -- Tag for the proxy-init container Docker image
     version: v1.3.8
   resources:

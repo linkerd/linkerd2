@@ -906,7 +906,7 @@ data:
       IQCN7lBFLDDvjx6V0+XkjpKERRsJYf5adMvnloFl48ilJgIhANtxhndcr+QJPuC8
       vgUC0d2/9FMueIVMb+46WTCOjsqr
       -----END CERTIFICATE-----
-    identityTrustDomain: cluster.local
+    identityTrustDomain: ""
     imagePullPolicy: ImagePullPolicy
     imagePullSecrets: null
     installNamespace: true

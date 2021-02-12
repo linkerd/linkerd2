@@ -82,7 +82,7 @@ env:
 - name: _l5d_ns
   value: {{.Values.namespace}}
 - name: _l5d_trustdomain
-  value: {{.Values.identityTrustDomain}}
+  value: {{.Values.identityTrustDomain | default .Values.clusterDomain}}
 - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
   value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
 - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
@@ -90,8 +90,8 @@ env:
 - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
   value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
 {{ end -}}
-image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version}}
-imagePullPolicy: {{.Values.proxy.image.pullPolicy}}
+image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version | default .Values.linkerdVersion}}
+imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPolicy}}
 livenessProbe:
   httpGet:
     path: /live

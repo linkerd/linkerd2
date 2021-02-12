@@ -2275,7 +2275,6 @@ data:
     enableEndpointSlices: false
     grafanaUrl: ""
     highAvailability: false
-    identityTrustDomain: cluster.local
     imagePullPolicy: ImagePullPolicy
     imagePullSecrets: null
     linkerdNamespaceLabel: LinkerdNamespaceLabel
@@ -2378,7 +2377,6 @@ data:
 				LinkerdNamespaceLabel:    "LinkerdNamespaceLabel",
 				ProxyContainerName:       "ProxyContainerName",
 				CNIEnabled:               false,
-				IdentityTrustDomain:      defaultValues.IdentityTrustDomain,
 				Proxy: &linkerd2.Proxy{
 					Image: &linkerd2.Image{
 						Name:       "ProxyImageName",
@@ -2458,7 +2456,6 @@ data:
       enableEndpointSlices: false
       grafanaUrl: ""
       highAvailability: false
-      identityTrustDomain: cluster.local
       imagePullPolicy: ImagePullPolicy
       imagePullSecrets: null
       linkerdNamespaceLabel: LinkerdNamespaceLabel
@@ -2561,7 +2558,6 @@ data:
 				LinkerdNamespaceLabel:    "LinkerdNamespaceLabel",
 				ProxyContainerName:       "ProxyContainerName",
 				CNIEnabled:               false,
-				IdentityTrustDomain:      defaultValues.IdentityTrustDomain,
 				Proxy: &linkerd2.Proxy{
 					Image: &linkerd2.Image{
 						Name:       "ProxyImageName",
