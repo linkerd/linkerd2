@@ -210,7 +210,6 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 					Namespace: pod.Namespace,
 					Name:      pod.Name,
 				}
-				err := watcher.SetPodOpaquePortAnnotation(s.k8sAPI, pod, pod.Namespace)
 				if err != nil {
 					log.Errorf("failed to set opaque port annotation on pod: %s", err)
 				}
