@@ -20,6 +20,9 @@ import (
 )
 
 const (
+	// VizExtensionName is the name of the viz extension
+	VizExtensionName = "linkerd-viz"
+
 	// LinkerdVizExtensionCheck adds checks related to the Linkerd Viz extension
 	LinkerdVizExtensionCheck healthcheck.CategoryID = "linkerd-viz"
 
@@ -339,7 +342,7 @@ func (hc *HealthChecker) checkForTapConfiguration(ctx context.Context, pods []co
 			return err
 		}
 		// Check if Tap is disabled
-		if !k8s.IsTapDisabled(pod) && !k8s.IsTapDisabled(ns) {
+		if !vizLabels.IsTapDisabled(pod) && !vizLabels.IsTapDisabled(ns) {
 			// Check for tap-injector annotation
 			if !vizLabels.IsTapEnabled(&pod) {
 				podsWithoutTap = append(podsWithoutTap, fmt.Sprintf("* %s", pod.Name))

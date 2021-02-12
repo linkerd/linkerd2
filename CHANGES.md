@@ -1,5 +1,36 @@
 # Changes
 
+## edge-21.2.2
+
+This edge release introduces support for multicluster TCP!
+
+The `repair` command was added which will repopulate resources needed for
+upgrading from a `2.9.x` installation. There will be an error message during the
+upgrade process indicating that this command should be run so that users do not
+need to guess.
+
+Lastly, it contains a breaking change for Helm users. The `global` field has
+been removed from the Helm chart now that it is no longer needed. Users will
+need to pass in the identity certificates again—along with any other
+customizations, no longer rooted at `global`.
+
+* **Breaking change**: Removed the `Global` field from the Linkerd Helm chart
+  now that it is unused because of the extension model
+* Added the `repair` command which will repopulate resources needed for properly
+  upgrading a Linkerd installation
+* Fixed the spelling of the `sidecarContainers` key in the Viz extension Helm
+  chart to match that of the template (thanks @n-oden!)
+* Added the `tapInjector.logLevel` key to the Viz extension helm chart so that
+  the log level of the component can be configured
+* Removed the `--disable-tap` flag from the `inject` command now that tap is no
+  longer part of the core installation (thanks @mayankshah1607!)
+* Changed proxy configuration to use fully-qualified DNS names to avoid extra
+  search paths in DNS resolutions
+* Changed the `check` command to include each installed extension's `check`
+  output; this allows users to check for proper configuration and installation
+  of Linkerd without running a command for each extension
+* Added proxy support for TCP traffic to the multicluster gateways
+
 ## edge-21.2.1
 
 This edge release continues improving the proxy's diagnostics and also avoids

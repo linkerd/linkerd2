@@ -50,7 +50,6 @@ func TestInjectManualParams(t *testing.T) {
 
 	injectionValidator := testutil.InjectValidator{
 		DisableIdentity:        true,
-		DisableTap:             true,
 		Version:                "proxy-version",
 		Image:                  "proxy-image",
 		InitImage:              "init-image",
@@ -113,7 +112,6 @@ func TestInjectAutoParams(t *testing.T) {
 			AutoInject:             true,
 			AdminPort:              8888,
 			ControlPort:            8881,
-			DisableTap:             true,
 			EnableExternalProfiles: true,
 			EnableDebug:            true,
 			ImagePullPolicy:        "Never",

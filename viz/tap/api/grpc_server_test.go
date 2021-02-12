@@ -186,7 +186,7 @@ status:
 		},
 		{
 			err: status.Errorf(codes.NotFound, `no pods to tap for pod/emojivoto-meshed-tap-disabled
-pods found with tap disabled via the config.linkerd.io/disable-tap annotation`),
+pods found with tap disabled via the viz.linkerd.io/disable-tap annotation`),
 			k8sRes: []string{`
 apiVersion: v1
 kind: Pod
@@ -197,7 +197,7 @@ metadata:
     app: emoji-svc
     linkerd.io/control-plane-ns: controller-ns
   annotations:
-    config.linkerd.io/disable-tap: "true"
+    viz.linkerd.io/disable-tap: "true"
     linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running

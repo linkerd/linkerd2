@@ -64,7 +64,7 @@ func NewCmdJaeger() *cobra.Command {
 	jaegerCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 	jaegerCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
 	jaegerCmd.AddCommand(newCmdInstall())
-	jaegerCmd.AddCommand(newCmdCheck())
+	jaegerCmd.AddCommand(NewCmdCheck())
 	jaegerCmd.AddCommand(newCmdUninstall())
 	jaegerCmd.AddCommand(newCmdDashboard())
 
