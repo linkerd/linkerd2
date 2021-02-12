@@ -82,7 +82,7 @@ spec:
         - api
         - -api-namespace={{.Values.linkerdNamespace}}
         - -log-level={{.Values.tap.logLevel | default .Values.defaultLogLevel}}
-        - -identity-trust-domain={{.Values.identityTrustDomain}}
+        - -identity-trust-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
         image: {{.Values.tap.image.registry | default .Values.defaultRegistry}}/{{.Values.tap.image.name}}:{{.Values.tap.image.tag | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.tap.image.pullPolicy | default .Values.defaultImagePullPolicy}}
         livenessProbe:
