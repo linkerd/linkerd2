@@ -16,6 +16,10 @@ const (
 
 	// VizTapDisabled can be used to disable tap on the injected proxy.
 	VizTapDisabled = VizAnnotationsPrefix + "/disable-tap"
+
+	// VizExternalPrometheus is only set on the namespace by the install
+	// when a external prometheus is being used
+	VizExternalPrometheus = VizAnnotationsPrefix + "/external-prometheus"
 )
 
 // IsTapEnabled returns true if a pod has an annotation indicating that tap

@@ -38,8 +38,6 @@ identityTrustAnchorsPEM: |
 # -- Trust domain used for identity
 # @default -- clusterDomain
 identityTrustDomain: ""
-# -- url of external grafana instance with reverse proxy configured.
-grafanaUrl: ""
 # -- Additional annotations to add to all pods
 podAnnotations: {}
 # -- Additional labels to add to all pods
