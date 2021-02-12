@@ -240,22 +240,6 @@ func NewValues() (*Values, error) {
 	return v, nil
 }
 
-// ToMap converts the Values intro a map[string]interface{}
-func (values *Values) ToMap() (map[string]interface{}, error) {
-	var valuesMap map[string]interface{}
-	rawValues, err := yaml.Marshal(values)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to marshal the values struct: %s", err)
-	}
-
-	err = yaml.Unmarshal(rawValues, &valuesMap)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to Unmarshal Values into a map: %s", err)
-	}
-
-	return valuesMap, nil
-}
-
 // MergeHAValues retrieves the default HA values and merges them into the received values
 func MergeHAValues(values *Values) error {
 	haValues, err := readDefaults(true)
@@ -299,6 +283,22 @@ func (v Values) Merge(src Values) (Values, error) {
 	}
 
 	return src, nil
+}
+
+// ToMap converts the Values intro a map[string]interface{}
+func (v *Values) ToMap() (map[string]interface{}, error) {
+	var valuesMap map[string]interface{}
+	rawValues, err := yaml.Marshal(v)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to marshal the values struct: %s", err)
+	}
+
+	err = yaml.Unmarshal(rawValues, &valuesMap)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to Unmarshal Values into a map: %s", err)
+	}
+
+	return valuesMap, nil
 }
 
 // DeepCopy creates a deep copy of the Values struct by marshalling to yaml and
