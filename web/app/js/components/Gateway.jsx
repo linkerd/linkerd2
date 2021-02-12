@@ -120,7 +120,7 @@ class Gateways extends React.Component {
             {(noMetrics && !multiclusterExists) &&
             <Card>
               <CardContent>
-                <Typography>To view gateway stats for your mesh, install the linkerd multicluster extension by running:</Typography>
+                <Typography><Trans>installMulticlusterMsg</Trans></Typography>
                 <br />
                 <code>linkerd multicluster install | kubectl apply -f -</code>
               </CardContent>

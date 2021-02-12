@@ -104,6 +104,7 @@
   "formToNamespaceHelpText": "Namespace del recurso de destino",
   "formToResource": "Al Recurso",
   "formToResourceHelpText": "Recurso destino",
+  "installMulticlusterMsg": "Para ver las estadísticas de la puerta de enlace para su malla, instale la extensión de multicluster linkerd ejecutando",
   "labelError": "Error",
   "labelSuccess": "Éxito",
   "menuItemCommunity": "Comunidad",
