@@ -427,7 +427,7 @@ func renderOverrides(values chartutil.Values, namespace string, stringData bool)
 		return nil, err
 	}
 	// Remove unnecessary fields, including fields added by helm's `chartutil.CoalesceValues`
-	values["configs"] = l5dcharts.ConfigJSONs{}
+	delete(values, "configs")
 	delete(values, "partials")
 	delete(values, "stage")
 
@@ -437,7 +437,7 @@ func renderOverrides(values chartutil.Values, namespace string, stringData bool)
 		if err != nil {
 			return nil, err
 		}
-		namespace, err = valuesTree.GetString("global", "namespace")
+		namespace, err = valuesTree.GetString("namespace")
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve global.namespace from values: %v", err)
 		}
