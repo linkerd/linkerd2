@@ -93,7 +93,7 @@ func TestUninjectAndInject(t *testing.T) {
 	cniEnabledConfig.CNIEnabled = true
 
 	opaquePortsConfig := defaultConfig()
-	opaquePortsConfig.GetGlobal().Proxy.OpaquePorts = "3000,5000-6000,mysql"
+	opaquePortsConfig.Proxy.OpaquePorts = "3000,5000-6000,mysql"
 
 	proxyIgnorePortsConfig := defaultConfig()
 	proxyIgnorePortsConfig.ProxyInit.IgnoreInboundPorts = "22,8100-8102"

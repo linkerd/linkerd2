@@ -472,9 +472,9 @@ func makeInjectFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 				return nil
 			}),
 
-		flag.NewStringSliceFlag(injectFlags, "opaque-ports", strings.Split(defaults.GetGlobal().Proxy.OpaquePorts, ","),
+		flag.NewStringSliceFlag(injectFlags, "opaque-ports", strings.Split(defaults.Proxy.OpaquePorts, ","),
 			"Set opaque ports on the proxy", func(values *l5dcharts.Values, value []string) error {
-				values.GetGlobal().Proxy.OpaquePorts = strings.Join(value, ",")
+				values.Proxy.OpaquePorts = strings.Join(value, ",")
 				return nil
 			}),
 	}
