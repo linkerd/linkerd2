@@ -156,7 +156,7 @@ Kubernetes: `>=1.13.0-0`
 | identity.issuer.tls.crtPEM | string | `""` | Issuer certificate (ECDSA). It must be provided during install. |
 | identity.issuer.tls.keyPEM | string | `""` | Key for the issuer certificate (ECDSA). It must be provided during install |
 | identityTrustAnchorsPEM | string | `""` | Trust root certificate (ECDSA). It must be provided during install. |
-| identityTrustDomain | string | `"cluster.local"` | Trust domain used for identity |
+| identityTrustDomain | string | clusterDomain | Trust domain used for identity |
 | imagePullPolicy | string | `"IfNotPresent"` | Docker image pull policy |
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
 | installNamespace | bool | `true` | Set to false when installing Linkerd in a custom namespace. See the [Linkerd documentation](https://linkerd.io/2/tasks/install-helmcustomizing-the-namespace) for more information. |
@@ -175,8 +175,8 @@ Kubernetes: `>=1.13.0-0`
 | proxy.cores | int | `0` | The `cpu.limit` and `cores` should be kept in sync. The value of `cores` must be an integer and should typically be set by rounding up from the limit. E.g. if cpu.limit is '1500m', cores should be 2. |
 | proxy.enableExternalProfiles | bool | `false` | Enable service profiles for non-Kubernetes services |
 | proxy.image.name | string | `"ghcr.io/linkerd/proxy"` | Docker image for the proxy |
-| proxy.image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the proxy container Docker image |
-| proxy.image.version | string | `"linkerdVersionValue"` | Tag for the proxy container Docker image |
+| proxy.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy container Docker image |
+| proxy.image.version | string | linkerdVersion | Tag for the proxy container Docker image |
 | proxy.inboundConnectTimeout | string | `"100ms"` | Maximum time allowed for the proxy to establish an inbound TCP connection |
 | proxy.logFormat | string | `"plain"` | Log format (`plain` or `json`) for the proxy |
 | proxy.logLevel | string | `"warn,linkerd=info"` | Log level for the proxy |
@@ -196,7 +196,7 @@ Kubernetes: `>=1.13.0-0`
 | proxyInit.ignoreInboundPorts | string | `"25,443,587,3306,11211"` | Default set of ports to skip via itpables: - SMTP (25,587) server-first - HTTPS (443) opaque TLS - MYSQL (3306) server-first - Memcached (11211) clients do not issue any preamble, which breaks detection |
 | proxyInit.ignoreOutboundPorts | string | `"25,443,587,3306,11211"` | Default set of ports to skip via itpables, same defaults as InboudPorts |
 | proxyInit.image.name | string | `"ghcr.io/linkerd/proxy-init"` | Docker image for the proxy-init container |
-| proxyInit.image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the proxy-init container Docker image |
+| proxyInit.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy-init container Docker image |
 | proxyInit.image.version | string | `"v1.3.8"` | Tag for the proxy-init container Docker image |
 | proxyInit.resources.cpu.limit | string | `"100m"` | Maximum amount of CPU units that the proxy-init container can use |
 | proxyInit.resources.cpu.request | string | `"10m"` | Amount of CPU units that the proxy-init container requests |
