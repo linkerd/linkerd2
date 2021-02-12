@@ -175,6 +175,11 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return bytes, reports, nil
 	}
 
+	if conf.IsService() {
+		b, err := conf.AnnotateService(rt.overrideAnnotations)
+		return b, reports, err
+	}
+
 	if rt.allowNsInject && conf.IsNamespace() {
 		b, err := conf.InjectNamespace(rt.overrideAnnotations)
 		return b, reports, err
@@ -204,6 +209,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if err != nil {
 		return nil, nil, err
 	}
+
 	if len(patchJSON) == 0 {
 		return bytes, reports, nil
 	}
