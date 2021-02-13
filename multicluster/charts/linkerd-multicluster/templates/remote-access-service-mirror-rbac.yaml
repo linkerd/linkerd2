@@ -10,6 +10,8 @@ kind: ClusterRole
 metadata:
   name: {{.}}
   namespace: {{$.Values.namespace}}
+  labels:
+    linkerd.io/extension: linkerd-multicluster
   annotations:
     {{$.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" $.Values.linkerdVersion) $.Values.cliVersion}}
 rules:
@@ -26,6 +28,8 @@ kind: ServiceAccount
 metadata:
   name: {{.}}
   namespace: {{$.Values.namespace}}
+  labels:
+    linkerd.io/extension: linkerd-multicluster
   annotations:
     {{$.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" $.Values.linkerdVersion) $.Values.cliVersion}}
 ---
@@ -34,6 +38,8 @@ kind: ClusterRoleBinding
 metadata:
   name: {{.}}
   namespace: {{$.Values.namespace}}
+  labels:
+    linkerd.io/extension: linkerd-multicluster
   annotations:
     {{$.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" $.Values.linkerdVersion) $.Values.cliVersion}}
 roleRef:
