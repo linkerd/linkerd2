@@ -1460,7 +1460,7 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
-      initContainers:      
+      initContainers: 
       - args:
         - --incoming-proxy-port
         - "4143"
@@ -1710,7 +1710,7 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
-      initContainers:      
+      initContainers:
       - args:
         - --incoming-proxy-port
         - "4143"
@@ -1966,7 +1966,7 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
-      initContainers:      
+      initContainers:
       - args:
         - --incoming-proxy-port
         - "4143"
@@ -2218,7 +2218,7 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
-      initContainers:      
+      initContainers:
       - args:
         - --incoming-proxy-port
         - "4143"

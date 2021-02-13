@@ -130,7 +130,7 @@ spec:
       initContainers:
       {{- if not (contains "443" ( .Values.proxyInit.ignoreOutboundPorts | toString ))}}
       {{- $_ := set $tree.Values.proxyInit "ignoreOutboundPorts" (printf "%s,443" ( .Values.proxyInit.ignoreOutboundPorts | toString )) -}}
-      {{- end}}      
+      {{- end}} 
       - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       serviceAccountName: linkerd-controller
