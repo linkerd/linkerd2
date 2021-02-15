@@ -43,6 +43,7 @@ This command provides all Kubernetes namespace-scoped and cluster-scoped resourc
 				}
 
 				// map of the namespace and the extension name
+				// Namespace is used as key so as to support custom namespace installs
 				extensions := make(map[string]string)
 				if len(extensionNamespaces) > 0 {
 					for _, extension := range extensionNamespaces {
