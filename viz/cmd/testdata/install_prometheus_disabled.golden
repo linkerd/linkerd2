@@ -9,6 +9,7 @@ metadata:
   labels:
     linkerd.io/extension: linkerd-viz
   annotations:
+    viz.linkerd.io/external-prometheus: external-prom.com
     linkerd.io/inject: enabled
 ---
 ###
@@ -301,6 +302,34 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: linkerd-linkerd-viz-tap-admin
+subjects:
+- kind: ServiceAccount
+  name: linkerd-web
+  namespace: linkerd-viz
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: linkerd-linkerd-viz-web-api
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: web
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: linkerd-linkerd-viz-web-api
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: web
+roleRef:
+  kind: ClusterRole
+  name: linkerd-linkerd-viz-web-api
+  apiGroup: rbac.authorization.k8s.io
 subjects:
 - kind: ServiceAccount
   name: linkerd-web
@@ -803,6 +832,7 @@ spec:
       - args:
         - injector
         - -tap-service-name=linkerd-tap.linkerd-viz.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+        - -log-level=info
         image: ghcr.io/linkerd/tap:dev-undefined
         imagePullPolicy: 
         livenessProbe:

@@ -88,7 +88,7 @@ func (s *GRPCTapServer) TapByResource(req *tapPb.TapByResourceRequest, stream ta
 
 		for _, pod := range podsFor {
 			if pkgK8s.IsMeshed(pod, s.controllerNamespace) {
-				if pkgK8s.IsTapDisabled(pod) {
+				if vizLabels.IsTapDisabled(pod) {
 					tapDisabled = true
 				} else if !vizLabels.IsTapEnabled(pod) {
 					tapNotEnabled = true
@@ -104,7 +104,7 @@ func (s *GRPCTapServer) TapByResource(req *tapPb.TapByResourceRequest, stream ta
 		errStr := fmt.Errorf("no pods to tap for %s/%s", res.GetType(), res.GetName())
 		errStrings = append(errStrings, errStr.Error())
 		if tapDisabled {
-			errStr = fmt.Errorf("pods found with tap disabled via the %s annotation", pkgK8s.ProxyDisableTapAnnotation)
+			errStr = fmt.Errorf("pods found with tap disabled via the %s annotation", vizLabels.VizTapDisabled)
 			errStrings = append(errStrings, errStr.Error())
 		}
 		if tapNotEnabled {

@@ -7,7 +7,6 @@ package k8s
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/linkerd/linkerd2/pkg/version"
 	appsv1 "k8s.io/api/apps/v1"
@@ -224,9 +223,6 @@ const (
 
 	// ProxyDisableIdentityAnnotation can be used to disable identity on the injected proxy.
 	ProxyDisableIdentityAnnotation = ProxyConfigAnnotationsPrefix + "/disable-identity"
-
-	// ProxyDisableTapAnnotation can be used to disable tap on the injected proxy.
-	ProxyDisableTapAnnotation = ProxyConfigAnnotationsPrefix + "/disable-tap"
 
 	// ProxyEnableDebugAnnotation is set to true if the debug container is
 	// injected.
@@ -476,23 +472,4 @@ func GetPodLabels(ownerKind, ownerName string, pod *corev1.Pod) map[string]strin
 // IsMeshed returns whether a given Pod is in a given controller's service mesh.
 func IsMeshed(pod *corev1.Pod, controllerNS string) bool {
 	return pod.Labels[ControllerNSLabel] == controllerNS
-}
-
-// IsTapDisabled returns true if a namespace or pod has an annotation for
-// explicitly disabling tap
-func IsTapDisabled(obj interface{}) bool {
-	var valStr string
-	switch resource := obj.(type) {
-	case *corev1.Pod:
-		valStr = resource.GetAnnotations()[ProxyDisableTapAnnotation]
-	case *corev1.Namespace:
-		valStr = resource.GetAnnotations()[ProxyDisableTapAnnotation]
-	}
-	if valStr != "" {
-		valBool, err := strconv.ParseBool(valStr)
-		if err == nil && valBool {
-			return true
-		}
-	}
-	return false
 }

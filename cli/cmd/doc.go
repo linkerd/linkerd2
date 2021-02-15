@@ -208,10 +208,6 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Disables resources from participating in TLS identity",
 		},
 		{
-			Name:        k8s.ProxyDisableTapAnnotation,
-			Description: "Disables resources from being tapped",
-		},
-		{
 			Name:        k8s.ProxyEnableDebugAnnotation,
 			Description: "Inject a debug sidecar for data plane debugging",
 		},

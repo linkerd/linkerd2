@@ -6,11 +6,11 @@
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: {{ .Values.global.namespace }}
+  name: {{ .Values.namespace }}
   annotations:
-    {{.Values.global.proxyInjectAnnotation}}: {{.Values.global.proxyInjectDisabled}}
+    {{.Values.proxyInjectAnnotation}}: {{.Values.proxyInjectDisabled}}
   labels:
-    {{.Values.global.linkerdNamespaceLabel}}: "true"
+    {{.Values.linkerdNamespaceLabel}}: "true"
     config.linkerd.io/admission-webhooks: disabled
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
 {{ end -}}
