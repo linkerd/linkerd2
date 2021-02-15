@@ -22,25 +22,32 @@ func TestMain(m *testing.M) {
 func TestGoodEndpoints(t *testing.T) {
 	ns := TestHelper.GetLinkerdNamespace()
 	vizNs := TestHelper.GetVizNamespace()
+	testDataPath := "testdata"
 	cmd := []string{
 		"endpoints",
 		fmt.Sprintf("linkerd-controller-api.%s.svc.cluster.local:8085", ns),
 		fmt.Sprintf("linkerd-dst.%s.svc.cluster.local:8086", ns),
 		fmt.Sprintf("linkerd-grafana.%s.svc.cluster.local:3000", vizNs),
 		fmt.Sprintf("linkerd-identity.%s.svc.cluster.local:8080", ns),
-		fmt.Sprintf("linkerd-prometheus.%s.svc.cluster.local:9090", vizNs),
 		fmt.Sprintf("linkerd-proxy-injector.%s.svc.cluster.local:443", ns),
 		fmt.Sprintf("linkerd-sp-validator.%s.svc.cluster.local:443", ns),
 		fmt.Sprintf("linkerd-tap.%s.svc.cluster.local:8088", vizNs),
 		fmt.Sprintf("linkerd-web.%s.svc.cluster.local:8084", vizNs),
-		"-ojson",
 	}
+
+	if !TestHelper.ExternalPrometheus() {
+		cmd = append(cmd, fmt.Sprintf("linkerd-prometheus.%s.svc.cluster.local:9090", vizNs))
+	} else {
+		testDataPath += "/external_prometheus"
+	}
+
+	cmd = append(cmd, "-ojson")
 	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "unexpected error", err)
 	}
 
-	tpl := template.Must(template.ParseFiles("testdata/linkerd_endpoints.golden"))
+	tpl := template.Must(template.ParseFiles(testDataPath + "/linkerd_endpoints.golden"))
 	vars := struct {
 		Ns    string
 		VizNs string

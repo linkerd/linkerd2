@@ -506,7 +506,7 @@ run_external-prometheus_test() {
   run_test "$test_directory/install_test.go" --external-prometheus=true
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
   for test in "${tests[@]}"; do
-    run_test "$test"
+    run_test "$test" --external-prometheus=true
   done
 }
 

@@ -332,25 +332,6 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 	}
 
-	if TestHelper.ExternalPrometheus() {
-
-		// Install external prometheus
-		resources, err := testutil.ReadFile("testdata/external_prometheus.yaml")
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "failed to read external_prometheus manifest file",
-				"failed to read external_prometheus manifest file: %s", err)
-		}
-
-		out, err := TestHelper.KubectlApply(resources, "")
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-				"kubectl apply command failed\n%s", out)
-		}
-
-		// Update args to use external proemtheus
-		vizArgs = append(vizArgs, "--set", "prometheusUrl=http://prometheus.default.svc.cluster.local:9090", "--set", "prometheus.enabled=false")
-	}
-
 	if TestHelper.UpgradeFromVersion() != "" {
 
 		cmd = "upgrade"
@@ -431,6 +412,24 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	if err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s in namespace %s", name, ns),
 			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
+	}
+
+	if TestHelper.ExternalPrometheus() {
+
+		// Install external prometheus
+		out, err := TestHelper.LinkerdRun("inject", "testdata/external_prometheus.yaml")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "'linkerd inject' command failed: %s", err)
+		}
+
+		out, err = TestHelper.KubectlApply(out, "")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+				"kubectl apply command failed\n%s", out)
+		}
+
+		// Update args to use external proemtheus
+		vizArgs = append(vizArgs, "--set", "prometheusUrl=http://prometheus.default.svc.cluster.local:9090", "--set", "prometheus.enabled=false")
 	}
 
 	// Install Linkerd Viz Extension
