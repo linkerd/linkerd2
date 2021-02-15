@@ -42,12 +42,20 @@ This command provides all Kubernetes namespace-scoped and cluster-scoped resourc
 					return err
 				}
 
+				// map of the namespace and the extension name
+				extensions := make(map[string]string)
 				if len(extensionNamespaces) > 0 {
-					var extensions []string
 					for _, extension := range extensionNamespaces {
-						extensions = append(extensions, fmt.Sprintf("* %s", extension.Labels[k8s.LinkerdExtensionLabel]))
+						extensions[extension.Name] = extension.Labels[k8s.LinkerdExtensionLabel]
 					}
-					fmt.Fprintln(os.Stderr, fmt.Sprintf("Please uninstall the following extensions before uninstalling the control-plane:\n\t%s", strings.Join(extensions, "\n\t")))
+
+					// Retrieve all the extension names
+					extensionNames := make([]string, 0, len(extensions))
+					for _, v := range extensions {
+						extensionNames = append(extensionNames, fmt.Sprintf("* %s", v))
+					}
+
+					fmt.Fprintln(os.Stderr, fmt.Sprintf("Please uninstall the following extensions before uninstalling the control-plane:\n\t%s", strings.Join(extensionNames, "\n\t")))
 					fail = true
 				}
 
@@ -58,8 +66,8 @@ This command provides all Kubernetes namespace-scoped and cluster-scoped resourc
 
 				var injectedPods []string
 				for _, pod := range podList.Items {
-					// skip core control-plane namespace
-					if pod.Namespace != controlPlaneNamespace {
+					// skip core control-plane namespace, and extension namespaces
+					if pod.Namespace != controlPlaneNamespace && extensions[pod.Namespace] == "" {
 						injectedPods = append(injectedPods, fmt.Sprintf("* %s", pod.Name))
 					}
 				}
