@@ -11,7 +11,7 @@ components for Linkerd.
 
 ## Quickstart and documentation
 
-You can run Linkerd on any Kubernetes 1.13+ cluster in a matter of seconds. See
+You can run Linkerd on any Kubernetes 1.16+ cluster in a matter of seconds. See
 the [Linkerd Getting Started Guide][getting-started] for how.
 
 For more comprehensive documentation, start with the [Linkerd
@@ -61,7 +61,7 @@ helm install linkerd/linkerd-viz
 
 ## Requirements
 
-Kubernetes: `>=1.13.0-0`
+Kubernetes: `>=1.16.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
