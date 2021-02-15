@@ -47,7 +47,7 @@ ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -mod=readonly -o web/web -ldflags "-s -w" ./web
 
 ## package it all up
-FROM debian:buster-20201117-slim
+FROM debian:buster-20210208-slim
 WORKDIR /linkerd
 
 COPY LICENSE .
