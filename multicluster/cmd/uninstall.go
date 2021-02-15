@@ -7,18 +7,13 @@ import (
 	"os"
 	"strings"
 
-	// "github.com/linkerd/linkerd2/multicluster/static"
-	// "github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/k8s/resource"
 	mc "github.com/linkerd/linkerd2/pkg/multicluster"
 	"github.com/spf13/cobra"
 
-	// chartloader "helm.sh/helm/v3/pkg/chart/loader"
-	// "helm.sh/helm/v3/pkg/chartutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
-	// "sigs.k8s.io/yaml"
 )
 
 func newMulticlusterUninstallCommand() *cobra.Command {
