@@ -315,12 +315,6 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 	values.Namespace = controlPlaneNamespace
 	values.Stage = stage
 
-	// Render raw values
-	rawValues, err := yaml.Marshal(values)
-	if err != nil {
-		return err
-	}
-
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
@@ -365,7 +359,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 	}
 
 	// Store final Values generated from values.yaml and CLI flags
-	err = yaml.Unmarshal(rawValues, &chart.Values)
+	chart.Values, err = values.ToMap()
 	if err != nil {
 		return err
 	}
