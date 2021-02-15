@@ -11,7 +11,7 @@ jobs:
   go_lint:
     name: Go lint
     timeout-minutes: 10
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     container:
       image: golang:1.13.4
     steps:
@@ -23,7 +23,7 @@ jobs:
   go_format:
     name: Go format
     timeout-minutes: 10
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     container:
       image: golang:1.13.4
     steps:
@@ -35,7 +35,7 @@ jobs:
   proto_diff:
     name: Proto diff
     timeout-minutes: 10
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     container:
       image: golang:1.13.4
     steps:
@@ -49,7 +49,7 @@ jobs:
   shellcheck:
     name: shellcheck
     timeout-minutes: 10
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
       # actions/checkout@v2
@@ -62,7 +62,7 @@ jobs:
   psscript-analyzer:
     name: PSScriptAnalyzer
     timeout-minutes: 10
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
       # actions/checkout@v2
@@ -79,7 +79,7 @@ jobs:
   markdown_lint:
     name: Markdown lint
     timeout-minutes: 10
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
       # actions/checkout@v2
@@ -88,7 +88,7 @@ jobs:
       run: bin/markdownlint-all
   chart_docs_diff:
     name: Chart readme diff check
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
       # actions/checkout@v2
