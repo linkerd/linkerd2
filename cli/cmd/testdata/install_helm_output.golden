@@ -1232,7 +1232,7 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191,222"
         - --outbound-ports-to-ignore
-        - "111"
+        - "111,443"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1453,7 +1453,7 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191,222"
         - --outbound-ports-to-ignore
-        - "111"
+        - "111,443"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1693,7 +1693,7 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191,222"
         - --outbound-ports-to-ignore
-        - "111"
+        - "111,443"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1942,7 +1942,7 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191,222"
         - --outbound-ports-to-ignore
-        - "111"
+        - "111,443"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -2185,7 +2185,7 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191,222"
         - --outbound-ports-to-ignore
-        - "111"
+        - "111,443"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
