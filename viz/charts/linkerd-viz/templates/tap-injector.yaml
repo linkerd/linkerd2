@@ -69,8 +69,9 @@ spec:
       {{- end }}
       containers:
       - args:
-        - tap-injector
+        - injector
         - -tap-service-name=linkerd-tap.{{.Values.namespace}}.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+        - -log-level={{.Values.tapInjector.logLevel | default .Values.defaultLogLevel}}
         image: {{.Values.tapInjector.image.registry}}/{{.Values.tapInjector.image.name}}:{{.Values.tapInjector.image.tag}}
         imagePullPolicy: {{.Values.tapInjector.image.pullPolicy}}
         livenessProbe:

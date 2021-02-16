@@ -104,6 +104,7 @@
   "formToNamespaceHelpText": "Namespace of target resource",
   "formToResource": "To Resource",
   "formToResourceHelpText": "Target resource",
+  "installMulticlusterMsg": "To view gateway stats for your mesh, install the linkerd multicluster extension by running",
   "labelError": "Error",
   "labelSuccess": "Success",
   "menuItemCommunity": "Community",

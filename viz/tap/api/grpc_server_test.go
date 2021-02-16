@@ -1,4 +1,4 @@
-package tap
+package api
 
 import (
 	"context"
@@ -13,7 +13,8 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
-	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -23,7 +24,7 @@ import (
 type tapExpected struct {
 	err       error
 	k8sRes    []string
-	req       *pb.TapByResourceRequest
+	req       *tapPb.TapByResourceRequest
 	requireID string
 }
 
@@ -32,7 +33,7 @@ type mockTapByResourceServer struct {
 	util.MockServerStream
 }
 
-func (m *mockTapByResourceServer) Send(event *pb.TapEvent) error {
+func (m *mockTapByResourceServer) Send(event *tapPb.TapEvent) error {
 	return nil
 }
 
@@ -53,7 +54,7 @@ func TestTapByResource(t *testing.T) {
 		{
 			err:    status.Error(codes.InvalidArgument, "TapByResource received nil target ResourceSelection"),
 			k8sRes: []string{},
-			req:    &pb.TapByResourceRequest{},
+			req:    &tapPb.TapByResourceRequest{},
 		},
 		{
 			err: status.Errorf(codes.Unimplemented, "unexpected match specified: any:{}"),
@@ -74,17 +75,17 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: &pb.TapByResourceRequest{
-				Target: &pb.ResourceSelection{
-					Resource: &pb.Resource{
+			req: &tapPb.TapByResourceRequest{
+				Target: &metricsPb.ResourceSelection{
+					Resource: &metricsPb.Resource{
 						Namespace: "emojivoto",
 						Type:      pkgK8s.Pod,
 						Name:      "emojivoto-meshed",
 					},
 				},
-				Match: &pb.TapByResourceRequest_Match{
-					Match: &pb.TapByResourceRequest_Match_Any{
-						Any: &pb.TapByResourceRequest_Match_Seq{},
+				Match: &tapPb.TapByResourceRequest_Match{
+					Match: &tapPb.TapByResourceRequest_Match_Any{
+						Any: &tapPb.TapByResourceRequest_Match_Seq{},
 					},
 				},
 			},
@@ -104,9 +105,9 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: &pb.TapByResourceRequest{
-				Target: &pb.ResourceSelection{
-					Resource: &pb.Resource{
+			req: &tapPb.TapByResourceRequest{
+				Target: &metricsPb.ResourceSelection{
+					Resource: &metricsPb.Resource{
 						Namespace: "emojivoto",
 						Type:      pkgK8s.Pod,
 						Name:      "emojivoto-not-meshed",
@@ -117,9 +118,9 @@ status:
 		{
 			err:    status.Errorf(codes.Unimplemented, "unimplemented resource type: bad-type"),
 			k8sRes: []string{},
-			req: &pb.TapByResourceRequest{
-				Target: &pb.ResourceSelection{
-					Resource: &pb.Resource{
+			req: &tapPb.TapByResourceRequest{
+				Target: &metricsPb.ResourceSelection{
+					Resource: &metricsPb.Resource{
 						Namespace: "emojivoto",
 						Type:      "bad-type",
 						Name:      "emojivoto-meshed-not-found",
@@ -145,9 +146,9 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: &pb.TapByResourceRequest{
-				Target: &pb.ResourceSelection{
-					Resource: &pb.Resource{
+			req: &tapPb.TapByResourceRequest{
+				Target: &metricsPb.ResourceSelection{
+					Resource: &metricsPb.Resource{
 						Namespace: "emojivoto",
 						Type:      pkgK8s.Pod,
 						Name:      "emojivoto-meshed-not-found",
@@ -173,9 +174,9 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: &pb.TapByResourceRequest{
-				Target: &pb.ResourceSelection{
-					Resource: &pb.Resource{
+			req: &tapPb.TapByResourceRequest{
+				Target: &metricsPb.ResourceSelection{
+					Resource: &metricsPb.Resource{
 						Namespace: "emojivoto",
 						Type:      pkgK8s.Pod,
 						Name:      "emojivoto-meshed",
@@ -185,7 +186,7 @@ status:
 		},
 		{
 			err: status.Errorf(codes.NotFound, `no pods to tap for pod/emojivoto-meshed-tap-disabled
-pods found with tap disabled via the config.linkerd.io/disable-tap annotation`),
+pods found with tap disabled via the viz.linkerd.io/disable-tap annotation`),
 			k8sRes: []string{`
 apiVersion: v1
 kind: Pod
@@ -196,24 +197,24 @@ metadata:
     app: emoji-svc
     linkerd.io/control-plane-ns: controller-ns
   annotations:
-    config.linkerd.io/disable-tap: "true"
+    viz.linkerd.io/disable-tap: "true"
     linkerd.io/proxy-version: testinjectversion
 status:
   phase: Running
   podIP: 127.0.0.1
     `,
 			},
-			req: &pb.TapByResourceRequest{
-				Target: &pb.ResourceSelection{
-					Resource: &pb.Resource{
+			req: &tapPb.TapByResourceRequest{
+				Target: &metricsPb.ResourceSelection{
+					Resource: &metricsPb.Resource{
 						Namespace: "emojivoto",
 						Type:      pkgK8s.Pod,
 						Name:      "emojivoto-meshed-tap-disabled",
 					},
 				},
-				Match: &pb.TapByResourceRequest_Match{
-					Match: &pb.TapByResourceRequest_Match_All{
-						All: &pb.TapByResourceRequest_Match_Seq{},
+				Match: &tapPb.TapByResourceRequest_Match{
+					Match: &tapPb.TapByResourceRequest_Match_All{
+						All: &tapPb.TapByResourceRequest_Match_Seq{},
 					},
 				},
 			},
@@ -237,17 +238,17 @@ status:
   podIP: 127.0.0.1
     `,
 			},
-			req: &pb.TapByResourceRequest{
-				Target: &pb.ResourceSelection{
-					Resource: &pb.Resource{
+			req: &tapPb.TapByResourceRequest{
+				Target: &metricsPb.ResourceSelection{
+					Resource: &metricsPb.Resource{
 						Namespace: "emojivoto",
 						Type:      pkgK8s.Pod,
 						Name:      "emojivoto-meshed-tap-not-enabled",
 					},
 				},
-				Match: &pb.TapByResourceRequest_Match{
-					Match: &pb.TapByResourceRequest_Match_All{
-						All: &pb.TapByResourceRequest_Match_Seq{},
+				Match: &tapPb.TapByResourceRequest_Match{
+					Match: &tapPb.TapByResourceRequest_Match_All{
+						All: &tapPb.TapByResourceRequest_Match_Seq{},
 					},
 				},
 			},
@@ -272,17 +273,17 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: &pb.TapByResourceRequest{
-				Target: &pb.ResourceSelection{
-					Resource: &pb.Resource{
+			req: &tapPb.TapByResourceRequest{
+				Target: &metricsPb.ResourceSelection{
+					Resource: &metricsPb.Resource{
 						Namespace: "emojivoto",
 						Type:      pkgK8s.Pod,
 						Name:      "emojivoto-meshed",
 					},
 				},
-				Match: &pb.TapByResourceRequest_Match{
-					Match: &pb.TapByResourceRequest_Match_All{
-						All: &pb.TapByResourceRequest_Match_Seq{},
+				Match: &tapPb.TapByResourceRequest_Match{
+					Match: &tapPb.TapByResourceRequest_Match_All{
+						All: &tapPb.TapByResourceRequest_Match_Seq{},
 					},
 				},
 			},
@@ -309,17 +310,17 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: &pb.TapByResourceRequest{
-				Target: &pb.ResourceSelection{
-					Resource: &pb.Resource{
+			req: &tapPb.TapByResourceRequest{
+				Target: &metricsPb.ResourceSelection{
+					Resource: &metricsPb.Resource{
 						Namespace: "emojivoto",
 						Type:      pkgK8s.Pod,
 						Name:      "emojivoto-meshed",
 					},
 				},
-				Match: &pb.TapByResourceRequest_Match{
-					Match: &pb.TapByResourceRequest_Match_All{
-						All: &pb.TapByResourceRequest_Match_Seq{},
+				Match: &tapPb.TapByResourceRequest_Match{
+					Match: &tapPb.TapByResourceRequest_Match_All{
+						All: &tapPb.TapByResourceRequest_Match_Seq{},
 					},
 				},
 			},
@@ -351,17 +352,17 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: &pb.TapByResourceRequest{
-				Target: &pb.ResourceSelection{
-					Resource: &pb.Resource{
+			req: &tapPb.TapByResourceRequest{
+				Target: &metricsPb.ResourceSelection{
+					Resource: &metricsPb.Resource{
 						Namespace: "",
 						Type:      pkgK8s.Namespace,
 						Name:      "emojivoto",
 					},
 				},
-				Match: &pb.TapByResourceRequest_Match{
-					Match: &pb.TapByResourceRequest_Match_All{
-						All: &pb.TapByResourceRequest_Match_Seq{},
+				Match: &tapPb.TapByResourceRequest_Match{
+					Match: &tapPb.TapByResourceRequest_Match_All{
+						All: &tapPb.TapByResourceRequest_Match_Seq{},
 					},
 				},
 			},

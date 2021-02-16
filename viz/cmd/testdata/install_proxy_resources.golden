@@ -347,6 +347,34 @@ subjects:
   name: linkerd-web
   namespace: linkerd-viz
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: linkerd-linkerd-viz-web-api
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: web
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: linkerd-linkerd-viz-web-api
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: web
+roleRef:
+  kind: ClusterRole
+  name: linkerd-linkerd-viz-web-api
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: linkerd-web
+  namespace: linkerd-viz
+---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
@@ -943,11 +971,11 @@ spec:
         beta.kubernetes.io/os: linux
       containers:
       - args:
-        - tap
-        - -controller-namespace=linkerd
+        - api
+        - -api-namespace=linkerd
         - -log-level=info
         - -identity-trust-domain=cluster.local
-        image: ghcr.io/linkerd/controller:dev-undefined
+        image: ghcr.io/linkerd/tap:dev-undefined
         imagePullPolicy: 
         livenessProbe:
           httpGet:
@@ -1104,9 +1132,10 @@ spec:
         beta.kubernetes.io/os: linux
       containers:
       - args:
-        - tap-injector
+        - injector
         - -tap-service-name=linkerd-tap.linkerd-viz.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/controller:dev-undefined
+        - -log-level=info
+        image: ghcr.io/linkerd/tap:dev-undefined
         imagePullPolicy: 
         livenessProbe:
           httpGet:

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
@@ -304,11 +303,6 @@ type Checker struct {
 	// check is the function that's called to execute the check; if the function
 	// returns an error, the check fails
 	check func(context.Context) error
-
-	// checkRPC is an alternative to check that can be used to perform a remote
-	// check using the SelfCheck gRPC endpoint; check status is based on the value
-	// of the gRPC response
-	checkRPC func(context.Context) (*healthcheckPb.SelfCheckResponse, error)
 }
 
 // NewChecker returns a new instance of checker type
@@ -352,12 +346,6 @@ func (c *Checker) SurfaceErrorOnRetry() *Checker {
 // WithCheck returns a checker with the provided check func
 func (c *Checker) WithCheck(check func(context.Context) error) *Checker {
 	c.check = check
-	return c
-}
-
-// WithCheckRPC returns a checker with the provided checkRPC func
-func (c *Checker) WithCheckRPC(checkRPC func(context.Context) (*healthcheckPb.SelfCheckResponse, error)) *Checker {
-	c.checkRPC = checkRPC
 	return c
 }
 
@@ -454,6 +442,37 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 	return hc
 }
 
+// InitializeKubeAPIClient creates a client for the HealthChecker. It avoids
+// having to require the KubernetesAPIChecks check to run in order for the
+// HealthChecker to run other checks.
+func (hc *HealthChecker) InitializeKubeAPIClient() error {
+	k8sAPI, err := k8s.NewAPI(hc.KubeConfig, hc.KubeContext, hc.Impersonate, hc.ImpersonateGroup, RequestTimeout)
+	if err != nil {
+		return err
+	}
+	hc.kubeAPI = k8sAPI
+
+	return nil
+}
+
+// InitializeLinkerdGlobalConfig populates the linkerd config object in the
+// healthchecker. It avoids having to require the LinkerdControlPlaneExistenceChecks
+// check to run before running other checks
+func (hc *HealthChecker) InitializeLinkerdGlobalConfig(ctx context.Context) error {
+	uuid, l5dConfig, err := hc.checkLinkerdConfigConfigMap(ctx)
+	if err != nil {
+		return err
+	}
+
+	if l5dConfig != nil {
+		hc.CNIEnabled = l5dConfig.CNIEnabled
+	}
+	hc.uuid = uuid
+	hc.linkerdConfig = l5dConfig
+
+	return nil
+}
+
 // AppendCategories returns a HealthChecker instance appending the provided Categories
 func (hc *HealthChecker) AppendCategories(categories ...Category) *HealthChecker {
 	hc.categories = append(hc.categories, categories...)
@@ -486,7 +505,7 @@ func (hc *HealthChecker) allCategories() []Category {
 					hintAnchor:  "k8s-api",
 					fatal:       true,
 					check: func(context.Context) (err error) {
-						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext, hc.Impersonate, hc.ImpersonateGroup, RequestTimeout)
+						err = hc.InitializeKubeAPIClient()
 						return
 					},
 				},
@@ -679,11 +698,7 @@ func (hc *HealthChecker) allCategories() []Category {
 					hintAnchor:  "l5d-existence-linkerd-config",
 					fatal:       true,
 					check: func(ctx context.Context) (err error) {
-						hc.uuid, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap(ctx)
-						if hc.linkerdConfig == nil {
-							return errors.New("failed to load linkerd-config")
-						}
-						hc.CNIEnabled = hc.linkerdConfig.GetGlobal().CNIEnabled
+						err = hc.InitializeLinkerdGlobalConfig(ctx)
 						return
 					},
 				},
@@ -1548,17 +1563,6 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 						}
 					}
 				}
-
-				if checker.checkRPC != nil {
-					if !hc.runCheckRPC(c.ID, &checker, observer) {
-						if !checker.warning {
-							success = false
-						}
-						if checker.fatal {
-							return success
-						}
-					}
-				}
 			}
 		}
 	}
@@ -1566,9 +1570,9 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 	return success
 }
 
-// LinkerdConfigGlobal gets the Linkerd global configuration values.
-func (hc *HealthChecker) LinkerdConfigGlobal() *l5dcharts.Global {
-	return hc.linkerdConfig.GetGlobal()
+// LinkerdConfig gets the Linkerd configuration values.
+func (hc *HealthChecker) LinkerdConfig() *l5dcharts.Values {
+	return hc.linkerdConfig
 }
 
 func (hc *HealthChecker) runCheck(categoryID CategoryID, c *Checker, observer CheckObserver) bool {
@@ -1606,77 +1610,6 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *Checker, observer Ch
 		}
 
 		observer(checkResult)
-		return checkResult.Err == nil
-	}
-}
-
-// runCheckRPC calls `c` which itself should make a gRPC call returning `*healthcheckPb.SelfCheckResponse`
-// (which can contain multiple responses) or error.
-// If that call returns an error, we send it to `observer` and return false.
-// Otherwise, we send to `observer` a success message with `c.description` and then proceed to check the
-// multiple responses contained in the response.
-// We keep on retrying the same call until all the responses have an OK status
-// (or until timeout/deadline is reached), sending a message to `observer` for each response,
-// while making sure no duplicate messages are sent.
-func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *Checker, observer CheckObserver) bool {
-	observedResults := []CheckResult{}
-	for {
-		ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-		defer cancel()
-		checkRsp, err := c.checkRPC(ctx)
-		if se, ok := err.(*SkipError); ok {
-			log.Debugf("Skipping check: %s. Reason: %s", c.description, se.Reason)
-			return true
-		}
-
-		checkResult := &CheckResult{
-			Category:    categoryID,
-			Description: c.description,
-			HintAnchor:  c.hintAnchor,
-			Warning:     c.warning,
-		}
-
-		if vs, ok := err.(*VerboseSuccess); ok {
-			checkResult.Description = fmt.Sprintf("%s\n%s", checkResult.Description, vs.Message)
-		} else if err != nil {
-			// errors at the gRPC-call level are not retried
-			// but we do retry below if the response Status is not OK
-			checkResult.Err = &CategoryError{categoryID, err}
-			observer(checkResult)
-			return false
-		}
-
-		// General description, only shown once.
-		// The following calls to `observer()` track specific result entries.
-		if !checkResult.alreadyObserved(observedResults) {
-			observer(checkResult)
-			observedResults = append(observedResults, *checkResult)
-		}
-
-		for _, check := range checkRsp.Results {
-			checkResult.Err = nil
-			checkResult.Description = fmt.Sprintf("[%s] %s", check.SubsystemName, check.CheckDescription)
-			if check.Status != healthcheckPb.CheckStatus_OK {
-				checkResult.Err = &CategoryError{categoryID, fmt.Errorf(check.FriendlyMessageToUser)}
-				checkResult.Retry = time.Now().Before(c.retryDeadline)
-				// only show the waiting message during retries,
-				// and send the underlying error on the last try
-				if !c.surfaceErrorOnRetry && checkResult.Retry {
-					checkResult.Err = errors.New("waiting for check to complete")
-				}
-				observer(checkResult)
-			} else if !checkResult.alreadyObserved(observedResults) {
-				observer(checkResult)
-			}
-			observedResults = append(observedResults, *checkResult)
-		}
-
-		if checkResult.Retry {
-			log.Debug("Retrying on error")
-			time.Sleep(retryWindow)
-			continue
-		}
-
 		return checkResult.Err == nil
 	}
 }
@@ -1726,7 +1659,7 @@ func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred
 	var data *issuercerts.IssuerCertData
 
 	if values.Identity.Issuer.Scheme == "" || values.Identity.Issuer.Scheme == k8s.IdentityIssuerSchemeLinkerd {
-		data, err = issuercerts.FetchIssuerData(ctx, hc.kubeAPI, values.GetGlobal().IdentityTrustAnchorsPEM, hc.ControlPlaneNamespace)
+		data, err = issuercerts.FetchIssuerData(ctx, hc.kubeAPI, values.IdentityTrustAnchorsPEM, hc.ControlPlaneNamespace)
 	} else {
 		data, err = issuercerts.FetchExternalIssuerData(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 	}
@@ -1758,7 +1691,14 @@ func FetchCurrentConfiguration(ctx context.Context, k kubernetes.Interface, cont
 	}
 
 	if rawValues := configMap.Data["values"]; rawValues != "" {
+		// Convert into latest values, where global field is removed
+		rawValuesBytes, err := config.RemoveGlobalFieldIfPresent([]byte(rawValues))
+		if err != nil {
+			return nil, nil, err
+		}
+		rawValues = string(rawValuesBytes)
 		var fullValues l5dcharts.Values
+
 		err = yaml.Unmarshal([]byte(rawValues), &fullValues)
 		if err != nil {
 			return nil, nil, err
@@ -1971,7 +1911,7 @@ func CheckConfigMaps(ctx context.Context, kubeAPI *k8s.KubernetesAPI, namespace 
 }
 
 func (hc *HealthChecker) isHA() bool {
-	return hc.linkerdConfig.GetGlobal().HighAvailability
+	return hc.linkerdConfig.HighAvailability
 }
 
 func (hc *HealthChecker) isHeartbeatDisabled() bool {
@@ -2163,7 +2103,7 @@ func checkPodsProxiesCertificate(ctx context.Context, kubeAPI k8s.KubernetesAPI,
 		return err
 	}
 
-	trustAnchorsPem := values.GetGlobal().IdentityTrustAnchorsPEM
+	trustAnchorsPem := values.IdentityTrustAnchorsPEM
 	offendingPods := []string{}
 	for _, pod := range meshedPods {
 		if strings.TrimSpace(pod.Anchors) != strings.TrimSpace(trustAnchorsPem) {
@@ -2396,15 +2336,6 @@ func (hc *HealthChecker) checkClockSkew(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func (cr *CheckResult) alreadyObserved(previousResults []CheckResult) bool {
-	for _, result := range previousResults {
-		if result.Description == cr.Description && result.Err == cr.Err {
-			return true
-		}
-	}
-	return false
 }
 
 // CheckRoles checks that the expected roles exist.

@@ -18,6 +18,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/metrics-api/util"
+	"github.com/linkerd/linkerd2/viz/pkg"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -167,7 +168,7 @@ If no resource name is specified, displays stats about all resources of the spec
   # Get all inbound stats to the test namespace.
   linkerd viz stat ns/test`,
 		Args:      cobra.MinimumNArgs(1),
-		ValidArgs: coreUtil.ValidTargets,
+		ValidArgs: pkg.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
@@ -202,7 +203,8 @@ If no resource name is specified, displays stats about all resources of the spec
 			i := 0
 			for res := range c {
 				if res.err != nil {
-					return res.err
+					fmt.Fprint(os.Stderr, res.err.Error())
+					os.Exit(1)
 				}
 				totalRows = append(totalRows, res.rows...)
 				if i++; i == len(reqs) {

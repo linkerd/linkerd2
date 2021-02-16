@@ -1,4 +1,4 @@
-package tap
+package pkg
 
 import (
 	"bufio"
@@ -12,7 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
-	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	pb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -42,7 +42,7 @@ func Reader(ctx context.Context, k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourc
 	if err != nil {
 		return nil, nil, err
 	}
-	url.Path = fmt.Sprintf("%s%s", url.Path, protohttp.TapReqToURL(req))
+	url.Path = fmt.Sprintf("%s%s", url.Path, TapReqToURL(req))
 
 	httpReq, err := http.NewRequest(
 		http.MethodPost,

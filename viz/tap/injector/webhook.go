@@ -1,4 +1,4 @@
-package tapinjector
+package injector
 
 import (
 	"bytes"
@@ -8,7 +8,6 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/webhook"
-	labels "github.com/linkerd/linkerd2/pkg/k8s"
 	vizLabels "github.com/linkerd/linkerd2/viz/pkg/labels"
 	"github.com/prometheus/common/log"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
@@ -53,7 +52,7 @@ func Mutate(tapSvcName string) webhook.Handler {
 			return nil, err
 		}
 		var t *template.Template
-		if labels.IsTapDisabled(namespace) || labels.IsTapDisabled(pod) {
+		if vizLabels.IsTapDisabled(namespace) || vizLabels.IsTapDisabled(pod) {
 			return admissionResponse, nil
 		}
 		t, err = template.New("tpl").Parse(tpl)

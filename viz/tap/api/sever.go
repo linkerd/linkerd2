@@ -1,4 +1,4 @@
-package tap
+package api
 
 import (
 	"context"
@@ -12,18 +12,17 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/k8s"
-	k8sutils "github.com/linkerd/linkerd2/pkg/k8s"
 	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	pkgTls "github.com/linkerd/linkerd2/pkg/tls"
-	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	pb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	"github.com/prometheus/common/log"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// APIServer holds the underlying http server and its config
-type APIServer struct {
+// Server holds the underlying http server and its config
+type Server struct {
 	*http.Server
 	listener     net.Listener
 	router       *httprouter.Router
@@ -32,14 +31,14 @@ type APIServer struct {
 	log          *logrus.Entry
 }
 
-// NewAPIServer creates a new server that implements the Tap APIService.
-func NewAPIServer(
+// NewServer creates a new server that implements the Tap APIService.
+func NewServer(
 	ctx context.Context,
 	addr string,
 	k8sAPI *k8s.API,
 	grpcTapServer pb.TapServer,
 	disableCommonNames bool,
-) (*APIServer, error) {
+) (*Server, error) {
 	updateEvent := make(chan struct{})
 	errEvent := make(chan error)
 	watcher := pkgTls.NewFsCredsWatcher(pkgk8s.MountPathTLSBase, updateEvent, errEvent).
@@ -50,7 +49,7 @@ func NewAPIServer(
 		}
 	}()
 
-	clientCAPem, allowedNames, usernameHeader, groupHeader, err := apiServerAuth(ctx, k8sAPI)
+	clientCAPem, allowedNames, usernameHeader, groupHeader, err := serverAuth(ctx, k8sAPI)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +60,7 @@ func NewAPIServer(
 	}
 
 	log := logrus.WithFields(logrus.Fields{
-		"component": "apiserver",
+		"component": "tap",
 		"addr":      addr,
 	})
 
@@ -90,7 +89,7 @@ func NewAPIServer(
 		return nil, fmt.Errorf("net.Listen failed with: %s", err)
 	}
 
-	s := &APIServer{
+	s := &Server{
 		Server:       httpServer,
 		listener:     lis,
 		router:       initRouter(h),
@@ -111,8 +110,8 @@ func NewAPIServer(
 }
 
 // Start starts the https server
-func (a *APIServer) Start(ctx context.Context) {
-	a.log.Infof("starting APIServer on %s", a.Server.Addr)
+func (a *Server) Start(ctx context.Context) {
+	a.log.Infof("starting tap API server on %s", a.Server.Addr)
 	if err := a.ServeTLS(a.listener, "", ""); err != nil {
 		if err == http.ErrServerClosed {
 			return
@@ -121,12 +120,12 @@ func (a *APIServer) Start(ctx context.Context) {
 	}
 }
 
-func (a *APIServer) getCertificate(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
+func (a *Server) getCertificate(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	return a.certValue.Load().(*tls.Certificate), nil
 }
 
-// ServeHTTP handles all routes for the APIServer.
-func (a *APIServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+// ServeHTTP handles all routes for the Server.
+func (a *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	a.log.Debugf("ServeHTTP(): %+v", req)
 	if err := a.validate(req); err != nil {
 		a.log.Debug(err)
@@ -137,7 +136,7 @@ func (a *APIServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 // validate ensures that the request should be honored returning an error otherwise.
-func (a *APIServer) validate(req *http.Request) error {
+func (a *Server) validate(req *http.Request) error {
 	// if `requestheader-allowed-names` was empty, allow any CN
 	if len(a.allowedNames) > 0 {
 		for _, cn := range a.allowedNames {
@@ -158,21 +157,21 @@ func (a *APIServer) validate(req *http.Request) error {
 	return nil
 }
 
-// apiServerAuth parses the relevant data out of a ConfigMap to enable client
-// TLS authentication.
+// serverAuth parses the relevant data out of a ConfigMap to enable client TLS
+// authentication.
 // kubectl -n kube-system get cm/extension-apiserver-authentication
 // accessible via the extension-apiserver-authentication-reader role
-func apiServerAuth(ctx context.Context, k8sAPI *k8s.API) (string, []string, string, string, error) {
+func serverAuth(ctx context.Context, k8sAPI *k8s.API) (string, []string, string, string, error) {
 
 	cm, err := k8sAPI.Client.CoreV1().
 		ConfigMaps(metav1.NamespaceSystem).
-		Get(ctx, k8sutils.ExtensionAPIServerAuthenticationConfigMapName, metav1.GetOptions{})
+		Get(ctx, pkgk8s.ExtensionAPIServerAuthenticationConfigMapName, metav1.GetOptions{})
 
 	if err != nil {
-		return "", nil, "", "", fmt.Errorf("failed to load [%s] config: %s", k8sutils.ExtensionAPIServerAuthenticationConfigMapName, err)
+		return "", nil, "", "", fmt.Errorf("failed to load [%s] config: %s", pkgk8s.ExtensionAPIServerAuthenticationConfigMapName, err)
 	}
 
-	clientCAPem, ok := cm.Data[k8sutils.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey]
+	clientCAPem, ok := cm.Data[pkgk8s.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey]
 
 	if !ok {
 		return "", nil, "", "", fmt.Errorf("no client CA cert available for apiextension-server")

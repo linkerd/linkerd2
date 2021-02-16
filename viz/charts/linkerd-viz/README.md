@@ -11,7 +11,7 @@ components for Linkerd.
 
 ## Quickstart and documentation
 
-You can run Linkerd on any Kubernetes 1.13+ cluster in a matter of seconds. See
+You can run Linkerd on any Kubernetes 1.16+ cluster in a matter of seconds. See
 the [Linkerd Getting Started Guide][getting-started] for how.
 
 For more comprehensive documentation, start with the [Linkerd
@@ -61,7 +61,7 @@ helm install linkerd/linkerd-viz
 
 ## Requirements
 
-Kubernetes: `>=1.13.0-0`
+Kubernetes: `>=1.16.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
@@ -71,7 +71,7 @@ Kubernetes: `>=1.13.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use   |
+| clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use |
 | createdByAnnotation | string | `"linkerd.io/created-by"` |  |
 | dashboard.UID | int | `2103` |  |
 | dashboard.enforcedHostRegexp | string | `""` | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information |
@@ -100,7 +100,8 @@ Kubernetes: `>=1.13.0-0`
 | grafana.resources.cpu.request | string | `nil` | Amount of CPU units that the grafana container requests |
 | grafana.resources.memory.limit | string | `nil` | Maximum amount of memory that grafana container can use |
 | grafana.resources.memory.request | string | `nil` | Amount of memory that the grafana container requests |
-| identityTrustDomain | string | `"cluster.local"` | Trust domain used for identity  |
+| grafanaUrl | string | `""` | url of external grafana instance with reverse proxy configured. |
+| identityTrustDomain | string | `"cluster.local"` | Trust domain used for identity |
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
 | installNamespace | bool | `true` | Set to false when installing in a custom namespace. |
 | jaegerUrl | string | `""` | url of external jaeger instance Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>` if you plan to use jaeger extension |
@@ -137,14 +138,14 @@ Kubernetes: `>=1.13.0-0`
 | prometheus.resources.memory.request | string | `nil` | Amount of memory that the prometheus container requests |
 | prometheus.ruleConfigMapMounts | string | `nil` | Alerting/recording rule ConfigMap mounts (sub-path names must end in ´_rules.yml´ or ´_rules.yaml´) |
 | prometheus.scrapeConfigs | string | `nil` | A scrapeConfigs section specifies a set of targets and parameters describing how to scrape them. |
-| prometheus.sideCarContainers | string | `nil` | A sidecarContainers section specifies a list of secondary containers to run in the prometheus pod e.g. to export data to non-prometheus systems |
+| prometheus.sidecarContainers | string | `nil` | A sidecarContainers section specifies a list of secondary containers to run in the prometheus pod e.g. to export data to non-prometheus systems |
 | prometheusUrl | string | `""` | url of external prometheus instance |
 | proxyInjectAnnotation | string | `"linkerd.io/inject"` |  |
 | tap.UID | int | `2103` |  |
 | tap.caBundle | string | `""` | Bundle of CA certificates for Tap component. If not provided then Helm will use the certificate generated  for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
 | tap.crtPEM | string | `""` | Certificate for the Tap component. If not provided then Helm will generate one. |
 | tap.externalSecret | bool | `false` | Do not create a secret resource for the Tap component. If this is set to `true`, the value `tap.caBundle` must be set (see below). |
-| tap.image.name | string | `"controller"` | Docker image name for the tap instance |
+| tap.image.name | string | `"tap"` | Docker image name for the tap instance |
 | tap.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the tap instance |
 | tap.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the tap instance |
 | tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided then Helm will generate one. |
@@ -160,10 +161,11 @@ Kubernetes: `>=1.13.0-0`
 | tapInjector.crtPEM | string | `""` | Certificate for the tapInjector. If not provided then Helm will generate one. |
 | tapInjector.externalSecret | bool | `false` | Do not create a secret resource for the tapInjector webhook. If this is set to `true`, the value `tapInjector.caBundle` must be set (see below) |
 | tapInjector.failurePolicy | string | `"Ignore"` |  |
-| tapInjector.image.name | string | `"controller"` | Docker image name for the tapInjector instance |
+| tapInjector.image.name | string | `"tap"` | Docker image name for the tapInjector instance |
 | tapInjector.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the tapInjector instance |
 | tapInjector.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the tapInjector instance |
 | tapInjector.keyPEM | string | `""` | Certificate key for the tapInjector. If not provided then Helm will generate one. |
+| tapInjector.logLevel | string | defaultLogLevel | log level of the tapInjector |
 | tapInjector.namespaceSelector | string | `nil` |  |
 | tapInjector.objectSelector | string | `nil` |  |
 | tapInjector.proxy | string | `nil` |  |
@@ -172,7 +174,7 @@ Kubernetes: `>=1.13.0-0`
 | tapInjector.resources.cpu.request | string | `nil` | Amount of CPU units that the tapInjector container requests |
 | tapInjector.resources.memory.limit | string | `nil` | Maximum amount of memory that tapInjector container can use |
 | tapInjector.resources.memory.request | string | `nil` | Amount of memory that the tapInjector container requests |
-| tolerations | string | `nil` | Tolerations section, See the  [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
+| tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.4.0](https://github.com/norwoodj/helm-docs/releases/v1.4.0)
