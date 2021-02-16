@@ -102,7 +102,7 @@ jobs:
         - cluster-domain
         - deep
         - external-issuer
-        - external-prometheus
+        - external-prometheus-deep
         - helm-deep
         - helm-upgrade
         - multicluster
