@@ -955,7 +955,7 @@ data:
       image:
         name: ghcr.io/linkerd/proxy-init
         pullPolicy: IfNotPresent
-        version: v1.3.8
+        version: v1.3.9
       resources:
         cpu:
           limit: 100m
@@ -1226,7 +1226,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.8
+        image: ghcr.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1456,7 +1456,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.8
+        image: ghcr.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1705,7 +1705,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.8
+        image: ghcr.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1961,7 +1961,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.8
+        image: ghcr.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2213,7 +2213,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.8
+        image: ghcr.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
