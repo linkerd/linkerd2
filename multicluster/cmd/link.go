@@ -11,12 +11,14 @@ import (
 	"github.com/linkerd/linkerd2/multicluster/static"
 	multicluster "github.com/linkerd/linkerd2/multicluster/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
+	partials "github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	mc "github.com/linkerd/linkerd2/pkg/multicluster"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	chartloader "helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	valuespkg "helm.sh/helm/v3/pkg/cli/values"
@@ -81,8 +83,8 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 
 			rules := clientcmd.NewDefaultClientConfigLoadingRules()
 			rules.ExplicitPath = kubeconfigPath
-			loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, &clientcmd.ConfigOverrides{})
-			config, err := loader.RawConfig()
+			loadingClient := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, &clientcmd.ConfigOverrides{})
+			config, err := loadingClient.RawConfig()
 			if err != nil {
 				return err
 			}
@@ -255,13 +257,25 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				{Name: "templates/gateway-mirror.yaml"},
 			}
 
+			var partialFiles []*loader.BufferedFile
+			for _, template := range charts.L5dPartials {
+				partialFiles = append(partialFiles,
+					&loader.BufferedFile{Name: template},
+				)
+			}
+
 			// Load all multicluster link chart files into buffer
 			if err := charts.FilesReader(static.Templates, helmMulticlusterLinkDefaultChartName+"/", files); err != nil {
 				return err
 			}
 
+			// Load all partial chart files into buffer
+			if err := charts.FilesReader(partials.Templates, "", partialFiles); err != nil {
+				return err
+			}
+
 			// Create a Chart obj from the files
-			chart, err := chartloader.LoadFiles(files)
+			chart, err := chartloader.LoadFiles(append(files, partialFiles...))
 			if err != nil {
 				return err
 			}
