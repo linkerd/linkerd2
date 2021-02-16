@@ -63,7 +63,7 @@ metadata:
   uid: fake-uuid
 data:
   values: |
-    linkerdVersion: stable-2.10`,`
+    linkerdVersion: stable-2.10`, `
 kind: Namespace
 apiVersion: v1
 metadata:
@@ -75,7 +75,7 @@ metadata:
 				"k8s-version":  []string{"v0.0.0-master+$Format:%h$"},
 				"install-time": []string{"1550234096"},
 				"uuid":         []string{"fake-uuid"},
-				"linkerd-viz": []string{"1"},
+				"linkerd-viz":  []string{"1"},
 			},
 		},
 	}
