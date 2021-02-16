@@ -1,4 +1,4 @@
-ARG RUNTIME_IMAGE=debian:buster-20201117-slim
+ARG RUNTIME_IMAGE=debian:buster-20210208-slim
 ARG BUILDPLATFORM=linux/amd64
 
 # Precompile key slow-to-build dependencies
