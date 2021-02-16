@@ -5,10 +5,10 @@ metadata:
   name: linkerd-config
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerComponentLabel}}: controller
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    {{ include "partials.labels.component" "controller" }}
+    {{ include "partials.labels.controller-ns" . }}
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
 data:
   values: |
   {{- $values := deepCopy .Values }}

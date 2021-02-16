@@ -2267,18 +2267,14 @@ data:
     clusterNetworks: ClusterNetworks
     cniEnabled: false
     controlPlaneTracing: false
-    controllerComponentLabel: ControllerComponentLabel
     controllerImageVersion: ControllerImageVersion
     controllerLogLevel: ControllerLogLevel
-    controllerNamespaceLabel: ControllerNamespaceLabel
-    createdByAnnotation: CreatedByAnnotation
     enableEndpointSlices: false
     grafanaUrl: ""
     highAvailability: false
     identityTrustDomain: cluster.local
     imagePullPolicy: ImagePullPolicy
     imagePullSecrets: null
-    linkerdNamespaceLabel: LinkerdNamespaceLabel
     linkerdVersion: ""
     namespace: Namespace
     prometheusUrl: ""
@@ -2331,9 +2327,6 @@ data:
         mountPath: /run
         name: linkerd-proxy-init-xtables-lock
         readOnly: false
-    proxyInjectAnnotation: ProxyInjectAnnotation
-    proxyInjectDisabled: ProxyInjectDisabled
-    workloadNamespaceLabel: WorkloadNamespaceLabel
     heartbeatResources: null
     heartbeatSchedule: ""
     identityProxyResources: null
@@ -2354,31 +2347,24 @@ data:
 `,
 			},
 			&linkerd2.Values{
-				ControllerImage:          "ControllerImage",
-				ControllerUID:            2103,
-				EnableH2Upgrade:          true,
-				WebhookFailurePolicy:     "WebhookFailurePolicy",
-				OmitWebhookSideEffects:   false,
-				InstallNamespace:         true,
-				NodeSelector:             defaultValues.NodeSelector,
-				Tolerations:              defaultValues.Tolerations,
-				Namespace:                "Namespace",
-				ClusterDomain:            "cluster.local",
-				ClusterNetworks:          "ClusterNetworks",
-				ImagePullPolicy:          "ImagePullPolicy",
-				CliVersion:               "CliVersion",
-				ControllerComponentLabel: "ControllerComponentLabel",
-				ControllerLogLevel:       "ControllerLogLevel",
-				ControllerImageVersion:   "ControllerImageVersion",
-				ControllerNamespaceLabel: "ControllerNamespaceLabel",
-				WorkloadNamespaceLabel:   "WorkloadNamespaceLabel",
-				CreatedByAnnotation:      "CreatedByAnnotation",
-				ProxyInjectAnnotation:    "ProxyInjectAnnotation",
-				ProxyInjectDisabled:      "ProxyInjectDisabled",
-				LinkerdNamespaceLabel:    "LinkerdNamespaceLabel",
-				ProxyContainerName:       "ProxyContainerName",
-				CNIEnabled:               false,
-				IdentityTrustDomain:      defaultValues.IdentityTrustDomain,
+				ControllerImage:        "ControllerImage",
+				ControllerUID:          2103,
+				EnableH2Upgrade:        true,
+				WebhookFailurePolicy:   "WebhookFailurePolicy",
+				OmitWebhookSideEffects: false,
+				InstallNamespace:       true,
+				NodeSelector:           defaultValues.NodeSelector,
+				Tolerations:            defaultValues.Tolerations,
+				Namespace:              "Namespace",
+				ClusterDomain:          "cluster.local",
+				ClusterNetworks:        "ClusterNetworks",
+				ImagePullPolicy:        "ImagePullPolicy",
+				CliVersion:             "CliVersion",
+				ControllerLogLevel:     "ControllerLogLevel",
+				ControllerImageVersion: "ControllerImageVersion",
+				ProxyContainerName:     "ProxyContainerName",
+				CNIEnabled:             false,
+				IdentityTrustDomain:    defaultValues.IdentityTrustDomain,
 				Proxy: &linkerd2.Proxy{
 					Image: &linkerd2.Image{
 						Name:       "ProxyImageName",
@@ -2450,18 +2436,14 @@ data:
       clusterNetworks: ClusterNetworks
       cniEnabled: false
       controlPlaneTracing: false
-      controllerComponentLabel: ControllerComponentLabel
       controllerImageVersion: ControllerImageVersion
       controllerLogLevel: ControllerLogLevel
-      controllerNamespaceLabel: ControllerNamespaceLabel
-      createdByAnnotation: CreatedByAnnotation
       enableEndpointSlices: false
       grafanaUrl: ""
       highAvailability: false
       identityTrustDomain: cluster.local
       imagePullPolicy: ImagePullPolicy
       imagePullSecrets: null
-      linkerdNamespaceLabel: LinkerdNamespaceLabel
       linkerdVersion: ""
       namespace: Namespace
       prometheusUrl: ""
@@ -2514,9 +2496,6 @@ data:
           mountPath: /run
           name: linkerd-proxy-init-xtables-lock
           readOnly: false
-      proxyInjectAnnotation: ProxyInjectAnnotation
-      proxyInjectDisabled: ProxyInjectDisabled
-      workloadNamespaceLabel: WorkloadNamespaceLabel
     heartbeatResources: null
     heartbeatSchedule: ""
     identityProxyResources: null
@@ -2537,31 +2516,24 @@ data:
 `,
 			},
 			&linkerd2.Values{
-				ControllerImage:          "ControllerImage",
-				ControllerUID:            2103,
-				EnableH2Upgrade:          true,
-				WebhookFailurePolicy:     "WebhookFailurePolicy",
-				OmitWebhookSideEffects:   false,
-				InstallNamespace:         true,
-				NodeSelector:             defaultValues.NodeSelector,
-				Tolerations:              defaultValues.Tolerations,
-				Namespace:                "Namespace",
-				ClusterDomain:            "cluster.local",
-				ClusterNetworks:          "ClusterNetworks",
-				ImagePullPolicy:          "ImagePullPolicy",
-				CliVersion:               "CliVersion",
-				ControllerComponentLabel: "ControllerComponentLabel",
-				ControllerLogLevel:       "ControllerLogLevel",
-				ControllerImageVersion:   "ControllerImageVersion",
-				ControllerNamespaceLabel: "ControllerNamespaceLabel",
-				WorkloadNamespaceLabel:   "WorkloadNamespaceLabel",
-				CreatedByAnnotation:      "CreatedByAnnotation",
-				ProxyInjectAnnotation:    "ProxyInjectAnnotation",
-				ProxyInjectDisabled:      "ProxyInjectDisabled",
-				LinkerdNamespaceLabel:    "LinkerdNamespaceLabel",
-				ProxyContainerName:       "ProxyContainerName",
-				CNIEnabled:               false,
-				IdentityTrustDomain:      defaultValues.IdentityTrustDomain,
+				ControllerImage:        "ControllerImage",
+				ControllerUID:          2103,
+				EnableH2Upgrade:        true,
+				WebhookFailurePolicy:   "WebhookFailurePolicy",
+				OmitWebhookSideEffects: false,
+				InstallNamespace:       true,
+				NodeSelector:           defaultValues.NodeSelector,
+				Tolerations:            defaultValues.Tolerations,
+				Namespace:              "Namespace",
+				ClusterDomain:          "cluster.local",
+				ClusterNetworks:        "ClusterNetworks",
+				ImagePullPolicy:        "ImagePullPolicy",
+				CliVersion:             "CliVersion",
+				ControllerLogLevel:     "ControllerLogLevel",
+				ControllerImageVersion: "ControllerImageVersion",
+				ProxyContainerName:     "ProxyContainerName",
+				CNIEnabled:             false,
+				IdentityTrustDomain:    defaultValues.IdentityTrustDomain,
 				Proxy: &linkerd2.Proxy{
 					Image: &linkerd2.Image{
 						Name:       "ProxyImageName",

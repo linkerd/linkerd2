@@ -7,7 +7,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-tap
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    {{ include "partials.labels.extension" "linkerd-viz" }}
     component: tap
 rules:
 - apiGroups: [""]
@@ -25,7 +25,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-tap-admin
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    {{ include "partials.labels.extension" "linkerd-viz" }}
     component: tap
 rules:
 - apiGroups: ["tap.linkerd.io"]
@@ -37,7 +37,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-tap
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    {{ include "partials.labels.extension" "linkerd-viz" }}
     component: tap
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -53,7 +53,7 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-{{.Values.namespace}}-tap-auth-delegator
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    {{ include "partials.labels.extension" "linkerd-viz" }}
     component: tap
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -70,7 +70,7 @@ metadata:
   name: linkerd-tap
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    {{ include "partials.labels.extension" "linkerd-viz" }}
     component: tap
     namespace: {{.Values.namespace}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
@@ -81,7 +81,7 @@ metadata:
   name: linkerd-{{.Values.namespace}}-tap-auth-reader
   namespace: kube-system
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    {{ include "partials.labels.extension" "linkerd-viz" }}
     component: tap
     namespace: {{.Values.namespace}}
 roleRef:
@@ -102,11 +102,11 @@ metadata:
   name: linkerd-tap-k8s-tls
   namespace: {{ .Values.namespace }}
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    {{ include "partials.labels.extension" "linkerd-viz" }}
     component: tap
     namespace: {{.Values.namespace}}
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
 type: kubernetes.io/tls
 data:
   tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tap.crtPEM)) (empty .Values.tap.crtPEM) }}
@@ -118,7 +118,7 @@ kind: APIService
 metadata:
   name: v1alpha1.tap.linkerd.io
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    {{ include "partials.labels.extension" "linkerd-viz" }}
     component: tap
 spec:
   group: tap.linkerd.io

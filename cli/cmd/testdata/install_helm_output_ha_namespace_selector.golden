@@ -868,15 +868,12 @@ data:
     cniEnabled: false
     controlPlaneTracing: false
     controlPlaneTracingNamespace: linkerd-jaeger
-    controllerComponentLabel: linkerd.io/control-plane-component
     controllerImage: ghcr.io/linkerd/controller
     controllerImageVersion: linkerd-version
     controllerLogFormat: plain
     controllerLogLevel: info
-    controllerNamespaceLabel: linkerd.io/control-plane-ns
     controllerReplicas: 3
     controllerUID: 2103
-    createdByAnnotation: linkerd.io/created-by
     debugContainer:
       image:
         name: ghcr.io/linkerd/debug
@@ -908,7 +905,6 @@ data:
       issuer:
         clockSkewAllowance: 20s
         crtExpiry: Jul 30 17:21:14 2020
-        crtExpiryAnnotation: linkerd.io/identity-issuer-expiry
         issuanceLifetime: 24h0m0s
         scheme: linkerd.io/tls
         tls:
@@ -926,7 +922,6 @@ data:
     imagePullPolicy: IfNotPresent
     imagePullSecrets: null
     installNamespace: true
-    linkerdNamespaceLabel: linkerd.io/is-control-plane
     linkerdVersion: linkerd-version
     namespace: linkerd
     nodeSelector:
@@ -998,8 +993,6 @@ data:
         mountPath: /run
         name: linkerd-proxy-init-xtables-lock
         readOnly: false
-    proxyInjectAnnotation: linkerd.io/inject
-    proxyInjectDisabled: disabled
     proxyInjector:
       caBundle: test-proxy-injector-ca-bundle
       crtPEM: test-proxy-injector-crt-pem
@@ -1040,7 +1033,6 @@ data:
       keyPEM: test-tap-key-pem
     tolerations: null
     webhookFailurePolicy: Fail
-    workloadNamespaceLabel: linkerd.io/workload-ns
 ---
 # Source: linkerd2/templates/identity.yaml
 ---

@@ -12,10 +12,10 @@ metadata:
     app.kubernetes.io/name: heartbeat
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
-    {{.Values.controllerComponentLabel}}: heartbeat
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    {{ include "partials.labels.component" "heartbeat" }}
+    {{ include "partials.labels.controller-ns" . }}
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
 spec:
   schedule: "{{.Values.heartbeatSchedule}}"
   successfulJobsHistoryLimit: 0
@@ -24,11 +24,11 @@ spec:
       template:
         metadata:
           labels:
-            {{.Values.controllerComponentLabel}}: heartbeat
-            {{.Values.workloadNamespaceLabel}}: {{.Values.namespace}}
+            {{ include "partials.labels.component" "heartbeat" }}
+            {{ include "partials.labels.workload-ns" . }}
             {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 12 }}{{- end }}
           annotations:
-            {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+            {{ include "partials.annotations.created-by" . }}
             {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 12 }}{{- end }}
         spec:
           {{- if .Values.tolerations -}}

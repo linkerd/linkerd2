@@ -7,8 +7,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-destination
   labels:
-    {{.Values.controllerComponentLabel}}: destination
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    {{ include "partials.labels.component" "destination" }}
+    {{ include "partials.labels.controller-ns" . }}
 rules:
 - apiGroups: ["apps"]
   resources: ["replicasets"]
@@ -36,8 +36,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-destination
   labels:
-    {{.Values.controllerComponentLabel}}: destination
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    {{ include "partials.labels.component" "destination" }}
+    {{ include "partials.labels.controller-ns" . }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -53,6 +53,6 @@ metadata:
   name: linkerd-destination
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerComponentLabel}}: destination
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    {{ include "partials.labels.component" "destination" }}
+    {{ include "partials.labels.controller-ns" . }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}

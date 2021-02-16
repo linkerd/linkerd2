@@ -1,12 +1,8 @@
-# -- Control plane label. Do not edit 
-controllerComponentLabel: linkerd.io/control-plane-component
 # -- Docker image for the Service mirror component (uses the Linkerd controller
 # image)
 controllerImage: ghcr.io/linkerd/controller
 # -- Tag for the Service Mirror container Docker image
 controllerImageVersion: linkerdVersionValue
-# --  Annotation label for the proxy create. Do not edit.
-createdByAnnotation: linkerd.io/created-by
 # -- The port used for liveliness probing 
 gatewayProbePort: 4181
 # -- Service Mirror component namespace 

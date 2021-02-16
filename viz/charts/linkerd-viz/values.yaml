@@ -10,10 +10,6 @@ linkerdVersion: &linkerd_version linkerdVersionValue
 clusterDomain: &cluster_domain cluster.local
 # -- Trust domain used for identity
 identityTrustDomain: *cluster_domain
-#  Annotation labels. Do not edit.
-createdByAnnotation: linkerd.io/created-by
-proxyInjectAnnotation: linkerd.io/inject
-extensionAnnotation: linkerd.io/extension
 
 # -- Docker registry for all viz components
 defaultRegistry: &registry ghcr.io/linkerd

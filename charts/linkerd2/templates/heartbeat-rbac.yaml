@@ -9,7 +9,7 @@ metadata:
   name: linkerd-heartbeat
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    {{ include "partials.labels.controller-ns" . }}
 rules:
 - apiGroups: [""]
   resources: ["configmaps"]
@@ -22,7 +22,7 @@ metadata:
   name: linkerd-heartbeat
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    {{ include "partials.labels.controller-ns" . }}
 roleRef:
   kind: Role
   name: linkerd-heartbeat
@@ -38,7 +38,7 @@ metadata:
   name: linkerd-heartbeat
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerComponentLabel}}: heartbeat
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    {{ include "partials.labels.component" "heartbeat" }}
+    {{ include "partials.labels.controller-ns" . }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 {{- end }}

@@ -5,7 +5,7 @@ metadata:
   name: linkerd-viz-psp
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    {{ include "partials.labels.extension" "linkerd-viz" }}
     namespace: {{.Values.namespace}}
 roleRef:
   kind: Role

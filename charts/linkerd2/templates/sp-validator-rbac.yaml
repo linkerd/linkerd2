@@ -7,8 +7,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-sp-validator
   labels:
-    {{.Values.controllerComponentLabel}}: sp-validator
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    {{ include "partials.labels.component" "sp-validator" }}
+    {{ include "partials.labels.controller-ns" . }}
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -19,8 +19,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-sp-validator
   labels:
-    {{.Values.controllerComponentLabel}}: sp-validator
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    {{ include "partials.labels.component" "sp-validator" }}
+    {{ include "partials.labels.controller-ns" . }}
 subjects:
 - kind: ServiceAccount
   name: linkerd-sp-validator
@@ -37,8 +37,8 @@ metadata:
   name: linkerd-sp-validator
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerComponentLabel}}: sp-validator
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    {{ include "partials.labels.component" "sp-validator" }}
+    {{ include "partials.labels.controller-ns" . }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 ---
 {{- $host := printf "linkerd-sp-validator.%s.svc" .Values.namespace }}
@@ -50,10 +50,10 @@ metadata:
   name: linkerd-sp-validator-k8s-tls
   namespace: {{ .Values.namespace }}
   labels:
-    {{.Values.controllerComponentLabel}}: sp-validator
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    {{ include "partials.labels.component" "sp-validator" }}
+    {{ include "partials.labels.controller-ns" . }}
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
 type: kubernetes.io/tls
 data:
   tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.profileValidator.crtPEM)) (empty .Values.profileValidator.crtPEM) }}
@@ -65,8 +65,8 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: linkerd-sp-validator-webhook-config
   labels:
-    {{.Values.controllerComponentLabel}}: sp-validator
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    {{ include "partials.labels.component" "sp-validator" }}
+    {{ include "partials.labels.controller-ns" . }}
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
   namespaceSelector:

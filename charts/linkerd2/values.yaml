@@ -127,19 +127,6 @@ proxyInit:
   xtMountPath:
     mountPath: /run
     name: linkerd-proxy-init-xtables-lock
-# -- Annotation label for the proxy create. Do not edit.
-createdByAnnotation: linkerd.io/created-by
-# -- Annotation label to signal injection. Do not edit.
-proxyInjectAnnotation: linkerd.io/inject
-# -- Annotation value to disable injection. Do not edit.
-proxyInjectDisabled: disabled
-# -- Control plane label. Do not edit
-controllerComponentLabel: linkerd.io/control-plane-component
-# -- Control plane label. Do not edit
-controllerNamespaceLabel: linkerd.io/control-plane-ns
-# -- Control plane label. Do not edit
-linkerdNamespaceLabel: linkerd.io/is-control-plane
-workloadNamespaceLabel: linkerd.io/workload-ns
 # -- For Private docker registries, authentication is needed.
 #  Registry secrets are applied to the respective service accounts
 imagePullSecrets: []
@@ -192,8 +179,6 @@ identity:
     # -- Expiration timestamp for the issuer certificate. It must be provided during install. Must match the expiry date in crtPEM
     crtExpiry:
 
-    # -- Annotation used to identity the issuer certificate expiration timestamp. Do not edit.
-    crtExpiryAnnotation: linkerd.io/identity-issuer-expiry
     # -- Amount of time for which the Identity issuer should certify identity
     issuanceLifetime: 24h0m0s
 

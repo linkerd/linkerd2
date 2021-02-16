@@ -63,12 +63,14 @@ helm install linkerd/linkerd-multicluster
 
 Kubernetes: `>=1.16.0-0`
 
+| Repository | Name | Version |
+|------------|------|---------|
+| file://../../../charts/partials | partials | 0.1.0 |
+
 ## Values
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| controllerComponentLabel | string | `"linkerd.io/control-plane-component"` | Control plane label. Do not edit |
-| createdByAnnotation | string | `"linkerd.io/created-by"` | Annotation label for the proxy create. Do not edit. |
 | gateway | bool | `true` | If the gateway component should be installed |
 | gatewayLocalProbePath | string | `"/health-local"` | The path that will be used by the local liveness checks to ensure the gateway is alive |
 | gatewayLocalProbePort | int | `8888` | The port that will be used by the local liveness checks to ensure the gateway is alive |

@@ -8,10 +8,10 @@ metadata:
   name: tap-injector
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    {{ include "partials.labels.extension" "linkerd-viz" }}
     component: tap-injector
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
 spec:
   type: ClusterIP
   selector:
@@ -25,9 +25,9 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    {{ include "partials.labels.extension" "linkerd-viz" }}
     app.kubernetes.io/name: tap-injector
     app.kubernetes.io/part-of: Linkerd
     component: tap-injector
@@ -49,13 +49,13 @@ spec:
         {{- if empty .Values.cliVersion }}
         checksum/config: {{ include (print $.Template.BasePath "/tap-injector-rbac.yaml") . | sha256sum }}
         {{- end }}
-        {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+        {{ include "partials.annotations.created-by" . }}
         {{- with .Values.tapInjector.proxy }}
         {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
-        {{.Values.extensionAnnotation}}: linkerd-viz
+        {{ include "partials.labels.extension" "linkerd-viz" }}
         component: tap-injector
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
