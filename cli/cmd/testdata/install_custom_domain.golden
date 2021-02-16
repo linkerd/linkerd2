@@ -195,6 +195,32 @@ subjects:
   name: linkerd-heartbeat
   namespace: l5d
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: linkerd-heartbeat
+  labels:
+    linkerd.io/control-plane-ns: l5d
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: linkerd-heartbeat
+  labels:
+    linkerd.io/control-plane-ns: l5d
+roleRef:
+  kind: ClusterRole
+  name: linkerd-heartbeat
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: linkerd-heartbeat
+  namespace: l5d
+---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
