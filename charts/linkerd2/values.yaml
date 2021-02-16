@@ -12,7 +12,7 @@ clusterDomain: cluster.local
 # typical Kubernetes environments.
 clusterNetworks: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
 # -- Docker image pull policy
-imagePullPolicy: &image_pull_policy IfNotPresent
+imagePullPolicy: IfNotPresent
 # -- Log level for the control plane components
 controllerLogLevel: info
 # -- Log format for the control plane components
@@ -22,7 +22,7 @@ controlPlaneTracing: false
 # -- namespace to send control plane traces to
 controlPlaneTracingNamespace: linkerd-jaeger
 # -- control plane version. See Proxy section for proxy version
-linkerdVersion: &linkerd_version linkerdVersionValue
+linkerdVersion: linkerdVersionValue
 # -- Control plane namespace
 namespace: linkerd
 # -- enables the use of EndpointSlice informers for the destination service;
@@ -182,9 +182,11 @@ debugContainer:
     # -- Docker image for the debug container
     name: ghcr.io/linkerd/debug
     # -- Pull policy for the debug container Docker image
-    pullPolicy: *image_pull_policy
+    # @default -- imagePullPolicy
+    pullPolicy: ""
     # -- Tag for the debug container Docker image
-    version: *linkerd_version
+    # @default -- linkerdVersion
+    version: ""
 
 identity:
   issuer:

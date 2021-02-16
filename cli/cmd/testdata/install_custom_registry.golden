@@ -858,7 +858,7 @@ data:
     debugContainer:
       image:
         name: my.custom.registry/linkerd-io/debug
-        pullPolicy: IfNotPresent
+        pullPolicy: ""
         version: install-debug-version
     destinationProxyResources: null
     destinationResources: null

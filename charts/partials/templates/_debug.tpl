@@ -1,6 +1,6 @@
 {{- define "partials.debug" -}}
-image: {{.image.name}}:{{.image.version}}
-imagePullPolicy: {{.image.pullPolicy}}
+image: {{.Values.debugContainer.image.name}}:{{.Values.debugContainer.image.version | default .Values.linkerdVersion}}
+imagePullPolicy: {{.Values.debugContainer.image.pullPolicy | default .Values.imagePullPolicy}}
 name: linkerd-debug
 terminationMessagePolicy: FallbackToLogsOnError
 {{- end -}}

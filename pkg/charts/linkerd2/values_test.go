@@ -126,9 +126,8 @@ func TestNewValues(t *testing.T) {
 		},
 		DebugContainer: &DebugContainer{
 			Image: &Image{
-				Name:       "ghcr.io/linkerd/debug",
-				PullPolicy: "IfNotPresent",
-				Version:    testVersion,
+				Name:    "ghcr.io/linkerd/debug",
+				Version: "dev-undefined",
 			},
 		},
 
@@ -141,7 +140,6 @@ func TestNewValues(t *testing.T) {
 	// values.yaml.
 	actual.ControllerImageVersion = testVersion
 	actual.ProxyInit.Image.Version = testVersion
-	actual.DebugContainer.Image.Version = testVersion
 
 	// Make Add-On Values nil to not have to check for their defaults
 	actual.ImagePullSecrets = nil
@@ -203,7 +201,6 @@ func TestNewValues(t *testing.T) {
 		// values.yaml.
 		actual.ControllerImageVersion = testVersion
 		actual.ProxyInit.Image.Version = testVersion
-		actual.DebugContainer.Image.Version = testVersion
 
 		if !reflect.DeepEqual(expected, actual) {
 			t.Errorf("Mismatch Helm HA defaults.\nExpected: %+v\nActual: %+v", expected, actual)

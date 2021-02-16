@@ -815,7 +815,7 @@ data:
     debugContainer:
       image:
         name: ghcr.io/linkerd/debug
-        pullPolicy: IfNotPresent
+        pullPolicy: ""
         version: install-debug-version
     destinationProxyResources: null
     destinationResources: null
