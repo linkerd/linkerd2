@@ -154,7 +154,7 @@ func JaegerDataPlaneCategory(hc *healthcheck.HealthChecker) *healthcheck.Categor
 				}
 				return hc.CheckNamespace(ctx, hc.DataPlaneNamespace, true)
 			}),
-		*healthcheck.NewChecker("data-plane pods have tap enabled").
+		*healthcheck.NewChecker("data-plane pods have tracing enabled").
 			WithHintAnchor("l5d-jaeger-data-plane-trace").
 			Warning().
 			WithCheck(func(ctx context.Context) error {
@@ -182,7 +182,7 @@ func checkForTraceConfiguration(pods []corev1.Pod) error {
 	}
 
 	if len(podsWithoutTraceConfig) > 0 {
-		return fmt.Errorf("Some data plane pods do not have tap configured and cannot be tapped:\n\t%s", strings.Join(podsWithoutTraceConfig, "\n\t"))
+		return fmt.Errorf("Some data plane pods do not have tracing configured and cannot be traced:\n\t%s", strings.Join(podsWithoutTraceConfig, "\n\t"))
 	}
 	return nil
 }
