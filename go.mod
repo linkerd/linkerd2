@@ -27,7 +27,7 @@ require (
 	github.com/imdario/mergo v0.3.7
 	github.com/julienschmidt/httprouter v1.2.0
 	github.com/linkerd/linkerd2-proxy-api v0.1.15
-	github.com/linkerd/linkerd2-proxy-init v1.3.6
+	github.com/linkerd/linkerd2-proxy-init v1.3.9
 	github.com/mattn/go-isatty v0.0.12
 	github.com/mattn/go-runewidth v0.0.2
 	github.com/mitchellh/copystructure v1.0.0 // indirect
