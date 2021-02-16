@@ -23,9 +23,9 @@ const (
 )
 
 var (
-	okStatus   = color.New(color.FgGreen, color.Bold).SprintFunc()("\u221A")  // √
-	warnStatus = color.New(color.FgYellow, color.Bold).SprintFunc()("\u203C") // ‼
-	failStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u00D7")    // ×
+	OkStatus   = color.New(color.FgGreen, color.Bold).SprintFunc()("\u221A")  // √
+	WarnStatus = color.New(color.FgYellow, color.Bold).SprintFunc()("\u203C") // ‼
+	FailStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u00D7")    // ×
 )
 
 // RunChecks runs the checks that are part of hc
@@ -62,11 +62,11 @@ func runChecksTable(wout io.Writer, hc Runner) bool {
 			return
 		}
 
-		status := okStatus
+		status := OkStatus
 		if result.Err != nil {
-			status = failStatus
+			status = FailStatus
 			if result.Warning {
-				status = warnStatus
+				status = WarnStatus
 			}
 		}
 
@@ -84,39 +84,39 @@ func runChecksTable(wout io.Writer, hc Runner) bool {
 	fmt.Fprintln(wout, "")
 
 	if !success {
-		fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
+		fmt.Fprintf(wout, "Status check results are %s\n", FailStatus)
 	} else {
-		fmt.Fprintf(wout, "Status check results are %s\n", okStatus)
+		fmt.Fprintf(wout, "Status check results are %s\n", OkStatus)
 	}
 
 	return success
 }
 
-type checkOutput struct {
+type CheckOutput struct {
 	Success    bool             `json:"success"`
-	Categories []*checkCategory `json:"categories"`
+	Categories []*CheckCategory `json:"categories"`
 }
 
-type checkCategory struct {
+type CheckCategory struct {
 	Name   string   `json:"categoryName"`
-	Checks []*check `json:"checks"`
+	Checks []*Check `json:"checks"`
 }
 
 // check is a user-facing version of `healthcheck.CheckResult`, for output via
 // `linkerd check -o json`.
-type check struct {
+type Check struct {
 	Description string      `json:"description"`
 	Hint        string      `json:"hint,omitempty"`
 	Error       string      `json:"error,omitempty"`
-	Result      checkResult `json:"result"`
+	Result      CheckResult `json:"result"`
 }
 
 type checkResult string
 
 const (
-	checkSuccess checkResult = "success"
-	checkWarn    checkResult = "warning"
-	checkErr     checkResult = "error"
+	checkSuccess CheckResult = "success"
+	checkWarn    CheckResult = "warning"
+	checkErr     CheckResult = "error"
 )
 
 func runChecksJSON(wout io.Writer, werr io.Writer, hc Runner) bool {

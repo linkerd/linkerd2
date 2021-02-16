@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -246,7 +247,7 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 		headerTxt := "Linkerd extensions checks"
 		fmt.Fprintln(wout)
 		fmt.Fprintln(wout, headerTxt)
-		fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
+		fmt.Fprintln(wout, strings.Repeat("-", len(headerTxt)))
 	}
 
 	for i, ns := range namespaces {
@@ -254,8 +255,9 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 			// add a new line to space out each check output
 			fmt.Fprintln(wout)
 		}
+		extension := ns.Labels[k8s.LinkerdExtensionLabel]
 
-		switch ns.Labels[k8s.LinkerdExtensionLabel] {
+		switch extension {
 		case jaegerCmd.JaegerExtensionName:
 			jaegerCheckCmd := jaegerCmd.NewCmdCheck()
 			err = executeExtensionCheck(cmd, "jaeger", jaegerCheckCmd.Flags())
@@ -266,39 +268,21 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 			mcCheckCmd := mcCmd.NewCmdCheck()
 			err = executeExtensionCheck(cmd, "multicluster", mcCheckCmd.Flags())
 		default:
-			// Since we don't have checks for extensions we don't support
-			// create a healthchecker that checks if the namespace exists
-			categoryID := healthcheck.CategoryID(ns.Labels[k8s.LinkerdExtensionLabel])
-			checkers := []healthcheck.Checker{}
-			checkers = append(checkers,
-				*healthcheck.NewChecker(fmt.Sprintf("%s extension Namespace exists", categoryID)).
-					WithHintAnchor(fmt.Sprintf("%s-ns-exists", categoryID)).
-					Fatal().
-					WithCheck(func(ctx context.Context) error {
-						_, err := kubeAPI.GetNamespaceWithExtensionLabel(ctx, string(categoryID))
-						if err != nil {
-							return err
-						}
-						return nil
-					}))
-			hc := healthcheck.NewHealthChecker([]healthcheck.CategoryID{categoryID},
-				&healthcheck.Options{
-					ControlPlaneNamespace: controlPlaneNamespace,
-					CNINamespace:          cniNamespace,
-					DataPlaneNamespace:    opts.namespace,
-					KubeConfig:            kubeconfigPath,
-					KubeContext:           kubeContext,
-					Impersonate:           impersonate,
-					ImpersonateGroup:      impersonateGroup,
-					APIAddr:               apiAddr,
-					VersionOverride:       opts.versionOverride,
-					RetryDeadline:         time.Now().Add(opts.wait),
-					CNIEnabled:            opts.cniEnabled,
-				})
-			hc.AppendCategories(*healthcheck.NewCategory(categoryID, checkers, true))
-			success := healthcheck.RunChecks(wout, werr, hc, opts.output)
-			if !success {
-				os.Exit(1)
+			extensionCmd := fmt.Sprintf("linkerd-%s", extension)
+			path, err := exec.LookPath(extensionCmd)
+			if err != nil {
+				if opts.output != healthcheck.JSONOutput {
+					fmt.Fprintln(wout, extensionCmd)
+					fmt.Fprintln(wout, strings.Repeat("-", len(extensionCmd)))
+					fmt.Fprintf(wout, "%s Linkerd extension %s found but command %s not found\n", healthcheck.WarnStatus, extension, extensionCmd)
+				}
+			} else {
+				args := append([]string{"check"}, getGlobalFlags(cmd.Flags())...)
+				plugin := exec.Command(path, args...)
+				plugin.Stdin = os.Stdin
+				plugin.Stdout = os.Stdout
+				plugin.Stderr = os.Stderr
+				err = plugin.Run()
 			}
 		}
 		if err != nil {
