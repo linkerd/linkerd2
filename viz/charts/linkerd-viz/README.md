@@ -11,7 +11,7 @@ components for Linkerd.
 
 ## Quickstart and documentation
 
-You can run Linkerd on any Kubernetes 1.13+ cluster in a matter of seconds. See
+You can run Linkerd on any Kubernetes 1.16+ cluster in a matter of seconds. See
 the [Linkerd Getting Started Guide][getting-started] for how.
 
 For more comprehensive documentation, start with the [Linkerd
@@ -61,7 +61,7 @@ helm install linkerd/linkerd-viz
 
 ## Requirements
 
-Kubernetes: `>=1.13.0-0`
+Kubernetes: `>=1.16.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
@@ -100,6 +100,7 @@ Kubernetes: `>=1.13.0-0`
 | grafana.resources.cpu.request | string | `nil` | Amount of CPU units that the grafana container requests |
 | grafana.resources.memory.limit | string | `nil` | Maximum amount of memory that grafana container can use |
 | grafana.resources.memory.request | string | `nil` | Amount of memory that the grafana container requests |
+| grafanaUrl | string | `""` | url of external grafana instance with reverse proxy configured. |
 | identityTrustDomain | string | `"cluster.local"` | Trust domain used for identity |
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
 | installNamespace | bool | `true` | Set to false when installing in a custom namespace. |
@@ -164,6 +165,7 @@ Kubernetes: `>=1.13.0-0`
 | tapInjector.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the tapInjector instance |
 | tapInjector.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the tapInjector instance |
 | tapInjector.keyPEM | string | `""` | Certificate key for the tapInjector. If not provided then Helm will generate one. |
+| tapInjector.logLevel | string | defaultLogLevel | log level of the tapInjector |
 | tapInjector.namespaceSelector | string | `nil` |  |
 | tapInjector.objectSelector | string | `nil` |  |
 | tapInjector.proxy | string | `nil` |  |

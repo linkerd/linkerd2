@@ -441,6 +441,26 @@ func (h *handler) handleAPIResourceDefinition(w http.ResponseWriter, req *http.R
 	w.Write(resourceDefinition)
 }
 
+func (h *handler) handleGetExtension(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	ctx := req.Context()
+	extensionName := req.FormValue("extension_name")
+
+	resp := map[string]interface{}{}
+	ns, err := h.k8sAPI.GetNamespaceWithExtensionLabel(ctx, extensionName)
+	if err != nil && strings.HasPrefix(err.Error(), "could not find") {
+		renderJSON(w, resp)
+		return
+	} else if err != nil {
+		renderJSONError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	resp["extensionName"] = ns.GetLabels()[k8s.LinkerdExtensionLabel]
+	resp["namespace"] = ns.Name
+
+	renderJSON(w, resp)
+}
+
 func (h *handler) handleAPIGateways(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	window := req.FormValue("window")
 	if window == "" {

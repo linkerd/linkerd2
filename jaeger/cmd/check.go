@@ -17,14 +17,14 @@ import (
 
 const (
 
-	// jaegerExtensionName is the name of jaeger extension
-	jaegerExtensionName = "linkerd-jaeger"
+	// JaegerExtensionName is the name of jaeger extension
+	JaegerExtensionName = "linkerd-jaeger"
 
 	// linkerdJaegerExtensionCheck adds checks related to the jaeger extension
-	linkerdJaegerExtensionCheck healthcheck.CategoryID = jaegerExtensionName
+	linkerdJaegerExtensionCheck healthcheck.CategoryID = JaegerExtensionName
 
 	// linkerdJaegerExtensionDataPlaneCheck adds checks related to the jaeger extension
-	linkerdJaegerExtensionDataPlaneCheck healthcheck.CategoryID = jaegerExtensionName + "-data-plane"
+	linkerdJaegerExtensionDataPlaneCheck healthcheck.CategoryID = JaegerExtensionName + "-data-plane"
 )
 
 var (
@@ -48,7 +48,7 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			Fatal().
 			WithCheck(func(ctx context.Context) error {
 				// Get  jaeger Extension Namespace
-				ns, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, jaegerExtensionName)
+				ns, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, JaegerExtensionName)
 				if err != nil {
 					return err
 				}
@@ -201,7 +201,8 @@ func (options *checkOptions) validate() error {
 	return nil
 }
 
-func newCmdCheck() *cobra.Command {
+// NewCmdCheck generates a new cobra command for the jaeger extension.
+func NewCmdCheck() *cobra.Command {
 	options := newCheckOptions()
 	cmd := &cobra.Command{
 		Use:   "check [flags]",
@@ -220,10 +221,10 @@ code.`,
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
-	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
-	cmd.PersistentFlags().BoolVar(&options.proxy, "proxy", options.proxy, "Also run data-plane checks, to determine if the data plane is healthy")
-	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
+	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
+	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
+	cmd.Flags().BoolVar(&options.proxy, "proxy", options.proxy, "Also run data-plane checks, to determine if the data plane is healthy")
+	cmd.Flags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 
 	return cmd
 }
@@ -234,12 +235,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		return fmt.Errorf("Validation error when executing check command: %v", err)
 	}
 
-	checks := []healthcheck.CategoryID{
-		healthcheck.KubernetesAPIChecks,
-		healthcheck.LinkerdControlPlaneExistenceChecks,
-	}
-
-	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+	hc := healthcheck.NewHealthChecker([]healthcheck.CategoryID{}, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		KubeContext:           kubeContext,
@@ -249,6 +245,13 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		RetryDeadline:         time.Now().Add(options.wait),
 		DataPlaneNamespace:    options.namespace,
 	})
+
+	err = hc.InitializeKubeAPIClient()
+	if err != nil {
+		err = fmt.Errorf("Error initializing k8s API client: %s", err)
+		fmt.Fprintln(werr, err)
+		os.Exit(1)
+	}
 
 	hc.AppendCategories(*jaegerCategory(hc))
 	if options.proxy {
