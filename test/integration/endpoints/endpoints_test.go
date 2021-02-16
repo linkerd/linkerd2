@@ -38,6 +38,7 @@ func TestGoodEndpoints(t *testing.T) {
 	if !TestHelper.ExternalPrometheus() {
 		cmd = append(cmd, fmt.Sprintf("linkerd-prometheus.%s.svc.cluster.local:9090", vizNs))
 	} else {
+		cmd = append(cmd, "prometheus.default.svc.cluster.local:9090")
 		testDataPath += "/external_prometheus"
 	}
 

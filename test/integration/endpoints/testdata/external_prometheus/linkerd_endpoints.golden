@@ -1,5 +1,12 @@
 \[
   \{
+    "namespace": "default",
+    "ip": "\d+\.\d+\.\d+\.\d+",
+    "port": 9090,
+    "pod": "prometheus\-[a-f0-9]+\-[a-z0-9]+",
+    "service": "prometheus.default"
+  \},
+  \{
     "namespace": "{{.Ns}}",
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8085,
