@@ -530,7 +530,7 @@ run_cluster-domain_test() {
 
 run_rabbitmq-test_test(){
    run_test "$test_directory/install_test.go" --external-resources
-   run_test "$test_directory/external-resources/rabbitmq/rabbitmq_test.go"
+   run_test "$test_directory/externalresources/rabbitmq_test.go"
 }
 # exit_on_err should be called right after a command to check the result status
 # and eventually generate a Github error annotation. Do not use after calls to

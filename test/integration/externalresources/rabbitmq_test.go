@@ -1,14 +1,12 @@
-// +build rabbitmqintegration
-
-package rabbitmq
+package externalresources
 
 import (
 	"context"
+	"fmt"
 	"github.com/linkerd/linkerd2/testutil"
 	"os"
 	"testing"
 	"time"
-	"fmt"
 )
 
 var TestHelper *testutil.TestHelper
