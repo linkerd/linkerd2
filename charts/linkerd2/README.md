@@ -140,8 +140,8 @@ Kubernetes: `>=1.13.0-0`
 | controllerUID | int | `2103` | User ID for the control plane components |
 | createdByAnnotation | string | `"linkerd.io/created-by"` | Annotation label for the proxy create. Do not edit. |
 | debugContainer.image.name | string | `"ghcr.io/linkerd/debug"` | Docker image for the debug container |
-| debugContainer.image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the debug container Docker image |
-| debugContainer.image.version | string | `"linkerdVersionValue"` | Tag for the debug container Docker image |
+| debugContainer.image.pullPolicy | string | imagePullPolicy | Pull policy for the debug container Docker image |
+| debugContainer.image.version | string | linkerdVersion | Tag for the debug container Docker image |
 | disableHeartBeat | bool | `false` | Set to true to not start the heartbeat cronjob |
 | enableEndpointSlices | bool | `false` | enables the use of EndpointSlice informers for the destination service; enableEndpointSlices should be set to true only if EndpointSlice K8s feature gate is on; the feature is still experimental. |
 | enableH2Upgrade | bool | `true` | Allow proxies to perform transparent HTTP/2 upgrading |
