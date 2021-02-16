@@ -12,7 +12,7 @@ data plane.
 
 ## Requirements
 
-Kubernetes: `>=1.13.0-0`
+Kubernetes: `>=1.16.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
