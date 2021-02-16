@@ -18,7 +18,7 @@ COPY cni-plugin cni-plugin
 ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /go/bin/linkerd-cni -v -mod=readonly ./cni-plugin/
 
-FROM debian:buster-20200514-slim
+FROM debian:buster-20210208-slim
 WORKDIR /linkerd
 RUN apt-get update && apt-get install -y --no-install-recommends \
     iptables \
