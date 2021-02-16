@@ -31,6 +31,7 @@ type TestHelper struct {
 	clusterDomain      string
 	externalIssuer     bool
 	externalPrometheus bool
+	externalResources  bool
 	multicluster       bool
 	uninstall          bool
 	cni                bool
@@ -112,6 +113,7 @@ func NewGenericTestHelper(
 	helmMulticlusterChart string,
 	externalIssuer,
 	externalPrometheus,
+	externalResources,
 	multicluster,
 	cni,
 	calico,
@@ -137,6 +139,7 @@ func NewGenericTestHelper(
 		clusterDomain:      clusterDomain,
 		externalIssuer:     externalIssuer,
 		externalPrometheus: externalPrometheus,
+		externalResources: externalResources,
 		uninstall:          uninstall,
 		cni:                cni,
 		calico:             calico,
@@ -183,6 +186,7 @@ func NewTestHelper() *TestHelper {
 	cni := flag.Bool("cni", false, "whether to install linkerd with CNI enabled")
 	calico := flag.Bool("calico", false, "whether to install calico CNI plugin")
 	certsPath := flag.String("certs-path", "", "if non-empty, 'linkerd install' will use the files ca.crt, issuer.crt and issuer.key under this path in its --identity-* flags")
+	externalResources := flag.Bool("external-resources", false, "when specified will run integration tests on external components such as rabbitmq")
 	flag.Parse()
 
 	if !*runTests {
@@ -227,6 +231,7 @@ func NewTestHelper() *TestHelper {
 		clusterDomain:      *clusterDomain,
 		externalIssuer:     *externalIssuer,
 		externalPrometheus: *externalPrometheus,
+		externalResources: *externalResources,
 		cni:                *cni,
 		calico:             *calico,
 		uninstall:          *uninstall,
@@ -323,9 +328,15 @@ func (h *TestHelper) ExternalIssuer() bool {
 	return h.externalIssuer
 }
 
+
 // ExternalPrometheus determines whether linkerd should be installed with --set prometheusUrl
 func (h *TestHelper) ExternalPrometheus() bool {
 	return h.externalPrometheus
+}
+
+//ExternalResources whether integration tests should be run on installed applications such as rabbitmq
+func (h *TestHelper) ExternalResources() bool {
+	return h.externalResources
 }
 
 // Multicluster determines whether multicluster components should be installed

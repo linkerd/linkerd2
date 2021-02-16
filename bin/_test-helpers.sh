@@ -224,7 +224,7 @@ cleanup_cluster() {
 
 setup_cluster() {
   local name=$1
-  export helm_path="$bindir"/helm 
+  export helm_path="$bindir"/helm
 
   test_setup
   if [ -z "$skip_cluster_create" ]; then
@@ -528,6 +528,10 @@ run_cluster-domain_test() {
   run_test "$test_directory/install_test.go" --cluster-domain='custom.domain'
 }
 
+run_rabbitmq-test_test(){
+   run_test "$test_directory/install_test.go" --external-resources
+   run_test "$test_directory/external-resources/rabbitmq/rabbitmq_test.go"
+}
 # exit_on_err should be called right after a command to check the result status
 # and eventually generate a Github error annotation. Do not use after calls to
 # `go test` as that generates its own annotations. Note this should be called
