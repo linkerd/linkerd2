@@ -130,6 +130,15 @@ func (h *KubernetesHelper) KubectlApply(stdin string, namespace string) (string,
 	return h.Kubectl(stdin, args...)
 }
 
+// KubectlApplyWithArgs applies a given configuration string with the passed
+// flags
+func (h *KubernetesHelper) KubectlApplyWithArgs(stdin string, cmdArgs ...string) (string, error) {
+	args := []string{"apply"}
+	args = append(args, cmdArgs...)
+	args = append(args, "-f", "-")
+	return h.Kubectl(stdin, args...)
+}
+
 // Kubectl executes an arbitrary Kubectl command
 func (h *KubernetesHelper) Kubectl(stdin string, arg ...string) (string, error) {
 	withContext := append([]string{"--context=" + h.k8sContext}, arg...)

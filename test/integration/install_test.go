@@ -399,7 +399,27 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 	}
 
-	out, err = TestHelper.KubectlApply(out, "")
+	cmdOut, err := TestHelper.KubectlApplyWithArgs(out, []string{
+		"--prune",
+		"-l", "linkerd.io/control-plane-ns=linkerd",
+	}...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", cmdOut)
+	}
+
+	out, err = TestHelper.LinkerdRun("upgrade")
+	if err != nil {
+		testutil.AnnotatedFatal(t, "'linkerd upgrade' command failed", err)
+	}
+
+	out, err = TestHelper.KubectlApplyWithArgs(out, []string{
+		"--prune",
+		"-l", "linkerd.io/control-plane-ns=linkerd",
+		"--prune-whitelist", "rbac.authorization.k8s.io/v1/clusterrole",
+		"--prune-whitelist", "rbac.authorization.k8s.io/v1/clusterrolebinding",
+		"--prune-whitelist", "apiregistration.k8s.io/v1/apiservice",
+	}...)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
