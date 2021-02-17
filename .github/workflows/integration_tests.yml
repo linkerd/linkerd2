@@ -12,7 +12,7 @@ env:
   DOCKER_BUILDKIT: 1
 jobs:
   docker_build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         # Keep in sync with release.yaml matrix build
@@ -102,6 +102,7 @@ jobs:
         - cluster-domain
         - deep
         - external-issuer
+        - external-prometheus-deep
         - helm-deep
         - helm-upgrade
         - multicluster
@@ -111,7 +112,7 @@ jobs:
         - cni-calico-deep
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     timeout-minutes: 30
     steps:
     - name: Checkout code

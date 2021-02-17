@@ -969,7 +969,7 @@ data:
       image:
         name: ghcr.io/linkerd/proxy-init
         pullPolicy: IfNotPresent
-        version: v1.3.8
+        version: v1.3.9
       resources:
         cpu:
           limit: 100m
@@ -1239,8 +1239,8 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191,22,8100-8102"
         - --outbound-ports-to-ignore
-        - "5432"
-        image: ghcr.io/linkerd/proxy-init:v1.3.8
+        - "5432,443"
+        image: ghcr.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1469,8 +1469,8 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191,22,8100-8102"
         - --outbound-ports-to-ignore
-        - "5432"
-        image: ghcr.io/linkerd/proxy-init:v1.3.8
+        - "5432,443"
+        image: ghcr.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1718,8 +1718,8 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191,22,8100-8102"
         - --outbound-ports-to-ignore
-        - "5432"
-        image: ghcr.io/linkerd/proxy-init:v1.3.8
+        - "5432,443"
+        image: ghcr.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1974,8 +1974,8 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191,22,8100-8102"
         - --outbound-ports-to-ignore
-        - "5432"
-        image: ghcr.io/linkerd/proxy-init:v1.3.8
+        - "5432,443"
+        image: ghcr.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2226,8 +2226,8 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191,22,8100-8102"
         - --outbound-ports-to-ignore
-        - "5432"
-        image: ghcr.io/linkerd/proxy-init:v1.3.8
+        - "5432,443"
+        image: ghcr.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

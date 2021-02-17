@@ -6,7 +6,7 @@ set +e
 
 ##### Test setup helpers #####
 
-export default_test_names=(deep external-issuer helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
+export default_test_names=(deep external-issuer external-prometheus-deep helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
 export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}")
 
 tests_usage() {
@@ -514,6 +514,14 @@ run_helm-deep_test() {
 run_external-issuer_test() {
   run_test "$test_directory/install_test.go" --external-issuer=true
   run_test "$test_directory/externalissuer/external_issuer_test.go" --external-issuer=true
+}
+
+run_external-prometheus-deep_test() {
+  run_test "$test_directory/install_test.go" --external-prometheus=true
+  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
+  for test in "${tests[@]}"; do
+    run_test "$test" --external-prometheus=true
+  done
 }
 
 run_cluster-domain_test() {
