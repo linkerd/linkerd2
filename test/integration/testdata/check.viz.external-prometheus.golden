@@ -8,6 +8,9 @@ linkerd-viz
 √ tap API service is running
 √ linkerd-viz pods are injected
 √ viz extension pods are running
+√ viz extension proxies are healthy
+√ viz extension proxies are up-to-date
+√ viz extension proxies and cli versions match
 √ can initialize the client
 √ viz extension self-check
 
