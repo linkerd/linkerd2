@@ -966,7 +966,7 @@ data:
       image:
         name: ghcr.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v1.3.8
+        version: v1.3.9
       resources:
         cpu:
           limit: 100m
