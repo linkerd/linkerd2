@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -247,7 +248,7 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 		headerTxt := "Linkerd extensions checks"
 		fmt.Fprintln(wout)
 		fmt.Fprintln(wout, headerTxt)
-		fmt.Fprintln(wout, strings.Repeat("-", len(headerTxt)))
+		fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
 	}
 
 	for i, ns := range namespaces {
@@ -269,19 +270,43 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 			err = executeExtensionCheck(cmd, "multicluster", mcCheckCmd.Flags())
 		default:
 			extensionCmd := fmt.Sprintf("linkerd-%s", extension)
-			path, err := exec.LookPath(extensionCmd)
+			var path string
+			path, err = exec.LookPath(extensionCmd)
 			if err != nil {
-				if opts.output != healthcheck.JSONOutput {
+				if opts.output == healthcheck.JSONOutput {
+					result := map[string]interface{}{
+						"success": false,
+						"categories": []map[string]interface{}{
+							map[string]interface{}{
+								"categoryName": extensionCmd,
+								"checks": []map[string]string{
+									map[string]string{
+										"description": fmt.Sprintf("Linkerd extension command %s exists", extensionCmd),
+										"result":      "failure",
+									},
+								},
+							},
+						},
+					}
+					var out []byte
+					out, err = json.MarshalIndent(result, "", "  ")
+					if err != nil {
+						return err
+					}
+					fmt.Fprintln(wout, string(out))
+				} else {
 					fmt.Fprintln(wout, extensionCmd)
 					fmt.Fprintln(wout, strings.Repeat("-", len(extensionCmd)))
-					fmt.Fprintf(wout, "%s Linkerd extension %s found but command %s not found\n", healthcheck.WarnStatus, extension, extensionCmd)
+					fmt.Fprintf(wout, "%s Linkerd extension command %s exists\n", healthcheck.WarnStatus, extensionCmd)
+					fmt.Fprintln(wout)
+					fmt.Fprintf(wout, "Status check results are %s\n", healthcheck.WarnStatus)
 				}
 			} else {
 				args := append([]string{"check"}, getGlobalFlags(cmd.Flags())...)
 				plugin := exec.Command(path, args...)
 				plugin.Stdin = os.Stdin
-				plugin.Stdout = os.Stdout
-				plugin.Stderr = os.Stderr
+				plugin.Stdout = wout
+				plugin.Stderr = werr
 				err = plugin.Run()
 			}
 		}

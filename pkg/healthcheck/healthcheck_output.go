@@ -23,9 +23,12 @@ const (
 )
 
 var (
-	OkStatus   = color.New(color.FgGreen, color.Bold).SprintFunc()("\u221A")  // √
-	WarnStatus = color.New(color.FgYellow, color.Bold).SprintFunc()("\u203C") // ‼
-	FailStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u00D7")    // ×
+	// OkStatus is √
+	OkStatus = color.New(color.FgGreen, color.Bold).SprintFunc()("\u221A")
+	// WarnStatus is ‼
+	WarnStatus = color.New(color.FgYellow, color.Bold).SprintFunc()("\u203C")
+	// FailStatus is ×
+	FailStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u00D7")
 )
 
 // RunChecks runs the checks that are part of hc
@@ -92,31 +95,31 @@ func runChecksTable(wout io.Writer, hc Runner) bool {
 	return success
 }
 
-type CheckOutput struct {
+type checkOutput struct {
 	Success    bool             `json:"success"`
-	Categories []*CheckCategory `json:"categories"`
+	Categories []*checkCategory `json:"categories"`
 }
 
-type CheckCategory struct {
+type checkCategory struct {
 	Name   string   `json:"categoryName"`
-	Checks []*Check `json:"checks"`
+	Checks []*check `json:"checks"`
 }
 
 // check is a user-facing version of `healthcheck.CheckResult`, for output via
 // `linkerd check -o json`.
-type Check struct {
+type check struct {
 	Description string      `json:"description"`
 	Hint        string      `json:"hint,omitempty"`
 	Error       string      `json:"error,omitempty"`
-	Result      CheckResult `json:"result"`
+	Result      checkResult `json:"result"`
 }
 
 type checkResult string
 
 const (
-	checkSuccess CheckResult = "success"
-	checkWarn    CheckResult = "warning"
-	checkErr     CheckResult = "error"
+	checkSuccess checkResult = "success"
+	checkWarn    checkResult = "warning"
+	checkErr     checkResult = "error"
 )
 
 func runChecksJSON(wout io.Writer, werr io.Writer, hc Runner) bool {
