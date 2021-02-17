@@ -72,10 +72,10 @@ metadata:
     linkerd.io/extension: linkerd-viz`,
 			},
 			url.Values{
-				"k8s-version":  []string{"v0.0.0-master+$Format:%h$"},
-				"install-time": []string{"1550234096"},
-				"uuid":         []string{"fake-uuid"},
-				"linkerd-viz":  []string{"1"},
+				"k8s-version":     []string{"v0.0.0-master+$Format:%h$"},
+				"install-time":    []string{"1550234096"},
+				"uuid":            []string{"fake-uuid"},
+				"ext-linkerd-viz": []string{"1"},
 			},
 		},
 	}

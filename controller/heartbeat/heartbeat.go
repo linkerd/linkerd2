@@ -47,8 +47,8 @@ func K8sValues(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneName
 		log.Errorf("Failed to fetch namespaces with %s label: %s", k8s.LinkerdExtensionLabel, err)
 	} else {
 		for _, ns := range namespaces {
-			extensionName := ns.Labels[k8s.LinkerdExtensionLabel]
-			v.Set(extensionName, "1")
+			extensionNameParam := fmt.Sprintf("ext-%s", ns.Labels[k8s.LinkerdExtensionLabel])
+			v.Set(extensionNameParam, "1")
 		}
 	}
 
