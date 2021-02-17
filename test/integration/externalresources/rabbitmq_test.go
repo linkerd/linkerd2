@@ -16,7 +16,9 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-
+//////////////////////
+/// TEST EXECUTION ///
+//////////////////////
 
 func TestRabbitMQDeploy(t *testing.T) {
 	ctx := context.Background()
@@ -61,7 +63,7 @@ func TestRabbitMQDeploy(t *testing.T) {
 		if err := TestHelper.CheckDeployment(ctx, testNamespace, "rabbitmq-client", 1 ); err != nil {
 			testutil.AnnotatedErrorf(t, "CheckDeployment  timed-out", "Error validating deployment [%s]: \n%s", "rabbitmq", err)
 		}
-		// Connect client to server and start tests
+		// Verify client output
 		golden := "check.rabbitmq.golden"
 		timeout := 50 * time.Second
 		err = TestHelper.RetryFor(timeout, func() error {
