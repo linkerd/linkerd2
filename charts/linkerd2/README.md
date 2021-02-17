@@ -132,14 +132,14 @@ Kubernetes: `>=1.16.0-0`
 | controlPlaneTracing | bool | `false` | enables control plane tracing |
 | controlPlaneTracingNamespace | string | `"linkerd-jaeger"` | namespace to send control plane traces to |
 | controllerComponentLabel | string | `"linkerd.io/control-plane-component"` | Control plane label. Do not edit |
-| controllerImage | string | `"ghcr.io/linkerd/controller"` | Docker image for the controller and identity components |
+| controllerImage | string | `"cr.l5d.io/linkerd/controller"` | Docker image for the controller and identity components |
 | controllerLogFormat | string | `"plain"` | Log format for the control plane components |
 | controllerLogLevel | string | `"info"` | Log level for the control plane components |
 | controllerNamespaceLabel | string | `"linkerd.io/control-plane-ns"` | Control plane label. Do not edit |
 | controllerReplicas | int | `1` | Number of replicas for each control plane pod |
 | controllerUID | int | `2103` | User ID for the control plane components |
 | createdByAnnotation | string | `"linkerd.io/created-by"` | Annotation label for the proxy create. Do not edit. |
-| debugContainer.image.name | string | `"ghcr.io/linkerd/debug"` | Docker image for the debug container |
+| debugContainer.image.name | string | `"cr.l5d.io/linkerd/debug"` | Docker image for the debug container |
 | debugContainer.image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the debug container Docker image |
 | debugContainer.image.version | string | `"linkerdVersionValue"` | Tag for the debug container Docker image |
 | disableHeartBeat | bool | `false` | Set to true to not start the heartbeat cronjob |
@@ -173,7 +173,7 @@ Kubernetes: `>=1.16.0-0`
 | profileValidator.namespaceSelector | object | `{"matchExpressions":[{"key":"config.linkerd.io/admission-webhooks","operator":"NotIn","values":["disabled"]}]}` | Namespace selector used by admission webhook |
 | proxy.cores | int | `0` | The `cpu.limit` and `cores` should be kept in sync. The value of `cores` must be an integer and should typically be set by rounding up from the limit. E.g. if cpu.limit is '1500m', cores should be 2. |
 | proxy.enableExternalProfiles | bool | `false` | Enable service profiles for non-Kubernetes services |
-| proxy.image.name | string | `"ghcr.io/linkerd/proxy"` | Docker image for the proxy |
+| proxy.image.name | string | `"cr.l5d.io/linkerd/proxy"` | Docker image for the proxy |
 | proxy.image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the proxy container Docker image |
 | proxy.image.version | string | `"linkerdVersionValue"` | Tag for the proxy container Docker image |
 | proxy.inboundConnectTimeout | string | `"100ms"` | Maximum time allowed for the proxy to establish an inbound TCP connection |
@@ -194,7 +194,7 @@ Kubernetes: `>=1.16.0-0`
 | proxyInit.closeWaitTimeoutSecs | int | `0` |  |
 | proxyInit.ignoreInboundPorts | string | `"25,443,587,3306,11211"` | Default set of ports to skip via itpables: - SMTP (25,587) server-first - HTTPS (443) opaque TLS - MYSQL (3306) server-first - Memcached (11211) clients do not issue any preamble, which breaks detection |
 | proxyInit.ignoreOutboundPorts | string | `"25,443,587,3306,11211"` | Default set of ports to skip via itpables, same defaults as InboudPorts |
-| proxyInit.image.name | string | `"ghcr.io/linkerd/proxy-init"` | Docker image for the proxy-init container |
+| proxyInit.image.name | string | `"cr.l5d.io/linkerd/proxy-init"` | Docker image for the proxy-init container |
 | proxyInit.image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the proxy-init container Docker image |
 | proxyInit.image.version | string | `"v1.3.9"` | Tag for the proxy-init container Docker image |
 | proxyInit.resources.cpu.limit | string | `"100m"` | Maximum amount of CPU units that the proxy-init container can use |

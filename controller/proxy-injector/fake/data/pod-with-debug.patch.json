@@ -58,7 +58,7 @@
         "--outbound-ports-to-ignore",
         "25,443,587,3306,11211"
       ],
-      "image": "ghcr.io/linkerd/proxy-init:v1.3.9",
+      "image": "cr.l5d.io/linkerd/proxy-init:v1.3.9",
       "imagePullPolicy": "IfNotPresent",
       "name": "linkerd-init",
       "resources": {
@@ -97,7 +97,7 @@
     "op": "add",
     "path": "/spec/containers/-",
     "value": {
-      "image": "ghcr.io/linkerd/debug:dev-undefined",
+      "image": "cr.l5d.io/linkerd/debug:dev-undefined",
       "imagePullPolicy": "IfNotPresent",
       "name": "linkerd-debug",
       "terminationMessagePolicy": "FallbackToLogsOnError"
@@ -185,7 +185,7 @@
           "value": "disabled"
         }
       ],
-      "image": "ghcr.io/linkerd/proxy:dev-undefined",
+      "image": "cr.l5d.io/linkerd/proxy:dev-undefined",
       "imagePullPolicy": "IfNotPresent",
       "livenessProbe": {
         "httpGet": {

@@ -22,7 +22,7 @@ Kubernetes: `>=1.16.0-0`
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | controllerComponentLabel | string | `"linkerd.io/control-plane-component"` | Control plane label. Do not edit  |
-| controllerImage | string | `"ghcr.io/linkerd/controller"` | Docker image for the Service mirror component (uses the Linkerd controller image) |
+| controllerImage | string | `"cr.l5d.io/linkerd/controller"` | Docker image for the Service mirror component (uses the Linkerd controller image) |
 | controllerImageVersion | string | `"linkerdVersionValue"` | Tag for the Service Mirror container Docker image |
 | createdByAnnotation | string | `"linkerd.io/created-by"` | Annotation label for the proxy create. Do not edit. |
 | gatewayProbePort | int | `4181` | The port used for liveliness probing  |

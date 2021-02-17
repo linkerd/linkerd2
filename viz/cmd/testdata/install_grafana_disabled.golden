@@ -454,7 +454,7 @@ spec:
         - -log-level=info
         - -cluster-domain=cluster.local
         - -prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.cluster.local:9090
-        image: ghcr.io/linkerd/metrics-api:dev-undefined
+        image: cr.l5d.io/linkerd/metrics-api:dev-undefined
         imagePullPolicy: 
         livenessProbe:
           httpGet:
@@ -781,7 +781,7 @@ spec:
         - -api-namespace=linkerd
         - -log-level=info
         - -identity-trust-domain=cluster.local
-        image: ghcr.io/linkerd/tap:dev-undefined
+        image: cr.l5d.io/linkerd/tap:dev-undefined
         imagePullPolicy: 
         livenessProbe:
           httpGet:
@@ -941,7 +941,7 @@ spec:
         - injector
         - -tap-service-name=linkerd-tap.linkerd-viz.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - -log-level=info
-        image: ghcr.io/linkerd/tap:dev-undefined
+        image: cr.l5d.io/linkerd/tap:dev-undefined
         imagePullPolicy: 
         livenessProbe:
           httpGet:
@@ -1041,7 +1041,7 @@ spec:
         - -viz-namespace=linkerd-viz
         - -log-level=info
         - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd-viz\.svc\.cluster\.local|linkerd-web\.linkerd-viz\.svc|\[::1\])(:\d+)?$
-        image: ghcr.io/linkerd/web:dev-undefined
+        image: cr.l5d.io/linkerd/web:dev-undefined
         imagePullPolicy: 
         livenessProbe:
           httpGet:

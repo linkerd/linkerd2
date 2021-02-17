@@ -64,7 +64,7 @@ func TestInjectable(t *testing.T) {
 				Containers: []corev1.Container{
 					{
 						Name:  k8s.ProxyContainerName,
-						Image: "ghcr.io/linkerd/proxy:",
+						Image: "cr.l5d.io/linkerd/proxy:",
 						VolumeMounts: []corev1.VolumeMount{
 							{
 								MountPath: k8s.MountPathServiceAccount,
@@ -86,7 +86,7 @@ func TestInjectable(t *testing.T) {
 				InitContainers: []corev1.Container{
 					{
 						Name:  k8s.InitContainerName,
-						Image: "ghcr.io/linkerd/proxy-init:",
+						Image: "cr.l5d.io/linkerd/proxy-init:",
 					},
 				},
 				Containers: []corev1.Container{
@@ -228,7 +228,7 @@ func TestInjectable(t *testing.T) {
 				Containers: []corev1.Container{
 					{
 						Name:  k8s.ProxyContainerName,
-						Image: "ghcr.io/linkerd/proxy:",
+						Image: "cr.l5d.io/linkerd/proxy:",
 						VolumeMounts: []corev1.VolumeMount{
 							{
 								MountPath: k8s.MountPathServiceAccount,

@@ -58,7 +58,7 @@ func TestHasExistingSidecars(t *testing.T) {
 			podSpec: &corev1.PodSpec{
 				Containers: []corev1.Container{
 					{
-						Image: "ghcr.io/linkerd/proxy:1.0.0",
+						Image: "cr.l5d.io/linkerd/proxy:1.0.0",
 					},
 				},
 			},
@@ -98,7 +98,7 @@ func TestHasExistingSidecars(t *testing.T) {
 			podSpec: &corev1.PodSpec{
 				InitContainers: []corev1.Container{
 					{
-						Image: "ghcr.io/linkerd/proxy-init:1.0.0",
+						Image: "cr.l5d.io/linkerd/proxy-init:1.0.0",
 					},
 				},
 			},

@@ -76,7 +76,7 @@ Kubernetes: `>=1.16.0-0`
 | dashboard.UID | int | `2103` |  |
 | dashboard.enforcedHostRegexp | string | `""` | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information |
 | dashboard.image.name | string | `"web"` | Docker image name for the web instance |
-| dashboard.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the web instance |
+| dashboard.image.registry | string | `"cr.l5d.io/linkerd"` | Docker registry for the web instance |
 | dashboard.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the web instance |
 | dashboard.logLevel | string | `"info"` | log level of the dashboard component |
 | dashboard.proxy | string | `nil` |  |
@@ -87,13 +87,13 @@ Kubernetes: `>=1.16.0-0`
 | dashboard.resources.memory.request | string | `nil` | Amount of memory that the web container requests |
 | dashboard.restrictPrivileges | bool | `false` | Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check |
 | defaultLogLevel | string | `"info"` | Log level for all the viz components |
-| defaultRegistry | string | `"ghcr.io/linkerd"` | Docker registry for all viz components |
+| defaultRegistry | string | `"cr.l5d.io/linkerd"` | Docker registry for all viz components |
 | defaultUID | int | `2103` | UID for all the viz components |
 | enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
 | extensionAnnotation | string | `"linkerd.io/extension"` |  |
 | grafana.enabled | bool | `true` | toggle field to enable or disable grafana |
 | grafana.image.name | string | `"grafana"` | Docker image name for the grafana instance |
-| grafana.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the grafana instance |
+| grafana.image.registry | string | `"cr.l5d.io/linkerd"` | Docker registry for the grafana instance |
 | grafana.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the grafana instance |
 | grafana.proxy | string | `nil` |  |
 | grafana.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the grafana container can use |
@@ -110,7 +110,7 @@ Kubernetes: `>=1.16.0-0`
 | metricsAPI.UID | int | `2103` |  |
 | metricsAPI.image.name | string | `"metrics-api"` | Docker image name for the metrics-api component |
 | metricsAPI.image.pullPolicy | string | `"Always"` | Pull policy for the metrics-api component |
-| metricsAPI.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the metrics-api component |
+| metricsAPI.image.registry | string | `"cr.l5d.io/linkerd"` | Docker registry for the metrics-api component |
 | metricsAPI.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the metrics-api component |
 | metricsAPI.logLevel | string | `"info"` | log level of the metrics-api component |
 | metricsAPI.proxy | string | `nil` |  |
@@ -146,7 +146,7 @@ Kubernetes: `>=1.16.0-0`
 | tap.crtPEM | string | `""` | Certificate for the Tap component. If not provided then Helm will generate one. |
 | tap.externalSecret | bool | `false` | Do not create a secret resource for the Tap component. If this is set to `true`, the value `tap.caBundle` must be set (see below). |
 | tap.image.name | string | `"tap"` | Docker image name for the tap instance |
-| tap.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the tap instance |
+| tap.image.registry | string | `"cr.l5d.io/linkerd"` | Docker registry for the tap instance |
 | tap.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the tap instance |
 | tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided then Helm will generate one. |
 | tap.logLevel | string | `"info"` | log level of the tap component |
@@ -162,7 +162,7 @@ Kubernetes: `>=1.16.0-0`
 | tapInjector.externalSecret | bool | `false` | Do not create a secret resource for the tapInjector webhook. If this is set to `true`, the value `tapInjector.caBundle` must be set (see below) |
 | tapInjector.failurePolicy | string | `"Ignore"` |  |
 | tapInjector.image.name | string | `"tap"` | Docker image name for the tapInjector instance |
-| tapInjector.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the tapInjector instance |
+| tapInjector.image.registry | string | `"cr.l5d.io/linkerd"` | Docker registry for the tapInjector instance |
 | tapInjector.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the tapInjector instance |
 | tapInjector.keyPEM | string | `""` | Certificate key for the tapInjector. If not provided then Helm will generate one. |
 | tapInjector.logLevel | string | defaultLogLevel | log level of the tapInjector |

@@ -16,7 +16,7 @@ proxyInjectAnnotation: linkerd.io/inject
 extensionAnnotation: linkerd.io/extension
 
 # -- Docker registry for all viz components
-defaultRegistry: &registry ghcr.io/linkerd
+defaultRegistry: &registry cr.l5d.io/linkerd
 # -- Log level for all the viz components
 defaultLogLevel: &log_level info
 # -- UID for all the viz components
@@ -67,7 +67,7 @@ metricsAPI:
   logLevel: *log_level
   image:
     # -- Docker registry for the metrics-api component
-    registry: ghcr.io/linkerd
+    registry: *registry
     # -- Docker image name for the metrics-api component
     name: metrics-api
     # -- Docker image tag for the metrics-api component
