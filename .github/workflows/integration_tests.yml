@@ -52,7 +52,7 @@ jobs:
         ARCHIVES: /home/runner/archives
       run: |
         mkdir -p $ARCHIVES
-        docker save "cr.l5d.io/${{ matrix.target }}:$TAG" > $ARCHIVES/${{ matrix.target }}.tar
+        docker save "cr.l5d.io/linkerd/${{ matrix.target }}:$TAG" > $ARCHIVES/${{ matrix.target }}.tar
         # windows_static_cli_tests needs this binary to be available in the
         # image archive.
         if [ '${{ matrix.target }}' == 'cli-bin' ]; then
