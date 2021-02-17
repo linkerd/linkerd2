@@ -180,6 +180,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 		if stage != configStage {
 			checks = append(checks, healthcheck.LinkerdControlPlaneExistenceChecks)
 			checks = append(checks, healthcheck.LinkerdAPIChecks)
+			checks = append(checks, healthcheck.LinkerdControlPlaneProxyChecks)
 			checks = append(checks, healthcheck.LinkerdIdentity)
 			checks = append(checks, healthcheck.LinkerdWebhooksAndAPISvcTLS)
 

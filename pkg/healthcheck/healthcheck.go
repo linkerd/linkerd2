@@ -132,6 +132,10 @@ const (
 	// from LinkerdVersionChecks, so those checks must be added first.
 	LinkerdDataPlaneChecks CategoryID = "linkerd-data-plane"
 
+	// LinkerdControlPlaneProxyChecks adds data plane checks to validate the
+	// control-plane proxies. The checkers include running and version checks
+	LinkerdControlPlaneProxyChecks CategoryID = "linkerd-control-plane-proxy"
+
 	// LinkerdHAChecks adds checks to validate that the HA configuration
 	// is correct. These checks are no ops if linkerd is not in HA mode
 	LinkerdHAChecks CategoryID = "linkerd-ha-checks"
@@ -1268,9 +1272,14 @@ func (hc *HealthChecker) allCategories() []Category {
 						return validateControlPlanePods(hc.controlPlanePods)
 					},
 				},
+			},
+		},
+		{
+			ID: LinkerdControlPlaneProxyChecks,
+			checkers: []Checker{
 				{
 					description:         "control plane proxies are healthy",
-					hintAnchor:          "l5d-api-cp-proxy-healthy",
+					hintAnchor:          "l5d-cp-proxy-healthy",
 					retryDeadline:       hc.RetryDeadline,
 					surfaceErrorOnRetry: true,
 					fatal:               true,
@@ -1280,7 +1289,7 @@ func (hc *HealthChecker) allCategories() []Category {
 				},
 				{
 					description: "control plane proxies are up-to-date",
-					hintAnchor:  "l5d-api-cp-version",
+					hintAnchor:  "l5d--cp-proxy-version",
 					warning:     true,
 					check: func(ctx context.Context) error {
 						podList, err := hc.kubeAPI.CoreV1().Pods(hc.ControlPlaneNamespace).List(ctx, metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
@@ -1293,7 +1302,7 @@ func (hc *HealthChecker) allCategories() []Category {
 				},
 				{
 					description: "control plane proxies and cli versions match",
-					hintAnchor:  "l5d-api-cp-cli-version",
+					hintAnchor:  "l5d-cp-proxy-cli-version",
 					warning:     true,
 					check: func(ctx context.Context) error {
 						podList, err := hc.kubeAPI.CoreV1().Pods(hc.ControlPlaneNamespace).List(ctx, metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
