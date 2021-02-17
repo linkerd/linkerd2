@@ -175,8 +175,8 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return bytes, reports, nil
 	}
 
-	if conf.IsService() {
-		b, err := conf.AnnotateService(rt.overrideAnnotations)
+	if conf.IsService() && rt.values.Proxy.OpaquePorts != "" {
+		b, err := conf.AnnotateService(k8s.ProxyOpaquePortsAnnotation, rt.values.Proxy.OpaquePorts)
 		return b, reports, err
 	}
 
@@ -209,7 +209,6 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if err != nil {
 		return nil, nil, err
 	}
-
 	if len(patchJSON) == 0 {
 		return bytes, reports, nil
 	}

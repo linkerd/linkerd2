@@ -952,23 +952,17 @@ func (conf *ResourceConfig) InjectNamespace(annotations map[string]string) ([]by
 	return yaml.JSONToYAML(j)
 }
 
-// AnnotateService returns a Service with the appropriate annotations
+// AnnotateService returns a Service adds an annotation to a Service object
 // Currently, a `Service` may only need the `config.linkerd.io/opaque-ports` annotation via `inject`
 // See - https://github.com/linkerd/linkerd2/pull/5721
-func (conf *ResourceConfig) AnnotateService(annotations map[string]string) ([]byte, error) {
-	ns, ok := conf.workload.obj.(*corev1.Service)
+func (conf *ResourceConfig) AnnotateService(annotation, value string) ([]byte, error) {
+	svc, ok := conf.workload.obj.(*corev1.Service)
 	if !ok {
 		return nil, errors.New("can't inject service. Type assertion failed")
 	}
+	svc.Annotations[annotation] = value
 
-	//For overriding annotations
-	if len(annotations) > 0 {
-		for annotation, value := range annotations {
-			ns.Annotations[annotation] = value
-		}
-	}
-
-	j, err := getFilteredJSON(ns)
+	j, err := getFilteredJSON(svc)
 	if err != nil {
 		return nil, err
 	}
