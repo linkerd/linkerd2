@@ -1201,6 +1201,26 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
+			ID: LinkerdAPIChecks,
+			checkers: []Checker{
+				{
+					description:         "control plane pods are ready",
+					hintAnchor:          "l5d-api-control-ready",
+					retryDeadline:       hc.RetryDeadline,
+					surfaceErrorOnRetry: true,
+					fatal:               true,
+					check: func(ctx context.Context) error {
+						var err error
+						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.ControlPlaneNamespace)
+						if err != nil {
+							return err
+						}
+						return validateControlPlanePods(hc.controlPlanePods)
+					},
+				},
+			},
+		},
+		{
 			ID: LinkerdVersionChecks,
 			checkers: []Checker{
 				{
@@ -1250,26 +1270,6 @@ func (hc *HealthChecker) allCategories() []Category {
 							return fmt.Errorf("control plane running %s but cli running %s", hc.serverVersion, version.Version)
 						}
 						return nil
-					},
-				},
-			},
-		},
-		{
-			ID: LinkerdAPIChecks,
-			checkers: []Checker{
-				{
-					description:         "control plane pods are ready",
-					hintAnchor:          "l5d-api-control-ready",
-					retryDeadline:       hc.RetryDeadline,
-					surfaceErrorOnRetry: true,
-					fatal:               true,
-					check: func(ctx context.Context) error {
-						var err error
-						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.ControlPlaneNamespace)
-						if err != nil {
-							return err
-						}
-						return validateControlPlanePods(hc.controlPlanePods)
 					},
 				},
 			},

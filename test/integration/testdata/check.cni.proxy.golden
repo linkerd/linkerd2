@@ -63,14 +63,14 @@ linkerd-identity-data-plane
 ---------------------------
 √ data plane proxies certificate match CA
 
+linkerd-api
+-----------
+√ control plane pods are ready
+
 linkerd-version
 ---------------
 √ can determine the latest version
 √ cli is up-to-date
-
-linkerd-api
------------
-√ control plane pods are ready
 
 linkerd-control-plane-proxy
 ---------------------------
