@@ -880,7 +880,7 @@ data:
     debugContainer:
       image:
         name: cr.l5d.io/linkerd/debug
-        pullPolicy: IfNotPresent
+        pullPolicy: ""
         version: test-debug-version
     destinationProxyResources: null
     destinationResources:
@@ -951,7 +951,7 @@ data:
       enableExternalProfiles: false
       image:
         name: cr.l5d.io/linkerd/proxy
-        pullPolicy: IfNotPresent
+        pullPolicy: ""
         version: test-proxy-version
       inboundConnectTimeout: 100ms
       isGateway: false
@@ -984,7 +984,7 @@ data:
       ignoreOutboundPorts: "111"
       image:
         name: cr.l5d.io/linkerd/proxy-init
-        pullPolicy: IfNotPresent
+        pullPolicy: ""
         version: test-proxy-init-version
       resources:
         cpu:

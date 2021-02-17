@@ -455,7 +455,7 @@ spec:
         - -cluster-domain=cluster.local
         - -prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.cluster.local:9090
         image: cr.l5d.io/linkerd/metrics-api:dev-undefined
-        imagePullPolicy: 
+        imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
             path: /ping
@@ -673,12 +673,12 @@ spec:
         fsGroup: 65534
       containers:
       - args:
-        - --config.file=/etc/prometheus/prometheus.yml
         - --log.level=info
+        - --config.file=/etc/prometheus/prometheus.yml
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
         image: prom/prometheus:v2.19.3
-        imagePullPolicy: 
+        imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
             path: /-/healthy
@@ -782,7 +782,7 @@ spec:
         - -log-level=info
         - -identity-trust-domain=cluster.local
         image: cr.l5d.io/linkerd/tap:dev-undefined
-        imagePullPolicy: 
+        imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
             path: /ping
@@ -942,7 +942,7 @@ spec:
         - -tap-service-name=linkerd-tap.linkerd-viz.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - -log-level=info
         image: cr.l5d.io/linkerd/tap:dev-undefined
-        imagePullPolicy: 
+        imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
             path: /ping
@@ -1042,7 +1042,7 @@ spec:
         - -log-level=info
         - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd-viz\.svc\.cluster\.local|linkerd-web\.linkerd-viz\.svc|\[::1\])(:\d+)?$
         image: cr.l5d.io/linkerd/web:dev-undefined
-        imagePullPolicy: 
+        imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
             path: /ping

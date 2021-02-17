@@ -68,7 +68,7 @@ spec:
       containers:
       - args:
         - -controller-namespace={{.Values.linkerdNamespace}}
-        - -log-level={{.Values.metricsAPI.logLevel}}
+        - -log-level={{.Values.metricsAPI.logLevel | default .Values.defaultLogLevel}}
         - -cluster-domain={{.Values.clusterDomain}}
         {{- if .Values.prometheusUrl }}
         - -prometheus-url={{.Values.prometheusUrl}}
@@ -77,8 +77,8 @@ spec:
         {{- else }}
         {{ fail "Please enable `linkerd-prometheus` or provide `prometheusUrl` for the viz extension to function properly"}}
         {{- end }}
-        image: {{.Values.metricsAPI.image.registry}}/{{.Values.metricsAPI.image.name}}:{{.Values.metricsAPI.image.tag}}
-        imagePullPolicy: {{.Values.metricsAPI.pullPolicy}}
+        image: {{.Values.metricsAPI.image.registry | default .Values.defaultRegistry}}/{{.Values.metricsAPI.image.name}}:{{.Values.metricsAPI.image.tag | default .Values.linkerdVersion}}
+        imagePullPolicy: {{.Values.metricsAPI.image.pullPolicy | default .Values.defaultImagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /ping
@@ -99,5 +99,5 @@ spec:
         {{- include "partials.resources" .Values.metricsAPI.resources | nindent 8 }}
         {{- end }}
         securityContext:
-          runAsUser: {{.Values.metricsAPI.UID}}
+          runAsUser: {{.Values.metricsAPI.UID | default .Values.defaultUID}}
       serviceAccountName: linkerd-metrics-api

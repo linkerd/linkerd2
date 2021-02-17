@@ -54,6 +54,7 @@ jobs:
         ARCHIVES: /home/runner/archives
       run: |
         mkdir -p $ARCHIVES
+        # Both tags reference the same image. Save both so they may be used interchangeably
         docker save "$DOCKER_REGISTRY/${{ matrix.target }}:$TAG" "cr.l5d.io/${{ matrix.target }}:$TAG" > $ARCHIVES/${{ matrix.target }}.tar
         # save windows cli into artifacts
         if [ '${{ matrix.target }}' == 'cli-bin' ]; then

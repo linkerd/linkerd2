@@ -65,6 +65,22 @@ func TestRender(t *testing.T) {
 		},
 		{
 			map[string]interface{}{
+				"defaultLogLevel": "debug",
+				"defaultUID":      1234,
+				"defaultRegistry": "gcr.io/linkerd",
+				"tap": map[string]interface{}{
+					"logLevel": "info",
+					"UID":      5678,
+					"image": map[string]interface{}{
+						"registry": "cr.l5d.io/linkerd",
+						"tag":      "stable-9.2",
+					},
+				},
+			},
+			"install_default_overrides.golden",
+		},
+		{
+			map[string]interface{}{
 				"grafana":    map[string]interface{}{"enabled": false},
 				"grafanaUrl": "external-grafana.com",
 			},
