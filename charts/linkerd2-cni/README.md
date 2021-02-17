@@ -22,7 +22,7 @@ Kubernetes: `>=1.16.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| cniPluginImage | string | `"ghcr.io/linkerd/cni-plugin"` | Docker image for the CNI plugin |
+| cniPluginImage | string | `"cr.l5d.io/linkerd/cni-plugin"` | Docker image for the CNI plugin |
 | cniPluginVersion | string | `"linkerdVersionValue"` | Tag for the CNI container Docker image |
 | cniResourceLabel | string | `"linkerd.io/cni-resource"` | CNI resource annotation. Do not edit |
 | createdByAnnotation | string | `"linkerd.io/created-by"` | Annotation label for the proxy create. Do not edit.  |

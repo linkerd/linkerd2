@@ -89,7 +89,7 @@ Kubernetes: `>=1.16.0-0`
 | dashboard.restrictPrivileges | bool | `false` | Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check |
 | defaultImagePullPolicy | string | `"IfNotPresent"` | Docker imagePullPolicy for all viz components |
 | defaultLogLevel | string | `"info"` | Log level for all the viz components |
-| defaultRegistry | string | `"ghcr.io/linkerd"` | Docker registry for all viz components |
+| defaultRegistry | string | `"cr.l5d.io/linkerd"` | Docker registry for all viz components |
 | defaultUID | int | `2103` | UID for all the viz components |
 | enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
 | extensionAnnotation | string | `"linkerd.io/extension"` |  |

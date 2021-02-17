@@ -72,7 +72,7 @@ func TestRender(t *testing.T) {
 					"logLevel": "info",
 					"UID":      5678,
 					"image": map[string]interface{}{
-						"registry": "ghcr.io/linkerd",
+						"registry": "cr.l5d.io/linkerd",
 						"tag":      "stable-9.2",
 					},
 				},

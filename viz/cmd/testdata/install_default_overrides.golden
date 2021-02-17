@@ -963,7 +963,7 @@ spec:
         - -api-namespace=linkerd
         - -log-level=info
         - -identity-trust-domain=cluster.local
-        image: ghcr.io/linkerd/tap:stable-9.2
+        image: cr.l5d.io/linkerd/tap:stable-9.2
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

@@ -38,7 +38,7 @@ webhook:
 
   failurePolicy: Ignore
   image: 
-    name: ghcr.io/linkerd/jaeger-webhook
+    name: cr.l5d.io/linkerd/jaeger-webhook
     version: *linkerd_version
     pullPolicy: IfNotPresent
   logLevel: info

@@ -17,7 +17,7 @@ proxyInjectAnnotation: linkerd.io/inject
 extensionAnnotation: linkerd.io/extension
 
 # -- Docker registry for all viz components
-defaultRegistry: ghcr.io/linkerd
+defaultRegistry: cr.l5d.io/linkerd
 # -- Docker imagePullPolicy for all viz components
 defaultImagePullPolicy: IfNotPresent
 # -- Log level for all the viz components

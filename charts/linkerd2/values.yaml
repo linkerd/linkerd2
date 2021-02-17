@@ -54,7 +54,7 @@ proxy:
   inboundConnectTimeout: 100ms
   image:
     # -- Docker image for the proxy
-    name: ghcr.io/linkerd/proxy
+    name: cr.l5d.io/linkerd/proxy
     # -- Pull policy for the proxy container Docker image
     # @default -- imagePullPolicy
     pullPolicy: ""
@@ -110,7 +110,7 @@ proxyInit:
   ignoreOutboundPorts: "25,443,587,3306,11211"
   image:
     # -- Docker image for the proxy-init container
-    name: ghcr.io/linkerd/proxy-init
+    name: cr.l5d.io/linkerd/proxy-init
     # -- Pull policy for the proxy-init container Docker image
     # @default -- imagePullPolicy
     pullPolicy: ""
@@ -160,7 +160,7 @@ webhookFailurePolicy: Ignore
 
 # controllerImage -- Docker image for the controller and identity
 # components
-controllerImage: ghcr.io/linkerd/controller
+controllerImage: cr.l5d.io/linkerd/controller
 # -- Number of replicas for each control plane pod
 controllerReplicas: 1
 # -- User ID for the control plane components
@@ -180,7 +180,7 @@ controllerUID: 2103
 debugContainer:
   image:
     # -- Docker image for the debug container
-    name: ghcr.io/linkerd/debug
+    name: cr.l5d.io/linkerd/debug
     # -- Pull policy for the debug container Docker image
     # @default -- imagePullPolicy
     pullPolicy: ""
