@@ -31,7 +31,6 @@ type TestHelper struct {
 	clusterDomain      string
 	externalIssuer     bool
 	externalPrometheus bool
-	externalResources  bool
 	multicluster       bool
 	uninstall          bool
 	cni                bool
@@ -323,7 +322,6 @@ func (h *TestHelper) UpgradeHelmFromVersion() string {
 func (h *TestHelper) ExternalIssuer() bool {
 	return h.externalIssuer
 }
-
 
 // ExternalPrometheus determines whether linkerd should be installed with --set prometheusUrl
 func (h *TestHelper) ExternalPrometheus() bool {

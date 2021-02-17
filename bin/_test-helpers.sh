@@ -7,7 +7,8 @@ set +e
 ##### Test setup helpers #####
 
 export default_test_names=(deep external-issuer external-prometheus-deep helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
-export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}")
+export external_resource_test_names=(externalresources)
+export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}" "${external_resource_test_names[*]}")
 
 tests_usage() {
   progname="${0##*/}"
@@ -529,8 +530,13 @@ run_cluster-domain_test() {
 }
 
 run_rabbitmq-test_test(){
-   run_test "$test_directory/install_test.go" --external-resources
    run_test "$test_directory/externalresources/rabbitmq_test.go"
+}
+
+# wrapper to implement external tests
+run_externalresources_test(){
+    run_test "$test_directory/install_test.go"
+    run_rabbitmq-test_test
 }
 # exit_on_err should be called right after a command to check the result status
 # and eventually generate a Github error annotation. Do not use after calls to

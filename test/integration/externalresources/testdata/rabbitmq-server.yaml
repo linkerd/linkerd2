@@ -23,7 +23,7 @@ spec:
                 - rabbitmqctl
                 - status
             failureThreshold: 6
-            initialDelaySeconds: 120
+            initialDelaySeconds: 10
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 5
@@ -33,7 +33,7 @@ spec:
                 - rabbitmqctl
                 - status
             failureThreshold: 6
-            initialDelaySeconds: 120
+            initialDelaySeconds: 10
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 5
