@@ -270,8 +270,7 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 			err = executeExtensionCheck(cmd, "multicluster", mcCheckCmd.Flags())
 		default:
 			extensionCmd := fmt.Sprintf("linkerd-%s", extension)
-			var path string
-			path, err = exec.LookPath(extensionCmd)
+			path, err := exec.LookPath(extensionCmd)
 			if err != nil {
 				if opts.output == healthcheck.JSONOutput {
 					result := map[string]interface{}{
@@ -288,8 +287,7 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 							},
 						},
 					}
-					var out []byte
-					out, err = json.MarshalIndent(result, "", "  ")
+					out, err := json.MarshalIndent(result, "", "  ")
 					if err != nil {
 						return err
 					}
@@ -299,7 +297,7 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 					fmt.Fprintln(wout, strings.Repeat("-", len(extensionCmd)))
 					fmt.Fprintf(wout, "%s Linkerd extension command %s exists\n", healthcheck.WarnStatus, extensionCmd)
 					fmt.Fprintln(wout)
-					fmt.Fprintf(wout, "Status check results are %s\n", healthcheck.WarnStatus)
+					fmt.Fprintf(wout, "Status check results are %s\n", healthcheck.OkStatus)
 				}
 			} else {
 				args := append([]string{"check"}, getGlobalFlags(cmd.Flags())...)
