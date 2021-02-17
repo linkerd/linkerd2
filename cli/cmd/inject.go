@@ -169,6 +169,11 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	}
 
 	reports := []inject.Report{*report}
+	// Injection of services depends on being able to retrieve the namespace
+	// annotations which can only occur in the proxy injector webhook.
+	if conf.IsService() {
+		return bytes, reports, nil
+	}
 
 	if rt.allowNsInject && conf.IsNamespace() {
 		b, err := conf.InjectNamespace(rt.overrideAnnotations)
@@ -195,7 +200,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		conf.AppendPodAnnotations(rt.overrideAnnotations)
 	}
 
-	patchJSON, err := conf.GetPatch(rt.injectProxy)
+	patchJSON, err := conf.GetPodPatch(rt.injectProxy)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -318,7 +323,9 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	}
 
 	for _, r := range reports {
-		if b, _ := r.Injectable(); b {
+		if r.Kind == k8s.Service {
+			output.Write([]byte(fmt.Sprintf("service \"%s\" skipped\n", r.Name)))
+		} else if b, _ := r.Injectable(); b {
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" injected\n", r.Kind, r.Name)))
 		} else {
 			if r.Kind != "" {
