@@ -142,7 +142,7 @@ jobs:
     - name: Install CLI
       run: |
         # Copy the CLI out of the local cli-bin container.
-        container_id=$(docker create "cr.l5d.io/cli-bin:$TAG")
+        container_id=$(docker create "cr.l5d.io/linkerd/cli-bin:$TAG")
         docker cp $container_id:/out/linkerd-linux-amd64 "$HOME/.linkerd"
 
         # Validate the CLI version matches the current build tag.
