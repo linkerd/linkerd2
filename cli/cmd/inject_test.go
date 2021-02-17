@@ -299,6 +299,13 @@ func TestUninjectAndInject(t *testing.T) {
 			injectProxy:      true,
 			testInjectConfig: opaquePortsConfig,
 		},
+		{
+			inputFileName:    "inject_emojivoto_service.input.yml",
+			goldenFileName:   "inject_emojivoto_service_opaque_ports.golden.yml",
+			reportFileName:   "inject_emojivoto_service_opaque_ports.report",
+			injectProxy:      true,
+			testInjectConfig: opaquePortsConfig,
+		},
 	}
 
 	for i, tc := range testCases {

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    config.linkerd.io/opaque-ports: 3000,5000-6000,mysql
+  name: web-svc
+  namespace: emojivoto
+spec:
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  selector:
+    app: web-svc
+  type: ClusterIP
+---
