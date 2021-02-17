@@ -858,7 +858,7 @@ data:
     debugContainer:
       image:
         name: ghcr.io/linkerd/debug
-        pullPolicy: IfNotPresent
+        pullPolicy: ""
         version: install-debug-version
     destinationProxyResources: null
     destinationResources: null
@@ -935,7 +935,7 @@ data:
       enableExternalProfiles: false
       image:
         name: ghcr.io/linkerd/proxy
-        pullPolicy: IfNotPresent
+        pullPolicy: ""
         version: install-proxy-version
       inboundConnectTimeout: 100ms
       isGateway: false
@@ -968,7 +968,7 @@ data:
       ignoreOutboundPorts: 25,443,587,3306,11211
       image:
         name: ghcr.io/linkerd/proxy-init
-        pullPolicy: IfNotPresent
+        pullPolicy: ""
         version: v1.3.9
       resources:
         cpu:

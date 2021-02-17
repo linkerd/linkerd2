@@ -17,7 +17,7 @@ args:
 - {{ .Values.proxyInit.closeWaitTimeoutSecs | quote}}
 {{- end }}
 image: {{.Values.proxyInit.image.name}}:{{.Values.proxyInit.image.version}}
-imagePullPolicy: {{.Values.proxyInit.image.pullPolicy}}
+imagePullPolicy: {{.Values.proxyInit.image.pullPolicy | default .Values.imagePullPolicy}}
 name: linkerd-init
 {{ include "partials.resources" .Values.proxyInit.resources }}
 securityContext:
