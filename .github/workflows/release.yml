@@ -25,7 +25,7 @@ jobs:
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
 
         . bin/_docker.sh
-        echo "DOCKER_REGISTRY=$DOCKER_REGISTRY" >> $GITHUB_ENV
+        echo "DOCKER_REGISTRY=ghcr.io" >> $GITHUB_ENV
         echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
     - name: Cache docker layers
       # actions/cache@v2.0.0
