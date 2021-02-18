@@ -5,6 +5,10 @@ import (
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 )
 
+// opaquePortsAdaptor holds an underlying ProfileUpdateListener and updates
+// that listener with changes to a service's opaque ports annotation. It
+// implements OpaquePortsUpdateListener and should be passed to a source of
+// profile updates and opaque ports updates.
 type opaquePortsAdaptor struct {
 	listener    watcher.ProfileUpdateListener
 	profile     *sp.ServiceProfile
@@ -17,23 +21,23 @@ func newOpaquePortsAdaptor(listener watcher.ProfileUpdateListener) *opaquePortsA
 	}
 }
 
-func (sa *opaquePortsAdaptor) Update(profile *sp.ServiceProfile) {
-	sa.profile = profile
-	sa.publish()
+func (opa *opaquePortsAdaptor) Update(profile *sp.ServiceProfile) {
+	opa.profile = profile
+	opa.publish()
 }
 
-func (sa *opaquePortsAdaptor) UpdateService(ports map[uint32]struct{}) {
-	sa.opaquePorts = ports
-	sa.publish()
+func (opa *opaquePortsAdaptor) UpdateService(ports map[uint32]struct{}) {
+	opa.opaquePorts = ports
+	opa.publish()
 }
 
-func (sa *opaquePortsAdaptor) publish() {
+func (opa *opaquePortsAdaptor) publish() {
 	merged := sp.ServiceProfile{}
-	if sa.profile != nil {
-		merged = *sa.profile
+	if opa.profile != nil {
+		merged = *opa.profile
 	}
-	if len(sa.opaquePorts) != 0 {
-		merged.Spec.OpaquePorts = sa.opaquePorts
+	if len(opa.opaquePorts) != 0 {
+		merged.Spec.OpaquePorts = opa.opaquePorts
 	}
-	sa.listener.Update(&merged)
+	opa.listener.Update(&merged)
 }
