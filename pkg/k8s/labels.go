@@ -376,7 +376,7 @@ const (
 
 	// DefaultExportedServiceSelector is the default label selector for exported
 	// services.
-	DefaultExportedServiceSelector = MulticlusterAnnotationsPrefix + "/exported"
+	DefaultExportedServiceSelector = MulticlusterAnnotationsPrefix + "/export"
 
 	// MirroredResourceLabel indicates that this resource is the result
 	// of a mirroring operation (can be a namespace or a service)
