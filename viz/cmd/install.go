@@ -74,18 +74,9 @@ A full list of configurable values can be found at https://www.github.com/linker
 		},
 	}
 
-	cmd.Flags().BoolVar(
-		&skipChecks, "skip-checks", false,
-		`Skip checks for linkerd core control-plane existence`,
-	)
-
-	cmd.Flags().BoolVar(
-		&ha, "ha", false,
-		`Install Viz Extension in High Availability mode.`,
-	)
-	cmd.Flags().DurationVar(
-		&wait, "wait", 300*time.Second,
-		"Wait for core control-plane components to be available")
+	cmd.Flags().BoolVar(&skipChecks, "skip-checks", false, `Skip checks for linkerd core control-plane existence`)
+	cmd.Flags().BoolVar(&ha, "ha", false, `Install Viz Extension in High Availability mode.`)
+	cmd.Flags().DurationVar(&wait, "wait", 300*time.Second, "Wait for core control-plane components to be available")
 
 	flags.AddValueOptionsFlags(cmd.Flags(), &options)
 
