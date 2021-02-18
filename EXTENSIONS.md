@@ -26,12 +26,16 @@ The extension must accept the following flags and respect them any time that
 it communicates with the Kubernetes API.  All of these flags must be accepted
 but may be ignored if they are not applicable.
 
-* `--api-addr`: Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)
+* `--api-addr`: Override kubeconfig and communicate directly with the control
+  plane at host:port (mostly for testing)
 * `--context`: Name of the kubeconfig context to use
+* `--as`: Username to impersonate for Kubernetes operations
+* `--as-group`: Group to impersonate for Kubernetes operations
 * `--help`/`-h`: Print help message
 * `--kubeconfig`: Path to the kubeconfig file to use for CLI requests
-* `--linkerd-namespace`/`-l`: Namespace in which Linkerd is installed [$LINKERD_NAMESPACE]
-* `--verbose`: Turn on debug logging 
+* `--linkerd-namespace`/`-l`: Namespace in which Linkerd is installed
+  [$LINKERD_NAMESPACE]
+* `--verbose`: Turn on debug logging
 
 The extension must implement these commands:
 
@@ -59,7 +63,7 @@ checks pass or with a nonzero status code if they do not pass. For consistency,
 it is recommended that this command follows the same output formatting as
 `linkerd check`, e.g.
 
-```
+```console
 linkerd-version
 ---------------
 √ can determine the latest version
@@ -68,16 +72,20 @@ linkerd-version
 Status check results are √
 ```
 
-The final line of output should be either `Status check results are √` or 
+The final line of output should be either `Status check results are √` or
 `Status check results are ×`.
 
 In addition to the flags described above, `linkerd-name check` must accept the
 following flags:
 
-* `--namespace`/`-n`: Namespace to use for –proxy checks (default: all namespaces)
-* `--output`/`-o`: Output format. One of: basic, json
-* `--proxy`: Only run data-plane checks, to determine if the data plane is healthy
-* `--wait`: Maximum allowed time for all tests to pass 
+* `--namespace`/`-n`: Namespace to use for –proxy checks (default: all
+  namespaces)
+* `--output`/`-o`: Output format. One of: table, json
+* `--pre`: Only run pre-installation checks, to determine if the extension can
+  be installed
+* `--proxy`: Only run data-plane checks, to determine if the data plane is
+  healthy
+* `--wait`: Maximum allowed time for all tests to pass
 
 If the output format is set to json then output should be in json format
 instead of the output format described above.  E.g.
