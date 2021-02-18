@@ -117,6 +117,12 @@ func install(w io.Writer, options values.Options, ha bool) error {
 		return err
 	}
 
+	// if using -L to specify a non-standard CP namespace, make sure
+	// the linkerdNamespace Helm value is synced
+	if controlPlaneNamespace != "linkerd" {
+		valuesOverrides["linkerdNamespace"] = controlPlaneNamespace
+	}
+
 	if ha {
 		valuesOverrides, err = charts.OverrideFromFile(valuesOverrides, static.Templates, vizChartName, "values-ha.yaml")
 		if err != nil {
