@@ -305,7 +305,7 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 				plugin.Stdin = os.Stdin
 				plugin.Stdout = wout
 				plugin.Stderr = werr
-				err = plugin.Run()
+				plugin.Run()
 			}
 		}
 		if err != nil {
