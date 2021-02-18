@@ -119,7 +119,7 @@ func install(w io.Writer, options values.Options, ha bool) error {
 
 	// if using -L to specify a non-standard CP namespace, make sure
 	// the linkerdNamespace Helm value is synced
-	if controlPlaneNamespace != defaultLinkerdNamespace
+	if controlPlaneNamespace != defaultLinkerdNamespace {
 		valuesOverrides["linkerdNamespace"] = controlPlaneNamespace
 	}
 
