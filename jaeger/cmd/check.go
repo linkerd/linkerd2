@@ -176,7 +176,7 @@ func checkForTraceConfiguration(pods []corev1.Pod) error {
 		pod := pods[i]
 		// Check for jaeger-injector annotation
 		if !labels.IsTracingEnabled(&pod) {
-			podsWithoutTraceConfig = append(podsWithoutTraceConfig, fmt.Sprintf("* %s", pod.Name))
+			podsWithoutTraceConfig = append(podsWithoutTraceConfig, fmt.Sprintf("* %s/%s", pod.Namespace, pod.Name))
 		}
 
 	}
