@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/linkerd/linkerd2/cli/table"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -56,7 +57,8 @@ func newGatewaysCommand() *cobra.Command {
 
 			resp, err := requestGatewaysFromAPI(client, req)
 			if err != nil {
-				return err
+				fmt.Fprint(os.Stderr, err.Error())
+				os.Exit(1)
 			}
 
 			renderGateways(resp.GetOk().GatewaysTable.Rows, stdout)
