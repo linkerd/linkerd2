@@ -62,7 +62,7 @@ func TestTracing(t *testing.T) {
 	}
 
 	// wait for the jaeger extension
-	checkCmd := []string{"jaeger", "check", "--wait=0"}
+	checkCmd := []string{"jaeger", "check", "--wait=0", "--expected-version", TestHelper.GetVersion()}
 	golden := "check.jaeger.golden"
 	timeout := time.Minute
 	err = TestHelper.RetryFor(timeout, func() error {

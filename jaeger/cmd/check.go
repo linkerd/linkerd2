@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -26,8 +27,10 @@ var (
 )
 
 type checkOptions struct {
-	wait   time.Duration
-	output string
+	wait               time.Duration
+	output             string
+	versionOverride    string
+	cliVersionOverride string
 }
 
 func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
@@ -121,6 +124,20 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			WithHintAnchor("l5d-jaeger-proxy-cp-version").
 			Warning().
 			WithCheck(func(ctx context.Context) error {
+				var err error
+				if hc.VersionOverride != "" {
+					hc.LatestVersions, err = version.NewChannels(hc.VersionOverride)
+				} else {
+					uuid := "unknown"
+					if hc.UUID() != "" {
+						uuid = hc.UUID()
+					}
+					hc.LatestVersions, err = version.GetLatestVersions(ctx, uuid, "cli")
+				}
+				if err != nil {
+					return err
+				}
+
 				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, jaegerNamespace)
 				if err != nil {
 					return err
@@ -181,6 +198,8 @@ code.`,
 
 	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
 	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
+	cmd.Flags().StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
+	cmd.Flags().StringVar(&options.cliVersionOverride, "cli-version-override", "", "Used to override the version of the cli (mostly for testing)")
 
 	return cmd
 }
@@ -189,6 +208,10 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	err := options.validate()
 	if err != nil {
 		return fmt.Errorf("Validation error when executing check command: %v", err)
+	}
+
+	if options.cliVersionOverride != "" {
+		version.Version = options.cliVersionOverride
 	}
 
 	checks := []healthcheck.CategoryID{
@@ -203,6 +226,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		ImpersonateGroup:      impersonateGroup,
 		APIAddr:               apiAddr,
 		RetryDeadline:         time.Now().Add(options.wait),
+		VersionOverride:       options.versionOverride,
 	})
 
 	err = hc.InitializeKubeAPIClient()
