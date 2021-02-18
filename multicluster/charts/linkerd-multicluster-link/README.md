@@ -17,10 +17,6 @@ shouldn't be used as-is unless you really know what you're doing ;-)
 
 Kubernetes: `>=1.16.0-0`
 
-| Repository | Name | Version |
-|------------|------|---------|
-| file://../../../charts/partials | partials | 0.1.0 |
-
 ## Values
 
 | Key | Type | Default | Description |
