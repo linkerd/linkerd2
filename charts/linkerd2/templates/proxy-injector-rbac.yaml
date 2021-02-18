@@ -98,7 +98,7 @@ webhooks:
   - operations: [ "CREATE" ]
     apiGroups: [""]
     apiVersions: ["v1"]
-    resources: ["pods"]
+    resources: ["pods", "services"]
   {{- if not .Values.omitWebhookSideEffects }}
   sideEffects: None
   {{- end }}

@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 # -- Kubernetes DNS Domain name to use
-clusterDomain: &cluster_domain cluster.local
+clusterDomain: cluster.local
 
 # -- The cluster networks for which service discovery is performed. This should
 # include the pod network but need not include the node network.
@@ -12,9 +12,9 @@ clusterDomain: &cluster_domain cluster.local
 # typical Kubernetes environments.
 clusterNetworks: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
 # -- Docker image pull policy
-imagePullPolicy: &image_pull_policy IfNotPresent
+imagePullPolicy: IfNotPresent
 # -- Log level for the control plane components
-controllerLogLevel: &controller_log_level info
+controllerLogLevel: info
 # -- Log format for the control plane components
 controllerLogFormat: plain
 # -- enables control plane tracing
@@ -22,7 +22,7 @@ controlPlaneTracing: false
 # -- namespace to send control plane traces to
 controlPlaneTracingNamespace: linkerd-jaeger
 # -- control plane version. See Proxy section for proxy version
-linkerdVersion: &linkerd_version linkerdVersionValue
+linkerdVersion: linkerdVersionValue
 # -- Control plane namespace
 namespace: linkerd
 # -- enables the use of EndpointSlice informers for the destination service;
@@ -36,7 +36,8 @@ cniEnabled: false
 # -- Trust root certificate (ECDSA). It must be provided during install.
 identityTrustAnchorsPEM: |
 # -- Trust domain used for identity
-identityTrustDomain: *cluster_domain
+# @default -- clusterDomain
+identityTrustDomain: ""
 # -- Additional annotations to add to all pods
 podAnnotations: {}
 # -- Additional labels to add to all pods
@@ -53,11 +54,13 @@ proxy:
   inboundConnectTimeout: 100ms
   image:
     # -- Docker image for the proxy
-    name: ghcr.io/linkerd/proxy
+    name: cr.l5d.io/linkerd/proxy
     # -- Pull policy for the proxy container Docker image
-    pullPolicy: *image_pull_policy
+    # @default -- imagePullPolicy
+    pullPolicy: ""
     # -- Tag for the proxy container Docker image
-    version: *linkerd_version
+    # @default -- linkerdVersion
+    version: ""
   # -- Log level for the proxy
   logLevel: warn,linkerd=info
   # -- Log format (`plain` or `json`) for the proxy
@@ -107,11 +110,12 @@ proxyInit:
   ignoreOutboundPorts: "25,443,587,3306,11211"
   image:
     # -- Docker image for the proxy-init container
-    name: ghcr.io/linkerd/proxy-init
+    name: cr.l5d.io/linkerd/proxy-init
     # -- Pull policy for the proxy-init container Docker image
-    pullPolicy: *image_pull_policy
+    # @default -- imagePullPolicy
+    pullPolicy: ""
     # -- Tag for the proxy-init container Docker image
-    version: v1.3.8
+    version: v1.3.9
   resources:
     cpu:
       # -- Maximum amount of CPU units that the proxy-init container can use
@@ -143,7 +147,7 @@ webhookFailurePolicy: Ignore
 
 # controllerImage -- Docker image for the controller and identity
 # components
-controllerImage: ghcr.io/linkerd/controller
+controllerImage: cr.l5d.io/linkerd/controller
 # -- Number of replicas for each control plane pod
 controllerReplicas: 1
 # -- User ID for the control plane components
@@ -163,11 +167,13 @@ controllerUID: 2103
 debugContainer:
   image:
     # -- Docker image for the debug container
-    name: ghcr.io/linkerd/debug
+    name: cr.l5d.io/linkerd/debug
     # -- Pull policy for the debug container Docker image
-    pullPolicy: *image_pull_policy
+    # @default -- imagePullPolicy
+    pullPolicy: ""
     # -- Tag for the debug container Docker image
-    version: *linkerd_version
+    # @default -- linkerdVersion
+    version: ""
 
 identity:
   issuer:

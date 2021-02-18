@@ -277,6 +277,22 @@ func (v Values) Merge(src Values) (Values, error) {
 	return src, nil
 }
 
+// ToMap converts the Values intro a map[string]interface{}
+func (v *Values) ToMap() (map[string]interface{}, error) {
+	var valuesMap map[string]interface{}
+	rawValues, err := yaml.Marshal(v)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to marshal the values struct: %s", err)
+	}
+
+	err = yaml.Unmarshal(rawValues, &valuesMap)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to Unmarshal Values into a map: %s", err)
+	}
+
+	return valuesMap, nil
+}
+
 // DeepCopy creates a deep copy of the Values struct by marshalling to yaml and
 // then unmarshalling a new struct.
 func (v *Values) DeepCopy() (*Values, error) {

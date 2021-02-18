@@ -80,7 +80,7 @@ spec:
         {{- end}}
         - -controller-namespace={{.Values.linkerdNamespace}}
         - -viz-namespace={{.Values.namespace}}
-        - -log-level={{.Values.dashboard.logLevel}}
+        - -log-level={{.Values.dashboard.logLevel | default .Values.defaultLogLevel}}
         {{- if .Values.dashboard.enforcedHostRegexp }}
         - -enforced-host={{.Values.dashboard.enforcedHostRegexp}}
         {{- else -}}
@@ -88,8 +88,8 @@ spec:
         {{- $hostAbbrev := replace "." "\\." (printf "linkerd-web.%s.svc" .Values.namespace) }}
         - -enforced-host=^(localhost|127\.0\.0\.1|{{ $hostFull }}|{{ $hostAbbrev }}|\[::1\])(:\d+)?$
         {{- end}}
-        image: {{.Values.dashboard.image.registry}}/{{.Values.dashboard.image.name}}:{{.Values.dashboard.image.tag}}
-        imagePullPolicy: {{.Values.dashboard.image.pullPolicy}}
+        image: {{.Values.dashboard.image.registry | default .Values.defaultRegistry}}/{{.Values.dashboard.image.name}}:{{.Values.dashboard.image.tag | default .Values.linkerdVersion}}
+        imagePullPolicy: {{.Values.dashboard.image.pullPolicy | default .Values.defaultImagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /ping
@@ -110,5 +110,5 @@ spec:
         {{- include "partials.resources" .Values.dashboard.resources | nindent 8 }}
         {{- end }}
         securityContext:
-          runAsUser: {{.Values.dashboard.UID}}
+          runAsUser: {{.Values.dashboard.UID | default .Values.defaultUID}}
       serviceAccountName: linkerd-web

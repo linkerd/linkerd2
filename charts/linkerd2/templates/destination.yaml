@@ -118,7 +118,7 @@ spec:
         - -log-format={{.Values.controllerLogFormat}}
         - -enable-endpoint-slices={{.Values.enableEndpointSlices}}
         - -cluster-domain={{.Values.clusterDomain}}
-        - -identity-trust-domain={{.Values.identityTrustDomain}}
+        - -identity-trust-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.controllerImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
         imagePullPolicy: {{.Values.imagePullPolicy}}

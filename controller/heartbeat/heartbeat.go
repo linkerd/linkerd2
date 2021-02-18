@@ -42,6 +42,16 @@ func K8sValues(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneName
 		v.Set("k8s-version", versionInfo.String())
 	}
 
+	namespaces, err := kubeAPI.GetAllNamespacesWithExtensionLabel(ctx)
+	if err != nil {
+		log.Errorf("Failed to fetch namespaces with %s label: %s", k8s.LinkerdExtensionLabel, err)
+	} else {
+		for _, ns := range namespaces {
+			extensionNameParam := fmt.Sprintf("ext-%s", ns.Labels[k8s.LinkerdExtensionLabel])
+			v.Set(extensionNameParam, "1")
+		}
+	}
+
 	return v
 }
 

@@ -117,7 +117,7 @@ spec:
           value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:override
+        image: cr.l5d.io/linkerd/proxy:override
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -162,7 +162,7 @@ spec:
         - 4190,9998,7777,8888
         - --outbound-ports-to-ignore
         - "9999"
-        image: ghcr.io/linkerd/proxy-init:v1.3.8
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

@@ -1,6 +1,6 @@
 # -- Docker image for the Service mirror component (uses the Linkerd controller
 # image)
-controllerImage: ghcr.io/linkerd/controller
+controllerImage: cr.l5d.io/linkerd/controller
 # -- Tag for the Service Mirror container Docker image
 controllerImageVersion: linkerdVersionValue
 # -- The port used for liveliness probing 

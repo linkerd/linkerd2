@@ -15,7 +15,7 @@ ignoreInboundPorts: "25,443,587,3306,11211"
 # -- Outbound ports the proxy should ignore
 ignoreOutboundPorts: "25,443,587,3306,11211"
 # -- Docker image for the CNI plugin
-cniPluginImage:   "ghcr.io/linkerd/cni-plugin"
+cniPluginImage:   "cr.l5d.io/linkerd/cni-plugin"
 # -- Tag for the CNI container Docker image
 cniPluginVersion: linkerdVersionValue
 # -- Log level for the CNI plugin

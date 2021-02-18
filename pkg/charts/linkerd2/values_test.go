@@ -28,7 +28,7 @@ func TestNewValues(t *testing.T) {
 	}
 
 	expected := &Values{
-		ControllerImage:              "ghcr.io/linkerd/controller",
+		ControllerImage:              "cr.l5d.io/linkerd/controller",
 		ControllerReplicas:           1,
 		ControllerUID:                2103,
 		EnableH2Upgrade:              true,
@@ -52,15 +52,13 @@ func TestNewValues(t *testing.T) {
 		ControlPlaneTracing:          false,
 		ControlPlaneTracingNamespace: "linkerd-jaeger",
 		HighAvailability:             false,
-		IdentityTrustDomain:          "cluster.local",
 		PodAnnotations:               map[string]string{},
 		PodLabels:                    map[string]string{},
 		Proxy: &Proxy{
 			EnableExternalProfiles: false,
 			Image: &Image{
-				Name:       "ghcr.io/linkerd/proxy",
-				PullPolicy: "IfNotPresent",
-				Version:    testVersion,
+				Name:    "cr.l5d.io/linkerd/proxy",
+				Version: "dev-undefined",
 			},
 			LogLevel:  "warn,linkerd=info",
 			LogFormat: "plain",
@@ -89,9 +87,8 @@ func TestNewValues(t *testing.T) {
 			IgnoreInboundPorts:  "25,443,587,3306,11211",
 			IgnoreOutboundPorts: "25,443,587,3306,11211",
 			Image: &Image{
-				Name:       "ghcr.io/linkerd/proxy-init",
-				PullPolicy: "IfNotPresent",
-				Version:    testVersion,
+				Name:    "cr.l5d.io/linkerd/proxy-init",
+				Version: testVersion,
 			},
 			Resources: &Resources{
 				CPU: Constraints{
@@ -121,9 +118,8 @@ func TestNewValues(t *testing.T) {
 		},
 		DebugContainer: &DebugContainer{
 			Image: &Image{
-				Name:       "ghcr.io/linkerd/debug",
-				PullPolicy: "IfNotPresent",
-				Version:    testVersion,
+				Name:    "cr.l5d.io/linkerd/debug",
+				Version: "dev-undefined",
 			},
 		},
 
@@ -135,9 +131,7 @@ func TestNewValues(t *testing.T) {
 	// in non-test environment, the default versions are read from the
 	// values.yaml.
 	actual.ControllerImageVersion = testVersion
-	actual.Proxy.Image.Version = testVersion
 	actual.ProxyInit.Image.Version = testVersion
-	actual.DebugContainer.Image.Version = testVersion
 
 	// Make Add-On Values nil to not have to check for their defaults
 	actual.ImagePullSecrets = nil
@@ -198,9 +192,7 @@ func TestNewValues(t *testing.T) {
 		// in non-test environment, the default versions are read from the
 		// values.yaml.
 		actual.ControllerImageVersion = testVersion
-		actual.Proxy.Image.Version = testVersion
 		actual.ProxyInit.Image.Version = testVersion
-		actual.DebugContainer.Image.Version = testVersion
 
 		if !reflect.DeepEqual(expected, actual) {
 			t.Errorf("Mismatch Helm HA defaults.\nExpected: %+v\nActual: %+v", expected, actual)

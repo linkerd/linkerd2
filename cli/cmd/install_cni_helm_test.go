@@ -18,7 +18,7 @@ func TestRenderCniHelm(t *testing.T) {
 	// override most defaults with pinned values.
 	// use the Helm lib to render the templates.
 	// the golden file is generated using the following `helm template` command:
-	// bin/helm template --set namespace="linkerd-test" --set inboundProxyPort=1234 --set outboundProxyPort=5678 --set cniPluginImage="ghcr.io/linkerd/cni-plugin-test" --set cniPluginVersion="test-version" --set logLevel="debug" --set proxyUID=1111 --set destCNINetDir="/etc/cni/net.d-test" --set destCNIBinDir="/opt/cni/bin-test" --set useWaitFlag=true --set cliVersion=test-version charts/linkerd2-cni
+	// bin/helm template --set namespace="linkerd-test" --set inboundProxyPort=1234 --set outboundProxyPort=5678 --set cniPluginImage="cr.l5d.io/linkerd/cni-plugin-test" --set cniPluginVersion="test-version" --set logLevel="debug" --set proxyUID=1111 --set destCNINetDir="/etc/cni/net.d-test" --set destCNIBinDir="/opt/cni/bin-test" --set useWaitFlag=true --set cliVersion=test-version charts/linkerd2-cni
 
 	t.Run("Cni Install with defaults", func(t *testing.T) {
 		chartCni := chartCniPlugin(t)
@@ -32,7 +32,7 @@ func TestRenderCniHelm(t *testing.T) {
 			"namespace": "linkerd-test",
   			"inboundProxyPort": 1234,
   			"outboundProxyPort": 5678,
-  			"cniPluginImage": "ghcr.io/linkerd/cni-plugin-test",
+  			"cniPluginImage": "cr.l5d.io/linkerd/cni-plugin-test",
   			"cniPluginVersion": "test-version",
   			"logLevel": "debug",
   			"proxyUID": 1111,
