@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -88,8 +87,7 @@ This command will only display traffic which is sent to a service that has a Ser
 				options,
 			)
 			if err != nil {
-				fmt.Fprint(os.Stderr, err.Error())
-				os.Exit(1)
+				return err
 			}
 
 			_, err = fmt.Print(output)
