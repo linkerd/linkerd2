@@ -23,9 +23,9 @@ apiVersion: v1
 metadata:
   name: {{.Values.namespace}}
   annotations:
-    {{ include "partials.annotations.proxy-inject-disabled" . }}
+    linkerd.io/inject: disabled
   labels:
-    {{ include "partials.labels.cni-resource" . }}
+    linkerd.io/cni-resource: "true"
     config.linkerd.io/admission-webhooks: disabled
 ---
 {{ end -}}
@@ -34,7 +34,7 @@ kind: PodSecurityPolicy
 metadata:
   name: linkerd-{{.Values.namespace}}-cni
   labels:
-    {{ include "partials.labels.cni-resource" . }}
+    linkerd.io/cni-resource: "true"
 spec:
   allowPrivilegeEscalation: false
   fsGroup:
@@ -56,7 +56,7 @@ metadata:
   name: linkerd-cni
   namespace: {{.Values.namespace}}
   labels:
-    {{ include "partials.labels.cni-resource" . }}
+    linkerd.io/cni-resource: "true"
 {{- if .Values.imagePullSecrets }}
 imagePullSecrets:
 {{ toYaml .Values.imagePullSecrets | indent 2 }}
@@ -68,7 +68,7 @@ metadata:
   name: linkerd-cni
   namespace: {{.Values.namespace}}
   labels:
-    {{ include "partials.labels.cni-resource" . }}
+    linkerd.io/cni-resource: "true"
 rules:
 - apiGroups: ['extensions', 'policy']
   resources: ['podsecuritypolicies']
@@ -82,7 +82,7 @@ metadata:
   name: linkerd-cni
   namespace: {{.Values.namespace}}
   labels:
-    {{ include "partials.labels.cni-resource" . }}
+    linkerd.io/cni-resource: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -97,7 +97,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-cni
   labels:
-    {{ include "partials.labels.cni-resource" . }}
+    linkerd.io/cni-resource: "true"
 rules:
 - apiGroups: [""]
   resources: ["pods", "nodes", "namespaces"]
@@ -108,7 +108,7 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-cni
   labels:
-    {{ include "partials.labels.cni-resource" . }}
+    linkerd.io/cni-resource: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -124,7 +124,7 @@ metadata:
   name: linkerd-cni-config
   namespace: {{.Values.namespace}}
   labels:
-    {{ include "partials.labels.cni-resource" . }}
+    linkerd.io/cni-resource: "true"
 data:
   dest_cni_net_dir: "{{.Values.destCNINetDir}}"
   dest_cni_bin_dir: "{{.Values.destCNIBinDir}}"
@@ -166,7 +166,7 @@ metadata:
   namespace: {{.Values.namespace}}
   labels:
     k8s-app: linkerd-cni
-    {{ include "partials.labels.cni-resource" . }}
+    linkerd.io/cni-resource: "true"
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:

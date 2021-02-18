@@ -7,7 +7,7 @@ kind: PodSecurityPolicy
 metadata:
   name: linkerd-{{.Values.namespace}}-control-plane
   labels:
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 spec:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
@@ -63,7 +63,7 @@ metadata:
   name: linkerd-psp
   namespace: {{.Values.namespace}}
   labels:
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 rules:
 - apiGroups: ['policy', 'extensions']
   resources: ['podsecuritypolicies']
@@ -77,7 +77,7 @@ metadata:
   name: linkerd-psp
   namespace: {{.Values.namespace}}
   labels:
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 roleRef:
   kind: Role
   name: linkerd-psp

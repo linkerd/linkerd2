@@ -5,7 +5,7 @@ kind: ConfigMap
 metadata:
   name: {{.Values.gatewayName}}-config
   labels:
-    {{ include "partials.labels.component" "gateway" }}
+    linkerd.io/control-plane-component: gateway
     linkerd.io/extension: linkerd-multicluster
   annotations:
     {{ include "partials.annotations.created-by" . }}
@@ -57,7 +57,7 @@ metadata:
     app.kubernetes.io/name: gateway
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{.Values.linkerdVersion}}
-    {{ include "partials.labels.component" "gateway" }}
+    linkerd.io/control-plane-component: gateway
     app: {{.Values.gatewayName}}
     linkerd.io/extension: linkerd-multicluster
   name: {{.Values.gatewayName}}
@@ -124,7 +124,7 @@ metadata:
     mirror.linkerd.io/probe-period: "{{.Values.gatewayProbeSeconds}}"
     mirror.linkerd.io/probe-path: {{.Values.gatewayProbePath}}
     mirror.linkerd.io/multicluster-gateway: "true"
-    {{ include "partials.labels.component" "gateway" }}
+    linkerd.io/control-plane-component: gateway
     {{ include "partials.annotations.created-by" . }}
     {{- with .Values.gatewayServiceAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:

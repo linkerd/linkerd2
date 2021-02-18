@@ -30,7 +30,6 @@ rm -f viz/charts/linkerd-viz/charts/*
 
 "$bindir"/helm dep up "$rootdir"/multicluster/charts/linkerd-multicluster
 "$bindir"/helm lint "$rootdir"/multicluster/charts/linkerd-multicluster
-"$bindir"/helm dep up "$rootdir"/multicluster/charts/linkerd-multicluster-link
 "$bindir"/helm lint "$rootdir"/multicluster/charts/linkerd-multicluster-link
 "$bindir"/helm lint "$rootdir"/charts/partials
 "$bindir"/helm dep up "$rootdir"/charts/linkerd2-cni

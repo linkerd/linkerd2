@@ -8,14 +8,14 @@ metadata:
   name: linkerd-controller-api
   namespace: {{.Values.namespace}}
   labels:
-    {{ include "partials.labels.component" "controller" }}
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
   type: ClusterIP
   selector:
-    {{ include "partials.labels.component" "controller" }}
+    linkerd.io/control-plane-component: controller
   ports:
   - name: http
     port: 8085
@@ -28,15 +28,15 @@ metadata:
   name: linkerd-controller-api
   namespace: {{.Values.namespace}}
   labels:
-    {{ include "partials.labels.component" "controller" }}
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
   maxUnavailable: 1
   selector:
     matchLabels:
-      {{ include "partials.labels.component" "controller" }}
+      linkerd.io/control-plane-component: controller
 {{- end }}
 ---
 {{- $tree := deepCopy . }}
@@ -52,16 +52,16 @@ metadata:
     app.kubernetes.io/name: controller
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
-    {{ include "partials.labels.component" "controller" }}
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
   name: linkerd-controller
   namespace: {{.Values.namespace}}
 spec:
   replicas: {{.Values.controllerReplicas}}
   selector:
     matchLabels:
-      {{ include "partials.labels.component" "controller" }}
-      {{ include "partials.labels.controller-ns" . }}
+      linkerd.io/control-plane-component: controller
+      linkerd.io/control-plane-ns: {{.Values.namespace}}
       {{- include "partials.proxy.labels" $tree.Values.proxy | nindent 6}}
   {{- if .Values.enablePodAntiAffinity }}
   strategy:
@@ -75,9 +75,9 @@ spec:
         {{- include "partials.proxy.annotations" .Values.proxy| nindent 8}}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
-        {{ include "partials.labels.component" "controller" }}
-        {{ include "partials.labels.controller-ns" . }}
-        {{ include "partials.labels.workload-ns" . }}
+        linkerd.io/control-plane-component: controller
+        linkerd.io/control-plane-ns: {{.Values.namespace}}
+        linkerd.io/workload-ns: {{.Values.namespace}}
         {{- include "partials.proxy.labels" $tree.Values.proxy | nindent 8}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:

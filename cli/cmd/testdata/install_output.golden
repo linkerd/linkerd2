@@ -200,7 +200,7 @@ kind: ClusterRole
 metadata:
   name: linkerd-heartbeat
   labels:
-    ControllerNamespaceLabel: linkerd
+    linkerd.io/control-plane-ns: linkerd
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -211,7 +211,7 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-heartbeat
   labels:
-    ControllerNamespaceLabel: linkerd
+    linkerd.io/control-plane-ns: linkerd
 roleRef:
   kind: ClusterRole
   name: linkerd-heartbeat
@@ -1845,8 +1845,8 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/config: 54ac8689f1236f2c97fa3bb59f9ac21abab03e06e06eca84b1fd9ba035dce1e8
         linkerd.io/created-by: CliVersion
-        checksum/config: 105c8f17bdd1b33fc33840feb72f59588f786020657597868979618bf6ed4a3f
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: ProxyVersion
       labels:

@@ -7,8 +7,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-sp-validator
   labels:
-    {{ include "partials.labels.component" "sp-validator" }}
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -19,8 +19,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-sp-validator
   labels:
-    {{ include "partials.labels.component" "sp-validator" }}
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 subjects:
 - kind: ServiceAccount
   name: linkerd-sp-validator
@@ -37,8 +37,8 @@ metadata:
   name: linkerd-sp-validator
   namespace: {{.Values.namespace}}
   labels:
-    {{ include "partials.labels.component" "sp-validator" }}
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 ---
 {{- $host := printf "linkerd-sp-validator.%s.svc" .Values.namespace }}
@@ -50,8 +50,8 @@ metadata:
   name: linkerd-sp-validator-k8s-tls
   namespace: {{ .Values.namespace }}
   labels:
-    {{ include "partials.labels.component" "sp-validator" }}
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 type: kubernetes.io/tls
@@ -65,8 +65,8 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: linkerd-sp-validator-webhook-config
   labels:
-    {{ include "partials.labels.component" "sp-validator" }}
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
   namespaceSelector:

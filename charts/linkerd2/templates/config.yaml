@@ -5,8 +5,8 @@ metadata:
   name: linkerd-config
   namespace: {{.Values.namespace}}
   labels:
-    {{ include "partials.labels.component" "controller" }}
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 data:

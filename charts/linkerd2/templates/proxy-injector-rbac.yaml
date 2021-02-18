@@ -7,8 +7,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-proxy-injector
   labels:
-    {{ include "partials.labels.component" "proxy-injector" }}
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 rules:
 - apiGroups: [""]
   resources: ["events"]
@@ -31,8 +31,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-proxy-injector
   labels:
-    {{ include "partials.labels.component" "proxy-injector" }}
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 subjects:
 - kind: ServiceAccount
   name: linkerd-proxy-injector
@@ -49,8 +49,8 @@ metadata:
   name: linkerd-proxy-injector
   namespace: {{.Values.namespace}}
   labels:
-    {{ include "partials.labels.component" "proxy-injector" }}
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 ---
 {{- $host := printf "linkerd-proxy-injector.%s.svc" .Values.namespace }}
@@ -62,8 +62,8 @@ metadata:
   name: linkerd-proxy-injector-k8s-tls
   namespace: {{ .Values.namespace }}
   labels:
-    {{ include "partials.labels.component" "proxy-injector" }}
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 type: kubernetes.io/tls
@@ -77,8 +77,8 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
   labels:
-    {{ include "partials.labels.component" "proxy-injector" }}
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:

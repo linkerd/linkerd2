@@ -8,7 +8,7 @@ metadata:
   name: linkerd-tap
   namespace: {{.Values.namespace}}
   labels:
-    {{ include "partials.labels.extension" "linkerd-viz" }}
+    linkerd.io/extension: linkerd-viz
     component: tap
     namespace: {{.Values.namespace}}
   annotations:
@@ -16,7 +16,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    {{ include "partials.labels.extension" "linkerd-viz" }}
+    linkerd.io/extension: linkerd-viz
     component: tap
   ports:
   - name: grpc
@@ -32,7 +32,7 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
   labels:
-    {{ include "partials.labels.extension" "linkerd-viz" }}
+    linkerd.io/extension: linkerd-viz
     app.kubernetes.io/name: tap
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
@@ -44,7 +44,7 @@ spec:
   replicas: {{.Values.tap.replicas}}
   selector:
     matchLabels:
-      {{ include "partials.labels.extension" "linkerd-viz" }}
+      linkerd.io/extension: linkerd-viz
       component: tap
       namespace: {{.Values.namespace}}
   {{- if .Values.enablePodAntiAffinity }}
@@ -64,7 +64,7 @@ spec:
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
-        {{ include "partials.labels.extension" "linkerd-viz" }}
+        linkerd.io/extension: linkerd-viz
         component: tap
         namespace: {{.Values.namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}

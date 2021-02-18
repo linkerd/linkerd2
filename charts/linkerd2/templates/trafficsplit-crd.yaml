@@ -10,7 +10,7 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
   labels:
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 spec:
   group: split.smi-spec.io
   scope: Namespaced

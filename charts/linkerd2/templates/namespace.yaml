@@ -8,9 +8,9 @@ apiVersion: v1
 metadata:
   name: {{ .Values.namespace }}
   annotations:
-    {{ include "partials.annotations.proxy-inject-disabled" . }}
+    linkerd.io/inject: disabled
   labels:
-    {{ include "partials.labels.is-control-plane" . }}
+    linkerd.io/is-control-plane: "true"
     config.linkerd.io/admission-webhooks: disabled
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 {{ end -}}

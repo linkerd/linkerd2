@@ -7,8 +7,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-controller
   labels:
-    {{ include "partials.labels.component" "controller" }}
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
@@ -31,8 +31,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-controller
   labels:
-    {{ include "partials.labels.component" "controller" }}
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -48,6 +48,6 @@ metadata:
   name: linkerd-controller
   namespace: {{.Values.namespace}}
   labels:
-    {{ include "partials.labels.component" "controller" }}
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}

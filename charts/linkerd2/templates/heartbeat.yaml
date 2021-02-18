@@ -12,8 +12,8 @@ metadata:
     app.kubernetes.io/name: heartbeat
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
-    {{ include "partials.labels.component" "heartbeat" }}
-    {{ include "partials.labels.controller-ns" . }}
+    linkerd.io/control-plane-component: heartbeat
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -24,8 +24,8 @@ spec:
       template:
         metadata:
           labels:
-            {{ include "partials.labels.component" "heartbeat" }}
-            {{ include "partials.labels.workload-ns" . }}
+            linkerd.io/control-plane-component: heartbeat
+            linkerd.io/workload-ns: {{.Values.namespace}}
             {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 12 }}{{- end }}
           annotations:
             {{ include "partials.annotations.created-by" . }}

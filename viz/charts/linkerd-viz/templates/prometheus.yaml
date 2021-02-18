@@ -9,7 +9,7 @@ metadata:
   name: linkerd-prometheus-config
   namespace: {{.Values.namespace}}
   labels:
-    {{ include "partials.labels.extension" "linkerd-viz" }}
+    linkerd.io/extension: linkerd-viz
     component: prometheus
     namespace: {{.Values.namespace}}
   annotations:
@@ -177,7 +177,7 @@ metadata:
   name: linkerd-prometheus
   namespace: {{.Values.namespace}}
   labels:
-    {{ include "partials.labels.extension" "linkerd-viz" }}
+    linkerd.io/extension: linkerd-viz
     component: prometheus
     namespace: {{.Values.namespace}}
   annotations:
@@ -185,7 +185,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    {{ include "partials.labels.extension" "linkerd-viz" }}
+    linkerd.io/extension: linkerd-viz
     component: prometheus
   ports:
   - name: admin-http
@@ -198,7 +198,7 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
   labels:
-    {{ include "partials.labels.extension" "linkerd-viz" }}
+    linkerd.io/extension: linkerd-viz
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
@@ -214,7 +214,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{ include "partials.labels.extension" "linkerd-viz" }}
+      linkerd.io/extension: linkerd-viz
       component: prometheus
       namespace: {{.Values.namespace}}
   template:
@@ -226,7 +226,7 @@ spec:
         {{- end }}
         {{- with .Values.podAnnotations }}{{  . | trim | nindent 8 }}{{- end }}
       labels:
-        {{ include "partials.labels.extension" "linkerd-viz" }}
+        linkerd.io/extension: linkerd-viz
         component: prometheus
         namespace: {{.Values.namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
@@ -307,7 +307,7 @@ kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
   labels:
-    {{ include "partials.labels.extension" "linkerd-viz" }}
+    linkerd.io/extension: linkerd-viz
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
