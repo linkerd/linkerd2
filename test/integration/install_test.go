@@ -342,14 +342,24 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 
 		// apply stage 1
-		out, err = TestHelper.KubectlApply(out, "")
+		// Limit the pruning only to known resources
+		// that we intend to be delete in this stage to prevent it
+		// from deleting other resources that have the
+		// label
+		out, err = TestHelper.KubectlApplyWithArgs(out, []string{
+			"--prune",
+			"-l", "linkerd.io/control-plane-ns=linkerd",
+			"--prune-whitelist", "rbac.authorization.k8s.io/v1/clusterrole",
+			"--prune-whitelist", "rbac.authorization.k8s.io/v1/clusterrolebinding",
+			"--prune-whitelist", "apiregistration.k8s.io/v1/apiservice",
+		}...)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 				"kubectl apply command failed\n%s", out)
 		}
 
 		// prepare for stage 2
-		args = append([]string{"control-plane", "--addon-overwrite"}, args...)
+		args = append([]string{"control-plane"}, args...)
 	}
 
 	exec := append([]string{cmd}, args...)
@@ -399,30 +409,20 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 	}
 
+	// Limit the pruning only to known resources
+	// that we intend to be delete in this stage to prevent it
+	// from deleting other resources that have the
+	// label
 	cmdOut, err := TestHelper.KubectlApplyWithArgs(out, []string{
 		"--prune",
 		"-l", "linkerd.io/control-plane-ns=linkerd",
+		"--prune-whitelist", "apps/v1/deployment",
+		"--prune-whitelist", "core/v1/service",
+		"--prune-whitelist", "core/v1/configmap",
 	}...)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", cmdOut)
-	}
-
-	out, err = TestHelper.LinkerdRun("upgrade")
-	if err != nil {
-		testutil.AnnotatedFatal(t, "'linkerd upgrade' command failed", err)
-	}
-
-	out, err = TestHelper.KubectlApplyWithArgs(out, []string{
-		"--prune",
-		"-l", "linkerd.io/control-plane-ns=linkerd",
-		"--prune-whitelist", "rbac.authorization.k8s.io/v1/clusterrole",
-		"--prune-whitelist", "rbac.authorization.k8s.io/v1/clusterrolebinding",
-		"--prune-whitelist", "apiregistration.k8s.io/v1/apiservice",
-	}...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-			"'kubectl apply' command failed\n%s", out)
 	}
 
 	// Wait for the proxy injector to be up
