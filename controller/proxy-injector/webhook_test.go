@@ -34,7 +34,22 @@ func confNsDisabled() *inject.ResourceConfig {
 	return inject.NewResourceConfig(values, inject.OriginWebhook).WithNsAnnotations(map[string]string{})
 }
 
-func TestGetPatch(t *testing.T) {
+func confNsWithOpaquePorts() *inject.ResourceConfig {
+	return inject.
+		NewResourceConfig(values, inject.OriginWebhook).
+		WithNsAnnotations(map[string]string{
+			pkgK8s.ProxyInjectAnnotation:      pkgK8s.ProxyInjectEnabled,
+			pkgK8s.ProxyOpaquePortsAnnotation: "3306",
+		})
+}
+
+func confNsWithoutOpaquePorts() *inject.ResourceConfig {
+	return inject.
+		NewResourceConfig(values, inject.OriginWebhook).
+		WithNsAnnotations(map[string]string{pkgK8s.ProxyInjectAnnotation: pkgK8s.ProxyInjectEnabled})
+}
+
+func TestGetPodPatch(t *testing.T) {
 
 	values.Proxy.DisableIdentity = true
 
@@ -94,7 +109,7 @@ func TestGetPatch(t *testing.T) {
 					t.Fatalf("Unexpected error: %s", err)
 				}
 
-				fakeReq := getFakeReq(pod)
+				fakeReq := getFakePodReq(pod)
 				fullConf := testCase.conf.
 					WithKind(fakeReq.Kind.Kind).
 					WithOwnerRetriever(ownerRetrieverFake)
@@ -103,7 +118,7 @@ func TestGetPatch(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				patchJSON, err := fullConf.GetPatch(true)
+				patchJSON, err := fullConf.GetPodPatch(true)
 				if err != nil {
 					t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 				}
@@ -134,14 +149,14 @@ func TestGetPatch(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
-		fakeReq := getFakeReq(pod)
+		fakeReq := getFakePodReq(pod)
 		conf := confNsEnabled().WithKind(fakeReq.Kind.Kind).WithOwnerRetriever(ownerRetrieverFake)
 		_, err = conf.ParseMetaAndYAML(fakeReq.Object.Raw)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		patchJSON, err := conf.GetPatch(true)
+		patchJSON, err := conf.GetPodPatch(true)
 		if err != nil {
 			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 		}
@@ -162,9 +177,9 @@ func TestGetPatch(t *testing.T) {
 			t.Fatalf("Unexpected error: %s", err)
 		}
 
-		fakeReq := getFakeReq(deployment)
+		fakeReq := getFakePodReq(deployment)
 		conf := confNsDisabled().WithKind(fakeReq.Kind.Kind)
-		patchJSON, err := conf.GetPatch(true)
+		patchJSON, err := conf.GetPodPatch(true)
 		if err != nil {
 			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 		}
@@ -175,9 +190,112 @@ func TestGetPatch(t *testing.T) {
 	})
 }
 
-func getFakeReq(b []byte) *admissionv1beta1.AdmissionRequest {
+func TestGetServicePatch(t *testing.T) {
+	factory := fake.NewFactory(filepath.Join("fake", "data"))
+	nsWithOpaquePorts, err := factory.Namespace("namespace-with-opaque-ports.yaml")
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	nsWithoutOpaquePorts, err := factory.Namespace("namespace-inject-enabled.yaml")
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	t.Run("by checking patch annotations", func(t *testing.T) {
+		patchBytes, err := factory.FileContents("service.patch.json")
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+		patch, err := unmarshalPatch(patchBytes)
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+		var testCases = []struct {
+			name               string
+			filename           string
+			ns                 *corev1.Namespace
+			conf               *inject.ResourceConfig
+			expectedPatchBytes []byte
+			expectedPatch      unmarshalledPatch
+		}{
+			{
+				name:               "service without opaque ports and namespace with",
+				filename:           "service-without-opaque-ports.yaml",
+				ns:                 nsWithOpaquePorts,
+				conf:               confNsWithOpaquePorts(),
+				expectedPatchBytes: patchBytes,
+				expectedPatch:      patch,
+			},
+			{
+				name:     "service with opaque ports and namespace with",
+				filename: "service-with-opaque-ports.yaml",
+				ns:       nsWithOpaquePorts,
+				conf:     confNsWithOpaquePorts(),
+			},
+			{
+				name:     "service with opaque ports and namespace without",
+				filename: "service-with-opaque-ports.yaml",
+				ns:       nsWithoutOpaquePorts,
+				conf:     confNsWithoutOpaquePorts(),
+			},
+			{
+				name:     "service without opaque ports and namespace without",
+				filename: "service-without-opaque-ports.yaml",
+				ns:       nsWithoutOpaquePorts,
+				conf:     confNsWithoutOpaquePorts(),
+			},
+		}
+		for _, testCase := range testCases {
+			testCase := testCase // pin
+			t.Run(testCase.name, func(t *testing.T) {
+				service, err := factory.FileContents(testCase.filename)
+				if err != nil {
+					t.Fatalf("Unexpected error: %s", err)
+				}
+				fakeReq := getFakeServiceReq(service)
+				fullConf := testCase.conf.
+					WithKind(fakeReq.Kind.Kind).
+					WithOwnerRetriever(ownerRetrieverFake)
+				_, err = fullConf.ParseMetaAndYAML(fakeReq.Object.Raw)
+				if err != nil {
+					t.Fatal(err)
+				}
+				patchJSON, err := fullConf.GetServicePatch()
+				if err != nil {
+					t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
+				}
+				if len(testCase.expectedPatchBytes) != 0 && len(patchJSON) == 0 {
+					t.Fatalf("There was no patch, but one was expected: %s", testCase.expectedPatchBytes)
+				} else if len(testCase.expectedPatchBytes) == 0 && len(patchJSON) != 0 {
+					t.Fatalf("No patch was expected, but one was returned: %s", patchJSON)
+				}
+				if len(testCase.expectedPatchBytes) == 0 {
+					return
+				}
+				actualPatch, err := unmarshalPatch(patchJSON)
+				if err != nil {
+					t.Fatalf("Unexpected error: %s", err)
+				}
+				if !reflect.DeepEqual(testCase.expectedPatch, actualPatch) {
+					t.Fatalf("The actual patch didn't match what was expected.\nExpected: %s\nActual: %s",
+						testCase.expectedPatchBytes, patchJSON)
+				}
+			})
+		}
+	})
+}
+
+func getFakePodReq(b []byte) *admissionv1beta1.AdmissionRequest {
 	return &admissionv1beta1.AdmissionRequest{
 		Kind:      metav1.GroupVersionKind{Kind: "Pod"},
+		Name:      "foobar",
+		Namespace: "linkerd",
+		Object:    runtime.RawExtension{Raw: b},
+	}
+}
+
+func getFakeServiceReq(b []byte) *admissionv1beta1.AdmissionRequest {
+	return &admissionv1beta1.AdmissionRequest{
+		Kind:      metav1.GroupVersionKind{Kind: "Service"},
 		Name:      "foobar",
 		Namespace: "linkerd",
 		Object:    runtime.RawExtension{Raw: b},

@@ -668,7 +668,7 @@ webhooks:
   - operations: [ "CREATE" ]
     apiGroups: [""]
     apiVersions: ["v1"]
-    resources: ["pods"]
+    resources: ["pods", "services"]
   sideEffects: None
 ---
 # Source: linkerd2/templates/sp-validator-rbac.yaml
@@ -1800,7 +1800,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 7ee83a7e6e8a76c5b3a2910e373bf40107de2f0b2292feb6c6fb757a70ee31c7
+        checksum/config: 20a7b3bda0bfdd9b7cf388efb0b438612caa444c23e015168dae1cdb0109e34e
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version

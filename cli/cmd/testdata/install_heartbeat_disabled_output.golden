@@ -612,7 +612,7 @@ webhooks:
   - operations: [ "CREATE" ]
     apiGroups: [""]
     apiVersions: ["v1"]
-    resources: ["pods"]
+    resources: ["pods", "services"]
   sideEffects: None
 ---
 ###
@@ -1733,7 +1733,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: d7022b763ada3361486ba693b85ebfed70f29cae8ae7b5aac95c6ef0ee89436d
+        checksum/config: 31ca92e63a48870d9b7cad9d7a613e2164b4b016577720744b2f0a1da3a3c844
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
