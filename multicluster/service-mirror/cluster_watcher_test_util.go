@@ -10,6 +10,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	labels "github.com/linkerd/linkerd2/multicluster/pkg"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/multicluster"
 	logging "github.com/sirupsen/logrus"
@@ -468,7 +469,7 @@ func remoteServiceAsYaml(name, namespace, resourceVersion string, ports []corev1
 
 func mirrorService(name, namespace, resourceVersion string, ports []corev1.ServicePort) *corev1.Service {
 	annotations := make(map[string]string)
-	annotations[consts.RemoteResourceVersionAnnotation] = resourceVersion
+	annotations[labels.RemoteResourceVersionAnnotation] = resourceVersion
 	annotations[consts.RemoteServiceFqName] = fmt.Sprintf("%s.%s.svc.cluster.local", strings.Replace(name, "-remote", "", 1), namespace)
 
 	return &corev1.Service{
