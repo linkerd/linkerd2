@@ -1,4 +1,4 @@
-name: KinD integration
+name: Integration tests
 on:
   pull_request: {}
   push:
@@ -15,12 +15,14 @@ jobs:
     runs-on: ubuntu-18.04
     strategy:
       matrix:
+        # Keep in sync with release.yaml matrix build
         target: [proxy, controller, web, cni-plugin, debug, cli-bin, grafana]
     name: Docker build (${{ matrix.target }})
+    timeout-minutes: 30
     steps:
     - name: Checkout code
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -31,7 +33,7 @@ jobs:
         echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
     - name: Cache docker layers
       # actions/cache@v2.0.0
-      uses: actions/cache@b820478
+      uses: actions/cache@b8204782bbb5f872091ecc5eb9cb7d004e35b1fa
       with:
         path: ${{ env.DOCKER_BUILDKIT_CACHE }}
         key: ${{ runner.os }}-buildx-${{ matrix.target }}-${{ env.TAG }}
@@ -63,7 +65,7 @@ jobs:
     # https://github.com/actions/upload-artifact/issues/8
     - name: Upload artifact
       # actions/upload-artifact@v1
-      uses: actions/upload-artifact@3446296
+      uses: actions/upload-artifact@3446296876d12d4e3a0f3145a3c87e67bf0a16b5
       with:
         name: image-archives
         path: /home/runner/archives
@@ -72,13 +74,14 @@ jobs:
     name: Static CLI tests (windows)
     runs-on: windows-latest
     needs: [docker_build]
+    timeout-minutes: 30
     steps:
     - name: Checkout code
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Try to load cached Go modules
       # actions/cache@v1.1.2
-      uses: actions/cache@70655ec
+      uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -86,13 +89,13 @@ jobs:
           ${{ runner.os }}-go-
     - name: Download image archives
       # actions/download-artifact@v1
-      uses: actions/download-artifact@18f0f59
+      uses: actions/download-artifact@18f0f591fbc635562c815484d73b6e8e3980482e
       with:
         name: image-archives
     - name: Run CLI Integration tests
       run: |
         go test --failfast --mod=readonly ".\test\cli" --linkerd=$PWD\image-archives\linkerd-windows.exe --cli-tests -v
-  kind_integration_tests:
+  integration_tests:
     strategy:
       matrix:
         integration_test:
@@ -109,13 +112,14 @@ jobs:
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
+    timeout-minutes: 30
     steps:
     - name: Checkout code
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Try to load cached Go modules
       # actions/cache@v1.1.2
-      uses: actions/cache@70655ec
+      uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -130,7 +134,7 @@ jobs:
         echo "DOCKER_REGISTRY=$DOCKER_REGISTRY" >> $GITHUB_ENV
     - name: Download image archives
       # actions/download-artifact@v1
-      uses: actions/download-artifact@18f0f59
+      uses: actions/download-artifact@18f0f591fbc635562c815484d73b6e8e3980482e
       with:
         name: image-archives
     - name: Load cli-bin image into local docker images
