@@ -24,12 +24,9 @@ const (
 )
 
 var (
-	// OkStatus is √
-	OkStatus = color.New(color.FgGreen, color.Bold).SprintFunc()("\u221A")
-	// WarnStatus is ‼
-	WarnStatus = color.New(color.FgYellow, color.Bold).SprintFunc()("\u203C")
-	// FailStatus is ×
-	FailStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u00D7")
+	okStatus   = color.New(color.FgGreen, color.Bold).SprintFunc()("\u221A")  // √
+	warnStatus = color.New(color.FgYellow, color.Bold).SprintFunc()("\u203C") // ‼
+	failStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u00D7")    // ×
 )
 
 // CheckResults contains a slice of CheckResult structs.
@@ -85,11 +82,11 @@ func runChecksTable(wout io.Writer, hc Runner) bool {
 			return
 		}
 
-		status := OkStatus
+		status := okStatus
 		if result.Err != nil {
-			status = FailStatus
+			status = failStatus
 			if result.Warning {
-				status = WarnStatus
+				status = warnStatus
 			}
 		}
 
@@ -107,9 +104,9 @@ func runChecksTable(wout io.Writer, hc Runner) bool {
 	fmt.Fprintln(wout, "")
 
 	if !success {
-		fmt.Fprintf(wout, "Status check results are %s\n", FailStatus)
+		fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
 	} else {
-		fmt.Fprintf(wout, "Status check results are %s\n", OkStatus)
+		fmt.Fprintf(wout, "Status check results are %s\n", okStatus)
 	}
 
 	return success
