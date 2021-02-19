@@ -262,7 +262,7 @@ check_if_l5d_exists() {
 Linkerd resources exist on cluster:
 \n%s\n
 Help:
-    Run: [%s/test-cleanup] ' "$linkerd_path"
+    Run: [%s/test-cleanup] ' "$resources" "$linkerd_path"
     exit 1
   fi
   printf '[ok]\n'
