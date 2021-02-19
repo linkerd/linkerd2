@@ -13,7 +13,7 @@ metadata:
   labels:
     linkerd.io/extension: linkerd-multicluster
   annotations:
-    {{$.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" $.Values.linkerdVersion) $.Values.cliVersion}}
+    {{ include "partials.annotations.created-by" $ }}
 rules:
 - apiGroups: [""]
   resources: ["services"]
@@ -31,7 +31,7 @@ metadata:
   labels:
     linkerd.io/extension: linkerd-multicluster
   annotations:
-    {{$.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" $.Values.linkerdVersion) $.Values.cliVersion}}
+    {{ include "partials.annotations.created-by" $ }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -41,7 +41,7 @@ metadata:
   labels:
     linkerd.io/extension: linkerd-multicluster
   annotations:
-    {{$.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" $.Values.linkerdVersion) $.Values.cliVersion}}
+    {{ include "partials.annotations.created-by" $ }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

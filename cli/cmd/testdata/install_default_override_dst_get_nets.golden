@@ -872,15 +872,12 @@ data:
     cniEnabled: false
     controlPlaneTracing: false
     controlPlaneTracingNamespace: linkerd-jaeger
-    controllerComponentLabel: linkerd.io/control-plane-component
     controllerImage: cr.l5d.io/linkerd/controller
     controllerImageVersion: install-control-plane-version
     controllerLogFormat: plain
     controllerLogLevel: info
-    controllerNamespaceLabel: linkerd.io/control-plane-ns
     controllerReplicas: 1
     controllerUID: 2103
-    createdByAnnotation: linkerd.io/created-by
     debugContainer:
       image:
         name: cr.l5d.io/linkerd/debug
@@ -900,7 +897,6 @@ data:
       issuer:
         clockSkewAllowance: 20s
         crtExpiry: "2030-08-26T07:13:47Z"
-        crtExpiryAnnotation: linkerd.io/identity-issuer-expiry
         issuanceLifetime: 24h0m0s
         scheme: linkerd.io/tls
         tls:
@@ -936,7 +932,6 @@ data:
     imagePullPolicy: IfNotPresent
     imagePullSecrets: []
     installNamespace: true
-    linkerdNamespaceLabel: linkerd.io/is-control-plane
     linkerdVersion: dev-undefined
     namespace: linkerd
     nodeSelector:
@@ -1008,8 +1003,6 @@ data:
         mountPath: /run
         name: linkerd-proxy-init-xtables-lock
         readOnly: false
-    proxyInjectAnnotation: linkerd.io/inject
-    proxyInjectDisabled: disabled
     proxyInjector:
       caBundle: proxy injector CA bundle
       crtPEM: proxy injector crt
@@ -1028,7 +1021,6 @@ data:
     spValidatorResources: null
     tolerations: null
     webhookFailurePolicy: Ignore
-    workloadNamespaceLabel: linkerd.io/workload-ns
 ---
 ###
 ### Identity Controller Service

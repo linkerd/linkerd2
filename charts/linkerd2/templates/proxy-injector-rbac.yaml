@@ -7,8 +7,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-proxy-injector
   labels:
-    {{.Values.controllerComponentLabel}}: proxy-injector
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 rules:
 - apiGroups: [""]
   resources: ["events"]
@@ -31,8 +31,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-proxy-injector
   labels:
-    {{.Values.controllerComponentLabel}}: proxy-injector
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 subjects:
 - kind: ServiceAccount
   name: linkerd-proxy-injector
@@ -49,8 +49,8 @@ metadata:
   name: linkerd-proxy-injector
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerComponentLabel}}: proxy-injector
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 ---
 {{- $host := printf "linkerd-proxy-injector.%s.svc" .Values.namespace }}
@@ -62,10 +62,10 @@ metadata:
   name: linkerd-proxy-injector-k8s-tls
   namespace: {{ .Values.namespace }}
   labels:
-    {{.Values.controllerComponentLabel}}: proxy-injector
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
 type: kubernetes.io/tls
 data:
   tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.proxyInjector.crtPEM)) (empty .Values.proxyInjector.crtPEM) }}
@@ -77,8 +77,8 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
   labels:
-    {{.Values.controllerComponentLabel}}: proxy-injector
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:

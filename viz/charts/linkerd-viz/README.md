@@ -72,7 +72,6 @@ Kubernetes: `>=1.16.0-0`
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use |
-| createdByAnnotation | string | `"linkerd.io/created-by"` |  |
 | dashboard.UID | string | `nil` | UID for the dashboard resource |
 | dashboard.enforcedHostRegexp | string | `""` | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information |
 | dashboard.image.name | string | `"web"` | Docker image name for the web instance |
@@ -92,7 +91,6 @@ Kubernetes: `>=1.16.0-0`
 | defaultRegistry | string | `"cr.l5d.io/linkerd"` | Docker registry for all viz components |
 | defaultUID | int | `2103` | UID for all the viz components |
 | enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
-| extensionAnnotation | string | `"linkerd.io/extension"` |  |
 | grafana.enabled | bool | `true` | toggle field to enable or disable grafana |
 | grafana.image.name | string | `"grafana"` | Docker image name for the grafana instance |
 | grafana.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the grafana instance |
@@ -144,7 +142,6 @@ Kubernetes: `>=1.16.0-0`
 | prometheus.scrapeConfigs | string | `nil` | A scrapeConfigs section specifies a set of targets and parameters describing how to scrape them. |
 | prometheus.sidecarContainers | string | `nil` | A sidecarContainers section specifies a list of secondary containers to run in the prometheus pod e.g. to export data to non-prometheus systems |
 | prometheusUrl | string | `""` | url of external prometheus instance |
-| proxyInjectAnnotation | string | `"linkerd.io/inject"` |  |
 | tap.UID | string | `nil` | UID for the dashboard resource |
 | tap.caBundle | string | `""` | Bundle of CA certificates for Tap component. If not provided then Helm will use the certificate generated  for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
 | tap.crtPEM | string | `""` | Certificate for the Tap component. If not provided then Helm will generate one. |
