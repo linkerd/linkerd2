@@ -136,63 +136,65 @@ jobs:
         # Validate the CLI version matches the current build tag.
         [[ "$TAG" == "$($CMD version --short --client)" ]]
         bin/tests --images skip --name ${{ matrix.integration_test }} "$CMD"
-  arm64_integration_tests:
-    name: ARM64 integration tests
-    timeout-minutes: 60
-    runs-on: ubuntu-20.04
-    needs: [docker_build]
-    steps:
-    - name: Checkout code
-      #if: startsWith(github.ref, 'refs/tags/stable')
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
-    - name: Try to load cached Go modules
-      #if: startsWith(github.ref, 'refs/tags/stable')
-      # actions/cache@v1.1.2
-      uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-    - name: Install linkerd CLI
-      #if: startsWith(github.ref, 'refs/tags/stable')
-      run: |
-        TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
-        CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-amd64"
-        bin/docker-pull-binaries $TAG
-        $CMD version --client
-        # validate CLI version matches the repo
-        [[ "$TAG" == "$($CMD version --short --client)" ]]
-        echo "Installed Linkerd CLI version: $TAG"
-        echo "CMD=$CMD" >> $GITHUB_ENV
-    - name: Set KUBECONFIG environment variables
-      #if: startsWith(github.ref, 'refs/tags/stable')
-      run: |
-        mkdir -p $HOME/.kube
-        echo "${{ secrets.ARM64_KUBECONFIG }}" > $HOME/.kube/config
-        echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
-        kubectl cluster-info
-    - name: Run integration tests
-      #if: startsWith(github.ref, 'refs/tags/stable')
-      env:
-        RUN_ARM_TEST: 1
-      run: bin/tests --images skip --skip-cluster-create "$CMD"
-    - name: CNI tests
-      #if: startsWith(github.ref, 'refs/tags/stable')
-      run: |
-        export TAG="$($CMD version --client --short)"
-        go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
-    - name: Test cleanup
-      if: ${{ always() }}
-      # will fail if other steps didn't run, so ignore error
-      run: bin/test-cleanup "$CMD" || true
+
+  # arm64_integration_tests:
+  #   name: ARM64 integration tests
+  #   timeout-minutes: 60
+  #   runs-on: ubuntu-20.04
+  #   needs: [docker_build]
+  #   steps:
+  #   - name: Checkout code
+  #     #if: startsWith(github.ref, 'refs/tags/stable')
+  #     # actions/checkout@v2
+  #     uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+  #   - name: Try to load cached Go modules
+  #     #if: startsWith(github.ref, 'refs/tags/stable')
+  #     # actions/cache@v1.1.2
+  #     uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
+  #     with:
+  #       path: ~/go/pkg/mod
+  #       key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+  #       restore-keys: |
+  #         ${{ runner.os }}-go-
+  #   - name: Install linkerd CLI
+  #     #if: startsWith(github.ref, 'refs/tags/stable')
+  #     run: |
+  #       TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
+  #       CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-amd64"
+  #       bin/docker-pull-binaries $TAG
+  #       $CMD version --client
+  #       # validate CLI version matches the repo
+  #       [[ "$TAG" == "$($CMD version --short --client)" ]]
+  #       echo "Installed Linkerd CLI version: $TAG"
+  #       echo "CMD=$CMD" >> $GITHUB_ENV
+  #   - name: Set KUBECONFIG environment variables
+  #     #if: startsWith(github.ref, 'refs/tags/stable')
+  #     run: |
+  #       mkdir -p $HOME/.kube
+  #       echo "${{ secrets.ARM64_KUBECONFIG }}" > $HOME/.kube/config
+  #       echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
+  #       kubectl cluster-info
+  #   - name: Run integration tests
+  #     #if: startsWith(github.ref, 'refs/tags/stable')
+  #     env:
+  #       RUN_ARM_TEST: 1
+  #     run: bin/tests --images skip --skip-cluster-create "$CMD"
+  #   - name: CNI tests
+  #     #if: startsWith(github.ref, 'refs/tags/stable')
+  #     run: |
+  #       export TAG="$($CMD version --client --short)"
+  #       go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
+  #   - name: Test cleanup
+  #     if: ${{ always() }}
+  #     # will fail if other steps didn't run, so ignore error
+  #     run: bin/test-cleanup "$CMD" || true
+
   choco_pack:
     # only runs for stable tags. The conditionals are at each step level instead of the job level
     # otherwise the jobs below that depend on this one won't run
     name: Pack Chocolatey release
     timeout-minutes: 30
-    needs: [integration_tests, arm64_integration_tests]
+    needs: [integration_tests] #, arm64_integration_tests]
     runs-on: windows-2019
     steps:
     - name: Checkout code
