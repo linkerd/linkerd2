@@ -101,8 +101,9 @@ func TestOpaquePortsWatcher(t *testing.T) {
 				Namespace: "ns",
 			},
 			// 1: svc annotation 3306
+			// 2: svc updated: no update
 			// 2: svc deleted: update with no ports
-			// 3. svc created: update with svc annotation 3306
+			// 3. svc created: update with port 3306
 			expectedOpaquePorts: []map[uint32]struct{}{{3306: {}}, {}, {3306: {}}},
 		},
 		{
@@ -114,10 +115,26 @@ func TestOpaquePortsWatcher(t *testing.T) {
 				Name:      "svc",
 				Namespace: "ns",
 			},
-			// 1: no annotations, no update
-			// 2: svc deleted: no update
-			// 3. svc created: update with svc annotation 3306
-			expectedOpaquePorts: []map[uint32]struct{}{{3306: {}}},
+			// 1: no svc annotation
+			// 2: svc updated: update with port 3306
+			// 3: svc deleted: update with no ports
+			// 4. svc created: update with port 3306
+			expectedOpaquePorts: []map[uint32]struct{}{{3306: {}}, {}, {3306: {}}},
+		},
+		{
+			name:         "namespace and opaque service, create base service",
+			initialState: []string{testNS, opaqueService},
+			nsObject:     &testNSObject,
+			svcObject:    &baseServiceObject,
+			service: ServiceID{
+				Name:      "svc",
+				Namespace: "ns",
+			},
+			// 1: svc annotation 3306
+			// 2. svc updated: update with no ports
+			// 3. svc deleted: no update
+			// 4. svc added: no update
+			expectedOpaquePorts: []map[uint32]struct{}{{3306: {}}, {}},
 		},
 	} {
 		k8sAPI, err := k8s.NewFakeAPI(tt.initialState...)
@@ -128,6 +145,7 @@ func TestOpaquePortsWatcher(t *testing.T) {
 		k8sAPI.Sync(nil)
 		listener := newTestOpaquePortsListener()
 		watcher.Subscribe(tt.service, listener)
+		watcher.addService(tt.svcObject)
 		watcher.deleteService(tt.svcObject)
 		watcher.addService(tt.svcObject)
 		testCompare(t, tt.expectedOpaquePorts, listener.updates)

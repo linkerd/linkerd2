@@ -120,10 +120,6 @@ func (opw *OpaquePortsWatcher) addService(obj interface{}) {
 		opw.log.Errorf("failed to get %s service opaque ports annotation: %s", id, err)
 		return
 	}
-	// If the service has no opaque ports there are no updates to send.
-	if len(opaquePorts) == 0 {
-		return
-	}
 	ss, ok := opw.subscriptions[id]
 	// If there are no subscriptions for this service, create one with the
 	// opaque ports.
