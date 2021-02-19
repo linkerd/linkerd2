@@ -10,13 +10,14 @@ on:
 jobs:
   go_unit_tests:
     name: Go unit tests
+    timeout-minutes: 30
     runs-on: ubuntu-18.04
     container:
       image: golang:1.14.2
     steps:
     - name: Checkout code
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Go unit tests
       run: |
         go get gotest.tools/gotestsum@v0.4.2
@@ -24,13 +25,14 @@ jobs:
         gotestsum -- -cover -race -v -mod=readonly ./...
   js_unit_tests:
     name: JS unit tests
+    timeout-minutes: 30
     runs-on: ubuntu-18.04
     container:
       image: node:14-stretch
     steps:
     - name: Checkout code
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Yarn setup
       run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
     - name: JS unit tests
