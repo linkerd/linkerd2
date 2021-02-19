@@ -1,7 +1,6 @@
 package watcher
 
 import (
-	"reflect"
 	"strconv"
 	"sync"
 
@@ -132,11 +131,12 @@ func (opw *OpaquePortsWatcher) addService(obj interface{}) {
 	}
 	// Do not send updates if there was no change in the opaque ports; if
 	// there was, send an update to each listener.
-	if !reflect.DeepEqual(ss.opaquePorts, opaquePorts) {
-		ss.opaquePorts = opaquePorts
-		for _, listener := range ss.listeners {
-			listener.UpdateService(ss.opaquePorts)
-		}
+	if portsEqual(ss.opaquePorts, opaquePorts) {
+		return
+	}
+	ss.opaquePorts = opaquePorts
+	for _, listener := range ss.listeners {
+		listener.UpdateService(ss.opaquePorts)
 	}
 }
 
@@ -225,4 +225,17 @@ func isNamed(pr string, sps []corev1.ServicePort) (int32, bool) {
 		}
 	}
 	return 0, false
+}
+
+func portsEqual(x, y map[uint32]struct{}) bool {
+	if len(x) != len(y) {
+		return false
+	}
+	for port := range x {
+		_, ok := y[port]
+		if !ok {
+			return false
+		}
+	}
+	return true
 }
