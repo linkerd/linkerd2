@@ -10,7 +10,7 @@
     "@fortawesome/react-fontawesome": "0.1.9",
     "@lingui/macro": "2.9.2",
     "@lingui/react": "2.9.2",
-    "@material-ui/core": "4.9.11",
+    "@material-ui/core": "4.11.3",
     "@material-ui/icons": "4.9.1",
     "@material-ui/lab": "^4.0.0-alpha.50",
     "classnames": "2.2.6",

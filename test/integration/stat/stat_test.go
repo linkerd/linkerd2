@@ -35,18 +35,9 @@ func TestMain(m *testing.M) {
 // requesting, and the test will pass.
 func TestCliStatForLinkerdNamespace(t *testing.T) {
 	ctx := context.Background()
-
-	pods, err := TestHelper.GetPodNamesForDeployment(ctx, TestHelper.GetVizNamespace(), "linkerd-prometheus")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to get pods for prometheus",
-			"failed to get pods for prometheus: %s", err)
-	}
-	if len(pods) != 1 {
-		testutil.Fatalf(t, "expected 1 pod for prometheus, got %d", len(pods))
-	}
-	prometheusPod := pods[0]
-
-	pods, err = TestHelper.GetPodNamesForDeployment(ctx, TestHelper.GetVizNamespace(), "linkerd-metrics-api")
+	var prometheusPod, prometheusAuthority, prometheusNamespace, prometheusDeployment, metricsPod string
+	// Get Metrics Pod
+	pods, err := TestHelper.GetPodNamesForDeployment(ctx, TestHelper.GetVizNamespace(), "linkerd-metrics-api")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to get pods for metrics-api",
 			"failed to get pods for metrics-api: %s", err)
@@ -54,11 +45,29 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 	if len(pods) != 1 {
 		testutil.Fatalf(t, "expected 1 pod for metrics-api, got %d", len(pods))
 	}
-	metricsPod := pods[0]
+	metricsPod = pods[0]
 
-	prometheusAuthority := "linkerd-prometheus." + TestHelper.GetVizNamespace() + ".svc.cluster.local:9090"
+	// Retrieve Prometheus pod details
+	if TestHelper.ExternalPrometheus() {
+		prometheusNamespace = "default"
+		prometheusDeployment = "prometheus"
+	} else {
+		prometheusNamespace = TestHelper.GetVizNamespace()
+		prometheusDeployment = "linkerd-prometheus"
+	}
 
-	for _, tt := range []struct {
+	pods, err = TestHelper.GetPodNamesForDeployment(ctx, prometheusNamespace, prometheusDeployment)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to get pods for prometheus",
+			"failed to get pods for prometheus: %s", err)
+	}
+	if len(pods) != 1 {
+		testutil.Fatalf(t, "expected 1 pod for prometheus, got %d", len(pods))
+	}
+	prometheusPod = pods[0]
+	prometheusAuthority = prometheusDeployment + "." + prometheusNamespace + ".svc.cluster.local:9090"
+
+	testCases := []struct {
 		args         []string
 		expectedRows map[string]string
 		status       string
@@ -74,67 +83,103 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			},
 		},
 		{
-			args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetVizNamespace()},
-			expectedRows: map[string]string{
-				"linkerd-metrics-api": "1/1",
-				"linkerd-grafana":     "1/1",
-				"linkerd-prometheus":  "1/1",
-				"linkerd-tap":         "1/1",
-				"linkerd-web":         "1/1",
-				"tap-injector":        "1/1",
-			},
-		},
-		{
-			args: []string{"viz", "stat", fmt.Sprintf("po/%s", prometheusPod), "-n", TestHelper.GetVizNamespace(), "--from", fmt.Sprintf("po/%s", metricsPod), "--from-namespace", TestHelper.GetVizNamespace()},
-			expectedRows: map[string]string{
-				prometheusPod: "1/1",
-			},
-			status: "Running",
-		},
-		{
-			args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetVizNamespace(), "--to", fmt.Sprintf("po/%s", prometheusPod), "--to-namespace", TestHelper.GetVizNamespace()},
-			expectedRows: map[string]string{
-				"linkerd-metrics-api": "1/1",
-			},
-		},
-		{
-			args: []string{"viz", "stat", "svc", "linkerd-prometheus", "-n", TestHelper.GetVizNamespace(), "--from", "deploy/linkerd-metrics-api", "--from-namespace", TestHelper.GetVizNamespace()},
-			expectedRows: map[string]string{
-				"linkerd-prometheus": "1/1",
-			},
-		},
-		{
-			args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetVizNamespace(), "--to", "svc/linkerd-prometheus", "--to-namespace", TestHelper.GetVizNamespace()},
-			expectedRows: map[string]string{
-				"linkerd-metrics-api": "1/1",
-			},
-		},
-		{
 			args: []string{"viz", "stat", "ns", TestHelper.GetLinkerdNamespace()},
 			expectedRows: map[string]string{
 				TestHelper.GetLinkerdNamespace(): "5/5",
 			},
 		},
 		{
-			args: []string{"viz", "stat", "ns", TestHelper.GetVizNamespace()},
+			args: []string{"viz", "stat", fmt.Sprintf("po/%s", prometheusPod), "-n", prometheusNamespace, "--from", fmt.Sprintf("po/%s", metricsPod), "--from-namespace", TestHelper.GetVizNamespace()},
 			expectedRows: map[string]string{
-				TestHelper.GetVizNamespace(): "6/6",
+				prometheusPod: "1/1",
+			},
+			status: "Running",
+		},
+		{
+			args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetVizNamespace(), "--to", fmt.Sprintf("po/%s", prometheusPod), "--to-namespace", prometheusNamespace},
+			expectedRows: map[string]string{
+				"linkerd-metrics-api": "1/1",
 			},
 		},
 		{
-			args: []string{"viz", "stat", "po", "-n", TestHelper.GetVizNamespace(), "--to", fmt.Sprintf("au/%s", prometheusAuthority), "--to-namespace", TestHelper.GetVizNamespace()},
+			args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetVizNamespace(), "--to", fmt.Sprintf("svc/%s", prometheusDeployment), "--to-namespace", prometheusNamespace},
+			expectedRows: map[string]string{
+				"linkerd-metrics-api": "1/1",
+			},
+		},
+		{
+			args: []string{"viz", "stat", "po", "-n", TestHelper.GetVizNamespace(), "--to", fmt.Sprintf("au/%s", prometheusAuthority), "--to-namespace", prometheusNamespace},
 			expectedRows: map[string]string{
 				metricsPod: "1/1",
 			},
 			status: "Running",
 		},
 		{
-			args: []string{"viz", "stat", "au", "-n", TestHelper.GetVizNamespace(), "--to", fmt.Sprintf("po/%s", prometheusPod), "--to-namespace", TestHelper.GetVizNamespace()},
+			args: []string{"viz", "stat", "au", "-n", TestHelper.GetVizNamespace(), "--to", fmt.Sprintf("po/%s", prometheusPod), "--to-namespace", prometheusNamespace},
 			expectedRows: map[string]string{
 				prometheusAuthority: "-",
 			},
 		},
-	} {
+	}
+
+	if !TestHelper.ExternalPrometheus() {
+		testCases = append(testCases, []struct {
+			args         []string
+			expectedRows map[string]string
+			status       string
+		}{
+			{
+				args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetVizNamespace()},
+				expectedRows: map[string]string{
+					"linkerd-metrics-api": "1/1",
+					"linkerd-grafana":     "1/1",
+					"linkerd-prometheus":  "1/1",
+					"linkerd-tap":         "1/1",
+					"linkerd-web":         "1/1",
+					"tap-injector":        "1/1",
+				},
+			},
+			{
+				args: []string{"viz", "stat", "ns", TestHelper.GetVizNamespace()},
+				expectedRows: map[string]string{
+					TestHelper.GetVizNamespace(): "6/6",
+				},
+			},
+			{
+				args: []string{"viz", "stat", "svc", "linkerd-prometheus", "-n", TestHelper.GetVizNamespace(), "--from", "deploy/linkerd-metrics-api", "--from-namespace", TestHelper.GetVizNamespace()},
+				expectedRows: map[string]string{
+					"linkerd-prometheus": "1/1",
+				},
+			},
+		}...,
+		)
+	} else {
+		testCases = append(testCases, []struct {
+			args         []string
+			expectedRows map[string]string
+			status       string
+		}{
+			{
+				args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetVizNamespace()},
+				expectedRows: map[string]string{
+					"linkerd-metrics-api": "1/1",
+					"linkerd-grafana":     "1/1",
+					"linkerd-tap":         "1/1",
+					"linkerd-web":         "1/1",
+					"tap-injector":        "1/1",
+				},
+			},
+			{
+				args: []string{"viz", "stat", "ns", TestHelper.GetVizNamespace()},
+				expectedRows: map[string]string{
+					TestHelper.GetVizNamespace(): "5/5",
+				},
+			},
+		}...,
+		)
+	}
+
+	for _, tt := range testCases {
 		tt := tt // pin
 		timeout := 20 * time.Second
 		t.Run("linkerd "+strings.Join(tt.args, " "), func(t *testing.T) {

@@ -17,26 +17,22 @@ const (
 
 // Values contains the top-level elements in the cni Helm chart
 type Values struct {
-	Namespace             string `json:"namespace"`
-	CNIResourceLabel      string `json:"cniResourceLabel"`
-	InboundProxyPort      uint   `json:"inboundProxyPort"`
-	OutboundProxyPort     uint   `json:"outboundProxyPort"`
-	IgnoreInboundPorts    string `json:"ignoreInboundPorts"`
-	IgnoreOutboundPorts   string `json:"ignoreOutboundPorts"`
-	CreatedByAnnotation   string `json:"createdByAnnotation"`
-	CliVersion            string `json:"cliVersion"`
-	CNIPluginImage        string `json:"cniPluginImage"`
-	CNIPluginVersion      string `json:"cniPluginVersion"`
-	LogLevel              string `json:"logLevel"`
-	PortsToRedirect       string `json:"portsToRedirect"`
-	ProxyUID              int64  `json:"proxyUID"`
-	DestCNINetDir         string `json:"destCNINetDir"`
-	DestCNIBinDir         string `json:"destCNIBinDir"`
-	UseWaitFlag           bool   `json:"useWaitFlag"`
-	ProxyInjectAnnotation string `json:"proxyInjectAnnotation"`
-	ProxyInjectDisabled   string `json:"proxyInjectDisabled"`
-	PriorityClassName     string `json:"priorityClassName"`
-	InstallNamespace      bool   `json:"installNamespace"`
+	Namespace           string `json:"namespace"`
+	InboundProxyPort    uint   `json:"inboundProxyPort"`
+	OutboundProxyPort   uint   `json:"outboundProxyPort"`
+	IgnoreInboundPorts  string `json:"ignoreInboundPorts"`
+	IgnoreOutboundPorts string `json:"ignoreOutboundPorts"`
+	CliVersion          string `json:"cliVersion"`
+	CNIPluginImage      string `json:"cniPluginImage"`
+	CNIPluginVersion    string `json:"cniPluginVersion"`
+	LogLevel            string `json:"logLevel"`
+	PortsToRedirect     string `json:"portsToRedirect"`
+	ProxyUID            int64  `json:"proxyUID"`
+	DestCNINetDir       string `json:"destCNINetDir"`
+	DestCNIBinDir       string `json:"destCNIBinDir"`
+	UseWaitFlag         bool   `json:"useWaitFlag"`
+	PriorityClassName   string `json:"priorityClassName"`
+	InstallNamespace    bool   `json:"installNamespace"`
 }
 
 // NewValues returns a new instance of the Values type.

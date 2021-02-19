@@ -2,12 +2,10 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
 	"path/filepath"
 	"testing"
 
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/testutil"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -97,7 +95,6 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
   "identity":{
     "issuer":{
       "crtExpiry":"Jul 30 17:21:14 2020",
-      "crtExpiryAnnotation":"%s",
       "tls":{
         "keyPEM":"test-key-pem",
         "crtPEM":"test-crt-pem"
@@ -128,7 +125,7 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
 }`
 
 	var overrideConfig chartutil.Values
-	err := yaml.Unmarshal([]byte(fmt.Sprintf(overrideJSON, k8s.IdentityIssuerExpiryAnnotation)), &overrideConfig)
+	err := yaml.Unmarshal([]byte(overrideJSON), &overrideConfig)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}

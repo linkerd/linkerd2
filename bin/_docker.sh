@@ -9,7 +9,7 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
 # TODO this should be set to the canonical public docker registry; we can override this
 # docker registry in, for instance, CI.
-export DOCKER_REGISTRY=${DOCKER_REGISTRY:-ghcr.io/linkerd}
+export DOCKER_REGISTRY=${DOCKER_REGISTRY:-cr.l5d.io/linkerd}
 
 # When set, use `docker buildx` and use the github actions cache to store/retrieve images
 export DOCKER_BUILDKIT=${DOCKER_BUILDKIT:-}

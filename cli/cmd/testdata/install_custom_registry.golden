@@ -195,6 +195,35 @@ subjects:
   name: linkerd-heartbeat
   namespace: linkerd
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: linkerd-heartbeat
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["list"]
+- apiGroups: ["linkerd.io"]
+  resources: ["serviceprofiles"]
+  verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: linkerd-heartbeat
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+roleRef:
+  kind: ClusterRole
+  name: linkerd-heartbeat
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: linkerd-heartbeat
+  namespace: linkerd
+---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
@@ -652,7 +681,7 @@ webhooks:
   - operations: [ "CREATE" ]
     apiGroups: [""]
     apiVersions: ["v1"]
-    resources: ["pods"]
+    resources: ["pods", "services"]
   sideEffects: None
 ---
 ###
@@ -846,19 +875,16 @@ data:
     cniEnabled: false
     controlPlaneTracing: false
     controlPlaneTracingNamespace: linkerd-jaeger
-    controllerComponentLabel: linkerd.io/control-plane-component
     controllerImage: my.custom.registry/linkerd-io/controller
     controllerImageVersion: install-control-plane-version
     controllerLogFormat: plain
     controllerLogLevel: info
-    controllerNamespaceLabel: linkerd.io/control-plane-ns
     controllerReplicas: 1
     controllerUID: 2103
-    createdByAnnotation: linkerd.io/created-by
     debugContainer:
       image:
         name: my.custom.registry/linkerd-io/debug
-        pullPolicy: IfNotPresent
+        pullPolicy: ""
         version: install-debug-version
     destinationProxyResources: null
     destinationResources: null
@@ -874,7 +900,6 @@ data:
       issuer:
         clockSkewAllowance: 20s
         crtExpiry: "2030-08-26T07:13:47Z"
-        crtExpiryAnnotation: linkerd.io/identity-issuer-expiry
         issuanceLifetime: 24h0m0s
         scheme: linkerd.io/tls
         tls:
@@ -910,7 +935,6 @@ data:
     imagePullPolicy: IfNotPresent
     imagePullSecrets: []
     installNamespace: true
-    linkerdNamespaceLabel: linkerd.io/is-control-plane
     linkerdVersion: dev-undefined
     namespace: linkerd
     nodeSelector:
@@ -935,7 +959,7 @@ data:
       enableExternalProfiles: false
       image:
         name: my.custom.registry/linkerd-io/proxy
-        pullPolicy: IfNotPresent
+        pullPolicy: ""
         version: install-proxy-version
       inboundConnectTimeout: 100ms
       isGateway: false
@@ -968,8 +992,8 @@ data:
       ignoreOutboundPorts: 25,443,587,3306,11211
       image:
         name: my.custom.registry/linkerd-io/proxy-init
-        pullPolicy: IfNotPresent
-        version: v1.3.8
+        pullPolicy: ""
+        version: v1.3.9
       resources:
         cpu:
           limit: 100m
@@ -982,8 +1006,6 @@ data:
         mountPath: /run
         name: linkerd-proxy-init-xtables-lock
         readOnly: false
-    proxyInjectAnnotation: linkerd.io/inject
-    proxyInjectDisabled: disabled
     proxyInjector:
       caBundle: proxy injector CA bundle
       crtPEM: proxy injector crt
@@ -1002,7 +1024,6 @@ data:
     spValidatorResources: null
     tolerations: null
     webhookFailurePolicy: Ignore
-    workloadNamespaceLabel: linkerd.io/workload-ns
 ---
 ###
 ### Identity Controller Service
@@ -1240,7 +1261,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: my.custom.registry/linkerd-io/proxy-init:v1.3.8
+        image: my.custom.registry/linkerd-io/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1470,7 +1491,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: my.custom.registry/linkerd-io/proxy-init:v1.3.8
+        image: my.custom.registry/linkerd-io/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1719,7 +1740,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: my.custom.registry/linkerd-io/proxy-init:v1.3.8
+        image: my.custom.registry/linkerd-io/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1821,7 +1842,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: d7022b763ada3361486ba693b85ebfed70f29cae8ae7b5aac95c6ef0ee89436d
+        checksum/config: 31ca92e63a48870d9b7cad9d7a613e2164b4b016577720744b2f0a1da3a3c844
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
@@ -1975,7 +1996,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: my.custom.registry/linkerd-io/proxy-init:v1.3.8
+        image: my.custom.registry/linkerd-io/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2227,7 +2248,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: my.custom.registry/linkerd-io/proxy-init:v1.3.8
+        image: my.custom.registry/linkerd-io/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

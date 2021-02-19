@@ -4,8 +4,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-service-mirror-access-local-resources-{{.Values.targetClusterName}}
   labels:
-    {{.Values.controllerComponentLabel}}: service-mirror
-    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+    linkerd.io/control-plane-component: service-mirror
+    multicluster.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 rules:
 - apiGroups: [""]
   resources: ["endpoints", "services"]
@@ -19,8 +19,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-service-mirror-access-local-resources-{{.Values.targetClusterName}}
   labels:
-    {{.Values.controllerComponentLabel}}: service-mirror
-    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+    linkerd.io/control-plane-component: service-mirror
+    multicluster.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -36,8 +36,8 @@ metadata:
   name: linkerd-service-mirror-read-remote-creds-{{.Values.targetClusterName}}
   namespace: {{.Values.namespace}}
   labels:
-      {{.Values.controllerComponentLabel}}: service-mirror
-      mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+      linkerd.io/control-plane-component: service-mirror
+      multicluster.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
@@ -53,8 +53,8 @@ metadata:
   name: linkerd-service-mirror-read-remote-creds-{{.Values.targetClusterName}}
   namespace: {{.Values.namespace}}
   labels:
-      {{.Values.controllerComponentLabel}}: service-mirror
-      mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+      linkerd.io/control-plane-component: service-mirror
+      multicluster.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -70,30 +70,30 @@ metadata:
   name: linkerd-service-mirror-{{.Values.targetClusterName}}
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerComponentLabel}}: service-mirror
-    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+    linkerd.io/control-plane-component: service-mirror
+    multicluster.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    {{.Values.controllerComponentLabel}}: service-mirror
-    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+    linkerd.io/control-plane-component: service-mirror
+    multicluster.linkerd.io/cluster-name: {{.Values.targetClusterName}}
   name: linkerd-service-mirror-{{.Values.targetClusterName}}
   namespace: {{.Values.namespace}}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{.Values.controllerComponentLabel}}: linkerd-service-mirror
-      mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+      linkerd.io/control-plane-component: linkerd-service-mirror
+      multicluster.linkerd.io/cluster-name: {{.Values.targetClusterName}}
   template:
     metadata:
       annotations:
         linkerd.io/inject: enabled
       labels:
-        {{.Values.controllerComponentLabel}}: linkerd-service-mirror
-        mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+        linkerd.io/control-plane-component: linkerd-service-mirror
+        multicluster.linkerd.io/cluster-name: {{.Values.targetClusterName}}
     spec:
       containers:
       - args:

@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	defaultDockerRegistry                = "ghcr.io/linkerd"
+	defaultDockerRegistry                = "cr.l5d.io/linkerd"
 	defaultLinkerdNamespace              = "linkerd"
 	defaultMulticlusterNamespace         = "linkerd-multicluster"
 	defaultGatewayName                   = "linkerd-gateway"

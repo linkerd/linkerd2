@@ -2,8 +2,6 @@
 namespace: linkerd-cni
 # -- Whether to create the CNI plugin plane namespace or not 
 installNamespace: true
-# -- CNI resource annotation. Do not edit
-cniResourceLabel: linkerd.io/cni-resource
 # -- Inbound port for the proxy container
 inboundProxyPort: 4143
 # -- Outbound port for the proxy container
@@ -16,10 +14,8 @@ outboundProxyPort: 4140
 ignoreInboundPorts: "25,443,587,3306,11211"
 # -- Outbound ports the proxy should ignore
 ignoreOutboundPorts: "25,443,587,3306,11211"
-# -- Annotation label for the proxy create. Do not edit. 
-createdByAnnotation: linkerd.io/created-by
 # -- Docker image for the CNI plugin
-cniPluginImage:   "ghcr.io/linkerd/cni-plugin"
+cniPluginImage:   "cr.l5d.io/linkerd/cni-plugin"
 # -- Tag for the CNI container Docker image
 cniPluginVersion: linkerdVersionValue
 # -- Log level for the CNI plugin
@@ -36,10 +32,6 @@ destCNIBinDir:    "/opt/cni/bin"
 useWaitFlag:      false
 # -- Kubernetes priorityClassName for the CNI plugin's Pods
 priorityClassName: ""
-
-# namespace annotation and labels - do not edit
-proxyInjectAnnotation: linkerd.io/inject
-proxyInjectDisabled: disabled
 
 # -|- Tolerations section, See the 
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)

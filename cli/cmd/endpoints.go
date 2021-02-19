@@ -98,7 +98,8 @@ destination.`,
 				APIAddr:               apiAddr,
 			}), args)
 			if err != nil {
-				return fmt.Errorf("Destination API error: %s", err)
+				fmt.Fprint(os.Stderr, fmt.Errorf("Destination API error: %s", err))
+				os.Exit(1)
 			}
 
 			output := renderEndpoints(endpoints, options)

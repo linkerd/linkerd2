@@ -318,12 +318,6 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 	values.Namespace = controlPlaneNamespace
 	values.Stage = stage
 
-	// Render raw values
-	rawValues, err := yaml.Marshal(values)
-	if err != nil {
-		return err
-	}
-
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
@@ -368,7 +362,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 	}
 
 	// Store final Values generated from values.yaml and CLI flags
-	err = yaml.Unmarshal(rawValues, &chart.Values)
+	chart.Values, err = values.ToMap()
 	if err != nil {
 		return err
 	}
@@ -400,7 +394,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 	}
 
 	if stage == "" || stage == controlPlaneStage {
-		overrides, err := renderOverrides(values, values.Namespace, false)
+		overrides, err := renderOverrides(vals, false)
 		if err != nil {
 			return err
 		}
@@ -423,12 +417,25 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 // with Helm. If stringData is set to true, the secret will be rendered using
 // the StringData field instead of the Data field, making the output more
 // human readable.
-func renderOverrides(values *l5dcharts.Values, namespace string, stringData bool) ([]byte, error) {
+func renderOverrides(values chartutil.Values, stringData bool) ([]byte, error) {
 	defaults, err := l5dcharts.NewValues()
 	if err != nil {
 		return nil, err
 	}
-	values.Configs = l5dcharts.ConfigJSONs{}
+	// Remove unnecessary fields, including fields added by helm's `chartutil.CoalesceValues`
+	delete(values, "configs")
+	delete(values, "partials")
+	delete(values, "stage")
+
+	// Get Namespace from values
+	valuesTree, err := tree.MarshalToTree(values)
+	if err != nil {
+		return nil, err
+	}
+	namespace, err := valuesTree.GetString("namespace")
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve global.namespace from values: %v", err)
+	}
 
 	overrides, err := tree.Diff(defaults, values)
 	if err != nil {
@@ -446,7 +453,7 @@ func renderOverrides(values *l5dcharts.Values, namespace string, stringData bool
 			Name:      "linkerd-config-overrides",
 			Namespace: namespace,
 			Labels: map[string]string{
-				k8s.ControllerNSLabel: controlPlaneNamespace,
+				k8s.ControllerNSLabel: namespace,
 			},
 		},
 	}

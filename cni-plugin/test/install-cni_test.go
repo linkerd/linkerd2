@@ -132,7 +132,7 @@ func startDocker(testNum int, wd string, testWorkRootDir string, tempCNINetDir s
 	gitShaHead, _ := exec.Command("git", "rev-parse", "--short=8", "HEAD").Output()
 	user, _ := user.Current()
 	tag := "dev-" + strings.Trim(string(gitShaHead), "\n") + "-" + user.Username
-	dockerImage := env("HUB", "ghcr.io/linkerd") + "/cni-plugin:" + env("TAG", tag)
+	dockerImage := env("HUB", "cr.l5d.io/linkerd") + "/cni-plugin:" + env("TAG", tag)
 	errFileName := testWorkRootDir + "/docker_run_stderr"
 
 	// Build arguments list by picking whatever is necessary from the environment.

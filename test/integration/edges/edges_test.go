@@ -135,13 +135,17 @@ func TestDirectEdges(t *testing.T) {
 
 		// check edges
 		timeout := 50 * time.Second
+		testDataPath := "testdata"
+		if TestHelper.ExternalPrometheus() {
+			testDataPath += "/external_prometheus"
+		}
 		err = TestHelper.RetryFor(timeout, func() error {
 			out, err = TestHelper.LinkerdRun("-n", testNamespace, "-o", "json", "viz", "edges", "deploy")
 			if err != nil {
 				return err
 			}
 
-			tpl := template.Must(template.ParseFiles("testdata/direct_edges.golden"))
+			tpl := template.Must(template.ParseFiles(testDataPath + "/direct_edges.golden"))
 			vars := struct {
 				Ns    string
 				VizNs string
