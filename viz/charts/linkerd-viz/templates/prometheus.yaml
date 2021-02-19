@@ -242,11 +242,12 @@ spec:
       {{- toYaml .Values.prometheus.sidecarContainers | trim | nindent 6 }}
       {{- end}}
       - args:
+        - --log.level={{.Values.prometheus.logLevel | default .Values.defaultLogLevel}}
         {{- range $key, $value := .Values.prometheus.args}}
         - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}
         {{- end }}
         image: {{.Values.prometheus.image.registry}}/{{.Values.prometheus.image.name}}:{{.Values.prometheus.image.tag}}
-        imagePullPolicy: {{.Values.prometheus.imagepullPolicy}}
+        imagePullPolicy: {{.Values.prometheus.image.pullPolicy | default .Values.defaultImagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /-/healthy

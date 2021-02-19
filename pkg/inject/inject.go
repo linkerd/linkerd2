@@ -1,9 +1,11 @@
 package inject
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"net"
 	"reflect"
 	"regexp"
@@ -121,7 +123,7 @@ type ResourceConfig struct {
 	}
 }
 
-type patch struct {
+type podPatch struct {
 	l5dcharts.Values
 	PathPrefix            string                    `json:"pathPrefix"`
 	AddRootMetadata       bool                      `json:"addRootMetadata"`
@@ -132,6 +134,10 @@ type patch struct {
 	AddRootVolumes        bool                      `json:"addRootVolumes"`
 	Labels                map[string]string         `json:"labels"`
 	DebugContainer        *l5dcharts.DebugContainer `json:"debugContainer"`
+}
+
+type servicePatch struct {
+	OpaquePorts string
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
@@ -224,9 +230,9 @@ func (conf *ResourceConfig) GetOverriddenValues() (*linkerd2.Values, error) {
 	return copyValues, nil
 }
 
-// GetPatch returns the JSON patch containing the proxy and init containers specs, if any.
+// GetPodPatch returns the JSON patch containing the proxy and init containers specs, if any.
 // If injectProxy is false, only the config.linkerd.io annotations are set.
-func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
+func (conf *ResourceConfig) GetPodPatch(injectProxy bool) ([]byte, error) {
 
 	values, err := conf.GetOverriddenValues()
 	if err != nil {
@@ -245,7 +251,7 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 		}
 	}
 
-	patch := &patch{
+	patch := &podPatch{
 		Values:      *values,
 		Annotations: map[string]string{},
 		Labels:      map[string]string{},
@@ -299,6 +305,36 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 	return res, nil
 }
 
+// GetServicePatch returns the JSON patch containing the service opaque ports
+// annotation if the annotation is present on the namespace, but absent on the
+// service.
+func (conf *ResourceConfig) GetServicePatch() ([]byte, error) {
+	_, ok := conf.workload.Meta.Annotations[k8s.ProxyOpaquePortsAnnotation]
+	// There does not need to be a patch if the service already has the
+	// annotation.
+	if ok {
+		return nil, nil
+	}
+	opaquePorts, ok := conf.nsAnnotations[k8s.ProxyOpaquePortsAnnotation]
+	// There does not need to be a patch if the namespace does not have the
+	// annotation.
+	if !ok {
+		return nil, nil
+	}
+	patch := &servicePatch{
+		OpaquePorts: opaquePorts,
+	}
+	t, err := template.New("tpl").Parse(tpl)
+	if err != nil {
+		return nil, err
+	}
+	var patchJSON bytes.Buffer
+	if err = t.Execute(&patchJSON, patch); err != nil {
+		return nil, err
+	}
+	return patchJSON.Bytes(), nil
+}
+
 // Note this switch also defines what kinds are injectable
 func (conf *ResourceConfig) getFreshWorkloadObj() runtime.Object {
 	switch strings.ToLower(conf.workload.metaType.Kind) {
@@ -320,6 +356,8 @@ func (conf *ResourceConfig) getFreshWorkloadObj() runtime.Object {
 		return &corev1.Namespace{}
 	case k8s.CronJob:
 		return &batchv1beta1.CronJob{}
+	case k8s.Service:
+		return &corev1.Service{}
 	}
 
 	return nil
@@ -490,6 +528,17 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			}
 		}
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
+
+	case *corev1.Service:
+		if err := yaml.Unmarshal(bytes, v); err != nil {
+			return err
+		}
+		conf.workload.obj = v
+		conf.workload.Meta = &v.ObjectMeta
+		if conf.workload.Meta.Annotations == nil {
+			conf.workload.Meta.Annotations = map[string]string{}
+		}
+
 	default:
 		// unmarshal the metadata of other resource kinds like namespace, secret,
 		// config map etc. to be used in the report struct
@@ -511,7 +560,7 @@ func (conf *ResourceConfig) complete(template *corev1.PodTemplateSpec) {
 }
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
-func (conf *ResourceConfig) injectPodSpec(values *patch) {
+func (conf *ResourceConfig) injectPodSpec(values *podPatch) {
 	saVolumeMount := conf.serviceAccountVolumeMount()
 
 	// use the primary container's capabilities to ensure psp compliance, if
@@ -562,7 +611,7 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
 }
 
-func (conf *ResourceConfig) injectProxyInit(values *patch) {
+func (conf *ResourceConfig) injectProxyInit(values *podPatch) {
 
 	// Fill common fields from Proxy into ProxyInit
 	values.ProxyInit.Capabilities = values.Proxy.Capabilities
@@ -596,7 +645,7 @@ func (conf *ResourceConfig) serviceAccountVolumeMount() *corev1.VolumeMount {
 
 // Given a ObjectMeta, update ObjectMeta in place with the new labels and
 // annotations.
-func (conf *ResourceConfig) injectObjectMeta(values *patch) {
+func (conf *ResourceConfig) injectObjectMeta(values *podPatch) {
 
 	values.Annotations[k8s.ProxyVersionAnnotation] = values.Proxy.Image.Version
 
@@ -614,7 +663,7 @@ func (conf *ResourceConfig) injectObjectMeta(values *patch) {
 	}
 }
 
-func (conf *ResourceConfig) injectPodAnnotations(values *patch) {
+func (conf *ResourceConfig) injectPodAnnotations(values *podPatch) {
 	// ObjectMetaAnnotations.Annotations is nil for new empty structs, but we always initialize
 	// it to an empty map in parse() above, so we follow suit here.
 	emptyMeta := &metav1.ObjectMeta{Annotations: map[string]string{}}
@@ -865,6 +914,11 @@ func sortedKeys(m map[string]string) []string {
 //IsNamespace checks if a given config is a workload of Kind namespace
 func (conf *ResourceConfig) IsNamespace() bool {
 	return strings.ToLower(conf.workload.metaType.Kind) == k8s.Namespace
+}
+
+//IsService checks if a given config is a workload of Kind service
+func (conf *ResourceConfig) IsService() bool {
+	return strings.ToLower(conf.workload.metaType.Kind) == k8s.Service
 }
 
 //InjectNamespace annotates any given Namespace config

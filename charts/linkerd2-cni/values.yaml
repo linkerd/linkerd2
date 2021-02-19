@@ -19,7 +19,7 @@ ignoreOutboundPorts: "25,443,587,3306,11211"
 # -- Annotation label for the proxy create. Do not edit. 
 createdByAnnotation: linkerd.io/created-by
 # -- Docker image for the CNI plugin
-cniPluginImage:   "ghcr.io/linkerd/cni-plugin"
+cniPluginImage:   "cr.l5d.io/linkerd/cni-plugin"
 # -- Tag for the CNI container Docker image
 cniPluginVersion: linkerdVersionValue
 # -- Log level for the CNI plugin
