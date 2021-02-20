@@ -26,7 +26,7 @@ const (
 	showURL = "url"
 
 	// webDeployment is the name of the web deployment in cli/install/template.go
-	webDeployment = "linkerd-web"
+	webDeployment = "web"
 
 	// webPort is the http port from the web pod spec in cli/install/template.go
 	webPort = 8084
@@ -93,6 +93,7 @@ func NewCmdDashboard() *cobra.Command {
 				RetryDeadline:         time.Now().Add(options.wait),
 			}, true)
 
+			fmt.Println("we've hit this")
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 			if err != nil {
 				return err

@@ -7,7 +7,7 @@ apiVersion: v1
 metadata:
   name: linkerd-viz
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
   annotations:
     linkerd.io/inject: enabled
 ---
@@ -19,7 +19,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-viz-metrics-api
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: metrics-api
 rules:
 - apiGroups: ["extensions", "apps"]
@@ -43,7 +43,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-viz-metrics-api
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: metrics-api
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -51,16 +51,16 @@ roleRef:
   name: linkerd-linkerd-viz-metrics-api
 subjects:
 - kind: ServiceAccount
-  name: linkerd-metrics-api
+  name: metrics-api
   namespace: linkerd-viz
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-metrics-api
+  name: metrics-api
   namespace: linkerd-viz
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: metrics-api
 ---
 ###
@@ -69,10 +69,10 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-grafana
+  name: grafana
   namespace: linkerd-viz
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: grafana
     namespace: linkerd-viz
 ---
@@ -84,7 +84,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-viz-prometheus
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: prometheus
 rules:
 - apiGroups: [""]
@@ -96,7 +96,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-viz-prometheus
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: prometheus
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -104,16 +104,16 @@ roleRef:
   name: linkerd-linkerd-viz-prometheus
 subjects:
 - kind: ServiceAccount
-  name: linkerd-prometheus
+  name: prometheus
   namespace: linkerd-viz
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-prometheus
+  name: prometheus
   namespace: linkerd-viz
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: prometheus
     namespace: linkerd-viz
 ---
@@ -125,7 +125,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-viz-tap
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: tap
 rules:
 - apiGroups: [""]
@@ -143,7 +143,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-viz-tap-admin
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: tap
 rules:
 - apiGroups: ["tap.linkerd.io"]
@@ -155,7 +155,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-viz-tap
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: tap
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -171,7 +171,7 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-linkerd-viz-tap-auth-delegator
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: tap
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -188,7 +188,7 @@ metadata:
   name: linkerd-tap
   namespace: linkerd-viz
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: tap
     namespace: linkerd-viz
 ---
@@ -198,7 +198,7 @@ metadata:
   name: linkerd-linkerd-viz-tap-auth-reader
   namespace: kube-system
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: tap
     namespace: linkerd-viz
 roleRef:
@@ -213,10 +213,10 @@ subjects:
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-tap-k8s-tls
+  name: tap-k8s-tls
   namespace: linkerd-viz
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: tap
     namespace: linkerd-viz
   annotations:
@@ -231,7 +231,7 @@ kind: APIService
 metadata:
   name: v1alpha1.tap.linkerd.io
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: tap
 spec:
   group: tap.linkerd.io
@@ -249,10 +249,10 @@ spec:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: linkerd-web
+  name: web
   namespace: linkerd
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: web
     namespace: linkerd
 rules:
@@ -273,19 +273,19 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: linkerd-web
+  name: web
   namespace: linkerd
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: web
     namespace: linkerd
 roleRef:
   kind: Role
-  name: linkerd-web
+  name: web
   apiGroup: rbac.authorization.k8s.io
 subjects:
 - kind: ServiceAccount
-  name: linkerd-web
+  name: web
   namespace: linkerd-viz
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -293,7 +293,7 @@ kind: ClusterRole
 metadata:
   name: linkerd-linkerd-viz-web-check
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: web
 rules:
 - apiGroups: ["rbac.authorization.k8s.io"]
@@ -320,7 +320,7 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-linkerd-viz-web-check
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: web
 roleRef:
   kind: ClusterRole
@@ -328,7 +328,7 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 subjects:
 - kind: ServiceAccount
-  name: linkerd-web
+  name: web
   namespace: linkerd-viz
 ---
 kind: ClusterRoleBinding
@@ -336,7 +336,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-viz-web-admin
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: web
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -344,7 +344,7 @@ roleRef:
   name: linkerd-linkerd-viz-tap-admin
 subjects:
 - kind: ServiceAccount
-  name: linkerd-web
+  name: web
   namespace: linkerd-viz
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -352,7 +352,7 @@ kind: ClusterRole
 metadata:
   name: linkerd-linkerd-viz-web-api
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: web
 rules:
 - apiGroups: [""]
@@ -364,7 +364,7 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-linkerd-viz-web-api
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: web
 roleRef:
   kind: ClusterRole
@@ -372,26 +372,26 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 subjects:
 - kind: ServiceAccount
-  name: linkerd-web
+  name: web
   namespace: linkerd-viz
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-web
+  name: web
   namespace: linkerd-viz
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: web
     namespace: linkerd-viz
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: linkerd-viz-psp
+  name: viz-psp
   namespace: linkerd-viz
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     namespace: linkerd-viz
 roleRef:
   kind: Role
@@ -402,13 +402,13 @@ subjects:
   name: linkerd-tap
   namespace: linkerd-viz
 - kind: ServiceAccount
-  name: linkerd-web
+  name: web
   namespace: linkerd-viz
 - kind: ServiceAccount
-  name: linkerd-grafana
+  name: grafana
   namespace: linkerd-viz
 - kind: ServiceAccount
-  name: linkerd-prometheus
+  name: prometheus
   namespace: linkerd-viz
 ---
 ###
@@ -417,17 +417,17 @@ subjects:
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-metrics-api
+  name: metrics-api
   namespace: linkerd-viz
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: metrics-api
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
   type: ClusterIP
   selector:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: metrics-api
   ports:
   - name: http
@@ -440,18 +440,18 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     app.kubernetes.io/name: metrics-api
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: dev-undefined
     component: metrics-api
-  name: linkerd-metrics-api
+  name: metrics-api
   namespace: linkerd-viz
 spec:
   replicas: 1
   selector:
     matchLabels:
-      linkerd.io/extension: linkerd-viz
+     linkerd.io/extension: viz
       component: metrics-api
   template:
     metadata:
@@ -459,7 +459,7 @@ spec:
         checksum/config: 6827b2203b1cd90692d9dd6a973a2162e574dc9fd7b5b9e346ceac7e287204a6
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
-        linkerd.io/extension: linkerd-viz
+       linkerd.io/extension: viz
         component: metrics-api
     spec:
       nodeSelector:
@@ -469,7 +469,7 @@ spec:
         - -controller-namespace=linkerd
         - -log-level=info
         - -cluster-domain=cluster.local
-        - -prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.cluster.local:9090
+        - -prometheus-url=http://prometheus.linkerd-viz.svc.cluster.local:9090
         image: cr.l5d.io/linkerd/metrics-api:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -491,7 +491,7 @@ spec:
         resources:
         securityContext:
           runAsUser: 2103
-      serviceAccountName: linkerd-metrics-api
+      serviceAccountName: metrics-api
 ---
 ###
 ### Grafana
@@ -499,17 +499,17 @@ spec:
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: linkerd-grafana-config
+  name: grafana-config
   namespace: linkerd-viz
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: grafana
     namespace: linkerd-viz
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 data:
   grafana.ini: |-
-    instance_name = linkerd-grafana
+    instance_name = grafana
     [server]
     root_url = %(protocol)s://%(domain)s:/grafana/
     [auth]
@@ -530,7 +530,7 @@ data:
       type: prometheus
       access: proxy
       orgId: 1
-      url: http://linkerd-prometheus.linkerd-viz.svc.cluster.local:9090
+      url: http://prometheus.linkerd-viz.svc.cluster.local:9090
       isDefault: true
       jsonData:
         timeInterval: "5s"
@@ -553,10 +553,10 @@ data:
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-grafana
+  name: grafana
   namespace: linkerd-viz
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: grafana
     namespace: linkerd-viz
   annotations:
@@ -564,7 +564,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: grafana
   ports:
   - name: http
@@ -577,19 +577,19 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     app.kubernetes.io/name: grafana
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: dev-undefined
     component: grafana
     namespace: linkerd-viz
-  name: linkerd-grafana
+  name: grafana
   namespace: linkerd-viz
 spec:
   replicas: 1
   selector:
     matchLabels:
-      linkerd.io/extension: linkerd-viz
+     linkerd.io/extension: viz
       component: grafana
       namespace: linkerd-viz
   template:
@@ -597,7 +597,7 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
-        linkerd.io/extension: linkerd-viz
+       linkerd.io/extension: viz
         component: grafana
         namespace: linkerd-viz
     spec:
@@ -635,7 +635,7 @@ spec:
         - mountPath: /etc/grafana
           name: grafana-config
           readOnly: true
-      serviceAccountName: linkerd-grafana
+      serviceAccountName: grafana
       volumes:
       - emptyDir: {}
         name: data
@@ -647,7 +647,7 @@ spec:
             path: provisioning/datasources/datasources.yaml
           - key: dashboards.yaml
             path: provisioning/dashboards/dashboards.yaml
-          name: linkerd-grafana-config
+          name: grafana-config
         name: grafana-config
 ---
 ###
@@ -656,10 +656,10 @@ spec:
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: linkerd-prometheus-config
+  name: prometheus-config
   namespace: linkerd-viz
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: prometheus
     namespace: linkerd-viz
   annotations:
@@ -801,10 +801,10 @@ data:
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-prometheus
+  name: prometheus
   namespace: linkerd-viz
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: prometheus
     namespace: linkerd-viz
   annotations:
@@ -812,7 +812,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: prometheus
   ports:
   - name: admin-http
@@ -825,19 +825,19 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: dev-undefined
     component: prometheus
     namespace: linkerd-viz
-  name: linkerd-prometheus
+  name: prometheus
   namespace: linkerd-viz
 spec:
   replicas: 1
   selector:
     matchLabels:
-      linkerd.io/extension: linkerd-viz
+     linkerd.io/extension: viz
       component: prometheus
       namespace: linkerd-viz
   template:
@@ -845,7 +845,7 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
-        linkerd.io/extension: linkerd-viz
+       linkerd.io/extension: viz
         component: prometheus
         namespace: linkerd-viz
     spec:
@@ -889,12 +889,12 @@ spec:
           name: prometheus-config
           subPath: prometheus.yml
           readOnly: true
-      serviceAccountName: linkerd-prometheus
+      serviceAccountName: prometheus
       volumes:
       - name: data
         emptyDir: {}
       - configMap:
-          name: linkerd-prometheus-config
+          name: prometheus-config
         name: prometheus-config
 ---
 ###
@@ -906,7 +906,7 @@ metadata:
   name: linkerd-tap
   namespace: linkerd-viz
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: tap
     namespace: linkerd-viz
   annotations:
@@ -914,7 +914,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: tap
   ports:
   - name: grpc
@@ -930,7 +930,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     app.kubernetes.io/name: tap
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: dev-undefined
@@ -942,7 +942,7 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      linkerd.io/extension: linkerd-viz
+     linkerd.io/extension: viz
       component: tap
       namespace: linkerd-viz
   template:
@@ -951,7 +951,7 @@ spec:
         checksum/config: bbc82b03e8c9fdc549e1ef5d3f795c07c21fb3b4c089351186f170b722689d86
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
-        linkerd.io/extension: linkerd-viz
+       linkerd.io/extension: viz
         component: tap
         namespace: linkerd-viz
     spec:
@@ -994,7 +994,7 @@ spec:
       volumes:
       - name: tls
         secret:
-          secretName: linkerd-tap-k8s-tls
+          secretName: tap-k8s-tls
 
 ---
 ###
@@ -1005,7 +1005,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-tap-injector
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -1016,7 +1016,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-tap-injector
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
 subjects:
 - kind: ServiceAccount
   name: tap-injector
@@ -1049,7 +1049,7 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-tap-injector-webhook-config
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
 webhooks:
 - name: tap-injector.linkerd.io
   clientConfig:
@@ -1077,7 +1077,7 @@ metadata:
   name: tap-injector
   namespace: linkerd-viz
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: tap-injector
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
@@ -1096,7 +1096,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     app.kubernetes.io/name: tap-injector
     app.kubernetes.io/part-of: Linkerd
     component: tap-injector
@@ -1113,7 +1113,7 @@ spec:
         checksum/config: 0120b5feafdef04a057ab39fd63ed315ebbcc2bfc0b0657e3007fa34ffb8b7e2
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
-        linkerd.io/extension: linkerd-viz
+       linkerd.io/extension: viz
         component: tap-injector
     spec:
       nodeSelector:
@@ -1160,10 +1160,10 @@ spec:
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-web
+  name: web
   namespace: linkerd-viz
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: web
     namespace: linkerd-viz
   annotations:
@@ -1171,7 +1171,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     component: web
   ports:
   - name: http
@@ -1187,19 +1187,19 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
   labels:
-    linkerd.io/extension: linkerd-viz
+    linkerd.io/extension: viz
     app.kubernetes.io/name: web
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: dev-undefined
     component: web
     namespace: linkerd-viz
-  name: linkerd-web
+  name: web
   namespace: linkerd-viz
 spec:
   replicas: 1
   selector:
     matchLabels:
-      linkerd.io/extension: linkerd-viz
+     linkerd.io/extension: viz
       component: web
       namespace: linkerd-viz
   template:
@@ -1207,7 +1207,7 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
-        linkerd.io/extension: linkerd-viz
+       linkerd.io/extension: viz
         component: web
         namespace: linkerd-viz
     spec:
@@ -1216,13 +1216,13 @@ spec:
       containers:
       - args:
         - -linkerd-controller-api-addr=linkerd-controller-api.linkerd.svc.cluster.local:8085
-        - -linkerd-metrics-api-addr=linkerd-metrics-api.linkerd-viz.svc.cluster.local:8085
+        - -linkerd-metrics-api-addr=metrics-api.linkerd-viz.svc.cluster.local:8085
         - -cluster-domain=cluster.local
-        - -grafana-addr=linkerd-grafana.linkerd-viz.svc.cluster.local:3000
+        - -grafana-addr=grafana.linkerd-viz.svc.cluster.local:3000
         - -controller-namespace=linkerd
         - -viz-namespace=linkerd-viz
         - -log-level=info
-        - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd-viz\.svc\.cluster\.local|linkerd-web\.linkerd-viz\.svc|\[::1\])(:\d+)?$
+        - -enforced-host=^(localhost|127\.0\.0\.1|web\.linkerd-viz\.svc\.cluster\.local|web\.linkerd-viz\.svc|\[::1\])(:\d+)?$
         image: cr.l5d.io/linkerd/web:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1244,4 +1244,4 @@ spec:
         resources:
         securityContext:
           runAsUser: 2103
-      serviceAccountName: linkerd-web
+      serviceAccountName: web

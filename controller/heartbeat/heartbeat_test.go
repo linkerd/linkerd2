@@ -69,13 +69,13 @@ apiVersion: v1
 metadata:
   name: linkerd-viz
   labels:
-    linkerd.io/extension: linkerd-viz`,
+    linkerd.io/extension: viz`,
 			},
 			url.Values{
 				"k8s-version":     []string{"v0.0.0-master+$Format:%h$"},
 				"install-time":    []string{"1550234096"},
 				"uuid":            []string{"fake-uuid"},
-				"ext-linkerd-viz": []string{"1"},
+				"ext-viz": []string{"1"},
 			},
 		},
 	}

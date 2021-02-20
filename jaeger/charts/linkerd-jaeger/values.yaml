@@ -2,6 +2,8 @@
 
 namespace: linkerd-jaeger
 
+createdByAnnotation: linkerd.io/created-by
+extensionAnnotation: linkerd.io/extension
 collector:
   image: 
     name: omnition/opencensus-collector
@@ -48,8 +50,6 @@ webhook:
     #- key: runlevel
     #  operator: NotIn
     #  values: ["0","1"]
-
   objectSelector:
     #matchLabels:
     #  foo: bar
-

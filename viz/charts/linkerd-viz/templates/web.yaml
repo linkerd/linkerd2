@@ -5,10 +5,10 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-web
+  name: web
   namespace: {{.Values.namespace}}
   labels:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     component: web
     namespace: {{.Values.namespace}}
   annotations:
@@ -16,7 +16,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     component: web
   ports:
   - name: http
@@ -32,19 +32,19 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
   labels:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     app.kubernetes.io/name: web
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
     component: web
     namespace: {{.Values.namespace}}
-  name: linkerd-web
+  name: web
   namespace: {{.Values.namespace}}
 spec:
   replicas: {{.Values.dashboard.replicas}}
   selector:
     matchLabels:
-      linkerd.io/extension: linkerd-viz
+      {{.Values.extensionAnnotation}}: viz
       component: web
       namespace: {{.Values.namespace}}
   template:
@@ -56,7 +56,7 @@ spec:
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
-        linkerd.io/extension: linkerd-viz
+        {{.Values.extensionAnnotation}}: viz
         component: web
         namespace: {{.Values.namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
@@ -68,12 +68,12 @@ spec:
       containers:
       - args:
         - -linkerd-controller-api-addr=linkerd-controller-api.{{.Values.linkerdNamespace}}.svc.{{.Values.clusterDomain}}:8085
-        - -linkerd-metrics-api-addr=linkerd-metrics-api.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:8085
+        - -linkerd-metrics-api-addr=metrics-api.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:8085
         - -cluster-domain={{.Values.clusterDomain}}
         {{- if .Values.grafanaUrl }}
         - -grafana-addr={{.Values.grafanaUrl}}
         {{- else if .Values.grafana.enabled }}
-        - -grafana-addr=linkerd-grafana.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:3000
+        - -grafana-addr=grafana.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:3000
         {{- end}}
         {{- if .Values.jaegerUrl }}
         - -jaeger-addr={{.Values.jaegerUrl}}
@@ -84,8 +84,8 @@ spec:
         {{- if .Values.dashboard.enforcedHostRegexp }}
         - -enforced-host={{.Values.dashboard.enforcedHostRegexp}}
         {{- else -}}
-        {{- $hostFull := replace "." "\\." (printf "linkerd-web.%s.svc.%s" .Values.namespace .Values.clusterDomain) }}
-        {{- $hostAbbrev := replace "." "\\." (printf "linkerd-web.%s.svc" .Values.namespace) }}
+        {{- $hostFull := replace "." "\\." (printf "web.%s.svc.%s" .Values.namespace .Values.clusterDomain) }}
+        {{- $hostAbbrev := replace "." "\\." (printf "web.%s.svc" .Values.namespace) }}
         - -enforced-host=^(localhost|127\.0\.0\.1|{{ $hostFull }}|{{ $hostAbbrev }}|\[::1\])(:\d+)?$
         {{- end}}
         image: {{.Values.dashboard.image.registry | default .Values.defaultRegistry}}/{{.Values.dashboard.image.name}}:{{.Values.dashboard.image.tag | default .Values.linkerdVersion}}
@@ -111,4 +111,4 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.dashboard.UID | default .Values.defaultUID}}
-      serviceAccountName: linkerd-web
+      serviceAccountName: web

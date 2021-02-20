@@ -11,7 +11,7 @@ import (
 
 const (
 	// ExtensionName is the value that the viz extension resources should be labeled with
-	ExtensionName = "linkerd-viz"
+	ExtensionName = "viz"
 
 	vizChartName            = "linkerd-viz"
 	defaultLinkerdNamespace = "linkerd"

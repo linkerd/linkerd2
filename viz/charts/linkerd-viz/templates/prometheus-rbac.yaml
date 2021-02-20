@@ -8,7 +8,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-prometheus
   labels:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     component: prometheus
 rules:
 - apiGroups: [""]
@@ -20,7 +20,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-prometheus
   labels:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     component: prometheus
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -28,16 +28,16 @@ roleRef:
   name: linkerd-{{.Values.namespace}}-prometheus
 subjects:
 - kind: ServiceAccount
-  name: linkerd-prometheus
+  name: prometheus
   namespace: {{.Values.namespace}}
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-prometheus
+  name: prometheus
   namespace: {{.Values.namespace}}
   labels:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     component: prometheus
     namespace: {{.Values.namespace}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}

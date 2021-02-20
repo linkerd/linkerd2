@@ -35,7 +35,7 @@ var (
 	linkerdSvcStable = []testutil.Service{
 		{Namespace: "linkerd", Name: "linkerd-controller-api"},
 		{Namespace: "linkerd", Name: "linkerd-dst"},
-		{Namespace: "linkerd", Name: "linkerd-grafana"},
+		{Namespace: "linkerd", Name: "grafana"},
 		{Namespace: "linkerd", Name: "linkerd-identity"},
 		{Namespace: "linkerd", Name: "linkerd-prometheus"},
 		{Namespace: "linkerd", Name: "linkerd-web"},
@@ -47,10 +47,10 @@ var (
 	linkerdSvcEdge = []testutil.Service{
 		{Namespace: "linkerd", Name: "linkerd-controller-api"},
 		{Namespace: "linkerd", Name: "linkerd-dst"},
-		{Namespace: "linkerd-viz", Name: "linkerd-grafana"},
+		{Namespace: "linkerd-viz", Name: "grafana"},
 		{Namespace: "linkerd", Name: "linkerd-identity"},
-		{Namespace: "linkerd-viz", Name: "linkerd-web"},
-		{Namespace: "linkerd-viz", Name: "linkerd-tap"},
+		{Namespace: "linkerd-viz", Name: "web"},
+		{Namespace: "linkerd-viz", Name: "tap"},
 		{Namespace: "linkerd", Name: "linkerd-dst-headless"},
 		{Namespace: "linkerd", Name: "linkerd-identity-headless"},
 	}
@@ -539,8 +539,8 @@ func TestControlPlaneResourcesPostInstall(t *testing.T) {
 	expectedServices := linkerdSvcEdge
 	expectedDeployments := testutil.LinkerdDeployReplicasEdge
 	if !TestHelper.ExternalPrometheus() {
-		expectedServices = append(expectedServices, testutil.Service{Namespace: "linkerd-viz", Name: "linkerd-prometheus"})
-		expectedDeployments["linkerd-prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1, Containers: []string{}}
+		expectedServices = append(expectedServices, testutil.Service{Namespace: "linkerd-viz", Name: "prometheus"})
+		expectedDeployments["prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1, Containers: []string{}}
 	}
 
 	// Upgrade Case
@@ -1052,7 +1052,7 @@ func TestCheckProxy(t *testing.T) {
 func TestRestarts(t *testing.T) {
 	expectedDeployments := testutil.LinkerdDeployReplicasEdge
 	if !TestHelper.ExternalPrometheus() {
-		expectedDeployments["linkerd-prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1, Containers: []string{}}
+		expectedDeployments["prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1, Containers: []string{}}
 	}
 	for deploy, spec := range expectedDeployments {
 		if err := TestHelper.CheckPods(context.Background(), spec.Namespace, deploy, spec.Replicas); err != nil {

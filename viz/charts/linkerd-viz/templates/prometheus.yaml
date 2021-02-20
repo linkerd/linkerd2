@@ -6,10 +6,10 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: linkerd-prometheus-config
+  name: prometheus-config
   namespace: {{.Values.namespace}}
   labels:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     component: prometheus
     namespace: {{.Values.namespace}}
   annotations:
@@ -174,10 +174,10 @@ data:
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-prometheus
+  name: prometheus
   namespace: {{.Values.namespace}}
   labels:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     component: prometheus
     namespace: {{.Values.namespace}}
   annotations:
@@ -185,7 +185,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     component: prometheus
   ports:
   - name: admin-http
@@ -198,13 +198,13 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
   labels:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
     component: prometheus
     namespace: {{.Values.namespace}}
-  name: linkerd-prometheus
+  name: prometheus
   namespace: {{.Values.namespace}}
 spec:
   replicas: 1
@@ -214,7 +214,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      linkerd.io/extension: linkerd-viz
+      {{.Values.extensionAnnotation}}: viz
       component: prometheus
       namespace: {{.Values.namespace}}
   template:
@@ -226,7 +226,7 @@ spec:
         {{- end }}
         {{- with .Values.podAnnotations }}{{  . | trim | nindent 8 }}{{- end }}
       labels:
-        linkerd.io/extension: linkerd-viz
+        {{.Values.extensionAnnotation}}: viz
         component: prometheus
         namespace: {{.Values.namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
@@ -284,7 +284,7 @@ spec:
           name: prometheus-config
           subPath: prometheus.yml
           readOnly: true
-      serviceAccountName: linkerd-prometheus
+      serviceAccountName: prometheus
       volumes:
     {{- range .Values.prometheus.ruleConfigMapMounts }}
       - name: {{ .name }}
@@ -294,12 +294,12 @@ spec:
       - name: data
     {{- if .Values.prometheus.persistence }}
         persistentVolumeClaim:
-          claimName: linkerd-prometheus
+          claimName: prometheus
     {{- else }}
         emptyDir: {}
     {{- end }}
       - configMap:
-          name: linkerd-prometheus-config
+          name: prometheus-config
         name: prometheus-config
 {{- if .Values.prometheus.persistence }}
 ---
@@ -307,12 +307,12 @@ kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
   labels:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
     component: prometheus
-  name: linkerd-prometheus
+  name: prometheus
   namespace: {{.Values.namespace}}
 spec:
   accessModes:

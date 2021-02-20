@@ -6,10 +6,10 @@
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-grafana
+  name: grafana
   namespace: {{.Values.namespace}}
   labels:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     component: grafana
     namespace: {{.Values.namespace}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}

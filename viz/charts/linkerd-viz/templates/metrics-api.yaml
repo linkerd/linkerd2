@@ -5,17 +5,17 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-metrics-api
+  name: metrics-api
   namespace: {{.Values.namespace}}
   labels:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     component: metrics-api
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
   type: ClusterIP
   selector:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     component: metrics-api
   ports:
   - name: http
@@ -28,18 +28,18 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
   labels:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     app.kubernetes.io/name: metrics-api
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
     component: metrics-api
-  name: linkerd-metrics-api
+  name: metrics-api
   namespace: {{.Values.namespace}}
 spec:
   replicas: {{.Values.metricsAPI.replicas}}
   selector:
     matchLabels:
-      linkerd.io/extension: linkerd-viz
+      {{.Values.extensionAnnotation}}: viz
       component: metrics-api
   template:
     metadata:
@@ -53,7 +53,7 @@ spec:
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
-        linkerd.io/extension: linkerd-viz
+        {{.Values.extensionAnnotation}}: viz
         component: metrics-api
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
@@ -73,7 +73,7 @@ spec:
         {{- if .Values.prometheusUrl }}
         - -prometheus-url={{.Values.prometheusUrl}}
         {{- else if .Values.prometheus.enabled }}
-        - -prometheus-url=http://linkerd-prometheus.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:9090
+        - -prometheus-url=http://prometheus.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:9090
         {{- else }}
         {{ fail "Please enable `linkerd-prometheus` or provide `prometheusUrl` for the viz extension to function properly"}}
         {{- end }}
@@ -100,4 +100,4 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.metricsAPI.UID | default .Values.defaultUID}}
-      serviceAccountName: linkerd-metrics-api
+      serviceAccountName: metrics-api

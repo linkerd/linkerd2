@@ -20,7 +20,7 @@ import (
 
 const (
 	// VizExtensionName is the name of the viz extension
-	VizExtensionName = "linkerd-viz"
+	VizExtensionName = "viz"
 
 	// LinkerdVizExtensionCheck adds checks related to the Linkerd Viz extension
 	LinkerdVizExtensionCheck healthcheck.CategoryID = "linkerd-viz"
@@ -28,7 +28,7 @@ const (
 	// LinkerdVizExtensionDataPlaneCheck adds checks related to dataplane for the linkerd-viz extension
 	LinkerdVizExtensionDataPlaneCheck healthcheck.CategoryID = "linkerd-viz-data-plane"
 
-	tapTLSSecretName    = "linkerd-tap-k8s-tls"
+	tapTLSSecretName    = "tap-k8s-tls"
 	tapOldTLSSecretName = "linkerd-tap-tls"
 
 	// linkerdTapAPIServiceName is the name of the tap api service
@@ -74,7 +74,7 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 			WithHintAnchor("l5d-viz-ns-exists").
 			Fatal().
 			WithCheck(func(ctx context.Context) error {
-				vizNs, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, "linkerd-viz")
+				vizNs, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, "viz")
 				if err != nil {
 					return err
 				}
@@ -113,7 +113,7 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 					return err
 				}
 
-				identityName := fmt.Sprintf("linkerd-tap.%s.svc", hc.vizNamespace)
+				identityName := fmt.Sprintf("tap.%s.svc", hc.vizNamespace)
 				return hc.CheckCertAndAnchors(cert, anchors, identityName)
 			}),
 		*healthcheck.NewChecker("tap API server cert is valid for at least 60 days").
@@ -158,7 +158,7 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 				}
 
 				// Check for relevant pods to be present
-				err = healthcheck.CheckForPods(pods, []string{"linkerd-web", "linkerd-tap", "linkerd-metrics-api", "tap-injector"})
+				err = healthcheck.CheckForPods(pods, []string{"web", "tap", "metrics-api", "tap-injector"})
 				if err != nil {
 					return err
 				}
@@ -170,7 +170,7 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 			Warning().
 			WithCheck(func(ctx context.Context) error {
 				if hc.externalPrometheusURL != "" {
-					return &healthcheck.SkipError{Reason: "linkerd-prometheus is disabled"}
+					return &healthcheck.SkipError{Reason: "prometheus is disabled"}
 				}
 
 				// Check for ClusterRoles
@@ -186,7 +186,7 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 				}
 
 				// Check for ConfigMap
-				err = healthcheck.CheckConfigMaps(ctx, hc.KubeAPIClient(), hc.vizNamespace, true, []string{"linkerd-prometheus-config"}, "")
+				err = healthcheck.CheckConfigMaps(ctx, hc.KubeAPIClient(), hc.vizNamespace, true, []string{"prometheus-config"}, "")
 				if err != nil {
 					return err
 				}
@@ -197,7 +197,7 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 					return err
 				}
 
-				err = healthcheck.CheckForPods(pods, []string{"linkerd-prometheus"})
+				err = healthcheck.CheckForPods(pods, []string{"prometheus"})
 				if err != nil {
 					return err
 				}

@@ -2,29 +2,29 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: linkerd-viz-psp
+  name: viz-psp
   namespace: {{.Values.namespace}}
   labels:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     namespace: {{.Values.namespace}}
 roleRef:
   kind: Role
-  name: linkerd-psp
+  name: psp
   apiGroup: rbac.authorization.k8s.io
 subjects:
 - kind: ServiceAccount
-  name: linkerd-tap
+  name: tap
   namespace: {{.Values.namespace}}
 - kind: ServiceAccount
-  name: linkerd-web
+  name: web
   namespace: {{.Values.namespace}}
 {{ if .Values.grafana.enabled -}}
 - kind: ServiceAccount
-  name: linkerd-grafana
+  name: grafana
   namespace: {{.Values.namespace}}
 {{ end -}}
 {{ if .Values.prometheus.enabled -}}
 - kind: ServiceAccount
-  name: linkerd-prometheus
+  name: prometheus
   namespace: {{.Values.namespace}}
 {{ end -}}

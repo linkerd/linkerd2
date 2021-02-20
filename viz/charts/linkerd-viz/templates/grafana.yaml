@@ -6,17 +6,17 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: linkerd-grafana-config
+  name: grafana-config
   namespace: {{.Values.namespace}}
   labels:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     component: grafana
     namespace: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 data:
   grafana.ini: |-
-    instance_name = linkerd-grafana
+    instance_name = grafana
     [server]
     root_url = %(protocol)s://%(domain)s:/grafana/
     [auth]
@@ -40,7 +40,7 @@ data:
       {{- if .Values.prometheusUrl }}
       url: {{.Values.prometheusUrl}}
       {{- else }}
-      url: http://linkerd-prometheus.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:9090
+      url: http://prometheus.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:9090
       {{- end }}
       isDefault: true
       jsonData:
@@ -64,10 +64,10 @@ data:
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-grafana
+  name: grafana
   namespace: {{.Values.namespace}}
   labels:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     component: grafana
     namespace: {{.Values.namespace}}
   annotations:
@@ -75,7 +75,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     component: grafana
   ports:
   - name: http
@@ -88,19 +88,19 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
   labels:
-    linkerd.io/extension: linkerd-viz
+    {{.Values.extensionAnnotation}}: viz
     app.kubernetes.io/name: grafana
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
     component: grafana
     namespace: {{.Values.namespace}}
-  name: linkerd-grafana
+  name: grafana
   namespace: {{.Values.namespace}}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      linkerd.io/extension: linkerd-viz
+      {{.Values.extensionAnnotation}}: viz
       component: grafana
       namespace: {{.Values.namespace}}
   template:
@@ -112,7 +112,7 @@ spec:
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
-        linkerd.io/extension: linkerd-viz
+        {{.Values.extensionAnnotation}}: viz
         component: grafana
         namespace: {{.Values.namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
@@ -155,7 +155,7 @@ spec:
         - mountPath: /etc/grafana
           name: grafana-config
           readOnly: true
-      serviceAccountName: linkerd-grafana
+      serviceAccountName: grafana
       volumes:
       - emptyDir: {}
         name: data
@@ -167,6 +167,6 @@ spec:
             path: provisioning/datasources/datasources.yaml
           - key: dashboards.yaml
             path: provisioning/dashboards/dashboards.yaml
-          name: linkerd-grafana-config
+          name: grafana-config
         name: grafana-config
 {{ end -}}

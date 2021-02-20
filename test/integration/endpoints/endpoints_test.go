@@ -27,16 +27,16 @@ func TestGoodEndpoints(t *testing.T) {
 		"endpoints",
 		fmt.Sprintf("linkerd-controller-api.%s.svc.cluster.local:8085", ns),
 		fmt.Sprintf("linkerd-dst.%s.svc.cluster.local:8086", ns),
-		fmt.Sprintf("linkerd-grafana.%s.svc.cluster.local:3000", vizNs),
+		fmt.Sprintf("grafana.%s.svc.cluster.local:3000", vizNs),
 		fmt.Sprintf("linkerd-identity.%s.svc.cluster.local:8080", ns),
 		fmt.Sprintf("linkerd-proxy-injector.%s.svc.cluster.local:443", ns),
 		fmt.Sprintf("linkerd-sp-validator.%s.svc.cluster.local:443", ns),
-		fmt.Sprintf("linkerd-tap.%s.svc.cluster.local:8088", vizNs),
-		fmt.Sprintf("linkerd-web.%s.svc.cluster.local:8084", vizNs),
+		fmt.Sprintf("tap.%s.svc.cluster.local:8088", vizNs),
+		fmt.Sprintf("web.%s.svc.cluster.local:8084", vizNs),
 	}
 
 	if !TestHelper.ExternalPrometheus() {
-		cmd = append(cmd, fmt.Sprintf("linkerd-prometheus.%s.svc.cluster.local:9090", vizNs))
+		cmd = append(cmd, fmt.Sprintf("prometheus.%s.svc.cluster.local:9090", vizNs))
 	} else {
 		cmd = append(cmd, "prometheus.external-prometheus.svc.cluster.local:9090")
 		testDataPath += "/external_prometheus"
