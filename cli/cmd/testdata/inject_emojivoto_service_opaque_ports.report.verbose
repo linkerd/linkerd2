@@ -6,5 +6,5 @@
 √ pod specs do not include UDP ports
 √ pods do not have automountServiceAccountToken set to "false"
 
-service "web-svc" injected
+service "web-svc" skipped
 
