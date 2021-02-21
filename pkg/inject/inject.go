@@ -489,16 +489,6 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			conf.workload.Meta.Annotations = map[string]string{}
 		}
 
-	case *corev1.Service:
-		if err := yaml.Unmarshal(bytes, v); err != nil {
-			return err
-		}
-		conf.workload.obj = v
-		conf.workload.Meta = &v.ObjectMeta
-		if conf.workload.Meta.Annotations == nil {
-			conf.workload.Meta.Annotations = map[string]string{}
-		}
-
 	case *batchv1beta1.CronJob:
 		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
