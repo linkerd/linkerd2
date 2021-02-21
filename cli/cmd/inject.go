@@ -169,16 +169,6 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	}
 
 	reports := []inject.Report{*report}
-	// Injection of services depends on being able to retrieve the namespace
-	// annotations which can only occur in the proxy injector webhook.
-	if conf.IsService() {
-		return bytes, reports, nil
-	}
-
-	if conf.IsService() && rt.values.Proxy.OpaquePorts != "" {
-		b, err := conf.AnnotateService(k8s.ProxyOpaquePortsAnnotation, rt.values.Proxy.OpaquePorts)
-		return b, reports, err
-	}
 
 	if rt.allowNsInject && conf.IsNamespace() {
 		b, err := conf.InjectNamespace(rt.overrideAnnotations)
@@ -189,6 +179,17 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 			return bytes, reports, fmt.Errorf("failed to inject %s%s%s: %v", report.Kind, slash, report.Name, concatErrors(errs, ", "))
 		}
 		return bytes, reports, nil
+	}
+
+	if conf.IsService() {
+		b := bytes
+		if rt.values.Proxy.OpaquePorts != "" {
+			b, err = conf.AnnotateService(k8s.ProxyOpaquePortsAnnotation, rt.values.Proxy.OpaquePorts)
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to annotate service %s: %s", report.Name, err)
+			}
+		}
+		return b, reports, err
 	}
 
 	if rt.injectProxy {
