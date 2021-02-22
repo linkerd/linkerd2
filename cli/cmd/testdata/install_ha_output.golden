@@ -900,7 +900,7 @@ data:
         image:
           name: cr.l5d.io/linkerd/proxy-init
           pullPolicy: IfNotPresent
-          version: v1.3.6
+          version: v1.3.9
         resources:
           cpu:
             limit: 100m
