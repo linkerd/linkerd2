@@ -2865,7 +2865,7 @@ spec:
         # see https://github.com/grafana/grafana/issues/20096
         - name: GODEBUG
           value: netdns=go
-        image: ghcr.io/linkerd/grafana:install-control-plane-version
+        image: cr.l5d.io/linkerd/grafana:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

@@ -825,14 +825,14 @@ metadata:
     linkerd.io/created-by: linkerd/helm linkerd-version
 data:
   values: |
-    controllerImage: ghcr.io/linkerd/controller
+    controllerImage: cr.l5d.io/linkerd/controller
     controllerReplicas: 3
     controllerUID: 2103
     dashboard:
       replicas: 1
     debugContainer:
       image:
-        name: ghcr.io/linkerd/debug
+        name: cr.l5d.io/linkerd/debug
         pullPolicy: IfNotPresent
         version: test-debug-version
     destinationProxyResources: null
@@ -876,7 +876,7 @@ data:
         disableTap: false
         enableExternalProfiles: false
         image:
-          name: ghcr.io/linkerd/proxy
+          name: cr.l5d.io/linkerd/proxy
           pullPolicy: IfNotPresent
           version: test-proxy-version
         inboundConnectTimeout: 100ms
@@ -912,7 +912,7 @@ data:
         ignoreInboundPorts: "222"
         ignoreOutboundPorts: "111"
         image:
-          name: ghcr.io/linkerd/proxy-init
+          name: cr.l5d.io/linkerd/proxy-init
           pullPolicy: IfNotPresent
           version: test-proxy-init-version
         resources:
@@ -961,7 +961,7 @@ data:
           disableTap: false
           enableExternalProfiles: false
           image:
-            name: ghcr.io/linkerd/proxy
+            name: cr.l5d.io/linkerd/proxy
             pullPolicy: IfNotPresent
             version: test-proxy-version
           inboundConnectTimeout: 100ms
@@ -997,7 +997,7 @@ data:
           ignoreInboundPorts: "222"
           ignoreOutboundPorts: "111"
           image:
-            name: ghcr.io/linkerd/proxy-init
+            name: cr.l5d.io/linkerd/proxy-init
             pullPolicy: IfNotPresent
             version: test-proxy-init-version
           resources:
@@ -1016,7 +1016,7 @@ data:
         proxyInjectDisabled: disabled
         workloadNamespaceLabel: linkerd.io/workload-ns
       image:
-        name: ghcr.io/linkerd/grafana
+        name: cr.l5d.io/linkerd/grafana
       partials:
         global:
           cliVersion: ""
@@ -1047,7 +1047,7 @@ data:
             disableTap: false
             enableExternalProfiles: false
             image:
-              name: ghcr.io/linkerd/proxy
+              name: cr.l5d.io/linkerd/proxy
               pullPolicy: IfNotPresent
               version: test-proxy-version
             inboundConnectTimeout: 100ms
@@ -1083,7 +1083,7 @@ data:
             ignoreInboundPorts: "222"
             ignoreOutboundPorts: "111"
             image:
-              name: ghcr.io/linkerd/proxy-init
+              name: cr.l5d.io/linkerd/proxy-init
               pullPolicy: IfNotPresent
               version: test-proxy-init-version
             resources:
@@ -1183,7 +1183,7 @@ data:
           disableTap: false
           enableExternalProfiles: false
           image:
-            name: ghcr.io/linkerd/proxy
+            name: cr.l5d.io/linkerd/proxy
             pullPolicy: IfNotPresent
             version: test-proxy-version
           inboundConnectTimeout: 100ms
@@ -1219,7 +1219,7 @@ data:
           ignoreInboundPorts: "222"
           ignoreOutboundPorts: "111"
           image:
-            name: ghcr.io/linkerd/proxy-init
+            name: cr.l5d.io/linkerd/proxy-init
             pullPolicy: IfNotPresent
             version: test-proxy-init-version
           resources:
@@ -1272,7 +1272,7 @@ data:
             disableTap: false
             enableExternalProfiles: false
             image:
-              name: ghcr.io/linkerd/proxy
+              name: cr.l5d.io/linkerd/proxy
               pullPolicy: IfNotPresent
               version: test-proxy-version
             inboundConnectTimeout: 100ms
@@ -1308,7 +1308,7 @@ data:
             ignoreInboundPorts: "222"
             ignoreOutboundPorts: "111"
             image:
-              name: ghcr.io/linkerd/proxy-init
+              name: cr.l5d.io/linkerd/proxy-init
               pullPolicy: IfNotPresent
               version: test-proxy-init-version
             resources:
@@ -1383,7 +1383,7 @@ data:
     tolerations: null
     tracing:
       enabled: false
-    webImage: ghcr.io/linkerd/web
+    webImage: cr.l5d.io/linkerd/web
     webProxyResources: null
     webResources:
       cpu:
@@ -1520,7 +1520,7 @@ spec:
         - -identity-clock-skew-allowance=20s
         - -identity-trust-anchors-pem=dGVzdC10cnVzdC1hbmNob3I=
         - -identity-scheme=linkerd.io/tls
-        image: ghcr.io/linkerd/controller:linkerd-version
+        image: cr.l5d.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1612,7 +1612,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:test-proxy-version
+        image: cr.l5d.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1656,7 +1656,7 @@ spec:
         - "4190,4191,222"
         - --outbound-ports-to-ignore
         - "111"
-        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
+        image: cr.l5d.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1781,7 +1781,7 @@ spec:
         - -log-level=info
         - -cluster-domain=cluster.local
         - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
-        image: ghcr.io/linkerd/controller:linkerd-version
+        image: cr.l5d.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1870,7 +1870,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:test-proxy-version
+        image: cr.l5d.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1914,7 +1914,7 @@ spec:
         - "4190,4191,222"
         - --outbound-ports-to-ignore
         - "111"
-        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
+        image: cr.l5d.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2057,7 +2057,7 @@ spec:
         - -enable-endpoint-slices=false
         - -cluster-domain=cluster.local
         - -identity-trust-domain=test.trust.domain
-        image: ghcr.io/linkerd/controller:linkerd-version
+        image: cr.l5d.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2146,7 +2146,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:test-proxy-version
+        image: cr.l5d.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2190,7 +2190,7 @@ spec:
         - "4190,4191,222"
         - --outbound-ports-to-ignore
         - "111"
-        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
+        image: cr.l5d.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2260,7 +2260,7 @@ spec:
           restartPolicy: Never
           containers:
           - name: heartbeat
-            image: ghcr.io/linkerd/controller:linkerd-version
+            image: cr.l5d.io/linkerd/controller:linkerd-version
             imagePullPolicy: IfNotPresent
             args:
             - "heartbeat"
@@ -2346,7 +2346,7 @@ spec:
         - -controller-namespace=linkerd
         - -log-level=info
         - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd\.svc\.cluster\.local|linkerd-web\.linkerd\.svc|\[::1\])(:\d+)?$
-        image: ghcr.io/linkerd/web:linkerd-version
+        image: cr.l5d.io/linkerd/web:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2435,7 +2435,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:test-proxy-version
+        image: cr.l5d.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2479,7 +2479,7 @@ spec:
         - "4190,4191,222"
         - --outbound-ports-to-ignore
         - "111"
-        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
+        image: cr.l5d.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2577,7 +2577,7 @@ spec:
       - args:
         - proxy-injector
         - -log-level=info
-        image: ghcr.io/linkerd/controller:linkerd-version
+        image: cr.l5d.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2672,7 +2672,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:test-proxy-version
+        image: cr.l5d.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2716,7 +2716,7 @@ spec:
         - "4190,4191,222"
         - --outbound-ports-to-ignore
         - "111"
-        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
+        image: cr.l5d.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2858,7 +2858,7 @@ spec:
       - args:
         - sp-validator
         - -log-level=info
-        image: ghcr.io/linkerd/controller:linkerd-version
+        image: cr.l5d.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2951,7 +2951,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:test-proxy-version
+        image: cr.l5d.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2995,7 +2995,7 @@ spec:
         - "4190,4191,222"
         - --outbound-ports-to-ignore
         - "111"
-        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
+        image: cr.l5d.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -3122,7 +3122,7 @@ spec:
         - -controller-namespace=linkerd
         - -log-level=info
         - -identity-trust-domain=test.trust.domain
-        image: ghcr.io/linkerd/controller:linkerd-version
+        image: cr.l5d.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -3217,7 +3217,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:test-proxy-version
+        image: cr.l5d.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -3261,7 +3261,7 @@ spec:
         - "4190,4191,222"
         - --outbound-ports-to-ignore
         - "111"
-        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
+        image: cr.l5d.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -3439,7 +3439,7 @@ spec:
         # see https://github.com/grafana/grafana/issues/20096
         - name: GODEBUG
           value: netdns=go
-        image: ghcr.io/linkerd/grafana:linkerd-version
+        image: cr.l5d.io/linkerd/grafana:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -3531,7 +3531,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:test-proxy-version
+        image: cr.l5d.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -3575,7 +3575,7 @@ spec:
         - "4190,4191,222"
         - --outbound-ports-to-ignore
         - "111"
-        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
+        image: cr.l5d.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -3970,7 +3970,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:test-proxy-version
+        image: cr.l5d.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -4014,7 +4014,7 @@ spec:
         - "4190,4191,222"
         - --outbound-ports-to-ignore
         - "111"
-        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
+        image: cr.l5d.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

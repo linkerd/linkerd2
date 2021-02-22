@@ -41,9 +41,9 @@ func TestGetOverriddenValues(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
 							k8s.ProxyDisableIdentityAnnotation:               "true",
-							k8s.ProxyImageAnnotation:                         "ghcr.io/linkerd/proxy",
+							k8s.ProxyImageAnnotation:                         "cr.l5d.io/linkerd/proxy",
 							k8s.ProxyImagePullPolicyAnnotation:               pullPolicy,
-							k8s.ProxyInitImageAnnotation:                     "ghcr.io/linkerd/proxy-init",
+							k8s.ProxyInitImageAnnotation:                     "cr.l5d.io/linkerd/proxy-init",
 							k8s.ProxyControlPortAnnotation:                   "4000",
 							k8s.ProxyInboundPortAnnotation:                   "5000",
 							k8s.ProxyAdminPortAnnotation:                     "5001",
@@ -76,7 +76,7 @@ func TestGetOverriddenValues(t *testing.T) {
 
 				values.GetGlobal().Proxy.Cores = 2
 				values.GetGlobal().Proxy.DisableIdentity = true
-				values.GetGlobal().Proxy.Image.Name = "ghcr.io/linkerd/proxy"
+				values.GetGlobal().Proxy.Image.Name = "cr.l5d.io/linkerd/proxy"
 				values.GetGlobal().Proxy.Image.PullPolicy = pullPolicy
 				values.GetGlobal().Proxy.Image.Version = proxyVersionOverride
 				values.GetGlobal().Proxy.Ports.Control = 4000
@@ -97,7 +97,7 @@ func TestGetOverriddenValues(t *testing.T) {
 					},
 				}
 				values.GetGlobal().Proxy.UID = 8500
-				values.GetGlobal().ProxyInit.Image.Name = "ghcr.io/linkerd/proxy-init"
+				values.GetGlobal().ProxyInit.Image.Name = "cr.l5d.io/linkerd/proxy-init"
 				values.GetGlobal().ProxyInit.Image.PullPolicy = pullPolicy
 				values.GetGlobal().ProxyInit.Image.Version = version.ProxyInitVersion
 				values.GetGlobal().ProxyInit.IgnoreInboundPorts = "4222,6222"
@@ -129,9 +129,9 @@ func TestGetOverriddenValues(t *testing.T) {
 		{id: "use namespace overrides",
 			nsAnnotations: map[string]string{
 				k8s.ProxyDisableIdentityAnnotation:          "true",
-				k8s.ProxyImageAnnotation:                    "ghcr.io/linkerd/proxy",
+				k8s.ProxyImageAnnotation:                    "cr.l5d.io/linkerd/proxy",
 				k8s.ProxyImagePullPolicyAnnotation:          pullPolicy,
-				k8s.ProxyInitImageAnnotation:                "ghcr.io/linkerd/proxy-init",
+				k8s.ProxyInitImageAnnotation:                "cr.l5d.io/linkerd/proxy-init",
 				k8s.ProxyControlPortAnnotation:              "4000",
 				k8s.ProxyInboundPortAnnotation:              "5000",
 				k8s.ProxyAdminPortAnnotation:                "5001",
@@ -164,7 +164,7 @@ func TestGetOverriddenValues(t *testing.T) {
 
 				values.GetGlobal().Proxy.Cores = 2
 				values.GetGlobal().Proxy.DisableIdentity = true
-				values.GetGlobal().Proxy.Image.Name = "ghcr.io/linkerd/proxy"
+				values.GetGlobal().Proxy.Image.Name = "cr.l5d.io/linkerd/proxy"
 				values.GetGlobal().Proxy.Image.PullPolicy = pullPolicy
 				values.GetGlobal().Proxy.Image.Version = proxyVersionOverride
 				values.GetGlobal().Proxy.Ports.Control = 4000
@@ -185,7 +185,7 @@ func TestGetOverriddenValues(t *testing.T) {
 					},
 				}
 				values.GetGlobal().Proxy.UID = 8500
-				values.GetGlobal().ProxyInit.Image.Name = "ghcr.io/linkerd/proxy-init"
+				values.GetGlobal().ProxyInit.Image.Name = "cr.l5d.io/linkerd/proxy-init"
 				values.GetGlobal().ProxyInit.Image.PullPolicy = pullPolicy
 				values.GetGlobal().ProxyInit.Image.Version = version.ProxyInitVersion
 				values.GetGlobal().ProxyInit.IgnoreInboundPorts = "4222,6222"

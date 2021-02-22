@@ -21,7 +21,7 @@ const (
 	defaultLinkerdNamespace = "linkerd"
 	defaultCNINamespace     = "linkerd-cni"
 	defaultClusterDomain    = "cluster.local"
-	defaultDockerRegistry   = "ghcr.io/linkerd"
+	defaultDockerRegistry   = "cr.l5d.io/linkerd"
 
 	jsonOutput  = "json"
 	tableOutput = "table"

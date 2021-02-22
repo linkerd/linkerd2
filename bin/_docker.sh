@@ -9,7 +9,7 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
 # TODO this should be set to the canonical public docker registry; we can override this
 # docker registry in, for instance, CI.
-export DOCKER_REGISTRY=${DOCKER_REGISTRY:-ghcr.io/linkerd}
+export DOCKER_REGISTRY=${DOCKER_REGISTRY:-cr.l5d.io/linkerd}
 
 # When set, causes docker's build output to be emitted to stderr.
 export DOCKER_TRACE=${DOCKER_TRACE:-}
