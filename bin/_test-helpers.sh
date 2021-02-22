@@ -6,8 +6,8 @@ set +e
 
 ##### Test setup helpers #####
 
-export default_test_names=(deep external-issuer helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
-export all_test_names=(cluster-domain cni-calico-deep external-prometheus-deep multicluster "${default_test_names[*]}")
+export default_test_names=(deep external-issuer external-prometheus-deep helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
+export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}")
 
 tests_usage() {
   progname="${0##*/}"
