@@ -8,9 +8,9 @@ kind: CustomResourceDefinition
 metadata:
   name: trafficsplits.split.smi-spec.io
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
   labels:
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 spec:
   group: split.smi-spec.io
   scope: Namespaced

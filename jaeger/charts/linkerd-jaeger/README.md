@@ -86,7 +86,7 @@ Kubernetes: `>=1.16.0-0`
 | webhook.crtPEM | string | `""` | if empty, Helm will auto-generate these fields |
 | webhook.externalSecret | bool | `false` |  |
 | webhook.failurePolicy | string | `"Ignore"` |  |
-| webhook.image.name | string | `"ghcr.io/linkerd/jaeger-webhook"` |  |
+| webhook.image.name | string | `"cr.l5d.io/linkerd/jaeger-webhook"` |  |
 | webhook.image.pullPolicy | string | `"IfNotPresent"` |  |
 | webhook.image.version | string | `"linkerdVersionValue"` |  |
 | webhook.keyPEM | string | `""` |  |

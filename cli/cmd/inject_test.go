@@ -700,12 +700,12 @@ func TestOverwriteRegistry(t *testing.T) {
 		expected string
 	}{
 		{
-			image:    "ghcr.io/linkerd/image",
+			image:    "cr.l5d.io/linkerd/image",
 			registry: "my.custom.registry",
 			expected: "my.custom.registry/image",
 		},
 		{
-			image:    "ghcr.io/linkerd/image",
+			image:    "cr.l5d.io/linkerd/image",
 			registry: "my.custom.registry/",
 			expected: "my.custom.registry/image",
 		},
@@ -716,8 +716,8 @@ func TestOverwriteRegistry(t *testing.T) {
 		},
 		{
 			image:    "my.custom.registry/image",
-			registry: "ghcr.io/linkerd",
-			expected: "ghcr.io/linkerd/image",
+			registry: "cr.l5d.io/linkerd",
+			expected: "cr.l5d.io/linkerd/image",
 		},
 		{
 			image:    "",
@@ -725,14 +725,14 @@ func TestOverwriteRegistry(t *testing.T) {
 			expected: "",
 		},
 		{
-			image:    "ghcr.io/linkerd/image",
+			image:    "cr.l5d.io/linkerd/image",
 			registry: "",
 			expected: "image",
 		},
 		{
 			image:    "image",
-			registry: "ghcr.io/linkerd",
-			expected: "ghcr.io/linkerd/image",
+			registry: "cr.l5d.io/linkerd",
+			expected: "cr.l5d.io/linkerd/image",
 		},
 	}
 	for i, tc := range testCases {

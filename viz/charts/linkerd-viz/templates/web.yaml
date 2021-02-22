@@ -8,15 +8,15 @@ metadata:
   name: linkerd-web
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    linkerd.io/extension: linkerd-viz
     component: web
     namespace: {{.Values.namespace}}
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    linkerd.io/extension: linkerd-viz
     component: web
   ports:
   - name: http
@@ -30,9 +30,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    linkerd.io/extension: linkerd-viz
     app.kubernetes.io/name: web
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
@@ -44,19 +44,19 @@ spec:
   replicas: {{.Values.dashboard.replicas}}
   selector:
     matchLabels:
-      {{.Values.extensionAnnotation}}: linkerd-viz
+      linkerd.io/extension: linkerd-viz
       component: web
       namespace: {{.Values.namespace}}
   template:
     metadata:
       annotations:
-        {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+        {{ include "partials.annotations.created-by" . }}
         {{- with .Values.dashboard.proxy }}
         {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
-        {{.Values.extensionAnnotation}}: linkerd-viz
+        linkerd.io/extension: linkerd-viz
         component: web
         namespace: {{.Values.namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
@@ -80,7 +80,7 @@ spec:
         {{- end}}
         - -controller-namespace={{.Values.linkerdNamespace}}
         - -viz-namespace={{.Values.namespace}}
-        - -log-level={{.Values.dashboard.logLevel}}
+        - -log-level={{.Values.dashboard.logLevel | default .Values.defaultLogLevel}}
         {{- if .Values.dashboard.enforcedHostRegexp }}
         - -enforced-host={{.Values.dashboard.enforcedHostRegexp}}
         {{- else -}}
@@ -88,8 +88,8 @@ spec:
         {{- $hostAbbrev := replace "." "\\." (printf "linkerd-web.%s.svc" .Values.namespace) }}
         - -enforced-host=^(localhost|127\.0\.0\.1|{{ $hostFull }}|{{ $hostAbbrev }}|\[::1\])(:\d+)?$
         {{- end}}
-        image: {{.Values.dashboard.image.registry}}/{{.Values.dashboard.image.name}}:{{.Values.dashboard.image.tag}}
-        imagePullPolicy: {{.Values.dashboard.image.pullPolicy}}
+        image: {{.Values.dashboard.image.registry | default .Values.defaultRegistry}}/{{.Values.dashboard.image.name}}:{{.Values.dashboard.image.tag | default .Values.linkerdVersion}}
+        imagePullPolicy: {{.Values.dashboard.image.pullPolicy | default .Values.defaultImagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /ping
@@ -110,5 +110,5 @@ spec:
         {{- include "partials.resources" .Values.dashboard.resources | nindent 8 }}
         {{- end }}
         securityContext:
-          runAsUser: {{.Values.dashboard.UID}}
+          runAsUser: {{.Values.dashboard.UID | default .Values.defaultUID}}
       serviceAccountName: linkerd-web

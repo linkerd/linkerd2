@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/linkerd/linkerd2/jaeger/pkg/labels"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -20,6 +23,9 @@ const (
 
 	// linkerdJaegerExtensionCheck adds checks related to the jaeger extension
 	linkerdJaegerExtensionCheck healthcheck.CategoryID = JaegerExtensionName
+
+	// linkerdJaegerExtensionDataPlaneCheck adds checks related to the jaeger extension
+	linkerdJaegerExtensionDataPlaneCheck healthcheck.CategoryID = JaegerExtensionName + "-data-plane"
 )
 
 var (
@@ -29,6 +35,8 @@ var (
 type checkOptions struct {
 	wait               time.Duration
 	output             string
+	proxy              bool
+	namespace          string
 	versionOverride    string
 	cliVersionOverride string
 }
@@ -162,6 +170,53 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 	return healthcheck.NewCategory(linkerdJaegerExtensionCheck, checkers, true)
 }
 
+// JaegerDataPlaneCategory returns a healthcheck.Category containing checkers
+// to verify the jaeger injection
+func JaegerDataPlaneCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
+	return healthcheck.NewCategory(linkerdJaegerExtensionDataPlaneCheck, []healthcheck.Checker{
+		*healthcheck.NewChecker("data plane namespace exists").
+			WithHintAnchor("l5d-data-plane-exists").
+			Fatal().
+			WithCheck(func(ctx context.Context) error {
+				if hc.DataPlaneNamespace == "" {
+					// when checking proxies in all namespaces, this check is a no-op
+					return nil
+				}
+				return hc.CheckNamespace(ctx, hc.DataPlaneNamespace, true)
+			}),
+		*healthcheck.NewChecker("data-plane pods have tracing enabled").
+			WithHintAnchor("l5d-jaeger-data-plane-trace").
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, hc.DataPlaneNamespace)
+				if err != nil {
+					return err
+				}
+
+				return checkForTraceConfiguration(pods)
+			}),
+	}, true)
+}
+
+// checkForTraceConfiguration checks if the trace annotation is present
+// only for the pods with tracing enabled
+func checkForTraceConfiguration(pods []corev1.Pod) error {
+	var podsWithoutTraceConfig []string
+	for i := range pods {
+		pod := pods[i]
+		// Check for jaeger-injector annotation
+		if !labels.IsTracingEnabled(&pod) {
+			podsWithoutTraceConfig = append(podsWithoutTraceConfig, fmt.Sprintf("* %s/%s", pod.Namespace, pod.Name))
+		}
+
+	}
+
+	if len(podsWithoutTraceConfig) > 0 {
+		return fmt.Errorf("Some data plane pods do not have tracing configured and cannot be traced:\n\t%s", strings.Join(podsWithoutTraceConfig, "\n\t"))
+	}
+	return nil
+}
+
 func newCheckOptions() *checkOptions {
 	return &checkOptions{
 		wait:   300 * time.Second,
@@ -198,6 +253,8 @@ code.`,
 
 	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
 	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
+	cmd.Flags().BoolVar(&options.proxy, "proxy", options.proxy, "Also run data-plane checks, to determine if the data plane is healthy")
+	cmd.Flags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	cmd.Flags().StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
 	cmd.Flags().StringVar(&options.cliVersionOverride, "cli-version-override", "", "Used to override the version of the cli (mostly for testing)")
 
@@ -214,11 +271,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		version.Version = options.cliVersionOverride
 	}
 
-	checks := []healthcheck.CategoryID{
-		linkerdJaegerExtensionCheck,
-	}
-
-	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+	hc := healthcheck.NewHealthChecker([]healthcheck.CategoryID{}, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		KubeContext:           kubeContext,
@@ -227,6 +280,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		APIAddr:               apiAddr,
 		RetryDeadline:         time.Now().Add(options.wait),
 		VersionOverride:       options.versionOverride,
+		DataPlaneNamespace:    options.namespace,
 	})
 
 	err = hc.InitializeKubeAPIClient()
@@ -237,6 +291,10 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	}
 
 	hc.AppendCategories(*jaegerCategory(hc))
+	if options.proxy {
+		hc.AppendCategories(*JaegerDataPlaneCategory(hc))
+	}
+
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
 	if !success {

@@ -89,8 +89,12 @@ linkerd upgrade.`,
 				return fmt.Errorf("Failed to load issuer credentials: %s", err)
 			}
 
-			// Render
-			overrides, err := renderOverrides(&values, controlPlaneNamespace, true)
+			valuesMap, err := values.ToMap()
+			if err != nil {
+				return fmt.Errorf("Failed to convert Values into a map: %s", err)
+			}
+
+			overrides, err := renderOverrides(valuesMap, true)
 			if err != nil {
 				return fmt.Errorf("Failed to render overrides: %s", err)
 			}

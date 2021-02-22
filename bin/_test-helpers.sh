@@ -6,7 +6,7 @@ set +e
 
 ##### Test setup helpers #####
 
-export default_test_names=(deep external-issuer external-prometheus-deep helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
+export default_test_names=(deep external-issuer helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
 export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}")
 
 tests_usage() {
@@ -262,7 +262,7 @@ check_if_l5d_exists() {
 Linkerd resources exist on cluster:
 \n%s\n
 Help:
-    Run: [%s/test-cleanup] ' "$linkerd_path"
+    Run: [%s/test-cleanup] ' "$resources" "$linkerd_path"
     exit 1
   fi
   printf '[ok]\n'

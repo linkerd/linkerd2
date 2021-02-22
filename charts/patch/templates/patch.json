@@ -67,7 +67,7 @@
       {{- include "partials.proxy-init" . | fromYaml | toPrettyJson | nindent 6 }}
   },
   {{- end }}
-  {{- with .Values.debugContainer }}
+  {{- if .Values.debugContainer }}
   {
     "op": "add",
     "path": "{{$prefix}}/spec/containers/-",
