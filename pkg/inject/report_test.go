@@ -19,7 +19,18 @@ func TestInjectable(t *testing.T) {
 		reasons             []string
 	}{
 		{
-			podSpec: &corev1.PodSpec{HostNetwork: false},
+			podSpec: &corev1.PodSpec{
+				HostNetwork: false,
+				Containers: []corev1.Container{
+					{
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								MountPath: k8s.MountPathServiceAccount,
+							},
+						},
+					},
+				},
+			},
 			podMeta: &metav1.ObjectMeta{
 				Annotations: map[string]string{
 					k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
@@ -28,7 +39,18 @@ func TestInjectable(t *testing.T) {
 			injectable: true,
 		},
 		{
-			podSpec: &corev1.PodSpec{HostNetwork: true},
+			podSpec: &corev1.PodSpec{
+				HostNetwork: true,
+				Containers: []corev1.Container{
+					{
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								MountPath: k8s.MountPathServiceAccount,
+							},
+						},
+					},
+				},
+			},
 			podMeta: &metav1.ObjectMeta{
 				Annotations: map[string]string{
 					k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
@@ -42,7 +64,12 @@ func TestInjectable(t *testing.T) {
 				Containers: []corev1.Container{
 					{
 						Name:  k8s.ProxyContainerName,
-						Image: "ghcr.io/linkerd/proxy:",
+						Image: "cr.l5d.io/linkerd/proxy:",
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								MountPath: k8s.MountPathServiceAccount,
+							},
+						},
 					},
 				},
 			},
@@ -59,7 +86,16 @@ func TestInjectable(t *testing.T) {
 				InitContainers: []corev1.Container{
 					{
 						Name:  k8s.InitContainerName,
-						Image: "ghcr.io/linkerd/proxy-init:",
+						Image: "cr.l5d.io/linkerd/proxy-init:",
+					},
+				},
+				Containers: []corev1.Container{
+					{
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								MountPath: k8s.MountPathServiceAccount,
+							},
+						},
 					},
 				},
 			},
@@ -73,7 +109,17 @@ func TestInjectable(t *testing.T) {
 		},
 		{
 			unsupportedResource: true,
-			podSpec:             &corev1.PodSpec{},
+			podSpec: &corev1.PodSpec{
+				Containers: []corev1.Container{
+					{
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								MountPath: k8s.MountPathServiceAccount,
+							},
+						},
+					},
+				},
+			},
 			podMeta: &metav1.ObjectMeta{
 				Annotations: map[string]string{
 					k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
@@ -84,7 +130,18 @@ func TestInjectable(t *testing.T) {
 		},
 		{
 			unsupportedResource: true,
-			podSpec:             &corev1.PodSpec{HostNetwork: true},
+			podSpec: &corev1.PodSpec{
+				HostNetwork: true,
+				Containers: []corev1.Container{
+					{
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								MountPath: k8s.MountPathServiceAccount,
+							},
+						},
+					},
+				},
+			},
 			podMeta: &metav1.ObjectMeta{
 				Annotations: map[string]string{
 					k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
@@ -98,7 +155,18 @@ func TestInjectable(t *testing.T) {
 			nsAnnotations: map[string]string{
 				k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
 			},
-			podSpec: &corev1.PodSpec{HostNetwork: true},
+			podSpec: &corev1.PodSpec{
+				HostNetwork: true,
+				Containers: []corev1.Container{
+					{
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								MountPath: k8s.MountPathServiceAccount,
+							},
+						},
+					},
+				},
+			},
 			podMeta: &metav1.ObjectMeta{
 				Annotations: map[string]string{
 					k8s.ProxyInjectAnnotation: k8s.ProxyInjectDisabled,
@@ -113,7 +181,18 @@ func TestInjectable(t *testing.T) {
 				k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
 			},
 			unsupportedResource: true,
-			podSpec:             &corev1.PodSpec{HostNetwork: true},
+			podSpec: &corev1.PodSpec{
+				HostNetwork: true,
+				Containers: []corev1.Container{
+					{
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								MountPath: k8s.MountPathServiceAccount,
+							},
+						},
+					},
+				},
+			},
 			podMeta: &metav1.ObjectMeta{
 				Annotations: map[string]string{
 					k8s.ProxyInjectAnnotation: k8s.ProxyInjectDisabled,
@@ -125,7 +204,18 @@ func TestInjectable(t *testing.T) {
 		},
 		{
 			unsupportedResource: true,
-			podSpec:             &corev1.PodSpec{HostNetwork: true},
+			podSpec: &corev1.PodSpec{
+				HostNetwork: true,
+				Containers: []corev1.Container{
+					{
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								MountPath: k8s.MountPathServiceAccount,
+							},
+						},
+					},
+				},
+			},
 			podMeta: &metav1.ObjectMeta{
 				Annotations: map[string]string{},
 			},
@@ -138,7 +228,12 @@ func TestInjectable(t *testing.T) {
 				Containers: []corev1.Container{
 					{
 						Name:  k8s.ProxyContainerName,
-						Image: "ghcr.io/linkerd/proxy:",
+						Image: "cr.l5d.io/linkerd/proxy:",
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								MountPath: k8s.MountPathServiceAccount,
+							},
+						},
 					},
 				}},
 			podMeta: &metav1.ObjectMeta{
@@ -147,6 +242,16 @@ func TestInjectable(t *testing.T) {
 
 			injectable: false,
 			reasons:    []string{hostNetworkEnabled, sidecarExists, injectEnableAnnotationAbsent},
+		},
+		{
+			podSpec: &corev1.PodSpec{},
+			podMeta: &metav1.ObjectMeta{
+				Annotations: map[string]string{
+					k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+				},
+			},
+			injectable: false,
+			reasons:    []string{disabledAutomountServiceAccountToken},
 		},
 	}
 

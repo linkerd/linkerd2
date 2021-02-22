@@ -1,0 +1,114 @@
+---
+###
+### Web
+###
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-web
+  namespace: {{.Values.namespace}}
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: web
+    namespace: {{.Values.namespace}}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/extension: linkerd-viz
+    component: web
+  ports:
+  - name: http
+    port: 8084
+    targetPort: 8084
+  - name: admin-http
+    port: 9994
+    targetPort: 9994
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+  labels:
+    linkerd.io/extension: linkerd-viz
+    app.kubernetes.io/name: web
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
+    component: web
+    namespace: {{.Values.namespace}}
+  name: linkerd-web
+  namespace: {{.Values.namespace}}
+spec:
+  replicas: {{.Values.dashboard.replicas}}
+  selector:
+    matchLabels:
+      linkerd.io/extension: linkerd-viz
+      component: web
+      namespace: {{.Values.namespace}}
+  template:
+    metadata:
+      annotations:
+        {{ include "partials.annotations.created-by" . }}
+        {{- with .Values.dashboard.proxy }}
+        {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+      labels:
+        linkerd.io/extension: linkerd-viz
+        component: web
+        namespace: {{.Values.namespace}}
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+    spec:
+      {{- if .Values.tolerations -}}
+      {{- include "linkerd.tolerations" . | nindent 6 }}
+      {{- end -}}
+      {{- include "linkerd.node-selector" . | nindent 6 }}
+      containers:
+      - args:
+        - -linkerd-controller-api-addr=linkerd-controller-api.{{.Values.linkerdNamespace}}.svc.{{.Values.clusterDomain}}:8085
+        - -linkerd-metrics-api-addr=linkerd-metrics-api.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:8085
+        - -cluster-domain={{.Values.clusterDomain}}
+        {{- if .Values.grafanaUrl }}
+        - -grafana-addr={{.Values.grafanaUrl}}
+        {{- else if .Values.grafana.enabled }}
+        - -grafana-addr=linkerd-grafana.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:3000
+        {{- end}}
+        {{- if .Values.jaegerUrl }}
+        - -jaeger-addr={{.Values.jaegerUrl}}
+        {{- end}}
+        - -controller-namespace={{.Values.linkerdNamespace}}
+        - -viz-namespace={{.Values.namespace}}
+        - -log-level={{.Values.dashboard.logLevel | default .Values.defaultLogLevel}}
+        {{- if .Values.dashboard.enforcedHostRegexp }}
+        - -enforced-host={{.Values.dashboard.enforcedHostRegexp}}
+        {{- else -}}
+        {{- $hostFull := replace "." "\\." (printf "linkerd-web.%s.svc.%s" .Values.namespace .Values.clusterDomain) }}
+        {{- $hostAbbrev := replace "." "\\." (printf "linkerd-web.%s.svc" .Values.namespace) }}
+        - -enforced-host=^(localhost|127\.0\.0\.1|{{ $hostFull }}|{{ $hostAbbrev }}|\[::1\])(:\d+)?$
+        {{- end}}
+        image: {{.Values.dashboard.image.registry | default .Values.defaultRegistry}}/{{.Values.dashboard.image.name}}:{{.Values.dashboard.image.tag | default .Values.linkerdVersion}}
+        imagePullPolicy: {{.Values.dashboard.image.pullPolicy | default .Values.defaultImagePullPolicy}}
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9994
+          initialDelaySeconds: 10
+        name: web
+        ports:
+        - containerPort: 8084
+          name: http
+        - containerPort: 9994
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9994
+        {{- if .Values.dashboard.resources -}}
+        {{- include "partials.resources" .Values.dashboard.resources | nindent 8 }}
+        {{- end }}
+        securityContext:
+          runAsUser: {{.Values.dashboard.UID | default .Values.defaultUID}}
+      serviceAccountName: linkerd-web

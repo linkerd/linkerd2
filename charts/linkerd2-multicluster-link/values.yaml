@@ -1,9 +1,0 @@
-controllerComponentLabel: linkerd.io/control-plane-component
-controllerImage: ghcr.io/linkerd/controller
-controllerImageVersion: linkerdVersionValue
-createdByAnnotation: linkerd.io/created-by
-gatewayProbePort: 4181
-namespace: linkerd-multicluster
-logLevel: info
-serviceMirrorRetryLimit: 3
-serviceMirrorUID: 2103

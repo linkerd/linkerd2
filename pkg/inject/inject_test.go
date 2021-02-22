@@ -23,7 +23,7 @@ func TestGetOverriddenValues(t *testing.T) {
 		pullPolicy           = "Always"
 	)
 
-	testConfig, err := l5dcharts.NewValues(false)
+	testConfig, err := l5dcharts.NewValues()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -41,9 +41,9 @@ func TestGetOverriddenValues(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
 							k8s.ProxyDisableIdentityAnnotation:               "true",
-							k8s.ProxyImageAnnotation:                         "ghcr.io/linkerd/proxy",
+							k8s.ProxyImageAnnotation:                         "cr.l5d.io/linkerd/proxy",
 							k8s.ProxyImagePullPolicyAnnotation:               pullPolicy,
-							k8s.ProxyInitImageAnnotation:                     "ghcr.io/linkerd/proxy-init",
+							k8s.ProxyInitImageAnnotation:                     "cr.l5d.io/linkerd/proxy-init",
 							k8s.ProxyControlPortAnnotation:                   "4000",
 							k8s.ProxyInboundPortAnnotation:                   "5000",
 							k8s.ProxyAdminPortAnnotation:                     "5001",
@@ -59,8 +59,6 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxyLogFormatAnnotation:                     "json",
 							k8s.ProxyEnableExternalProfilesAnnotation:        "false",
 							k8s.ProxyVersionOverrideAnnotation:               proxyVersionOverride,
-							k8s.ProxyTraceCollectorSvcAddrAnnotation:         "oc-collector.tracing:55678",
-							k8s.ProxyTraceCollectorSvcAccountAnnotation:      "default",
 							k8s.ProxyWaitBeforeExitSecondsAnnotation:         "123",
 							k8s.ProxyRequireIdentityOnInboundPortsAnnotation: "8888,9999",
 							k8s.ProxyOutboundConnectTimeout:                  "6000ms",
@@ -72,21 +70,21 @@ func TestGetOverriddenValues(t *testing.T) {
 				},
 			},
 			expected: func() *l5dcharts.Values {
-				values, _ := l5dcharts.NewValues(false)
+				values, _ := l5dcharts.NewValues()
 
-				values.Global.Proxy.Cores = 2
-				values.Global.Proxy.DisableIdentity = true
-				values.Global.Proxy.Image.Name = "ghcr.io/linkerd/proxy"
-				values.Global.Proxy.Image.PullPolicy = pullPolicy
-				values.Global.Proxy.Image.Version = proxyVersionOverride
-				values.Global.Proxy.Ports.Control = 4000
-				values.Global.Proxy.Ports.Inbound = 5000
-				values.Global.Proxy.Ports.Admin = 5001
-				values.Global.Proxy.Ports.Outbound = 5002
-				values.Global.Proxy.WaitBeforeExitSeconds = 123
-				values.Global.Proxy.LogLevel = "debug,linkerd=debug"
-				values.Global.Proxy.LogFormat = "json"
-				values.Global.Proxy.Resources = &l5dcharts.Resources{
+				values.Proxy.Cores = 2
+				values.Proxy.DisableIdentity = true
+				values.Proxy.Image.Name = "cr.l5d.io/linkerd/proxy"
+				values.Proxy.Image.PullPolicy = pullPolicy
+				values.Proxy.Image.Version = proxyVersionOverride
+				values.Proxy.Ports.Control = 4000
+				values.Proxy.Ports.Inbound = 5000
+				values.Proxy.Ports.Admin = 5001
+				values.Proxy.Ports.Outbound = 5002
+				values.Proxy.WaitBeforeExitSeconds = 123
+				values.Proxy.LogLevel = "debug,linkerd=debug"
+				values.Proxy.LogFormat = "json"
+				values.Proxy.Resources = &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{
 						Limit:   "1.5",
 						Request: "0.15",
@@ -96,20 +94,16 @@ func TestGetOverriddenValues(t *testing.T) {
 						Request: "120",
 					},
 				}
-				values.Global.Proxy.UID = 8500
-				values.Global.ProxyInit.Image.Name = "ghcr.io/linkerd/proxy-init"
-				values.Global.ProxyInit.Image.PullPolicy = pullPolicy
-				values.Global.ProxyInit.Image.Version = version.ProxyInitVersion
-				values.Global.ProxyInit.IgnoreInboundPorts = "4222,6222"
-				values.Global.ProxyInit.IgnoreOutboundPorts = "8079,8080"
-				values.Global.Proxy.Trace = &l5dcharts.Trace{
-					CollectorSvcAddr:    "oc-collector.tracing:55678",
-					CollectorSvcAccount: "default.tracing",
-				}
-				values.Global.Proxy.RequireIdentityOnInboundPorts = "8888,9999"
-				values.Global.Proxy.OutboundConnectTimeout = "6000ms"
-				values.Global.Proxy.InboundConnectTimeout = "600ms"
-				values.Global.Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
+				values.Proxy.UID = 8500
+				values.ProxyInit.Image.Name = "cr.l5d.io/linkerd/proxy-init"
+				values.ProxyInit.Image.PullPolicy = pullPolicy
+				values.ProxyInit.Image.Version = version.ProxyInitVersion
+				values.ProxyInit.IgnoreInboundPorts = "4222,6222"
+				values.ProxyInit.IgnoreOutboundPorts = "8079,8080"
+				values.Proxy.RequireIdentityOnInboundPorts = "8888,9999"
+				values.Proxy.OutboundConnectTimeout = "6000ms"
+				values.Proxy.InboundConnectTimeout = "600ms"
+				values.Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
 				return values
 			},
 		},
@@ -122,37 +116,35 @@ func TestGetOverriddenValues(t *testing.T) {
 				},
 			},
 			expected: func() *l5dcharts.Values {
-				values, _ := l5dcharts.NewValues(false)
+				values, _ := l5dcharts.NewValues()
 				return values
 			},
 		},
 		{id: "use namespace overrides",
 			nsAnnotations: map[string]string{
-				k8s.ProxyDisableIdentityAnnotation:          "true",
-				k8s.ProxyImageAnnotation:                    "ghcr.io/linkerd/proxy",
-				k8s.ProxyImagePullPolicyAnnotation:          pullPolicy,
-				k8s.ProxyInitImageAnnotation:                "ghcr.io/linkerd/proxy-init",
-				k8s.ProxyControlPortAnnotation:              "4000",
-				k8s.ProxyInboundPortAnnotation:              "5000",
-				k8s.ProxyAdminPortAnnotation:                "5001",
-				k8s.ProxyOutboundPortAnnotation:             "5002",
-				k8s.ProxyIgnoreInboundPortsAnnotation:       "4222,6222",
-				k8s.ProxyIgnoreOutboundPortsAnnotation:      "8079,8080",
-				k8s.ProxyCPURequestAnnotation:               "0.15",
-				k8s.ProxyMemoryRequestAnnotation:            "120",
-				k8s.ProxyCPULimitAnnotation:                 "1.5",
-				k8s.ProxyMemoryLimitAnnotation:              "256",
-				k8s.ProxyUIDAnnotation:                      "8500",
-				k8s.ProxyLogLevelAnnotation:                 "debug,linkerd=debug",
-				k8s.ProxyLogFormatAnnotation:                "json",
-				k8s.ProxyEnableExternalProfilesAnnotation:   "false",
-				k8s.ProxyVersionOverrideAnnotation:          proxyVersionOverride,
-				k8s.ProxyTraceCollectorSvcAddrAnnotation:    "oc-collector.tracing:55678",
-				k8s.ProxyTraceCollectorSvcAccountAnnotation: "default",
-				k8s.ProxyWaitBeforeExitSecondsAnnotation:    "123",
-				k8s.ProxyOutboundConnectTimeout:             "6000ms",
-				k8s.ProxyInboundConnectTimeout:              "600ms",
-				k8s.ProxyOpaquePortsAnnotation:              "4320-4325,3306",
+				k8s.ProxyDisableIdentityAnnotation:        "true",
+				k8s.ProxyImageAnnotation:                  "cr.l5d.io/linkerd/proxy",
+				k8s.ProxyImagePullPolicyAnnotation:        pullPolicy,
+				k8s.ProxyInitImageAnnotation:              "cr.l5d.io/linkerd/proxy-init",
+				k8s.ProxyControlPortAnnotation:            "4000",
+				k8s.ProxyInboundPortAnnotation:            "5000",
+				k8s.ProxyAdminPortAnnotation:              "5001",
+				k8s.ProxyOutboundPortAnnotation:           "5002",
+				k8s.ProxyIgnoreInboundPortsAnnotation:     "4222,6222",
+				k8s.ProxyIgnoreOutboundPortsAnnotation:    "8079,8080",
+				k8s.ProxyCPURequestAnnotation:             "0.15",
+				k8s.ProxyMemoryRequestAnnotation:          "120",
+				k8s.ProxyCPULimitAnnotation:               "1.5",
+				k8s.ProxyMemoryLimitAnnotation:            "256",
+				k8s.ProxyUIDAnnotation:                    "8500",
+				k8s.ProxyLogLevelAnnotation:               "debug,linkerd=debug",
+				k8s.ProxyLogFormatAnnotation:              "json",
+				k8s.ProxyEnableExternalProfilesAnnotation: "false",
+				k8s.ProxyVersionOverrideAnnotation:        proxyVersionOverride,
+				k8s.ProxyWaitBeforeExitSecondsAnnotation:  "123",
+				k8s.ProxyOutboundConnectTimeout:           "6000ms",
+				k8s.ProxyInboundConnectTimeout:            "600ms",
+				k8s.ProxyOpaquePortsAnnotation:            "4320-4325,3306",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -160,21 +152,21 @@ func TestGetOverriddenValues(t *testing.T) {
 				},
 			},
 			expected: func() *l5dcharts.Values {
-				values, _ := l5dcharts.NewValues(false)
+				values, _ := l5dcharts.NewValues()
 
-				values.Global.Proxy.Cores = 2
-				values.Global.Proxy.DisableIdentity = true
-				values.Global.Proxy.Image.Name = "ghcr.io/linkerd/proxy"
-				values.Global.Proxy.Image.PullPolicy = pullPolicy
-				values.Global.Proxy.Image.Version = proxyVersionOverride
-				values.Global.Proxy.Ports.Control = 4000
-				values.Global.Proxy.Ports.Inbound = 5000
-				values.Global.Proxy.Ports.Admin = 5001
-				values.Global.Proxy.Ports.Outbound = 5002
-				values.Global.Proxy.WaitBeforeExitSeconds = 123
-				values.Global.Proxy.LogLevel = "debug,linkerd=debug"
-				values.Global.Proxy.LogFormat = "json"
-				values.Global.Proxy.Resources = &l5dcharts.Resources{
+				values.Proxy.Cores = 2
+				values.Proxy.DisableIdentity = true
+				values.Proxy.Image.Name = "cr.l5d.io/linkerd/proxy"
+				values.Proxy.Image.PullPolicy = pullPolicy
+				values.Proxy.Image.Version = proxyVersionOverride
+				values.Proxy.Ports.Control = 4000
+				values.Proxy.Ports.Inbound = 5000
+				values.Proxy.Ports.Admin = 5001
+				values.Proxy.Ports.Outbound = 5002
+				values.Proxy.WaitBeforeExitSeconds = 123
+				values.Proxy.LogLevel = "debug,linkerd=debug"
+				values.Proxy.LogFormat = "json"
+				values.Proxy.Resources = &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{
 						Limit:   "1.5",
 						Request: "0.15",
@@ -184,19 +176,15 @@ func TestGetOverriddenValues(t *testing.T) {
 						Request: "120",
 					},
 				}
-				values.Global.Proxy.UID = 8500
-				values.Global.ProxyInit.Image.Name = "ghcr.io/linkerd/proxy-init"
-				values.Global.ProxyInit.Image.PullPolicy = pullPolicy
-				values.Global.ProxyInit.Image.Version = version.ProxyInitVersion
-				values.Global.ProxyInit.IgnoreInboundPorts = "4222,6222"
-				values.Global.ProxyInit.IgnoreOutboundPorts = "8079,8080"
-				values.Global.Proxy.Trace = &l5dcharts.Trace{
-					CollectorSvcAddr:    "oc-collector.tracing:55678",
-					CollectorSvcAccount: "default.tracing",
-				}
-				values.Global.Proxy.OutboundConnectTimeout = "6000ms"
-				values.Global.Proxy.InboundConnectTimeout = "600ms"
-				values.Global.Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
+				values.Proxy.UID = 8500
+				values.ProxyInit.Image.Name = "cr.l5d.io/linkerd/proxy-init"
+				values.ProxyInit.Image.PullPolicy = pullPolicy
+				values.ProxyInit.Image.Version = version.ProxyInitVersion
+				values.ProxyInit.IgnoreInboundPorts = "4222,6222"
+				values.ProxyInit.IgnoreOutboundPorts = "8079,8080"
+				values.Proxy.OutboundConnectTimeout = "6000ms"
+				values.Proxy.InboundConnectTimeout = "600ms"
+				values.Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
 				return values
 			},
 		},
@@ -212,7 +200,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				},
 			},
 			expected: func() *l5dcharts.Values {
-				values, _ := l5dcharts.NewValues(false)
+				values, _ := l5dcharts.NewValues()
 				return values
 			},
 		},
@@ -229,9 +217,9 @@ func TestGetOverriddenValues(t *testing.T) {
 				},
 			},
 			expected: func() *l5dcharts.Values {
-				values, _ := l5dcharts.NewValues(false)
-				values.Global.Proxy.OutboundConnectTimeout = "6005ms"
-				values.Global.Proxy.InboundConnectTimeout = "2005ms"
+				values, _ := l5dcharts.NewValues()
+				values.Proxy.OutboundConnectTimeout = "6005ms"
+				values.Proxy.InboundConnectTimeout = "2005ms"
 				return values
 			},
 		},
@@ -259,8 +247,8 @@ func TestGetOverriddenValues(t *testing.T) {
 				},
 			},
 			expected: func() *l5dcharts.Values {
-				values, _ := l5dcharts.NewValues(false)
-				values.Global.Proxy.OpaquePorts = "3306"
+				values, _ := l5dcharts.NewValues()
+				values.Proxy.OpaquePorts = "3306"
 				return values
 			},
 		},

@@ -68,7 +68,7 @@ subjects:
   namespace: other
 ---
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-cni
   labels:
@@ -78,7 +78,7 @@ rules:
   resources: ["pods", "nodes", "namespaces"]
   verbs: ["list", "get", "watch"]
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: linkerd-cni
@@ -186,9 +186,14 @@ spec:
         - name: SLEEP
           value: "true"
         lifecycle:
+          # In some edge-cases this helps ensure that cleanup() is called in the container's script
+          # https://github.com/linkerd/linkerd2/issues/2355
           preStop:
             exec:
-              command: ["kill","-15","1"]
+              command:
+              - /bin/sh
+              - -c
+              - kill -15 1
         volumeMounts:
         - mountPath: /host/opt/my-cni/bin
           name: cni-bin-dir

@@ -8,19 +8,19 @@ import (
 	"strings"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/net"
-	"github.com/linkerd/linkerd2/controller/gen/public"
+	l5dNetPb "github.com/linkerd/linkerd2/controller/gen/common/net"
 )
 
 // DefaultWeight is the default address weight sent by the Destination service
 // to the Linkerd proxies.
 const DefaultWeight = 1
 
-// PublicAddressToString formats a Public API TCPAddress as a string.
+// PublicAddressToString formats a Viz API TCPAddress as a string.
 //
 // If Ipv6, the bytes should be ordered big-endian. When formatted as a
 // string, the IP address should be enclosed in square brackets followed by
 // the port.
-func PublicAddressToString(addr *public.TcpAddress) string {
+func PublicAddressToString(addr *l5dNetPb.TcpAddress) string {
 	var s string
 	if addr.GetIp().GetIpv6() != nil {
 		s = "[%s]:%d"
@@ -30,8 +30,8 @@ func PublicAddressToString(addr *public.TcpAddress) string {
 	return fmt.Sprintf(s, PublicIPToString(addr.GetIp()), addr.GetPort())
 }
 
-// PublicIPToString formats a Public API IPAddress as a string.
-func PublicIPToString(ip *public.IPAddress) string {
+// PublicIPToString formats a Viz API IPAddress as a string.
+func PublicIPToString(ip *l5dNetPb.IPAddress) string {
 	var b []byte
 	if ip.GetIpv6() != nil {
 		b = make([]byte, 16)
@@ -92,18 +92,18 @@ func ParseProxyIPV4(ip string) (*pb.IPAddress, error) {
 	return ProxyIPV4(octets[0], octets[1], octets[2], octets[3]), nil
 }
 
-// PublicIPV4 encodes 4 octets as a Public API IPAddress.
-func PublicIPV4(a1, a2, a3, a4 uint8) *public.IPAddress {
+// PublicIPV4 encodes 4 octets as a Viz API IPAddress.
+func PublicIPV4(a1, a2, a3, a4 uint8) *l5dNetPb.IPAddress {
 	ip := (uint32(a1) << 24) | (uint32(a2) << 16) | (uint32(a3) << 8) | uint32(a4)
-	return &public.IPAddress{
-		Ip: &public.IPAddress_Ipv4{
+	return &l5dNetPb.IPAddress{
+		Ip: &l5dNetPb.IPAddress_Ipv4{
 			Ipv4: ip,
 		},
 	}
 }
 
-// ParsePublicIPV4 parses an IP Address string into a Public API IPAddress.
-func ParsePublicIPV4(ip string) (*public.IPAddress, error) {
+// ParsePublicIPV4 parses an IP Address string into a Viz API IPAddress.
+func ParsePublicIPV4(ip string) (*l5dNetPb.IPAddress, error) {
 	segments := strings.Split(ip, ".")
 	if len(segments) != 4 {
 		return nil, fmt.Errorf("Invalid IP address: %s", ip)
@@ -119,30 +119,30 @@ func ParsePublicIPV4(ip string) (*public.IPAddress, error) {
 	return PublicIPV4(octets[0], octets[1], octets[2], octets[3]), nil
 }
 
-// NetToPublic converts a Proxy API TCPAddress to a Public API
+// NetToPublic converts a Proxy API TCPAddress to a Viz API
 // TCPAddress
-func NetToPublic(net *pb.TcpAddress) *public.TcpAddress {
-	var ip *public.IPAddress
+func NetToPublic(net *pb.TcpAddress) *l5dNetPb.TcpAddress {
+	var ip *l5dNetPb.IPAddress
 
 	switch i := net.GetIp().GetIp().(type) {
 	case *pb.IPAddress_Ipv6:
-		ip = &public.IPAddress{
-			Ip: &public.IPAddress_Ipv6{
-				Ipv6: &public.IPv6{
+		ip = &l5dNetPb.IPAddress{
+			Ip: &l5dNetPb.IPAddress_Ipv6{
+				Ipv6: &l5dNetPb.IPv6{
 					First: i.Ipv6.First,
 					Last:  i.Ipv6.Last,
 				},
 			},
 		}
 	case *pb.IPAddress_Ipv4:
-		ip = &public.IPAddress{
-			Ip: &public.IPAddress_Ipv4{
+		ip = &l5dNetPb.IPAddress{
+			Ip: &l5dNetPb.IPAddress_Ipv4{
 				Ipv4: i.Ipv4,
 			},
 		}
 	}
 
-	return &public.TcpAddress{
+	return &l5dNetPb.TcpAddress{
 		Ip:   ip,
 		Port: net.GetPort(),
 	}

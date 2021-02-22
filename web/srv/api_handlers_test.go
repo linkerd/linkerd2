@@ -13,13 +13,15 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/api/public"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	vizApi "github.com/linkerd/linkerd2/viz/metrics-api"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 )
 
 func TestHandleApiVersion(t *testing.T) {
 	mockAPIClient := &public.MockAPIClient{
-		VersionInfoToReturn: &pb.VersionInfo{
+		VersionInfoToReturn: &publicPb.VersionInfo{
 			GoVersion:      "the best one",
 			BuildDate:      "never",
 			ReleaseVersion: "0.3.3",
@@ -28,8 +30,8 @@ func TestHandleApiVersion(t *testing.T) {
 	server := FakeServer()
 
 	handler := &handler{
-		render:    server.RenderTemplate,
-		apiClient: mockAPIClient,
+		render:          server.RenderTemplate,
+		publicAPIClient: mockAPIClient,
 	}
 
 	recorder := httptest.NewRecorder()
@@ -141,7 +143,7 @@ func TestHandleApiCheck(t *testing.T) {
 }
 
 func TestHandleApiGateway(t *testing.T) {
-	mockAPIClient := &public.MockAPIClient{
+	mockAPIClient := &vizApi.MockAPIClient{
 		GatewaysResponseToReturn: &pb.GatewaysResponse{
 			Response: &pb.GatewaysResponse_Ok_{
 				Ok: &pb.GatewaysResponse_Ok{

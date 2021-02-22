@@ -35,7 +35,7 @@ func TestParseProfile(t *testing.T) {
 
 func TestValidateOptions(t *testing.T) {
 	options := newProfileOptions()
-	exp := errors.New("You must specify exactly one of --template or --open-api or --proto or --tap")
+	exp := errors.New("You must specify exactly one of --template or --open-api or --proto")
 	err := options.validate()
 	if err == nil || err.Error() != exp.Error() {
 		t.Fatalf("validateOptions returned unexpected error: %s (expected: %s) for options: %+v", err, exp, options)
@@ -44,7 +44,7 @@ func TestValidateOptions(t *testing.T) {
 	options = newProfileOptions()
 	options.template = true
 	options.openAPI = "openAPI"
-	exp = errors.New("You must specify exactly one of --template or --open-api or --proto or --tap")
+	exp = errors.New("You must specify exactly one of --template or --open-api or --proto")
 	err = options.validate()
 	if err == nil || err.Error() != exp.Error() {
 		t.Fatalf("validateOptions returned unexpected error: %s (expected: %s) for options: %+v", err, exp, options)
@@ -61,6 +61,7 @@ func TestValidateOptions(t *testing.T) {
 	options = newProfileOptions()
 	options.template = true
 	options.name = "template-name"
+	options.namespace = "default"
 	err = options.validate()
 	if err != nil {
 		t.Fatalf("validateOptions returned unexpected error (%s) for options: %+v", err, options)
@@ -78,6 +79,7 @@ func TestValidateOptions(t *testing.T) {
 	options = newProfileOptions()
 	options.openAPI = "openAPI"
 	options.name = "openapi-name"
+	options.namespace = "default"
 	err = options.validate()
 	if err != nil {
 		t.Fatalf("validateOptions returned unexpected error (%s) for options: %+v", err, options)

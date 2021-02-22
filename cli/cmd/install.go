@@ -1,33 +1,36 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"strings"
 	"time"
 
 	"github.com/linkerd/linkerd2/cli/flag"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/charts/static"
+	flagspkg "github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tree"
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
+	valuespkg "helm.sh/helm/v3/pkg/cli/values"
+	"helm.sh/helm/v3/pkg/engine"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/helm/pkg/chartutil"
 	"sigs.k8s.io/yaml"
 )
 
 const (
-
-	// addOnChartsPath is where the linkerd2 add-ons will be present
-	addOnChartsPath = "add-ons"
-
 	configStage       = "config"
 	controlPlaneStage = "control-plane"
 
@@ -62,26 +65,21 @@ var (
 		"templates/controller-rbac.yaml",
 		"templates/destination-rbac.yaml",
 		"templates/heartbeat-rbac.yaml",
-		"templates/web-rbac.yaml",
 		"templates/serviceprofile-crd.yaml",
 		"templates/trafficsplit-crd.yaml",
 		"templates/proxy-injector-rbac.yaml",
 		"templates/sp-validator-rbac.yaml",
-		"templates/tap-rbac.yaml",
 		"templates/psp.yaml",
 	}
 
 	templatesControlPlaneStage = []string{
-		"templates/_helpers.tpl",
 		"templates/config.yaml",
 		"templates/identity.yaml",
 		"templates/controller.yaml",
 		"templates/destination.yaml",
 		"templates/heartbeat.yaml",
-		"templates/web.yaml",
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
-		"templates/tap.yaml",
 	}
 
 	ignoreCluster bool
@@ -101,6 +99,7 @@ var (
 
 func newCmdInstallConfig(values *l5dcharts.Values) *cobra.Command {
 	flags, flagSet := makeAllStageFlags(values)
+	var options valuespkg.Options
 
 	cmd := &cobra.Command{
 		Use:   "config [flags]",
@@ -115,7 +114,10 @@ resources for the Linkerd control plane. This command should be followed by
   linkerd install config | kubectl apply -f -
 
   # Install Linkerd into a non-default namespace.
-  linkerd install config -l linkerdtest | kubectl apply -f -`,
+  linkerd install config -L linkerdtest | kubectl apply -f -
+
+The installation can be configured by using the --set, --values, --set-string and --set-file flags.
+A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := flag.ApplySetFlags(values, flags)
 			if err != nil {
@@ -123,7 +125,7 @@ resources for the Linkerd control plane. This command should be followed by
 			}
 			if !ignoreCluster {
 				// Ensure k8s is reachable and that Linkerd is not already installed.
-				if err := errAfterRunningChecks(values.Global.CNIEnabled); err != nil {
+				if err := errAfterRunningChecks(values.CNIEnabled); err != nil {
 					if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
 						fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
 					} else {
@@ -133,9 +135,10 @@ resources for the Linkerd control plane. This command should be followed by
 				}
 			}
 
-			return render(os.Stdout, values, configStage)
+			return render(os.Stdout, values, configStage, options)
 		},
 	}
+	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
 
 	cmd.Flags().AddFlagSet(flagSet)
 
@@ -144,6 +147,7 @@ resources for the Linkerd control plane. This command should be followed by
 
 func newCmdInstallControlPlane(values *l5dcharts.Values) *cobra.Command {
 	var skipChecks bool
+	var options valuespkg.Options
 
 	allStageFlags, allStageFlagSet := makeAllStageFlags(values)
 	installOnlyFlags, installOnlyFlagSet := makeInstallFlags(values)
@@ -168,12 +172,16 @@ control plane. It should be run after "linkerd install config".`,
   linkerd install control-plane | kubectl apply -f -
 
   # Install Linkerd into a non-default namespace.
-  linkerd install control-plane -l linkerdtest | kubectl apply -f -`,
+  linkerd install control-plane -l linkerdtest | kubectl apply -f -
+
+The installation can be configured by using the --set, --values, --set-string and --set-file flags.
+A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md
+  `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !skipChecks {
 				// check if global resources exist to determine if the `install config`
 				// stage succeeded
-				if err := errAfterRunningChecks(values.Global.CNIEnabled); err == nil {
+				if err := errAfterRunningChecks(values.CNIEnabled); err == nil {
 					if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
 						fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
 					} else {
@@ -191,7 +199,7 @@ control plane. It should be run after "linkerd install config".`,
 
 			}
 
-			return install(cmd.Context(), os.Stdout, values, flags, controlPlaneStage)
+			return install(cmd.Context(), os.Stdout, values, flags, controlPlaneStage, options)
 		},
 	}
 
@@ -199,6 +207,7 @@ control plane. It should be run after "linkerd install config".`,
 	cmd.Flags().AddFlagSet(installOnlyFlagSet)
 	cmd.Flags().AddFlagSet(installUpgradeFlagSet)
 	cmd.Flags().AddFlagSet(proxyFlagSet)
+	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
 
 	cmd.Flags().BoolVar(
 		&skipChecks, "skip-checks", false,
@@ -209,7 +218,8 @@ control plane. It should be run after "linkerd install config".`,
 }
 
 func newCmdInstall() *cobra.Command {
-	values, err := l5dcharts.NewValues(false)
+	values, err := l5dcharts.NewValues()
+	var options valuespkg.Options
 
 	allStageFlags, allStageFlagSet := makeAllStageFlags(values)
 	installOnlyFlags, installOnlyFlagSet := makeInstallFlags(values)
@@ -237,9 +247,12 @@ control plane.`,
   linkerd install -l linkerdtest | kubectl apply -f -
 
   # Installation may also be broken up into two stages by user privilege, via
-  # subcommands.`,
+  # subcommands.
+
+The installation can be configured by using the --set, --values, --set-string and --set-file flags.
+A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return install(cmd.Context(), os.Stdout, values, flags, "")
+			return install(cmd.Context(), os.Stdout, values, flags, "", options)
 		},
 	}
 
@@ -253,10 +266,12 @@ control plane.`,
 	cmd.AddCommand(newCmdInstallConfig(values))
 	cmd.AddCommand(newCmdInstallControlPlane(values))
 
+	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
+
 	return cmd
 }
 
-func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, stage string) error {
+func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, stage string, options valuespkg.Options) error {
 	err := flag.ApplySetFlags(values, flags)
 	if err != nil {
 		return err
@@ -278,6 +293,7 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 			fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, "Secret/linkerd-config-overrides already exists")
 			os.Exit(1)
 		}
+
 	}
 
 	err = initializeIssuerCredentials(ctx, k8sAPI, values)
@@ -290,97 +306,95 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 		return err
 	}
 
-	return render(w, values, stage)
+	t := time.Now().Add(10 * time.Minute).UTC()
+	values.HeartbeatSchedule = fmt.Sprintf("%d %d * * * ", t.Minute(), t.Hour())
+
+	return render(w, values, stage, options)
 }
 
-func render(w io.Writer, values *l5dcharts.Values, stage string) error {
-	// Render raw values and create chart config
-	rawValues, err := yaml.Marshal(values)
-	if err != nil {
-		return err
-	}
+func render(w io.Writer, values *l5dcharts.Values, stage string, options valuespkg.Options) error {
 
-	files := []*chartutil.BufferedFile{
+	// Set any global flags if present, common with install and upgrade
+	values.Namespace = controlPlaneNamespace
+	values.Stage = stage
+
+	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
-	}
-
-	addOns, err := l5dcharts.ParseAddOnValues(values)
-	if err != nil {
-		return err
-	}
-
-	// Initialize add-on sub-charts
-	addOnCharts := make(map[string]*charts.Chart)
-	for _, addOn := range addOns {
-		addOnCharts[addOn.Name()] = &charts.Chart{
-			Name:      addOn.Name(),
-			Dir:       addOnChartsPath + "/" + addOn.Name(),
-			Namespace: controlPlaneNamespace,
-			RawValues: append(addOn.Values(), rawValues...),
-			Files: []*chartutil.BufferedFile{
-				{
-					Name: chartutil.ChartfileName,
-				},
-				{
-					Name: chartutil.ValuesfileName,
-				},
-			},
-		}
 	}
 
 	if stage == "" || stage == configStage {
 		for _, template := range templatesConfigStage {
 			files = append(files,
-				&chartutil.BufferedFile{Name: template},
+				&loader.BufferedFile{Name: template},
 			)
-		}
-
-		// Fill add-on's sub-charts with config templates
-		for _, addOn := range addOns {
-			addOnCharts[addOn.Name()].Files = append(addOnCharts[addOn.Name()].Files, addOn.ConfigStageTemplates()...)
 		}
 	}
 
 	if stage == "" || stage == controlPlaneStage {
 		for _, template := range templatesControlPlaneStage {
 			files = append(files,
-				&chartutil.BufferedFile{Name: template},
+				&loader.BufferedFile{Name: template},
 			)
 		}
-
-		// Fill add-on's sub-charts with control-plane templates
-		for _, addOn := range addOns {
-			addOnCharts[addOn.Name()].Files = append(addOnCharts[addOn.Name()].Files, addOn.ControlPlaneStageTemplates()...)
-		}
-
 	}
 
-	// TODO refactor to use l5dcharts.LoadChart()
-	chart := &charts.Chart{
-		Name:      helmDefaultChartName,
-		Dir:       helmDefaultChartDir,
-		Namespace: controlPlaneNamespace,
-		RawValues: rawValues,
-		Files:     files,
+	var partialFiles []*loader.BufferedFile
+	for _, template := range charts.L5dPartials {
+		partialFiles = append(partialFiles,
+			&loader.BufferedFile{Name: template},
+		)
 	}
-	buf, err := chart.Render()
+
+	// Load all chart files into buffer
+	if err := charts.FilesReader(static.Templates, helmDefaultChartDir+"/", files); err != nil {
+		return err
+	}
+
+	// Load all partial chart files into buffer
+	if err := charts.FilesReader(static.Templates, "", partialFiles); err != nil {
+		return err
+	}
+
+	// Create a Chart obj from the files
+	chart, err := loader.LoadFiles(append(files, partialFiles...))
 	if err != nil {
 		return err
 	}
 
-	for _, addon := range addOns {
-		b, err := addOnCharts[addon.Name()].Render()
-		if err != nil {
-			return err
-		}
+	// Store final Values generated from values.yaml and CLI flags
+	chart.Values, err = values.ToMap()
+	if err != nil {
+		return err
+	}
 
-		if _, err := buf.WriteString(b.String()); err != nil {
+	// Create values override
+	valuesOverrides, err := options.MergeValues(nil)
+	if err != nil {
+		return err
+	}
+
+	vals, err := chartutil.CoalesceValues(chart, valuesOverrides)
+	if err != nil {
+		return err
+	}
+
+	// Attach the final values into the `Values` field for rendering to work
+	renderedTemplates, err := engine.Render(chart, map[string]interface{}{"Values": vals})
+	if err != nil {
+		return err
+	}
+
+	// Merge templates and inject
+	var buf bytes.Buffer
+	for _, tmpl := range chart.Templates {
+		t := path.Join(chart.Metadata.Name, tmpl.Name)
+		if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
 			return err
 		}
 	}
 
 	if stage == "" || stage == controlPlaneStage {
-		overrides, err := renderOverrides(values, values.Global.Namespace)
+		overrides, err := renderOverrides(vals, false)
 		if err != nil {
 			return err
 		}
@@ -400,13 +414,28 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 // command, those credentials will be saved here so that they are preserved
 // during upgrade.  Note also that this Secret/linkerd-config-overrides
 // resource is not part of the Helm chart and will not be present when installing
-// with Helm.
-func renderOverrides(values *l5dcharts.Values, namespace string) ([]byte, error) {
-	defaults, err := l5dcharts.NewValues(false)
+// with Helm. If stringData is set to true, the secret will be rendered using
+// the StringData field instead of the Data field, making the output more
+// human readable.
+func renderOverrides(values chartutil.Values, stringData bool) ([]byte, error) {
+	defaults, err := l5dcharts.NewValues()
 	if err != nil {
 		return nil, err
 	}
-	values.Configs = l5dcharts.ConfigJSONs{}
+	// Remove unnecessary fields, including fields added by helm's `chartutil.CoalesceValues`
+	delete(values, "configs")
+	delete(values, "partials")
+	delete(values, "stage")
+
+	// Get Namespace from values
+	valuesTree, err := tree.MarshalToTree(values)
+	if err != nil {
+		return nil, err
+	}
+	namespace, err := valuesTree.GetString("namespace")
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve global.namespace from values: %v", err)
+	}
 
 	overrides, err := tree.Diff(defaults, values)
 	if err != nil {
@@ -423,10 +452,19 @@ func renderOverrides(values *l5dcharts.Values, namespace string) ([]byte, error)
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "linkerd-config-overrides",
 			Namespace: namespace,
+			Labels: map[string]string{
+				k8s.ControllerNSLabel: namespace,
+			},
 		},
-		Data: map[string][]byte{
+	}
+	if stringData {
+		secret.StringData = map[string]string{
+			"linkerd-config-overrides": string(overridesBytes),
+		}
+	} else {
+		secret.Data = map[string][]byte{
 			"linkerd-config-overrides": overridesBytes,
-		},
+		}
 	}
 	bytes, err := yaml.Marshal(secret)
 	if err != nil {

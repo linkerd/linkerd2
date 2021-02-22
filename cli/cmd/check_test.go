@@ -16,15 +16,22 @@ func TestCheckStatus(t *testing.T) {
 			[]healthcheck.CategoryID{},
 			&healthcheck.Options{},
 		)
-		hc.Add("category", "check1", "", func(context.Context) error {
-			return nil
-		})
-		hc.Add("category", "check2", "hint-anchor", func(context.Context) error {
-			return fmt.Errorf("This should contain instructions for fail")
-		})
+		hc.AppendCategories(*healthcheck.NewCategory("category", []healthcheck.Checker{
+			*healthcheck.NewChecker("check1").
+				WithCheck(func(context.Context) error {
+					return nil
+				}),
+			*healthcheck.NewChecker("check2").
+				WithHintAnchor("hint-anchor").
+				WithCheck(func(context.Context) error {
+					return fmt.Errorf("This should contain instructions for fail")
+				}),
+		},
+			true,
+		))
 
 		output := bytes.NewBufferString("")
-		runChecks(output, stderr, hc, tableOutput)
+		healthcheck.RunChecks(output, stderr, hc, tableOutput)
 
 		goldenFileBytes, err := ioutil.ReadFile("testdata/check_output.golden")
 		if err != nil {
@@ -43,15 +50,22 @@ func TestCheckStatus(t *testing.T) {
 			[]healthcheck.CategoryID{},
 			&healthcheck.Options{},
 		)
-		hc.Add("category", "check1", "", func(context.Context) error {
-			return nil
-		})
-		hc.Add("category", "check2", "hint-anchor", func(context.Context) error {
-			return fmt.Errorf("This should contain instructions for fail")
-		})
+		hc.AppendCategories(*healthcheck.NewCategory("category", []healthcheck.Checker{
+			*healthcheck.NewChecker("check1").
+				WithCheck(func(context.Context) error {
+					return nil
+				}),
+			*healthcheck.NewChecker("check2").
+				WithHintAnchor("hint-anchor").
+				WithCheck(func(context.Context) error {
+					return fmt.Errorf("This should contain instructions for fail")
+				}),
+		},
+			true,
+		))
 
 		output := bytes.NewBufferString("")
-		runChecks(output, stderr, hc, jsonOutput)
+		healthcheck.RunChecks(output, stderr, hc, jsonOutput)
 
 		goldenFileBytes, err := ioutil.ReadFile("testdata/check_output_json.golden")
 		if err != nil {

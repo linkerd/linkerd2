@@ -3,14 +3,13 @@
 ###
 ### Identity Controller Service RBAC
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.global.namespace}}-identity
+  name: linkerd-{{.Values.namespace}}-identity
   labels:
-    {{.Values.global.controllerComponentLabel}}: identity
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 rules:
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
@@ -25,26 +24,26 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.global.namespace}}-identity
+  name: linkerd-{{.Values.namespace}}-identity
   labels:
-    {{.Values.global.controllerComponentLabel}}: identity
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: linkerd-{{.Values.global.namespace}}-identity
+  name: linkerd-{{.Values.namespace}}-identity
 subjects:
 - kind: ServiceAccount
   name: linkerd-identity
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-identity
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.global.controllerComponentLabel}}: identity
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-{{- include "partials.image-pull-secrets" . }}
+    linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
+{{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 {{ end -}}

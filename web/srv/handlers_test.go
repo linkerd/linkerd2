@@ -27,8 +27,8 @@ func TestHandleIndex(t *testing.T) {
 	server := FakeServer()
 
 	handler := &handler{
-		render:    server.RenderTemplate,
-		apiClient: mockAPIClient,
+		render:          server.RenderTemplate,
+		publicAPIClient: mockAPIClient,
 	}
 
 	recorder := httptest.NewRecorder()
@@ -76,7 +76,7 @@ func TestHandleConfigDownload(t *testing.T) {
 
 	handler := &handler{
 		render:              server.RenderTemplate,
-		apiClient:           mockAPIClient,
+		publicAPIClient:     mockAPIClient,
 		controllerNamespace: "linkerd",
 		clusterDomain:       "mycluster.local",
 	}

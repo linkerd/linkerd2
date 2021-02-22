@@ -7,7 +7,6 @@ const topRoutesDisplayOrder = query => _compact([
   _isNil(query.to_type) ? null : 'toNamespace',
 ]);
 
-
 const tapDisplayOrder = query => _compact([
   _isNil(query.resource) ? null : query.resource.indexOf('namespace') === 0 ? null : 'namespace',
   'toResource',

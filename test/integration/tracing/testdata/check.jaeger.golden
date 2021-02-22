@@ -1,0 +1,11 @@
+linkerd-jaeger
+--------------
+√ linkerd-jaeger extension Namespace exists
+√ collector and jaeger service account exists
+√ collector config map exists
+√ jaeger extension pods are injected
+√ collector pod is running
+√ jaeger pod is running
+√ jaeger injector pod is running
+
+Status check results are √

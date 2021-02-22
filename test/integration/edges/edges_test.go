@@ -19,7 +19,7 @@ var TestHelper *testutil.TestHelper
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	os.Exit(testutil.Run(m, TestHelper))
+	os.Exit(m.Run())
 }
 
 // TestEdges requires that there has been traffic recently between linkerd-web
@@ -135,19 +135,23 @@ func TestDirectEdges(t *testing.T) {
 
 		// check edges
 		timeout := 50 * time.Second
+		testDataPath := "testdata"
+		if TestHelper.ExternalPrometheus() {
+			testDataPath += "/external_prometheus"
+		}
 		err = TestHelper.RetryFor(timeout, func() error {
-			out, err = TestHelper.LinkerdRun("-n", testNamespace, "-o", "json", "edges", "deploy")
+			out, err = TestHelper.LinkerdRun("-n", testNamespace, "-o", "json", "viz", "edges", "deploy")
 			if err != nil {
 				return err
 			}
 
-			tpl := template.Must(template.ParseFiles("testdata/direct_edges.golden"))
+			tpl := template.Must(template.ParseFiles(testDataPath + "/direct_edges.golden"))
 			vars := struct {
-				Ns        string
-				ControlNs string
+				Ns    string
+				VizNs string
 			}{
 				testNamespace,
-				TestHelper.GetLinkerdNamespace(),
+				TestHelper.GetVizNamespace(),
 			}
 			var buf bytes.Buffer
 			if err := tpl.Execute(&buf, vars); err != nil {

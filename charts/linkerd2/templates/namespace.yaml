@@ -3,15 +3,14 @@
 ###
 ### Linkerd Namespace
 ###
----
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: {{ .Values.global.namespace }}
+  name: {{ .Values.namespace }}
   annotations:
-    {{.Values.global.proxyInjectAnnotation}}: {{.Values.global.proxyInjectDisabled}}
+    linkerd.io/inject: disabled
   labels:
-    {{.Values.global.linkerdNamespaceLabel}}: "true"
+    linkerd.io/is-control-plane: "true"
     config.linkerd.io/admission-webhooks: disabled
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 {{ end -}}

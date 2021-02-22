@@ -17,7 +17,7 @@ const zeroRPS = "0.0rps"
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	os.Exit(testutil.Run(m, TestHelper))
+	os.Exit(m.Run())
 }
 
 type statTsRow struct {
@@ -68,7 +68,7 @@ func parseStatTsRow(out string, expectedRowCount, expectedColumnCount int) (map[
 }
 
 func statTrafficSplit(from string, ns string) (map[string]*statTsRow, error) {
-	cmd := []string{"stat", "ts", "--from", from, "--namespace", ns, "-t", "30s", "--unmeshed"}
+	cmd := []string{"viz", "stat", "ts", "--from", from, "--namespace", ns, "-t", "30s", "--unmeshed"}
 	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		return nil, err

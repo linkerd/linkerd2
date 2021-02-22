@@ -20,37 +20,34 @@ const debugContainerName = "linkerd-debug"
 // correct injector flags and annotations and verify
 // injected pods
 type InjectValidator struct {
-	NoInitContainer          bool
-	DisableIdentity          bool
-	AutoInject               bool
-	AdminPort                int
-	ControlPort              int
-	DisableTap               bool
-	EnableDebug              bool
-	EnableExternalProfiles   bool
-	ImagePullPolicy          string
-	InboundPort              int
-	InitImage                string
-	InitImageVersion         string
-	OutboundPort             int
-	CPULimit                 string
-	CPURequest               string
-	MemoryLimit              string
-	MemoryRequest            string
-	Image                    string
-	LogLevel                 string
-	LogFormat                string
-	UID                      int
-	Version                  string
-	RequireIdentityOnPorts   string
-	SkipOutboundPorts        string
-	OpaquePorts              string
-	SkipInboundPorts         string
-	TraceCollector           string
-	TraceCollectorSvcAccount string
-	OutboundConnectTimeout   string
-	InboundConnectTimeout    string
-	WaitBeforeExitSeconds    int
+	NoInitContainer        bool
+	DisableIdentity        bool
+	AutoInject             bool
+	AdminPort              int
+	ControlPort            int
+	EnableDebug            bool
+	EnableExternalProfiles bool
+	ImagePullPolicy        string
+	InboundPort            int
+	InitImage              string
+	InitImageVersion       string
+	OutboundPort           int
+	CPULimit               string
+	CPURequest             string
+	MemoryLimit            string
+	MemoryRequest          string
+	Image                  string
+	LogLevel               string
+	LogFormat              string
+	UID                    int
+	Version                string
+	RequireIdentityOnPorts string
+	SkipOutboundPorts      string
+	OpaquePorts            string
+	SkipInboundPorts       string
+	OutboundConnectTimeout string
+	InboundConnectTimeout  string
+	WaitBeforeExitSeconds  int
 }
 
 func (iv *InjectValidator) getContainer(pod *v1.PodSpec, name string, isInit bool) *v1.Container {
@@ -126,12 +123,6 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 
 	if iv.ControlPort != 0 {
 		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_CONTROL_LISTEN_ADDR", fmt.Sprintf("0.0.0.0:%d", iv.ControlPort)); err != nil {
-			return err
-		}
-	}
-
-	if iv.DisableTap {
-		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_TAP_DISABLED", enabled); err != nil {
 			return err
 		}
 	}
@@ -263,19 +254,6 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 
 	if iv.OpaquePorts != "" {
 		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION", iv.OpaquePorts); err != nil {
-			return err
-		}
-	}
-
-	if iv.TraceCollector != "" {
-		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR", iv.TraceCollector); err != nil {
-			return err
-		}
-	}
-
-	if iv.TraceCollectorSvcAccount != "" {
-		expectedAccount := fmt.Sprintf("%s.tracing.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)", iv.TraceCollectorSvcAccount)
-		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME", expectedAccount); err != nil {
 			return err
 		}
 	}
@@ -428,11 +406,6 @@ func (iv *InjectValidator) GetFlagsAndAnnotations() ([]string, map[string]string
 		flags = append(flags, "--disable-identity")
 	}
 
-	if iv.DisableTap {
-		annotations[k8s.ProxyDisableTapAnnotation] = enabled
-		flags = append(flags, "--disable-tap")
-	}
-
 	if iv.EnableDebug {
 		annotations[k8s.ProxyEnableDebugAnnotation] = enabled
 		flags = append(flags, "--enable-debug-sidecar")
@@ -529,14 +502,6 @@ func (iv *InjectValidator) GetFlagsAndAnnotations() ([]string, map[string]string
 	if iv.SkipOutboundPorts != "" {
 		annotations[k8s.ProxyIgnoreOutboundPortsAnnotation] = iv.SkipOutboundPorts
 		flags = append(flags, fmt.Sprintf("--skip-outbound-ports=%s", iv.SkipOutboundPorts))
-	}
-
-	if iv.TraceCollector != "" {
-		annotations[k8s.ProxyTraceCollectorSvcAddrAnnotation] = iv.TraceCollector
-	}
-
-	if iv.TraceCollectorSvcAccount != "" {
-		annotations[k8s.ProxyTraceCollectorSvcAccountAnnotation] = iv.TraceCollectorSvcAccount
 	}
 
 	if iv.OutboundConnectTimeout != "" {

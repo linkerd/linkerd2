@@ -1,8 +1,9 @@
 package destination
 
 import (
-	"context"
 	"fmt"
+	"strconv"
+	"strings"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
@@ -11,11 +12,15 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 )
 
-const defaultWeight uint32 = 10000
+const (
+	defaultWeight uint32 = 10000
+	// inboundListenAddr is the environment variable holding the inbound
+	// listening address for the proxy container.
+	envInboundListenAddr = "LINKERD2_PROXY_INBOUND_LISTEN_ADDR"
+)
 
 // endpointTranslator satisfies EndpointUpdateListener and translates updates
 // into Destination.Get messages.
@@ -32,13 +37,12 @@ type endpointTranslator struct {
 }
 
 func newEndpointTranslator(
-	ctx context.Context,
 	controllerNS string,
 	identityTrustDomain string,
 	enableH2Upgrade bool,
 	service string,
 	srcNodeName string,
-	k8sClient kubernetes.Interface,
+	nodes coreinformers.NodeInformer,
 	stream pb.Destination_GetServer,
 	log *logging.Entry,
 ) *endpointTranslator {
@@ -47,7 +51,7 @@ func newEndpointTranslator(
 		"service":   service,
 	})
 
-	nodeTopologyLabels, err := getK8sNodeTopology(ctx, k8sClient, srcNodeName)
+	nodeTopologyLabels, err := getK8sNodeTopology(nodes, srcNodeName)
 	if err != nil {
 		log.Errorf("Failed to get node topology for node %s: %s", srcNodeName, err)
 	}
@@ -209,7 +213,11 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			err error
 		)
 		if address.Pod != nil {
-			wa, err = et.toWeightedAddr(address)
+			opaquePorts, getErr := getOpaquePortsAnnotations(address.Pod)
+			if getErr != nil {
+				et.log.Errorf("failed getting opaque ports annotation for pod: %s", getErr)
+			}
+			wa, err = toWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 		} else {
 			var authOverride *pb.AuthorityOverride
 			if address.AuthorityOverride != "" {
@@ -220,7 +228,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 
 			// handling address with no associated pod
 			var addr *net.TcpAddress
-			addr, err = et.toAddr(address)
+			addr, err = toAddr(address)
 			wa = &pb.WeightedAddr{
 				Addr:              addr,
 				Weight:            defaultWeight,
@@ -268,7 +276,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 func (et *endpointTranslator) sendClientRemove(set watcher.AddressSet) {
 	addrs := []*net.TcpAddress{}
 	for _, address := range set.Addresses {
-		tcpAddr, err := et.toAddr(address)
+		tcpAddr, err := toAddr(address)
 		if err != nil {
 			et.log.Errorf("Failed to translate endpoints to addr: %s", err)
 			continue
@@ -288,7 +296,7 @@ func (et *endpointTranslator) sendClientRemove(set watcher.AddressSet) {
 	}
 }
 
-func (et *endpointTranslator) toAddr(address watcher.Address) (*net.TcpAddress, error) {
+func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 	ip, err := addr.ParseProxyIPV4(address.IP)
 	if err != nil {
 		return nil, err
@@ -299,19 +307,30 @@ func (et *endpointTranslator) toAddr(address watcher.Address) (*net.TcpAddress, 
 	}, nil
 }
 
-func (et *endpointTranslator) toWeightedAddr(address watcher.Address) (*pb.WeightedAddr, error) {
-	controllerNS := address.Pod.Labels[k8s.ControllerNSLabel]
+func toWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
+	controllerNSLabel := address.Pod.Labels[k8s.ControllerNSLabel]
 	sa, ns := k8s.GetServiceAccountAndNS(address.Pod)
 	labels := k8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
 
-	// If the pod is controlled by any Linkerd control plane, then it can be hinted
-	// that this destination knows H2 (and handles our orig-proto translation).
+	// If the pod is controlled by any Linkerd control plane, then it can be
+	// hinted that this destination knows H2 (and handles our orig-proto
+	// translation)
 	var hint *pb.ProtocolHint
-	if et.enableH2Upgrade && controllerNS != "" {
+	if enableH2Upgrade && controllerNSLabel != "" {
 		hint = &pb.ProtocolHint{
 			Protocol: &pb.ProtocolHint_H2_{
 				H2: &pb.ProtocolHint_H2{},
 			},
+		}
+		if _, ok := opaquePorts[address.Port]; ok {
+			port, err := getInboundPort(&address.Pod.Spec)
+			if err != nil {
+				log.Error(err)
+			} else {
+				hint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
+					InboundPort: port,
+				}
+			}
 		}
 	}
 
@@ -321,11 +340,11 @@ func (et *endpointTranslator) toWeightedAddr(address watcher.Address) (*pb.Weigh
 	// TODO this should be relaxed to match a trust domain annotation so that
 	// multiple meshes can participate in identity if they share trust roots.
 	var identity *pb.TlsIdentity
-	if et.identityTrustDomain != "" &&
-		controllerNS == et.controllerNS &&
+	if identityTrustDomain != "" &&
+		controllerNSLabel == controllerNS &&
 		address.Pod.Annotations[k8s.IdentityModeAnnotation] == k8s.IdentityModeDefault {
 
-		id := fmt.Sprintf("%s.%s.serviceaccount.identity.%s.%s", sa, ns, controllerNS, et.identityTrustDomain)
+		id := fmt.Sprintf("%s.%s.serviceaccount.identity.%s.%s", sa, ns, controllerNSLabel, identityTrustDomain)
 		identity = &pb.TlsIdentity{
 			Strategy: &pb.TlsIdentity_DnsLikeIdentity_{
 				DnsLikeIdentity: &pb.TlsIdentity_DnsLikeIdentity{
@@ -335,7 +354,7 @@ func (et *endpointTranslator) toWeightedAddr(address watcher.Address) (*pb.Weigh
 		}
 	}
 
-	tcpAddr, err := et.toAddr(address)
+	tcpAddr, err := toAddr(address)
 	if err != nil {
 		return nil, err
 	}
@@ -349,9 +368,9 @@ func (et *endpointTranslator) toWeightedAddr(address watcher.Address) (*pb.Weigh
 	}, nil
 }
 
-func getK8sNodeTopology(ctx context.Context, k8sClient kubernetes.Interface, srcNode string) (map[string]string, error) {
+func getK8sNodeTopology(nodes coreinformers.NodeInformer, srcNode string) (map[string]string, error) {
 	nodeTopology := make(map[string]string)
-	node, err := k8sClient.CoreV1().Nodes().Get(ctx, srcNode, metav1.GetOptions{})
+	node, err := nodes.Lister().Get(srcNode)
 	if err != nil {
 		return nodeTopology, err
 	}
@@ -373,4 +392,26 @@ func newEmptyAddressSet() watcher.AddressSet {
 		Labels:          make(map[string]string),
 		TopologicalPref: []string{},
 	}
+}
+
+// getInboundPort gets the inbound port from the proxy container's environment
+// variable.
+func getInboundPort(podSpec *corev1.PodSpec) (uint32, error) {
+	for _, containerSpec := range podSpec.Containers {
+		if containerSpec.Name != k8s.ProxyContainerName {
+			continue
+		}
+		for _, envVar := range containerSpec.Env {
+			if envVar.Name != envInboundListenAddr {
+				continue
+			}
+			addr := strings.Split(envVar.Value, ":")
+			port, err := strconv.ParseUint(addr[1], 10, 32)
+			if err != nil {
+				return 0, fmt.Errorf("failed to parse inbound port for proxy container: %s", err)
+			}
+			return uint32(port), nil
+		}
+	}
+	return 0, fmt.Errorf("failed to find %s environment variable in any container for given pod spec", envInboundListenAddr)
 }

@@ -2,17 +2,16 @@
 ###
 ### Control Plane PSP
 ###
----
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
-  name: linkerd-{{.Values.global.namespace}}-control-plane
+  name: linkerd-{{.Values.namespace}}-control-plane
   labels:
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 spec:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
-  {{- if empty .Values.global.cniEnabled }}
+  {{- if empty .Values.cniEnabled }}
   allowedCapabilities:
   - NET_ADMIN
   - NET_RAW
@@ -25,7 +24,7 @@ spec:
   seLinux:
     rule: RunAsAny
   runAsUser:
-    {{- if .Values.global.cniEnabled }}
+    {{- if .Values.cniEnabled }}
     rule: MustRunAsNonRoot
     {{- else }}
     rule: RunAsAny
@@ -33,7 +32,7 @@ spec:
   supplementalGroups:
     rule: MustRunAs
     ranges:
-    {{- if .Values.global.cniEnabled }}
+    {{- if .Values.cniEnabled }}
     - min: 10001
       max: 65535
     {{- else }}
@@ -43,7 +42,7 @@ spec:
   fsGroup:
     rule: MustRunAs
     ranges:
-    {{- if .Values.global.cniEnabled }}
+    {{- if .Values.cniEnabled }}
     - min: 10001
       max: 65535
     {{- else }}
@@ -62,71 +61,45 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-psp
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 rules:
 - apiGroups: ['policy', 'extensions']
   resources: ['podsecuritypolicies']
   verbs: ['use']
   resourceNames:
-  - linkerd-{{.Values.global.namespace}}-control-plane
+  - linkerd-{{.Values.namespace}}-control-plane
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: linkerd-psp
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 roleRef:
   kind: Role
   name: linkerd-psp
   apiGroup: rbac.authorization.k8s.io
 subjects:
-{{ if .Values.tracing.enabled -}}
-- kind: ServiceAccount
-  name: linkerd-collector
-  namespace: {{.Values.global.namespace}}
-{{ end -}}
 - kind: ServiceAccount
   name: linkerd-controller
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
 - kind: ServiceAccount
   name: linkerd-destination
-  namespace: {{.Values.global.namespace}}
-{{ if .Values.grafana.enabled -}}
-- kind: ServiceAccount
-  name: linkerd-grafana
-  namespace: {{.Values.global.namespace}}
-{{ end -}}
+  namespace: {{.Values.namespace}}
 {{ if not .Values.disableHeartBeat -}}
 - kind: ServiceAccount
   name: linkerd-heartbeat
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
 {{ end -}}
 - kind: ServiceAccount
   name: linkerd-identity
-  namespace: {{.Values.global.namespace}}
-{{ if .Values.tracing.enabled -}}
-- kind: ServiceAccount
-  name: linkerd-jaeger
-  namespace: {{.Values.global.namespace}}
-{{ end -}}
-{{ if .Values.prometheus.enabled -}}
-- kind: ServiceAccount
-  name: linkerd-prometheus
-  namespace: {{.Values.global.namespace}}
-{{ end -}}
+  namespace: {{.Values.namespace}}
 - kind: ServiceAccount
   name: linkerd-proxy-injector
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
 - kind: ServiceAccount
   name: linkerd-sp-validator
-  namespace: {{.Values.global.namespace}}
-- kind: ServiceAccount
-  name: linkerd-tap
-  namespace: {{.Values.global.namespace}}
-- kind: ServiceAccount
-  name: linkerd-web
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}

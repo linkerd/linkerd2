@@ -17,7 +17,7 @@ var TestHelper *testutil.TestHelper
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	os.Exit(testutil.Run(m, TestHelper))
+	os.Exit(m.Run())
 }
 
 //////////////////////
@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 // smoke test.
 func TestRoutes(t *testing.T) {
 	// control-plane routes
-	cmd := []string{"routes", "--namespace", TestHelper.GetLinkerdNamespace(), "deploy"}
+	cmd := []string{"viz", "routes", "--namespace", TestHelper.GetLinkerdNamespace(), "deploy"}
 	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd routes' command failed", err)
@@ -43,19 +43,12 @@ func TestRoutes(t *testing.T) {
 		{"linkerd-destination", 1},
 		{"linkerd-dst", 6},
 		{"linkerd-dst-headless", 3},
-		{"linkerd-grafana", 13},
 		{"linkerd-identity", 3},
 		{"linkerd-identity-headless", 1},
-		{"linkerd-prometheus", 5},
-		{"linkerd-web", 2},
 
 		{"POST /api/v1/ListPods", 1},
-		{"POST /api/v1/", 7},
+		{"POST /api/v1/", 6},
 		{"POST /io.linkerd.proxy.destination.Destination/Get", 4},
-		{"GET /api/annotations", 1},
-		{"GET /api/", 9},
-		{"GET /public/", 3},
-		{"GET /api/v1/", 2},
 	}
 
 	for _, r := range routeStrings {
@@ -68,7 +61,7 @@ func TestRoutes(t *testing.T) {
 
 	// smoke test / bb routes
 	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
-	cmd = []string{"routes", "--namespace", prefixedNs, "deploy"}
+	cmd = []string{"viz", "routes", "--namespace", prefixedNs, "deploy"}
 	golden := "routes.smoke.golden"
 
 	out, err = TestHelper.LinkerdRun(cmd...)

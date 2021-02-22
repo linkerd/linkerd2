@@ -712,7 +712,7 @@ spec:
 			t.Fatal(err)
 		}
 
-		svc, err := watcher.GetSvc(clusterIP)
+		svc, err := watcher.GetSvcID(clusterIP)
 		if err != nil {
 			t.Fatalf("Error getting service: %s", err)
 		}
@@ -727,7 +727,7 @@ spec:
 		}
 
 		badClusterIP := "10.256.0.2"
-		svc, err = watcher.GetSvc(badClusterIP)
+		svc, err = watcher.GetSvcID(badClusterIP)
 		if err != nil {
 			t.Fatalf("Error getting service: %s", err)
 		}

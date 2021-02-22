@@ -2,14 +2,13 @@
 ###
 ### Destination Controller Service
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.global.namespace}}-destination
+  name: linkerd-{{.Values.namespace}}-destination
   labels:
-    {{.Values.global.controllerComponentLabel}}: destination
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 rules:
 - apiGroups: ["apps"]
   resources: ["replicasets"]
@@ -18,7 +17,7 @@ rules:
   resources: ["jobs"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services", "nodes"]
+  resources: ["pods", "endpoints", "services", "nodes", "namespaces"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
@@ -26,7 +25,7 @@ rules:
 - apiGroups: ["split.smi-spec.io"]
   resources: ["trafficsplits"]
   verbs: ["list", "get", "watch"]
-  {{- if .Values.global.enableEndpointSlices }}
+  {{- if .Values.enableEndpointSlices }}
 - apiGroups: ["discovery.k8s.io"]
   resources: ["endpointslices"]
   verbs: ["list", "get", "watch"]
@@ -35,25 +34,25 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.global.namespace}}-destination
+  name: linkerd-{{.Values.namespace}}-destination
   labels:
-    {{.Values.global.controllerComponentLabel}}: destination
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: linkerd-{{.Values.global.namespace}}-destination
+  name: linkerd-{{.Values.namespace}}-destination
 subjects:
 - kind: ServiceAccount
   name: linkerd-destination
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-destination
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.global.controllerComponentLabel}}: destination
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-{{- include "partials.image-pull-secrets" . }}
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
+{{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}

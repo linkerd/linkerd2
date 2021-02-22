@@ -1,0 +1,427 @@
+# Default values for linkerd.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Fields that should be common with the core control plane
+
+# -- control plane version. See Proxy section for proxy version
+linkerdVersion: linkerdVersionValue
+# -- Kubernetes DNS Domain name to use
+clusterDomain: cluster.local
+# -- Trust domain used for identity
+# @default -- clusterDomain
+identityTrustDomain: ""
+
+# -- Docker registry for all viz components
+defaultRegistry: cr.l5d.io/linkerd
+# -- Docker imagePullPolicy for all viz components
+defaultImagePullPolicy: IfNotPresent
+# -- Log level for all the viz components
+defaultLogLevel: info
+# -- UID for all the viz components
+defaultUID: 2103
+
+# -- Namespace of the Linkerd core control-plane install
+linkerdNamespace: linkerd
+# -- Set to false when installing in a custom namespace.
+installNamespace: true
+# -- Namespace in which the Linkerd Viz extension has to be installed
+namespace: linkerd-viz
+
+# -- NodeSelector section, See the
+# [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
+nodeSelector:
+  beta.kubernetes.io/os: linux
+
+# -- For Private docker registries, authentication is needed.
+#  Registry secrets are applied to the respective service accounts
+imagePullSecrets: []
+# - name: my-private-docker-registry-login-secret
+
+# -- Tolerations section, See the
+# [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+# for more information
+tolerations:
+
+# -- Enables Pod Anti Affinity logic to balance the placement of replicas
+# across hosts and zones for High Availability.
+# Enable this only when you have multiple replicas of components.
+enablePodAntiAffinity: false
+
+# -- url of external prometheus instance
+prometheusUrl: ""
+
+# -- url of external grafana instance with reverse proxy configured.
+grafanaUrl: ""
+
+# -- url of external jaeger instance
+# Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>` if you plan to use jaeger extension
+jaegerUrl: ""
+
+# metrics API configuration
+metricsAPI:
+  # -- number of replicas of the metrics-api component
+  replicas: 1
+  # -- log level of the metrics-api component
+  # @default -- defaultLogLevel
+  logLevel: ""
+  image:
+    # -- Docker registry for the metrics-api component
+    # @default -- defaultRegistry
+    registry: ""
+    # -- Docker image name for the metrics-api component
+    name: metrics-api
+    # -- Docker image tag for the metrics-api component
+    # @default -- linkerdVersion
+    tag: ""
+    # -- Pull policy for the metrics-api component
+    # @default -- defaultImagePullPolicy
+    pullPolicy: ""
+
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the metrics-api container can use
+      limit:
+      # -- Amount of CPU units that the metrics-api container requests
+      request:
+    memory:
+      # -- Maximum amount of memory that metrics-api container can use
+      limit:
+      # -- Amount of memory that the metrics-api container requests
+      request:
+
+  proxy:
+    # -- If set, overrides default proxy resources for the proxy injected
+    # into the metrics-api component
+    # resources:
+
+  # -- UID for the metrics-api resource
+  UID:
+
+# tap configuration
+tap:
+    # -- Number of tap component replicas
+  replicas: 1
+  # -- log level of the tap component
+  # @default -- defaultLogLevel
+  logLevel: ""
+  image:
+    # -- Docker registry for the tap instance
+    # @default -- defaultRegistry
+    registry: ""
+    # -- Docker image name for the tap instance
+    name: tap
+    # -- Docker image tag for the tap instance
+    # @default -- linkerdVersion
+    tag: ""
+    # -- Pull policy for the tap component
+    # @default -- defaultImagePullPolicy
+    pullPolicy: ""
+  # -- Do not create a secret resource for the Tap component. If this is set to
+  # `true`, the value `tap.caBundle` must be set (see below).
+  externalSecret: false
+  # -- Certificate for the Tap component. If not provided then Helm will
+  # generate one.
+  crtPEM: |
+
+  # -- Certificate key for Tap component. If not provided then Helm will
+  # generate one.
+  keyPEM: |
+
+  # -- Bundle of CA certificates for Tap component. If not provided then Helm
+  # will use the certificate generated  for `tap.crtPEM`. If
+  # `tap.externalSecret` is set to true, this value must be set, as no
+  # certificate will be generated.
+  caBundle: |
+
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the tap container can use
+      limit:
+      # -- Amount of CPU units that the tap container requests
+      request:
+    memory:
+      # -- Maximum amount of memory that tap container can use
+      limit:
+      # -- Amount of memory that the tap container requests
+      request:
+
+  proxy:
+    # -- If set, overrides default proxy resources for the proxy injected
+    # into the tap component
+    # resources:
+
+  # -- UID for the dashboard resource
+  UID:
+
+# tapInjector configuration
+tapInjector:
+  # -- Number of replicas of tapInjector
+  replicas: 1
+  # -- log level of the tapInjector
+  # @default -- defaultLogLevel
+  logLevel: ""
+  image:
+    # -- Docker registry for the tapInjector instance
+    # @default -- defaultRegistry
+    registry: ""
+    # -- Docker image name for the tapInjector instance
+    name: tap
+    # -- Docker image tag for the tapInjector instance
+    # @default -- linkerdVersion
+    tag: ""
+    # -- Pull policy for the tapInjector component
+    # @default -- defaultImagePullPolicy
+    pullPolicy: ""
+
+  namespaceSelector:
+    # matchExpressions:
+    # - key: runlevel
+    #   operator: NotIn
+    #   values: ["0","1"]
+  objectSelector:
+    # matchLabels:
+    #   foo: bar
+  # -- UID for the tapInjector resource
+  UID: 
+  failurePolicy: Ignore
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the tapInjector container can use
+      limit:
+      # -- Amount of CPU units that the tapInjector container requests
+      request:
+    memory:
+      # -- Maximum amount of memory that tapInjector container can use
+      limit:
+      # -- Amount of memory that the tapInjector container requests
+      request:
+  proxy:
+    # -- If set, overrides default proxy resources for the proxy injected
+    # into the tapInjector component
+    # resources:
+
+  # -- Do not create a secret resource for the tapInjector webhook. If this is
+  # set to `true`, the value `tapInjector.caBundle` must be set (see below)
+  externalSecret: false
+  # -- Certificate for the tapInjector. If not provided then Helm will
+  # generate one.
+  crtPEM: |
+
+  # -- Certificate key for the tapInjector. If not provided then Helm will
+  # generate one.
+  keyPEM: |
+
+  # -- Bundle of CA certificates for the tapInjector. If not provided then
+  # Helm will use the certificate generated  for `tapInjector.crtPEM`. If
+  # `tapInjector.externalSecret` is set to true, this value must be set, as no
+  # certificate will be generated.
+  caBundle: |
+
+# web dashboard configuration
+dashboard:
+  # -- Number of replicas of dashboard
+  replicas: 1
+  # -- log level of the dashboard component
+  # @default -- defaultLogLevel
+  logLevel: ""
+  image:
+    # -- Docker registry for the web instance
+    # @default -- defaultRegistry
+    registry: ""
+    # -- Docker image name for the web instance
+    name: web
+    # -- Docker image tag for the web instance
+    # @default -- linkerdVersion
+    tag: ""
+    # -- Pull policy for the  web component
+    # @default -- defaultImagePullPolicy
+    pullPolicy: ""
+
+  # -- UID for the dashboard resource
+  UID:
+
+  # -- Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check
+  restrictPrivileges: false
+
+  # -- Host header validation regex for the dashboard. See the [Linkerd
+  # documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more
+  # information
+  enforcedHostRegexp: ""
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the web container can use
+      limit:
+      # -- Amount of CPU units that the web container requests
+      request:
+    memory:
+      # -- Maximum amount of memory that web container can use
+      limit:
+      # -- Amount of memory that the web container requests
+      request:
+
+  proxy:
+    # -- If set, overrides default proxy resources for the proxy injected
+    # into the dashboard component
+    # resources:
+
+grafana:
+  # -- toggle field to enable or disable grafana
+  enabled: true
+  image:
+    # -- Docker registry for the grafana instance
+    # @default -- defaultRegistry
+    registry: ""
+    # -- Docker image name for the grafana instance
+    name: grafana
+    # -- Docker image tag for the grafana instance
+    # @default -- linkerdVersion
+    tag: ""
+    # -- Pull policy for the grafana instance
+    # @default -- defaultImagePullPolicy
+    pullPolicy: ""
+
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the grafana container can use
+      limit:
+      # -- Amount of CPU units that the grafana container requests
+      request:
+    memory:
+      # -- Maximum amount of memory that grafana container can use
+      limit:
+      # -- Amount of memory that the grafana container requests
+      request:
+
+  proxy:
+    # -- If set, overrides default proxy resources for the proxy injected
+    # into the grafana component
+    # resources:
+
+prometheus:
+  # -- toggle field to enable or disable prometheus
+  enabled: true
+  image:
+    # -- Docker registry for the prometheus instance
+    registry: prom
+    # -- Docker image name for the prometheus instance
+    name: prometheus
+    # -- Docker image tag for the prometheus instance
+    tag: v2.19.3
+    # -- Pull policy for the prometheus instance
+    # @default -- defaultImagePullPolicy
+    pullPolicy: ""
+
+  # -- log level of the prometheus instance
+  # @default -- defaultLogLevel
+  logLevel: ""
+  # -- Command line options for Prometheus binary
+  args:
+    storage.tsdb.path: /data
+    storage.tsdb.retention.time: 6h
+    config.file: /etc/prometheus/prometheus.yml
+  # -- The global configuration specifies parameters that are valid in all other
+  # configuration contexts.
+  globalConfig:
+    scrape_interval: 10s
+    scrape_timeout: 10s
+    evaluation_interval: 10s
+
+  # -- Alert relabeling is applied to alerts before they are sent to the
+  # Alertmanager.
+  alertRelabelConfigs:
+  # Ex:
+  # - action: labeldrop
+  #   regex: prometheus_replica
+
+  # -- Alertmanager instances the Prometheus server sends alerts to configured via
+  # the static_configs parameter.
+  alertmanagers:
+  # Ex:
+  # - scheme: http
+  #   static_configs:
+  #   - targets:
+  #     - "alertmanager.linkerd.svc:9093"
+
+  # -- Allows transparently sending samples to an endpoint. Mostly used for long
+  # term storage.
+  remoteWrite:
+
+  # -- Alerting/recording rule ConfigMap mounts (sub-path names must end in
+  # ´_rules.yml´ or ´_rules.yaml´)
+  ruleConfigMapMounts:
+  # Ex:
+  # - name: alerting-rules
+  #   subPath: alerting_rules.yml
+  #   configMap: linkerd-prometheus-rules
+  # - name: recording-rules
+  #   subPath: recording_rules.yml
+  #   configMap: linkerd-prometheus-rules
+
+  # -- A scrapeConfigs section specifies a set of targets and parameters
+  # describing how to scrape them.
+  scrapeConfigs:
+  # Ex:
+  # - job_name: 'kubernetes-nodes'
+  #   scheme: https
+  #   tls_config:
+  #     ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  #   bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+  #   kubernetes_sd_configs:
+  #   - role: node
+  #   relabel_configs:
+  #   - action: labelmap
+  #     regex: __meta_kubernetes_node_label_(.+)
+
+  # -- A sidecarContainers section specifies a list of secondary containers to run
+  # in the prometheus pod e.g. to export data to non-prometheus systems
+  sidecarContainers:
+  # Ex:
+  # - name: sidecar
+  #   image: gcr.io/myproject/stackdriver-prometheus-sidecar
+  #   imagePullPolicy: Always
+  #   command:
+  #   - /bin/sh
+  #   - -c
+  #   - |
+  #     exec /bin/stackdriver-prometheus-sidecar \
+  #       --stackdriver.project-id=myproject \
+  #       --stackdriver.kubernetes.location=us-central1 \
+  #       --stackdriver.kubernetes.cluster-name=mycluster \
+  #       --prometheus.wal-directory=/data/wal \
+  #       --log.level=info
+  #   volumeMounts:
+  #   - mountPath: /data
+  #     name: data
+  #   ports:
+  #   - name: foo
+  #     containerPort: 9091
+  #     protocol: TCP
+  ### WARNING: persistence is experimental and has not been tested/vetted by the Linkerd team.
+  ### As such, please refer to https://linkerd.io/2/tasks/exporting-metrics/ for the recommended approach to metrics data retention.
+  # if enabled, creates a persistent volume claim for prometheus data
+  # https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims
+  #persistence:
+  # -- Storage class used to create prometheus data PV.
+  #  storageClass:
+  # -- PVC access mode.
+  #  accessMode:
+  # -- Prometheus data volume size.
+  #  size:
+
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the prometheus container can use
+      limit:
+      # -- Amount of CPU units that the prometheus container requests
+      request:
+    memory:
+      # -- Maximum amount of memory that prometheus container can use
+      limit:
+      # -- Amount of memory that the prometheus container requests
+      request:
+
+  proxy:
+    # -- If set, overrides default proxy resources for the proxy injected
+    # into the prometheus component
+    # resources:

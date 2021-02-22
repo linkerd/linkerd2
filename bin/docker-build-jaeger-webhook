@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+set -eu
+
+if [ $# -ne 0 ]; then
+    echo "no arguments allowed for ${0##*/}, given: $*" >&2
+    exit 64
+fi
+
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
+
+# shellcheck source=_docker.sh
+. "$bindir"/_docker.sh
+# shellcheck source=_tag.sh
+. "$bindir"/_tag.sh
+
+dockerfile=$rootdir/jaeger/injector/Dockerfile
+tag=$(head_root_tag)
+docker_build jaeger-webhook "$tag" "$dockerfile" --build-arg LINKERD_VERSION="$tag"
+

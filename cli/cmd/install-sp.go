@@ -32,7 +32,7 @@ support, verify "kubectl api-versions" outputs "linkerd.io/v1alpha2".`,
 				return err
 			}
 
-			clusterDomain := values.Global.ClusterDomain
+			clusterDomain := values.ClusterDomain
 			if clusterDomain == "" {
 				clusterDomain = defaultClusterDomain
 			}

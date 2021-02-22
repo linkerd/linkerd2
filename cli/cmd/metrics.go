@@ -8,11 +8,13 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/util"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -23,8 +25,7 @@ type metricsOptions struct {
 
 func newMetricsOptions() *metricsOptions {
 	return &metricsOptions{
-		namespace: defaultNamespace,
-		pod:       "",
+		pod: "",
 	}
 }
 
@@ -74,6 +75,9 @@ func newCmdMetrics() *cobra.Command {
   )`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if options.namespace == "" {
+				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+			}
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 			if err != nil {
 				return err
@@ -134,15 +138,17 @@ func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 	}
 
 	var matchLabels map[string]string
+	var ownerUID types.UID
 	switch res.GetType() {
 	case k8s.CronJob:
 		jobs, err := clientset.BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}
+
 		var pods []corev1.Pod
 		for _, job := range jobs.Items {
-			if isOwner(res.GetName(), job.GetOwnerReferences()) {
+			if isOwner(job.GetUID(), job.GetOwnerReferences()) {
 				jobPods, err := getPodsFor(ctx, clientset, namespace, fmt.Sprintf("%s/%s", k8s.Job, job.GetName()))
 				if err != nil {
 					return nil, err
@@ -158,6 +164,7 @@ func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 			return nil, err
 		}
 		matchLabels = ds.Spec.Selector.MatchLabels
+		ownerUID = ds.GetUID()
 
 	case k8s.Deployment:
 		deployment, err := clientset.AppsV1().Deployments(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
@@ -165,6 +172,29 @@ func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 			return nil, err
 		}
 		matchLabels = deployment.Spec.Selector.MatchLabels
+		ownerUID = deployment.GetUID()
+
+		replicaSets, err := clientset.AppsV1().ReplicaSets(namespace).List(
+			ctx,
+			metav1.ListOptions{
+				LabelSelector: labels.Set(matchLabels).AsSelector().String(),
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		var pods []corev1.Pod
+		for _, rs := range replicaSets.Items {
+			if isOwner(ownerUID, rs.GetOwnerReferences()) {
+				podsRS, err := getPodsFor(ctx, clientset, namespace, fmt.Sprintf("%s/%s", k8s.ReplicaSet, rs.GetName()))
+				if err != nil {
+					return nil, err
+				}
+				pods = append(pods, podsRS...)
+			}
+		}
+		return pods, nil
 
 	case k8s.Job:
 		job, err := clientset.BatchV1().Jobs(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
@@ -172,6 +202,7 @@ func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 			return nil, err
 		}
 		matchLabels = job.Spec.Selector.MatchLabels
+		ownerUID = job.GetUID()
 
 	case k8s.ReplicaSet:
 		rs, err := clientset.AppsV1().ReplicaSets(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
@@ -179,6 +210,7 @@ func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 			return nil, err
 		}
 		matchLabels = rs.Spec.Selector.MatchLabels
+		ownerUID = rs.GetUID()
 
 	case k8s.ReplicationController:
 		rc, err := clientset.CoreV1().ReplicationControllers(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
@@ -186,6 +218,7 @@ func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 			return nil, err
 		}
 		matchLabels = rc.Spec.Selector
+		ownerUID = rc.GetUID()
 
 	case k8s.StatefulSet:
 		ss, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
@@ -193,6 +226,7 @@ func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 			return nil, err
 		}
 		matchLabels = ss.Spec.Selector.MatchLabels
+		ownerUID = ss.GetUID()
 
 	default:
 		return nil, fmt.Errorf("unsupported resource type: %s", res.GetType())
@@ -211,12 +245,23 @@ func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 		return nil, err
 	}
 
-	return podList.Items, nil
+	if ownerUID == "" {
+		return podList.Items, nil
+	}
+
+	pods := []corev1.Pod{}
+	for _, pod := range podList.Items {
+		if isOwner(ownerUID, pod.GetOwnerReferences()) {
+			pods = append(pods, pod)
+		}
+	}
+
+	return pods, nil
 }
 
-func isOwner(resourceName string, ownerRefs []metav1.OwnerReference) bool {
+func isOwner(u types.UID, ownerRefs []metav1.OwnerReference) bool {
 	for _, or := range ownerRefs {
-		if resourceName == or.Name {
+		if u == or.UID {
 			return true
 		}
 	}

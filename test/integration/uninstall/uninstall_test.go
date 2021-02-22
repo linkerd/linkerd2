@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stderr, "Uninstall test disabled")
 		os.Exit(0)
 	}
-	os.Exit(testutil.Run(m, TestHelper))
+	os.Exit(m.Run())
 }
 
 func TestInstall(t *testing.T) {
@@ -38,6 +38,26 @@ func TestInstall(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
 	}
+
+	var (
+		vizCmd  = []string{"viz", "install"}
+		vizArgs = []string{
+			"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace())}
+	)
+
+	// Install Linkerd Viz Extension
+	exec := append(vizCmd, vizArgs...)
+	out, err = TestHelper.LinkerdRun(exec...)
+	if err != nil {
+		testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
+	}
+
+	out, err = TestHelper.KubectlApply(out, "")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", out)
+	}
+
 }
 
 func TestResourcesPostInstall(t *testing.T) {
@@ -50,23 +70,49 @@ func TestResourcesPostInstall(t *testing.T) {
 	}
 
 	// Tests Pods and Deployments
-	for deploy, spec := range testutil.LinkerdDeployReplicas {
-		if err := TestHelper.CheckPods(ctx, TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
+
+	expectedDeployments := testutil.LinkerdDeployReplicasEdge
+	if !TestHelper.ExternalPrometheus() {
+		expectedDeployments["linkerd-prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1, Containers: []string{}}
+	}
+	// Upgrade Case
+	if TestHelper.UpgradeHelmFromVersion() != "" {
+		expectedDeployments = testutil.LinkerdDeployReplicasStable
+	}
+	for deploy, spec := range expectedDeployments {
+		if err := TestHelper.CheckPods(ctx, spec.Namespace, deploy, spec.Replicas); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
 				testutil.AnnotatedError(t, "CheckPods timed-out", err)
 			}
 		}
-		if err := TestHelper.CheckDeployment(ctx, TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
+		if err := TestHelper.CheckDeployment(ctx, spec.Namespace, deploy, spec.Replicas); err != nil {
 			testutil.AnnotatedFatalf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
 		}
 	}
 }
 
 func TestUninstall(t *testing.T) {
-	args := []string{"uninstall"}
-	out, err := TestHelper.LinkerdRun(args...)
+	var (
+		vizCmd = []string{"viz", "uninstall"}
+	)
+
+	// Uninstall Linkerd Viz Extension
+	out, err := TestHelper.LinkerdRun(vizCmd...)
+	if err != nil {
+		testutil.AnnotatedFatal(t, "'linkerd viz uninstall' command failed", err)
+	}
+
+	args := []string{"delete", "-f", "-"}
+	out, err = TestHelper.Kubectl(out, args...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl delete' command failed",
+			"'kubectl delete' command failed\n%s", out)
+	}
+
+	args = []string{"uninstall"}
+	out, err = TestHelper.LinkerdRun(args...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd install' command failed", err)
 	}
@@ -74,8 +120,8 @@ func TestUninstall(t *testing.T) {
 	args = []string{"delete", "-f", "-"}
 	out, err = TestHelper.Kubectl(out, args...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-			"'kubectl apply' command failed\n%s", out)
+		testutil.AnnotatedFatalf(t, "'kubectl delete' command failed",
+			"'kubectl delete' command failed\n%s", out)
 	}
 }
 

@@ -11,15 +11,12 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	log "github.com/sirupsen/logrus"
 	"go.opencensus.io/plugin/ochttp"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 const (
@@ -30,9 +27,9 @@ const (
 	apiDeployment = "linkerd-controller"
 )
 
-// APIClient wraps one gRPC client interface for public.Api:
-type APIClient interface {
-	pb.ApiClient
+// Client wraps one gRPC client interface for publicPb.Api:
+type Client interface {
+	publicPb.ApiClient
 	destinationPb.DestinationClient
 }
 
@@ -42,60 +39,10 @@ type grpcOverHTTPClient struct {
 	controlPlaneNamespace string
 }
 
-func (c *grpcOverHTTPClient) StatSummary(ctx context.Context, req *pb.StatSummaryRequest, _ ...grpc.CallOption) (*pb.StatSummaryResponse, error) {
-	var msg pb.StatSummaryResponse
-	err := c.apiRequest(ctx, "StatSummary", req, &msg)
-	return &msg, err
-}
-
-func (c *grpcOverHTTPClient) Edges(ctx context.Context, req *pb.EdgesRequest, _ ...grpc.CallOption) (*pb.EdgesResponse, error) {
-	var msg pb.EdgesResponse
-	err := c.apiRequest(ctx, "Edges", req, &msg)
-	return &msg, err
-}
-
-func (c *grpcOverHTTPClient) TopRoutes(ctx context.Context, req *pb.TopRoutesRequest, _ ...grpc.CallOption) (*pb.TopRoutesResponse, error) {
-	var msg pb.TopRoutesResponse
-	err := c.apiRequest(ctx, "TopRoutes", req, &msg)
-	return &msg, err
-}
-
-func (c *grpcOverHTTPClient) Gateways(ctx context.Context, req *pb.GatewaysRequest, _ ...grpc.CallOption) (*pb.GatewaysResponse, error) {
-	var msg pb.GatewaysResponse
-	err := c.apiRequest(ctx, "Gateways", req, &msg)
-	return &msg, err
-}
-
-func (c *grpcOverHTTPClient) Version(ctx context.Context, req *pb.Empty, _ ...grpc.CallOption) (*pb.VersionInfo, error) {
-	var msg pb.VersionInfo
+func (c *grpcOverHTTPClient) Version(ctx context.Context, req *publicPb.Empty, _ ...grpc.CallOption) (*publicPb.VersionInfo, error) {
+	var msg publicPb.VersionInfo
 	err := c.apiRequest(ctx, "Version", req, &msg)
 	return &msg, err
-}
-
-func (c *grpcOverHTTPClient) SelfCheck(ctx context.Context, req *healthcheckPb.SelfCheckRequest, _ ...grpc.CallOption) (*healthcheckPb.SelfCheckResponse, error) {
-	var msg healthcheckPb.SelfCheckResponse
-	err := c.apiRequest(ctx, "SelfCheck", req, &msg)
-	return &msg, err
-}
-
-func (c *grpcOverHTTPClient) ListPods(ctx context.Context, req *pb.ListPodsRequest, _ ...grpc.CallOption) (*pb.ListPodsResponse, error) {
-	var msg pb.ListPodsResponse
-	err := c.apiRequest(ctx, "ListPods", req, &msg)
-	return &msg, err
-}
-
-func (c *grpcOverHTTPClient) ListServices(ctx context.Context, req *pb.ListServicesRequest, _ ...grpc.CallOption) (*pb.ListServicesResponse, error) {
-	var msg pb.ListServicesResponse
-	err := c.apiRequest(ctx, "ListServices", req, &msg)
-	return &msg, err
-}
-
-func (c *grpcOverHTTPClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...grpc.CallOption) (pb.Api_TapClient, error) {
-	return nil, status.Error(codes.Unimplemented, "Tap is deprecated in public API, use tap APIServer")
-}
-
-func (c *grpcOverHTTPClient) TapByResource(ctx context.Context, req *pb.TapByResourceRequest, _ ...grpc.CallOption) (pb.Api_TapByResourceClient, error) {
-	return nil, status.Error(codes.Unimplemented, "Tap is deprecated in public API, use tap APIServer")
 }
 
 func (c *grpcOverHTTPClient) Get(ctx context.Context, req *destinationPb.GetDestination, _ ...grpc.CallOption) (destinationPb.Destination_GetClient, error) {
@@ -176,7 +123,7 @@ func (c destinationClient) Recv() (*destinationPb.Update, error) {
 	return &msg, err
 }
 
-func newClient(apiURL *url.URL, httpClientToUse *http.Client, controlPlaneNamespace string) (APIClient, error) {
+func newClient(apiURL *url.URL, httpClientToUse *http.Client, controlPlaneNamespace string) (Client, error) {
 	if !apiURL.IsAbs() {
 		return nil, fmt.Errorf("server URL must be absolute, was [%s]", apiURL.String())
 	}
@@ -192,9 +139,9 @@ func newClient(apiURL *url.URL, httpClientToUse *http.Client, controlPlaneNamesp
 	}, nil
 }
 
-// NewInternalClient creates a new Public API client intended to run inside a
+// NewInternalClient creates a new public API client intended to run inside a
 // Kubernetes cluster.
-func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (APIClient, error) {
+func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (Client, error) {
 	apiURL, err := url.Parse(fmt.Sprintf("http://%s/", kubeAPIHost))
 	if err != nil {
 		return nil, err
@@ -203,9 +150,9 @@ func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (APICli
 	return newClient(apiURL, &http.Client{Transport: &ochttp.Transport{}}, controlPlaneNamespace)
 }
 
-// NewExternalClient creates a new Public API client intended to run from
+// NewExternalClient creates a new public API client intended to run from
 // outside a Kubernetes cluster.
-func NewExternalClient(ctx context.Context, controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (APIClient, error) {
+func NewExternalClient(ctx context.Context, controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (Client, error) {
 	portforward, err := k8s.NewPortForward(
 		ctx,
 		kubeAPI,

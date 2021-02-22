@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/prometheus"
@@ -23,7 +24,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
-var minAPIVersion = [3]int{1, 13, 0}
+var minAPIVersion = [3]int{1, 16, 0}
 
 // KubernetesAPI provides a client for accessing a Kubernetes cluster.
 // TODO: support ServiceProfile ClientSet. A prerequisite is moving the
@@ -165,6 +166,31 @@ func (kubeAPI *KubernetesAPI) GetReplicaSets(ctx context.Context, namespace stri
 	return replicaSetList.Items, nil
 }
 
+// GetAllNamespacesWithExtensionLabel gets all namespaces with the linkerd.io/extension label key
+func (kubeAPI *KubernetesAPI) GetAllNamespacesWithExtensionLabel(ctx context.Context) ([]corev1.Namespace, error) {
+	namespaces, err := kubeAPI.CoreV1().Namespaces().List(ctx, metav1.ListOptions{LabelSelector: LinkerdExtensionLabel})
+	if err != nil {
+		return nil, err
+	}
+
+	return namespaces.Items, nil
+}
+
+// GetNamespaceWithExtensionLabel gets the namespace with the LinkerdExtensionLabel label value of `value`
+func (kubeAPI *KubernetesAPI) GetNamespaceWithExtensionLabel(ctx context.Context, value string) (*corev1.Namespace, error) {
+	namespaces, err := kubeAPI.GetAllNamespacesWithExtensionLabel(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ns := range namespaces {
+		if ns.Labels[LinkerdExtensionLabel] == value {
+			return &ns, err
+		}
+	}
+	return nil, fmt.Errorf("could not find the %s extension", value)
+}
+
 // GetPodStatus receives a pod and returns the pod status, based on `kubectl` logic.
 // This logic is imported and adapted from the github.com/kubernetes/kubernetes project:
 // https://github.com/kubernetes/kubernetes/blob/33a3e325f754d179b25558dee116fca1c67d353a/pkg/printers/internalversion/printers.go#L558-L640
@@ -228,6 +254,27 @@ func GetPodStatus(pod corev1.Pod) string {
 	}
 
 	return reason
+}
+
+// GetProxyReady returns true if the pod contains a proxy that is ready
+func GetProxyReady(pod corev1.Pod) bool {
+	for _, container := range pod.Status.ContainerStatuses {
+		if container.Name == ProxyContainerName {
+			return container.Ready
+		}
+	}
+	return false
+}
+
+// GetProxyVersion returns the container proxy's version, if any
+func GetProxyVersion(pod corev1.Pod) string {
+	for _, container := range pod.Spec.Containers {
+		if container.Name == ProxyContainerName {
+			parts := strings.Split(container.Image, ":")
+			return parts[1]
+		}
+	}
+	return ""
 }
 
 // GetAddOnsConfigMap returns the data in the add-ons configmap

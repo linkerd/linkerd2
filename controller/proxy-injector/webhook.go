@@ -22,7 +22,6 @@ import (
 const (
 	eventTypeSkipped  = "InjectionSkipped"
 	eventTypeInjected = "Injected"
-	eventTypeTracing  = "Tracing"
 )
 
 // Inject returns an AdmissionResponse containing the patch, if any, to apply
@@ -96,7 +95,12 @@ func Inject(
 	resourceConfig.AppendPodAnnotations(map[string]string{
 		pkgK8s.CreatedByAnnotation: fmt.Sprintf("linkerd/proxy-injector %s", version.Version),
 	})
-	patchJSON, err := resourceConfig.GetPatch(true)
+	var patchJSON []byte
+	if resourceConfig.IsService() {
+		patchJSON, err = resourceConfig.GetServicePatch()
+	} else {
+		patchJSON, err = resourceConfig.GetPodPatch(true)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -107,9 +111,6 @@ func Inject(
 
 	if parent != nil {
 		recorder.Event(*parent, v1.EventTypeNormal, eventTypeInjected, "Linkerd sidecar proxy injected")
-		if report.TracingEnabled {
-			recorder.Event(*parent, v1.EventTypeNormal, eventTypeTracing, "Tracing Enabled")
-		}
 	}
 	log.Infof("patch generated for: %s", report.ResName())
 	log.Debugf("patch: %s", patchJSON)

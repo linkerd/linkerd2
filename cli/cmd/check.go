@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -11,20 +10,22 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/cli/flag"
+	jaegerCmd "github.com/linkerd/linkerd2/jaeger/cmd"
+	mcCmd "github.com/linkerd/linkerd2/multicluster/cmd"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
-	"github.com/linkerd/linkerd2/pkg/version"
-
-	"github.com/briandowns/spinner"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	"github.com/mattn/go-isatty"
+	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/version"
+	vizCmd "github.com/linkerd/linkerd2/viz/cmd"
+	vizHealthCheck "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	valuespkg "helm.sh/helm/v3/pkg/cli/values"
 )
 
 type checkOptions struct {
 	versionOverride    string
 	preInstallOnly     bool
-	multicluster       bool
 	dataPlaneOnly      bool
 	wait               time.Duration
 	namespace          string
@@ -35,7 +36,6 @@ type checkOptions struct {
 
 func newCheckOptions() *checkOptions {
 	return &checkOptions{
-		multicluster:       false,
 		versionOverride:    "",
 		preInstallOnly:     false,
 		dataPlaneOnly:      false,
@@ -55,7 +55,6 @@ func (options *checkOptions) nonConfigFlagSet() *pflag.FlagSet {
 	flags.StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	flags.BoolVar(&options.preInstallOnly, "pre", options.preInstallOnly, "Only run pre-installation checks, to determine if the control plane can be installed")
 	flags.BoolVar(&options.dataPlaneOnly, "proxy", options.dataPlaneOnly, "Only run data-plane checks, to determine if the data plane is healthy")
-	flags.BoolVar(&options.multicluster, "multicluster", options.multicluster, "Run multicluster checks")
 
 	return flags
 }
@@ -101,7 +100,7 @@ code.`,
 		Example: `  # Check that the Linkerd cluster-wide resource are installed correctly
   linkerd check config`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return configureAndRunChecks(cmd.Context(), stdout, stderr, configStage, options)
+			return configureAndRunChecks(cmd, stdout, stderr, configStage, options)
 		},
 	}
 
@@ -135,7 +134,7 @@ non-zero exit code.`,
   # Check that the Linkerd data plane proxies in the "app" namespace are up and running
   linkerd check --proxy --namespace app`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return configureAndRunChecks(cmd.Context(), stdout, stderr, "", options)
+			return configureAndRunChecks(cmd, stdout, stderr, "", options)
 		},
 	}
 
@@ -147,7 +146,7 @@ non-zero exit code.`,
 	return cmd
 }
 
-func configureAndRunChecks(ctx context.Context, wout io.Writer, werr io.Writer, stage string, options *checkOptions) error {
+func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, stage string, options *checkOptions) error {
 	err := options.validate()
 	if err != nil {
 		return fmt.Errorf("Validation error when executing check command: %v", err)
@@ -171,7 +170,7 @@ func configureAndRunChecks(ctx context.Context, wout io.Writer, werr io.Writer, 
 		} else {
 			checks = append(checks, healthcheck.LinkerdPreInstallCapabilityChecks)
 		}
-		installManifest, err = renderInstallManifest(ctx)
+		installManifest, err = renderInstallManifest(cmd.Context())
 		if err != nil {
 			return fmt.Errorf("Error rendering install manifest: %v", err)
 		}
@@ -192,9 +191,7 @@ func configureAndRunChecks(ctx context.Context, wout io.Writer, werr io.Writer, 
 			}
 			checks = append(checks, healthcheck.LinkerdCNIPluginChecks)
 			checks = append(checks, healthcheck.LinkerdHAChecks)
-			checks = append(checks, healthcheck.LinkerdMulticlusterChecks)
 
-			checks = append(checks, healthcheck.AddOnCategories...)
 		}
 	}
 
@@ -211,171 +208,157 @@ func configureAndRunChecks(ctx context.Context, wout io.Writer, werr io.Writer, 
 		RetryDeadline:         time.Now().Add(options.wait),
 		CNIEnabled:            options.cniEnabled,
 		InstallManifest:       installManifest,
-		MultiCluster:          options.multicluster,
 	})
 
-	success := runChecks(wout, werr, hc, options.output)
+	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
 	if !success {
+		os.Exit(1)
+	}
+
+	err = runExtensionChecks(cmd, wout, werr, options)
+	if err != nil {
+		err = fmt.Errorf("failed to run extensions checks: %s", err)
+		fmt.Fprintln(werr, err)
 		os.Exit(1)
 	}
 
 	return nil
 }
 
-func runChecks(wout io.Writer, werr io.Writer, hc *healthcheck.HealthChecker, output string) bool {
-	if output == jsonOutput {
-		return runChecksJSON(wout, werr, hc)
+func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts *checkOptions) error {
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+	if err != nil {
+		return err
 	}
-	return runChecksTable(wout, hc)
-}
 
-func runChecksTable(wout io.Writer, hc *healthcheck.HealthChecker) bool {
-	var lastCategory healthcheck.CategoryID
-	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
-	spin.Writer = wout
+	namespaces, err := kubeAPI.GetAllNamespacesWithExtensionLabel(cmd.Context())
+	if err != nil {
+		return err
+	}
 
-	prettyPrintResults := func(result *healthcheck.CheckResult) {
-		if lastCategory != result.Category {
-			if lastCategory != "" {
-				fmt.Fprintln(wout)
-			}
+	// no extensions to check
+	if len(namespaces) == 0 {
+		return nil
+	}
 
-			fmt.Fprintln(wout, result.Category)
-			fmt.Fprintln(wout, strings.Repeat("-", len(result.Category)))
+	if opts.output != healthcheck.JSONOutput {
+		headerTxt := "Linkerd extensions checks"
+		fmt.Fprintln(wout)
+		fmt.Fprintln(wout, headerTxt)
+		fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
+	}
 
-			lastCategory = result.Category
+	for i, ns := range namespaces {
+		if opts.output != healthcheck.JSONOutput && i < len(namespaces) {
+			// add a new line to space out each check output
+			fmt.Fprintln(wout)
 		}
 
-		spin.Stop()
-		if result.Retry {
-			if isatty.IsTerminal(os.Stdout.Fd()) {
-				spin.Suffix = fmt.Sprintf(" %s", result.Err)
-				spin.Color("bold") // this calls spin.Restart()
+		switch ns.Labels[k8s.LinkerdExtensionLabel] {
+		case jaegerCmd.JaegerExtensionName:
+			jaegerCheckCmd := jaegerCmd.NewCmdCheck()
+			err = executeExtensionCheck(cmd, "jaeger", jaegerCheckCmd.Flags())
+		case vizHealthCheck.VizExtensionName:
+			vizCmd := vizCmd.NewCmdCheck()
+			err = executeExtensionCheck(cmd, "viz", vizCmd.Flags())
+		case mcCmd.MulticlusterExtensionName:
+			mcCheckCmd := mcCmd.NewCmdCheck()
+			err = executeExtensionCheck(cmd, "multicluster", mcCheckCmd.Flags())
+		default:
+			// Since we don't have checks for extensions we don't support
+			// create a healthchecker that checks if the namespace exists
+			categoryID := healthcheck.CategoryID(ns.Labels[k8s.LinkerdExtensionLabel])
+			checkers := []healthcheck.Checker{}
+			checkers = append(checkers,
+				*healthcheck.NewChecker(fmt.Sprintf("%s extension Namespace exists", categoryID)).
+					WithHintAnchor(fmt.Sprintf("%s-ns-exists", categoryID)).
+					Fatal().
+					WithCheck(func(ctx context.Context) error {
+						_, err := kubeAPI.GetNamespaceWithExtensionLabel(ctx, string(categoryID))
+						if err != nil {
+							return err
+						}
+						return nil
+					}))
+			hc := healthcheck.NewHealthChecker([]healthcheck.CategoryID{categoryID},
+				&healthcheck.Options{
+					ControlPlaneNamespace: controlPlaneNamespace,
+					CNINamespace:          cniNamespace,
+					DataPlaneNamespace:    opts.namespace,
+					KubeConfig:            kubeconfigPath,
+					KubeContext:           kubeContext,
+					Impersonate:           impersonate,
+					ImpersonateGroup:      impersonateGroup,
+					APIAddr:               apiAddr,
+					VersionOverride:       opts.versionOverride,
+					RetryDeadline:         time.Now().Add(opts.wait),
+					CNIEnabled:            opts.cniEnabled,
+				})
+			hc.AppendCategories(*healthcheck.NewCategory(categoryID, checkers, true))
+			success := healthcheck.RunChecks(wout, werr, hc, opts.output)
+			if !success {
+				os.Exit(1)
 			}
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func getGlobalFlags(lf *pflag.FlagSet) []string {
+	cmdLineFlags := []string{}
+	lf.VisitAll(func(f *pflag.Flag) {
+		val := f.Value.String()
+		if val != "" {
+			cmdLineFlags = append(cmdLineFlags, fmt.Sprintf("--%s=%s", f.Name, val))
+		}
+	})
+
+	return cmdLineFlags
+}
+
+func getSharedFlags(lf *pflag.FlagSet, lf2 *pflag.FlagSet) []string {
+	cmdLineFlags := []string{}
+	lf.VisitAll(func(f *pflag.Flag) {
+		val := f.Value.String()
+
+		if val == "" {
+			// skip processing empty flags
 			return
 		}
 
-		status := okStatus
-		if result.Err != nil {
-			status = failStatus
-			if result.Warning {
-				status = warnStatus
-			}
+		if lf2.Lookup(f.Name) != nil {
+			cmdLineFlags = append(cmdLineFlags, fmt.Sprintf("--%s=%s", f.Name, val))
 		}
+	})
 
-		fmt.Fprintf(wout, "%s %s\n", status, result.Description)
-		if result.Err != nil {
-			fmt.Fprintf(wout, "    %s\n", result.Err)
-			if result.HintAnchor != "" {
-				fmt.Fprintf(wout, "    see %s%s for hints\n", healthcheck.HintBaseURL, result.HintAnchor)
-			}
-		}
-	}
-
-	success := hc.RunChecks(prettyPrintResults)
-	// this empty line separates final results from the checks list in the output
-	fmt.Fprintln(wout, "")
-
-	if !success {
-		fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
-	} else {
-		fmt.Fprintf(wout, "Status check results are %s\n", okStatus)
-	}
-
-	return success
+	return cmdLineFlags
 }
 
-type checkOutput struct {
-	Success    bool             `json:"success"`
-	Categories []*checkCategory `json:"categories"`
-}
+func executeExtensionCheck(currentCmd *cobra.Command, extension string, lf *pflag.FlagSet) error {
+	rootCmd := currentCmd.Root()
+	globalFlags := getGlobalFlags(rootCmd.PersistentFlags())
+	localFlags := getSharedFlags(currentCmd.Flags(), lf)
 
-type checkCategory struct {
-	Name   string   `json:"categoryName"`
-	Checks []*check `json:"checks"`
-}
+	args := []string{extension, "check"}
+	args = append(args, globalFlags...)
+	args = append(args, localFlags...)
 
-// check is a user-facing version of `healthcheck.CheckResult`, for output via
-// `linkerd check -o json`.
-type check struct {
-	Description string      `json:"description"`
-	Hint        string      `json:"hint,omitempty"`
-	Error       string      `json:"error,omitempty"`
-	Result      checkResult `json:"result"`
-}
-
-type checkResult string
-
-const (
-	checkSuccess checkResult = "success"
-	checkWarn    checkResult = "warning"
-	checkErr     checkResult = "error"
-)
-
-func runChecksJSON(wout io.Writer, werr io.Writer, hc *healthcheck.HealthChecker) bool {
-	var categories []*checkCategory
-
-	collectJSONOutput := func(result *healthcheck.CheckResult) {
-		categoryName := string(result.Category)
-		if categories == nil || categories[len(categories)-1].Name != categoryName {
-			categories = append(categories, &checkCategory{
-				Name:   categoryName,
-				Checks: []*check{},
-			})
-		}
-
-		if !result.Retry {
-			currentCategory := categories[len(categories)-1]
-			// ignore checks that are going to be retried, we want only final results
-			status := checkSuccess
-			if result.Err != nil {
-				status = checkErr
-				if result.Warning {
-					status = checkWarn
-				}
-			}
-
-			currentCheck := &check{
-				Description: result.Description,
-				Result:      status,
-			}
-
-			if result.Err != nil {
-				currentCheck.Error = result.Err.Error()
-
-				if result.HintAnchor != "" {
-					currentCheck.Hint = fmt.Sprintf("%s%s", healthcheck.HintBaseURL, result.HintAnchor)
-				}
-			}
-			currentCategory.Checks = append(currentCategory.Checks, currentCheck)
-		}
-	}
-
-	result := hc.RunChecks(collectJSONOutput)
-
-	outputJSON := checkOutput{
-		Success:    result,
-		Categories: categories,
-	}
-
-	resultJSON, err := json.MarshalIndent(outputJSON, "", "  ")
-	if err == nil {
-		fmt.Fprintf(wout, "%s\n", string(resultJSON))
-	} else {
-		fmt.Fprintf(werr, "JSON serialization of the check result failed with %s", err)
-	}
-	return result
+	rootCmd.SetArgs(args)
+	return rootCmd.Execute()
 }
 
 func renderInstallManifest(ctx context.Context) (string, error) {
-	values, err := charts.NewValues(false)
+	values, err := charts.NewValues()
 	if err != nil {
 		return "", err
 	}
 
 	var b strings.Builder
-	err = install(ctx, &b, values, []flag.Flag{}, "")
+	err = install(ctx, &b, values, []flag.Flag{}, "", valuespkg.Options{})
 	if err != nil {
 		return "", err
 	}

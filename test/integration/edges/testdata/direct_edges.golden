@@ -10,20 +10,20 @@
   \},
   \{
     "src": "linkerd-prometheus",
-    "src_namespace": "{{.ControlNs}}",
+    "src_namespace": "{{.VizNs}}",
     "dst": "slow-cooker",
     "dst_namespace": "{{.Ns}}",
-    "client_id": "",
-    "server_id": "",
+    "client_id": "linkerd-prometheus.{{.VizNs}}",
+    "server_id": "default.{{.Ns}}",
     "no_tls_reason": ""
   \},
   \{
     "src": "linkerd-prometheus",
-    "src_namespace": "{{.ControlNs}}",
+    "src_namespace": "{{.VizNs}}",
     "dst": "terminus",
     "dst_namespace": "{{.Ns}}",
-    "client_id": "",
-    "server_id": "",
+    "client_id": "linkerd-prometheus.{{.VizNs}}",
+    "server_id": "default.{{.Ns}}",
     "no_tls_reason": ""
   \}
 \]

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -26,6 +25,8 @@ type PortForward struct {
 	method     string
 	url        *url.URL
 	host       string
+	namespace  string
+	podName    string
 	localPort  int
 	remotePort int
 	emitLogs   bool
@@ -81,7 +82,12 @@ func NewPortForward(
 	podName := ""
 	for _, pod := range podList.Items {
 		if pod.Status.Phase == corev1.PodRunning {
-			if strings.HasPrefix(pod.Name, deployName) {
+			grandparent, err := getDeploymentForPod(ctx, k8sAPI, pod)
+			if err != nil {
+				log.Warnf("Failed to get deploy for pod [%s]: %s", pod.Name, err)
+				continue
+			}
+			if grandparent == deployName {
 				podName = pod.Name
 				break
 			}
@@ -93,6 +99,22 @@ func NewPortForward(
 	}
 
 	return newPortForward(k8sAPI, namespace, podName, host, localPort, remotePort, emitLogs)
+}
+
+func getDeploymentForPod(ctx context.Context, k8sAPI *KubernetesAPI, pod corev1.Pod) (string, error) {
+	parents := pod.GetOwnerReferences()
+	if len(parents) != 1 {
+		return "", nil
+	}
+	rs, err := k8sAPI.AppsV1().ReplicaSets(pod.Namespace).Get(ctx, parents[0].Name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	grandparents := rs.GetOwnerReferences()
+	if len(grandparents) != 1 {
+		return "", nil
+	}
+	return grandparents[0].Name, nil
 }
 
 func newPortForward(
@@ -120,6 +142,8 @@ func newPortForward(
 		method:     "POST",
 		url:        req.URL(),
 		host:       host,
+		namespace:  namespace,
+		podName:    podName,
 		localPort:  localPort,
 		remotePort: remotePort,
 		emitLogs:   emitLogs,
@@ -152,7 +176,12 @@ func (pf *PortForward) run() error {
 		return err
 	}
 
-	return fw.ForwardPorts()
+	err = fw.ForwardPorts()
+	if err != nil {
+		err = fmt.Errorf("%s for %s/%s", err, pf.namespace, pf.podName)
+		return err
+	}
+	return nil
 }
 
 // Init creates and runs a port-forward connection.

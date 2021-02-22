@@ -1,0 +1,120 @@
+---
+###
+### Tap
+###
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-tap
+  namespace: {{.Values.namespace}}
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: tap
+    namespace: {{.Values.namespace}}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/extension: linkerd-viz
+    component: tap
+  ports:
+  - name: grpc
+    port: 8088
+    targetPort: 8088
+  - name: apiserver
+    port: 443
+    targetPort: apiserver
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+  labels:
+    linkerd.io/extension: linkerd-viz
+    app.kubernetes.io/name: tap
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
+    component: tap
+    namespace: {{.Values.namespace}}
+  name: linkerd-tap
+  namespace: {{.Values.namespace}}
+spec:
+  replicas: {{.Values.tap.replicas}}
+  selector:
+    matchLabels:
+      linkerd.io/extension: linkerd-viz
+      component: tap
+      namespace: {{.Values.namespace}}
+  {{- if .Values.enablePodAntiAffinity }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+  {{- end }}
+  template:
+    metadata:
+      annotations:
+        {{- if empty .Values.cliVersion }}
+        checksum/config: {{ include (print $.Template.BasePath "/tap-rbac.yaml") . | sha256sum }}
+        {{- end }}
+        {{ include "partials.annotations.created-by" . }}
+        {{- with .Values.tap.proxy }}
+        {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+      labels:
+        linkerd.io/extension: linkerd-viz
+        component: tap
+        namespace: {{.Values.namespace}}
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+    spec:
+      {{- if .Values.tolerations -}}
+      {{- include "linkerd.tolerations" . | nindent 6 }}
+      {{- end -}}
+      {{- include "linkerd.node-selector" . | nindent 6 }}
+      {{- if .Values.enablePodAntiAffinity -}}
+      {{- $local := dict "component" "tap" "label" "component" -}}
+      {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
+      {{- end }}
+      containers:
+      - args:
+        - api
+        - -api-namespace={{.Values.linkerdNamespace}}
+        - -log-level={{.Values.tap.logLevel | default .Values.defaultLogLevel}}
+        - -identity-trust-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
+        image: {{.Values.tap.image.registry | default .Values.defaultRegistry}}/{{.Values.tap.image.name}}:{{.Values.tap.image.tag | default .Values.linkerdVersion}}
+        imagePullPolicy: {{.Values.tap.image.pullPolicy | default .Values.defaultImagePullPolicy}}
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9998
+          initialDelaySeconds: 10
+        name: tap
+        ports:
+        - containerPort: 8088
+          name: grpc
+        - containerPort: 8089
+          name: apiserver
+        - containerPort: 9998
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9998
+        {{- if .Values.tap.resources -}}
+        {{- include "partials.resources" .Values.tap.resources | nindent 8 }}
+        {{- end }}
+        securityContext:
+          runAsUser: {{.Values.tap.UID | default .Values.defaultUID}}
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: tls
+          readOnly: true
+      serviceAccountName: linkerd-tap
+      volumes:
+      - name: tls
+        secret:
+          secretName: linkerd-tap-k8s-tls
+

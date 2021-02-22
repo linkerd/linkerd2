@@ -2,18 +2,42 @@ package charts
 
 import (
 	"bytes"
+	"net/http"
 	"path"
 	"strings"
 
+	"github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/version"
-	"k8s.io/helm/pkg/chartutil"
-	helmChart "k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/renderutil"
-	"k8s.io/helm/pkg/timeconv"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/engine"
 )
 
 const versionPlaceholder = "linkerdVersionValue"
+
+var (
+	// L5dPartials is the list of templates in partials chart
+	// Keep this slice synced with the contents of /charts/partials
+	L5dPartials = []string{
+		"charts/partials/" + chartutil.ChartfileName,
+		"charts/partials/templates/_proxy.tpl",
+		"charts/partials/templates/_proxy-config-ann.tpl",
+		"charts/partials/templates/_proxy-init.tpl",
+		"charts/partials/templates/_volumes.tpl",
+		"charts/partials/templates/_resources.tpl",
+		"charts/partials/templates/_metadata.tpl",
+		"charts/partials/templates/_helpers.tpl",
+		"charts/partials/templates/_debug.tpl",
+		"charts/partials/templates/_capabilities.tpl",
+		"charts/partials/templates/_trace.tpl",
+		"charts/partials/templates/_nodeselector.tpl",
+		"charts/partials/templates/_tolerations.tpl",
+		"charts/partials/templates/_affinity.tpl",
+		"charts/partials/templates/_validate.tpl",
+		"charts/partials/templates/_pull-secrets.tpl",
+	}
+)
 
 // Chart holds the necessary info to render a Helm chart
 type Chart struct {
@@ -21,37 +45,45 @@ type Chart struct {
 	Dir       string
 	Namespace string
 	RawValues []byte
-	Files     []*chartutil.BufferedFile
+	Files     []*loader.BufferedFile
+	Fs        http.FileSystem
 }
 
-func (c *Chart) render(partialsFiles []*chartutil.BufferedFile) (bytes.Buffer, error) {
-	if err := FilesReader(c.Dir+"/", c.Files); err != nil {
+func (c *Chart) render(partialsFiles []*loader.BufferedFile) (bytes.Buffer, error) {
+	if err := FilesReader(c.Fs, c.Dir+"/", c.Files); err != nil {
 		return bytes.Buffer{}, err
 	}
 
-	if err := FilesReader("", partialsFiles); err != nil {
+	// static.Templates is used as partials are always available there
+	if err := FilesReader(static.Templates, "", partialsFiles); err != nil {
 		return bytes.Buffer{}, err
 	}
 
 	// Create chart and render templates
-	chart, err := chartutil.LoadFiles(append(c.Files, partialsFiles...))
+	chart, err := loader.LoadFiles(append(c.Files, partialsFiles...))
 	if err != nil {
 		return bytes.Buffer{}, err
 	}
 
-	renderOpts := renderutil.Options{
-		ReleaseOptions: chartutil.ReleaseOptions{
-			Name:      c.Name,
-			IsInstall: true,
-			IsUpgrade: false,
-			Time:      timeconv.Now(),
-			Namespace: c.Namespace,
-		},
-		KubeVersion: "",
+	releaseOptions := chartutil.ReleaseOptions{
+		Name:      c.Name,
+		IsInstall: true,
+		IsUpgrade: false,
+		Namespace: c.Namespace,
 	}
 
-	chartConfig := &helmChart.Config{Raw: string(c.RawValues), Values: map[string]*helmChart.Value{}}
-	renderedTemplates, err := renderutil.Render(chart, chartConfig, renderOpts)
+	var rawMapValues map[string]interface{}
+	err = yaml.Unmarshal(c.RawValues, &rawMapValues)
+	if err != nil {
+		return bytes.Buffer{}, err
+	}
+
+	valuesToRender, err := chartutil.ToRenderValues(chart, rawMapValues, releaseOptions, nil)
+	if err != nil {
+		return bytes.Buffer{}, err
+	}
+
+	renderedTemplates, err := engine.Render(chart, valuesToRender)
 	if err != nil {
 		return bytes.Buffer{}, err
 	}
@@ -59,7 +91,7 @@ func (c *Chart) render(partialsFiles []*chartutil.BufferedFile) (bytes.Buffer, e
 	// Merge templates and inject
 	var buf bytes.Buffer
 	for _, tmpl := range c.Files {
-		t := path.Join(renderOpts.ReleaseOptions.Name, tmpl.Name)
+		t := path.Join(releaseOptions.Name, tmpl.Name)
 		if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
 			return bytes.Buffer{}, err
 		}
@@ -71,33 +103,22 @@ func (c *Chart) render(partialsFiles []*chartutil.BufferedFile) (bytes.Buffer, e
 // Render returns a bytes buffer with the result of rendering a Helm chart
 func (c *Chart) Render() (bytes.Buffer, error) {
 
-	// Keep this slice synced with the contents of /charts/partials
-	l5dPartials := []*chartutil.BufferedFile{
-		{Name: "charts/partials/" + chartutil.ChartfileName},
-		{Name: "charts/partials/templates/_proxy.tpl"},
-		{Name: "charts/partials/templates/_proxy-init.tpl"},
-		{Name: "charts/partials/templates/_volumes.tpl"},
-		{Name: "charts/partials/templates/_resources.tpl"},
-		{Name: "charts/partials/templates/_metadata.tpl"},
-		{Name: "charts/partials/templates/_helpers.tpl"},
-		{Name: "charts/partials/templates/_debug.tpl"},
-		{Name: "charts/partials/templates/_capabilities.tpl"},
-		{Name: "charts/partials/templates/_trace.tpl"},
-		{Name: "charts/partials/templates/_nodeselector.tpl"},
-		{Name: "charts/partials/templates/_tolerations.tpl"},
-		{Name: "charts/partials/templates/_affinity.tpl"},
-		{Name: "charts/partials/templates/_addons.tpl"},
-		{Name: "charts/partials/templates/_validate.tpl"},
-		{Name: "charts/partials/templates/_pull-secrets.tpl"},
+	l5dPartials := []*loader.BufferedFile{}
+	for _, template := range L5dPartials {
+		l5dPartials = append(l5dPartials, &loader.BufferedFile{
+			Name: template,
+		})
 	}
+
 	return c.render(l5dPartials)
 }
 
 // RenderCNI returns a bytes buffer with the result of rendering a Helm chart
 func (c *Chart) RenderCNI() (bytes.Buffer, error) {
-	cniPartials := []*chartutil.BufferedFile{
+	cniPartials := []*loader.BufferedFile{
 		{Name: "charts/partials/" + chartutil.ChartfileName},
 		{Name: "charts/partials/templates/_helpers.tpl"},
+		{Name: "charts/partials/templates/_metadata.tpl"},
 		{Name: "charts/partials/templates/_pull-secrets.tpl"},
 	}
 	return c.render(cniPartials)
@@ -105,16 +126,16 @@ func (c *Chart) RenderCNI() (bytes.Buffer, error) {
 
 // RenderNoPartials returns a bytes buffer with the result of rendering a Helm chart with no partials
 func (c *Chart) RenderNoPartials() (bytes.Buffer, error) {
-	return c.render([]*chartutil.BufferedFile{})
+	return c.render([]*loader.BufferedFile{})
 }
 
 // ReadFile updates the buffered file with the data read from disk
-func ReadFile(dir string, f *chartutil.BufferedFile) error {
+func ReadFile(fs http.FileSystem, dir string, f *loader.BufferedFile) error {
 	filename := dir + f.Name
 	if dir == "" {
 		filename = filename[7:]
 	}
-	file, err := static.Templates.Open(filename)
+	file, err := fs.Open(filename)
 	if err != nil {
 		return err
 	}
@@ -130,9 +151,9 @@ func ReadFile(dir string, f *chartutil.BufferedFile) error {
 }
 
 // FilesReader reads all the files from a directory
-func FilesReader(dir string, files []*chartutil.BufferedFile) error {
+func FilesReader(fs http.FileSystem, dir string, files []*loader.BufferedFile) error {
 	for _, f := range files {
-		if err := ReadFile(dir, f); err != nil {
+		if err := ReadFile(fs, dir, f); err != nil {
 			return err
 		}
 	}
@@ -142,6 +163,57 @@ func FilesReader(dir string, files []*chartutil.BufferedFile) error {
 // InsertVersion returns the chart values file contents passed in
 // with the version placeholder replaced with the current version
 func InsertVersion(data []byte) []byte {
-	dataWithVersion := strings.Replace(string(data), versionPlaceholder, version.Version, 1)
+	dataWithVersion := strings.Replace(string(data), versionPlaceholder, version.Version, -1)
 	return []byte(dataWithVersion)
+}
+
+// InsertVersionValues returns the chart values with the version placeholder
+// replaced with the current version.
+func InsertVersionValues(values chartutil.Values) (chartutil.Values, error) {
+	raw, err := values.YAML()
+	if err != nil {
+		return nil, err
+	}
+	return chartutil.ReadValues(InsertVersion([]byte(raw)))
+}
+
+// OverrideFromFile overrides the given map with the given file from FS
+func OverrideFromFile(values map[string]interface{}, fs http.FileSystem, chartName, name string) (map[string]interface{}, error) {
+	// Load Values file
+	valuesOverride := loader.BufferedFile{
+		Name: name,
+	}
+	if err := ReadFile(fs, chartName+"/", &valuesOverride); err != nil {
+		return nil, err
+	}
+
+	var valuesOverrideMap map[string]interface{}
+	err := yaml.Unmarshal(valuesOverride.Data, &valuesOverrideMap)
+	if err != nil {
+		return nil, err
+	}
+	return MergeMaps(valuesOverrideMap, values), nil
+}
+
+// MergeMaps returns the resultant map after merging given two maps of type map[string]interface{}
+// The inputs are not mutated and the second map i.e b's values take predence during merge.
+// This gives semantically correct merge compared with `mergo.Merge` (with boolean values).
+// See https://github.com/imdario/mergo/issues/129
+func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{}, len(a))
+	for k, v := range a {
+		out[k] = v
+	}
+	for k, v := range b {
+		if v, ok := v.(map[string]interface{}); ok {
+			if av, ok := out[k]; ok {
+				if av, ok := av.(map[string]interface{}); ok {
+					out[k] = MergeMaps(av, v)
+					continue
+				}
+			}
+		}
+		out[k] = v
+	}
+	return out
 }

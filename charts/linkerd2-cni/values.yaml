@@ -1,31 +1,42 @@
+# -- CNI plugin plane namespace
 namespace: linkerd-cni
+# -- Whether to create the CNI plugin plane namespace or not 
 installNamespace: true
-cniResourceLabel: linkerd.io/cni-resource
+# -- Inbound port for the proxy container
 inboundProxyPort: 4143
+# -- Outbound port for the proxy container
 outboundProxyPort: 4140
-
-# Default set of ports to skip via itpables:
+# -- Inbound ports the proxy should ignore
 # - SMTP (25,587) server-first
 # - HTTPS (443) opaque TLS
 # - MYSQL (3306) server-first
 # - Memcached (11211) clients do not issue any preamble, which breaks detection
 ignoreInboundPorts: "25,443,587,3306,11211"
+# -- Outbound ports the proxy should ignore
 ignoreOutboundPorts: "25,443,587,3306,11211"
-
-createdByAnnotation: linkerd.io/created-by
-cniPluginImage: "ghcr.io/linkerd/cni-plugin"
+# -- Docker image for the CNI plugin
+cniPluginImage:   "cr.l5d.io/linkerd/cni-plugin"
+# -- Tag for the CNI container Docker image
 cniPluginVersion: linkerdVersionValue
-logLevel: info
-portsToRedirect: ""
-proxyUID: 2102
-destCNINetDir: "/etc/cni/net.d"
-destCNIBinDir: "/opt/cni/bin"
-useWaitFlag: false
+# -- Log level for the CNI plugin
+logLevel:         info
+# -- Ports to redirect to proxy 
+portsToRedirect:  ""
+# -- User id under which the proxy shall be ran
+proxyUID:         2102
+# -- Directory on the host where the CNI plugin binaries reside 
+destCNINetDir:    "/etc/cni/net.d"
+# -- Directory on the host where the CNI configuration will be placed
+destCNIBinDir:    "/opt/cni/bin"
+# -- Configures the CNI plugin to use the -w flag for the iptables command
+useWaitFlag:      false
+# -- Kubernetes priorityClassName for the CNI plugin's Pods
 priorityClassName: ""
 
-# namespace annotation and labels - do not edit
-proxyInjectAnnotation: linkerd.io/inject
-proxyInjectDisabled: disabled
+# -|- Tolerations section, See the 
+# [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+# for more information
+#tolerations:
 
 #
 ## For Private docker registries, authentication is needed.

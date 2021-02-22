@@ -10,43 +10,50 @@ on:
 jobs:
   go_lint:
     name: Go lint
-    runs-on: ubuntu-18.04
+    timeout-minutes: 10
+    runs-on: ubuntu-20.04
     container:
       image: golang:1.13.4
     steps:
     - name: Checkout code
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Go lint
       run: bin/lint --verbose
   go_format:
     name: Go format
-    runs-on: ubuntu-18.04
+    timeout-minutes: 10
+    runs-on: ubuntu-20.04
     container:
       image: golang:1.13.4
     steps:
     - name: Checkout code
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Format
       run: bin/fmt
   proto_diff:
     name: Proto diff
-    runs-on: ubuntu-18.04
+    timeout-minutes: 10
+    runs-on: ubuntu-20.04
     container:
       image: golang:1.13.4
     steps:
+      - name: Prerequisites
+        run: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install unzip
       - name: Checkout code
         # actions/checkout@v2
-        uses: actions/checkout@722adc6
+        uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
       - name: Diff proto files
         run: bin/protoc-diff
   shellcheck:
     name: shellcheck
-    runs-on: ubuntu-18.04
+    timeout-minutes: 10
+    runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      # actions/checkout@v2
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: shellcheck
       # For more information on shellcheck failures:
       # https://github.com/koalaman/shellcheck/wiki/Checks
@@ -54,14 +61,15 @@ jobs:
         bin/shellcheck-all
   psscript-analyzer:
     name: PSScriptAnalyzer
-    runs-on: ubuntu-18.04
+    timeout-minutes: 10
+    runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Chocolatey - lint
       # devblackops/github-action-psscriptanalyzer@v2.3.0
-      uses: devblackops/github-action-psscriptanalyzer@819c15c
+      uses: devblackops/github-action-psscriptanalyzer@819c15c7d02dec0611fe3ded6f8e259b0b925754
       env:
         # https://github.com/devblackops/github-action-psscriptanalyzer/pull/3/files
         INPUT_FAILONWARNING: 1
@@ -70,10 +78,20 @@ jobs:
         failOnInfos: true
   markdown_lint:
     name: Markdown lint
-    runs-on: ubuntu-18.04
+    timeout-minutes: 10
+    runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Markdown lint
       run: bin/markdownlint-all
+  chart_docs_diff:
+    name: Chart readme diff check
+    runs-on: ubuntu-20.04
+    steps:
+    - name: Checkout code
+      # actions/checkout@v2
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+    - name: Check docs for diff
+      run: bin/helm-docs-diff

@@ -13,6 +13,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/testutil"
 )
 
 type testCase struct {
@@ -52,10 +53,10 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 	if exitCode := uninjectAndInject([]io.Reader{read}, report, output, transformer); exitCode != 0 {
 		t.Errorf("Unexpected error injecting YAML: %v\n", report)
 	}
-	diffTestdata(t, tc.goldenFileName, output.String())
+	testDataDiffer.DiffTestdata(t, tc.goldenFileName, output.String())
 
 	reportFileName := mkFilename(tc.reportFileName, verbose)
-	diffTestdata(t, reportFileName, report.String())
+	testDataDiffer.DiffTestdata(t, reportFileName, report.String())
 }
 
 func defaultConfig() *linkerd2.Values {
@@ -63,8 +64,8 @@ func defaultConfig() *linkerd2.Values {
 	if err != nil {
 		log.Fatalf("Unexpected error: %v", err)
 	}
-	defaultConfig.Global.LinkerdVersion = "test-inject-control-plane-version"
-	defaultConfig.Global.Proxy.Image.Version = "test-inject-proxy-version"
+	defaultConfig.LinkerdVersion = "test-inject-control-plane-version"
+	defaultConfig.Proxy.Image.Version = "test-inject-proxy-version"
 	defaultConfig.DebugContainer.Image.Version = "test-inject-debug-version"
 
 	return defaultConfig
@@ -74,10 +75,10 @@ func TestUninjectAndInject(t *testing.T) {
 	defaultValues := defaultConfig()
 
 	overrideConfig := defaultConfig()
-	overrideConfig.Global.Proxy.Image.Version = "override"
+	overrideConfig.Proxy.Image.Version = "override"
 
 	proxyResourceConfig := defaultConfig()
-	proxyResourceConfig.Global.Proxy.Resources = &linkerd2.Resources{
+	proxyResourceConfig.Proxy.Resources = &linkerd2.Resources{
 		CPU: linkerd2.Constraints{
 			Request: "110m",
 			Limit:   "160m",
@@ -89,11 +90,11 @@ func TestUninjectAndInject(t *testing.T) {
 	}
 
 	cniEnabledConfig := defaultConfig()
-	cniEnabledConfig.Global.CNIEnabled = true
+	cniEnabledConfig.CNIEnabled = true
 
 	proxyIgnorePortsConfig := defaultConfig()
-	proxyIgnorePortsConfig.Global.ProxyInit.IgnoreInboundPorts = "22,8100-8102"
-	proxyIgnorePortsConfig.Global.ProxyInit.IgnoreOutboundPorts = "5432"
+	proxyIgnorePortsConfig.ProxyInit.IgnoreInboundPorts = "22,8100-8102"
+	proxyIgnorePortsConfig.ProxyInit.IgnoreOutboundPorts = "5432"
 
 	testCases := []testCase{
 		{
@@ -110,7 +111,7 @@ func TestUninjectAndInject(t *testing.T) {
 			injectProxy:    false,
 			testInjectConfig: func() *linkerd2.Values {
 				values := defaultConfig()
-				values.Global.Proxy.Ports.Admin = 1234
+				values.Proxy.Ports.Admin = 1234
 				return values
 			}(),
 		},
@@ -121,7 +122,7 @@ func TestUninjectAndInject(t *testing.T) {
 			injectProxy:    true,
 			testInjectConfig: func() *linkerd2.Values {
 				values := defaultConfig()
-				values.Global.Proxy.Ports.Admin = 1234
+				values.Proxy.Ports.Admin = 1234
 				return values
 			}(),
 		},
@@ -288,18 +289,6 @@ func TestUninjectAndInject(t *testing.T) {
 			injectProxy:      true,
 			testInjectConfig: proxyIgnorePortsConfig,
 		},
-		{
-			inputFileName:  "inject_emojivoto_deployment.input.yml",
-			goldenFileName: "inject_emojivoto_deployment_trace.golden.yml",
-			reportFileName: "inject_emojivoto_deployment_trace.report",
-			injectProxy:    true,
-			testInjectConfig: func() *linkerd2.Values {
-				values := defaultConfig()
-				values.Global.Proxy.Trace.CollectorSvcAddr = "linkerd-collector"
-				values.Global.Proxy.Trace.CollectorSvcAccount = "linkerd-collector.linkerd"
-				return values
-			}(),
-		},
 	}
 
 	for i, tc := range testCases {
@@ -328,7 +317,7 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	testConfig.Global.Proxy.Image.Version = "testinjectversion"
+	testConfig.Proxy.Image.Version = "testinjectversion"
 
 	errBuffer := &bytes.Buffer{}
 	outBuffer := &bytes.Buffer{}
@@ -347,13 +336,13 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 		t.Fatalf("Expected exit code to be %d but got: %d", tc.exitCode, exitCode)
 	}
 	if tc.stdOutGoldenFileName != "" {
-		diffTestdata(t, tc.stdOutGoldenFileName, outBuffer.String())
+		testDataDiffer.DiffTestdata(t, tc.stdOutGoldenFileName, outBuffer.String())
 	} else if outBuffer.Len() != 0 {
 		t.Fatalf("Expected no standard output, but got: %s", outBuffer)
 	}
 
 	stdErrGoldenFileName := mkFilename(tc.stdErrGoldenFileName, verbose)
-	diffTestdata(t, stdErrGoldenFileName, errBuffer.String())
+	testDataDiffer.DiffTestdata(t, stdErrGoldenFileName, errBuffer.String())
 }
 
 func TestRunInjectCmd(t *testing.T) {
@@ -439,10 +428,10 @@ func testInjectFilePath(t *testing.T, tc injectFilePath) {
 	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 	}
-	diffTestdata(t, tc.expectedFile, actual.String())
+	testDataDiffer.DiffTestdata(t, tc.expectedFile, actual.String())
 
 	stdErrFile := mkFilename(tc.stdErrFile, verbose)
-	diffTestdata(t, stdErrFile, errBuf.String())
+	testDataDiffer.DiffTestdata(t, stdErrFile, errBuf.String())
 }
 
 func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder string) {
@@ -466,10 +455,10 @@ func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder stri
 	}
 
 	expectedFile := filepath.Join(expectedFolder, "injected_nginx_redis.yaml")
-	diffTestdata(t, expectedFile, actual.String())
+	testDataDiffer.DiffTestdata(t, expectedFile, actual.String())
 
 	stdErrFileName := mkFilename(filepath.Join(expectedFolder, "injected_nginx_redis.stderr"), verbose)
-	diffTestdata(t, stdErrFileName, errBuf.String())
+	testDataDiffer.DiffTestdata(t, stdErrFileName, errBuf.String())
 }
 
 func TestInjectFilePath(t *testing.T) {
@@ -560,7 +549,7 @@ func TestWalk(t *testing.T) {
 	}()
 
 	var (
-		data  = []byte(readTestdata(t, "inject_gettest_deployment.bad.input.yml"))
+		data  = []byte(testutil.ReadTestdata(t, "inject_gettest_deployment.bad.input.yml"))
 		file1 = filepath.Join(tmpFolderRoot, "root.txt")
 		file2 = filepath.Join(tmpFolderData, "data.txt")
 	)
@@ -587,7 +576,7 @@ func TestWalk(t *testing.T) {
 }
 
 func TestProxyConfigurationAnnotations(t *testing.T) {
-	baseValues, err := linkerd2.NewValues(false)
+	baseValues, err := linkerd2.NewValues()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -595,46 +584,41 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	values.Global.ProxyInit.IgnoreInboundPorts = "8500-8505"
-	values.Global.ProxyInit.IgnoreOutboundPorts = "3306"
-	values.Global.Proxy.Ports.Admin = 1234
-	values.Global.Proxy.Ports.Control = 4191
-	values.Global.Proxy.Ports.Inbound = 4144
-	values.Global.Proxy.Ports.Outbound = 4141
-	values.Global.Proxy.UID = 999
-	values.Global.Proxy.LogLevel = "debug"
-	values.Global.Proxy.LogFormat = "cool"
-	values.Global.Proxy.DisableIdentity = true
-	values.Global.Proxy.DisableTap = true
-	values.Global.Proxy.EnableExternalProfiles = true
-	values.Global.Proxy.Resources.CPU.Request = "10m"
-	values.Global.Proxy.Resources.CPU.Limit = "100m"
-	values.Global.Proxy.Resources.Memory.Request = "10Mi"
-	values.Global.Proxy.Resources.Memory.Limit = "50Mi"
-	values.Global.Proxy.Trace.CollectorSvcAddr = "oc-collector.tracing:55678"
-	values.Global.Proxy.Trace.CollectorSvcAccount = "svcAccount"
-	values.Global.Proxy.WaitBeforeExitSeconds = 10
+	values.ProxyInit.IgnoreInboundPorts = "8500-8505"
+	values.ProxyInit.IgnoreOutboundPorts = "3306"
+	values.Proxy.Ports.Admin = 1234
+	values.Proxy.Ports.Control = 4191
+	values.Proxy.Ports.Inbound = 4144
+	values.Proxy.Ports.Outbound = 4141
+	values.Proxy.UID = 999
+	values.Proxy.LogLevel = "debug"
+	values.Proxy.LogFormat = "cool"
+	values.Proxy.DisableIdentity = true
+	values.Proxy.EnableExternalProfiles = true
+	values.Proxy.Resources.CPU.Request = "10m"
+	values.Proxy.Resources.CPU.Limit = "100m"
+	values.Proxy.Resources.Memory.Request = "10Mi"
+	values.Proxy.Resources.Memory.Limit = "50Mi"
+	values.Proxy.WaitBeforeExitSeconds = 10
 
 	expectedOverrides := map[string]string{
-		k8s.ProxyIgnoreInboundPortsAnnotation:       "8500-8505",
-		k8s.ProxyIgnoreOutboundPortsAnnotation:      "3306",
-		k8s.ProxyAdminPortAnnotation:                "1234",
-		k8s.ProxyControlPortAnnotation:              "4191",
-		k8s.ProxyInboundPortAnnotation:              "4144",
-		k8s.ProxyOutboundPortAnnotation:             "4141",
-		k8s.ProxyUIDAnnotation:                      "999",
-		k8s.ProxyLogLevelAnnotation:                 "debug",
-		k8s.ProxyLogFormatAnnotation:                "cool",
-		k8s.ProxyDisableIdentityAnnotation:          "true",
-		k8s.ProxyDisableTapAnnotation:               "true",
-		k8s.ProxyEnableExternalProfilesAnnotation:   "true",
-		k8s.ProxyCPURequestAnnotation:               "10m",
-		k8s.ProxyCPULimitAnnotation:                 "100m",
-		k8s.ProxyMemoryRequestAnnotation:            "10Mi",
-		k8s.ProxyMemoryLimitAnnotation:              "50Mi",
-		k8s.ProxyTraceCollectorSvcAddrAnnotation:    "oc-collector.tracing:55678",
-		k8s.ProxyTraceCollectorSvcAccountAnnotation: "svcAccount",
-		k8s.ProxyWaitBeforeExitSecondsAnnotation:    "10",
+		k8s.ProxyIgnoreInboundPortsAnnotation:  "8500-8505",
+		k8s.ProxyIgnoreOutboundPortsAnnotation: "3306",
+		k8s.ProxyAdminPortAnnotation:           "1234",
+		k8s.ProxyControlPortAnnotation:         "4191",
+		k8s.ProxyInboundPortAnnotation:         "4144",
+		k8s.ProxyOutboundPortAnnotation:        "4141",
+		k8s.ProxyUIDAnnotation:                 "999",
+		k8s.ProxyLogLevelAnnotation:            "debug",
+		k8s.ProxyLogFormatAnnotation:           "cool",
+		k8s.ProxyDisableIdentityAnnotation:     "true",
+
+		k8s.ProxyEnableExternalProfilesAnnotation: "true",
+		k8s.ProxyCPURequestAnnotation:             "10m",
+		k8s.ProxyCPULimitAnnotation:               "100m",
+		k8s.ProxyMemoryRequestAnnotation:          "10Mi",
+		k8s.ProxyMemoryLimitAnnotation:            "50Mi",
+		k8s.ProxyWaitBeforeExitSecondsAnnotation:  "10",
 	}
 
 	overrides := getOverrideAnnotations(values, baseValues)
@@ -643,7 +627,7 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 }
 
 func TestProxyImageAnnotations(t *testing.T) {
-	baseValues, err := linkerd2.NewValues(false)
+	baseValues, err := linkerd2.NewValues()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -651,7 +635,7 @@ func TestProxyImageAnnotations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	values.Global.Proxy.Image = &linkerd2.Image{
+	values.Proxy.Image = &linkerd2.Image{
 		Name:       "my.registry/linkerd/proxy",
 		Version:    "test-proxy-version",
 		PullPolicy: "Always",
@@ -669,7 +653,7 @@ func TestProxyImageAnnotations(t *testing.T) {
 }
 
 func TestProxyInitImageAnnotations(t *testing.T) {
-	baseValues, err := linkerd2.NewValues(false)
+	baseValues, err := linkerd2.NewValues()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -677,7 +661,7 @@ func TestProxyInitImageAnnotations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	values.Global.ProxyInit.Image = &linkerd2.Image{
+	values.ProxyInit.Image = &linkerd2.Image{
 		Name:    "my.registry/linkerd/proxy-init",
 		Version: "test-proxy-init-version",
 	}
@@ -693,7 +677,7 @@ func TestProxyInitImageAnnotations(t *testing.T) {
 }
 
 func TestNoAnnotations(t *testing.T) {
-	baseValues, err := linkerd2.NewValues(false)
+	baseValues, err := linkerd2.NewValues()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -716,12 +700,12 @@ func TestOverwriteRegistry(t *testing.T) {
 		expected string
 	}{
 		{
-			image:    "ghcr.io/linkerd/image",
+			image:    "cr.l5d.io/linkerd/image",
 			registry: "my.custom.registry",
 			expected: "my.custom.registry/image",
 		},
 		{
-			image:    "ghcr.io/linkerd/image",
+			image:    "cr.l5d.io/linkerd/image",
 			registry: "my.custom.registry/",
 			expected: "my.custom.registry/image",
 		},
@@ -732,8 +716,8 @@ func TestOverwriteRegistry(t *testing.T) {
 		},
 		{
 			image:    "my.custom.registry/image",
-			registry: "ghcr.io/linkerd",
-			expected: "ghcr.io/linkerd/image",
+			registry: "cr.l5d.io/linkerd",
+			expected: "cr.l5d.io/linkerd/image",
 		},
 		{
 			image:    "",
@@ -741,14 +725,14 @@ func TestOverwriteRegistry(t *testing.T) {
 			expected: "",
 		},
 		{
-			image:    "ghcr.io/linkerd/image",
+			image:    "cr.l5d.io/linkerd/image",
 			registry: "",
 			expected: "image",
 		},
 		{
 			image:    "image",
-			registry: "ghcr.io/linkerd",
-			expected: "ghcr.io/linkerd/image",
+			registry: "cr.l5d.io/linkerd",
+			expected: "cr.l5d.io/linkerd/image",
 		},
 	}
 	for i, tc := range testCases {

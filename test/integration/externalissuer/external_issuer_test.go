@@ -25,7 +25,7 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stdout, "Skipping as --external-issuer=false")
 		os.Exit(0)
 	}
-	os.Exit(testutil.Run(m, TestHelper))
+	os.Exit(m.Run())
 }
 
 func TestExternalIssuer(t *testing.T) {
@@ -71,7 +71,7 @@ func verifyInstallApp(ctx context.Context, t *testing.T) {
 
 func checkAppWoks(t *testing.T, timeout time.Duration) error {
 	return TestHelper.RetryFor(timeout, func() error {
-		args := []string{"stat", "deploy", "-n", TestHelper.GetTestNamespace(TestAppNamespaceSuffix), "--from", "deploy/slow-cooker", "-t", "1m"}
+		args := []string{"viz", "stat", "deploy", "-n", TestHelper.GetTestNamespace(TestAppNamespaceSuffix), "--from", "deploy/slow-cooker", "-t", "1m"}
 		out, err := TestHelper.LinkerdRun(args...)
 		if err != nil {
 			return err

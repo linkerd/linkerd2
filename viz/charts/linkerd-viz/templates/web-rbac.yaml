@@ -1,0 +1,147 @@
+---
+###
+### Web RBAC
+###
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: linkerd-web
+  namespace: {{.Values.linkerdNamespace}}
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: web
+    namespace: {{.Values.linkerdNamespace}}
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get"]
+  resourceNames: ["linkerd-config"]
+  {{- if not .Values.dashboard.restrictPrivileges }}
+- apiGroups: [""]
+  resources: ["namespaces", "configmaps"]
+  verbs: ["get"]
+- apiGroups: [""]
+  resources: ["serviceaccounts", "pods"]
+  verbs: ["list"]
+- apiGroups: ["apps"]
+  resources: ["replicasets"]
+  verbs: ["list"]
+  {{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: linkerd-web
+  namespace: {{.Values.linkerdNamespace}}
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: web
+    namespace: {{.Values.linkerdNamespace}}
+roleRef:
+  kind: Role
+  name: linkerd-web
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: linkerd-web
+  namespace: {{.Values.namespace}}
+---
+{{- if not .Values.dashboard.restrictPrivileges }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: linkerd-{{.Values.namespace}}-web-check
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: web
+rules:
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["clusterroles", "clusterrolebindings"]
+  verbs: ["list"]
+- apiGroups: ["apiextensions.k8s.io"]
+  resources: ["customresourcedefinitions"]
+  verbs: ["list"]
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources: ["mutatingwebhookconfigurations", "validatingwebhookconfigurations"]
+  verbs: ["list"]
+- apiGroups: ["policy"]
+  resources: ["podsecuritypolicies"]
+  verbs: ["list"]
+- apiGroups: ["linkerd.io"]
+  resources: ["serviceprofiles"]
+  verbs: ["list"]
+- apiGroups: ["apiregistration.k8s.io"]
+  resources: ["apiservices"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: linkerd-{{.Values.namespace}}-web-check
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: web
+roleRef:
+  kind: ClusterRole
+  name: linkerd-{{.Values.namespace}}-web-check
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: linkerd-web
+  namespace: {{.Values.namespace}}
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-{{.Values.namespace}}-web-admin
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: web
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-{{.Values.namespace}}-tap-admin
+subjects:
+- kind: ServiceAccount
+  name: linkerd-web
+  namespace: {{.Values.namespace}}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: linkerd-{{.Values.namespace}}-web-api
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: web
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: linkerd-{{.Values.namespace}}-web-api
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: web
+roleRef:
+  kind: ClusterRole
+  name: linkerd-{{.Values.namespace}}-web-api
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: linkerd-web
+  namespace: {{.Values.namespace}}
+---
+{{- end}}
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-web
+  namespace: {{.Values.namespace}}
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: web
+    namespace: {{.Values.namespace}}
+{{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}

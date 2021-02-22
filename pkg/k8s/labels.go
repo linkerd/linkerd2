@@ -7,7 +7,6 @@ package k8s
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/linkerd/linkerd2/pkg/version"
 	appsv1 "k8s.io/api/apps/v1"
@@ -25,6 +24,10 @@ const (
 	// LinkerdNamespaceLabel is a label that helps identifying the namespaces
 	// that contain a Linkerd control plane
 	LinkerdNamespaceLabel = Prefix + "/is-control-plane"
+
+	// LinkerdExtensionLabel is a label that helps identifying the namespace
+	// that contain a Linkerd Extension
+	LinkerdExtensionLabel = Prefix + "/extension"
 
 	// ControllerComponentLabel identifies this object as a component of Linkerd's
 	// control plane (e.g. web, controller).
@@ -221,9 +224,6 @@ const (
 	// ProxyDisableIdentityAnnotation can be used to disable identity on the injected proxy.
 	ProxyDisableIdentityAnnotation = ProxyConfigAnnotationsPrefix + "/disable-identity"
 
-	// ProxyDisableTapAnnotation can be used to disable tap on the injected proxy.
-	ProxyDisableTapAnnotation = ProxyConfigAnnotationsPrefix + "/disable-tap"
-
 	// ProxyEnableDebugAnnotation is set to true if the debug container is
 	// injected.
 	ProxyEnableDebugAnnotation = ProxyConfigAnnotationsPrefix + "/enable-debug-sidecar"
@@ -231,20 +231,10 @@ const (
 	// CloseWaitTimeoutAnnotation configures nf_conntrack_tcp_timeout_close_wait.
 	CloseWaitTimeoutAnnotation = ProxyConfigAnnotationsPrefix + "/close-wait-timeout"
 
-	// ProxyTraceCollectorSvcAddrAnnotation can be used to enable tracing on a proxy.
-	// It takes the collector service name (e.g. oc-collector.tracing:55678) as
-	// its value.
-	ProxyTraceCollectorSvcAddrAnnotation = ProxyConfigAnnotationsPrefix + "/trace-collector"
-
 	// ProxyWaitBeforeExitSecondsAnnotation makes the proxy container to wait for the given period before exiting
 	// after the Pod entered the Terminating state. Must be smaller than terminationGracePeriodSeconds
 	// configured for the Pod
 	ProxyWaitBeforeExitSecondsAnnotation = ProxyConfigAnnotationsPrefixAlpha + "/proxy-wait-before-exit-seconds"
-
-	// ProxyTraceCollectorSvcAccountAnnotation is used to specify the service account
-	// associated with the trace collector. It is used to create the service's
-	// mTLS identity.
-	ProxyTraceCollectorSvcAccountAnnotation = ProxyConfigAnnotationsPrefixAlpha + "/trace-collector-service-account"
 
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.
@@ -268,7 +258,7 @@ const (
 	DebugSidecarName = "linkerd-debug"
 
 	// DebugSidecarImage is the image name of the default linkerd debug container
-	DebugSidecarImage = "ghcr.io/linkerd/debug"
+	DebugSidecarImage = "cr.l5d.io/linkerd/debug"
 
 	// InitContainerName is the name assigned to the injected init container.
 	InitContainerName = "linkerd-init"
@@ -283,10 +273,6 @@ const (
 	// IdentityEndEntityVolumeName is the name assigned the temporary end-entity
 	// volume mounted into each proxy to store identity credentials.
 	IdentityEndEntityVolumeName = "linkerd-identity-end-entity"
-
-	// PodInfoVolumeName is the name assigned to the
-	// volume mounted into each proxy to store pod labels.
-	PodInfoVolumeName = "podinfo"
 
 	// IdentityIssuerSecretName is the name of the Secret that stores issuer credentials.
 	IdentityIssuerSecretName = "linkerd-identity-issuer"
@@ -357,11 +343,14 @@ const (
 	// store identity credentials.
 	MountPathEndEntity = MountPathBase + "/identity/end-entity"
 
+	// MountPathTLSBase is the path at which the TLS cert and key PEM files are mounted
+	MountPathTLSBase = MountPathBase + "/tls"
+
 	// MountPathTLSKeyPEM is the path at which the TLS key PEM file is mounted.
-	MountPathTLSKeyPEM = MountPathBase + "/tls/tls.key"
+	MountPathTLSKeyPEM = MountPathTLSBase + "/tls.key"
 
 	// MountPathTLSCrtPEM is the path at which the TLS cert PEM file is mounted.
-	MountPathTLSCrtPEM = MountPathBase + "/tls/tls.crt"
+	MountPathTLSCrtPEM = MountPathTLSBase + "/tls.crt"
 
 	// MountPathXtablesLock is the path at which the proxy init container mounts xtables
 	// This is necessary for xtables-legacy support
@@ -374,69 +363,54 @@ const (
 	IdentityServiceAccountTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
 	/*
-	 * Service mirror constants
+	 * Multicluster labels
 	 */
 
-	// SvcMirrorPrefix is the prefix common to all labels and annotations
-	// and types used by the service mirror component
-	SvcMirrorPrefix = "mirror.linkerd.io"
+	// MulticlusterAnnotationsPrefix is the prefix common to all labels and
+	// annotations and types used by the service mirror component
+	MulticlusterAnnotationsPrefix = "multicluster.linkerd.io"
 
 	// MirrorSecretType is the type of secret that is supposed to contain
 	// the access information for remote clusters.
-	MirrorSecretType = SvcMirrorPrefix + "/remote-kubeconfig"
+	MirrorSecretType = MulticlusterAnnotationsPrefix + "/remote-kubeconfig"
 
 	// DefaultExportedServiceSelector is the default label selector for exported
 	// services.
-	DefaultExportedServiceSelector = SvcMirrorPrefix + "/exported"
+	DefaultExportedServiceSelector = MulticlusterAnnotationsPrefix + "/export"
 
 	// MirroredResourceLabel indicates that this resource is the result
 	// of a mirroring operation (can be a namespace or a service)
-	MirroredResourceLabel = SvcMirrorPrefix + "/mirrored-service"
+	MirroredResourceLabel = MulticlusterAnnotationsPrefix + "/mirrored-service"
 
 	// MirroredGatewayLabel indicates that this is a mirrored gateway
-	MirroredGatewayLabel = SvcMirrorPrefix + "/mirrored-gateway"
+	MirroredGatewayLabel = MulticlusterAnnotationsPrefix + "/mirrored-gateway"
 
 	// RemoteClusterNameLabel put on a local mirrored service, it
 	// allows us to associate a mirrored service with a remote cluster
-	RemoteClusterNameLabel = SvcMirrorPrefix + "/cluster-name"
-
-	// RemoteResourceVersionAnnotation is the last observed remote resource
-	// version of a mirrored resource. Useful when doing updates
-	RemoteResourceVersionAnnotation = SvcMirrorPrefix + "/remote-resource-version"
+	RemoteClusterNameLabel = MulticlusterAnnotationsPrefix + "/cluster-name"
 
 	// RemoteServiceFqName is the fully qualified name of the mirrored service
 	// on the remote cluster
-	RemoteServiceFqName = SvcMirrorPrefix + "/remote-svc-fq-name"
-
-	// RemoteGatewayResourceVersionAnnotation is the last observed remote resource
-	// version of the gateway for a particular mirrored service. It is used
-	// in cases we detect a change in a remote gateway
-	RemoteGatewayResourceVersionAnnotation = SvcMirrorPrefix + "/remote-gateway-resource-version"
+	RemoteServiceFqName = MulticlusterAnnotationsPrefix + "/remote-svc-fq-name"
 
 	// RemoteGatewayIdentity follows the same kind of logic as RemoteGatewayNameLabel
-	RemoteGatewayIdentity = SvcMirrorPrefix + "/remote-gateway-identity"
+	RemoteGatewayIdentity = MulticlusterAnnotationsPrefix + "/remote-gateway-identity"
 
 	// GatewayIdentity can be found on the remote gateway service
-	GatewayIdentity = SvcMirrorPrefix + "/gateway-identity"
+	GatewayIdentity = MulticlusterAnnotationsPrefix + "/gateway-identity"
 
 	// GatewayProbePeriod the interval at which the health of the gateway should be probed
-	GatewayProbePeriod = SvcMirrorPrefix + "/probe-period"
+	GatewayProbePeriod = MulticlusterAnnotationsPrefix + "/probe-period"
 
 	// GatewayProbePath the path at which the health of the gateway should be probed
-	GatewayProbePath = SvcMirrorPrefix + "/probe-path"
+	GatewayProbePath = MulticlusterAnnotationsPrefix + "/probe-path"
 
 	// ConfigKeyName is the key in the secret that stores the kubeconfig needed to connect
 	// to a remote cluster
 	ConfigKeyName = "kubeconfig"
 
-	// GatewayPortName is the name of the incoming port of the gateway
-	GatewayPortName = "mc-gateway"
-
 	// ProbePortName is the name of the probe port of the gateway
 	ProbePortName = "mc-probe"
-
-	// ServiceMirrorLabel is the value used in the controller component label
-	ServiceMirrorLabel = "servicemirror"
 )
 
 // CreatedByAnnotationValue returns the value associated with
@@ -483,16 +457,4 @@ func GetPodLabels(ownerKind, ownerName string, pod *corev1.Pod) map[string]strin
 // IsMeshed returns whether a given Pod is in a given controller's service mesh.
 func IsMeshed(pod *corev1.Pod, controllerNS string) bool {
 	return pod.Labels[ControllerNSLabel] == controllerNS
-}
-
-// IsTapDisabled returns true if the pod has an annotation for explicitly
-// disabling tap
-func IsTapDisabled(pod *corev1.Pod) bool {
-	if valStr := pod.Annotations[ProxyDisableTapAnnotation]; valStr != "" {
-		valBool, err := strconv.ParseBool(valStr)
-		if err == nil && valBool {
-			return true
-		}
-	}
-	return false
 }

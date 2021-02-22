@@ -18,6 +18,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	api "github.com/linkerd/linkerd2/pkg/public"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
@@ -48,7 +49,7 @@ func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, transforme
 }
 
 func newCmdInject() *cobra.Command {
-	defaults, err := charts.NewValues(false)
+	defaults, err := charts.NewValues()
 	if err != nil {
 		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)
@@ -168,6 +169,11 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	}
 
 	reports := []inject.Report{*report}
+	// Injection of services depends on being able to retrieve the namespace
+	// annotations which can only occur in the proxy injector webhook.
+	if conf.IsService() {
+		return bytes, reports, nil
+	}
 
 	if rt.allowNsInject && conf.IsNamespace() {
 		b, err := conf.InjectNamespace(rt.overrideAnnotations)
@@ -194,7 +200,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		conf.AppendPodAnnotations(rt.overrideAnnotations)
 	}
 
-	patchJSON, err := conf.GetPatch(rt.injectProxy)
+	patchJSON, err := conf.GetPodPatch(rt.injectProxy)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -308,6 +314,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	if len(automountServiceAccountTokenFalse) == 0 && verbose {
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, automountServiceAccountTokenDesc)))
 	}
+
 	//
 	// Summary
 	//
@@ -316,7 +323,9 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	}
 
 	for _, r := range reports {
-		if b, _ := r.Injectable(); b {
+		if r.Kind == k8s.Service {
+			output.Write([]byte(fmt.Sprintf("service \"%s\" skipped\n", r.Name)))
+		} else if b, _ := r.Injectable(); b {
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" injected\n", r.Kind, r.Name)))
 		} else {
 			if r.Kind != "" {
@@ -333,7 +342,15 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 
 func fetchConfigs(ctx context.Context) (*linkerd2.Values, error) {
 
-	checkPublicAPIClientOrExit()
+	api.CheckPublicAPIClientOrExit(healthcheck.Options{
+		ControlPlaneNamespace: controlPlaneNamespace,
+		KubeConfig:            kubeconfigPath,
+		Impersonate:           impersonate,
+		ImpersonateGroup:      impersonateGroup,
+		KubeContext:           kubeContext,
+		APIAddr:               apiAddr,
+	})
+
 	api, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
 		return nil, err
@@ -350,17 +367,17 @@ func fetchConfigs(ctx context.Context) (*linkerd2.Values, error) {
 func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[string]string {
 	overrideAnnotations := make(map[string]string)
 
-	proxy := values.Global.Proxy
-	baseProxy := base.Global.Proxy
+	proxy := values.Proxy
+	baseProxy := base.Proxy
 	if proxy.Image.Version != baseProxy.Image.Version {
 		overrideAnnotations[k8s.ProxyVersionOverrideAnnotation] = proxy.Image.Version
 	}
 
-	if values.Global.ProxyInit.IgnoreInboundPorts != base.Global.ProxyInit.IgnoreInboundPorts {
-		overrideAnnotations[k8s.ProxyIgnoreInboundPortsAnnotation] = values.Global.ProxyInit.IgnoreInboundPorts
+	if values.ProxyInit.IgnoreInboundPorts != base.ProxyInit.IgnoreInboundPorts {
+		overrideAnnotations[k8s.ProxyIgnoreInboundPortsAnnotation] = values.ProxyInit.IgnoreInboundPorts
 	}
-	if values.Global.ProxyInit.IgnoreOutboundPorts != base.Global.ProxyInit.IgnoreOutboundPorts {
-		overrideAnnotations[k8s.ProxyIgnoreOutboundPortsAnnotation] = values.Global.ProxyInit.IgnoreOutboundPorts
+	if values.ProxyInit.IgnoreOutboundPorts != base.ProxyInit.IgnoreOutboundPorts {
+		overrideAnnotations[k8s.ProxyIgnoreOutboundPortsAnnotation] = values.ProxyInit.IgnoreOutboundPorts
 	}
 
 	if proxy.Ports.Admin != baseProxy.Ports.Admin {
@@ -379,15 +396,15 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 	if proxy.Image.Name != baseProxy.Image.Name {
 		overrideAnnotations[k8s.ProxyImageAnnotation] = proxy.Image.Name
 	}
-	if values.Global.ProxyInit.Image.Name != base.Global.ProxyInit.Image.Name {
-		overrideAnnotations[k8s.ProxyInitImageAnnotation] = values.Global.ProxyInit.Image.Name
+	if values.ProxyInit.Image.Name != base.ProxyInit.Image.Name {
+		overrideAnnotations[k8s.ProxyInitImageAnnotation] = values.ProxyInit.Image.Name
 	}
 	if values.DebugContainer.Image.Name != base.DebugContainer.Image.Name {
 		overrideAnnotations[k8s.DebugImageAnnotation] = values.DebugContainer.Image.Name
 	}
 
-	if values.Global.ProxyInit.Image.Version != base.Global.ProxyInit.Image.Version {
-		overrideAnnotations[k8s.ProxyInitImageVersionAnnotation] = values.Global.ProxyInit.Image.Version
+	if values.ProxyInit.Image.Version != base.ProxyInit.Image.Version {
+		overrideAnnotations[k8s.ProxyInitImageVersionAnnotation] = values.ProxyInit.Image.Version
 	}
 
 	if values.DebugContainer.Image.Version != base.DebugContainer.Image.Version {
@@ -418,10 +435,6 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 		overrideAnnotations[k8s.ProxyRequireIdentityOnInboundPortsAnnotation] = proxy.RequireIdentityOnInboundPorts
 	}
 
-	if proxy.DisableTap != baseProxy.DisableTap {
-		overrideAnnotations[k8s.ProxyDisableTapAnnotation] = strconv.FormatBool(proxy.DisableTap)
-	}
-
 	if proxy.EnableExternalProfiles != baseProxy.EnableExternalProfiles {
 		overrideAnnotations[k8s.ProxyEnableExternalProfilesAnnotation] = strconv.FormatBool(proxy.EnableExternalProfiles)
 	}
@@ -442,20 +455,12 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 	if proxy.Resources.Memory.Limit != baseProxy.Resources.Memory.Limit {
 		overrideAnnotations[k8s.ProxyMemoryLimitAnnotation] = proxy.Resources.Memory.Limit
 	}
-
-	if proxy.Trace.CollectorSvcAddr != baseProxy.Trace.CollectorSvcAddr {
-		overrideAnnotations[k8s.ProxyTraceCollectorSvcAddrAnnotation] = proxy.Trace.CollectorSvcAddr
-	}
-
-	if proxy.Trace.CollectorSvcAccount != baseProxy.Trace.CollectorSvcAccount {
-		overrideAnnotations[k8s.ProxyTraceCollectorSvcAccountAnnotation] = proxy.Trace.CollectorSvcAccount
-	}
 	if proxy.WaitBeforeExitSeconds != baseProxy.WaitBeforeExitSeconds {
 		overrideAnnotations[k8s.ProxyWaitBeforeExitSecondsAnnotation] = uintToString(proxy.WaitBeforeExitSeconds)
 	}
 
 	// Set fields that can't be converted into annotations
-	values.Global.Namespace = controlPlaneNamespace
+	values.Namespace = controlPlaneNamespace
 
 	return overrideAnnotations
 }

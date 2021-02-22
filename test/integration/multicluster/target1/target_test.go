@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stderr, "Multicluster test disabled")
 		os.Exit(0)
 	}
-	os.Exit(testutil.Run(m, TestHelper))
+	os.Exit(m.Run())
 }
 
 func TestInstallEmojivoto(t *testing.T) {

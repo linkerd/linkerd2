@@ -27,7 +27,6 @@ class ClickablePopover extends React.Component {
     }
   }
 
-
   handleClose = () => {
     this.setState({ anchorEl: null });
   };

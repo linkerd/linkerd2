@@ -11,6 +11,7 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	profiles "github.com/linkerd/linkerd2/pkg/profiles"
+	vizPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
 )
@@ -22,7 +23,8 @@ type (
 
 	handler struct {
 		render              renderTemplate
-		apiClient           public.APIClient
+		apiClient           vizPb.ApiClient
+		publicAPIClient     public.Client
 		k8sAPI              *k8s.KubernetesAPI
 		uuid                string
 		controllerNamespace string
@@ -51,7 +53,7 @@ func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httpro
 		Jaeger:              h.jaeger,
 	}
 
-	version, err := h.apiClient.Version(req.Context(), &pb.Empty{}) // TODO: remove and call /api/version from web app
+	version, err := h.publicAPIClient.Version(req.Context(), &pb.Empty{}) // TODO: remove and call /api/version from web app
 	if err != nil {
 		params.Error = true
 		params.ErrorMessage = err.Error()

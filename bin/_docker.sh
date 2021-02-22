@@ -9,10 +9,7 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
 # TODO this should be set to the canonical public docker registry; we can override this
 # docker registry in, for instance, CI.
-export DOCKER_REGISTRY=${DOCKER_REGISTRY:-ghcr.io/linkerd}
-
-# When set, causes docker's build output to be emitted to stderr.
-export DOCKER_TRACE=${DOCKER_TRACE:-}
+export DOCKER_REGISTRY=${DOCKER_REGISTRY:-cr.l5d.io/linkerd}
 
 # When set, use `docker buildx` and use the github actions cache to store/retrieve images
 export DOCKER_BUILDKIT=${DOCKER_BUILDKIT:-}
@@ -50,11 +47,6 @@ docker_build() {
     file=$1
     shift
 
-    output=/dev/null
-    if [ -n "$DOCKER_TRACE" ]; then
-        output=/dev/stderr
-    fi
-
     rootdir=$( cd "$bindir"/.. && pwd )
 
     if [ -n "$DOCKER_BUILDKIT" ]; then
@@ -82,15 +74,13 @@ docker_build() {
           $output_params \
           -t "$repo:$tag" \
           -f "$file" \
-          "$@" \
-          > "$output"
+          "$@"
     else
       log_debug "  :; docker build $rootdir -t $repo:$tag -f $file $*"
       docker build "$rootdir" \
           -t "$repo:$tag" \
           -f "$file" \
-          "$@" \
-          > "$output"
+          "$@"
     fi
 
     echo "$repo:$tag"

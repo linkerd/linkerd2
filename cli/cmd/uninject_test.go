@@ -93,7 +93,7 @@ func TestUninjectYAML(t *testing.T) {
 		},
 	}
 
-	values, err := charts.NewValues(false)
+	values, err := charts.NewValues()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,8 +116,8 @@ func TestUninjectYAML(t *testing.T) {
 				t.Errorf("Failed to uninject %s\n", tc.inputFileName)
 			}
 
-			diffTestdata(t, tc.goldenFileName, output.String())
-			diffTestdata(t, tc.reportFileName, report.String())
+			testDataDiffer.DiffTestdata(t, tc.goldenFileName, output.String())
+			testDataDiffer.DiffTestdata(t, tc.reportFileName, report.String())
 		})
 	}
 }

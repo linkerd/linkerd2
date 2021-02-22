@@ -73,14 +73,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "process_virtual_memory_bytes{control_plane_ns=\"$namespace\", job=\"linkerd-proxy\"}",
+          "expr": "process_virtual_memory_bytes{job=\"linkerd-proxy\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{namespace}}/{{pod}}/virtual",
           "refId": "A"
         },
         {
-          "expr": "process_resident_memory_bytes{control_plane_ns=\"$namespace\", job=\"linkerd-proxy\"}",
+          "expr": "process_resident_memory_bytes{job=\"linkerd-proxy\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{namespace}}/{{pod}}/resident",
@@ -166,7 +166,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(process_cpu_seconds_total{control_plane_ns=\"$namespace\", job=\"linkerd-proxy\"}[20s])) by (namespace, pod)",
+          "expr": "sum(irate(process_cpu_seconds_total{job=\"linkerd-proxy\"}[20s])) by (namespace, pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{namespace}}/{{pod}}",
@@ -252,7 +252,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "process_open_fds{control_plane_ns=\"$namespace\", job=\"linkerd-proxy\"}",
+          "expr": "process_open_fds{job=\"linkerd-proxy\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{namespace}}/{{pod}}",
@@ -359,7 +359,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", deployment!=\"\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (pod) / sum(irate(response_total{deployment!=\"\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (pod)",
+          "expr": "sum(irate(response_total{classification=\"success\", deployment!=\"\", namespace=~\"$namespace|$namespace-viz\", direction=\"inbound\"}[30s])) by (pod) / sum(irate(response_total{deployment!=\"\", namespace=~\"$namespace|$namespace-viz\", direction=\"inbound\"}[30s])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{pod}}",
@@ -450,7 +450,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{deployment!=\"\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (pod)",
+          "expr": "sum(irate(request_total{deployment!=\"\", namespace=~\"$namespace|$namespace-viz\", direction=\"inbound\"}[30s])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{pod}}",
@@ -542,7 +542,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment!=\"\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (le, pod))",
+          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment!=\"\", namespace=~\"$namespace|$namespace-viz\", direction=\"inbound\"}[30s])) by (le, pod))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{pod}}",
@@ -681,7 +681,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "tcp_close_total{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\",errno!=\"\"}",
+              "expr": "tcp_close_total{deployment=\"$deployment\", namespace=~\"$namespace|$namespace-viz\", direction=\"inbound\",errno!=\"\"}",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{peer}} {{errno}}",
@@ -772,7 +772,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "tcp_open_connections{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\"}",
+              "expr": "tcp_open_connections{deployment=\"$deployment\", namespace=~\"$namespace|$namespace-viz\", direction=\"inbound\"}",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{peer}}",
@@ -857,7 +857,7 @@
           },
           "targets": [
             {
-              "expr": "tcp_connection_duration_ms_bucket{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\"}",
+              "expr": "tcp_connection_duration_ms_bucket{deployment=\"$deployment\", namespace=~\"$namespace|$namespace-viz\", direction=\"inbound\"}",
               "format": "time_series",
               "intervalFactor": 1,
               "refId": "A"
@@ -2246,7 +2246,7 @@
         "multi": false,
         "name": "deployment",
         "options": [],
-        "query": "label_values(process_start_time_seconds{control_plane_component!=\"\"}, deployment)",
+        "query": "label_values(process_start_time_seconds{namespace=~\"$namespace|$namespace-viz\"}, deployment)",
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -2294,6 +2294,28 @@
         "name": "namespace",
         "options": [],
         "query": "label_values(process_start_time_seconds{control_plane_ns!=\"\"},  control_plane_ns)",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": ".*",
+        "current": {},
+        "datasource": "prometheus",
+        "definition": "",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Linkerd Viz Namespace",
+        "multi": false,
+        "name": "namespace-viz",
+        "options": [],
+        "query": "label_values(process_start_time_seconds{control_plane_ns!=\"\",extension!=\"\"},  namespace)",
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,

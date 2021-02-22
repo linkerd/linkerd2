@@ -1,0 +1,20 @@
+apiVersion: "v1"
+# this version will be updated by the CI before publishing the Helm tarball
+appVersion: edge-XX.X.X
+description: |
+  The Linkerd-Viz extension contains observability and visualization
+  components for Linkerd.
+home: https://linkerd.io
+keywords:
+- service-mesh
+kubeVersion: ">=1.16.0-0"
+name: "linkerd-viz"
+sources:
+- https://github.com/linkerd/linkerd2/
+# this version will be updated by the CI before publishing the Helm tarball
+version: 0.1.0
+icon: https://linkerd.io/images/logo-only-200h.png
+maintainers:
+  - name: Linkerd authors
+    email: cncf-linkerd-dev@lists.cncf.io
+    url: https://linkerd.io/

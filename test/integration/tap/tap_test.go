@@ -17,7 +17,7 @@ var TestHelper *testutil.TestHelper
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	os.Exit(testutil.Run(m, TestHelper))
+	os.Exit(m.Run())
 }
 
 var (
@@ -133,7 +133,7 @@ func TestCliTap(t *testing.T) {
 		})
 
 		t.Run("tap a disabled deployment", func(t *testing.T) {
-			out, stderr, err := TestHelper.PipeToLinkerdRun("", "tap", "deploy/t4", "--namespace", prefixedNs)
+			out, stderr, err := TestHelper.PipeToLinkerdRun("", "viz", "tap", "deploy/t4", "--namespace", prefixedNs)
 			if out != "" {
 				testutil.AnnotatedFatalf(t, "unexpected output",
 					"unexpected output: %s", out)
@@ -144,10 +144,13 @@ func TestCliTap(t *testing.T) {
 			if stderr == "" {
 				testutil.Fatal(t, "expected an error, got none")
 			}
-			expectedErr := "Error: all pods found for deployment/t4 have tapping disabled"
-			if errs := strings.Split(stderr, "\n"); errs[0] != expectedErr {
+			expectedErr := `Error: no pods to tap for deployment/t4
+pods found with tap disabled via the viz.linkerd.io/disable-tap annotation`
+			split := strings.Split(stderr, "\n")
+			actualErr := strings.Join(split[:2], "\n")
+			if actualErr != expectedErr {
 				testutil.AnnotatedFatalf(t, "unexpected error",
-					"expected [%s], got: %s", expectedErr, errs[0])
+					"expected [%s], got: %s", expectedErr, actualErr)
 			}
 		})
 

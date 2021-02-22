@@ -1,0 +1,17 @@
+{{- if (.Values.installNamespace) -}}
+---
+###
+### Linkerd Viz Extension Namespace
+###
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: {{.Values.namespace}}
+  labels:
+    linkerd.io/extension: linkerd-viz
+  annotations:
+    {{- if .Values.prometheusUrl }}
+    viz.linkerd.io/external-prometheus: {{.Values.prometheusUrl}}
+    {{- end }}
+    linkerd.io/inject: enabled
+{{ end -}}

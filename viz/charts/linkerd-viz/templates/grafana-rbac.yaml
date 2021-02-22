@@ -1,0 +1,16 @@
+{{ if .Values.grafana.enabled -}}
+---
+###
+### Grafana RBAC
+###
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-grafana
+  namespace: {{.Values.namespace}}
+  labels:
+    linkerd.io/extension: linkerd-viz
+    component: grafana
+    namespace: {{.Values.namespace}}
+{{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
+{{ end -}}

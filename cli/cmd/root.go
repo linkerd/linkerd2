@@ -1,18 +1,16 @@
 package cmd
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
-	"time"
-
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/fatih/color"
 	"github.com/linkerd/linkerd2/cli/flag"
+	jaeger "github.com/linkerd/linkerd2/jaeger/cmd"
+	multicluster "github.com/linkerd/linkerd2/multicluster/cmd"
+	viz "github.com/linkerd/linkerd2/viz/cmd"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -21,13 +19,10 @@ const (
 	defaultLinkerdNamespace = "linkerd"
 	defaultCNINamespace     = "linkerd-cni"
 	defaultClusterDomain    = "cluster.local"
-	defaultDockerRegistry   = "ghcr.io/linkerd"
+	defaultDockerRegistry   = "cr.l5d.io/linkerd"
 
 	jsonOutput  = "json"
 	tableOutput = "table"
-	wideOutput  = "wide"
-
-	maxRps = 100.0
 )
 
 var (
@@ -45,7 +40,6 @@ var (
 	apiAddr               string // An empty value means "use the Kubernetes configuration"
 	kubeconfigPath        string
 	kubeContext           string
-	defaultNamespace      string // Default namespace taken from current kubectl context
 	impersonate           string
 	impersonateGroup      []string
 	verbose               bool
@@ -96,8 +90,7 @@ var RootCmd = &cobra.Command{
 }
 
 func init() {
-	defaultNamespace = getDefaultNamespace()
-	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed [$LINKERD_NAMESPACE]")
+	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed ($LINKERD_NAMESPACE)")
 	RootCmd.PersistentFlags().StringVarP(&cniNamespace, "cni-namespace", "", defaultCNINamespace, "Namespace in which the Linkerd CNI plugin is installed")
 	RootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
 	RootCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
@@ -108,106 +101,37 @@ func init() {
 	RootCmd.AddCommand(newCmdAlpha())
 	RootCmd.AddCommand(newCmdCheck())
 	RootCmd.AddCommand(newCmdCompletion())
-	RootCmd.AddCommand(newCmdDashboard())
 	RootCmd.AddCommand(newCmdDiagnostics())
 	RootCmd.AddCommand(newCmdDoc())
-	RootCmd.AddCommand(newCmdEdges())
-	RootCmd.AddCommand(newCmdGet())
+	RootCmd.AddCommand(newCmdIdentity())
 	RootCmd.AddCommand(newCmdInject())
 	RootCmd.AddCommand(newCmdInstall())
 	RootCmd.AddCommand(newCmdInstallCNIPlugin())
 	RootCmd.AddCommand(newCmdInstallSP())
-	RootCmd.AddCommand(newCmdLogs())
 	RootCmd.AddCommand(newCmdProfile())
-	RootCmd.AddCommand(newCmdRoutes())
-	RootCmd.AddCommand(newCmdStat())
-	RootCmd.AddCommand(newCmdTap())
-	RootCmd.AddCommand(newCmdTop())
+	RootCmd.AddCommand(newCmdRepair())
 	RootCmd.AddCommand(newCmdUninject())
 	RootCmd.AddCommand(newCmdUpgrade())
 	RootCmd.AddCommand(newCmdVersion())
-	RootCmd.AddCommand(newCmdMulticluster())
 	RootCmd.AddCommand(newCmdUninstall())
+
+	// Extension Sub Commands
+	RootCmd.AddCommand(jaeger.NewCmdJaeger())
+	RootCmd.AddCommand(multicluster.NewCmdMulticluster())
+	RootCmd.AddCommand(viz.NewCmdViz())
+
+	// Viz Extension sub commands
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdDashboard()))
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdEdges()))
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdRoutes()))
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdStat()))
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdTap()))
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdTop()))
 }
 
-type statOptionsBase struct {
-	namespace    string
-	timeWindow   string
-	outputFormat string
-}
-
-func newStatOptionsBase() *statOptionsBase {
-	return &statOptionsBase{
-		namespace:    defaultNamespace,
-		timeWindow:   "1m",
-		outputFormat: tableOutput,
-	}
-}
-
-func (o *statOptionsBase) validateOutputFormat() error {
-	switch o.outputFormat {
-	case tableOutput, jsonOutput, wideOutput:
-		return nil
-	default:
-		return fmt.Errorf("--output currently only supports %s, %s and %s", tableOutput, jsonOutput, wideOutput)
-	}
-}
-
-func renderStats(buffer bytes.Buffer, options *statOptionsBase) string {
-	var out string
-	switch options.outputFormat {
-	case jsonOutput:
-		out = buffer.String()
-	default:
-		// strip left padding on the first column
-		b := buffer.Bytes()
-		if len(b) > padding {
-			out = string(b[padding:])
-		}
-		out = strings.Replace(out, "\n"+strings.Repeat(" ", padding), "\n", -1)
-	}
-
-	return out
-}
-
-// getRequestRate calculates request rate from Public API BasicStats.
-func getRequestRate(success, failure uint64, timeWindow string) float64 {
-	windowLength, err := time.ParseDuration(timeWindow)
-	if err != nil {
-		log.Error(err.Error())
-		return 0.0
-	}
-	return float64(success+failure) / windowLength.Seconds()
-}
-
-// getSuccessRate calculates success rate from Public API BasicStats.
-func getSuccessRate(success, failure uint64) float64 {
-	if success+failure == 0 {
-		return 0.0
-	}
-	return float64(success) / float64(success+failure)
-}
-
-// getDefaultNamespace fetches the default namespace
-// used in the current KubeConfig context
-func getDefaultNamespace() string {
-	rules := clientcmd.NewDefaultClientConfigLoadingRules()
-
-	if kubeconfigPath != "" {
-		rules.ExplicitPath = kubeconfigPath
-	}
-
-	overrides := &clientcmd.ConfigOverrides{CurrentContext: kubeContext}
-	kubeCfg := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, overrides)
-	ns, _, err := kubeCfg.Namespace()
-
-	if err != nil {
-		log.Warnf(`could not set namespace from kubectl context, using 'default' namespace: %s
-		 ensure the KUBECONFIG path %s is valid`, err, kubeconfigPath)
-		return corev1.NamespaceDefault
-	}
-
-	return ns
+func deprecateCmd(cmd *cobra.Command) *cobra.Command {
+	cmd.Deprecated = fmt.Sprintf("use instead 'linkerd viz %s'\n", cmd.Use)
+	return cmd
 }
 
 // registryOverride replaces the registry-portion of the provided image with the provided registry.

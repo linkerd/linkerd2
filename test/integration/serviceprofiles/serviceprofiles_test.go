@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	cmd2 "github.com/linkerd/linkerd2/cli/cmd"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/testutil"
+	cmd2 "github.com/linkerd/linkerd2/viz/cmd"
 	"sigs.k8s.io/yaml"
 )
 
@@ -28,7 +28,7 @@ type testCase struct {
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	os.Exit(testutil.Run(m, TestHelper))
+	os.Exit(m.Run())
 }
 
 func TestServiceProfiles(t *testing.T) {
@@ -101,6 +101,7 @@ func testProfiles(t *testing.T) {
 			sourceFlag := fmt.Sprintf("--%s", tc.sourceName)
 			cmd := []string{"profile", "--namespace", tc.namespace, tc.spName, sourceFlag}
 			if tc.sourceName == "tap" {
+				cmd = append([]string{"viz"}, cmd...)
 				tc.args = []string{
 					tc.deployName,
 					"--tap-route-limit",
@@ -278,7 +279,7 @@ func assertExpectedRoutes(expected []string, actual []*cmd2.JSONRouteStats, t *t
 }
 
 func getRoutes(deployName, namespace string, additionalArgs []string) ([]*cmd2.JSONRouteStats, error) {
-	cmd := []string{"routes", "--namespace", namespace, deployName}
+	cmd := []string{"viz", "routes", "--namespace", namespace, deployName}
 
 	if len(additionalArgs) > 0 {
 		cmd = append(cmd, additionalArgs...)
