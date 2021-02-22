@@ -1,7 +1,16 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: external-prometheus
+  labels:
+    test.linkerd.io/is-test-data-plane: "true"
+---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: prometheus
+  labels:
+    test.linkerd.io/is-test-data-plane: "true"
 rules:
 - apiGroups: [""]
   resources: ["nodes", "nodes/proxy", "pods"]
@@ -11,6 +20,8 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: prometheus
+  labels:
+    test.linkerd.io/is-test-data-plane: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -18,19 +29,19 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: prometheus
-  namespace: default
+  namespace: external-prometheus
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: prometheus
-  namespace: default
+  namespace: external-prometheus
 ---
 kind: ConfigMap
 apiVersion: v1
 metadata:
   name: prometheus-config
-  namespace: default
+  namespace: external-prometheus
 data:
   prometheus.yml: |-
     global:
@@ -168,7 +179,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: prometheus
-  namespace: default
+  namespace: external-prometheus
 spec:
   type: ClusterIP
   selector:
@@ -182,7 +193,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: prometheus
-  namespace: default
+  namespace: external-prometheus
 spec:
   replicas: 1
   selector:

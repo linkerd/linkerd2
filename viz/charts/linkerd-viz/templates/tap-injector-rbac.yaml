@@ -7,7 +7,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-tap-injector
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    linkerd.io/extension: linkerd-viz
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -18,7 +18,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-tap-injector
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    linkerd.io/extension: linkerd-viz
 subjects:
 - kind: ServiceAccount
   name: tap-injector
@@ -44,7 +44,7 @@ metadata:
   name: tap-injector-k8s-tls
   namespace: {{ .Values.namespace }}
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
 type: kubernetes.io/tls
 data:
   tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tapInjector.crtPEM)) (empty .Values.tapInjector.crtPEM) }}
@@ -56,7 +56,7 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-tap-injector-webhook-config
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    linkerd.io/extension: linkerd-viz
 webhooks:
 - name: tap-injector.linkerd.io
   {{- if .Values.tapInjector.namespaceSelector }}

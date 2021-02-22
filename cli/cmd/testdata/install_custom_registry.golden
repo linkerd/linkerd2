@@ -205,6 +205,9 @@ rules:
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["list"]
+- apiGroups: ["linkerd.io"]
+  resources: ["serviceprofiles"]
+  verbs: ["list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -872,15 +875,12 @@ data:
     cniEnabled: false
     controlPlaneTracing: false
     controlPlaneTracingNamespace: linkerd-jaeger
-    controllerComponentLabel: linkerd.io/control-plane-component
     controllerImage: my.custom.registry/linkerd-io/controller
     controllerImageVersion: install-control-plane-version
     controllerLogFormat: plain
     controllerLogLevel: info
-    controllerNamespaceLabel: linkerd.io/control-plane-ns
     controllerReplicas: 1
     controllerUID: 2103
-    createdByAnnotation: linkerd.io/created-by
     debugContainer:
       image:
         name: my.custom.registry/linkerd-io/debug
@@ -900,7 +900,6 @@ data:
       issuer:
         clockSkewAllowance: 20s
         crtExpiry: "2030-08-26T07:13:47Z"
-        crtExpiryAnnotation: linkerd.io/identity-issuer-expiry
         issuanceLifetime: 24h0m0s
         scheme: linkerd.io/tls
         tls:
@@ -936,7 +935,6 @@ data:
     imagePullPolicy: IfNotPresent
     imagePullSecrets: []
     installNamespace: true
-    linkerdNamespaceLabel: linkerd.io/is-control-plane
     linkerdVersion: dev-undefined
     namespace: linkerd
     nodeSelector:
@@ -1008,8 +1006,6 @@ data:
         mountPath: /run
         name: linkerd-proxy-init-xtables-lock
         readOnly: false
-    proxyInjectAnnotation: linkerd.io/inject
-    proxyInjectDisabled: disabled
     proxyInjector:
       caBundle: proxy injector CA bundle
       crtPEM: proxy injector crt
@@ -1028,7 +1024,6 @@ data:
     spValidatorResources: null
     tolerations: null
     webhookFailurePolicy: Ignore
-    workloadNamespaceLabel: linkerd.io/workload-ns
 ---
 ###
 ### Identity Controller Service
@@ -1130,8 +1125,10 @@ spec:
         - -identity-trust-domain=cluster.local
         - -identity-issuance-lifetime=24h0m0s
         - -identity-clock-skew-allowance=20s
-        - -identity-trust-anchors-pem=LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3VENDQVdhZ0F3SUJBZ0lRZURacDVsRGFJeWdRNVVmTUtackZBVEFLQmdncWhrak9QUVFEQWpBcE1TY3cKSlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d0hoY05NakF3T0RJNApNRGN4TWpRM1doY05NekF3T0RJMk1EY3hNalEzV2pBcE1TY3dKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyClpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d1dUQVRCZ2NxaGtqT1BRSUJCZ2dxaGtqT1BRTUJCd05DQUFScWM3MFoKbDF2Z3c3OXJqQjV1U0lUSUNVQTZHeWZ2U0ZmY3VJaXM3Qi9YRlNra3dBSFU1Uy9zMUFBUCtSMFRYN0hCV1VDNAp1YUc0V1dzaXdKS05uN21nbzNBd2JqQU9CZ05WSFE4QkFmOEVCQU1DQVFZd0VnWURWUjBUQVFIL0JBZ3dCZ0VCCi93SUJBVEFkQmdOVkhRNEVGZ1FVNVl0alZWUGZkN0k3TkxIc24yQzI2RUJ5R1Ywd0tRWURWUjBSQkNJd0lJSWUKYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Bb0dDQ3FHU000OUJBTUNBMGtBTUVZQwpJUUNON2xCRkxERHZqeDZWMCtYa2pwS0VSUnNKWWY1YWRNdm5sb0ZsNDhpbEpnSWhBTnR4aG5kY3IrUUpQdUM4CnZnVUMwZDIvOUZNdWVJVk1iKzQ2V1RDT2pzcXIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
         - -identity-scheme=linkerd.io/tls
+        env:
+        - name: LINKERD2_IDENTITY_TRUST_ANCHORS
+          value: "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3VENDQVdhZ0F3SUJBZ0lRZURacDVsRGFJeWdRNVVmTUtackZBVEFLQmdncWhrak9QUVFEQWpBcE1TY3cKSlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d0hoY05NakF3T0RJNApNRGN4TWpRM1doY05NekF3T0RJMk1EY3hNalEzV2pBcE1TY3dKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyClpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d1dUQVRCZ2NxaGtqT1BRSUJCZ2dxaGtqT1BRTUJCd05DQUFScWM3MFoKbDF2Z3c3OXJqQjV1U0lUSUNVQTZHeWZ2U0ZmY3VJaXM3Qi9YRlNra3dBSFU1Uy9zMUFBUCtSMFRYN0hCV1VDNAp1YUc0V1dzaXdKS05uN21nbzNBd2JqQU9CZ05WSFE4QkFmOEVCQU1DQVFZd0VnWURWUjBUQVFIL0JBZ3dCZ0VCCi93SUJBVEFkQmdOVkhRNEVGZ1FVNVl0alZWUGZkN0k3TkxIc24yQzI2RUJ5R1Ywd0tRWURWUjBSQkNJd0lJSWUKYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Bb0dDQ3FHU000OUJBTUNBMGtBTUVZQwpJUUNON2xCRkxERHZqeDZWMCtYa2pwS0VSUnNKWWY1YWRNdm5sb0ZsNDhpbEpnSWhBTnR4aG5kY3IrUUpQdUM4CnZnVUMwZDIvOUZNdWVJVk1iKzQ2V1RDT2pzcXIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
         image: my.custom.registry/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

@@ -262,7 +262,7 @@ check_if_l5d_exists() {
 Linkerd resources exist on cluster:
 \n%s\n
 Help:
-    Run: [%s/test-cleanup] ' "$linkerd_path"
+    Run: [%s/test-cleanup] ' "$resources" "$linkerd_path"
     exit 1
   fi
   printf '[ok]\n'
@@ -374,7 +374,7 @@ install_version() {
 
     #Now we need to install the app that will be used to verify that upgrade does not break anything
     kubectl --context="$context" create namespace "$test_app_namespace" > /dev/null 2>&1
-    kubectl --context="$context" label namespaces "$test_app_namespace" 'linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
+    kubectl --context="$context" label namespaces "$test_app_namespace" 'test.linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
     (
         set -x
         "$linkerd_path" inject "$test_directory/testdata/upgrade_test.yaml" | kubectl --context="$context" apply --namespace="$test_app_namespace" -f - 2>&1

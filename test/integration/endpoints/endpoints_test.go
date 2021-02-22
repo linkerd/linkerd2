@@ -38,7 +38,7 @@ func TestGoodEndpoints(t *testing.T) {
 	if !TestHelper.ExternalPrometheus() {
 		cmd = append(cmd, fmt.Sprintf("linkerd-prometheus.%s.svc.cluster.local:9090", vizNs))
 	} else {
-		cmd = append(cmd, "prometheus.default.svc.cluster.local:9090")
+		cmd = append(cmd, "prometheus.external-prometheus.svc.cluster.local:9090")
 		testDataPath += "/external_prometheus"
 	}
 
@@ -77,7 +77,7 @@ func TestBadEndpoints(t *testing.T) {
 	if len(stderrOut) == 0 {
 		testutil.AnnotatedFatalf(t, "unexpected output", "unexpected output: %s", stderr)
 	}
-	if stderrOut[0] != "Error: Destination API error: Invalid authority: foo" {
+	if stderrOut[0] != "Destination API error: Invalid authority: foo" {
 		testutil.AnnotatedErrorf(t, "unexpected error string", "unexpected error string: %s", stderrOut[0])
 	}
 }

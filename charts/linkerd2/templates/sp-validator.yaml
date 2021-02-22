@@ -8,14 +8,14 @@ metadata:
   name: linkerd-sp-validator
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerComponentLabel}}: sp-validator
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.controllerComponentLabel}}: sp-validator
+    linkerd.io/control-plane-component: sp-validator
   ports:
   - name: sp-validator
     port: 443
@@ -28,15 +28,15 @@ metadata:
   name: linkerd-sp-validator
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerComponentLabel}}: sp-validator
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
 spec:
   maxUnavailable: 1
   selector:
     matchLabels:
-      {{.Values.controllerComponentLabel}}: sp-validator
+      linkerd.io/control-plane-component: sp-validator
 {{- end }}
 ---
 {{- $tree := deepCopy . }}
@@ -47,20 +47,20 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
   labels:
     app.kubernetes.io/name: sp-validator
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
-    {{.Values.controllerComponentLabel}}: sp-validator
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
   name: linkerd-sp-validator
   namespace: {{.Values.namespace}}
 spec:
   replicas: {{.Values.controllerReplicas}}
   selector:
     matchLabels:
-      {{.Values.controllerComponentLabel}}: sp-validator
+      linkerd.io/control-plane-component: sp-validator
   {{- if .Values.enablePodAntiAffinity }}
   strategy:
     rollingUpdate:
@@ -72,13 +72,13 @@ spec:
         {{- if (or (empty .Values.cliVersion) (not (eq (.Values.stage | toString) "control-plane"))) }}
         checksum/config: {{ include (print $.Template.BasePath "/sp-validator-rbac.yaml") . | sha256sum }}
         {{- end }}
-        {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+        {{ include "partials.annotations.created-by" . }}
         {{- include "partials.proxy.annotations" .Values.proxy| nindent 8}}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
-        {{.Values.controllerComponentLabel}}: sp-validator
-        {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
-        {{.Values.workloadNamespaceLabel}}: {{.Values.namespace}}
+        linkerd.io/control-plane-component: sp-validator
+        linkerd.io/control-plane-ns: {{.Values.namespace}}
+        linkerd.io/workload-ns: {{.Values.namespace}}
         {{- include "partials.proxy.labels" $tree.Values.proxy | nindent 8}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
@@ -87,7 +87,7 @@ spec:
       {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- if .Values.enablePodAntiAffinity -}}
-      {{- $local := dict "component" "sp-validator" "label" .Values.controllerComponentLabel -}}
+      {{- $local := dict "component" "sp-validator" -}}
       {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
       {{- end }}
       containers:

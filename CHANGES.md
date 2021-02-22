@@ -1,5 +1,35 @@
 # Changes
 
+## edge-21.2.3
+
+This release wraps up most of the functional changes planned for the upcoming
+`stable-2.10.0` release. Try this edge release in your staging cluster and
+let us know if you see anything unexpected!
+
+* **Breaking change**: Changed the multicluster `Service`-export annotation
+  from `mirror.linkerd.io/exported` to `multicluster.linkerd.io/export`
+* Updated the proxy-injector to to set the `config.linkerd.io/opaque-ports`
+  annotation on newly-created `Service` objects when the annotation is set on
+  its parent `Namespace`
+* Updated the proxy-injector to ignore pods that have disabled
+  `automountServiceAccountToken` (thanks @jimil749)
+* Updated the proxy to log warnings when control plane components are
+  unresolveable
+* Updated the Destination controller to cache node topology metadata (thanks
+  @fpetkovski)
+* Updated the CLI to handle API errors without printing the CLI usage (thanks
+  @piyushsingariya)
+* Updated the Web UI to only display the "Gateway" sidebar link when the
+  multicluster extension is active
+* Fixed the Web UI on Chrome v88 (thanks @kellycampbell)
+* Improved `install` and `uninstall` behavior for extensions to prevent
+  control-plane components from being left in a broken state
+* Docker images are now hosted on the `cr.l5d.io` registry
+* Updated base docker images to buster-20210208-slim
+* Updated the Go version to 1.14.15
+* Updated the proxy to prevent outbound connections to localhost to protect
+  against traffic loops
+
 ## edge-21.2.2
 
 This edge release introduces support for multicluster TCP!

@@ -285,15 +285,16 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 		if err != nil {
 			return err
 		}
-		stored, err := loadStoredValues(ctx, k8sAPI)
-		if err != nil {
-			return err
-		}
-		if stored != nil {
-			fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, "Secret/linkerd-config-overrides already exists")
+
+		// We just want to check if `linkerd-configmap` exists
+		_, err := k8sAPI.CoreV1().ConfigMaps(controlPlaneNamespace).Get(ctx, k8s.ConfigConfigMapName, metav1.GetOptions{})
+		if err == nil {
+			fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, "ConfigMap/linkerd-config already exists")
 			os.Exit(1)
 		}
-
+		if !kerrors.IsNotFound(err) {
+			return err
+		}
 	}
 
 	err = initializeIssuerCredentials(ctx, k8sAPI, values)

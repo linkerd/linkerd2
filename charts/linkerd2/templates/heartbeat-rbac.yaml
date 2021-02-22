@@ -9,7 +9,7 @@ metadata:
   name: linkerd-heartbeat
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 rules:
 - apiGroups: [""]
   resources: ["configmaps"]
@@ -22,7 +22,7 @@ metadata:
   name: linkerd-heartbeat
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 roleRef:
   kind: Role
   name: linkerd-heartbeat
@@ -37,10 +37,13 @@ kind: ClusterRole
 metadata:
   name: linkerd-heartbeat
   labels:
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
+  verbs: ["list"]
+- apiGroups: ["linkerd.io"]
+  resources: ["serviceprofiles"]
   verbs: ["list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -48,7 +51,7 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-heartbeat
   labels:
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 roleRef:
   kind: ClusterRole
   name: linkerd-heartbeat
@@ -64,7 +67,7 @@ metadata:
   name: linkerd-heartbeat
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerComponentLabel}}: heartbeat
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    linkerd.io/control-plane-component: heartbeat
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 {{- end }}

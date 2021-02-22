@@ -1,10 +1,10 @@
 \[
   \{
-    "namespace": "default",
+    "namespace": "external\-prometheus",
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 9090,
     "pod": "prometheus\-[a-f0-9]+\-[a-z0-9]+",
-    "service": "prometheus.default"
+    "service": "prometheus.external\-prometheus"
   \},
   \{
     "namespace": "{{.Ns}}",
