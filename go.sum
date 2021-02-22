@@ -356,6 +356,8 @@ github.com/linkerd/linkerd2-proxy-api v0.1.15 h1:hy/36GwG+BnKxxh3BAnC5cfUsH/ZAxu
 github.com/linkerd/linkerd2-proxy-api v0.1.15/go.mod h1:yFz+DCCEomC3vpsChFzfCuOuSJtzx7jMNNHBIlbFil0=
 github.com/linkerd/linkerd2-proxy-init v1.3.6 h1:qRJJJFc2hn/fWGeO4pyyZZvtkhLrE68THg+MRUyCphE=
 github.com/linkerd/linkerd2-proxy-init v1.3.6/go.mod h1:M6iaaLLi06ofuIV6x74SDknSFi7VS/MFqa5m+CwHgLY=
+github.com/linkerd/linkerd2-proxy-init v1.3.9 h1:T2H4P6N3V7mRRr3twp0JDzvq1XSvv9S/orxWbwj7kFM=
+github.com/linkerd/linkerd2-proxy-init v1.3.9/go.mod h1:M6iaaLLi06ofuIV6x74SDknSFi7VS/MFqa5m+CwHgLY=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
 github.com/mailru/easyjson v0.0.0-20160728113105-d5b7844b561a/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
 github.com/mailru/easyjson v0.0.0-20180823135443-60711f1a8329/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=

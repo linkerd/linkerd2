@@ -1229,7 +1229,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: cr.l5d.io/linkerd/proxy-init:v1.3.6
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1462,7 +1462,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: cr.l5d.io/linkerd/proxy-init:v1.3.6
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1713,7 +1713,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: cr.l5d.io/linkerd/proxy-init:v1.3.6
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1993,7 +1993,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: cr.l5d.io/linkerd/proxy-init:v1.3.6
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2205,7 +2205,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: cr.l5d.io/linkerd/proxy-init:v1.3.6
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2459,7 +2459,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: cr.l5d.io/linkerd/proxy-init:v1.3.6
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2700,7 +2700,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: cr.l5d.io/linkerd/proxy-init:v1.3.6
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -3010,7 +3010,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: cr.l5d.io/linkerd/proxy-init:v1.3.6
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -3445,7 +3445,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: cr.l5d.io/linkerd/proxy-init:v1.3.6
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -3744,7 +3744,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: cr.l5d.io/linkerd/proxy-init:v1.3.6
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -3965,7 +3965,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: cr.l5d.io/linkerd/proxy-init:v1.3.6
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
