@@ -15,7 +15,7 @@ spec:
         app: rabbitmq
     spec:
       containers:
-        - image: rabbitmq:3-management
+        - image: rabbitmq:3.8.12-rc.3-management
           name: rabbitmq
           livenessProbe:
             exec:
