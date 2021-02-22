@@ -5,10 +5,10 @@ kind: ConfigMap
 metadata:
   name: {{.Values.gatewayName}}-config
   labels:
-    {{.Values.controllerComponentLabel}}: gateway
+    linkerd.io/control-plane-component: gateway
     linkerd.io/extension: linkerd-multicluster
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
   namespace: {{.Values.namespace}}
 data:
   nginx.conf: |-
@@ -52,12 +52,12 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
   labels:
     app.kubernetes.io/name: gateway
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{.Values.linkerdVersion}}
-    {{.Values.controllerComponentLabel}}: gateway
+    linkerd.io/control-plane-component: gateway
     app: {{.Values.gatewayName}}
     linkerd.io/extension: linkerd-multicluster
   name: {{.Values.gatewayName}}
@@ -70,7 +70,7 @@ spec:
   template:
     metadata:
       annotations:
-        {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+        {{ include "partials.annotations.created-by" . }}
         linkerd.io/inject: enabled
         config.linkerd.io/proxy-require-identity-inbound-ports: "{{.Values.gatewayProbePort}},{{.Values.gatewayPort}},4180"
         config.linkerd.io/enable-gateway: "true"
@@ -124,8 +124,8 @@ metadata:
     multicluster.linkerd.io/probe-period: "{{.Values.gatewayProbeSeconds}}"
     multicluster.linkerd.io/probe-path: {{.Values.gatewayProbePath}}
     multicluster.linkerd.io/multicluster-gateway: "true"
-    {{.Values.controllerComponentLabel}}: gateway
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    linkerd.io/control-plane-component: gateway
+    {{ include "partials.annotations.created-by" . }}
     {{- with .Values.gatewayServiceAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   ports:

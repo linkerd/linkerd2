@@ -12,6 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/multicluster/static"
 	multicluster "github.com/linkerd/linkerd2/multicluster/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
+	partials "github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	api "github.com/linkerd/linkerd2/pkg/public"
@@ -94,13 +95,25 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				{Name: "templates/link-crd.yaml"},
 			}
 
+			var partialFiles []*loader.BufferedFile
+			for _, template := range charts.L5dPartials {
+				partialFiles = append(partialFiles,
+					&loader.BufferedFile{Name: template},
+				)
+			}
+
 			// Load all multicluster install chart files into buffer
 			if err := charts.FilesReader(static.Templates, helmMulticlusterDefaultChartName+"/", files); err != nil {
 				return err
 			}
 
+			// Load all partial chart files into buffer
+			if err := charts.FilesReader(partials.Templates, "", partialFiles); err != nil {
+				return err
+			}
+
 			// Create a Chart obj from the files
-			chart, err := loader.LoadFiles(files)
+			chart, err := loader.LoadFiles(append(files, partialFiles...))
 			if err != nil {
 				return err
 			}

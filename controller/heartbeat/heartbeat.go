@@ -10,12 +10,14 @@ import (
 	"strconv"
 	"time"
 
+	pkgK8s "github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	log "github.com/sirupsen/logrus"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type containerMeta struct {
@@ -51,6 +53,26 @@ func K8sValues(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneName
 			v.Set(extensionNameParam, "1")
 		}
 	}
+
+	err = k8s.ServiceProfilesAccess(ctx, kubeAPI)
+	if err != nil {
+		log.Errorf("Failed to verify service profile access: %s", err)
+		return v
+	}
+
+	spClient, err := pkgK8s.NewSpClientSet(kubeAPI.Config)
+	if err != nil {
+		log.Errorf("Failed to create service profile client: %s", err)
+		return v
+	}
+
+	spList, err := spClient.LinkerdV1alpha2().ServiceProfiles("").List(ctx, v1.ListOptions{})
+	if err != nil {
+		log.Errorf("Failed to get service profiles: %s", err)
+		return v
+	}
+
+	v.Set("service-profile-count", strconv.Itoa(len(spList.Items)))
 
 	return v
 }

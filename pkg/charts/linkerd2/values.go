@@ -39,16 +39,9 @@ type (
 		ClusterNetworks              string              `json:"clusterNetworks"`
 		ImagePullPolicy              string              `json:"imagePullPolicy"`
 		CliVersion                   string              `json:"cliVersion"`
-		ControllerComponentLabel     string              `json:"controllerComponentLabel"`
 		ControllerImageVersion       string              `json:"controllerImageVersion"`
 		ControllerLogLevel           string              `json:"controllerLogLevel"`
 		ControllerLogFormat          string              `json:"controllerLogFormat"`
-		ControllerNamespaceLabel     string              `json:"controllerNamespaceLabel"`
-		WorkloadNamespaceLabel       string              `json:"workloadNamespaceLabel"`
-		CreatedByAnnotation          string              `json:"createdByAnnotation"`
-		ProxyInjectAnnotation        string              `json:"proxyInjectAnnotation"`
-		ProxyInjectDisabled          string              `json:"proxyInjectDisabled"`
-		LinkerdNamespaceLabel        string              `json:"linkerdNamespaceLabel"`
 		ProxyContainerName           string              `json:"proxyContainerName"`
 		HighAvailability             bool                `json:"highAvailability"`
 		CNIEnabled                   bool                `json:"cniEnabled"`
@@ -185,12 +178,11 @@ type (
 
 	// Issuer has the Helm variables of the identity issuer
 	Issuer struct {
-		Scheme              string     `json:"scheme"`
-		ClockSkewAllowance  string     `json:"clockSkewAllowance"`
-		IssuanceLifetime    string     `json:"issuanceLifetime"`
-		CrtExpiryAnnotation string     `json:"crtExpiryAnnotation"`
-		CrtExpiry           time.Time  `json:"crtExpiry"`
-		TLS                 *IssuerTLS `json:"tls"`
+		Scheme             string     `json:"scheme"`
+		ClockSkewAllowance string     `json:"clockSkewAllowance"`
+		IssuanceLifetime   string     `json:"issuanceLifetime"`
+		CrtExpiry          time.Time  `json:"crtExpiry"`
+		TLS                *IssuerTLS `json:"tls"`
 	}
 
 	// ProxyInjector has all the proxy injector's Helm variables

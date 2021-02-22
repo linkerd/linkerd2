@@ -8,8 +8,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-identity
   labels:
-    {{.Values.controllerComponentLabel}}: identity
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 rules:
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
@@ -26,8 +26,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-identity
   labels:
-    {{.Values.controllerComponentLabel}}: identity
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -43,7 +43,7 @@ metadata:
   name: linkerd-identity
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerComponentLabel}}: identity
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 {{ end -}}

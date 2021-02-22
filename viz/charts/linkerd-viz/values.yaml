@@ -11,10 +11,6 @@ clusterDomain: cluster.local
 # -- Trust domain used for identity
 # @default -- clusterDomain
 identityTrustDomain: ""
-#  Annotation labels. Do not edit.
-createdByAnnotation: linkerd.io/created-by
-proxyInjectAnnotation: linkerd.io/inject
-extensionAnnotation: linkerd.io/extension
 
 # -- Docker registry for all viz components
 defaultRegistry: cr.l5d.io/linkerd
