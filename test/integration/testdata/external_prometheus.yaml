@@ -9,6 +9,8 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: prometheus
+  labels:
+    linkerd.io/is-test-data-plane: "true"
 rules:
 - apiGroups: [""]
   resources: ["nodes", "nodes/proxy", "pods"]
@@ -18,6 +20,8 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: prometheus
+  labels:
+    linkerd.io/is-test-data-plane: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
