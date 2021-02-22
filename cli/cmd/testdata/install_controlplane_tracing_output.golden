@@ -799,14 +799,14 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   values: |
-    controllerImage: ghcr.io/linkerd/controller
+    controllerImage: cr.l5d.io/linkerd/controller
     controllerReplicas: 1
     controllerUID: 2103
     dashboard:
       replicas: 1
     debugContainer:
       image:
-        name: ghcr.io/linkerd/debug
+        name: cr.l5d.io/linkerd/debug
         pullPolicy: IfNotPresent
         version: install-debug-version
     destinationProxyResources: null
@@ -856,7 +856,7 @@ data:
         disableTap: false
         enableExternalProfiles: false
         image:
-          name: ghcr.io/linkerd/proxy
+          name: cr.l5d.io/linkerd/proxy
           pullPolicy: IfNotPresent
           version: install-proxy-version
         inboundConnectTimeout: 100ms
@@ -892,7 +892,7 @@ data:
         ignoreInboundPorts: 25,443,587,3306,11211,5432
         ignoreOutboundPorts: 25,443,587,3306,11211,5432
         image:
-          name: ghcr.io/linkerd/proxy-init
+          name: cr.l5d.io/linkerd/proxy-init
           pullPolicy: IfNotPresent
           version: v1.3.9
         resources:
@@ -979,7 +979,7 @@ data:
     tolerations: null
     tracing:
       enabled: false
-    webImage: ghcr.io/linkerd/web
+    webImage: cr.l5d.io/linkerd/web
     webProxyResources: null
     webResources: null
     webhookFailurePolicy: Ignore
@@ -1086,7 +1086,7 @@ spec:
         - -identity-trust-anchors-pem=LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3VENDQVdhZ0F3SUJBZ0lRZURacDVsRGFJeWdRNVVmTUtackZBVEFLQmdncWhrak9QUVFEQWpBcE1TY3cKSlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d0hoY05NakF3T0RJNApNRGN4TWpRM1doY05NekF3T0RJMk1EY3hNalEzV2pBcE1TY3dKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyClpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d1dUQVRCZ2NxaGtqT1BRSUJCZ2dxaGtqT1BRTUJCd05DQUFScWM3MFoKbDF2Z3c3OXJqQjV1U0lUSUNVQTZHeWZ2U0ZmY3VJaXM3Qi9YRlNra3dBSFU1Uy9zMUFBUCtSMFRYN0hCV1VDNAp1YUc0V1dzaXdKS05uN21nbzNBd2JqQU9CZ05WSFE4QkFmOEVCQU1DQVFZd0VnWURWUjBUQVFIL0JBZ3dCZ0VCCi93SUJBVEFkQmdOVkhRNEVGZ1FVNVl0alZWUGZkN0k3TkxIc24yQzI2RUJ5R1Ywd0tRWURWUjBSQkNJd0lJSWUKYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Bb0dDQ3FHU000OUJBTUNBMGtBTUVZQwpJUUNON2xCRkxERHZqeDZWMCtYa2pwS0VSUnNKWWY1YWRNdm5sb0ZsNDhpbEpnSWhBTnR4aG5kY3IrUUpQdUM4CnZnVUMwZDIvOUZNdWVJVk1iKzQ2V1RDT2pzcXIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
         - -identity-scheme=linkerd.io/tls
         - -trace-collector=linkerd-collector.linkerd.svc.cluster.local:55678
-        image: ghcr.io/linkerd/controller:install-control-plane-version
+        image: cr.l5d.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1189,7 +1189,7 @@ spec:
           value: linkerd-collector.linkerd.svc.cluster.local:55678
         - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
           value: linkerd-collector.linkerd.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:install-proxy-version
+        image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1230,7 +1230,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: ghcr.io/linkerd/proxy-init:v1.3.9
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1337,7 +1337,7 @@ spec:
         - -cluster-domain=cluster.local
         - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
         - -trace-collector=linkerd-collector.linkerd.svc.cluster.local:55678
-        image: ghcr.io/linkerd/controller:install-control-plane-version
+        image: cr.l5d.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1437,7 +1437,7 @@ spec:
           value: linkerd-collector.linkerd.svc.cluster.local:55678
         - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
           value: linkerd-collector.linkerd.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:install-proxy-version
+        image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1478,7 +1478,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: ghcr.io/linkerd/proxy-init:v1.3.9
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1603,7 +1603,7 @@ spec:
         - -cluster-domain=cluster.local
         - -identity-trust-domain=cluster.local
         - -trace-collector=linkerd-collector.linkerd.svc.cluster.local:55678
-        image: ghcr.io/linkerd/controller:install-control-plane-version
+        image: cr.l5d.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1703,7 +1703,7 @@ spec:
           value: linkerd-collector.linkerd.svc.cluster.local:55678
         - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
           value: linkerd-collector.linkerd.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:install-proxy-version
+        image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1744,7 +1744,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: ghcr.io/linkerd/proxy-init:v1.3.9
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1818,7 +1818,7 @@ spec:
           restartPolicy: Never
           containers:
           - name: heartbeat
-            image: ghcr.io/linkerd/controller:install-control-plane-version
+            image: cr.l5d.io/linkerd/controller:install-control-plane-version
             imagePullPolicy: IfNotPresent
             args:
             - "heartbeat"
@@ -1897,7 +1897,7 @@ spec:
         - -log-level=info
         - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd\.svc\.cluster\.local|linkerd-web\.linkerd\.svc|\[::1\])(:\d+)?$
         - -trace-collector=linkerd-collector.linkerd.svc.cluster.local:55678
-        image: ghcr.io/linkerd/web:install-control-plane-version
+        image: cr.l5d.io/linkerd/web:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1997,7 +1997,7 @@ spec:
           value: linkerd-collector.linkerd.svc.cluster.local:55678
         - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
           value: linkerd-collector.linkerd.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:install-proxy-version
+        image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2038,7 +2038,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: ghcr.io/linkerd/proxy-init:v1.3.9
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2117,7 +2117,7 @@ spec:
       - args:
         - proxy-injector
         - -log-level=info
-        image: ghcr.io/linkerd/controller:install-control-plane-version
+        image: cr.l5d.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2223,7 +2223,7 @@ spec:
           value: linkerd-collector.linkerd.svc.cluster.local:55678
         - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
           value: linkerd-collector.linkerd.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:install-proxy-version
+        image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2264,7 +2264,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: ghcr.io/linkerd/proxy-init:v1.3.9
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2387,7 +2387,7 @@ spec:
       - args:
         - sp-validator
         - -log-level=info
-        image: ghcr.io/linkerd/controller:install-control-plane-version
+        image: cr.l5d.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2491,7 +2491,7 @@ spec:
           value: linkerd-collector.linkerd.svc.cluster.local:55678
         - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
           value: linkerd-collector.linkerd.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:install-proxy-version
+        image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2532,7 +2532,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: ghcr.io/linkerd/proxy-init:v1.3.9
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2641,7 +2641,7 @@ spec:
         - -log-level=info
         - -identity-trust-domain=cluster.local
         - -trace-collector=linkerd-collector.linkerd.svc.cluster.local:55678
-        image: ghcr.io/linkerd/controller:install-control-plane-version
+        image: cr.l5d.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2747,7 +2747,7 @@ spec:
           value: linkerd-collector.linkerd.svc.cluster.local:55678
         - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
           value: linkerd-collector.linkerd.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:install-proxy-version
+        image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2788,7 +2788,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: ghcr.io/linkerd/proxy-init:v1.3.9
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2968,7 +2968,7 @@ spec:
         # see https://github.com/grafana/grafana/issues/20096
         - name: GODEBUG
           value: netdns=go
-        image: ghcr.io/linkerd/grafana:install-control-plane-version
+        image: cr.l5d.io/linkerd/grafana:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -3071,7 +3071,7 @@ spec:
           value: linkerd-collector.linkerd.svc.cluster.local:55678
         - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
           value: linkerd-collector.linkerd.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:install-proxy-version
+        image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -3112,7 +3112,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: ghcr.io/linkerd/proxy-init:v1.3.9
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -3520,7 +3520,7 @@ spec:
           value: linkerd-collector.linkerd.svc.cluster.local:55678
         - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
           value: linkerd-collector.linkerd.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:install-proxy-version
+        image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -3561,7 +3561,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211,5432"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211,5432"
-        image: ghcr.io/linkerd/proxy-init:v1.3.9
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

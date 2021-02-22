@@ -28,8 +28,8 @@ func TestNewValues(t *testing.T) {
 	}
 
 	expected := &Values{
-		ControllerImage:             "ghcr.io/linkerd/controller",
-		WebImage:                    "ghcr.io/linkerd/web",
+		ControllerImage:             "cr.l5d.io/linkerd/controller",
+		WebImage:                    "cr.l5d.io/linkerd/web",
 		ControllerReplicas:          1,
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
@@ -69,7 +69,7 @@ func TestNewValues(t *testing.T) {
 			Proxy: &Proxy{
 				EnableExternalProfiles: false,
 				Image: &Image{
-					Name:       "ghcr.io/linkerd/proxy",
+					Name:       "cr.l5d.io/linkerd/proxy",
 					PullPolicy: "IfNotPresent",
 					Version:    testVersion,
 				},
@@ -104,7 +104,7 @@ func TestNewValues(t *testing.T) {
 				IgnoreInboundPorts:  "25,443,587,3306,11211,5432",
 				IgnoreOutboundPorts: "25,443,587,3306,11211,5432",
 				Image: &Image{
-					Name:       "ghcr.io/linkerd/proxy-init",
+					Name:       "cr.l5d.io/linkerd/proxy-init",
 					PullPolicy: "IfNotPresent",
 					Version:    testVersion,
 				},
@@ -141,7 +141,7 @@ func TestNewValues(t *testing.T) {
 		},
 		DebugContainer: &DebugContainer{
 			Image: &Image{
-				Name:       "ghcr.io/linkerd/debug",
+				Name:       "cr.l5d.io/linkerd/debug",
 				PullPolicy: "IfNotPresent",
 				Version:    testVersion,
 			},

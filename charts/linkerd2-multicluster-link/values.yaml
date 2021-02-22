@@ -1,5 +1,5 @@
 controllerComponentLabel: linkerd.io/control-plane-component
-controllerImage: ghcr.io/linkerd/controller
+controllerImage: cr.l5d.io/linkerd/controller
 controllerImageVersion: linkerdVersionValue
 createdByAnnotation: linkerd.io/created-by
 gatewayProbePort: 4181

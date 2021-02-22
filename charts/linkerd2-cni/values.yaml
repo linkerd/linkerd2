@@ -14,7 +14,7 @@ ignoreInboundPorts: "25,443,587,3306,11211,5432"
 ignoreOutboundPorts: "25,443,587,3306,11211,5432"
 
 createdByAnnotation: linkerd.io/created-by
-cniPluginImage: "ghcr.io/linkerd/cni-plugin"
+cniPluginImage: "cr.l5d.io/linkerd/cni-plugin"
 cniPluginVersion: linkerdVersionValue
 logLevel: info
 portsToRedirect: ""

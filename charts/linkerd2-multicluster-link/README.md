@@ -13,7 +13,7 @@ linkerd2-multicluster chart and their default values.
 | Parameter                       | Description                                                                                 | Default                                      |
 |---------------------------------|---------------------------------------------------------------------------------------------|----------------------------------------------|
 |`controllerComponentLabel`       | Control plane label. Do not edit                                                            |`linkerd.io/control-plane-component`          |
-|`controllerImage`                | Docker image for the Service mirror component (uses the Linkerd controller image)           |`ghcr.io/linkerd/controller`                |
+|`controllerImage`                | Docker image for the Service mirror component (uses the Linkerd controller image)           |`cr.l5d.io/linkerd/controller`                |
 |`controllerImageVersion`         | Tag for the Service Mirror container Docker image                                           |`latest version`                              |
 |`createdByAnnotation`            | Annotation label for the proxy create. Do not edit.                                         |`linkerd.io/created-by`                       |
 |`gateway`                        | If the gateway component should be installed                                                |`true`                                        |

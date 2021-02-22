@@ -56,7 +56,7 @@ global:
     outboundConnectTimeout: 1000ms
     inboundConnectTimeout: 100ms
     image:
-      name: ghcr.io/linkerd/proxy
+      name: cr.l5d.io/linkerd/proxy
       pullPolicy: *image_pull_policy
       version: *linkerd_version
     logLevel: warn,linkerd=info
@@ -99,7 +99,7 @@ global:
     ignoreInboundPorts: "25,443,587,3306,11211,5432"
     ignoreOutboundPorts: "25,443,587,3306,11211,5432"
     image:
-      name: ghcr.io/linkerd/proxy-init
+      name: cr.l5d.io/linkerd/proxy-init
       pullPolicy: *image_pull_policy
       version: v1.3.9
     resources:
@@ -139,7 +139,7 @@ omitWebhookSideEffects: false
 webhookFailurePolicy: Ignore
 
 # controller configuration
-controllerImage: ghcr.io/linkerd/controller
+controllerImage: cr.l5d.io/linkerd/controller
 controllerReplicas: 1
 controllerUID: 2103
 
@@ -158,7 +158,7 @@ dashboard:
 # debug configuration
 debugContainer:
   image:
-    name: ghcr.io/linkerd/debug
+    name: cr.l5d.io/linkerd/debug
     pullPolicy: *image_pull_policy
     version: *linkerd_version
 
@@ -265,7 +265,7 @@ tap:
 #tapProxyResources:
 
 # web configuration
-webImage: ghcr.io/linkerd/web
+webImage: cr.l5d.io/linkerd/web
 # set resources for web UI and its linkerd proxy respectively
 # see global.proxy.resources for details.
 #webResources:
@@ -294,7 +294,7 @@ nodeSelector:
 grafana:
   enabled: true
   # image:
-  #   name: ghcr.io/linkerd/grafana
+  #   name: cr.l5d.io/linkerd/grafana
   #   tag: latest
   # set resource requests and limits for grafana and its linkerd proxy respectively
   # see global.proxy.resources in the linkerd2 chart for details.
