@@ -375,7 +375,7 @@ install_version() {
 
     #Now we need to install the app that will be used to verify that upgrade does not break anything
     kubectl --context="$context" create namespace "$test_app_namespace" > /dev/null 2>&1
-    kubectl --context="$context" label namespaces "$test_app_namespace" 'linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
+    kubectl --context="$context" label namespaces "$test_app_namespace" 'test.linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
     (
         set -x
         "$linkerd_path" inject "$test_directory/testdata/upgrade_test.yaml" | kubectl --context="$context" apply --namespace="$test_app_namespace" -f - 2>&1
@@ -535,11 +535,6 @@ run_externalresources_test(){
    run_test "$test_directory/externalresources/rabbitmq_test.go"
 }
 
-# wrapper to implement external tests
-run_externalresources_test(){
-   run_test "$test_directory/install_test.go"
-   run_test "$test_directory/externalresources/rabbitmq_test.go"
-}
 # exit_on_err should be called right after a command to check the result status
 # and eventually generate a Github error annotation. Do not use after calls to
 # `go test` as that generates its own annotations. Note this should be called
