@@ -86,7 +86,7 @@ func TestOpaquePorts(t *testing.T) {
 
 func getPodMetrics(pod v1.Pod, ns string) (string, error) {
 	podName := fmt.Sprintf("pod/%s", pod.Name)
-	cmd := []string{"metrics", "--namespace", ns, podName}
+	cmd := []string{"diagnostics", "proxy-metrics", "--namespace", ns, podName}
 	metrics, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		return "", err
