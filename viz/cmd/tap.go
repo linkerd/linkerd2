@@ -210,15 +210,23 @@ func NewCmdTap() *cobra.Command {
 
 			req, err := pkg.BuildTapByResourceRequest(requestParams)
 			if err != nil {
-				return err
+				fmt.Fprint(os.Stderr, err.Error())
+				os.Exit(1)
 			}
 
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 			if err != nil {
-				return err
+				fmt.Fprint(os.Stderr, err.Error())
+				os.Exit(1)
 			}
 
-			return requestTapByResourceFromAPI(cmd.Context(), os.Stdout, k8sAPI, req, options)
+			err = requestTapByResourceFromAPI(cmd.Context(), os.Stdout, k8sAPI, req, options)
+			if err != nil {
+				fmt.Fprint(os.Stderr, err.Error())
+				os.Exit(1)
+			}
+
+			return nil
 		},
 	}
 
