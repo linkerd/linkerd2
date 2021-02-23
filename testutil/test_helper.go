@@ -333,6 +333,11 @@ func (h *TestHelper) Multicluster() bool {
 	return h.multicluster
 }
 
+// IsHelm determines if the current integration test is ran through Helm
+func (h *TestHelper) IsHelm() bool {
+	return h.path != ""
+}
+
 // Uninstall determines whether the "linkerd uninstall" integration test should be run
 func (h *TestHelper) Uninstall() bool {
 	return h.uninstall
