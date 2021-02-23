@@ -9,7 +9,7 @@ metadata:
   name: grafana
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: grafana
     namespace: {{.Values.namespace}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}

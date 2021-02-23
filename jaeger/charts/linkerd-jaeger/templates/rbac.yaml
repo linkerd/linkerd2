@@ -26,7 +26,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-jaeger-injector
   labels:
-    {{.Values.extensionAnnotation}}: jaeger
+    linkerd.io/extension: jaeger
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -37,7 +37,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-jaeger-injector
   labels:
-    {{.Values.extensionAnnotation}}: jaeger
+    linkerd.io/extension: jaeger
 subjects:
 - kind: ServiceAccount
   name: jaeger-injector
@@ -73,7 +73,7 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-jaeger-injector-webhook-config
   labels:
-    {{.Values.extensionAnnotation}}: jaeger
+    linkerd.io/extension: jaeger
 webhooks:
 - name: jaeger-injector.linkerd.io
   {{- if .Values.webhook.namespaceSelector }}

@@ -5,7 +5,7 @@ metadata:
   name: viz-psp
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     namespace: {{.Values.namespace}}
 roleRef:
   kind: Role

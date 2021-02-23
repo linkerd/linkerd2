@@ -12,8 +12,6 @@ clusterDomain: cluster.local
 # @default -- clusterDomain
 identityTrustDomain: ""
 
-extensionAnnotation: linkerd.io/extension
-
 # -- Docker registry for all viz components
 defaultRegistry: cr.l5d.io/linkerd
 # -- Docker imagePullPolicy for all viz components

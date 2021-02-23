@@ -7,7 +7,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-tap-injector
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -18,7 +18,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-tap-injector
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
 subjects:
 - kind: ServiceAccount
   name: tap-injector
@@ -56,7 +56,7 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-tap-injector-webhook-config
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
 webhooks:
 - name: tap-injector.linkerd.io
   {{- if .Values.tapInjector.namespaceSelector }}

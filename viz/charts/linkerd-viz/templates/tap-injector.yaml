@@ -8,7 +8,7 @@ metadata:
   name: tap-injector
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: tap-injector
   annotations:
     {{ include "partials.annotations.created-by" . }}
@@ -27,7 +27,7 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     app.kubernetes.io/name: tap-injector
     app.kubernetes.io/part-of: Linkerd
     component: tap-injector
@@ -55,7 +55,7 @@ spec:
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
-        {{.Values.extensionAnnotation}}: viz
+        linkerd.io/extension: viz
         component: tap-injector
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:

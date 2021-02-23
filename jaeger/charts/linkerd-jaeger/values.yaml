@@ -2,8 +2,6 @@
 
 namespace: linkerd-jaeger
 
-createdByAnnotation: linkerd.io/created-by
-extensionAnnotation: linkerd.io/extension
 collector:
   image: 
     name: omnition/opencensus-collector

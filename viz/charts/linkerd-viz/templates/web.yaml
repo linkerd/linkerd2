@@ -8,7 +8,7 @@ metadata:
   name: web
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: web
     namespace: {{.Values.namespace}}
   annotations:
@@ -16,7 +16,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: web
   ports:
   - name: http
@@ -32,7 +32,7 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     app.kubernetes.io/name: web
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
@@ -44,7 +44,7 @@ spec:
   replicas: {{.Values.dashboard.replicas}}
   selector:
     matchLabels:
-      {{.Values.extensionAnnotation}}: viz
+      linkerd.io/extension: viz
       component: web
       namespace: {{.Values.namespace}}
   template:
@@ -56,7 +56,7 @@ spec:
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
-        {{.Values.extensionAnnotation}}: viz
+        linkerd.io/extension: viz
         component: web
         namespace: {{.Values.namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}

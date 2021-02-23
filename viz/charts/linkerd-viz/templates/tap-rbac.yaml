@@ -7,7 +7,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-tap
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: tap
 rules:
 - apiGroups: [""]
@@ -25,7 +25,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-tap-admin
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: tap
 rules:
 - apiGroups: ["tap.linkerd.io"]
@@ -37,7 +37,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-tap
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: tap
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -53,7 +53,7 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-{{.Values.namespace}}-tap-auth-delegator
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: tap
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -70,7 +70,7 @@ metadata:
   name: tap
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: tap
     namespace: {{.Values.namespace}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
@@ -81,7 +81,7 @@ metadata:
   name: linkerd-{{.Values.namespace}}-tap-auth-reader
   namespace: kube-system
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: tap
     namespace: {{.Values.namespace}}
 roleRef:
@@ -102,7 +102,7 @@ metadata:
   name: tap-k8s-tls
   namespace: {{ .Values.namespace }}
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: tap
     namespace: {{.Values.namespace}}
   annotations:
@@ -118,7 +118,7 @@ kind: APIService
 metadata:
   name: v1alpha1.tap.linkerd.io
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: tap
 spec:
   group: tap.linkerd.io

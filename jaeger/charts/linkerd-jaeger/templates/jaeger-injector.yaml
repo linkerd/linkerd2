@@ -6,7 +6,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    {{.Values.extensionAnnotation}}: jaeger
+    linkerd.io/extension: jaeger
     app.kubernetes.io/name: jaeger-injector
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
@@ -17,14 +17,14 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      {{.Values.extensionAnnotation}}: jaeger
+      linkerd.io/extension: jaeger
       component: jaeger-injector
   template:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/rbac.yaml") . | sha256sum }}
       labels:
-        {{.Values.extensionAnnotation}}: jaeger
+        linkerd.io/extension: jaeger
         component: jaeger-injector
     spec:
       containers:
@@ -66,14 +66,12 @@ metadata:
   name: jaeger-injector
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.extensionAnnotation}}: jaeger
+    linkerd.io/extension: jaeger
     component: jaeger-injector
-  annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.extensionAnnotation}}: jaeger
+    linkerd.io/extension: jaeger
     component: jaeger-injector
   ports:
   - name: jaeger-injector

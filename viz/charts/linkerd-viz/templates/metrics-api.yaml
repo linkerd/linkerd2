@@ -8,14 +8,14 @@ metadata:
   name: metrics-api
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: metrics-api
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: metrics-api
   ports:
   - name: http
@@ -28,7 +28,7 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     app.kubernetes.io/name: metrics-api
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
@@ -39,7 +39,7 @@ spec:
   replicas: {{.Values.metricsAPI.replicas}}
   selector:
     matchLabels:
-      {{.Values.extensionAnnotation}}: viz
+      linkerd.io/extension: viz
       component: metrics-api
   template:
     metadata:
@@ -53,7 +53,7 @@ spec:
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
-        {{.Values.extensionAnnotation}}: viz
+        linkerd.io/extension: viz
         component: metrics-api
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:

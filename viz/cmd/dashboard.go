@@ -93,7 +93,6 @@ func NewCmdDashboard() *cobra.Command {
 				RetryDeadline:         time.Now().Add(options.wait),
 			}, true)
 
-			fmt.Println("we've hit this")
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 			if err != nil {
 				return err

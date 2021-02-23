@@ -8,7 +8,7 @@ metadata:
   name: web
   namespace: {{.Values.linkerdNamespace}}
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: web
     namespace: {{.Values.linkerdNamespace}}
 rules:
@@ -34,7 +34,7 @@ metadata:
   name: web
   namespace: {{.Values.linkerdNamespace}}
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: web
     namespace: {{.Values.linkerdNamespace}}
 roleRef:
@@ -52,7 +52,7 @@ kind: ClusterRole
 metadata:
   name: linkerd-{{.Values.namespace}}-web-check
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: web
 rules:
 - apiGroups: ["rbac.authorization.k8s.io"]
@@ -79,7 +79,7 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-{{.Values.namespace}}-web-check
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: web
 roleRef:
   kind: ClusterRole
@@ -95,7 +95,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-web-admin
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: web
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -111,7 +111,7 @@ kind: ClusterRole
 metadata:
   name: linkerd-{{.Values.namespace}}-web-api
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: web
 rules:
 - apiGroups: [""]
@@ -123,7 +123,7 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-{{.Values.namespace}}-web-api
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: web
 roleRef:
   kind: ClusterRole
@@ -141,7 +141,7 @@ metadata:
   name: web
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.extensionAnnotation}}: viz
+    linkerd.io/extension: viz
     component: web
     namespace: {{.Values.namespace}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
