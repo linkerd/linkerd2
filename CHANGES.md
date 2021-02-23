@@ -1,5 +1,18 @@
 # Changes
 
+## stable-2.9.4
+
+This stable release fixes an issue that prevented the proxy from being able to
+speak HTTP/1 with older versioned proxies (announced in 2.9.3 but the fix wasn't
+actually included).
+
+* Fixed an issue that could cause the inbound proxy to fail meshed HTTP/1
+  requests from older proxies (from the stable-2.8.x vintage)
+* Fixed `linkerd install` command so that it can properly detect and avoid
+  overwriting already installed linkerd instances from versions previous to 2.9
+* Docker images are now hosted on the `cr.l5d.io` registry
+* Updated base docker images to buster-20210208-slim
+
 ## stable-2.9.3
 
 This stable release fixes an issue that prevented the proxy from being able
