@@ -292,8 +292,8 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 			output, _ := plugin.Output()
 			extensionResults, err := healthcheck.ParseJSONCheckOutput(output)
 			if err != nil {
-
-				return false, fmt.Errorf("invalid extension check output (JSON object expected):\n%s\n[%s]", string(output), err)
+				command := fmt.Sprintf("%s %s", path, strings.Join(args, " "))
+				return false, fmt.Errorf("invalid extension check output from \"%s\" (JSON object expected):\n%s\n[%s]", command, string(output), err)
 			}
 			results.Results = append(results.Results, extensionResults.Results...)
 		}
