@@ -35,7 +35,7 @@ var (
 	linkerdSvcStable = []testutil.Service{
 		{Namespace: "linkerd", Name: "linkerd-controller-api"},
 		{Namespace: "linkerd", Name: "linkerd-dst"},
-		{Namespace: "linkerd", Name: "grafana"},
+		{Namespace: "linkerd", Name: "linkerd-grafana"},
 		{Namespace: "linkerd", Name: "linkerd-identity"},
 		{Namespace: "linkerd", Name: "linkerd-prometheus"},
 		{Namespace: "linkerd", Name: "linkerd-web"},

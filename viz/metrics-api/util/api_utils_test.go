@@ -65,8 +65,8 @@ func TestBuildStatSummaryRequest(t *testing.T) {
 
 	t.Run("Rejects invalid time windows", func(t *testing.T) {
 		expectations := map[string]string{
-			"1": "time: missing unit in duration \"1\"",
-			"s": "time: invalid duration \"s\"",
+			"1": "time: missing unit in duration 1",
+			"s": "time: invalid duration s",
 		}
 
 		for timeWindow, msg := range expectations {
@@ -138,8 +138,8 @@ func TestBuildTopRoutesRequest(t *testing.T) {
 
 	t.Run("Rejects invalid time windows", func(t *testing.T) {
 		expectations := map[string]string{
-			"1": "time: missing unit in duration \"1\"",
-			"s": "time: invalid duration \"s\"",
+			"1": "time: missing unit in duration 1",
+			"s": "time: invalid duration s",
 		}
 
 		for timeWindow, msg := range expectations {
