@@ -49,7 +49,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 
 	// Retrieve Prometheus pod details
 	if TestHelper.ExternalPrometheus() {
-		prometheusNamespace = "default"
+		prometheusNamespace = "external-prometheus"
 		prometheusDeployment = "prometheus"
 	} else {
 		prometheusNamespace = TestHelper.GetVizNamespace()

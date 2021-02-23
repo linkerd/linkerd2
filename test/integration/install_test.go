@@ -429,7 +429,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 
 		// Update args to use external proemtheus
-		vizArgs = append(vizArgs, "--set", "prometheusUrl=http://prometheus.default.svc.cluster.local:9090", "--set", "prometheus.enabled=false")
+		vizArgs = append(vizArgs, "--set", "prometheusUrl=http://prometheus.external-prometheus.svc.cluster.local:9090", "--set", "prometheus.enabled=false")
 	}
 
 	// Install Linkerd Viz Extension
