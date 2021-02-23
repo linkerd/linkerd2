@@ -36,8 +36,6 @@ func (opa *opaquePortsAdaptor) publish() {
 	if opa.profile != nil {
 		merged = *opa.profile
 	}
-	if len(opa.opaquePorts) != 0 {
-		merged.Spec.OpaquePorts = opa.opaquePorts
-	}
+	merged.Spec.OpaquePorts = opa.opaquePorts
 	opa.listener.Update(&merged)
 }

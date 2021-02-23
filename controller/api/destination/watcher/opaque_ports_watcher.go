@@ -7,6 +7,7 @@ import (
 	"github.com/linkerd/linkerd2-proxy-init/ports"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	labels "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/opaqueports"
 	"github.com/linkerd/linkerd2/pkg/util"
 	log "github.com/sirupsen/logrus"
 	logging "github.com/sirupsen/logrus"
@@ -68,7 +69,7 @@ func (opw *OpaquePortsWatcher) Subscribe(id ServiceID, listener OpaquePortsUpdat
 	// and no opaque ports
 	if !ok {
 		opw.subscriptions[id] = &svcSubscriptions{
-			opaquePorts: make(map[uint32]struct{}),
+			opaquePorts: opaqueports.DefaultOpaquePorts,
 			listeners:   []OpaquePortsUpdateListener{listener},
 		}
 		return nil
@@ -77,9 +78,7 @@ func (opw *OpaquePortsWatcher) Subscribe(id ServiceID, listener OpaquePortsUpdat
 	// service listeners. If there are opaque ports for the service, update
 	// the listener with that value.
 	ss.listeners = append(ss.listeners, listener)
-	if len(ss.opaquePorts) != 0 {
-		listener.UpdateService(ss.opaquePorts)
-	}
+	listener.UpdateService(ss.opaquePorts)
 	return nil
 }
 
@@ -114,10 +113,15 @@ func (opw *OpaquePortsWatcher) addService(obj interface{}) {
 		Namespace: svc.Namespace,
 		Name:      svc.Name,
 	}
-	opaquePorts, err := getServiceOpaquePortsAnnotation(svc)
+	opaquePorts, ok, err := getServiceOpaquePortsAnnotation(svc)
 	if err != nil {
 		opw.log.Errorf("failed to get %s service opaque ports annotation: %s", id, err)
 		return
+	}
+	// If the opaque ports annotation was not set, then set the service's
+	// opaque ports to the default value.
+	if !ok {
+		opaquePorts = opaqueports.DefaultOpaquePorts
 	}
 	ss, ok := opw.subscriptions[id]
 	// If there are no subscriptions for this service, create one with the
@@ -168,9 +172,9 @@ func (opw *OpaquePortsWatcher) deleteService(obj interface{}) {
 		return
 	}
 	old := ss.opaquePorts
-	ss.opaquePorts = make(map[uint32]struct{})
-	// Do not send an update if the service already had no opaque ports
-	if len(old) == 0 {
+	ss.opaquePorts = opaqueports.DefaultOpaquePorts
+	// Do not send an update if the service already had the default opaque ports
+	if portsEqual(old, ss.opaquePorts) {
 		return
 	}
 	for _, listener := range ss.listeners {
@@ -178,19 +182,22 @@ func (opw *OpaquePortsWatcher) deleteService(obj interface{}) {
 	}
 }
 
-func getServiceOpaquePortsAnnotation(svc *corev1.Service) (map[uint32]struct{}, error) {
+func getServiceOpaquePortsAnnotation(svc *corev1.Service) (map[uint32]struct{}, bool, error) {
+	annotation, ok := svc.Annotations[labels.ProxyOpaquePortsAnnotation]
+	if !ok {
+		return nil, false, nil
+	}
 	opaquePorts := make(map[uint32]struct{})
-	annotation := svc.Annotations[labels.ProxyOpaquePortsAnnotation]
 	if annotation != "" {
 		for _, portStr := range parseServiceOpaquePorts(annotation, svc.Spec.Ports) {
 			port, err := strconv.ParseUint(portStr, 10, 32)
 			if err != nil {
-				return nil, err
+				return nil, true, err
 			}
 			opaquePorts[uint32(port)] = struct{}{}
 		}
 	}
-	return opaquePorts, nil
+	return opaquePorts, true, nil
 }
 
 func parseServiceOpaquePorts(annotation string, sps []corev1.ServicePort) []string {
