@@ -102,8 +102,9 @@ proxy:
   # - SMTP (25,587) server-first
   # - HTTPS (443) opaque TLS
   # - MYSQL (3306) server-first
+  # - PostgreSQL (5432) server-first
   # - Memcached (11211) clients do not issue any preamble, which breaks detection
-  opaquePorts: "25,443,587,3306,11211"
+  opaquePorts: "25,443,587,3306,5432,11211"
 
 # proxy-init configuration
 proxyInit:

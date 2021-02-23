@@ -963,7 +963,7 @@ data:
       isIngress: false
       logFormat: plain
       logLevel: warn,linkerd=info
-      opaquePorts: 25,443,587,3306,11211
+      opaquePorts: 25,443,587,3306,5432,11211
       outboundConnectTimeout: 1000ms
       ports:
         admin: 4191
@@ -1177,7 +1177,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
-          value: "25,443,587,3306,11211"
+          value: "25,443,587,3306,5432,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1371,7 +1371,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
-          value: "25,443,587,3306,11211"
+          value: "25,443,587,3306,5432,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1584,7 +1584,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
-          value: "25,443,587,3306,11211"
+          value: "25,443,587,3306,5432,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1804,7 +1804,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
-          value: "25,443,587,3306,11211"
+          value: "25,443,587,3306,5432,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -2020,7 +2020,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
-          value: "25,443,587,3306,11211"
+          value: "25,443,587,3306,5432,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:

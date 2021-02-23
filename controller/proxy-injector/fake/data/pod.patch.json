@@ -150,7 +150,7 @@
         },
         {
           "name": "LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION",
-          "value": "25,443,587,3306,11211"
+          "value": "25,443,587,3306,5432,11211"
         },
         {
           "name": "_pod_ns",
