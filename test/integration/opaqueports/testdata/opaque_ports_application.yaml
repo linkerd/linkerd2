@@ -34,6 +34,7 @@ metadata:
 spec:
   selector:
     app: opaque-pod
+  clusterIP: None
   ports:
   - name: http
     port: 8080

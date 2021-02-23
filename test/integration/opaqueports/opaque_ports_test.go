@@ -15,11 +15,12 @@ import (
 var TestHelper *testutil.TestHelper
 
 var (
-	opaquePodApp = "opaque-pod"
-	opaqueSvcApp = "opaque-service"
-
-	tcpMetricRE = regexp.MustCompile(
-		`^tcp_open_total\{direction="inbound",peer="src",target_addr=".*:4143",tls="true",client_id="default\.linkerd-opaque-ports-test\.serviceaccount\.identity\.linkerd\.cluster\.local"\}$`,
+	opaquePodApp             = "opaque-pod"
+	opaquePodSC              = "slow-cooker-opaque-pod"
+	opaqueSvcApp             = "opaque-service"
+	opaqueSvcSC              = "slow-cooker-opaque-service"
+	httpRequestTotalMetricRE = regexp.MustCompile(
+		`^request_total\{direction="outbound",authority="[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:8080",target_addr="[0-9\.]+:8080",tls="true",.*$`,
 	)
 )
 
@@ -81,35 +82,31 @@ func TestOpaquePorts(t *testing.T) {
 	// Wait for slow-cookers to start sending requests
 	time.Sleep(20 * time.Second)
 
-	t.Run("expect inbound TCP connection metric with expected TLS identity for opaque pod app", func(t *testing.T) {
-		pods, err := TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": opaquePodApp})
+	t.Run("expect absent HTTP outbound requests for opaque-pod slow clooker", func(t *testing.T) {
+		pods, err := TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": opaquePodSC})
 		if err != nil {
-			testutil.AnnotatedFatalf(t, "error getting opaque ports app pods", "error getting opaque ports app pods\n%s", err)
+			testutil.AnnotatedFatalf(t, "error getting pods", "error getting pods\n%s", err)
 		}
-
-		// Get metrics for the app pod expecting to find TCP connection counters
 		metrics, err := getPodMetrics(pods[0], opaquePortsNs)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "error getting metrics for pod", "error getting metrics for pod\n%s", err)
 		}
-		if tcpMetricRE.MatchString(metrics) {
-			testutil.AnnotatedFatalf(t, "failed to find expected TCP metric when port is marked as opaque", "failed to find expected TCP metric when port is marked as opaque\n%s", metrics)
+		if httpRequestTotalMetricRE.MatchString(metrics) {
+			testutil.AnnotatedFatalf(t, "expected not to find HTTP outbound requests when pod is opaque", "expected not to find HTTP outbound requests when pod is opaque\n%s", metrics)
 		}
 	})
 
 	t.Run("expect inbound TCP connection metric with expected TLS identity for opaque service app", func(t *testing.T) {
-		pods, err := TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": opaqueSvcApp})
+		pods, err := TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": opaqueSvcSC})
 		if err != nil {
-			testutil.AnnotatedFatalf(t, "error getting opaque ports app pods", "error getting opaque ports app pods\n%s", err)
+			testutil.AnnotatedFatalf(t, "error getting pods", "error getting pods\n%s", err)
 		}
-
-		// Get metrics for the app pod expecting to find TCP connection counters
 		metrics, err := getPodMetrics(pods[0], opaquePortsNs)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "error getting metrics for pod", "error getting metrics for pod\n%s", err)
 		}
-		if tcpMetricRE.MatchString(metrics) {
-			testutil.AnnotatedFatalf(t, "failed to find expected TCP metric when port is marked as opaque", "failed to find expected TCP metric when port is marked as opaque\n%s", metrics)
+		if httpRequestTotalMetricRE.MatchString(metrics) {
+			testutil.AnnotatedFatalf(t, "expected not to find HTTP outbound requests when service is opaque", "expected not to find HTTP outbound requests when service is opaque\n%s", metrics)
 		}
 	})
 }
