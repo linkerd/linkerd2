@@ -238,7 +238,8 @@ func cmdAdd(args *skel.CmdArgs) error {
 				return err
 			}
 
-			if err := iptables.ConfigureFirewall(*firewallConfiguration); err != nil {
+			err = iptables.ConfigureFirewall(*firewallConfiguration)
+			if err != nil {
 				logEntry.Errorf("linkerd-cni: could not configure firewall: %v", err)
 				return err
 			}
