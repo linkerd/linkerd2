@@ -148,12 +148,16 @@ data:
         "outgoing-proxy-port": {{.Values.outboundProxyPort}},
         "proxy-uid": {{.Values.proxyUID}},
         "ports-to-redirect": [{{.Values.portsToRedirect}}],
+        {{- if .Values.ignoreInboundPorts }}
         "inbound-ports-to-ignore": [
           {{- include "partials.splitStringList" .Values.ignoreInboundPorts -}}
         ],
+        {{- end }}
+        {{- if .Values.ignoreOutboundPorts }}
         "outbound-ports-to-ignore": [
           {{- include "partials.splitStringList" .Values.ignoreOutboundPorts -}}
         ],
+        {{- end }}
         "simulate": false,
         "use-wait-flag": {{.Values.useWaitFlag}}
       }
