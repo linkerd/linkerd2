@@ -880,7 +880,7 @@ func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 }
 
 func TestInstallSP(t *testing.T) {
-	cmd := []string{"install-sp"}
+	cmd := []string{"diagnostics", "install-sp"}
 
 	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
