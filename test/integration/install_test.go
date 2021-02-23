@@ -11,6 +11,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/pkg/tree"
 	"github.com/linkerd/linkerd2/testutil"
 )
 
@@ -84,6 +85,7 @@ var (
 	//skippedInboundPorts lists some ports to be marked as skipped, which will
 	// be verified in test/integration/inject
 	skippedInboundPorts       = "1234,5678"
+	skippedOutboundPorts      = "1234,5678"
 	multiclusterExtensionName = "linkerd-multicluster"
 	vizExtensionName          = "linkerd-viz"
 )
@@ -349,7 +351,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 
 		// prepare for stage 2
-		args = append([]string{"control-plane", "--addon-overwrite"}, args...)
+		args = append([]string{"control-plane", "--skip-outbound-ports", skippedOutboundPorts}, args...)
 	}
 
 	exec := append([]string{cmd}, args...)
@@ -667,6 +669,71 @@ func TestRetrieveUidPostUpgrade(t *testing.T) {
 				newConfigMapUID, configMapUID,
 			)
 		}
+	}
+}
+
+func TestOverridesSecret(t *testing.T) {
+	configOverridesSecret, err := TestHelper.KubernetesHelper.GetSecret(context.Background(), TestHelper.GetLinkerdNamespace(), "linkerd-config-overrides")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "could not retrieve linkerd-config-overrides",
+			"could not retrieve linkerd-config-overrides\n%s", err.Error())
+	}
+
+	overrides := configOverridesSecret.Data["linkerd-config-overrides"]
+	overridesTree, err := tree.BytesToTree(overrides)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "could not retrieve linkerd-config-overrides",
+			"could not retrieve linkerd-config-overrides\n%s", err.Error())
+	}
+
+	// Check for fields that were added during install
+	testCases := []struct {
+		tree  tree.Tree
+		path  []string
+		value string
+	}{
+		{
+			overridesTree,
+			[]string{"controllerLogLevel"},
+			"debug",
+		},
+		{
+			overridesTree,
+			[]string{"proxyInit", "ignoreInboundPorts"},
+			"1234,5678",
+		},
+	}
+
+	// Check for fields that were added during upgrade
+	if TestHelper.UpgradeFromVersion() != "" {
+		testCases = append(testCases, []struct {
+			tree  tree.Tree
+			path  []string
+			value string
+		}{
+			{
+				overridesTree,
+				[]string{"proxyInit", "ignoreOutboundPorts"},
+				"1234,5678",
+			},
+		}...)
+	}
+
+	for _, tc := range testCases {
+		tc := tc // pin
+		t.Run(fmt.Sprintf("%s: %s", strings.Join(tc.path, "/"), tc.value), func(t *testing.T) {
+			finalValue, err := tc.tree.GetString(tc.path...)
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "could not perform tree.GetString",
+					"could not perform tree.GetString\n%s", err.Error())
+			}
+
+			if tc.value != finalValue {
+				testutil.AnnotatedFatalf(t, fmt.Sprintf("Values at path %s do not match", strings.Join(tc.path, "/")),
+					"Expected value at [%s] to be [%s] but received [%s]",
+					strings.Join(tc.path, "/"), tc.value, finalValue)
+			}
+		})
 	}
 }
 
