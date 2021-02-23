@@ -17,7 +17,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
-	vizCmd "github.com/linkerd/linkerd2/viz/cmd"
 	vizHealthCheck "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -258,57 +257,49 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 		}
 		extension := ns.Labels[k8s.LinkerdExtensionLabel]
 
+		var path string
+		args := append([]string{"check"}, getExtensionCheckFlags(cmd.Flags())...)
+		var err error
+		results := healthcheck.CheckResults{
+			Results: []healthcheck.CheckResult{},
+		}
+
 		switch extension {
 		case jaegerCmd.JaegerExtensionName:
-			jaegerCheckCmd := jaegerCmd.NewCmdCheck()
-			err = executeExtensionCheck(cmd, "jaeger", jaegerCheckCmd.Flags())
-			if err != nil {
-				success = false
-			}
+			path = os.Args[0]
+			args = append([]string{"jaeger"}, args...)
 		case vizHealthCheck.VizExtensionName:
-			vizCmd := vizCmd.NewCmdCheck()
-			err = executeExtensionCheck(cmd, "viz", vizCmd.Flags())
-			if err != nil {
-				success = false
-			}
+			path = os.Args[0]
+			args = append([]string{"viz"}, args...)
 		case mcCmd.MulticlusterExtensionName:
-			mcCheckCmd := mcCmd.NewCmdCheck()
-			err = executeExtensionCheck(cmd, "multicluster", mcCheckCmd.Flags())
-			if err != nil {
-				success = false
-			}
+			path = os.Args[0]
+			args = append([]string{"multicluster"}, args...)
 		default:
 			extensionCmd := fmt.Sprintf("linkerd-%s", extension)
-			path, err := exec.LookPath(extensionCmd)
-			results := healthcheck.CheckResults{
-				Results: []healthcheck.CheckResult{
-					{
-						Category:    healthcheck.CategoryID(extensionCmd),
-						Description: fmt.Sprintf("Linkerd extension command %s exists", extensionCmd),
-						Err:         err,
-						HintAnchor:  "extensions",
-						Warning:     true,
-					},
+			path, err = exec.LookPath(extensionCmd)
+			results.Results = []healthcheck.CheckResult{
+				{
+					Category:    healthcheck.CategoryID(extensionCmd),
+					Description: fmt.Sprintf("Linkerd extension command %s exists", extensionCmd),
+					Err:         err,
+					HintAnchor:  "extensions",
+					Warning:     true,
 				},
 			}
-			if err == nil {
-				args := append([]string{"check"}, getExtensionCheckFlags(cmd.Flags())...)
-				plugin := exec.Command(path, args...)
-				output, err := plugin.Output()
-				if err != nil {
-					return false, err
-				}
-				extensionResults, err := healthcheck.ParseJSONCheckOutput(output)
-				if err != nil {
+		}
+		if err == nil {
+			plugin := exec.Command(path, args...)
+			output, _ := plugin.Output()
+			extensionResults, err := healthcheck.ParseJSONCheckOutput(output)
+			if err != nil {
 
-					return false, fmt.Errorf("invalid extension check output:\n%s\n[%s]", string(output), err)
-				}
-				results.Results = append(results.Results, extensionResults.Results...)
+				return false, fmt.Errorf("invalid extension check output (JSON object expected):\n%s\n[%s]", string(output), err)
 			}
-			extensionSuccess := healthcheck.RunChecks(wout, werr, results, opts.output)
-			if !extensionSuccess {
-				success = false
-			}
+			results.Results = append(results.Results, extensionResults.Results...)
+		}
+		extensionSuccess := healthcheck.RunChecks(wout, werr, results, opts.output)
+		if !extensionSuccess {
+			success = false
 		}
 	}
 	return success, nil
@@ -331,49 +322,6 @@ func getExtensionCheckFlags(lf *pflag.FlagSet) []string {
 	}
 	cmdLineFlags = append(cmdLineFlags, "--output=json")
 	return cmdLineFlags
-}
-
-func getGlobalFlags(lf *pflag.FlagSet) []string {
-	cmdLineFlags := []string{}
-	lf.VisitAll(func(f *pflag.Flag) {
-		val := f.Value.String()
-		if val != "" {
-			cmdLineFlags = append(cmdLineFlags, fmt.Sprintf("--%s=%s", f.Name, val))
-		}
-	})
-
-	return cmdLineFlags
-}
-
-func getSharedFlags(lf *pflag.FlagSet, lf2 *pflag.FlagSet) []string {
-	cmdLineFlags := []string{}
-	lf.VisitAll(func(f *pflag.Flag) {
-		val := f.Value.String()
-
-		if val == "" {
-			// skip processing empty flags
-			return
-		}
-
-		if lf2.Lookup(f.Name) != nil {
-			cmdLineFlags = append(cmdLineFlags, fmt.Sprintf("--%s=%s", f.Name, val))
-		}
-	})
-
-	return cmdLineFlags
-}
-
-func executeExtensionCheck(currentCmd *cobra.Command, extension string, lf *pflag.FlagSet) error {
-	rootCmd := currentCmd.Root()
-	globalFlags := getGlobalFlags(rootCmd.PersistentFlags())
-	localFlags := getSharedFlags(currentCmd.Flags(), lf)
-
-	args := []string{extension, "check"}
-	args = append(args, globalFlags...)
-	args = append(args, localFlags...)
-
-	rootCmd.SetArgs(args)
-	return rootCmd.Execute()
 }
 
 func renderInstallManifest(ctx context.Context) (string, error) {
