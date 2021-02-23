@@ -966,7 +966,7 @@ data:
       isIngress: false
       logFormat: plain
       logLevel: warn,linkerd=info
-      opaquePorts: ""
+      opaquePorts: 25,443,587,3306,11211
       outboundConnectTimeout: 1000ms
       ports:
         admin: 4191
@@ -988,8 +988,8 @@ data:
     proxyInit:
       capabilities: null
       closeWaitTimeoutSecs: 0
-      ignoreInboundPorts: 25,443,587,3306,11211
-      ignoreOutboundPorts: 25,443,587,3306,11211
+      ignoreInboundPorts: ""
+      ignoreOutboundPorts: ""
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
@@ -1180,6 +1180,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
+          value: "25,443,587,3306,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1261,9 +1263,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190,4191,25,443,587,3306,11211"
+        - "4190,4191"
         - --outbound-ports-to-ignore
-        - "25,443,587,3306,11211"
+        - ",443"
         image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1411,6 +1413,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
+          value: "25,443,587,3306,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1492,9 +1496,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190,4191,25,443,587,3306,11211"
+        - "4190,4191"
         - --outbound-ports-to-ignore
-        - "25,443,587,3306,11211"
+        - ",443"
         image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1661,6 +1665,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
+          value: "25,443,587,3306,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1742,9 +1748,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190,4191,25,443,587,3306,11211"
+        - "4190,4191"
         - --outbound-ports-to-ignore
-        - "25,443,587,3306,11211"
+        - ",443"
         image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1917,6 +1923,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
+          value: "25,443,587,3306,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1998,9 +2006,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190,4191,25,443,587,3306,11211"
+        - "4190,4191"
         - --outbound-ports-to-ignore
-        - "25,443,587,3306,11211"
+        - ",443"
         image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -2169,6 +2177,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
+          value: "25,443,587,3306,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -2250,9 +2260,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190,4191,25,443,587,3306,11211"
+        - "4190,4191"
         - --outbound-ports-to-ignore
-        - "25,443,587,3306,11211"
+        - ",443"
         image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init

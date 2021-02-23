@@ -82,10 +82,9 @@ func TestNewValues(t *testing.T) {
 			WaitBeforeExitSeconds:  0,
 			OutboundConnectTimeout: "1000ms",
 			InboundConnectTimeout:  "100ms",
+			OpaquePorts:            "25,443,587,3306,11211",
 		},
 		ProxyInit: &ProxyInit{
-			IgnoreInboundPorts:  "25,443,587,3306,11211",
-			IgnoreOutboundPorts: "25,443,587,3306,11211",
 			Image: &Image{
 				Name:    "cr.l5d.io/linkerd/proxy-init",
 				Version: testVersion,
