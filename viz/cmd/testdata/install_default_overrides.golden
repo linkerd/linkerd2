@@ -395,7 +395,7 @@ metadata:
     namespace: linkerd-viz
 roleRef:
   kind: Role
-  name: linkerd-psp
+  name: psp
   apiGroup: rbac.authorization.k8s.io
 subjects:
 - kind: ServiceAccount
@@ -456,10 +456,10 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 6827b2203b1cd90692d9dd6a973a2162e574dc9fd7b5b9e346ceac7e287204a6
+        checksum/config: 0d5b035f4d141dc2c13e1f89046de78fe0fb1208075734c3977400b866f2db51
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
-       linkerd.io/extension: viz
+        linkerd.io/extension: viz
         component: metrics-api
     spec:
       nodeSelector:
@@ -589,7 +589,7 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-     linkerd.io/extension: viz
+      linkerd.io/extension: viz
       component: grafana
       namespace: linkerd-viz
   template:
@@ -597,7 +597,7 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
-       linkerd.io/extension: viz
+        linkerd.io/extension: viz
         component: grafana
         namespace: linkerd-viz
     spec:
@@ -837,7 +837,7 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-     linkerd.io/extension: viz
+      linkerd.io/extension: viz
       component: prometheus
       namespace: linkerd-viz
   template:
@@ -845,7 +845,7 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
-       linkerd.io/extension: viz
+        linkerd.io/extension: viz
         component: prometheus
         namespace: linkerd-viz
     spec:
@@ -942,16 +942,16 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-     linkerd.io/extension: viz
+      linkerd.io/extension: viz
       component: tap
       namespace: linkerd-viz
   template:
     metadata:
       annotations:
-        checksum/config: bbc82b03e8c9fdc549e1ef5d3f795c07c21fb3b4c089351186f170b722689d86
+        checksum/config: 7f24ffe166f8d03a8eb039ecc551f3de9ea0ddcf1cf80a69966ce3713f043b23
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
-       linkerd.io/extension: viz
+        linkerd.io/extension: viz
         component: tap
         namespace: linkerd-viz
     spec:
@@ -995,7 +995,6 @@ spec:
       - name: tls
         secret:
           secretName: tap-k8s-tls
-
 ---
 ###
 ### Tap Injector RBAC
@@ -1110,10 +1109,10 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 0120b5feafdef04a057ab39fd63ed315ebbcc2bfc0b0657e3007fa34ffb8b7e2
+        checksum/config: 5cb033e3116205dd502bee6f822717a8efe049d8ada2f02d1343a2c8b0cd3c93
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
-       linkerd.io/extension: viz
+        linkerd.io/extension: viz
         component: tap-injector
     spec:
       nodeSelector:
@@ -1199,7 +1198,7 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-     linkerd.io/extension: viz
+      linkerd.io/extension: viz
       component: web
       namespace: linkerd-viz
   template:
@@ -1207,7 +1206,7 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
-       linkerd.io/extension: viz
+        linkerd.io/extension: viz
         component: web
         namespace: linkerd-viz
     spec:
@@ -1216,7 +1215,7 @@ spec:
       containers:
       - args:
         - -linkerd-controller-api-addr=linkerd-controller-api.linkerd.svc.cluster.local:8085
-        - -metrics-api-addr=metrics-api.linkerd-viz.svc.cluster.local:8085
+        - -linkerd-metrics-api-addr=metrics-api.linkerd-viz.svc.cluster.local:8085
         - -cluster-domain=cluster.local
         - -grafana-addr=grafana.linkerd-viz.svc.cluster.local:3000
         - -controller-namespace=linkerd
