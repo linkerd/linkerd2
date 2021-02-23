@@ -15,6 +15,7 @@ import (
 
 const fullyQualifiedName = "name1.ns.svc.mycluster.local"
 const fullyQualifiedNameOpaque = "name3.ns.svc.mycluster.local"
+const fullyQualifiedNameOpaqueService = "name4.ns.svc.mycluster.local"
 const clusterIP = "172.17.12.0"
 const clusterIPOpaque = "172.17.12.1"
 const podIP1 = "172.17.0.12"
@@ -196,9 +197,21 @@ spec:
         value: 0.0.0.0:4143
       name: linkerd-proxy`,
 	}
+
+	meshedOpaqueServiceResources := []string{
+		`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name4
+  namespace: ns
+  annotations:
+    config.linkerd.io/opaque-ports: "4242"`,
+	}
 	res := append(meshedPodResources, clientSP...)
 	res = append(res, unmeshedPod)
 	res = append(res, meshedOpaquePodResources...)
+	res = append(res, meshedOpaqueServiceResources...)
 	k8sAPI, err := k8s.NewFakeAPI(res...)
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
@@ -206,6 +219,7 @@ spec:
 	log := logging.WithField("test", t.Name())
 
 	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log, false)
+	opaquePorts := watcher.NewOpaquePortsWatcher(k8sAPI, log)
 	profiles := watcher.NewProfileWatcher(k8sAPI, log)
 	trafficSplits := watcher.NewTrafficSplitWatcher(k8sAPI, log)
 	ips := watcher.NewIPWatcher(k8sAPI, endpoints, log)
@@ -216,6 +230,7 @@ spec:
 
 	return &server{
 		endpoints,
+		opaquePorts,
 		profiles,
 		trafficSplits,
 		ips,
@@ -623,7 +638,7 @@ func TestGetProfiles(t *testing.T) {
 		}
 	})
 
-	t.Run("Return opaque protocol profile when using cluster IP and opaque protocol port", func(t *testing.T) {
+	t.Run("Return non-opaque protocol profile when using cluster IP and opaque protocol port", func(t *testing.T) {
 		server := makeServer(t)
 		stream := &bufferingGetProfileStream{
 			updates:          []*pb.DestinationProfile{},
@@ -648,8 +663,8 @@ func TestGetProfiles(t *testing.T) {
 		if last.FullyQualifiedName != fullyQualifiedNameOpaque {
 			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedNameOpaque, last.FullyQualifiedName)
 		}
-		if !last.OpaqueProtocol {
-			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", opaquePort)
+		if last.OpaqueProtocol {
+			t.Fatalf("Expected port %d to not be an opaque protocol, but it was", opaquePort)
 		}
 	})
 
@@ -699,6 +714,32 @@ func TestGetProfiles(t *testing.T) {
 		}
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP port to be %d, but it was %d", epAddr.Port, first.Endpoint.Addr.Port)
+		}
+	})
+
+	t.Run("Return opaque protocol profile when using service name with opaque port annotation", func(t *testing.T) {
+		server := makeServer(t)
+		stream := &bufferingGetProfileStream{
+			updates:          []*pb.DestinationProfile{},
+			MockServerStream: util.NewMockServerStream(),
+		}
+		stream.Cancel()
+		err := server.GetProfile(&pb.GetDestination{
+			Scheme: "k8s",
+			Path:   fmt.Sprintf("%s:%d", fullyQualifiedNameOpaqueService, opaquePort),
+		}, stream)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+		if len(stream.updates) == 0 || len(stream.updates) > 3 {
+			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
+		}
+		last := stream.updates[len(stream.updates)-1]
+		if last.FullyQualifiedName != fullyQualifiedNameOpaqueService {
+			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedNameOpaqueService, last.FullyQualifiedName)
+		}
+		if !last.OpaqueProtocol {
+			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", opaquePort)
 		}
 	})
 }
