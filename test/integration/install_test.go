@@ -674,9 +674,8 @@ func TestRetrieveUidPostUpgrade(t *testing.T) {
 
 func TestOverridesSecret(t *testing.T) {
 
-	// Skip if Helm integration test
 	if TestHelper.IsHelm() {
-		t.Skip("Skipping as this is not a helm upgrade test")
+		t.Skip("Skipping as this is a helm test where linkerd-config-overrides is absent")
 	}
 
 	configOverridesSecret, err := TestHelper.KubernetesHelper.GetSecret(context.Background(), TestHelper.GetLinkerdNamespace(), "linkerd-config-overrides")
