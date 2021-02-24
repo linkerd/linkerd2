@@ -13,8 +13,6 @@ import (
 	"github.com/linkerd/linkerd2/viz/metrics-api/client"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/pkg/labels"
-	vizLabels "github.com/linkerd/linkerd2/viz/pkg/labels"
-	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiregistrationv1client "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/typed/apiregistration/v1"
@@ -273,17 +271,6 @@ func (hc *HealthChecker) VizDataPlaneCategory() healthcheck.Category {
 
 				return validateDataPlanePodReporting(pods)
 			}),
-		*healthcheck.NewChecker("data-plane pods have tap enabled").
-			WithHintAnchor("l5d-viz-data-plane-tap").
-			Warning().
-			WithCheck(func(ctx context.Context) error {
-				pods, err := hc.GetDataPlanePods(ctx)
-				if err != nil {
-					return err
-				}
-
-				return hc.checkForTapConfiguration(ctx, pods)
-			}),
 	}, true)
 }
 
@@ -311,31 +298,6 @@ func (hc *HealthChecker) getDataPlanePodsFromVizAPI(ctx context.Context) ([]*pb.
 	}
 
 	return pods, nil
-}
-
-// checkForTapConfiguration checks if the tap annotation is present
-// only for the pods with tap enabled
-func (hc *HealthChecker) checkForTapConfiguration(ctx context.Context, pods []corev1.Pod) error {
-	var podsWithoutTap []string
-	for i := range pods {
-		pod := pods[i]
-		ns, err := hc.KubeAPIClient().CoreV1().Namespaces().Get(ctx, pod.Namespace, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-		// Check if Tap is disabled
-		if !vizLabels.IsTapDisabled(pod) && !vizLabels.IsTapDisabled(ns) {
-			// Check for tap-injector annotation
-			if !vizLabels.IsTapEnabled(&pod) {
-				podsWithoutTap = append(podsWithoutTap, fmt.Sprintf("* %s", pod.Name))
-			}
-		}
-	}
-
-	if len(podsWithoutTap) > 0 {
-		return fmt.Errorf("Some data plane pods do not have tap configured and cannot be tapped:\n\t%s", strings.Join(podsWithoutTap, "\n\t"))
-	}
-	return nil
 }
 
 func validateDataPlanePodReporting(pods []*pb.Pod) error {
