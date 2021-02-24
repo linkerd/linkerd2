@@ -53,6 +53,24 @@ metadata:
 			Ports: []corev1.ServicePort{{Port: 3306}},
 		},
 	}
+	explicitlyNotOpaqueService = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: ns
+  annotations:
+    config.linkerd.io/opaque-ports: ""`
+	explicitlyNotOpaqueServiceObject = corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "svc",
+			Namespace:   "ns",
+			Annotations: map[string]string{"config.linkerd.io/opaque-ports": ""},
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{{Port: 3306}},
+		},
+	}
 )
 
 type testOpaquePortsListener struct {
@@ -87,9 +105,11 @@ func TestOpaquePortsWatcher(t *testing.T) {
 				Name:      "svc",
 				Namespace: "ns",
 			},
-			// Adding and removing services that do not have the opaque ports
-			// annotation should not result in any updates being sent.
-			expectedOpaquePorts: []map[uint32]struct{}{},
+			// 1. default opaque ports
+			// 2. svc updated: no update
+			// 3. svc deleted: no update
+			// 4. svc created: ?
+			expectedOpaquePorts: []map[uint32]struct{}{{11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}},
 		},
 		{
 			name:         "namespace with opaque service",
@@ -102,9 +122,9 @@ func TestOpaquePortsWatcher(t *testing.T) {
 			},
 			// 1: svc annotation 3306
 			// 2: svc updated: no update
-			// 2: svc deleted: update with no ports
+			// 2: svc deleted: update with default ports
 			// 3. svc created: update with port 3306
-			expectedOpaquePorts: []map[uint32]struct{}{{3306: {}}, {}, {3306: {}}},
+			expectedOpaquePorts: []map[uint32]struct{}{{3306: {}}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {3306: {}}},
 		},
 		{
 			name:         "namespace and service, create opaque service",
@@ -115,11 +135,11 @@ func TestOpaquePortsWatcher(t *testing.T) {
 				Name:      "svc",
 				Namespace: "ns",
 			},
-			// 1: no svc annotation
+			// 1: default opaque ports
 			// 2: svc updated: update with port 3306
-			// 3: svc deleted: update with no ports
+			// 3: svc deleted: update with default ports
 			// 4. svc created: update with port 3306
-			expectedOpaquePorts: []map[uint32]struct{}{{3306: {}}, {}, {3306: {}}},
+			expectedOpaquePorts: []map[uint32]struct{}{{11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {3306: {}}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {3306: {}}},
 		},
 		{
 			name:         "namespace and opaque service, create base service",
@@ -131,10 +151,25 @@ func TestOpaquePortsWatcher(t *testing.T) {
 				Namespace: "ns",
 			},
 			// 1: svc annotation 3306
-			// 2. svc updated: update with no ports
+			// 2. svc updated: update with default ports
 			// 3. svc deleted: no update
 			// 4. svc added: no update
-			expectedOpaquePorts: []map[uint32]struct{}{{3306: {}}, {}},
+			expectedOpaquePorts: []map[uint32]struct{}{{3306: {}}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}},
+		},
+		{
+			name:         "namespace and explicitly not opaque service, create explicitly not opaque service",
+			initialState: []string{testNS, explicitlyNotOpaqueService},
+			nsObject:     &testNSObject,
+			svcObject:    &explicitlyNotOpaqueServiceObject,
+			service: ServiceID{
+				Name:      "svc",
+				Namespace: "ns",
+			},
+			// 1: svc annotation empty
+			// 2. svc updated: no update
+			// 3. svc deleted: update with default ports
+			// 4. svc added: update with no ports
+			expectedOpaquePorts: []map[uint32]struct{}{{}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {}},
 		},
 	} {
 		k8sAPI, err := k8s.NewFakeAPI(tt.initialState...)

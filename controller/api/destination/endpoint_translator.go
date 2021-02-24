@@ -10,6 +10,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/opaqueports"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
@@ -213,9 +214,14 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			err error
 		)
 		if address.Pod != nil {
-			opaquePorts, getErr := getPodOpaquePortsAnnotations(address.Pod)
+			opaquePorts, ok, getErr := getPodOpaquePortsAnnotations(address.Pod)
 			if getErr != nil {
 				et.log.Errorf("failed getting opaque ports annotation for pod: %s", getErr)
+			}
+			// If the opaque ports annotation was not set, then set the
+			// endpoint's opaque ports to the default value.
+			if !ok {
+				opaquePorts = opaqueports.DefaultOpaquePorts
 			}
 			wa, err = toWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 		} else {

@@ -12,6 +12,7 @@ import (
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	labels "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/opaqueports"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/util"
 	logging "github.com/sirupsen/logrus"
@@ -203,7 +204,6 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			if err != nil {
 				return err
 			}
-
 			var endpoint *pb.WeightedAddr
 			opaquePorts := make(map[uint32]struct{})
 			if pod != nil {
@@ -217,9 +217,15 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 				if err != nil {
 					log.Errorf("failed to set opaque port annotation on pod: %s", err)
 				}
-				opaquePorts, err = getPodOpaquePortsAnnotations(pod)
+				var ok bool
+				opaquePorts, ok, err = getPodOpaquePortsAnnotations(pod)
 				if err != nil {
 					log.Errorf("failed to get opaque ports annotation for pod: %s", err)
+				}
+				// If the opaque ports annotation was not set, then set the
+				// endpoint's opaque ports to the default value.
+				if !ok {
+					opaquePorts = opaqueports.DefaultOpaquePorts
 				}
 				endpoint, err = toWeightedAddr(podSet.Addresses[podID], opaquePorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, log)
 				if err != nil {
@@ -455,17 +461,20 @@ func hasSuffix(slice []string, suffix []string) bool {
 	return true
 }
 
-func getPodOpaquePortsAnnotations(pod *corev1.Pod) (map[uint32]struct{}, error) {
+func getPodOpaquePortsAnnotations(pod *corev1.Pod) (map[uint32]struct{}, bool, error) {
+	annotation, ok := pod.Annotations[labels.ProxyOpaquePortsAnnotation]
+	if !ok {
+		return nil, false, nil
+	}
 	opaquePorts := make(map[uint32]struct{})
-	annotation := pod.Annotations[labels.ProxyOpaquePortsAnnotation]
 	if annotation != "" {
 		for _, portStr := range util.ParseContainerOpaquePorts(annotation, pod.Spec.Containers) {
 			port, err := strconv.ParseUint(portStr, 10, 32)
 			if err != nil {
-				return nil, err
+				return nil, true, err
 			}
 			opaquePorts[uint32(port)] = struct{}{}
 		}
 	}
-	return opaquePorts, nil
+	return opaquePorts, true, nil
 }
