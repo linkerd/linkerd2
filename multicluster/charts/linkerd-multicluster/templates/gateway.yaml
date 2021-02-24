@@ -6,7 +6,7 @@ metadata:
   name: {{.Values.gatewayName}}-config
   labels:
     linkerd.io/control-plane-component: gateway
-    linkerd.io/extension: linkerd-multicluster
+    linkerd.io/extension: multicluster
   annotations:
     {{ include "partials.annotations.created-by" . }}
   namespace: {{.Values.namespace}}
@@ -59,7 +59,7 @@ metadata:
     app.kubernetes.io/version: {{.Values.linkerdVersion}}
     linkerd.io/control-plane-component: gateway
     app: {{.Values.gatewayName}}
-    linkerd.io/extension: linkerd-multicluster
+    linkerd.io/extension: multicluster
   name: {{.Values.gatewayName}}
   namespace: {{.Values.namespace}}
 spec:
@@ -118,7 +118,7 @@ metadata:
   name: {{.Values.gatewayName}}
   namespace: {{.Values.namespace}}
   labels:
-    linkerd.io/extension: linkerd-multicluster
+    linkerd.io/extension: multicluster
   annotations:
     mirror.linkerd.io/gateway-identity: {{.Values.gatewayName}}.{{.Values.namespace}}.serviceaccount.identity.{{.Values.linkerdNamespace}}.{{.Values.identityTrustDomain}}
     mirror.linkerd.io/probe-period: "{{.Values.gatewayProbeSeconds}}"
@@ -148,5 +148,5 @@ metadata:
   name: {{.Values.gatewayName}}
   namespace: {{.Values.namespace}}
   labels:
-    linkerd.io/extension: linkerd-multicluster
+    linkerd.io/extension: multicluster
 {{end -}}

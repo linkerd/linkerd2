@@ -84,8 +84,8 @@ var (
 	//skippedInboundPorts lists some ports to be marked as skipped, which will
 	// be verified in test/integration/inject
 	skippedInboundPorts       = "1234,5678"
-	multiclusterExtensionName = "linkerd-multicluster"
-	vizExtensionName          = "linkerd-viz"
+	multiclusterExtensionName = "multicluster"
+	vizExtensionName          = "viz"
 )
 
 //////////////////////

@@ -11,7 +11,7 @@ metadata:
   name: {{.}}
   namespace: {{$.Values.namespace}}
   labels:
-    linkerd.io/extension: linkerd-multicluster
+    linkerd.io/extension: multicluster
   annotations:
     {{ include "partials.annotations.created-by" $ }}
 rules:
@@ -29,7 +29,7 @@ metadata:
   name: {{.}}
   namespace: {{$.Values.namespace}}
   labels:
-    linkerd.io/extension: linkerd-multicluster
+    linkerd.io/extension: multicluster
   annotations:
     {{ include "partials.annotations.created-by" $ }}
 ---
@@ -39,7 +39,7 @@ metadata:
   name: {{.}}
   namespace: {{$.Values.namespace}}
   labels:
-    linkerd.io/extension: linkerd-multicluster
+    linkerd.io/extension: multicluster
   annotations:
     {{ include "partials.annotations.created-by" $ }}
 roleRef:
