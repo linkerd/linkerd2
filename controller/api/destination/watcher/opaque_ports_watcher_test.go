@@ -109,7 +109,7 @@ func TestOpaquePortsWatcher(t *testing.T) {
 			// 2. svc updated: no update
 			// 3. svc deleted: no update
 			// 4. svc created: ?
-			expectedOpaquePorts: []map[uint32]struct{}{{11211: {}, 25: {}, 3306: {}, 443: {}, 587: {}}},
+			expectedOpaquePorts: []map[uint32]struct{}{{11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}},
 		},
 		{
 			name:         "namespace with opaque service",
@@ -124,7 +124,7 @@ func TestOpaquePortsWatcher(t *testing.T) {
 			// 2: svc updated: no update
 			// 2: svc deleted: update with default ports
 			// 3. svc created: update with port 3306
-			expectedOpaquePorts: []map[uint32]struct{}{{3306: {}}, {11211: {}, 25: {}, 3306: {}, 443: {}, 587: {}}, {3306: {}}},
+			expectedOpaquePorts: []map[uint32]struct{}{{3306: {}}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {3306: {}}},
 		},
 		{
 			name:         "namespace and service, create opaque service",
@@ -139,7 +139,7 @@ func TestOpaquePortsWatcher(t *testing.T) {
 			// 2: svc updated: update with port 3306
 			// 3: svc deleted: update with default ports
 			// 4. svc created: update with port 3306
-			expectedOpaquePorts: []map[uint32]struct{}{{11211: {}, 25: {}, 3306: {}, 443: {}, 587: {}}, {3306: {}}, {11211: {}, 25: {}, 3306: {}, 443: {}, 587: {}}, {3306: {}}},
+			expectedOpaquePorts: []map[uint32]struct{}{{11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {3306: {}}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {3306: {}}},
 		},
 		{
 			name:         "namespace and opaque service, create base service",
@@ -154,7 +154,7 @@ func TestOpaquePortsWatcher(t *testing.T) {
 			// 2. svc updated: update with default ports
 			// 3. svc deleted: no update
 			// 4. svc added: no update
-			expectedOpaquePorts: []map[uint32]struct{}{{3306: {}}, {11211: {}, 25: {}, 3306: {}, 443: {}, 587: {}}},
+			expectedOpaquePorts: []map[uint32]struct{}{{3306: {}}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}},
 		},
 		{
 			name:         "namespace and explicitly not opaque service, create explicitly not opaque service",
@@ -169,7 +169,7 @@ func TestOpaquePortsWatcher(t *testing.T) {
 			// 2. svc updated: no update
 			// 3. svc deleted: update with default ports
 			// 4. svc added: update with no ports
-			expectedOpaquePorts: []map[uint32]struct{}{{}, {11211: {}, 25: {}, 3306: {}, 443: {}, 587: {}}, {}},
+			expectedOpaquePorts: []map[uint32]struct{}{{}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {}},
 		},
 	} {
 		k8sAPI, err := k8s.NewFakeAPI(tt.initialState...)

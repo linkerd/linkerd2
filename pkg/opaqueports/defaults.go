@@ -6,12 +6,11 @@ package opaqueports
 // priority of this.
 //
 // Note: Keep in sync with proxy.opaquePorts in values.yaml
-var DefaultOpaquePorts = make(map[uint32]struct{})
-
-func init() {
-	DefaultOpaquePorts[25] = struct{}{}
-	DefaultOpaquePorts[443] = struct{}{}
-	DefaultOpaquePorts[587] = struct{}{}
-	DefaultOpaquePorts[3306] = struct{}{}
-	DefaultOpaquePorts[11211] = struct{}{}
+var DefaultOpaquePorts = map[uint32]struct{}{
+	25:    {},
+	443:   {},
+	587:   {},
+	3306:  {},
+	5432:  {},
+	11211: {},
 }
