@@ -120,10 +120,10 @@ metadata:
   labels:
     linkerd.io/extension: linkerd-multicluster
   annotations:
-    multicluster.linkerd.io/gateway-identity: {{.Values.gatewayName}}.{{.Values.namespace}}.serviceaccount.identity.{{.Values.linkerdNamespace}}.{{.Values.identityTrustDomain}}
-    multicluster.linkerd.io/probe-period: "{{.Values.gatewayProbeSeconds}}"
-    multicluster.linkerd.io/probe-path: {{.Values.gatewayProbePath}}
-    multicluster.linkerd.io/multicluster-gateway: "true"
+    mirror.linkerd.io/gateway-identity: {{.Values.gatewayName}}.{{.Values.namespace}}.serviceaccount.identity.{{.Values.linkerdNamespace}}.{{.Values.identityTrustDomain}}
+    mirror.linkerd.io/probe-period: "{{.Values.gatewayProbeSeconds}}"
+    mirror.linkerd.io/probe-path: {{.Values.gatewayProbePath}}
+    mirror.linkerd.io/multicluster-gateway: "true"
     linkerd.io/control-plane-component: gateway
     {{ include "partials.annotations.created-by" . }}
     {{- with .Values.gatewayServiceAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}

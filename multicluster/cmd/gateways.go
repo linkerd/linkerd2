@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/linkerd/linkerd2/cli/table"
-	labels "github.com/linkerd/linkerd2/multicluster/pkg"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	vizCmd "github.com/linkerd/linkerd2/viz/cmd"
 	"github.com/linkerd/linkerd2/viz/metrics-api/client"
@@ -166,9 +165,9 @@ func gatewaysRowToTableRow(row *pb.GatewaysTable_Row) []string {
 
 func extractGatewayPort(gateway *corev1.Service) (uint32, error) {
 	for _, port := range gateway.Spec.Ports {
-		if port.Name == labels.GatewayPortName {
+		if port.Name == k8s.GatewayPortName {
 			return uint32(port.Port), nil
 		}
 	}
-	return 0, fmt.Errorf("gateway service %s has no gateway port named %s", gateway.Name, labels.GatewayPortName)
+	return 0, fmt.Errorf("gateway service %s has no gateway port named %s", gateway.Name, k8s.GatewayPortName)
 }

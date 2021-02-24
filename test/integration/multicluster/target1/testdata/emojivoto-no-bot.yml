@@ -54,7 +54,7 @@ metadata:
   name: web-svc
   namespace: emojivoto
   labels:
-    multicluster.linkerd.io/export: "true"
+    mirror.linkerd.io/exported: "true"
 spec:
   ports:
   - name: http
