@@ -1265,7 +1265,7 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191"
         - --outbound-ports-to-ignore
-        - ",443"
+        - "443"
         image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1498,7 +1498,7 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191"
         - --outbound-ports-to-ignore
-        - ",443"
+        - "443"
         image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1750,7 +1750,7 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191"
         - --outbound-ports-to-ignore
-        - ",443"
+        - "443"
         image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -2008,7 +2008,7 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191"
         - --outbound-ports-to-ignore
-        - ",443"
+        - "443"
         image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -2262,7 +2262,7 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191"
         - --outbound-ports-to-ignore
-        - ",443"
+        - "443"
         image: cr.l5d.io/linkerd/proxy-init:v1.3.9
         imagePullPolicy: IfNotPresent
         name: linkerd-init
