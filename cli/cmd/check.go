@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -263,6 +264,7 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 		results := healthcheck.CheckResults{
 			Results: []healthcheck.CheckResult{},
 		}
+		extensionCmd := fmt.Sprintf("linkerd-%s", extension)
 
 		switch extension {
 		case jaegerCmd.JaegerExtensionName:
@@ -275,7 +277,6 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 			path = os.Args[0]
 			args = append([]string{"multicluster"}, args...)
 		default:
-			extensionCmd := fmt.Sprintf("linkerd-%s", extension)
 			path, err = exec.LookPath(extensionCmd)
 			results.Results = []healthcheck.CheckResult{
 				{
@@ -289,13 +290,28 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 		}
 		if err == nil {
 			plugin := exec.Command(path, args...)
-			output, _ := plugin.Output()
-			extensionResults, err := healthcheck.ParseJSONCheckOutput(output)
+			var stdout, stderr bytes.Buffer
+			plugin.Stdout = &stdout
+			plugin.Stderr = &stderr
+			plugin.Run()
+			extensionResults, err := healthcheck.ParseJSONCheckOutput(stdout.Bytes())
 			if err != nil {
 				command := fmt.Sprintf("%s %s", path, strings.Join(args, " "))
-				return false, fmt.Errorf("invalid extension check output from \"%s\" (JSON object expected):\n%s\n[%s]", command, string(output), err)
+				if len(stderr.String()) > 0 {
+					err = errors.New(stderr.String())
+				} else {
+					err = fmt.Errorf("invalid extension check output from \"%s\" (JSON object expected):\n%s\n[%s]", command, stdout.String(), err)
+				}
+				results.Results = append(results.Results, healthcheck.CheckResult{
+					Category:    healthcheck.CategoryID(extensionCmd),
+					Description: fmt.Sprintf("Running: %s", command),
+					Err:         err,
+					HintAnchor:  "extensions",
+				})
+				success = false
+			} else {
+				results.Results = append(results.Results, extensionResults.Results...)
 			}
-			results.Results = append(results.Results, extensionResults.Results...)
 		}
 		extensionSuccess := healthcheck.RunChecks(wout, werr, results, opts.output)
 		if !extensionSuccess {
