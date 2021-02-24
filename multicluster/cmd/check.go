@@ -98,6 +98,8 @@ non-zero exit code.`,
 	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 	cmd.Flags().Bool("proxy", false, "")
 	cmd.Flags().MarkHidden("proxy")
+	cmd.Flags().StringP("namespace", "n", "", "")
+	cmd.Flags().MarkHidden("namespace")
 	return cmd
 }
 
