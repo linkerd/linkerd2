@@ -31,8 +31,9 @@ func newCmdControllerMetrics() *cobra.Command {
 	options := newControllerMetricsOptions()
 
 	cmd := &cobra.Command{
-		Use:   "controller-metrics",
-		Short: "Fetch metrics directly from the Linkerd control plane containers",
+		Use:     "controller-metrics",
+		Aliases: []string{"cp-metrics"},
+		Short:   "Fetch metrics directly from the Linkerd control plane containers",
 		Long: `Fetch metrics directly from Linkerd control plane containers.
 
   This command initiates port-forward to each control plane process, and
