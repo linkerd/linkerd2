@@ -46,7 +46,7 @@ spec:
             - "-controller-namespace={{.Values.namespace}}"
             - "-log-level={{.Values.controllerLogLevel}}"
             - "-log-format={{.Values.controllerLogFormat}}"
-            - "-prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.{{.Values.clusterDomain}}:9090"
+            - "-prometheus-url=http://prometheus.linkerd-viz.svc.{{.Values.clusterDomain}}:9090"
             {{- if .Values.heartbeatResources -}}
             {{- include "partials.resources" .Values.heartbeatResources | nindent 12 }}
             {{- end }}

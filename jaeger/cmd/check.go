@@ -18,10 +18,10 @@ import (
 const (
 
 	// JaegerExtensionName is the name of jaeger extension
-	JaegerExtensionName = "linkerd-jaeger"
+	JaegerExtensionName = "jaeger"
 
 	// linkerdJaegerExtensionCheck adds checks related to the jaeger extension
-	linkerdJaegerExtensionCheck healthcheck.CategoryID = JaegerExtensionName
+	linkerdJaegerExtensionCheck healthcheck.CategoryID = "linkerd-jaeger"
 
 	// linkerdJaegerExtensionDataPlaneCheck adds checks related to the jaeger extension
 	linkerdJaegerExtensionDataPlaneCheck healthcheck.CategoryID = JaegerExtensionName + "-data-plane"

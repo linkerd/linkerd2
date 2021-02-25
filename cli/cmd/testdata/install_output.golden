@@ -1822,7 +1822,7 @@ spec:
             - "-controller-namespace=linkerd"
             - "-log-level=ControllerLogLevel"
             - "-log-format=ControllerLogFormat"
-            - "-prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.cluster.local:9090"
+            - "-prometheus-url=http://prometheus.linkerd-viz.svc.cluster.local:9090"
             securityContext:
               runAsUser: 2103
 ---

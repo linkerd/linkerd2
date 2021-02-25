@@ -48,8 +48,6 @@ webhook:
     #- key: runlevel
     #  operator: NotIn
     #  values: ["0","1"]
-
   objectSelector:
     #matchLabels:
     #  foo: bar
-
