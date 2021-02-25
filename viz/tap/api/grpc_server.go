@@ -78,8 +78,8 @@ func (s *GRPCTapServer) TapByResource(req *tapPb.TapByResourceRequest, stream ta
 	}
 
 	pods := []*corev1.Pod{}
-	tapDisabled := false
-	tapNotEnabled := false
+	tapDisabled := []*corev1.Pod{}
+	tapNotEnabled := []*corev1.Pod{}
 	for _, object := range objects {
 		podsFor, err := s.k8sAPI.GetPodsFor(object, false)
 		if err != nil {
@@ -89,9 +89,9 @@ func (s *GRPCTapServer) TapByResource(req *tapPb.TapByResourceRequest, stream ta
 		for _, pod := range podsFor {
 			if pkgK8s.IsMeshed(pod, s.controllerNamespace) {
 				if vizLabels.IsTapDisabled(pod) {
-					tapDisabled = true
+					tapDisabled = append(tapDisabled, pod)
 				} else if !vizLabels.IsTapEnabled(pod) {
-					tapNotEnabled = true
+					tapNotEnabled = append(tapNotEnabled, pod)
 				} else {
 					pods = append(pods, pod)
 				}
@@ -100,18 +100,23 @@ func (s *GRPCTapServer) TapByResource(req *tapPb.TapByResourceRequest, stream ta
 	}
 
 	if len(pods) == 0 {
-		errStrings := []string{}
-		errStr := fmt.Errorf("no pods to tap for %s/%s", res.GetType(), res.GetName())
-		errStrings = append(errStrings, errStr.Error())
-		if tapDisabled {
-			errStr = fmt.Errorf("pods found with tap disabled via the %s annotation", vizLabels.VizTapDisabled)
-			errStrings = append(errStrings, errStr.Error())
+		var errs strings.Builder
+		fmt.Fprintf(&errs, "no pods to tap for %s/%s\n", res.GetType(), res.GetName())
+		if len(tapDisabled) > 0 {
+			fmt.Fprintf(&errs, "%d pods found with tap disabled via the %s annotation:\n", len(tapDisabled), vizLabels.VizTapDisabled)
+			for _, pod := range tapDisabled {
+				fmt.Fprintf(&errs, "\t* %s\n", pod.Name)
+			}
+			fmt.Fprintln(&errs, "remove this annotation to make these pods valid tap targets")
 		}
-		if tapNotEnabled {
-			errStr = fmt.Errorf("pods found with tap not enabled; try restarting resource so that it can be injected")
-			errStrings = append(errStrings, errStr.Error())
+		if len(tapNotEnabled) > 0 {
+			fmt.Fprintf(&errs, "%d pods found with tap not enabled:\n", len(tapNotEnabled))
+			for _, pod := range tapNotEnabled {
+				fmt.Fprintf(&errs, "\t* %s\n", pod.Name)
+			}
+			fmt.Fprintln(&errs, "restart these pods to enable tap and make them valid tap targets")
 		}
-		return status.Errorf(codes.NotFound, strings.Join(errStrings, "\n"))
+		return status.Errorf(codes.NotFound, errs.String())
 	}
 
 	log.Infof("Tapping %d pods for target: %s", len(pods), res.String())

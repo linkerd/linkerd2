@@ -7,7 +7,7 @@ metadata:
   annotations:
     linkerd.io/inject: disabled
   labels:
-    linkerd.io/cni-resource-test: "true"
+    linkerd.io/cni-resource: "true"
     config.linkerd.io/admission-webhooks: disabled
 ---
 apiVersion: policy/v1beta1
@@ -15,7 +15,7 @@ kind: PodSecurityPolicy
 metadata:
   name: linkerd-linkerd-test-cni
   labels:
-    linkerd.io/cni-resource-test: "true"
+    linkerd.io/cni-resource: "true"
 spec:
   allowPrivilegeEscalation: false
   fsGroup:
@@ -37,7 +37,7 @@ metadata:
   name: linkerd-cni
   namespace: linkerd-test
   labels:
-    linkerd.io/cni-resource-test: "true"
+    linkerd.io/cni-resource: "true"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -45,7 +45,7 @@ metadata:
   name: linkerd-cni
   namespace: linkerd-test
   labels:
-    linkerd.io/cni-resource-test: "true"
+    linkerd.io/cni-resource: "true"
 rules:
 - apiGroups: ['extensions', 'policy']
   resources: ['podsecuritypolicies']
@@ -59,7 +59,7 @@ metadata:
   name: linkerd-cni
   namespace: linkerd-test
   labels:
-    linkerd.io/cni-resource-test: "true"
+    linkerd.io/cni-resource: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -74,7 +74,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-cni
   labels:
-    linkerd.io/cni-resource-test: "true"
+    linkerd.io/cni-resource: "true"
 rules:
 - apiGroups: [""]
   resources: ["pods", "nodes", "namespaces"]
@@ -85,7 +85,7 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-cni
   labels:
-    linkerd.io/cni-resource-test: "true"
+    linkerd.io/cni-resource: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -101,7 +101,7 @@ metadata:
   name: linkerd-cni-config
   namespace: linkerd-test
   labels:
-    linkerd.io/cni-resource-test: "true"
+    linkerd.io/cni-resource: "true"
 data:
   dest_cni_net_dir: "/etc/cni/net.d-test"
   dest_cni_bin_dir: "/opt/cni/bin-test"
@@ -125,8 +125,6 @@ data:
         "outgoing-proxy-port": 5678,
         "proxy-uid": 1111,
         "ports-to-redirect": [],
-        "inbound-ports-to-ignore": ["25","443","587","3306","11211"],
-        "outbound-ports-to-ignore": ["25","443","587","3306","11211"],
         "simulate": false,
         "use-wait-flag": true
       }
@@ -139,9 +137,9 @@ metadata:
   namespace: linkerd-test
   labels:
     k8s-app: linkerd-cni
-    linkerd.io/cni-resource-test: "true"
+    linkerd.io/cni-resource: "true"
   annotations:
-    linkerd.io/created-by-test: test-version
+    linkerd.io/created-by: test-version
 spec:
   selector:
     matchLabels:
@@ -155,7 +153,7 @@ spec:
       labels:
         k8s-app: linkerd-cni
       annotations:
-        linkerd.io/created-by-test: test-version
+        linkerd.io/created-by: test-version
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux

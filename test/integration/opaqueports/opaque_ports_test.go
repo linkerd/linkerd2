@@ -15,10 +15,15 @@ import (
 var TestHelper *testutil.TestHelper
 
 var (
-	appName = "app"
-
-	tcpMetricRE = regexp.MustCompile(
-		`^tcp_open_total\{direction="inbound",peer="src",target_addr=".*:4143",tls="true",client_id="default\.linkerd-opaque-ports-test\.serviceaccount\.identity\.linkerd\.cluster\.local"\}$`,
+	opaquePodApp = "opaque-pod"
+	opaquePodSC  = "slow-cooker-opaque-pod"
+	opaqueSvcApp = "opaque-service"
+	opaqueSvcSC  = "slow-cooker-opaque-service"
+	tcpMetricRE  = regexp.MustCompile(
+		`tcp_open_total\{direction="inbound",peer="src",target_addr="[0-9\.]+:[0-9]+",tls="true",client_id="default\.linkerd-opaque-ports-test\.serviceaccount\.identity\.linkerd\.cluster\.local"\} [0-9]+`,
+	)
+	httpRequestTotalMetricRE = regexp.MustCompile(
+		`request_total\{direction="outbound",authority="[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:8080",target_addr="[0-9\.]+:8080",tls="true",.*`,
 	)
 )
 
@@ -51,8 +56,8 @@ func TestOpaquePorts(t *testing.T) {
 			"'kubectl apply' command failed\n%s", out)
 	}
 
-	// Check that the test application started correctly
-	if err := TestHelper.CheckPods(ctx, opaquePortsNs, appName, 1); err != nil {
+	// Check that the opaque pod test application started correctly.
+	if err := TestHelper.CheckPods(ctx, opaquePortsNs, opaquePodApp, 1); err != nil {
 		if rce, ok := err.(*testutil.RestartCountError); ok {
 			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 		} else {
@@ -60,33 +65,84 @@ func TestOpaquePorts(t *testing.T) {
 		}
 	}
 
-	if err := TestHelper.CheckDeployment(ctx, opaquePortsNs, appName, 1); err != nil {
-		testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", appName, err)
+	if err := TestHelper.CheckDeployment(ctx, opaquePortsNs, opaquePodApp, 1); err != nil {
+		testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", opaquePodApp, err)
 	}
 
-	t.Run("expect inbound TCP connection metric with expected TLS identity", func(t *testing.T) {
-		pods, err := TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": appName})
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "error getting opaque ports app pods", "error getting opaque ports app pods\n%s", err)
+	// Check that the opaque service test application started correctly.
+	if err := TestHelper.CheckPods(ctx, opaquePortsNs, opaqueSvcApp, 1); err != nil {
+		if rce, ok := err.(*testutil.RestartCountError); ok {
+			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+		} else {
+			testutil.AnnotatedError(t, "CheckPods timed-out", err)
 		}
+	}
 
-		// Wait for slow-cooker to start sending requests
-		time.Sleep(20 * time.Second)
+	if err := TestHelper.CheckDeployment(ctx, opaquePortsNs, opaqueSvcApp, 1); err != nil {
+		testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", opaqueSvcApp, err)
+	}
 
-		// Get metrics for the app pod expecting to find TCP connection counters
+	// Wait for slow-cookers to start sending requests
+	time.Sleep(20 * time.Second)
+
+	t.Run("expect absent HTTP outbound requests for opaque-pod slow clooker", func(t *testing.T) {
+		// Check the slow cooker metrics
+		pods, err := TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": opaquePodSC})
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "error getting pods", "error getting pods\n%s", err)
+		}
 		metrics, err := getPodMetrics(pods[0], opaquePortsNs)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "error getting metrics for pod", "error getting metrics for pod\n%s", err)
 		}
-		if tcpMetricRE.MatchString(metrics) {
-			testutil.AnnotatedFatalf(t, "failed to find expected TCP metric when port is marked as opaque", "failed to find expected TCP metric when port is marked as opaque\n%s", metrics)
+		if httpRequestTotalMetricRE.MatchString(metrics) {
+			testutil.AnnotatedFatalf(t, "expected not to find HTTP outbound requests when pod is opaque", "expected not to find HTTP outbound requests when pod is opaque\n%s", metrics)
+		}
+		// Check the application metrics
+		pods, err = TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": opaquePodApp})
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "error getting pods", "error getting pods\n%s", err)
+		}
+		metrics, err = getPodMetrics(pods[0], opaquePortsNs)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "error getting metrics for pod", "error getting metrics for pod\n%s", err)
+		}
+		if !tcpMetricRE.MatchString(metrics) {
+			testutil.AnnotatedFatalf(t, "failed to find expected TCP metric when pod is opaque", "failed to find expected TCP metric when pod is opaque\n%s", metrics)
+		}
+	})
+
+	t.Run("expect inbound TCP connection metric with expected TLS identity for opaque service app", func(t *testing.T) {
+		// Check the slow cooker metrics
+		pods, err := TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": opaqueSvcSC})
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "error getting pods", "error getting pods\n%s", err)
+		}
+		metrics, err := getPodMetrics(pods[0], opaquePortsNs)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "error getting metrics for pod", "error getting metrics for pod\n%s", err)
+		}
+		if httpRequestTotalMetricRE.MatchString(metrics) {
+			testutil.AnnotatedFatalf(t, "expected not to find HTTP outbound requests when service is opaque", "expected not to find HTTP outbound requests when service is opaque\n%s", metrics)
+		}
+		// Check the application metrics
+		pods, err = TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": opaqueSvcApp})
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "error getting pods", "error getting pods\n%s", err)
+		}
+		metrics, err = getPodMetrics(pods[0], opaquePortsNs)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "error getting metrics for pod", "error getting metrics for pod\n%s", err)
+		}
+		if !tcpMetricRE.MatchString(metrics) {
+			testutil.AnnotatedFatalf(t, "failed to find expected TCP metric when pod is opaque", "failed to find expected TCP metric when pod is opaque\n%s", metrics)
 		}
 	})
 }
 
 func getPodMetrics(pod v1.Pod, ns string) (string, error) {
 	podName := fmt.Sprintf("pod/%s", pod.Name)
-	cmd := []string{"metrics", "--namespace", ns, podName}
+	cmd := []string{"diagnostics", "proxy-metrics", "--namespace", ns, podName}
 	metrics, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		return "", err

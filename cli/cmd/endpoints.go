@@ -62,14 +62,14 @@ func newCmdEndpoints() *cobra.Command {
 	options := newEndpointsOptions()
 
 	example := `  # get all endpoints for the authorities emoji-svc.emojivoto.svc.cluster.local:8080 and web-svc.emojivoto.svc.cluster.local:80
-  linkerd endpoints emoji-svc.emojivoto.svc.cluster.local:8080 web-svc.emojivoto.svc.cluster.local:80
+  linkerd diagnostics endpoints emoji-svc.emojivoto.svc.cluster.local:8080 web-svc.emojivoto.svc.cluster.local:80
 
   # get that same information in json format
-  linkerd endpoints -o json emoji-svc.emojivoto.svc.cluster.local:8080 web-svc.emojivoto.svc.cluster.local:80
+  linkerd diagnostics endpoints -o json emoji-svc.emojivoto.svc.cluster.local:8080 web-svc.emojivoto.svc.cluster.local:80
 
   # get the endpoints for authorities in Linkerd's control-plane itself
-  linkerd endpoints linkerd-controller-api.linkerd.svc.cluster.local:8085
-  linkerd endpoints linkerd-web.linkerd.svc.cluster.local:8084`
+  linkerd diagnostics endpoints linkerd-controller-api.linkerd.svc.cluster.local:8085
+  linkerd diagnostics endpoints linkerd-web.linkerd.svc.cluster.local:8084`
 
 	cmd := &cobra.Command{
 		Use:     "endpoints [flags] authorities",
@@ -98,7 +98,8 @@ destination.`,
 				APIAddr:               apiAddr,
 			}), args)
 			if err != nil {
-				return fmt.Errorf("Destination API error: %s", err)
+				fmt.Fprint(os.Stderr, fmt.Errorf("Destination API error: %s", err))
+				os.Exit(1)
 			}
 
 			output := renderEndpoints(endpoints, options)

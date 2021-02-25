@@ -188,7 +188,7 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 			}
 
 			if id == "Deployment/linkerd-identity" || id == "Deployment/linkerd-proxy-injector" {
-				if pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "args", "*"}) && diff.b.(string) == "-identity-trust-anchors-pem="+issuerCerts.ca {
+				if pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "env", "*", "value"}) && diff.b.(string) == issuerCerts.ca {
 					continue
 				}
 				t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())

@@ -215,6 +215,9 @@ rules:
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["list"]
+- apiGroups: ["linkerd.io"]
+  resources: ["serviceprofiles"]
+  verbs: ["list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -894,15 +897,12 @@ data:
     cniEnabled: false
     controlPlaneTracing: false
     controlPlaneTracingNamespace: linkerd-jaeger
-    controllerComponentLabel: linkerd.io/control-plane-component
     controllerImage: cr.l5d.io/linkerd/controller
     controllerImageVersion: linkerd-version
     controllerLogFormat: plain
     controllerLogLevel: info
-    controllerNamespaceLabel: linkerd.io/control-plane-ns
     controllerReplicas: 3
     controllerUID: 2103
-    createdByAnnotation: linkerd.io/created-by
     debugContainer:
       image:
         name: cr.l5d.io/linkerd/debug
@@ -934,7 +934,6 @@ data:
       issuer:
         clockSkewAllowance: 20s
         crtExpiry: Jul 30 17:21:14 2020
-        crtExpiryAnnotation: linkerd.io/identity-issuer-expiry
         issuanceLifetime: 24h0m0s
         scheme: linkerd.io/tls
         tls:
@@ -952,7 +951,6 @@ data:
     imagePullPolicy: IfNotPresent
     imagePullSecrets: null
     installNamespace: true
-    linkerdNamespaceLabel: linkerd.io/is-control-plane
     linkerdVersion: linkerd-version
     namespace: linkerd
     nodeSelector:
@@ -988,7 +986,7 @@ data:
       isIngress: false
       logFormat: plain
       logLevel: warn,linkerd=info
-      opaquePorts: ""
+      opaquePorts: 25,443,587,3306,5432,11211
       outboundConnectTimeout: 1000ms
       ports:
         admin: 4191
@@ -1028,8 +1026,6 @@ data:
         mountPath: /run
         name: linkerd-proxy-init-xtables-lock
         readOnly: false
-    proxyInjectAnnotation: linkerd.io/inject
-    proxyInjectDisabled: disabled
     proxyInjector:
       caBundle: test-proxy-injector-ca-bundle
       crtPEM: test-proxy-injector-crt-pem
@@ -1070,7 +1066,6 @@ data:
       keyPEM: test-tap-key-pem
     tolerations: null
     webhookFailurePolicy: Fail
-    workloadNamespaceLabel: linkerd.io/workload-ns
 ---
 # Source: linkerd2/templates/identity.yaml
 ---
@@ -1217,8 +1212,10 @@ spec:
         - -identity-trust-domain=test.trust.domain
         - -identity-issuance-lifetime=24h0m0s
         - -identity-clock-skew-allowance=20s
-        - -identity-trust-anchors-pem=dGVzdC10cnVzdC1hbmNob3I=
         - -identity-scheme=linkerd.io/tls
+        env:
+        - name: LINKERD2_IDENTITY_TRUST_ANCHORS
+          value: "dGVzdC10cnVzdC1hbmNob3I="
         image: cr.l5d.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1275,6 +1272,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
+          value: "25,443,587,3306,5432,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1550,6 +1549,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
+          value: "25,443,587,3306,5432,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1844,6 +1845,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
+          value: "25,443,587,3306,5432,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -2002,7 +2005,7 @@ spec:
             - "-controller-namespace=linkerd"
             - "-log-level=info"
             - "-log-format=plain"
-            - "-prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.cluster.local:9090"
+            - "-prometheus-url=http://prometheus.linkerd-viz.svc.cluster.local:9090"
             resources:
               limits:
                 memory: "250Mi"
@@ -2141,6 +2144,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
+          value: "25,443,587,3306,5432,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -2454,6 +2459,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
+          value: "25,443,587,3306,5432,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:

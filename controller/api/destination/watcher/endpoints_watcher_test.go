@@ -1466,10 +1466,10 @@ metadata:
   name: name1-remote
   namespace: ns
   annotations:
-    multicluster.linkerd.io/remote-gateway-identity: "gateway-identity-1"
-    multicluster.linkerd.io/remote-svc-fq-name: "name1-remote-fq"
+    mirror.linkerd.io/remote-gateway-identity: "gateway-identity-1"
+    mirror.linkerd.io/remote-svc-fq-name: "name1-remote-fq"
   labels:
-    multicluster.linkerd.io/mirrored-service: "true"
+    mirror.linkerd.io/mirrored-service: "true"
 subsets:
 - addresses:
   - ip: 172.17.0.12
@@ -1503,9 +1503,9 @@ metadata:
   name: name1-remote
   namespace: ns
   annotations:
-    multicluster.linkerd.io/remote-svc-fq-name: "name1-remote-fq"
+    mirror.linkerd.io/remote-svc-fq-name: "name1-remote-fq"
   labels:
-    multicluster.linkerd.io/mirrored-service: "true"
+    mirror.linkerd.io/mirrored-service: "true"
 subsets:
 - addresses:
   - ip: 172.17.0.12
@@ -1540,10 +1540,10 @@ metadata:
   name: name1-remote
   namespace: ns
   annotations:
-    multicluster.linkerd.io/remote-gateway-identity: "gateway-identity-1"
-    multicluster.linkerd.io/remote-svc-fq-name: "name1-remote-fq"
+    mirror.linkerd.io/remote-gateway-identity: "gateway-identity-1"
+    mirror.linkerd.io/remote-svc-fq-name: "name1-remote-fq"
   labels:
-    multicluster.linkerd.io/mirrored-service: "true"
+    mirror.linkerd.io/mirrored-service: "true"
 subsets:
 - addresses:
   - ip: 172.17.0.12
@@ -1577,10 +1577,10 @@ metadata:
   name: name1-remote
   namespace: ns
   annotations:
-    multicluster.linkerd.io/remote-gateway-identity: ""
-    multicluster.linkerd.io/remote-svc-fq-name: "name1-remote-fq"
+    mirror.linkerd.io/remote-gateway-identity: ""
+    mirror.linkerd.io/remote-svc-fq-name: "name1-remote-fq"
   labels:
-    multicluster.linkerd.io/mirrored-service: "true"
+    mirror.linkerd.io/mirrored-service: "true"
 subsets:
 - addresses:
   - ip: 172.17.0.12
@@ -1722,10 +1722,10 @@ metadata:
   name: remote-service
   namespace: ns
   annotations:
-    multicluster.linkerd.io/remote-gateway-identity: "gateway-identity-1"
-    multicluster.linkerd.io/remote-svc-fq-name: "remote-service.svc.default.cluster.local"
+    mirror.linkerd.io/remote-gateway-identity: "gateway-identity-1"
+    mirror.linkerd.io/remote-svc-fq-name: "remote-service.svc.default.cluster.local"
   labels:
-    multicluster.linkerd.io/mirrored-service: "true"
+    mirror.linkerd.io/mirrored-service: "true"
 subsets:
 - addresses:
   - ip: 1.2.3.4

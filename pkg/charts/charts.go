@@ -118,6 +118,7 @@ func (c *Chart) RenderCNI() (bytes.Buffer, error) {
 	cniPartials := []*loader.BufferedFile{
 		{Name: "charts/partials/" + chartutil.ChartfileName},
 		{Name: "charts/partials/templates/_helpers.tpl"},
+		{Name: "charts/partials/templates/_metadata.tpl"},
 		{Name: "charts/partials/templates/_pull-secrets.tpl"},
 	}
 	return c.render(cniPartials)
