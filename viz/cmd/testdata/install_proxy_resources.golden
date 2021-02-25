@@ -801,6 +801,11 @@ data:
       # Copy tmp labels into real labels
       - action: labelmap
         regex: __tmp_pod_label_(.+)
+      metric_relabel_configs:
+      # Drop tcp_connection_duration stats i.e. bucket,sum,count
+      - source_labels: [__name__]
+        regex: 'tcp_connection_duration_ms_(.+)'
+        action: drop
 ---
 kind: Service
 apiVersion: v1
