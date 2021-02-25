@@ -99,7 +99,7 @@ linkerd upgrade.`,
 				return fmt.Errorf("Failed to render overrides: %s", err)
 			}
 
-			fmt.Printf(string(overrides))
+			fmt.Print(string(overrides))
 
 			return nil
 		},
