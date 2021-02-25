@@ -1536,7 +1536,7 @@ spec:
         - -enable-endpoint-slices=false
         - -cluster-domain=cluster.local
         - -identity-trust-domain=cluster.local
-        - -opauq-ports="25,443,587,3306,5432,11211"
+        - -opaque-ports="25,443,587,3306,5432,11211"
         image: cr.l5d.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
