@@ -5,13 +5,10 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"time"
 
-	"github.com/linkerd/linkerd2/jaeger/pkg/labels"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/spf13/cobra"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -154,37 +151,7 @@ func JaegerDataPlaneCategory(hc *healthcheck.HealthChecker) *healthcheck.Categor
 				}
 				return hc.CheckNamespace(ctx, hc.DataPlaneNamespace, true)
 			}),
-		*healthcheck.NewChecker("data-plane pods have tracing enabled").
-			WithHintAnchor("l5d-jaeger-data-plane-trace").
-			Warning().
-			WithCheck(func(ctx context.Context) error {
-				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, hc.DataPlaneNamespace)
-				if err != nil {
-					return err
-				}
-
-				return checkForTraceConfiguration(pods)
-			}),
 	}, true)
-}
-
-// checkForTraceConfiguration checks if the trace annotation is present
-// only for the pods with tracing enabled
-func checkForTraceConfiguration(pods []corev1.Pod) error {
-	var podsWithoutTraceConfig []string
-	for i := range pods {
-		pod := pods[i]
-		// Check for jaeger-injector annotation
-		if !labels.IsTracingEnabled(&pod) {
-			podsWithoutTraceConfig = append(podsWithoutTraceConfig, fmt.Sprintf("* %s/%s", pod.Namespace, pod.Name))
-		}
-
-	}
-
-	if len(podsWithoutTraceConfig) > 0 {
-		return fmt.Errorf("Some data plane pods do not have tracing configured and cannot be traced:\n\t%s", strings.Join(podsWithoutTraceConfig, "\n\t"))
-	}
-	return nil
 }
 
 func newCheckOptions() *checkOptions {
