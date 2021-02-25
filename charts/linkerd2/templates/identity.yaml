@@ -141,6 +141,8 @@ spec:
         env:
         - name: LINKERD2_IDENTITY_TRUST_ANCHORS
           value: "{{b64enc .Values.identityTrustAnchorsPEM}}"
+        - name: LINKERD_DISABLED
+          value: "linkerd-await cannot block the identity controller"
         image: {{.Values.controllerImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
         imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:
