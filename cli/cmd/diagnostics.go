@@ -20,7 +20,7 @@ func newCmdDiagnostics() *cobra.Command {
 
 This command provides subcommands to diagnose the functionality of Linkerd.`,
 		Example: `  # Get control-plane component metrics
-  linkerd diagnostics cp-metrics
+  linkerd diagnostics controller-metrics
 
   # Get metrics from the web deployment in the emojivoto namespace.
   linkerd diagnostics proxy-metrics -n emojivoto deploy/web

@@ -62,13 +62,13 @@ func newCmdMetrics() *cobra.Command {
   * replicationcontrollers
   * statefulsets`,
 		Example: `  # Get metrics from pod-foo-bar in the default namespace.
-  linkerd diagnostics metrics po/pod-foo-bar
+  linkerd diagnostics proxy-metrics po/pod-foo-bar
 
   # Get metrics from the web deployment in the emojivoto namespace.
-  linkerd diagnostics metrics -n emojivoto deploy/web
+  linkerd diagnostics proxy-metrics -n emojivoto deploy/web
 
   # Get metrics from the linkerd-controller pod in the linkerd namespace.
-  linkerd diagnostics metrics -n linkerd $(
+  linkerd diagnostics proxy-metrics -n linkerd $(
     kubectl --namespace linkerd get pod \
       --selector linkerd.io/control-plane-component=controller \
       --output name
