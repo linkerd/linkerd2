@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
-	labels "github.com/linkerd/linkerd2/multicluster/pkg"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/multicluster"
 	"github.com/prometheus/client_golang/prometheus"
@@ -16,7 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8sLabels "k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -171,10 +170,15 @@ func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceLabels() map[string]s
 }
 
 func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceAnnotations(remoteService *corev1.Service) map[string]string {
-	return map[string]string{
-		labels.RemoteResourceVersionAnnotation: remoteService.ResourceVersion, // needed to detect real changes
+	annotations := map[string]string{
+		consts.RemoteResourceVersionAnnotation: remoteService.ResourceVersion, // needed to detect real changes
 		consts.RemoteServiceFqName:             fmt.Sprintf("%s.%s.svc.%s", remoteService.Name, remoteService.Namespace, rcsw.link.TargetClusterDomain),
 	}
+	value, ok := remoteService.GetAnnotations()[consts.ProxyOpaquePortsAnnotation]
+	if ok {
+		annotations[consts.ProxyOpaquePortsAnnotation] = value
+	}
+	return annotations
 }
 
 func (rcsw *RemoteClusterServiceWatcher) mirrorNamespaceIfNecessary(ctx context.Context, namespace string) error {
@@ -228,7 +232,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices(ctx context.Con
 		consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
 	}
 
-	servicesOnLocalCluster, err := rcsw.localAPIClient.Svc().Lister().List(k8sLabels.Set(matchLabels).AsSelector())
+	servicesOnLocalCluster, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
 	if err != nil {
 		innerErr := fmt.Errorf("failed to list services while cleaning up mirror services: %s", err)
 		if kerrors.IsNotFound(err) {
@@ -269,7 +273,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices(ctx context.Con
 func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Context) error {
 	matchLabels := rcsw.getMirroredServiceLabels()
 
-	services, err := rcsw.localAPIClient.Svc().Lister().List(k8sLabels.Set(matchLabels).AsSelector())
+	services, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
 	if err != nil {
 		innerErr := fmt.Errorf("could not retrieve mirrored services that need cleaning up: %s", err)
 		if kerrors.IsNotFound(err) {
@@ -291,7 +295,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Co
 		}
 	}
 
-	endpoints, err := rcsw.localAPIClient.Endpoint().Lister().List(k8sLabels.Set(matchLabels).AsSelector())
+	endpoints, err := rcsw.localAPIClient.Endpoint().Lister().List(labels.Set(matchLabels).AsSelector())
 	if err != nil {
 		innerErr := fmt.Errorf("could not retrieve Endpoints that need cleaning up: %s", err)
 		if kerrors.IsNotFound(err) {
@@ -468,7 +472,7 @@ func (rcsw *RemoteClusterServiceWatcher) isExportedService(service *corev1.Servi
 		rcsw.log.Errorf("Invalid service selector: %s", err)
 		return false
 	}
-	return selector.Matches(k8sLabels.Set(service.Labels))
+	return selector.Matches(labels.Set(service.Labels))
 }
 
 // this method is common to both CREATE and UPDATE because if we have been
@@ -489,7 +493,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 			return RetryableError{[]error{err}}
 		}
 		// if we have the local service present, we need to issue an update
-		lastMirroredRemoteVersion, ok := localService.Annotations[labels.RemoteResourceVersionAnnotation]
+		lastMirroredRemoteVersion, ok := localService.Annotations[consts.RemoteResourceVersionAnnotation]
 		if ok && lastMirroredRemoteVersion != service.ResourceVersion {
 			endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(service.Namespace).Get(localName)
 			if err == nil {
@@ -526,7 +530,7 @@ func (rcsw *RemoteClusterServiceWatcher) getMirrorServices() ([]*corev1.Service,
 		consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
 	}
 
-	services, err := rcsw.localAPIClient.Svc().Lister().List(k8sLabels.Set(matchLabels).AsSelector())
+	services, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
 	if err != nil {
 		return nil, err
 	}

@@ -7,7 +7,7 @@ kind: CustomResourceDefinition
 metadata:
   name: links.multicluster.linkerd.io
   labels:
-    linkerd.io/extension: linkerd-multicluster
+    linkerd.io/extension: multicluster
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:

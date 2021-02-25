@@ -113,9 +113,9 @@ func (h *KubernetesHelper) CreateControlPlaneNamespaceIfNotExists(ctx context.Co
 }
 
 // CreateDataPlaneNamespaceIfNotExists creates a dataplane namespace if it does not already exist,
-// with a linkerd.io/is-test-data-plane label for easier cleanup afterwards
+// with a test.linkerd.io/is-test-data-plane label for easier cleanup afterwards
 func (h *KubernetesHelper) CreateDataPlaneNamespaceIfNotExists(ctx context.Context, namespace string, annotations map[string]string) error {
-	return h.createNamespaceIfNotExists(ctx, namespace, annotations, map[string]string{"linkerd.io/is-test-data-plane": "true"})
+	return h.createNamespaceIfNotExists(ctx, namespace, annotations, map[string]string{"test.linkerd.io/is-test-data-plane": "true"})
 }
 
 // KubectlApply applies a given configuration string in a namespace. If the

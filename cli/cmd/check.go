@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -16,7 +18,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
-	vizCmd "github.com/linkerd/linkerd2/viz/cmd"
 	vizHealthCheck "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -213,34 +214,35 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
-	if !success {
-		os.Exit(1)
-	}
-
-	err = runExtensionChecks(cmd, wout, werr, options)
+	extensionSuccess, err := runExtensionChecks(cmd, wout, werr, options)
 	if err != nil {
 		err = fmt.Errorf("failed to run extensions checks: %s", err)
 		fmt.Fprintln(werr, err)
 		os.Exit(1)
 	}
 
+	if !success || !extensionSuccess {
+		os.Exit(1)
+	}
+
 	return nil
 }
 
-func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts *checkOptions) error {
+func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts *checkOptions) (bool, error) {
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	namespaces, err := kubeAPI.GetAllNamespacesWithExtensionLabel(cmd.Context())
 	if err != nil {
-		return err
+		return false, err
 	}
 
+	success := true
 	// no extensions to check
 	if len(namespaces) == 0 {
-		return nil
+		return success, nil
 	}
 
 	if opts.output != healthcheck.JSONOutput {
@@ -255,101 +257,88 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 			// add a new line to space out each check output
 			fmt.Fprintln(wout)
 		}
+		extension := ns.Labels[k8s.LinkerdExtensionLabel]
 
-		switch ns.Labels[k8s.LinkerdExtensionLabel] {
+		var path string
+		args := append([]string{"check"}, getExtensionCheckFlags(cmd.Flags())...)
+		var err error
+		results := healthcheck.CheckResults{
+			Results: []healthcheck.CheckResult{},
+		}
+		extensionCmd := fmt.Sprintf("linkerd-%s", extension)
+
+		switch extension {
 		case jaegerCmd.JaegerExtensionName:
-			jaegerCheckCmd := jaegerCmd.NewCmdCheck()
-			err = executeExtensionCheck(cmd, "jaeger", jaegerCheckCmd.Flags())
+			path = os.Args[0]
+			args = append([]string{"jaeger"}, args...)
 		case vizHealthCheck.VizExtensionName:
-			vizCmd := vizCmd.NewCmdCheck()
-			err = executeExtensionCheck(cmd, "viz", vizCmd.Flags())
+			path = os.Args[0]
+			args = append([]string{"viz"}, args...)
 		case mcCmd.MulticlusterExtensionName:
-			mcCheckCmd := mcCmd.NewCmdCheck()
-			err = executeExtensionCheck(cmd, "multicluster", mcCheckCmd.Flags())
+			path = os.Args[0]
+			args = append([]string{"multicluster"}, args...)
 		default:
-			// Since we don't have checks for extensions we don't support
-			// create a healthchecker that checks if the namespace exists
-			categoryID := healthcheck.CategoryID(ns.Labels[k8s.LinkerdExtensionLabel])
-			checkers := []healthcheck.Checker{}
-			checkers = append(checkers,
-				*healthcheck.NewChecker(fmt.Sprintf("%s extension Namespace exists", categoryID)).
-					WithHintAnchor(fmt.Sprintf("%s-ns-exists", categoryID)).
-					Fatal().
-					WithCheck(func(ctx context.Context) error {
-						_, err := kubeAPI.GetNamespaceWithExtensionLabel(ctx, string(categoryID))
-						if err != nil {
-							return err
-						}
-						return nil
-					}))
-			hc := healthcheck.NewHealthChecker([]healthcheck.CategoryID{categoryID},
-				&healthcheck.Options{
-					ControlPlaneNamespace: controlPlaneNamespace,
-					CNINamespace:          cniNamespace,
-					DataPlaneNamespace:    opts.namespace,
-					KubeConfig:            kubeconfigPath,
-					KubeContext:           kubeContext,
-					Impersonate:           impersonate,
-					ImpersonateGroup:      impersonateGroup,
-					APIAddr:               apiAddr,
-					VersionOverride:       opts.versionOverride,
-					RetryDeadline:         time.Now().Add(opts.wait),
-					CNIEnabled:            opts.cniEnabled,
-				})
-			hc.AppendCategories(*healthcheck.NewCategory(categoryID, checkers, true))
-			success := healthcheck.RunChecks(wout, werr, hc, opts.output)
-			if !success {
-				os.Exit(1)
+			path, err = exec.LookPath(extensionCmd)
+			results.Results = []healthcheck.CheckResult{
+				{
+					Category:    healthcheck.CategoryID(extensionCmd),
+					Description: fmt.Sprintf("Linkerd extension command %s exists", extensionCmd),
+					Err:         err,
+					HintAnchor:  "extensions",
+					Warning:     true,
+				},
 			}
 		}
-		if err != nil {
-			return err
+		if err == nil {
+			plugin := exec.Command(path, args...)
+			var stdout, stderr bytes.Buffer
+			plugin.Stdout = &stdout
+			plugin.Stderr = &stderr
+			plugin.Run()
+			extensionResults, err := healthcheck.ParseJSONCheckOutput(stdout.Bytes())
+			if err != nil {
+				command := fmt.Sprintf("%s %s", path, strings.Join(args, " "))
+				if len(stderr.String()) > 0 {
+					err = errors.New(stderr.String())
+				} else {
+					err = fmt.Errorf("invalid extension check output from \"%s\" (JSON object expected):\n%s\n[%s]", command, stdout.String(), err)
+				}
+				results.Results = append(results.Results, healthcheck.CheckResult{
+					Category:    healthcheck.CategoryID(extensionCmd),
+					Description: fmt.Sprintf("Running: %s", command),
+					Err:         err,
+					HintAnchor:  "extensions",
+				})
+				success = false
+			} else {
+				results.Results = append(results.Results, extensionResults.Results...)
+			}
+		}
+		extensionSuccess := healthcheck.RunChecks(wout, werr, results, opts.output)
+		if !extensionSuccess {
+			success = false
 		}
 	}
-	return nil
+	return success, nil
 }
 
-func getGlobalFlags(lf *pflag.FlagSet) []string {
+func getExtensionCheckFlags(lf *pflag.FlagSet) []string {
+	extensionFlags := []string{
+		"api-addr", "context", "as", "as-group", "kubeconfig", "linkerd-namespace", "verbose",
+		"namespace", "proxy", "wait",
+	}
 	cmdLineFlags := []string{}
-	lf.VisitAll(func(f *pflag.Flag) {
-		val := f.Value.String()
-		if val != "" {
-			cmdLineFlags = append(cmdLineFlags, fmt.Sprintf("--%s=%s", f.Name, val))
+	for _, flag := range extensionFlags {
+		f := lf.Lookup(flag)
+		if f != nil {
+			val := f.Value.String()
+			if val != "" {
+				cmdLineFlags = append(cmdLineFlags, fmt.Sprintf("--%s=%s", f.Name, val))
+			}
 		}
-	})
-
+	}
+	cmdLineFlags = append(cmdLineFlags, "--output=json")
 	return cmdLineFlags
-}
-
-func getSharedFlags(lf *pflag.FlagSet, lf2 *pflag.FlagSet) []string {
-	cmdLineFlags := []string{}
-	lf.VisitAll(func(f *pflag.Flag) {
-		val := f.Value.String()
-
-		if val == "" {
-			// skip processing empty flags
-			return
-		}
-
-		if lf2.Lookup(f.Name) != nil {
-			cmdLineFlags = append(cmdLineFlags, fmt.Sprintf("--%s=%s", f.Name, val))
-		}
-	})
-
-	return cmdLineFlags
-}
-
-func executeExtensionCheck(currentCmd *cobra.Command, extension string, lf *pflag.FlagSet) error {
-	rootCmd := currentCmd.Root()
-	globalFlags := getGlobalFlags(rootCmd.PersistentFlags())
-	localFlags := getSharedFlags(currentCmd.Flags(), lf)
-
-	args := []string{extension, "check"}
-	args = append(args, globalFlags...)
-	args = append(args, localFlags...)
-
-	rootCmd.SetArgs(args)
-	return rootCmd.Execute()
 }
 
 func renderInstallManifest(ctx context.Context) (string, error) {
