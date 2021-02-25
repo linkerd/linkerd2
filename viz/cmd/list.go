@@ -62,21 +62,21 @@ func newCmdList() *cobra.Command {
 			if len(tapEnabled) > 0 {
 				fmt.Println("Pods with tap enabled:")
 				for _, pod := range tapEnabled {
-					fmt.Printf("\t* %s.%s\n", pod.Name, pod.Namespace)
+					fmt.Printf("\t* %s/%s\n", pod.Namespace, pod.Name)
 				}
 			}
 
 			if len(tapDisabled) > 0 {
 				fmt.Println("Pods with tap disabled:")
 				for _, pod := range tapDisabled {
-					fmt.Printf("\t* %s.%s\n", pod.Name, pod.Namespace)
+					fmt.Printf("\t* %s/%s\n", pod.Namespace, pod.Name)
 				}
 			}
 
 			if len(tapNotEnabled) > 0 {
 				fmt.Println("Pods missing tap configuration (restart these pods to enable tap):")
 				for _, pod := range tapNotEnabled {
-					fmt.Printf("\t* %s.%s\n", pod.Name, pod.Namespace)
+					fmt.Printf("\t* %s/%s\n", pod.Namespace, pod.Name)
 				}
 			}
 

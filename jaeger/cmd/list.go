@@ -23,7 +23,7 @@ func newCmdList() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "list [flags]",
-		Short: "Lists which pods can be tapped",
+		Short: "Lists which pods have tracing enabled",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
@@ -60,14 +60,14 @@ func newCmdList() *cobra.Command {
 			if len(tracingEnabled) > 0 {
 				fmt.Println("Pods with tracing enabled:")
 				for _, pod := range tracingEnabled {
-					fmt.Printf("\t* %s.%s\n", pod.Name, pod.Namespace)
+					fmt.Printf("\t* %s/%s\n", pod.Namespace, pod.Name)
 				}
 			}
 
 			if len(tracingNotEnabled) > 0 {
 				fmt.Println("Pods missing tracing configuration (restart these pods to enable tracing):")
 				for _, pod := range tracingNotEnabled {
-					fmt.Printf("\t* %s.%s\n", pod.Name, pod.Namespace)
+					fmt.Printf("\t* %s/%s\n", pod.Namespace, pod.Name)
 				}
 			}
 
