@@ -9,7 +9,7 @@ metadata:
     linkerd.io/extension: jaeger
     app.kubernetes.io/name: jaeger-injector
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
+    app.kubernetes.io/version: {{default .Values.webhook.image.version .Values.cliVersion}}
     component: jaeger-injector
   name: jaeger-injector
   namespace: {{.Values.namespace}}

@@ -201,7 +201,7 @@ metadata:
     linkerd.io/extension: viz
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
+    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
     component: prometheus
     namespace: {{.Values.namespace}}
   name: prometheus
@@ -310,7 +310,7 @@ metadata:
     linkerd.io/extension: viz
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
+    app.kubernetes.io/version: {{default .Values.linkerdVersion}}
     component: prometheus
   name: prometheus
   namespace: {{.Values.namespace}}

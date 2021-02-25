@@ -35,7 +35,7 @@ metadata:
     linkerd.io/extension: viz
     app.kubernetes.io/name: tap
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
+    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
     component: tap
     namespace: {{.Values.namespace}}
   name: tap

@@ -31,7 +31,7 @@ metadata:
     linkerd.io/extension: viz
     app.kubernetes.io/name: metrics-api
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
+    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
     component: metrics-api
   name: metrics-api
   namespace: {{.Values.namespace}}
