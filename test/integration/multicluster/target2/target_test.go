@@ -26,7 +26,7 @@ func TestMain(m *testing.M) {
 // successfully issued requests, then we'll see log messages indicating that the
 // web-svc can't reach the voting-svc (because it's not running).
 //
-// TODO it may be clearer to invoke `linkerd metrics` to check whether we see
+// TODO it may be clearer to invoke `linkerd diagnostics proxy-metrics` to check whether we see
 // connections from the gateway pod to the web-svc?
 func TestTargetTraffic(t *testing.T) {
 	timeout := time.Minute
