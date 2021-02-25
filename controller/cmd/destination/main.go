@@ -73,7 +73,7 @@ func Main(args []string) {
 	for _, port := range ports {
 		opaqueports.DefaultOpaquePorts[port] = struct{}{}
 	}
-	log.Info("Using default opaue ports: %v", ports)
+	log.Infof("Using default opaue ports: %v", ports)
 
 	if *traceCollector != "" {
 		if err := trace.InitializeTracing("linkerd-destination", *traceCollector); err != nil {
