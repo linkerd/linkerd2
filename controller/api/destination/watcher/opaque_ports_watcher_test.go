@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/linkerd/linkerd2/pkg/opaqueports"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -88,6 +89,15 @@ func (bopl *testOpaquePortsListener) UpdateService(ports map[uint32]struct{}) {
 }
 
 func TestOpaquePortsWatcher(t *testing.T) {
+	opaqueports.DefaultOpaquePorts = map[uint32]struct{}{
+		25:    {},
+		443:   {},
+		587:   {},
+		3306:  {},
+		5432:  {},
+		11211: {},
+	}
+
 	for _, tt := range []struct {
 		name                string
 		initialState        []string
