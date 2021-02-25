@@ -34,17 +34,7 @@ func Main(args []string) {
 	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", false, "Enable the usage of EndpointSlice informers and resources")
 	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
 	clusterDomain := cmd.String("cluster-domain", "", "kubernetes cluster domain")
-	opaquePorts := cmd.String("opaque-ports", "", "opaque ports")
-
-	// Set opaqueports.DefaultOpaquePorts variiable
-	ports, err := parsePorts(*opaquePorts)
-	if err != nil {
-		log.Fatalf("Failed to parse opaque Ports %s: %s", *opaquePorts, err)
-	}
-
-	for _, port := range ports {
-		opaqueports.DefaultOpaquePorts[port] = struct{}{}
-	}
+	opaquePorts := cmd.String("opaque-ports", "", "configures the default opaque ports")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 
@@ -73,6 +63,17 @@ func Main(args []string) {
 		*clusterDomain = "cluster.local"
 		log.Warnf("expected cluster domain through args (falling back to %s)", *clusterDomain)
 	}
+
+	// Set opaqueports.DefaultOpaquePorts variiable
+	ports, err := parsePorts(*opaquePorts)
+	if err != nil {
+		log.Fatalf("Failed to parse opaque Ports %s: %s", *opaquePorts, err)
+	}
+
+	for _, port := range ports {
+		opaqueports.DefaultOpaquePorts[port] = struct{}{}
+	}
+	log.Info("Using default opaue ports: %v", ports)
 
 	if *traceCollector != "" {
 		if err := trace.InitializeTracing("linkerd-destination", *traceCollector); err != nil {
