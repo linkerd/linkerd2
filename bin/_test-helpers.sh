@@ -7,7 +7,7 @@ set +e
 ##### Test setup helpers #####
 
 export default_test_names=(deep external-issuer external-prometheus-deep helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
-export external_resource_test_names=(externalresources)
+export external_resource_test_names=(external-resources)
 export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}" "${external_resource_test_names[*]}")
 
 tests_usage() {
@@ -530,7 +530,7 @@ run_cluster-domain_test() {
 }
 
 # wrapper to implement external tests
-run_externalresources_test(){
+run_external-resources_test(){
    run_test "$test_directory/install_test.go"
    run_test "$test_directory/externalresources/rabbitmq_test.go"
 }
