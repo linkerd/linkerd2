@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -351,7 +352,17 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 
 		// prepare for stage 2
-		args = append([]string{"control-plane", "--skip-outbound-ports", skippedOutboundPorts}, args...)
+		args = append([]string{"control-plane"}, args...)
+		edge, err := regexp.Match(`(edge)-([0-9]+\.[0-9]+\.[0-9]+)`, []byte(TestHelper.UpgradeFromVersion()))
+		if err != nil {
+			testutil.AnnotatedFatal(t, "could not match regex", err)
+		}
+
+		if edge {
+			args = append(args, []string{"--set", fmt.Sprintf("proxyInit.ignoreOutboundPorts=\"%s\"", skippedOutboundPorts)}...)
+		} else {
+			args = append(args, []string{"--skip-outbound-ports", skippedOutboundPorts}...)
+		}
 	}
 
 	exec := append([]string{cmd}, args...)
@@ -674,7 +685,7 @@ func TestRetrieveUidPostUpgrade(t *testing.T) {
 
 func TestOverridesSecret(t *testing.T) {
 
-	if TestHelper.IsHelm() {
+	if TestHelper.GetHelmReleaseName() != "" {
 		t.Skip("Skipping as this is a helm test where linkerd-config-overrides is absent")
 	}
 
