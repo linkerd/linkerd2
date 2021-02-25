@@ -783,7 +783,7 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 		}
 	}
 
-	timeout := time.Minute
+	timeout := time.Minute * 5
 	err := TestHelper.RetryFor(timeout, func() error {
 		if cliVersionOverride != "" {
 			cliVOverride := []string{"--cli-version-override", cliVersionOverride}
@@ -880,7 +880,7 @@ func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 }
 
 func TestInstallSP(t *testing.T) {
-	cmd := []string{"install-sp"}
+	cmd := []string{"diagnostics", "install-sp"}
 
 	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {

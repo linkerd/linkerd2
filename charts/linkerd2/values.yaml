@@ -98,16 +98,16 @@ proxy:
   # for more info on container lifecycle hooks.
   waitBeforeExitSeconds: 0
   requireIdentityOnInboundPorts: ""
-# proxy-init configuration
-proxyInit:
-  # -- Default set of ports to skip via itpables:
+  # -- Default set of opaque ports
   # - SMTP (25,587) server-first
   # - HTTPS (443) opaque TLS
   # - MYSQL (3306) server-first
+  # - PostgreSQL (5432) server-first
   # - Memcached (11211) clients do not issue any preamble, which breaks detection
-  ignoreInboundPorts: "25,443,587,3306,11211"
-  # -- Default set of ports to skip via itpables, same defaults as InboudPorts
-  ignoreOutboundPorts: "25,443,587,3306,11211"
+  opaquePorts: "25,443,587,3306,5432,11211"
+
+# proxy-init configuration
+proxyInit:
   image:
     # -- Docker image for the proxy-init container
     name: cr.l5d.io/linkerd/proxy-init
