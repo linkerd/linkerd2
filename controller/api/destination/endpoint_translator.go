@@ -10,7 +10,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/opaqueports"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
@@ -30,6 +29,7 @@ type endpointTranslator struct {
 	identityTrustDomain string
 	enableH2Upgrade     bool
 	nodeTopologyLabels  map[string]string
+	opaquePorts         map[uint32]struct{}
 
 	availableEndpoints watcher.AddressSet
 	filteredSnapshot   watcher.AddressSet
@@ -43,6 +43,7 @@ func newEndpointTranslator(
 	enableH2Upgrade bool,
 	service string,
 	srcNodeName string,
+	opaquePorts map[uint32]struct{},
 	nodes coreinformers.NodeInformer,
 	stream pb.Destination_GetServer,
 	log *logging.Entry,
@@ -65,6 +66,7 @@ func newEndpointTranslator(
 		identityTrustDomain,
 		enableH2Upgrade,
 		nodeTopologyLabels,
+		opaquePorts,
 		availableEndpoints,
 		filteredSnapshot,
 		stream,
@@ -221,7 +223,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			// If the opaque ports annotation was not set, then set the
 			// endpoint's opaque ports to the default value.
 			if !ok {
-				opaquePorts = opaqueports.DefaultOpaquePorts
+				opaquePorts = et.opaquePorts
 			}
 			wa, err = toWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 		} else {

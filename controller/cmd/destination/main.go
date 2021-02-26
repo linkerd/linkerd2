@@ -13,7 +13,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/opaqueports"
 	"github.com/linkerd/linkerd2/pkg/trace"
 	"github.com/linkerd/linkerd2/pkg/util"
 	log "github.com/sirupsen/logrus"
@@ -32,7 +31,7 @@ func Main(args []string) {
 	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", false, "Enable the usage of EndpointSlice informers and resources")
 	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
 	clusterDomain := cmd.String("cluster-domain", "", "kubernetes cluster domain")
-	opaquePorts := cmd.String("default-opaque-ports", "", "configures the default opaque ports")
+	defaultOpaquePorts := cmd.String("default-opaque-ports", "", "configures the default opaque ports")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 
@@ -63,14 +62,16 @@ func Main(args []string) {
 	}
 
 	// Set opaqueports.DefaultOpaquePorts variiable
-	ports, err := util.ParsePorts(*opaquePorts)
+	opaquePorts := make(map[uint32]struct{})
+	ports, err := util.ParsePorts(*defaultOpaquePorts)
 	if err != nil {
-		log.Fatalf("Failed to parse opaque Ports %s: %s", *opaquePorts, err)
+		log.Fatalf("Failed to parse opaque Ports %s: %s", *defaultOpaquePorts, err)
 	}
 
 	for _, port := range ports {
-		opaqueports.DefaultOpaquePorts[port] = struct{}{}
+		opaquePorts[port] = struct{}{}
 	}
+
 	log.Infof("Using default opaque ports: %v", ports)
 
 	if *traceCollector != "" {
@@ -121,6 +122,7 @@ func Main(args []string) {
 		*enableEndpointSlices,
 		k8sAPI,
 		*clusterDomain,
+		opaquePorts,
 		done,
 	)
 

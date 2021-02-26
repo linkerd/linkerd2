@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
-	"github.com/linkerd/linkerd2/pkg/opaqueports"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -89,7 +88,7 @@ func (bopl *testOpaquePortsListener) UpdateService(ports map[uint32]struct{}) {
 }
 
 func TestOpaquePortsWatcher(t *testing.T) {
-	opaqueports.DefaultOpaquePorts = map[uint32]struct{}{
+	defaultOpaquePorts := map[uint32]struct{}{
 		25:    {},
 		443:   {},
 		587:   {},
@@ -186,7 +185,7 @@ func TestOpaquePortsWatcher(t *testing.T) {
 		if err != nil {
 			t.Fatalf("NewFakeAPI returned an error: %s", err)
 		}
-		watcher := NewOpaquePortsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+		watcher := NewOpaquePortsWatcher(k8sAPI, logging.WithField("test", t.Name()), defaultOpaquePorts)
 		k8sAPI.Sync(nil)
 		listener := newTestOpaquePortsListener()
 		watcher.Subscribe(tt.service, listener)
