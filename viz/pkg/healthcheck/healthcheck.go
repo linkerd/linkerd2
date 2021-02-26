@@ -212,7 +212,7 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 				return
 			}),
 		*healthcheck.NewChecker("viz extension self-check").
-			WithHintAnchor("l5d-api-control-api").
+			WithHintAnchor("l5d-viz-metrics-api").
 			Fatal().
 			// to avoid confusing users with a prometheus readiness error, we only show
 			// "waiting for check to complete" while things converge. If after the timeout
