@@ -1776,7 +1776,7 @@ spec:
         - -enable-endpoint-slices=false
         - -cluster-domain=cluster.local
         - -identity-trust-domain=test.trust.domain
-        - -opaque-ports="25,443,587,3306,5432,11211"
+        - -default-opaque-ports="25,443,587,3306,5432,11211"
         image: cr.l5d.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

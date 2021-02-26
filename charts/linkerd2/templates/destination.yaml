@@ -119,7 +119,7 @@ spec:
         - -enable-endpoint-slices={{.Values.enableEndpointSlices}}
         - -cluster-domain={{.Values.clusterDomain}}
         - -identity-trust-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
-        - -opaque-ports="{{.Values.proxy.opaquePorts}}"
+        - -default-opaque-ports="{{.Values.proxy.opaquePorts}}"
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.controllerImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
         imagePullPolicy: {{.Values.imagePullPolicy}}

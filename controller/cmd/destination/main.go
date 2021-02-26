@@ -32,7 +32,7 @@ func Main(args []string) {
 	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", false, "Enable the usage of EndpointSlice informers and resources")
 	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
 	clusterDomain := cmd.String("cluster-domain", "", "kubernetes cluster domain")
-	opaquePorts := cmd.String("opaque-ports", "", "configures the default opaque ports")
+	opaquePorts := cmd.String("default-opaque-ports", "", "configures the default opaque ports")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 
