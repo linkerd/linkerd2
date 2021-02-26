@@ -45,21 +45,21 @@
     "namespace": "{{.VizNs}}",
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 3000,
-    "pod": "linkerd\-grafana\-[a-f0-9]+\-[a-z0-9]+",
-    "service": "linkerd\-grafana\.{{.VizNs}}"
+    "pod": "grafana\-[a-f0-9]+\-[a-z0-9]+",
+    "service": "grafana\.{{.VizNs}}"
   \},
   \{
     "namespace": "{{.VizNs}}",
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8088,
-    "pod": "linkerd\-tap\-[a-f0-9]+\-[a-z0-9]+",
-    "service": "linkerd\-tap\.{{.VizNs}}"
+    "pod": "tap\-[a-f0-9]+\-[a-z0-9]+",
+    "service": "tap\.{{.VizNs}}"
   \},
   \{
     "namespace": "{{.VizNs}}",
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8084,
-    "pod": "linkerd\-web\-[a-f0-9]+\-[a-z0-9]+",
-    "service": "linkerd\-web\.{{.VizNs}}"
+    "pod": "web\-[a-f0-9]+\-[a-z0-9]+",
+    "service": "web\.{{.VizNs}}"
   \}
 \]

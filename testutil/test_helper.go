@@ -85,11 +85,11 @@ var LinkerdDeployReplicasStable = map[string]DeploySpec{
 var LinkerdDeployReplicasEdge = map[string]DeploySpec{
 	"linkerd-controller":     {"linkerd", 1, []string{"public-api"}},
 	"linkerd-destination":    {"linkerd", 1, []string{"destination"}},
-	"linkerd-tap":            {"linkerd-viz", 1, []string{"tap"}},
-	"linkerd-grafana":        {"linkerd-viz", 1, []string{}},
+	"tap":                    {"linkerd-viz", 1, []string{"tap"}},
+	"grafana":                {"linkerd-viz", 1, []string{}},
 	"linkerd-identity":       {"linkerd", 1, []string{"identity"}},
 	"linkerd-sp-validator":   {"linkerd", 1, []string{"sp-validator"}},
-	"linkerd-web":            {"linkerd-viz", 1, []string{"web"}},
+	"web":                    {"linkerd-viz", 1, []string{"web"}},
 	"linkerd-proxy-injector": {"linkerd", 1, []string{"proxy-injector"}},
 }
 

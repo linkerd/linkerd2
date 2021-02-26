@@ -44,7 +44,7 @@ import { withStyles } from '@material-ui/core/styles';
 import yellow from '@material-ui/core/colors/yellow';
 
 const jsonFeedUrl = 'https://linkerd.io/dashboard/index.json';
-const multiclusterExtensionName = 'linkerd-multicluster';
+const multiclusterExtensionName = 'multicluster';
 const localStorageKey = 'linkerd-updates-last-clicked';
 const minBrowserWidth = 960;
 

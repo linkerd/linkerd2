@@ -56,7 +56,7 @@ contributing changes.
 
 We host regular online meetings for contributors, adopters, maintainers, and
 anyone else interested to connect in a synchronous fashion. These meetings
-usually take place the last Wednesday of the month at 9am Pacific / 4pm UTC.
+usually take place the last Thursday of the month at 9am Pacific / 4pm UTC.
 
 * [Zoom link](https://zoom.us/my/cncflinkerd)
 * [Google calendar](https://calendar.google.com/calendar/embed?src=buoyant.io_j28ik70vrl3418f4oldkdici7o%40group.calendar.google.com)

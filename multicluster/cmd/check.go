@@ -26,10 +26,10 @@ import (
 
 const (
 	// MulticlusterExtensionName is the name of the multicluster extension
-	MulticlusterExtensionName = "linkerd-multicluster"
+	MulticlusterExtensionName = "multicluster"
 
 	// linkerdMulticlusterExtensionCheck adds checks related to the multicluster extension
-	linkerdMulticlusterExtensionCheck healthcheck.CategoryID = MulticlusterExtensionName
+	linkerdMulticlusterExtensionCheck healthcheck.CategoryID = "linkerd-multicluster"
 
 	linkerdServiceMirrorServiceAccountName = "linkerd-service-mirror-%s"
 	linkerdServiceMirrorComponentName      = "service-mirror"
