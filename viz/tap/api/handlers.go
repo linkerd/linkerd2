@@ -252,7 +252,21 @@ func handleAPIResourceList(w http.ResponseWriter, _ *http.Request, _ httprouter.
 	}
 
 	for _, res := range resources {
-		resList.APIResources = append(resList.APIResources, metav1.APIResource{Name: res.name, ShortNames: []string{res.shortname}, Namespaced: res.namespaced, Kind: gvk.Kind, Verbs: metav1.Verbs{"watch"}}, metav1.APIResource{Name: fmt.Sprintf("%s/tap", res.name), Namespaced: res.namespaced, Kind: gvk.Kind, Verbs: metav1.Verbs{"watch"}})
+		resList.APIResources = append(resList.APIResources,
+			metav1.APIResource{
+				Name:       res.name,
+				ShortNames: []string{res.shortname},
+				Namespaced: res.namespaced,
+				Kind:       gvk.Kind,
+				Verbs:      metav1.Verbs{"watch"},
+			})
+		resList.APIResources = append(resList.APIResources,
+			metav1.APIResource{
+				Name:       fmt.Sprintf("%s/tap", res.name),
+				Namespaced: res.namespaced,
+				Kind:       gvk.Kind,
+				Verbs:      metav1.Verbs{"watch"},
+			})
 	}
 
 	renderJSON(w, resList, http.StatusOK)
