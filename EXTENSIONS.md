@@ -87,7 +87,7 @@ following flags:
   healthy
 * `--wait`: Maximum allowed time for all tests to pass
 
-If the output format is set to json then output should be in json format
+If the output format is set to json then output must be in json format
 instead of the output format described above.  E.g.
 
 ```json
@@ -116,6 +116,11 @@ instead of the output format described above.  E.g.
   ]
 }
 ```
+
+In particular, the `linkerd check` command will invoke the check command for
+each extension installed in the cluster and will request json output.  To
+preserve forwards compatibility, it is recommended that the check command should
+ignore any unknown flags.
 
 The extension may also implement further commands in addition to the ones
 defined here.
