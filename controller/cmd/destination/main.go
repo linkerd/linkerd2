@@ -6,10 +6,8 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 
-	"github.com/linkerd/linkerd2-proxy-init/ports"
 	"github.com/linkerd/linkerd2/controller/api/destination"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -65,7 +63,7 @@ func Main(args []string) {
 	}
 
 	// Set opaqueports.DefaultOpaquePorts variiable
-	ports, err := parsePorts(*opaquePorts)
+	ports, err := util.ParsePorts(*opaquePorts)
 	if err != nil {
 		log.Fatalf("Failed to parse opaque Ports %s: %s", *opaquePorts, err)
 	}
@@ -140,36 +138,4 @@ func Main(args []string) {
 	log.Infof("shutting down gRPC server on %s", *addr)
 	close(done)
 	server.GracefulStop()
-}
-
-func parsePorts(ports string) ([]uint32, error) {
-	var opaquePorts []uint32
-	if ports != "" {
-		for _, portStr := range parsePortRanges(ports) {
-			port, err := strconv.ParseUint(portStr, 10, 32)
-			if err != nil {
-				return nil, err
-			}
-			opaquePorts = append(opaquePorts, uint32(port))
-		}
-	}
-	return opaquePorts, nil
-}
-
-func parsePortRanges(portsString string) []string {
-	portRanges := util.GetPortRanges(portsString)
-	var values []string
-	for _, portRange := range portRanges {
-		pr := portRange.GetPortRange()
-		portsRange, err := ports.ParsePortRange(pr)
-		if err != nil {
-			log.Warnf("Invalid port range [%v]: %s", pr, err)
-			continue
-		}
-		for i := portsRange.LowerBound; i <= portsRange.UpperBound; i++ {
-			values = append(values, strconv.Itoa(i))
-		}
-
-	}
-	return values
 }

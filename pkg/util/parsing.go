@@ -10,6 +10,28 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// ParsePorts parses the given ports string into a list of ports;
+// this includes converting port ranges into separate ports
+func ParsePorts(portsString string) ([]uint32, error) {
+	var opaquePorts []uint32
+	if portsString != "" {
+		portRanges := GetPortRanges(portsString)
+		for _, portRange := range portRanges {
+			pr := portRange.GetPortRange()
+			portsRange, err := ports.ParsePortRange(pr)
+			if err != nil {
+				log.Warnf("Invalid port range [%v]: %s", pr, err)
+				continue
+			}
+			for i := portsRange.LowerBound; i <= portsRange.UpperBound; i++ {
+				opaquePorts = append(opaquePorts, uint32(i))
+			}
+
+		}
+	}
+	return opaquePorts, nil
+}
+
 // ParseContainerOpaquePorts parses the opaque ports annotation into a list of ports;
 // this includes converting port ranges into separate ports and named ports
 // into their port number equivalents.
