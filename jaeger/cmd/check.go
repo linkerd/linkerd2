@@ -97,7 +97,7 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 
 	checkers = append(checkers,
 		*healthcheck.NewChecker("jaeger extension pods are running").
-			WithHintAnchor("l5d-jaeger-collector-running").
+			WithHintAnchor("l5d-jaeger-pods-running").
 			Fatal().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
