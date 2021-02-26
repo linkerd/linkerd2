@@ -466,7 +466,6 @@ func helmOverridesEdge(root *tls.CA) []string {
 	return []string{
 		"--set", "controllerLogLevel=debug",
 		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
-		"--set", "proxy.image.version=" + TestHelper.GetVersion(),
 		// these ports will get verified in test/integration/inject
 		"--set", "proxyInit.ignoreInboundPorts=" + skippedInboundPortsEscaped,
 		"--set", "identityTrustDomain=cluster.local",
