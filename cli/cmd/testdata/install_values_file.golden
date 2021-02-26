@@ -1601,7 +1601,7 @@ spec:
         - -enable-endpoint-slices=false
         - -cluster-domain=example.com
         - -identity-trust-domain=example.com
-        - -default-opaque-ports="25,443,587,3306,5432,11211"
+        - -default-opaque-ports=25,443,587,3306,5432,11211
         image: cr.l5d.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
