@@ -26,9 +26,7 @@ func TestParsePorts(t *testing.T) {
 		t.Run(fmt.Sprintf("test %s", tc.ports), func(t *testing.T) {
 			ports, err := ParsePorts(tc.ports)
 			if err != nil {
-				if err != nil {
-					t.Fatalf("could not parse ports: %v", err)
-				}
+				t.Fatalf("could not parse ports: %v", err)
 			}
 
 			if !reflect.DeepEqual(ports, tc.result) {
