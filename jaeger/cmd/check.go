@@ -29,10 +29,8 @@ var (
 )
 
 type checkOptions struct {
-	wait      time.Duration
-	output    string
-	proxy     bool
-	namespace string
+	wait   time.Duration
+	output string
 }
 
 func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
@@ -137,23 +135,6 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 	return healthcheck.NewCategory(linkerdJaegerExtensionCheck, checkers, true)
 }
 
-// JaegerDataPlaneCategory returns a healthcheck.Category containing checkers
-// to verify the jaeger injection
-func JaegerDataPlaneCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
-	return healthcheck.NewCategory(linkerdJaegerExtensionDataPlaneCheck, []healthcheck.Checker{
-		*healthcheck.NewChecker("data plane namespace exists").
-			WithHintAnchor("l5d-data-plane-exists").
-			Fatal().
-			WithCheck(func(ctx context.Context) error {
-				if hc.DataPlaneNamespace == "" {
-					// when checking proxies in all namespaces, this check is a no-op
-					return nil
-				}
-				return hc.CheckNamespace(ctx, hc.DataPlaneNamespace, true)
-			}),
-	}, true)
-}
-
 func newCheckOptions() *checkOptions {
 	return &checkOptions{
 		wait:   300 * time.Second,
@@ -190,8 +171,10 @@ code.`,
 
 	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
 	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
-	cmd.Flags().BoolVar(&options.proxy, "proxy", options.proxy, "Also run data-plane checks, to determine if the data plane is healthy")
-	cmd.Flags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
+	cmd.Flags().Bool("proxy", false, "Also run data-plane checks, to determine if the data plane is healthy")
+	cmd.Flags().StringP("namespace", "n", "", "Namespace to use for --proxy checks (default: all namespaces)")
+	cmd.Flags().MarkHidden("proxy")
+	cmd.Flags().MarkHidden("namespace")
 
 	return cmd
 }
@@ -210,7 +193,6 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		ImpersonateGroup:      impersonateGroup,
 		APIAddr:               apiAddr,
 		RetryDeadline:         time.Now().Add(options.wait),
-		DataPlaneNamespace:    options.namespace,
 	})
 
 	err = hc.InitializeKubeAPIClient()
@@ -221,9 +203,6 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	}
 
 	hc.AppendCategories(*jaegerCategory(hc))
-	if options.proxy {
-		hc.AppendCategories(*JaegerDataPlaneCategory(hc))
-	}
 
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
