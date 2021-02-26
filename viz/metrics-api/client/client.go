@@ -28,7 +28,7 @@ const (
 	APIPrefix = "api/" + apiVersion + "/"
 
 	apiPort       = 8085
-	apiDeployment = "linkerd-metrics-api"
+	apiDeployment = "metrics-api"
 )
 
 type grpcOverHTTPClient struct {

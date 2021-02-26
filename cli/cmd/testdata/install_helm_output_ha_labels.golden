@@ -1216,6 +1216,8 @@ spec:
         env:
         - name: LINKERD2_IDENTITY_TRUST_ANCHORS
           value: "dGVzdC10cnVzdC1hbmNob3I="
+        - name: LINKERD_DISABLED
+          value: "linkerd-await cannot block the identity controller"
         image: cr.l5d.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2000,12 +2002,15 @@ spec:
           - name: heartbeat
             image: cr.l5d.io/linkerd/controller:linkerd-version
             imagePullPolicy: IfNotPresent
+            env:
+            - name: LINKERD_DISABLED
+              value: "the heartbeat controller does not use the proxy"
             args:
             - "heartbeat"
             - "-controller-namespace=linkerd"
             - "-log-level=info"
             - "-log-format=plain"
-            - "-prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.cluster.local:9090"
+            - "-prometheus-url=http://prometheus.linkerd-viz.svc.cluster.local:9090"
             resources:
               limits:
                 memory: "250Mi"
