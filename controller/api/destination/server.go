@@ -73,14 +73,14 @@ func NewServer(
 	})
 
 	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log, enableEndpointSlices)
-	opaquePortsWatcher := watcher.NewOpaquePortsWatcher(k8sAPI, log, defaultOpaquePorts)
+	opaquePorts := watcher.NewOpaquePortsWatcher(k8sAPI, log, defaultOpaquePorts)
 	profiles := watcher.NewProfileWatcher(k8sAPI, log)
 	trafficSplits := watcher.NewTrafficSplitWatcher(k8sAPI, log)
 	ips := watcher.NewIPWatcher(k8sAPI, endpoints, log)
 
 	srv := server{
 		endpoints,
-		opaquePortsWatcher,
+		opaquePorts,
 		profiles,
 		trafficSplits,
 		ips,
