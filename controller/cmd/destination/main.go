@@ -61,7 +61,6 @@ func Main(args []string) {
 		log.Warnf("expected cluster domain through args (falling back to %s)", *clusterDomain)
 	}
 
-	// Set opaqueports.DefaultOpaquePorts variiable
 	opaquePorts := make(map[uint32]struct{})
 	ports, err := util.ParsePorts(*defaultOpaquePorts)
 	if err != nil {

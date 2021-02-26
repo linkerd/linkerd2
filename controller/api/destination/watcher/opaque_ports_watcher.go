@@ -19,10 +19,10 @@ type (
 	// opaque ports annotation is added to a service, the watcher will update
 	// listeners—if any—subscribed to that service.
 	OpaquePortsWatcher struct {
-		subscriptions map[ServiceID]*svcSubscriptions
-		k8sAPI        *k8s.API
-		log           *logging.Entry
-		opaquePorts   map[uint32]struct{}
+		subscriptions      map[ServiceID]*svcSubscriptions
+		k8sAPI             *k8s.API
+		log                *logging.Entry
+		defaultOpaquePorts map[uint32]struct{}
 		sync.RWMutex
 	}
 
@@ -41,10 +41,10 @@ type (
 // k8sAPI for service changes.
 func NewOpaquePortsWatcher(k8sAPI *k8s.API, log *logging.Entry, opaquePorts map[uint32]struct{}) *OpaquePortsWatcher {
 	opw := &OpaquePortsWatcher{
-		subscriptions: make(map[ServiceID]*svcSubscriptions),
-		k8sAPI:        k8sAPI,
-		log:           log.WithField("component", "opaque-ports-watcher"),
-		opaquePorts:   opaquePorts,
+		subscriptions:      make(map[ServiceID]*svcSubscriptions),
+		k8sAPI:             k8sAPI,
+		log:                log.WithField("component", "opaque-ports-watcher"),
+		defaultOpaquePorts: opaquePorts,
 	}
 	k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    opw.addService,
@@ -70,7 +70,7 @@ func (opw *OpaquePortsWatcher) Subscribe(id ServiceID, listener OpaquePortsUpdat
 	// and no opaque ports
 	if !ok {
 		opw.subscriptions[id] = &svcSubscriptions{
-			opaquePorts: opw.opaquePorts,
+			opaquePorts: opw.defaultOpaquePorts,
 			listeners:   []OpaquePortsUpdateListener{listener},
 		}
 		return nil
@@ -122,7 +122,7 @@ func (opw *OpaquePortsWatcher) addService(obj interface{}) {
 	// If the opaque ports annotation was not set, then set the service's
 	// opaque ports to the default value.
 	if !ok {
-		opaquePorts = opw.opaquePorts
+		opaquePorts = opw.defaultOpaquePorts
 	}
 	ss, ok := opw.subscriptions[id]
 	// If there are no subscriptions for this service, create one with the
@@ -173,7 +173,7 @@ func (opw *OpaquePortsWatcher) deleteService(obj interface{}) {
 		return
 	}
 	old := ss.opaquePorts
-	ss.opaquePorts = opw.opaquePorts
+	ss.opaquePorts = opw.defaultOpaquePorts
 	// Do not send an update if the service already had the default opaque ports
 	if portsEqual(old, ss.opaquePorts) {
 		return

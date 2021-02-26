@@ -25,18 +25,18 @@ import (
 
 type (
 	server struct {
-		endpoints          *watcher.EndpointsWatcher
-		opaquePortsWatcher *watcher.OpaquePortsWatcher
-		profiles           *watcher.ProfileWatcher
-		trafficSplits      *watcher.TrafficSplitWatcher
-		ips                *watcher.IPWatcher
-		nodes              coreinformers.NodeInformer
+		endpoints     *watcher.EndpointsWatcher
+		opaquePorts   *watcher.OpaquePortsWatcher
+		profiles      *watcher.ProfileWatcher
+		trafficSplits *watcher.TrafficSplitWatcher
+		ips           *watcher.IPWatcher
+		nodes         coreinformers.NodeInformer
 
 		enableH2Upgrade     bool
 		controllerNS        string
 		identityTrustDomain string
 		clusterDomain       string
-		opaquePorts         map[uint32]struct{}
+		defaultOpaquePorts  map[uint32]struct{}
 
 		k8sAPI   *k8s.API
 		log      *logging.Entry
@@ -64,7 +64,7 @@ func NewServer(
 	enableEndpointSlices bool,
 	k8sAPI *k8s.API,
 	clusterDomain string,
-	opaquePorts map[uint32]struct{},
+	defaultOpaquePorts map[uint32]struct{},
 	shutdown <-chan struct{},
 ) *grpc.Server {
 	log := logging.WithFields(logging.Fields{
@@ -73,7 +73,7 @@ func NewServer(
 	})
 
 	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log, enableEndpointSlices)
-	opaquePortsWatcher := watcher.NewOpaquePortsWatcher(k8sAPI, log, opaquePorts)
+	opaquePortsWatcher := watcher.NewOpaquePortsWatcher(k8sAPI, log, defaultOpaquePorts)
 	profiles := watcher.NewProfileWatcher(k8sAPI, log)
 	trafficSplits := watcher.NewTrafficSplitWatcher(k8sAPI, log)
 	ips := watcher.NewIPWatcher(k8sAPI, endpoints, log)
@@ -89,7 +89,7 @@ func NewServer(
 		controllerNS,
 		identityTrustDomain,
 		clusterDomain,
-		opaquePorts,
+		defaultOpaquePorts,
 		k8sAPI,
 		log,
 		shutdown,
@@ -121,7 +121,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		s.enableH2Upgrade,
 		dest.GetPath(),
 		token.NodeName,
-		s.opaquePorts,
+		s.defaultOpaquePorts,
 		s.nodes,
 		stream,
 		log,
@@ -229,7 +229,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 				// If the opaque ports annotation was not set, then set the
 				// endpoint's opaque ports to the default value.
 				if !ok {
-					opaquePorts = s.opaquePorts
+					opaquePorts = s.defaultOpaquePorts
 				}
 				endpoint, err = toWeightedAddr(podSet.Addresses[podID], opaquePorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, log)
 				if err != nil {
@@ -298,12 +298,12 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	opaquePortsAdaptor := newOpaquePortsAdaptor(tsAdaptor)
 
 	// Subscribe the adaptor to service updates.
-	err = s.opaquePortsWatcher.Subscribe(service, opaquePortsAdaptor)
+	err = s.opaquePorts.Subscribe(service, opaquePortsAdaptor)
 	if err != nil {
 		log.Warnf("Failed to subscribe to service updates for %s: %s", service, err)
 		return err
 	}
-	defer s.opaquePortsWatcher.Unsubscribe(service, opaquePortsAdaptor)
+	defer s.opaquePorts.Unsubscribe(service, opaquePortsAdaptor)
 
 	// The fallback accepts updates from a primary and secondary source and
 	// passes the appropriate profile updates to the adaptor.
