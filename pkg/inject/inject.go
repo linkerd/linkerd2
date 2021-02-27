@@ -942,7 +942,7 @@ func (conf *ResourceConfig) InjectNamespace(annotations map[string]string) ([]by
 	return yaml.JSONToYAML(j)
 }
 
-// AnnotateService returns a Service adds an annotation to a Service object
+// AnnotateService adds an annotation to a Service object
 // Currently, a `Service` may only need the `config.linkerd.io/opaque-ports` annotation via `inject`
 // See - https://github.com/linkerd/linkerd2/pull/5721
 func (conf *ResourceConfig) AnnotateService(annotation, value string) ([]byte, error) {
