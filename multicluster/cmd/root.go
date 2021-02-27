@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	defaultDockerRegistry                = "ghcr.io/linkerd"
+	defaultDockerRegistry                = "cr.l5d.io/linkerd"
 	defaultLinkerdNamespace              = "linkerd"
 	defaultMulticlusterNamespace         = "linkerd-multicluster"
 	defaultGatewayName                   = "linkerd-gateway"
@@ -81,7 +81,7 @@ components on a cluster, manage credentials and link clusters together.`,
 	multiclusterCmd.AddCommand(newLinkCommand())
 	multiclusterCmd.AddCommand(newUnlinkCommand())
 	multiclusterCmd.AddCommand(newMulticlusterInstallCommand())
-	multiclusterCmd.AddCommand(newCmdCheck())
+	multiclusterCmd.AddCommand(NewCmdCheck())
 	multiclusterCmd.AddCommand(newMulticlusterUninstallCommand())
 	multiclusterCmd.AddCommand(newGatewaysCommand())
 	multiclusterCmd.AddCommand(newAllowCommand())

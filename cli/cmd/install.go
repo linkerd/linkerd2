@@ -125,7 +125,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 			}
 			if !ignoreCluster {
 				// Ensure k8s is reachable and that Linkerd is not already installed.
-				if err := errAfterRunningChecks(values.GetGlobal().CNIEnabled); err != nil {
+				if err := errAfterRunningChecks(values.CNIEnabled); err != nil {
 					if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
 						fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
 					} else {
@@ -181,7 +181,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 			if !skipChecks {
 				// check if global resources exist to determine if the `install config`
 				// stage succeeded
-				if err := errAfterRunningChecks(values.GetGlobal().CNIEnabled); err == nil {
+				if err := errAfterRunningChecks(values.CNIEnabled); err == nil {
 					if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
 						fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
 					} else {
@@ -285,15 +285,16 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 		if err != nil {
 			return err
 		}
-		stored, err := loadStoredValues(ctx, k8sAPI)
-		if err != nil {
-			return err
-		}
-		if stored != nil {
-			fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, "Secret/linkerd-config-overrides already exists")
+
+		// We just want to check if `linkerd-configmap` exists
+		_, err := k8sAPI.CoreV1().ConfigMaps(controlPlaneNamespace).Get(ctx, k8s.ConfigConfigMapName, metav1.GetOptions{})
+		if err == nil {
+			fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, "ConfigMap/linkerd-config already exists")
 			os.Exit(1)
 		}
-
+		if !kerrors.IsNotFound(err) {
+			return err
+		}
 	}
 
 	err = initializeIssuerCredentials(ctx, k8sAPI, values)
@@ -306,20 +307,17 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 		return err
 	}
 
+	t := time.Now().Add(10 * time.Minute).UTC()
+	values.HeartbeatSchedule = fmt.Sprintf("%d %d * * * ", t.Minute(), t.Hour())
+
 	return render(w, values, stage, options)
 }
 
 func render(w io.Writer, values *l5dcharts.Values, stage string, options valuespkg.Options) error {
 
 	// Set any global flags if present, common with install and upgrade
-	values.GetGlobal().Namespace = controlPlaneNamespace
+	values.Namespace = controlPlaneNamespace
 	values.Stage = stage
-
-	// Render raw values
-	rawValues, err := yaml.Marshal(values)
-	if err != nil {
-		return err
-	}
 
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
@@ -365,7 +363,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 	}
 
 	// Store final Values generated from values.yaml and CLI flags
-	err = yaml.Unmarshal(rawValues, &chart.Values)
+	chart.Values, err = values.ToMap()
 	if err != nil {
 		return err
 	}
@@ -397,7 +395,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 	}
 
 	if stage == "" || stage == controlPlaneStage {
-		overrides, err := renderOverrides(values, values.GetGlobal().Namespace, false)
+		overrides, err := renderOverrides(vals, false)
 		if err != nil {
 			return err
 		}
@@ -420,12 +418,25 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 // with Helm. If stringData is set to true, the secret will be rendered using
 // the StringData field instead of the Data field, making the output more
 // human readable.
-func renderOverrides(values *l5dcharts.Values, namespace string, stringData bool) ([]byte, error) {
+func renderOverrides(values chartutil.Values, stringData bool) ([]byte, error) {
 	defaults, err := l5dcharts.NewValues()
 	if err != nil {
 		return nil, err
 	}
-	values.Configs = l5dcharts.ConfigJSONs{}
+	// Remove unnecessary fields, including fields added by helm's `chartutil.CoalesceValues`
+	delete(values, "configs")
+	delete(values, "partials")
+	delete(values, "stage")
+
+	// Get Namespace from values
+	valuesTree, err := tree.MarshalToTree(values)
+	if err != nil {
+		return nil, err
+	}
+	namespace, err := valuesTree.GetString("namespace")
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve global.namespace from values: %v", err)
+	}
 
 	overrides, err := tree.Diff(defaults, values)
 	if err != nil {
@@ -443,7 +454,7 @@ func renderOverrides(values *l5dcharts.Values, namespace string, stringData bool
 			Name:      "linkerd-config-overrides",
 			Namespace: namespace,
 			Labels: map[string]string{
-				k8s.ControllerNSLabel: controlPlaneNamespace,
+				k8s.ControllerNSLabel: namespace,
 			},
 		},
 	}

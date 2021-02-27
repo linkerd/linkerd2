@@ -12,21 +12,23 @@ import (
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/viz/metrics-api/client"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
-	vizLabels "github.com/linkerd/linkerd2/viz/pkg/labels"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/linkerd/linkerd2/viz/pkg/labels"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiregistrationv1client "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/typed/apiregistration/v1"
 )
 
 const (
+	// VizExtensionName is the name of the viz extension
+	VizExtensionName = "viz"
+
 	// LinkerdVizExtensionCheck adds checks related to the Linkerd Viz extension
 	LinkerdVizExtensionCheck healthcheck.CategoryID = "linkerd-viz"
 
 	// LinkerdVizExtensionDataPlaneCheck adds checks related to dataplane for the linkerd-viz extension
 	LinkerdVizExtensionDataPlaneCheck healthcheck.CategoryID = "linkerd-viz-data-plane"
 
-	tapTLSSecretName    = "linkerd-tap-k8s-tls"
+	tapTLSSecretName    = "tap-k8s-tls"
 	tapOldTLSSecretName = "linkerd-tap-tls"
 
 	// linkerdTapAPIServiceName is the name of the tap api service
@@ -38,8 +40,9 @@ const (
 // HealthChecker wraps Linkerd's main healthchecker, adding extra fields for Viz
 type HealthChecker struct {
 	*healthcheck.HealthChecker
-	vizNamespace string
-	vizAPIClient pb.ApiClient
+	vizAPIClient          pb.ApiClient
+	vizNamespace          string
+	externalPrometheusURL string
 }
 
 // NewHealthChecker returns an initialized HealthChecker for Viz
@@ -71,11 +74,14 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 			WithHintAnchor("l5d-viz-ns-exists").
 			Fatal().
 			WithCheck(func(ctx context.Context) error {
-				vizNs, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, "linkerd-viz")
-				if err == nil {
-					hc.vizNamespace = vizNs.Name
+				vizNs, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, "viz")
+				if err != nil {
+					return err
 				}
-				return err
+
+				hc.vizNamespace = vizNs.Name
+				hc.externalPrometheusURL = vizNs.Annotations[labels.VizExternalPrometheus]
+				return nil
 			}),
 		*healthcheck.NewChecker("linkerd-viz ClusterRoles exist").
 			WithHintAnchor("l5d-viz-cr-exists").
@@ -107,7 +113,7 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 					return err
 				}
 
-				identityName := fmt.Sprintf("linkerd-tap.%s.svc", hc.vizNamespace)
+				identityName := fmt.Sprintf("tap.%s.svc", hc.vizNamespace)
 				return hc.CheckCertAndAnchors(cert, anchors, identityName)
 			}),
 		*healthcheck.NewChecker("tap API server cert is valid for at least 60 days").
@@ -152,7 +158,7 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 				}
 
 				// Check for relevant pods to be present
-				err = healthcheck.CheckForPods(pods, []string{"linkerd-web", "linkerd-tap", "linkerd-metrics-api", "tap-injector"})
+				err = healthcheck.CheckForPods(pods, []string{"web", "tap", "metrics-api", "tap-injector"})
 				if err != nil {
 					return err
 				}
@@ -163,7 +169,10 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 			WithHintAnchor("l5d-viz-prometheus").
 			Warning().
 			WithCheck(func(ctx context.Context) error {
-				// TODO: Skip if prometheus is disabled
+				if hc.externalPrometheusURL != "" {
+					return &healthcheck.SkipError{Reason: "prometheus is disabled"}
+				}
+
 				// Check for ClusterRoles
 				err := healthcheck.CheckClusterRoles(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-prometheus", hc.vizNamespace)}, "")
 				if err != nil {
@@ -177,7 +186,7 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 				}
 
 				// Check for ConfigMap
-				err = healthcheck.CheckConfigMaps(ctx, hc.KubeAPIClient(), hc.vizNamespace, true, []string{"linkerd-prometheus-config"}, "")
+				err = healthcheck.CheckConfigMaps(ctx, hc.KubeAPIClient(), hc.vizNamespace, true, []string{"prometheus-config"}, "")
 				if err != nil {
 					return err
 				}
@@ -188,31 +197,7 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 					return err
 				}
 
-				err = healthcheck.CheckForPods(pods, []string{"linkerd-prometheus"})
-				if err != nil {
-					return err
-				}
-
-				return nil
-			}),
-		*healthcheck.NewChecker("grafana is installed and configured correctly").
-			WithHintAnchor("l5d-viz-grafana").
-			Warning().
-			WithCheck(func(ctx context.Context) error {
-				// TODO: Skip if grafana is disabled
-				// Check for ConfigMap
-				err := healthcheck.CheckConfigMaps(ctx, hc.KubeAPIClient(), hc.vizNamespace, true, []string{"linkerd-grafana-config"}, "")
-				if err != nil {
-					return err
-				}
-
-				// Check for relevant pods to be present
-				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, hc.vizNamespace)
-				if err != nil {
-					return err
-				}
-
-				err = healthcheck.CheckForPods(pods, []string{"linkerd-grafana"})
+				err = healthcheck.CheckForPods(pods, []string{"prometheus"})
 				if err != nil {
 					return err
 				}
@@ -284,20 +269,7 @@ func (hc *HealthChecker) VizDataPlaneCategory() healthcheck.Category {
 					return err
 				}
 
-				// TODO: Check if prometheus is present
-
 				return validateDataPlanePodReporting(pods)
-			}),
-		*healthcheck.NewChecker("data-plane pods have tap enabled").
-			WithHintAnchor("l5d-viz-data-plane-tap").
-			Warning().
-			WithCheck(func(ctx context.Context) error {
-				pods, err := hc.GetDataPlanePods(ctx)
-				if err != nil {
-					return err
-				}
-
-				return hc.checkForTapConfiguration(ctx, pods)
 			}),
 	}, true)
 }
@@ -326,31 +298,6 @@ func (hc *HealthChecker) getDataPlanePodsFromVizAPI(ctx context.Context) ([]*pb.
 	}
 
 	return pods, nil
-}
-
-// checkForTapConfiguration checks if the tap annotation is present
-// only for the pods with tap enabled
-func (hc *HealthChecker) checkForTapConfiguration(ctx context.Context, pods []corev1.Pod) error {
-	var podsWithoutTap []string
-	for i := range pods {
-		pod := pods[i]
-		ns, err := hc.KubeAPIClient().CoreV1().Namespaces().Get(ctx, pod.Namespace, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-		// Check if Tap is disabled
-		if !k8s.IsTapDisabled(pod) && !k8s.IsTapDisabled(ns) {
-			// Check for tap-injector annotation
-			if !vizLabels.IsTapEnabled(&pod) {
-				podsWithoutTap = append(podsWithoutTap, fmt.Sprintf("* %s", pod.Name))
-			}
-		}
-	}
-
-	if len(podsWithoutTap) > 0 {
-		return fmt.Errorf("Some data plane pods do not have tap configured and cannot be tapped:\n\t%s", strings.Join(podsWithoutTap, "\n\t"))
-	}
-	return nil
 }
 
 func validateDataPlanePodReporting(pods []*pb.Pod) error {

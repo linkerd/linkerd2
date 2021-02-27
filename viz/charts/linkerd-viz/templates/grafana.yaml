@@ -6,17 +6,17 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: linkerd-grafana-config
+  name: grafana-config
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    linkerd.io/extension: viz
     component: grafana
     namespace: {{.Values.namespace}}
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
 data:
   grafana.ini: |-
-    instance_name = linkerd-grafana
+    instance_name = grafana
     [server]
     root_url = %(protocol)s://%(domain)s:/grafana/
     [auth]
@@ -40,7 +40,7 @@ data:
       {{- if .Values.prometheusUrl }}
       url: {{.Values.prometheusUrl}}
       {{- else }}
-      url: http://linkerd-prometheus.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:9090
+      url: http://prometheus.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:9090
       {{- end }}
       isDefault: true
       jsonData:
@@ -64,18 +64,18 @@ data:
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-grafana
+  name: grafana
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    linkerd.io/extension: viz
     component: grafana
     namespace: {{.Values.namespace}}
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    linkerd.io/extension: viz
     component: grafana
   ports:
   - name: http
@@ -86,33 +86,33 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    linkerd.io/extension: viz
     app.kubernetes.io/name: grafana
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
+    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
     component: grafana
     namespace: {{.Values.namespace}}
-  name: linkerd-grafana
+  name: grafana
   namespace: {{.Values.namespace}}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{.Values.extensionAnnotation}}: linkerd-viz
+      linkerd.io/extension: viz
       component: grafana
       namespace: {{.Values.namespace}}
   template:
     metadata:
       annotations:
-        {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+        {{ include "partials.annotations.created-by" . }}
         {{- with .Values.grafana.proxy }}
         {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
-        {{.Values.extensionAnnotation}}: linkerd-viz
+        linkerd.io/extension: viz
         component: grafana
         namespace: {{.Values.namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
@@ -129,8 +129,8 @@ spec:
         # see https://github.com/grafana/grafana/issues/20096
         - name: GODEBUG
           value: netdns=go
-        image: {{.Values.grafana.image.registry}}/{{.Values.grafana.image.name}}:{{.Values.grafana.image.tag}}
-        imagePullPolicy: {{.Values.imagePullPolicy}}
+        image: {{.Values.grafana.image.registry | default .Values.defaultRegistry}}/{{.Values.grafana.image.name}}:{{.Values.grafana.image.tag | default .Values.linkerdVersion}}
+        imagePullPolicy: {{.Values.grafana.image.pullPolicy | default .Values.defaultImagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /api/health
@@ -155,7 +155,7 @@ spec:
         - mountPath: /etc/grafana
           name: grafana-config
           readOnly: true
-      serviceAccountName: linkerd-grafana
+      serviceAccountName: grafana
       volumes:
       - emptyDir: {}
         name: data
@@ -167,6 +167,6 @@ spec:
             path: provisioning/datasources/datasources.yaml
           - key: dashboards.yaml
             path: provisioning/dashboards/dashboards.yaml
-          name: linkerd-grafana-config
+          name: grafana-config
         name: grafana-config
 {{ end -}}

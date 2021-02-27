@@ -15,14 +15,14 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
-	coreUtil "github.com/linkerd/linkerd2/controller/api/util"
 	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
-	"github.com/linkerd/linkerd2/pkg/tap"
-	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	vizUtil "github.com/linkerd/linkerd2/viz/metrics-api/util"
+	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
+	tappkg "github.com/linkerd/linkerd2/viz/tap/pkg"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
@@ -98,9 +98,9 @@ func (h *handler) handleAPIVersion(w http.ResponseWriter, req *http.Request, p h
 }
 
 func (h *handler) handleAPIPods(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	pods, err := h.apiClient.ListPods(req.Context(), &pb.ListPodsRequest{
-		Selector: &pb.ResourceSelection{
-			Resource: &pb.Resource{
+	pods, err := h.apiClient.ListPods(req.Context(), &metricsPb.ListPodsRequest{
+		Selector: &metricsPb.ResourceSelection{
+			Resource: &metricsPb.Resource{
 				Namespace: req.FormValue("namespace"),
 			},
 		},
@@ -115,7 +115,7 @@ func (h *handler) handleAPIPods(w http.ResponseWriter, req *http.Request, p http
 }
 
 func (h *handler) handleAPIServices(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	services, err := h.apiClient.ListServices(req.Context(), &pb.ListServicesRequest{
+	services, err := h.apiClient.ListServices(req.Context(), &metricsPb.ListServicesRequest{
 		Namespace: req.FormValue("namespace"),
 	})
 
@@ -257,27 +257,27 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 		return
 	}
 
-	var requestParams coreUtil.TapRequestParams
+	var requestParams tappkg.TapRequestParams
 	err = json.Unmarshal(message, &requestParams)
 	if err != nil {
 		websocketError(ws, websocket.CloseInternalServerErr, err)
 		return
 	}
 
-	tapReq, err := coreUtil.BuildTapByResourceRequest(requestParams)
+	tapReq, err := tappkg.BuildTapByResourceRequest(requestParams)
 	if err != nil {
 		websocketError(ws, websocket.CloseInternalServerErr, err)
 		return
 	}
 
 	go func() {
-		reader, body, err := tap.Reader(req.Context(), h.k8sAPI, tapReq)
+		reader, body, err := tappkg.Reader(req.Context(), h.k8sAPI, tapReq)
 		if err != nil {
 			// If there was a [403] error when initiating a tap, close the
 			// socket with `ClosePolicyViolation` status code so that the error
 			// renders without the error prefix in the banner
 			if httpErr, ok := err.(protohttp.HTTPError); ok && httpErr.Code == http.StatusForbidden {
-				err := fmt.Errorf("missing authorization, visit %s to remedy", tap.TapRbacURL)
+				err := fmt.Errorf("missing authorization, visit %s to remedy", tappkg.TapRbacURL)
 				websocketError(ws, websocket.ClosePolicyViolation, err)
 				return
 			}
@@ -290,7 +290,7 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 		defer body.Close()
 
 		for {
-			event := pb.TapEvent{}
+			event := tapPb.TapEvent{}
 			err := protohttp.FromByteStreamToProtocolBuffers(reader, &event)
 			if err == io.EOF {
 				break
@@ -441,6 +441,26 @@ func (h *handler) handleAPIResourceDefinition(w http.ResponseWriter, req *http.R
 	w.Write(resourceDefinition)
 }
 
+func (h *handler) handleGetExtension(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	ctx := req.Context()
+	extensionName := req.FormValue("extension_name")
+
+	resp := map[string]interface{}{}
+	ns, err := h.k8sAPI.GetNamespaceWithExtensionLabel(ctx, extensionName)
+	if err != nil && strings.HasPrefix(err.Error(), "could not find") {
+		renderJSON(w, resp)
+		return
+	} else if err != nil {
+		renderJSONError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	resp["extensionName"] = ns.GetLabels()[k8s.LinkerdExtensionLabel]
+	resp["namespace"] = ns.Name
+
+	renderJSON(w, resp)
+}
+
 func (h *handler) handleAPIGateways(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	window := req.FormValue("window")
 	if window == "" {
@@ -451,7 +471,7 @@ func (h *handler) handleAPIGateways(w http.ResponseWriter, req *http.Request, _ 
 		renderJSONError(w, err, http.StatusInternalServerError)
 		return
 	}
-	gatewayRequest := &pb.GatewaysRequest{
+	gatewayRequest := &metricsPb.GatewaysRequest{
 		TimeWindow:        window,
 		GatewayNamespace:  req.FormValue("gatewayNamespace"),
 		RemoteClusterName: req.FormValue("remoteClusterName"),

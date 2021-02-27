@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -17,6 +18,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/metrics-api/util"
+	"github.com/linkerd/linkerd2/viz/pkg"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -63,7 +65,7 @@ This command will only display traffic which is sent to a service that has a Ser
   # Routes for calls from the traffic deployment to the webapp service in the test namespace.
   linkerd viz routes deploy/traffic -n test --to svc/webapp`,
 		Args:      cobra.ExactArgs(1),
-		ValidArgs: coreUtil.ValidTargets,
+		ValidArgs: pkg.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
@@ -86,7 +88,8 @@ This command will only display traffic which is sent to a service that has a Ser
 				options,
 			)
 			if err != nil {
-				return err
+				fmt.Fprint(os.Stderr, err.Error())
+				os.Exit(1)
 			}
 
 			_, err = fmt.Print(output)

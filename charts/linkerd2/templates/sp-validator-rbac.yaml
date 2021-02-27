@@ -5,10 +5,10 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.global.namespace}}-sp-validator
+  name: linkerd-{{.Values.namespace}}-sp-validator
   labels:
-    {{.Values.global.controllerComponentLabel}}: sp-validator
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -17,43 +17,43 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.global.namespace}}-sp-validator
+  name: linkerd-{{.Values.namespace}}-sp-validator
   labels:
-    {{.Values.global.controllerComponentLabel}}: sp-validator
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 subjects:
 - kind: ServiceAccount
   name: linkerd-sp-validator
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
   apiGroup: ""
 roleRef:
   kind: ClusterRole
-  name: linkerd-{{.Values.global.namespace}}-sp-validator
+  name: linkerd-{{.Values.namespace}}-sp-validator
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-sp-validator
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.global.controllerComponentLabel}}: sp-validator
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-{{- include "partials.image-pull-secrets" .Values.global.imagePullSecrets }}
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
+{{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 ---
-{{- $host := printf "linkerd-sp-validator.%s.svc" .Values.global.namespace }}
+{{- $host := printf "linkerd-sp-validator.%s.svc" .Values.namespace }}
 {{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
 {{- if (not .Values.profileValidator.externalSecret) }}
 kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-sp-validator-k8s-tls
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Values.namespace }}
   labels:
-    {{.Values.global.controllerComponentLabel}}: sp-validator
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
-    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
 type: kubernetes.io/tls
 data:
   tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.profileValidator.crtPEM)) (empty .Values.profileValidator.crtPEM) }}
@@ -65,8 +65,8 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: linkerd-sp-validator-webhook-config
   labels:
-    {{.Values.global.controllerComponentLabel}}: sp-validator
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
   namespaceSelector:
@@ -74,7 +74,7 @@ webhooks:
   clientConfig:
     service:
       name: linkerd-sp-validator
-      namespace: {{ .Values.global.namespace }}
+      namespace: {{ .Values.namespace }}
       path: "/"
 {{- if and (.Values.profileValidator.externalSecret) (empty .Values.profileValidator.caBundle) }}
   {{- fail "If profileValidator.externalSecret is true then you need to provide profileValidator.caBundle" }}

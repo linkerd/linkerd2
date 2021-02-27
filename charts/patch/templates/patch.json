@@ -35,7 +35,7 @@
     "value": "{{$value}}"
   },
   {{- end }}
-  {{- if or .Values.global.proxyInit .Values.global.proxy }}
+  {{- if or .Values.proxyInit .Values.proxy }}
   {{- if .Values.addRootVolumes }}
   {
     "op": "add",
@@ -44,7 +44,7 @@
   },
   {{- end }}
   {{- end}}
-  {{- if and .Values.global.proxyInit (not .Values.global.cniEnabled) }}
+  {{- if and .Values.proxyInit (not .Values.cniEnabled) }}
   {{- if .Values.addRootInitContainers }}
   {
     "op": "add",
@@ -67,7 +67,7 @@
       {{- include "partials.proxy-init" . | fromYaml | toPrettyJson | nindent 6 }}
   },
   {{- end }}
-  {{- with .Values.debugContainer }}
+  {{- if .Values.debugContainer }}
   {
     "op": "add",
     "path": "{{$prefix}}/spec/containers/-",
@@ -75,8 +75,8 @@
       {{- include "partials.debug" . | fromYaml | toPrettyJson | nindent 6 }}
   },
   {{- end }}
-  {{- if .Values.global.proxy }}
-  {{- if not .Values.global.proxy.disableIdentity -}}
+  {{- if .Values.proxy }}
+  {{- if not .Values.proxy.disableIdentity -}}
   {
     "op": "add",
     "path": "{{$prefix}}/spec/volumes/-",

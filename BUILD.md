@@ -181,7 +181,7 @@ they become accessible in those external environments.
 
 To signal `bin/docker-build` or any of the more specific scripts
 `bin/docker-build-*` what registry to use, just set the environment variable
-`DOCKER_REGISTRY` (which defaults to the official registry `ghcr.io/linkerd`).
+`DOCKER_REGISTRY` (which defaults to the official registry `cr.l5d.io/linkerd`).
 After having pushed those images through the usual means (`docker push`) you'll
 have to pass the `--registry` flag to `linkerd install` with a value  matching
 your registry.

@@ -1,18 +1,3 @@
-kubernetes-api
---------------
-√ can initialize the client
-√ can query the Kubernetes API
-
-linkerd-existence
------------------
-√ 'linkerd-config' config map exists
-√ heartbeat ServiceAccount exist
-√ control plane replica sets are ready
-√ no unschedulable pods
-√ controller pod is running
-√ can initialize the client
-√ can query the control plane API
-
 linkerd-viz
 -----------
 √ linkerd-viz Namespace exists
@@ -24,7 +9,6 @@ linkerd-viz
 √ linkerd-viz pods are injected
 √ viz extension pods are running
 √ prometheus is installed and configured correctly
-√ grafana is installed and configured correctly
 √ can initialize the client
 √ viz extension self-check
 

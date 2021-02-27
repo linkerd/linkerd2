@@ -70,7 +70,7 @@ func TestUpgradeDefault(t *testing.T) {
 
 func TestUpgradeHA(t *testing.T) {
 	installOpts, upgradeOpts, _ := testOptions(t)
-	installOpts.GetGlobal().HighAvailability = true
+	installOpts.HighAvailability = true
 	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts)
 	if err != nil {
 		t.Fatal(err)
@@ -107,7 +107,7 @@ func TestUpgradeExternalIssuer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	installOpts.GetGlobal().IdentityTrustAnchorsPEM = string(ca)
+	installOpts.IdentityTrustAnchorsPEM = string(ca)
 	install := renderInstall(t, installOpts)
 	upgrade, err := renderUpgrade(install.String()+externalIssuerSecret(issuer), upgradeOpts)
 
@@ -134,8 +134,8 @@ func TestUpgradeIssuerWithExternalIssuerFails(t *testing.T) {
 	issuer := generateIssuerCerts(t, true)
 	defer issuer.cleanup()
 
-	installOpts.GetGlobal().IdentityTrustDomain = "cluster.local"
-	installOpts.GetGlobal().IdentityTrustDomain = issuer.ca
+	installOpts.IdentityTrustDomain = "cluster.local"
+	installOpts.IdentityTrustDomain = issuer.ca
 	installOpts.Identity.Issuer.Scheme = string(corev1.SecretTypeTLS)
 	installOpts.Identity.Issuer.TLS.CrtPEM = issuer.crt
 	installOpts.Identity.Issuer.TLS.KeyPEM = issuer.key
@@ -188,7 +188,7 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 			}
 
 			if id == "Deployment/linkerd-identity" || id == "Deployment/linkerd-proxy-injector" {
-				if pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "args", "*"}) && diff.b.(string) == "-identity-trust-anchors-pem="+issuerCerts.ca {
+				if pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "env", "*", "value"}) && diff.b.(string) == issuerCerts.ca {
 					continue
 				}
 				t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
@@ -521,7 +521,7 @@ spec:
     - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
       value: |
 %s
-    image: ghcr.io/linkerd/proxy:some-version
+    image: cr.l5d.io/linkerd/proxy:some-version
     name: linkerd-proxy
 `, indentLines(certs.ca, "        "))
 }

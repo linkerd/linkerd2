@@ -91,7 +91,12 @@ func newReport(conf *ResourceConfig) *Report {
 		if conf.pod.spec.AutomountServiceAccountToken != nil {
 			report.AutomountServiceAccountToken = *conf.pod.spec.AutomountServiceAccountToken
 		}
-	} else if report.Kind != k8s.Namespace {
+		if conf.origin == OriginWebhook {
+			if vm := conf.serviceAccountVolumeMount(); vm == nil {
+				report.AutomountServiceAccountToken = false
+			}
+		}
+	} else if report.Kind != k8s.Service && report.Kind != k8s.Namespace {
 		report.UnsupportedResource = true
 	}
 

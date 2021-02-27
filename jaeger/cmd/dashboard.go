@@ -79,7 +79,7 @@ func newCmdDashboard() *cobra.Command {
 				return err
 			}
 
-			jaegerNamespace, err := k8sAPI.GetNamespaceWithExtensionLabel(cmd.Context(), jaegerExtensionName)
+			jaegerNamespace, err := k8sAPI.GetNamespaceWithExtensionLabel(cmd.Context(), JaegerExtensionName)
 			if err != nil {
 				return err
 			}

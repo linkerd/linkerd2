@@ -6,7 +6,7 @@ set +e
 
 ##### Test setup helpers #####
 
-export default_test_names=(deep external-issuer helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
+export default_test_names=(deep external-issuer external-prometheus-deep helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
 export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}")
 
 tests_usage() {
@@ -36,8 +36,9 @@ Examples:
 
 Available Commands:
     --name: the argument to this option is the specific test to run
-    --skip-cluster-create: skip k3d cluster creation step and run tests in an existing cluster.
-    --images: by default load images into the cluster from the local docker cache (docker), or from tar files located under the 'image-archives' directory (archive), or completely skip image loading (skip)."
+    --skip-cluster-create: skip k3d cluster creation step and run tests in an existing cluster
+    --skip-cluster-delete: if the tests succeed, don't delete the created resources nor the cluster
+    --images: by default load images into the cluster from the local docker cache (docker), or from tar files located under the 'image-archives' directory (archive), or completely skip image loading (skip)"
 }
 
 cleanup_usage() {
@@ -59,6 +60,7 @@ handle_tests_input() {
   export images="docker"
   export test_name=''
   export skip_cluster_create=''
+  export skip_cluster_delete=''
   export linkerd_path=""
 
   while  [ "$#" -ne 0 ]; do
@@ -96,6 +98,10 @@ handle_tests_input() {
         skip_cluster_create=1
         shift
         ;;
+      --skip-cluster-delete)
+        skip_cluster_delete=1
+        shift
+        ;;
       *)
         if echo "$1" | grep -q '^-.*' ; then
           echo "Unexpected flag: $1" >&2
@@ -117,6 +123,12 @@ handle_tests_input() {
 
   if [ -z "$linkerd_path" ]; then
     echo "Error: path to linkerd binary is required" >&2
+    tests_usage "$0" >&2
+    exit 64
+  fi
+
+  if [ -z "$test_name" ] && [ -n "$skip_cluster_delete" ]; then
+    echo "Error: must provide --name when using --skip-cluster-delete" >&2
     tests_usage "$0" >&2
     exit 64
   fi
@@ -223,11 +235,13 @@ setup_cluster() {
 }
 
 finish() {
-  local name=$1
-  if [ -z "$skip_cluster_create" ]; then
-    delete_cluster "$name"
-  else
-    cleanup_cluster
+  if [ -z "$skip_cluster_delete" ]; then
+    local name=$1
+    if [ -z "$skip_cluster_create" ]; then
+      delete_cluster "$name"
+    else
+      cleanup_cluster
+    fi
   fi
 }
 
@@ -248,7 +262,7 @@ check_if_l5d_exists() {
 Linkerd resources exist on cluster:
 \n%s\n
 Help:
-    Run: [%s/test-cleanup] ' "$linkerd_path"
+    Run: [%s/test-cleanup] ' "$resources" "$linkerd_path"
     exit 1
   fi
   printf '[ok]\n'
@@ -360,7 +374,7 @@ install_version() {
 
     #Now we need to install the app that will be used to verify that upgrade does not break anything
     kubectl --context="$context" create namespace "$test_app_namespace" > /dev/null 2>&1
-    kubectl --context="$context" label namespaces "$test_app_namespace" 'linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
+    kubectl --context="$context" label namespaces "$test_app_namespace" 'test.linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
     (
         set -x
         "$linkerd_path" inject "$test_directory/testdata/upgrade_test.yaml" | kubectl --context="$context" apply --namespace="$test_app_namespace" -f - 2>&1
@@ -500,6 +514,14 @@ run_helm-deep_test() {
 run_external-issuer_test() {
   run_test "$test_directory/install_test.go" --external-issuer=true
   run_test "$test_directory/externalissuer/external_issuer_test.go" --external-issuer=true
+}
+
+run_external-prometheus-deep_test() {
+  run_test "$test_directory/install_test.go" --external-prometheus=true
+  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
+  for test in "${tests[@]}"; do
+    run_test "$test" --external-prometheus=true
+  done
 }
 
 run_cluster-domain_test() {

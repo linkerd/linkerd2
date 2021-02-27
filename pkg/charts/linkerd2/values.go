@@ -23,57 +23,25 @@ const (
 type (
 	// Values contains the top-level elements in the Helm charts
 	Values struct {
-		ControllerImage        string            `json:"controllerImage"`
-		ControllerReplicas     uint              `json:"controllerReplicas"`
-		ControllerUID          int64             `json:"controllerUID"`
-		EnableH2Upgrade        bool              `json:"enableH2Upgrade"`
-		EnablePodAntiAffinity  bool              `json:"enablePodAntiAffinity"`
-		WebhookFailurePolicy   string            `json:"webhookFailurePolicy"`
-		OmitWebhookSideEffects bool              `json:"omitWebhookSideEffects"`
-		DisableHeartBeat       bool              `json:"disableHeartBeat"`
-		HeartbeatSchedule      string            `json:"heartbeatSchedule"`
-		InstallNamespace       bool              `json:"installNamespace"`
-		Configs                ConfigJSONs       `json:"configs"`
-		Global                 *Global           `json:"global"`
-		Identity               *Identity         `json:"identity"`
-		DebugContainer         *DebugContainer   `json:"debugContainer"`
-		ProxyInjector          *ProxyInjector    `json:"proxyInjector"`
-		ProfileValidator       *ProfileValidator `json:"profileValidator"`
-		NodeSelector           map[string]string `json:"nodeSelector"`
-		Tolerations            []interface{}     `json:"tolerations"`
-		Stage                  string            `json:"stage"`
-
-		DestinationResources   *Resources `json:"destinationResources"`
-		HeartbeatResources     *Resources `json:"heartbeatResources"`
-		IdentityResources      *Resources `json:"identityResources"`
-		ProxyInjectorResources *Resources `json:"proxyInjectorResources"`
-		PublicAPIResources     *Resources `json:"publicAPIResources"`
-		SPValidatorResources   *Resources `json:"spValidatorResources"`
-
-		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
-		IdentityProxyResources      *Resources `json:"identityProxyResources"`
-		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
-		PublicAPIProxyResources     *Resources `json:"publicAPIProxyResources"`
-		SPValidatorProxyResources   *Resources `json:"spValidatorProxyResources"`
-	}
-
-	// Global values common across all charts
-	Global struct {
+		ControllerImage              string              `json:"controllerImage"`
+		ControllerReplicas           uint                `json:"controllerReplicas"`
+		ControllerUID                int64               `json:"controllerUID"`
+		EnableH2Upgrade              bool                `json:"enableH2Upgrade"`
+		EnablePodAntiAffinity        bool                `json:"enablePodAntiAffinity"`
+		WebhookFailurePolicy         string              `json:"webhookFailurePolicy"`
+		OmitWebhookSideEffects       bool                `json:"omitWebhookSideEffects"`
+		DisableHeartBeat             bool                `json:"disableHeartBeat"`
+		HeartbeatSchedule            string              `json:"heartbeatSchedule"`
+		InstallNamespace             bool                `json:"installNamespace"`
+		Configs                      ConfigJSONs         `json:"configs"`
 		Namespace                    string              `json:"namespace"`
 		ClusterDomain                string              `json:"clusterDomain"`
 		ClusterNetworks              string              `json:"clusterNetworks"`
 		ImagePullPolicy              string              `json:"imagePullPolicy"`
 		CliVersion                   string              `json:"cliVersion"`
-		ControllerComponentLabel     string              `json:"controllerComponentLabel"`
 		ControllerImageVersion       string              `json:"controllerImageVersion"`
 		ControllerLogLevel           string              `json:"controllerLogLevel"`
 		ControllerLogFormat          string              `json:"controllerLogFormat"`
-		ControllerNamespaceLabel     string              `json:"controllerNamespaceLabel"`
-		WorkloadNamespaceLabel       string              `json:"workloadNamespaceLabel"`
-		CreatedByAnnotation          string              `json:"createdByAnnotation"`
-		ProxyInjectAnnotation        string              `json:"proxyInjectAnnotation"`
-		ProxyInjectDisabled          string              `json:"proxyInjectDisabled"`
-		LinkerdNamespaceLabel        string              `json:"linkerdNamespaceLabel"`
 		ProxyContainerName           string              `json:"proxyContainerName"`
 		HighAvailability             bool                `json:"highAvailability"`
 		CNIEnabled                   bool                `json:"cniEnabled"`
@@ -90,8 +58,28 @@ type (
 		PodAnnotations map[string]string `json:"podAnnotations"`
 		PodLabels      map[string]string `json:"podLabels"`
 
-		Proxy     *Proxy     `json:"proxy"`
-		ProxyInit *ProxyInit `json:"proxyInit"`
+		Proxy            *Proxy            `json:"proxy"`
+		ProxyInit        *ProxyInit        `json:"proxyInit"`
+		Identity         *Identity         `json:"identity"`
+		DebugContainer   *DebugContainer   `json:"debugContainer"`
+		ProxyInjector    *ProxyInjector    `json:"proxyInjector"`
+		ProfileValidator *ProfileValidator `json:"profileValidator"`
+		NodeSelector     map[string]string `json:"nodeSelector"`
+		Tolerations      []interface{}     `json:"tolerations"`
+		Stage            string            `json:"stage"`
+
+		DestinationResources   *Resources `json:"destinationResources"`
+		HeartbeatResources     *Resources `json:"heartbeatResources"`
+		IdentityResources      *Resources `json:"identityResources"`
+		ProxyInjectorResources *Resources `json:"proxyInjectorResources"`
+		PublicAPIResources     *Resources `json:"publicAPIResources"`
+		SPValidatorResources   *Resources `json:"spValidatorResources"`
+
+		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
+		IdentityProxyResources      *Resources `json:"identityProxyResources"`
+		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
+		PublicAPIProxyResources     *Resources `json:"publicAPIProxyResources"`
+		SPValidatorProxyResources   *Resources `json:"spValidatorProxyResources"`
 	}
 
 	// ConfigJSONs is the JSON encoding of the Linkerd configuration
@@ -107,7 +95,6 @@ type (
 		// This should match .Resources.CPU.Limit, but must be a whole number
 		Cores                         int64            `json:"cores,omitempty"`
 		DisableIdentity               bool             `json:"disableIdentity"`
-		DisableTap                    bool             `json:"disableTap"`
 		EnableExternalProfiles        bool             `json:"enableExternalProfiles"`
 		Image                         *Image           `json:"image"`
 		LogLevel                      string           `json:"logLevel"`
@@ -191,12 +178,11 @@ type (
 
 	// Issuer has the Helm variables of the identity issuer
 	Issuer struct {
-		Scheme              string     `json:"scheme"`
-		ClockSkewAllowance  string     `json:"clockSkewAllowance"`
-		IssuanceLifetime    string     `json:"issuanceLifetime"`
-		CrtExpiryAnnotation string     `json:"crtExpiryAnnotation"`
-		CrtExpiry           time.Time  `json:"crtExpiry"`
-		TLS                 *IssuerTLS `json:"tls"`
+		Scheme             string     `json:"scheme"`
+		ClockSkewAllowance string     `json:"clockSkewAllowance"`
+		IssuanceLifetime   string     `json:"issuanceLifetime"`
+		CrtExpiry          time.Time  `json:"crtExpiry"`
+		TLS                *IssuerTLS `json:"tls"`
 	}
 
 	// ProxyInjector has all the proxy injector's Helm variables
@@ -221,7 +207,7 @@ type (
 	}
 
 	// IssuerTLS is a stripped down version of TLS that lacks the integral caBundle.
-	// It is tracked separately in the field 'global.IdentityTrustAnchorsPEM'
+	// It is tracked separately in the field 'IdentityTrustAnchorsPEM'
 	IssuerTLS struct {
 		KeyPEM string `json:"keyPEM"`
 		CrtPEM string `json:"crtPEM"`
@@ -235,13 +221,13 @@ func NewValues() (*Values, error) {
 		return nil, err
 	}
 
-	v.Global.ControllerImageVersion = version.Version
-	v.Global.Proxy.Image.Version = version.Version
+	v.ControllerImageVersion = version.Version
+	v.Proxy.Image.Version = version.Version
 	v.DebugContainer.Image.Version = version.Version
-	v.Global.CliVersion = k8s.CreatedByAnnotationValue()
+	v.CliVersion = k8s.CreatedByAnnotationValue()
 	v.ProfileValidator.TLS = &TLS{}
 	v.ProxyInjector.TLS = &TLS{}
-	v.Global.ProxyContainerName = k8s.ProxyContainerName
+	v.ProxyContainerName = k8s.ProxyContainerName
 
 	return v, nil
 }
@@ -291,6 +277,22 @@ func (v Values) Merge(src Values) (Values, error) {
 	return src, nil
 }
 
+// ToMap converts the Values intro a map[string]interface{}
+func (v *Values) ToMap() (map[string]interface{}, error) {
+	var valuesMap map[string]interface{}
+	rawValues, err := yaml.Marshal(v)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to marshal the values struct: %s", err)
+	}
+
+	err = yaml.Unmarshal(rawValues, &valuesMap)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to Unmarshal Values into a map: %s", err)
+	}
+
+	return valuesMap, nil
+}
+
 // DeepCopy creates a deep copy of the Values struct by marshalling to yaml and
 // then unmarshalling a new struct.
 func (v *Values) DeepCopy() (*Values, error) {
@@ -309,13 +311,4 @@ func (v *Values) DeepCopy() (*Values, error) {
 func (v *Values) String() string {
 	bytes, _ := yaml.Marshal(v)
 	return string(bytes)
-}
-
-// GetGlobal is a safe accessor for Global. It initializes Global on the first
-// access.
-func (v *Values) GetGlobal() *Global {
-	if v.Global == nil {
-		v.Global = &Global{}
-	}
-	return v.Global
 }

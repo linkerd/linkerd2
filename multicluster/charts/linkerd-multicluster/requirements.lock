@@ -1,0 +1,6 @@
+dependencies:
+- name: partials
+  repository: file://../../../charts/partials
+  version: 0.1.0
+digest: sha256:e2c1d0d581afb33df46411df7a89fca2628328fc7bd0975167e7812bf128e27f
+generated: "2021-02-16T10:58:15.523677369-05:00"

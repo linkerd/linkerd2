@@ -5,20 +5,26 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/linkerd/linkerd2/jaeger/pkg/labels"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
 
-	// jaegerExtensionName is the name of jaeger extension
-	jaegerExtensionName = "linkerd-jaeger"
+	// JaegerExtensionName is the name of jaeger extension
+	JaegerExtensionName = "jaeger"
 
 	// linkerdJaegerExtensionCheck adds checks related to the jaeger extension
-	linkerdJaegerExtensionCheck healthcheck.CategoryID = jaegerExtensionName
+	linkerdJaegerExtensionCheck healthcheck.CategoryID = "linkerd-jaeger"
+
+	// linkerdJaegerExtensionDataPlaneCheck adds checks related to the jaeger extension
+	linkerdJaegerExtensionDataPlaneCheck healthcheck.CategoryID = JaegerExtensionName + "-data-plane"
 )
 
 var (
@@ -26,8 +32,10 @@ var (
 )
 
 type checkOptions struct {
-	wait   time.Duration
-	output string
+	wait      time.Duration
+	output    string
+	proxy     bool
+	namespace string
 }
 
 func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
@@ -40,7 +48,7 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			Fatal().
 			WithCheck(func(ctx context.Context) error {
 				// Get  jaeger Extension Namespace
-				ns, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, jaegerExtensionName)
+				ns, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, JaegerExtensionName)
 				if err != nil {
 					return err
 				}
@@ -132,6 +140,53 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 	return healthcheck.NewCategory(linkerdJaegerExtensionCheck, checkers, true)
 }
 
+// JaegerDataPlaneCategory returns a healthcheck.Category containing checkers
+// to verify the jaeger injection
+func JaegerDataPlaneCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
+	return healthcheck.NewCategory(linkerdJaegerExtensionDataPlaneCheck, []healthcheck.Checker{
+		*healthcheck.NewChecker("data plane namespace exists").
+			WithHintAnchor("l5d-data-plane-exists").
+			Fatal().
+			WithCheck(func(ctx context.Context) error {
+				if hc.DataPlaneNamespace == "" {
+					// when checking proxies in all namespaces, this check is a no-op
+					return nil
+				}
+				return hc.CheckNamespace(ctx, hc.DataPlaneNamespace, true)
+			}),
+		*healthcheck.NewChecker("data-plane pods have tracing enabled").
+			WithHintAnchor("l5d-jaeger-data-plane-trace").
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, hc.DataPlaneNamespace)
+				if err != nil {
+					return err
+				}
+
+				return checkForTraceConfiguration(pods)
+			}),
+	}, true)
+}
+
+// checkForTraceConfiguration checks if the trace annotation is present
+// only for the pods with tracing enabled
+func checkForTraceConfiguration(pods []corev1.Pod) error {
+	var podsWithoutTraceConfig []string
+	for i := range pods {
+		pod := pods[i]
+		// Check for jaeger-injector annotation
+		if !labels.IsTracingEnabled(&pod) {
+			podsWithoutTraceConfig = append(podsWithoutTraceConfig, fmt.Sprintf("* %s/%s", pod.Namespace, pod.Name))
+		}
+
+	}
+
+	if len(podsWithoutTraceConfig) > 0 {
+		return fmt.Errorf("Some data plane pods do not have tracing configured and cannot be traced:\n\t%s", strings.Join(podsWithoutTraceConfig, "\n\t"))
+	}
+	return nil
+}
+
 func newCheckOptions() *checkOptions {
 	return &checkOptions{
 		wait:   300 * time.Second,
@@ -146,7 +201,8 @@ func (options *checkOptions) validate() error {
 	return nil
 }
 
-func newCmdCheck() *cobra.Command {
+// NewCmdCheck generates a new cobra command for the jaeger extension.
+func NewCmdCheck() *cobra.Command {
 	options := newCheckOptions()
 	cmd := &cobra.Command{
 		Use:   "check [flags]",
@@ -165,8 +221,10 @@ code.`,
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
-	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
+	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
+	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
+	cmd.Flags().BoolVar(&options.proxy, "proxy", options.proxy, "Also run data-plane checks, to determine if the data plane is healthy")
+	cmd.Flags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 
 	return cmd
 }
@@ -177,13 +235,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		return fmt.Errorf("Validation error when executing check command: %v", err)
 	}
 
-	checks := []healthcheck.CategoryID{
-		healthcheck.KubernetesAPIChecks,
-		healthcheck.LinkerdControlPlaneExistenceChecks,
-		linkerdJaegerExtensionCheck,
-	}
-
-	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+	hc := healthcheck.NewHealthChecker([]healthcheck.CategoryID{}, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		KubeContext:           kubeContext,
@@ -191,9 +243,21 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		ImpersonateGroup:      impersonateGroup,
 		APIAddr:               apiAddr,
 		RetryDeadline:         time.Now().Add(options.wait),
+		DataPlaneNamespace:    options.namespace,
 	})
 
+	err = hc.InitializeKubeAPIClient()
+	if err != nil {
+		err = fmt.Errorf("Error initializing k8s API client: %s", err)
+		fmt.Fprintln(werr, err)
+		os.Exit(1)
+	}
+
 	hc.AppendCategories(*jaegerCategory(hc))
+	if options.proxy {
+		hc.AppendCategories(*JaegerDataPlaneCategory(hc))
+	}
+
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
 	if !success {

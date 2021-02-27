@@ -76,11 +76,11 @@ linkerd upgrade.`,
 				return fmt.Errorf("Failed to parse IssuanceLifetime from linkerd-config: %s", err)
 			}
 			idCtx := pb.IdentityContext{
-				TrustAnchorsPem:    values.Global.IdentityTrustAnchorsPEM,
+				TrustAnchorsPem:    values.IdentityTrustAnchorsPEM,
 				Scheme:             values.Identity.Issuer.Scheme,
 				ClockSkewAllowance: ptypes.DurationProto(clockSkewDuration),
 				IssuanceLifetime:   ptypes.DurationProto(issuanceLifetime),
-				TrustDomain:        values.Global.IdentityTrustDomain,
+				TrustDomain:        values.IdentityTrustDomain,
 			}
 
 			// Populate identity values
@@ -89,8 +89,12 @@ linkerd upgrade.`,
 				return fmt.Errorf("Failed to load issuer credentials: %s", err)
 			}
 
-			// Render
-			overrides, err := renderOverrides(&values, controlPlaneNamespace, true)
+			valuesMap, err := values.ToMap()
+			if err != nil {
+				return fmt.Errorf("Failed to convert Values into a map: %s", err)
+			}
+
+			overrides, err := renderOverrides(valuesMap, true)
 			if err != nil {
 				return fmt.Errorf("Failed to render overrides: %s", err)
 			}
@@ -116,9 +120,9 @@ func resetVersion(values *linkerd2.Values) error {
 		return err
 	}
 	values.DebugContainer.Image.Version = defaults.DebugContainer.Image.Version
-	values.Global.Proxy.Image.Version = defaults.Global.Proxy.Image.Version
-	values.Global.CliVersion = defaults.Global.CliVersion
-	values.Global.ControllerImageVersion = defaults.Global.ControllerImageVersion
-	values.Global.LinkerdVersion = defaults.Global.LinkerdVersion
+	values.Proxy.Image.Version = defaults.Proxy.Image.Version
+	values.CliVersion = defaults.CliVersion
+	values.ControllerImageVersion = defaults.ControllerImageVersion
+	values.LinkerdVersion = defaults.LinkerdVersion
 	return nil
 }

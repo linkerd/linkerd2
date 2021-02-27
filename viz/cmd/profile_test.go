@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/api/util"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
-	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
+	"github.com/linkerd/linkerd2/viz/tap/pkg"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -23,58 +24,58 @@ func TestTapToServiceProfile(t *testing.T) {
 	tapDuration := 5 * time.Second
 	routeLimit := 20
 
-	params := util.TapRequestParams{
+	params := pkg.TapRequestParams{
 		Resource:  "deploy/" + name,
 		Namespace: namespace,
 	}
 
-	tapReq, err := util.BuildTapByResourceRequest(params)
+	tapReq, err := pkg.BuildTapByResourceRequest(params)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	event1 := util.CreateTapEvent(
-		&pb.TapEvent_Http{
-			Event: &pb.TapEvent_Http_RequestInit_{
+	event1 := pkg.CreateTapEvent(
+		&tapPb.TapEvent_Http{
+			Event: &tapPb.TapEvent_Http_RequestInit_{
 
-				RequestInit: &pb.TapEvent_Http_RequestInit{
-					Id: &pb.TapEvent_Http_StreamId{
+				RequestInit: &tapPb.TapEvent_Http_RequestInit{
+					Id: &tapPb.TapEvent_Http_StreamId{
 						Base: 1,
 					},
 					Authority: "",
 					Path:      "/emojivoto.v1.VotingService/VoteFire",
-					Method: &pb.HttpMethod{
-						Type: &pb.HttpMethod_Registered_{
-							Registered: pb.HttpMethod_POST,
+					Method: &metricsPb.HttpMethod{
+						Type: &metricsPb.HttpMethod_Registered_{
+							Registered: metricsPb.HttpMethod_POST,
 						},
 					},
 				},
 			},
 		},
 		map[string]string{},
-		pb.TapEvent_INBOUND,
+		tapPb.TapEvent_INBOUND,
 	)
 
-	event2 := util.CreateTapEvent(
-		&pb.TapEvent_Http{
-			Event: &pb.TapEvent_Http_RequestInit_{
+	event2 := pkg.CreateTapEvent(
+		&tapPb.TapEvent_Http{
+			Event: &tapPb.TapEvent_Http_RequestInit_{
 
-				RequestInit: &pb.TapEvent_Http_RequestInit{
-					Id: &pb.TapEvent_Http_StreamId{
+				RequestInit: &tapPb.TapEvent_Http_RequestInit{
+					Id: &tapPb.TapEvent_Http_StreamId{
 						Base: 2,
 					},
 					Authority: "",
 					Path:      "/my/path/hi",
-					Method: &pb.HttpMethod{
-						Type: &pb.HttpMethod_Registered_{
-							Registered: pb.HttpMethod_GET,
+					Method: &metricsPb.HttpMethod{
+						Type: &metricsPb.HttpMethod_Registered_{
+							Registered: metricsPb.HttpMethod_GET,
 						},
 					},
 				},
 			},
 		},
 		map[string]string{},
-		pb.TapEvent_INBOUND,
+		tapPb.TapEvent_INBOUND,
 	)
 
 	kubeAPI, err := k8s.NewFakeAPI()
@@ -83,7 +84,7 @@ func TestTapToServiceProfile(t *testing.T) {
 	}
 	ts := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			for _, event := range []*pb.TapEvent{event1, event2} {
+			for _, event := range []*tapPb.TapEvent{event1, event2} {
 				event := event // pin
 				err = protohttp.WriteProtoToHTTPResponse(w, event)
 				if err != nil {

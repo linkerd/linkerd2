@@ -1,7 +1,13 @@
 ARG BUILDPLATFORM=linux/amd64
 
+FROM --platform=$BUILDPLATFORM docker.io/curlimages/curl:7.75.0  as await
+WORKDIR /tmp
+ARG LINKERD_AWAIT_VERSION=v0.2.1
+ARG TARGETARCH
+RUN curl -fsSvLo linkerd-await https://github.com/olix0r/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-${TARGETARCH} && chmod +x linkerd-await
+
 # Precompile key slow-to-build dependencies
-FROM --platform=$BUILDPLATFORM golang:1.14.2-alpine as go-deps
+FROM --platform=$BUILDPLATFORM golang:1.14.15-alpine as go-deps
 WORKDIR /linkerd-build
 COPY go.mod go.sum ./
 COPY bin/install-deps bin/
@@ -40,14 +46,17 @@ COPY web/srv web/srv
 COPY controller controller
 COPY viz/metrics-api viz/metrics-api
 COPY viz/pkg viz/pkg
+COPY viz/tap/gen/tap viz/tap/gen/tap
+COPY viz/tap/pkg viz/tap/pkg
 COPY pkg pkg
 ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -mod=readonly -o web/web -ldflags "-s -w" ./web
 
 ## package it all up
-FROM debian:buster-20201117-slim
+FROM debian:buster-20210208-slim
 WORKDIR /linkerd
 
+COPY --from=await /tmp/linkerd-await .
 COPY LICENSE .
 COPY --from=golang /linkerd-build/web/web .
 RUN mkdir -p app
@@ -58,4 +67,4 @@ COPY --from=golang /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 ARG LINKERD_VERSION
 ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}
 
-ENTRYPOINT ["./web"]
+ENTRYPOINT ["./linkerd-await", "--", "./web"]
