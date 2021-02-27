@@ -49,6 +49,15 @@ func TestRender(t *testing.T) {
 		},
 		{
 			map[string]interface{}{
+				"prometheus": map[string]interface{}{
+					"args": map[string]interface{}{
+						"log.level": "debug",
+					}},
+			},
+			"install_prometheus_loglevel_from_args.golden",
+		},
+		{
+			map[string]interface{}{
 				"prometheus":    map[string]interface{}{"enabled": false},
 				"prometheusUrl": "external-prom.com",
 			},

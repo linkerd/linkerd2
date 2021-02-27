@@ -242,7 +242,9 @@ spec:
       {{- toYaml .Values.prometheus.sidecarContainers | trim | nindent 6 }}
       {{- end}}
       - args:
+        {{- if not (hasKey .Values.prometheus.args "log.level") }}
         - --log.level={{.Values.prometheus.logLevel | default .Values.defaultLogLevel}}
+        {{- end }}
         {{- range $key, $value := .Values.prometheus.args}}
         - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}
         {{- end }}
