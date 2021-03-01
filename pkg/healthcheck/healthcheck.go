@@ -1132,7 +1132,7 @@ func (hc *HealthChecker) allCategories() []Category {
 				{
 					description: "proxy-injector cert is valid for at least 60 days",
 					warning:     true,
-					hintAnchor:  "l5d-webhook-cert-not-expiring-soon",
+					hintAnchor:  "l5d-proxy-injector-webhook-cert-not-expiring-soon",
 					check: func(ctx context.Context) error {
 						cert, err := hc.FetchCredsFromSecret(ctx, hc.ControlPlaneNamespace, proxyInjectorTLSSecretName)
 						if kerrors.IsNotFound(err) {
@@ -1168,7 +1168,7 @@ func (hc *HealthChecker) allCategories() []Category {
 				{
 					description: "sp-validator cert is valid for at least 60 days",
 					warning:     true,
-					hintAnchor:  "l5d-webhook-cert-not-expiring-soon",
+					hintAnchor:  "l5d-sp-validator-webhook-cert-not-expiring-soon",
 					check: func(ctx context.Context) error {
 						cert, err := hc.FetchCredsFromSecret(ctx, hc.ControlPlaneNamespace, spValidatorTLSSecretName)
 						if kerrors.IsNotFound(err) {

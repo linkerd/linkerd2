@@ -117,7 +117,7 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 				return hc.CheckCertAndAnchors(cert, anchors, identityName)
 			}),
 		*healthcheck.NewChecker("tap API server cert is valid for at least 60 days").
-			WithHintAnchor("l5d-webhook-cert-not-expiring-soon").
+			WithHintAnchor("l5d-tap-cert-not-expiring-soon").
 			Warning().
 			WithCheck(func(ctx context.Context) error {
 				cert, err := hc.FetchCredsFromSecret(ctx, hc.vizNamespace, tapTLSSecretName)
