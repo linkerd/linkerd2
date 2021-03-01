@@ -769,13 +769,7 @@ func TestOverridesSecret(t *testing.T) {
 			"controllerLogLevel": "debug",
 			"heartbeatSchedule":  panicIfError(t, overridesTree.GetString, []string{"heartbeatSchedule"}...),
 			"identity": map[string]interface{}{
-				"issuer": map[string]interface{}{
-					"crtExpiry": panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "crtExpiry"}...),
-					"tls": map[string]interface{}{
-						"crtPEM": panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "tls", "crtPEM"}...),
-						"keyPEM": panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "tls", "keyPEM"}...),
-					},
-				},
+				"issuer": map[string]interface{}{},
 			},
 			"identityTrustAnchorsPEM": panicIfError(t, overridesTree.GetString, []string{"identityTrustAnchorsPEM"}...),
 			"proxyInit": map[string]interface{}{
@@ -790,6 +784,15 @@ func TestOverridesSecret(t *testing.T) {
 
 		if TestHelper.GetClusterDomain() != "cluster.local" {
 			knownKeys["clusterDomain"] = TestHelper.GetClusterDomain()
+		}
+
+		if TestHelper.ExternalIssuer() {
+			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["issuanceLifetime"] = "15s"
+			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["scheme"] = "kubernetes.io/tls"
+		} else {
+			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["crtExpiry"] = panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "crtExpiry"}...)
+			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["tls"].(map[string]interface{})["crtPEM"] = panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "tls", "crtPEM"}...)
+			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["tls"].(map[string]interface{})["keyPEM"] = panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "tls", "keyPEM"}...)
 		}
 
 		// Check if the keys in overridesTree match with knownKeys
