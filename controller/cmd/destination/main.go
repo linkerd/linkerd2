@@ -61,17 +61,12 @@ func Main(args []string) {
 		log.Warnf("expected cluster domain through args (falling back to %s)", *clusterDomain)
 	}
 
-	opaquePorts := make(map[uint32]struct{})
-	ports, err := util.ParsePorts(*defaultOpaquePorts)
+	opaquePorts, err := util.ParsePorts(*defaultOpaquePorts)
 	if err != nil {
 		log.Fatalf("Failed to parse opaque Ports %s: %s", *defaultOpaquePorts, err)
 	}
 
-	for _, port := range ports {
-		opaquePorts[port] = struct{}{}
-	}
-
-	log.Infof("Using default opaque ports: %v", ports)
+	log.Infof("Using default opaque ports: %v", opaquePorts)
 
 	if *traceCollector != "" {
 		if err := trace.InitializeTracing("linkerd-destination", *traceCollector); err != nil {
