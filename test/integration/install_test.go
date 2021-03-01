@@ -405,8 +405,11 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"'kubectl apply' command failed\n%s", out)
 	}
 
-	TestHelper.WaitRollout(t, "linkerd-controller")
-	TestHelper.WaitRollout(t, "linkerd-proxy-injector")
+	for deploy, deploySpec := range testutil.LinkerdDeployReplicasEdge {
+		if deploySpec.Namespace == "linkerd" {
+			TestHelper.WaitRollout(t, deploy)
+		}
+	}
 
 	if TestHelper.ExternalPrometheus() {
 
