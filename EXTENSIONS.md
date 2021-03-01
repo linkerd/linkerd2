@@ -33,7 +33,7 @@ but may be ignored if they are not applicable.
 * `--as-group`: Group to impersonate for Kubernetes operations
 * `--help`/`-h`: Print help message
 * `--kubeconfig`: Path to the kubeconfig file to use for CLI requests
-* `--linkerd-namespace`/`-l`: Namespace in which Linkerd is installed
+* `--linkerd-namespace`/`-L`: Namespace in which Linkerd is installed
   [$LINKERD_NAMESPACE]
 * `--verbose`: Turn on debug logging
 
@@ -49,10 +49,9 @@ extensions.
 
 ### `linkerd-name uninstall`
 
-This command must print manifests for all Kubernetes resources belonging to
-this extension as yaml which is suitable to be passed to `kubectl delete -f`.
-Special care should be taken to make sure both namespace-scoped and cluster-
-scoped resources are listed.
+This command must print manifests for all cluster-scoped Kubernetes resources
+belonging to this extension (including the extension Namespace) as yaml which
+is suitable to be passed to `kubectl delete -f`.
 
 ### `linkerd-name check`
 
