@@ -791,8 +791,10 @@ func TestOverridesSecret(t *testing.T) {
 			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["scheme"] = "kubernetes.io/tls"
 		} else {
 			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["crtExpiry"] = panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "crtExpiry"}...)
-			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["tls"].(map[string]interface{})["crtPEM"] = panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "tls", "crtPEM"}...)
-			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["tls"].(map[string]interface{})["keyPEM"] = panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "tls", "keyPEM"}...)
+			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["tls"] = map[string]interface{}{
+				"crtPEM": panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "tls", "crtPEM"}...),
+				"keyPEM": panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "tls", "keyPEM"}...),
+			}
 		}
 
 		// Check if the keys in overridesTree match with knownKeys
