@@ -797,6 +797,10 @@ func TestOverridesSecret(t *testing.T) {
 			}
 		}
 
+		if TestHelper.CNI() {
+			knownKeys["cniEnabled"] = true
+		}
+
 		// Check if the keys in overridesTree match with knownKeys
 		if !reflect.DeepEqual(overridesTree.String(), knownKeys.String()) {
 			testutil.AnnotatedFatalf(t, "Overrides and knownKeys are different",
