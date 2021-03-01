@@ -793,7 +793,7 @@ func TestOverridesSecret(t *testing.T) {
 		}
 
 		if TestHelper.ExternalPrometheus() {
-			knownKeys["prometheus"].(map[string]interface{})["enabled"] = false
+			knownKeys["prometheus"] = map[string]interface{}{"enabled": false}
 			knownKeys["prometheusUrl"] = "http://prometheus.external-prometheus.svc.cluster.local:9090"
 		}
 
