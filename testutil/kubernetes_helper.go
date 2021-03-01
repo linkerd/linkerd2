@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -336,4 +337,14 @@ func (h *KubernetesHelper) URLFor(ctx context.Context, namespace, deployName str
 	}
 
 	return pf.URLFor(""), nil
+}
+
+// WaitRollout blocks until the specified deployment has been
+// completely rolled out (and its pods are ready)
+func (h *KubernetesHelper) WaitRollout(t *testing.T, deployment string) {
+	o, err := h.Kubectl("", "--namespace=linkerd", "wait", "--for=condition=available", "--timeout=120s", "deploy/"+deployment)
+	if err != nil {
+		AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s", deployment),
+			"failed to wait for condition=available for deploy/%s: %s: %s", deployment, err, o)
+	}
 }
