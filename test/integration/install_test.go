@@ -788,13 +788,8 @@ func TestOverridesSecret(t *testing.T) {
 			knownKeys["proxyInit"].(map[string]interface{})["ignoreOutboundPorts"] = "1234,5678"
 		}
 
-		if TestHelper.GetClusterDomain() != "" {
+		if TestHelper.GetClusterDomain() != "cluster.local" {
 			knownKeys["clusterDomain"] = TestHelper.GetClusterDomain()
-		}
-
-		if TestHelper.ExternalPrometheus() {
-			knownKeys["prometheus"] = map[string]interface{}{"enabled": false}
-			knownKeys["prometheusUrl"] = "http://prometheus.external-prometheus.svc.cluster.local:9090"
 		}
 
 		// Check if the keys in overridesTree match with knownKeys
