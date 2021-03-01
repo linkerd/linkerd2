@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -359,7 +360,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 
 		if edge {
-			args = append(args, []string{"--set", fmt.Sprintf("proxyInit.ignoreOutboundPorts=\"%s\"", skippedOutboundPorts)}...)
+			args = append(args, []string{"--set", fmt.Sprintf("proxyInit.ignoreOutboundPorts=\"%s\"", strings.Replace("1234,5678", ",", "\\,", 1))}...)
 		} else {
 			args = append(args, []string{"--skip-outbound-ports", skippedOutboundPorts}...)
 		}
@@ -751,6 +752,50 @@ func TestOverridesSecret(t *testing.T) {
 			}
 		})
 	}
+
+	panicIfError := func(t *testing.T, f func(...string) (string, error), path ...string) string {
+		val, err := f(path...)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, err.Error(),
+				err.Error(), err.Error())
+			return ""
+
+		}
+		return val
+	}
+
+	t.Run("Check if any unknown fields sneaked in", func(t *testing.T) {
+		knownKeys := tree.Tree{
+			"controllerLogLevel": "debug",
+			"heartbeatSchedule":  panicIfError(t, overridesTree.GetString, []string{"heartbeatSchedule"}...),
+			"identity": map[string]interface{}{
+				"issuer": map[string]interface{}{
+					"crtExpiry": panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "crtExpiry"}...),
+					"tls": map[string]interface{}{
+						"crtPEM": panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "tls", "crtPEM"}...),
+						"keyPEM": panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "tls", "keyPEM"}...),
+					},
+				},
+			},
+			"identityTrustAnchorsPEM": panicIfError(t, overridesTree.GetString, []string{"identityTrustAnchorsPEM"}...),
+			"proxyInit": map[string]interface{}{
+				"ignoreInboundPorts": "1234,5678",
+			},
+		}
+
+		// Check for fields that were added during upgrade
+		if TestHelper.UpgradeFromVersion() != "" {
+			knownKeys["proxyInit"].(map[string]interface{})["ignoreOutboundPorts"] = "1234,5678"
+		}
+
+		// Check if the keys in overridesTree match with knownKeys
+		if !reflect.DeepEqual(overridesTree.String(), knownKeys.String()) {
+			testutil.AnnotatedFatalf(t, "Overrides and knownKeys are different",
+				"Expected overrides to be [%s] but found [%s]",
+				knownKeys.String(), overridesTree.String(),
+			)
+		}
+	})
 }
 
 type expectedData struct {
