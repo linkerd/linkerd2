@@ -1038,6 +1038,8 @@ metadata:
   namespace: linkerd-viz
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+  labels:
+    linkerd.io/extension: viz
 type: kubernetes.io/tls
 data:
   tls.crt: dGVzdC10YXAtY3J0LXBlbQ==
@@ -1083,6 +1085,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
+    linkerd.io/extension: viz
     component: tap-injector
   ports:
   - name: tap-injector
@@ -1109,7 +1112,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 5cb033e3116205dd502bee6f822717a8efe049d8ada2f02d1343a2c8b0cd3c93
+        checksum/config: 954486b77f49f95fc44392cf8ea7672033f74102bab63103d00a61ea7895c281
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
         linkerd.io/extension: viz

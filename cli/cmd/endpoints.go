@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"text/tabwriter"
+	"time"
 
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	netPb "github.com/linkerd/linkerd2-proxy-api/go/net"
@@ -89,13 +90,14 @@ destination.`,
 				return err
 			}
 
-			endpoints, err := requestEndpointsFromAPI(api.CheckPublicAPIClientOrExit(healthcheck.Options{
+			endpoints, err := requestEndpointsFromAPI(api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
 				ControlPlaneNamespace: controlPlaneNamespace,
 				KubeConfig:            kubeconfigPath,
 				Impersonate:           impersonate,
 				ImpersonateGroup:      impersonateGroup,
 				KubeContext:           kubeContext,
 				APIAddr:               apiAddr,
+				RetryDeadline:         time.Time{},
 			}), args)
 			if err != nil {
 				fmt.Fprint(os.Stderr, fmt.Errorf("Destination API error: %s", err))
