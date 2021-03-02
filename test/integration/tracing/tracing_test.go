@@ -48,6 +48,16 @@ func TestTracing(t *testing.T) {
 		t.Skip("Skipped. Jaeger & Open Census images does not support ARM yet")
 	}
 
+	// cleanup cluster before proceeding
+	namespaces := []string{"smoke-test", "smoke-test-manual", "smoke-test-ann", "opaque-ports-test"}
+	for _, ns := range namespaces {
+		prefixedNs := TestHelper.GetTestNamespace(ns)
+		if err := TestHelper.DeleteNamespaceIfExists(ctx, prefixedNs); err != nil {
+			testutil.AnnotatedFatalf(t, "error deleting namespace",
+				"error deleting namespace '%s': %s", prefixedNs, err)
+		}
+	}
+
 	// linkerd-jaeger extension
 	tracingNs := "linkerd-jaeger"
 	out, err := TestHelper.LinkerdRun("jaeger", "install")

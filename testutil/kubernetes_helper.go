@@ -97,7 +97,9 @@ func (h *KubernetesHelper) createNamespaceIfNotExists(ctx context.Context, names
 	return nil
 }
 
-func (h *KubernetesHelper) deleteNamespaceIfExists(ctx context.Context, namespace string) error {
+// DeleteNamespaceIfExists attempts to delete the given namespace,
+// using the K8s API directly
+func (h *KubernetesHelper) DeleteNamespaceIfExists(ctx context.Context, namespace string) error {
 	err := h.clientset.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
 
 	if err != nil && !kerrors.IsNotFound(err) {
