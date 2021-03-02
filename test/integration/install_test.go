@@ -425,11 +425,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"'kubectl apply' command failed\n%s", out)
 	}
 
-	for deploy, deploySpec := range testutil.LinkerdDeployReplicasEdge {
-		if deploySpec.Namespace == "linkerd" {
-			TestHelper.WaitRollout(t, deploy)
-		}
-	}
+	TestHelper.WaitRollout(t)
 
 	if TestHelper.ExternalPrometheus() {
 
@@ -521,11 +517,7 @@ func TestInstallHelm(t *testing.T) {
 			"'helm install' command failed\n%s\n%s", stdout, stderr)
 	}
 
-	for deploy, deploySpec := range testutil.LinkerdDeployReplicasEdge {
-		if deploySpec.Namespace == "linkerd" {
-			TestHelper.WaitRollout(t, deploy)
-		}
-	}
+	TestHelper.WaitRollout(t)
 
 	if TestHelper.UpgradeHelmFromVersion() == "" {
 		vizChart := TestHelper.GetLinkerdVizHelmChart()

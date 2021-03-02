@@ -68,7 +68,7 @@ func TestTracing(t *testing.T) {
 	err = TestHelper.RetryFor(timeout, func() error {
 		out, err := TestHelper.LinkerdRun(checkCmd...)
 		if err != nil {
-			return fmt.Errorf("'linkerd jaeger check' command failed\n%s", err)
+			return fmt.Errorf("'linkerd jaeger check' command failed\n%s\n%s", err, out)
 		}
 		err = TestHelper.ValidateOutput(out, golden)
 		if err != nil {
