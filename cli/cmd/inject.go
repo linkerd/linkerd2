@@ -169,11 +169,6 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	}
 
 	reports := []inject.Report{*report}
-	// Injection of services depends on being able to retrieve the namespace
-	// annotations which can only occur in the proxy injector webhook.
-	if conf.IsService() {
-		return bytes, reports, nil
-	}
 
 	if conf.IsService() {
 		opaquePortsAnnotations := map[string]string{}
