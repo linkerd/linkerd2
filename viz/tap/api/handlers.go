@@ -30,10 +30,17 @@ type handler struct {
 	log            *logrus.Entry
 }
 
-// TODO: share with api_handlers.go
-type jsonError struct {
-	Error string `json:"error"`
-}
+type (
+	// TODO: share with api_handlers.go
+	jsonError struct {
+		Error string `json:"error"`
+	}
+	resource struct {
+		name       string
+		shortname  string
+		namespaced bool
+	}
+)
 
 var (
 	gvk = &schema.GroupVersionKind{
@@ -53,11 +60,7 @@ var (
 		PreferredVersion: gvfd,
 	}
 
-	resources = []struct {
-		name       string
-		shortname  string
-		namespaced bool
-	}{
+	resources = []resource{
 		{"namespaces", "ns", false},
 		{"pods", "po", true},
 		{"replicationcontrollers", "rc", true},
@@ -85,24 +88,36 @@ func initRouter(h *handler) *httprouter.Router {
 	router.GET("/openapi/v2", handleOpenAPI)
 	router.GET("/version", handleVersion)
 	router.NotFound = handleNotFound()
-
 	for _, res := range resources {
-		route := ""
-		if !res.namespaced {
-			route = fmt.Sprintf("/apis/%s/watch/%s/:namespace", gvk.GroupVersion().String(), res.name)
-		} else {
-			route = fmt.Sprintf("/apis/%s/watch/namespaces/:namespace/%s/:name", gvk.GroupVersion().String(), res.name)
+		routes := createRoutes(res)
+		for _, route := range routes {
+			router.GET(route, handleRoot)
+			router.POST(route+"/tap", h.handleTap)
 		}
-
-		router.GET(route, handleRoot)
-		router.POST(route+"/tap", h.handleTap)
 	}
-
 	return router
 }
 
+// createRoutes returns of list of routes that the API server should serve
+// depending on the type of resource given. If the resource type is anything
+// except namespace, two routes are returned: one for the resource type and
+// one for a specific resource of that type.
+func createRoutes(res resource) []string {
+	var routes []string
+	if !res.namespaced {
+		route := fmt.Sprintf("/apis/%s/watch/%s/:namespace", gvk.GroupVersion().String(), res.name)
+		routes = append(routes, route)
+	} else {
+		typeRoute := fmt.Sprintf("/apis/%s/watch/namespaces/:namespace/type/%s", gvk.GroupVersion().String(), res.name)
+		nameRoute := fmt.Sprintf("/apis/%s/watch/namespaces/:namespace/type/%s/name/:name", gvk.GroupVersion().String(), res.name)
+		routes = append(routes, typeRoute, nameRoute)
+	}
+	return routes
+}
+
 // POST /apis/tap.linkerd.io/v1alpha1/watch/namespaces/:namespace/tap
-// POST /apis/tap.linkerd.io/v1alpha1/watch/namespaces/:namespace/:resource/:name/tap
+// POST /apis/tap.linkerd.io/v1alpha1/watch/namespaces/:namespace/type/:type/tap
+// POST /apis/tap.linkerd.io/v1alpha1/watch/namespaces/:namespace/type/:type/name/:name/tap
 func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	namespace := p.ByName("namespace")
 	name := p.ByName("name")
@@ -112,7 +127,9 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 	if len(path) == 8 {
 		resource = path[5]
 	} else if len(path) == 10 {
-		resource = path[7]
+		resource = path[8]
+	} else if len(path) == 12 {
+		resource = path[8]
 	} else {
 		err := fmt.Errorf("invalid path: %s", req.URL.Path)
 		h.log.Error(err)

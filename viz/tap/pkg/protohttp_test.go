@@ -15,7 +15,7 @@ func TestTapReqToURL(t *testing.T) {
 	}{
 		{
 			req: &tapPb.TapByResourceRequest{},
-			url: "/apis/tap.linkerd.io/v1alpha1/watch/namespaces//s//tap",
+			url: "/apis/tap.linkerd.io/v1alpha1/watch/namespaces//type/s/tap",
 		},
 		{
 			req: &tapPb.TapByResourceRequest{
@@ -38,7 +38,7 @@ func TestTapReqToURL(t *testing.T) {
 					},
 				},
 			},
-			url: "/apis/tap.linkerd.io/v1alpha1/watch/namespaces/test-ns/test-types/test-name/tap",
+			url: "/apis/tap.linkerd.io/v1alpha1/watch/namespaces/test-ns/type/test-types/name/test-name/tap",
 		},
 	}
 	for i, exp := range expectations {
