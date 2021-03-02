@@ -809,7 +809,7 @@ func TestOverridesSecret(t *testing.T) {
 			knownKeys["cniEnabled"] = true
 		}
 
-		if match, _ := regexp.Match("(edge)-([0-9]+.[0-9]+.[0-9]+)", []byte(TestHelper.UpgradeFromVersion())); match {
+		if match, _ := regexp.Match("(stable)-([0-9]+.[0-9]+.[0-9]+)", []byte(TestHelper.UpgradeFromVersion())); !match {
 			knownKeys["heartbeatSchedule"] = panicIfError(t, overridesTree.GetString, []string{"heartbeatSchedule"}...)
 		}
 
