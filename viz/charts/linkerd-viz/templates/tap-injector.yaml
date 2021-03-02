@@ -15,6 +15,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
+    linkerd.io/extension: viz
     component: tap-injector
   ports:
   - name: tap-injector
