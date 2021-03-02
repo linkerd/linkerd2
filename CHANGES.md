@@ -17,8 +17,8 @@ CLI commands, among other improvements.
   opaque ports when injecting pods (and services)
 * Simplified the output of `linkerd jaeger check`, combining the checks for the
   status of each component into a single check
-* Had the destination component receive the `opaquePorts` config set during
-  install so it's properly reflected during injection and discovery
+* Changed the destination component to receive the list of default opaque ports
+  set during install so that it's properly reflected during discovery
 * Moved the level of the proxy server's I/O-related "Connection closed" messages
   from info to debug, which were not providing actionable information
 
