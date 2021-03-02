@@ -448,7 +448,7 @@ class TapQueryForm extends React.Component {
 
         <QueryToCliCmd cmdName={cmdName} query={query} resource={query.resource} />
 
-        { !enableAdvancedForm ? null : this.renderAdvancedTapForm()}
+        {!enableAdvancedForm ? null : this.renderAdvancedTapForm()}
 
       </Card>
     );

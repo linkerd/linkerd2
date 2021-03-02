@@ -3,6 +3,7 @@ import CardContent from '@material-ui/core/CardContent';
 import Grid from '@material-ui/core/Grid';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { Trans } from '@lingui/macro';
 import Warning from '@material-ui/icons/Warning';
 import { withStyles } from '@material-ui/core/styles';
 
@@ -23,7 +24,7 @@ const TapEnabledWarning = ({ resource, cardComponent, namespace, classes }) => {
     <Grid className={classes.container} container spacing={1} alignItems="center">
       <Grid item><Warning className={classes.iconWarning} /></Grid>
       <Grid item>
-        Pods under the resource {resource} in the {namespace} namespace are missing tap configurations (restart these pods to enable tap)
+        <Trans>Pods under the resource {resource} in the {namespace} namespace are missing tap configurations (restart these pods to enable tap)</Trans>
       </Grid>
     </Grid>
   );
