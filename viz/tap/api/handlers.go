@@ -116,8 +116,8 @@ func createRoutes(res resource) []string {
 }
 
 // POST /apis/tap.linkerd.io/v1alpha1/watch/namespaces/:namespace/tap
-// POST /apis/tap.linkerd.io/v1alpha1/watch/namespaces/:namespace/type/:type/tap
-// POST /apis/tap.linkerd.io/v1alpha1/watch/namespaces/:namespace/type/:type/name/:name/tap
+// POST /apis/tap.linkerd.io/v1alpha1/watch/namespaces/:namespace/type/{resource-type}/tap
+// POST /apis/tap.linkerd.io/v1alpha1/watch/namespaces/:namespace/type/{resource-type}/name/:name/tap
 func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	namespace := p.ByName("namespace")
 	name := p.ByName("name")
