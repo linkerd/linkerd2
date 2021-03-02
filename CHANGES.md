@@ -14,7 +14,7 @@ CLI commands, among other improvements.
 * Similarly, added the command `linkerd jaeger list` to list meshed pods and
   indicate which will participate in tracing
 * Added the `--opaque-ports` flag to `linkerd inject` to specify the list of
-  opaque ports when injection pods (and services)
+  opaque ports when injecting pods (and services)
 * Simplified the output of `linkerd jaeger check`, combining the checks for the
   status of each component into a single check
 * Had the destination component receive the `opaquePorts` config set during
