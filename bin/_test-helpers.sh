@@ -490,10 +490,11 @@ run_deep_test() {
 run_cni-calico-deep_test() {
   local tests=()
   run_test "$test_directory/install_test.go" --cni --calico
-  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
-  for test in "${tests[@]}"; do
-    run_test "$test" --cni
-  done
+  run_test "github.com/linkerd/linkerd2/test/integration/tracing"
+  #while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
+  #for test in "${tests[@]}"; do
+  #  run_test "$test" --cni
+  #done
 }
 
 run_helm-deep_test() {
