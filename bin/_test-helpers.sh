@@ -481,10 +481,11 @@ run_multicluster_test() {
 run_deep_test() {
   local tests=()
   run_test "$test_directory/install_test.go"
-  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
-  for test in "${tests[@]}"; do
-    run_test "$test"
-  done
+  run_test "github.com/linkerd/linkerd2/test/integration/tracing"
+  #while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
+  #for test in "${tests[@]}"; do
+  #  run_test "$test"
+  #done
 }
 
 run_cni-calico-deep_test() {
