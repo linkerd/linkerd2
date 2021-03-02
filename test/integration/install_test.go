@@ -767,7 +767,6 @@ func TestOverridesSecret(t *testing.T) {
 	t.Run("Check if any unknown fields sneaked in", func(t *testing.T) {
 		knownKeys := tree.Tree{
 			"controllerLogLevel": "debug",
-			"heartbeatSchedule":  panicIfError(t, overridesTree.GetString, []string{"heartbeatSchedule"}...),
 			"identity": map[string]interface{}{
 				"issuer": map[string]interface{}{},
 			},
@@ -799,6 +798,10 @@ func TestOverridesSecret(t *testing.T) {
 
 		if TestHelper.CNI() {
 			knownKeys["cniEnabled"] = true
+		}
+
+		if match, _ := regexp.Match("(edge)-([0-9]+.[0-9]+.[0-9]+)", []byte(TestHelper.UpgradeFromVersion())); match {
+			knownKeys["heartbeatSchedule"] = panicIfError(t, overridesTree.GetString, []string{"heartbeatSchedule"}...)
 		}
 
 		// Check if the keys in overridesTree match with knownKeys
