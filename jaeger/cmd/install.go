@@ -58,7 +58,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 					ImpersonateGroup:      impersonateGroup,
 					APIAddr:               apiAddr,
 					RetryDeadline:         time.Now().Add(wait),
-				}, true)
+				})
 			}
 
 			return install(os.Stdout, options)
