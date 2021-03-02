@@ -485,12 +485,10 @@ func helmOverridesEdge(root *tls.CA) []string {
 		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
 		// these ports will get verified in test/integration/inject
 		"--set", "proxyInit.ignoreInboundPorts=" + skippedInboundPortsEscaped,
-		"--set", "identityTrustDomain=cluster.local",
 		"--set", "identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
 		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
-		"--set", "grafana.image.version=" + TestHelper.GetVersion(),
 	}
 }
 
@@ -523,18 +521,17 @@ func TestInstallHelm(t *testing.T) {
 			"'helm install' command failed\n%s\n%s", stdout, stderr)
 	}
 
-	TestHelper.WaitRollout(t, "linkerd-proxy-injector")
+	for deploy, deploySpec := range testutil.LinkerdDeployReplicasEdge {
+		if deploySpec.Namespace == "linkerd" {
+			TestHelper.WaitRollout(t, deploy)
+		}
+	}
 
 	if TestHelper.UpgradeHelmFromVersion() == "" {
 		vizChart := TestHelper.GetLinkerdVizHelmChart()
 		vizArgs := []string{
 			"--set", "linkerdVersion=" + TestHelper.GetVersion(),
 			"--set", "namespace=" + TestHelper.GetVizNamespace(),
-			"--set", "dashboard.image.tag=" + TestHelper.GetVersion(),
-			"--set", "grafana.image.tag=" + TestHelper.GetVersion(),
-			"--set", "tap.image.tag=" + TestHelper.GetVersion(),
-			"--set", "metricsAPI.image.tag=" + TestHelper.GetVersion(),
-			"--set", "tapInjector.image.tag=" + TestHelper.GetVersion(),
 		}
 		// Install Viz Extension Chart
 		if stdout, stderr, err := TestHelper.HelmInstallPlain(vizChart, "l5d-viz", vizArgs...); err != nil {
@@ -564,7 +561,6 @@ func TestInstallMulticluster(t *testing.T) {
 	if TestHelper.GetMulticlusterHelmReleaseName() != "" {
 		flags := []string{
 			"--set", "linkerdVersion=" + TestHelper.GetVersion(),
-			"--set", "controllerImageVersion=" + TestHelper.GetVersion(),
 		}
 		if stdout, stderr, err := TestHelper.HelmInstallMulticluster(TestHelper.GetMulticlusterHelmChart(), flags...); err != nil {
 			testutil.AnnotatedFatalf(t, "'helm install' command failed",
@@ -648,11 +644,6 @@ func TestUpgradeHelm(t *testing.T) {
 	vizArgs := []string{
 		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
 		"--set", "namespace=" + TestHelper.GetVizNamespace(),
-		"--set", "dashboard.image.tag=" + TestHelper.GetVersion(),
-		"--set", "grafana.image.tag=" + TestHelper.GetVersion(),
-		"--set", "tap.image.tag=" + TestHelper.GetVersion(),
-		"--set", "metricsAPI.image.tag=" + TestHelper.GetVersion(),
-		"--set", "tapInjector.image.tag=" + TestHelper.GetVersion(),
 		"--wait",
 	}
 	// Install Viz Extension Chart
