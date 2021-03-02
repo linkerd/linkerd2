@@ -19,8 +19,8 @@ CLI commands, among other improvements.
   status of each component into a single check
 * Had the destination component receive the `opaquePorts` config set during
   install so it's properly reflected during injection and discovery
-* Moved the level of the proxy server's I/O errors from info to debug, which
-  were not providing actionable information
+* Moved the level of the proxy server's I/O-related "Connection closed" messages
+  from info to debug, which were not providing actionable information
 
 ## edge-21.2.4
 
