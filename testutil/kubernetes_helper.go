@@ -358,8 +358,8 @@ func (h *KubernetesHelper) WaitRollout(t *testing.T) {
 			o, err := h.Kubectl("", "--namespace=linkerd", "rollout", "status", "--timeout=120s", "deploy/"+deploy)
 			if err != nil {
 				AnnotatedFatalf(t,
-					fmt.Sprintf("failed to wait for condition=available for deploy/%s", deploy),
-					"failed to wait for condition=available for deploy/%s: %s: %s", deploy, err, o)
+					fmt.Sprintf("failed to wait rollout of deploy/%s", deploy),
+					"failed to wait for rollout of deploy/%s: %s: %s", deploy, err, o)
 			}
 		}
 	}
