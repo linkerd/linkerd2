@@ -8,7 +8,7 @@ CLI commands, among other improvements.
 
 * Fixed Helm install/upgrade, which was failing when not explicitly setting
   `proxy.image.version`
-* Added the command `linkerd viz list` to list mesh pods and indicate which can
+* Added the command `linkerd viz list` to list meshed pods and indicate which can
   be tapped, which need to be restarted before they can be tapped, and which
   have tap disabled
 * Similarly, added the command `linkerd jaeger list` to list meshed pods and
