@@ -98,7 +98,7 @@ func initRouter(h *handler) *httprouter.Router {
 	return router
 }
 
-// createRoutes returns of list of routes that the API server should serve
+// createRoutes returns a list of routes that the API server should serve
 // depending on the type of resource given. If the resource type is anything
 // except namespace, two routes are returned: one for the resource type and
 // one for a specific resource of that type.
@@ -126,9 +126,7 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 	path := strings.Split(req.URL.Path, "/")
 	if len(path) == 8 {
 		resource = path[5]
-	} else if len(path) == 10 {
-		resource = path[8]
-	} else if len(path) == 12 {
+	} else if len(path) == 10 || len(path) == 12 {
 		resource = path[8]
 	} else {
 		err := fmt.Errorf("invalid path: %s", req.URL.Path)
