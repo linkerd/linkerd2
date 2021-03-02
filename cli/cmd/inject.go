@@ -171,8 +171,13 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	reports := []inject.Report{*report}
 
 	if conf.IsService() {
-		b, err := conf.AnnotateService(rt.overrideAnnotations)
-		return b, reports, err
+		opaquePortsAnnotations := map[string]string{}
+		if opaquePorts, ok := rt.overrideAnnotations[k8s.ProxyOpaquePortsAnnotation]; ok {
+			opaquePortsAnnotations[k8s.ProxyOpaquePortsAnnotation] = opaquePorts
+			b, err := conf.AnnotateService(opaquePortsAnnotations)
+			return b, reports, err
+		}
+		return bytes, reports, nil
 	}
 
 	if rt.allowNsInject && conf.IsNamespace() {
@@ -326,9 +331,6 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	for _, r := range reports {
 		if b, _ := r.Injectable(); b {
 			verb := "injected"
-			if r.Kind == k8s.Service {
-				verb = "annotated"
-			}
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" %s\n", r.Kind, r.Name, verb)))
 		} else {
 			if r.Kind != "" {
