@@ -760,29 +760,6 @@ func (hc *HealthChecker) allCategories() []Category {
 						return checkContainerRunning(hc.controlPlanePods, "controller")
 					},
 				},
-				{
-					description: "can initialize the client",
-					hintAnchor:  "l5d-existence-client",
-					fatal:       true,
-					check: func(ctx context.Context) (err error) {
-						if hc.APIAddr != "" {
-							hc.apiClient, err = public.NewInternalClient(hc.ControlPlaneNamespace, hc.APIAddr)
-						} else {
-							hc.apiClient, err = public.NewExternalClient(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
-						}
-						return
-					},
-				},
-				{
-					description:   "can query the control plane API",
-					hintAnchor:    "l5d-existence-api",
-					retryDeadline: hc.RetryDeadline,
-					fatal:         true,
-					check: func(ctx context.Context) (err error) {
-						hc.serverVersion, err = GetServerVersion(ctx, hc.apiClient)
-						return
-					},
-				},
 			},
 		},
 		{
@@ -1212,6 +1189,29 @@ func (hc *HealthChecker) allCategories() []Category {
 							return err
 						}
 						return validateControlPlanePods(hc.controlPlanePods)
+					},
+				},
+				{
+					description: "can initialize the client",
+					hintAnchor:  "l5d-api-control-client",
+					fatal:       true,
+					check: func(ctx context.Context) (err error) {
+						if hc.APIAddr != "" {
+							hc.apiClient, err = public.NewInternalClient(hc.ControlPlaneNamespace, hc.APIAddr)
+						} else {
+							hc.apiClient, err = public.NewExternalClient(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
+						}
+						return
+					},
+				},
+				{
+					description:   "can query the control plane API",
+					hintAnchor:    "l5d-api-control-api",
+					retryDeadline: hc.RetryDeadline,
+					fatal:         true,
+					check: func(ctx context.Context) (err error) {
+						hc.serverVersion, err = GetServerVersion(ctx, hc.apiClient)
+						return
 					},
 				},
 			},

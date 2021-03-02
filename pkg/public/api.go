@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -21,26 +20,15 @@ func RawPublicAPIClient(ctx context.Context, kubeAPI *k8s.KubernetesAPI, control
 	return public.NewExternalClient(ctx, controlPlaneNamespace, kubeAPI)
 }
 
-// CheckPublicAPIClientOrExit builds a new Public API client and executes default status
-// checks to determine if the client can successfully perform cli commands. If the
-// checks fail, then CLI will print an error and exit.
-func CheckPublicAPIClientOrExit(hcOptions healthcheck.Options) public.Client {
-	hcOptions.RetryDeadline = time.Time{}
-	return CheckPublicAPIClientOrRetryOrExit(hcOptions, false)
-}
-
 // CheckPublicAPIClientOrRetryOrExit builds a new Public API client and executes status
 // checks to determine if the client can successfully connect to the API. If the
 // checks fail, then CLI will print an error and exit. If the hcOptions.retryDeadline
 // param is specified, then the CLI will print a message to stderr and retry.
-func CheckPublicAPIClientOrRetryOrExit(hcOptions healthcheck.Options, apiChecks bool) public.Client {
+func CheckPublicAPIClientOrRetryOrExit(hcOptions healthcheck.Options) public.Client {
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.LinkerdControlPlaneExistenceChecks,
-	}
-
-	if apiChecks {
-		checks = append(checks, healthcheck.LinkerdAPIChecks)
+		healthcheck.LinkerdAPIChecks,
 	}
 
 	hc := healthcheck.NewHealthChecker(checks, &hcOptions)

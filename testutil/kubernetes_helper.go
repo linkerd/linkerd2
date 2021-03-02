@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -127,6 +128,15 @@ func (h *KubernetesHelper) KubectlApply(stdin string, namespace string) (string,
 		args = append(args, "--namespace", namespace)
 	}
 
+	return h.Kubectl(stdin, args...)
+}
+
+// KubectlApplyWithArgs applies a given configuration string with the passed
+// flags
+func (h *KubernetesHelper) KubectlApplyWithArgs(stdin string, cmdArgs ...string) (string, error) {
+	args := []string{"apply"}
+	args = append(args, cmdArgs...)
+	args = append(args, "-f", "-")
 	return h.Kubectl(stdin, args...)
 }
 
@@ -336,4 +346,14 @@ func (h *KubernetesHelper) URLFor(ctx context.Context, namespace, deployName str
 	}
 
 	return pf.URLFor(""), nil
+}
+
+// WaitRollout blocks until the specified deployment has been
+// completely rolled out (and its pods are ready)
+func (h *KubernetesHelper) WaitRollout(t *testing.T, deployment string) {
+	o, err := h.Kubectl("", "--namespace=linkerd", "rollout", "status", "--timeout=120s", "deploy/"+deployment)
+	if err != nil {
+		AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s", deployment),
+			"failed to wait for condition=available for deploy/%s: %s: %s", deployment, err, o)
+	}
 }

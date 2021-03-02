@@ -12,7 +12,6 @@ import (
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	labels "github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/opaqueports"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/util"
 	logging "github.com/sirupsen/logrus"
@@ -37,6 +36,7 @@ type (
 		controllerNS        string
 		identityTrustDomain string
 		clusterDomain       string
+		defaultOpaquePorts  map[uint32]struct{}
 
 		k8sAPI   *k8s.API
 		log      *logging.Entry
@@ -64,14 +64,16 @@ func NewServer(
 	enableEndpointSlices bool,
 	k8sAPI *k8s.API,
 	clusterDomain string,
+	defaultOpaquePorts map[uint32]struct{},
 	shutdown <-chan struct{},
 ) *grpc.Server {
 	log := logging.WithFields(logging.Fields{
 		"addr":      addr,
 		"component": "server",
 	})
+
 	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log, enableEndpointSlices)
-	opaquePorts := watcher.NewOpaquePortsWatcher(k8sAPI, log)
+	opaquePorts := watcher.NewOpaquePortsWatcher(k8sAPI, log, defaultOpaquePorts)
 	profiles := watcher.NewProfileWatcher(k8sAPI, log)
 	trafficSplits := watcher.NewTrafficSplitWatcher(k8sAPI, log)
 	ips := watcher.NewIPWatcher(k8sAPI, endpoints, log)
@@ -87,6 +89,7 @@ func NewServer(
 		controllerNS,
 		identityTrustDomain,
 		clusterDomain,
+		defaultOpaquePorts,
 		k8sAPI,
 		log,
 		shutdown,
@@ -118,6 +121,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		s.enableH2Upgrade,
 		dest.GetPath(),
 		token.NodeName,
+		s.defaultOpaquePorts,
 		s.nodes,
 		stream,
 		log,
@@ -225,7 +229,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 				// If the opaque ports annotation was not set, then set the
 				// endpoint's opaque ports to the default value.
 				if !ok {
-					opaquePorts = opaqueports.DefaultOpaquePorts
+					opaquePorts = s.defaultOpaquePorts
 				}
 				endpoint, err = toWeightedAddr(podSet.Addresses[podID], opaquePorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, log)
 				if err != nil {

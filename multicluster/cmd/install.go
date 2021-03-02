@@ -73,7 +73,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				ImpersonateGroup:      impersonateGroup,
 				APIAddr:               apiAddr,
 				RetryDeadline:         time.Now().Add(wait),
-			}, true)
+			})
 
 			values, err := buildMulticlusterInstallValues(cmd.Context(), options)
 

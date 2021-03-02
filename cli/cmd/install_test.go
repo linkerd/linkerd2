@@ -78,7 +78,8 @@ func TestRender(t *testing.T) {
 				Inbound:  4143,
 				Outbound: 4140,
 			},
-			UID: 2102,
+			UID:         2102,
+			OpaquePorts: "25,443,587,3306,5432,11211",
 		},
 		ProxyInit: &charts.ProxyInit{
 			Image: &charts.Image{

@@ -91,7 +91,7 @@ spec:
     metadata:
       annotations:
         {{ include "partials.annotations.created-by" . }}
-        {{- include "partials.proxy.annotations" .Values.proxy| nindent 8}}
+        {{- include "partials.proxy.annotations" . | nindent 8}}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
         linkerd.io/control-plane-component: destination
@@ -119,6 +119,7 @@ spec:
         - -enable-endpoint-slices={{.Values.enableEndpointSlices}}
         - -cluster-domain={{.Values.clusterDomain}}
         - -identity-trust-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
+        - -default-opaque-ports={{.Values.proxy.opaquePorts}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.controllerImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
         imagePullPolicy: {{.Values.imagePullPolicy}}
