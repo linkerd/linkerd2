@@ -342,7 +342,17 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 
 		// apply stage 1
-		out, err = TestHelper.KubectlApply(out, "")
+		// Limit the pruning only to known resources
+		// that we intend to be delete in this stage to prevent it
+		// from deleting other resources that have the
+		// label
+		out, err = TestHelper.KubectlApplyWithArgs(out, []string{
+			"--prune",
+			"-l", "linkerd.io/control-plane-ns=linkerd",
+			"--prune-whitelist", "rbac.authorization.k8s.io/v1/clusterrole",
+			"--prune-whitelist", "rbac.authorization.k8s.io/v1/clusterrolebinding",
+			"--prune-whitelist", "apiregistration.k8s.io/v1/apiservice",
+		}...)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 				"kubectl apply command failed\n%s", out)
@@ -399,19 +409,26 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 	}
 
-	out, err = TestHelper.KubectlApply(out, "")
+	// Limit the pruning only to known resources
+	// that we intend to be delete in this stage to prevent it
+	// from deleting other resources that have the
+	// label
+	out, err = TestHelper.KubectlApplyWithArgs(out, []string{
+		"--prune",
+		"-l", "linkerd.io/control-plane-ns=linkerd",
+		"--prune-whitelist", "apps/v1/deployment",
+		"--prune-whitelist", "core/v1/service",
+		"--prune-whitelist", "core/v1/configmap",
+	}...)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
 	}
 
-	// Wait for the proxy injector to be up
-	name := "linkerd-proxy-injector"
-	ns := "linkerd"
-	o, err := TestHelper.Kubectl("", "--namespace="+ns, "rollout", "status", "--timeout=120s", "deploy/"+name)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s in namespace %s", name, ns),
-			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
+	for deploy, deploySpec := range testutil.LinkerdDeployReplicasEdge {
+		if deploySpec.Namespace == "linkerd" {
+			TestHelper.WaitRollout(t, deploy)
+		}
 	}
 
 	if TestHelper.ExternalPrometheus() {
@@ -506,14 +523,7 @@ func TestInstallHelm(t *testing.T) {
 			"'helm install' command failed\n%s\n%s", stdout, stderr)
 	}
 
-	// Wait for the proxy injector to be up
-	name := "linkerd-proxy-injector"
-	ns := "linkerd"
-	o, err := TestHelper.Kubectl("", "--namespace="+ns, "wait", "--for=condition=available", "--timeout=120s", "deploy/"+name)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s in namespace %s", name, ns),
-			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
-	}
+	TestHelper.WaitRollout(t, "linkerd-proxy-injector")
 
 	if TestHelper.UpgradeHelmFromVersion() == "" {
 		vizChart := TestHelper.GetLinkerdVizHelmChart()

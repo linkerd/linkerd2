@@ -342,13 +342,14 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 
 func fetchConfigs(ctx context.Context) (*linkerd2.Values, error) {
 
-	api.CheckPublicAPIClientOrExit(healthcheck.Options{
+	api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		Impersonate:           impersonate,
 		ImpersonateGroup:      impersonateGroup,
 		KubeContext:           kubeContext,
 		APIAddr:               apiAddr,
+		RetryDeadline:         time.Time{},
 	})
 
 	api, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
