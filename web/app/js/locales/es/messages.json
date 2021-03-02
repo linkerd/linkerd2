@@ -155,7 +155,7 @@
   "tableTitleResponseInit": "Respuesta Inicial",
   "tableTitleTCP": "TCP",
   "tableTitleTCPMetrics": "Métricas TCP",
-  "Pods under the resource {resource} in the {namespace} namespace are missing tap configurations (restart these pods to enable tap)":"A los pods debajo del recurso {resource} en el espacio de nombres {namespace} les faltan configuraciones de toque (reinicie estos pods para habilitar el toque)",
+  "Pods under the resource {resource} in the {namespace} namespace are missing tap configurations (restart these pods to enable tap)":"A los pods debajo del recurso {resource} en el namespace {namespace} les hace falta la configuración de tap (reinicie estos pods para habilitar tap)",
   "tooltipInbound": "ENTRADA",
   "tooltipOutbound": "SALIDA",
   "unspecifiedResourcesMsg": "uno o más recursos",
