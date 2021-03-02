@@ -8,6 +8,8 @@ CLI commands, among other improvements.
 
 * Fixed Helm install/upgrade, which was failing when not explicitly setting
   `proxy.image.version`
+* Added a warning in the dashboard when viewing tap streams from resources that
+  don't have tap enabled
 * Added the command `linkerd viz list` to list meshed pods and indicate which can
   be tapped, which need to be restarted before they can be tapped, and which
   have tap disabled
