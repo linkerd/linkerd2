@@ -9,7 +9,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/webhook"
-	labels "github.com/linkerd/linkerd2/jaeger/pkg"
+	"github.com/linkerd/linkerd2/jaeger/pkg/labels"
 	l5dLables "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/common/log"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"

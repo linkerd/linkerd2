@@ -39,16 +39,9 @@ type (
 		ClusterNetworks              string              `json:"clusterNetworks"`
 		ImagePullPolicy              string              `json:"imagePullPolicy"`
 		CliVersion                   string              `json:"cliVersion"`
-		ControllerComponentLabel     string              `json:"controllerComponentLabel"`
 		ControllerImageVersion       string              `json:"controllerImageVersion"`
 		ControllerLogLevel           string              `json:"controllerLogLevel"`
 		ControllerLogFormat          string              `json:"controllerLogFormat"`
-		ControllerNamespaceLabel     string              `json:"controllerNamespaceLabel"`
-		WorkloadNamespaceLabel       string              `json:"workloadNamespaceLabel"`
-		CreatedByAnnotation          string              `json:"createdByAnnotation"`
-		ProxyInjectAnnotation        string              `json:"proxyInjectAnnotation"`
-		ProxyInjectDisabled          string              `json:"proxyInjectDisabled"`
-		LinkerdNamespaceLabel        string              `json:"linkerdNamespaceLabel"`
 		ProxyContainerName           string              `json:"proxyContainerName"`
 		HighAvailability             bool                `json:"highAvailability"`
 		CNIEnabled                   bool                `json:"cniEnabled"`
@@ -185,12 +178,11 @@ type (
 
 	// Issuer has the Helm variables of the identity issuer
 	Issuer struct {
-		Scheme              string     `json:"scheme"`
-		ClockSkewAllowance  string     `json:"clockSkewAllowance"`
-		IssuanceLifetime    string     `json:"issuanceLifetime"`
-		CrtExpiryAnnotation string     `json:"crtExpiryAnnotation"`
-		CrtExpiry           time.Time  `json:"crtExpiry"`
-		TLS                 *IssuerTLS `json:"tls"`
+		Scheme             string     `json:"scheme"`
+		ClockSkewAllowance string     `json:"clockSkewAllowance"`
+		IssuanceLifetime   string     `json:"issuanceLifetime"`
+		CrtExpiry          time.Time  `json:"crtExpiry"`
+		TLS                *IssuerTLS `json:"tls"`
 	}
 
 	// ProxyInjector has all the proxy injector's Helm variables
@@ -283,6 +275,22 @@ func (v Values) Merge(src Values) (Values, error) {
 	}
 
 	return src, nil
+}
+
+// ToMap converts the Values intro a map[string]interface{}
+func (v *Values) ToMap() (map[string]interface{}, error) {
+	var valuesMap map[string]interface{}
+	rawValues, err := yaml.Marshal(v)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to marshal the values struct: %s", err)
+	}
+
+	err = yaml.Unmarshal(rawValues, &valuesMap)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to Unmarshal Values into a map: %s", err)
+	}
+
+	return valuesMap, nil
 }
 
 // DeepCopy creates a deep copy of the Values struct by marshalling to yaml and

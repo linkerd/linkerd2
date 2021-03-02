@@ -72,6 +72,9 @@ func TestResourcesPostInstall(t *testing.T) {
 	// Tests Pods and Deployments
 
 	expectedDeployments := testutil.LinkerdDeployReplicasEdge
+	if !TestHelper.ExternalPrometheus() {
+		expectedDeployments["prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1, Containers: []string{}}
+	}
 	// Upgrade Case
 	if TestHelper.UpgradeHelmFromVersion() != "" {
 		expectedDeployments = testutil.LinkerdDeployReplicasStable

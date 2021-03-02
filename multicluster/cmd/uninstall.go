@@ -1,20 +1,19 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
 
-	"github.com/linkerd/linkerd2/multicluster/static"
-	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/k8s/resource"
 	mc "github.com/linkerd/linkerd2/pkg/multicluster"
 	"github.com/spf13/cobra"
-	chartloader "helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
-	"sigs.k8s.io/yaml"
 )
 
 func newMulticlusterUninstallCommand() *cobra.Command {
@@ -42,12 +41,12 @@ func newMulticlusterUninstallCommand() *cobra.Command {
 				config.CurrentContext = kubeContext
 			}
 
-			k, err := k8s.NewAPI(kubeconfigPath, config.CurrentContext, impersonate, impersonateGroup, 0)
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, config.CurrentContext, impersonate, impersonateGroup, 0)
 			if err != nil {
 				return err
 			}
 
-			links, err := mc.GetLinks(cmd.Context(), k.DynamicClient)
+			links, err := mc.GetLinks(cmd.Context(), k8sAPI.DynamicClient)
 			if err != nil {
 				return err
 			}
@@ -60,46 +59,28 @@ func newMulticlusterUninstallCommand() *cobra.Command {
 				return errors.New(strings.Join(err, "\n"))
 			}
 
-			values, err := buildMulticlusterInstallValues(cmd.Context(), options)
-
-			if err != nil {
-				return err
-			}
-
-			// Render raw values and create chart config
-			rawValues, err := yaml.Marshal(values)
-			if err != nil {
-				return err
-			}
-
-			files := []*chartloader.BufferedFile{
-				{Name: chartutil.ChartfileName},
-				{Name: "templates/namespace.yaml"},
-				{Name: "templates/gateway.yaml"},
-				{Name: "templates/remote-access-service-mirror-rbac.yaml"},
-				{Name: "templates/link-crd.yaml"},
-			}
-
-			chart := &charts.Chart{
-				Name:      helmMulticlusterDefaultChartName,
-				Dir:       helmMulticlusterDefaultChartName,
-				Namespace: controlPlaneNamespace,
-				RawValues: rawValues,
-				Files:     files,
-				Fs:        static.Templates,
-			}
-			buf, err := chart.RenderNoPartials()
-			if err != nil {
-				return err
-			}
-			stdout.Write(buf.Bytes())
-			stdout.Write([]byte("---\n"))
-
-			return nil
+			return uninstallRunE(cmd.Context(), k8sAPI)
 		},
 	}
 
 	cmd.Flags().StringVar(&options.namespace, "namespace", options.namespace, "The namespace in which the multicluster add-on is to be installed. Must not be the control plane namespace. ")
 
 	return cmd
+}
+
+func uninstallRunE(ctx context.Context, k8sAPI *k8s.KubernetesAPI) error {
+
+	resources, err := resource.FetchKubernetesResources(ctx, k8sAPI,
+		metav1.ListOptions{LabelSelector: "linkerd.io/extension=linkerd-multicluster"},
+	)
+	if err != nil {
+		return err
+	}
+
+	for _, r := range resources {
+		if err := r.RenderResource(os.Stdout); err != nil {
+			return fmt.Errorf("error rendering Kubernetes resource: %v", err)
+		}
+	}
+	return nil
 }

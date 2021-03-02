@@ -26,7 +26,7 @@ const (
 	showURL = "url"
 
 	// webDeployment is the name of the web deployment in cli/install/template.go
-	webDeployment = "linkerd-web"
+	webDeployment = "web"
 
 	// webPort is the http port from the web pod spec in cli/install/template.go
 	webPort = 8084

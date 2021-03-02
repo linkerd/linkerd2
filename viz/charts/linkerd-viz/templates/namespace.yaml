@@ -8,10 +8,10 @@ apiVersion: v1
 metadata:
   name: {{.Values.namespace}}
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    linkerd.io/extension: viz
   annotations:
     {{- if .Values.prometheusUrl }}
     viz.linkerd.io/external-prometheus: {{.Values.prometheusUrl}}
     {{- end }}
-    {{.Values.proxyInjectAnnotation}}: enabled
+    linkerd.io/inject: enabled
 {{ end -}}

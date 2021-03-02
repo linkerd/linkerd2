@@ -15,10 +15,10 @@ import (
 const (
 
 	// JaegerExtensionName is the name of jaeger extension
-	JaegerExtensionName = "linkerd-jaeger"
+	JaegerExtensionName = "jaeger"
 
 	// linkerdJaegerExtensionCheck adds checks related to the jaeger extension
-	linkerdJaegerExtensionCheck healthcheck.CategoryID = JaegerExtensionName
+	linkerdJaegerExtensionCheck healthcheck.CategoryID = "linkerd-jaeger"
 )
 
 var (
@@ -168,6 +168,10 @@ code.`,
 
 	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
 	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
+	cmd.Flags().Bool("proxy", false, "Also run data-plane checks, to determine if the data plane is healthy")
+	cmd.Flags().StringP("namespace", "n", "", "Namespace to use for --proxy checks (default: all namespaces)")
+	cmd.Flags().MarkHidden("proxy")
+	cmd.Flags().MarkHidden("namespace")
 
 	return cmd
 }
@@ -178,11 +182,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		return fmt.Errorf("Validation error when executing check command: %v", err)
 	}
 
-	checks := []healthcheck.CategoryID{
-		linkerdJaegerExtensionCheck,
-	}
-
-	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+	hc := healthcheck.NewHealthChecker([]healthcheck.CategoryID{}, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		KubeContext:           kubeContext,
@@ -200,6 +200,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	}
 
 	hc.AppendCategories(*jaegerCategory(hc))
+
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
 	if !success {

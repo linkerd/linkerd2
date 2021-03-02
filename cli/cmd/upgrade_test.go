@@ -188,7 +188,7 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 			}
 
 			if id == "Deployment/linkerd-identity" || id == "Deployment/linkerd-proxy-injector" {
-				if pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "args", "*"}) && diff.b.(string) == "-identity-trust-anchors-pem="+issuerCerts.ca {
+				if pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "env", "*", "value"}) && diff.b.(string) == issuerCerts.ca {
 					continue
 				}
 				t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
@@ -521,7 +521,7 @@ spec:
     - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
       value: |
 %s
-    image: ghcr.io/linkerd/proxy:some-version
+    image: cr.l5d.io/linkerd/proxy:some-version
     name: linkerd-proxy
 `, indentLines(certs.ca, "        "))
 }

@@ -54,11 +54,9 @@
         "--proxy-uid",
         "2102",
         "--inbound-ports-to-ignore",
-        "4190,4191,25,443,587,3306,11211",
-        "--outbound-ports-to-ignore",
-        "25,443,587,3306,11211"
+        "4190,4191"
       ],
-      "image": "ghcr.io/linkerd/proxy-init:v1.3.8",
+      "image": "cr.l5d.io/linkerd/proxy-init:v1.3.9",
       "imagePullPolicy": "IfNotPresent",
       "name": "linkerd-init",
       "resources": {
@@ -97,7 +95,7 @@
     "op": "add",
     "path": "/spec/containers/-",
     "value": {
-      "image": "ghcr.io/linkerd/debug:dev-undefined",
+      "image": "cr.l5d.io/linkerd/debug:dev-undefined",
       "imagePullPolicy": "IfNotPresent",
       "name": "linkerd-debug",
       "terminationMessagePolicy": "FallbackToLogsOnError"
@@ -161,6 +159,10 @@
           "value": "10000ms"
         },
         {
+          "name": "LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION",
+          "value": "25,443,587,3306,5432,11211"
+        },
+        {
           "name": "_pod_ns",
           "valueFrom": {
             "fieldRef": {
@@ -185,7 +187,7 @@
           "value": "disabled"
         }
       ],
-      "image": "ghcr.io/linkerd/proxy:dev-undefined",
+      "image": "cr.l5d.io/linkerd/proxy:dev-undefined",
       "imagePullPolicy": "IfNotPresent",
       "livenessProbe": {
         "httpGet": {

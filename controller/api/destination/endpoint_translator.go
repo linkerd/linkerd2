@@ -29,6 +29,7 @@ type endpointTranslator struct {
 	identityTrustDomain string
 	enableH2Upgrade     bool
 	nodeTopologyLabels  map[string]string
+	defaultOpaquePorts  map[uint32]struct{}
 
 	availableEndpoints watcher.AddressSet
 	filteredSnapshot   watcher.AddressSet
@@ -42,6 +43,7 @@ func newEndpointTranslator(
 	enableH2Upgrade bool,
 	service string,
 	srcNodeName string,
+	defaultOpaquePorts map[uint32]struct{},
 	nodes coreinformers.NodeInformer,
 	stream pb.Destination_GetServer,
 	log *logging.Entry,
@@ -64,6 +66,7 @@ func newEndpointTranslator(
 		identityTrustDomain,
 		enableH2Upgrade,
 		nodeTopologyLabels,
+		defaultOpaquePorts,
 		availableEndpoints,
 		filteredSnapshot,
 		stream,
@@ -213,9 +216,14 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			err error
 		)
 		if address.Pod != nil {
-			opaquePorts, getErr := getOpaquePortsAnnotations(address.Pod)
+			opaquePorts, ok, getErr := getPodOpaquePortsAnnotations(address.Pod)
 			if getErr != nil {
 				et.log.Errorf("failed getting opaque ports annotation for pod: %s", getErr)
+			}
+			// If the opaque ports annotation was not set, then set the
+			// endpoint's opaque ports to the default value.
+			if !ok {
+				opaquePorts = et.defaultOpaquePorts
 			}
 			wa, err = toWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 		} else {

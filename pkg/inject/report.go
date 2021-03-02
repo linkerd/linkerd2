@@ -96,7 +96,7 @@ func newReport(conf *ResourceConfig) *Report {
 				report.AutomountServiceAccountToken = false
 			}
 		}
-	} else if report.Kind != k8s.Namespace && report.Kind != k8s.Service {
+	} else if report.Kind != k8s.Service && report.Kind != k8s.Namespace {
 		report.UnsupportedResource = true
 	}
 

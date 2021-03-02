@@ -28,7 +28,7 @@ func TestNewValues(t *testing.T) {
 	}
 
 	expected := &Values{
-		ControllerImage:              "ghcr.io/linkerd/controller",
+		ControllerImage:              "cr.l5d.io/linkerd/controller",
 		ControllerReplicas:           1,
 		ControllerUID:                2103,
 		EnableH2Upgrade:              true,
@@ -43,31 +43,22 @@ func TestNewValues(t *testing.T) {
 		ClusterNetworks:              "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16",
 		ImagePullPolicy:              "IfNotPresent",
 		CliVersion:                   "linkerd/cli dev-undefined",
-		ControllerComponentLabel:     "linkerd.io/control-plane-component",
 		ControllerLogLevel:           "info",
 		ControllerLogFormat:          "plain",
 		ControllerImageVersion:       testVersion,
 		LinkerdVersion:               version.Version,
-		ControllerNamespaceLabel:     "linkerd.io/control-plane-ns",
-		WorkloadNamespaceLabel:       "linkerd.io/workload-ns",
-		CreatedByAnnotation:          "linkerd.io/created-by",
-		ProxyInjectAnnotation:        "linkerd.io/inject",
-		ProxyInjectDisabled:          "disabled",
-		LinkerdNamespaceLabel:        "linkerd.io/is-control-plane",
 		ProxyContainerName:           "linkerd-proxy",
 		CNIEnabled:                   false,
 		ControlPlaneTracing:          false,
 		ControlPlaneTracingNamespace: "linkerd-jaeger",
 		HighAvailability:             false,
-		IdentityTrustDomain:          "cluster.local",
 		PodAnnotations:               map[string]string{},
 		PodLabels:                    map[string]string{},
 		Proxy: &Proxy{
 			EnableExternalProfiles: false,
 			Image: &Image{
-				Name:       "ghcr.io/linkerd/proxy",
-				PullPolicy: "IfNotPresent",
-				Version:    testVersion,
+				Name:    "cr.l5d.io/linkerd/proxy",
+				Version: "dev-undefined",
 			},
 			LogLevel:  "warn,linkerd=info",
 			LogFormat: "plain",
@@ -91,14 +82,12 @@ func TestNewValues(t *testing.T) {
 			WaitBeforeExitSeconds:  0,
 			OutboundConnectTimeout: "1000ms",
 			InboundConnectTimeout:  "100ms",
+			OpaquePorts:            "25,443,587,3306,5432,11211",
 		},
 		ProxyInit: &ProxyInit{
-			IgnoreInboundPorts:  "25,443,587,3306,11211",
-			IgnoreOutboundPorts: "25,443,587,3306,11211",
 			Image: &Image{
-				Name:       "ghcr.io/linkerd/proxy-init",
-				PullPolicy: "IfNotPresent",
-				Version:    testVersion,
+				Name:    "cr.l5d.io/linkerd/proxy-init",
+				Version: testVersion,
 			},
 			Resources: &Resources{
 				CPU: Constraints{
@@ -117,11 +106,10 @@ func TestNewValues(t *testing.T) {
 		},
 		Identity: &Identity{
 			Issuer: &Issuer{
-				ClockSkewAllowance:  "20s",
-				IssuanceLifetime:    "24h0m0s",
-				CrtExpiryAnnotation: "linkerd.io/identity-issuer-expiry",
-				TLS:                 &IssuerTLS{},
-				Scheme:              "linkerd.io/tls",
+				ClockSkewAllowance: "20s",
+				IssuanceLifetime:   "24h0m0s",
+				TLS:                &IssuerTLS{},
+				Scheme:             "linkerd.io/tls",
 			},
 		},
 		NodeSelector: map[string]string{
@@ -129,9 +117,8 @@ func TestNewValues(t *testing.T) {
 		},
 		DebugContainer: &DebugContainer{
 			Image: &Image{
-				Name:       "ghcr.io/linkerd/debug",
-				PullPolicy: "IfNotPresent",
-				Version:    testVersion,
+				Name:    "cr.l5d.io/linkerd/debug",
+				Version: "dev-undefined",
 			},
 		},
 
@@ -143,9 +130,7 @@ func TestNewValues(t *testing.T) {
 	// in non-test environment, the default versions are read from the
 	// values.yaml.
 	actual.ControllerImageVersion = testVersion
-	actual.Proxy.Image.Version = testVersion
 	actual.ProxyInit.Image.Version = testVersion
-	actual.DebugContainer.Image.Version = testVersion
 
 	// Make Add-On Values nil to not have to check for their defaults
 	actual.ImagePullSecrets = nil
@@ -206,9 +191,7 @@ func TestNewValues(t *testing.T) {
 		// in non-test environment, the default versions are read from the
 		// values.yaml.
 		actual.ControllerImageVersion = testVersion
-		actual.Proxy.Image.Version = testVersion
 		actual.ProxyInit.Image.Version = testVersion
-		actual.DebugContainer.Image.Version = testVersion
 
 		if !reflect.DeepEqual(expected, actual) {
 			t.Errorf("Mismatch Helm HA defaults.\nExpected: %+v\nActual: %+v", expected, actual)

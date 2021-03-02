@@ -237,7 +237,12 @@ func cmdAdd(args *skel.CmdArgs) error {
 				logEntry.Errorf("linkerd-cni: could not create a Firewall Configuration from the options: %v", options)
 				return err
 			}
-			iptables.ConfigureFirewall(*firewallConfiguration)
+
+			err = iptables.ConfigureFirewall(*firewallConfiguration)
+			if err != nil {
+				logEntry.Errorf("linkerd-cni: could not configure firewall: %v", err)
+				return err
+			}
 		} else {
 			if containsInitContainer {
 				logEntry.Debug("linkerd-cni: linkerd-init initContainer is present, skipping.")

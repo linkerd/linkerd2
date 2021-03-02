@@ -47,11 +47,10 @@ var (
 	linkerdSvcEdge = []testutil.Service{
 		{Namespace: "linkerd", Name: "linkerd-controller-api"},
 		{Namespace: "linkerd", Name: "linkerd-dst"},
-		{Namespace: "linkerd-viz", Name: "linkerd-grafana"},
+		{Namespace: "linkerd-viz", Name: "grafana"},
 		{Namespace: "linkerd", Name: "linkerd-identity"},
-		{Namespace: "linkerd-viz", Name: "linkerd-prometheus"},
-		{Namespace: "linkerd-viz", Name: "linkerd-web"},
-		{Namespace: "linkerd-viz", Name: "linkerd-tap"},
+		{Namespace: "linkerd-viz", Name: "web"},
+		{Namespace: "linkerd-viz", Name: "tap"},
 		{Namespace: "linkerd", Name: "linkerd-dst-headless"},
 		{Namespace: "linkerd", Name: "linkerd-identity-headless"},
 	}
@@ -85,8 +84,8 @@ var (
 	//skippedInboundPorts lists some ports to be marked as skipped, which will
 	// be verified in test/integration/inject
 	skippedInboundPorts       = "1234,5678"
-	multiclusterExtensionName = "linkerd-multicluster"
-	vizExtensionName          = "linkerd-viz"
+	multiclusterExtensionName = "multicluster"
+	vizExtensionName          = "viz"
 )
 
 //////////////////////
@@ -415,6 +414,24 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
 	}
 
+	if TestHelper.ExternalPrometheus() {
+
+		// Install external prometheus
+		out, err := TestHelper.LinkerdRun("inject", "testdata/external_prometheus.yaml")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "'linkerd inject' command failed: %s", err)
+		}
+
+		out, err = TestHelper.KubectlApply(out, "")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+				"kubectl apply command failed\n%s", out)
+		}
+
+		// Update args to use external proemtheus
+		vizArgs = append(vizArgs, "--set", "prometheusUrl=http://prometheus.external-prometheus.svc.cluster.local:9090", "--set", "prometheus.enabled=false")
+	}
+
 	// Install Linkerd Viz Extension
 	exec = append(vizCmd, vizArgs...)
 	out, err = TestHelper.LinkerdRun(exec...)
@@ -449,7 +466,6 @@ func helmOverridesEdge(root *tls.CA) []string {
 	return []string{
 		"--set", "controllerLogLevel=debug",
 		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
-		"--set", "proxy.image.version=" + TestHelper.GetVersion(),
 		// these ports will get verified in test/integration/inject
 		"--set", "proxyInit.ignoreInboundPorts=" + skippedInboundPortsEscaped,
 		"--set", "identityTrustDomain=cluster.local",
@@ -521,6 +537,11 @@ func TestInstallHelm(t *testing.T) {
 func TestControlPlaneResourcesPostInstall(t *testing.T) {
 	expectedServices := linkerdSvcEdge
 	expectedDeployments := testutil.LinkerdDeployReplicasEdge
+	if !TestHelper.ExternalPrometheus() {
+		expectedServices = append(expectedServices, testutil.Service{Namespace: "linkerd-viz", Name: "prometheus"})
+		expectedDeployments["prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1, Containers: []string{}}
+	}
+
 	// Upgrade Case
 	if TestHelper.UpgradeHelmFromVersion() != "" {
 		expectedServices = linkerdSvcStable
@@ -761,7 +782,7 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 		}
 	}
 
-	timeout := time.Minute
+	timeout := time.Minute * 5
 	err := TestHelper.RetryFor(timeout, func() error {
 		if cliVersionOverride != "" {
 			cliVOverride := []string{"--cli-version-override", cliVersionOverride}
@@ -824,6 +845,10 @@ func TestCheckPostInstall(t *testing.T) {
 func TestCheckViz(t *testing.T) {
 	cmd := []string{"viz", "check", "--wait=0"}
 	golden := "check.viz.golden"
+	if TestHelper.ExternalPrometheus() {
+		golden = "check.viz.external-prometheus.golden"
+	}
+
 	timeout := time.Minute
 	err := TestHelper.RetryFor(timeout, func() error {
 		out, err := TestHelper.LinkerdRun(cmd...)
@@ -854,7 +879,7 @@ func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 }
 
 func TestInstallSP(t *testing.T) {
-	cmd := []string{"install-sp"}
+	cmd := []string{"diagnostics", "install-sp"}
 
 	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
@@ -1024,7 +1049,11 @@ func TestCheckProxy(t *testing.T) {
 }
 
 func TestRestarts(t *testing.T) {
-	for deploy, spec := range testutil.LinkerdDeployReplicasEdge {
+	expectedDeployments := testutil.LinkerdDeployReplicasEdge
+	if !TestHelper.ExternalPrometheus() {
+		expectedDeployments["prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1, Containers: []string{}}
+	}
+	for deploy, spec := range expectedDeployments {
 		if err := TestHelper.CheckPods(context.Background(), spec.Namespace, deploy, spec.Replicas); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)

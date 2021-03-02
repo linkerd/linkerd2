@@ -11,7 +11,7 @@ import (
 
 const (
 	// ExtensionName is the value that the viz extension resources should be labeled with
-	ExtensionName = "linkerd-viz"
+	ExtensionName = "viz"
 
 	vizChartName            = "linkerd-viz"
 	defaultLinkerdNamespace = "linkerd"
@@ -70,16 +70,17 @@ func NewCmdViz() *cobra.Command {
 	vizCmd.PersistentFlags().StringArrayVar(&impersonateGroup, "as-group", []string{}, "Group to impersonate for Kubernetes operations")
 	vizCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 	vizCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
+	vizCmd.AddCommand(NewCmdCheck())
+	vizCmd.AddCommand(NewCmdDashboard())
+	vizCmd.AddCommand(NewCmdEdges())
 	vizCmd.AddCommand(newCmdInstall())
+	vizCmd.AddCommand(newCmdList())
+	vizCmd.AddCommand(newCmdProfile())
 	vizCmd.AddCommand(NewCmdRoutes())
 	vizCmd.AddCommand(NewCmdStat())
 	vizCmd.AddCommand(NewCmdTap())
 	vizCmd.AddCommand(NewCmdTop())
-	vizCmd.AddCommand(NewCmdEdges())
-	vizCmd.AddCommand(NewCmdDashboard())
 	vizCmd.AddCommand(newCmdUninstall())
-	vizCmd.AddCommand(newCmdProfile())
-	vizCmd.AddCommand(NewCmdCheck())
 
 	return vizCmd
 }

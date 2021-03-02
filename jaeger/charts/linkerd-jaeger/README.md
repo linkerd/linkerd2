@@ -11,7 +11,7 @@ OpenCensus and Jaeger.
 
 ## Quickstart and documentation
 
-You can run Linkerd on any Kubernetes 1.13+ cluster in a matter of seconds. See
+You can run Linkerd on any Kubernetes 1.16+ cluster in a matter of seconds. See
 the [Linkerd Getting Started Guide][getting-started] for how.
 
 For more comprehensive documentation, start with the [Linkerd
@@ -61,7 +61,7 @@ helm install linkerd/linkerd-jaeger
 
 ## Requirements
 
-Kubernetes: `>=1.13.0-0`
+Kubernetes: `>=1.16.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
@@ -86,7 +86,7 @@ Kubernetes: `>=1.13.0-0`
 | webhook.crtPEM | string | `""` | if empty, Helm will auto-generate these fields |
 | webhook.externalSecret | bool | `false` |  |
 | webhook.failurePolicy | string | `"Ignore"` |  |
-| webhook.image.name | string | `"ghcr.io/linkerd/jaeger-webhook"` |  |
+| webhook.image.name | string | `"cr.l5d.io/linkerd/jaeger-webhook"` |  |
 | webhook.image.pullPolicy | string | `"IfNotPresent"` |  |
 | webhook.image.version | string | `"linkerdVersionValue"` |  |
 | webhook.keyPEM | string | `""` |  |

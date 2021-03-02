@@ -169,6 +169,11 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	}
 
 	reports := []inject.Report{*report}
+	// Injection of services depends on being able to retrieve the namespace
+	// annotations which can only occur in the proxy injector webhook.
+	if conf.IsService() {
+		return bytes, reports, nil
+	}
 
 	if conf.IsService() {
 		opaquePortsAnnotations := map[string]string{}
@@ -205,7 +210,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		conf.AppendPodAnnotations(rt.overrideAnnotations)
 	}
 
-	patchJSON, err := conf.GetPatch(rt.injectProxy)
+	patchJSON, err := conf.GetPodPatch(rt.injectProxy)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -330,8 +335,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 
 	for _, r := range reports {
 		if b, _ := r.Injectable(); b {
-			verb := "injected"
-			output.Write([]byte(fmt.Sprintf("%s \"%s\" %s\n", r.Kind, r.Name, verb)))
+			output.Write([]byte(fmt.Sprintf("%s \"%s\" injected\n", r.Kind, r.Name)))
 		} else {
 			if r.Kind != "" {
 				output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.Kind, r.Name)))

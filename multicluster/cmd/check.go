@@ -26,10 +26,10 @@ import (
 
 const (
 	// MulticlusterExtensionName is the name of the multicluster extension
-	MulticlusterExtensionName = "linkerd-multicluster"
+	MulticlusterExtensionName = "multicluster"
 
 	// linkerdMulticlusterExtensionCheck adds checks related to the multicluster extension
-	linkerdMulticlusterExtensionCheck healthcheck.CategoryID = MulticlusterExtensionName
+	linkerdMulticlusterExtensionCheck healthcheck.CategoryID = "linkerd-multicluster"
 
 	linkerdServiceMirrorServiceAccountName = "linkerd-service-mirror-%s"
 	linkerdServiceMirrorComponentName      = "service-mirror"
@@ -96,6 +96,10 @@ non-zero exit code.`,
 	}
 	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
 	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
+	cmd.Flags().Bool("proxy", false, "")
+	cmd.Flags().MarkHidden("proxy")
+	cmd.Flags().StringP("namespace", "n", "", "")
+	cmd.Flags().MarkHidden("namespace")
 	return cmd
 }
 

@@ -1,5 +1,85 @@
 # Changes
 
+## edge-21.2.4
+
+This edge is a release candidate for `stable-2.10.0`! It wraps up the functional
+changes planned for the upcoming stable release. We hope you can help us test
+this in your staging clusters so that we can address anything unexpected before
+an official stable.
+
+This release introduces support for CLI extensions. The Linkerd `check` command
+will now invoke each extension's `check` command so that users can check the
+health of their Linkerd installation and extensions with one command. Additional
+documentation will follow for developers interested in creating extensions.
+
+Additionally, there is no longer a default list of ports skipped by the proxy.
+These ports have been moved to opaque ports, meaning protocols like MySQL will
+be encrypted by default and without user input.
+
+* Cleaned up entries in `values.yaml` by removing `do not edit` entries; they
+  are now hardcoded in the templates
+* Added the count of service profiles installed in a cluster to the Heartbeat
+  metrics
+* Fixed CLI commands which would unnecessarily print usage instructions after
+  encountering API errors (thanks @piyushsingariya!)
+* Fixed the `install` command so that it errors after detecting there is an
+  existing Linkerd installation in the cluster
+* Changed the identity controller to receive the trust anchor via environment
+  variable instead of by flag; this allows the certificate to be loaded from a
+  config map or secret (thanks @mgoltzsche!)
+* Updated the proxy to use TLS version 1.3; support for TLS 1.2 remains enabled
+  for compatibility with prior proxy versions
+* The opaque ports annotation is now supported on services and enables users to
+  use this annotation on mirrored services in multicluster installations
+* Reverted the renaming of the `mirror.linkerd.io` label
+* Ports `25,443,587,3306,5432,11211` have been removed from the default skip
+  ports; all traffic through those ports is now proxied and handled opaquely by
+  default
+* Errors configuring the firewall in CNI are propagated so that they can be
+  handled by the user
+* Removed Viz extension warnings from the `check --proxy` command when tap is
+  not configured for pods; this is now handled by the `viz tap` command
+* Added support for CLI extensions as well as ensuring their `check` commands
+  are invoked by Linkerd's `check` command
+* Moved the `metrics`, `endpoints`, and `install-sp` commands into subcommands
+  under the `diagnostics` command.
+* Removed the `linkerd-` prefix from non-cluster scoped resources in the Viz and
+  Jaeger extensions
+* Added the linkerd-await helper to all Linkerd containers so that the proxy can
+  initialize before the components start making outbound connections
+* Removed the `tcp_connection_duration_ms` histogram from the metrics export to
+  fix high cardinality issues that surfaced through high memory usage
+
+## edge-21.2.3
+
+This release wraps up most of the functional changes planned for the upcoming
+`stable-2.10.0` release. Try this edge release in your staging cluster and
+let us know if you see anything unexpected!
+
+* **Breaking change**: Changed the multicluster `Service`-export annotation
+  from `mirror.linkerd.io/exported` to `multicluster.linkerd.io/export`
+* Updated the proxy-injector to to set the `config.linkerd.io/opaque-ports`
+  annotation on newly-created `Service` objects when the annotation is set on
+  its parent `Namespace`
+* Updated the proxy-injector to ignore pods that have disabled
+  `automountServiceAccountToken` (thanks @jimil749)
+* Updated the proxy to log warnings when control plane components are
+  unresolveable
+* Updated the Destination controller to cache node topology metadata (thanks
+  @fpetkovski)
+* Updated the CLI to handle API errors without printing the CLI usage (thanks
+  @piyushsingariya)
+* Updated the Web UI to only display the "Gateway" sidebar link when the
+  multicluster extension is active
+* Fixed the Web UI on Chrome v88 (thanks @kellycampbell)
+* Improved `install` and `uninstall` behavior for extensions to prevent
+  control-plane components from being left in a broken state
+* Docker images are now hosted on the `cr.l5d.io` registry
+* Updated base docker images to buster-20210208-slim
+* Updated the Go version to 1.14.15
+* Updated the proxy to prevent outbound connections to localhost to protect
+  against traffic loops
+
 ## edge-21.2.2
 
 This edge release introduces support for multicluster TCP!

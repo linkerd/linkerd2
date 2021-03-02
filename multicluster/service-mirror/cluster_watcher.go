@@ -170,10 +170,15 @@ func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceLabels() map[string]s
 }
 
 func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceAnnotations(remoteService *corev1.Service) map[string]string {
-	return map[string]string{
+	annotations := map[string]string{
 		consts.RemoteResourceVersionAnnotation: remoteService.ResourceVersion, // needed to detect real changes
 		consts.RemoteServiceFqName:             fmt.Sprintf("%s.%s.svc.%s", remoteService.Name, remoteService.Namespace, rcsw.link.TargetClusterDomain),
 	}
+	value, ok := remoteService.GetAnnotations()[consts.ProxyOpaquePortsAnnotation]
+	if ok {
+		annotations[consts.ProxyOpaquePortsAnnotation] = value
+	}
+	return annotations
 }
 
 func (rcsw *RemoteClusterServiceWatcher) mirrorNamespaceIfNecessary(ctx context.Context, namespace string) error {

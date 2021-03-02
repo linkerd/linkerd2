@@ -30,6 +30,7 @@ type TestHelper struct {
 	upgradeFromVersion string
 	clusterDomain      string
 	externalIssuer     bool
+	externalPrometheus bool
 	multicluster       bool
 	uninstall          bool
 	cni                bool
@@ -84,12 +85,11 @@ var LinkerdDeployReplicasStable = map[string]DeploySpec{
 var LinkerdDeployReplicasEdge = map[string]DeploySpec{
 	"linkerd-controller":     {"linkerd", 1, []string{"public-api"}},
 	"linkerd-destination":    {"linkerd", 1, []string{"destination"}},
-	"linkerd-tap":            {"linkerd-viz", 1, []string{"tap"}},
-	"linkerd-grafana":        {"linkerd-viz", 1, []string{}},
+	"tap":                    {"linkerd-viz", 1, []string{"tap"}},
+	"grafana":                {"linkerd-viz", 1, []string{}},
 	"linkerd-identity":       {"linkerd", 1, []string{"identity"}},
-	"linkerd-prometheus":     {"linkerd-viz", 1, []string{}},
 	"linkerd-sp-validator":   {"linkerd", 1, []string{"sp-validator"}},
-	"linkerd-web":            {"linkerd-viz", 1, []string{"web"}},
+	"web":                    {"linkerd-viz", 1, []string{"web"}},
 	"linkerd-proxy-injector": {"linkerd", 1, []string{"proxy-injector"}},
 }
 
@@ -111,6 +111,7 @@ func NewGenericTestHelper(
 	helmMulticlusterReleaseName,
 	helmMulticlusterChart string,
 	externalIssuer,
+	externalPrometheus,
 	multicluster,
 	cni,
 	calico,
@@ -133,14 +134,15 @@ func NewGenericTestHelper(
 			releaseName:             helmReleaseName,
 			upgradeFromVersion:      upgradeFromVersion,
 		},
-		clusterDomain:    clusterDomain,
-		externalIssuer:   externalIssuer,
-		uninstall:        uninstall,
-		cni:              cni,
-		calico:           calico,
-		httpClient:       httpClient,
-		multicluster:     multicluster,
-		KubernetesHelper: kubernetesHelper,
+		clusterDomain:      clusterDomain,
+		externalIssuer:     externalIssuer,
+		externalPrometheus: externalPrometheus,
+		uninstall:          uninstall,
+		cni:                cni,
+		calico:             calico,
+		httpClient:         httpClient,
+		multicluster:       multicluster,
+		KubernetesHelper:   kubernetesHelper,
 	}
 }
 
@@ -173,6 +175,7 @@ func NewTestHelper() *TestHelper {
 	upgradeFromVersion := flag.String("upgrade-from-version", "", "when specified, the upgrade test uses it as the base version of the upgrade")
 	clusterDomain := flag.String("cluster-domain", "cluster.local", "when specified, the install test uses a custom cluster domain")
 	externalIssuer := flag.Bool("external-issuer", false, "when specified, the install test uses it to install linkerd with --identity-external-issuer=true")
+	externalPrometheus := flag.Bool("external-prometheus", false, "when specified, the install test uses an external prometheus")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
 	upgradeHelmFromVersion := flag.String("upgrade-helm-from-version", "", "Indicate a version of the Linkerd helm chart from which the helm installation is being upgraded")
@@ -221,12 +224,13 @@ func NewTestHelper() *TestHelper {
 			multiclusterReleaseName: *multiclusterHelmReleaseName,
 			upgradeFromVersion:      *upgradeHelmFromVersion,
 		},
-		clusterDomain:  *clusterDomain,
-		externalIssuer: *externalIssuer,
-		cni:            *cni,
-		calico:         *calico,
-		uninstall:      *uninstall,
-		certsPath:      *certsPath,
+		clusterDomain:      *clusterDomain,
+		externalIssuer:     *externalIssuer,
+		externalPrometheus: *externalPrometheus,
+		cni:                *cni,
+		calico:             *calico,
+		uninstall:          *uninstall,
+		certsPath:          *certsPath,
 	}
 
 	version, err := testHelper.LinkerdRun("version", "--client", "--short")
@@ -317,6 +321,11 @@ func (h *TestHelper) UpgradeHelmFromVersion() string {
 // ExternalIssuer determines whether linkerd should be installed with --identity-external-issuer
 func (h *TestHelper) ExternalIssuer() bool {
 	return h.externalIssuer
+}
+
+// ExternalPrometheus determines whether linkerd should be installed with --set prometheusUrl
+func (h *TestHelper) ExternalPrometheus() bool {
+	return h.externalPrometheus
 }
 
 // Multicluster determines whether multicluster components should be installed

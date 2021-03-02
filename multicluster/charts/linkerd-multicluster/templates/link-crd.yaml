@@ -6,8 +6,10 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: links.multicluster.linkerd.io
+  labels:
+    linkerd.io/extension: multicluster
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
 spec:
   group: multicluster.linkerd.io
   versions:

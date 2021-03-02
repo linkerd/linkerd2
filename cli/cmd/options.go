@@ -509,8 +509,11 @@ func validateValues(ctx context.Context, k *k8s.KubernetesAPI, values *l5dcharts
 		}
 	}
 
-	if errs := validation.IsDNS1123Subdomain(values.IdentityTrustDomain); len(errs) > 0 {
-		return fmt.Errorf("invalid trust domain '%s': %s", values.IdentityTrustDomain, errs[0])
+	// Validate only if its not empty
+	if values.IdentityTrustDomain != "" {
+		if errs := validation.IsDNS1123Subdomain(values.IdentityTrustDomain); len(errs) > 0 {
+			return fmt.Errorf("invalid trust domain '%s': %s", values.IdentityTrustDomain, errs[0])
+		}
 	}
 
 	err := validateProxyValues(values)

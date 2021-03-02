@@ -11,7 +11,7 @@ for your microservices — with no code change required.
 
 ## Quickstart and documentation
 
-You can run Linkerd on any Kubernetes 1.13+ cluster in a matter of seconds. See
+You can run Linkerd on any Kubernetes 1.16+ cluster in a matter of seconds. See
 the [Linkerd Getting Started Guide][getting-started] for how.
 
 For more comprehensive documentation, start with the [Linkerd
@@ -116,7 +116,7 @@ extensions:
 
 ## Requirements
 
-Kubernetes: `>=1.13.0-0`
+Kubernetes: `>=1.16.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
@@ -131,35 +131,30 @@ Kubernetes: `>=1.13.0-0`
 | cniEnabled | bool | `false` | enabling this omits the NET_ADMIN capability in the PSP and the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed |
 | controlPlaneTracing | bool | `false` | enables control plane tracing |
 | controlPlaneTracingNamespace | string | `"linkerd-jaeger"` | namespace to send control plane traces to |
-| controllerComponentLabel | string | `"linkerd.io/control-plane-component"` | Control plane label. Do not edit |
-| controllerImage | string | `"ghcr.io/linkerd/controller"` | Docker image for the controller and identity components |
+| controllerImage | string | `"cr.l5d.io/linkerd/controller"` | Docker image for the controller and identity components |
 | controllerLogFormat | string | `"plain"` | Log format for the control plane components |
 | controllerLogLevel | string | `"info"` | Log level for the control plane components |
-| controllerNamespaceLabel | string | `"linkerd.io/control-plane-ns"` | Control plane label. Do not edit |
 | controllerReplicas | int | `1` | Number of replicas for each control plane pod |
 | controllerUID | int | `2103` | User ID for the control plane components |
-| createdByAnnotation | string | `"linkerd.io/created-by"` | Annotation label for the proxy create. Do not edit. |
-| debugContainer.image.name | string | `"ghcr.io/linkerd/debug"` | Docker image for the debug container |
-| debugContainer.image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the debug container Docker image |
-| debugContainer.image.version | string | `"linkerdVersionValue"` | Tag for the debug container Docker image |
+| debugContainer.image.name | string | `"cr.l5d.io/linkerd/debug"` | Docker image for the debug container |
+| debugContainer.image.pullPolicy | string | imagePullPolicy | Pull policy for the debug container Docker image |
+| debugContainer.image.version | string | linkerdVersion | Tag for the debug container Docker image |
 | disableHeartBeat | bool | `false` | Set to true to not start the heartbeat cronjob |
 | enableEndpointSlices | bool | `false` | enables the use of EndpointSlice informers for the destination service; enableEndpointSlices should be set to true only if EndpointSlice K8s feature gate is on; the feature is still experimental. |
 | enableH2Upgrade | bool | `true` | Allow proxies to perform transparent HTTP/2 upgrading |
 | heartbeatSchedule | string | `"0 0 * * *"` | Config for the heartbeat cronjob |
 | identity.issuer.clockSkewAllowance | string | `"20s"` | Amount of time to allow for clock skew within a Linkerd cluster |
 | identity.issuer.crtExpiry | string | `nil` | Expiration timestamp for the issuer certificate. It must be provided during install. Must match the expiry date in crtPEM |
-| identity.issuer.crtExpiryAnnotation | string | `"linkerd.io/identity-issuer-expiry"` | Annotation used to identity the issuer certificate expiration timestamp. Do not edit. |
 | identity.issuer.issuanceLifetime | string | `"24h0m0s"` | Amount of time for which the Identity issuer should certify identity |
 | identity.issuer.scheme | string | `"linkerd.io/tls"` |  |
 | identity.issuer.tls | object | `{"crtPEM":"","keyPEM":""}` | Which scheme is used for the identity issuer secret format |
 | identity.issuer.tls.crtPEM | string | `""` | Issuer certificate (ECDSA). It must be provided during install. |
 | identity.issuer.tls.keyPEM | string | `""` | Key for the issuer certificate (ECDSA). It must be provided during install |
 | identityTrustAnchorsPEM | string | `""` | Trust root certificate (ECDSA). It must be provided during install. |
-| identityTrustDomain | string | `"cluster.local"` | Trust domain used for identity |
+| identityTrustDomain | string | clusterDomain | Trust domain used for identity |
 | imagePullPolicy | string | `"IfNotPresent"` | Docker image pull policy |
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
 | installNamespace | bool | `true` | Set to false when installing Linkerd in a custom namespace. See the [Linkerd documentation](https://linkerd.io/2/tasks/install-helmcustomizing-the-namespace) for more information. |
-| linkerdNamespaceLabel | string | `"linkerd.io/is-control-plane"` | Control plane label. Do not edit |
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
 | namespace | string | `"linkerd"` | Control plane namespace |
 | nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
@@ -173,12 +168,13 @@ Kubernetes: `>=1.13.0-0`
 | profileValidator.namespaceSelector | object | `{"matchExpressions":[{"key":"config.linkerd.io/admission-webhooks","operator":"NotIn","values":["disabled"]}]}` | Namespace selector used by admission webhook |
 | proxy.cores | int | `0` | The `cpu.limit` and `cores` should be kept in sync. The value of `cores` must be an integer and should typically be set by rounding up from the limit. E.g. if cpu.limit is '1500m', cores should be 2. |
 | proxy.enableExternalProfiles | bool | `false` | Enable service profiles for non-Kubernetes services |
-| proxy.image.name | string | `"ghcr.io/linkerd/proxy"` | Docker image for the proxy |
-| proxy.image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the proxy container Docker image |
-| proxy.image.version | string | `"linkerdVersionValue"` | Tag for the proxy container Docker image |
+| proxy.image.name | string | `"cr.l5d.io/linkerd/proxy"` | Docker image for the proxy |
+| proxy.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy container Docker image |
+| proxy.image.version | string | linkerdVersion | Tag for the proxy container Docker image |
 | proxy.inboundConnectTimeout | string | `"100ms"` | Maximum time allowed for the proxy to establish an inbound TCP connection |
 | proxy.logFormat | string | `"plain"` | Log format (`plain` or `json`) for the proxy |
 | proxy.logLevel | string | `"warn,linkerd=info"` | Log level for the proxy |
+| proxy.opaquePorts | string | `"25,443,587,3306,5432,11211"` | Default set of opaque ports - SMTP (25,587) server-first - HTTPS (443) opaque TLS - MYSQL (3306) server-first - PostgreSQL (5432) server-first - Memcached (11211) clients do not issue any preamble, which breaks detection |
 | proxy.outboundConnectTimeout | string | `"1000ms"` | Maximum time allowed for the proxy to establish an outbound TCP connection |
 | proxy.ports.admin | int | `4191` | Admin port for the proxy container |
 | proxy.ports.control | int | `4190` | Control port for the proxy container |
@@ -192,26 +188,21 @@ Kubernetes: `>=1.13.0-0`
 | proxy.uid | int | `2102` | User id under which the proxy runs |
 | proxy.waitBeforeExitSeconds | int | `0` | If set the proxy sidecar will stay alive for at least the given period before receiving SIGTERM signal from Kubernetes but no longer than pod's `terminationGracePeriodSeconds`. See [Lifecycle hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks) for more info on container lifecycle hooks. |
 | proxyInit.closeWaitTimeoutSecs | int | `0` |  |
-| proxyInit.ignoreInboundPorts | string | `"25,443,587,3306,11211"` | Default set of ports to skip via itpables: - SMTP (25,587) server-first - HTTPS (443) opaque TLS - MYSQL (3306) server-first - Memcached (11211) clients do not issue any preamble, which breaks detection |
-| proxyInit.ignoreOutboundPorts | string | `"25,443,587,3306,11211"` | Default set of ports to skip via itpables, same defaults as InboudPorts |
-| proxyInit.image.name | string | `"ghcr.io/linkerd/proxy-init"` | Docker image for the proxy-init container |
-| proxyInit.image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the proxy-init container Docker image |
-| proxyInit.image.version | string | `"v1.3.8"` | Tag for the proxy-init container Docker image |
+| proxyInit.image.name | string | `"cr.l5d.io/linkerd/proxy-init"` | Docker image for the proxy-init container |
+| proxyInit.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy-init container Docker image |
+| proxyInit.image.version | string | `"v1.3.9"` | Tag for the proxy-init container Docker image |
 | proxyInit.resources.cpu.limit | string | `"100m"` | Maximum amount of CPU units that the proxy-init container can use |
 | proxyInit.resources.cpu.request | string | `"10m"` | Amount of CPU units that the proxy-init container requests |
 | proxyInit.resources.memory.limit | string | `"50Mi"` | Maximum amount of memory that the proxy-init container can use |
 | proxyInit.resources.memory.request | string | `"10Mi"` | Amount of memory that the proxy-init container requests |
 | proxyInit.xtMountPath.mountPath | string | `"/run"` |  |
 | proxyInit.xtMountPath.name | string | `"linkerd-proxy-init-xtables-lock"` |  |
-| proxyInjectAnnotation | string | `"linkerd.io/inject"` | Annotation label to signal injection. Do not edit. |
-| proxyInjectDisabled | string | `"disabled"` | Annotation value to disable injection. Do not edit. |
 | proxyInjector.caBundle | string | `""` | Bundle of CA certificates for proxy injector. If not provided then Helm will use the certificate generated  for `proxyInjector.crtPEM`. If `proxyInjector.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
 | proxyInjector.crtPEM | string | `""` | Certificate for the proxy injector. If not provided then Helm will generate one. |
 | proxyInjector.externalSecret | bool | `false` | Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `proxyInjector.caBundle` must be set (see below) |
 | proxyInjector.keyPEM | string | `""` | Certificate key for the proxy injector. If not provided then Helm will generate one. |
 | proxyInjector.namespaceSelector | object | `{"matchExpressions":[{"key":"config.linkerd.io/admission-webhooks","operator":"NotIn","values":["disabled"]}]}` | Namespace selector used by admission webhook. If not set defaults to all namespaces without the annotation config.linkerd.io/admission-webhooks=disabled |
 | webhookFailurePolicy | string | `"Ignore"` | Failure policy for the proxy injector |
-| workloadNamespaceLabel | string | `"linkerd.io/workload-ns"` |  |
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.4.0](https://github.com/norwoodj/helm-docs/releases/v1.4.0)

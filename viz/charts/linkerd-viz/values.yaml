@@ -5,22 +5,21 @@
 # Fields that should be common with the core control plane
 
 # -- control plane version. See Proxy section for proxy version
-linkerdVersion: &linkerd_version linkerdVersionValue
+linkerdVersion: linkerdVersionValue
 # -- Kubernetes DNS Domain name to use
-clusterDomain: &cluster_domain cluster.local
+clusterDomain: cluster.local
 # -- Trust domain used for identity
-identityTrustDomain: *cluster_domain
-#  Annotation labels. Do not edit.
-createdByAnnotation: linkerd.io/created-by
-proxyInjectAnnotation: linkerd.io/inject
-extensionAnnotation: linkerd.io/extension
+# @default -- clusterDomain
+identityTrustDomain: ""
 
 # -- Docker registry for all viz components
-defaultRegistry: &registry ghcr.io/linkerd
+defaultRegistry: cr.l5d.io/linkerd
+# -- Docker imagePullPolicy for all viz components
+defaultImagePullPolicy: IfNotPresent
 # -- Log level for all the viz components
-defaultLogLevel: &log_level info
+defaultLogLevel: info
 # -- UID for all the viz components
-defaultUID: &uid 2103
+defaultUID: 2103
 
 # -- Namespace of the Linkerd core control-plane install
 linkerdNamespace: linkerd
@@ -64,16 +63,20 @@ metricsAPI:
   # -- number of replicas of the metrics-api component
   replicas: 1
   # -- log level of the metrics-api component
-  logLevel: *log_level
+  # @default -- defaultLogLevel
+  logLevel: ""
   image:
     # -- Docker registry for the metrics-api component
-    registry: ghcr.io/linkerd
+    # @default -- defaultRegistry
+    registry: ""
     # -- Docker image name for the metrics-api component
     name: metrics-api
     # -- Docker image tag for the metrics-api component
-    tag: *linkerd_version
+    # @default -- linkerdVersion
+    tag: ""
     # -- Pull policy for the metrics-api component
-    pullPolicy: Always
+    # @default -- defaultImagePullPolicy
+    pullPolicy: ""
 
   resources:
     cpu:
@@ -92,21 +95,28 @@ metricsAPI:
     # into the metrics-api component
     # resources:
 
-  UID: *uid
+  # -- UID for the metrics-api resource
+  UID:
 
 # tap configuration
 tap:
     # -- Number of tap component replicas
   replicas: 1
   # -- log level of the tap component
-  logLevel: *log_level
+  # @default -- defaultLogLevel
+  logLevel: ""
   image:
     # -- Docker registry for the tap instance
-    registry: *registry
+    # @default -- defaultRegistry
+    registry: ""
     # -- Docker image name for the tap instance
     name: tap
     # -- Docker image tag for the tap instance
-    tag: *linkerd_version
+    # @default -- linkerdVersion
+    tag: ""
+    # -- Pull policy for the tap component
+    # @default -- defaultImagePullPolicy
+    pullPolicy: ""
   # -- Do not create a secret resource for the Tap component. If this is set to
   # `true`, the value `tap.caBundle` must be set (see below).
   externalSecret: false
@@ -141,8 +151,8 @@ tap:
     # into the tap component
     # resources:
 
-  # UID for the dashboard resource
-  UID: *uid
+  # -- UID for the dashboard resource
+  UID:
 
 # tapInjector configuration
 tapInjector:
@@ -153,11 +163,17 @@ tapInjector:
   logLevel: ""
   image:
     # -- Docker registry for the tapInjector instance
-    registry: *registry
+    # @default -- defaultRegistry
+    registry: ""
     # -- Docker image name for the tapInjector instance
     name: tap
     # -- Docker image tag for the tapInjector instance
-    tag: *linkerd_version
+    # @default -- linkerdVersion
+    tag: ""
+    # -- Pull policy for the tapInjector component
+    # @default -- defaultImagePullPolicy
+    pullPolicy: ""
+
   namespaceSelector:
     # matchExpressions:
     # - key: runlevel
@@ -166,7 +182,8 @@ tapInjector:
   objectSelector:
     # matchLabels:
     #   foo: bar
-  UID: *uid
+  # -- UID for the tapInjector resource
+  UID: 
   failurePolicy: Ignore
   resources:
     cpu:
@@ -206,17 +223,23 @@ dashboard:
   # -- Number of replicas of dashboard
   replicas: 1
   # -- log level of the dashboard component
-  logLevel: *log_level
+  # @default -- defaultLogLevel
+  logLevel: ""
   image:
     # -- Docker registry for the web instance
-    registry: *registry
+    # @default -- defaultRegistry
+    registry: ""
     # -- Docker image name for the web instance
     name: web
     # -- Docker image tag for the web instance
-    tag: *linkerd_version
+    # @default -- linkerdVersion
+    tag: ""
+    # -- Pull policy for the  web component
+    # @default -- defaultImagePullPolicy
+    pullPolicy: ""
 
-  # UID for the dashboard resource
-  UID: *uid
+  # -- UID for the dashboard resource
+  UID:
 
   # -- Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check
   restrictPrivileges: false
@@ -247,11 +270,16 @@ grafana:
   enabled: true
   image:
     # -- Docker registry for the grafana instance
-    registry: *registry
+    # @default -- defaultRegistry
+    registry: ""
     # -- Docker image name for the grafana instance
     name: grafana
     # -- Docker image tag for the grafana instance
-    tag: *linkerd_version
+    # @default -- linkerdVersion
+    tag: ""
+    # -- Pull policy for the grafana instance
+    # @default -- defaultImagePullPolicy
+    pullPolicy: ""
 
   resources:
     cpu:
@@ -281,14 +309,17 @@ prometheus:
     # -- Docker image tag for the prometheus instance
     tag: v2.19.3
     # -- Pull policy for the prometheus instance
-    pullPolicy: Always
+    # @default -- defaultImagePullPolicy
+    pullPolicy: ""
 
+  # -- log level of the prometheus instance
+  # @default -- defaultLogLevel
+  logLevel: ""
   # -- Command line options for Prometheus binary
   args:
     storage.tsdb.path: /data
     storage.tsdb.retention.time: 6h
     config.file: /etc/prometheus/prometheus.yml
-    log.level: *log_level
   # -- The global configuration specifies parameters that are valid in all other
   # configuration contexts.
   globalConfig:
