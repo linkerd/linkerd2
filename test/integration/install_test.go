@@ -798,7 +798,9 @@ func TestOverridesSecret(t *testing.T) {
 			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["issuanceLifetime"] = "15s"
 			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["scheme"] = "kubernetes.io/tls"
 		} else {
-			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["crtExpiry"] = panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "crtExpiry"}...)
+			if !TestHelper.Multicluster() {
+				knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["crtExpiry"] = panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "crtExpiry"}...)
+			}
 			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["tls"] = map[string]interface{}{
 				"crtPEM": panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "tls", "crtPEM"}...),
 				"keyPEM": panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "tls", "keyPEM"}...),
