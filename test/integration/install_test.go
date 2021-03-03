@@ -702,29 +702,26 @@ func TestOverridesSecret(t *testing.T) {
 	configOverridesSecret, err := TestHelper.KubernetesHelper.GetSecret(context.Background(), TestHelper.GetLinkerdNamespace(), "linkerd-config-overrides")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "could not retrieve linkerd-config-overrides",
-			"could not retrieve linkerd-config-overrides\n%s", err.Error())
+			"could not retrieve linkerd-config-overrides\n%s", err)
 	}
 
 	overrides := configOverridesSecret.Data["linkerd-config-overrides"]
 	overridesTree, err := tree.BytesToTree(overrides)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "could not retrieve linkerd-config-overrides",
-			"could not retrieve linkerd-config-overrides\n%s", err.Error())
+			"could not retrieve linkerd-config-overrides\n%s", err)
 	}
 
 	// Check for fields that were added during install
 	testCases := []struct {
-		tree  tree.Tree
 		path  []string
 		value string
 	}{
 		{
-			overridesTree,
 			[]string{"controllerLogLevel"},
 			"debug",
 		},
 		{
-			overridesTree,
 			[]string{"proxyInit", "ignoreInboundPorts"},
 			skippedInboundPorts,
 		},
@@ -733,14 +730,12 @@ func TestOverridesSecret(t *testing.T) {
 	// Check for fields that were added during upgrade
 	if TestHelper.UpgradeFromVersion() != "" {
 		testCases = append(testCases, []struct {
-			tree  tree.Tree
 			path  []string
 			value string
 		}{
 			{
-				overridesTree,
 				[]string{"proxyInit", "ignoreOutboundPorts"},
-				"1234,5678",
+				skippedOutboundPorts,
 			},
 		}...)
 	}
@@ -748,10 +743,10 @@ func TestOverridesSecret(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%s: %s", strings.Join(tc.path, "/"), tc.value), func(t *testing.T) {
-			finalValue, err := tc.tree.GetString(tc.path...)
+			finalValue, err := overridesTree.GetString(tc.path...)
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "could not perform tree.GetString",
-					"could not perform tree.GetString\n%s", err.Error())
+					"could not perform tree.GetString\n%s", err)
 			}
 
 			if tc.value != finalValue {
@@ -762,11 +757,11 @@ func TestOverridesSecret(t *testing.T) {
 		})
 	}
 
-	panicIfError := func(t *testing.T, f func(...string) (string, error), path ...string) string {
-		val, err := f(path...)
+	extractValue := func(t *testing.T, path ...string) string {
+		val, err := overridesTree.GetString(path...)
 		if err != nil {
-			testutil.AnnotatedFatalf(t, err.Error(),
-				err.Error(), err.Error())
+			testutil.AnnotatedFatalf(t, "error calling overridesTree.GetString()",
+				"error calling overridesTree.GetString(): %s", err)
 			return ""
 
 		}
@@ -779,15 +774,15 @@ func TestOverridesSecret(t *testing.T) {
 			"identity": map[string]interface{}{
 				"issuer": map[string]interface{}{},
 			},
-			"identityTrustAnchorsPEM": panicIfError(t, overridesTree.GetString, []string{"identityTrustAnchorsPEM"}...),
+			"identityTrustAnchorsPEM": extractValue(t, "identityTrustAnchorsPEM"),
 			"proxyInit": map[string]interface{}{
-				"ignoreInboundPorts": "1234,5678",
+				"ignoreInboundPorts": skippedInboundPorts,
 			},
 		}
 
 		// Check for fields that were added during upgrade
 		if TestHelper.UpgradeFromVersion() != "" {
-			knownKeys["proxyInit"].(map[string]interface{})["ignoreOutboundPorts"] = "1234,5678"
+			knownKeys["proxyInit"].(map[string]interface{})["ignoreOutboundPorts"] = skippedOutboundPorts
 		}
 
 		if TestHelper.GetClusterDomain() != "cluster.local" {
@@ -799,11 +794,11 @@ func TestOverridesSecret(t *testing.T) {
 			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["scheme"] = "kubernetes.io/tls"
 		} else {
 			if !TestHelper.Multicluster() {
-				knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["crtExpiry"] = panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "crtExpiry"}...)
+				knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["crtExpiry"] = extractValue(t, "identity", "issuer", "crtExpiry")
 			}
 			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["tls"] = map[string]interface{}{
-				"crtPEM": panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "tls", "crtPEM"}...),
-				"keyPEM": panicIfError(t, overridesTree.GetString, []string{"identity", "issuer", "tls", "keyPEM"}...),
+				"crtPEM": extractValue(t, "identity", "issuer", "tls", "crtPEM"),
+				"keyPEM": extractValue(t, "identity", "issuer", "tls", "keyPEM"),
 			}
 		}
 
@@ -812,7 +807,7 @@ func TestOverridesSecret(t *testing.T) {
 		}
 
 		if match, _ := regexp.Match("(stable)-([0-9]+.[0-9]+.[0-9]+)", []byte(TestHelper.UpgradeFromVersion())); !match {
-			knownKeys["heartbeatSchedule"] = panicIfError(t, overridesTree.GetString, []string{"heartbeatSchedule"}...)
+			knownKeys["heartbeatSchedule"] = extractValue(t, "heartbeatSchedule")
 		}
 
 		// Check if the keys in overridesTree match with knownKeys
