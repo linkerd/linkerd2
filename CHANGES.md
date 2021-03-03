@@ -91,33 +91,33 @@ TCP traffic in the Multicluster extension.
 
 This release includes changes from a massive list of contributors. A special
 thank-you to everyone who helped make this release possible:
-[Lutz Behnke](https://github.com/cypherfox),
-[Björn Wenzel](https://github.com/DaspawnW),
-[Filip Petkovski](https://github.com/fpetkovski),
-[Simon Weald](https://github.com/glitchcrab),
-[GMarkfjard](https://github.com/GMarkfjard),
-[hodbn](https://github.com/hodbn),
-[Hu Shuai](https://github.com/hs0210),
-[Jimil Desai](https://github.com/jimil749),
-[jiraguha](https://github.com/jiraguha),
-[Joakim Roubert](https://github.com/joakimr-axis),
-[Josh Soref](https://github.com/jsoref),
-[Kelly Campbell](https://github.com/kellycampbell),
-[Matei David](https://github.com/mateiidavid),
-[Mayank Shah](https://github.com/mayankshah1607),
-[Max Goltzsche](https://github.com/mgoltzsche),
-[Mitch Hulscher](https://github.com/mhulscher),
-[Eugene Formanenko](https://github.com/mo4islona),
-[Nathan J Mehl](https://github.com/n-oden),
-[Nicolas Lamirault](https://github.com/nlamirault),
-[Oleh Ozimok](https://github.com/oleh-ozimok),
-[Piyush Singariya](https://github.com/piyushsingariya),
-[Naga Venkata Pradeep Namburi](https://github.com/pradeepnnv),
-[rish-onesignal](https://github.com/rish-onesignal),
-[Shai Katz](https://github.com/shaikatz),
-[Takumi Sue](https://github.com/tkms0106),
-[Raphael Taylor-Davies](https://github.com/tustvold),
-and [Yashvardhan Kukreja](https://github.com/yashvardhan-kukreja)
+[Lutz Behnke](https://github.com/cypherfox)
+[Björn Wenzel](https://github.com/DaspawnW)
+[Filip Petkovski](https://github.com/fpetkovski)
+[Simon Weald](https://github.com/glitchcrab)
+[GMarkfjard](https://github.com/GMarkfjard)
+[hodbn](https://github.com/hodbn)
+[Hu Shuai](https://github.com/hs0210)
+[Jimil Desai](https://github.com/jimil749)
+[jiraguha](https://github.com/jiraguha)
+[Joakim Roubert](https://github.com/joakimr-axis)
+[Josh Soref](https://github.com/jsoref)
+[Kelly Campbell](https://github.com/kellycampbell)
+[Matei David](https://github.com/mateiidavid)
+[Mayank Shah](https://github.com/mayankshah1607)
+[Max Goltzsche](https://github.com/mgoltzsche)
+[Mitch Hulscher](https://github.com/mhulscher)
+[Eugene Formanenko](https://github.com/mo4islona)
+[Nathan J Mehl](https://github.com/n-oden)
+[Nicolas Lamirault](https://github.com/nlamirault)
+[Oleh Ozimok](https://github.com/oleh-ozimok)
+[Piyush Singariya](https://github.com/piyushsingariya)
+[Naga Venkata Pradeep Namburi](https://github.com/pradeepnnv)
+[rish-onesignal](https://github.com/rish-onesignal)
+[Shai Katz](https://github.com/shaikatz)
+[Takumi Sue](https://github.com/tkms0106)
+[Raphael Taylor-Davies](https://github.com/tustvold)
+[Yashvardhan Kukreja](https://github.com/yashvardhan-kukreja)
 
 ## edge-21.2.4
 
