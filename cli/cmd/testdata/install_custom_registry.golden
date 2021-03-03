@@ -1617,6 +1617,7 @@ spec:
         - -enable-endpoint-slices=false
         - -cluster-domain=cluster.local
         - -identity-trust-domain=cluster.local
+        - -default-opaque-ports=25,443,587,3306,5432,11211
         image: my.custom.registry/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

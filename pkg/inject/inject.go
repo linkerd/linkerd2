@@ -916,7 +916,7 @@ func (conf *ResourceConfig) IsNamespace() bool {
 	return strings.ToLower(conf.workload.metaType.Kind) == k8s.Namespace
 }
 
-//IsService checks if a given config is a workload of Kind service
+// IsService checks if a given config is a workload of Kind service
 func (conf *ResourceConfig) IsService() bool {
 	return strings.ToLower(conf.workload.metaType.Kind) == k8s.Service
 }
@@ -928,6 +928,29 @@ func (conf *ResourceConfig) InjectNamespace(annotations map[string]string) ([]by
 		return nil, errors.New("can't inject namespace. Type assertion failed")
 	}
 	ns.Annotations[k8s.ProxyInjectAnnotation] = k8s.ProxyInjectEnabled
+	//For overriding annotations
+	if len(annotations) > 0 {
+		for annotation, value := range annotations {
+			ns.Annotations[annotation] = value
+		}
+	}
+
+	j, err := getFilteredJSON(ns)
+	if err != nil {
+		return nil, err
+	}
+	return yaml.JSONToYAML(j)
+}
+
+// AnnotateService returns a Service with the appropriate annotations
+// Currently, a `Service` may only need the `config.linkerd.io/opaque-ports` annotation via `inject`
+// See - https://github.com/linkerd/linkerd2/pull/5721
+func (conf *ResourceConfig) AnnotateService(annotations map[string]string) ([]byte, error) {
+	ns, ok := conf.workload.obj.(*corev1.Service)
+	if !ok {
+		return nil, errors.New("can't inject service. Type assertion failed")
+	}
+
 	//For overriding annotations
 	if len(annotations) > 0 {
 		for annotation, value := range annotations {

@@ -106,7 +106,7 @@ jobs:
         - helm-upgrade
         - multicluster
         - uninstall
-        - upgrade-edge
+        #- upgrade-edge
         - upgrade-stable
         - cni-calico-deep
     needs: [docker_build]

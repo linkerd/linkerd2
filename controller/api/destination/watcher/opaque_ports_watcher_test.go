@@ -88,6 +88,15 @@ func (bopl *testOpaquePortsListener) UpdateService(ports map[uint32]struct{}) {
 }
 
 func TestOpaquePortsWatcher(t *testing.T) {
+	defaultOpaquePorts := map[uint32]struct{}{
+		25:    {},
+		443:   {},
+		587:   {},
+		3306:  {},
+		5432:  {},
+		11211: {},
+	}
+
 	for _, tt := range []struct {
 		name                string
 		initialState        []string
@@ -176,7 +185,7 @@ func TestOpaquePortsWatcher(t *testing.T) {
 		if err != nil {
 			t.Fatalf("NewFakeAPI returned an error: %s", err)
 		}
-		watcher := NewOpaquePortsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+		watcher := NewOpaquePortsWatcher(k8sAPI, logging.WithField("test", t.Name()), defaultOpaquePorts)
 		k8sAPI.Sync(nil)
 		listener := newTestOpaquePortsListener()
 		watcher.Subscribe(tt.service, listener)
