@@ -7,13 +7,13 @@ import {
   tapQueryProps,
   tapResourceTypes,
 } from './util/TapUtils.jsx';
+import Accordion from '@material-ui/core/Accordion';
+import AccordionDetails from '@material-ui/core/AccordionDetails';
+import AccordionSummary from '@material-ui/core/AccordionSummary';
 import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import ExpansionPanel from '@material-ui/core/ExpansionPanel';
-import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails';
-import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary';
 import FormControl from '@material-ui/core/FormControl';
 import FormHelperText from '@material-ui/core/FormHelperText';
 import Grid from '@material-ui/core/Grid';
@@ -356,25 +356,25 @@ class TapQueryForm extends React.Component {
                 inputProps={{ name: 'authority', id: 'authority' }}
                 className={classes.selectEmpty}>
                 {
-                _map(autocomplete.authority, (d, i) => (
-                  <MenuItem key={`authority-${i}`} value={d}>{d}</MenuItem>
-                ))
-              }
+                  _map(autocomplete.authority, (d, i) => (
+                    <MenuItem key={`authority-${i}`} value={d}>{d}</MenuItem>
+                  ))
+                }
               </Select>
               <FormHelperText><Trans>formAuthorityHelpText</Trans></FormHelperText>
             </FormControl>
           </Grid>
           <Grid item xs={6} md={3} className={classes.formControlWrapper}>
-            { this.renderTextInput(<Trans>formPath</Trans>, 'path', <Trans>formPathHelpText</Trans>) }
+            {this.renderTextInput(<Trans>formPath</Trans>, 'path', <Trans>formPathHelpText</Trans>)}
           </Grid>
         </Grid>
 
         <Grid container spacing={3}>
           <Grid item xs={6} md={3} className={classes.formControlWrapper}>
-            { this.renderTextInput(<Trans>formScheme</Trans>, 'scheme', <Trans>formSchemeHelpText</Trans>) }
+            {this.renderTextInput(<Trans>formScheme</Trans>, 'scheme', <Trans>formSchemeHelpText</Trans>)}
           </Grid>
           <Grid item xs={6} md={3} className={classes.formControlWrapper}>
-            { this.renderTextInput(<Trans>formMaxRPS</Trans>, 'maxRps', <Trans>formMaxRPSHelpText {defaultMaxRps}</Trans>) }
+            {this.renderTextInput(<Trans>formMaxRPS</Trans>, 'maxRps', <Trans>formMaxRPSHelpText {defaultMaxRps}</Trans>)}
           </Grid>
           <Grid item xs={6} md={3} className={classes.formControlWrapper}>
             <FormControl className={classes.formControl}>
@@ -385,10 +385,10 @@ class TapQueryForm extends React.Component {
                 inputProps={{ name: 'method', id: 'method' }}
                 className={classes.selectEmpty}>
                 {
-                _map(httpMethods, d => (
-                  <MenuItem key={`method-${d}`} value={d}>{d}</MenuItem>
-                ))
-              }
+                  _map(httpMethods, d => (
+                    <MenuItem key={`method-${d}`} value={d}>{d}</MenuItem>
+                  ))
+                }
               </Select>
               <FormHelperText><Trans>formHTTPMethodHelpText</Trans></FormHelperText>
             </FormControl>
@@ -403,17 +403,17 @@ class TapQueryForm extends React.Component {
     const { advancedFormExpanded } = this.state;
 
     return (
-      <ExpansionPanel expanded={advancedFormExpanded} onChange={this.handleAdvancedFormExpandClick} elevation={3}>
-        <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />}>
+      <Accordion expanded={advancedFormExpanded} onChange={this.handleAdvancedFormExpandClick} elevation={3}>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Typography variant="caption" gutterBottom>
             {advancedFormExpanded ? <Trans>formHideFilters</Trans> : <Trans>formShowFilters</Trans>}
           </Typography>
-        </ExpansionPanelSummary>
+        </AccordionSummary>
 
-        <ExpansionPanelDetails>
+        <AccordionDetails>
           {this.renderAdvancedTapFormContent()}
-        </ExpansionPanelDetails>
-      </ExpansionPanel>
+        </AccordionDetails>
+      </Accordion>
     );
   }
 
@@ -438,7 +438,7 @@ class TapQueryForm extends React.Component {
             </Grid>
 
             <Grid item>
-              { this.renderTapButton(tapRequestInProgress, tapIsClosing) }
+              {this.renderTapButton(tapRequestInProgress, tapIsClosing)}
               <Button onClick={this.resetTapForm} disabled={tapRequestInProgress} className={classes.resetButton}>
                 <Trans>buttonReset</Trans>
               </Button>
@@ -448,7 +448,7 @@ class TapQueryForm extends React.Component {
 
         <QueryToCliCmd cmdName={cmdName} query={query} resource={query.resource} />
 
-        { !enableAdvancedForm ? null : this.renderAdvancedTapForm() }
+        {!enableAdvancedForm ? null : this.renderAdvancedTapForm()}
 
       </Card>
     );
