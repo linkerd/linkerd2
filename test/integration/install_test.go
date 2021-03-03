@@ -726,7 +726,7 @@ func TestOverridesSecret(t *testing.T) {
 		{
 			overridesTree,
 			[]string{"proxyInit", "ignoreInboundPorts"},
-			"1234,5678",
+			skippedInboundPorts,
 		},
 	}
 
