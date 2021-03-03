@@ -45,6 +45,8 @@ metadata:
   namespace: {{ .Values.namespace }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
+  labels:
+    linkerd.io/extension: viz
 type: kubernetes.io/tls
 data:
   tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tapInjector.crtPEM)) (empty .Values.tapInjector.crtPEM) }}

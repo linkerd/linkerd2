@@ -169,9 +169,14 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	}
 
 	reports := []inject.Report{*report}
-	// Injection of services depends on being able to retrieve the namespace
-	// annotations which can only occur in the proxy injector webhook.
+
 	if conf.IsService() {
+		opaquePortsAnnotations := map[string]string{}
+		if opaquePorts, ok := rt.overrideAnnotations[k8s.ProxyOpaquePortsAnnotation]; ok {
+			opaquePortsAnnotations[k8s.ProxyOpaquePortsAnnotation] = opaquePorts
+			b, err := conf.AnnotateService(opaquePortsAnnotations)
+			return b, reports, err
+		}
 		return bytes, reports, nil
 	}
 
@@ -204,6 +209,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if err != nil {
 		return nil, nil, err
 	}
+
 	if len(patchJSON) == 0 {
 		return bytes, reports, nil
 	}
@@ -323,9 +329,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	}
 
 	for _, r := range reports {
-		if r.Kind == k8s.Service {
-			output.Write([]byte(fmt.Sprintf("service \"%s\" skipped\n", r.Name)))
-		} else if b, _ := r.Injectable(); b {
+		if b, _ := r.Injectable(); b {
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" injected\n", r.Kind, r.Name)))
 		} else {
 			if r.Kind != "" {
@@ -342,13 +346,14 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 
 func fetchConfigs(ctx context.Context) (*linkerd2.Values, error) {
 
-	api.CheckPublicAPIClientOrExit(healthcheck.Options{
+	api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		Impersonate:           impersonate,
 		ImpersonateGroup:      impersonateGroup,
 		KubeContext:           kubeContext,
 		APIAddr:               apiAddr,
+		RetryDeadline:         time.Time{},
 	})
 
 	api, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
@@ -391,6 +396,9 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 	}
 	if proxy.Ports.Outbound != baseProxy.Ports.Outbound {
 		overrideAnnotations[k8s.ProxyOutboundPortAnnotation] = fmt.Sprintf("%d", proxy.Ports.Outbound)
+	}
+	if proxy.OpaquePorts != baseProxy.OpaquePorts {
+		overrideAnnotations[k8s.ProxyOpaquePortsAnnotation] = proxy.OpaquePorts
 	}
 
 	if proxy.Image.Name != baseProxy.Image.Name {

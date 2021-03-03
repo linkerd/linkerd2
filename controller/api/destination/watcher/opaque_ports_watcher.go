@@ -7,7 +7,6 @@ import (
 	"github.com/linkerd/linkerd2-proxy-init/ports"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	labels "github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/opaqueports"
 	"github.com/linkerd/linkerd2/pkg/util"
 	log "github.com/sirupsen/logrus"
 	logging "github.com/sirupsen/logrus"
@@ -20,9 +19,10 @@ type (
 	// opaque ports annotation is added to a service, the watcher will update
 	// listeners—if any—subscribed to that service.
 	OpaquePortsWatcher struct {
-		subscriptions map[ServiceID]*svcSubscriptions
-		k8sAPI        *k8s.API
-		log           *logging.Entry
+		subscriptions      map[ServiceID]*svcSubscriptions
+		k8sAPI             *k8s.API
+		log                *logging.Entry
+		defaultOpaquePorts map[uint32]struct{}
 		sync.RWMutex
 	}
 
@@ -39,11 +39,12 @@ type (
 
 // NewOpaquePortsWatcher creates a OpaquePortsWatcher and begins watching for
 // k8sAPI for service changes.
-func NewOpaquePortsWatcher(k8sAPI *k8s.API, log *logging.Entry) *OpaquePortsWatcher {
+func NewOpaquePortsWatcher(k8sAPI *k8s.API, log *logging.Entry, opaquePorts map[uint32]struct{}) *OpaquePortsWatcher {
 	opw := &OpaquePortsWatcher{
-		subscriptions: make(map[ServiceID]*svcSubscriptions),
-		k8sAPI:        k8sAPI,
-		log:           log.WithField("component", "opaque-ports-watcher"),
+		subscriptions:      make(map[ServiceID]*svcSubscriptions),
+		k8sAPI:             k8sAPI,
+		log:                log.WithField("component", "opaque-ports-watcher"),
+		defaultOpaquePorts: opaquePorts,
 	}
 	k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    opw.addService,
@@ -69,7 +70,7 @@ func (opw *OpaquePortsWatcher) Subscribe(id ServiceID, listener OpaquePortsUpdat
 	// and no opaque ports
 	if !ok {
 		opw.subscriptions[id] = &svcSubscriptions{
-			opaquePorts: opaqueports.DefaultOpaquePorts,
+			opaquePorts: opw.defaultOpaquePorts,
 			listeners:   []OpaquePortsUpdateListener{listener},
 		}
 		return nil
@@ -121,7 +122,7 @@ func (opw *OpaquePortsWatcher) addService(obj interface{}) {
 	// If the opaque ports annotation was not set, then set the service's
 	// opaque ports to the default value.
 	if !ok {
-		opaquePorts = opaqueports.DefaultOpaquePorts
+		opaquePorts = opw.defaultOpaquePorts
 	}
 	ss, ok := opw.subscriptions[id]
 	// If there are no subscriptions for this service, create one with the
@@ -172,7 +173,7 @@ func (opw *OpaquePortsWatcher) deleteService(obj interface{}) {
 		return
 	}
 	old := ss.opaquePorts
-	ss.opaquePorts = opaqueports.DefaultOpaquePorts
+	ss.opaquePorts = opw.defaultOpaquePorts
 	// Do not send an update if the service already had the default opaque ports
 	if portsEqual(old, ss.opaquePorts) {
 		return

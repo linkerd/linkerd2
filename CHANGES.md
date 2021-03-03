@@ -1,6 +1,6 @@
 # Changes
 
-## edge 21.2.4
+## edge-21.2.4
 
 This edge is a release candidate for `stable-2.10.0`! It wraps up the functional
 changes planned for the upcoming stable release. We hope you can help us test
