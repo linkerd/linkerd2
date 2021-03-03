@@ -1,5 +1,124 @@
 # Changes
 
+## stable-2.10.0
+
+This release introduces Linkerd extensions. The default control plane no longer
+includes Prometheus, Grafana, the dashboard, or several other components that
+previously shipped by default.  This results a much smaller and simpler set
+of core functionality.  Visibility and metrics functionality is now available
+in the Viz extension under the `linkerd viz` command.  Cross-cluster
+communication functionality is now available in the Multicluster extensions
+under the `linkerd multicluster` command.  Distributed tracing functionality is
+not available in the Jaeger extension under the `linkerd jaeger` command.
+
+This release also introduces the ability to mark certain ports as "opaque",
+indicating that the proxy should treat the traffic as opaque TCP instead of
+attempting protocol detection.  This allows the proxy to provide TCP metrics
+and mTLS for server-speaks-first protocols.  It also enables support for
+TCP traffic in the Multicluster extension.
+
+
+* Proxy
+  * Updated the proxy to use TLS version 1.3; support for TLS 1.2 remains
+    enabled for compatibility with prior proxy versions
+  * Improved support for server-speaks-first protocols by allowing ports to be
+    marked as opaque, causing the proxy to skip protocol detection.  Ports can
+    be marked as opaque by setting the `config.linkerd.io/opaque-ports`
+    annotation on the Pod and Service or by using the `--opaque-ports` flag with
+    `linkerd inject`
+  * Ports `25,443,587,3306,5432,11211` have been removed from the default skip
+    ports; all traffic through those ports is now proxied and handled opaquely
+    by default
+  * Fixed an issue that could cause the inbound proxy to fail meshed HTTP/1
+    requests from older proxies (from the stable-2.8.x vintage)
+  * Added a new `/shutdown` admin endpoint that may only be accessed over the
+    loopback network allowing batch jobs to gracefully terminate the proxy on
+    completion
+
+* Control Plane
+  * Removed all components and functionality related to visibility, tracing,
+    or multicluster.  These have been moved into extensions
+  * Changed the identity controller to receive the trust anchor via environment
+    variable instead of by flag; this allows the certificate to be loaded from a
+    config map or secret (thanks @mgoltzsche!)
+  * Added PodDisruptionBudgets to the control plane components so that they
+    cannot be all terminated at the same time during disruptions
+    (thanks @tustvold!)
+  * Added missing label to the `linkerd-config-overrides` secret to avoid
+    breaking upgrades performed with the help of `kubectl apply --prune`
+  * Fixed an issue where the `proxy-injector` and `sp-validator` did not refresh
+    their certs automatically when provided externally—like through cert-manager
+
+* CLI
+  * Changed the `check` command to include each installed extension's `check`
+    output; this allows users to check for proper configuration and installation
+    of Linkerd without running a command for each extension
+  * Moved the `metrics`, `endpoints`, and `install-sp` commands into subcommands
+    under the `diagnostics` command
+  * Added an `--opaque-ports` flag to `linkerd inject` to easily mark ports
+    as opaque.
+  * Added the `repair` command which will repopulate resources needed for
+    properly upgrading a Linkerd installation
+  * Added Helm-style `set`, `set-string`, `values`, `set-files` customization
+    flags for the `linkerd install` command
+  * Introduced the `linkerd identity` command, used to fetch the TLS certificates
+    for injected pods (thanks @jimil749)
+  * Removed the `get` and `logs` command from the CLI
+
+* Helm
+  * Changed many Helm values, please see the upgrade notes
+
+* Viz
+  * Updated the Web UI to only display the "Gateway" sidebar link when the
+    multicluster extension is active
+  * Added a `linkerd viz list` command to list pods with tap enabled
+  * Fixed an issue where the `tap` APIServer would not refresh its certs
+    automatically when provided externally—like through cert-manager
+
+* Multicluster
+  * Added support for cross-cluster TCP traffic
+  * Updated the service mirror controller to copy the
+    `config.linkerd.io/opaque-ports` annotation when mirroring services so that
+    cross-cluster traffic can be correctly handled as opaque
+  * Added support for multicluster gateways of types other than LoadBalancer
+    (thanks @DaspawnW!)
+
+* Jaeger
+  * Added a `linkerd jaeger list` command to list pods with tracing enabled
+
+* Other
+  * Docker images are now hosted on the `cr.l5d.io` registry
+
+This release includes changes from a massive list of contributors. A special
+thank-you to everyone who helped make this release possible:
+[Lutz Behnke](https://github.com/cypherfox),
+[Björn Wenzel](https://github.com/DaspawnW),
+[Filip Petkovski](https://github.com/fpetkovski),
+[Simon Weald](https://github.com/glitchcrab),
+[GMarkfjard](https://github.com/GMarkfjard),
+[hodbn](https://github.com/hodbn),
+[Hu Shuai](https://github.com/hs0210),
+[Jimil Desai](https://github.com/jimil749),
+[jiraguha](https://github.com/jiraguha),
+[Joakim Roubert](https://github.com/joakimr-axis),
+[Josh Soref](https://github.com/jsoref),
+[Kelly Campbell](https://github.com/kellycampbell),
+[Matei David](https://github.com/mateiidavid),
+[Mayank Shah](https://github.com/mayankshah1607),
+[Max Goltzsche](https://github.com/mgoltzsche),
+[Mitch Hulscher](https://github.com/mhulscher),
+[Eugene Formanenko](https://github.com/mo4islona),
+[Nathan J Mehl](https://github.com/n-oden),
+[Nicolas Lamirault](https://github.com/nlamirault),
+[Oleh Ozimok](https://github.com/oleh-ozimok),
+[Piyush Singariya](https://github.com/piyushsingariya),
+[Naga Venkata Pradeep Namburi](https://github.com/pradeepnnv),
+[rish-onesignal](https://github.com/rish-onesignal),
+[Shai Katz](https://github.com/shaikatz),
+[Takumi Sue](https://github.com/tkms0106),
+[Raphael Taylor-Davies](https://github.com/tustvold),
+and [Yashvardhan Kukreja](https://github.com/yashvardhan-kukreja)
+
 ## edge-21.2.4
 
 This edge is a release candidate for `stable-2.10.0`! It wraps up the functional
