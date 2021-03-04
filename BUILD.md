@@ -14,24 +14,43 @@ about testing from source can be found in the [TEST.md](TEST.md) guide.
 - [Components](#components)
 - [Development configurations](#development-configurations)
   - [Comprehensive](#comprehensive)
+    - [Deploying Control Plane components with Tracing](#deploying-control-plane-components-with-tracing)
   - [Publishing Images](#publishing-images)
   - [Go](#go)
+    - [A note about Go run](#a-note-about-go-run)
+    - [Lint](#lint)
+    - [Formatting](#formatting)
+    - [Building the CLI for development](#building-the-cli-for-development)
+    - [Running the control plane for development](#running-the-control-plane-for-development)
+    - [Running the Tap APIService for development](#running-the-tap-apiservice-for-development)
+    - [Generating CLI docs](#generating-cli-docs)
   - [Web](#web)
+    - [First time setup](#first-time-setup)
+    - [Run web standalone](#run-web-standalone)
+    - [Webpack dev server](#webpack-dev-server)
+    - [Javascript dependencies](#javascript-dependencies)
+    - [Translations](#translations)
   - [Rust](#rust)
+    - [Docker](#docker)
   - [Multi-architecture builds](#multi-architecture-builds)
 - [Dependencies](#dependencies)
   - [Updating protobuf dependencies](#updating-protobuf-dependencies)
   - [Updating ServiceProfile generated
     code](#updating-serviceprofile-generated-code)
-- [Helm Chart](#helm-chart)
+- [Linkerd Helm Chart](#linkerd-helm-chart)
+  - [Extensions Helm charts](#extensions-helm-charts)
+  - [Making changes to the chart templates](#making-changes-to-the-chart-templates)
+  - [Generating helm charts docs](#generating-helm-charts-docs)
+  - [Using helm-docs](#using-helm-docs)
+  - [Annotating values.yml](#annotating-values.yml)
+  - [Markdown templates](#markdown-templates)
 - [Build Architecture](#build-architecture)
-- [Generating CLI docs](#generating-cli-docs)
 
 ## Repo layout
 
 Linkerd2 is primarily written in Rust, Go, and React. At its core is a
-high-performance data plane written in Rust. The control plane components are
-written in Go. The dashboard UI is a React application.
+high-performance data plane written in Rust. The control plane components and
+its extensions are written in Go. The dashboard UI is a React application.
 
 ### Control Plane (Go/React)
 
@@ -40,11 +59,16 @@ written in Go. The dashboard UI is a React application.
 - [`controller`](controller)
   - [`destination`](controller/api/destination): Accepts requests from `proxy`
     instances and serves service discovery information.
-  - [`public-api`](controller/api/public): Accepts requests from API clients
-    such as `cli` and `web`, provides access to and control of the Linkerd2
-    service mesh.
-  - [`tap`](controller/tap): Provides a live pipeline of requests.
-- [`web`](web): Provides a UI dashboard to view and drive the control plane.
+  - [`proxy-injector`](controller/proxy-injector): Mutating webhook triggered by
+    pods creation, that injects the proxy container as a sidecar.
+  - [`identity`](controller/identity): Provides a CA to distribute certificates
+    to proxies for them to establish mTLS connections between them.
+- [`viz extension`](viz)
+  - ['metrics-api`](viz/metrics-api): Accepts requests from API clients such as
+    `cli` and `web`, serving metrics from the proxies in the cluster through
+    Prometheus queries.
+  - [`tap`](viz/tap): Provides a live pipeline of requests.
+  - [`web`](web): Provides a UI dashboard to view and drive the control plane.
   This component is written in Go and React.
 
 ### Data Plane (Rust)
@@ -70,30 +94,32 @@ linkerd2_components
 
     "cli" [color=lightblue];
     "destination" [color=lightblue];
-    "public-api" [color=lightblue];
+    "identity" [color=lightblue];
+    "metrics-api" [color=lightblue];
     "tap" [color=lightblue];
     "web" [color=lightblue];
 
     "proxy" [color=orange];
 
-    "cli" -> "public-api";
+    "cli" -> "metrics-api";
+    "cli" -> "tap";
 
-    "web" -> "public-api";
+    "web" -> "metrics-api";
+    "web" -> "tap";
     "web" -> "grafana";
 
-    "public-api" -> "tap";
-    "public-api" -> "kubernetes api";
-    "public-api" -> "prometheus";
+    "metrics-api" -> "prometheus";
 
-    "tap" -> "kubernetes api";
     "tap" -> "proxy";
 
     "proxy" -> "destination";
+    "proxy" -> "identity";
+
+    "identity" -> "kubernetes api"
 
     "destination" -> "kubernetes api";
 
     "grafana" -> "prometheus";
-    "prometheus" -> "kubernetes api";
     "prometheus" -> "proxy";
   }
 linkerd2_components
@@ -129,15 +155,17 @@ bin/image-load --k3d
 # install linkerd
 bin/linkerd install | kubectl apply -f -
 
+# wait for the core components to be ready, then install linkerd-viz
+bin/linkerd viz install | kubectl apply -f -
+
 # verify cli and server versions
 bin/linkerd version
 
 # validate installation
-kubectl --namespace=linkerd get all
 bin/linkerd check --expected-version $(bin/root-tag)
 
 # view linkerd dashboard
-bin/linkerd dashboard
+bin/linkerd viz dashboard
 
 # install the demo app
 curl https://run.linkerd.io/emojivoto.yml | bin/linkerd inject - | kubectl apply -f -
@@ -146,10 +174,10 @@ curl https://run.linkerd.io/emojivoto.yml | bin/linkerd inject - | kubectl apply
 kubectl -n emojivoto port-forward svc/web-svc 8080:80
 
 # view details per deployment
-bin/linkerd -n emojivoto stat deployments
+bin/linkerd viz -n emojivoto stat deployments
 
 # view a live pipeline of requests
-bin/linkerd -n emojivoto tap deploy voting
+bin/linkerd viz -n emojivoto tap deploy voting
 ```
 
 #### Deploying Control Plane components with Tracing
@@ -157,7 +185,8 @@ bin/linkerd -n emojivoto tap deploy voting
 Control Plane components have the `trace-collector` flag used to enable
 [Distributed Tracing](https://opentracing.io/docs/overview/what-is-tracing/) for
 development purposes. It can be enabled globally i.e Control plane components
-and their proxies by using the `--control-plane-tracing` installation flag.
+and their proxies by using the `--set controlPlaneTracing=true` installation
+flag.
 
 This will configure all the components to send the traces at
 `linkerd-collector.{{.Namespace}}.svc.{{.ClusterDomain}}:55678`
@@ -165,13 +194,11 @@ This will configure all the components to send the traces at
 ```bash
 
 # install Linkerd with tracing
-linkerd install --control-plane-tracing | kubectl apply -f -
+linkerd install --set controlPlaneTracing=true | kubectl apply -f -
 
-# install OpenCensus collector and Jaeger collector to collect traces
-linkerd inject https://gist.githubusercontent.com/Pothulapati/245842ce7f319e8bcd02521460684d6f/raw/52c869c58b07b17caeed520aa91380c2230d6e0c/linkerd-tracing.yaml --manual | kubectl apply -f -
+# install the Jaeger extension
+linkerd jaeger install | kubectl apply -f -
 ```
-
-*Note:* Collector instance has to be injected, for the proxy spans to show up.
 
 ### Publishing images
 
@@ -184,22 +211,11 @@ To signal `bin/docker-build` or any of the more specific scripts
 `DOCKER_REGISTRY` (which defaults to the official registry `cr.l5d.io/linkerd`).
 After having pushed those images through the usual means (`docker push`) you'll
 have to pass the `--registry` flag to `linkerd install` with a value  matching
-your registry.
+your registry. Extensions don't have that flag and instead you need to use the
+equivalent Helm value; e.g. for Viz `linkerd viz install --set
+defaultRegistry=...`.
 
 ### Go
-
-#### Go modules and dependencies
-
-This repo supports [Go Modules](https://github.com/golang/go/wiki/Modules), and
-is intended to be cloned outside the `GOPATH`, where Go Modules support is
-enabled by default in Go 1.11.
-
-If you are using this repo from within the `GOPATH`, activate module support
-with:
-
-```bash
-export GO111MODULE=on
-```
 
 #### A note about Go run
 
@@ -220,6 +236,14 @@ bin/go-run cli check
 ```
 
 That is equivalent to running `linkerd check` using the code on your branch.
+
+#### Lint
+
+To analyze and lint the Go code using golangci-lint, run:
+
+```bash
+bin/lint
+```
 
 #### Formatting
 
@@ -286,63 +310,6 @@ curl -k https://localhost:8089/apis/tap.linkerd.io/v1alpha1
 The [documentation](https://linkerd.io/2/cli/) for the CLI tool is partially
 generated from YAML. This can be generated by running the `linkerd doc` command.
 
-#### Updating templates
-
-When kubernetes templates change, several test fixtures usually need to be
-updated (in `cli/cmd/testdata/*.golden`). These golden files can be
-automatically regenerated with the command:
-
-```sh
-go test ./cli/cmd/... --update
-```
-
-#### Generating helm charts docs
-
-Whenever a new chart is created, or updated a readme should be generated from
-the chart's values.yml. This can be done by utilizing the bundled
-[helm-docs](https://github.com/norwoodj/helm-docs) binary. For adding additional
-information, such as specific installation instructions a readme template is
-required to be created. Check existing charts for example.
-
-##### Annotating values.yml
-
-To allow helm-docs to properly document the values in values.yml a descriptive
-comment is required. This can be done in two ways.
-Either comment the value directly above with
-`# -- This is a really nice value` where the double dashes automatically
-annotates the value. Another explicit usage is to type out the value name.
-`# global.MyNiceValue -- I really like this value`
-
-##### Using helm-docs
-
-Example usage:
-
-```sh
-bin/helm-docs
-bin/helm-docs --dry-run #Prints to cli instead
-bin/helm-docs --chart-search-root=./charts #Sets search root for charts
-bin/helm-docs --template-files=README.md.gotmpl #Sets the template file used
-```
-
-Note:
-The tool searches through the current directory and sub-directories by default.
-For additional information checkout their repo above.
-
-##### Markdown templates
-
-In order to accommodate for extra data that might not have a proper place in the
-´values.yaml´ file the corresponding ´README.md.gotmpl´ can be modified for each
-chart. This template allows the standard markdown syntax as well as the go
-templating functions. Checkout
-[helm-docs](https://github.com/norwoodj/helm-docs) for more info.
-
-##### Pretty-printed diffs for templated text
-
-When running `go test`, mismatched text is usually displayed as a compact diff.
-If you prefer to see the full text of the mismatch with colorized output, you
-can set the `LINKERD_TEST_PRETTY_DIFF` environment variable or run `go test
-./cli/cmd/... --pretty-diff`.
-
 ### Web
 
 This is a React app fronting a Go process. It uses webpack to bundle assets, and
@@ -393,7 +360,7 @@ To develop with a webpack dev server:
 2. Go to [http://localhost:7777](http://localhost:7777) to see everything
    running.
 
-#### Dependencies
+#### Javascript dependencies
 
 To add a JS dependency:
 
@@ -482,7 +449,7 @@ cd $GOPATH/src/github.com/linkerd/linkerd2
 bin/update-codegen.sh
 ```
 
-## Helm chart
+## Linkerd Helm chart
 
 The Linkerd control plane chart is located in the
 [`charts/linkerd2`](charts/linkerd2) folder. The [`charts/patch`](charts/patch)
@@ -504,10 +471,19 @@ bin/helm install charts/linkerd2
 This ensures that you use the same Helm version as that of the Linkerd CI
 system.
 
-For general instructions on how to install the chart check out the
+For general instructions on how to install the charts check out the
 [docs](https://linkerd.io/2/tasks/install-helm/). You also need to supply or
 generate your own certificates to use the chart, as explained
 [here](https://linkerd.io/2/tasks/generate-certificates/).
+
+### Extensions Helm charts
+
+Extensions provide each their own chart:
+
+- Viz: [`viz/charts/linkerd-viz`](viz/charts/linkerd-viz)
+- Multicluster:
+  [`multicluster/charts/linkerd-multicluster`](multicluster/charts/linkerd-multicluster)
+- Jaeger: [`jaeger/charts/linkerd-jaeger`](jaeger/charts/linkerd-jaeger)
 
 ### Making changes to the chart templates
 
@@ -516,6 +492,47 @@ Whenever you make changes to the files under
 [`charts/partials`](charts/partials), make sure to run
 [`bin/helm-build`](bin/helm-build) which will refresh the dependencies and lint
 the templates.
+
+### Generating helm charts docs
+
+Whenever a new chart is created, or updated a README should be generated from
+the chart's values.yml. This can be done by utilizing the bundled
+[helm-docs](https://github.com/norwoodj/helm-docs) binary. For adding additional
+information, such as specific installation instructions a README template is
+required to be created. Check existing charts for examples.
+
+#### Using helm-docs
+
+Example usage:
+
+```sh
+bin/helm-docs
+bin/helm-docs --dry-run #Prints to cli instead
+bin/helm-docs --chart-search-root=./charts #Sets search root for charts
+bin/helm-docs --template-files=README.md.gotmpl #Sets the template file used
+```
+
+Note:
+The tool searches through the current directory and sub-directories by default.
+For additional information checkout their repo above.
+
+#### Annotating values.yml
+
+To allow helm-docs to properly document the values in values.yml a descriptive
+comment is required. This can be done in two ways.
+Either comment the value directly above with
+`# -- This is a really nice value` where the double dashes automatically
+annotates the value. Another explicit usage is to type out the value name.
+`# global.MyNiceValue -- I really like this value`
+
+
+#### Markdown templates
+
+In order to accommodate for extra data that might not have a proper place in the
+´values.yaml´ file the corresponding ´README.md.gotmpl´ can be modified for each
+chart. This template allows the standard markdown syntax as well as the go
+templating functions. Checkout
+[helm-docs](https://github.com/norwoodj/helm-docs) for more info.
 
 ## Build Architecture
 
@@ -529,83 +546,164 @@ build_architecture
     rankdir=LR;
 
     "Dockerfile-proxy" [color=lightblue, style=filled, shape=rect];
-    "controller/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "cli/Dockerfile-bin" [color=lightblue, style=filled, shape=rect];
-    "grafana/Dockerfile" [color=lightblue, style=filled, shape=rect];
+    "controller/Dockerfile" [color=lightblue, style=filled, shape=rect];
+    "cni-plugin/Dockerfile" [color=lightblue, style=filled, shape=rect];
+    "Dockerfile-debug" [color=lightblue, style=filled, shape=rect];
     "web/Dockerfile" [color=lightblue, style=filled, shape=rect];
+    "viz/metrics-api/Dockerfile" [color=lightblue, style=filled, shape=rect];
+    "viz/tap/Dockerfile" [color=lightblue, style=filled, shape=rect];
+    "grafana/Dockerfile" [color=lightblue, style=filled, shape=rect];
+    "jaeger/injector/Dockerfile" [color=lightblue, style=filled, shape=rect];
 
     "_docker.sh" -> "_log.sh";
-    "_gcp.sh";
-    "_log.sh";
 
     "build-cli-bin" -> "_tag.sh";
-    "build-cli-bin" -> "root-tag";
+    "build-cli-bin" -> "_os.sh";
 
     "docker-build" -> "build-cli-bin";
     "docker-build" -> "docker-build-cli-bin";
-    "docker-build" -> "docker-build-controller";
-    "docker-build" -> "docker-build-grafana";
     "docker-build" -> "docker-build-proxy";
+    "docker-build" -> "docker-build-controller";
+    "docker-build" -> "docker-build-cni-plugin";
+    "docker-build" -> "docker-build-debug";
     "docker-build" -> "docker-build-web";
+    "docker-build" -> "docker-build-metrics-api";
+    "docker-build" -> "docker-build-tap";
+    "docker-build" -> "docker-build-grafana";
+    "docker-build" -> "docker-build-jaeger-webhook";
 
     "docker-build-cli-bin" -> "_docker.sh";
     "docker-build-cli-bin" -> "_tag.sh";
     "docker-build-cli-bin" -> "cli/Dockerfile-bin";
 
+    "docker-build-proxy" -> "_docker.sh";
+    "docker-build-proxy" -> "_tag.sh";
+    "docker-build-proxy" -> "Dockerfile-proxy";
+
     "docker-build-controller" -> "_docker.sh";
     "docker-build-controller" -> "_tag.sh";
     "docker-build-controller" -> "controller/Dockerfile";
+
+    "docker-build-cni-plugin" -> "_docker.sh";
+    "docker-build-cni-plugin" -> "_tag.sh";
+    "docker-build-cni-plugin" -> "cni-plugin/Dockerfile";
+
+    "docker-build-debug" -> "_docker.sh";
+    "docker-build-debug" -> "_tag.sh";
+    "docker-build-debug" -> "Dockerfile-debug";
+
+    "docker-build-web" -> "_docker.sh";
+    "docker-build-web" -> "_tag.sh";
+    "docker-build-web" -> "web/Dockerfile";
+
+    "docker-build-metrics-api" -> "_docker.sh";
+    "docker-build-metrics-api" -> "_tag.sh";
+    "docker-build-metrics-api" -> "viz/metrics-api/Dockerfile";
+
+    "docker-build-tap" -> "_docker.sh";
+    "docker-build-tap" -> "_tag.sh";
+    "docker-build-tap" -> "viz/tap/Dockerfile";
 
     "docker-build-grafana" -> "_docker.sh";
     "docker-build-grafana" -> "_tag.sh";
     "docker-build-grafana" -> "grafana/Dockerfile";
 
-    "docker-build-proxy" -> "_docker.sh";
-    "docker-build-proxy" -> "_tag.sh";
-    "docker-build-proxy" -> "Dockerfile-proxy";
+    "docker-jaeger-webhook" -> "_docker.sh";
+    "docker-jaeger-webhook" -> "_tag.sh";
+    "docker-jaeger-webhook" -> "jaeger/injector/Dockerfile";
 
-    "docker-build-web" -> "_docker.sh";
-    "docker-build-web" -> "_tag.sh";
-    "docker-build-web" -> "web/Dockerfile";
+    "docker-cache-prune";
 
     "docker-images" -> "_docker.sh";
     "docker-images" -> "_tag.sh";
 
     "docker-pull" -> "_docker.sh";
 
+    "docker-pull-binaries" -> "_docker.sh";
+
     "docker-push" -> "_docker.sh";
 
     "docker-retag-all" -> "_docker.sh";
 
+    "fmt";
+
     "go-run" -> ".gorun";
     "go-run" -> "root-tag";
+
+    "helm-build" -> "_tag.sh";
+    "helm-docs";
+    "helm-docs-diff" -> "helm-docs";
+
+    "image-load" -> "_docker.sh";
+    "image-load" -> "_tag.sh";
 
     "linkerd" -> "build-cli-bin";
 
     "lint";
 
-    "minikube-start-hyperv.bat";
+    "markdownlint";
 
-    "mkube";
+    "markdownlint-all";
 
     "protoc" -> ".protoc";
 
     "protoc-go.sh" -> "protoc";
 
+    "protoc-diff.sh" -> "protoc-go.sh";
+
+    "release";
+
     "root-tag" -> "_tag.sh";
+
+    "shellcheck-all";
 
     "test-cleanup";
 
     "test-run";
 
-    "workflow.yml" -> "_gcp.sh";
-    "workflow.yml" -> "_tag.sh";
-    "workflow.yml" -> "docker-build";
-    "workflow.yml" -> "docker-push";
-    "workflow.yml" -> "docker-retag-all";
-    "workflow.yml" -> "lint";
-
     "web" -> "go-run";
+
+    "static_checks.yml" -> "lint";
+    "static_checks.yml" -> "fmt";
+    "static_checks.yml" -> "protoc-diff";
+    "static_checks.yml" -> "shellcheck-all";
+    "static_checks.yml" -> "markdownlint-all";
+    "static_checks.yml" -> "helm-docs-diff";
+
+    "unit_tests.yml" -> "web"
+
+    "integration_tests.yml" -> "_tag.sh";
+    "integration_tests.yml" -> "_docker.sh";
+    "integration_tests.yml" -> "docker-build-proxy.sh";
+    "integration_tests.yml" -> "docker-build-controller.sh";
+    "integration_tests.yml" -> "docker-build-metrics-api.sh";
+    "integration_tests.yml" -> "docker-build-web.sh";
+    "integration_tests.yml" -> "docker-build-cni-plugin.sh";
+    "integration_tests.yml" -> "docker-build-debug.sh";
+    "integration_tests.yml" -> "docker-build-cli-bin.sh";
+    "integration_tests.yml" -> "docker-build-grafana.sh";
+    "integration_tests.yml" -> "docker-build-jaeger-webhook.sh";
+    "integration_tests.yml" -> "docker-build-tap.sh";
+    "integration_tests.yml" -> "docker-cache-prune";
+
+    "release.yml" -> "_tag.sh";
+    "release.yml" -> "_docker.sh";
+    "release.yml" -> "_release.sh";
+    "release.yml" -> "docker-build-proxy.sh";
+    "release.yml" -> "docker-build-controller.sh";
+    "release.yml" -> "docker-build-metrics-api.sh";
+    "release.yml" -> "docker-build-web.sh";
+    "release.yml" -> "docker-build-cni-plugin.sh";
+    "release.yml" -> "docker-build-debug.sh";
+    "release.yml" -> "docker-build-cli-bin.sh";
+    "release.yml" -> "docker-build-grafana.sh";
+    "release.yml" -> "docker-build-jaeger-webhook.sh";
+    "release.yml" -> "docker-build-tap.sh";
+    "release.yml" -> "docker-cache-prune";
+    "release.yml" -> "docker-pull-binaries";
+    "release.yml" -> "test-cleanup";
+    "release.yml" -> "helm-build";
   }
 build_architecture
 </details>
