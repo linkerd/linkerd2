@@ -370,7 +370,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 
 		if edge {
-			args = append(args, []string{"--set", fmt.Sprintf("proxyInit.ignoreOutboundPorts=\"%s\"", strings.Replace(skippedOutboundPorts, ",", "\\,", 1))}...)
+			args = append(args, []string{"--set", fmt.Sprintf("proxyInit.ignoreOutboundPorts=%s", strings.Replace(skippedOutboundPorts, ",", "\\,", 1))}...)
 		} else {
 			args = append(args, []string{"--skip-outbound-ports", skippedOutboundPorts}...)
 		}
