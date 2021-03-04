@@ -114,6 +114,7 @@ thank-you to everyone who helped make this release possible:
 [Takumi Sue](https://github.com/tkms0106)
 [Raphael Taylor-Davies](https://github.com/tustvold)
 [Yashvardhan Kukreja](https://github.com/yashvardhan-kukreja)
+
 ## edge-21.3.1
 
 This edge release is another release candidate, bringing us closer to
