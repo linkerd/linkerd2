@@ -4,12 +4,12 @@
 
 This release introduces Linkerd extensions. The default control plane no longer
 includes Prometheus, Grafana, the dashboard, or several other components that
-previously shipped by default.  This results a much smaller and simpler set
+previously shipped by default.  This results in a much smaller and simpler set
 of core functionality.  Visibility and metrics functionality is now available
 in the Viz extension under the `linkerd viz` command.  Cross-cluster
 communication functionality is now available in the Multicluster extensions
 under the `linkerd multicluster` command.  Distributed tracing functionality is
-not available in the Jaeger extension under the `linkerd jaeger` command.
+now available in the Jaeger extension under the `linkerd jaeger` command.
 
 This release also introduces the ability to mark certain ports as "opaque",
 indicating that the proxy should treat the traffic as opaque TCP instead of
@@ -44,10 +44,6 @@ TCP traffic in the Multicluster extension.
   * Added PodDisruptionBudgets to the control plane components so that they
     cannot be all terminated at the same time during disruptions
     (thanks @tustvold!)
-  * Added missing label to the `linkerd-config-overrides` secret to avoid
-    breaking upgrades performed with the help of `kubectl apply --prune`
-  * Fixed an issue where the `proxy-injector` and `sp-validator` did not refresh
-    their certs automatically when provided externally—like through cert-manager
 
 * CLI
   * Changed the `check` command to include each installed extension's `check`
@@ -60,7 +56,7 @@ TCP traffic in the Multicluster extension.
   * Added the `repair` command which will repopulate resources needed for
     properly upgrading a Linkerd installation
   * Added Helm-style `set`, `set-string`, `values`, `set-files` customization
-    flags for the `linkerd install` command
+    flags for the `linkerd install` and `linkerd upgrade` commands
   * Introduced the `linkerd identity` command, used to fetch the TLS certificates
     for injected pods (thanks @jimil749)
   * Removed the `get` and `logs` command from the CLI
