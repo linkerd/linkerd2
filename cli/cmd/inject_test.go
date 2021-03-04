@@ -92,6 +92,9 @@ func TestUninjectAndInject(t *testing.T) {
 	cniEnabledConfig := defaultConfig()
 	cniEnabledConfig.CNIEnabled = true
 
+	opaquePortsConfig := defaultConfig()
+	opaquePortsConfig.Proxy.OpaquePorts = "3000,5000-6000,mysql"
+
 	proxyIgnorePortsConfig := defaultConfig()
 	proxyIgnorePortsConfig.ProxyInit.IgnoreInboundPorts = "22,8100-8102"
 	proxyIgnorePortsConfig.ProxyInit.IgnoreOutboundPorts = "5432"
@@ -288,6 +291,13 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_pod.report",
 			injectProxy:      true,
 			testInjectConfig: proxyIgnorePortsConfig,
+		},
+		{
+			inputFileName:    "inject_emojivoto_deployment.input.yml",
+			goldenFileName:   "inject_emojivoto_deployment_opaque_ports.golden.yml",
+			reportFileName:   "inject_emojivoto_deployment_opaque_ports.report",
+			injectProxy:      true,
+			testInjectConfig: opaquePortsConfig,
 		},
 	}
 

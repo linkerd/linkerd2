@@ -642,7 +642,7 @@ func (h *TestHelper) WithDataPlaneNamespace(ctx context.Context, testName string
 			"failed to create %s namespace: %s", prefixedNs, err)
 	}
 	test(t, prefixedNs)
-	if err := h.deleteNamespaceIfExists(ctx, prefixedNs); err != nil {
+	if err := h.DeleteNamespaceIfExists(ctx, prefixedNs); err != nil {
 		AnnotatedFatalf(t, fmt.Sprintf("failed to delete %s namespace", prefixedNs),
 			"failed to delete %s namespace: %s", prefixedNs, err)
 	}

@@ -6,6 +6,7 @@ import QueryToCliCmd from './QueryToCliCmd.jsx';
 import React from 'react';
 import Tab from '@material-ui/core/Tab';
 import Tabs from '@material-ui/core/Tabs';
+import TapEnabledWarning from './TapEnabledWarning.jsx';
 import TopModule from './TopModule.jsx';
 import TopRoutesModule from './TopRoutesModule.jsx';
 import { Trans } from '@lingui/macro';
@@ -51,7 +52,10 @@ class TopRoutesTabs extends React.Component {
           query={topQuery}
           startTap
           updateUnmeshedSources={updateUnmeshedSources}
-          maxRowsToDisplay={10} />
+          maxRowsToDisplay={10}
+          tapEnabledWarningComponent={<TapEnabledWarning
+            resource={topQuery.resource}
+            namespace={topQuery.namespace} />} />
         <QueryToCliCmd cmdName="top" query={topQuery} resource={topQuery.resource} />
       </React.Fragment>
     );

@@ -85,48 +85,24 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			}))
 
 	checkers = append(checkers,
-		*healthcheck.NewChecker("collector pod is running").
-			WithHintAnchor("l5d-jaeger-collector-running").
+		*healthcheck.NewChecker("jaeger extension pods are running").
+			WithHintAnchor("l5d-jaeger-pods-running").
 			Fatal().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
-				// Check for Collector pod
-				podList, err := hc.KubeAPIClient().CoreV1().Pods(jaegerNamespace).List(ctx, metav1.ListOptions{LabelSelector: "component=collector"})
+				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, jaegerNamespace)
 				if err != nil {
 					return err
 				}
-				return healthcheck.CheckPodsRunning(podList.Items, fmt.Sprintf("No collector pods found in the %s namespace", jaegerNamespace))
-			}))
 
-	checkers = append(checkers,
-		*healthcheck.NewChecker("jaeger pod is running").
-			WithHintAnchor("l5d-jaeger-jaeger-running").
-			Fatal().
-			WithRetryDeadline(hc.RetryDeadline).
-			SurfaceErrorOnRetry().
-			WithCheck(func(ctx context.Context) error {
-				// Check for Jaeger pod
-				podList, err := hc.KubeAPIClient().CoreV1().Pods(jaegerNamespace).List(ctx, metav1.ListOptions{LabelSelector: "component=jaeger"})
+				// Check for relevant pods to be present
+				err = healthcheck.CheckForPods(pods, []string{"collector", "jaeger", "jaeger-injector"})
 				if err != nil {
 					return err
 				}
-				return healthcheck.CheckPodsRunning(podList.Items, fmt.Sprintf("No jaeger pods found in the %s namespace", jaegerNamespace))
-			}))
 
-	checkers = append(checkers,
-		*healthcheck.NewChecker("jaeger injector pod is running").
-			WithHintAnchor("l5d-jaeger-jaeger-running").
-			Fatal().
-			WithRetryDeadline(hc.RetryDeadline).
-			SurfaceErrorOnRetry().
-			WithCheck(func(ctx context.Context) error {
-				// Check for Jaeger Injector pod
-				podList, err := hc.KubeAPIClient().CoreV1().Pods(jaegerNamespace).List(ctx, metav1.ListOptions{LabelSelector: "component=jaeger-injector"})
-				if err != nil {
-					return err
-				}
-				return healthcheck.CheckPodsRunning(podList.Items, fmt.Sprintf("No jaeger injector pods found in the %s namespace", jaegerNamespace))
+				return healthcheck.CheckPodsRunning(pods, "")
 			}))
 
 	return healthcheck.NewCategory(linkerdJaegerExtensionCheck, checkers, true)
