@@ -65,7 +65,7 @@ its extensions are written in Go. The dashboard UI is a React application.
     to proxies for them to establish mTLS connections between them.
 - [`viz extension`](viz)
   - ['metrics-api`](viz/metrics-api): Accepts requests from API clients such as
-    `cli` and `web`, serving metrics from the proxies in the cluster through
+    cli and web, serving metrics from the proxies in the cluster through
     Prometheus queries.
   - [`tap`](viz/tap): Provides a live pipeline of requests.
   - [`web`](web): Provides a UI dashboard to view and drive the control plane.
@@ -524,7 +524,6 @@ Either comment the value directly above with
 `# -- This is a really nice value` where the double dashes automatically
 annotates the value. Another explicit usage is to type out the value name.
 `# global.MyNiceValue -- I really like this value`
-
 
 #### Markdown templates
 
