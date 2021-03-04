@@ -2,6 +2,7 @@ import { handlePageVisibility, withPageVisibility } from './util/PageVisibility.
 import ErrorBanner from './ErrorBanner.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import TapEnabledWarning from './TapEnabledWarning.jsx';
 import TapQueryForm from './TapQueryForm.jsx';
 import TopModule from './TopModule.jsx';
 import _each from 'lodash/each';
@@ -179,11 +180,14 @@ class Top extends React.Component {
           tapIsClosing={tapIsClosing}
           updateQuery={this.updateQuery}
           currentQuery={query} />
-
         <TopModule
           pathPrefix={pathPrefix}
           query={query}
           startTap={tapRequestInProgress}
+          tapEnabledWarningComponent={<TapEnabledWarning
+            resource={query.resource}
+            namespace={query.namespace}
+            cardComponent />}
           updateTapClosingState={this.updateTapClosingState} />
       </div>
     );

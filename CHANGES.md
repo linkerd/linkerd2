@@ -114,6 +114,29 @@ thank-you to everyone who helped make this release possible:
 [Takumi Sue](https://github.com/tkms0106)
 [Raphael Taylor-Davies](https://github.com/tustvold)
 [Yashvardhan Kukreja](https://github.com/yashvardhan-kukreja)
+## edge-21.3.1
+
+This edge release is another release candidate, bringing us closer to
+`stable-2.10.0`! It fixes the Helm install/upgrade procedure and ships some new
+CLI commands, among other improvements.
+
+* Fixed Helm install/upgrade, which was failing when not explicitly setting
+  `proxy.image.version`
+* Added a warning in the dashboard when viewing tap streams from resources that
+  don't have tap enabled
+* Added the command `linkerd viz list` to list meshed pods and indicate which can
+  be tapped, which need to be restarted before they can be tapped, and which
+  have tap disabled
+* Similarly, added the command `linkerd jaeger list` to list meshed pods and
+  indicate which will participate in tracing
+* Added the `--opaque-ports` flag to `linkerd inject` to specify the list of
+  opaque ports when injecting pods (and services)
+* Simplified the output of `linkerd jaeger check`, combining the checks for the
+  status of each component into a single check
+* Changed the destination component to receive the list of default opaque ports
+  set during install so that it's properly reflected during discovery
+* Moved the level of the proxy server's I/O-related "Connection closed" messages
+  from info to debug, which were not providing actionable information
 
 ## edge-21.2.4
 
