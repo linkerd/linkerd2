@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/pkg/tree"
 	"github.com/linkerd/linkerd2/testutil"
 )
 
@@ -84,6 +87,7 @@ var (
 	//skippedInboundPorts lists some ports to be marked as skipped, which will
 	// be verified in test/integration/inject
 	skippedInboundPorts       = "1234,5678"
+	skippedOutboundPorts      = "1234,5678"
 	multiclusterExtensionName = "multicluster"
 	vizExtensionName          = "viz"
 )
@@ -359,7 +363,17 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 
 		// prepare for stage 2
-		args = append([]string{"control-plane", "--addon-overwrite"}, args...)
+		args = append([]string{"control-plane"}, args...)
+		edge, err := regexp.Match(`(edge)-([0-9]+\.[0-9]+\.[0-9]+)`, []byte(TestHelper.UpgradeFromVersion()))
+		if err != nil {
+			testutil.AnnotatedFatal(t, "could not match regex", err)
+		}
+
+		if edge {
+			args = append(args, []string{"--set", fmt.Sprintf("proxyInit.ignoreOutboundPorts=%s", strings.Replace(skippedOutboundPorts, ",", "\\,", 1))}...)
+		} else {
+			args = append(args, []string{"--skip-outbound-ports", skippedOutboundPorts}...)
+		}
 	}
 
 	exec := append([]string{cmd}, args...)
@@ -660,6 +674,133 @@ func TestRetrieveUidPostUpgrade(t *testing.T) {
 			)
 		}
 	}
+}
+
+func TestOverridesSecret(t *testing.T) {
+
+	if TestHelper.GetHelmReleaseName() != "" {
+		t.Skip("Skipping as this is a helm test where linkerd-config-overrides is absent")
+	}
+
+	configOverridesSecret, err := TestHelper.KubernetesHelper.GetSecret(context.Background(), TestHelper.GetLinkerdNamespace(), "linkerd-config-overrides")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "could not retrieve linkerd-config-overrides",
+			"could not retrieve linkerd-config-overrides\n%s", err)
+	}
+
+	overrides := configOverridesSecret.Data["linkerd-config-overrides"]
+	overridesTree, err := tree.BytesToTree(overrides)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "could not retrieve linkerd-config-overrides",
+			"could not retrieve linkerd-config-overrides\n%s", err)
+	}
+
+	// Check for fields that were added during install
+	testCases := []struct {
+		path  []string
+		value string
+	}{
+		{
+			[]string{"controllerLogLevel"},
+			"debug",
+		},
+		{
+			[]string{"proxyInit", "ignoreInboundPorts"},
+			skippedInboundPorts,
+		},
+	}
+
+	// Check for fields that were added during upgrade
+	if TestHelper.UpgradeFromVersion() != "" {
+		testCases = append(testCases, []struct {
+			path  []string
+			value string
+		}{
+			{
+				[]string{"proxyInit", "ignoreOutboundPorts"},
+				skippedOutboundPorts,
+			},
+		}...)
+	}
+
+	for _, tc := range testCases {
+		tc := tc // pin
+		t.Run(fmt.Sprintf("%s: %s", strings.Join(tc.path, "/"), tc.value), func(t *testing.T) {
+			finalValue, err := overridesTree.GetString(tc.path...)
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "could not perform tree.GetString",
+					"could not perform tree.GetString\n%s", err)
+			}
+
+			if tc.value != finalValue {
+				testutil.AnnotatedFatalf(t, fmt.Sprintf("Values at path %s do not match", strings.Join(tc.path, "/")),
+					"Expected value at [%s] to be [%s] but received [%s]",
+					strings.Join(tc.path, "/"), tc.value, finalValue)
+			}
+		})
+	}
+
+	extractValue := func(t *testing.T, path ...string) string {
+		val, err := overridesTree.GetString(path...)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "error calling overridesTree.GetString()",
+				"error calling overridesTree.GetString(): %s", err)
+			return ""
+
+		}
+		return val
+	}
+
+	t.Run("Check if any unknown fields sneaked in", func(t *testing.T) {
+		knownKeys := tree.Tree{
+			"controllerLogLevel": "debug",
+			"identity": map[string]interface{}{
+				"issuer": map[string]interface{}{},
+			},
+			"identityTrustAnchorsPEM": extractValue(t, "identityTrustAnchorsPEM"),
+			"proxyInit": map[string]interface{}{
+				"ignoreInboundPorts": skippedInboundPorts,
+			},
+		}
+
+		// Check for fields that were added during upgrade
+		if TestHelper.UpgradeFromVersion() != "" {
+			knownKeys["proxyInit"].(map[string]interface{})["ignoreOutboundPorts"] = skippedOutboundPorts
+		}
+
+		if TestHelper.GetClusterDomain() != "cluster.local" {
+			knownKeys["clusterDomain"] = TestHelper.GetClusterDomain()
+		}
+
+		if TestHelper.ExternalIssuer() {
+			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["issuanceLifetime"] = "15s"
+			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["scheme"] = "kubernetes.io/tls"
+		} else {
+			if !TestHelper.Multicluster() {
+				knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["crtExpiry"] = extractValue(t, "identity", "issuer", "crtExpiry")
+			}
+			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["tls"] = map[string]interface{}{
+				"crtPEM": extractValue(t, "identity", "issuer", "tls", "crtPEM"),
+				"keyPEM": extractValue(t, "identity", "issuer", "tls", "keyPEM"),
+			}
+		}
+
+		if TestHelper.CNI() {
+			knownKeys["cniEnabled"] = true
+		}
+
+		if match, _ := regexp.Match("(stable)-([0-9]+.[0-9]+.[0-9]+)", []byte(TestHelper.UpgradeFromVersion())); !match {
+			knownKeys["heartbeatSchedule"] = extractValue(t, "heartbeatSchedule")
+		}
+
+		// Check if the keys in overridesTree match with knownKeys
+		if !reflect.DeepEqual(overridesTree.String(), knownKeys.String()) {
+			testutil.AnnotatedFatalf(t, "Overrides and knownKeys are different",
+				"Expected overrides to be [%s] but found [%s]",
+				knownKeys.String(), overridesTree.String(),
+			)
+		}
+	})
 }
 
 type expectedData struct {
