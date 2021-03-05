@@ -236,7 +236,7 @@ setup_cluster() {
   if [ -z "$skip_cluster_create" ]; then
     create_cluster "$@"
     image_load "$name"
-    if [ -n "$cleanup_docker"]; then
+    if [ -n "$cleanup_docker" ]; then
       rm -rf image-archives
       docker system prune --force --all
     fi
