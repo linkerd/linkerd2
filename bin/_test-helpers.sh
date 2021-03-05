@@ -38,7 +38,8 @@ Available Commands:
     --name: the argument to this option is the specific test to run
     --skip-cluster-create: skip k3d cluster creation step and run tests in an existing cluster
     --skip-cluster-delete: if the tests succeed, don't delete the created resources nor the cluster
-    --images: by default load images into the cluster from the local docker cache (docker), or from tar files located under the 'image-archives' directory (archive), or completely skip image loading (skip)"
+    --images: by default load images into the cluster from the local docker cache (docker), or from tar files located under the 'image-archives' directory (archive), or completely skip image loading (skip)
+    --cleanup-docker: delete the 'images-archive' directory and prune the docker cache"
 }
 
 cleanup_usage() {
@@ -61,6 +62,7 @@ handle_tests_input() {
   export test_name=''
   export skip_cluster_create=''
   export skip_cluster_delete=''
+  export cleanup_docker=''
   export linkerd_path=""
 
   while  [ "$#" -ne 0 ]; do
@@ -100,6 +102,10 @@ handle_tests_input() {
         ;;
       --skip-cluster-delete)
         skip_cluster_delete=1
+        shift
+        ;;
+      --cleanup-docker)
+        cleanup_docker=1
         shift
         ;;
       *)
@@ -230,6 +236,10 @@ setup_cluster() {
   if [ -z "$skip_cluster_create" ]; then
     create_cluster "$@"
     image_load "$name"
+    if [ -n "$cleanup_docker"]; then
+      rm -rf image-archives
+      docker system prune --force --all
+    fi
   fi
   check_cluster
 }
