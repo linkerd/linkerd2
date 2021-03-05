@@ -133,6 +133,9 @@ metadata:
     linkerd.io/extension: viz
     component: tap
 rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["list"]
 - apiGroups: ["tap.linkerd.io"]
   resources: ["*"]
   verbs: ["watch"]
@@ -766,7 +769,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 7f24ffe166f8d03a8eb039ecc551f3de9ea0ddcf1cf80a69966ce3713f043b23
+        checksum/config: 2ab0ec921e7f9cb65f62dd4f2ebb77d06827c9621f473c3a9c42ad2741603c3e
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
         linkerd.io/extension: viz
