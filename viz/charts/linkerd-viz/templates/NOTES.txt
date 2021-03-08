@@ -1,12 +1,8 @@
 The Linkerd Viz extension was successfully installed 🎉
 
-To help you manage your Linkerd service mesh you can install the Linkerd CLI by running:
+To make sure everything works as expected, Run the following:
 
-  curl -sL https://run.linkerd.io/install | sh
-
-Alternatively, you can download the CLI directly via the Linkerd releases page:
-
-  https://github.com/linkerd/linkerd2/releases/
+  linkerd viz check
 
 To view the linkerd dashboard, Run the following:
 
