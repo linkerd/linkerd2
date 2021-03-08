@@ -140,7 +140,10 @@ and run Linkerd2:
 This configuration builds all Linkerd2 components in Docker images, and deploys
 them onto a k3d cluster. This setup most closely parallels our recommended
 production installation, documented in [Getting
-Started](https://linkerd.io/2/getting-started/)
+Started](https://linkerd.io/2/getting-started/).
+
+Note that you need to have first installed docker buildx, as explained
+[here](https://github.com/docker/buildx).
 
 ```bash
 # create the k3d cluster
@@ -259,10 +262,8 @@ the `bin/fmt` script.
 The script for building the CLI binaries using docker is
 `bin/docker-build-cli-bin`. This will also be called indirectly when calling
 `bin/docker-build`. By default it creates binaries for Linux, Darwin and
-Windows. For Linux it creates binaries for the three architectures supported:
-amd64, arm64 and arm/v7. If you're using docker buildx, the build will be more
-efficient as the three OSes will still be targeted but the Linux build will only
-target your current architecture (more about buildx under [Multi-architecture
+Windows. For Linux it will create a binary targeted at your current
+architecture. For targeting different architectures, check [Multi-architecture
 Builds](#multi-architecture-builds) below).
 
 For local development and a faster edit-build-test cycle you might want to just
@@ -404,12 +405,7 @@ bin/docker-build-proxy
 ### Multi-architecture builds
 
 Besides the default Linux/amd64 architecture, you can build controller images
-targeting Linux/arm64 and Linux/arm/v7. For that you need to have first
-installed docker buildx, as explained [here](https://github.com/docker/buildx).
-
-If you run `bin/docker-build` or any of the more focused `bin/docker-build-*`
-scripts, docker buildx will be used, as long as you have set the environment
-variable `DOCKER_BUILDKIT=1`.
+targeting Linux/arm64 and Linux/arm/v7.
 
 For signaling that you want to build multi-architecture images, set the
 environment variable `DOCKER_MULTIARCH=1`. Do to some limitations on buildx, if
@@ -422,7 +418,7 @@ To summarize, in order to build all the images for multiple architectures and
 push them to your registry located for example at `ghcr.io/user` you can issue:
 
 ```bash
-DOCKER_BUILDKIT=1 DOCKER_MULTIARCH=1 DOCKER_PUSH=1 DOCKER_REGISTRY=ghcr.io/user bin/docker-build
+DOCKER_MULTIARCH=1 DOCKER_PUSH=1 DOCKER_REGISTRY=ghcr.io/user bin/docker-build
 ```
 
 ## Dependencies
