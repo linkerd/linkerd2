@@ -102,6 +102,7 @@ jobs:
         - deep
         - external-issuer
         - external-prometheus-deep
+        - external-resources
         - helm-deep
         - helm-upgrade
         - uninstall
