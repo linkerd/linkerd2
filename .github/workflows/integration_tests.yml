@@ -9,7 +9,6 @@ on:
     - main
 env:
   GH_ANNOTATION: true
-  DOCKER_BUILDKIT: 1
 jobs:
   docker_build:
     runs-on: ubuntu-20.04
