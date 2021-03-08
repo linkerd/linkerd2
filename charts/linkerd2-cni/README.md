@@ -26,6 +26,8 @@ Kubernetes: `>=1.16.0-0`
 | cniPluginVersion | string | `"linkerdVersionValue"` | Tag for the CNI container Docker image |
 | destCNIBinDir | string | `"/opt/cni/bin"` | Directory on the host where the CNI configuration will be placed |
 | destCNINetDir | string | `"/etc/cni/net.d"` | Directory on the host where the CNI plugin binaries reside |
+| ignoreInboundPorts | string | `""` | Default set of inbound ports to skip via itpables |
+| ignoreOutboundPorts | string | `""` | Default set of outbound ports to skip via itpables |
 | imagePullSecrets | string | `nil` |  |
 | inboundProxyPort | int | `4143` | Inbound port for the proxy container |
 | installNamespace | bool | `true` | Whether to create the CNI plugin plane namespace or not |
