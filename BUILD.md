@@ -604,9 +604,9 @@ build_architecture
     "docker-build-grafana" -> "_tag.sh";
     "docker-build-grafana" -> "grafana/Dockerfile";
 
-    "docker-jaeger-webhook" -> "_docker.sh";
-    "docker-jaeger-webhook" -> "_tag.sh";
-    "docker-jaeger-webhook" -> "jaeger/injector/Dockerfile";
+    "docker-build-jaeger-webhook" -> "_docker.sh";
+    "docker-build-jaeger-webhook" -> "_tag.sh";
+    "docker-build-jaeger-webhook" -> "jaeger/injector/Dockerfile";
 
     "docker-cache-prune";
 
@@ -692,7 +692,7 @@ build_architecture
     "release.yml" -> "docker-build-cni-plugin";
     "release.yml" -> "docker-build-debug";
     "release.yml" -> "docker-build-cli-bin";
-    "release.yml" -> "docker-build-grafanah";
+    "release.yml" -> "docker-build-grafana";
     "release.yml" -> "docker-build-jaeger-webhook";
     "release.yml" -> "docker-build-tap";
     "release.yml" -> "docker-cache-prune";
