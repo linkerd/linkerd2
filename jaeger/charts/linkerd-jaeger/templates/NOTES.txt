@@ -1,10 +1,10 @@
 The Linkerd Jaeger extension was successfully installed 🎉
 
-To make sure everything works as expected, Run the following:
+To make sure everything works as expected, run the following:
 
   linkerd jaeger check
 
-To view the jaeger dashboard, Run the following:
+To view the Jaeger dashboard, run the following:
 
   linkerd jaeger dashboard
 

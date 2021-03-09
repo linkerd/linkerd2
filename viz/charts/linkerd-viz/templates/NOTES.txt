@@ -1,10 +1,10 @@
 The Linkerd Viz extension was successfully installed 🎉
 
-To make sure everything works as expected, Run the following:
+To make sure everything works as expected, run the following:
 
   linkerd viz check
 
-To view the linkerd dashboard, Run the following:
+To view the linkerd dashboard, run the following:
 
   linkerd viz dashboard
 
