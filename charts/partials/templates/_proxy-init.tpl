@@ -7,7 +7,7 @@ args:
 - --proxy-uid
 - {{.Values.proxy.uid | quote}}
 - --inbound-ports-to-ignore
-- "{{.Values.proxy.ports.control}},{{.Values.proxy.ports.admin}}{{ternary (printf ",%s" .Values.proxyInit.ignoreInboundPorts) "" (not (empty .Values.proxyInit.ignoreInboundPorts)) }}"
+- "{{.Values.proxy.ports.control}},{{.Values.proxy.ports.admin}}{{ternary (printf ",%s" (.Values.proxyInit.ignoreInboundPorts | toString)) "" (not (empty .Values.proxyInit.ignoreInboundPorts)) }}"
 {{- if .Values.proxyInit.ignoreOutboundPorts }}
 - --outbound-ports-to-ignore
 - {{.Values.proxyInit.ignoreOutboundPorts | quote}}
@@ -58,5 +58,5 @@ volumeMounts:
 - mountPath: {{.Values.proxyInit.saMountPath.mountPath}}
   name: {{.Values.proxyInit.saMountPath.name}}
   readOnly: {{.Values.proxyInit.saMountPath.readOnly}}
-{{- end -}}  
+{{- end -}}
 {{- end -}}
