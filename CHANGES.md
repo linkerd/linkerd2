@@ -1,5 +1,27 @@
 # Changes
 
+## edge-21.3.2
+
+This edge release is another release candidate for stable 2.10 and fixes some
+final bugs found in testing. A big thank you to users who have helped us
+identity these issues!
+
+* Fixed an issue with the service profile validating webhook that prevented
+  service profiles from being added or updated
+* Updated the `check` command output hint anchors to match Linkerd component
+  names
+* Fixed a permission issue with the Viz extension's tap admin cluster role by
+  adding namespace listing to the allowed actions
+* Fixed an issue with the proxy where connections would not be torn down when
+  communicating with a defunct endpoint
+* Improved diagnostic logging in the proxy
+* Fixed an issue with the Viz extension's Prometheus template that prevented
+  users from specifying a log level flag for that component (thanks @n-oden!)
+* Fixed a template parsing issue that prevented users from specifying additional
+  ignored inbound parts through Helm's `--set` flag
+* Fixed an issue with the proxy where non-HTTP streams could sometimes hang due
+  to TLS buffering
+
 ## edge-21.3.1
 
 This edge release is another release candidate, bringing us closer to
