@@ -8,6 +8,10 @@ Alternatively, you can download the CLI directly via the Linkerd releases page:
 
   https://github.com/linkerd/linkerd2/releases/
 
+To make sure everything works as expected, Run the following:
+
+  linkerd check
+
 Linkerd Viz extension can be installed by running:
 
   linkerd viz install | kubectl apply -f -
