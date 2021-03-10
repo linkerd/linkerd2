@@ -45,6 +45,7 @@
 - [Studyo](https://studyo.co)
 - [Sue](https://sue.nl)
 - [The Zebra](https://www.thezebra.com)
+- [Tradeshift](https://tradeshift.com/)
 - [Transit](https://transit.app)
 - [Vernacular.ai](https://vernacular.ai/)
 - [xCloud](https://www.xbox.com/en-US/xbox-game-streaming/project-xcloud)
