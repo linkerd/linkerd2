@@ -32,9 +32,9 @@ instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2100).
     ports; all traffic through those ports is now proxied and handled opaquely
     by default
   * Fixed an issue that could cause proxies in "ingress mode"
-    (`linkerd.io/inject: ingress`) to use an excessive amount of memory.
+    (`linkerd.io/inject: ingress`) to use an excessive amount of memory
   * Improved diagnostic logging around "fail fast" and "max-concurrency
-    exhausted" error messages 
+    exhausted" error messages
   * Added a new `/shutdown` admin endpoint that may only be accessed over the
     loopback network allowing batch jobs to gracefully terminate the proxy on
     completion
