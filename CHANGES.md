@@ -5,9 +5,9 @@
 This release introduces Linkerd extensions. The default control plane no longer
 includes Prometheus, Grafana, the dashboard, or several other components that
 previously shipped by default.  This results in a much smaller and simpler set
-of core functionality.  Visibility and metrics functionality is now available
+of core functionalities.  Visibility and metrics functionality is now available
 in the Viz extension under the `linkerd viz` command.  Cross-cluster
-communication functionality is now available in the Multicluster extensions
+communication functionality is now available in the Multicluster extension
 under the `linkerd multicluster` command.  Distributed tracing functionality is
 now available in the Jaeger extension under the `linkerd jaeger` command.
 
@@ -31,8 +31,10 @@ instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2100).
   * Ports `25,443,587,3306,5432,11211` have been removed from the default skip
     ports; all traffic through those ports is now proxied and handled opaquely
     by default
-  * Fixed an issue that could cause the inbound proxy to fail meshed HTTP/1
-    requests from older proxies (from the stable-2.8.x vintage)
+  * Fixed an issue that could cause proxies in "ingress mode"
+    (`linkerd.io/inject: ingress`) to use an excessive amount of memory.
+  * Improved diagnostic logging around "fail fast" and "max-concurrency
+    exhausted" error messages 
   * Added a new `/shutdown` admin endpoint that may only be accessed over the
     loopback network allowing batch jobs to gracefully terminate the proxy on
     completion
@@ -67,6 +69,8 @@ instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2100).
   * Changed many Helm values, please see the upgrade notes
 
 * Viz
+  * Introduced the `linkerd viz` subcommand which contains commands for
+    installing the viz extension and all visibility commands
   * Updated the Web UI to only display the "Gateway" sidebar link when the
     multicluster extension is active
   * Added a `linkerd viz list` command to list pods with tap enabled
@@ -74,6 +78,8 @@ instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2100).
     automatically when provided externally—like through cert-manager
 
 * Multicluster
+  * Introduced the `linkerd multicluster` subcommand which contains commands for
+    installing the multicluster extension and all multicluster commands
   * Added support for cross-cluster TCP traffic
   * Updated the service mirror controller to copy the
     `config.linkerd.io/opaque-ports` annotation when mirroring services so that
@@ -82,10 +88,9 @@ instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2100).
     (thanks @DaspawnW!)
 
 * Jaeger
+  * Introduced the `linkerd jaeger` subcommand which contains commands for
+    installing the jaeger extension and all tracing commands
   * Added a `linkerd jaeger list` command to list pods with tracing enabled
-
-* Other
-  * Docker images are now hosted on the `cr.l5d.io` registry
 
 This release includes changes from a massive list of contributors. A special
 thank-you to everyone who helped make this release possible:
