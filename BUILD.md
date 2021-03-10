@@ -40,7 +40,7 @@ about testing from source can be found in the [TEST.md](TEST.md) guide.
 - [Linkerd Helm Chart](#linkerd-helm-chart)
   - [Extensions Helm charts](#extensions-helm-charts)
   - [Making changes to the chart templates](#making-changes-to-the-chart-templates)
-  - [Generating helm charts docs](#generating-helm-charts-docs)
+  - [Generating Helm charts docs](#generating-helm-charts-docs)
   - [Using helm-docs](#using-helm-docs)
   - [Annotating values.yml](#annotating-values.yml)
   - [Markdown templates](#markdown-templates)
@@ -66,9 +66,20 @@ its extensions are written in Go. The dashboard UI is a React application.
   - ['metrics-api`](viz/metrics-api): Accepts requests from API clients such as
     cli and web, serving metrics from the proxies in the cluster through
     Prometheus queries.
-  - [`tap`](viz/tap): Provides a live pipeline of requests.
+  - [`tap`](viz/tap/api): Provides a live pipeline of requests.
+  - [`tap-injector`](viz/tap/injector): Mutating webhook triggered by pods
+    creation, that injects metadata into the proxy container in order to enable
+    tap.
   - [`web`](web): Provides a UI dashboard to view and drive the control plane.
-  This component is written in Go and React.
+- [`multicluster extension`](multicluster)
+  - [`linkerd-gateway`]: Accepts requests from other clusters and forwards them
+    to the appropriate destionation in the local cluster.
+  - [`linkerd-service-mirror-xxx`](multicluster/service-mirror): Controller
+    observing the labeling of exported services in the target cluster, each one
+    for which it will create a mirrored service in the local cluster.
+- [`jaeger extension`](jaeger)
+  - [`jaeger-injector`](jaeger/injector): Mutating webhook triggered by pods
+    creation, that expands the proxy container for it to produce tracing spans.
 
 ### Data Plane (Rust)
 
@@ -160,6 +171,10 @@ bin/linkerd install | kubectl apply -f -
 # wait for the core components to be ready, then install linkerd-viz
 bin/linkerd viz install | kubectl apply -f -
 
+# in order to use `linkerd viz tap` against control plane components, you need
+# to restart them (so that the tap-injector enables tap on their proxies)
+kubectl -n linkerd rollout restart deploy
+
 # verify cli and server versions
 bin/linkerd version
 
@@ -191,7 +206,7 @@ and their proxies by using the `--set controlPlaneTracing=true` installation
 flag.
 
 This will configure all the components to send the traces at
-`linkerd-collector.{{.Namespace}}.svc.{{.ClusterDomain}}:55678`
+`collector.{{.Values.controlPlaneTracingNamespace}}.svc.{{.Values.ClusterDomain}}:55678`
 
 ```bash
 
@@ -200,6 +215,10 @@ linkerd install --set controlPlaneTracing=true | kubectl apply -f -
 
 # install the Jaeger extension
 linkerd jaeger install | kubectl apply -f -
+
+# restart the control plane components so that the jaeger-injector enables
+# tracing in their proxies
+kubectl -n linkerd rollout restart deploy
 ```
 
 ### Publishing images
@@ -488,7 +507,7 @@ Whenever you make changes to the files under
 [`bin/helm-build`](bin/helm-build) which will refresh the dependencies and lint
 the templates.
 
-### Generating helm charts docs
+### Generating Helm charts docs
 
 Whenever a new chart is created, or updated a README should be generated from
 the chart's values.yml. This can be done by utilizing the bundled
