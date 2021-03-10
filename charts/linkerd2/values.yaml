@@ -108,6 +108,10 @@ proxy:
 
 # proxy-init configuration
 proxyInit:
+  # -- Default set of inbound ports to skip via itpables
+  ignoreInboundPorts: ""
+  # -- Default set of outbound ports to skip via itpables
+  ignoreOutboundPorts: ""
   image:
     # -- Docker image for the proxy-init container
     name: cr.l5d.io/linkerd/proxy-init

@@ -6,6 +6,10 @@ installNamespace: true
 inboundProxyPort: 4143
 # -- Outbound port for the proxy container
 outboundProxyPort: 4140
+# -- Default set of inbound ports to skip via itpables
+ignoreInboundPorts: ""
+# -- Default set of outbound ports to skip via itpables
+ignoreOutboundPorts: ""
 # -- Docker image for the CNI plugin
 cniPluginImage:   "cr.l5d.io/linkerd/cni-plugin"
 # -- Tag for the CNI container Docker image

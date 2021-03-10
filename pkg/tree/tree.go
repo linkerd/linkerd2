@@ -3,7 +3,7 @@ package tree
 import (
 	"fmt"
 
-	"github.com/ghodss/yaml"
+	"sigs.k8s.io/yaml"
 )
 
 // Tree is a structured representation of a string keyed tree document such as
@@ -155,8 +155,13 @@ func MarshalToTree(obj interface{}) (Tree, error) {
 	if err != nil {
 		return nil, err
 	}
+	return BytesToTree(bytes)
+}
+
+// BytesToTree converts given bytes into a tree by Unmarshaling
+func BytesToTree(bytes []byte) (Tree, error) {
 	tree := make(Tree)
-	err = yaml.Unmarshal(bytes, &tree)
+	err := yaml.Unmarshal(bytes, &tree)
 	if err != nil {
 		return nil, err
 	}

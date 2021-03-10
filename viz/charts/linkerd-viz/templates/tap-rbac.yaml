@@ -28,6 +28,9 @@ metadata:
     linkerd.io/extension: viz
     component: tap
 rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["list"]
 - apiGroups: ["tap.linkerd.io"]
   resources: ["*"]
   verbs: ["watch"]
