@@ -368,7 +368,7 @@ func (h *handler) handleAPICheck(w http.ResponseWriter, req *http.Request, p htt
 				success = false
 			}
 			errMsg = result.Err.Error()
-			hintURL = fmt.Sprintf("%s%s", healthcheck.HintBaseURL, result.HintAnchor)
+			hintURL = fmt.Sprintf("%s%s", healthcheck.HintBaseURL(), result.HintAnchor)
 		}
 		results[result.Category] = append(results[result.Category], &CheckResult{
 			CheckResult: result,

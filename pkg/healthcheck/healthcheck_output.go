@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/mattn/go-isatty"
 )
 
@@ -27,6 +29,8 @@ var (
 	okStatus   = color.New(color.FgGreen, color.Bold).SprintFunc()("\u221A")  // √
 	warnStatus = color.New(color.FgYellow, color.Bold).SprintFunc()("\u203C") // ‼
 	failStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u00D7")    // ×
+
+	reStableVersion = regexp.MustCompile(`stable-(\d\.\d+)\.`)
 )
 
 // CheckResults contains a slice of CheckResult structs.
@@ -94,7 +98,7 @@ func runChecksTable(wout io.Writer, hc Runner) bool {
 		if result.Err != nil {
 			fmt.Fprintf(wout, "    %s\n", result.Err)
 			if result.HintAnchor != "" {
-				fmt.Fprintf(wout, "    see %s%s for hints\n", HintBaseURL, result.HintAnchor)
+				fmt.Fprintf(wout, "    see %s%s for hints\n", HintBaseURL(), result.HintAnchor)
 			}
 		}
 	}
@@ -171,7 +175,7 @@ func runChecksJSON(wout io.Writer, werr io.Writer, hc Runner) bool {
 				currentCheck.Error = result.Err.Error()
 
 				if result.HintAnchor != "" {
-					currentCheck.Hint = fmt.Sprintf("%s%s", HintBaseURL, result.HintAnchor)
+					currentCheck.Hint = fmt.Sprintf("%s%s", HintBaseURL(), result.HintAnchor)
 				}
 			}
 			currentCategory.Checks = append(currentCategory.Checks, currentCheck)
@@ -221,4 +225,14 @@ func ParseJSONCheckOutput(data []byte) (CheckResults, error) {
 		}
 	}
 	return CheckResults{results}, nil
+}
+
+// HintBaseURL returns the base URL on the linkerd.io website that check hints
+// point to, depending on the version
+func HintBaseURL() string {
+	stableVersion := reStableVersion.FindStringSubmatch(version.Version)
+	if stableVersion == nil {
+		return "https://linkerd.io/checks/latest/#"
+	}
+	return fmt.Sprintf("https://linkerd.io/checks/latest/%s/#", stableVersion[1])
 }

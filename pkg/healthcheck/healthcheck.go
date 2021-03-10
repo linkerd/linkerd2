@@ -160,11 +160,6 @@ const (
 	keyKeyName                    = "tls.key"
 )
 
-// HintBaseURL is the base URL on the linkerd.io website that all check hints
-// point to. Each check adds its own `hintAnchor` to specify a location on the
-// page.
-const HintBaseURL = "https://linkerd.io/checks/#"
-
 // AllowedClockSkew sets the allowed skew in clock synchronization
 // between the system running inject command and the node(s), being
 // based on assumed node's heartbeat interval (5 minutes) plus default TLS

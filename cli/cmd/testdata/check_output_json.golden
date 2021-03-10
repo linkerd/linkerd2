@@ -10,7 +10,7 @@
         },
         {
           "description": "check2",
-          "hint": "https://linkerd.io/checks/#hint-anchor",
+          "hint": "https://linkerd.io/checks/latest/#hint-anchor",
           "error": "This should contain instructions for fail",
           "result": "error"
         }
