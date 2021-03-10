@@ -17,6 +17,9 @@ attempting protocol detection.  This allows the proxy to provide TCP metrics
 and mTLS for server-speaks-first protocols.  It also enables support for
 TCP traffic in the Multicluster extension.
 
+**Upgrade notes**: Please see the [upgrade
+instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2100).
+
 * Proxy
   * Updated the proxy to use TLS version 1.3; support for TLS 1.2 remains
     enabled for compatibility with prior proxy versions
