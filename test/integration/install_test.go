@@ -592,7 +592,7 @@ func TestCheckHelmStableBeforeUpgrade(t *testing.T) {
 		t.Skip("Skipping as this is not a helm upgrade test")
 	}
 
-	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion(), true)
+	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion())
 }
 
 func TestUpgradeHelm(t *testing.T) {
@@ -734,6 +734,7 @@ func TestOverridesSecret(t *testing.T) {
 	t.Run("Check if any unknown fields sneaked in", func(t *testing.T) {
 		knownKeys := tree.Tree{
 			"controllerLogLevel": "debug",
+			"heartbeatSchedule":  extractValue(t, "heartbeatSchedule"),
 			"identity": map[string]interface{}{
 				"issuer": map[string]interface{}{},
 			},
@@ -767,10 +768,6 @@ func TestOverridesSecret(t *testing.T) {
 
 		if TestHelper.CNI() {
 			knownKeys["cniEnabled"] = true
-		}
-
-		if match, _ := regexp.Match("(stable)-([0-9]+.[0-9]+.[0-9]+)", []byte(TestHelper.UpgradeFromVersion())); !match {
-			knownKeys["heartbeatSchedule"] = extractValue(t, "heartbeatSchedule")
 		}
 
 		// Check if the keys in overridesTree match with knownKeys
@@ -867,7 +864,7 @@ func TestVersionPostInstall(t *testing.T) {
 	}
 }
 
-func testCheckCommand(t *testing.T, stage string, expectedVersion string, namespace string, cliVersionOverride string, compareOutput bool) {
+func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersionOverride string) {
 	var cmd []string
 	var golden string
 	proxyStage := "proxy"
@@ -908,10 +905,6 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 			return fmt.Errorf("'linkerd check' command failed\n%s\n%s", err, out)
 		}
 
-		if !compareOutput {
-			return nil
-		}
-
 		err = TestHelper.ContainsOutput(out, golden)
 		if err != nil {
 			return fmt.Errorf("received unexpected output\n%s", err.Error())
@@ -949,11 +942,11 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 
 // TODO: run this after a `linkerd install config`
 func TestCheckConfigPostInstall(t *testing.T) {
-	testCheckCommand(t, "config", TestHelper.GetVersion(), "", "", true)
+	testCheckCommand(t, "config", TestHelper.GetVersion(), "", "")
 }
 
 func TestCheckPostInstall(t *testing.T) {
-	testCheckCommand(t, "", TestHelper.GetVersion(), "", "", true)
+	testCheckCommand(t, "", TestHelper.GetVersion(), "", "")
 }
 
 func TestCheckViz(t *testing.T) {
@@ -1157,7 +1150,7 @@ func TestCheckProxy(t *testing.T) {
 		tc := tc // pin
 		t.Run(tc.ns, func(t *testing.T) {
 			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
-			testCheckCommand(t, "proxy", TestHelper.GetVersion(), prefixedNs, "", true)
+			testCheckCommand(t, "proxy", TestHelper.GetVersion(), prefixedNs, "")
 		})
 	}
 }
