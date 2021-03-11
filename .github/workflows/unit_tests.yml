@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-20.04
     container:
-      image: golang:1.14.15
+      image: golang:1.16.1
     steps:
     - name: Checkout code
       # actions/checkout@v2
