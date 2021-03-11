@@ -66,20 +66,6 @@ type Service struct {
 	Name      string
 }
 
-// LinkerdDeployReplicasStable is a map containing the number of replicas for each Deployment and the main
-// container name
-var LinkerdDeployReplicasStable = map[string]DeploySpec{
-	"linkerd-controller":     {"linkerd", 1, []string{"public-api"}},
-	"linkerd-destination":    {"linkerd", 1, []string{"destination"}},
-	"linkerd-tap":            {"linkerd", 1, []string{"tap"}},
-	"linkerd-grafana":        {"linkerd", 1, []string{}},
-	"linkerd-identity":       {"linkerd", 1, []string{"identity"}},
-	"linkerd-prometheus":     {"linkerd", 1, []string{}},
-	"linkerd-sp-validator":   {"linkerd", 1, []string{"sp-validator"}},
-	"linkerd-web":            {"linkerd", 1, []string{"web"}},
-	"linkerd-proxy-injector": {"linkerd", 1, []string{"proxy-injector"}},
-}
-
 // LinkerdDeployReplicasEdge is a map containing the number of replicas for each Deployment and the main
 // container name, in the current code-base
 var LinkerdDeployReplicasEdge = map[string]DeploySpec{
@@ -92,6 +78,10 @@ var LinkerdDeployReplicasEdge = map[string]DeploySpec{
 	"web":                    {"linkerd-viz", 1, []string{"web"}},
 	"linkerd-proxy-injector": {"linkerd", 1, []string{"proxy-injector"}},
 }
+
+// LinkerdDeployReplicasStable is a map containing the number of replicas for each Deployment and the main
+// container name. Override whenever edge deviates from stable.
+var LinkerdDeployReplicasStable = LinkerdDeployReplicasEdge
 
 // NewGenericTestHelper returns a new *TestHelper from the options provided as function parameters.
 // This helper was created to be able to reuse this package without hard restrictions
@@ -498,10 +488,10 @@ func (h *TestHelper) HelmInstall(chart string, arg ...string) (string, string, e
 	return combinedOutput("", h.helm.path, withParams...)
 }
 
-// HelmInstallPlain runs the helm install subcommand, with the provided arguments and no defaults
-func (h *TestHelper) HelmInstallPlain(chart string, releaseName string, arg ...string) (string, string, error) {
+// HelmCmdPlain runs a helm subcommand, with the provided arguments and no defaults
+func (h *TestHelper) HelmCmdPlain(cmd, chart, releaseName string, arg ...string) (string, string, error) {
 	withParams := append([]string{
-		"install",
+		cmd,
 		releaseName,
 		chart,
 		"--kube-context", h.k8sContext,
