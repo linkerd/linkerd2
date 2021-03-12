@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
     container:
-      image: golang:1.16.1
+      image: golang:1.16.2
     steps:
     - name: Checkout code
       # actions/checkout@v2
@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
     container:
-      image: golang:1.16.1
+      image: golang:1.16.2
     steps:
     - name: Checkout code
       # actions/checkout@v2
@@ -37,7 +37,7 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
     container:
-      image: golang:1.16.1
+      image: golang:1.16.2
     steps:
       - name: Prerequisites
         run: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install unzip
