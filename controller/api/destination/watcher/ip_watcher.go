@@ -123,61 +123,49 @@ func (iw *IPWatcher) Unsubscribe(clusterIP string, port Port, listener EndpointU
 // GetSvcID returns the service that corresponds to a Cluster IP address if one
 // exists.
 func (iw *IPWatcher) GetSvcID(clusterIP string) (*ServiceID, error) {
-	resource, err := getResource(clusterIP, iw.k8sAPI.Svc().Informer())
+	objs, err := iw.k8sAPI.Svc().Informer().GetIndexer().ByIndex(podIPIndex, clusterIP)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Unknown, err.Error())
 	}
-	if svc, ok := resource.(*corev1.Service); ok {
-		service := &ServiceID{
-			Namespace: svc.Namespace,
-			Name:      svc.Name,
-		}
-		return service, nil
+	services := make([]*corev1.Service, 0)
+	for _, obj := range objs {
+		service := obj.(*corev1.Service)
+		services = append(services, service)
 	}
-	// Either `clusterIP` does not map to a service that the indexer is aware
-	// of, or it maps to a resource that is ignored
-	return nil, nil
+	if len(services) > 1 {
+		return nil, status.Errorf(codes.FailedPrecondition, "Cluster IP address conflict: %s/%s, %s/%s", services[0].Namespace, services[0].Name, services[1].Namespace, services[1].Name)
+	}
+	if len(services) == 0 {
+		return nil, nil
+	}
+	service := &ServiceID{
+		Namespace: services[0].Namespace,
+		Name:      services[0].Name,
+	}
+	return service, nil
 }
 
 // GetPod returns the pod that corresponds to an IP address if one exists.
 func (iw *IPWatcher) GetPod(podIP string) (*corev1.Pod, error) {
-	resource, err := getResource(podIP, iw.k8sAPI.Pod().Informer())
-	if err != nil {
-		return nil, err
-	}
-	if pod, ok := resource.(*corev1.Pod); ok {
-		return pod, nil
-	}
-	// Either `podIP` does not map to a pod that the indexer is aware of, or
-	// it maps to a resource that is ignored
-	return nil, nil
-}
-
-func getResource(ip string, informer cache.SharedIndexInformer) (interface{}, error) {
-	matchingObjs, err := informer.GetIndexer().ByIndex(podIPIndex, ip)
+	objs, err := iw.k8sAPI.Pod().Informer().GetIndexer().ByIndex(podIPIndex, podIP)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
-
-	objs := make([]interface{}, 0)
-	for _, obj := range matchingObjs {
-		// Ignore terminated pods,
-		// their IPs can be reused for new Running pods
-		pod, ok := obj.(*corev1.Pod)
-		if ok && podTerminated(pod) {
+	pods := make([]*corev1.Pod, 0)
+	for _, obj := range objs {
+		pod := obj.(*corev1.Pod)
+		if podTerminated(pod) {
 			continue
 		}
-
-		objs = append(objs, obj)
+		pods = append(pods, pod)
 	}
-
-	if len(objs) > 1 {
-		return nil, status.Errorf(codes.FailedPrecondition, "IP address conflict: %v, %v", objs[0], objs[1])
+	if len(pods) > 1 {
+		return nil, status.Errorf(codes.FailedPrecondition, "Pod IP address conflict: %s/%s, %s/%s", pods[0].Namespace, pods[0].Name, pods[1].Namespace, pods[1].Name)
 	}
-	if len(objs) == 1 {
-		return objs[0], nil
+	if len(pods) == 0 {
+		return nil, nil
 	}
-	return nil, nil
+	return pods[0], nil
 }
 
 func podTerminated(pod *corev1.Pod) bool {
