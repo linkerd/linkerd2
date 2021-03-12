@@ -123,8 +123,8 @@ data:
         "outgoing-proxy-port": 4140,
         "proxy-uid": 2102,
         "ports-to-redirect": [],
-        "inbound-ports-to-ignore": ["4190","4191","25","443","587","3306","11211","80","8080"],
-        "outbound-ports-to-ignore": ["25","443","587","3306","11211","443","1000"],
+        "inbound-ports-to-ignore": ["4190","4191","80","8080"],
+        "outbound-ports-to-ignore": ["443","1000"],
         "simulate": false,
         "use-wait-flag": false
       }
@@ -165,7 +165,7 @@ spec:
       # script copies the files into place and then sleeps so
       # that Kubernetes doesn't keep trying to restart it.
       - name: install-cni
-        image: ghcr.io/linkerd/cni-plugin:dev-undefined
+        image: cr.l5d.io/linkerd/cni-plugin:dev-undefined
         env:
         - name: DEST_CNI_NET_DIR
           valueFrom:

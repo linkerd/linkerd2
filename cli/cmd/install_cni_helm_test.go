@@ -18,7 +18,7 @@ func TestRenderCniHelm(t *testing.T) {
 	// override most defaults with pinned values.
 	// use the Helm lib to render the templates.
 	// the golden file is generated using the following `helm template` command:
-	// bin/helm template --set namespace="linkerd-test" --set controllerNamespaceLabel="linkerd.io/control-plane-ns-test" --set cniResourceAnnotation="linkerd.io/cni-resource-test" --set inboundProxyPort=1234 --set outboundProxyPort=5678 --set createdByAnnotation="linkerd.io/created-by-test" --set cniPluginImage="ghcr.io/linkerd/cni-plugin-test" --set cniPluginVersion="test-version" --set logLevel="debug" --set proxyUID=1111 --set destCNINetDir="/etc/cni/net.d-test" --set destCNIBinDir="/opt/cni/bin-test" --set useWaitFlag=true --set cliVersion=test-version charts/linkerd2-cni
+	// bin/helm template --set namespace="linkerd-test" --set inboundProxyPort=1234 --set outboundProxyPort=5678 --set cniPluginImage="cr.l5d.io/linkerd/cni-plugin-test" --set cniPluginVersion="test-version" --set logLevel="debug" --set proxyUID=1111 --set destCNINetDir="/etc/cni/net.d-test" --set destCNIBinDir="/opt/cni/bin-test" --set useWaitFlag=true --set cliVersion=test-version charts/linkerd2-cni
 
 	t.Run("Cni Install with defaults", func(t *testing.T) {
 		chartCni := chartCniPlugin(t)
@@ -30,11 +30,9 @@ func TestRenderCniHelm(t *testing.T) {
 		overrideJSON :=
 			`{
 			"namespace": "linkerd-test",
-  			"cniResourceLabel": "linkerd.io/cni-resource-test",
   			"inboundProxyPort": 1234,
   			"outboundProxyPort": 5678,
-			"createdByAnnotation": "linkerd.io/created-by-test",
-  			"cniPluginImage": "ghcr.io/linkerd/cni-plugin-test",
+  			"cniPluginImage": "cr.l5d.io/linkerd/cni-plugin-test",
   			"cniPluginVersion": "test-version",
   			"logLevel": "debug",
   			"proxyUID": 1111,
@@ -104,7 +102,10 @@ func chartCniPlugin(t *testing.T) *chart.Chart {
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}
-	chartPartials := chartPartials(t, []string{"templates/_helpers.tpl"})
+	chartPartials := chartPartials(t, []string{
+		"templates/_helpers.tpl",
+		"templates/_metadata.tpl",
+	})
 
 	cniChart := &chart.Chart{
 		Metadata: &chart.Metadata{

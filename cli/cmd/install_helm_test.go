@@ -2,12 +2,10 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
 	"path/filepath"
 	"testing"
 
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/testutil"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -20,7 +18,7 @@ func TestRenderHelm(t *testing.T) {
 	// override certain defaults with pinned values.
 	// use the Helm lib to render the templates.
 	// the golden file is generated using the following `helm template` command:
-	// helm template --set global.identityTrustAnchorsPEM="test-crt-pem" --set identity.issuer.tls.crtPEM="test-crt-pem" --set identity.issuer.tls.keyPEM="test-key-pem" charts/linkerd2  --set identity.issuer.crtExpiry="Jul 30 17:21:14 2020" --set proxyInjector.keyPEM="test-proxy-injector-key-pem" --set proxyInjector.crtPEM="test-proxy-injector-crt-pem" --set profileValidator.keyPEM="test-profile-validator-key-pem" --set profileValidator.crtPEM="test-profile-validator-crt-pem" --set tap.keyPEM="test-tap-key-pem" --set tap.crtPEM="test-tap-crt-pem" --set global.linkerdVersion="linkerd-version"  > cli/cmd/testdata/install_helm_output.golden
+	// helm template --set identityTrustAnchorsPEM="test-crt-pem" --set identity.issuer.tls.crtPEM="test-crt-pem" --set identity.issuer.tls.keyPEM="test-key-pem" charts/linkerd2  --set identity.issuer.crtExpiry="Jul 30 17:21:14 2020" --set proxyInjector.keyPEM="test-proxy-injector-key-pem" --set proxyInjector.crtPEM="test-proxy-injector-crt-pem" --set profileValidator.keyPEM="test-profile-validator-key-pem" --set profileValidator.crtPEM="test-profile-validator-crt-pem" --set tap.keyPEM="test-tap-key-pem" --set tap.crtPEM="test-tap-crt-pem" --set linkerdVersion="linkerd-version"  > cli/cmd/testdata/install_helm_output.golden
 
 	t.Run("Non-HA mode", func(t *testing.T) {
 		ha := false
@@ -37,13 +35,12 @@ func TestRenderHelm(t *testing.T) {
 	t.Run("HA mode with podLabels and podAnnotations", func(t *testing.T) {
 		ha := true
 		additionalConfig := `
-global:
-  podLabels:
-    foo: bar
-    fiz: buz
-  podAnnotations:
-    bingo: bongo
-    asda: fasda
+podLabels:
+  foo: bar
+  fiz: buz
+podAnnotations:
+  bingo: bongo
+  asda: fasda
 `
 		chartControlPlane := chartControlPlane(t, ha, additionalConfig, "333", "444")
 		testRenderHelm(t, chartControlPlane, "install_helm_output_ha_labels.golden")
@@ -80,7 +77,6 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
 
 	// pin values that are changed by Helm functions on each test run
 	overrideJSON := `{
-  "global":{
    "cliVersion":"",
    "linkerdVersion":"linkerd-version",
    "controllerImageVersion":"linkerd-version",
@@ -95,12 +91,10 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
     "image":{
      "version":"test-proxy-init-version"
     }
-   }
-  },
+   },
   "identity":{
     "issuer":{
       "crtExpiry":"Jul 30 17:21:14 2020",
-      "crtExpiryAnnotation":"%s",
       "tls":{
         "keyPEM":"test-key-pem",
         "crtPEM":"test-crt-pem"
@@ -131,7 +125,7 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
 }`
 
 	var overrideConfig chartutil.Values
-	err := yaml.Unmarshal([]byte(fmt.Sprintf(overrideJSON, k8s.IdentityIssuerExpiryAnnotation)), &overrideConfig)
+	err := yaml.Unmarshal([]byte(overrideJSON), &overrideConfig)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}
@@ -283,8 +277,8 @@ func readTestValues(ha bool, ignoreOutboundPorts string, ignoreInboundPorts stri
 			return nil, err
 		}
 	}
-	values.GetGlobal().ProxyInit.IgnoreOutboundPorts = ignoreOutboundPorts
-	values.GetGlobal().ProxyInit.IgnoreInboundPorts = ignoreInboundPorts
+	values.ProxyInit.IgnoreOutboundPorts = ignoreOutboundPorts
+	values.ProxyInit.IgnoreInboundPorts = ignoreInboundPorts
 
 	return values, nil
 }

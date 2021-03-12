@@ -1,18 +1,24 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/linkerd/linkerd2/cli/flag"
+	jaegerCmd "github.com/linkerd/linkerd2/jaeger/cmd"
+	mcCmd "github.com/linkerd/linkerd2/multicluster/cmd"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
+	vizHealthCheck "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	valuespkg "helm.sh/helm/v3/pkg/cli/values"
@@ -95,7 +101,7 @@ code.`,
 		Example: `  # Check that the Linkerd cluster-wide resource are installed correctly
   linkerd check config`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return configureAndRunChecks(cmd.Context(), stdout, stderr, configStage, options)
+			return configureAndRunChecks(cmd, stdout, stderr, configStage, options)
 		},
 	}
 
@@ -129,7 +135,7 @@ non-zero exit code.`,
   # Check that the Linkerd data plane proxies in the "app" namespace are up and running
   linkerd check --proxy --namespace app`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return configureAndRunChecks(cmd.Context(), stdout, stderr, "", options)
+			return configureAndRunChecks(cmd, stdout, stderr, "", options)
 		},
 	}
 
@@ -141,7 +147,7 @@ non-zero exit code.`,
 	return cmd
 }
 
-func configureAndRunChecks(ctx context.Context, wout io.Writer, werr io.Writer, stage string, options *checkOptions) error {
+func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, stage string, options *checkOptions) error {
 	err := options.validate()
 	if err != nil {
 		return fmt.Errorf("Validation error when executing check command: %v", err)
@@ -165,7 +171,7 @@ func configureAndRunChecks(ctx context.Context, wout io.Writer, werr io.Writer, 
 		} else {
 			checks = append(checks, healthcheck.LinkerdPreInstallCapabilityChecks)
 		}
-		installManifest, err = renderInstallManifest(ctx)
+		installManifest, err = renderInstallManifest(cmd.Context())
 		if err != nil {
 			return fmt.Errorf("Error rendering install manifest: %v", err)
 		}
@@ -207,11 +213,131 @@ func configureAndRunChecks(ctx context.Context, wout io.Writer, werr io.Writer, 
 
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
-	if !success {
+	extensionSuccess, err := runExtensionChecks(cmd, wout, werr, options)
+	if err != nil {
+		err = fmt.Errorf("failed to run extensions checks: %s", err)
+		fmt.Fprintln(werr, err)
+		os.Exit(1)
+	}
+
+	if !success || !extensionSuccess {
 		os.Exit(1)
 	}
 
 	return nil
+}
+
+func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts *checkOptions) (bool, error) {
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+	if err != nil {
+		return false, err
+	}
+
+	namespaces, err := kubeAPI.GetAllNamespacesWithExtensionLabel(cmd.Context())
+	if err != nil {
+		return false, err
+	}
+
+	success := true
+	// no extensions to check
+	if len(namespaces) == 0 {
+		return success, nil
+	}
+
+	if opts.output != healthcheck.JSONOutput {
+		headerTxt := "Linkerd extensions checks"
+		fmt.Fprintln(wout)
+		fmt.Fprintln(wout, headerTxt)
+		fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
+	}
+
+	for i, ns := range namespaces {
+		if opts.output != healthcheck.JSONOutput && i < len(namespaces) {
+			// add a new line to space out each check output
+			fmt.Fprintln(wout)
+		}
+		extension := ns.Labels[k8s.LinkerdExtensionLabel]
+
+		var path string
+		args := append([]string{"check"}, getExtensionCheckFlags(cmd.Flags())...)
+		var err error
+		results := healthcheck.CheckResults{
+			Results: []healthcheck.CheckResult{},
+		}
+		extensionCmd := fmt.Sprintf("linkerd-%s", extension)
+
+		switch extension {
+		case jaegerCmd.JaegerExtensionName:
+			path = os.Args[0]
+			args = append([]string{"jaeger"}, args...)
+		case vizHealthCheck.VizExtensionName:
+			path = os.Args[0]
+			args = append([]string{"viz"}, args...)
+		case mcCmd.MulticlusterExtensionName:
+			path = os.Args[0]
+			args = append([]string{"multicluster"}, args...)
+		default:
+			path, err = exec.LookPath(extensionCmd)
+			results.Results = []healthcheck.CheckResult{
+				{
+					Category:    healthcheck.CategoryID(extensionCmd),
+					Description: fmt.Sprintf("Linkerd extension command %s exists", extensionCmd),
+					Err:         err,
+					HintAnchor:  "extensions",
+					Warning:     true,
+				},
+			}
+		}
+		if err == nil {
+			plugin := exec.Command(path, args...)
+			var stdout, stderr bytes.Buffer
+			plugin.Stdout = &stdout
+			plugin.Stderr = &stderr
+			plugin.Run()
+			extensionResults, err := healthcheck.ParseJSONCheckOutput(stdout.Bytes())
+			if err != nil {
+				command := fmt.Sprintf("%s %s", path, strings.Join(args, " "))
+				if len(stderr.String()) > 0 {
+					err = errors.New(stderr.String())
+				} else {
+					err = fmt.Errorf("invalid extension check output from \"%s\" (JSON object expected):\n%s\n[%s]", command, stdout.String(), err)
+				}
+				results.Results = append(results.Results, healthcheck.CheckResult{
+					Category:    healthcheck.CategoryID(extensionCmd),
+					Description: fmt.Sprintf("Running: %s", command),
+					Err:         err,
+					HintAnchor:  "extensions",
+				})
+				success = false
+			} else {
+				results.Results = append(results.Results, extensionResults.Results...)
+			}
+		}
+		extensionSuccess := healthcheck.RunChecks(wout, werr, results, opts.output)
+		if !extensionSuccess {
+			success = false
+		}
+	}
+	return success, nil
+}
+
+func getExtensionCheckFlags(lf *pflag.FlagSet) []string {
+	extensionFlags := []string{
+		"api-addr", "context", "as", "as-group", "kubeconfig", "linkerd-namespace", "verbose",
+		"namespace", "proxy", "wait",
+	}
+	cmdLineFlags := []string{}
+	for _, flag := range extensionFlags {
+		f := lf.Lookup(flag)
+		if f != nil {
+			val := f.Value.String()
+			if val != "" {
+				cmdLineFlags = append(cmdLineFlags, fmt.Sprintf("--%s=%s", f.Name, val))
+			}
+		}
+	}
+	cmdLineFlags = append(cmdLineFlags, "--output=json")
+	return cmdLineFlags
 }
 
 func renderInstallManifest(ctx context.Context) (string, error) {

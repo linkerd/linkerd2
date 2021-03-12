@@ -98,7 +98,7 @@ func main() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	if *traceCollector != "" {
-		if err := trace.InitializeTracing("linkerd-web", *traceCollector); err != nil {
+		if err := trace.InitializeTracing("web", *traceCollector); err != nil {
 			log.Warnf("failed to initialize tracing: %s", err)
 		}
 	}

@@ -23,7 +23,7 @@ require (
 	github.com/imdario/mergo v0.3.8
 	github.com/julienschmidt/httprouter v1.2.0
 	github.com/linkerd/linkerd2-proxy-api v0.1.16
-	github.com/linkerd/linkerd2-proxy-init v1.3.8
+	github.com/linkerd/linkerd2-proxy-init v1.3.9
 	github.com/mattn/go-isatty v0.0.12
 	github.com/mattn/go-runewidth v0.0.4
 	github.com/nsf/termbox-go v0.0.0-20180613055208-5c94acc5e6eb

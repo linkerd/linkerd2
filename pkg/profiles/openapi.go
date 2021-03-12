@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path"
-	"regexp"
 	"sort"
 
 	"github.com/go-openapi/spec"
@@ -19,8 +18,6 @@ const (
 	xLinkerdRetryable = "x-linkerd-retryable"
 	xLinkerdTimeout   = "x-linkerd-timeout"
 )
-
-var pathParamRegex = regexp.MustCompile(`\\{[^\}]*\\}`)
 
 // RenderOpenAPI reads an OpenAPI spec file and renders the corresponding
 // ServiceProfile to a buffer, given a namespace, service, and control plane
@@ -58,7 +55,7 @@ func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, clusterDomai
 			Name:      fmt.Sprintf("%s.%s.svc.%s", name, namespace, clusterDomain),
 			Namespace: namespace,
 		},
-		TypeMeta: serviceProfileMeta,
+		TypeMeta: ServiceProfileMeta,
 	}
 
 	routes := make([]*sp.RouteSpec, 0)
@@ -74,33 +71,33 @@ func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, clusterDomai
 	for _, relPath := range paths {
 		item := swagger.Paths.Paths[relPath]
 		path := path.Join(swagger.BasePath, relPath)
-		pathRegex := pathToRegex(path)
+		pathRegex := PathToRegex(path)
 		if item.Delete != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodDelete, item.Delete)
+			spec := MkRouteSpec(path, pathRegex, http.MethodDelete, item.Delete)
 			routes = append(routes, spec)
 		}
 		if item.Get != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodGet, item.Get)
+			spec := MkRouteSpec(path, pathRegex, http.MethodGet, item.Get)
 			routes = append(routes, spec)
 		}
 		if item.Head != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodHead, item.Head)
+			spec := MkRouteSpec(path, pathRegex, http.MethodHead, item.Head)
 			routes = append(routes, spec)
 		}
 		if item.Options != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodOptions, item.Options)
+			spec := MkRouteSpec(path, pathRegex, http.MethodOptions, item.Options)
 			routes = append(routes, spec)
 		}
 		if item.Patch != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodPatch, item.Patch)
+			spec := MkRouteSpec(path, pathRegex, http.MethodPatch, item.Patch)
 			routes = append(routes, spec)
 		}
 		if item.Post != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodPost, item.Post)
+			spec := MkRouteSpec(path, pathRegex, http.MethodPost, item.Post)
 			routes = append(routes, spec)
 		}
 		if item.Put != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodPut, item.Put)
+			spec := MkRouteSpec(path, pathRegex, http.MethodPut, item.Put)
 			routes = append(routes, spec)
 		}
 	}
@@ -109,7 +106,8 @@ func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, clusterDomai
 	return profile
 }
 
-func mkRouteSpec(path, pathRegex string, method string, operation *spec.Operation) *sp.RouteSpec {
+// MkRouteSpec makes a service profile route from an OpenAPI operation.
+func MkRouteSpec(path, pathRegex string, method string, operation *spec.Operation) *sp.RouteSpec {
 	retryable := false
 	timeout := ""
 	var responses *spec.Responses
@@ -125,11 +123,6 @@ func mkRouteSpec(path, pathRegex string, method string, operation *spec.Operatio
 		IsRetryable:     retryable,
 		Timeout:         timeout,
 	}
-}
-
-func pathToRegex(path string) string {
-	escaped := regexp.QuoteMeta(path)
-	return pathParamRegex.ReplaceAllLiteralString(escaped, "[^/]*")
 }
 
 func toReqMatch(path string, method string) *sp.RequestMatch {

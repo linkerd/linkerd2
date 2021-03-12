@@ -42,10 +42,19 @@ func TestMain(m *testing.M) {
 //////////////////////
 
 func TestTracing(t *testing.T) {
-
 	ctx := context.Background()
 	if os.Getenv("RUN_ARM_TEST") != "" {
 		t.Skip("Skipped. Jaeger & Open Census images does not support ARM yet")
+	}
+
+	// cleanup cluster before proceeding
+	namespaces := []string{"smoke-test", "smoke-test-manual", "smoke-test-ann", "opaque-ports-test"}
+	for _, ns := range namespaces {
+		prefixedNs := TestHelper.GetTestNamespace(ns)
+		if err := TestHelper.DeleteNamespaceIfExists(ctx, prefixedNs); err != nil {
+			testutil.AnnotatedFatalf(t, "error deleting namespace",
+				"error deleting namespace '%s': %s", prefixedNs, err)
+		}
 	}
 
 	// linkerd-jaeger extension
@@ -68,7 +77,7 @@ func TestTracing(t *testing.T) {
 	err = TestHelper.RetryFor(timeout, func() error {
 		out, err := TestHelper.LinkerdRun(checkCmd...)
 		if err != nil {
-			return fmt.Errorf("'linkerd jaeger check' command failed\n%s", err)
+			return fmt.Errorf("'linkerd jaeger check' command failed\n%s\n%s", err, out)
 		}
 		err = TestHelper.ValidateOutput(out, golden)
 		if err != nil {

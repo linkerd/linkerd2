@@ -12,8 +12,10 @@ import (
 )
 
 type checkOptions struct {
-	wait   time.Duration
-	output string
+	proxy     bool
+	wait      time.Duration
+	namespace string
+	output    string
 }
 
 func newCheckOptions() *checkOptions {
@@ -30,7 +32,8 @@ func (options *checkOptions) validate() error {
 	return nil
 }
 
-func newCmdCheck() *cobra.Command {
+// NewCmdCheck generates a new cobra command for the viz extension.
+func NewCmdCheck() *cobra.Command {
 	options := newCheckOptions()
 	cmd := &cobra.Command{
 		Use:   "check [flags]",
@@ -50,9 +53,10 @@ code.`,
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
-	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
-
+	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
+	cmd.Flags().BoolVar(&options.proxy, "proxy", options.proxy, "Also run data-plane checks, to determine if the data plane is healthy")
+	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
+	cmd.Flags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	return cmd
 }
 
@@ -62,13 +66,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		return fmt.Errorf("Validation error when executing check command: %v", err)
 	}
 
-	checks := []healthcheck.CategoryID{
-		healthcheck.KubernetesAPIChecks,
-		healthcheck.LinkerdControlPlaneExistenceChecks,
-		vizHealthCheck.LinkerdVizExtensionCheck,
-	}
-
-	hc := vizHealthCheck.NewHealthChecker(checks, &healthcheck.Options{
+	hc := vizHealthCheck.NewHealthChecker([]healthcheck.CategoryID{}, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		KubeContext:           kubeContext,
@@ -76,8 +74,19 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		ImpersonateGroup:      impersonateGroup,
 		APIAddr:               apiAddr,
 		RetryDeadline:         time.Now().Add(options.wait),
+		DataPlaneNamespace:    options.namespace,
 	})
+	err = hc.InitializeKubeAPIClient()
+	if err != nil {
+		err = fmt.Errorf("Error initializing k8s API client: %s", err)
+		fmt.Fprintln(werr, err)
+		os.Exit(1)
+	}
 
+	hc.AppendCategories(hc.VizCategory())
+	if options.proxy {
+		hc.AppendCategories(hc.VizDataPlaneCategory())
+	}
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
 	if !success {

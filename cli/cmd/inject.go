@@ -170,6 +170,16 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 
 	reports := []inject.Report{*report}
 
+	if conf.IsService() {
+		opaquePortsAnnotations := map[string]string{}
+		if opaquePorts, ok := rt.overrideAnnotations[k8s.ProxyOpaquePortsAnnotation]; ok {
+			opaquePortsAnnotations[k8s.ProxyOpaquePortsAnnotation] = opaquePorts
+			b, err := conf.AnnotateService(opaquePortsAnnotations)
+			return b, reports, err
+		}
+		return bytes, reports, nil
+	}
+
 	if rt.allowNsInject && conf.IsNamespace() {
 		b, err := conf.InjectNamespace(rt.overrideAnnotations)
 		return b, reports, err
@@ -195,10 +205,11 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		conf.AppendPodAnnotations(rt.overrideAnnotations)
 	}
 
-	patchJSON, err := conf.GetPatch(rt.injectProxy)
+	patchJSON, err := conf.GetPodPatch(rt.injectProxy)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	if len(patchJSON) == 0 {
 		return bytes, reports, nil
 	}
@@ -309,6 +320,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	if len(automountServiceAccountTokenFalse) == 0 && verbose {
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, automountServiceAccountTokenDesc)))
 	}
+
 	//
 	// Summary
 	//
@@ -334,13 +346,14 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 
 func fetchConfigs(ctx context.Context) (*linkerd2.Values, error) {
 
-	api.CheckPublicAPIClientOrExit(healthcheck.Options{
+	api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		Impersonate:           impersonate,
 		ImpersonateGroup:      impersonateGroup,
 		KubeContext:           kubeContext,
 		APIAddr:               apiAddr,
+		RetryDeadline:         time.Time{},
 	})
 
 	api, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
@@ -359,17 +372,17 @@ func fetchConfigs(ctx context.Context) (*linkerd2.Values, error) {
 func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[string]string {
 	overrideAnnotations := make(map[string]string)
 
-	proxy := values.GetGlobal().Proxy
-	baseProxy := base.GetGlobal().Proxy
+	proxy := values.Proxy
+	baseProxy := base.Proxy
 	if proxy.Image.Version != baseProxy.Image.Version {
 		overrideAnnotations[k8s.ProxyVersionOverrideAnnotation] = proxy.Image.Version
 	}
 
-	if values.GetGlobal().ProxyInit.IgnoreInboundPorts != base.GetGlobal().ProxyInit.IgnoreInboundPorts {
-		overrideAnnotations[k8s.ProxyIgnoreInboundPortsAnnotation] = values.GetGlobal().ProxyInit.IgnoreInboundPorts
+	if values.ProxyInit.IgnoreInboundPorts != base.ProxyInit.IgnoreInboundPorts {
+		overrideAnnotations[k8s.ProxyIgnoreInboundPortsAnnotation] = values.ProxyInit.IgnoreInboundPorts
 	}
-	if values.GetGlobal().ProxyInit.IgnoreOutboundPorts != base.GetGlobal().ProxyInit.IgnoreOutboundPorts {
-		overrideAnnotations[k8s.ProxyIgnoreOutboundPortsAnnotation] = values.GetGlobal().ProxyInit.IgnoreOutboundPorts
+	if values.ProxyInit.IgnoreOutboundPorts != base.ProxyInit.IgnoreOutboundPorts {
+		overrideAnnotations[k8s.ProxyIgnoreOutboundPortsAnnotation] = values.ProxyInit.IgnoreOutboundPorts
 	}
 
 	if proxy.Ports.Admin != baseProxy.Ports.Admin {
@@ -384,19 +397,22 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 	if proxy.Ports.Outbound != baseProxy.Ports.Outbound {
 		overrideAnnotations[k8s.ProxyOutboundPortAnnotation] = fmt.Sprintf("%d", proxy.Ports.Outbound)
 	}
+	if proxy.OpaquePorts != baseProxy.OpaquePorts {
+		overrideAnnotations[k8s.ProxyOpaquePortsAnnotation] = proxy.OpaquePorts
+	}
 
 	if proxy.Image.Name != baseProxy.Image.Name {
 		overrideAnnotations[k8s.ProxyImageAnnotation] = proxy.Image.Name
 	}
-	if values.GetGlobal().ProxyInit.Image.Name != base.GetGlobal().ProxyInit.Image.Name {
-		overrideAnnotations[k8s.ProxyInitImageAnnotation] = values.GetGlobal().ProxyInit.Image.Name
+	if values.ProxyInit.Image.Name != base.ProxyInit.Image.Name {
+		overrideAnnotations[k8s.ProxyInitImageAnnotation] = values.ProxyInit.Image.Name
 	}
 	if values.DebugContainer.Image.Name != base.DebugContainer.Image.Name {
 		overrideAnnotations[k8s.DebugImageAnnotation] = values.DebugContainer.Image.Name
 	}
 
-	if values.GetGlobal().ProxyInit.Image.Version != base.GetGlobal().ProxyInit.Image.Version {
-		overrideAnnotations[k8s.ProxyInitImageVersionAnnotation] = values.GetGlobal().ProxyInit.Image.Version
+	if values.ProxyInit.Image.Version != base.ProxyInit.Image.Version {
+		overrideAnnotations[k8s.ProxyInitImageVersionAnnotation] = values.ProxyInit.Image.Version
 	}
 
 	if values.DebugContainer.Image.Version != base.DebugContainer.Image.Version {
@@ -427,10 +443,6 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 		overrideAnnotations[k8s.ProxyRequireIdentityOnInboundPortsAnnotation] = proxy.RequireIdentityOnInboundPorts
 	}
 
-	if proxy.DisableTap != baseProxy.DisableTap {
-		overrideAnnotations[k8s.ProxyDisableTapAnnotation] = strconv.FormatBool(proxy.DisableTap)
-	}
-
 	if proxy.EnableExternalProfiles != baseProxy.EnableExternalProfiles {
 		overrideAnnotations[k8s.ProxyEnableExternalProfilesAnnotation] = strconv.FormatBool(proxy.EnableExternalProfiles)
 	}
@@ -456,7 +468,7 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 	}
 
 	// Set fields that can't be converted into annotations
-	values.GetGlobal().Namespace = controlPlaneNamespace
+	values.Namespace = controlPlaneNamespace
 
 	return overrideAnnotations
 }

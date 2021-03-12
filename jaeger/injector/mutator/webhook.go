@@ -9,7 +9,8 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/webhook"
-	labels "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/jaeger/pkg/labels"
+	l5dLables "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/common/log"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -18,8 +19,8 @@ import (
 )
 
 const (
-	collectorSvcAddrAnnotation    = labels.ProxyConfigAnnotationsPrefix + "/trace-collector"
-	collectorSvcAccountAnnotation = labels.ProxyConfigAnnotationsPrefixAlpha +
+	collectorSvcAddrAnnotation    = l5dLables.ProxyConfigAnnotationsPrefix + "/trace-collector"
+	collectorSvcAccountAnnotation = l5dLables.ProxyConfigAnnotationsPrefixAlpha +
 		"/trace-collector-service-account"
 )
 
@@ -54,13 +55,12 @@ func Mutate(collectorSvcAddr, collectorSvcAccount string) webhook.Handler {
 		if err := yaml.Unmarshal(request.Object.Raw, &pod); err != nil {
 			return nil, err
 		}
-
 		params := Params{
 			ProxyIndex:          webhook.GetProxyContainerIndex(pod.Spec.Containers),
 			CollectorSvcAddr:    collectorSvcAddr,
 			CollectorSvcAccount: collectorSvcAccount,
 		}
-		if params.ProxyIndex < 0 || alreadyMutated(pod, params.ProxyIndex) {
+		if params.ProxyIndex < 0 || labels.IsTracingEnabled(pod) {
 			return admissionResponse, nil
 		}
 
@@ -86,27 +86,6 @@ func Mutate(collectorSvcAddr, collectorSvcAccount string) webhook.Handler {
 
 		return admissionResponse, nil
 	}
-}
-
-func alreadyMutated(pod *corev1.Pod, proxyIndex int) bool {
-	for _, v := range pod.Spec.Volumes {
-		if v.DownwardAPI != nil && v.Name == "podinfo" {
-			return true
-		}
-	}
-	for _, mount := range pod.Spec.Containers[proxyIndex].VolumeMounts {
-		if mount.Name == "podinfo" && mount.MountPath == "var/run/linkerd/podinfo" {
-			return true
-		}
-	}
-	for _, env := range pod.Spec.Containers[proxyIndex].Env {
-		if env.Name == "LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH" ||
-			env.Name == "LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR" ||
-			env.Name == "LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME" {
-			return true
-		}
-	}
-	return false
 }
 
 func applyOverrides(ns *corev1.Namespace, pod *corev1.Pod, params *Params) {

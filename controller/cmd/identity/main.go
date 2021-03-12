@@ -29,6 +29,8 @@ import (
 	"k8s.io/client-go/tools/record"
 )
 
+const envTrustAnchors = "LINKERD2_IDENTITY_TRUST_ANCHORS"
+
 // Main executes the identity subcommand
 func Main(args []string) {
 	cmd := flag.NewFlagSet("identity", flag.ExitOnError)
@@ -39,7 +41,6 @@ func Main(args []string) {
 	controllerNS := cmd.String("controller-namespace", "", "namespace in which Linkerd is installed")
 	identityScheme := cmd.String("identity-scheme", "", "scheme used for the identity issuer secret format")
 	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
-	encodedIdentityTrustAnchorPEM := cmd.String("identity-trust-anchors-pem", "", "Base64 encoded trust anchors certificate")
 	identityIssuanceLifeTime := cmd.String("identity-issuance-lifetime", "", "the amount of time for which the Identity issuer should certify identity")
 	identityClockSkewAllowance := cmd.String("identity-clock-skew-allowance", "", "the amount of time to allow for clock skew within a Linkerd cluster")
 
@@ -54,7 +55,8 @@ func Main(args []string) {
 
 	flags.ConfigureAndParse(cmd, args)
 
-	rawPEM, err := base64.StdEncoding.DecodeString(*encodedIdentityTrustAnchorPEM)
+	encodedIdentityTrustAnchorPEM := os.Getenv(envTrustAnchors)
+	rawPEM, err := base64.StdEncoding.DecodeString(encodedIdentityTrustAnchorPEM)
 	if err != nil {
 		log.Fatalf("could not decode identity trust anchors PEM: %s", err.Error())
 	}

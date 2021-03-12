@@ -49,6 +49,15 @@ func TestRender(t *testing.T) {
 		},
 		{
 			map[string]interface{}{
+				"prometheus": map[string]interface{}{
+					"args": map[string]interface{}{
+						"log.level": "debug",
+					}},
+			},
+			"install_prometheus_loglevel_from_args.golden",
+		},
+		{
+			map[string]interface{}{
 				"prometheus":    map[string]interface{}{"enabled": false},
 				"prometheusUrl": "external-prom.com",
 			},
@@ -62,6 +71,29 @@ func TestRender(t *testing.T) {
 				"dashboard":  proxyResources,
 			},
 			"install_proxy_resources.golden",
+		},
+		{
+			map[string]interface{}{
+				"defaultLogLevel": "debug",
+				"defaultUID":      1234,
+				"defaultRegistry": "gcr.io/linkerd",
+				"tap": map[string]interface{}{
+					"logLevel": "info",
+					"UID":      5678,
+					"image": map[string]interface{}{
+						"registry": "cr.l5d.io/linkerd",
+						"tag":      "stable-9.2",
+					},
+				},
+			},
+			"install_default_overrides.golden",
+		},
+		{
+			map[string]interface{}{
+				"grafana":    map[string]interface{}{"enabled": false},
+				"grafanaUrl": "external-grafana.com",
+			},
+			"install_grafana_disabled.golden",
 		},
 	}
 

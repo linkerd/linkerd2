@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"text/template"
 	"time"
 
@@ -16,6 +17,8 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+var pathParamRegex = regexp.MustCompile(`\\{[^\}]*\\}`)
+
 type profileTemplateConfig struct {
 	ServiceNamespace string
 	ServiceName      string
@@ -23,8 +26,8 @@ type profileTemplateConfig struct {
 }
 
 var (
-	// serviceProfileMeta is the TypeMeta for the ServiceProfile custom resource.
-	serviceProfileMeta = metav1.TypeMeta{
+	// ServiceProfileMeta is the TypeMeta for the ServiceProfile custom resource.
+	ServiceProfileMeta = metav1.TypeMeta{
 		APIVersion: k8s.ServiceProfileAPIVersion,
 		Kind:       k8s.ServiceProfileKind,
 	}
@@ -240,4 +243,10 @@ func writeProfile(profile sp.ServiceProfile, w io.Writer) error {
 	}
 	_, err = w.Write(output)
 	return err
+}
+
+// PathToRegex converts a path into a regex.
+func PathToRegex(path string) string {
+	escaped := regexp.QuoteMeta(path)
+	return pathParamRegex.ReplaceAllLiteralString(escaped, "[^/]*")
 }

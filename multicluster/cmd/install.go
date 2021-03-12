@@ -7,11 +7,15 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"time"
 
 	"github.com/linkerd/linkerd2/multicluster/static"
 	multicluster "github.com/linkerd/linkerd2/multicluster/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
+	partials "github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/flags"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	api "github.com/linkerd/linkerd2/pkg/public"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -40,6 +44,7 @@ type (
 
 func newMulticlusterInstallCommand() *cobra.Command {
 	options, err := newMulticlusterInstallOptionsWithDefault()
+	var wait time.Duration
 	var valuesOptions valuespkg.Options
 
 	if err != nil {
@@ -58,6 +63,17 @@ The installation can be configured by using the --set, --values, --set-string an
 A full list of configurable values can be found at https://github.com/linkerd/linkerd2/blob/main/multicluster/charts/linkerd-multicluster/README.md
   `,
 		RunE: func(cmd *cobra.Command, args []string) error {
+
+			// Wait for the core control-plane to be up and running
+			api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
+				ControlPlaneNamespace: controlPlaneNamespace,
+				KubeConfig:            kubeconfigPath,
+				KubeContext:           kubeContext,
+				Impersonate:           impersonate,
+				ImpersonateGroup:      impersonateGroup,
+				APIAddr:               apiAddr,
+				RetryDeadline:         time.Now().Add(wait),
+			})
 
 			values, err := buildMulticlusterInstallValues(cmd.Context(), options)
 
@@ -79,13 +95,25 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				{Name: "templates/link-crd.yaml"},
 			}
 
+			var partialFiles []*loader.BufferedFile
+			for _, template := range charts.L5dPartials {
+				partialFiles = append(partialFiles,
+					&loader.BufferedFile{Name: template},
+				)
+			}
+
 			// Load all multicluster install chart files into buffer
 			if err := charts.FilesReader(static.Templates, helmMulticlusterDefaultChartName+"/", files); err != nil {
 				return err
 			}
 
+			// Load all partial chart files into buffer
+			if err := charts.FilesReader(partials.Templates, "", partialFiles); err != nil {
+				return err
+			}
+
 			// Create a Chart obj from the files
-			chart, err := loader.LoadFiles(files)
+			chart, err := loader.LoadFiles(append(files, partialFiles...))
 			if err != nil {
 				return err
 			}
@@ -138,6 +166,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().StringVar(&options.gatewayNginxVersion, "gateway-nginx-image-version", options.gatewayNginxVersion, "The version of nginx to be used")
 	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "service-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the service account which can be used by service mirror components in source clusters to discover exported services")
 	cmd.Flags().StringVar(&options.gatewayServiceType, "gateway-service-type", options.gatewayServiceType, "Overwrite Service type for gateway service")
+	cmd.Flags().DurationVar(&wait, "wait", 300*time.Second, "Wait for core control-plane components to be available")
 
 	// Hide developer focused flags in release builds.
 	release, err := version.IsReleaseChannel(version.Version)
@@ -202,9 +231,9 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 	defaults.GatewayProbePort = opts.gatewayProbePort
 	defaults.GatewayNginxImage = opts.gatewayNginxImage
 	defaults.GatewayNginxImageVersion = opts.gatewayNginxVersion
-	defaults.IdentityTrustDomain = values.GetGlobal().IdentityTrustDomain
+	defaults.IdentityTrustDomain = values.IdentityTrustDomain
 	defaults.LinkerdNamespace = controlPlaneNamespace
-	defaults.ProxyOutboundPort = uint32(values.GetGlobal().Proxy.Ports.Outbound)
+	defaults.ProxyOutboundPort = uint32(values.Proxy.Ports.Outbound)
 	defaults.LinkerdVersion = version.Version
 	defaults.RemoteMirrorServiceAccount = opts.remoteMirrorCredentials
 	defaults.GatewayServiceType = opts.gatewayServiceType

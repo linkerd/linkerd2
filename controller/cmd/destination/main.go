@@ -14,6 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/flags"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/trace"
+	"github.com/linkerd/linkerd2/pkg/util"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -30,6 +31,8 @@ func Main(args []string) {
 	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", false, "Enable the usage of EndpointSlice informers and resources")
 	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
 	clusterDomain := cmd.String("cluster-domain", "", "kubernetes cluster domain")
+	defaultOpaquePorts := cmd.String("default-opaque-ports", "", "configures the default opaque ports")
+
 	traceCollector := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, args)
@@ -58,6 +61,13 @@ func Main(args []string) {
 		log.Warnf("expected cluster domain through args (falling back to %s)", *clusterDomain)
 	}
 
+	opaquePorts, err := util.ParsePorts(*defaultOpaquePorts)
+	if err != nil {
+		log.Fatalf("Failed to parse opaque Ports %s: %s", *defaultOpaquePorts, err)
+	}
+
+	log.Infof("Using default opaque ports: %v", opaquePorts)
+
 	if *traceCollector != "" {
 		if err := trace.InitializeTracing("linkerd-destination", *traceCollector); err != nil {
 			log.Warnf("failed to initialize tracing: %s", err)
@@ -84,14 +94,14 @@ func Main(args []string) {
 			ctx,
 			*kubeConfigPath,
 			true,
-			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.TS, k8s.Job, k8s.NS,
+			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.TS, k8s.Job, k8s.NS, k8s.Node,
 		)
 	} else {
 		k8sAPI, err = k8s.InitializeAPI(
 			ctx,
 			*kubeConfigPath,
 			true,
-			k8s.Endpoint, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.TS, k8s.Job, k8s.NS,
+			k8s.Endpoint, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.TS, k8s.Job, k8s.NS, k8s.Node,
 		)
 	}
 	if err != nil {
@@ -106,6 +116,7 @@ func Main(args []string) {
 		*enableEndpointSlices,
 		k8sAPI,
 		*clusterDomain,
+		opaquePorts,
 		done,
 	)
 

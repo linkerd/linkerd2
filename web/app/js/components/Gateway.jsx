@@ -1,13 +1,18 @@
 import { handlePageVisibility, withPageVisibility } from './util/PageVisibility.jsx';
+import Card from '@material-ui/core/Card';
+import CardContent from '@material-ui/core/CardContent';
 import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
 import { Trans } from '@lingui/macro';
+import Typography from '@material-ui/core/Typography';
 import _isEmpty from 'lodash/isEmpty';
 import { processGatewayResults } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
+
+const multiclusterExtensionName = 'linkerd-multicluster';
 
 class Gateways extends React.Component {
   constructor(props) {
@@ -18,6 +23,7 @@ class Gateways extends React.Component {
     this.state = {
       pollingInterval: 2000,
       metrics: {},
+      multiclusterExists: false,
       pendingRequests: false,
       loaded: false,
       error: null,
@@ -26,6 +32,7 @@ class Gateways extends React.Component {
 
   componentDidMount() {
     this.startServerPolling();
+    this.checkMulticlusterExtension();
   }
 
   componentDidUpdate(prevProps) {
@@ -78,6 +85,16 @@ class Gateways extends React.Component {
       .catch(this.handleApiError);
   }
 
+  checkMulticlusterExtension() {
+    this.api.setCurrentRequests([this.api.fetchExtension(multiclusterExtensionName)]);
+
+    this.serverPromise = Promise.all(this.api.getCurrentPromises())
+      .then(([extension]) => {
+        this.setState({ multiclusterExists: !_isEmpty(extension) });
+      })
+      .catch(this.handleApiError);
+  }
+
   handleApiError = e => {
     if (e.isCanceled) {
       return;
@@ -90,7 +107,7 @@ class Gateways extends React.Component {
   };
 
   render() {
-    const { metrics, loaded, error } = this.state;
+    const { metrics, loaded, multiclusterExists, error } = this.state;
     const noMetrics = _isEmpty(metrics);
     return (
       <div className="page-content">
@@ -99,7 +116,15 @@ class Gateways extends React.Component {
           <Spinner />
         ) : (
           <div>
-            {noMetrics ? <div><Trans>noResourcesDetectedMsg</Trans></div> : null}
+            {noMetrics && multiclusterExists ? <div><Trans>noResourcesDetectedMsg</Trans></div> : null}
+            {(noMetrics && !multiclusterExists) &&
+            <Card>
+              <CardContent>
+                <Typography><Trans>installMulticlusterMsg</Trans></Typography>
+                <br />
+                <code>linkerd multicluster install | kubectl apply -f -</code>
+              </CardContent>
+            </Card>}
             {noMetrics ? null : (
               <div className="page-section">
                 <MetricsTable

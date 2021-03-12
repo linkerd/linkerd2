@@ -25,11 +25,11 @@ import (
 )
 
 const (
-	// multiclusterExtensionName is the name of the multicluster extension
-	multiclusterExtensionName = "linkerd-multicluster"
+	// MulticlusterExtensionName is the name of the multicluster extension
+	MulticlusterExtensionName = "multicluster"
 
 	// linkerdMulticlusterExtensionCheck adds checks related to the multicluster extension
-	linkerdMulticlusterExtensionCheck healthcheck.CategoryID = multiclusterExtensionName
+	linkerdMulticlusterExtensionCheck healthcheck.CategoryID = "linkerd-multicluster"
 
 	linkerdServiceMirrorServiceAccountName = "linkerd-service-mirror-%s"
 	linkerdServiceMirrorComponentName      = "service-mirror"
@@ -67,7 +67,8 @@ func newHealthChecker(linkerdHC *healthcheck.HealthChecker) *healthChecker {
 	}
 }
 
-func newCmdCheck() *cobra.Command {
+// NewCmdCheck generates a new cobra command for the multicluster extension.
+func NewCmdCheck() *cobra.Command {
 	options := newCheckOptions()
 	cmd := &cobra.Command{
 		Use:   "check [flags]",
@@ -84,7 +85,7 @@ non-zero exit code.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get the multicluster extension namespace
 			kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-			_, err = kubeAPI.GetNamespaceWithExtensionLabel(context.Background(), multiclusterExtensionName)
+			_, err = kubeAPI.GetNamespaceWithExtensionLabel(context.Background(), MulticlusterExtensionName)
 			if err != nil {
 				err = fmt.Errorf("%w; install by running `linkerd multicluster install | kubectl apply -f -`", err)
 				fmt.Fprintln(os.Stderr, err.Error())
@@ -93,8 +94,12 @@ non-zero exit code.`,
 			return configureAndRunChecks(stdout, stderr, options)
 		},
 	}
-	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
-	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
+	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
+	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
+	cmd.Flags().Bool("proxy", false, "")
+	cmd.Flags().MarkHidden("proxy")
+	cmd.Flags().StringP("namespace", "n", "", "")
+	cmd.Flags().MarkHidden("namespace")
 	return cmd
 }
 
@@ -104,8 +109,6 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		return fmt.Errorf("Validation error when executing check command: %v", err)
 	}
 	checks := []healthcheck.CategoryID{
-		healthcheck.KubernetesAPIChecks,
-		healthcheck.LinkerdControlPlaneExistenceChecks,
 		linkerdMulticlusterExtensionCheck,
 	}
 	linkerdHC := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
@@ -117,6 +120,21 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		APIAddr:               apiAddr,
 		RetryDeadline:         time.Now().Add(options.wait),
 	})
+
+	err = linkerdHC.InitializeKubeAPIClient()
+	if err != nil {
+		err = fmt.Errorf("Error initializing k8s API client: %s", err)
+		fmt.Fprintln(werr, err)
+		os.Exit(1)
+	}
+
+	err = linkerdHC.InitializeLinkerdGlobalConfig(context.Background())
+	if err != nil {
+		err = fmt.Errorf("Failed to fetch linkerd config: %s", err)
+		fmt.Fprintln(werr, err)
+		os.Exit(1)
+	}
+
 	hc := newHealthChecker(linkerdHC)
 	category := multiclusterCategory(hc)
 	if err != nil {
@@ -150,7 +168,7 @@ func multiclusterCategory(hc *healthChecker) *healthcheck.Category {
 		*healthcheck.NewChecker("clusters share trust anchors").
 			WithHintAnchor("l5d-multicluster-clusters-share-anchors").
 			WithCheck(func(ctx context.Context) error {
-				localAnchors, err := tls.DecodePEMCertificates(hc.linkerdHC.LinkerdConfigGlobal().IdentityTrustAnchorsPEM)
+				localAnchors, err := tls.DecodePEMCertificates(hc.linkerdHC.LinkerdConfig().IdentityTrustAnchorsPEM)
 				if err != nil {
 					return fmt.Errorf("Cannot parse source trust anchors: %s", err)
 				}
@@ -309,7 +327,7 @@ func (hc *healthChecker) checkRemoteClusterAnchors(ctx context.Context, localAnc
 			errors = append(errors, fmt.Sprintf("* %s: unable to fetch anchors: %s", link.TargetClusterName, err))
 			continue
 		}
-		remoteAnchors, err := tls.DecodePEMCertificates(values.GetGlobal().IdentityTrustAnchorsPEM)
+		remoteAnchors, err := tls.DecodePEMCertificates(values.IdentityTrustAnchorsPEM)
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("* %s: cannot parse trust anchors", link.TargetClusterName))
 			continue

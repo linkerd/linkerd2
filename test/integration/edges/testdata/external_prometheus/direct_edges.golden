@@ -1,0 +1,29 @@
+\[
+  \{
+    "src": "prometheus",
+    "src_namespace": "external\-prometheus",
+    "dst": "slow-cooker",
+    "dst_namespace": "{{.Ns}}",
+    "client_id": "prometheus.external\-prometheus",
+    "server_id": "default.{{.Ns}}",
+    "no_tls_reason": ""
+  \},
+  \{
+    "src": "prometheus",
+    "src_namespace": "external\-prometheus",
+    "dst": "terminus",
+    "dst_namespace": "{{.Ns}}",
+    "client_id": "prometheus.external\-prometheus",
+    "server_id": "default.{{.Ns}}",
+    "no_tls_reason": ""
+  \},
+  \{
+    "src": "slow-cooker",
+    "src_namespace": "{{.Ns}}",
+    "dst": "terminus",
+    "dst_namespace": "{{.Ns}}",
+    "client_id": "default.{{.Ns}}",
+    "server_id": "default.{{.Ns}}",
+    "no_tls_reason": ""
+  \}
+\]

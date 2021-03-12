@@ -12,7 +12,7 @@ import (
 // GenServiceProfile generates a mock ServiceProfile.
 func GenServiceProfile(service, namespace, clusterDomain string) v1alpha2.ServiceProfile {
 	return v1alpha2.ServiceProfile{
-		TypeMeta: serviceProfileMeta,
+		TypeMeta: ServiceProfileMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      service + "." + namespace + ".svc." + clusterDomain,
 			Namespace: namespace,

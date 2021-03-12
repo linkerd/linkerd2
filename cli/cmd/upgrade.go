@@ -12,6 +12,8 @@ import (
 	"github.com/linkerd/linkerd2/cli/flag"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/config"
+	flagspkg "github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -58,7 +60,11 @@ func newCmdUpgradeConfig(values *l5dcharts.Values) *cobra.Command {
 		Short: "Output Kubernetes cluster-wide resources to upgrade an existing Linkerd",
 		Long: `Output Kubernetes cluster-wide resources to upgrade an existing Linkerd.
 
-Note that this command should be followed by "linkerd upgrade control-plane".`,
+Note that this command should be followed by "linkerd upgrade control-plane".
+
+The upgrade can be configured by using the --set, --values, --set-string and --set-file flags.
+A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md
+`,
 		Example: `  # Default upgrade.
   linkerd upgrade config | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -72,6 +78,7 @@ Note that this command should be followed by "linkerd upgrade control-plane".`,
 	}
 
 	cmd.Flags().AddFlagSet(allStageFlagSet)
+	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
 
 	return cmd
 }
@@ -98,7 +105,11 @@ func newCmdUpgradeControlPlane(values *l5dcharts.Values) *cobra.Command {
 
 Note that the default flag values for this command come from the Linkerd control
 plane. The default values displayed in the Flags section below only apply to the
-install command. It should be run after "linkerd upgrade config".`,
+install command. It should be run after "linkerd upgrade config".
+
+The upgrade can be configured by using the --set, --values, --set-string and --set-file flags.
+A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md
+`,
 		Example: `  # Default upgrade.
   linkerd upgrade control-plane | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -113,6 +124,7 @@ install command. It should be run after "linkerd upgrade config".`,
 	cmd.Flags().AddFlagSet(allStageFlagSet)
 	cmd.Flags().AddFlagSet(installUpgradeFlagSet)
 	cmd.Flags().AddFlagSet(proxyFlagSet)
+	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
 
 	return cmd
 }
@@ -144,7 +156,11 @@ func newCmdUpgrade() *cobra.Command {
 
 Note that the default flag values for this command come from the Linkerd control
 plane. The default values displayed in the Flags section below only apply to the
-install command.`,
+install command.
+
+The upgrade can be configured by using the --set, --values, --set-string and --set-file flags.
+A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md
+`,
 
 		Example: `  # Default upgrade.
   linkerd upgrade | kubectl apply --prune -l linkerd.io/control-plane-ns=linkerd -f -
@@ -156,7 +172,12 @@ install command.`,
 			if err != nil {
 				return err
 			}
-			return upgradeRunE(cmd.Context(), k, flags, "", options)
+			err = upgradeRunE(cmd.Context(), k, flags, "", options)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err.Error())
+				os.Exit(1)
+			}
+			return nil
 		},
 	}
 
@@ -164,6 +185,7 @@ install command.`,
 	cmd.Flags().AddFlagSet(installUpgradeFlagSet)
 	cmd.Flags().AddFlagSet(proxyFlagSet)
 	cmd.PersistentFlags().AddFlagSet(upgradeFlagSet)
+	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
 
 	cmd.AddCommand(newCmdUpgradeConfig(values))
 	cmd.AddCommand(newCmdUpgradeControlPlane(values))
@@ -252,6 +274,16 @@ func upgrade(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, stage
 		}
 	}
 
+	// If values is still nil, then neither the linkerd-config-overrides secret
+	// nor the legacy values were found. This means either means that Linkerd
+	// was installed with Helm or that the installation needs to be repaired.
+	if values == nil {
+		return bytes.Buffer{}, errors.New(
+			`Could not find the Linkerd config. If Linkerd was installed with Helm, please
+use Helm to perform upgrades. If Linkerd was not installed with Helm, please use
+the 'linkerd repair' command to repair the Linkerd config`)
+	}
+
 	err = flag.ApplySetFlags(values, flags)
 	if err != nil {
 		return bytes.Buffer{}, err
@@ -305,6 +337,11 @@ func loadStoredValues(ctx context.Context, k *k8s.KubernetesAPI) (*charts.Values
 	bytes, ok := secret.Data["linkerd-config-overrides"]
 	if !ok {
 		return nil, errors.New("secret/linkerd-config-overrides is missing linkerd-config-overrides data")
+	}
+
+	bytes, err = config.RemoveGlobalFieldIfPresent(bytes)
+	if err != nil {
+		return nil, err
 	}
 
 	// Unmarshal the overrides directly onto the values.  This has the effect

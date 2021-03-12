@@ -1,7 +1,6 @@
 package destination
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -13,8 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 )
 
 const (
@@ -31,6 +29,7 @@ type endpointTranslator struct {
 	identityTrustDomain string
 	enableH2Upgrade     bool
 	nodeTopologyLabels  map[string]string
+	defaultOpaquePorts  map[uint32]struct{}
 
 	availableEndpoints watcher.AddressSet
 	filteredSnapshot   watcher.AddressSet
@@ -39,13 +38,13 @@ type endpointTranslator struct {
 }
 
 func newEndpointTranslator(
-	ctx context.Context,
 	controllerNS string,
 	identityTrustDomain string,
 	enableH2Upgrade bool,
 	service string,
 	srcNodeName string,
-	k8sClient kubernetes.Interface,
+	defaultOpaquePorts map[uint32]struct{},
+	nodes coreinformers.NodeInformer,
 	stream pb.Destination_GetServer,
 	log *logging.Entry,
 ) *endpointTranslator {
@@ -54,7 +53,7 @@ func newEndpointTranslator(
 		"service":   service,
 	})
 
-	nodeTopologyLabels, err := getK8sNodeTopology(ctx, k8sClient, srcNodeName)
+	nodeTopologyLabels, err := getK8sNodeTopology(nodes, srcNodeName)
 	if err != nil {
 		log.Errorf("Failed to get node topology for node %s: %s", srcNodeName, err)
 	}
@@ -67,6 +66,7 @@ func newEndpointTranslator(
 		identityTrustDomain,
 		enableH2Upgrade,
 		nodeTopologyLabels,
+		defaultOpaquePorts,
 		availableEndpoints,
 		filteredSnapshot,
 		stream,
@@ -216,9 +216,14 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			err error
 		)
 		if address.Pod != nil {
-			opaquePorts, getErr := getOpaquePortsAnnotations(address.Pod)
+			opaquePorts, ok, getErr := getPodOpaquePortsAnnotations(address.Pod)
 			if getErr != nil {
 				et.log.Errorf("failed getting opaque ports annotation for pod: %s", getErr)
+			}
+			// If the opaque ports annotation was not set, then set the
+			// endpoint's opaque ports to the default value.
+			if !ok {
+				opaquePorts = et.defaultOpaquePorts
 			}
 			wa, err = toWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 		} else {
@@ -371,9 +376,9 @@ func toWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}, en
 	}, nil
 }
 
-func getK8sNodeTopology(ctx context.Context, k8sClient kubernetes.Interface, srcNode string) (map[string]string, error) {
+func getK8sNodeTopology(nodes coreinformers.NodeInformer, srcNode string) (map[string]string, error) {
 	nodeTopology := make(map[string]string)
-	node, err := k8sClient.CoreV1().Nodes().Get(ctx, srcNode, metav1.GetOptions{})
+	node, err := nodes.Lister().Get(srcNode)
 	if err != nil {
 		return nodeTopology, err
 	}

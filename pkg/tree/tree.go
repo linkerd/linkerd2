@@ -1,7 +1,9 @@
 package tree
 
 import (
-	"github.com/ghodss/yaml"
+	"fmt"
+
+	"sigs.k8s.io/yaml"
 )
 
 // Tree is a structured representation of a string keyed tree document such as
@@ -25,6 +27,31 @@ func (t Tree) String() string {
 		return err.Error()
 	}
 	return s
+}
+
+// GetString returns the string value at the given path
+func (t Tree) GetString(path ...string) (string, error) {
+	if len(path) == 1 {
+		// check if exists
+		if val, ok := t[path[0]]; ok {
+			// check if string
+			if s, ok := val.(string); ok {
+				return s, nil
+			}
+			return "", fmt.Errorf("expected string at node %s but found a different type", path[0])
+		}
+		return "", fmt.Errorf("could not find node %s", path[0])
+	}
+
+	// check if exists
+	if val, ok := t[path[0]]; ok {
+		// Check if its a Tree
+		if valTree, ok := val.(Tree); ok {
+			return valTree.GetString(path[1:]...)
+		}
+		return "", fmt.Errorf("expected Tree at node %s but found a different type", path[0])
+	}
+	return "", fmt.Errorf("could not find node %s", path[0])
 }
 
 // Diff returns the subset of other where its values differ from t.
@@ -128,8 +155,13 @@ func MarshalToTree(obj interface{}) (Tree, error) {
 	if err != nil {
 		return nil, err
 	}
+	return BytesToTree(bytes)
+}
+
+// BytesToTree converts given bytes into a tree by Unmarshaling
+func BytesToTree(bytes []byte) (Tree, error) {
 	tree := make(Tree)
-	err = yaml.Unmarshal(bytes, &tree)
+	err := yaml.Unmarshal(bytes, &tree)
 	if err != nil {
 		return nil, err
 	}

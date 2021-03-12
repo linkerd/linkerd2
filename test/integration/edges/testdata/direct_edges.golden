@@ -9,20 +9,20 @@
     "no_tls_reason": ""
   \},
   \{
-    "src": "linkerd-prometheus",
+    "src": "prometheus",
     "src_namespace": "{{.VizNs}}",
     "dst": "slow-cooker",
     "dst_namespace": "{{.Ns}}",
-    "client_id": "linkerd-prometheus.{{.VizNs}}",
+    "client_id": "prometheus.{{.VizNs}}",
     "server_id": "default.{{.Ns}}",
     "no_tls_reason": ""
   \},
   \{
-    "src": "linkerd-prometheus",
+    "src": "prometheus",
     "src_namespace": "{{.VizNs}}",
     "dst": "terminus",
     "dst_namespace": "{{.Ns}}",
-    "client_id": "linkerd-prometheus.{{.VizNs}}",
+    "client_id": "prometheus.{{.VizNs}}",
     "server_id": "default.{{.Ns}}",
     "no_tls_reason": ""
   \}

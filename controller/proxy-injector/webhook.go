@@ -95,7 +95,12 @@ func Inject(
 	resourceConfig.AppendPodAnnotations(map[string]string{
 		pkgK8s.CreatedByAnnotation: fmt.Sprintf("linkerd/proxy-injector %s", version.Version),
 	})
-	patchJSON, err := resourceConfig.GetPatch(true)
+	var patchJSON []byte
+	if resourceConfig.IsService() {
+		patchJSON, err = resourceConfig.GetServicePatch()
+	} else {
+		patchJSON, err = resourceConfig.GetPodPatch(true)
+	}
 	if err != nil {
 		return nil, err
 	}

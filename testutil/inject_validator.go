@@ -25,7 +25,6 @@ type InjectValidator struct {
 	AutoInject             bool
 	AdminPort              int
 	ControlPort            int
-	DisableTap             bool
 	EnableDebug            bool
 	EnableExternalProfiles bool
 	ImagePullPolicy        string
@@ -77,15 +76,6 @@ func (iv *InjectValidator) validateEnvVar(container *v1.Container, envName, expe
 	return fmt.Errorf("cannot find env: %s", envName)
 }
 
-func (iv *InjectValidator) validateNoEnvVar(container *v1.Container, envName string) error {
-	for _, env := range container.Env {
-		if env.Name == envName {
-			return fmt.Errorf("env: %s, expected to not be set, actual %s", envName, env.Value)
-		}
-	}
-	return nil
-}
-
 func (iv *InjectValidator) validatePort(container *v1.Container, portName string, expectedValue int) error {
 	for _, port := range container.Ports {
 		if port.Name == portName {
@@ -133,12 +123,6 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 
 	if iv.ControlPort != 0 {
 		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_CONTROL_LISTEN_ADDR", fmt.Sprintf("0.0.0.0:%d", iv.ControlPort)); err != nil {
-			return err
-		}
-	}
-
-	if iv.DisableTap {
-		if err := iv.validateNoEnvVar(proxyContainer, "LINKERD2_PROXY_TAP_SVC"); err != nil {
 			return err
 		}
 	}
@@ -420,11 +404,6 @@ func (iv *InjectValidator) GetFlagsAndAnnotations() ([]string, map[string]string
 	if iv.DisableIdentity {
 		annotations[k8s.IdentityModeDisabled] = enabled
 		flags = append(flags, "--disable-identity")
-	}
-
-	if iv.DisableTap {
-		annotations[k8s.ProxyDisableTapAnnotation] = enabled
-		flags = append(flags, "--disable-tap")
 	}
 
 	if iv.EnableDebug {

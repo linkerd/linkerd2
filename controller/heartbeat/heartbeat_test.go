@@ -51,6 +51,33 @@ metadata:
 				"k8s-version": []string{"v0.0.0-master+$Format:%h$"},
 			},
 		},
+		{
+			"linkerd",
+			[]string{`
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: linkerd
+  creationTimestamp: 2019-02-15T12:34:56Z
+  uid: fake-uuid
+data:
+  values: |
+    linkerdVersion: stable-2.10`, `
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: linkerd-viz
+  labels:
+    linkerd.io/extension: viz`,
+			},
+			url.Values{
+				"k8s-version":  []string{"v0.0.0-master+$Format:%h$"},
+				"install-time": []string{"1550234096"},
+				"uuid":         []string{"fake-uuid"},
+				"ext-viz":      []string{"1"},
+			},
+		},
 	}
 
 	ctx := context.Background()

@@ -2,7 +2,6 @@
 ###
 ### collector RBAC
 ###
----
 kind: ServiceAccount
 apiVersion: v1
 metadata:
@@ -12,7 +11,6 @@ metadata:
 ###
 ### jaeger RBAC
 ###
----
 kind: ServiceAccount
 apiVersion: v1
 metadata:
@@ -23,13 +21,12 @@ metadata:
 ###
 ### Jaeger Injector RBAC
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-jaeger-injector
   labels:
-    linkerd.io/extension: linkerd-jaeger
+    linkerd.io/extension: jaeger
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -40,7 +37,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-jaeger-injector
   labels:
-    linkerd.io/extension: linkerd-jaeger
+    linkerd.io/extension: jaeger
 subjects:
 - kind: ServiceAccount
   name: jaeger-injector
@@ -71,12 +68,12 @@ data:
   tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.webhook.keyPEM)) (empty .Values.webhook.keyPEM) }}
 ---
 {{- end }}
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-jaeger-injector-webhook-config
   labels:
-    linkerd.io/extension: linkerd-jaeger
+    linkerd.io/extension: jaeger
 webhooks:
 - name: jaeger-injector.linkerd.io
   {{- if .Values.webhook.namespaceSelector }}
@@ -97,6 +94,7 @@ webhooks:
 {{- end }}
     caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.webhook.caBundle)) (empty .Values.webhook.caBundle) }}
   failurePolicy: {{.Values.webhook.failurePolicy}}
+  admissionReviewVersions: ["v1", "v1beta1"]
   reinvocationPolicy: IfNeeded
   rules:
   - operations: [ "CREATE" ]
@@ -104,4 +102,3 @@ webhooks:
     apiVersions: ["v1"]
     resources: ["pods"]
   sideEffects: None
-

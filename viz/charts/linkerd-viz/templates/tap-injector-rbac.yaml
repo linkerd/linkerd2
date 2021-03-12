@@ -1,13 +1,13 @@
+---
 ###
 ### Tap Injector RBAC
 ###
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-tap-injector
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    linkerd.io/extension: viz
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -18,7 +18,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-tap-injector
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    linkerd.io/extension: viz
 subjects:
 - kind: ServiceAccount
   name: tap-injector
@@ -44,19 +44,21 @@ metadata:
   name: tap-injector-k8s-tls
   namespace: {{ .Values.namespace }}
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
+  labels:
+    linkerd.io/extension: viz
 type: kubernetes.io/tls
 data:
   tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tapInjector.crtPEM)) (empty .Values.tapInjector.crtPEM) }}
   tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.tapInjector.keyPEM)) (empty .Values.tapInjector.keyPEM) }}
 ---
 {{- end }}
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-tap-injector-webhook-config
   labels:
-    {{.Values.extensionAnnotation}}: linkerd-viz
+    linkerd.io/extension: viz
 webhooks:
 - name: tap-injector.linkerd.io
   {{- if .Values.tapInjector.namespaceSelector }}
@@ -77,6 +79,7 @@ webhooks:
 {{- end }}
     caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tapInjector.caBundle)) (empty .Values.tapInjector.caBundle) }}
   failurePolicy: {{.Values.tapInjector.failurePolicy}}
+  admissionReviewVersions: ["v1", "v1beta1"]
   reinvocationPolicy: IfNeeded
   rules:
   - operations: [ "CREATE" ]

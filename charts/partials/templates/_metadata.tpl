@@ -1,6 +1,10 @@
+{{- define "partials.annotations.created-by" -}}
+linkerd.io/created-by: {{ .Values.cliVersion | default (printf "linkerd/helm %s" (.Values.cniPluginVersion | default .Values.linkerdVersion)) }}
+{{- end -}}
+
 {{- define "partials.proxy.annotations" -}}
-linkerd.io/identity-mode: {{ternary "default" "disabled" (not .disableIdentity)}}
-linkerd.io/proxy-version: {{.image.version}}
+linkerd.io/identity-mode: {{ternary "default" "disabled" (not .Values.proxy.disableIdentity)}}
+linkerd.io/proxy-version: {{.Values.proxy.image.version | default .Values.linkerdVersion}}
 {{- end -}}
 
 {{/*

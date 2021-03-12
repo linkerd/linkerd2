@@ -2,21 +2,20 @@
 ###
 ### Destination Controller Service
 ###
----
 kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-dst
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.global.controllerComponentLabel}}: destination
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
-    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.global.controllerComponentLabel}}: destination
+    linkerd.io/control-plane-component: destination
   ports:
   - name: grpc
     port: 8086
@@ -26,16 +25,16 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-dst-headless
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.global.controllerComponentLabel}}: destination
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
-    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
 spec:
   clusterIP: None
   selector:
-    {{.Values.global.controllerComponentLabel}}: destination
+    linkerd.io/control-plane-component: destination
   ports:
   - name: grpc
     port: 8086
@@ -46,43 +45,43 @@ kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
 metadata:
   name: linkerd-dst
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.global.controllerComponentLabel}}: destination
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
-    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
 spec:
   maxUnavailable: 1
   selector:
     matchLabels:
-      {{.Values.global.controllerComponentLabel}}: destination
+      linkerd.io/control-plane-component: destination
 {{- end }}
 ---
 {{- $tree := deepCopy . }}
-{{ $_ := set $tree.Values.global.proxy "workloadKind" "deployment" -}}
-{{ $_ := set $tree.Values.global.proxy "component" "linkerd-destination" -}}
-{{ include "linkerd.proxy.validation" .Values.global.proxy -}}
+{{ $_ := set $tree.Values.proxy "workloadKind" "deployment" -}}
+{{ $_ := set $tree.Values.proxy "component" "linkerd-destination" -}}
+{{ include "linkerd.proxy.validation" .Values.proxy -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
   labels:
     app.kubernetes.io/name: destination
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
-    {{.Values.global.controllerComponentLabel}}: destination
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
   name: linkerd-destination
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
 spec:
   replicas: {{.Values.controllerReplicas}}
   selector:
     matchLabels:
-      {{.Values.global.controllerComponentLabel}}: destination
-      {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-      {{- include "partials.proxy.labels" $tree.Values.global.proxy | nindent 6}}
+      linkerd.io/control-plane-component: destination
+      linkerd.io/control-plane-ns: {{.Values.namespace}}
+      {{- include "partials.proxy.labels" $tree.Values.proxy | nindent 6}}
   {{- if .Values.enablePodAntiAffinity }}
   strategy:
     rollingUpdate:
@@ -91,38 +90,39 @@ spec:
   template:
     metadata:
       annotations:
-        {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
-        {{- include "partials.proxy.annotations" .Values.global.proxy| nindent 8}}
-        {{- with .Values.global.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        {{ include "partials.annotations.created-by" . }}
+        {{- include "partials.proxy.annotations" . | nindent 8}}
+        {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
-        {{.Values.global.controllerComponentLabel}}: destination
-        {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-        {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
-        {{- include "partials.proxy.labels" $tree.Values.global.proxy | nindent 8}}
-        {{- with .Values.global.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        linkerd.io/control-plane-component: destination
+        linkerd.io/control-plane-ns: {{.Values.namespace}}
+        linkerd.io/workload-ns: {{.Values.namespace}}
+        {{- include "partials.proxy.labels" $tree.Values.proxy | nindent 8}}
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.tolerations -}}
       {{- include "linkerd.tolerations" . | nindent 6 }}
       {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- if .Values.enablePodAntiAffinity -}}
-      {{- $local := dict "component" "destination" "label" .Values.global.controllerComponentLabel -}}
+      {{- $local := dict "component" "destination" -}}
       {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
       {{- end }}
       containers:
       - args:
         - destination
         - -addr=:8086
-        - -controller-namespace={{.Values.global.namespace}}
+        - -controller-namespace={{.Values.namespace}}
         - -enable-h2-upgrade={{.Values.enableH2Upgrade}}
-        - -log-level={{.Values.global.controllerLogLevel}}
-        - -log-format={{.Values.global.controllerLogFormat}}
-        - -enable-endpoint-slices={{.Values.global.enableEndpointSlices}}
-        - -cluster-domain={{.Values.global.clusterDomain}}
-        - -identity-trust-domain={{.Values.global.identityTrustDomain}}
+        - -log-level={{.Values.controllerLogLevel}}
+        - -log-format={{.Values.controllerLogFormat}}
+        - -enable-endpoint-slices={{.Values.enableEndpointSlices}}
+        - -cluster-domain={{.Values.clusterDomain}}
+        - -identity-trust-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
+        - -default-opaque-ports={{.Values.proxy.opaquePorts}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
-        image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
-        imagePullPolicy: {{.Values.global.imagePullPolicy}}
+        image: {{.Values.controllerImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
+        imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /ping
@@ -145,17 +145,20 @@ spec:
         securityContext:
           runAsUser: {{.Values.controllerUID}}
       {{- if not (empty .Values.destinationProxyResources) }}
-      {{- $r := merge .Values.destinationProxyResources .Values.global.proxy.resources }}
-      {{- $_ := set $tree.Values.global.proxy "resources" $r }}
+      {{- $r := merge .Values.destinationProxyResources .Values.proxy.resources }}
+      {{- $_ := set $tree.Values.proxy "resources" $r }}
       {{- end }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
-      {{ if not .Values.global.cniEnabled -}}
+      {{ if not .Values.cniEnabled -}}
       initContainers:
-      - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{- if not (contains "443" ( .Values.proxyInit.ignoreOutboundPorts | toString ))}}
+      {{- $_ := set $tree.Values.proxyInit "ignoreOutboundPorts" ( ternary "443" (printf "%s,443" (.Values.proxyInit.ignoreOutboundPorts | toString )) (empty .Values.proxyInit.ignoreOutboundPorts)) -}}
+      {{- end}}
+      - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       serviceAccountName: linkerd-destination
       volumes:
-      {{ if not .Values.global.cniEnabled -}}
+      {{ if not .Values.cniEnabled -}}
       - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}

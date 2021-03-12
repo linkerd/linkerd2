@@ -1,7 +1,6 @@
 package destination
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"sort"
@@ -142,13 +141,13 @@ metadata:
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
 	translator := newEndpointTranslator(
-		context.Background(),
 		"linkerd",
 		"trust.domain",
 		true,
 		"service-name.service-ns",
 		"test-123",
-		k8sAPI.Client,
+		map[uint32]struct{}{},
+		k8sAPI.Node(),
 		mockGetServer,
 		logging.WithField("test", t.Name()),
 	)

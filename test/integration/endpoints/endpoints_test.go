@@ -22,25 +22,34 @@ func TestMain(m *testing.M) {
 func TestGoodEndpoints(t *testing.T) {
 	ns := TestHelper.GetLinkerdNamespace()
 	vizNs := TestHelper.GetVizNamespace()
+	testDataPath := "testdata"
 	cmd := []string{
+		"diagnostics",
 		"endpoints",
 		fmt.Sprintf("linkerd-controller-api.%s.svc.cluster.local:8085", ns),
 		fmt.Sprintf("linkerd-dst.%s.svc.cluster.local:8086", ns),
-		fmt.Sprintf("linkerd-grafana.%s.svc.cluster.local:3000", vizNs),
+		fmt.Sprintf("grafana.%s.svc.cluster.local:3000", vizNs),
 		fmt.Sprintf("linkerd-identity.%s.svc.cluster.local:8080", ns),
-		fmt.Sprintf("linkerd-prometheus.%s.svc.cluster.local:9090", vizNs),
 		fmt.Sprintf("linkerd-proxy-injector.%s.svc.cluster.local:443", ns),
 		fmt.Sprintf("linkerd-sp-validator.%s.svc.cluster.local:443", ns),
-		fmt.Sprintf("linkerd-tap.%s.svc.cluster.local:8088", vizNs),
-		fmt.Sprintf("linkerd-web.%s.svc.cluster.local:8084", vizNs),
-		"-ojson",
+		fmt.Sprintf("tap.%s.svc.cluster.local:8088", vizNs),
+		fmt.Sprintf("web.%s.svc.cluster.local:8084", vizNs),
 	}
+
+	if !TestHelper.ExternalPrometheus() {
+		cmd = append(cmd, fmt.Sprintf("prometheus.%s.svc.cluster.local:9090", vizNs))
+	} else {
+		cmd = append(cmd, "prometheus.external-prometheus.svc.cluster.local:9090")
+		testDataPath += "/external_prometheus"
+	}
+
+	cmd = append(cmd, "-ojson")
 	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "unexpected error", err)
 	}
 
-	tpl := template.Must(template.ParseFiles("testdata/linkerd_endpoints.golden"))
+	tpl := template.Must(template.ParseFiles(testDataPath + "/linkerd_endpoints.golden"))
 	vars := struct {
 		Ns    string
 		VizNs string
@@ -61,7 +70,7 @@ func TestGoodEndpoints(t *testing.T) {
 
 // TODO: when #3004 gets fixed, add a negative test for mismatched ports
 func TestBadEndpoints(t *testing.T) {
-	_, stderr, err := TestHelper.PipeToLinkerdRun("", "endpoints", "foo")
+	_, stderr, err := TestHelper.PipeToLinkerdRun("", "diagnostics", "endpoints", "foo")
 	if err == nil {
 		testutil.AnnotatedFatalf(t, "was expecting an error", "was expecting an error: %v", err)
 	}
@@ -69,7 +78,7 @@ func TestBadEndpoints(t *testing.T) {
 	if len(stderrOut) == 0 {
 		testutil.AnnotatedFatalf(t, "unexpected output", "unexpected output: %s", stderr)
 	}
-	if stderrOut[0] != "Error: Destination API error: Invalid authority: foo" {
+	if stderrOut[0] != "Destination API error: Invalid authority: foo" {
 		testutil.AnnotatedErrorf(t, "unexpected error string", "unexpected error string: %s", stderrOut[0])
 	}
 }

@@ -1,7 +1,3 @@
-# -- Control plane label. Do not edit
-controllerComponentLabel: linkerd.io/control-plane-component
-# -- Annotation label for the proxy create. Do not edit.
-createdByAnnotation: linkerd.io/created-by
 # -- If the gateway component should be installed
 gateway: true
 # -- The path that will be used by the local liveness checks to ensure the

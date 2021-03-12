@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"path"
@@ -12,7 +11,6 @@ import (
 	partials "github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	api "github.com/linkerd/linkerd2/pkg/public"
 	"github.com/linkerd/linkerd2/viz/static"
 	"github.com/spf13/cobra"
@@ -60,22 +58,7 @@ A full list of configurable values can be found at https://www.github.com/linker
   `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !skipChecks {
-				// Ensure there is a Linkerd installation.
-				kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-				if err != nil {
-					return err
-				}
-
-				exists, err := healthcheck.CheckIfLinkerdExists(cmd.Context(), kubeAPI, controlPlaneNamespace)
-				if err != nil {
-					return fmt.Errorf("could not check for Linkerd existence: %s", err)
-				}
-
-				if !exists {
-					return fmt.Errorf("could not find a Linkerd installation")
-				}
-
-				// Wait for the core extension to be up and running
+				// Wait for the core control-plane to be up and running
 				api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
 					ControlPlaneNamespace: controlPlaneNamespace,
 					KubeConfig:            kubeconfigPath,
@@ -84,25 +67,16 @@ A full list of configurable values can be found at https://www.github.com/linker
 					ImpersonateGroup:      impersonateGroup,
 					APIAddr:               apiAddr,
 					RetryDeadline:         time.Now().Add(wait),
-				}, true)
+				})
 
 			}
 			return install(os.Stdout, options, ha)
 		},
 	}
 
-	cmd.Flags().BoolVar(
-		&skipChecks, "skip-checks", false,
-		`Skip checks for namespace existence`,
-	)
-
-	cmd.Flags().BoolVar(
-		&ha, "ha", false,
-		`Install Viz Extension in High Availability mode.`,
-	)
-	cmd.Flags().DurationVar(
-		&wait, "wait", 300*time.Second,
-		"Wait for core control-plane components to be available")
+	cmd.Flags().BoolVar(&skipChecks, "skip-checks", false, `Skip checks for linkerd core control-plane existence`)
+	cmd.Flags().BoolVar(&ha, "ha", false, `Install Viz Extension in High Availability mode.`)
+	cmd.Flags().DurationVar(&wait, "wait", 300*time.Second, "Wait for core control-plane components to be available")
 
 	flags.AddValueOptionsFlags(cmd.Flags(), &options)
 
@@ -115,6 +89,12 @@ func install(w io.Writer, options values.Options, ha bool) error {
 	valuesOverrides, err := options.MergeValues(nil)
 	if err != nil {
 		return err
+	}
+
+	// if using -L to specify a non-standard CP namespace, make sure
+	// the linkerdNamespace Helm value is synced
+	if controlPlaneNamespace != defaultLinkerdNamespace {
+		valuesOverrides["linkerdNamespace"] = controlPlaneNamespace
 	}
 
 	if ha {

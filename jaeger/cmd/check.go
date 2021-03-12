@@ -14,11 +14,11 @@ import (
 
 const (
 
-	// jaegerExtensionName is the name of jaeger extension
-	jaegerExtensionName = "linkerd-jaeger"
+	// JaegerExtensionName is the name of jaeger extension
+	JaegerExtensionName = "jaeger"
 
 	// linkerdJaegerExtensionCheck adds checks related to the jaeger extension
-	linkerdJaegerExtensionCheck healthcheck.CategoryID = jaegerExtensionName
+	linkerdJaegerExtensionCheck healthcheck.CategoryID = "linkerd-jaeger"
 )
 
 var (
@@ -40,7 +40,7 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			Fatal().
 			WithCheck(func(ctx context.Context) error {
 				// Get  jaeger Extension Namespace
-				ns, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, jaegerExtensionName)
+				ns, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, JaegerExtensionName)
 				if err != nil {
 					return err
 				}
@@ -85,48 +85,24 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			}))
 
 	checkers = append(checkers,
-		*healthcheck.NewChecker("collector pod is running").
-			WithHintAnchor("l5d-jaeger-collector-running").
+		*healthcheck.NewChecker("jaeger extension pods are running").
+			WithHintAnchor("l5d-jaeger-pods-running").
 			Fatal().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
-				// Check for Collector pod
-				podList, err := hc.KubeAPIClient().CoreV1().Pods(jaegerNamespace).List(ctx, metav1.ListOptions{LabelSelector: "component=collector"})
+				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, jaegerNamespace)
 				if err != nil {
 					return err
 				}
-				return healthcheck.CheckPodsRunning(podList.Items, fmt.Sprintf("No collector pods found in the %s namespace", jaegerNamespace))
-			}))
 
-	checkers = append(checkers,
-		*healthcheck.NewChecker("jaeger pod is running").
-			WithHintAnchor("l5d-jaeger-jaeger-running").
-			Fatal().
-			WithRetryDeadline(hc.RetryDeadline).
-			SurfaceErrorOnRetry().
-			WithCheck(func(ctx context.Context) error {
-				// Check for Jaeger pod
-				podList, err := hc.KubeAPIClient().CoreV1().Pods(jaegerNamespace).List(ctx, metav1.ListOptions{LabelSelector: "component=jaeger"})
+				// Check for relevant pods to be present
+				err = healthcheck.CheckForPods(pods, []string{"collector", "jaeger", "jaeger-injector"})
 				if err != nil {
 					return err
 				}
-				return healthcheck.CheckPodsRunning(podList.Items, fmt.Sprintf("No jaeger pods found in the %s namespace", jaegerNamespace))
-			}))
 
-	checkers = append(checkers,
-		*healthcheck.NewChecker("jaeger injector pod is running").
-			WithHintAnchor("l5d-jaeger-jaeger-running").
-			Fatal().
-			WithRetryDeadline(hc.RetryDeadline).
-			SurfaceErrorOnRetry().
-			WithCheck(func(ctx context.Context) error {
-				// Check for Jaeger Injector pod
-				podList, err := hc.KubeAPIClient().CoreV1().Pods(jaegerNamespace).List(ctx, metav1.ListOptions{LabelSelector: "component=jaeger-injector"})
-				if err != nil {
-					return err
-				}
-				return healthcheck.CheckPodsRunning(podList.Items, fmt.Sprintf("No jaeger injector pods found in the %s namespace", jaegerNamespace))
+				return healthcheck.CheckPodsRunning(pods, "")
 			}))
 
 	return healthcheck.NewCategory(linkerdJaegerExtensionCheck, checkers, true)
@@ -146,7 +122,8 @@ func (options *checkOptions) validate() error {
 	return nil
 }
 
-func newCmdCheck() *cobra.Command {
+// NewCmdCheck generates a new cobra command for the jaeger extension.
+func NewCmdCheck() *cobra.Command {
 	options := newCheckOptions()
 	cmd := &cobra.Command{
 		Use:   "check [flags]",
@@ -165,8 +142,12 @@ code.`,
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
-	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
+	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
+	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
+	cmd.Flags().Bool("proxy", false, "Also run data-plane checks, to determine if the data plane is healthy")
+	cmd.Flags().StringP("namespace", "n", "", "Namespace to use for --proxy checks (default: all namespaces)")
+	cmd.Flags().MarkHidden("proxy")
+	cmd.Flags().MarkHidden("namespace")
 
 	return cmd
 }
@@ -177,13 +158,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		return fmt.Errorf("Validation error when executing check command: %v", err)
 	}
 
-	checks := []healthcheck.CategoryID{
-		healthcheck.KubernetesAPIChecks,
-		healthcheck.LinkerdControlPlaneExistenceChecks,
-		linkerdJaegerExtensionCheck,
-	}
-
-	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+	hc := healthcheck.NewHealthChecker([]healthcheck.CategoryID{}, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		KubeContext:           kubeContext,
@@ -193,7 +168,15 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		RetryDeadline:         time.Now().Add(options.wait),
 	})
 
+	err = hc.InitializeKubeAPIClient()
+	if err != nil {
+		err = fmt.Errorf("Error initializing k8s API client: %s", err)
+		fmt.Fprintln(werr, err)
+		os.Exit(1)
+	}
+
 	hc.AppendCategories(*jaegerCategory(hc))
+
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
 	if !success {
