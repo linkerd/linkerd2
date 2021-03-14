@@ -742,8 +742,8 @@ status:
 						`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
 						`sum(increase(response_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
 						`sum(tcp_open_connections{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}) by (namespace, pod)`,
-						`sum(increase(tcp_read_bytes_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod)`,
-						`sum(increase(tcp_write_bytes_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod)`,
+						`sum(increase(tcp_read_bytes_total{direction="inbound", namespace="emojivoto", peer="src", pod="emojivoto-1"}[1m])) by (namespace, pod)`,
+						`sum(increase(tcp_write_bytes_total{direction="inbound", namespace="emojivoto", peer="src", pod="emojivoto-1"}[1m])) by (namespace, pod)`,
 					},
 				},
 				req: &pb.StatSummaryRequest{

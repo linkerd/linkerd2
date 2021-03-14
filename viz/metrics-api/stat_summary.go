@@ -490,6 +490,19 @@ func buildTrafficSplitRequestLabels(req *pb.StatSummaryRequest) (labels model.La
 	return labels, groupBy
 }
 
+func buildTCPStatsRequestLabels(req *pb.StatSummaryRequest, reqLabels model.LabelSet) (labels model.LabelSet) {
+	switch req.Outbound.(type) {
+	case *pb.StatSummaryRequest_ToResource, *pb.StatSummaryRequest_FromResource:
+		// If TCP stats are queried from a resource to another one (i.e outbound -- from/to), then append peer='dst'
+		labels = reqLabels.Merge(promPeerLabel("dst"))
+
+	default:
+		// If TCP stats are not queried from a specific resource (i.e inbound -- no to/from), then append peer='src'
+		labels = reqLabels.Merge(promPeerLabel("src"))
+	}
+	return
+}
+
 func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats, error) {
 	reqLabels, groupBy := buildRequestLabels(req)
 	promQueries := map[promType]string{
@@ -497,9 +510,10 @@ func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequ
 	}
 
 	if req.TcpStats {
+		tcpLabels := buildTCPStatsRequestLabels(req, reqLabels)
 		promQueries[promTCPConnections] = tcpConnectionsQuery
-		promQueries[promTCPReadBytes] = tcpReadBytesQuery
-		promQueries[promTCPWriteBytes] = tcpWriteBytesQuery
+		promQueries[promTCPReadBytes] = fmt.Sprintf(tcpReadBytesQuery, tcpLabels.String(), timeWindow, groupBy.String())
+		promQueries[promTCPWriteBytes] = fmt.Sprintf(tcpWriteBytesQuery, tcpLabels.String(), timeWindow, groupBy.String())
 	}
 	results, err := s.getPrometheusMetrics(ctx, promQueries, latencyQuantileQuery, reqLabels.String(), timeWindow, groupBy.String())
 

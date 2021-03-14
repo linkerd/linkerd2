@@ -180,6 +180,12 @@ func promDirectionLabels(direction string) model.LabelSet {
 	}
 }
 
+func promPeerLabel(peer string) model.LabelSet {
+	return model.LabelSet{
+		model.LabelName("peer"): model.LabelValue(peer),
+	}
+}
+
 func promResourceType(resource *pb.Resource) model.LabelName {
 	l5dLabel := k8s.KindToL5DLabel(resource.Type)
 	return model.LabelName(l5dLabel)
@@ -193,6 +199,9 @@ func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTempl
 		var query string
 		if pt == promTCPConnections || pt == promGatewayAlive || pt == promNumMirroredServices {
 			query = fmt.Sprintf(requestQueryTemplate, labels, groupBy)
+		} else if pt == promTCPReadBytes || pt == promTCPWriteBytes {
+			// TCP read/write labels get set in the previous step to include additional 'peer' label
+			query = requestQueryTemplate
 		} else {
 			query = fmt.Sprintf(requestQueryTemplate, labels, timeWindow, groupBy)
 		}
