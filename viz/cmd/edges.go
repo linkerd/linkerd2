@@ -253,7 +253,7 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 			clientID := r.ClientId
 			serverID := r.ServerId
 			msg := r.NoIdentityMsg
-			if len(msg) == 0 && options.outputFormat != jsonOutput {
+			if msg == "" && options.outputFormat != jsonOutput {
 				msg = okStatus
 			}
 			if len(clientID) > 0 {

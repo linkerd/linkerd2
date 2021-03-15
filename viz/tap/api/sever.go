@@ -205,7 +205,7 @@ func serverAuth(ctx context.Context, k8sAPI *k8s.API) (string, []string, string,
 
 // copied from https://github.com/kubernetes/apiserver/blob/781c3cd1b3dc5b6f79c68ab0d16fe544600421ef/pkg/server/options/authentication.go#L360
 func deserializeStrings(in string) ([]string, error) {
-	if len(in) == 0 {
+	if in == "" {
 		return nil, nil
 	}
 	var ret []string
