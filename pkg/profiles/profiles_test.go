@@ -352,7 +352,7 @@ spec:
       pathRegex: /route-1`,
 		},
 		{
-			err: errors.New("ServiceProfile \"name.ns.svc.cluster.local\" RetryBudget: time: invalid duration foo"),
+			err: errors.New("ServiceProfile \"name.ns.svc.cluster.local\" RetryBudget: time: invalid duration \"foo\""),
 			sp: `apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
