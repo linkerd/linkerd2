@@ -133,7 +133,7 @@ func (iw *IPWatcher) GetSvcID(clusterIP string) (*ServiceID, error) {
 		services = append(services, service)
 	}
 	if len(services) > 1 {
-		return nil, status.Errorf(codes.FailedPrecondition, "Cluster IP address conflict: %s/%s, %s/%s", services[0].Namespace, services[0].Name, services[1].Namespace, services[1].Name)
+		return nil, status.Errorf(codes.FailedPrecondition, "found %d services with conflicting cluster IP %s; first two: %s/%s, %s/%s", len(services), clusterIP, services[0].Namespace, services[0].Name, services[1].Namespace, services[1].Name)
 	}
 	if len(services) == 0 {
 		return nil, nil
@@ -160,7 +160,7 @@ func (iw *IPWatcher) GetPod(podIP string) (*corev1.Pod, error) {
 		pods = append(pods, pod)
 	}
 	if len(pods) > 1 {
-		return nil, status.Errorf(codes.FailedPrecondition, "Pod IP address conflict: %s/%s, %s/%s", pods[0].Namespace, pods[0].Name, pods[1].Namespace, pods[1].Name)
+		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with conflicting pod IP %s; first two: %s/%s, %s/%s", len(pods), podIP, pods[0].Namespace, pods[0].Name, pods[1].Namespace, pods[1].Name)
 	}
 	if len(pods) == 0 {
 		return nil, nil
