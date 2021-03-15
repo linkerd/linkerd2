@@ -416,7 +416,7 @@ upgrade_test() {
 
   # Install Viz if the version is edge
   # TODO: Enable this also for stable once 2.10 is out
-  if [ "$release_channel" == "edge" ]; then
+  if [ "$release_channel" = 'edge' ]; then
     local linkerd_path=$tmp/.linkerd2/bin/linkerd
     (
         set -x
