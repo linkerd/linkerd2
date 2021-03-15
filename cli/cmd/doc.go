@@ -117,7 +117,7 @@ func generateAnnotationsDocs() []annotationDoc {
 	return []annotationDoc{
 		{
 			Name:        k8s.ProxyInjectAnnotation,
-			Description: "Controls whether or not a pod should be injected; accepted values are `enabled, disabled and ingress",
+			Description: "Controls whether or not a pod should be injected; accepted values are `enabled`, `disabled` and `ingress`",
 		},
 		{
 			Name:        k8s.ProxyImageAnnotation,
