@@ -116,6 +116,10 @@ func generateCLIDocs(cmd *cobra.Command) ([]cmdDoc, error) {
 func generateAnnotationsDocs() []annotationDoc {
 	return []annotationDoc{
 		{
+			Name:        k8s.ProxyInjectAnnotation,
+			Description: "Controls whether or not a pod should be injected; accepted values are `enabled, disabled and ingress",
+		},
+		{
 			Name:        k8s.ProxyImageAnnotation,
 			Description: "Linkerd proxy container image name",
 		},
@@ -149,11 +153,15 @@ func generateAnnotationsDocs() []annotationDoc {
 		},
 		{
 			Name:        k8s.ProxyIgnoreInboundPortsAnnotation,
-			Description: "Ports that should skip the proxy and send directly to the application",
+			Description: "Ports that should skip the proxy and send directly to the application. Comma-separated list of values, where each value can be a port number or a range `a-b`.",
+		},
+		{
+			Name:        k8s.ProxyOpaquePortsAnnotation,
+			Description: "Ports that skip the proxy's protocol detection mechanism and are proxied opaquely",
 		},
 		{
 			Name:        k8s.ProxyIgnoreOutboundPortsAnnotation,
-			Description: "Outbound ports that should skip the proxy",
+			Description: "Outbound ports that should skip the proxy. Comma-separated list of values, where each value can be a port number or a range `a-b`.",
 		},
 		{
 			Name:        k8s.ProxyInboundPortAnnotation,
@@ -210,6 +218,10 @@ func generateAnnotationsDocs() []annotationDoc {
 		{
 			Name:        k8s.ProxyEnableDebugAnnotation,
 			Description: "Inject a debug sidecar for data plane debugging",
+		},
+		{
+			Name:        k8s.ProxyOutboundConnectTimeout,
+			Description: "Used to configure the outbound TCP connection timeout in the proxy",
 		},
 		{
 			Name:        k8s.ProxyWaitBeforeExitSecondsAnnotation,
