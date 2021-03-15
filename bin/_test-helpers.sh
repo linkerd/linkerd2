@@ -7,7 +7,8 @@ set +e
 ##### Test setup helpers #####
 
 export default_test_names=(deep external-issuer external-prometheus-deep helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
-export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}")
+export external_resource_test_names=(external-resources)
+export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}" "${external_resource_test_names[*]}")
 
 tests_usage() {
   progname="${0##*/}"
@@ -230,7 +231,7 @@ cleanup_cluster() {
 
 setup_cluster() {
   local name=$1
-  export helm_path="$bindir"/helm 
+  export helm_path="$bindir"/helm
 
   test_setup
   if [ -z "$skip_cluster_create" ]; then
@@ -555,6 +556,12 @@ run_external-prometheus-deep_test() {
 
 run_cluster-domain_test() {
   run_test "$test_directory/install_test.go" --cluster-domain='custom.domain'
+}
+
+# wrapper to implement external tests
+run_external-resources_test(){
+   run_test "$test_directory/install_test.go"
+   run_test "$test_directory/externalresources/rabbitmq_test.go"
 }
 
 # exit_on_err should be called right after a command to check the result status
