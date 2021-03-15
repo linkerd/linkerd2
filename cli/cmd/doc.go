@@ -157,7 +157,7 @@ func generateAnnotationsDocs() []annotationDoc {
 		},
 		{
 			Name:        k8s.ProxyOpaquePortsAnnotation,
-			Description: "Ports that skip the proxy's protocol detection mechanism and are proxied opaquely",
+			Description: "Ports that skip the proxy's protocol detection mechanism and are proxied opaquely. Comma-separated list of values, where each value can be a port number or a range `a-b`.",
 		},
 		{
 			Name:        k8s.ProxyIgnoreOutboundPortsAnnotation,
