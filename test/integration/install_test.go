@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/pkg/tree"
 	"github.com/linkerd/linkerd2/testutil"
 )
 
@@ -32,18 +35,6 @@ var (
 
 	helmTLSCerts *tls.CA
 
-	linkerdSvcStable = []testutil.Service{
-		{Namespace: "linkerd", Name: "linkerd-controller-api"},
-		{Namespace: "linkerd", Name: "linkerd-dst"},
-		{Namespace: "linkerd", Name: "linkerd-grafana"},
-		{Namespace: "linkerd", Name: "linkerd-identity"},
-		{Namespace: "linkerd", Name: "linkerd-prometheus"},
-		{Namespace: "linkerd", Name: "linkerd-web"},
-		{Namespace: "linkerd", Name: "linkerd-tap"},
-		{Namespace: "linkerd", Name: "linkerd-dst-headless"},
-		{Namespace: "linkerd", Name: "linkerd-identity-headless"},
-	}
-
 	linkerdSvcEdge = []testutil.Service{
 		{Namespace: "linkerd", Name: "linkerd-controller-api"},
 		{Namespace: "linkerd", Name: "linkerd-dst"},
@@ -54,6 +45,9 @@ var (
 		{Namespace: "linkerd", Name: "linkerd-dst-headless"},
 		{Namespace: "linkerd", Name: "linkerd-identity-headless"},
 	}
+
+	// Override in case edge starts to deviate from stable service-wise
+	linkerdSvcStable = linkerdSvcEdge
 
 	multiclusterSvcs = []testutil.Service{
 		{Namespace: "linkerd-multicluster", Name: "linkerd-gateway"},
@@ -84,6 +78,7 @@ var (
 	//skippedInboundPorts lists some ports to be marked as skipped, which will
 	// be verified in test/integration/inject
 	skippedInboundPorts       = "1234,5678"
+	skippedOutboundPorts      = "1234,5678"
 	multiclusterExtensionName = "multicluster"
 	vizExtensionName          = "viz"
 )
@@ -360,6 +355,16 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 		// prepare for stage 2
 		args = append([]string{"control-plane"}, args...)
+		edge, err := regexp.Match(`(edge)-([0-9]+\.[0-9]+\.[0-9]+)`, []byte(TestHelper.UpgradeFromVersion()))
+		if err != nil {
+			testutil.AnnotatedFatal(t, "could not match regex", err)
+		}
+
+		if edge {
+			args = append(args, []string{"--set", fmt.Sprintf("proxyInit.ignoreOutboundPorts=%s", strings.Replace(skippedOutboundPorts, ",", "\\,", 1))}...)
+		} else {
+			args = append(args, []string{"--skip-outbound-ports", skippedOutboundPorts}...)
+		}
 	}
 
 	exec := append([]string{cmd}, args...)
@@ -425,14 +430,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"'kubectl apply' command failed\n%s", cmdOut)
 	}
 
-	// Wait for the proxy injector to be up
-	name := "linkerd-proxy-injector"
-	ns := "linkerd"
-	o, err := TestHelper.Kubectl("", "--namespace="+ns, "rollout", "status", "--timeout=120s", "deploy/"+name)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s in namespace %s", name, ns),
-			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
-	}
+	TestHelper.WaitRollout(t)
 
 	if TestHelper.ExternalPrometheus() {
 
@@ -469,11 +467,11 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 // These need to be updated (if there are changes) once a new stable is released
 func helmOverridesStable(root *tls.CA) []string {
 	return []string{
-		"--set", "global.controllerLogLevel=debug",
-		"--set", "global.linkerdVersion=" + TestHelper.UpgradeHelmFromVersion(),
-		"--set", "global.proxy.image.version=" + TestHelper.UpgradeHelmFromVersion(),
-		"--set", "global.identityTrustDomain=cluster.local",
-		"--set", "global.identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "controllerLogLevel=debug",
+		"--set", "linkerdVersion=" + TestHelper.UpgradeHelmFromVersion(),
+		"--set", "proxy.image.version=" + TestHelper.UpgradeHelmFromVersion(),
+		"--set", "identityTrustDomain=cluster.local",
+		"--set", "identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
 		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
@@ -486,15 +484,12 @@ func helmOverridesEdge(root *tls.CA) []string {
 	return []string{
 		"--set", "controllerLogLevel=debug",
 		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
-		"--set", "proxy.image.version=" + TestHelper.GetVersion(),
 		// these ports will get verified in test/integration/inject
 		"--set", "proxyInit.ignoreInboundPorts=" + skippedInboundPortsEscaped,
-		"--set", "identityTrustDomain=cluster.local",
 		"--set", "identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
 		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
-		"--set", "grafana.image.version=" + TestHelper.GetVersion(),
 	}
 }
 
@@ -527,31 +522,16 @@ func TestInstallHelm(t *testing.T) {
 			"'helm install' command failed\n%s\n%s", stdout, stderr)
 	}
 
-	// Wait for the proxy injector to be up
-	name := "linkerd-proxy-injector"
-	ns := "linkerd"
-	o, err := TestHelper.Kubectl("", "--namespace="+ns, "wait", "--for=condition=available", "--timeout=120s", "deploy/"+name)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s in namespace %s", name, ns),
-			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
-	}
+	TestHelper.WaitRollout(t)
 
-	if TestHelper.UpgradeHelmFromVersion() == "" {
-		vizChart := TestHelper.GetLinkerdVizHelmChart()
-		vizArgs := []string{
-			"--set", "linkerdVersion=" + TestHelper.GetVersion(),
-			"--set", "namespace=" + TestHelper.GetVizNamespace(),
-			"--set", "dashboard.image.tag=" + TestHelper.GetVersion(),
-			"--set", "grafana.image.tag=" + TestHelper.GetVersion(),
-			"--set", "tap.image.tag=" + TestHelper.GetVersion(),
-			"--set", "metricsAPI.image.tag=" + TestHelper.GetVersion(),
-			"--set", "tapInjector.image.tag=" + TestHelper.GetVersion(),
-		}
-		// Install Viz Extension Chart
-		if stdout, stderr, err := TestHelper.HelmInstallPlain(vizChart, "l5d-viz", vizArgs...); err != nil {
-			testutil.AnnotatedFatalf(t, "'helm install' command failed",
-				"'helm install' command failed\n%s\n%s", stdout, stderr)
-		}
+	vizChart := TestHelper.GetLinkerdVizHelmChart()
+	vizArgs := []string{
+		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
+		"--set", "namespace=" + TestHelper.GetVizNamespace(),
+	}
+	if stdout, stderr, err := TestHelper.HelmCmdPlain("install", vizChart, "l5d-viz", vizArgs...); err != nil {
+		testutil.AnnotatedFatalf(t, "'helm install' command failed",
+			"'helm install' command failed\n%s\n%s", stdout, stderr)
 	}
 }
 
@@ -575,7 +555,6 @@ func TestInstallMulticluster(t *testing.T) {
 	if TestHelper.GetMulticlusterHelmReleaseName() != "" {
 		flags := []string{
 			"--set", "linkerdVersion=" + TestHelper.GetVersion(),
-			"--set", "controllerImageVersion=" + TestHelper.GetVersion(),
 		}
 		if stdout, stderr, err := TestHelper.HelmInstallMulticluster(TestHelper.GetMulticlusterHelmChart(), flags...); err != nil {
 			testutil.AnnotatedFatalf(t, "'helm install' command failed",
@@ -613,8 +592,7 @@ func TestCheckHelmStableBeforeUpgrade(t *testing.T) {
 		t.Skip("Skipping as this is not a helm upgrade test")
 	}
 
-	// TODO: make checkOutput as true once 2.9 releases
-	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion(), false)
+	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion())
 }
 
 func TestUpgradeHelm(t *testing.T) {
@@ -653,23 +631,11 @@ func TestUpgradeHelm(t *testing.T) {
 			"'helm upgrade' command failed\n%s\n%s", stdout, stderr)
 	}
 
-	// Install Viz Extension, as there was no viz with stable
-	// TOODO: Update this to upgrade once this will be the newer stable/edge
 	vizChart := TestHelper.GetLinkerdVizHelmChart()
-	vizArgs := []string{
-		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
-		"--set", "namespace=" + TestHelper.GetVizNamespace(),
-		"--set", "dashboard.image.tag=" + TestHelper.GetVersion(),
-		"--set", "grafana.image.tag=" + TestHelper.GetVersion(),
-		"--set", "tap.image.tag=" + TestHelper.GetVersion(),
-		"--set", "metricsAPI.image.tag=" + TestHelper.GetVersion(),
-		"--set", "tapInjector.image.tag=" + TestHelper.GetVersion(),
-		"--wait",
-	}
-	// Install Viz Extension Chart
-	if stdout, stderr, err := TestHelper.HelmInstallPlain(vizChart, "l5d-viz", vizArgs...); err != nil {
-		testutil.AnnotatedFatalf(t, "'helm install' command failed",
-			"'helm install' command failed\n%s\n%s", stdout, stderr)
+	vizArgs := []string{"--wait"}
+	if stdout, stderr, err := TestHelper.HelmCmdPlain("upgrade", vizChart, "l5d-viz", vizArgs...); err != nil {
+		testutil.AnnotatedFatalf(t, "'helm upgrade' command failed",
+			"'helm upgrade' command failed\n%s\n%s", stdout, stderr)
 	}
 	TestHelper.AddInstalledExtension(vizExtensionName)
 }
@@ -688,6 +654,130 @@ func TestRetrieveUidPostUpgrade(t *testing.T) {
 			)
 		}
 	}
+}
+
+func TestOverridesSecret(t *testing.T) {
+
+	if TestHelper.GetHelmReleaseName() != "" {
+		t.Skip("Skipping as this is a helm test where linkerd-config-overrides is absent")
+	}
+
+	configOverridesSecret, err := TestHelper.KubernetesHelper.GetSecret(context.Background(), TestHelper.GetLinkerdNamespace(), "linkerd-config-overrides")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "could not retrieve linkerd-config-overrides",
+			"could not retrieve linkerd-config-overrides\n%s", err)
+	}
+
+	overrides := configOverridesSecret.Data["linkerd-config-overrides"]
+	overridesTree, err := tree.BytesToTree(overrides)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "could not retrieve linkerd-config-overrides",
+			"could not retrieve linkerd-config-overrides\n%s", err)
+	}
+
+	// Check for fields that were added during install
+	testCases := []struct {
+		path  []string
+		value string
+	}{
+		{
+			[]string{"controllerLogLevel"},
+			"debug",
+		},
+		{
+			[]string{"proxyInit", "ignoreInboundPorts"},
+			skippedInboundPorts,
+		},
+	}
+
+	// Check for fields that were added during upgrade
+	if TestHelper.UpgradeFromVersion() != "" {
+		testCases = append(testCases, []struct {
+			path  []string
+			value string
+		}{
+			{
+				[]string{"proxyInit", "ignoreOutboundPorts"},
+				skippedOutboundPorts,
+			},
+		}...)
+	}
+
+	for _, tc := range testCases {
+		tc := tc // pin
+		t.Run(fmt.Sprintf("%s: %s", strings.Join(tc.path, "/"), tc.value), func(t *testing.T) {
+			finalValue, err := overridesTree.GetString(tc.path...)
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "could not perform tree.GetString",
+					"could not perform tree.GetString\n%s", err)
+			}
+
+			if tc.value != finalValue {
+				testutil.AnnotatedFatalf(t, fmt.Sprintf("Values at path %s do not match", strings.Join(tc.path, "/")),
+					"Expected value at [%s] to be [%s] but received [%s]",
+					strings.Join(tc.path, "/"), tc.value, finalValue)
+			}
+		})
+	}
+
+	extractValue := func(t *testing.T, path ...string) string {
+		val, err := overridesTree.GetString(path...)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "error calling overridesTree.GetString()",
+				"error calling overridesTree.GetString(): %s", err)
+			return ""
+
+		}
+		return val
+	}
+
+	t.Run("Check if any unknown fields sneaked in", func(t *testing.T) {
+		knownKeys := tree.Tree{
+			"controllerLogLevel": "debug",
+			"heartbeatSchedule":  extractValue(t, "heartbeatSchedule"),
+			"identity": map[string]interface{}{
+				"issuer": map[string]interface{}{},
+			},
+			"identityTrustAnchorsPEM": extractValue(t, "identityTrustAnchorsPEM"),
+			"proxyInit": map[string]interface{}{
+				"ignoreInboundPorts": skippedInboundPorts,
+			},
+		}
+
+		// Check for fields that were added during upgrade
+		if TestHelper.UpgradeFromVersion() != "" {
+			knownKeys["proxyInit"].(map[string]interface{})["ignoreOutboundPorts"] = skippedOutboundPorts
+		}
+
+		if TestHelper.GetClusterDomain() != "cluster.local" {
+			knownKeys["clusterDomain"] = TestHelper.GetClusterDomain()
+		}
+
+		if TestHelper.ExternalIssuer() {
+			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["issuanceLifetime"] = "15s"
+			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["scheme"] = "kubernetes.io/tls"
+		} else {
+			if !TestHelper.Multicluster() {
+				knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["crtExpiry"] = extractValue(t, "identity", "issuer", "crtExpiry")
+			}
+			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["tls"] = map[string]interface{}{
+				"crtPEM": extractValue(t, "identity", "issuer", "tls", "crtPEM"),
+				"keyPEM": extractValue(t, "identity", "issuer", "tls", "keyPEM"),
+			}
+		}
+
+		if TestHelper.CNI() {
+			knownKeys["cniEnabled"] = true
+		}
+
+		// Check if the keys in overridesTree match with knownKeys
+		if !reflect.DeepEqual(overridesTree.String(), knownKeys.String()) {
+			testutil.AnnotatedFatalf(t, "Overrides and knownKeys are different",
+				"Expected overrides to be [%s] but found [%s]",
+				knownKeys.String(), overridesTree.String(),
+			)
+		}
+	})
 }
 
 type expectedData struct {
@@ -774,7 +864,7 @@ func TestVersionPostInstall(t *testing.T) {
 	}
 }
 
-func testCheckCommand(t *testing.T, stage string, expectedVersion string, namespace string, cliVersionOverride string, compareOutput bool) {
+func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersionOverride string) {
 	var cmd []string
 	var golden string
 	proxyStage := "proxy"
@@ -815,10 +905,6 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 			return fmt.Errorf("'linkerd check' command failed\n%s\n%s", err, out)
 		}
 
-		if !compareOutput {
-			return nil
-		}
-
 		err = TestHelper.ContainsOutput(out, golden)
 		if err != nil {
 			return fmt.Errorf("received unexpected output\n%s", err.Error())
@@ -856,11 +942,11 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 
 // TODO: run this after a `linkerd install config`
 func TestCheckConfigPostInstall(t *testing.T) {
-	testCheckCommand(t, "config", TestHelper.GetVersion(), "", "", true)
+	testCheckCommand(t, "config", TestHelper.GetVersion(), "", "")
 }
 
 func TestCheckPostInstall(t *testing.T) {
-	testCheckCommand(t, "", TestHelper.GetVersion(), "", "", true)
+	testCheckCommand(t, "", TestHelper.GetVersion(), "", "")
 }
 
 func TestCheckViz(t *testing.T) {
@@ -1064,7 +1150,7 @@ func TestCheckProxy(t *testing.T) {
 		tc := tc // pin
 		t.Run(tc.ns, func(t *testing.T) {
 			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
-			testCheckCommand(t, "proxy", TestHelper.GetVersion(), prefixedNs, "", true)
+			testCheckCommand(t, "proxy", TestHelper.GetVersion(), prefixedNs, "")
 		})
 	}
 }

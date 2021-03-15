@@ -35,6 +35,7 @@ class TopModule extends React.Component {
     this.state = {
       error: null,
       topEventIndex: {},
+      showTapEnabledWarning: false,
     };
   }
 
@@ -91,11 +92,17 @@ class TopModule extends React.Component {
     https://github.com/linkerd/linkerd2/issues/1630
     */
     if (e.code !== WS_NORMAL_CLOSURE && e.code !== WS_ABNORMAL_CLOSURE) {
-      this.setState({
-        error: {
-          error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ':' : ''} ${e.reason}`,
-        },
-      });
+      if (e.reason.includes('no pods to tap')) {
+        this.setState({
+          showTapEnabledWarning: true,
+        });
+      } else {
+        this.setState({
+          error: {
+            error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ':' : ''} ${e.reason}`,
+          },
+        });
+      }
     }
   }
 
@@ -321,6 +328,7 @@ class TopModule extends React.Component {
     this.topEventIndex = {};
     this.setState({
       topEventIndex: {},
+      showTapEnabledWarning: false,
     });
   }
 
@@ -349,8 +357,8 @@ class TopModule extends React.Component {
   }
 
   render() {
-    const { topEventIndex } = this.state;
-    const { query, maxRowsToDisplay } = this.props;
+    const { topEventIndex, showTapEnabledWarning } = this.state;
+    const { query, maxRowsToDisplay, tapEnabledWarningComponent } = this.props;
 
     const tableRows = _take(_values(topEventIndex), maxRowsToDisplay);
     const resourceType = _isNil(query.resource) ? '' : query.resource.split('/')[0];
@@ -358,7 +366,8 @@ class TopModule extends React.Component {
     return (
       <React.Fragment>
         {this.banner()}
-        <TopEventTable resourceType={resourceType} tableRows={tableRows} />
+        {showTapEnabledWarning && tapEnabledWarningComponent}
+        {!showTapEnabledWarning && <TopEventTable resourceType={resourceType} tableRows={tableRows} />}
       </React.Fragment>
     );
   }
@@ -370,8 +379,10 @@ TopModule.propTypes = {
   pathPrefix: PropTypes.string.isRequired,
   query: PropTypes.shape({
     resource: PropTypes.string,
+    namespace: PropTypes.string,
   }),
   startTap: PropTypes.bool.isRequired,
+  tapEnabledWarningComponent: PropTypes.node,
   updateTapClosingState: PropTypes.func,
   updateUnmeshedSources: PropTypes.func,
 };
@@ -387,7 +398,9 @@ TopModule.defaultProps = {
   updateUnmeshedSources: _noop,
   query: {
     resource: '',
+    namespace: '',
   },
+  tapEnabledWarningComponent: null,
 };
 
 export default withContext(TopModule);

@@ -146,6 +146,9 @@ metadata:
     linkerd.io/extension: viz
     component: tap
 rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["list"]
 - apiGroups: ["tap.linkerd.io"]
   resources: ["*"]
   verbs: ["watch"]
@@ -948,7 +951,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 7f24ffe166f8d03a8eb039ecc551f3de9ea0ddcf1cf80a69966ce3713f043b23
+        checksum/config: 2ab0ec921e7f9cb65f62dd4f2ebb77d06827c9621f473c3a9c42ad2741603c3e
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
         linkerd.io/extension: viz
@@ -1038,6 +1041,8 @@ metadata:
   namespace: linkerd-viz
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+  labels:
+    linkerd.io/extension: viz
 type: kubernetes.io/tls
 data:
   tls.crt: dGVzdC10YXAtY3J0LXBlbQ==
@@ -1083,6 +1088,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
+    linkerd.io/extension: viz
     component: tap-injector
   ports:
   - name: tap-injector
@@ -1109,7 +1115,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 5cb033e3116205dd502bee6f822717a8efe049d8ada2f02d1343a2c8b0cd3c93
+        checksum/config: 954486b77f49f95fc44392cf8ea7672033f74102bab63103d00a61ea7895c281
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
         linkerd.io/extension: viz

@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -96,7 +97,9 @@ func (h *KubernetesHelper) createNamespaceIfNotExists(ctx context.Context, names
 	return nil
 }
 
-func (h *KubernetesHelper) deleteNamespaceIfExists(ctx context.Context, namespace string) error {
+// DeleteNamespaceIfExists attempts to delete the given namespace,
+// using the K8s API directly
+func (h *KubernetesHelper) DeleteNamespaceIfExists(ctx context.Context, namespace string) error {
 	err := h.clientset.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
 
 	if err != nil && !kerrors.IsNotFound(err) {
@@ -345,4 +348,19 @@ func (h *KubernetesHelper) URLFor(ctx context.Context, namespace, deployName str
 	}
 
 	return pf.URLFor(""), nil
+}
+
+// WaitRollout blocks until all the deployments in the linkerd namespace have been
+// completely rolled out (and their pods are ready)
+func (h *KubernetesHelper) WaitRollout(t *testing.T) {
+	for deploy, deploySpec := range LinkerdDeployReplicasEdge {
+		if deploySpec.Namespace == "linkerd" {
+			o, err := h.Kubectl("", "--namespace=linkerd", "rollout", "status", "--timeout=120s", "deploy/"+deploy)
+			if err != nil {
+				AnnotatedFatalf(t,
+					fmt.Sprintf("failed to wait rollout of deploy/%s", deploy),
+					"failed to wait for rollout of deploy/%s: %s: %s", deploy, err, o)
+			}
+		}
+	}
 }

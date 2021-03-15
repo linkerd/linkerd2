@@ -72,7 +72,7 @@ spec:
     metadata:
       annotations:
         {{ include "partials.annotations.created-by" . }}
-        {{- include "partials.proxy.annotations" .Values.proxy| nindent 8}}
+        {{- include "partials.proxy.annotations" . | nindent 8}}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
         linkerd.io/control-plane-component: controller

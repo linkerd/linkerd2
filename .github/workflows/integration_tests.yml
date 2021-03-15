@@ -9,7 +9,6 @@ on:
     - main
 env:
   GH_ANNOTATION: true
-  DOCKER_BUILDKIT: 1
 jobs:
   docker_build:
     runs-on: ubuntu-20.04
@@ -102,6 +101,7 @@ jobs:
         - deep
         - external-issuer
         - external-prometheus-deep
+        - external-resources
         - helm-deep
         - helm-upgrade
         - multicluster
@@ -148,5 +148,11 @@ jobs:
         # Validate the CLI version matches the current build tag.
         [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
     - name: Run integration tests
+      if: ${{ !endsWith(matrix.integration_test, 'deep') }}
       run: |
         bin/tests --images archive --name ${{ matrix.integration_test }} "$HOME/.linkerd"
+    - name: Run integration tests (deep)
+      if: ${{ endsWith(matrix.integration_test, 'deep') }}
+      run: |
+        # deep tests consume a lot of disk
+        bin/tests --images archive --cleanup-docker --name ${{ matrix.integration_test }} "$HOME/.linkerd"

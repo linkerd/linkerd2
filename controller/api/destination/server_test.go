@@ -217,9 +217,17 @@ metadata:
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}
 	log := logging.WithField("test", t.Name())
+	defaultOpaquePorts := map[uint32]struct{}{
+		25:    {},
+		443:   {},
+		587:   {},
+		3306:  {},
+		5432:  {},
+		11211: {},
+	}
 
 	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log, false)
-	opaquePorts := watcher.NewOpaquePortsWatcher(k8sAPI, log)
+	opaquePorts := watcher.NewOpaquePortsWatcher(k8sAPI, log, defaultOpaquePorts)
 	profiles := watcher.NewProfileWatcher(k8sAPI, log)
 	trafficSplits := watcher.NewTrafficSplitWatcher(k8sAPI, log)
 	ips := watcher.NewIPWatcher(k8sAPI, endpoints, log)
@@ -239,6 +247,7 @@ metadata:
 		"linkerd",
 		"trust.domain",
 		"mycluster.local",
+		defaultOpaquePorts,
 		k8sAPI,
 		log,
 		make(<-chan struct{}),

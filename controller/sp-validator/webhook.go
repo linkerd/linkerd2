@@ -15,7 +15,10 @@ import (
 func AdmitSP(
 	_ context.Context, _ *k8s.API, request *admissionv1beta1.AdmissionRequest, _ record.EventRecorder,
 ) (*admissionv1beta1.AdmissionResponse, error) {
-	admissionResponse := &admissionv1beta1.AdmissionResponse{Allowed: true}
+	admissionResponse := &admissionv1beta1.AdmissionResponse{
+		UID:     request.UID,
+		Allowed: true,
+	}
 	if err := profiles.Validate(request.Object.Raw); err != nil {
 		admissionResponse.Allowed = false
 		admissionResponse.Result = &metav1.Status{Message: err.Error(), Code: 400}
