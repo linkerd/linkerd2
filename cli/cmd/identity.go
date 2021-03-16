@@ -86,14 +86,17 @@ This command initiates a port-forward to a given pod or a set of pods and fetche
 					fmt.Printf("\n%s\n", resultCert.err)
 					return nil
 				}
-				certChain := resultCert.Certificate
-				cert := certChain[len(certChain)-1]
-				result, err := certinfo.CertificateText(cert)
-				if err != nil {
-					fmt.Printf("\n%s\n", err)
-					return nil
+				for _, cert := range resultCert.Certificate {
+					if cert.IsCA {
+						continue
+					}
+					result, err := certinfo.CertificateText(cert)
+					if err != nil {
+						fmt.Printf("\n%s\n", err)
+						return nil
+					}
+					fmt.Print(result)
 				}
-				fmt.Print(result)
 			}
 			return nil
 		},
