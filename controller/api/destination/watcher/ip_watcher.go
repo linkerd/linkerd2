@@ -170,6 +170,17 @@ func (iw *IPWatcher) GetSvcID(clusterIP string) (*ServiceID, error) {
 
 // GetPod returns the pod that corresponds to an IP address if one exists.
 func (iw *IPWatcher) GetPod(podIP string, port uint32) (*corev1.Pod, error) {
+	addr := fmt.Sprintf("%s:%d", podIP, port)
+	hostIPPods, err := iw.getIndexedPods(hostIPIndex, addr)
+	if err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	// If there is exactly 1 pod found then it is returned. More than 1 pod is
+	// not handled because that would violate the k8s contract of unique
+	// hostIP:hostPort addresses.
+	if len(hostIPPods) == 1 {
+		return hostIPPods[0], nil
+	}
 	podIPPods, err := iw.getIndexedPods(podIPIndex, podIP)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
@@ -177,23 +188,10 @@ func (iw *IPWatcher) GetPod(podIP string, port uint32) (*corev1.Pod, error) {
 	if len(podIPPods) == 1 {
 		return podIPPods[0], nil
 	}
-	// If `podIP` did not map to exactly one pod IP, it is possible that pods
-	// on the cluster have a host IP that matches `podIP`.
-	addr := fmt.Sprintf("%s:%d", podIP, port)
-	hostIPPods, err := iw.getIndexedPods(hostIPIndex, addr)
-	if err != nil {
-		return nil, status.Error(codes.Unknown, err.Error())
-	}
-	if len(hostIPPods) == 1 {
-		return hostIPPods[0], nil
-	}
 	if len(podIPPods) > 1 {
-		// If there were multiple pod IP pods and no pods with host IPs that
-		// matched `podIP` then there is a pod IP address conflict.
 		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with conflicting pod IP %s; first two: %s/%s, %s/%s", len(podIPPods), podIP, podIPPods[0].Namespace, podIPPods[0].Name, podIPPods[1].Namespace, podIPPods[1].Name)
-	} else {
-		iw.log.Infof("no pod found for %s:%d", podIP, port)
 	}
+	iw.log.Infof("no pod found for %s:%d", podIP, port)
 	return nil, nil
 }
 

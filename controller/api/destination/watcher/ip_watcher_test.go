@@ -741,7 +741,8 @@ spec:
 func TestIpWatcherGetPod(t *testing.T) {
 	podIP := "10.255.0.1"
 	hostIP := "172.0.0.1"
-	var hostPort uint32 = 12345
+	var hostPort1 uint32 = 12345
+	var hostPort2 uint32 = 12346
 	expectedPodName := "hostPortPod1"
 	k8sConfigs := []string{`
 apiVersion: v1
@@ -752,11 +753,17 @@ metadata:
 spec:
   containers:
   - image: test
-    name: hostPortContainer
+    name: hostPortContainer1
     ports:
     - containerPort: 12345
       hostIP: 172.0.0.1
       hostPort: 12345
+  - image: test
+    name: hostPortContainer2
+    ports:
+    - containerPort: 12346
+      hostIP: 172.0.0.1
+      hostPort: 12346
 status:
   phase: Running
   podIP: 10.255.0.1
@@ -779,19 +786,32 @@ status:
 		endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
 		watcher := NewIPWatcher(k8sAPI, endpoints, logging.WithField("test", t.Name()))
 		k8sAPI.Sync(nil)
-		// Get host IP pod that is mapped to the port `hostPort`
-		pod, err := watcher.GetPod(hostIP, hostPort)
+		// Get host IP pod that is mapped to the port `hostPort1`
+		pod, err := watcher.GetPod(hostIP, hostPort1)
 		if err != nil {
 			t.Fatalf("failed to get pod: %s", err)
 		}
 		if pod == nil {
-			t.Fatalf("failed to find pod mapped to %s:%d", hostIP, hostPort)
+			t.Fatalf("failed to find pod mapped to %s:%d", hostIP, hostPort1)
+		}
+		if pod.Name != expectedPodName {
+			t.Fatalf("expected pod name to be %s, but got %s", expectedPodName, pod.Name)
+		}
+		// Get host IP pod that is mapped to the port `hostPort2`; this tests
+		// that the indexer properly adds multiple containers from a single
+		// pod.
+		pod, err = watcher.GetPod(hostIP, hostPort2)
+		if err != nil {
+			t.Fatalf("failed to get pod: %s", err)
+		}
+		if pod == nil {
+			t.Fatalf("failed to find pod mapped to %s:%d", hostIP, hostPort2)
 		}
 		if pod.Name != expectedPodName {
 			t.Fatalf("expected pod name to be %s, but got %s", expectedPodName, pod.Name)
 		}
 		// Get host IP pod with unmapped host port
-		pod, err = watcher.GetPod(hostIP, 12346)
+		pod, err = watcher.GetPod(hostIP, 12347)
 		if err != nil {
 			t.Fatalf("expected no error when getting host IP pod with unmapped host port, but got: %s", err)
 		}
