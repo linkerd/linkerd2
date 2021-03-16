@@ -100,11 +100,20 @@ func NewIPWatcher(k8sAPI *k8s.API, endpoints *EndpointsWatcher, log *logging.Ent
 			// If the pod does not have a host IP it should not be added to
 			// the host IP indexer.
 			if pod.Status.HostIP != "" {
-				return []string{pod.Status.HostIP}, nil
+				var hostPortPods []string
+				for _, c := range pod.Spec.Containers {
+					for _, p := range c.Ports {
+						if p.HostPort != 0 {
+							addr := fmt.Sprintf("%s:%d", pod.Status.HostIP, p.HostPort)
+							hostPortPods = append(hostPortPods, addr)
+						}
+					}
+				}
+				return hostPortPods, nil
 			}
-			return []string{}, nil
+			return nil, nil
 		}
-		return []string{""}, fmt.Errorf("object is not a pod")
+		return nil, fmt.Errorf("object is not a pod")
 	}})
 
 	return iw
@@ -170,27 +179,15 @@ func (iw *IPWatcher) GetPod(podIP string, port uint32) (*corev1.Pod, error) {
 	}
 	// If `podIP` did not map to exactly one pod IP, it is possible that pods
 	// on the cluster have a host IP that matches `podIP`.
-	hostIPPods, err := iw.getIndexedPods(hostIPIndex, podIP)
+	addr := fmt.Sprintf("%s:%d", podIP, port)
+	hostIPPods, err := iw.getIndexedPods(hostIPIndex, addr)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
-	if len(hostIPPods) != 0 {
-		// If there are pods with host IPs that match `podIP`, check if any of
-		// them have a host port that matches `port`. If there is one, we can
-		// immediately return it since host IP and host Port combinations are
-		// unique to a cluster; if there are no matching host port pods we can
-		// return no matching pod.
-		for _, pod := range hostIPPods {
-			for _, c := range pod.Spec.Containers {
-				for _, p := range c.Ports {
-					if p.HostPort == int32(port) {
-						return pod, nil
-					}
-				}
-			}
-		}
-		iw.log.Infof("no host IP pod found for %s:%d", podIP, port)
-	} else if len(podIPPods) > 1 {
+	if len(hostIPPods) == 1 {
+		return hostIPPods[0], nil
+	}
+	if len(podIPPods) > 1 {
 		// If there were multiple pod IP pods and no pods with host IPs that
 		// matched `podIP` then there is a pod IP address conflict.
 		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with conflicting pod IP %s; first two: %s/%s, %s/%s", len(podIPPods), podIP, podIPPods[0].Namespace, podIPPods[0].Name, podIPPods[1].Namespace, podIPPods[1].Name)
