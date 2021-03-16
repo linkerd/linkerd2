@@ -13,6 +13,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+const hostIPIndex = "hostIP"
+
 type (
 	// IPWatcher wraps a EndpointsWatcher and allows subscriptions by
 	// IP address.  It watches all services in the cluster to keep an index
@@ -93,6 +95,18 @@ func NewIPWatcher(k8sAPI *k8s.API, endpoints *EndpointsWatcher, log *logging.Ent
 		},
 	})
 
+	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{hostIPIndex: func(obj interface{}) ([]string, error) {
+		if pod, ok := obj.(*corev1.Pod); ok {
+			// If the pod does not have a host IP it should not be added to
+			// the host IP indexer.
+			if pod.Status.HostIP != "" {
+				return []string{pod.Status.HostIP}, nil
+			}
+			return []string{}, nil
+		}
+		return []string{""}, fmt.Errorf("object is not a pod")
+	}})
+
 	return iw
 }
 
@@ -146,10 +160,50 @@ func (iw *IPWatcher) GetSvcID(clusterIP string) (*ServiceID, error) {
 }
 
 // GetPod returns the pod that corresponds to an IP address if one exists.
-func (iw *IPWatcher) GetPod(podIP string) (*corev1.Pod, error) {
-	objs, err := iw.k8sAPI.Pod().Informer().GetIndexer().ByIndex(podIPIndex, podIP)
+func (iw *IPWatcher) GetPod(podIP string, port uint32) (*corev1.Pod, error) {
+	podIPPods, err := iw.getIndexedPods(podIPIndex, podIP)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	if len(podIPPods) == 1 {
+		return podIPPods[0], nil
+	}
+	// If `podIP` did not map to exactly one pod IP, it is possible that pods
+	// on the cluster have a host IP that matches `podIP`.
+	hostIPPods, err := iw.getIndexedPods(hostIPIndex, podIP)
+	if err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	if len(hostIPPods) != 0 {
+		// If there are pods with host IPs that match `podIP`, check if any of
+		// them have a host port that matches `port`. If there is one, we can
+		// immediately return it since host IP and host Port combinations are
+		// unique to a cluster; if there are no matching host port pods we can
+		// return no matching pod.
+		for _, pod := range hostIPPods {
+			for _, c := range pod.Spec.Containers {
+				for _, p := range c.Ports {
+					if p.HostPort == int32(port) {
+						return pod, nil
+					}
+				}
+			}
+		}
+		iw.log.Infof("no host IP pod found for %s:%d", podIP, port)
+	} else if len(podIPPods) > 1 {
+		// If there were multiple pod IP pods and no pods with host IPs that
+		// matched `podIP` then there is a pod IP address conflict.
+		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with conflicting pod IP %s; first two: %s/%s, %s/%s", len(podIPPods), podIP, podIPPods[0].Namespace, podIPPods[0].Name, podIPPods[1].Namespace, podIPPods[1].Name)
+	} else {
+		iw.log.Infof("no pod found for %s:%d", podIP, port)
+	}
+	return nil, nil
+}
+
+func (iw *IPWatcher) getIndexedPods(indexName string, podIP string) ([]*corev1.Pod, error) {
+	objs, err := iw.k8sAPI.Pod().Informer().GetIndexer().ByIndex(indexName, podIP)
+	if err != nil {
+		return nil, fmt.Errorf("failed getting %s indexed pods: %s", indexName, err.Error())
 	}
 	pods := make([]*corev1.Pod, 0)
 	for _, obj := range objs {
@@ -159,13 +213,7 @@ func (iw *IPWatcher) GetPod(podIP string) (*corev1.Pod, error) {
 		}
 		pods = append(pods, pod)
 	}
-	if len(pods) > 1 {
-		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with conflicting pod IP %s; first two: %s/%s, %s/%s", len(pods), podIP, pods[0].Namespace, pods[0].Name, pods[1].Namespace, pods[1].Name)
-	}
-	if len(pods) == 0 {
-		return nil, nil
-	}
-	return pods[0], nil
+	return pods, nil
 }
 
 func podTerminated(pod *corev1.Pod) bool {
