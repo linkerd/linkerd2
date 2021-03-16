@@ -54,7 +54,7 @@ If you are sure you'd like to have a fresh install, remove these resources with:
 Otherwise, you can use the --ignore-cluster flag to overwrite the existing global resources.
 `
 
-	errMsgLinkerdConfigResourceConflict = "Can't install the Linkerd control plane in the '%s' namespace. Reason: %s.\nRun `linkerd upgrade` with the relevant binary, if you are looking to upgrade Linkerd.\n"
+	errMsgLinkerdConfigResourceConflict = "Can't install the Linkerd control plane in the '%s' namespace. Reason: %s.\nRun the command `linkerd upgrade`, if you are looking to upgrade Linkerd.\n"
 	errMsgGlobalResourcesMissing        = "Can't install the Linkerd control plane in the '%s' namespace. The required Linkerd global resources are missing.\nIf this is expected, use the --skip-checks flag to continue the installation.\n"
 )
 
