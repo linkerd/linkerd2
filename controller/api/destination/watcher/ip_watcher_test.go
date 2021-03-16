@@ -799,7 +799,7 @@ status:
 			t.Fatal("expected no pod to be found with unmapped host port")
 		}
 		// Get pod IP pod and expect an error
-		pod, err = watcher.GetPod(podIP, 12346)
+		_, err = watcher.GetPod(podIP, 12346)
 		if err == nil {
 			t.Fatal("expected error when getting by pod IP and unmapped host port, but got none")
 		}
