@@ -99,27 +99,14 @@ func NewIPWatcher(k8sAPI *k8s.API, endpoints *EndpointsWatcher, log *logging.Ent
 		if pod, ok := obj.(*corev1.Pod); ok {
 			var hostIPPods []string
 			if pod.Status.HostIP != "" {
-				// If the pod runs in the host network, then all of it's
-				// containers' ports should be added to the indexer.
-				//
-				// If the pod does not run in the host network but does have a
-				// host IP, then one or more of it's containers should specify
-				// a host port. Each hostIP:hostPort address should be added
-				// to the indexer.
-				if pod.Spec.HostNetwork {
-					for _, c := range pod.Spec.Containers {
-						for _, p := range c.Ports {
+				// If the pod is reachable from the host network, then for
+				// each of its containers' ports that exposes a host port, add
+				// that hostIP:hostPort endpoint to the indexer.
+				for _, c := range pod.Spec.Containers {
+					for _, p := range c.Ports {
+						if p.HostPort != 0 {
 							addr := fmt.Sprintf("%s:%d", pod.Status.HostIP, p.HostPort)
 							hostIPPods = append(hostIPPods, addr)
-						}
-					}
-				} else {
-					for _, c := range pod.Spec.Containers {
-						for _, p := range c.Ports {
-							if p.HostPort != 0 {
-								addr := fmt.Sprintf("%s:%d", pod.Status.HostIP, p.HostPort)
-								hostIPPods = append(hostIPPods, addr)
-							}
 						}
 					}
 				}
