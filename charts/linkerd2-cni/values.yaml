@@ -6,9 +6,9 @@ installNamespace: true
 inboundProxyPort: 4143
 # -- Outbound port for the proxy container
 outboundProxyPort: 4140
-# -- Default set of inbound ports to skip via itpables
+# -- Default set of inbound ports to skip via iptables
 ignoreInboundPorts: ""
-# -- Default set of outbound ports to skip via itpables
+# -- Default set of outbound ports to skip via iptables
 ignoreOutboundPorts: ""
 # -- Docker image for the CNI plugin
 cniPluginImage:   "cr.l5d.io/linkerd/cni-plugin"
@@ -46,7 +46,7 @@ priorityClassName: ""
 # which will further orchestrate the deployments.
 imagePullSecrets:
 
-# Add additional initContainers to the daemonset
+# -- Add additional initContainers to the daemonset
 extraInitContainers: []
 # - name: wait-for-other-cni
 #   image: busybox:1.33
