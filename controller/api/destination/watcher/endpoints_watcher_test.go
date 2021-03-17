@@ -555,6 +555,103 @@ status:
 			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
 		},
+		{
+			serviceType: "local service with new named port mid rollout and two subsets but only first subset is relevant",
+			k8sConfigs: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1
+  namespace: ns
+spec:
+  type: ClusterIP
+  ports:
+    - name: port1
+      port: 8989
+      targetPort: port1
+    - name: port2
+      port: 9999
+      targetPort: port2`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  labels:
+    app: name1
+  name: name1
+  namespace: ns
+subsets:
+- addresses:
+  - ip: 172.17.0.1
+    nodeName: name1-1
+    targetRef:
+      kind: Pod
+      name: name1-1
+      namespace: ns
+  - ip: 172.17.0.2
+    nodeName: name1-2
+    targetRef:
+      kind: Pod
+      name: name1-2
+      namespace: ns
+  ports:
+  - name: port1
+    port: 8989
+    protocol: TCP
+- addresses:
+  - ip: 172.17.0.1
+    nodeName: name1-1
+    targetRef:
+      kind: Pod
+      name: name1-1
+      namespace: ns
+  notReadyAddresses:
+  - ip: 172.17.0.2
+    nodeName: name1-2
+    targetRef:
+      kind: Pod
+      name: name1-2
+      namespace: ns
+  ports:
+  - name: port2
+    port: 9999
+    protocol: TCP
+    `,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  phase: Running
+  podIP: 172.17.0.1`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-2
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-2
+status:
+  phase: Running
+  podIP: 172.17.0.2`,
+			},
+			id:   ServiceID{Name: "name1", Namespace: "ns"},
+			port: 8989,
+			expectedAddresses: []string{
+				"172.17.0.1:8989",
+				"172.17.0.2:8989",
+			},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
+			expectedError:                    false,
+		},
 	} {
 		tt := tt // pin
 		t.Run("subscribes listener to "+tt.serviceType, func(t *testing.T) {
