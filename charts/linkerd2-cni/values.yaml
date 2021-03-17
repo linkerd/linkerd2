@@ -45,3 +45,20 @@ priorityClassName: ""
 # The pull secrets are applied to the respective service accounts
 # which will further orchestrate the deployments.
 imagePullSecrets:
+
+# Add additional initContainers to the daemonset
+extraInitContainers: []
+# - name: wait-for-other-cni
+#   image: busybox:1.33
+#   command:
+#     - /bin/sh
+#     - -xc
+#     - |
+#       for i in $(seq 1 180); do
+#         test -f /host/etc/cni/net.d/10-aws.conflist && exit 0
+#         sleep 1
+#       done
+#       exit 1
+#   volumeMounts:
+#     - mountPath: /host/etc/cni/net.d
+#       name: cni-net-dir
