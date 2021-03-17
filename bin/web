@@ -26,12 +26,18 @@ USAGE: web <command>
 USAGE
 }; function --help { '-h' ;}
 
-check-for-linkerd() {
+check-for-linkerd-and-viz() {
   controller_pod=$(get-pod linkerd controller)
+  metrics_api_pod=$(get-pod linkerd-viz metrics-api)
   grafana_pod=$(get-pod linkerd-viz grafana)
 
   if [[ -z "${controller_pod// }" ]]; then
     err 'Controller is not running. Have you installed Linkerd?'
+    exit 1
+  fi
+
+  if [[ -z "${metrics_api_pod// }" ]]; then
+    err 'Metrics-api is not running. Have you installed Linkerd-Viz?'
     exit 1
   fi
 
@@ -77,13 +83,23 @@ get-pod() {
 }
 
 port-forward() {
-  if [ $# -ne 3 ]; then
-    echo "usage: bin/${0##*/} port-forward namespace component-name port-number" >&2
+  if [ $# -lt 3 ]; then
+    echo "usage: bin/${0##*/} port-forward namespace component-name local port-number [remote port-number]" >&2
     exit 1
   fi
 
-  nc -z localhost "$2" || \
-    kubectl --namespace="$1" port-forward "$(get-pod "$1" "$2")" "$3:$3"
+  port_from=""
+  port_to=""
+  if [ $# -eq 4 ]; then
+    port_from=$3
+    port_to=$4
+  else
+    port_from=$3
+    port_to=$3
+  fi
+
+  nc -z localhost "$3" || \
+    kubectl --namespace="$1" port-forward "$(get-pod $1 $2)" "$port_from:$port_to"
 }
 
 run() {
@@ -94,8 +110,9 @@ run() {
 
   build
 
-  check-for-linkerd && (
-    port-forward linkerd controller 8085 &
+  check-for-linkerd-and-viz && (
+    port-forward linkerd controller 8185 8085 &
+    port-forward linkerd-viz metrics-api 8085 &
     port-forward linkerd-viz grafana 3000 &
   )
 
