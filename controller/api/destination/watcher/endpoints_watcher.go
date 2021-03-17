@@ -780,6 +780,9 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 	addresses := make(map[ID]Address)
 	for _, subset := range endpoints.Subsets {
 		resolvedPort := pp.resolveTargetPort(subset)
+		if resolvedPort == undefinedEndpointPort {
+			continue
+		}
 		for _, endpoint := range subset.Addresses {
 			if pp.hostname != "" && pp.hostname != endpoint.Hostname {
 				continue
