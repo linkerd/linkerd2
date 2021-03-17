@@ -97,21 +97,34 @@ func NewIPWatcher(k8sAPI *k8s.API, endpoints *EndpointsWatcher, log *logging.Ent
 
 	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{hostIPIndex: func(obj interface{}) ([]string, error) {
 		if pod, ok := obj.(*corev1.Pod); ok {
-			// If the pod does not have a host IP it should not be added to
-			// the host IP indexer.
+			var hostIPPods []string
 			if pod.Status.HostIP != "" {
-				var hostPortPods []string
-				for _, c := range pod.Spec.Containers {
-					for _, p := range c.Ports {
-						if p.HostPort != 0 {
+				// If the pod runs in the host network, then all of it's
+				// containers' ports should be added to the indexer.
+				//
+				// If the pod does not run in the host network but does have a
+				// host IP, then one of it's containers should specify a host
+				// port. That hostIP:hostPort address should be added to the
+				// indexer.
+				if pod.Spec.HostNetwork {
+					for _, c := range pod.Spec.Containers {
+						for _, p := range c.Ports {
 							addr := fmt.Sprintf("%s:%d", pod.Status.HostIP, p.HostPort)
-							hostPortPods = append(hostPortPods, addr)
+							hostIPPods = append(hostIPPods, addr)
+						}
+					}
+				} else {
+					for _, c := range pod.Spec.Containers {
+						for _, p := range c.Ports {
+							if p.HostPort != 0 {
+								addr := fmt.Sprintf("%s:%d", pod.Status.HostIP, p.HostPort)
+								hostIPPods = append(hostIPPods, addr)
+							}
 						}
 					}
 				}
-				return hostPortPods, nil
 			}
-			return nil, nil
+			return hostIPPods, nil
 		}
 		return nil, fmt.Errorf("object is not a pod")
 	}})
