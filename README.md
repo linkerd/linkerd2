@@ -65,6 +65,17 @@ usually take place the last Thursday of the month at 9am Pacific / 4pm UTC.
 
 We're a friendly group, so please feel free to join us!
 
+## Steering Committee meetings
+
+We host regular online meetings for the Linkerd Steering Committee. All are
+welcome to attend, but audio and video participation is limited to Steering
+Committee members and maintainers. These meetings are currently scheduled on an
+ad-hoc basis and announced on the [linkerd-users][linkerd-users] mailing list.
+
+* [Zoom link](https://zoom.us/my/cncflinkerd)
+* [Minutes from previous meetings](https://docs.google.com/document/d/1GDNM5eosiyjVDo6YHXBMsvlpyzUldgg-XLMNzf7I404/edit)
+* [Recordings from previous meetings](https://www.youtube.com/playlist?list=PLI9FkLPXDscBHP91Ud3lyJScI4ZCjRG6F)
+
 ## Code of Conduct
 
 This project is for everyone. We ask that our users and contributors take a few
@@ -79,7 +90,7 @@ report [here](SECURITY_AUDIT.pdf).
 
 ## License
 
-Copyright 2020 the Linkerd Authors. All rights reserved.
+Copyright 2021 the Linkerd Authors. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 these files except in compliance with the License. You may obtain a copy of the
