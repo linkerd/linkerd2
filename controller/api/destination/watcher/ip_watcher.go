@@ -103,9 +103,9 @@ func NewIPWatcher(k8sAPI *k8s.API, endpoints *EndpointsWatcher, log *logging.Ent
 				// containers' ports should be added to the indexer.
 				//
 				// If the pod does not run in the host network but does have a
-				// host IP, then one of it's containers should specify a host
-				// port. That hostIP:hostPort address should be added to the
-				// indexer.
+				// host IP, then one or more of it's containers should specify
+				// a host port. Each hostIP:hostPort address should be added
+				// to the indexer.
 				if pod.Spec.HostNetwork {
 					for _, c := range pod.Spec.Containers {
 						for _, p := range c.Ports {
