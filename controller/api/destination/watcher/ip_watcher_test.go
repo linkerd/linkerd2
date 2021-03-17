@@ -823,7 +823,7 @@ status:
 		if err == nil {
 			t.Fatal("expected error when getting by pod IP and unmapped host port, but got none")
 		}
-		if !strings.Contains(err.Error(), "pods with conflicting pod IP") {
+		if !strings.Contains(err.Error(), "pods with a conflicting pod network IP") {
 			t.Fatalf("expected error to be pod IP address conflict, but got: %s", err)
 		}
 	})

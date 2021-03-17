@@ -181,28 +181,35 @@ func (iw *IPWatcher) GetSvcID(clusterIP string) (*ServiceID, error) {
 	return service, nil
 }
 
-// GetPod returns the pod that corresponds to an IP address if one exists.
+// GetPod returns a pod that maps to the given IP address. The pod can either
+// be in the host network or the pod network. If the pod is in the host
+// network, then it must have a container port that exposes `port` as a host
+// port.
 func (iw *IPWatcher) GetPod(podIP string, port uint32) (*corev1.Pod, error) {
+	// First we check if the address maps to a pod in the host network.
 	addr := fmt.Sprintf("%s:%d", podIP, port)
 	hostIPPods, err := iw.getIndexedPods(hostIPIndex, addr)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
-	// If there is exactly 1 pod found then it is returned. More than 1 pod is
-	// not handled because that would violate the k8s contract of unique
-	// hostIP:hostPort addresses.
 	if len(hostIPPods) == 1 {
+		iw.log.Debugf("found host network pod that maps to the address %s:%d", podIP, port)
 		return hostIPPods[0], nil
+	} else if len(hostIPPods) > 1 {
+		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with a conflicting host network address %s:%d", len(hostIPPods), podIP, port)
 	}
+	// The address did not map to a pod in the host network, so now we check
+	// if the IP maps to a pod IP in the pod network.
 	podIPPods, err := iw.getIndexedPods(podIPIndex, podIP)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 	if len(podIPPods) == 1 {
+		iw.log.Debugf("found pod network pod that maps to the pod IP %s", podIP)
 		return podIPPods[0], nil
 	}
 	if len(podIPPods) > 1 {
-		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with conflicting pod IP %s; first two: %s/%s, %s/%s", len(podIPPods), podIP, podIPPods[0].Namespace, podIPPods[0].Name, podIPPods[1].Namespace, podIPPods[1].Name)
+		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with a conflicting pod network IP %s", len(podIPPods), podIP)
 	}
 	iw.log.Infof("no pod found for %s:%d", podIP, port)
 	return nil, nil
