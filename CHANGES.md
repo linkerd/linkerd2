@@ -6,8 +6,6 @@ This release includes various bug fixes and improvements to the CLI, the
 identity and destination control plane components as well as the proxy. This
 release also ships with a new CLI binary for Apple Silicon M1 chips.
 
-* Updated `helm-upgrade` and `upgrade-stable` integration tests now that 2.10
-  has been released
 * Added new RabbitMQ integration tests (thanks @barkardk!)
 * Updated the Go version to 1.16.2
 * Fixed an issue where the `linkerd identity` command returned the root
