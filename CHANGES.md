@@ -1,5 +1,35 @@
 # Changes
 
+## edge-21.3.3
+
+This release includes various bug fixes and improvements to the CLI, the
+identity and destination control plane components as well as the proxy. This
+release also ships with a new CLI binary for Apple Silicon M1 chips.
+
+* Added new RabbitMQ integration tests (thanks @barkardk!)
+* Updated the Go version to 1.16.2
+* Fixed an issue where the `linkerd identity` command returned the root
+  certificate of a pod instead of its leaf certificate
+* Fixed an issue where the destination service would respond with too big of a
+  header and result in http2 protocol errors
+* Updated the release process to build Linkerd CLI binaries for Apple Silicon
+  M1 chips
+* Improved error messaging when trying to install Linkerd on a cluster that
+  already had Linkerd installed
+* Fixed an issue where the `destination` control plane component sometimes
+  returned endpoint addresses with a `0` port number while pods were
+  undergoing a rollout (thanks @riccardofreixo!)
+* Added a loading spinner to the `linkerd check` command when running extension
+  checks
+* Fixed an issue where pod lookups by host IP and host port fail even though
+  the cluster has a matching pod
+* Control plane proxies no longer emit warnings about the resolution stream
+  ending. This error was innocuous.
+* Fixed an issue where proxies could infinitely retry failed requests to the
+  `destination` controller when it returned a `FailedPrecondition`
+* The proxy's logging infrastructure has been updated to reduce memory pressure
+  in high-connection environments.
+
 ## stable-2.10.0
 
 This release introduces Linkerd extensions. The default control plane no longer
