@@ -369,7 +369,7 @@ type Category struct {
 	ID       CategoryID
 	checkers []Checker
 	enabled  bool
-	// hintBaseURL is the provides a URL to more information
+	// hintBaseURL provides a base URL with more information
 	// about the check
 	hintBaseURL string
 }
@@ -381,6 +381,12 @@ func NewCategory(id CategoryID, checkers []Checker, enabled bool) *Category {
 		checkers: checkers,
 		enabled:  enabled,
 	}
+}
+
+// WithHintBaseURL returns a Category with the provided hintBaseURL
+func (c *Category) WithHintBaseURL(hintBaseURL string) *Category {
+	c.hintBaseURL = hintBaseURL
+	return c
 }
 
 // Options specifies configuration for a HealthChecker.

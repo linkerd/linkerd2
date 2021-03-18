@@ -179,8 +179,7 @@ func TestHealthChecker(t *testing.T) {
 				},
 			},
 		},
-		hintBaseURL: "www.extension.com/troubleshooting/#",
-		enabled:     true,
+		enabled: true,
 	}
 
 	t.Run("Notifies observer of all results", func(t *testing.T) {
@@ -243,6 +242,7 @@ func TestHealthChecker(t *testing.T) {
 			[]CategoryID{},
 			&Options{},
 		)
+		troubleshootingCheck.WithHintBaseURL("www.extension.com/troubleshooting/#")
 		hc.AppendCategories(troubleshootingCheck)
 		expectedResults := []string{
 			"cat9 failCheck: fatal: www.extension.com/troubleshooting/#cat9",
