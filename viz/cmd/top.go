@@ -44,10 +44,11 @@ type topOptions struct {
 }
 
 type topRequest struct {
-	event   *tapPb.TapEvent
-	reqInit *tapPb.TapEvent_Http_RequestInit
-	rspInit *tapPb.TapEvent_Http_ResponseInit
-	rspEnd  *tapPb.TapEvent_Http_ResponseEnd
+	event       *tapPb.TapEvent
+	reqInit     *tapPb.TapEvent_Http_RequestInit
+	rspInit     *tapPb.TapEvent_Http_ResponseInit
+	rspEnd      *tapPb.TapEvent_Http_ResponseEnd
+	timestampMs uint64
 }
 
 type topRequestID struct {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/golang/protobuf/ptypes"
@@ -118,7 +119,7 @@ func NewCmdTapShark() *cobra.Command {
 				os.Exit(1)
 			}
 
-			headers := []string{"FROM", pad("POD"), pad("TO"), pad("VERB"), pad("PATH"), pad("STATUS"), "LATENCY"}
+			headers := []string{"TIME", pad("FROM"), pad("POD"), pad("TO"), pad("VERB"), pad("PATH"), pad("STATUS"), "LATENCY"}
 
 			table := tview.NewTable().SetFixed(1, 0).SetSelectable(true, false)
 			for i, header := range headers {
@@ -160,7 +161,7 @@ func NewCmdTapShark() *cobra.Command {
 
 			table.SetSelectedFunc(eventLog.selectionChanged)
 
-			go eventLog.processTapEvents(cmd.Context(), k8sAPI, req, options, done)
+			go eventLog.processTapEvents(cmd.Context(), k8sAPI, req, done)
 
 			if err := app.Run(); err != nil {
 				panic(err)
@@ -194,7 +195,7 @@ func NewCmdTapShark() *cobra.Command {
 	return cmd
 }
 
-func (el *eventLog) processTapEvents(ctx context.Context, k8sAPI *k8s.KubernetesAPI, req *tapPb.TapByResourceRequest, options *tapOptions, done <-chan struct{}) {
+func (el *eventLog) processTapEvents(ctx context.Context, k8sAPI *k8s.KubernetesAPI, req *tapPb.TapByResourceRequest, done <-chan struct{}) {
 	reader, body, err := pkg.Reader(ctx, k8sAPI, req)
 	if err != nil {
 		fmt.Fprint(os.Stderr, err.Error())
@@ -214,15 +215,21 @@ func (el *eventLog) processTapEvents(ctx context.Context, k8sAPI *k8s.Kubernetes
 		<-closing
 	}()
 
+	start := time.Now()
+
 	for {
 		select {
 		case <-done:
 			return
 		case req := <-requestCh:
 
+			delta := time.Since(start)
+			req.timestampMs = uint64(delta.Milliseconds())
+
 			el.events = append(el.events, req)
 			row := len(el.events)
 
+			timestamp := fmt.Sprintf("%.3f", float64(req.timestampMs)/1000.0)
 			from, pod, to := fromPodTo(req)
 			verb := req.reqInit.GetMethod().GetRegistered().String()
 			path := req.reqInit.GetPath()
@@ -230,14 +237,14 @@ func (el *eventLog) processTapEvents(ctx context.Context, k8sAPI *k8s.Kubernetes
 			latency := latency(req)
 
 			el.app.QueueUpdateDraw(func() {
-
-				el.table.SetCellSimple(row, 0, from)
-				el.table.SetCellSimple(row, 1, pad(pod))
-				el.table.SetCellSimple(row, 2, pad(to))
-				el.table.SetCellSimple(row, 3, pad(verb))
-				el.table.SetCellSimple(row, 4, pad(path))
-				el.table.SetCellSimple(row, 5, pad(status))
-				el.table.SetCellSimple(row, 6, latency)
+				el.table.SetCellSimple(row, 0, timestamp)
+				el.table.SetCellSimple(row, 1, pad(from))
+				el.table.SetCellSimple(row, 2, pad(pod))
+				el.table.SetCellSimple(row, 3, pad(to))
+				el.table.SetCellSimple(row, 4, pad(verb))
+				el.table.SetCellSimple(row, 5, pad(path))
+				el.table.SetCellSimple(row, 6, pad(status))
+				el.table.SetCellSimple(row, 7, latency)
 			})
 		}
 	}
@@ -262,6 +269,28 @@ func (el *eventLog) selectionChanged(row, column int) {
 	if to != "" {
 		fmt.Fprintf(el.details, fieldTemplate, "To", to)
 	}
+	fmt.Fprintln(el.details)
+
+	fmt.Fprintf(el.details, fieldTemplate, "Source", addr.PublicAddressToString(req.event.GetSource()))
+	fmt.Fprintf(el.details, fieldTemplate, "Source Metadata", "")
+	for k, v := range req.event.GetSourceMeta().GetLabels() {
+		fmt.Fprintf(el.details, "\t%s: %s\n", k, v)
+	}
+	fmt.Fprintf(el.details, fieldTemplate, "Destination", addr.PublicAddressToString(req.event.GetDestination()))
+	fmt.Fprintf(el.details, fieldTemplate, "Destination Metadata", "")
+	for k, v := range req.event.GetDestinationMeta().GetLabels() {
+		fmt.Fprintf(el.details, "\t%s: %s\n", k, v)
+	}
+	fmt.Fprintln(el.details)
+
+	if len(req.event.GetRouteMeta().GetLabels()) > 0 {
+		fmt.Fprintf(el.details, fieldTemplate, "Route Metadata", "")
+		for k, v := range req.event.GetRouteMeta().GetLabels() {
+			fmt.Fprintf(el.details, "\t%s: %s\n", k, v)
+		}
+		fmt.Fprintln(el.details)
+	}
+
 	fmt.Fprintf(el.details, fieldTemplate, "Scheme", req.reqInit.GetScheme().GetRegistered().String())
 	fmt.Fprintf(el.details, fieldTemplate, "Verb", req.reqInit.GetMethod().GetRegistered().String())
 	fmt.Fprintf(el.details, fieldTemplate, "Path", req.reqInit.GetPath())
