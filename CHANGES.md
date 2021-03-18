@@ -14,8 +14,8 @@ release also ships with a new CLI binary for Apple Silicon M1 chips.
   certificate of a pod instead of its leaf certificate
 * Fixed an issue where the destination service would respond with too big of a
   header and result in http2 protocol errors
-* Updated `docker-build-cli-bin` to build Darwin Arm64 binaries. This now adds
-  support for running Linkerd CLI on Apple Silicon M1 chips
+* Updated the release process to build Linkerd CLI binaries for Apple Silicon
+  M1 chips
 * Improved error messaging when trying to install Linkerd on a cluster that
   already had Linkerd installed
 * Fixed an issue where the `destination` control plan component sometimes
