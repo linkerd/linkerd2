@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -156,7 +157,12 @@ func (iw *IPWatcher) GetSvcID(clusterIP string) (*ServiceID, error) {
 		services = append(services, service)
 	}
 	if len(services) > 1 {
-		return nil, status.Errorf(codes.FailedPrecondition, "found %d services with conflicting cluster IP %s; first two: %s/%s, %s/%s", len(services), clusterIP, services[0].Namespace, services[0].Name, services[1].Namespace, services[1].Name)
+		conflictingServices := []string{}
+		for _, service := range services {
+			conflictingServices = append(conflictingServices, fmt.Sprintf("%s:%s", service.Namespace, service.Name))
+		}
+		iw.log.Warnf("found conflicting %s cluster IP: %s", clusterIP, strings.Join(conflictingServices, ","))
+		return nil, status.Errorf(codes.FailedPrecondition, "found %d services with conflicting cluster IP %s", len(services), clusterIP)
 	}
 	if len(services) == 0 {
 		return nil, nil
@@ -180,10 +186,16 @@ func (iw *IPWatcher) GetPod(podIP string, port uint32) (*corev1.Pod, error) {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 	if len(hostIPPods) == 1 {
-		iw.log.Debugf("found host network pod that maps to the address %s:%d", podIP, port)
+		iw.log.Debugf("found %s:%d on the host network", podIP, port)
 		return hostIPPods[0], nil
-	} else if len(hostIPPods) > 1 {
-		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with a conflicting host network address %s:%d; first two: %s/%s, %s/%s", len(hostIPPods), podIP, port, hostIPPods[0].Namespace, hostIPPods[0].Name, hostIPPods[1].Namespace, hostIPPods[1].Name)
+	}
+	if len(hostIPPods) > 1 {
+		conflictingPods := []string{}
+		for _, pod := range hostIPPods {
+			conflictingPods = append(conflictingPods, fmt.Sprintf("%s:%s", pod.Namespace, pod.Name))
+		}
+		iw.log.Warnf("found conflicting %s:%d endpoint on the host network: %s", podIP, port, strings.Join(conflictingPods, ","))
+		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with a conflicting host network endpoint %s:%d", len(hostIPPods), podIP, port)
 	}
 	// The address did not map to a pod in the host network, so now we check
 	// if the IP maps to a pod IP in the pod network.
@@ -192,20 +204,25 @@ func (iw *IPWatcher) GetPod(podIP string, port uint32) (*corev1.Pod, error) {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 	if len(podIPPods) == 1 {
-		iw.log.Debugf("found pod network pod that maps to the pod IP %s", podIP)
+		iw.log.Debugf("found %s on the pod network", podIP)
 		return podIPPods[0], nil
 	}
 	if len(podIPPods) > 1 {
-		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with a conflicting pod network IP %s: first two: %s/%s, %s/%s", len(podIPPods), podIP, podIPPods[0].Namespace, podIPPods[0].Name, podIPPods[1].Namespace, podIPPods[1].Name)
+		conflictingPods := []string{}
+		for _, pod := range podIPPods {
+			conflictingPods = append(conflictingPods, fmt.Sprintf("%s:%s", pod.Namespace, pod.Name))
+		}
+		iw.log.Warnf("found conflicting %s IP on the pod network: %s", podIP, strings.Join(conflictingPods, ","))
+		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with a conflicting pod network IP %s", len(podIPPods), podIP)
 	}
-	iw.log.Infof("no pod found for %s:%d", podIP, port)
+	iw.log.Debugf("no pod found for %s:%d", podIP, port)
 	return nil, nil
 }
 
 func (iw *IPWatcher) getIndexedPods(indexName string, podIP string) ([]*corev1.Pod, error) {
 	objs, err := iw.k8sAPI.Pod().Informer().GetIndexer().ByIndex(indexName, podIP)
 	if err != nil {
-		return nil, fmt.Errorf("failed getting %s indexed pods: %s", indexName, err.Error())
+		return nil, fmt.Errorf("failed getting %s indexed pods: %s", indexName, err)
 	}
 	pods := make([]*corev1.Pod, 0)
 	for _, obj := range objs {
