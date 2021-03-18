@@ -23,6 +23,10 @@ func TestMain(m *testing.M) {
 
 func TestRabbitMQDeploy(t *testing.T) {
 	ctx := context.Background()
+	if os.Getenv("RUN_ARM_TEST") != "" {
+		t.Skip("Skipped. RabbitMQ client image does not support ARM yet")
+	}
+
 	TestHelper.WithDataPlaneNamespace(ctx, "rabbitmq-test", map[string]string{}, t, func(t *testing.T, testNamespace string) {
 		out, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/rabbitmq-server.yaml")
 		// inject rabbitmq server
