@@ -197,6 +197,7 @@ func (iw *IPWatcher) GetPod(podIP string, port uint32) (*corev1.Pod, error) {
 		iw.log.Warnf("found conflicting %s:%d endpoint on the host network: %s", podIP, port, strings.Join(conflictingPods, ","))
 		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with a conflicting host network endpoint %s:%d", len(hostIPPods), podIP, port)
 	}
+
 	// The address did not map to a pod in the host network, so now we check
 	// if the IP maps to a pod IP in the pod network.
 	podIPPods, err := iw.getIndexedPods(podIPIndex, podIP)
@@ -215,6 +216,7 @@ func (iw *IPWatcher) GetPod(podIP string, port uint32) (*corev1.Pod, error) {
 		iw.log.Warnf("found conflicting %s IP on the pod network: %s", podIP, strings.Join(conflictingPods, ","))
 		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with a conflicting pod network IP %s", len(podIPPods), podIP)
 	}
+
 	iw.log.Debugf("no pod found for %s:%d", podIP, port)
 	return nil, nil
 }
