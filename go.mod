@@ -9,11 +9,11 @@ require (
 	github.com/clarketm/json v1.13.4
 	github.com/containernetworking/cni v0.6.1-0.20180218032124-142cde0c766c
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
-	github.com/elazarl/goproxy/ext v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/emicklei/proto v1.6.8
 	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/fatih/color v1.9.0
 	github.com/fsnotify/fsnotify v1.4.9
+	github.com/gdamore/tcell/v2 v2.2.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.19.3
 	github.com/golang/protobuf v1.4.3
@@ -25,13 +25,14 @@ require (
 	github.com/linkerd/linkerd2-proxy-api v0.1.16
 	github.com/linkerd/linkerd2-proxy-init v1.3.9
 	github.com/mattn/go-isatty v0.0.12
-	github.com/mattn/go-runewidth v0.0.4
+	github.com/mattn/go-runewidth v0.0.10
 	github.com/nsf/termbox-go v0.0.0-20180613055208-5c94acc5e6eb
 	github.com/onsi/gomega v1.8.1 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
 	github.com/prometheus/client_golang v1.7.1
 	github.com/prometheus/common v0.10.0
+	github.com/rivo/tview v0.0.0-20210312174852-ae9464cc3598
 	github.com/sergi/go-diff v1.0.0
 	github.com/servicemeshinterface/smi-sdk-go v0.4.1
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
