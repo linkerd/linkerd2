@@ -18,9 +18,9 @@ release also ships with a new CLI binary for Apple Silicon M1 chips.
   M1 chips
 * Improved error messaging when trying to install Linkerd on a cluster that
   already had Linkerd installed
-* Fixed an issue where the `destination` control plan component sometimes
+* Fixed an issue where the `destination` control plane component sometimes
   returned endpoint addresses with a `0` port number while pods were
-  undergoing a rollout
+  undergoing a rollout (thanks @riccardofreixo!)
 * Added a loading spinner to the `linkerd check` command when running extension
   checks
 * Fixed an issue where pod lookups by host IP and host port fail even though
