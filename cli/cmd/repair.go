@@ -8,6 +8,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	configpkg "github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,7 +57,14 @@ linkerd upgrade.`,
 				return errors.New("values not found in linkerd-config")
 			}
 
-			err = yaml.Unmarshal([]byte(valuesRaw), &values)
+			// Convert to 2.10 Values struct here
+			valuesRawBytes := []byte(valuesRaw)
+			valuesRawBytes, err = configpkg.RemoveGlobalFieldIfPresent(valuesRawBytes)
+			if err != nil {
+				return fmt.Errorf("Failed to convert config into the newer version: %s", err)
+			}
+
+			err = yaml.Unmarshal(valuesRawBytes, &values)
 			if err != nil {
 				return fmt.Errorf("Failed to load values from linkerd-config: %s", err)
 			}
@@ -121,6 +129,7 @@ func resetVersion(values *linkerd2.Values) error {
 	}
 	values.DebugContainer.Image.Version = defaults.DebugContainer.Image.Version
 	values.Proxy.Image.Version = defaults.Proxy.Image.Version
+	values.ProxyInit.Image.Version = defaults.ProxyInit.Image.Version
 	values.CliVersion = defaults.CliVersion
 	values.ControllerImageVersion = defaults.ControllerImageVersion
 	values.LinkerdVersion = defaults.LinkerdVersion
