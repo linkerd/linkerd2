@@ -375,11 +375,13 @@ type Category struct {
 }
 
 // NewCategory returns an instance of Category with the specified data
+// and the DefaultHintBaseURL
 func NewCategory(id CategoryID, checkers []Checker, enabled bool) *Category {
 	return &Category{
-		ID:       id,
-		checkers: checkers,
-		enabled:  enabled,
+		ID:          id,
+		checkers:    checkers,
+		enabled:     enabled,
+		hintBaseURL: DefaultHintBaseURL,
 	}
 }
 
@@ -1523,15 +1525,11 @@ func (hc *HealthChecker) runCheck(category Category, c *Checker, observer CheckO
 			return true
 		}
 
-		hintBaseURL := category.hintBaseURL
-		if hintBaseURL == "" {
-			hintBaseURL = DefaultHintBaseURL
-		}
 		checkResult := &CheckResult{
 			Category:    category.ID,
 			Description: c.description,
 			Warning:     c.warning,
-			HintURL:     fmt.Sprintf("%s%s", hintBaseURL, c.hintAnchor),
+			HintURL:     fmt.Sprintf("%s%s", category.hintBaseURL, c.hintAnchor),
 		}
 		if vs, ok := err.(*VerboseSuccess); ok {
 			checkResult.Description = fmt.Sprintf("%s\n%s", checkResult.Description, vs.Message)
