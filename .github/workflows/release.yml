@@ -257,8 +257,8 @@ jobs:
         prerelease: false
         body_path: NOTES.md
         files: |
-          ./target/release/linkerd2-cli-*-darwin
-          ./target/release/linkerd2-cli-*-darwin.sha256
+          ./target/release/linkerd2-cli-*-darwin*
+          ./target/release/linkerd2-cli-*-darwin*.sha256
           ./target/release/linkerd2-cli-*-linux-*
           ./target/release/linkerd2-cli-*-linux-*.sha256
           ./target/release/linkerd2-cli-*-windows.exe
