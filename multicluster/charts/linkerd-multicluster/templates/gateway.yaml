@@ -1,53 +1,5 @@
 {{if .Values.gateway -}}
 ---
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{.Values.gatewayName}}-config
-  labels:
-    linkerd.io/control-plane-component: gateway
-    linkerd.io/extension: multicluster
-  annotations:
-    {{ include "partials.annotations.created-by" . }}
-  namespace: {{.Values.namespace}}
-data:
-  nginx.conf: |-
-    error_log stderr;
-    pid /tmp/nginx.pid;
-    events {
-    }
-    stream {
-       server {
-           listen     4180;
-           proxy_pass 127.0.0.1:{{.Values.proxyOutboundPort}};
-       }
-    }
-    http {
-      client_body_temp_path /tmp/client_temp;
-      proxy_temp_path       /tmp/proxy_temp_path;
-      fastcgi_temp_path     /tmp/fastcgi_temp;
-      uwsgi_temp_path       /tmp/uwsgi_temp;
-      scgi_temp_path        /tmp/scgi_temp;
-      server {
-          listen     {{.Values.gatewayProbePort}};
-          location = {{.Values.gatewayProbePath}} {
-            access_log off;
-            return 200 "healthy\n";
-          }
-
-          location ~* ^/(.*)$ {
-            deny all;
-          }
-      }
-      server {
-          listen     {{.Values.gatewayLocalProbePort}};
-          location {{.Values.gatewayLocalProbePath}} {
-            access_log off;
-            return 200 "healthy\n";
-          }
-      }
-    }
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -72,44 +24,14 @@ spec:
       annotations:
         {{ include "partials.annotations.created-by" . }}
         linkerd.io/inject: enabled
-        config.linkerd.io/proxy-require-identity-inbound-ports: "{{.Values.gatewayProbePort}},{{.Values.gatewayPort}},4180"
+        config.linkerd.io/proxy-require-identity-inbound-ports: "{{.Values.gatewayProbePort}},{{.Values.gatewayPort}}"
         config.linkerd.io/enable-gateway: "true"
       labels:
         app: {{.Values.gatewayName}}
     spec:
-      volumes:
-        - name: config
-          configMap:
-            name: {{.Values.gatewayName}}-config
-        - name: tmp
-          emptyDir: {}
       containers:
-        - name: nginx
-          readinessProbe:
-            failureThreshold: 7
-            httpGet:
-              path: {{.Values.gatewayLocalProbePath}}
-              port: {{.Values.gatewayLocalProbePort}}
-          livenessProbe:
-            httpGet:
-              path: {{.Values.gatewayLocalProbePath}}
-              port: {{.Values.gatewayLocalProbePort}}
-            initialDelaySeconds: 10
-          image: {{.Values.gatewayNginxImage}}:{{.Values.gatewayNginxImageVersion}}
-          ports:
-            - name: mc-relay
-              containerPort: 4180
-            - name: mc-probe
-              containerPort: {{.Values.gatewayProbePort}}
-            - name: local-probe
-              containerPort: {{.Values.gatewayLocalProbePort}}
-          securityContext:
-            runAsUser: 1001
-          volumeMounts:
-            - name: config
-              mountPath: /etc/nginx
-            - name: tmp
-              mountPath: /tmp
+        - name: pause
+          image: gcr.io/google_containers/pause
       serviceAccountName: {{.Values.gatewayName}}
 ---
 apiVersion: v1
