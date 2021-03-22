@@ -15,7 +15,7 @@ spec:
         app: rabbitmq-client
     spec:
       containers:
-        - image: ghcr.io/barkardk/rabbitmq-client:1.1.0
+        - image: ghcr.io/barkardk/rabbitmq-client:1.2.3
           name: rabbitmq-client
           env:
             - name: RABBITMQ_AMQP_CONN_STR
