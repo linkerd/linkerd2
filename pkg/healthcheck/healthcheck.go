@@ -178,7 +178,6 @@ var linkerdHAControlPlaneComponents = []string{
 	"linkerd-destination",
 	"linkerd-identity",
 	"linkerd-proxy-injector",
-	"linkerd-sp-validator",
 }
 
 // ExpectedServiceAccountNames is a list of the service accounts that a healthy
@@ -2355,7 +2354,7 @@ const running = "Running"
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
-	names := []string{"controller", "identity", "sp-validator", "proxy-injector"}
+	names := []string{"controller", "identity", "proxy-injector"}
 
 	for _, name := range names {
 		pods, found := statuses[name]

@@ -68,7 +68,6 @@ var (
 		"templates/serviceprofile-crd.yaml",
 		"templates/trafficsplit-crd.yaml",
 		"templates/proxy-injector-rbac.yaml",
-		"templates/sp-validator-rbac.yaml",
 		"templates/psp.yaml",
 	}
 
@@ -79,7 +78,6 @@ var (
 		"templates/destination.yaml",
 		"templates/heartbeat.yaml",
 		"templates/proxy-injector.yaml",
-		"templates/sp-validator.yaml",
 	}
 
 	ignoreCluster bool

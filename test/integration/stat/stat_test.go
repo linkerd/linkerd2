@@ -79,13 +79,12 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 				"linkerd-destination":    "1/1",
 				"linkerd-identity":       "1/1",
 				"linkerd-proxy-injector": "1/1",
-				"linkerd-sp-validator":   "1/1",
 			},
 		},
 		{
 			args: []string{"viz", "stat", "ns", TestHelper.GetLinkerdNamespace()},
 			expectedRows: map[string]string{
-				TestHelper.GetLinkerdNamespace(): "5/5",
+				TestHelper.GetLinkerdNamespace(): "4/4",
 			},
 		},
 		{

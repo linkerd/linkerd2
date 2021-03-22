@@ -74,7 +74,6 @@ var LinkerdDeployReplicasEdge = map[string]DeploySpec{
 	"tap":                    {"linkerd-viz", 1, []string{"tap"}},
 	"grafana":                {"linkerd-viz", 1, []string{}},
 	"linkerd-identity":       {"linkerd", 1, []string{"identity"}},
-	"linkerd-sp-validator":   {"linkerd", 1, []string{"sp-validator"}},
 	"web":                    {"linkerd-viz", 1, []string{"web"}},
 	"linkerd-proxy-injector": {"linkerd", 1, []string{"proxy-injector"}},
 }

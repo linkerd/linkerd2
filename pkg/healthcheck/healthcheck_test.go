@@ -1562,7 +1562,6 @@ func TestValidateControlPlanePods(t *testing.T) {
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
 			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodFailed, true),
-			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
 		}
 
 		err := validateControlPlanePods(pods)
@@ -1579,15 +1578,11 @@ func TestValidateControlPlanePods(t *testing.T) {
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-tap-6c878df6c8-2hmtd", corev1.PodRunning, true),
-			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, false),
 		}
 
 		err := validateControlPlanePods(pods)
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
-		}
-		if err.Error() != "pod/linkerd-sp-validator-24d2879ce6-cddk9 container sp is not ready" {
-			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
 
@@ -1595,7 +1590,6 @@ func TestValidateControlPlanePods(t *testing.T) {
 		pods := []corev1.Pod{
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
-			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
 			pod("linkerd-proxy-injector-5f79ff4844-", corev1.PodRunning, true),
 		}
 
@@ -1614,7 +1608,6 @@ func TestValidateControlPlanePods(t *testing.T) {
 			pod("linkerd-identity-6849948664-27983", corev1.PodRunning, false),
 			pod("linkerd-identity-6849948664-27984", corev1.PodFailed, false),
 			pod("linkerd-proxy-injector-5f79ff4844-", corev1.PodRunning, true),
-			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
 		}
 
 		err := validateControlPlanePods(pods)
@@ -1628,7 +1621,6 @@ func TestValidateControlPlanePods(t *testing.T) {
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-proxy-injector-5f79ff4844-", corev1.PodRunning, true),
-			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
 			pod("hello-43c25d", corev1.PodRunning, true),
 		}
 
@@ -2338,8 +2330,6 @@ data:
     proxyInjectorResources: null
     publicAPIProxyResources: null
     publicAPIResources: null
-    spValidatorProxyResources: null
-    spValidatorResources: null
     stage: ""
     tolerations: null
     webhookFailurePolicy: WebhookFailurePolicy
@@ -2505,8 +2495,6 @@ data:
     proxyInjectorResources: null
     publicAPIProxyResources: null
     publicAPIResources: null
-    spValidatorProxyResources: null
-    spValidatorResources: null
     stage: ""
     tolerations: null
     webhookFailurePolicy: WebhookFailurePolicy
@@ -3253,10 +3241,9 @@ func TestMinReplicaCheck(t *testing.T) {
 				destination:   3,
 				identity:      3,
 				proxyInjector: 3,
-				spValidator:   1,
 				tap:           3,
 			}, t),
-			expected: fmt.Errorf("not enough replicas available for [linkerd-controller linkerd-sp-validator]"),
+			expected: fmt.Errorf("not enough replicas available for [linkerd-controller]"),
 		},
 		{
 			controlPlaneResourceDefs: generateAllControlPlaneDef(&controlPlaneReplicaOptions{
@@ -3264,10 +3251,9 @@ func TestMinReplicaCheck(t *testing.T) {
 				destination:   2,
 				identity:      1,
 				proxyInjector: 1,
-				spValidator:   0,
 				tap:           3,
 			}, t),
-			expected: fmt.Errorf("not enough replicas available for [linkerd-identity linkerd-proxy-injector linkerd-sp-validator]"),
+			expected: fmt.Errorf("not enough replicas available for [linkerd-identity linkerd-proxy-injector]"),
 		},
 		{
 			controlPlaneResourceDefs: generateAllControlPlaneDef(&controlPlaneReplicaOptions{
@@ -3275,7 +3261,6 @@ func TestMinReplicaCheck(t *testing.T) {
 				destination:   2,
 				identity:      2,
 				proxyInjector: 3,
-				spValidator:   2,
 				tap:           3,
 			}, t),
 			expected: nil,
@@ -3311,7 +3296,6 @@ type controlPlaneReplicaOptions struct {
 	destination   int
 	identity      int
 	proxyInjector int
-	spValidator   int
 	tap           int
 }
 
@@ -3342,8 +3326,6 @@ func generateAllControlPlaneDef(replicaOptions *controlPlaneReplicaOptions, t *t
 			resourceDefs = append(resourceDefs, getSingleControlPlaneDef(component, replicaOptions.destination))
 		case "linkerd-identity":
 			resourceDefs = append(resourceDefs, getSingleControlPlaneDef(component, replicaOptions.identity))
-		case "linkerd-sp-validator":
-			resourceDefs = append(resourceDefs, getSingleControlPlaneDef(component, replicaOptions.spValidator))
 		case "linkerd-proxy-injector":
 			resourceDefs = append(resourceDefs, getSingleControlPlaneDef(component, replicaOptions.proxyInjector))
 		case "linkerd-tap":

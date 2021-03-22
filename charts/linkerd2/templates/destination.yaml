@@ -39,6 +39,25 @@ spec:
   - name: grpc
     port: 8086
     targetPort: 8086
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-sp-validator
+  namespace: {{.Values.namespace}}
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/control-plane-component: destination
+  ports:
+  - name: sp-validator
+    port: 443
+    targetPort: sp-validator
 {{- if .Values.enablePodAntiAffinity }}
 ---
 kind: PodDisruptionBudget
@@ -144,6 +163,37 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.controllerUID}}
+      - args:
+        - sp-validator
+        - -log-level={{.Values.controllerLogLevel}}
+        - -log-format={{.Values.controllerLogFormat}}
+        image: {{.Values.controllerImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
+        imagePullPolicy: {{.Values.imagePullPolicy}}
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9997
+          initialDelaySeconds: 10
+        name: sp-validator
+        ports:
+        - containerPort: 8443
+          name: sp-validator
+        - containerPort: 9997
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9997
+        {{- if .Values.spValidatorResources -}}
+        {{- include "partials.resources" .Values.spValidatorResources | nindent 8 }}
+        {{- end }}
+        securityContext:
+          runAsUser: {{.Values.controllerUID}}
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: tls
+          readOnly: true
       {{- if not (empty .Values.destinationProxyResources) }}
       {{- $r := merge .Values.destinationProxyResources .Values.proxy.resources }}
       {{- $_ := set $tree.Values.proxy "resources" $r }}
@@ -158,6 +208,9 @@ spec:
       {{ end -}}
       serviceAccountName: linkerd-destination
       volumes:
+      - name: tls
+        secret:
+          secretName: linkerd-sp-validator-k8s-tls
       {{ if not .Values.cniEnabled -}}
       - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}

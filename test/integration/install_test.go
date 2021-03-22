@@ -817,13 +817,6 @@ var expectedResources = []expectedData{
 		memLimit:   "200Mi",
 		memRequest: "106Mi",
 	},
-	{
-		pod:        "linkerd-sp-validator",
-		cpuLimit:   "1080m",
-		cpuRequest: "20m",
-		memLimit:   "200Mi",
-		memRequest: "108Mi",
-	},
 }
 
 func TestComponentProxyResources(t *testing.T) {
