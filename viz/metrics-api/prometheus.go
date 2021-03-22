@@ -168,6 +168,16 @@ func generateLabelStringWithRegex(l model.LabelSet, labelName string, stringToMa
 	return fmt.Sprintf("{%s}", strings.Join(lstrs, ", "))
 }
 
+// generate Prometheus queries for latency quantiles, based on a quantile query
+// template, query labels, a time window and grouping.
+func generateQuantileQueries(quantileQuery, labels, timeWindow, groupBy string) map[promType]string {
+	return map[promType]string{
+		promLatencyP50: fmt.Sprintf(quantileQuery, promLatencyP50, labels, timeWindow, groupBy),
+		promLatencyP95: fmt.Sprintf(quantileQuery, promLatencyP95, labels, timeWindow, groupBy),
+		promLatencyP99: fmt.Sprintf(quantileQuery, promLatencyP99, labels, timeWindow, groupBy),
+	}
+}
+
 // determine if we should add "namespace=<namespace>" to a named query
 func shouldAddNamespaceLabel(resource *pb.Resource) bool {
 	return resource.Type != k8s.Namespace && resource.Namespace != ""
@@ -191,21 +201,10 @@ func promResourceType(resource *pb.Resource) model.LabelName {
 	return model.LabelName(l5dLabel)
 }
 
-func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTemplates map[promType]string, latencyQueryTemplate, labels, timeWindow, groupBy string) ([]promResult, error) {
+func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueries map[promType]string, latencyQueries map[promType]string) ([]promResult, error) {
 	resultChan := make(chan promResult)
 
-	// kick off asynchronous queries: request count queries + 3 latency queries
-	for pt, requestQueryTemplate := range requestQueryTemplates {
-		var query string
-		if pt == promTCPConnections || pt == promGatewayAlive || pt == promNumMirroredServices {
-			query = fmt.Sprintf(requestQueryTemplate, labels, groupBy)
-		} else if pt == promTCPReadBytes || pt == promTCPWriteBytes {
-			// TCP read/write labels get set in the previous step to include additional 'peer' label
-			query = requestQueryTemplate
-		} else {
-			query = fmt.Sprintf(requestQueryTemplate, labels, timeWindow, groupBy)
-		}
-
+	for pt, query := range requestQueries {
 		go func(typ promType, promQuery string) {
 			resultVector, err := s.queryProm(ctx, promQuery)
 			resultChan <- promResult{
@@ -216,25 +215,20 @@ func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTempl
 		}(pt, query)
 	}
 
-	quantiles := []promType{promLatencyP50, promLatencyP95, promLatencyP99}
-
-	for _, quantile := range quantiles {
-		go func(quantile promType) {
-			latencyQuery := fmt.Sprintf(latencyQueryTemplate, quantile, labels, timeWindow, groupBy)
-			latencyResult, err := s.queryProm(ctx, latencyQuery)
-
+	for quantile, query := range latencyQueries {
+		go func(qt promType, promQuery string) {
+			resultVector, err := s.queryProm(ctx, promQuery)
 			resultChan <- promResult{
-				prom: quantile,
-				vec:  latencyResult,
+				prom: qt,
+				vec:  resultVector,
 				err:  err,
 			}
-		}(quantile)
+		}(quantile, query)
 	}
-
 	// process results, receive one message per prometheus query type
 	var err error
 	results := []promResult{}
-	for i := 0; i < len(quantiles)+len(requestQueryTemplates); i++ {
+	for i := 0; i < len(latencyQueries)+len(requestQueries); i++ {
 		result := <-resultChan
 		if result.err != nil {
 			log.Errorf("queryProm failed with: %s", result.err)
