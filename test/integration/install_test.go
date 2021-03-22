@@ -620,8 +620,6 @@ func TestUpgradeHelm(t *testing.T) {
 		"--set", "identityProxyResources.memory.request=104Mi",
 		"--set", "proxyInjectorProxyResources.cpu.limit=1060m",
 		"--set", "proxyInjectorProxyResources.memory.request=106Mi",
-		"--set", "spValidatorProxyResources.cpu.limit=1080m",
-		"--set", "spValidatorProxyResources.memory.request=108Mi",
 		"--atomic",
 		"--wait",
 	}
