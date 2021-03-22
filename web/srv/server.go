@@ -17,6 +17,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
+	vizPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
 )
@@ -93,8 +94,8 @@ func NewServer(
 	clusterDomain string,
 	reload bool,
 	reHost *regexp.Regexp,
-	apiClient public.VizAPIClient,
-	publicAPIClient public.PublicAPIClient,
+	apiClient vizPb.ApiClient,
+	publicAPIClient public.Client,
 	k8sAPI *k8s.KubernetesAPI,
 	hc healthChecker,
 ) *http.Server {
@@ -197,6 +198,7 @@ func NewServer(
 	server.router.GET("/api/check", handler.handleAPICheck)
 	server.router.GET("/api/resource-definition", handler.handleAPIResourceDefinition)
 	server.router.GET("/api/gateways", handler.handleAPIGateways)
+	server.router.GET("/api/extension", handler.handleGetExtension)
 
 	// grafana proxy
 	server.handleAllOperationsForPath("/grafana/*grafanapath", handler.handleGrafana)

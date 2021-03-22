@@ -25,7 +25,6 @@ type InjectValidator struct {
 	AutoInject             bool
 	AdminPort              int
 	ControlPort            int
-	DisableTap             bool
 	EnableDebug            bool
 	EnableExternalProfiles bool
 	ImagePullPolicy        string
@@ -124,12 +123,6 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 
 	if iv.ControlPort != 0 {
 		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_CONTROL_LISTEN_ADDR", fmt.Sprintf("0.0.0.0:%d", iv.ControlPort)); err != nil {
-			return err
-		}
-	}
-
-	if iv.DisableTap {
-		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_TAP_DISABLED", enabled); err != nil {
 			return err
 		}
 	}
@@ -411,11 +404,6 @@ func (iv *InjectValidator) GetFlagsAndAnnotations() ([]string, map[string]string
 	if iv.DisableIdentity {
 		annotations[k8s.IdentityModeDisabled] = enabled
 		flags = append(flags, "--disable-identity")
-	}
-
-	if iv.DisableTap {
-		annotations[k8s.ProxyDisableTapAnnotation] = enabled
-		flags = append(flags, "--disable-tap")
 	}
 
 	if iv.EnableDebug {

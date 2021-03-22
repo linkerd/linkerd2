@@ -1,0 +1,8 @@
+{{if .Values.installNamespace -}}
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: {{ .Values.namespace }}
+  labels:
+    linkerd.io/extension: multicluster
+{{end -}}

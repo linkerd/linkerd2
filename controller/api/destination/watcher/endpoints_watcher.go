@@ -148,6 +148,13 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry, enableEndpointSlic
 
 	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{podIPIndex: func(obj interface{}) ([]string, error) {
 		if pod, ok := obj.(*corev1.Pod); ok {
+			// Pods that run in the host network are indexed by the host IP
+			// indexer in the IP watcher; they should be skipped by the pod
+			// IP indexer which is responsible only for indexing pod network
+			// pods.
+			if pod.Spec.HostNetwork {
+				return nil, nil
+			}
 			return []string{pod.Status.PodIP}, nil
 		}
 		return []string{""}, fmt.Errorf("object is not a pod")
@@ -780,6 +787,9 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 	addresses := make(map[ID]Address)
 	for _, subset := range endpoints.Subsets {
 		resolvedPort := pp.resolveTargetPort(subset)
+		if resolvedPort == undefinedEndpointPort {
+			continue
+		}
 		for _, endpoint := range subset.Addresses {
 			if pp.hostname != "" && pp.hostname != endpoint.Hostname {
 				continue
@@ -805,7 +815,6 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
-				err = SetPodOpaquePortAnnotation(pp.k8sAPI, address.Pod, endpoints.Namespace)
 				if err != nil {
 					pp.log.Errorf("failed to set opaque port annotation on pod: %s", err)
 				}
@@ -1090,23 +1099,4 @@ func isValidSlice(es *discovery.EndpointSlice) bool {
 	}
 
 	return true
-}
-
-// SetPodOpaquePortAnnotation ensures that if there is no opaque port
-// annotation on the pod, then it inherits the annotation from the namespace.
-// If there is also no annotation on the namespace, then it remains unset.
-func SetPodOpaquePortAnnotation(k8sAPI *k8s.API, pod *corev1.Pod, ns string) error {
-	if _, ok := pod.Annotations[consts.ProxyOpaquePortsAnnotation]; !ok {
-		ns, err := k8sAPI.NS().Lister().Get(ns)
-		if err != nil {
-			return fmt.Errorf("failed to get namespace annotation: %s", err)
-		}
-		if annotation, ok := ns.Annotations[consts.ProxyOpaquePortsAnnotation]; ok {
-			if pod.Annotations == nil {
-				pod.Annotations = make(map[string]string)
-			}
-			pod.Annotations[consts.ProxyOpaquePortsAnnotation] = annotation
-		}
-	}
-	return nil
 }

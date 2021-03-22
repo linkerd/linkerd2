@@ -1,0 +1,53 @@
+# Default values for tracing.
+
+namespace: linkerd-jaeger
+
+collector:
+  image: 
+    name: omnition/opencensus-collector
+    version: 0.1.11
+    pullPolicy: Always
+  # resources:
+
+  # -- address of the jaeger backend to send traces to
+  jaegerAddr:
+
+jaeger:
+  image: 
+    name: jaegertracing/all-in-one
+    version: 1.19.2
+    pullPolicy: Always
+
+linkerdVersion: &linkerd_version linkerdVersionValue
+
+webhook:
+  externalSecret: false
+  # -- if empty, Helm will auto-generate these fields
+  crtPEM: |
+
+  keyPEM: |
+
+  # -- if empty, Helm will auto-generate this field, unless externalSecret is set to true.
+  caBundle: |
+
+  # -- collector service address for the proxies to send trace data.
+  # Points by default to the the linkerd-jaeger collector
+  collectorSvcAddr: collector.linkerd-jaeger:55678
+  # -- service account associated with the collector instance
+  collectorSvcAccount: collector
+
+  failurePolicy: Ignore
+  image: 
+    name: cr.l5d.io/linkerd/jaeger-webhook
+    version: *linkerd_version
+    pullPolicy: IfNotPresent
+  logLevel: info
+
+  namespaceSelector:
+    #matchExpressions:
+    #- key: runlevel
+    #  operator: NotIn
+    #  values: ["0","1"]
+  objectSelector:
+    #matchLabels:
+    #  foo: bar

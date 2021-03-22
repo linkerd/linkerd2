@@ -1,0 +1,54 @@
+{{if .Values.remoteMirrorServiceAccount -}}
+{{- $names := .Values.remoteMirrorServiceAccountName -}}
+{{- if not (kindIs "slice" .Values.remoteMirrorServiceAccountName) -}}
+  {{- $names = splitList "," .Values.remoteMirrorServiceAccountName -}}
+{{- end -}}
+{{- range $names -}}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{.}}
+  namespace: {{$.Values.namespace}}
+  labels:
+    linkerd.io/extension: multicluster
+  annotations:
+    {{ include "partials.annotations.created-by" $ }}
+rules:
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get"]
+  resourceNames: ["linkerd-config"]  
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{.}}
+  namespace: {{$.Values.namespace}}
+  labels:
+    linkerd.io/extension: multicluster
+  annotations:
+    {{ include "partials.annotations.created-by" $ }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{.}}
+  namespace: {{$.Values.namespace}}
+  labels:
+    linkerd.io/extension: multicluster
+  annotations:
+    {{ include "partials.annotations.created-by" $ }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{.}}
+subjects:
+- kind: ServiceAccount
+  name: {{.}}
+  namespace: {{$.Values.namespace}}
+{{end -}}
+{{end -}}

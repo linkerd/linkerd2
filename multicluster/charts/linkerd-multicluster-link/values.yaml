@@ -1,0 +1,16 @@
+# -- Docker image for the Service mirror component (uses the Linkerd controller
+# image)
+controllerImage: cr.l5d.io/linkerd/controller
+# -- Tag for the Service Mirror container Docker image
+controllerImageVersion: linkerdVersionValue
+# -- The port used for liveliness probing 
+gatewayProbePort: 4181
+# -- Service Mirror component namespace 
+namespace: linkerd-multicluster
+# -- Log level for the Multicluster components 
+logLevel: info
+# -- Number of times update from the remote cluster is allowed to be requeued
+# (retried)
+serviceMirrorRetryLimit: 3
+# -- User id under which the Service Mirror shall be ran 
+serviceMirrorUID: 2103

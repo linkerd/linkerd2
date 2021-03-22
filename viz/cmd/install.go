@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"path"
@@ -12,7 +11,7 @@ import (
 	partials "github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	"github.com/linkerd/linkerd2/pkg/k8s"
+	api "github.com/linkerd/linkerd2/pkg/public"
 	"github.com/linkerd/linkerd2/viz/static"
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -24,14 +23,18 @@ import (
 var (
 	templatesVIz = []string{
 		"templates/namespace.yaml",
+		"templates/metrics-api-rbac.yaml",
 		"templates/grafana-rbac.yaml",
 		"templates/prometheus-rbac.yaml",
 		"templates/tap-rbac.yaml",
 		"templates/web-rbac.yaml",
 		"templates/psp.yaml",
+		"templates/metrics-api.yaml",
 		"templates/grafana.yaml",
 		"templates/prometheus.yaml",
 		"templates/tap.yaml",
+		"templates/tap-injector-rbac.yaml",
+		"templates/tap-injector.yaml",
 		"templates/web.yaml",
 	}
 )
@@ -55,41 +58,25 @@ A full list of configurable values can be found at https://www.github.com/linker
   `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !skipChecks {
-				// Ensure there is a Linkerd installation.
-				kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-				if err != nil {
-					return err
-				}
+				// Wait for the core control-plane to be up and running
+				api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
+					ControlPlaneNamespace: controlPlaneNamespace,
+					KubeConfig:            kubeconfigPath,
+					KubeContext:           kubeContext,
+					Impersonate:           impersonate,
+					ImpersonateGroup:      impersonateGroup,
+					APIAddr:               apiAddr,
+					RetryDeadline:         time.Now().Add(wait),
+				})
 
-				exists, err := healthcheck.CheckIfLinkerdExists(cmd.Context(), kubeAPI, controlPlaneNamespace)
-				if err != nil {
-					return fmt.Errorf("could not check for Linkerd existence: %s", err)
-				}
-
-				if !exists {
-					return fmt.Errorf("could not find a Linkerd installation")
-				}
-
-				// Wait for the proxy-injector to be up and running
-				checkInjectorRunningOrRetryOrExit(wait)
 			}
-
 			return install(os.Stdout, options, ha)
 		},
 	}
 
-	cmd.Flags().BoolVar(
-		&skipChecks, "skip-checks", false,
-		`Skip checks for namespace existence`,
-	)
-
-	cmd.Flags().BoolVar(
-		&ha, "ha", false,
-		`Install Viz Extension in High Availability mode.`,
-	)
-	cmd.Flags().DurationVar(
-		&wait, "wait", 300*time.Second,
-		"Wait for core control-plane components to be available")
+	cmd.Flags().BoolVar(&skipChecks, "skip-checks", false, `Skip checks for linkerd core control-plane existence`)
+	cmd.Flags().BoolVar(&ha, "ha", false, `Install Viz Extension in High Availability mode.`)
+	cmd.Flags().DurationVar(&wait, "wait", 300*time.Second, "Wait for core control-plane components to be available")
 
 	flags.AddValueOptionsFlags(cmd.Flags(), &options)
 
@@ -102,6 +89,12 @@ func install(w io.Writer, options values.Options, ha bool) error {
 	valuesOverrides, err := options.MergeValues(nil)
 	if err != nil {
 		return err
+	}
+
+	// if using -L to specify a non-standard CP namespace, make sure
+	// the linkerdNamespace Helm value is synced
+	if controlPlaneNamespace != defaultLinkerdNamespace {
+		valuesOverrides["linkerdNamespace"] = controlPlaneNamespace
 	}
 
 	if ha {
@@ -179,52 +172,4 @@ func render(w io.Writer, valuesOverrides map[string]interface{}) error {
 
 	_, err = w.Write(buf.Bytes())
 	return err
-}
-
-func checkInjectorRunningOrRetryOrExit(retryDeadline time.Duration) {
-	checks := []healthcheck.CategoryID{
-		healthcheck.KubernetesAPIChecks,
-		healthcheck.LinkerdControlPlaneExistenceChecks,
-		healthcheck.LinkerdAPIChecks,
-	}
-
-	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
-		ControlPlaneNamespace: controlPlaneNamespace,
-		KubeConfig:            kubeconfigPath,
-		KubeContext:           kubeContext,
-		Impersonate:           impersonate,
-		ImpersonateGroup:      impersonateGroup,
-		APIAddr:               apiAddr,
-		RetryDeadline:         time.Now().Add(retryDeadline),
-	})
-
-	hc.RunChecks(exitOnError)
-}
-
-func exitOnError(result *healthcheck.CheckResult) {
-	if result.Retry {
-		fmt.Fprintln(os.Stderr, "Waiting for core control plane to become available")
-		return
-	}
-
-	if result.Err != nil && !result.Warning {
-		var msg string
-		switch result.Category {
-		case healthcheck.KubernetesAPIChecks:
-			msg = "Cannot connect to Kubernetes"
-		case healthcheck.LinkerdControlPlaneExistenceChecks:
-			msg = "Cannot find Linkerd"
-		case healthcheck.LinkerdAPIChecks:
-			msg = "Cannot connect to Linkerd"
-		}
-		fmt.Fprintf(os.Stderr, "%s: %s\n", msg, result.Err)
-
-		checkCmd := "linkerd check"
-		if controlPlaneNamespace != defaultLinkerdNamespace {
-			checkCmd += fmt.Sprintf(" --linkerd-namespace %s", controlPlaneNamespace)
-		}
-		fmt.Fprintf(os.Stderr, "Validate the install with: %s\n", checkCmd)
-
-		os.Exit(1)
-	}
 }

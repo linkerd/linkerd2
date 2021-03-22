@@ -1,7 +1,13 @@
 ARG BUILDPLATFORM=linux/amd64
 
+FROM --platform=$BUILDPLATFORM docker.io/curlimages/curl:7.75.0  as await
+WORKDIR /tmp
+ARG LINKERD_AWAIT_VERSION=v0.2.1
+ARG TARGETARCH
+RUN curl -fsSvLo linkerd-await https://github.com/olix0r/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-${TARGETARCH} && chmod +x linkerd-await
+
 # Precompile key slow-to-build dependencies
-FROM --platform=$BUILDPLATFORM golang:1.14.2-alpine as go-deps
+FROM --platform=$BUILDPLATFORM golang:1.16.2-alpine as go-deps
 WORKDIR /linkerd-build
 COPY go.mod go.sum ./
 COPY bin/install-deps bin/
@@ -13,7 +19,8 @@ RUN ./bin/install-deps $TARGETARCH
 FROM go-deps as golang
 WORKDIR /linkerd-build
 COPY controller/gen controller/gen
-# TODO: remove when viz API code gets moved to /viz
+# TODO: remove when BuildResource is refactored
+# https://github.com/linkerd/linkerd2/issues/5589
 COPY viz/metrics-api/gen/viz viz/metrics-api/gen/viz
 COPY pkg pkg
 COPY controller controller
@@ -29,13 +36,12 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/controller -tag
 
 ## package runtime
 FROM scratch
-ENV PATH=$PATH:/go/bin
+COPY --from=await /tmp/linkerd-await /
 COPY LICENSE /linkerd/LICENSE
-COPY --from=golang /out/controller /go/bin/controller
+COPY --from=golang /out/controller /controller
 # for heartbeat (https://versioncheck.linkerd.io/version.json)
 COPY --from=golang /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 ARG LINKERD_VERSION
 ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}
-
-ENTRYPOINT ["/go/bin/controller"]
+ENTRYPOINT ["/linkerd-await", "--", "/controller"]

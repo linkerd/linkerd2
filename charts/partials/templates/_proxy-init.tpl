@@ -1,27 +1,27 @@
 {{- define "partials.proxy-init" -}}
 args:
 - --incoming-proxy-port
-- {{.Values.global.proxy.ports.inbound | quote}}
+- {{.Values.proxy.ports.inbound | quote}}
 - --outgoing-proxy-port
-- {{.Values.global.proxy.ports.outbound | quote}}
+- {{.Values.proxy.ports.outbound | quote}}
 - --proxy-uid
-- {{.Values.global.proxy.uid | quote}}
+- {{.Values.proxy.uid | quote}}
 - --inbound-ports-to-ignore
-- "{{.Values.global.proxy.ports.control}},{{.Values.global.proxy.ports.admin}}{{ternary (printf ",%s" .Values.global.proxyInit.ignoreInboundPorts) "" (not (empty .Values.global.proxyInit.ignoreInboundPorts)) }}"
-{{- if .Values.global.proxyInit.ignoreOutboundPorts }}
+- "{{.Values.proxy.ports.control}},{{.Values.proxy.ports.admin}}{{ternary (printf ",%s" (.Values.proxyInit.ignoreInboundPorts | toString)) "" (not (empty .Values.proxyInit.ignoreInboundPorts)) }}"
+{{- if .Values.proxyInit.ignoreOutboundPorts }}
 - --outbound-ports-to-ignore
-- {{.Values.global.proxyInit.ignoreOutboundPorts | quote}}
+- {{.Values.proxyInit.ignoreOutboundPorts | quote}}
 {{- end }}
-{{- if .Values.global.proxyInit.closeWaitTimeoutSecs }}
+{{- if .Values.proxyInit.closeWaitTimeoutSecs }}
 - --timeout-close-wait-secs
-- {{ .Values.global.proxyInit.closeWaitTimeoutSecs | quote}}
+- {{ .Values.proxyInit.closeWaitTimeoutSecs | quote}}
 {{- end }}
-image: {{.Values.global.proxyInit.image.name}}:{{.Values.global.proxyInit.image.version}}
-imagePullPolicy: {{.Values.global.proxyInit.image.pullPolicy}}
+image: {{.Values.proxyInit.image.name}}:{{.Values.proxyInit.image.version}}
+imagePullPolicy: {{.Values.proxyInit.image.pullPolicy | default .Values.imagePullPolicy}}
 name: linkerd-init
-{{ include "partials.resources" .Values.global.proxyInit.resources }}
+{{ include "partials.resources" .Values.proxyInit.resources }}
 securityContext:
-  {{- if .Values.global.proxyInit.closeWaitTimeoutSecs }}
+  {{- if .Values.proxyInit.closeWaitTimeoutSecs }}
   allowPrivilegeEscalation: true
   {{- else }}
   allowPrivilegeEscalation: false
@@ -30,15 +30,15 @@ securityContext:
     add:
     - NET_ADMIN
     - NET_RAW
-    {{- if .Values.global.proxyInit.capabilities -}}
-    {{- if .Values.global.proxyInit.capabilities.add }}
-    {{- toYaml .Values.global.proxyInit.capabilities.add | trim | nindent 4 }}
+    {{- if .Values.proxyInit.capabilities -}}
+    {{- if .Values.proxyInit.capabilities.add }}
+    {{- toYaml .Values.proxyInit.capabilities.add | trim | nindent 4 }}
     {{- end }}
-    {{- if .Values.global.proxyInit.capabilities.drop -}}
+    {{- if .Values.proxyInit.capabilities.drop -}}
     {{- include "partials.proxy-init.capabilities.drop" . | nindent 4 -}}
     {{- end }}
     {{- end }}
-  {{- if .Values.global.proxyInit.closeWaitTimeoutSecs }}
+  {{- if .Values.proxyInit.closeWaitTimeoutSecs }}
   privileged: true
   {{- else }}
   privileged: false
@@ -47,16 +47,16 @@ securityContext:
   runAsNonRoot: false
   runAsUser: 0
 terminationMessagePolicy: FallbackToLogsOnError
-{{- if or (not .Values.global.cniEnabled) .Values.global.proxyInit.saMountPath }}
+{{- if or (not .Values.cniEnabled) .Values.proxyInit.saMountPath }}
 volumeMounts:
 {{- end -}}
-{{- if not .Values.global.cniEnabled }}
-- mountPath: {{.Values.global.proxyInit.xtMountPath.mountPath}}
-  name: {{.Values.global.proxyInit.xtMountPath.name}}
+{{- if not .Values.cniEnabled }}
+- mountPath: {{.Values.proxyInit.xtMountPath.mountPath}}
+  name: {{.Values.proxyInit.xtMountPath.name}}
 {{- end -}}
-{{- if .Values.global.proxyInit.saMountPath }}
-- mountPath: {{.Values.global.proxyInit.saMountPath.mountPath}}
-  name: {{.Values.global.proxyInit.saMountPath.name}}
-  readOnly: {{.Values.global.proxyInit.saMountPath.readOnly}}
-{{- end -}}  
+{{- if .Values.proxyInit.saMountPath }}
+- mountPath: {{.Values.proxyInit.saMountPath.mountPath}}
+  name: {{.Values.proxyInit.saMountPath.name}}
+  readOnly: {{.Values.proxyInit.saMountPath.readOnly}}
+{{- end -}}
 {{- end -}}

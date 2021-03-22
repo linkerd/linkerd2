@@ -31,7 +31,7 @@ docker_build cli-bin "$tag" "$dockerfile" \
 
 IMG=$(docker_repo cli-bin):$tag
 ID=$(docker create "$IMG")
-OS="darwin windows linux-amd64"
+OS="darwin windows linux-amd64 darwin-arm64"
 if [ -n "$DOCKER_MULTIARCH" ]; then
     OS+=" linux-arm64 linux-arm"
 fi

@@ -78,6 +78,7 @@ func (rt resourceTransformerUninject) transform(bytes []byte) ([]byte, []inject.
 		output = bytes
 		report.UnsupportedResource = true
 	}
+
 	return output, []inject.Report{*report}, nil
 }
 

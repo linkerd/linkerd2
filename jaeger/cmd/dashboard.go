@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
@@ -63,9 +64,22 @@ func newCmdDashboard() *cobra.Command {
 				return fmt.Errorf("port must be greater than or equal to zero, was %d", options.port)
 			}
 
-			// TODO: Add a jaeger check here
+			checkForJaeger(healthcheck.Options{
+				ControlPlaneNamespace: controlPlaneNamespace,
+				KubeConfig:            kubeconfigPath,
+				Impersonate:           impersonate,
+				ImpersonateGroup:      impersonateGroup,
+				KubeContext:           kubeContext,
+				APIAddr:               apiAddr,
+				RetryDeadline:         time.Now().Add(options.wait),
+			})
 
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			if err != nil {
+				return err
+			}
+
+			jaegerNamespace, err := k8sAPI.GetNamespaceWithExtensionLabel(cmd.Context(), JaegerExtensionName)
 			if err != nil {
 				return err
 			}
@@ -77,7 +91,7 @@ func newCmdDashboard() *cobra.Command {
 			portforward, err := k8s.NewPortForward(
 				cmd.Context(),
 				k8sAPI,
-				namespace,
+				jaegerNamespace.Name,
 				jaegerDeployment,
 				options.host,
 				options.port,

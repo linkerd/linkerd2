@@ -1,9 +1,11 @@
 package inject
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"net"
 	"reflect"
 	"regexp"
@@ -40,7 +42,6 @@ var (
 		k8s.ProxyAdminPortAnnotation,
 		k8s.ProxyControlPortAnnotation,
 		k8s.ProxyDisableIdentityAnnotation,
-		k8s.ProxyDisableTapAnnotation,
 		k8s.ProxyEnableDebugAnnotation,
 		k8s.ProxyEnableExternalProfilesAnnotation,
 		k8s.ProxyImagePullPolicyAnnotation,
@@ -122,7 +123,7 @@ type ResourceConfig struct {
 	}
 }
 
-type patch struct {
+type podPatch struct {
 	l5dcharts.Values
 	PathPrefix            string                    `json:"pathPrefix"`
 	AddRootMetadata       bool                      `json:"addRootMetadata"`
@@ -133,6 +134,10 @@ type patch struct {
 	AddRootVolumes        bool                      `json:"addRootVolumes"`
 	Labels                map[string]string         `json:"labels"`
 	DebugContainer        *l5dcharts.DebugContainer `json:"debugContainer"`
+}
+
+type servicePatch struct {
+	OpaquePorts string
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
@@ -148,7 +153,7 @@ func NewResourceConfig(values *l5dcharts.Values, origin Origin) *ResourceConfig 
 	// Values can be nil for commands like Uninject
 	var ns string
 	if values != nil {
-		ns = values.GetGlobal().Namespace
+		ns = values.Namespace
 	}
 	config.pod.labels = map[string]string{k8s.ControllerNSLabel: ns}
 	config.pod.annotations = map[string]string{}
@@ -225,28 +230,28 @@ func (conf *ResourceConfig) GetOverriddenValues() (*linkerd2.Values, error) {
 	return copyValues, nil
 }
 
-// GetPatch returns the JSON patch containing the proxy and init containers specs, if any.
+// GetPodPatch returns the JSON patch containing the proxy and init containers specs, if any.
 // If injectProxy is false, only the config.linkerd.io annotations are set.
-func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
+func (conf *ResourceConfig) GetPodPatch(injectProxy bool) ([]byte, error) {
 
 	values, err := conf.GetOverriddenValues()
 	if err != nil {
 		return nil, fmt.Errorf("could not generate Overridden Values: %s", err)
 	}
 
-	if values.GetGlobal().Proxy.RequireIdentityOnInboundPorts != "" && values.GetGlobal().Proxy.DisableIdentity {
+	if values.Proxy.RequireIdentityOnInboundPorts != "" && values.Proxy.DisableIdentity {
 		return nil, fmt.Errorf("%s cannot be set when identity is disabled", k8s.ProxyRequireIdentityOnInboundPortsAnnotation)
 	}
 
-	if values.GetGlobal().ClusterNetworks != "" {
-		for _, network := range strings.Split(strings.Trim(values.GetGlobal().ClusterNetworks, ","), ",") {
+	if values.ClusterNetworks != "" {
+		for _, network := range strings.Split(strings.Trim(values.ClusterNetworks, ","), ",") {
 			if _, _, err := net.ParseCIDR(network); err != nil {
 				return nil, fmt.Errorf("cannot parse destination get networks: %s", err)
 			}
 		}
 	}
 
-	patch := &patch{
+	patch := &podPatch{
 		Values:      *values,
 		Annotations: map[string]string{},
 		Labels:      map[string]string{},
@@ -265,8 +270,8 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 			conf.injectObjectMeta(patch)
 			conf.injectPodSpec(patch)
 		} else {
-			patch.GetGlobal().Proxy = nil
-			patch.GetGlobal().ProxyInit = nil
+			patch.Proxy = nil
+			patch.ProxyInit = nil
 		}
 	}
 
@@ -284,7 +289,7 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 	chart := &charts.Chart{
 		Name:      "patch",
 		Dir:       "patch",
-		Namespace: conf.values.GetGlobal().Namespace,
+		Namespace: conf.values.Namespace,
 		RawValues: rawValues,
 		Files:     files,
 		Fs:        static.Templates,
@@ -298,6 +303,36 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 	res := rTrail.ReplaceAll(buf.Bytes(), []byte("}\n]"))
 
 	return res, nil
+}
+
+// GetServicePatch returns the JSON patch containing the service opaque ports
+// annotation if the annotation is present on the namespace, but absent on the
+// service.
+func (conf *ResourceConfig) GetServicePatch() ([]byte, error) {
+	_, ok := conf.workload.Meta.Annotations[k8s.ProxyOpaquePortsAnnotation]
+	// There does not need to be a patch if the service already has the
+	// annotation.
+	if ok {
+		return nil, nil
+	}
+	opaquePorts, ok := conf.nsAnnotations[k8s.ProxyOpaquePortsAnnotation]
+	// There does not need to be a patch if the namespace does not have the
+	// annotation.
+	if !ok {
+		return nil, nil
+	}
+	patch := &servicePatch{
+		OpaquePorts: opaquePorts,
+	}
+	t, err := template.New("tpl").Parse(tpl)
+	if err != nil {
+		return nil, err
+	}
+	var patchJSON bytes.Buffer
+	if err = t.Execute(&patchJSON, patch); err != nil {
+		return nil, err
+	}
+	return patchJSON.Bytes(), nil
 }
 
 // Note this switch also defines what kinds are injectable
@@ -321,6 +356,8 @@ func (conf *ResourceConfig) getFreshWorkloadObj() runtime.Object {
 		return &corev1.Namespace{}
 	case k8s.CronJob:
 		return &batchv1beta1.CronJob{}
+	case k8s.Service:
+		return &corev1.Service{}
 	}
 
 	return nil
@@ -491,6 +528,17 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			}
 		}
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
+
+	case *corev1.Service:
+		if err := yaml.Unmarshal(bytes, v); err != nil {
+			return err
+		}
+		conf.workload.obj = v
+		conf.workload.Meta = &v.ObjectMeta
+		if conf.workload.Meta.Annotations == nil {
+			conf.workload.Meta.Annotations = map[string]string{}
+		}
+
 	default:
 		// unmarshal the metadata of other resource kinds like namespace, secret,
 		// config map etc. to be used in the report struct
@@ -512,28 +560,28 @@ func (conf *ResourceConfig) complete(template *corev1.PodTemplateSpec) {
 }
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
-func (conf *ResourceConfig) injectPodSpec(values *patch) {
+func (conf *ResourceConfig) injectPodSpec(values *podPatch) {
 	saVolumeMount := conf.serviceAccountVolumeMount()
 
 	// use the primary container's capabilities to ensure psp compliance, if
 	// enabled
 	if conf.pod.spec.Containers != nil && len(conf.pod.spec.Containers) > 0 {
 		if sc := conf.pod.spec.Containers[0].SecurityContext; sc != nil && sc.Capabilities != nil {
-			values.GetGlobal().Proxy.Capabilities = &l5dcharts.Capabilities{
+			values.Proxy.Capabilities = &l5dcharts.Capabilities{
 				Add:  []string{},
 				Drop: []string{},
 			}
 			for _, add := range sc.Capabilities.Add {
-				values.GetGlobal().Proxy.Capabilities.Add = append(values.GetGlobal().Proxy.Capabilities.Add, string(add))
+				values.Proxy.Capabilities.Add = append(values.Proxy.Capabilities.Add, string(add))
 			}
 			for _, drop := range sc.Capabilities.Drop {
-				values.GetGlobal().Proxy.Capabilities.Drop = append(values.GetGlobal().Proxy.Capabilities.Drop, string(drop))
+				values.Proxy.Capabilities.Drop = append(values.Proxy.Capabilities.Drop, string(drop))
 			}
 		}
 	}
 
 	if saVolumeMount != nil {
-		values.GetGlobal().Proxy.SAMountPath = &l5dcharts.VolumeMountPath{
+		values.Proxy.SAMountPath = &l5dcharts.VolumeMountPath{
 			Name:      saVolumeMount.Name,
 			MountPath: saVolumeMount.MountPath,
 			ReadOnly:  saVolumeMount.ReadOnly,
@@ -563,18 +611,18 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
 }
 
-func (conf *ResourceConfig) injectProxyInit(values *patch) {
+func (conf *ResourceConfig) injectProxyInit(values *podPatch) {
 
 	// Fill common fields from Proxy into ProxyInit
-	values.GetGlobal().ProxyInit.Capabilities = values.GetGlobal().Proxy.Capabilities
-	values.GetGlobal().ProxyInit.SAMountPath = values.GetGlobal().Proxy.SAMountPath
+	values.ProxyInit.Capabilities = values.Proxy.Capabilities
+	values.ProxyInit.SAMountPath = values.Proxy.SAMountPath
 
 	if v := conf.pod.meta.Annotations[k8s.CloseWaitTimeoutAnnotation]; v != "" {
 		closeWait, err := time.ParseDuration(v)
 		if err != nil {
 			log.Warnf("invalid duration value used for the %s annotation: %s", k8s.CloseWaitTimeoutAnnotation, v)
 		} else {
-			values.GetGlobal().ProxyInit.CloseWaitTimeoutSecs = int64(closeWait.Seconds())
+			values.ProxyInit.CloseWaitTimeoutSecs = int64(closeWait.Seconds())
 		}
 	}
 
@@ -597,11 +645,11 @@ func (conf *ResourceConfig) serviceAccountVolumeMount() *corev1.VolumeMount {
 
 // Given a ObjectMeta, update ObjectMeta in place with the new labels and
 // annotations.
-func (conf *ResourceConfig) injectObjectMeta(values *patch) {
+func (conf *ResourceConfig) injectObjectMeta(values *podPatch) {
 
-	values.Annotations[k8s.ProxyVersionAnnotation] = values.GetGlobal().Proxy.Image.Version
+	values.Annotations[k8s.ProxyVersionAnnotation] = values.Proxy.Image.Version
 
-	if values.Identity == nil || values.GetGlobal().Proxy.DisableIdentity {
+	if values.Identity == nil || values.Proxy.DisableIdentity {
 		values.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeDisabled
 	} else {
 		values.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeDefault
@@ -615,7 +663,7 @@ func (conf *ResourceConfig) injectObjectMeta(values *patch) {
 	}
 }
 
-func (conf *ResourceConfig) injectPodAnnotations(values *patch) {
+func (conf *ResourceConfig) injectPodAnnotations(values *podPatch) {
 	// ObjectMetaAnnotations.Annotations is nil for new empty structs, but we always initialize
 	// it to an empty map in parse() above, so we follow suit here.
 	emptyMeta := &metav1.ObjectMeta{Annotations: map[string]string{}}
@@ -644,78 +692,71 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 
 	if override, ok := annotations[k8s.ProxyInjectAnnotation]; ok {
 		if override == k8s.ProxyInjectIngress {
-			values.GetGlobal().Proxy.IsIngress = true
+			values.Proxy.IsIngress = true
 		}
 	}
 
 	if override, ok := annotations[k8s.ProxyImageAnnotation]; ok {
-		values.GetGlobal().Proxy.Image.Name = override
+		values.Proxy.Image.Name = override
 	}
 
 	if override, ok := annotations[k8s.ProxyVersionOverrideAnnotation]; ok {
-		values.GetGlobal().Proxy.Image.Version = override
+		values.Proxy.Image.Version = override
 	}
 
 	if override, ok := annotations[k8s.ProxyImagePullPolicyAnnotation]; ok {
-		values.GetGlobal().Proxy.Image.PullPolicy = override
+		values.Proxy.Image.PullPolicy = override
 	}
 
 	if override, ok := annotations[k8s.ProxyInitImageVersionAnnotation]; ok {
-		values.GetGlobal().ProxyInit.Image.Version = override
+		values.ProxyInit.Image.Version = override
 	}
 
 	if override, ok := annotations[k8s.ProxyControlPortAnnotation]; ok {
 		controlPort, err := strconv.ParseInt(override, 10, 32)
 		if err == nil {
-			values.GetGlobal().Proxy.Ports.Control = int32(controlPort)
+			values.Proxy.Ports.Control = int32(controlPort)
 		}
 	}
 
 	if override, ok := annotations[k8s.ProxyInboundPortAnnotation]; ok {
 		inboundPort, err := strconv.ParseInt(override, 10, 32)
 		if err == nil {
-			values.GetGlobal().Proxy.Ports.Inbound = int32(inboundPort)
+			values.Proxy.Ports.Inbound = int32(inboundPort)
 		}
 	}
 
 	if override, ok := annotations[k8s.ProxyAdminPortAnnotation]; ok {
 		adminPort, err := strconv.ParseInt(override, 10, 32)
 		if err == nil {
-			values.GetGlobal().Proxy.Ports.Admin = int32(adminPort)
+			values.Proxy.Ports.Admin = int32(adminPort)
 		}
 	}
 
 	if override, ok := annotations[k8s.ProxyOutboundPortAnnotation]; ok {
 		outboundPort, err := strconv.ParseInt(override, 10, 32)
 		if err == nil {
-			values.GetGlobal().Proxy.Ports.Outbound = int32(outboundPort)
+			values.Proxy.Ports.Outbound = int32(outboundPort)
 		}
 	}
 
 	if override, ok := annotations[k8s.ProxyLogLevelAnnotation]; ok {
-		values.GetGlobal().Proxy.LogLevel = override
+		values.Proxy.LogLevel = override
 	}
 
 	if override, ok := annotations[k8s.ProxyLogFormatAnnotation]; ok {
-		values.GetGlobal().Proxy.LogFormat = override
+		values.Proxy.LogFormat = override
 	}
 
 	if override, ok := annotations[k8s.ProxyDisableIdentityAnnotation]; ok {
 		value, err := strconv.ParseBool(override)
 		if err == nil {
-			values.GetGlobal().Proxy.DisableIdentity = value
-		}
-	}
-
-	if override, ok := annotations[k8s.ProxyDisableTapAnnotation]; ok {
-		value, err := strconv.ParseBool(override)
-		if err == nil {
-			values.GetGlobal().Proxy.DisableTap = value
+			values.Proxy.DisableIdentity = value
 		}
 	}
 
 	if override, ok := annotations[k8s.ProxyRequireIdentityOnInboundPortsAnnotation]; ok {
-		values.GetGlobal().Proxy.RequireIdentityOnInboundPorts = override
+		values.Proxy.RequireIdentityOnInboundPorts = override
 	}
 
 	if override, ok := annotations[k8s.ProxyOutboundConnectTimeout]; ok {
@@ -723,7 +764,7 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		if err != nil {
 			log.Warnf("unrecognized proxy-outbound-connect-timeout duration value found on pod annotation: %s", err.Error())
 		} else {
-			values.GetGlobal().Proxy.OutboundConnectTimeout = fmt.Sprintf("%dms", int(duration.Seconds()*1000))
+			values.Proxy.OutboundConnectTimeout = fmt.Sprintf("%dms", int(duration.Seconds()*1000))
 		}
 	}
 
@@ -732,14 +773,14 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		if err != nil {
 			log.Warnf("unrecognized proxy-inbound-connect-timeout duration value found on pod annotation: %s", err.Error())
 		} else {
-			values.GetGlobal().Proxy.InboundConnectTimeout = fmt.Sprintf("%dms", int(duration.Seconds()*1000))
+			values.Proxy.InboundConnectTimeout = fmt.Sprintf("%dms", int(duration.Seconds()*1000))
 		}
 	}
 
 	if override, ok := annotations[k8s.ProxyEnableGatewayAnnotation]; ok {
 		value, err := strconv.ParseBool(override)
 		if err == nil {
-			values.GetGlobal().Proxy.IsGateway = value
+			values.Proxy.IsGateway = value
 		}
 	}
 
@@ -749,7 +790,7 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 			log.Warnf("unrecognized value used for the %s annotation, uint64 is expected: %s",
 				k8s.ProxyWaitBeforeExitSecondsAnnotation, override)
 		} else {
-			values.GetGlobal().Proxy.WaitBeforeExitSeconds = waitBeforeExitSeconds
+			values.Proxy.WaitBeforeExitSeconds = waitBeforeExitSeconds
 		}
 	}
 
@@ -758,7 +799,7 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		if err != nil {
 			log.Warnf("%s (%s)", err, k8s.ProxyCPURequestAnnotation)
 		} else {
-			values.GetGlobal().Proxy.Resources.CPU.Request = override
+			values.Proxy.Resources.CPU.Request = override
 		}
 	}
 
@@ -767,7 +808,7 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		if err != nil {
 			log.Warnf("%s (%s)", err, k8s.ProxyMemoryRequestAnnotation)
 		} else {
-			values.GetGlobal().Proxy.Resources.Memory.Request = override
+			values.Proxy.Resources.Memory.Request = override
 		}
 	}
 
@@ -776,13 +817,13 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		if err != nil {
 			log.Warnf("%s (%s)", err, k8s.ProxyCPULimitAnnotation)
 		} else {
-			values.GetGlobal().Proxy.Resources.CPU.Limit = override
+			values.Proxy.Resources.CPU.Limit = override
 
 			n, err := ToWholeCPUCores(q)
 			if err != nil {
 				log.Warnf("%s (%s)", err, k8s.ProxyCPULimitAnnotation)
 			}
-			values.GetGlobal().Proxy.Cores = n
+			values.Proxy.Cores = n
 		}
 	}
 
@@ -791,43 +832,43 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		if err != nil {
 			log.Warnf("%s (%s)", err, k8s.ProxyMemoryLimitAnnotation)
 		} else {
-			values.GetGlobal().Proxy.Resources.Memory.Limit = override
+			values.Proxy.Resources.Memory.Limit = override
 		}
 	}
 
 	if override, ok := annotations[k8s.ProxyUIDAnnotation]; ok {
 		v, err := strconv.ParseInt(override, 10, 64)
 		if err == nil {
-			values.GetGlobal().Proxy.UID = v
+			values.Proxy.UID = v
 		}
 	}
 
 	if override, ok := annotations[k8s.ProxyEnableExternalProfilesAnnotation]; ok {
 		value, err := strconv.ParseBool(override)
 		if err == nil {
-			values.GetGlobal().Proxy.EnableExternalProfiles = value
+			values.Proxy.EnableExternalProfiles = value
 		}
 	}
 
 	if override, ok := annotations[k8s.ProxyInitImageAnnotation]; ok {
-		values.GetGlobal().ProxyInit.Image.Name = override
+		values.ProxyInit.Image.Name = override
 	}
 
 	if override, ok := annotations[k8s.ProxyImagePullPolicyAnnotation]; ok {
-		values.GetGlobal().ProxyInit.Image.PullPolicy = override
+		values.ProxyInit.Image.PullPolicy = override
 	}
 
 	if override, ok := annotations[k8s.ProxyIgnoreInboundPortsAnnotation]; ok {
-		values.GetGlobal().ProxyInit.IgnoreInboundPorts = override
+		values.ProxyInit.IgnoreInboundPorts = override
 	}
 
 	if override, ok := annotations[k8s.ProxyIgnoreOutboundPortsAnnotation]; ok {
-		values.GetGlobal().ProxyInit.IgnoreOutboundPorts = override
+		values.ProxyInit.IgnoreOutboundPorts = override
 	}
 
 	if override, ok := annotations[k8s.ProxyOpaquePortsAnnotation]; ok {
-		opaquePortsStrs := util.ParseOpaquePorts(override, conf.pod.spec.Containers)
-		values.GetGlobal().Proxy.OpaquePorts = strings.Join(opaquePortsStrs, ",")
+		opaquePortsStrs := util.ParseContainerOpaquePorts(override, conf.pod.spec.Containers)
+		values.Proxy.OpaquePorts = strings.Join(opaquePortsStrs, ",")
 	}
 
 	if override, ok := annotations[k8s.DebugImageAnnotation]; ok {
@@ -875,6 +916,11 @@ func (conf *ResourceConfig) IsNamespace() bool {
 	return strings.ToLower(conf.workload.metaType.Kind) == k8s.Namespace
 }
 
+// IsService checks if a given config is a workload of Kind service
+func (conf *ResourceConfig) IsService() bool {
+	return strings.ToLower(conf.workload.metaType.Kind) == k8s.Service
+}
+
 //InjectNamespace annotates any given Namespace config
 func (conf *ResourceConfig) InjectNamespace(annotations map[string]string) ([]byte, error) {
 	ns, ok := conf.workload.obj.(*corev1.Namespace)
@@ -882,6 +928,29 @@ func (conf *ResourceConfig) InjectNamespace(annotations map[string]string) ([]by
 		return nil, errors.New("can't inject namespace. Type assertion failed")
 	}
 	ns.Annotations[k8s.ProxyInjectAnnotation] = k8s.ProxyInjectEnabled
+	//For overriding annotations
+	if len(annotations) > 0 {
+		for annotation, value := range annotations {
+			ns.Annotations[annotation] = value
+		}
+	}
+
+	j, err := getFilteredJSON(ns)
+	if err != nil {
+		return nil, err
+	}
+	return yaml.JSONToYAML(j)
+}
+
+// AnnotateService returns a Service with the appropriate annotations
+// Currently, a `Service` may only need the `config.linkerd.io/opaque-ports` annotation via `inject`
+// See - https://github.com/linkerd/linkerd2/pull/5721
+func (conf *ResourceConfig) AnnotateService(annotations map[string]string) ([]byte, error) {
+	ns, ok := conf.workload.obj.(*corev1.Service)
+	if !ok {
+		return nil, errors.New("can't inject service. Type assertion failed")
+	}
+
 	//For overriding annotations
 	if len(annotations) > 0 {
 		for annotation, value := range annotations {

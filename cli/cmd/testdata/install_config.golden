@@ -200,6 +200,35 @@ subjects:
   name: linkerd-heartbeat
   namespace: linkerd
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: linkerd-heartbeat
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["list"]
+- apiGroups: ["linkerd.io"]
+  resources: ["serviceprofiles"]
+  verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: linkerd-heartbeat
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+roleRef:
+  kind: ClusterRole
+  name: linkerd-heartbeat
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: linkerd-heartbeat
+  namespace: linkerd
+---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
@@ -352,7 +381,7 @@ spec:
 ---
 ###
 ### TrafficSplit CRD
-### Copied from https://github.com/deislabs/smi-sdk-go/blob/cea7e1e9372304bbb6c74a3f6ca788d9eaa9cc58/crds/split.yaml
+### Copied from github.com/servicemeshinterface/smi-sdk-go/blob/d4e76b1cd7a33ead5f38d1262dd838a31c80f4e5/crds/split.yaml
 ###
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
@@ -365,14 +394,61 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: split.smi-spec.io
-  version: v1alpha1
   scope: Namespaced
   names:
     kind: TrafficSplit
+    listKind: TrafficSplitList
     shortNames:
       - ts
     plural: trafficsplits
     singular: trafficsplit
+  version: v1alpha1
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+  preserveUnknownFields: false
+  validation:
+    openAPIV3Schema:
+      type: object
+      properties:
+        spec:
+          type: object
+          required:
+            - service
+            - backends
+          properties:
+            service:
+              description: The apex service of this split.
+              type: string
+            matches:
+              description: The HTTP route groups that this traffic split should match.
+              type: array
+              items:
+                type: object
+                required: ['kind', 'name']
+                properties:
+                  kind:
+                    description: Kind of the matching group.
+                    type: string
+                    enum:
+                      - HTTPRouteGroup
+                  name:
+                    description: Name of the matching group.
+                    type: string
+            backends:
+              description: The backend services of this split.
+              type: array
+              items:
+                type: object
+                required: ['service', 'weight']
+                properties:
+                  service:
+                    description: Name of the Kubernetes service.
+                    type: string
+                  weight:
+                    description: Traffic weight value of this backend.
+                    x-kubernetes-int-or-string: true
   additionalPrinterColumns:
   - name: Service
     type: string
@@ -448,7 +524,7 @@ data:
   tls.crt: cHJveHkgaW5qZWN0b3IgY3J0
   tls.key: cHJveHkgaW5qZWN0b3Iga2V5
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
@@ -470,6 +546,7 @@ webhooks:
       path: "/"
     caBundle: cHJveHkgaW5qZWN0b3IgQ0EgYnVuZGxl
   failurePolicy: Ignore
+  admissionReviewVersions: ["v1", "v1beta1"]
   rules:
   - operations: [ "CREATE" ]
     apiGroups: [""]
@@ -534,7 +611,7 @@ data:
   tls.crt: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
   tls.key: cHJvZmlsZSB2YWxpZGF0b3Iga2V5
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: linkerd-sp-validator-webhook-config
@@ -556,6 +633,7 @@ webhooks:
       path: "/"
     caBundle: cHJvZmlsZSB2YWxpZGF0b3IgQ0EgYnVuZGxl
   failurePolicy: Ignore
+  admissionReviewVersions: ["v1", "v1beta1"]
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
     apiGroups: ["linkerd.io"]

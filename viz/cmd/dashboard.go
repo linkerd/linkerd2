@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -8,7 +9,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	api "github.com/linkerd/linkerd2/pkg/public"
+	"github.com/linkerd/linkerd2/viz/pkg/api"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
@@ -25,7 +26,7 @@ const (
 	showURL = "url"
 
 	// webDeployment is the name of the web deployment in cli/install/template.go
-	webDeployment = "linkerd-web"
+	webDeployment = "web"
 
 	// webPort is the http port from the web pod spec in cli/install/template.go
 	webPort = 8084
@@ -81,8 +82,8 @@ func NewCmdDashboard() *cobra.Command {
 					options.show, showLinkerd, showGrafana, showURL)
 			}
 
-			// ensure we can connect to the public API before starting the proxy
-			api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
+			// ensure we can connect to the viz API before starting the proxy
+			api.CheckClientOrRetryOrExit(healthcheck.Options{
 				ControlPlaneNamespace: controlPlaneNamespace,
 				KubeConfig:            kubeconfigPath,
 				Impersonate:           impersonate,
@@ -97,7 +98,7 @@ func NewCmdDashboard() *cobra.Command {
 				return err
 			}
 
-			vizNamespace, err := getVizNamespace(cmd.Context(), k8sAPI)
+			vizNs, err := k8sAPI.GetNamespaceWithExtensionLabel(context.Background(), ExtensionName)
 			if err != nil {
 				return err
 			}
@@ -109,7 +110,7 @@ func NewCmdDashboard() *cobra.Command {
 			portforward, err := k8s.NewPortForward(
 				cmd.Context(),
 				k8sAPI,
-				vizNamespace,
+				vizNs.Name,
 				webDeployment,
 				options.host,
 				options.port,

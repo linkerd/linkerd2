@@ -76,20 +76,30 @@ func unmarshal(json string, msg proto.Message) error {
 	return u.Unmarshal(strings.NewReader(json), msg)
 }
 
-// FromConfigMap builds a configuration by reading a map with the keys "global"
-// and "proxy", each containing JSON values.
+// FromConfigMap builds a configuration by reading a map with the keys "global",
+// "proxy", and "install" each containing JSON values. If none of these keys
+// exist, FromConfigMap will return nil. This likely indicates that the
+// installed version of Linkerd is stable-2.9.0 or later which uses a different
+// config format.
 func FromConfigMap(configMap map[string]string) (*pb.All, error) {
 	c := &pb.All{Global: &pb.Global{}, Proxy: &pb.Proxy{}, Install: &pb.Install{}}
 
-	if err := unmarshal(configMap["global"], c.Global); err != nil {
+	global, globalOk := configMap["global"]
+	proxy, proxyOk := configMap["proxy"]
+	install, installOk := configMap["install"]
+	if !globalOk && !proxyOk && !installOk {
+		return nil, nil
+	}
+
+	if err := unmarshal(global, c.Global); err != nil {
 		return nil, fmt.Errorf("invalid global config: %s", err)
 	}
 
-	if err := unmarshal(configMap["proxy"], c.Proxy); err != nil {
+	if err := unmarshal(proxy, c.Proxy); err != nil {
 		return nil, fmt.Errorf("invalid proxy config: %s", err)
 	}
 
-	if err := unmarshal(configMap["install"], c.Install); err != nil {
+	if err := unmarshal(install, c.Install); err != nil {
 		return nil, fmt.Errorf("invalid install config: %s", err)
 	}
 
@@ -114,55 +124,83 @@ func ToJSON(configs *pb.All) (global, proxy, install string, err error) {
 	return
 }
 
+// RemoveGlobalFieldIfPresent removes the `global` node and
+// attaches the children nodes there.
+func RemoveGlobalFieldIfPresent(bytes []byte) ([]byte, error) {
+	// Check if Globals is present and remove that node if it has
+	var valuesMap map[string]interface{}
+	err := yaml.Unmarshal(bytes, &valuesMap)
+	if err != nil {
+		return nil, err
+	}
+
+	if globalValues, ok := valuesMap["global"]; ok {
+		// attach those values
+		// Check if its a map
+		if val, ok := globalValues.(map[string]interface{}); ok {
+			for k, v := range val {
+				valuesMap[k] = v
+			}
+		}
+		// Remove global now
+		delete(valuesMap, "global")
+	}
+
+	bytes, err = yaml.Marshal(valuesMap)
+	if err != nil {
+		return nil, err
+	}
+
+	return bytes, nil
+}
+
 // ToValues converts configuration into a Values struct, i.e to be consumed by check
 // TODO: Remove this once the newer configuration becomes the default i.e 2.10
 func ToValues(configs *pb.All) *l5dcharts.Values {
 
 	// convert install flags into values
 	values := &l5dcharts.Values{
-		Global: &l5dcharts.Global{
-			CNIEnabled:              configs.GetGlobal().GetCniEnabled(),
-			Namespace:               configs.GetGlobal().GetLinkerdNamespace(),
-			IdentityTrustAnchorsPEM: configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem(),
-			IdentityTrustDomain:     configs.GetGlobal().GetIdentityContext().GetTrustDomain(),
-			ClusterDomain:           configs.GetGlobal().GetClusterDomain(),
-			ClusterNetworks:         configs.GetProxy().GetDestinationGetNetworks(),
-			LinkerdVersion:          configs.GetGlobal().GetVersion(),
-			Proxy: &l5dcharts.Proxy{
-				Image: &l5dcharts.Image{
-					Name:       configs.GetProxy().GetProxyImage().GetImageName(),
-					PullPolicy: configs.GetProxy().GetProxyImage().GetPullPolicy(),
-					Version:    configs.GetProxy().GetProxyVersion(),
-				},
-				Ports: &l5dcharts.Ports{
-					Control:  int32(configs.GetProxy().GetControlPort().GetPort()),
-					Inbound:  int32(configs.GetProxy().GetInboundPort().GetPort()),
-					Admin:    int32(configs.GetProxy().GetAdminPort().GetPort()),
-					Outbound: int32(configs.GetProxy().GetOutboundPort().GetPort()),
-				},
-				Resources: &l5dcharts.Resources{
-					CPU: l5dcharts.Constraints{
-						Limit:   configs.GetProxy().GetResource().GetLimitCpu(),
-						Request: configs.GetProxy().GetResource().GetRequestCpu(),
-					},
-					Memory: l5dcharts.Constraints{
-						Limit:   configs.GetProxy().GetResource().GetLimitMemory(),
-						Request: configs.GetProxy().GetResource().GetRequestMemory(),
-					},
-				},
-				EnableExternalProfiles: !configs.Proxy.GetDisableExternalProfiles(),
-				LogFormat:              configs.GetProxy().GetLogFormat(),
-				OutboundConnectTimeout: configs.GetProxy().GetOutboundConnectTimeout(),
-				InboundConnectTimeout:  configs.GetProxy().GetInboundConnectTimeout(),
+		CNIEnabled:              configs.GetGlobal().GetCniEnabled(),
+		Namespace:               configs.GetGlobal().GetLinkerdNamespace(),
+		IdentityTrustAnchorsPEM: configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem(),
+		IdentityTrustDomain:     configs.GetGlobal().GetIdentityContext().GetTrustDomain(),
+		ClusterDomain:           configs.GetGlobal().GetClusterDomain(),
+		ClusterNetworks:         configs.GetProxy().GetDestinationGetNetworks(),
+		LinkerdVersion:          configs.GetGlobal().GetVersion(),
+		Proxy: &l5dcharts.Proxy{
+			Image: &l5dcharts.Image{
+				Name:       configs.GetProxy().GetProxyImage().GetImageName(),
+				PullPolicy: configs.GetProxy().GetProxyImage().GetPullPolicy(),
+				Version:    configs.GetProxy().GetProxyVersion(),
 			},
-			ProxyInit: &l5dcharts.ProxyInit{
-				IgnoreInboundPorts:  toString(configs.GetProxy().GetIgnoreInboundPorts()),
-				IgnoreOutboundPorts: toString(configs.GetProxy().GetIgnoreOutboundPorts()),
-				Image: &l5dcharts.Image{
-					Name:       configs.GetProxy().GetProxyInitImage().GetImageName(),
-					PullPolicy: configs.GetProxy().GetProxyInitImage().GetPullPolicy(),
-					Version:    configs.GetProxy().GetProxyInitImageVersion(),
+			Ports: &l5dcharts.Ports{
+				Control:  int32(configs.GetProxy().GetControlPort().GetPort()),
+				Inbound:  int32(configs.GetProxy().GetInboundPort().GetPort()),
+				Admin:    int32(configs.GetProxy().GetAdminPort().GetPort()),
+				Outbound: int32(configs.GetProxy().GetOutboundPort().GetPort()),
+			},
+			Resources: &l5dcharts.Resources{
+				CPU: l5dcharts.Constraints{
+					Limit:   configs.GetProxy().GetResource().GetLimitCpu(),
+					Request: configs.GetProxy().GetResource().GetRequestCpu(),
 				},
+				Memory: l5dcharts.Constraints{
+					Limit:   configs.GetProxy().GetResource().GetLimitMemory(),
+					Request: configs.GetProxy().GetResource().GetRequestMemory(),
+				},
+			},
+			EnableExternalProfiles: !configs.Proxy.GetDisableExternalProfiles(),
+			LogFormat:              configs.GetProxy().GetLogFormat(),
+			OutboundConnectTimeout: configs.GetProxy().GetOutboundConnectTimeout(),
+			InboundConnectTimeout:  configs.GetProxy().GetInboundConnectTimeout(),
+		},
+		ProxyInit: &l5dcharts.ProxyInit{
+			IgnoreInboundPorts:  toString(configs.GetProxy().GetIgnoreInboundPorts()),
+			IgnoreOutboundPorts: toString(configs.GetProxy().GetIgnoreOutboundPorts()),
+			Image: &l5dcharts.Image{
+				Name:       configs.GetProxy().GetProxyInitImage().GetImageName(),
+				PullPolicy: configs.GetProxy().GetProxyInitImage().GetPullPolicy(),
+				Version:    configs.GetProxy().GetProxyInitImageVersion(),
 			},
 		},
 		Identity: &l5dcharts.Identity{
@@ -189,14 +227,14 @@ func ToValues(configs *pb.All) *l5dcharts.Values {
 	}
 
 	if configs.GetProxy().GetLogLevel() != nil {
-		values.GetGlobal().Proxy.LogLevel = configs.GetProxy().GetLogLevel().String()
+		values.Proxy.LogLevel = configs.GetProxy().GetLogLevel().String()
 
 	}
 
 	// set HA, and Heartbeat flags as health-check needs them for old config installs
 	for _, flag := range configs.GetInstall().GetFlags() {
 		if flag.GetName() == "ha" && flag.GetValue() == "true" {
-			values.GetGlobal().HighAvailability = true
+			values.HighAvailability = true
 		}
 
 		if flag.GetName() == "disable-heartbeat" && flag.GetValue() == "true" {

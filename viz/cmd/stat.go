@@ -11,13 +11,15 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/api/util"
+	coreUtil "github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/pkg/cmd"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	api "github.com/linkerd/linkerd2/pkg/public"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	"github.com/linkerd/linkerd2/viz/metrics-api/util"
+	"github.com/linkerd/linkerd2/viz/pkg"
+	"github.com/linkerd/linkerd2/viz/pkg/api"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -166,7 +168,7 @@ If no resource name is specified, displays stats about all resources of the spec
   # Get all inbound stats to the test namespace.
   linkerd viz stat ns/test`,
 		Args:      cobra.MinimumNArgs(1),
-		ValidArgs: util.ValidTargets,
+		ValidArgs: pkg.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
@@ -179,7 +181,7 @@ If no resource name is specified, displays stats about all resources of the spec
 
 			// The gRPC client is concurrency-safe, so we can reuse it in all the following goroutines
 			// https://github.com/grpc/grpc-go/issues/682
-			client := api.CheckVizAPIClientOrExit(healthcheck.Options{
+			client := api.CheckClientOrExit(healthcheck.Options{
 				ControlPlaneNamespace: controlPlaneNamespace,
 				KubeConfig:            kubeconfigPath,
 				Impersonate:           impersonate,
@@ -187,6 +189,7 @@ If no resource name is specified, displays stats about all resources of the spec
 				KubeContext:           kubeContext,
 				APIAddr:               apiAddr,
 			})
+
 			c := make(chan indexedResults, len(reqs))
 			for num, req := range reqs {
 				go func(num int, req *pb.StatSummaryRequest) {
@@ -200,7 +203,8 @@ If no resource name is specified, displays stats about all resources of the spec
 			i := 0
 			for res := range c {
 				if res.err != nil {
-					return res.err
+					fmt.Fprint(os.Stderr, res.err.Error())
+					os.Exit(1)
 				}
 				totalRows = append(totalRows, res.rows...)
 				if i++; i == len(reqs) {
@@ -685,20 +689,20 @@ func getNamePrefix(resourceType string) string {
 }
 
 func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.StatSummaryRequest, error) {
-	targets, err := util.BuildResources(options.namespace, resources)
+	targets, err := coreUtil.BuildResources(options.namespace, resources)
 	if err != nil {
 		return nil, err
 	}
 
 	var toRes, fromRes *pb.Resource
 	if options.toResource != "" {
-		toRes, err = util.BuildResource(options.toNamespace, options.toResource)
+		toRes, err = coreUtil.BuildResource(options.toNamespace, options.toResource)
 		if err != nil {
 			return nil, err
 		}
 	}
 	if options.fromResource != "" {
-		fromRes, err = util.BuildResource(options.fromNamespace, options.fromResource)
+		fromRes, err = coreUtil.BuildResource(options.fromNamespace, options.fromResource)
 		if err != nil {
 			return nil, err
 		}

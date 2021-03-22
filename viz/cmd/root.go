@@ -1,19 +1,18 @@
 package cmd
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"regexp"
 
 	"github.com/fatih/color"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
+	// ExtensionName is the value that the viz extension resources should be labeled with
+	ExtensionName = "viz"
+
 	vizChartName            = "linkerd-viz"
 	defaultLinkerdNamespace = "linkerd"
 	maxRps                  = 100.0
@@ -24,7 +23,6 @@ const (
 )
 
 var (
-
 	// special handling for Windows, on all other platforms these resolve to
 	// os.Stdout and os.Stderr, thanks to https://github.com/mattn/go-colorable
 	stdout = color.Output
@@ -72,26 +70,17 @@ func NewCmdViz() *cobra.Command {
 	vizCmd.PersistentFlags().StringArrayVar(&impersonateGroup, "as-group", []string{}, "Group to impersonate for Kubernetes operations")
 	vizCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 	vizCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
+	vizCmd.AddCommand(NewCmdCheck())
+	vizCmd.AddCommand(NewCmdDashboard())
+	vizCmd.AddCommand(NewCmdEdges())
 	vizCmd.AddCommand(newCmdInstall())
+	vizCmd.AddCommand(newCmdList())
+	vizCmd.AddCommand(newCmdProfile())
 	vizCmd.AddCommand(NewCmdRoutes())
 	vizCmd.AddCommand(NewCmdStat())
 	vizCmd.AddCommand(NewCmdTap())
 	vizCmd.AddCommand(NewCmdTop())
-	vizCmd.AddCommand(NewCmdEdges())
-	vizCmd.AddCommand(NewCmdDashboard())
 	vizCmd.AddCommand(newCmdUninstall())
-	vizCmd.AddCommand(newCmdCheck())
 
 	return vizCmd
-}
-
-func getVizNamespace(ctx context.Context, k8sAPI *k8s.KubernetesAPI) (string, error) {
-	ns, err := k8sAPI.CoreV1().Namespaces().List(ctx, metav1.ListOptions{LabelSelector: "linkerd.io/extension=linkerd-viz"})
-	if err != nil {
-		return "", err
-	}
-	if len(ns.Items) == 0 {
-		return "", errors.New("linkerd-viz extension not found")
-	}
-	return ns.Items[0].Name, nil
 }

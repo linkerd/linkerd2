@@ -20,10 +20,8 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
-	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
-	healthcheckPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz/healthcheck"
 	log "github.com/sirupsen/logrus"
-	admissionRegistration "k8s.io/api/admissionregistration/v1beta1"
+	admissionRegistration "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -305,11 +303,6 @@ type Checker struct {
 	// check is the function that's called to execute the check; if the function
 	// returns an error, the check fails
 	check func(context.Context) error
-
-	// checkRPC is an alternative to check that can be used to perform a remote
-	// check using the SelfCheck gRPC endpoint; check status is based on the value
-	// of the gRPC response
-	checkRPC func(context.Context) (*healthcheckPb.SelfCheckResponse, error)
 }
 
 // NewChecker returns a new instance of checker type
@@ -356,12 +349,6 @@ func (c *Checker) WithCheck(check func(context.Context) error) *Checker {
 	return c
 }
 
-// WithCheckRPC returns a checker with the provided checkRPC func
-func (c *Checker) WithCheckRPC(checkRPC func(context.Context) (*healthcheckPb.SelfCheckResponse, error)) *Checker {
-	c.checkRPC = checkRPC
-	return c
-}
-
 // CheckResult encapsulates a check's identifying information and output
 // Note there exists an analogous user-facing type, `cmd.check`, for output via
 // `linkerd check -o json`.
@@ -379,7 +366,7 @@ type CheckObserver func(*CheckResult)
 
 // Category is a group of checkers, to check a particular component or use-case
 type Category struct {
-	id       CategoryID
+	ID       CategoryID
 	checkers []Checker
 	enabled  bool
 }
@@ -387,7 +374,7 @@ type Category struct {
 // NewCategory returns an instance of Category with the specified data
 func NewCategory(id CategoryID, checkers []Checker, enabled bool) *Category {
 	return &Category{
-		id:       id,
+		ID:       id,
 		checkers: checkers,
 		enabled:  enabled,
 	}
@@ -396,7 +383,6 @@ func NewCategory(id CategoryID, checkers []Checker, enabled bool) *Category {
 // Options specifies configuration for a HealthChecker.
 type Options struct {
 	ControlPlaneNamespace string
-	VizNamespace          string
 	CNINamespace          string
 	DataPlaneNamespace    string
 	KubeConfig            string
@@ -420,8 +406,7 @@ type HealthChecker struct {
 	kubeAPI          *k8s.KubernetesAPI
 	kubeVersion      *k8sVersion.Info
 	controlPlanePods []corev1.Pod
-	publicAPIClient  public.PublicAPIClient
-	apiClient        public.VizAPIClient
+	apiClient        public.Client
 	latestVersions   version.Channels
 	serverVersion    string
 	linkerdConfig    *l5dcharts.Values
@@ -429,6 +414,11 @@ type HealthChecker struct {
 	issuerCert       *tls.Cred
 	trustAnchors     []*x509.Certificate
 	cniDaemonSet     *appsv1.DaemonSet
+}
+
+// Runner is implemented by any health-checkers that can be triggered with RunChecks()
+type Runner interface {
+	RunChecks(observer CheckObserver) bool
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -444,7 +434,7 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 		checkMap[category] = struct{}{}
 	}
 	for i := range hc.categories {
-		if _, ok := checkMap[hc.categories[i].id]; ok {
+		if _, ok := checkMap[hc.categories[i].ID]; ok {
 			hc.categories[i].enabled = true
 		}
 	}
@@ -452,10 +442,46 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 	return hc
 }
 
+// InitializeKubeAPIClient creates a client for the HealthChecker. It avoids
+// having to require the KubernetesAPIChecks check to run in order for the
+// HealthChecker to run other checks.
+func (hc *HealthChecker) InitializeKubeAPIClient() error {
+	k8sAPI, err := k8s.NewAPI(hc.KubeConfig, hc.KubeContext, hc.Impersonate, hc.ImpersonateGroup, RequestTimeout)
+	if err != nil {
+		return err
+	}
+	hc.kubeAPI = k8sAPI
+
+	return nil
+}
+
+// InitializeLinkerdGlobalConfig populates the linkerd config object in the
+// healthchecker. It avoids having to require the LinkerdControlPlaneExistenceChecks
+// check to run before running other checks
+func (hc *HealthChecker) InitializeLinkerdGlobalConfig(ctx context.Context) error {
+	uuid, l5dConfig, err := hc.checkLinkerdConfigConfigMap(ctx)
+	if err != nil {
+		return err
+	}
+
+	if l5dConfig != nil {
+		hc.CNIEnabled = l5dConfig.CNIEnabled
+	}
+	hc.uuid = uuid
+	hc.linkerdConfig = l5dConfig
+
+	return nil
+}
+
 // AppendCategories returns a HealthChecker instance appending the provided Categories
 func (hc *HealthChecker) AppendCategories(categories ...Category) *HealthChecker {
 	hc.categories = append(hc.categories, categories...)
 	return hc
+}
+
+// GetCategories returns all the categories
+func (hc *HealthChecker) GetCategories() []Category {
+	return hc.categories
 }
 
 // allCategories is the global, ordered list of all checkers, grouped by
@@ -472,14 +498,14 @@ func (hc *HealthChecker) AppendCategories(categories ...Category) *HealthChecker
 func (hc *HealthChecker) allCategories() []Category {
 	return []Category{
 		{
-			id: KubernetesAPIChecks,
+			ID: KubernetesAPIChecks,
 			checkers: []Checker{
 				{
 					description: "can initialize the client",
 					hintAnchor:  "k8s-api",
 					fatal:       true,
 					check: func(context.Context) (err error) {
-						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext, hc.Impersonate, hc.ImpersonateGroup, RequestTimeout)
+						err = hc.InitializeKubeAPIClient()
 						return
 					},
 				},
@@ -495,7 +521,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: KubernetesVersionChecks,
+			ID: KubernetesVersionChecks,
 			checkers: []Checker{
 				{
 					description: "is running the minimum Kubernetes API version",
@@ -514,7 +540,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdPreInstallChecks,
+			ID: LinkerdPreInstallChecks,
 			checkers: []Checker{
 				{
 					description: "control plane namespace does not already exist",
@@ -597,7 +623,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdPreInstallCapabilityChecks,
+			ID: LinkerdPreInstallCapabilityChecks,
 			checkers: []Checker{
 				{
 					description: "has NET_ADMIN capability",
@@ -618,7 +644,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdPreInstallGlobalResourcesChecks,
+			ID: LinkerdPreInstallGlobalResourcesChecks,
 			checkers: []Checker{
 				{
 					description: "no ClusterRoles exist",
@@ -665,17 +691,14 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdControlPlaneExistenceChecks,
+			ID: LinkerdControlPlaneExistenceChecks,
 			checkers: []Checker{
 				{
 					description: "'linkerd-config' config map exists",
 					hintAnchor:  "l5d-existence-linkerd-config",
 					fatal:       true,
 					check: func(ctx context.Context) (err error) {
-						hc.uuid, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap(ctx)
-						if hc.linkerdConfig != nil {
-							hc.CNIEnabled = hc.linkerdConfig.GetGlobal().CNIEnabled
-						}
+						err = hc.InitializeLinkerdGlobalConfig(ctx)
 						return
 					},
 				},
@@ -737,35 +760,10 @@ func (hc *HealthChecker) allCategories() []Category {
 						return checkContainerRunning(hc.controlPlanePods, "controller")
 					},
 				},
-				{
-					description: "can initialize the client",
-					hintAnchor:  "l5d-existence-client",
-					fatal:       true,
-					check: func(ctx context.Context) (err error) {
-						if hc.APIAddr != "" {
-							hc.publicAPIClient, err = public.NewInternalPublicClient(hc.ControlPlaneNamespace, hc.APIAddr)
-							hc.apiClient, err = public.NewInternalClient(hc.ControlPlaneNamespace, hc.APIAddr)
-						} else {
-							hc.publicAPIClient, err = public.NewExternalPublicClient(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
-							hc.apiClient, err = public.NewExternalClient(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
-						}
-						return
-					},
-				},
-				{
-					description:   "can query the control plane API",
-					hintAnchor:    "l5d-existence-api",
-					retryDeadline: hc.RetryDeadline,
-					fatal:         true,
-					check: func(ctx context.Context) (err error) {
-						hc.serverVersion, err = GetServerVersion(ctx, hc.publicAPIClient)
-						return
-					},
-				},
 			},
 		},
 		{
-			id: LinkerdConfigChecks,
+			ID: LinkerdConfigChecks,
 			checkers: []Checker{
 				{
 					description: "control plane Namespace exists",
@@ -834,7 +832,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdCNIPluginChecks,
+			ID: LinkerdCNIPluginChecks,
 			checkers: []Checker{
 				{
 					description: "cni plugin ConfigMap exists",
@@ -979,7 +977,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdIdentity,
+			ID: LinkerdIdentity,
 			checkers: []Checker{
 				{
 					description: "certificate config is valid",
@@ -1085,7 +1083,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdWebhooksAndAPISvcTLS,
+			ID: LinkerdWebhooksAndAPISvcTLS,
 			checkers: []Checker{
 				{
 					description: "proxy-injector webhook has valid cert",
@@ -1111,7 +1109,7 @@ func (hc *HealthChecker) allCategories() []Category {
 				{
 					description: "proxy-injector cert is valid for at least 60 days",
 					warning:     true,
-					hintAnchor:  "l5d-webhook-cert-not-expiring-soon",
+					hintAnchor:  "l5d-proxy-injector-webhook-cert-not-expiring-soon",
 					check: func(ctx context.Context) error {
 						cert, err := hc.FetchCredsFromSecret(ctx, hc.ControlPlaneNamespace, proxyInjectorTLSSecretName)
 						if kerrors.IsNotFound(err) {
@@ -1147,7 +1145,7 @@ func (hc *HealthChecker) allCategories() []Category {
 				{
 					description: "sp-validator cert is valid for at least 60 days",
 					warning:     true,
-					hintAnchor:  "l5d-webhook-cert-not-expiring-soon",
+					hintAnchor:  "l5d-sp-validator-webhook-cert-not-expiring-soon",
 					check: func(ctx context.Context) error {
 						cert, err := hc.FetchCredsFromSecret(ctx, hc.ControlPlaneNamespace, spValidatorTLSSecretName)
 						if kerrors.IsNotFound(err) {
@@ -1163,7 +1161,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdIdentityDataPlane,
+			ID: LinkerdIdentityDataPlane,
 			checkers: []Checker{
 				{
 					description: "data plane proxies certificate match CA",
@@ -1176,7 +1174,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdAPIChecks,
+			ID: LinkerdAPIChecks,
 			checkers: []Checker{
 				{
 					description:         "control plane pods are ready",
@@ -1194,22 +1192,32 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 				{
-					description: "control plane self-check",
-					hintAnchor:  "l5d-api-control-api",
-					// to avoid confusing users with a prometheus readiness error, we only show
-					// "waiting for check to complete" while things converge. If after the timeout
-					// it still hasn't converged, we show the real error (a 503 usually).
-					surfaceErrorOnRetry: false,
-					fatal:               true,
-					retryDeadline:       hc.RetryDeadline,
-					checkRPC: func(ctx context.Context) (*healthcheckPb.SelfCheckResponse, error) {
-						return hc.apiClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
+					description: "can initialize the client",
+					hintAnchor:  "l5d-api-control-client",
+					fatal:       true,
+					check: func(ctx context.Context) (err error) {
+						if hc.APIAddr != "" {
+							hc.apiClient, err = public.NewInternalClient(hc.ControlPlaneNamespace, hc.APIAddr)
+						} else {
+							hc.apiClient, err = public.NewExternalClient(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
+						}
+						return
+					},
+				},
+				{
+					description:   "can query the control plane API",
+					hintAnchor:    "l5d-api-control-api",
+					retryDeadline: hc.RetryDeadline,
+					fatal:         true,
+					check: func(ctx context.Context) (err error) {
+						hc.serverVersion, err = GetServerVersion(ctx, hc.apiClient)
+						return
 					},
 				},
 			},
 		},
 		{
-			id: LinkerdVersionChecks,
+			ID: LinkerdVersionChecks,
 			checkers: []Checker{
 				{
 					description: "can determine the latest version",
@@ -1239,7 +1247,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdControlPlaneVersionChecks,
+			ID: LinkerdControlPlaneVersionChecks,
 			checkers: []Checker{
 				{
 					description: "control plane is up-to-date",
@@ -1263,7 +1271,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdDataPlaneChecks,
+			ID: LinkerdDataPlaneChecks,
 			checkers: []Checker{
 				{
 					description: "data plane namespace exists",
@@ -1303,9 +1311,9 @@ func (hc *HealthChecker) allCategories() []Category {
 
 						outdatedPods := []string{}
 						for _, pod := range pods {
-							err = hc.latestVersions.Match(pod.ProxyVersion)
-							if err != nil {
-								outdatedPods = append(outdatedPods, fmt.Sprintf("\t* %s (%s)", pod.Name, pod.ProxyVersion))
+							proxyVersion := k8s.GetProxyVersion(pod)
+							if err = hc.latestVersions.Match(proxyVersion); err != nil {
+								outdatedPods = append(outdatedPods, fmt.Sprintf("\t* %s (%s)", pod.Name, proxyVersion))
 							}
 						}
 						if len(outdatedPods) > 0 {
@@ -1326,8 +1334,9 @@ func (hc *HealthChecker) allCategories() []Category {
 						}
 
 						for _, pod := range pods {
-							if pod.ProxyVersion != version.Version {
-								return fmt.Errorf("%s running %s but cli running %s", pod.Name, pod.ProxyVersion, version.Version)
+							proxyVersion := k8s.GetProxyVersion(pod)
+							if proxyVersion != version.Version {
+								return fmt.Errorf("%s running %s but cli running %s", pod.Name, proxyVersion, version.Version)
 							}
 						}
 						return nil
@@ -1336,7 +1345,7 @@ func (hc *HealthChecker) allCategories() []Category {
 			},
 		},
 		{
-			id: LinkerdHAChecks,
+			ID: LinkerdHAChecks,
 			checkers: []Checker{
 				{
 					description: "pod injection disabled on kube-system",
@@ -1474,18 +1483,7 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 			for _, checker := range c.checkers {
 				checker := checker // pin
 				if checker.check != nil {
-					if !hc.runCheck(c.id, &checker, observer) {
-						if !checker.warning {
-							success = false
-						}
-						if checker.fatal {
-							return success
-						}
-					}
-				}
-
-				if checker.checkRPC != nil {
-					if !hc.runCheckRPC(c.id, &checker, observer) {
+					if !hc.runCheck(c.ID, &checker, observer) {
 						if !checker.warning {
 							success = false
 						}
@@ -1501,9 +1499,9 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 	return success
 }
 
-// LinkerdConfigGlobal gets the Linkerd global configuration values.
-func (hc *HealthChecker) LinkerdConfigGlobal() *l5dcharts.Global {
-	return hc.linkerdConfig.GetGlobal()
+// LinkerdConfig gets the Linkerd configuration values.
+func (hc *HealthChecker) LinkerdConfig() *l5dcharts.Values {
+	return hc.linkerdConfig
 }
 
 func (hc *HealthChecker) runCheck(categoryID CategoryID, c *Checker, observer CheckObserver) bool {
@@ -1545,77 +1543,6 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *Checker, observer Ch
 	}
 }
 
-// runCheckRPC calls `c` which itself should make a gRPC call returning `*healthcheckPb.SelfCheckResponse`
-// (which can contain multiple responses) or error.
-// If that call returns an error, we send it to `observer` and return false.
-// Otherwise, we send to `observer` a success message with `c.description` and then proceed to check the
-// multiple responses contained in the response.
-// We keep on retrying the same call until all the responses have an OK status
-// (or until timeout/deadline is reached), sending a message to `observer` for each response,
-// while making sure no duplicate messages are sent.
-func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *Checker, observer CheckObserver) bool {
-	observedResults := []CheckResult{}
-	for {
-		ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-		defer cancel()
-		checkRsp, err := c.checkRPC(ctx)
-		if se, ok := err.(*SkipError); ok {
-			log.Debugf("Skipping check: %s. Reason: %s", c.description, se.Reason)
-			return true
-		}
-
-		checkResult := &CheckResult{
-			Category:    categoryID,
-			Description: c.description,
-			HintAnchor:  c.hintAnchor,
-			Warning:     c.warning,
-		}
-
-		if vs, ok := err.(*VerboseSuccess); ok {
-			checkResult.Description = fmt.Sprintf("%s\n%s", checkResult.Description, vs.Message)
-		} else if err != nil {
-			// errors at the gRPC-call level are not retried
-			// but we do retry below if the response Status is not OK
-			checkResult.Err = &CategoryError{categoryID, err}
-			observer(checkResult)
-			return false
-		}
-
-		// General description, only shown once.
-		// The following calls to `observer()` track specific result entries.
-		if !checkResult.alreadyObserved(observedResults) {
-			observer(checkResult)
-			observedResults = append(observedResults, *checkResult)
-		}
-
-		for _, check := range checkRsp.Results {
-			checkResult.Err = nil
-			checkResult.Description = fmt.Sprintf("[%s] %s", check.SubsystemName, check.CheckDescription)
-			if check.Status != healthcheckPb.CheckStatus_OK {
-				checkResult.Err = &CategoryError{categoryID, fmt.Errorf(check.FriendlyMessageToUser)}
-				checkResult.Retry = time.Now().Before(c.retryDeadline)
-				// only show the waiting message during retries,
-				// and send the underlying error on the last try
-				if !c.surfaceErrorOnRetry && checkResult.Retry {
-					checkResult.Err = errors.New("waiting for check to complete")
-				}
-				observer(checkResult)
-			} else if !checkResult.alreadyObserved(observedResults) {
-				observer(checkResult)
-			}
-			observedResults = append(observedResults, *checkResult)
-		}
-
-		if checkResult.Retry {
-			log.Debug("Retrying on error")
-			time.Sleep(retryWindow)
-			continue
-		}
-
-		return checkResult.Err == nil
-	}
-}
-
 func (hc *HealthChecker) controlPlaneComponentsSelector() string {
 	return fmt.Sprintf("%s,!%s", k8s.ControllerNSLabel, LinkerdCNIResourceLabel)
 }
@@ -1629,15 +1556,13 @@ func (hc *HealthChecker) KubeAPIClient() *k8s.KubernetesAPI {
 // PublicAPIClient returns a fully configured public API client. This client is
 // only configured if the KubernetesAPIChecks and LinkerdAPIChecks are
 // configured and run first.
-func (hc *HealthChecker) PublicAPIClient() public.PublicAPIClient {
-	return hc.publicAPIClient
+func (hc *HealthChecker) PublicAPIClient() public.Client {
+	return hc.apiClient
 }
 
-// VizAPIClient returns a fully configured Viz API client. This client is
-// only configured if the KubernetesAPIChecks and LinkerdAPIChecks are
-// configured and run first.
-func (hc *HealthChecker) VizAPIClient() public.VizAPIClient {
-	return hc.apiClient
+// LatestVersions returns the latest versions from Linkerd release channels
+func (hc *HealthChecker) LatestVersions() version.Channels {
+	return hc.latestVersions
 }
 
 func (hc *HealthChecker) checkLinkerdConfigConfigMap(ctx context.Context) (string, *l5dcharts.Values, error) {
@@ -1663,7 +1588,7 @@ func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred
 	var data *issuercerts.IssuerCertData
 
 	if values.Identity.Issuer.Scheme == "" || values.Identity.Issuer.Scheme == k8s.IdentityIssuerSchemeLinkerd {
-		data, err = issuercerts.FetchIssuerData(ctx, hc.kubeAPI, values.GetGlobal().IdentityTrustAnchorsPEM, hc.ControlPlaneNamespace)
+		data, err = issuercerts.FetchIssuerData(ctx, hc.kubeAPI, values.IdentityTrustAnchorsPEM, hc.ControlPlaneNamespace)
 	} else {
 		data, err = issuercerts.FetchExternalIssuerData(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 	}
@@ -1695,7 +1620,14 @@ func FetchCurrentConfiguration(ctx context.Context, k kubernetes.Interface, cont
 	}
 
 	if rawValues := configMap.Data["values"]; rawValues != "" {
+		// Convert into latest values, where global field is removed
+		rawValuesBytes, err := config.RemoveGlobalFieldIfPresent([]byte(rawValues))
+		if err != nil {
+			return nil, nil, err
+		}
+		rawValues = string(rawValuesBytes)
 		var fullValues l5dcharts.Values
+
 		err = yaml.Unmarshal([]byte(rawValues), &fullValues)
 		if err != nil {
 			return nil, nil, err
@@ -1703,6 +1635,9 @@ func FetchCurrentConfiguration(ctx context.Context, k kubernetes.Interface, cont
 		return configMap, &fullValues, nil
 	}
 
+	if configPb == nil {
+		return configMap, nil, nil
+	}
 	// fall back to the older configMap
 	// TODO: remove this once the newer config override secret becomes the default i.e 2.10
 	return configMap, config.ToValues(configPb), nil
@@ -1723,7 +1658,7 @@ func (hc *HealthChecker) fetchProxyInjectorCaBundle(ctx context.Context) ([]*x50
 
 func (hc *HealthChecker) fetchSpValidatorCaBundle(ctx context.Context) ([]*x509.Certificate, error) {
 
-	vwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, k8s.SPValidatorWebhookConfigName, metav1.GetOptions{})
+	vwc, err := hc.kubeAPI.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, k8s.SPValidatorWebhookConfigName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -1905,7 +1840,7 @@ func CheckConfigMaps(ctx context.Context, kubeAPI *k8s.KubernetesAPI, namespace 
 }
 
 func (hc *HealthChecker) isHA() bool {
-	return hc.linkerdConfig.GetGlobal().HighAvailability
+	return hc.linkerdConfig.HighAvailability
 }
 
 func (hc *HealthChecker) isHeartbeatDisabled() bool {
@@ -1961,7 +1896,7 @@ func (hc *HealthChecker) checkCustomResourceDefinitions(ctx context.Context, sho
 	options := metav1.ListOptions{
 		LabelSelector: hc.controlPlaneComponentsSelector(),
 	}
-	crdList, err := hc.kubeAPI.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().List(ctx, options)
+	crdList, err := hc.kubeAPI.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().List(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -1976,7 +1911,7 @@ func (hc *HealthChecker) checkCustomResourceDefinitions(ctx context.Context, sho
 }
 
 func (hc *HealthChecker) getProxyInjectorMutatingWebhook(ctx context.Context) (*admissionRegistration.MutatingWebhook, error) {
-	mwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Get(ctx, k8s.ProxyInjectorWebhookConfigName, metav1.GetOptions{})
+	mwc, err := hc.kubeAPI.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(ctx, k8s.ProxyInjectorWebhookConfigName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -1998,7 +1933,7 @@ func (hc *HealthChecker) checkMutatingWebhookConfigurations(ctx context.Context,
 	options := metav1.ListOptions{
 		LabelSelector: hc.controlPlaneComponentsSelector(),
 	}
-	mwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().List(ctx, options)
+	mwc, err := hc.kubeAPI.AdmissionregistrationV1().MutatingWebhookConfigurations().List(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -2016,7 +1951,7 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Contex
 	options := metav1.ListOptions{
 		LabelSelector: hc.controlPlaneComponentsSelector(),
 	}
-	vwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().List(ctx, options)
+	vwc, err := hc.kubeAPI.AdmissionregistrationV1().ValidatingWebhookConfigurations().List(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -2093,7 +2028,7 @@ func (hc *HealthChecker) checkDataPlaneProxiesCertificate(ctx context.Context) e
 		return err
 	}
 
-	trustAnchorsPem := values.GetGlobal().IdentityTrustAnchorsPEM
+	trustAnchorsPem := values.IdentityTrustAnchorsPEM
 	offendingPods := []string{}
 	for _, pod := range meshedPods {
 		if strings.TrimSpace(pod.Anchors) != strings.TrimSpace(trustAnchorsPem) {
@@ -2163,29 +2098,13 @@ func checkResources(resourceName string, objects []runtime.Object, expectedNames
 }
 
 // GetDataPlanePods returns all the pods with data plane
-func (hc *HealthChecker) GetDataPlanePods(ctx context.Context) ([]*pb.Pod, error) {
-	req := &pb.ListPodsRequest{}
-	if hc.DataPlaneNamespace != "" {
-		req.Selector = &pb.ResourceSelection{
-			Resource: &pb.Resource{
-				Namespace: hc.DataPlaneNamespace,
-			},
-		}
-	}
-
-	resp, err := hc.apiClient.ListPods(ctx, req)
+func (hc *HealthChecker) GetDataPlanePods(ctx context.Context) ([]corev1.Pod, error) {
+	selector := fmt.Sprintf("%s=%s", k8s.ControllerNSLabel, hc.ControlPlaneNamespace)
+	podList, err := hc.kubeAPI.CoreV1().Pods(hc.DataPlaneNamespace).List(ctx, metav1.ListOptions{LabelSelector: selector})
 	if err != nil {
 		return nil, err
 	}
-
-	pods := make([]*pb.Pod, 0)
-	for _, pod := range resp.GetPods() {
-		if pod.ControllerNamespace == hc.ControlPlaneNamespace {
-			pods = append(pods, pod)
-		}
-	}
-
-	return pods, nil
+	return podList.Items, nil
 }
 
 func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace(ctx context.Context) error {
@@ -2344,15 +2263,6 @@ func (hc *HealthChecker) checkClockSkew(ctx context.Context) error {
 	return nil
 }
 
-func (cr *CheckResult) alreadyObserved(previousResults []CheckResult) bool {
-	for _, result := range previousResults {
-		if result.Description == cr.Description && result.Err == cr.Err {
-			return true
-		}
-	}
-	return false
-}
-
 // CheckRoles checks that the expected roles exist.
 func CheckRoles(ctx context.Context, kubeAPI *k8s.KubernetesAPI, shouldExist bool, namespace string, expectedNames []string, labelSelector string) error {
 	options := metav1.ListOptions{
@@ -2495,7 +2405,7 @@ func checkContainerRunning(pods []corev1.Pod, container string) error {
 	return nil
 }
 
-func validateDataPlanePods(pods []*pb.Pod, targetNamespace string) error {
+func validateDataPlanePods(pods []corev1.Pod, targetNamespace string) error {
 	if len(pods) == 0 {
 		msg := fmt.Sprintf("No \"%s\" containers found", k8s.ProxyContainerName)
 		if targetNamespace != "" {
@@ -2505,37 +2415,15 @@ func validateDataPlanePods(pods []*pb.Pod, targetNamespace string) error {
 	}
 
 	for _, pod := range pods {
-		if pod.Status != "Running" && pod.Status != "Evicted" {
-			return fmt.Errorf("The \"%s\" pod is not running",
-				pod.Name)
+		status := k8s.GetPodStatus(pod)
+		if status != "Running" && status != "Evicted" {
+			return fmt.Errorf("The \"%s\" pod is not running", pod.Name)
 		}
 
-		if !pod.ProxyReady {
+		if !k8s.GetProxyReady(pod) {
 			return fmt.Errorf("The \"%s\" container in the \"%s\" pod is not ready",
 				k8s.ProxyContainerName, pod.Name)
 		}
-	}
-
-	return nil
-}
-
-func validateDataPlanePodReporting(pods []*pb.Pod) error {
-	notInPrometheus := []string{}
-
-	for _, p := range pods {
-		// the `Added` field indicates the pod was found in Prometheus
-		if !p.Added {
-			notInPrometheus = append(notInPrometheus, p.Name)
-		}
-	}
-
-	errMsg := ""
-	if len(notInPrometheus) > 0 {
-		errMsg = fmt.Sprintf("Data plane metrics not found for %s.", strings.Join(notInPrometheus, ", "))
-	}
-
-	if errMsg != "" {
-		return fmt.Errorf(errMsg)
 	}
 
 	return nil
@@ -2581,7 +2469,8 @@ func CheckForPods(pods []corev1.Pod, deployNames []string) error {
 
 	for _, pod := range pods {
 		// Strip randomized suffix and take the deployment name
-		deployName := strings.Join(strings.Split(pod.Name, "-")[:2], "-")
+		parts := strings.Split(pod.Name, "-")
+		deployName := strings.Join(parts[:len(parts)-2], "-")
 		exists[deployName] = true
 	}
 
@@ -2595,10 +2484,21 @@ func CheckForPods(pods []corev1.Pod, deployNames []string) error {
 }
 
 // CheckPodsRunning checks if the given pods are in running state
-func CheckPodsRunning(pods []corev1.Pod) error {
+// along with containers to be in ready state
+func CheckPodsRunning(pods []corev1.Pod, podsNotFoundMsg string) error {
+	if len(pods) == 0 && podsNotFoundMsg != "" {
+		return fmt.Errorf(podsNotFoundMsg)
+	}
 	for _, pod := range pods {
 		if pod.Status.Phase != "Running" {
 			return fmt.Errorf("%s status is %s", pod.Name, pod.Status.Phase)
+		}
+
+		// check for container readiness
+		for _, containerStatus := range pod.Status.ContainerStatuses {
+			if !containerStatus.Ready {
+				return fmt.Errorf("container %s in pod %s is not ready ", pod.Name, containerStatus.Name)
+			}
 		}
 	}
 	return nil

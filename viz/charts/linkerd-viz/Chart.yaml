@@ -2,12 +2,12 @@ apiVersion: "v1"
 # this version will be updated by the CI before publishing the Helm tarball
 appVersion: edge-XX.X.X
 description: |
-  Linkerd Viz extension contains the observability and visualization
-  components that can be integrated directly.
+  The Linkerd-Viz extension contains observability and visualization
+  components for Linkerd.
 home: https://linkerd.io
 keywords:
 - service-mesh
-kubeVersion: ">=1.13.0-0"
+kubeVersion: ">=1.16.0-0"
 name: "linkerd-viz"
 sources:
 - https://github.com/linkerd/linkerd2/

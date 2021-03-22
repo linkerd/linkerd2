@@ -1,0 +1,89 @@
+---
+###
+### Tap Injector RBAC
+###
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-tap-injector
+  labels:
+    linkerd.io/extension: viz
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-tap-injector
+  labels:
+    linkerd.io/extension: viz
+subjects:
+- kind: ServiceAccount
+  name: tap-injector
+  namespace: {{.Values.namespace}}
+roleRef:
+  kind: ClusterRole
+  name: linkerd-tap-injector
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: tap-injector
+  namespace: {{.Values.namespace}}
+{{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
+---
+{{- $host := printf "tap-injector.%s.svc" .Values.namespace }}
+{{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
+{{- if (not .Values.tapInjector.externalSecret) }}
+kind: Secret
+apiVersion: v1
+metadata:
+  name: tap-injector-k8s-tls
+  namespace: {{ .Values.namespace }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+  labels:
+    linkerd.io/extension: viz
+type: kubernetes.io/tls
+data:
+  tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tapInjector.crtPEM)) (empty .Values.tapInjector.crtPEM) }}
+  tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.tapInjector.keyPEM)) (empty .Values.tapInjector.keyPEM) }}
+---
+{{- end }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: linkerd-tap-injector-webhook-config
+  labels:
+    linkerd.io/extension: viz
+webhooks:
+- name: tap-injector.linkerd.io
+  {{- if .Values.tapInjector.namespaceSelector }}
+  namespaceSelector:
+{{ toYaml .Values.tapInjector.namespaceSelector | trim | indent 4 -}}
+  {{- end }}
+  {{- if .Values.tapInjector.objectSelector }}
+  objectSelector:
+{{ toYaml .Values.tapInjector.objectSelector | trim | indent 4 -}}
+  {{- end }}
+  clientConfig:
+    service:
+      name: tap-injector
+      namespace: {{ .Values.namespace }}
+      path: "/"
+{{- if and (.Values.tapInjector.externalSecret) (empty .Values.tapInjector.caBundle) }}
+  {{- fail "If tapInjector.externalSecret is true then you need to provide tapInjector.caBundle" }}
+{{- end }}
+    caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tapInjector.caBundle)) (empty .Values.tapInjector.caBundle) }}
+  failurePolicy: {{.Values.tapInjector.failurePolicy}}
+  admissionReviewVersions: ["v1", "v1beta1"]
+  reinvocationPolicy: IfNeeded
+  rules:
+  - operations: [ "CREATE" ]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+  sideEffects: None

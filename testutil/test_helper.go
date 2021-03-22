@@ -30,6 +30,7 @@ type TestHelper struct {
 	upgradeFromVersion string
 	clusterDomain      string
 	externalIssuer     bool
+	externalPrometheus bool
 	multicluster       bool
 	uninstall          bool
 	cni                bool
@@ -38,6 +39,7 @@ type TestHelper struct {
 	httpClient         http.Client
 	KubernetesHelper
 	helm
+	installedExtensions []string
 }
 
 type helm struct {
@@ -64,33 +66,22 @@ type Service struct {
 	Name      string
 }
 
-// LinkerdDeployReplicasStable is a map containing the number of replicas for each Deployment and the main
-// container name
-var LinkerdDeployReplicasStable = map[string]DeploySpec{
-	"linkerd-controller":     {"linkerd", 1, []string{"public-api"}},
-	"linkerd-destination":    {"linkerd", 1, []string{"destination"}},
-	"linkerd-tap":            {"linkerd", 1, []string{"tap"}},
-	"linkerd-grafana":        {"linkerd", 1, []string{}},
-	"linkerd-identity":       {"linkerd", 1, []string{"identity"}},
-	"linkerd-prometheus":     {"linkerd", 1, []string{}},
-	"linkerd-sp-validator":   {"linkerd", 1, []string{"sp-validator"}},
-	"linkerd-web":            {"linkerd", 1, []string{"web"}},
-	"linkerd-proxy-injector": {"linkerd", 1, []string{"proxy-injector"}},
-}
-
 // LinkerdDeployReplicasEdge is a map containing the number of replicas for each Deployment and the main
 // container name, in the current code-base
 var LinkerdDeployReplicasEdge = map[string]DeploySpec{
 	"linkerd-controller":     {"linkerd", 1, []string{"public-api"}},
 	"linkerd-destination":    {"linkerd", 1, []string{"destination"}},
-	"linkerd-tap":            {"linkerd-viz", 1, []string{"tap"}},
-	"linkerd-grafana":        {"linkerd-viz", 1, []string{}},
+	"tap":                    {"linkerd-viz", 1, []string{"tap"}},
+	"grafana":                {"linkerd-viz", 1, []string{}},
 	"linkerd-identity":       {"linkerd", 1, []string{"identity"}},
-	"linkerd-prometheus":     {"linkerd-viz", 1, []string{}},
 	"linkerd-sp-validator":   {"linkerd", 1, []string{"sp-validator"}},
-	"linkerd-web":            {"linkerd-viz", 1, []string{"web"}},
+	"web":                    {"linkerd-viz", 1, []string{"web"}},
 	"linkerd-proxy-injector": {"linkerd", 1, []string{"proxy-injector"}},
 }
+
+// LinkerdDeployReplicasStable is a map containing the number of replicas for each Deployment and the main
+// container name. Override whenever edge deviates from stable.
+var LinkerdDeployReplicasStable = LinkerdDeployReplicasEdge
 
 // NewGenericTestHelper returns a new *TestHelper from the options provided as function parameters.
 // This helper was created to be able to reuse this package without hard restrictions
@@ -110,6 +101,7 @@ func NewGenericTestHelper(
 	helmMulticlusterReleaseName,
 	helmMulticlusterChart string,
 	externalIssuer,
+	externalPrometheus,
 	multicluster,
 	cni,
 	calico,
@@ -132,14 +124,15 @@ func NewGenericTestHelper(
 			releaseName:             helmReleaseName,
 			upgradeFromVersion:      upgradeFromVersion,
 		},
-		clusterDomain:    clusterDomain,
-		externalIssuer:   externalIssuer,
-		uninstall:        uninstall,
-		cni:              cni,
-		calico:           calico,
-		httpClient:       httpClient,
-		multicluster:     multicluster,
-		KubernetesHelper: kubernetesHelper,
+		clusterDomain:      clusterDomain,
+		externalIssuer:     externalIssuer,
+		externalPrometheus: externalPrometheus,
+		uninstall:          uninstall,
+		cni:                cni,
+		calico:             calico,
+		httpClient:         httpClient,
+		multicluster:       multicluster,
+		KubernetesHelper:   kubernetesHelper,
 	}
 }
 
@@ -164,7 +157,7 @@ func NewTestHelper() *TestHelper {
 	multicluster := flag.Bool("multicluster", false, "when specified the multicluster install functionality is tested")
 	helmPath := flag.String("helm-path", "target/helm", "path of the Helm binary")
 	helmChart := flag.String("helm-chart", "charts/linkerd2", "path to linkerd2's Helm chart")
-	multiclusterHelmChart := flag.String("multicluster-helm-chart", "charts/linkerd2-multicluster", "path to linkerd2's multicluster Helm chart")
+	multiclusterHelmChart := flag.String("multicluster-helm-chart", "charts/linkerd-multicluster", "path to linkerd2's multicluster Helm chart")
 	vizHelmChart := flag.String("viz-helm-chart", "charts/linkerd-viz", "path to linkerd2's viz extension Helm chart")
 	helmStableChart := flag.String("helm-stable-chart", "linkerd/linkerd2", "path to linkerd2's stable Helm chart")
 	helmReleaseName := flag.String("helm-release", "", "install linkerd via Helm using this release name")
@@ -172,6 +165,7 @@ func NewTestHelper() *TestHelper {
 	upgradeFromVersion := flag.String("upgrade-from-version", "", "when specified, the upgrade test uses it as the base version of the upgrade")
 	clusterDomain := flag.String("cluster-domain", "cluster.local", "when specified, the install test uses a custom cluster domain")
 	externalIssuer := flag.Bool("external-issuer", false, "when specified, the install test uses it to install linkerd with --identity-external-issuer=true")
+	externalPrometheus := flag.Bool("external-prometheus", false, "when specified, the install test uses an external prometheus")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
 	upgradeHelmFromVersion := flag.String("upgrade-helm-from-version", "", "Indicate a version of the Linkerd helm chart from which the helm installation is being upgraded")
@@ -220,12 +214,13 @@ func NewTestHelper() *TestHelper {
 			multiclusterReleaseName: *multiclusterHelmReleaseName,
 			upgradeFromVersion:      *upgradeHelmFromVersion,
 		},
-		clusterDomain:  *clusterDomain,
-		externalIssuer: *externalIssuer,
-		cni:            *cni,
-		calico:         *calico,
-		uninstall:      *uninstall,
-		certsPath:      *certsPath,
+		clusterDomain:      *clusterDomain,
+		externalIssuer:     *externalIssuer,
+		externalPrometheus: *externalPrometheus,
+		cni:                *cni,
+		calico:             *calico,
+		uninstall:          *uninstall,
+		certsPath:          *certsPath,
 	}
 
 	version, err := testHelper.LinkerdRun("version", "--client", "--short")
@@ -318,6 +313,11 @@ func (h *TestHelper) ExternalIssuer() bool {
 	return h.externalIssuer
 }
 
+// ExternalPrometheus determines whether linkerd should be installed with --set prometheusUrl
+func (h *TestHelper) ExternalPrometheus() bool {
+	return h.externalPrometheus
+}
+
 // Multicluster determines whether multicluster components should be installed
 func (h *TestHelper) Multicluster() bool {
 	return h.multicluster
@@ -352,6 +352,18 @@ func (h *TestHelper) CNI() bool {
 // Calico determines whether Calico CNI plug-in is enabled
 func (h *TestHelper) Calico() bool {
 	return h.calico
+}
+
+// AddInstalledExtension adds an extension name to installedExtensions to
+// track the currently installed linkerd extensions.
+func (h *TestHelper) AddInstalledExtension(extensionName string) {
+	h.installedExtensions = append(h.installedExtensions, extensionName)
+}
+
+// GetInstalledExtensions gets a list currently installed extensions
+// in a test run.
+func (h *TestHelper) GetInstalledExtensions() []string {
+	return h.installedExtensions
 }
 
 // CreateTLSSecret creates a TLS Kubernetes secret
@@ -458,7 +470,7 @@ func (h *TestHelper) HelmUpgrade(chart string, arg ...string) (string, string, e
 		"upgrade",
 		h.helm.releaseName,
 		"--kube-context", h.k8sContext,
-		"--set", "global.namespace=" + h.namespace,
+		"--set", "namespace=" + h.namespace,
 		chart,
 	}, arg...)
 	return combinedOutput("", h.helm.path, withParams...)
@@ -471,15 +483,15 @@ func (h *TestHelper) HelmInstall(chart string, arg ...string) (string, string, e
 		h.helm.releaseName,
 		chart,
 		"--kube-context", h.k8sContext,
-		"--set", "global.namespace=" + h.namespace,
+		"--set", "namespace=" + h.namespace,
 	}, arg...)
 	return combinedOutput("", h.helm.path, withParams...)
 }
 
-// HelmInstallPlain runs the helm install subcommand, with the provided arguments and no defaults
-func (h *TestHelper) HelmInstallPlain(chart string, releaseName string, arg ...string) (string, string, error) {
+// HelmCmdPlain runs a helm subcommand, with the provided arguments and no defaults
+func (h *TestHelper) HelmCmdPlain(cmd, chart, releaseName string, arg ...string) (string, string, error) {
 	withParams := append([]string{
-		"install",
+		cmd,
 		releaseName,
 		chart,
 		"--kube-context", h.k8sContext,
@@ -520,6 +532,22 @@ func (h *TestHelper) ValidateOutput(out, fixtureFile string) error {
 	}
 
 	if out != expected {
+		return fmt.Errorf(
+			"Expected:\n%s\nActual:\n%s", expected, out)
+	}
+
+	return nil
+}
+
+// ContainsOutput validates that a string is a substring in the contents
+// of a file in the test's testdata directory.
+func (h *TestHelper) ContainsOutput(out, fixtureFile string) error {
+	expected, err := ReadFile("testdata/" + fixtureFile)
+	if err != nil {
+		return err
+	}
+
+	if !strings.Contains(out, expected) {
 		return fmt.Errorf(
 			"Expected:\n%s\nActual:\n%s", expected, out)
 	}
@@ -604,7 +632,7 @@ func (h *TestHelper) WithDataPlaneNamespace(ctx context.Context, testName string
 			"failed to create %s namespace: %s", prefixedNs, err)
 	}
 	test(t, prefixedNs)
-	if err := h.deleteNamespaceIfExists(ctx, prefixedNs); err != nil {
+	if err := h.DeleteNamespaceIfExists(ctx, prefixedNs); err != nil {
 		AnnotatedFatalf(t, fmt.Sprintf("failed to delete %s namespace", prefixedNs),
 			"failed to delete %s namespace: %s", prefixedNs, err)
 	}

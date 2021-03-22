@@ -67,7 +67,7 @@ func TestConfigureAndRunVersion(t *testing.T) {
 		t.Run(fmt.Sprintf("test %d TestConfigureAndRunVersion()", i), func(t *testing.T) {
 			wout := bytes.NewBufferString("")
 
-			configureAndRunVersion(context.Background(), nil, tc.options, wout, tc.mkClient, nil)
+			configureAndRunVersion(context.Background(), nil, tc.options, wout, tc.mkClient)
 
 			if tc.out != wout.String() {
 				t.Fatalf("Expected output: \"%s\", got: \"%s\"", tc.out, wout)

@@ -1,0 +1,79 @@
+---
+###
+### Jaeger Injector
+###
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    linkerd.io/extension: jaeger
+    app.kubernetes.io/name: jaeger-injector
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.webhook.image.version .Values.cliVersion}}
+    component: jaeger-injector
+  name: jaeger-injector
+  namespace: {{.Values.namespace}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      linkerd.io/extension: jaeger
+      component: jaeger-injector
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/rbac.yaml") . | sha256sum }}
+      labels:
+        linkerd.io/extension: jaeger
+        component: jaeger-injector
+    spec:
+      containers:
+      - args:
+        - -collector-svc-addr={{.Values.webhook.collectorSvcAddr}}
+        - -collector-svc-account={{.Values.webhook.collectorSvcAccount}}
+        - -log-level={{.Values.webhook.logLevel}}
+        image: {{.Values.webhook.image.name}}:{{default .Values.webhook.image.version .Values.cliVersion}}
+        imagePullPolicy: {{.Values.webhook.image.pullPolicy}}
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9995
+          initialDelaySeconds: 10
+        name: jaeger-injector
+        ports:
+        - containerPort: 8443
+          name: jaeger-injector
+        - containerPort: 9995
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9995
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: tls
+          readOnly: true
+      serviceAccountName: jaeger-injector
+      volumes:
+      - name: tls
+        secret:
+          secretName: jaeger-injector-k8s-tls
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: jaeger-injector
+  namespace: {{.Values.namespace}}
+  labels:
+    linkerd.io/extension: jaeger
+    component: jaeger-injector
+spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/extension: jaeger
+    component: jaeger-injector
+  ports:
+  - name: jaeger-injector
+    port: 443
+    targetPort: jaeger-injector

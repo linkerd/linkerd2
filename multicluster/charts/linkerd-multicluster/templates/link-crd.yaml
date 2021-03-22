@@ -1,0 +1,84 @@
+---
+###
+### Link CRD
+###
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: links.multicluster.linkerd.io
+  labels:
+    linkerd.io/extension: multicluster
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  group: multicluster.linkerd.io
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              clusterCredentialsSecret:
+                description: Kubernetes secret of target cluster
+                type: string
+              gatewayAddress:
+                description: Gateway address of target cluster
+                type: string
+              gatewayIdentity:
+                description: Gateway Identity FQDN
+                type: string
+              gatewayPort:
+                description: Gateway Port
+                type: string
+              probeSpec:
+                description: Spec for gateway health probe
+                type: object
+                properties:
+                  path:
+                    description: Path of remote gateway health endpoint
+                    type: string
+                  period:
+                    description: Interval in between probe requests
+                    type: string
+                  port:
+                    description: Port of remote gateway health endpoint
+                    type: string
+              selector:
+                description: Kubernetes Label Selector
+                type: object
+                properties:
+                  matchExpressions:
+                    description: List of selector requirements
+                    type: array
+                    items:
+                      description: A selector item requires a key and an operator
+                      type: object
+                      required:
+                      - key
+                      - operator
+                      properties:
+                        key:
+                          description: Label key that selector should apply to
+                          type: string
+                        operator:
+                          description: Evaluation of a label in relation to set
+                          type: string
+              targetClusterName:
+                description: Name of target cluster to link to
+                type: string
+              targetClusterDomain:
+                description: Domain name of target cluster to link to
+                type: string
+              targetClusterLinkerdNamespace:
+                description: Name of namespace Linkerd control plane is installed in on target cluster
+                type: string
+  scope: Namespaced
+  names:
+    plural: links
+    singular: link
+    kind: Link

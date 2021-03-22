@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/linkerd/linkerd2/cli/table"
-	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	vizCmd "github.com/linkerd/linkerd2/viz/cmd"
+	"github.com/linkerd/linkerd2/viz/metrics-api/client"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -41,14 +43,22 @@ func newGatewaysCommand() *cobra.Command {
 				return err
 			}
 
-			client, err := public.NewExternalClient(cmd.Context(), controlPlaneNamespace, k8sAPI)
+			ctx := cmd.Context()
+
+			vizNs, err := k8sAPI.GetNamespaceWithExtensionLabel(ctx, vizCmd.ExtensionName)
+			if err != nil {
+				return fmt.Errorf("make sure the linkerd-viz extension is installed, using 'linkerd viz install' (%s)", err)
+			}
+
+			client, err := client.NewExternalClient(ctx, vizNs.Name, k8sAPI)
 			if err != nil {
 				return err
 			}
 
 			resp, err := requestGatewaysFromAPI(client, req)
 			if err != nil {
-				return err
+				fmt.Fprint(os.Stderr, err.Error())
+				os.Exit(1)
 			}
 
 			renderGateways(resp.GetOk().GatewaysTable.Rows, stdout)

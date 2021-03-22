@@ -12,17 +12,15 @@ import (
 )
 
 const (
-	helmDefaultChartDir     = "linkerd2-multicluster"
-	helmDefaultLinkChartDir = "linkerd2-multicluster-link"
+	helmDefaultChartDir     = "linkerd-multicluster"
+	helmDefaultLinkChartDir = "linkerd-multicluster-link"
 )
 
 // Values contains the top-level elements in the Helm charts
 type Values struct {
 	CliVersion                     string `json:"cliVersion"`
-	ControllerComponentLabel       string `json:"controllerComponentLabel"`
 	ControllerImage                string `json:"controllerImage"`
 	ControllerImageVersion         string `json:"controllerImageVersion"`
-	CreatedByAnnotation            string `json:"createdByAnnotation"`
 	Gateway                        bool   `json:"gateway"`
 	GatewayLocalProbePath          string `json:"gatewayLocalProbePath"`
 	GatewayLocalProbePort          uint32 `json:"gatewayLocalProbePort"`

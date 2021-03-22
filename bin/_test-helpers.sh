@@ -6,8 +6,9 @@ set +e
 
 ##### Test setup helpers #####
 
-export default_test_names=(deep external-issuer helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
-export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}")
+export default_test_names=(deep external-issuer external-prometheus-deep helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
+export external_resource_test_names=(external-resources)
+export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}" "${external_resource_test_names[*]}")
 
 tests_usage() {
   progname="${0##*/}"
@@ -36,8 +37,10 @@ Examples:
 
 Available Commands:
     --name: the argument to this option is the specific test to run
-    --skip-cluster-create: skip k3d cluster creation step and run tests in an existing cluster.
-    --images: by default load images into the cluster from the local docker cache (docker), or from tar files located under the 'image-archives' directory (archive), or completely skip image loading (skip)."
+    --skip-cluster-create: skip k3d cluster creation step and run tests in an existing cluster
+    --skip-cluster-delete: if the tests succeed, don't delete the created resources nor the cluster
+    --images: by default load images into the cluster from the local docker cache (docker), or from tar files located under the 'image-archives' directory (archive), or completely skip image loading (skip)
+    --cleanup-docker: delete the 'images-archive' directory and prune the docker cache"
 }
 
 cleanup_usage() {
@@ -59,6 +62,8 @@ handle_tests_input() {
   export images="docker"
   export test_name=''
   export skip_cluster_create=''
+  export skip_cluster_delete=''
+  export cleanup_docker=''
   export linkerd_path=""
 
   while  [ "$#" -ne 0 ]; do
@@ -96,6 +101,14 @@ handle_tests_input() {
         skip_cluster_create=1
         shift
         ;;
+      --skip-cluster-delete)
+        skip_cluster_delete=1
+        shift
+        ;;
+      --cleanup-docker)
+        cleanup_docker=1
+        shift
+        ;;
       *)
         if echo "$1" | grep -q '^-.*' ; then
           echo "Unexpected flag: $1" >&2
@@ -117,6 +130,12 @@ handle_tests_input() {
 
   if [ -z "$linkerd_path" ]; then
     echo "Error: path to linkerd binary is required" >&2
+    tests_usage "$0" >&2
+    exit 64
+  fi
+
+  if [ -z "$test_name" ] && [ -n "$skip_cluster_delete" ]; then
+    echo "Error: must provide --name when using --skip-cluster-delete" >&2
     tests_usage "$0" >&2
     exit 64
   fi
@@ -212,22 +231,28 @@ cleanup_cluster() {
 
 setup_cluster() {
   local name=$1
-  export helm_path="$bindir"/helm 
+  export helm_path="$bindir"/helm
 
   test_setup
   if [ -z "$skip_cluster_create" ]; then
     create_cluster "$@"
     image_load "$name"
+    if [ -n "$cleanup_docker" ]; then
+      rm -rf image-archives
+      docker system prune --force --all
+    fi
   fi
   check_cluster
 }
 
 finish() {
-  local name=$1
-  if [ -z "$skip_cluster_create" ]; then
-    delete_cluster "$name"
-  else
-    cleanup_cluster
+  if [ -z "$skip_cluster_delete" ]; then
+    local name=$1
+    if [ -z "$skip_cluster_create" ]; then
+      delete_cluster "$name"
+    else
+      cleanup_cluster
+    fi
   fi
 }
 
@@ -248,7 +273,7 @@ check_if_l5d_exists() {
 Linkerd resources exist on cluster:
 \n%s\n
 Help:
-    Run: [%s/test-cleanup] ' "$linkerd_path"
+    Run: [%s/test-cleanup] ' "$resources" "$linkerd_path"
     exit 1
   fi
   printf '[ok]\n'
@@ -348,7 +373,14 @@ install_version() {
 
     (
         set -x
-        "$linkerd_path" install | kubectl --context="$context" apply -f - 2>&1
+        # TODO: Use a mix of helm override flags and CLI flags and remove this condition
+        # once stable-2.10 is out
+        edge_regex='(edge)-([0-9]+\.[0-9]+\.[0-9]+)'
+        if [[ "$version" =~ $edge_regex ]]; then
+          "$linkerd_path" install --set proxyInit.ignoreInboundPorts="1234\,5678" --controller-log-level debug | kubectl --context="$context" apply -f - 2>&1
+        else
+          "$linkerd_path" install --skip-inbound-ports '1234,5678' --controller-log-level debug | kubectl --context="$context" apply -f - 2>&1
+        fi
     )
     exit_on_err "install_version() - installing $version failed"
 
@@ -360,7 +392,7 @@ install_version() {
 
     #Now we need to install the app that will be used to verify that upgrade does not break anything
     kubectl --context="$context" create namespace "$test_app_namespace" > /dev/null 2>&1
-    kubectl --context="$context" label namespaces "$test_app_namespace" 'linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
+    kubectl --context="$context" label namespaces "$test_app_namespace" 'test.linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
     (
         set -x
         "$linkerd_path" inject "$test_directory/testdata/upgrade_test.yaml" | kubectl --context="$context" apply --namespace="$test_app_namespace" -f - 2>&1
@@ -485,7 +517,7 @@ run_cni-calico-deep_test() {
 run_helm-deep_test() {
   local tests=()
   setup_helm
-  helm_multicluster_chart="$( cd "$bindir"/.. && pwd )"/multicluster/charts/linkerd2-multicluster
+  helm_multicluster_chart="$( cd "$bindir"/.. && pwd )"/multicluster/charts/linkerd-multicluster
   helm_viz_chart="$( cd "$bindir"/.. && pwd )"/viz/charts/linkerd-viz
   run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
   --helm-release="$helm_release_name" --multicluster-helm-chart="$helm_multicluster_chart" \
@@ -502,8 +534,22 @@ run_external-issuer_test() {
   run_test "$test_directory/externalissuer/external_issuer_test.go" --external-issuer=true
 }
 
+run_external-prometheus-deep_test() {
+  run_test "$test_directory/install_test.go" --external-prometheus=true
+  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
+  for test in "${tests[@]}"; do
+    run_test "$test" --external-prometheus=true
+  done
+}
+
 run_cluster-domain_test() {
   run_test "$test_directory/install_test.go" --cluster-domain='custom.domain'
+}
+
+# wrapper to implement external tests
+run_external-resources_test(){
+   run_test "$test_directory/install_test.go"
+   run_test "$test_directory/externalresources/rabbitmq_test.go"
 }
 
 # exit_on_err should be called right after a command to check the result status

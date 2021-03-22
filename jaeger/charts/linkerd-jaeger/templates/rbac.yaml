@@ -1,0 +1,104 @@
+---
+###
+### collector RBAC
+###
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: collector
+  namespace: {{.Values.namespace}}
+---
+###
+### jaeger RBAC
+###
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: jaeger
+  namespace: {{.Values.namespace}}
+
+---
+###
+### Jaeger Injector RBAC
+###
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-jaeger-injector
+  labels:
+    linkerd.io/extension: jaeger
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-jaeger-injector
+  labels:
+    linkerd.io/extension: jaeger
+subjects:
+- kind: ServiceAccount
+  name: jaeger-injector
+  namespace: {{.Values.namespace}}
+  apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: linkerd-jaeger-injector
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: jaeger-injector
+  namespace: {{.Values.namespace}}
+---
+{{- $host := printf "jaeger-injector.%s.svc" .Values.namespace }}
+{{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
+{{- if (not .Values.webhook.externalSecret) }}
+kind: Secret
+apiVersion: v1
+metadata:
+  name: jaeger-injector-k8s-tls
+  namespace: {{ .Values.namespace }}
+type: kubernetes.io/tls
+data:
+  tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.webhook.crtPEM)) (empty .Values.webhook.crtPEM) }}
+  tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.webhook.keyPEM)) (empty .Values.webhook.keyPEM) }}
+---
+{{- end }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: linkerd-jaeger-injector-webhook-config
+  labels:
+    linkerd.io/extension: jaeger
+webhooks:
+- name: jaeger-injector.linkerd.io
+  {{- if .Values.webhook.namespaceSelector }}
+  namespaceSelector: 
+{{ toYaml .Values.webhook.namespaceSelector | trim | indent 4 -}}
+  {{- end }}
+  {{- if .Values.webhook.objectSelector }}
+  objectSelector: 
+{{ toYaml .Values.webhook.objectSelector | trim | indent 4 -}}
+  {{- end }}
+  clientConfig:
+    service:
+      name: jaeger-injector
+      namespace: {{ .Values.namespace }}
+      path: "/"
+{{- if and (.Values.webhook.externalSecret) (empty .Values.webhook.caBundle) }}
+  {{- fail "If webhook.externalSecret is true then you need to provide webook.caBundle" }}
+{{- end }}
+    caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.webhook.caBundle)) (empty .Values.webhook.caBundle) }}
+  failurePolicy: {{.Values.webhook.failurePolicy}}
+  admissionReviewVersions: ["v1", "v1beta1"]
+  reinvocationPolicy: IfNeeded
+  rules:
+  - operations: [ "CREATE" ]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+  sideEffects: None

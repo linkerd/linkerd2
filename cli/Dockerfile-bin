@@ -2,7 +2,7 @@ ARG BUILDPLATFORM=linux/amd64
 ARG BUILD_STAGE=single-arch
 
 # Precompile key slow-to-build dependencies
-FROM --platform=$BUILDPLATFORM golang:1.14.2-alpine as go-deps
+FROM --platform=$BUILDPLATFORM golang:1.16.2-alpine as go-deps
 WORKDIR /linkerd-build
 COPY go.mod go.sum ./
 COPY bin/install-deps bin/
@@ -33,12 +33,14 @@ RUN go generate -mod=readonly ./viz/static
 
 # Cache builds without version info
 RUN CGO_ENABLED=0 GOOS=darwin go build -o /out/linkerd-darwin -tags prod -mod=readonly -ldflags "-s -w" ./cli
+RUN CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o /out/linkerd-darwin-arm64 -tags prod -mod=readonly -ldflags "-s -w" ./cli
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/linkerd-linux-amd64 -tags prod -mod=readonly -ldflags "-s -w" ./cli
 RUN CGO_ENABLED=0 GOOS=windows go build -o /out/linkerd-windows -tags prod -mod=readonly -ldflags "-s -w" ./cli
 
 ARG LINKERD_VERSION
 ENV GO_LDFLAGS="-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=${LINKERD_VERSION}"
 RUN CGO_ENABLED=0 GOOS=darwin go build -o /out/linkerd-darwin -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
+RUN CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o /out/linkerd-darwin-arm64 -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/linkerd-linux-amd64 -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
 RUN CGO_ENABLED=0 GOOS=windows go build -o /out/linkerd-windows -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
 

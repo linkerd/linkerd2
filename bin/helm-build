@@ -5,8 +5,8 @@ set -e
 setValues() {
     sed -i "s/$1/$2/" charts/linkerd2/values.yaml
     sed -i "s/$1/$2/" charts/linkerd2-cni/values.yaml
-    sed -i "s/$1/$2/" multicluster/charts/linkerd2-multicluster/values.yaml
-    sed -i "s/$1/$2/" jaeger/charts/jaeger/values.yaml
+    sed -i "s/$1/$2/" multicluster/charts/linkerd-multicluster/values.yaml
+    sed -i "s/$1/$2/" jaeger/charts/linkerd-jaeger/values.yaml
     sed -i "s/$1/$2/" viz/charts/linkerd-viz/values.yaml
 }
 
@@ -25,20 +25,21 @@ rootdir=$( cd "$bindir"/.. && pwd )
 rm -f charts/linkerd2/charts/*
 rm -f charts/linkerd2-cni/charts/*
 rm -f charts/patch/charts/*
-rm -f jaeger/charts/jaeger/charts/*
+rm -f jaeger/charts/linkerd-jaeger/charts/*
 rm -f viz/charts/linkerd-viz/charts/*
 
-"$bindir"/helm lint "$rootdir"/multicluster/charts/linkerd2-multicluster
-"$bindir"/helm lint "$rootdir"/multicluster/charts/linkerd2-multicluster-link
+"$bindir"/helm dep up "$rootdir"/multicluster/charts/linkerd-multicluster
+"$bindir"/helm lint "$rootdir"/multicluster/charts/linkerd-multicluster
+"$bindir"/helm lint "$rootdir"/multicluster/charts/linkerd-multicluster-link
 "$bindir"/helm lint "$rootdir"/charts/partials
 "$bindir"/helm dep up "$rootdir"/charts/linkerd2-cni
 "$bindir"/helm lint "$rootdir"/charts/linkerd2-cni
 "$bindir"/helm dep up "$rootdir"/charts/linkerd2
 "$bindir"/helm dep up "$rootdir"/charts/patch
-"$bindir"/helm lint --set global.identityTrustAnchorsPEM="fake-trust" --set identity.issuer.tls.crtPEM="fake-cert" --set identity.issuer.tls.keyPEM="fake-key" --set identity.issuer.crtExpiry="fake-expiry-date" "$rootdir"/charts/linkerd2
+"$bindir"/helm lint --set identityTrustAnchorsPEM="fake-trust" --set identity.issuer.tls.crtPEM="fake-cert" --set identity.issuer.tls.keyPEM="fake-key" --set identity.issuer.crtExpiry="fake-expiry-date" "$rootdir"/charts/linkerd2
 "$bindir"/helm lint "$rootdir"/charts/linkerd2-cni
-"$bindir"/helm dep up "$rootdir"/jaeger/charts/jaeger
-"$bindir"/helm lint "$rootdir"/jaeger/charts/jaeger
+"$bindir"/helm dep up "$rootdir"/jaeger/charts/linkerd-jaeger
+"$bindir"/helm lint "$rootdir"/jaeger/charts/linkerd-jaeger
 "$bindir"/helm dep up "$rootdir"/viz/charts/linkerd-viz
 "$bindir"/helm lint "$rootdir"/viz/charts/linkerd-viz
 
@@ -63,8 +64,8 @@ if [ "$1" = package ]; then
 
     "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2
     "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2-cni
-    "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/multicluster/charts/linkerd2-multicluster
-    "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/jaeger/charts/jaeger
+    "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/multicluster/charts/linkerd-multicluster
+    "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/jaeger/charts/linkerd-jaeger
     "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/viz/charts/linkerd-viz
 
     mv "$rootdir"/target/helm/index-pre.yaml "$rootdir"/target/helm/index-pre-"$version".yaml

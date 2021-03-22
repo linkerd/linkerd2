@@ -1,0 +1,112 @@
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-service-mirror-access-local-resources-{{.Values.targetClusterName}}
+  labels:
+    linkerd.io/control-plane-component: service-mirror
+    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+rules:
+- apiGroups: [""]
+  resources: ["endpoints", "services"]
+  verbs: ["list", "get", "watch", "create", "delete", "update"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["create","list", "get", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-service-mirror-access-local-resources-{{.Values.targetClusterName}}
+  labels:
+    linkerd.io/control-plane-component: service-mirror
+    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-service-mirror-access-local-resources-{{.Values.targetClusterName}}
+subjects:
+- kind: ServiceAccount
+  name: linkerd-service-mirror-{{.Values.targetClusterName}}
+  namespace: {{.Values.namespace}}
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-service-mirror-read-remote-creds-{{.Values.targetClusterName}}
+  namespace: {{.Values.namespace}}
+  labels:
+      linkerd.io/control-plane-component: service-mirror
+      mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["cluster-credentials-{{.Values.targetClusterName}}"]
+    verbs: ["list", "get", "watch"]
+  - apiGroups: ["multicluster.linkerd.io"]
+    resources: ["links"]
+    verbs: ["list", "get", "watch"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-service-mirror-read-remote-creds-{{.Values.targetClusterName}}
+  namespace: {{.Values.namespace}}
+  labels:
+      linkerd.io/control-plane-component: service-mirror
+      mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: linkerd-service-mirror-read-remote-creds-{{.Values.targetClusterName}}
+subjects:
+  - kind: ServiceAccount
+    name: linkerd-service-mirror-{{.Values.targetClusterName}}
+    namespace: {{.Values.namespace}}
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-service-mirror-{{.Values.targetClusterName}}
+  namespace: {{.Values.namespace}}
+  labels:
+    linkerd.io/control-plane-component: service-mirror
+    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    linkerd.io/control-plane-component: service-mirror
+    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+  name: linkerd-service-mirror-{{.Values.targetClusterName}}
+  namespace: {{.Values.namespace}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      linkerd.io/control-plane-component: linkerd-service-mirror
+      mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+      labels:
+        linkerd.io/control-plane-component: linkerd-service-mirror
+        mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+    spec:
+      containers:
+      - args:
+        - service-mirror
+        - -log-level={{.Values.logLevel}}
+        - -event-requeue-limit={{.Values.serviceMirrorRetryLimit}}
+        - -namespace={{.Values.namespace}}
+        - {{.Values.targetClusterName}}
+        image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion}}
+        name: service-mirror
+        securityContext:
+          runAsUser: {{.Values.serviceMirrorUID}}
+        ports:
+        - containerPort: 9999
+          name: admin-http
+      serviceAccountName: linkerd-service-mirror-{{.Values.targetClusterName}}

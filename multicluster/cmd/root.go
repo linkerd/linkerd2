@@ -8,16 +8,17 @@ import (
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 const (
-	defaultDockerRegistry                = "ghcr.io/linkerd"
+	defaultDockerRegistry                = "cr.l5d.io/linkerd"
 	defaultLinkerdNamespace              = "linkerd"
 	defaultMulticlusterNamespace         = "linkerd-multicluster"
 	defaultGatewayName                   = "linkerd-gateway"
-	helmMulticlusterDefaultChartName     = "linkerd2-multicluster"
-	helmMulticlusterLinkDefaultChartName = "linkerd2-multicluster-link"
+	helmMulticlusterDefaultChartName     = "linkerd-multicluster"
+	helmMulticlusterLinkDefaultChartName = "linkerd-multicluster-link"
 	tokenKey                             = "token"
 
 	defaultServiceAccountName = "linkerd-service-mirror-remote-access-default"
@@ -60,6 +61,14 @@ components on a cluster, manage credentials and link clusters together.`,
 
   # Extract mirroring cluster credentials from cluster A and install them on cluster B
   linkerd --context=cluster-a multicluster link --cluster-name=target | kubectl apply --context=cluster-b -f -`,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if verbose {
+				log.SetLevel(log.DebugLevel)
+			} else {
+				log.SetLevel(log.PanicLevel)
+			}
+			return nil
+		},
 	}
 
 	multiclusterCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed")
@@ -72,7 +81,7 @@ components on a cluster, manage credentials and link clusters together.`,
 	multiclusterCmd.AddCommand(newLinkCommand())
 	multiclusterCmd.AddCommand(newUnlinkCommand())
 	multiclusterCmd.AddCommand(newMulticlusterInstallCommand())
-	multiclusterCmd.AddCommand(newCmdCheck())
+	multiclusterCmd.AddCommand(NewCmdCheck())
 	multiclusterCmd.AddCommand(newMulticlusterUninstallCommand())
 	multiclusterCmd.AddCommand(newGatewaysCommand())
 	multiclusterCmd.AddCommand(newAllowCommand())

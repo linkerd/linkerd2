@@ -11,7 +11,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/status"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -32,7 +32,7 @@ type HTTPError struct {
 }
 
 // FlushableResponseWriter wraps a ResponseWriter for use in streaming
-// responses, such as Tap.
+// responses
 type FlushableResponseWriter interface {
 	http.ResponseWriter
 	http.Flusher
@@ -81,7 +81,7 @@ func WriteErrorToHTTPResponse(w http.ResponseWriter, errorObtained error) {
 		errorMessageToReturn = grpcError.Message()
 	}
 
-	errorAsProto := &pb.ApiError{Error: errorMessageToReturn}
+	errorAsProto := &metricsPb.ApiError{Error: errorMessageToReturn}
 
 	err := WriteProtoToHTTPResponse(w, errorAsProto)
 	if err != nil {
@@ -154,7 +154,7 @@ func CheckIfResponseHasError(rsp *http.Response) error {
 	errorMsg := rsp.Header.Get(errorHeader)
 	if errorMsg != "" {
 		reader := bufio.NewReader(rsp.Body)
-		var apiError pb.ApiError
+		var apiError metricsPb.ApiError
 
 		err := FromByteStreamToProtocolBuffers(reader, &apiError)
 		if err != nil {
@@ -199,26 +199,4 @@ func FromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, 
 	}
 
 	return nil
-}
-
-// TapReqToURL converts a TapByResourceRequest protobuf object to a URL for use
-// with the Kubernetes tap.linkerd.io APIService.
-// TODO: Move this, probably into its own package, when /controller/gen/public
-// moves into /pkg.
-func TapReqToURL(req *pb.TapByResourceRequest) string {
-	res := req.GetTarget().GetResource()
-
-	// non-namespaced
-	if res.GetType() == k8s.Namespace {
-		return fmt.Sprintf(
-			"/apis/tap.linkerd.io/v1alpha1/watch/namespaces/%s/tap",
-			res.GetName(),
-		)
-	}
-
-	// namespaced
-	return fmt.Sprintf(
-		"/apis/tap.linkerd.io/v1alpha1/watch/namespaces/%s/%s/%s/tap",
-		res.GetNamespace(), res.GetType()+"s", res.GetName(),
-	)
 }

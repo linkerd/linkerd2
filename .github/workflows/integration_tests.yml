@@ -9,39 +9,36 @@ on:
     - main
 env:
   GH_ANNOTATION: true
-  DOCKER_BUILDKIT: 1
 jobs:
   docker_build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         # Keep in sync with release.yaml matrix build
-        target: [proxy, controller, web, cni-plugin, debug, cli-bin, grafana, jaeger-webhook]
+        target: [proxy, controller, metrics-api, web, cni-plugin, debug, cli-bin, grafana, jaeger-webhook, tap]
     name: Docker build (${{ matrix.target }})
     timeout-minutes: 30
     steps:
     - name: Checkout code
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
 
         . bin/_docker.sh
-        echo "DOCKER_REGISTRY=$DOCKER_REGISTRY" >> $GITHUB_ENV
+        echo "DOCKER_REGISTRY=cr.l5d.io/linkerd" >> $GITHUB_ENV
         echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
     - name: Cache docker layers
       # actions/cache@v2.0.0
-      uses: actions/cache@b820478
+      uses: actions/cache@b8204782bbb5f872091ecc5eb9cb7d004e35b1fa
       with:
         path: ${{ env.DOCKER_BUILDKIT_CACHE }}
         key: ${{ runner.os }}-buildx-${{ matrix.target }}-${{ env.TAG }}
         restore-keys: |
           ${{ runner.os }}-buildx-${{ matrix.target }}-
     - name: Build docker images
-      env:
-        DOCKER_TRACE: 1
       run: |
         docker buildx create --driver docker-container --use
         bin/docker-build-${{ matrix.target }}
@@ -54,8 +51,9 @@ jobs:
         ARCHIVES: /home/runner/archives
       run: |
         mkdir -p $ARCHIVES
-        docker save "$DOCKER_REGISTRY/${{ matrix.target }}:$TAG" > $ARCHIVES/${{ matrix.target }}.tar
-        # save windows cli into artifacts
+        docker save "cr.l5d.io/linkerd/${{ matrix.target }}:$TAG" > $ARCHIVES/${{ matrix.target }}.tar
+        # windows_static_cli_tests needs this binary to be available in the
+        # image archive.
         if [ '${{ matrix.target }}' == 'cli-bin' ]; then
           cp -r ./target/cli/windows/linkerd $ARCHIVES/linkerd-windows.exe
         fi
@@ -65,7 +63,7 @@ jobs:
     # https://github.com/actions/upload-artifact/issues/8
     - name: Upload artifact
       # actions/upload-artifact@v1
-      uses: actions/upload-artifact@3446296
+      uses: actions/upload-artifact@3446296876d12d4e3a0f3145a3c87e67bf0a16b5
       with:
         name: image-archives
         path: /home/runner/archives
@@ -78,10 +76,10 @@ jobs:
     steps:
     - name: Checkout code
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Try to load cached Go modules
       # actions/cache@v1.1.2
-      uses: actions/cache@70655ec
+      uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -89,7 +87,7 @@ jobs:
           ${{ runner.os }}-go-
     - name: Download image archives
       # actions/download-artifact@v1
-      uses: actions/download-artifact@18f0f59
+      uses: actions/download-artifact@18f0f591fbc635562c815484d73b6e8e3980482e
       with:
         name: image-archives
     - name: Run CLI Integration tests
@@ -102,6 +100,8 @@ jobs:
         - cluster-domain
         - deep
         - external-issuer
+        - external-prometheus-deep
+        - external-resources
         - helm-deep
         - helm-upgrade
         - multicluster
@@ -111,15 +111,15 @@ jobs:
         - cni-calico-deep
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     timeout-minutes: 30
     steps:
     - name: Checkout code
       # actions/checkout@v2
-      uses: actions/checkout@722adc6
+      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
     - name: Try to load cached Go modules
       # actions/cache@v1.1.2
-      uses: actions/cache@70655ec
+      uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -131,10 +131,10 @@ jobs:
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
 
         . bin/_docker.sh
-        echo "DOCKER_REGISTRY=$DOCKER_REGISTRY" >> $GITHUB_ENV
+        echo "DOCKER_REGISTRY=cr.l5d.io/linkerd" >> $GITHUB_ENV
     - name: Download image archives
       # actions/download-artifact@v1
-      uses: actions/download-artifact@18f0f59
+      uses: actions/download-artifact@18f0f591fbc635562c815484d73b6e8e3980482e
       with:
         name: image-archives
     - name: Load cli-bin image into local docker images
@@ -142,11 +142,17 @@ jobs:
     - name: Install CLI
       run: |
         # Copy the CLI out of the local cli-bin container.
-        container_id=$(docker create "$DOCKER_REGISTRY/cli-bin:$TAG")
+        container_id=$(docker create "cr.l5d.io/linkerd/cli-bin:$TAG")
         docker cp $container_id:/out/linkerd-linux-amd64 "$HOME/.linkerd"
 
         # Validate the CLI version matches the current build tag.
         [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
     - name: Run integration tests
+      if: ${{ !endsWith(matrix.integration_test, 'deep') }}
       run: |
         bin/tests --images archive --name ${{ matrix.integration_test }} "$HOME/.linkerd"
+    - name: Run integration tests (deep)
+      if: ${{ endsWith(matrix.integration_test, 'deep') }}
+      run: |
+        # deep tests consume a lot of disk
+        bin/tests --images archive --cleanup-docker --name ${{ matrix.integration_test }} "$HOME/.linkerd"

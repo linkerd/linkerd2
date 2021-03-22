@@ -37,10 +37,21 @@ go test -coverprofile=$cov ./...
 go tool cover -html=$cov
 ```
 
-To analyze and lint the Go code using golangci-lint, run:
+#### Pretty-printed diffs for templated text
 
-```bash
-bin/lint
+When running `go test`, mismatched text is usually displayed as a compact diff.
+If you prefer to see the full text of the mismatch with colorized output, you
+can set the `LINKERD_TEST_PRETTY_DIFF` environment variable or run `go test
+./cli/cmd/... --pretty-diff`.
+
+#### Updating templates
+
+When kubernetes templates change, several test fixtures usually need to be
+updated (in `cli/cmd/testdata/*.golden`). These golden files can be
+automatically regenerated with the command:
+
+```sh
+go test ./cli/cmd/... --update
 ```
 
 ### Javascript
@@ -167,7 +178,7 @@ You can also test a locally-built version of the `linkerd` CLI.
 First build all of the Linkerd images by running:
 
 ```bash
-DOCKER_TRACE=1 bin/docker-build
+bin/docker-build
 ```
 
 That command also copies the corresponding `linkerd` binaries into the

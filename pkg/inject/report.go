@@ -34,7 +34,7 @@ var (
 		injectDisableAnnotationPresent:       fmt.Sprintf("pod has the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectDisabled),
 		invalidInjectAnnotationWorkload:      fmt.Sprintf("invalid value for annotation \"%s\" at workload", k8s.ProxyInjectAnnotation),
 		invalidInjectAnnotationNamespace:     fmt.Sprintf("invalid value for annotation \"%s\" at namespace", k8s.ProxyInjectAnnotation),
-		disabledAutomountServiceAccountToken: fmt.Sprintf("automountServiceAccountToken set to \"false\""),
+		disabledAutomountServiceAccountToken: "automountServiceAccountToken set to \"false\"",
 		udpPortsEnabled:                      "UDP port(s) configured on pod spec",
 	}
 )
@@ -91,7 +91,12 @@ func newReport(conf *ResourceConfig) *Report {
 		if conf.pod.spec.AutomountServiceAccountToken != nil {
 			report.AutomountServiceAccountToken = *conf.pod.spec.AutomountServiceAccountToken
 		}
-	} else if report.Kind != k8s.Namespace {
+		if conf.origin == OriginWebhook {
+			if vm := conf.serviceAccountVolumeMount(); vm == nil {
+				report.AutomountServiceAccountToken = false
+			}
+		}
+	} else if report.Kind != k8s.Service && report.Kind != k8s.Namespace {
 		report.UnsupportedResource = true
 	}
 

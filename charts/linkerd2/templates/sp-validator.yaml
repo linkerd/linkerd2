@@ -2,21 +2,20 @@
 ###
 ### Service Profile Validator
 ###
----
 kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-sp-validator
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.global.controllerComponentLabel}}: sp-validator
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
-    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.global.controllerComponentLabel}}: sp-validator
+    linkerd.io/control-plane-component: sp-validator
   ports:
   - name: sp-validator
     port: 443
@@ -27,41 +26,41 @@ kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
 metadata:
   name: linkerd-sp-validator
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.global.controllerComponentLabel}}: sp-validator
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
-    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
 spec:
   maxUnavailable: 1
   selector:
     matchLabels:
-      {{.Values.global.controllerComponentLabel}}: sp-validator
+      linkerd.io/control-plane-component: sp-validator
 {{- end }}
 ---
 {{- $tree := deepCopy . }}
-{{ $_ := set $tree.Values.global.proxy "workloadKind" "deployment" -}}
-{{ $_ := set $tree.Values.global.proxy "component" "linkerd-sp-validator" -}}
-{{ include "linkerd.proxy.validation" .Values.global.proxy -}}
+{{ $_ := set $tree.Values.proxy "workloadKind" "deployment" -}}
+{{ $_ := set $tree.Values.proxy "component" "linkerd-sp-validator" -}}
+{{ include "linkerd.proxy.validation" .Values.proxy -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{ include "partials.annotations.created-by" . }}
   labels:
     app.kubernetes.io/name: sp-validator
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
-    {{.Values.global.controllerComponentLabel}}: sp-validator
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
   name: linkerd-sp-validator
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
 spec:
   replicas: {{.Values.controllerReplicas}}
   selector:
     matchLabels:
-      {{.Values.global.controllerComponentLabel}}: sp-validator
+      linkerd.io/control-plane-component: sp-validator
   {{- if .Values.enablePodAntiAffinity }}
   strategy:
     rollingUpdate:
@@ -70,34 +69,34 @@ spec:
   template:
     metadata:
       annotations:
-        {{- if (or (empty .Values.global.cliVersion) (not (eq (.Values.stage | toString) "control-plane"))) }}
+        {{- if (or (empty .Values.cliVersion) (not (eq (.Values.stage | toString) "control-plane"))) }}
         checksum/config: {{ include (print $.Template.BasePath "/sp-validator-rbac.yaml") . | sha256sum }}
         {{- end }}
-        {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
-        {{- include "partials.proxy.annotations" .Values.global.proxy| nindent 8}}
-        {{- with .Values.global.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        {{ include "partials.annotations.created-by" . }}
+        {{- include "partials.proxy.annotations" . | nindent 8}}
+        {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
-        {{.Values.global.controllerComponentLabel}}: sp-validator
-        {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-        {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
-        {{- include "partials.proxy.labels" $tree.Values.global.proxy | nindent 8}}
-        {{- with .Values.global.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        linkerd.io/control-plane-component: sp-validator
+        linkerd.io/control-plane-ns: {{.Values.namespace}}
+        linkerd.io/workload-ns: {{.Values.namespace}}
+        {{- include "partials.proxy.labels" $tree.Values.proxy | nindent 8}}
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.tolerations -}}
       {{- include "linkerd.tolerations" . | nindent 6 }}
       {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- if .Values.enablePodAntiAffinity -}}
-      {{- $local := dict "component" "sp-validator" "label" .Values.global.controllerComponentLabel -}}
+      {{- $local := dict "component" "sp-validator" -}}
       {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
       {{- end }}
       containers:
       - args:
         - sp-validator
-        - -log-level={{.Values.global.controllerLogLevel}}
-        - -log-format={{.Values.global.controllerLogFormat}}
-        image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
-        imagePullPolicy: {{.Values.global.imagePullPolicy}}
+        - -log-level={{.Values.controllerLogLevel}}
+        - -log-format={{.Values.controllerLogFormat}}
+        image: {{.Values.controllerImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
+        imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /ping
@@ -124,20 +123,23 @@ spec:
           name: tls
           readOnly: true
       {{- if not (empty .Values.spValidatorProxyResources) }}
-      {{- $r := merge .Values.spValidatorProxyResources .Values.global.proxy.resources }}
-      {{- $_ := set $tree.Values.global.proxy "resources" $r }}
+      {{- $r := merge .Values.spValidatorProxyResources .Values.proxy.resources }}
+      {{- $_ := set $tree.Values.proxy "resources" $r }}
       {{- end }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
-      {{ if not .Values.global.cniEnabled -}}
+      {{ if not .Values.cniEnabled -}}
       initContainers:
-      - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{- if not (contains "443" ( .Values.proxyInit.ignoreOutboundPorts | toString ))}}
+      {{- $_ := set $tree.Values.proxyInit "ignoreOutboundPorts" ( ternary "443" (printf "%s,443" (.Values.proxyInit.ignoreOutboundPorts | toString )) (empty .Values.proxyInit.ignoreOutboundPorts)) -}}
+      {{- end}}
+      - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       serviceAccountName: linkerd-sp-validator
       volumes:
       - name: tls
         secret:
           secretName: linkerd-sp-validator-k8s-tls
-      {{ if not .Values.global.cniEnabled -}}
+      {{ if not .Values.cniEnabled -}}
       - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}

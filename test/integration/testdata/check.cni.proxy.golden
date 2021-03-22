@@ -15,8 +15,6 @@ linkerd-existence
 √ control plane replica sets are ready
 √ no unschedulable pods
 √ controller pod is running
-√ can initialize the client
-√ can query the control plane API
 
 linkerd-config
 --------------
@@ -66,8 +64,8 @@ linkerd-identity-data-plane
 linkerd-api
 -----------
 √ control plane pods are ready
-√ control plane self-check
-√ [kubernetes] control plane can talk to Kubernetes
+√ can initialize the client
+√ can query the control plane API
 
 linkerd-version
 ---------------

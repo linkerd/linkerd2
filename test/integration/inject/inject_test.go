@@ -50,7 +50,6 @@ func TestInjectManualParams(t *testing.T) {
 
 	injectionValidator := testutil.InjectValidator{
 		DisableIdentity:        true,
-		DisableTap:             true,
 		Version:                "proxy-version",
 		Image:                  "proxy-image",
 		InitImage:              "init-image",
@@ -113,7 +112,6 @@ func TestInjectAutoParams(t *testing.T) {
 			AutoInject:             true,
 			AdminPort:              8888,
 			ControlPort:            8881,
-			DisableTap:             true,
 			EnableExternalProfiles: true,
 			EnableDebug:            true,
 			ImagePullPolicy:        "Never",
@@ -377,14 +375,13 @@ func TestInjectAutoPod(t *testing.T) {
 	zero := int64(0)
 	expectedInitContainer := v1.Container{
 		Name:  k8s.InitContainerName,
-		Image: "ghcr.io/linkerd/proxy-init:" + version.ProxyInitVersion,
+		Image: "cr.l5d.io/linkerd/proxy-init:" + version.ProxyInitVersion,
 		Args: []string{
 			"--incoming-proxy-port", "4143",
 			"--outgoing-proxy-port", "4140",
 			"--proxy-uid", "2102",
 			// 1234,5678 were added at install time in `install_test.go`'s helmOverridesEdge()
 			"--inbound-ports-to-ignore", "4190,4191,1234,5678",
-			"--outbound-ports-to-ignore", "25,443,587,3306,11211",
 		},
 		Resources: v1.ResourceRequirements{
 			Limits: v1.ResourceList{

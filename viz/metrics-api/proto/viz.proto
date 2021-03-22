@@ -3,12 +3,30 @@ syntax = "proto3";
 package linkerd2.viz;
 
 import "google/protobuf/duration.proto";
-
-import "healthcheck.proto";
+import "common/net.proto";
 
 option go_package = "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz";
 
 message Empty {}
+
+enum CheckStatus {
+    OK = 0;
+    FAIL = 1;
+    ERROR = 2;
+}
+
+message CheckResult {
+    string SubsystemName = 1;
+    string CheckDescription = 2;
+    CheckStatus Status = 3;
+    string FriendlyMessageToUser = 4;
+}
+
+message SelfCheckRequest {}
+
+message SelfCheckResponse {
+    repeated CheckResult results = 1;
+}
 
 message ListServicesRequest {
   string namespace = 1;
@@ -49,89 +67,6 @@ message Pod {
   bool proxyReady = 15; // true if this pod has proxy container and that one is in ready state
   string proxyVersion = 16; // version of the proxy if present
   string resourceVersion = 17; // resource version in the Kubernetes API
-}
-
-message TapRequest {
-  option deprecated = true;
-
-  oneof target {
-    string pod = 1;
-    string deployment = 2;
-  }
-  // validation of these fields happens on the server
-  float maxRps = 3;
-  uint32 toPort = 4;
-  string toIP = 5;
-  uint32 fromPort = 6;
-  string fromIP = 7;
-  string scheme = 8;
-  string method = 9;
-  string authority = 10;
-  string path = 11;
-}
-
-// A tap request over kubernetes resources.
-//
-// This is used only by the tap APIServer.
-message TapByResourceRequest {
-  // Describes the kubernetes pods that should be tapped.
-  ResourceSelection target = 1;
-
-  // Selects over events to be reported.
-  Match match = 2;
-
-  // Limits the number of events to be inspected.
-  float maxRps = 3;
-
-  message Match {
-    oneof match {
-      // If empty, matches all messages.
-      Seq all = 1;
-
-      // If empty, matches no messages.
-      Seq any = 2;
-
-      // Inverts the inner match.
-      Match not = 3;
-
-      // Matches events being sent to any of the selected destinations.
-      ResourceSelection destinations = 4;
-
-      // Matches HTTP requests by their metadata.
-      Http http = 5;
-    }
-
-    message Seq {
-      repeated Match matches = 1;
-    }
-
-    message Http {
-      oneof match {
-        string scheme = 1;
-        string method = 2;
-        string authority = 3;
-        string path = 4;
-      }
-    }
-  }
-
-  // Conditionally extracts components from requests and responses to include
-  // in tap events
-  Extract extract = 4;
-
-  message Extract {
-    oneof extract {
-      Http http = 1;
-    }
-
-    message Http {
-      oneof extract {
-        Headers headers = 1;
-      }
-
-      message Headers {}
-    }
-  }
 }
 
 message HttpMethod {
@@ -181,102 +116,10 @@ message Headers {
   repeated Header headers = 1;
 }
 
-message IPAddress {
-  oneof ip {
-    fixed32 ipv4 = 1;
-    IPv6 ipv6 = 2;
-  }
-}
-
-message IPv6 {
-  fixed64 first = 1; // hextets 1-4
-  fixed64 last = 2; // hextets 5-8
-}
-
-message TcpAddress {
-  IPAddress ip = 1;
-  uint32 port = 2;
-}
-
 message Eos {
   oneof end {
     uint32 grpc_status_code = 1;
     uint32 reset_error_code = 2;
-  }
-}
-
-// This is used only by the tap APIServer.
-message TapEvent {
-  TcpAddress source = 1;
-  EndpointMeta source_meta = 5;
-
-  TcpAddress   destination      = 2;
-  EndpointMeta destination_meta = 4;
-
-  RouteMeta route_meta = 7;
-
-  ProxyDirection proxy_direction = 6;
-  enum ProxyDirection {
-    UNKNOWN = 0;
-    INBOUND = 1;
-    OUTBOUND = 2;
-  }
-
-  oneof event {
-    Http http = 3;
-  }
-
-  message EndpointMeta {
-    map<string, string> labels = 1;
-  }
-
-  message RouteMeta {
-    map<string, string> labels = 1;
-  }
-
-  message Http {
-    oneof event {
-      RequestInit  request_init  = 1;
-      ResponseInit response_init = 2;
-      ResponseEnd  response_end  = 3;
-    }
-
-    message StreamId {
-      // A randomized base (stable across a process's runtime)
-      uint32 base = 1;
-
-      // A stream id unique within the lifetime of `base`.
-      uint64 stream = 2;
-    }
-
-    message RequestInit {
-      StreamId id = 1;
-      HttpMethod method =  2;
-      Scheme scheme = 3;
-      string authority = 4;
-      string path = 5;
-      Headers headers = 6;
-    }
-
-    message ResponseInit {
-      StreamId id = 1;
-
-      google.protobuf.Duration since_request_init = 2;
-
-      uint32 http_status = 3;
-      Headers headers = 4;
-    }
-
-    message ResponseEnd {
-      StreamId id = 1;
-
-      google.protobuf.Duration since_request_init = 2;
-      google.protobuf.Duration since_response_init = 3;
-      uint64 response_bytes = 4;
-
-      Eos eos = 5;
-      Headers trailers = 6;
-    }
   }
 }
 
@@ -521,17 +364,6 @@ service Api {
 
   rpc ListServices(ListServicesRequest) returns (ListServicesResponse) {}
 
-  // Superseded by `TapByResource`.
-  rpc Tap(TapRequest) returns (stream TapEvent) { option deprecated = true; }
+  rpc SelfCheck(SelfCheckRequest) returns (SelfCheckResponse) {}
 
-  // Superseded by tap APIServer.
-  rpc TapByResource(TapByResourceRequest) returns (stream TapEvent) { option deprecated = true; }
-
-  rpc SelfCheck(healthcheck.SelfCheckRequest) returns (healthcheck.SelfCheckResponse) {}
-
-}
-
-service Tap {
-  rpc Tap(TapRequest) returns (stream TapEvent) { option deprecated = true; }
-  rpc TapByResource(TapByResourceRequest) returns (stream TapEvent) { option deprecated = true; }
 }

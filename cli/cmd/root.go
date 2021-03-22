@@ -19,7 +19,7 @@ const (
 	defaultLinkerdNamespace = "linkerd"
 	defaultCNINamespace     = "linkerd-cni"
 	defaultClusterDomain    = "cluster.local"
-	defaultDockerRegistry   = "ghcr.io/linkerd"
+	defaultDockerRegistry   = "cr.l5d.io/linkerd"
 
 	jsonOutput  = "json"
 	tableOutput = "table"
@@ -103,14 +103,12 @@ func init() {
 	RootCmd.AddCommand(newCmdCompletion())
 	RootCmd.AddCommand(newCmdDiagnostics())
 	RootCmd.AddCommand(newCmdDoc())
-	RootCmd.AddCommand(newCmdEndpoints())
 	RootCmd.AddCommand(newCmdIdentity())
 	RootCmd.AddCommand(newCmdInject())
 	RootCmd.AddCommand(newCmdInstall())
 	RootCmd.AddCommand(newCmdInstallCNIPlugin())
-	RootCmd.AddCommand(newCmdInstallSP())
-	RootCmd.AddCommand(newCmdMetrics())
 	RootCmd.AddCommand(newCmdProfile())
+	RootCmd.AddCommand(newCmdRepair())
 	RootCmd.AddCommand(newCmdUninject())
 	RootCmd.AddCommand(newCmdUpgrade())
 	RootCmd.AddCommand(newCmdVersion())

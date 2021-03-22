@@ -28,6 +28,9 @@ func loadStoredValuesLegacy(ctx context.Context, k *k8s.KubernetesAPI) (*charts.
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch configs from kubernetes: %s", err)
 	}
+	if configs == nil {
+		return nil, nil
+	}
 	repairConfigs(configs)
 
 	values, err := charts.NewValues()
@@ -146,7 +149,7 @@ func fetchIdentityValues(ctx context.Context, k kubernetes.Interface, idctx *pb.
 		return fmt.Errorf("could not convert issuance Lifetime protobuf Duration format into golang Duration: %s", err)
 	}
 
-	values.GetGlobal().IdentityTrustAnchorsPEM = trustAnchorsPEM
+	values.IdentityTrustAnchorsPEM = trustAnchorsPEM
 	values.Identity.Issuer.Scheme = idctx.Scheme
 	values.Identity.Issuer.ClockSkewAllowance = clockSkewDuration.String()
 	values.Identity.Issuer.IssuanceLifetime = issuanceLifetimeDuration.String()

@@ -1,0 +1,103 @@
+---
+###
+### Metrics API
+###
+kind: Service
+apiVersion: v1
+metadata:
+  name: metrics-api
+  namespace: {{.Values.namespace}}
+  labels:
+    linkerd.io/extension: viz
+    component: metrics-api
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/extension: viz
+    component: metrics-api
+  ports:
+  - name: http
+    port: 8085
+    targetPort: 8085
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+  labels:
+    linkerd.io/extension: viz
+    app.kubernetes.io/name: metrics-api
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
+    component: metrics-api
+  name: metrics-api
+  namespace: {{.Values.namespace}}
+spec:
+  replicas: {{.Values.metricsAPI.replicas}}
+  selector:
+    matchLabels:
+      linkerd.io/extension: viz
+      component: metrics-api
+  template:
+    metadata:
+      annotations:
+        {{- if empty .Values.cliVersion }}
+        checksum/config: {{ include (print $.Template.BasePath "/metrics-api-rbac.yaml") . | sha256sum }}
+        {{- end }}
+        {{ include "partials.annotations.created-by" . }}
+        {{- with .Values.metricsAPI.proxy }}
+        {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+      labels:
+        linkerd.io/extension: viz
+        component: metrics-api
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+    spec:
+      {{- if .Values.tolerations -}}
+      {{- include "linkerd.tolerations" . | nindent 6 }}
+      {{- end -}}
+      {{- include "linkerd.node-selector" . | nindent 6 }}
+      {{- if .Values.enablePodAntiAffinity -}}
+      {{- $local := dict "component" "metrics-api" "label" "component" -}}
+      {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
+      {{- end }}
+      containers:
+      - args:
+        - -controller-namespace={{.Values.linkerdNamespace}}
+        - -log-level={{.Values.metricsAPI.logLevel | default .Values.defaultLogLevel}}
+        - -cluster-domain={{.Values.clusterDomain}}
+        {{- if .Values.prometheusUrl }}
+        - -prometheus-url={{.Values.prometheusUrl}}
+        {{- else if .Values.prometheus.enabled }}
+        - -prometheus-url=http://prometheus.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:9090
+        {{- else }}
+        {{ fail "Please enable `linkerd-prometheus` or provide `prometheusUrl` for the viz extension to function properly"}}
+        {{- end }}
+        image: {{.Values.metricsAPI.image.registry | default .Values.defaultRegistry}}/{{.Values.metricsAPI.image.name}}:{{.Values.metricsAPI.image.tag | default .Values.linkerdVersion}}
+        imagePullPolicy: {{.Values.metricsAPI.image.pullPolicy | default .Values.defaultImagePullPolicy}}
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9995
+          initialDelaySeconds: 10
+        name: metrics-api
+        ports:
+        - containerPort: 8085
+          name: http
+        - containerPort: 9995
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9995
+        {{- if .Values.metricsAPI.resources -}}
+        {{- include "partials.resources" .Values.metricsAPI.resources | nindent 8 }}
+        {{- end }}
+        securityContext:
+          runAsUser: {{.Values.metricsAPI.UID | default .Values.defaultUID}}
+      serviceAccountName: metrics-api
