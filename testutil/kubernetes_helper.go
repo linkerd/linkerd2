@@ -151,45 +151,6 @@ func (h *KubernetesHelper) Kubectl(stdin string, arg ...string) (string, error) 
 	return string(out), err
 }
 
-// getDeployments gets all deployments with a count of their ready replicas in
-// the specified namespace.
-func (h *KubernetesHelper) getDeployments(ctx context.Context, namespace string) (map[string]int, error) {
-	deploys, err := h.clientset.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	deployments := map[string]int{}
-	for _, deploy := range deploys.Items {
-		deployments[deploy.GetName()] = int(deploy.Status.ReadyReplicas)
-	}
-	return deployments, nil
-}
-
-// CheckDeployment checks that a deployment in a namespace contains the expected
-// number of replicas.
-func (h *KubernetesHelper) CheckDeployment(ctx context.Context, namespace string, deploymentName string, replicas int) error {
-	return h.retryFor(30*time.Second, func() error {
-		deploys, err := h.getDeployments(ctx, namespace)
-		if err != nil {
-			return err
-		}
-
-		count, ok := deploys[deploymentName]
-		if !ok {
-			return fmt.Errorf("Deployment [%s] in namespace [%s] not found",
-				deploymentName, namespace)
-		}
-
-		if count != replicas {
-			return fmt.Errorf("Expected deployment [%s] in namespace [%s] to have [%d] replicas, but found [%d]",
-				deploymentName, namespace, replicas, count)
-		}
-
-		return nil
-	})
-}
-
 // GetConfigUID returns the uid associated to the linkerd-config ConfigMap resource
 // in the given namespace
 func (h *KubernetesHelper) GetConfigUID(ctx context.Context, namespace string) (string, error) {
