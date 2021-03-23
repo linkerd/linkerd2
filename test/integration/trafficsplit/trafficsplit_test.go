@@ -170,10 +170,6 @@ func TestTrafficSplitCli(t *testing.T) {
 					testutil.AnnotatedError(t, "CheckPods timed-out", err)
 				}
 			}
-
-			if err := TestHelper.CheckDeployment(ctx, prefixedNs, deploy, 1); err != nil {
-				testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
-			}
 		}
 
 		t.Run("ensure traffic is sent to one backend only", func(t *testing.T) {

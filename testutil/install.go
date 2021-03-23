@@ -33,9 +33,6 @@ func TestResourcesPostInstall(namespace string, services []Service, deploys map[
 				AnnotatedFatal(t, "CheckPods timed-out", err)
 			}
 		}
-		if err := h.CheckDeployment(ctx, spec.Namespace, deploy, spec.Replicas); err != nil {
-			AnnotatedFatalf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
-		}
 	}
 }
 
