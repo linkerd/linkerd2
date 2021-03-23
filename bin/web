@@ -99,7 +99,7 @@ port-forward() {
   fi
 
   nc -z localhost "$3" || \
-    kubectl --namespace="$1" port-forward "$(get-pod $1 $2)" "$port_from:$port_to"
+    kubectl --namespace="$1" port-forward "$(get-pod "$1" "$2")" "$port_from:$port_to"
 }
 
 run() {
