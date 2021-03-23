@@ -34,21 +34,24 @@ func Inject(
 ) (*admissionv1beta1.AdmissionResponse, error) {
 	log.Debugf("request object bytes: %s", request.Object.Raw)
 
+	// Build the resource config based off the request metadata and kind of
+	// object. This is later used to build the injection report and generated
+	// patch.
 	valuesConfig, err := config.Values(pkgK8s.MountPathValuesConfig)
 	if err != nil {
 		return nil, err
 	}
-
 	namespace, err := api.NS().Lister().Get(request.Namespace)
 	if err != nil {
 		return nil, err
 	}
 	nsAnnotations := namespace.GetAnnotations()
-
 	resourceConfig := inject.NewResourceConfig(valuesConfig, inject.OriginWebhook).
 		WithOwnerRetriever(ownerRetriever(ctx, api, request.Namespace)).
 		WithNsAnnotations(nsAnnotations).
 		WithKind(request.Kind.Kind)
+
+	// Build the injection report.
 	report, err := resourceConfig.ParseMetaAndYAML(request.Object.Raw)
 	if err != nil {
 		return nil, err
@@ -60,9 +63,9 @@ func Inject(
 		Allowed: true,
 	}
 
-	configLabels := configToPrometheusLabels(resourceConfig)
+	// A resource will have a parent and owner kind only if it is pod.
 	var parent *runtime.Object
-	ownerKind := ""
+	var ownerKind string
 	if ownerRef := resourceConfig.GetOwnerRef(); ownerRef != nil {
 		objs, err := api.GetObjects(request.Namespace, ownerRef.Kind, ownerRef.Name, labels.Everything())
 		if err != nil {
@@ -74,9 +77,35 @@ func Inject(
 		}
 		ownerKind = strings.ToLower(ownerRef.Kind)
 	}
+
+	configLabels := configToPrometheusLabels(resourceConfig)
 	proxyInjectionAdmissionRequests.With(admissionRequestLabels(ownerKind, request.Namespace, report.InjectAnnotationAt, configLabels)).Inc()
 
-	if injectable, reasons := report.Injectable(); !injectable {
+	// If a namespace has the opaque ports annotation, resources should
+	// inherit it if they do not already have one themselves. An initial patch
+	// is created if there is an opaque annotation that is not already on the
+	// workload.
+	var patchJSON []byte
+	annotation, onWorkload := resourceConfig.GetOpaquePorts()
+	if annotation != "" && !onWorkload {
+		resourceConfig.AppendPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation, annotation)
+		patchJSON, err = resourceConfig.CreateAnnotationPatch(annotation)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// If the request is for a service and no annotation patch was generated,
+	// then it should be admitted.
+	if resourceConfig.IsService() && len(patchJSON) == 0 {
+		return admissionResponse, nil
+	}
+
+	// If no annotation patch was generated and the resource is not
+	// injectable, then it should be admitted after logging that injection was
+	// skipped.
+	injectable, reasons := report.Injectable()
+	if len(patchJSON) == 0 && !injectable {
 		var readableReasons, metricReasons string
 		metricReasons = strings.Join(reasons, ",")
 		for _, reason := range reasons {
@@ -92,23 +121,15 @@ func Inject(
 		return admissionResponse, nil
 	}
 
-	resourceConfig.AppendPodAnnotations(map[string]string{
-		pkgK8s.CreatedByAnnotation: fmt.Sprintf("linkerd/proxy-injector %s", version.Version),
-	})
-	var patchJSON []byte
-	if resourceConfig.IsService() {
-		patchJSON, err = resourceConfig.GetServicePatch()
-	} else {
+	// If the request is for a pod and it is injectable, then any annotations
+	// will be included in the generated pod patch.
+	if resourceConfig.IsPod() && injectable {
+		resourceConfig.AppendPodAnnotation(pkgK8s.CreatedByAnnotation, fmt.Sprintf("linkerd/proxy-injector %s", version.Version))
 		patchJSON, err = resourceConfig.GetPodPatch(true)
+		if err != nil {
+			return nil, err
+		}
 	}
-	if err != nil {
-		return nil, err
-	}
-
-	if len(patchJSON) == 0 {
-		return admissionResponse, nil
-	}
-
 	if parent != nil {
 		recorder.Event(*parent, v1.EventTypeNormal, eventTypeInjected, "Linkerd sidecar proxy injected")
 	}
