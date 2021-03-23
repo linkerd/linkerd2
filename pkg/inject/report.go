@@ -68,13 +68,13 @@ type Report struct {
 // from conf
 func newReport(conf *ResourceConfig) *Report {
 	var name string
-	if m := conf.workload.Meta; m != nil {
-		name = m.Name
-	} else if m := conf.pod.meta; m != nil {
-		name = m.Name
+	if conf.IsPod() {
+		name = conf.pod.meta.Name
 		if name == "" {
-			name = m.GenerateName
+			name = conf.pod.meta.GenerateName
 		}
+	} else if m := conf.workload.Meta; m != nil {
+		name = m.Name
 	}
 
 	report := &Report{

@@ -190,7 +190,7 @@ func TestGetPodPatch(t *testing.T) {
 	})
 }
 
-func TestGetServicePatch(t *testing.T) {
+func TestGetAnnotationPatch(t *testing.T) {
 	factory := fake.NewFactory(filepath.Join("fake", "data"))
 	nsWithOpaquePorts, err := factory.Namespace("namespace-with-opaque-ports.yaml")
 	if err != nil {
@@ -201,11 +201,19 @@ func TestGetServicePatch(t *testing.T) {
 		t.Fatalf("Unexpected error: %s", err)
 	}
 	t.Run("by checking patch annotations", func(t *testing.T) {
-		patchBytes, err := factory.FileContents("service.patch.json")
+		servicePatchBytes, err := factory.FileContents("annotation.patch.json")
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
-		patch, err := unmarshalPatch(patchBytes)
+		servicePatch, err := unmarshalPatch(servicePatchBytes)
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+		podPatchBytes, err := factory.FileContents("annotation.patch.json")
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+		podPatch, err := unmarshalPatch(podPatchBytes)
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
@@ -222,8 +230,8 @@ func TestGetServicePatch(t *testing.T) {
 				filename:           "service-without-opaque-ports.yaml",
 				ns:                 nsWithOpaquePorts,
 				conf:               confNsWithOpaquePorts(),
-				expectedPatchBytes: patchBytes,
-				expectedPatch:      patch,
+				expectedPatchBytes: servicePatchBytes,
+				expectedPatch:      servicePatch,
 			},
 			{
 				name:     "service with opaque ports and namespace with",
@@ -243,6 +251,26 @@ func TestGetServicePatch(t *testing.T) {
 				ns:       nsWithoutOpaquePorts,
 				conf:     confNsWithoutOpaquePorts(),
 			},
+			{
+				name:               "pod without opaque ports and namespace with",
+				filename:           "pod-without-opaque-ports.yaml",
+				ns:                 nsWithOpaquePorts,
+				conf:               confNsWithOpaquePorts(),
+				expectedPatchBytes: podPatchBytes,
+				expectedPatch:      podPatch,
+			},
+			{
+				name:     "pod with opaque ports and namespace with",
+				filename: "pod-with-opaque-ports.yaml",
+				ns:       nsWithOpaquePorts,
+				conf:     confNsWithOpaquePorts(),
+			},
+			{
+				name:     "pod with opaque ports and namespace without",
+				filename: "pod-with-opaque-ports.yaml",
+				ns:       nsWithoutOpaquePorts,
+				conf:     confNsWithoutOpaquePorts(),
+			},
 		}
 		for _, testCase := range testCases {
 			testCase := testCase // pin
@@ -259,9 +287,14 @@ func TestGetServicePatch(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				patchJSON, err := fullConf.GetServicePatch()
-				if err != nil {
-					t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
+				var patchJSON []byte
+				annotation, onWorkload := fullConf.GetOpaquePorts()
+				if annotation != "" && !onWorkload {
+					fullConf.AppendPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation, annotation)
+					patchJSON, err = fullConf.CreateAnnotationPatch(annotation)
+					if err != nil {
+						t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
+					}
 				}
 				if len(testCase.expectedPatchBytes) != 0 && len(patchJSON) == 0 {
 					t.Fatalf("There was no patch, but one was expected: %s", testCase.expectedPatchBytes)
