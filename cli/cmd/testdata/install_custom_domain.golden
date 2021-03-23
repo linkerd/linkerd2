@@ -163,44 +163,6 @@ metadata:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: l5d
 ---
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: linkerd-l5d-sp-validator
-  labels:
-    linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: l5d
-rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["list"]
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: linkerd-l5d-sp-validator
-  labels:
-    linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: l5d
-subjects:
-- kind: ServiceAccount
-  name: linkerd-sp-validator
-  namespace: l5d
-  apiGroup: ""
-roleRef:
-  kind: ClusterRole
-  name: linkerd-l5d-sp-validator
-  apiGroup: rbac.authorization.k8s.io
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-sp-validator
-  namespace: l5d
-  labels:
-    linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: l5d
----
 kind: Secret
 apiVersion: v1
 metadata:
