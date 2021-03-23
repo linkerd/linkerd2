@@ -62,10 +62,6 @@ func testProfiles(t *testing.T) {
 				testutil.AnnotatedError(t, "CheckPods timed-out", err)
 			}
 		}
-
-		if err := TestHelper.CheckDeployment(ctx, testNamespace, deploy, 1); err != nil {
-			testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
-		}
 	}
 
 	testCases := []testCase{

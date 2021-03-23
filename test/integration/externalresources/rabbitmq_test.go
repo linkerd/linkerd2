@@ -41,9 +41,6 @@ func TestRabbitMQDeploy(t *testing.T) {
 				testutil.AnnotatedError(t, "CheckPods timed-out %s", err)
 			}
 		}
-		if err := TestHelper.CheckDeployment(ctx, testNamespace, "rabbitmq", 1); err != nil {
-			testutil.AnnotatedErrorf(t, "CheckDeployment  timed-out", "Error validating deployment [%s]: \n%s", "rabbitmq", err)
-		}
 		// inject rabbitmq-client
 		stdout, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/rabbitmq-client.yaml")
 		if err != nil {
@@ -60,9 +57,6 @@ func TestRabbitMQDeploy(t *testing.T) {
 			} else {
 				testutil.AnnotatedError(t, "CheckPods timed-out %s", err)
 			}
-		}
-		if err := TestHelper.CheckDeployment(ctx, testNamespace, "rabbitmq-client", 1); err != nil {
-			testutil.AnnotatedErrorf(t, "CheckDeployment  timed-out", "Error validating deployment [%s]: \n%s", "rabbitmq", err)
 		}
 		// Verify client output
 		golden := "check.rabbitmq.golden"

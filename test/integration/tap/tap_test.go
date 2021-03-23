@@ -90,10 +90,6 @@ func TestCliTap(t *testing.T) {
 					testutil.AnnotatedError(t, "CheckPods timed-out", err)
 				}
 			}
-
-			if err := TestHelper.CheckDeployment(ctx, prefixedNs, deploy, 1); err != nil {
-				testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
-			}
 		}
 
 		t.Run("tap a deployment", func(t *testing.T) {
