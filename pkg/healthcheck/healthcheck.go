@@ -1342,6 +1342,32 @@ func (hc *HealthChecker) allCategories() []Category {
 						return nil
 					},
 				},
+				{
+					description: "data plane pods labels check",
+					hintAnchor:  "l5d-data-plane-pod-labels",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						pods, err := hc.GetDataPlanePods(ctx)
+						if err != nil {
+							return err
+						}
+
+						return checkMisconfiguredPodsLabels(pods)
+					},
+				},
+				{
+					description: "data plane services labels and annotations check",
+					hintAnchor:  "l5d-data-plane-services-labels-and-annotations",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						services, err := hc.GetServices(ctx)
+						if err != nil {
+							return err
+						}
+
+						return checkMisconfiguredServiceLabelsAndAnnotations(services)
+					},
+				},
 			},
 		},
 		{
@@ -2107,6 +2133,15 @@ func (hc *HealthChecker) GetDataPlanePods(ctx context.Context) ([]corev1.Pod, er
 	return podList.Items, nil
 }
 
+// GetServices returns all services within data plane namespace
+func (hc *HealthChecker) GetServices(ctx context.Context) ([]corev1.Service, error) {
+	svcList, err := hc.kubeAPI.CoreV1().Services(hc.DataPlaneNamespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return svcList.Items, nil
+}
+
 func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace(ctx context.Context) error {
 	ns, err := hc.kubeAPI.CoreV1().Namespaces().Get(ctx, "kube-system", metav1.GetOptions{})
 	if err != nil {
@@ -2517,6 +2552,104 @@ func CheckIfDataPlanePodsExist(pods []corev1.Pod) error {
 func containsProxy(pod corev1.Pod) bool {
 	for _, containerSpec := range pod.Spec.Containers {
 		if containerSpec.Name == k8s.ProxyContainerName {
+			return true
+		}
+	}
+	return false
+}
+
+var (
+	validAsLabelOnly = []string{
+		k8s.DefaultExportedServiceSelector,
+	}
+	validAsAnnotationOnly = []string{
+		k8s.ProxyInjectAnnotation,
+	}
+	validAsAnnotationPrefixOnly = []string{
+		k8s.ProxyConfigAnnotationsPrefix,
+		k8s.ProxyConfigAnnotationsPrefixAlpha,
+	}
+)
+
+func checkMisconfiguredPodsLabels(pods []corev1.Pod) error {
+	var invalid []string
+
+	for _, pod := range pods {
+		invalidLabels := getMisconfiguredLabels(pod.ObjectMeta)
+		if len(invalidLabels) > 0 {
+			invalid = append(invalid,
+				fmt.Sprintf("\t* pod %s/%s contains labels, which should be annotations: %s", pod.Namespace, pod.Name, strings.Join(invalidLabels, ", ")))
+		}
+	}
+
+	if len(invalid) > 0 {
+		return fmt.Errorf("Some labels on pods might be missconfigured:\n%s", strings.Join(invalid, "\n"))
+	}
+	return nil
+}
+
+func checkMisconfiguredServiceLabelsAndAnnotations(services []corev1.Service) error {
+	var invalid []string
+
+	for _, svc := range services {
+		invalidLabels := getMisconfiguredLabels(svc.ObjectMeta)
+		if len(invalidLabels) > 0 {
+			invalid = append(invalid,
+				fmt.Sprintf("\t* service %s/%s contains labels, which should be annotations: %s", svc.Namespace, svc.Name, strings.Join(invalidLabels, ", ")))
+		}
+	}
+
+	for _, svc := range services {
+		invalidAnns := getMisconfiguredAnnotations(svc.ObjectMeta)
+		if len(invalidAnns) > 0 {
+			invalid = append(invalid,
+				fmt.Sprintf("\t* service %s/%s contains annotations, which should be labels: %s", svc.Namespace, svc.Name, strings.Join(invalidAnns, ", ")))
+		}
+	}
+
+	if len(invalid) > 0 {
+		return fmt.Errorf("Some labels and annotations on services might be missconfigured:\n%s", strings.Join(invalid, "\n"))
+	}
+	return nil
+}
+
+func getMisconfiguredLabels(objectMeta metav1.ObjectMeta) []string {
+	var invalid []string
+
+	for label, _ := range objectMeta.Labels {
+		if hasAnyPrefix(label, validAsAnnotationPrefixOnly) ||
+			containsString(label, validAsAnnotationOnly) {
+			invalid = append(invalid, label)
+		}
+	}
+
+	return invalid
+}
+
+func getMisconfiguredAnnotations(objectMeta metav1.ObjectMeta) []string {
+	var invalid []string
+
+	for ann, _ := range objectMeta.Annotations {
+		if containsString(ann, validAsLabelOnly) {
+			invalid = append(invalid, ann)
+		}
+	}
+
+	return invalid
+}
+
+func hasAnyPrefix(str string, prefixes []string) bool {
+	for _, pref := range prefixes {
+		if strings.HasPrefix(str, pref) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsString(str string, collection []string) bool {
+	for _, e := range collection {
+		if str == e {
 			return true
 		}
 	}

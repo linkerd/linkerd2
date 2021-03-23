@@ -1898,6 +1898,143 @@ func TestValidateDataPlanePods(t *testing.T) {
 		}
 	})
 }
+
+func TestDataPlanePodLabels(t *testing.T) {
+
+	t.Run("Returns nil if pod labels are ok", func(t *testing.T) {
+		pods := []corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "emoji-d9c7866bb-7v74n",
+					Annotations: map[string]string{k8s.ProxyControlPortAnnotation: "3000"},
+					Labels:      map[string]string{"app": "test"},
+				},
+			},
+		}
+
+		err := checkMisconfiguredPodsLabels(pods)
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+	})
+
+	t.Run("Returns error if any labels are misconfigured", func(t *testing.T) {
+		for _, testCase := range []struct {
+			description string
+			pods        []corev1.Pod
+		}{
+			{
+				description: "config as label",
+				pods: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:   "emoji-d9c7866bb-7v74n",
+							Labels: map[string]string{k8s.ProxyControlPortAnnotation: "3000"},
+						},
+					},
+				},
+			},
+			{
+				description: "alpha config as label",
+				pods: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:   "emoji-d9c7866bb-7v74n",
+							Labels: map[string]string{k8s.ProxyConfigAnnotationsPrefixAlpha + "/alpha-setting": "3000"},
+						},
+					},
+				},
+			},
+			{
+				description: "inject annotation as label",
+				pods: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:   "emoji-d9c7866bb-7v74n",
+							Labels: map[string]string{k8s.ProxyInjectAnnotation: "enable"},
+						},
+					},
+				},
+			},
+		} {
+			t.Run(testCase.description, func(t *testing.T) {
+				err := checkMisconfiguredPodsLabels(testCase.pods)
+				if err == nil {
+					t.Fatal("Expected error, got nothing")
+				}
+			})
+		}
+	})
+}
+
+func TestServicesLabelsAndAnnotations(t *testing.T) {
+
+	t.Run("Returns nil if service labels and annotations are ok", func(t *testing.T) {
+		services := []corev1.Service{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "emoji-d9c7866bb-7v74n",
+					Annotations: map[string]string{k8s.ProxyControlPortAnnotation: "3000"},
+					Labels:      map[string]string{"app": "test", k8s.DefaultExportedServiceSelector: "true"},
+				},
+			},
+		}
+
+		err := checkMisconfiguredServiceLabelsAndAnnotations(services)
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+	})
+
+	t.Run("Returns error if service labels or annotation misconfigured", func(t *testing.T) {
+		for _, testCase := range []struct {
+			description string
+			services    []corev1.Service
+		}{
+			{
+				description: "config as label",
+				services: []corev1.Service{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:   "emoji-d9c7866bb-7v74n",
+							Labels: map[string]string{k8s.ProxyControlPortAnnotation: "3000"},
+						},
+					},
+				},
+			},
+			{
+				description: "alpha config as label",
+				services: []corev1.Service{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:   "emoji-d9c7866bb-7v74n",
+							Labels: map[string]string{k8s.ProxyConfigAnnotationsPrefixAlpha + "/alpha-setting": "3000"},
+						},
+					},
+				},
+			},
+			{
+				description: "mirror as annotations",
+				services: []corev1.Service{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:        "emoji-d9c7866bb-7v74n",
+							Annotations: map[string]string{k8s.DefaultExportedServiceSelector: "true"},
+						},
+					},
+				},
+			},
+		} {
+			t.Run(testCase.description, func(t *testing.T) {
+				err := checkMisconfiguredServiceLabelsAndAnnotations(testCase.services)
+				if err == nil {
+					t.Fatal("Expected error, got nothing")
+				}
+			})
+		}
+	})
+}
+
 func TestLinkerdPreInstallGlobalResourcesChecks(t *testing.T) {
 	hc := NewHealthChecker(
 		[]CategoryID{LinkerdPreInstallGlobalResourcesChecks},
