@@ -73,7 +73,7 @@ func TestResourcesPostInstall(t *testing.T) {
 
 	expectedDeployments := testutil.LinkerdDeployReplicasEdge
 	if !TestHelper.ExternalPrometheus() {
-		expectedDeployments["prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1, Containers: []string{}}
+		expectedDeployments["prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1}
 	}
 	// Upgrade Case
 	if TestHelper.UpgradeHelmFromVersion() != "" {
@@ -86,9 +86,6 @@ func TestResourcesPostInstall(t *testing.T) {
 			} else {
 				testutil.AnnotatedError(t, "CheckPods timed-out", err)
 			}
-		}
-		if err := TestHelper.CheckDeployment(ctx, spec.Namespace, deploy, spec.Replicas); err != nil {
-			testutil.AnnotatedFatalf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
 		}
 	}
 }
