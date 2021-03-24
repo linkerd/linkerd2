@@ -49,7 +49,7 @@ linkerd upgrade.`,
 
 			// Check if the CLI version matches with that of the server
 			clientVersion := version.Version
-			serverVersion := defaultVersionString
+			var serverVersion string
 			publicClient, err := public.NewExternalClient(cmd.Context(), controlPlaneNamespace, k8sAPI)
 			if err != nil {
 				return err
