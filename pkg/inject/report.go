@@ -52,6 +52,7 @@ type Report struct {
 	InjectDisabledReason         string
 	InjectAnnotationAt           string
 	Annotatable                  bool
+	Annotated                    bool
 	AutomountServiceAccountToken bool
 
 	// Uninjected consists of two boolean flags to indicate if a proxy and
@@ -84,7 +85,7 @@ func newReport(conf *ResourceConfig) *Report {
 		AutomountServiceAccountToken: true,
 	}
 
-	if conf.pod.meta != nil && conf.pod.spec != nil {
+	if conf.HasPodTemplate() {
 		report.InjectDisabled, report.InjectDisabledReason, report.InjectAnnotationAt = report.disabledByAnnotation(conf)
 		report.HostNetwork = conf.pod.spec.HostNetwork
 		report.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
@@ -101,7 +102,7 @@ func newReport(conf *ResourceConfig) *Report {
 		report.UnsupportedResource = true
 	}
 
-	if conf.IsPod() || conf.IsService() || conf.IsNamespace() {
+	if conf.HasPodTemplate() || conf.IsService() || conf.IsNamespace() {
 		report.Annotatable = true
 	}
 

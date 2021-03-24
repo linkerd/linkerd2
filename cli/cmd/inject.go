@@ -29,7 +29,7 @@ const (
 	hostNetworkDesc                  = "pods do not use host networking"
 	sidecarDesc                      = "pods do not have a 3rd party proxy or initContainer already injected"
 	injectDisabledDesc               = "pods are not annotated to disable injection"
-	unsupportedDesc                  = "at least one resource injected"
+	unsupportedDesc                  = "at least one resource can be injected or annotated"
 	udpDesc                          = "pod specs do not include UDP ports"
 	automountServiceAccountTokenDesc = "pods do not have automountServiceAccountToken set to \"false\""
 	slash                            = "/"
@@ -170,21 +170,28 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 
 	reports := []inject.Report{*report}
 
-	if conf.IsService() {
-		opaquePortsAnnotations := map[string]string{}
-		if opaquePorts, ok := rt.overrideAnnotations[k8s.ProxyOpaquePortsAnnotation]; ok {
-			opaquePortsAnnotations[k8s.ProxyOpaquePortsAnnotation] = opaquePorts
-			b, err := conf.AnnotateService(opaquePortsAnnotations)
-			return b, reports, err
+	if report.IsAnnotatable() {
+		if conf.IsService() {
+			opaquePorts, ok := rt.overrideAnnotations[k8s.ProxyOpaquePortsAnnotation]
+			if ok {
+				annotations := map[string]string{k8s.ProxyOpaquePortsAnnotation: opaquePorts}
+				bytes, err = conf.AnnotateService(annotations)
+				report.Annotated = true
+			}
+			return bytes, reports, err
 		}
-		return bytes, reports, nil
+		if rt.allowNsInject && conf.IsNamespace() {
+			bytes, err = conf.AnnotateNamespace(rt.overrideAnnotations)
+			report.Annotated = true
+			return bytes, reports, err
+		}
+		if conf.HasPodTemplate() {
+			conf.AppendPodAnnotations(rt.overrideAnnotations)
+			report.Annotated = true
+		}
 	}
 
-	if rt.allowNsInject && conf.IsNamespace() {
-		b, err := conf.AnnotateNamespace(rt.overrideAnnotations)
-		return b, reports, err
-	}
-	if b, _ := report.Injectable(); !b {
+	if ok, _ := report.Injectable(); !ok {
 		if errs := report.ThrowInjectError(); len(errs) > 0 {
 			return bytes, reports, fmt.Errorf("failed to inject %s%s%s: %v", report.Kind, slash, report.Name, concatErrors(errs, ", "))
 		}
@@ -199,10 +206,6 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	} else {
 		// flag the auto-injector to inject the proxy, regardless of the namespace annotation
 		conf.AppendPodAnnotation(k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled)
-	}
-
-	if len(rt.overrideAnnotations) > 0 {
-		conf.AppendPodAnnotations(rt.overrideAnnotations)
 	}
 
 	patchJSON, err := conf.GetPodPatch(rt.injectProxy)
@@ -236,7 +239,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 
 func (resourceTransformerInject) generateReport(reports []inject.Report, output io.Writer) {
 	injected := []inject.Report{}
-	annotated := []string{}
+	annotatable := []string{}
 	hostNetwork := []string{}
 	sidecar := []string{}
 	udp := []string{}
@@ -250,7 +253,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 		}
 
 		if r.IsAnnotatable() {
-			annotated = append(annotated, r.ResName())
+			annotatable = append(annotatable, r.ResName())
 		}
 
 		if r.HostNetwork {
@@ -305,7 +308,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, injectDisabledDesc)))
 	}
 
-	if len(injected) == 0 && len(annotated) == 0 {
+	if len(injected) == 0 && len(annotatable) == 0 {
 		output.Write([]byte(fmt.Sprintf("%s no supported objects found\n", warnStatus)))
 		warningsPrinted = true
 	} else if verbose {
@@ -334,14 +337,14 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	}
 
 	for _, r := range reports {
-		if r.IsAnnotatable() {
+		if r.Annotated {
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" annotated\n", r.Kind, r.Name)))
 		}
 		ok, _ := r.Injectable()
 		if ok {
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" injected\n", r.Kind, r.Name)))
 		}
-		if !r.IsAnnotatable() && !ok {
+		if !r.Annotated && !ok {
 			if r.Kind != "" {
 				output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.Kind, r.Name)))
 			} else {

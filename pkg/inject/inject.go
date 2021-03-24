@@ -931,9 +931,14 @@ func (conf *ResourceConfig) IsService() bool {
 	return strings.ToLower(conf.workload.metaType.Kind) == k8s.Service
 }
 
-// IsPod checks if a given config is a workload of Kind pod
+// IsPod checks if a given config is a workload of Kind pod.
 func (conf *ResourceConfig) IsPod() bool {
 	return strings.ToLower(conf.workload.metaType.Kind) == k8s.Pod
+}
+
+// HasPodTemplate checks if a given config has a pod template spec.
+func (conf *ResourceConfig) HasPodTemplate() bool {
+	return conf.pod.meta != nil && conf.pod.spec != nil
 }
 
 // AnnotateNamespace annotates a namespace resource config with `annotations`.
