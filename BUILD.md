@@ -372,9 +372,11 @@ To develop with a webpack dev server:
     - `webpack-dev-server` on :8080 to manage rebuilding/reloading of the
       javascript.
     - `controller` is port-forwarded from the Kubernetes cluster via `kubectl`
-      on :8085
+      on :8185
     - `grafana` is port-forwarded from the Kubernetes cluster via `kubectl` on
       :3000
+    - `metrica-api` is port-forwarded from the Kubernets cluster via `kubectl`
+      on :8085
 
 2. Go to [http://localhost:7777](http://localhost:7777) to see everything
    running.

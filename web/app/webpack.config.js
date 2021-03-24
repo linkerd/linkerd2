@@ -4,6 +4,7 @@ const path = require('path');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const LodashModuleReplacementPlugin = require('lodash-webpack-plugin');
+const ESLintPlugin = require('eslint-webpack-plugin');
 
 // uncomment here and in plugins to analyze webpack bundle size
 // const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
@@ -32,16 +33,7 @@ module.exports = {
       {
         test: /\.jsx?$/,
         exclude: /node_modules/,
-        use: [
-          'babel-loader',
-          {
-            loader: 'eslint-loader',
-            options: {
-              fix: process.env.NODE_ENV === 'development',
-              emitWarning: process.env.NODE_ENV === 'development'
-            }
-          }
-        ]
+        use: ['babel-loader']
       },
       {
         test: /\.css$/,
@@ -65,6 +57,12 @@ module.exports = {
   },
   plugins: [
     // new BundleAnalyzerPlugin(), // uncomment to analyze bundle size
+    new ESLintPlugin({
+      extensions: ['.jsx', '.js'],
+      fix: process.env.NODE_ENV === 'development',
+      emitWarning: process.env.NODE_ENV === 'development',
+      files: ['js', 'test']
+    }),
     new CleanWebpackPlugin({
       protectWebpackAssets: false
     }),
@@ -84,6 +82,6 @@ module.exports = {
       // the comment on the first line to be for the entire file and then
       // nothing loads.
       minify: false
-    }),
+    })
   ],
 };

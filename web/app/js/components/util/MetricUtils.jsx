@@ -96,10 +96,10 @@ const getTcpStats = row => {
     return {};
   } else {
     const seconds = timeWindowSeconds(row.timeWindow);
-    const readBytes = parseInt(row.tcpStats.readBytesTotal, 0);
-    const writeBytes = parseInt(row.tcpStats.writeBytesTotal, 0);
+    const readBytes = parseInt(row.tcpStats.readBytesTotal, 10);
+    const writeBytes = parseInt(row.tcpStats.writeBytesTotal, 10);
     return {
-      openConnections: parseInt(row.tcpStats.openConnections, 0),
+      openConnections: parseInt(row.tcpStats.openConnections, 10),
       readBytes,
       writeBytes,
       readRate: seconds === 0 ? null : readBytes / seconds,
