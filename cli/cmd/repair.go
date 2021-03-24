@@ -69,7 +69,7 @@ linkerd upgrade.`,
 				if twoPointEightOrNineRegex.Match([]byte(serverVersion)) {
 					helperVersion = "stable-2.9.4"
 				}
-				return fmt.Errorf("Please run the repair command with a CLI version as that of the server i.e %s\nRun `LINKERD2_VERSION=\"%s\"; curl -sL https://run.linkerd.io/install | sh` to install the server version of the CLI", serverVersion, helperVersion)
+				return fmt.Errorf("Please run the repair command with a CLI version as that of the server.\nRun `LINKERD2_VERSION=\"%s\"; curl -sL https://run.linkerd.io/install | sh` to install the server version of the CLI", helperVersion)
 			}
 
 			// Load the stored config
