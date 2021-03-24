@@ -51,6 +51,7 @@ type Report struct {
 	InjectDisabled               bool
 	InjectDisabledReason         string
 	InjectAnnotationAt           string
+	Annotatable                  bool
 	AutomountServiceAccountToken bool
 
 	// Uninjected consists of two boolean flags to indicate if a proxy and
@@ -84,7 +85,7 @@ func newReport(conf *ResourceConfig) *Report {
 	}
 
 	if conf.pod.meta != nil && conf.pod.spec != nil {
-		report.InjectDisabled, report.InjectDisabledReason, report.InjectAnnotationAt = report.disableByAnnotation(conf)
+		report.InjectDisabled, report.InjectDisabledReason, report.InjectAnnotationAt = report.disabledByAnnotation(conf)
 		report.HostNetwork = conf.pod.spec.HostNetwork
 		report.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
 		report.UDP = checkUDPPorts(conf.pod.spec)
@@ -98,6 +99,10 @@ func newReport(conf *ResourceConfig) *Report {
 		}
 	} else if report.Kind != k8s.Service && report.Kind != k8s.Namespace {
 		report.UnsupportedResource = true
+	}
+
+	if conf.IsPod() || conf.IsService() || conf.IsNamespace() {
+		report.Annotatable = true
 	}
 
 	return report
@@ -136,6 +141,11 @@ func (r *Report) Injectable() (bool, []string) {
 	return true, nil
 }
 
+// IsAnnotatable TODO
+func (r *Report) IsAnnotatable() bool {
+	return r.Annotatable
+}
+
 func checkUDPPorts(t *v1.PodSpec) bool {
 	// Check for ports with `protocol: UDP`, which will not be routed by Linkerd
 	for _, container := range t.Containers {
@@ -148,9 +158,10 @@ func checkUDPPorts(t *v1.PodSpec) bool {
 	return false
 }
 
-// disabledByAnnotation checks annotations for both workload, namespace and returns
-// if disabled, Inject Disabled reason and the resource where that annotation was present
-func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string, string) {
+// disabledByAnnotation checks the workload and namespace for the annotation
+// that disables injection. It returns if it is disabled, why it is disabled,
+// and the location where the annotation was present.
+func (r *Report) disabledByAnnotation(conf *ResourceConfig) (bool, string, string) {
 	// truth table of the effects of the inject annotation:
 	//
 	// origin  | namespace | pod      | inject?  | return

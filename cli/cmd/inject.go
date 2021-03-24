@@ -181,7 +181,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	}
 
 	if rt.allowNsInject && conf.IsNamespace() {
-		b, err := conf.InjectNamespace(rt.overrideAnnotations)
+		b, err := conf.AnnotateNamespace(rt.overrideAnnotations)
 		return b, reports, err
 	}
 	if b, _ := report.Injectable(); !b {
