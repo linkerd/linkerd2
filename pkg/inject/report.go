@@ -142,7 +142,7 @@ func (r *Report) Injectable() (bool, []string) {
 	return true, nil
 }
 
-// IsAnnotatable TODO
+// IsAnnotatable returns true if the resource for a report can be annotated.
 func (r *Report) IsAnnotatable() bool {
 	return r.Annotatable
 }

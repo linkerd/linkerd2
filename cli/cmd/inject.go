@@ -170,25 +170,23 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 
 	reports := []inject.Report{*report}
 
-	if report.IsAnnotatable() {
-		if conf.IsService() {
-			opaquePorts, ok := rt.overrideAnnotations[k8s.ProxyOpaquePortsAnnotation]
-			if ok {
-				annotations := map[string]string{k8s.ProxyOpaquePortsAnnotation: opaquePorts}
-				bytes, err = conf.AnnotateService(annotations)
-				report.Annotated = true
-			}
-			return bytes, reports, err
-		}
-		if rt.allowNsInject && conf.IsNamespace() {
-			bytes, err = conf.AnnotateNamespace(rt.overrideAnnotations)
-			report.Annotated = true
-			return bytes, reports, err
-		}
-		if conf.HasPodTemplate() {
-			conf.AppendPodAnnotations(rt.overrideAnnotations)
+	if conf.IsService() {
+		opaquePorts, ok := rt.overrideAnnotations[k8s.ProxyOpaquePortsAnnotation]
+		if ok {
+			annotations := map[string]string{k8s.ProxyOpaquePortsAnnotation: opaquePorts}
+			bytes, err = conf.AnnotateService(annotations)
 			report.Annotated = true
 		}
+		return bytes, reports, err
+	}
+	if rt.allowNsInject && conf.IsNamespace() {
+		bytes, err = conf.AnnotateNamespace(rt.overrideAnnotations)
+		report.Annotated = true
+		return bytes, reports, err
+	}
+	if conf.HasPodTemplate() {
+		conf.AppendPodAnnotations(rt.overrideAnnotations)
+		report.Annotated = true
 	}
 
 	if ok, _ := report.Injectable(); !ok {
@@ -239,7 +237,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 
 func (resourceTransformerInject) generateReport(reports []inject.Report, output io.Writer) {
 	injected := []inject.Report{}
-	annotatable := []string{}
+	annotatable := false
 	hostNetwork := []string{}
 	sidecar := []string{}
 	udp := []string{}
@@ -253,7 +251,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 		}
 
 		if r.IsAnnotatable() {
-			annotatable = append(annotatable, r.ResName())
+			annotatable = true
 		}
 
 		if r.HostNetwork {
@@ -308,7 +306,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, injectDisabledDesc)))
 	}
 
-	if len(injected) == 0 && len(annotatable) == 0 {
+	if len(injected) == 0 && !annotatable {
 		output.Write([]byte(fmt.Sprintf("%s no supported objects found\n", warnStatus)))
 		warningsPrinted = true
 	} else if verbose {
