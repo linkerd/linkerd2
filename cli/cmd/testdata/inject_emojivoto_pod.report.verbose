@@ -6,5 +6,6 @@
 √ pod specs do not include UDP ports
 √ pods do not have automountServiceAccountToken set to "false"
 
+pod "vote-bot" annotated
 pod "vote-bot" injected
 

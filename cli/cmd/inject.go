@@ -236,6 +236,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 
 func (resourceTransformerInject) generateReport(reports []inject.Report, output io.Writer) {
 	injected := []inject.Report{}
+	annotated := []string{}
 	hostNetwork := []string{}
 	sidecar := []string{}
 	udp := []string{}
@@ -246,6 +247,10 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	for _, r := range reports {
 		if b, _ := r.Injectable(); b {
 			injected = append(injected, r)
+		}
+
+		if r.IsAnnotatable() {
+			annotated = append(annotated, r.ResName())
 		}
 
 		if r.HostNetwork {
@@ -300,7 +305,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, injectDisabledDesc)))
 	}
 
-	if len(injected) == 0 {
+	if len(injected) == 0 && len(annotated) == 0 {
 		output.Write([]byte(fmt.Sprintf("%s no supported objects found\n", warnStatus)))
 		warningsPrinted = true
 	} else if verbose {
@@ -329,9 +334,14 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	}
 
 	for _, r := range reports {
-		if b, _ := r.Injectable(); b {
+		if r.IsAnnotatable() {
+			output.Write([]byte(fmt.Sprintf("%s \"%s\" annotated\n", r.Kind, r.Name)))
+		}
+		ok, _ := r.Injectable()
+		if ok {
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" injected\n", r.Kind, r.Name)))
-		} else {
+		}
+		if !r.IsAnnotatable() && !ok {
 			if r.Kind != "" {
 				output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.Kind, r.Name)))
 			} else {
