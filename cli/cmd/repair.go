@@ -3,12 +3,16 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
@@ -41,6 +45,31 @@ linkerd upgrade.`,
 			_, err = k8sAPI.CoreV1().Secrets(controlPlaneNamespace).Get(cmd.Context(), "linkerd-config-overrides", metav1.GetOptions{})
 			if err == nil {
 				return errors.New("secret/linkerd-config-overrides already exists. If you need to regenerate this resource, please delete it before proceeding")
+			}
+
+			// Check if the CLI version matches with that of the server
+			clientVersion := version.Version
+			serverVersion := defaultVersionString
+			publicClient, err := public.NewExternalClient(cmd.Context(), controlPlaneNamespace, k8sAPI)
+			if err != nil {
+				return err
+			}
+			serverVersion, err = healthcheck.GetServerVersion(cmd.Context(), publicClient)
+			if err != nil {
+				return err
+			}
+
+			if serverVersion != clientVersion {
+				twoPointEightOrNineRegex, err := regexp.Compile("stable-2.[8-9].*")
+				if err != nil {
+					return err
+				}
+				helperVersion := serverVersion
+				// Use 2.9.4 CLI version for all 2.9 versions
+				if twoPointEightOrNineRegex.Match([]byte(serverVersion)) {
+					helperVersion = "stable-2.9.4"
+				}
+				return fmt.Errorf("Please run the repair command with a CLI version as that of the server i.e %s\nRun `LINKERD2_VERSION=\"%s\"; curl -sL https://run.linkerd.io/install | sh` to install the server version of the CLI", serverVersion, helperVersion)
 			}
 
 			// Load the stored config
