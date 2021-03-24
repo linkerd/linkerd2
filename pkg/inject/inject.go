@@ -494,7 +494,6 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
-		// If annotations not present previously
 		if conf.workload.Meta.Annotations == nil {
 			conf.workload.Meta.Annotations = map[string]string{}
 		}
@@ -538,6 +537,9 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			}
 		}
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
+		if conf.pod.meta.Annotations == nil {
+			conf.pod.meta.Annotations = map[string]string{}
+		}
 
 	case *corev1.Service:
 		if err := yaml.Unmarshal(bytes, v); err != nil {
@@ -557,16 +559,15 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 	}
 
-	if conf.pod.meta.Annotations == nil {
-		conf.pod.meta.Annotations = map[string]string{}
-	}
-
 	return nil
 }
 
 func (conf *ResourceConfig) complete(template *corev1.PodTemplateSpec) {
 	conf.pod.spec = &template.Spec
 	conf.pod.meta = &template.ObjectMeta
+	if conf.pod.meta.Annotations == nil {
+		conf.pod.meta.Annotations = map[string]string{}
+	}
 }
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
