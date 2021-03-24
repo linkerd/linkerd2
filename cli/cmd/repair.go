@@ -60,16 +60,16 @@ linkerd upgrade.`,
 			}
 
 			if serverVersion != clientVersion {
-				twoPointEightOrNineRegex, err := regexp.Compile("stable-2.[8-9].*")
+				versionRegex, err := regexp.Compile("stable-2.[8-9].*")
 				if err != nil {
 					return err
 				}
 				helperVersion := serverVersion
 				// Use 2.9.4 CLI version for all 2.9 versions
-				if twoPointEightOrNineRegex.Match([]byte(serverVersion)) {
+				if versionRegex.Match([]byte(serverVersion)) {
 					helperVersion = "stable-2.9.4"
 				}
-				return fmt.Errorf("Please run the repair command with a CLI version as that of the server.\nRun `LINKERD2_VERSION=\"%s\"; curl -sL https://run.linkerd.io/install | sh` to install the server version of the CLI", helperVersion)
+				return fmt.Errorf("Please run the repair command with a CLI that has the same version as the control plane.\nRun `LINKERD2_VERSION=\"%s\"; curl -sL https://run.linkerd.io/install | sh` to install the server version of the CLI", helperVersion)
 			}
 
 			// Load the stored config
