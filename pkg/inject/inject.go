@@ -311,15 +311,15 @@ func (conf *ResourceConfig) GetPodPatch(injectProxy bool) ([]byte, error) {
 // caller should add the annotation. The caller should not add the annotation
 // if the resource already has its own.
 func (conf *ResourceConfig) AnnotateOpaquePorts() (string, bool) {
-	annotation, ok := conf.pod.meta.Annotations[k8s.ProxyOpaquePortsAnnotation]
+	_, ok := conf.pod.meta.Annotations[k8s.ProxyOpaquePortsAnnotation]
 	if ok {
 		return "", false
 	}
-	annotation, ok = conf.workload.Meta.Annotations[k8s.ProxyOpaquePortsAnnotation]
+	_, ok = conf.workload.Meta.Annotations[k8s.ProxyOpaquePortsAnnotation]
 	if ok {
 		return "", false
 	}
-	annotation, ok = conf.nsAnnotations[k8s.ProxyOpaquePortsAnnotation]
+	annotation, ok := conf.nsAnnotations[k8s.ProxyOpaquePortsAnnotation]
 	if ok {
 		return annotation, true
 	}
