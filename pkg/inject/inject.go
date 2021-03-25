@@ -313,11 +313,11 @@ func (conf *ResourceConfig) GetPodPatch(injectProxy bool) ([]byte, error) {
 func (conf *ResourceConfig) AnnotateOpaquePorts() (string, bool) {
 	annotation, ok := conf.pod.meta.Annotations[k8s.ProxyOpaquePortsAnnotation]
 	if ok {
-		return annotation, false
+		return "", false
 	}
 	annotation, ok = conf.workload.Meta.Annotations[k8s.ProxyOpaquePortsAnnotation]
 	if ok {
-		return annotation, false
+		return "", false
 	}
 	annotation, ok = conf.nsAnnotations[k8s.ProxyOpaquePortsAnnotation]
 	if ok {
