@@ -86,10 +86,10 @@ func Inject(
 	// created if there is an opaque annotation that is not already on the
 	// workload.
 	var patchJSON []byte
-	annotation, onWorkload := resourceConfig.GetOpaquePorts()
-	if annotation != "" && !onWorkload {
-		resourceConfig.AppendPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation, annotation)
-		patchJSON, err = resourceConfig.CreateAnnotationPatch(annotation)
+	opaquePorts, ok := resourceConfig.AnnotateOpaquePorts()
+	if ok {
+		resourceConfig.AppendPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation, opaquePorts)
+		patchJSON, err = resourceConfig.CreateAnnotationPatch(opaquePorts)
 		if err != nil {
 			return nil, err
 		}

@@ -306,21 +306,22 @@ func (conf *ResourceConfig) GetPodPatch(injectProxy bool) ([]byte, error) {
 	return res, nil
 }
 
-// GetOpaquePorts returns two values. The first value is the the opaque ports
-// value if it is present on the workload or the namespace. The second value
-// is true if it was on the workload and false otherwise.
-func (conf *ResourceConfig) GetOpaquePorts() (string, bool) {
+// AnnotateOpaquePorts returns two values. The first value is the the opaque
+// ports annotation value. The second is used to decide whether or not the
+// caller should add the annotation. The caller should not add the annotation
+// if the resource already has its own.
+func (conf *ResourceConfig) AnnotateOpaquePorts() (string, bool) {
 	annotation, ok := conf.pod.meta.Annotations[k8s.ProxyOpaquePortsAnnotation]
 	if ok {
-		return annotation, true
+		return annotation, false
 	}
 	annotation, ok = conf.workload.Meta.Annotations[k8s.ProxyOpaquePortsAnnotation]
 	if ok {
-		return annotation, true
+		return annotation, false
 	}
 	annotation, ok = conf.nsAnnotations[k8s.ProxyOpaquePortsAnnotation]
 	if ok {
-		return annotation, false
+		return annotation, true
 	}
 	return "", false
 }

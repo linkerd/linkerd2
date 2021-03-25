@@ -288,10 +288,10 @@ func TestGetAnnotationPatch(t *testing.T) {
 					t.Fatal(err)
 				}
 				var patchJSON []byte
-				annotation, onWorkload := fullConf.GetOpaquePorts()
-				if annotation != "" && !onWorkload {
-					fullConf.AppendPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation, annotation)
-					patchJSON, err = fullConf.CreateAnnotationPatch(annotation)
+				opaquePorts, ok := fullConf.AnnotateOpaquePorts()
+				if ok {
+					fullConf.AppendPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation, opaquePorts)
+					patchJSON, err = fullConf.CreateAnnotationPatch(opaquePorts)
 					if err != nil {
 						t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 					}
