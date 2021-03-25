@@ -606,6 +606,7 @@ func (rcsw *RemoteClusterServiceWatcher) processEvents(ctx context.Context) {
 				{
 					if (rcsw.eventsQueue.NumRequeues(event) < rcsw.requeueLimit) && !done {
 						rcsw.log.Errorf("Error processing %s (will retry): %s", event, e)
+						rcsw.requeueLimit++
 						rcsw.eventsQueue.Add(event)
 					} else {
 						rcsw.log.Errorf("Error processing %s (giving up): %s", event, e)
