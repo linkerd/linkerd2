@@ -66,5 +66,7 @@ linkerd-data-plane
 √ data plane proxies are ready
 √ data plane is up-to-date
 √ data plane and cli versions match
+√ data plane pods labels check
+√ data plane services labels and annotations check
 
 Status check results are √

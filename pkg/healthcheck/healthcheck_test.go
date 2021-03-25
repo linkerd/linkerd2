@@ -1919,7 +1919,7 @@ func TestDataPlanePodLabels(t *testing.T) {
 	})
 
 	t.Run("Returns error if any labels are misconfigured", func(t *testing.T) {
-		for _, testCase := range []struct {
+		for _, tc := range []struct {
 			description string
 			pods        []corev1.Pod
 		}{
@@ -1957,8 +1957,9 @@ func TestDataPlanePodLabels(t *testing.T) {
 				},
 			},
 		} {
-			t.Run(testCase.description, func(t *testing.T) {
-				err := checkMisconfiguredPodsLabels(testCase.pods)
+			tc := tc //pin
+			t.Run(tc.description, func(t *testing.T) {
+				err := checkMisconfiguredPodsLabels(tc.pods)
 				if err == nil {
 					t.Fatal("Expected error, got nothing")
 				}
@@ -1987,7 +1988,7 @@ func TestServicesLabelsAndAnnotations(t *testing.T) {
 	})
 
 	t.Run("Returns error if service labels or annotation misconfigured", func(t *testing.T) {
-		for _, testCase := range []struct {
+		for _, tc := range []struct {
 			description string
 			services    []corev1.Service
 		}{
@@ -2025,8 +2026,9 @@ func TestServicesLabelsAndAnnotations(t *testing.T) {
 				},
 			},
 		} {
-			t.Run(testCase.description, func(t *testing.T) {
-				err := checkMisconfiguredServiceLabelsAndAnnotations(testCase.services)
+			tc := tc //pin
+			t.Run(tc.description, func(t *testing.T) {
+				err := checkMisconfiguredServiceLabelsAndAnnotations(tc.services)
 				if err == nil {
 					t.Fatal("Expected error, got nothing")
 				}

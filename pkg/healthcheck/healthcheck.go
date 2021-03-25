@@ -2616,7 +2616,7 @@ func checkMisconfiguredServiceLabelsAndAnnotations(services []corev1.Service) er
 func getMisconfiguredLabels(objectMeta metav1.ObjectMeta) []string {
 	var invalid []string
 
-	for label, _ := range objectMeta.Labels {
+	for label := range objectMeta.Labels {
 		if hasAnyPrefix(label, validAsAnnotationPrefixOnly) ||
 			containsString(label, validAsAnnotationOnly) {
 			invalid = append(invalid, label)
@@ -2629,7 +2629,7 @@ func getMisconfiguredLabels(objectMeta metav1.ObjectMeta) []string {
 func getMisconfiguredAnnotations(objectMeta metav1.ObjectMeta) []string {
 	var invalid []string
 
-	for ann, _ := range objectMeta.Annotations {
+	for ann := range objectMeta.Annotations {
 		if containsString(ann, validAsLabelOnly) {
 			invalid = append(invalid, ann)
 		}
