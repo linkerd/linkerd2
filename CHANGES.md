@@ -1,5 +1,21 @@
 # Changes
 
+## edge-21.3.4
+
+This release fixes some issues around publishing of CLI binary
+for Apple Silicon M1 Chips. This release also includes some fixes and
+improvements to the dashboard, destination, and the CLI.
+
+* Fixed an issue where the topology graph in the dashboard was no longer
+  draggable
+* Updated the IP Watcher in destination to ignore pods in "Terminating" state
+  (thanks @Wenliang-CHEN!)
+* Added `installNamespace` toggle in the jaeger extension's install.
+  (thanks @jijeesh!)
+* Updated `healthcheck` pkg to have `hintBaseURL` configurable, useful
+  for external extensions using that pkg
+* Added multi-arch support for RabbitMQ integration tests (thanks @barkardk!)
+
 ## edge-21.3.3
 
 This release includes various bug fixes and improvements to the CLI, the
