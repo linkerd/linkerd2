@@ -36,6 +36,7 @@
 - [Nordstrom](https://nordstrom.com/)
 - [Novolabs](https://novolabs.com)
 - [Paybase](https://paybase.io/)
+- [Personio](https://www.personio.com/)
 - [PlayStudios Asia](https://www.playstudios.asia)
 - [PlexTrac](https://plextrac.com)
 - [PriceKinetics (GVC Australia)](https://www.pricekinetics.com.au/)
