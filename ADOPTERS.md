@@ -41,6 +41,7 @@
 - [PriceKinetics (GVC Australia)](https://www.pricekinetics.com.au/)
 - [Projector](https://projector.com)
 - [Purdue University Global](https://www.purdueglobal.edu/)
+- [Search365](https://search365.ai/)
 - [StackPulse](https://stackpulse.com)
 - [Studyo](https://studyo.co)
 - [Sue](https://sue.nl)
