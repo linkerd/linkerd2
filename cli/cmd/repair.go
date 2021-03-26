@@ -18,6 +18,10 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+var (
+	versionRegex = regexp.MustCompile("stable-2.[8-9].*")
+)
+
 // newCmdRepair creates a new cobra command `repair` which re-creates the
 // linkerd-config-overrides secret if it has been deleted.
 func newCmdRepair() *cobra.Command {
@@ -60,10 +64,6 @@ linkerd upgrade.`,
 			}
 
 			if serverVersion != clientVersion {
-				versionRegex, err := regexp.Compile("stable-2.[8-9].*")
-				if err != nil {
-					return err
-				}
 				helperVersion := serverVersion
 				// Use 2.9.4 CLI version for all 2.9 versions
 				if versionRegex.Match([]byte(serverVersion)) {
