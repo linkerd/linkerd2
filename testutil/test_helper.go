@@ -55,9 +55,8 @@ type helm struct {
 
 // DeploySpec is used to hold information about what deploys we should verify during testing
 type DeploySpec struct {
-	Namespace  string
-	Replicas   int
-	Containers []string
+	Namespace string
+	Replicas  int
 }
 
 // Service is used to hold information about a Service we should verify during testing
@@ -69,13 +68,13 @@ type Service struct {
 // LinkerdDeployReplicasEdge is a map containing the number of replicas for each Deployment and the main
 // container name, in the current code-base
 var LinkerdDeployReplicasEdge = map[string]DeploySpec{
-	"linkerd-controller":     {"linkerd", 1, []string{"public-api"}},
-	"linkerd-destination":    {"linkerd", 1, []string{"destination"}},
-	"tap":                    {"linkerd-viz", 1, []string{"tap"}},
-	"grafana":                {"linkerd-viz", 1, []string{}},
-	"linkerd-identity":       {"linkerd", 1, []string{"identity"}},
-	"web":                    {"linkerd-viz", 1, []string{"web"}},
-	"linkerd-proxy-injector": {"linkerd", 1, []string{"proxy-injector"}},
+	"linkerd-controller":     {"linkerd", 1},
+	"linkerd-destination":    {"linkerd", 1},
+	"tap":                    {"linkerd-viz", 1},
+	"grafana":                {"linkerd-viz", 1},
+	"linkerd-identity":       {"linkerd", 1},
+	"web":                    {"linkerd-viz", 1},
+	"linkerd-proxy-injector": {"linkerd", 1},
 }
 
 // LinkerdDeployReplicasStable is a map containing the number of replicas for each Deployment and the main
@@ -138,7 +137,7 @@ func NewGenericTestHelper(
 // MulticlusterDeployReplicas is a map containing the number of replicas for each Deployment and the main
 // container name for multicluster components
 var MulticlusterDeployReplicas = map[string]DeploySpec{
-	"linkerd-gateway": {"linkerd-multicluster", 1, []string{"nginx"}},
+	"linkerd-gateway": {"linkerd-multicluster", 1},
 }
 
 // NewTestHelper creates a new instance of TestHelper for the current test run.

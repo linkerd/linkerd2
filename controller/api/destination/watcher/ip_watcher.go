@@ -229,7 +229,7 @@ func (iw *IPWatcher) getIndexedPods(indexName string, podIP string) ([]*corev1.P
 	pods := make([]*corev1.Pod, 0)
 	for _, obj := range objs {
 		pod := obj.(*corev1.Pod)
-		if podTerminated(pod) {
+		if !podReceivingTraffic(pod) {
 			continue
 		}
 		pods = append(pods, pod)
@@ -237,9 +237,12 @@ func (iw *IPWatcher) getIndexedPods(indexName string, podIP string) ([]*corev1.P
 	return pods, nil
 }
 
-func podTerminated(pod *corev1.Pod) bool {
+func podReceivingTraffic(pod *corev1.Pod) bool {
 	phase := pod.Status.Phase
-	return phase == corev1.PodSucceeded || phase == corev1.PodFailed
+	podTerminated := phase == corev1.PodSucceeded || phase == corev1.PodFailed
+	podTerminating := pod.DeletionTimestamp != nil
+
+	return !podTerminating && !podTerminated
 }
 
 func (iw *IPWatcher) addService(obj interface{}) {
@@ -365,9 +368,7 @@ func (iw *IPWatcher) getOrNewServiceSubscriptions(clusterIP string) *serviceSubs
 						continue
 					}
 
-					// Ignore terminated pods,
-					// their IPs can be reused for new Running pods
-					if podTerminated(pod) {
+					if !podReceivingTraffic(pod) {
 						continue
 					}
 
