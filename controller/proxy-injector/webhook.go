@@ -76,19 +76,60 @@ func Inject(
 	configLabels := configToPrometheusLabels(resourceConfig)
 	proxyInjectionAdmissionRequests.With(admissionRequestLabels(ownerKind, request.Namespace, report.InjectAnnotationAt, configLabels)).Inc()
 
-	// If a resource's namespace has the opaque ports annotation but the
-	// resource does not, then it should be added. When admitting a pod, this
-	// annotation needs to be added to the pod template metadata.
+	// If the pod's namespace has the opaque ports annotation but the pod does
+	// not, then it should be added to the pod template metadata.
 	opaquePorts, opaquePortsOk := resourceConfig.AnnotateOpaquePorts()
 	if resourceConfig.IsPod() && opaquePortsOk {
 		resourceConfig.AppendPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation, opaquePorts)
 	}
 
-	// If the resource is a pod that is not injectable and does not need the
-	// opaque ports annotation added, it should be admitted without changes
-	// after logging that injection was skipped.
+	// If the resource is injectable then admit it after creating a patch that
+	// adds the proxy-init and proxy containers.
 	injectable, reasons := report.Injectable()
-	if resourceConfig.IsPod() && !injectable && !opaquePortsOk {
+	if injectable {
+		resourceConfig.AppendPodAnnotation(pkgK8s.CreatedByAnnotation, fmt.Sprintf("linkerd/proxy-injector %s", version.Version))
+		patchJSON, err := resourceConfig.GetPodPatch(true)
+		if err != nil {
+			return nil, err
+		}
+		if parent != nil {
+			recorder.Event(*parent, v1.EventTypeNormal, eventTypeInjected, "Linkerd sidecar proxy injected")
+		}
+		log.Infof("injection patch generated for: %s", report.ResName())
+		log.Debugf("injection patch: %s", patchJSON)
+		proxyInjectionAdmissionResponses.With(admissionResponseLabels(ownerKind, request.Namespace, "false", "", report.InjectAnnotationAt, configLabels)).Inc()
+		patchType := admissionv1beta1.PatchTypeJSONPatch
+		return &admissionv1beta1.AdmissionResponse{
+			UID:       request.UID,
+			Allowed:   true,
+			PatchType: &patchType,
+			Patch:     patchJSON,
+		}, nil
+	}
+
+	// If the resource is not injectable but does need the opaque ports
+	// annotation added, then admit it after creating a patch that adds the
+	// annotation.
+	if opaquePortsOk {
+		patchJSON, err := resourceConfig.CreateAnnotationPatch(opaquePorts)
+		if err != nil {
+			return nil, err
+		}
+		log.Infof("annotation patch generated for: %s", report.ResName())
+		log.Debugf("annotation patch: %s", patchJSON)
+		proxyInjectionAdmissionResponses.With(admissionResponseLabels(ownerKind, request.Namespace, "false", "", report.InjectAnnotationAt, configLabels)).Inc()
+		patchType := admissionv1beta1.PatchTypeJSONPatch
+		return &admissionv1beta1.AdmissionResponse{
+			UID:       request.UID,
+			Allowed:   true,
+			PatchType: &patchType,
+			Patch:     patchJSON,
+		}, nil
+	}
+
+	// The resource should be admitted without a patch. If it is a pod, create
+	// an event to record that injection was skipped.
+	if resourceConfig.IsPod() {
 		var readableReasons, metricReasons string
 		metricReasons = strings.Join(reasons, ",")
 		for _, reason := range reasons {
@@ -106,49 +147,6 @@ func Inject(
 			Allowed: true,
 		}, nil
 	}
-
-	if injectable {
-		resourceConfig.AppendPodAnnotation(pkgK8s.CreatedByAnnotation, fmt.Sprintf("linkerd/proxy-injector %s", version.Version))
-		patchJSON, err := resourceConfig.GetPodPatch(true)
-		if err != nil {
-			return nil, err
-		}
-		if parent != nil {
-			recorder.Event(*parent, v1.EventTypeNormal, eventTypeInjected, "Linkerd sidecar proxy injected")
-		}
-		log.Infof("patch generated for: %s", report.ResName())
-		log.Debugf("patch: %s", patchJSON)
-		proxyInjectionAdmissionResponses.With(admissionResponseLabels(ownerKind, request.Namespace, "false", "", report.InjectAnnotationAt, configLabels)).Inc()
-		patchType := admissionv1beta1.PatchTypeJSONPatch
-		return &admissionv1beta1.AdmissionResponse{
-			UID:       request.UID,
-			Allowed:   true,
-			PatchType: &patchType,
-			Patch:     patchJSON,
-		}, nil
-	}
-
-	// If the resource is not injectable but does need the opaque ports
-	// annotation added, then create and return a patch that adds it.
-	if opaquePortsOk {
-		patchJSON, err := resourceConfig.CreateAnnotationPatch(opaquePorts)
-		if err != nil {
-			return nil, err
-		}
-		log.Infof("patch generated for: %s", report.ResName())
-		log.Debugf("patch: %s", patchJSON)
-		proxyInjectionAdmissionResponses.With(admissionResponseLabels(ownerKind, request.Namespace, "false", "", report.InjectAnnotationAt, configLabels)).Inc()
-		patchType := admissionv1beta1.PatchTypeJSONPatch
-		return &admissionv1beta1.AdmissionResponse{
-			UID:       request.UID,
-			Allowed:   true,
-			PatchType: &patchType,
-			Patch:     patchJSON,
-		}, nil
-	}
-
-	// The resource was not injectable and did not need an annotation patch so
-	// admit it without changes.
 	return &admissionv1beta1.AdmissionResponse{
 		UID:     request.UID,
 		Allowed: true,
