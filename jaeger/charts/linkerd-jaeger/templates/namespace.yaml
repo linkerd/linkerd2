@@ -1,3 +1,4 @@
+{{- if (.Values.installNamespace) -}}
 ---
 kind: Namespace
 apiVersion: v1
@@ -7,3 +8,4 @@ metadata:
     linkerd.io/extension: jaeger
   annotations:
     linkerd.io/inject: enabled
+{{ end -}}

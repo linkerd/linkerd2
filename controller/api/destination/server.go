@@ -204,7 +204,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			fqn = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
 		} else {
 			// If the IP does not map to a service, check if it maps to a pod
-			pod, err := s.ips.GetPod(ip.String())
+			pod, err := s.ips.GetPod(ip.String(), port)
 			if err != nil {
 				return err
 			}
