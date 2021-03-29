@@ -55,7 +55,7 @@ dev() {
     esac
   done
 
-  cd "$ROOT"/web/app && yarn webpack-dev-server --port "$DEV_PORT" &
+  cd "$ROOT"/web/app && yarn webpack serve --port "$DEV_PORT" &
   run ''
 }
 
