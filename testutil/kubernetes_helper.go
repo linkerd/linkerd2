@@ -242,6 +242,15 @@ func (h *KubernetesHelper) CheckService(ctx context.Context, namespace string, s
 	})
 }
 
+// GetService gets a service that exists in a namespace.
+func (h *KubernetesHelper) GetService(ctx context.Context, namespace string, serviceName string) (*corev1.Service, error) {
+	service, err := h.clientset.CoreV1().Services(namespace).Get(ctx, serviceName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return service, nil
+}
+
 // GetPods returns all pods with the given labels
 func (h *KubernetesHelper) GetPods(ctx context.Context, namespace string, podLabels map[string]string) ([]corev1.Pod, error) {
 	podList, err := h.clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
