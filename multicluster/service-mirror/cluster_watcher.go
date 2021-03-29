@@ -148,7 +148,7 @@ func NewRemoteClusterServiceWatcher(
 			"cluster":    clusterName,
 			"apiAddress": cfg.Host,
 		}),
-		eventsQueue:  workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		eventsQueue:  workqueue.NewRateLimitingQueue(workqueue.DefaultItemBasedRateLimiter()),
 		requeueLimit: requeueLimit,
 		repairPeriod: repairPeriod,
 	}, nil
@@ -485,7 +485,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 		localService, err := rcsw.localAPIClient.Svc().Lister().Services(service.Namespace).Get(localName)
 		if err != nil {
 			if kerrors.IsNotFound(err) {
-				rcsw.eventsQueue.Add(&RemoteServiceCreated{
+				rcsw.eventsQueue.AddRateLimited(&RemoteServiceCreated{
 					service: service,
 				})
 				return nil
@@ -497,7 +497,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 		if ok && lastMirroredRemoteVersion != service.ResourceVersion {
 			endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(service.Namespace).Get(localName)
 			if err == nil {
-				rcsw.eventsQueue.Add(&RemoteServiceUpdated{
+				rcsw.eventsQueue.AddRateLimited(&RemoteServiceUpdated{
 					localService:   localService,
 					localEndpoints: endpoints,
 					remoteUpdate:   service,
@@ -514,7 +514,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 			_, isMirroredRes := localSvc.Labels[consts.MirroredResourceLabel]
 			clusterName := localSvc.Labels[consts.RemoteClusterNameLabel]
 			if isMirroredRes && (clusterName == rcsw.link.TargetClusterName) {
-				rcsw.eventsQueue.Add(&RemoteServiceDeleted{
+				rcsw.eventsQueue.AddRateLimited(&RemoteServiceDeleted{
 					Name:      service.Name,
 					Namespace: service.Namespace,
 				})
@@ -539,7 +539,7 @@ func (rcsw *RemoteClusterServiceWatcher) getMirrorServices() ([]*corev1.Service,
 
 func (rcsw *RemoteClusterServiceWatcher) handleOnDelete(service *corev1.Service) {
 	if rcsw.isExportedService(service) {
-		rcsw.eventsQueue.Add(&RemoteServiceDeleted{
+		rcsw.eventsQueue.AddRateLimited(&RemoteServiceDeleted{
 			Name:      service.Name,
 			Namespace: service.Namespace,
 		})
@@ -605,8 +605,9 @@ func (rcsw *RemoteClusterServiceWatcher) processEvents(ctx context.Context) {
 			case RetryableError:
 				{
 					if (rcsw.eventsQueue.NumRequeues(event) < rcsw.requeueLimit) && !done {
+						rcsw.log.Infof("Requeues: %d, Limit: %d for event %s", rcsw.eventsQueue.NumRequeues(event), rcsw.requeueLimit, event)
 						rcsw.log.Errorf("Error processing %s (will retry): %s", event, e)
-						rcsw.eventsQueue.Add(event)
+						rcsw.eventsQueue.AddRateLimited(event)
 					} else {
 						rcsw.log.Errorf("Error processing %s (giving up): %s", event, e)
 						rcsw.eventsQueue.Forget(event)
@@ -627,11 +628,11 @@ func (rcsw *RemoteClusterServiceWatcher) processEvents(ctx context.Context) {
 // Start starts watching the remote cluster
 func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 	rcsw.remoteAPIClient.Sync(rcsw.stopper)
-	rcsw.eventsQueue.Add(&OrphanedServicesGcTriggered{})
+	rcsw.eventsQueue.AddRateLimited(&OrphanedServicesGcTriggered{})
 	rcsw.remoteAPIClient.Svc().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(svc interface{}) {
-				rcsw.eventsQueue.Add(&OnAddCalled{svc.(*corev1.Service)})
+				rcsw.eventsQueue.AddRateLimited(&OnAddCalled{svc.(*corev1.Service)})
 			},
 			DeleteFunc: func(obj interface{}) {
 				service, ok := obj.(*corev1.Service)
@@ -647,10 +648,10 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 						return
 					}
 				}
-				rcsw.eventsQueue.Add(&OnDeleteCalled{service})
+				rcsw.eventsQueue.AddRateLimited(&OnDeleteCalled{service})
 			},
 			UpdateFunc: func(old, new interface{}) {
-				rcsw.eventsQueue.Add(&OnUpdateCalled{new.(*corev1.Service)})
+				rcsw.eventsQueue.AddRateLimited(&OnUpdateCalled{new.(*corev1.Service)})
 			},
 		},
 	)
@@ -659,7 +660,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 	// We need to issue a RepairEndpoints immediately to populate the gateway
 	// mirror endpoints.
 	ev := RepairEndpoints{}
-	rcsw.eventsQueue.Add(&ev)
+	rcsw.eventsQueue.AddRateLimited(&ev)
 
 	go func() {
 		ticker := time.NewTicker(rcsw.repairPeriod)
@@ -667,7 +668,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 			select {
 			case <-ticker.C:
 				ev := RepairEndpoints{}
-				rcsw.eventsQueue.Add(&ev)
+				rcsw.eventsQueue.AddRateLimited(&ev)
 			case <-rcsw.stopper:
 				return
 			}
@@ -681,7 +682,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 func (rcsw *RemoteClusterServiceWatcher) Stop(cleanupState bool) {
 	close(rcsw.stopper)
 	if cleanupState {
-		rcsw.eventsQueue.Add(&ClusterUnregistered{})
+		rcsw.eventsQueue.AddRateLimited(&ClusterUnregistered{})
 	}
 	rcsw.eventsQueue.ShutDown()
 }
