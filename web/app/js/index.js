@@ -99,7 +99,6 @@ class App extends React.Component {
   }
 }
 
-
 function AppHTML() {
   const theme = createMuiTheme(dashboardTheme);
 
@@ -207,6 +206,5 @@ function AppHTML() {
     </React.Fragment>
   );
 }
-
 
 ReactDOM.render(<App />, appMain);
