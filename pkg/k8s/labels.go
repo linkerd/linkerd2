@@ -236,6 +236,10 @@ const (
 	// configured for the Pod
 	ProxyWaitBeforeExitSecondsAnnotation = ProxyConfigAnnotationsPrefixAlpha + "/proxy-wait-before-exit-seconds"
 
+	// AwaitProxy can be used to force the application to wait for the proxy
+	// to be ready.
+	AwaitProxy = ProxyConfigAnnotationsPrefix + "/await-proxy"
+
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.
 	IdentityModeDefault = "default"

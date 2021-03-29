@@ -105,6 +105,9 @@ proxy:
   # - PostgreSQL (5432) server-first
   # - Memcached (11211) clients do not issue any preamble, which breaks detection
   opaquePorts: "25,443,587,3306,5432,11211"
+  #  -- If set, the application container will not start until the proxy is
+  # ready
+  awaitProxy: false
 
 # proxy-init configuration
 proxyInit:

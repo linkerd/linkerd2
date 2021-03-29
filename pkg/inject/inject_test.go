@@ -64,6 +64,7 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxyOutboundConnectTimeout:                  "6000ms",
 							k8s.ProxyInboundConnectTimeout:                   "600ms",
 							k8s.ProxyOpaquePortsAnnotation:                   "4320-4325,3306",
+							k8s.AwaitProxy:                                   "true",
 						},
 					},
 					Spec: corev1.PodSpec{},
@@ -104,6 +105,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Proxy.OutboundConnectTimeout = "6000ms"
 				values.Proxy.InboundConnectTimeout = "600ms"
 				values.Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
+				values.Proxy.AwaitProxy = true
 				return values
 			},
 		},
@@ -145,6 +147,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				k8s.ProxyOutboundConnectTimeout:           "6000ms",
 				k8s.ProxyInboundConnectTimeout:            "600ms",
 				k8s.ProxyOpaquePortsAnnotation:            "4320-4325,3306",
+				k8s.AwaitProxy:                            "true",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -185,6 +188,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Proxy.OutboundConnectTimeout = "6000ms"
 				values.Proxy.InboundConnectTimeout = "600ms"
 				values.Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
+				values.Proxy.AwaitProxy = true
 				return values
 			},
 		},

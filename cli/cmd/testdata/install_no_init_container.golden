@@ -951,6 +951,7 @@ data:
           - disabled
     prometheusUrl: ""
     proxy:
+      awaitProxy: false
       capabilities: null
       disableIdentity: false
       enableExternalProfiles: false

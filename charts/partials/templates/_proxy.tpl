@@ -119,14 +119,22 @@ securityContext:
   readOnlyRootFilesystem: true
   runAsUser: {{.Values.proxy.uid}}
 terminationMessagePolicy: FallbackToLogsOnError
-{{- if .Values.proxy.waitBeforeExitSeconds }}
+{{- if or (.Values.proxy.awaitProxy) (.Values.proxy.waitBeforeExitSeconds) }}
 lifecycle:
+{{- if .Values.proxy.awaitProxy }}
+  postStart:
+    exec:
+      command:
+      - /usr/lib/linkerd/linkerd-await
+{{- end }}
+{{- if .Values.proxy.waitBeforeExitSeconds }}
   preStop:
     exec:
       command:
         - /bin/bash
         - -c
         - sleep {{.Values.proxy.waitBeforeExitSeconds}}
+{{- end }}
 {{- end }}
 {{- if or (not .Values.proxy.disableIdentity) (.Values.proxy.saMountPath) }}
 volumeMounts:

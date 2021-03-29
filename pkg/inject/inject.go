@@ -882,6 +882,13 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 	if override, ok := annotations[k8s.DebugImagePullPolicyAnnotation]; ok {
 		values.DebugContainer.Image.PullPolicy = override
 	}
+
+	if override, ok := annotations[k8s.AwaitProxy]; ok {
+		value, err := strconv.ParseBool(override)
+		if err == nil {
+			values.Proxy.AwaitProxy = value
+		}
+	}
 }
 
 // GetOverriddenConfiguration returns a map of the overridden proxy annotations
