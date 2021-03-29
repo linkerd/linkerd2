@@ -78,7 +78,7 @@ func Inject(
 
 	// If the pod's namespace has the opaque ports annotation but the pod does
 	// not, then it should be added to the pod template metadata.
-	opaquePorts, opaquePortsOk := resourceConfig.AnnotateOpaquePorts()
+	opaquePorts, opaquePortsOk := resourceConfig.GetOpaquePorts()
 	if resourceConfig.IsPod() && opaquePortsOk {
 		resourceConfig.AppendPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation, opaquePorts)
 	}

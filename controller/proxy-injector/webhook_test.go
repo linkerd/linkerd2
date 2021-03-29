@@ -288,7 +288,7 @@ func TestGetAnnotationPatch(t *testing.T) {
 					t.Fatal(err)
 				}
 				var patchJSON []byte
-				opaquePorts, ok := fullConf.AnnotateOpaquePorts()
+				opaquePorts, ok := fullConf.GetOpaquePorts()
 				if ok {
 					fullConf.AppendPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation, opaquePorts)
 					patchJSON, err = fullConf.CreateAnnotationPatch(opaquePorts)
