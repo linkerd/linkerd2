@@ -244,7 +244,7 @@ const (
 
 	// ProxyAwait can be used to force the application to wait for the proxy
 	// to be ready.
-	ProxyAwait = ProxyConfigAnnotationsPrefix + "/await-proxy"
+	ProxyAwait = ProxyConfigAnnotationsPrefix + "/proxy-await"
 
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.
