@@ -884,10 +884,10 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 	}
 
 	if override, ok := annotations[k8s.ProxyAwait]; ok {
-		if override != k8s.Enabled && override == k8s.Disabled {
-			log.Warnf("unrecognized value used for the %s annotation, valid values are [%s, %s]", k8s.ProxyAwait, k8s.Enabled, k8s.Disabled)
-		} else {
+		if override == k8s.Enabled || override == k8s.Disabled {
 			values.Proxy.Await = override == k8s.Enabled
+		} else {
+			log.Warnf("unrecognized value used for the %s annotation, valid values are: [%s, %s]", k8s.ProxyAwait, k8s.Enabled, k8s.Disabled)
 		}
 	}
 }
