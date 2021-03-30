@@ -97,6 +97,9 @@ proxy:
   # hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks)
   # for more info on container lifecycle hooks.
   waitBeforeExitSeconds: 0
+  #  -- If set, the application container will not start until the proxy is
+  # ready
+  await: false
   requireIdentityOnInboundPorts: ""
   # -- Default set of opaque ports
   # - SMTP (25,587) server-first
@@ -105,9 +108,6 @@ proxy:
   # - PostgreSQL (5432) server-first
   # - Memcached (11211) clients do not issue any preamble, which breaks detection
   opaquePorts: "25,443,587,3306,5432,11211"
-  #  -- If set, the application container will not start until the proxy is
-  # ready
-  awaitProxy: false
 
 # proxy-init configuration
 proxyInit:

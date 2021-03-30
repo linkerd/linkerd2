@@ -610,7 +610,7 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 	values.Proxy.Resources.Memory.Request = "10Mi"
 	values.Proxy.Resources.Memory.Limit = "50Mi"
 	values.Proxy.WaitBeforeExitSeconds = 10
-	values.Proxy.AwaitProxy = true
+	values.Proxy.Await = true
 
 	expectedOverrides := map[string]string{
 		k8s.ProxyIgnoreInboundPortsAnnotation:  "8500-8505",
@@ -630,7 +630,7 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 		k8s.ProxyMemoryRequestAnnotation:          "10Mi",
 		k8s.ProxyMemoryLimitAnnotation:            "50Mi",
 		k8s.ProxyWaitBeforeExitSecondsAnnotation:  "10",
-		k8s.AwaitProxy:                            "true",
+		k8s.ProxyAwait:                            "true",
 	}
 
 	overrides := getOverrideAnnotations(values, baseValues)

@@ -81,6 +81,12 @@ const (
 	// Namespace that this proxy belongs to.
 	WorkloadNamespaceLabel = Prefix + "/workload-ns"
 
+	// Enabled is used by annotations whose valid values include "enabled".
+	Enabled = "enabled"
+
+	// Disabled is used by annotations whose valid values incluce "disabled".
+	Disabled = "disabled"
+
 	/*
 	 * Annotations
 	 */
@@ -99,12 +105,12 @@ const (
 
 	// ProxyInjectAnnotation controls whether or not a pod should be injected
 	// when set on a pod spec. When set on a namespace spec, it applies to all
-	// pods in the namespace. Supported values are "enabled" or "disabled"
+	// pods in the namespace. Supported values are Enabled or Disabled
 	ProxyInjectAnnotation = Prefix + "/inject"
 
 	// ProxyInjectEnabled is assigned to the ProxyInjectAnnotation annotation to
 	// enable injection for a pod or namespace.
-	ProxyInjectEnabled = "enabled"
+	ProxyInjectEnabled = Enabled
 
 	// ProxyInjectIngress is assigned to the ProxyInjectAnnotation annotation to
 	// enable injection in ingress mode for a pod.
@@ -112,7 +118,7 @@ const (
 
 	// ProxyInjectDisabled is assigned to the ProxyInjectAnnotation annotation to
 	// disable injection for a pod or namespace.
-	ProxyInjectDisabled = "disabled"
+	ProxyInjectDisabled = Disabled
 
 	// IdentityModeAnnotation controls how a pod participates
 	// in service identity.
@@ -236,9 +242,9 @@ const (
 	// configured for the Pod
 	ProxyWaitBeforeExitSecondsAnnotation = ProxyConfigAnnotationsPrefixAlpha + "/proxy-wait-before-exit-seconds"
 
-	// AwaitProxy can be used to force the application to wait for the proxy
+	// ProxyAwait can be used to force the application to wait for the proxy
 	// to be ready.
-	AwaitProxy = ProxyConfigAnnotationsPrefix + "/await-proxy"
+	ProxyAwait = ProxyConfigAnnotationsPrefix + "/await-proxy"
 
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.
@@ -246,7 +252,7 @@ const (
 
 	// IdentityModeDisabled is assigned to IdentityModeAnnotation to
 	// disable the proxy from participating in automatic identity.
-	IdentityModeDisabled = "disabled"
+	IdentityModeDisabled = Disabled
 
 	/*
 	 * Component Names

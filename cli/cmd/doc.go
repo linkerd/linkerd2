@@ -229,8 +229,8 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "The proxy sidecar will stay alive for at least the given period before receiving SIGTERM signal from Kubernetes but no longer than pod's `terminationGracePeriodSeconds`. If not provided, it will be defaulted to `0`",
 		},
 		{
-			Name:        k8s.AwaitProxy,
-			Description: "The application container will not start until the proxy is ready",
+			Name:        k8s.ProxyAwait,
+			Description: "The application container will not start until the proxy is ready; accepted values are `enabled` and `disabled`",
 		},
 	}
 }

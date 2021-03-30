@@ -883,10 +883,11 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		values.DebugContainer.Image.PullPolicy = override
 	}
 
-	if override, ok := annotations[k8s.AwaitProxy]; ok {
-		value, err := strconv.ParseBool(override)
-		if err == nil {
-			values.Proxy.AwaitProxy = value
+	if override, ok := annotations[k8s.ProxyAwait]; ok {
+		if override != k8s.Enabled && override == k8s.Disabled {
+			log.Warnf("unrecognized value used for the %s annotation, valid values are [%s, %s]", k8s.ProxyAwait, k8s.Enabled, k8s.Disabled)
+		} else {
+			values.Proxy.Await = override == k8s.Enabled
 		}
 	}
 }

@@ -110,7 +110,7 @@ type (
 		OutboundConnectTimeout        string           `json:"outboundConnectTimeout"`
 		InboundConnectTimeout         string           `json:"inboundConnectTimeout"`
 		OpaquePorts                   string           `json:"opaquePorts"`
-		AwaitProxy                    bool             `json:"awaitProxy"`
+		Await                         bool             `json:"await"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container

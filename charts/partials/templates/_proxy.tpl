@@ -119,9 +119,9 @@ securityContext:
   readOnlyRootFilesystem: true
   runAsUser: {{.Values.proxy.uid}}
 terminationMessagePolicy: FallbackToLogsOnError
-{{- if or (.Values.proxy.awaitProxy) (.Values.proxy.waitBeforeExitSeconds) }}
+{{- if or (.Values.proxy.await) (.Values.proxy.waitBeforeExitSeconds) }}
 lifecycle:
-{{- if .Values.proxy.awaitProxy }}
+{{- if .Values.proxy.await }}
   postStart:
     exec:
       command:
