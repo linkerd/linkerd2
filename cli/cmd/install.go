@@ -307,9 +307,6 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 		return err
 	}
 
-	t := time.Now().Add(10 * time.Minute).UTC()
-	values.HeartbeatSchedule = fmt.Sprintf("%d %d * * * ", t.Minute(), t.Hour())
-
 	return render(w, values, stage, options)
 }
 
