@@ -148,8 +148,7 @@ func startDocker(testNum int, wd string, testWorkRootDir string, tempCNINetDir s
 	if _, ok := os.LookupEnv(cniConfName); ok {
 		args = append(args, "-e", cniConfName)
 	}
-	args = append(args, dockerImage)
-	args = append(args, "install-cni.sh")
+	args = append(args, dockerImage, "install-cni.sh")
 
 	// Create a temporary log file to write docker command error log.
 	errFile, err := os.Create(errFileName)

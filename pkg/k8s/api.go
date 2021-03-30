@@ -208,7 +208,7 @@ func GetPodStatus(pod corev1.Pod) string {
 			continue
 		case container.State.Terminated != nil:
 			// initialization is failed
-			if len(container.State.Terminated.Reason) == 0 {
+			if container.State.Terminated.Reason == "" {
 				if container.State.Terminated.Signal != 0 {
 					reason = fmt.Sprintf("Init:Signal:%d", container.State.Terminated.Signal)
 				} else {

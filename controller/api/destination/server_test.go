@@ -112,6 +112,15 @@ status:
   phase: Failed
   podIP: 172.17.0.13`,
 		`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name2-4
+  namespace: ns
+  deletionTimestamp: 2021-01-01T00:00:00Z
+status:
+  podIP: 172.17.0.13`,
+		`
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:

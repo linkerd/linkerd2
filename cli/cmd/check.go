@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/linkerd/linkerd2/cli/flag"
 	jaegerCmd "github.com/linkerd/linkerd2/jaeger/cmd"
 	mcCmd "github.com/linkerd/linkerd2/multicluster/cmd"
@@ -19,6 +20,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	vizHealthCheck "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	valuespkg "helm.sh/helm/v3/pkg/cli/values"
@@ -251,6 +253,9 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 		fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
 	}
 
+	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	spin.Writer = wout
+
 	for i, ns := range namespaces {
 		if opts.output != healthcheck.JSONOutput && i < len(namespaces) {
 			// add a new line to space out each check output
@@ -283,18 +288,23 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 					Category:    healthcheck.CategoryID(extensionCmd),
 					Description: fmt.Sprintf("Linkerd extension command %s exists", extensionCmd),
 					Err:         err,
-					HintAnchor:  "extensions",
+					HintURL:     healthcheck.DefaultHintBaseURL + "extensions",
 					Warning:     true,
 				},
 			}
 		}
 		if err == nil {
+			if isatty.IsTerminal(os.Stdout.Fd()) {
+				spin.Suffix = fmt.Sprintf(" Running %s extension check", extension)
+				spin.Color("bold") // this calls spin.Restart()
+			}
 			plugin := exec.Command(path, args...)
 			var stdout, stderr bytes.Buffer
 			plugin.Stdout = &stdout
 			plugin.Stderr = &stderr
 			plugin.Run()
 			extensionResults, err := healthcheck.ParseJSONCheckOutput(stdout.Bytes())
+			spin.Stop()
 			if err != nil {
 				command := fmt.Sprintf("%s %s", path, strings.Join(args, " "))
 				if len(stderr.String()) > 0 {
@@ -306,7 +316,7 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 					Category:    healthcheck.CategoryID(extensionCmd),
 					Description: fmt.Sprintf("Running: %s", command),
 					Err:         err,
-					HintAnchor:  "extensions",
+					HintURL:     healthcheck.DefaultHintBaseURL + "extensions",
 				})
 				success = false
 			} else {

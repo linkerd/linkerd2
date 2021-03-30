@@ -43,6 +43,18 @@ func (o *observer) resultFn(result *CheckResult) {
 	o.results = append(o.results, res)
 }
 
+func (o *observer) resultWithHintFn(result *CheckResult) {
+	res := fmt.Sprintf("%s %s", result.Category, result.Description)
+	if result.Err != nil {
+		res += fmt.Sprintf(": %s", result.Err)
+	}
+
+	if result.HintURL != "" {
+		res += fmt.Sprintf(": %s", result.HintURL)
+	}
+	o.results = append(o.results, res)
+}
+
 func (hc *HealthChecker) addCheckAsCategory(
 	testCategoryID CategoryID,
 	categoryID CategoryID,
@@ -156,6 +168,20 @@ func TestHealthChecker(t *testing.T) {
 		enabled: true,
 	}
 
+	troubleshootingCheck := Category{
+		ID: "cat9",
+		checkers: []Checker{
+			{
+				description: "failCheck",
+				hintAnchor:  "cat9",
+				check: func(context.Context) error {
+					return fmt.Errorf("fatal")
+				},
+			},
+		},
+		enabled: true,
+	}
+
 	t.Run("Notifies observer of all results", func(t *testing.T) {
 		hc := NewHealthChecker(
 			[]CategoryID{},
@@ -208,6 +234,25 @@ func TestHealthChecker(t *testing.T) {
 
 		if success {
 			t.Fatalf("Expecting checks to not be successful, but got [%t]", success)
+		}
+	})
+
+	t.Run("Check for troubleshooting URL", func(t *testing.T) {
+		hc := NewHealthChecker(
+			[]CategoryID{},
+			&Options{},
+		)
+		troubleshootingCheck.WithHintBaseURL("www.extension.com/troubleshooting/#")
+		hc.AppendCategories(troubleshootingCheck)
+		expectedResults := []string{
+			"cat9 failCheck: fatal: www.extension.com/troubleshooting/#cat9",
+		}
+
+		obs := newObserver()
+		hc.RunChecks(obs.resultWithHintFn)
+
+		if !reflect.DeepEqual(obs.results, expectedResults) {
+			t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
 		}
 	})
 

@@ -148,6 +148,13 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry, enableEndpointSlic
 
 	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{podIPIndex: func(obj interface{}) ([]string, error) {
 		if pod, ok := obj.(*corev1.Pod); ok {
+			// Pods that run in the host network are indexed by the host IP
+			// indexer in the IP watcher; they should be skipped by the pod
+			// IP indexer which is responsible only for indexing pod network
+			// pods.
+			if pod.Spec.HostNetwork {
+				return nil, nil
+			}
 			return []string{pod.Status.PodIP}, nil
 		}
 		return []string{""}, fmt.Errorf("object is not a pod")
@@ -780,6 +787,9 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 	addresses := make(map[ID]Address)
 	for _, subset := range endpoints.Subsets {
 		resolvedPort := pp.resolveTargetPort(subset)
+		if resolvedPort == undefinedEndpointPort {
+			continue
+		}
 		for _, endpoint := range subset.Addresses {
 			if pp.hostname != "" && pp.hostname != endpoint.Hostname {
 				continue
