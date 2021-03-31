@@ -19,7 +19,7 @@ ARG TARGETARCH
 RUN (proxy=$(bin/fetch-proxy $(cat proxy-version) $TARGETARCH) && \
     mv "$proxy" linkerd2-proxy)
 ARG LINKERD_AWAIT_VERSION=v0.2.3
-RUN curl -fsSvLo linkerd-await https://github.com/kleimkuhler/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-${TARGETARCH} && chmod +x linkerd-await
+RUN curl -fsSvLo linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-${TARGETARCH} && chmod +x linkerd-await
 
 ## compile proxy-identity agent
 FROM go-deps as golang
