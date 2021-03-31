@@ -253,6 +253,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"--controller-log-level", "debug",
 			"--proxy-version", TestHelper.GetVersion(),
 			"--skip-inbound-ports", skippedInboundPorts,
+			"--set", "heartbeatSchedule=1 2 3 4 5",
 		}
 		vizCmd  = []string{"viz", "install"}
 		vizArgs = []string{
@@ -730,7 +731,7 @@ func TestOverridesSecret(t *testing.T) {
 	t.Run("Check if any unknown fields sneaked in", func(t *testing.T) {
 		knownKeys := tree.Tree{
 			"controllerLogLevel": "debug",
-			"heartbeatSchedule":  extractValue(t, "heartbeatSchedule"),
+			"heartbeatSchedule":  "1 2 3 4 5",
 			"identity": map[string]interface{}{
 				"issuer": map[string]interface{}{},
 			},

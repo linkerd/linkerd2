@@ -928,7 +928,7 @@ data:
       memory:
         limit: 250Mi
         request: 50Mi
-    heartbeatSchedule: 0 0 * * *
+    heartbeatSchedule: 1 2 3 4 5
     highAvailability: false
     identity:
       issuer:
@@ -1979,7 +1979,8 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
-  schedule: "0 0 * * *"
+  concurrencyPolicy: Replace
+  schedule: "1 2 3 4 5"
   successfulJobsHistoryLimit: 0
   jobTemplate:
     spec:

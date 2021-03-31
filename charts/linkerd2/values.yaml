@@ -211,7 +211,7 @@ identity:
 # disableHeartBeat -- Set to true to not start the heartbeat cronjob
 disableHeartBeat: false
 # -- Config for the heartbeat cronjob
-heartbeatSchedule: "0 0 * * *"
+# heartbeatSchedule: "0 0 * * *"
 
 # proxy injector configuration
 proxyInjector:
