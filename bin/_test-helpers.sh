@@ -413,6 +413,15 @@ upgrade_test() {
   fi
 
   install_version "$install_url" "$upgrade_version"
+
+  # Install viz extension
+  local tmp_linkerd_path=$tmp/.linkerd2/bin/linkerd
+  (
+      set -x
+      "$tmp_linkerd_path" viz install | kubectl --context="$context" apply -f - 2>&1
+  )
+  exit_on_err "upgrade_test() - installing viz extension in $upgrade_version failed"
+
   run_test "$test_directory/install_test.go" --upgrade-from-version="$upgrade_version"
 }
 
