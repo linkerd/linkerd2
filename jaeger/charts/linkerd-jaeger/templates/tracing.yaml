@@ -96,6 +96,7 @@ spec:
         - containerPort: 55678
         - containerPort: 9411
         - containerPort: 14268
+        - containerPort: 8888
         readinessProbe:
           httpGet:
             path: /
@@ -153,7 +154,7 @@ spec:
     metadata:
       annotations:
         prometheus.io/path: /metrics
-        prometheus.io/port: "8888"
+        prometheus.io/port: "14269"
         prometheus.io/scrape: "true"
       labels:
         component: jaeger
@@ -165,6 +166,8 @@ spec:
         imagePullPolicy: {{.Values.jaeger.image.pullPolicy}}
         name: jaeger
         ports:
+        - containerPort: 14269
+          name: admin
         - containerPort: 14268
           name: collection
         - containerPort: 16686
