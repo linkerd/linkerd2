@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 	"time"
 
@@ -40,101 +42,110 @@ linkerd upgrade.`,
 		Example: "  linkerd repair | kubectl apply -f -",
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			err := repair(cmd.Context())
 			if err != nil {
-				return err
+				fmt.Fprintf(os.Stderr, err.Error()+"\n")
+				os.Exit(1)
 			}
-
-			// Error out if linkerd-config-overrides already exists.
-			_, err = k8sAPI.CoreV1().Secrets(controlPlaneNamespace).Get(cmd.Context(), "linkerd-config-overrides", metav1.GetOptions{})
-			if err == nil {
-				return errors.New("secret/linkerd-config-overrides already exists. If you need to regenerate this resource, please delete it before proceeding")
-			}
-
-			// Check if the CLI version matches with that of the server
-			clientVersion := version.Version
-			var serverVersion string
-			publicClient, err := public.NewExternalClient(cmd.Context(), controlPlaneNamespace, k8sAPI)
-			if err != nil {
-				return err
-			}
-			serverVersion, err = healthcheck.GetServerVersion(cmd.Context(), publicClient)
-			if err != nil {
-				return err
-			}
-
-			if serverVersion != clientVersion {
-				helperVersion := serverVersion
-				// Use 2.9.4 CLI version for all 2.9 versions
-				if versionRegex.Match([]byte(serverVersion)) {
-					helperVersion = "stable-2.9.4"
-				}
-				return fmt.Errorf("Please run the repair command with a CLI that has the same version as the control plane.\nRun `LINKERD2_VERSION=\"%s\"; curl -sL https://run.linkerd.io/install | sh` to install the server version of the CLI", helperVersion)
-			}
-
-			// Load the stored config
-			config, err := k8sAPI.CoreV1().ConfigMaps(controlPlaneNamespace).Get(cmd.Context(), "linkerd-config", metav1.GetOptions{})
-			if err != nil {
-				return fmt.Errorf("Failed to load linkerd-config: %s", err)
-			}
-
-			values := linkerd2.Values{}
-
-			valuesRaw, ok := config.Data["values"]
-			if !ok {
-				return errors.New("values not found in linkerd-config")
-			}
-
-			err = yaml.Unmarshal([]byte(valuesRaw), &values)
-			if err != nil {
-				return fmt.Errorf("Failed to load values from linkerd-config: %s", err)
-			}
-
-			// Reset version fields
-			err = resetVersion(&values)
-			if err != nil {
-				return fmt.Errorf("Failed to reset version fields in linkerd-config: %s", err)
-			}
-
-			clockSkewDuration, err := time.ParseDuration(values.Identity.Issuer.ClockSkewAllowance)
-			if err != nil {
-				return fmt.Errorf("Failed to parse ClockSkewAllowance from linkerd-config: %s", err)
-			}
-			issuanceLifetime, err := time.ParseDuration(values.Identity.Issuer.IssuanceLifetime)
-			if err != nil {
-				return fmt.Errorf("Failed to parse IssuanceLifetime from linkerd-config: %s", err)
-			}
-			idCtx := pb.IdentityContext{
-				TrustAnchorsPem:    values.IdentityTrustAnchorsPEM,
-				Scheme:             values.Identity.Issuer.Scheme,
-				ClockSkewAllowance: ptypes.DurationProto(clockSkewDuration),
-				IssuanceLifetime:   ptypes.DurationProto(issuanceLifetime),
-				TrustDomain:        values.IdentityTrustDomain,
-			}
-
-			// Populate identity values
-			err = fetchIdentityValues(cmd.Context(), k8sAPI, &idCtx, &values)
-			if err != nil {
-				return fmt.Errorf("Failed to load issuer credentials: %s", err)
-			}
-
-			valuesMap, err := values.ToMap()
-			if err != nil {
-				return fmt.Errorf("Failed to convert Values into a map: %s", err)
-			}
-
-			overrides, err := renderOverrides(valuesMap, true)
-			if err != nil {
-				return fmt.Errorf("Failed to render overrides: %s", err)
-			}
-
-			fmt.Print(string(overrides))
-
 			return nil
 		},
 	}
 
 	return cmd
+}
+
+func repair(ctx context.Context) error {
+	k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+	if err != nil {
+		return err
+	}
+
+	// Error out if linkerd-config-overrides already exists.
+	_, err = k8sAPI.CoreV1().Secrets(controlPlaneNamespace).Get(ctx, "linkerd-config-overrides", metav1.GetOptions{})
+	if err == nil {
+		return errors.New("secret/linkerd-config-overrides already exists. If you need to regenerate this resource, please delete it before proceeding")
+	}
+
+	// Check if the CLI version matches with that of the server
+	clientVersion := version.Version
+	var serverVersion string
+	publicClient, err := public.NewExternalClient(ctx, controlPlaneNamespace, k8sAPI)
+	if err != nil {
+		return err
+	}
+	serverVersion, err = healthcheck.GetServerVersion(ctx, publicClient)
+	if err != nil {
+		return err
+	}
+
+	if serverVersion != clientVersion {
+		helperVersion := serverVersion
+		// Use 2.9.4 CLI version for all 2.9 versions
+		if versionRegex.Match([]byte(serverVersion)) {
+			helperVersion = "stable-2.9.4"
+		}
+		return fmt.Errorf("Please run the repair command with a CLI that has the same version as the control plane.\nRun `LINKERD2_VERSION=\"%s\"; curl -sL https://run.linkerd.io/install | sh` to install the server version of the CLI", helperVersion)
+	}
+
+	// Load the stored config
+	config, err := k8sAPI.CoreV1().ConfigMaps(controlPlaneNamespace).Get(ctx, "linkerd-config", metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("Failed to load linkerd-config: %s", err)
+	}
+
+	values := linkerd2.Values{}
+
+	valuesRaw, ok := config.Data["values"]
+	if !ok {
+		return errors.New("values not found in linkerd-config")
+	}
+
+	err = yaml.Unmarshal([]byte(valuesRaw), &values)
+	if err != nil {
+		return fmt.Errorf("Failed to load values from linkerd-config: %s", err)
+	}
+
+	// Reset version fields
+	err = resetVersion(&values)
+	if err != nil {
+		return fmt.Errorf("Failed to reset version fields in linkerd-config: %s", err)
+	}
+
+	clockSkewDuration, err := time.ParseDuration(values.Identity.Issuer.ClockSkewAllowance)
+	if err != nil {
+		return fmt.Errorf("Failed to parse ClockSkewAllowance from linkerd-config: %s", err)
+	}
+	issuanceLifetime, err := time.ParseDuration(values.Identity.Issuer.IssuanceLifetime)
+	if err != nil {
+		return fmt.Errorf("Failed to parse IssuanceLifetime from linkerd-config: %s", err)
+	}
+	idCtx := pb.IdentityContext{
+		TrustAnchorsPem:    values.IdentityTrustAnchorsPEM,
+		Scheme:             values.Identity.Issuer.Scheme,
+		ClockSkewAllowance: ptypes.DurationProto(clockSkewDuration),
+		IssuanceLifetime:   ptypes.DurationProto(issuanceLifetime),
+		TrustDomain:        values.IdentityTrustDomain,
+	}
+
+	// Populate identity values
+	err = fetchIdentityValues(ctx, k8sAPI, &idCtx, &values)
+	if err != nil {
+		return fmt.Errorf("Failed to load issuer credentials: %s", err)
+	}
+
+	valuesMap, err := values.ToMap()
+	if err != nil {
+		return fmt.Errorf("Failed to convert Values into a map: %s", err)
+	}
+
+	overrides, err := renderOverrides(valuesMap, true)
+	if err != nil {
+		return fmt.Errorf("Failed to render overrides: %s", err)
+	}
+
+	fmt.Print(string(overrides))
+
+	return nil
 }
 
 // resetVersion sets all linkerd version fields to the chart's default version
