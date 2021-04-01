@@ -164,10 +164,10 @@ const (
 	keyKeyName                    = "tls.key"
 )
 
-// HintBaseURL is the base URL on the linkerd.io website that all check hints
+// DefaultHintBaseURL is the base URL on the linkerd.io website that all check hints
 // point to. Each check adds its own `hintAnchor` to specify a location on the
 // page.
-const HintBaseURL = "https://linkerd.io/checks/#"
+const DefaultHintBaseURL = "https://linkerd.io/checks/#"
 
 // AllowedClockSkew sets the allowed skew in clock synchronization
 // between the system running inject command and the node(s), being
@@ -359,7 +359,7 @@ func (c *Checker) WithCheck(check func(context.Context) error) *Checker {
 type CheckResult struct {
 	Category    CategoryID
 	Description string
-	HintAnchor  string
+	HintURL     string
 	Retry       bool
 	Warning     bool
 	Err         error
@@ -373,15 +373,26 @@ type Category struct {
 	ID       CategoryID
 	checkers []Checker
 	enabled  bool
+	// hintBaseURL provides a base URL with more information
+	// about the check
+	hintBaseURL string
 }
 
 // NewCategory returns an instance of Category with the specified data
+// and the DefaultHintBaseURL
 func NewCategory(id CategoryID, checkers []Checker, enabled bool) *Category {
 	return &Category{
-		ID:       id,
-		checkers: checkers,
-		enabled:  enabled,
+		ID:          id,
+		checkers:    checkers,
+		enabled:     enabled,
+		hintBaseURL: DefaultHintBaseURL,
 	}
+}
+
+// WithHintBaseURL returns a Category with the provided hintBaseURL
+func (c *Category) WithHintBaseURL(hintBaseURL string) *Category {
+	c.hintBaseURL = hintBaseURL
+	return c
 }
 
 // Options specifies configuration for a HealthChecker.
@@ -1563,7 +1574,7 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 			for _, checker := range c.checkers {
 				checker := checker // pin
 				if checker.check != nil {
-					if !hc.runCheck(c.ID, &checker, observer) {
+					if !hc.runCheck(c, &checker, observer) {
 						if !checker.warning {
 							success = false
 						}
@@ -1584,7 +1595,7 @@ func (hc *HealthChecker) LinkerdConfig() *l5dcharts.Values {
 	return hc.linkerdConfig
 }
 
-func (hc *HealthChecker) runCheck(categoryID CategoryID, c *Checker, observer CheckObserver) bool {
+func (hc *HealthChecker) runCheck(category Category, c *Checker, observer CheckObserver) bool {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 		defer cancel()
@@ -1595,15 +1606,15 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *Checker, observer Ch
 		}
 
 		checkResult := &CheckResult{
-			Category:    categoryID,
+			Category:    category.ID,
 			Description: c.description,
-			HintAnchor:  c.hintAnchor,
 			Warning:     c.warning,
+			HintURL:     fmt.Sprintf("%s%s", category.hintBaseURL, c.hintAnchor),
 		}
 		if vs, ok := err.(*VerboseSuccess); ok {
 			checkResult.Description = fmt.Sprintf("%s\n%s", checkResult.Description, vs.Message)
 		} else if err != nil {
-			checkResult.Err = &CategoryError{categoryID, err}
+			checkResult.Err = &CategoryError{category.ID, err}
 		}
 
 		if checkResult.Err != nil && time.Now().Before(c.retryDeadline) {

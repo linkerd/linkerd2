@@ -153,7 +153,7 @@ const Results = ({ title, results, classes }) => {
 Results.propTypes = {
   results: PropTypes.arrayOf(PropTypes.shape({
     Description: PropTypes.string.isRequired,
-    Err: PropTypes.any,
+    Err: PropTypes.shape({}),
     ErrMsg: PropTypes.string,
     HintURL: PropTypes.string,
     Warning: PropTypes.bool,

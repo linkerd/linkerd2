@@ -137,10 +137,6 @@ func TestUpgradeTestAppWorksBeforeUpgrade(t *testing.T) {
 					testutil.AnnotatedError(t, "CheckPods timed-out", err)
 				}
 			}
-
-			if err := TestHelper.CheckDeployment(ctx, testAppNamespace, deploy, 1); err != nil {
-				testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
-			}
 		}
 
 		if err := testutil.ExerciseTestAppEndpoint("/api/list", testAppNamespace, TestHelper); err != nil {
@@ -257,6 +253,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"--controller-log-level", "debug",
 			"--proxy-version", TestHelper.GetVersion(),
 			"--skip-inbound-ports", skippedInboundPorts,
+			"--set", "heartbeatSchedule=1 2 3 4 5",
 		}
 		vizCmd  = []string{"viz", "install"}
 		vizArgs = []string{
@@ -540,7 +537,7 @@ func TestControlPlaneResourcesPostInstall(t *testing.T) {
 	expectedDeployments := testutil.LinkerdDeployReplicasEdge
 	if !TestHelper.ExternalPrometheus() {
 		expectedServices = append(expectedServices, testutil.Service{Namespace: "linkerd-viz", Name: "prometheus"})
-		expectedDeployments["prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1, Containers: []string{}}
+		expectedDeployments["prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1}
 	}
 
 	// Upgrade Case
@@ -734,7 +731,7 @@ func TestOverridesSecret(t *testing.T) {
 	t.Run("Check if any unknown fields sneaked in", func(t *testing.T) {
 		knownKeys := tree.Tree{
 			"controllerLogLevel": "debug",
-			"heartbeatSchedule":  extractValue(t, "heartbeatSchedule"),
+			"heartbeatSchedule":  "1 2 3 4 5",
 			"identity": map[string]interface{}{
 				"issuer": map[string]interface{}{},
 			},
@@ -1158,7 +1155,7 @@ func TestCheckProxy(t *testing.T) {
 func TestRestarts(t *testing.T) {
 	expectedDeployments := testutil.LinkerdDeployReplicasEdge
 	if !TestHelper.ExternalPrometheus() {
-		expectedDeployments["prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1, Containers: []string{}}
+		expectedDeployments["prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1}
 	}
 	for deploy, spec := range expectedDeployments {
 		if err := TestHelper.CheckPods(context.Background(), spec.Namespace, deploy, spec.Replicas); err != nil {

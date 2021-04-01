@@ -2,6 +2,7 @@
 
 ![Linkerd][logo]
 
+[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/4629/badge)](https://bestpractices.coreinfrastructure.org/projects/4629)
 [![GitHub Actions Status][github-actions-badge]][github-actions]
 [![GitHub license][license-badge]](LICENSE)
 [![Go Report Card][go-report-card-badge]][go-report-card]
@@ -83,10 +84,11 @@ minutes to review our [Code of Conduct][CoC].
 
 ## Security
 
-### Security Audit
+See [SECURITY.md](SECURITY.md) for our security policy, including how to report
+vulnerabilities.
 
-A third party security audit was performed by Cure53. You can see the full
-report [here](SECURITY_AUDIT.pdf).
+A third party security audit was performed by Cure53 in June 2019. You can see
+the full report [here](SECURITY_AUDIT.pdf).
 
 ## License
 

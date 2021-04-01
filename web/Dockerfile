@@ -16,8 +16,8 @@ ARG TARGETARCH
 RUN ./bin/install-deps $TARGETARCH
 
 ## bundle web assets
-FROM --platform=$BUILDPLATFORM node:14-buster as webpack-bundle
-RUN curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
+FROM --platform=$BUILDPLATFORM node:15-buster as webpack-bundle
+RUN curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.10 --network-concurrency 1
 
 ENV PATH /root/.yarn/bin:$PATH
 ENV ROOT /linkerd-build

@@ -65,10 +65,6 @@ func TestOpaquePorts(t *testing.T) {
 		}
 	}
 
-	if err := TestHelper.CheckDeployment(ctx, opaquePortsNs, opaquePodApp, 1); err != nil {
-		testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", opaquePodApp, err)
-	}
-
 	// Check that the opaque service test application started correctly.
 	if err := TestHelper.CheckPods(ctx, opaquePortsNs, opaqueSvcApp, 1); err != nil {
 		if rce, ok := err.(*testutil.RestartCountError); ok {
@@ -76,10 +72,6 @@ func TestOpaquePorts(t *testing.T) {
 		} else {
 			testutil.AnnotatedError(t, "CheckPods timed-out", err)
 		}
-	}
-
-	if err := TestHelper.CheckDeployment(ctx, opaquePortsNs, opaqueSvcApp, 1); err != nil {
-		testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", opaqueSvcApp, err)
 	}
 
 	// Wait for slow-cookers to start sending requests
