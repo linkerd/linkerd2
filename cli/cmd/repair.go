@@ -21,7 +21,9 @@ import (
 )
 
 var (
-	versionRegex = regexp.MustCompile("stable-2.[8-9].*")
+	repairNotApplicableVersionRegex = regexp.MustCompile("stable-2.[0-8].*")
+
+	repairApplicableVersionRegex = regexp.MustCompile("stable-2.[9].*")
 )
 
 // newCmdRepair creates a new cobra command `repair` which re-creates the
@@ -84,8 +86,14 @@ func repair(ctx context.Context, forced bool) error {
 	if !forced {
 		if serverVersion != clientVersion {
 			helperVersion := serverVersion
+
+			// Suggest directly upgrading to 2.9.4 or above for older versions
+			if repairNotApplicableVersionRegex.Match([]byte(serverVersion)) {
+				return fmt.Errorf("repair command is only applicable to 2.9 control-plane versions. Please try upgrading to the latest supported versions of Linkerd i.e 2.9.4 and above")
+			}
+
 			// Use 2.9.4 CLI version for all 2.9 versions
-			if versionRegex.Match([]byte(serverVersion)) {
+			if repairApplicableVersionRegex.Match([]byte(serverVersion)) {
 				helperVersion = "stable-2.9.4"
 			}
 			return fmt.Errorf("Please run the repair command with a CLI that has the same version as the control plane.\nRun `LINKERD2_VERSION=\"%s\"; curl -sL https://run.linkerd.io/install | sh` to install the server version of the CLI", helperVersion)
