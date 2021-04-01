@@ -604,9 +604,10 @@ func (rcsw *RemoteClusterServiceWatcher) processEvents(ctx context.Context) {
 			switch e := err.(type) {
 			case RetryableError:
 				{
+					rcsw.log.Warnf("Requeues: %d, Limit: %d for event %s", rcsw.eventsQueue.NumRequeues(event), rcsw.requeueLimit, event)
 					if (rcsw.eventsQueue.NumRequeues(event) < rcsw.requeueLimit) && !done {
 						rcsw.log.Errorf("Error processing %s (will retry): %s", event, e)
-						rcsw.eventsQueue.Add(event)
+						rcsw.eventsQueue.AddRateLimited(event)
 					} else {
 						rcsw.log.Errorf("Error processing %s (giving up): %s", event, e)
 						rcsw.eventsQueue.Forget(event)
