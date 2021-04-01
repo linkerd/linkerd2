@@ -28,6 +28,7 @@ var (
 // linkerd-config-overrides secret if it has been deleted.
 func newCmdRepair() *cobra.Command {
 
+	var force bool
 	cmd := &cobra.Command{
 		Use:   "repair",
 		Short: "Output the secret/linkerd-config-overrides resource if it has been deleted",
@@ -42,7 +43,7 @@ linkerd upgrade.`,
 		Example: "  linkerd repair | kubectl apply -f -",
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := repair(cmd.Context())
+			err := repair(cmd.Context(), force)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, err.Error()+"\n")
 				os.Exit(1)
@@ -51,10 +52,12 @@ linkerd upgrade.`,
 		},
 	}
 
+	cmd.Flags().BoolVarP(&force, "force", "f", force, "Force render even if the CLI and control-plane versions don't match")
+
 	return cmd
 }
 
-func repair(ctx context.Context) error {
+func repair(ctx context.Context, forced bool) error {
 	k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
 		return err
@@ -78,13 +81,15 @@ func repair(ctx context.Context) error {
 		return err
 	}
 
-	if serverVersion != clientVersion {
-		helperVersion := serverVersion
-		// Use 2.9.4 CLI version for all 2.9 versions
-		if versionRegex.Match([]byte(serverVersion)) {
-			helperVersion = "stable-2.9.4"
+	if !forced {
+		if serverVersion != clientVersion {
+			helperVersion := serverVersion
+			// Use 2.9.4 CLI version for all 2.9 versions
+			if versionRegex.Match([]byte(serverVersion)) {
+				helperVersion = "stable-2.9.4"
+			}
+			return fmt.Errorf("Please run the repair command with a CLI that has the same version as the control plane.\nRun `LINKERD2_VERSION=\"%s\"; curl -sL https://run.linkerd.io/install | sh` to install the server version of the CLI", helperVersion)
 		}
-		return fmt.Errorf("Please run the repair command with a CLI that has the same version as the control plane.\nRun `LINKERD2_VERSION=\"%s\"; curl -sL https://run.linkerd.io/install | sh` to install the server version of the CLI", helperVersion)
 	}
 
 	// Load the stored config
