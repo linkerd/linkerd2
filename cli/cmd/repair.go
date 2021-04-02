@@ -85,18 +85,19 @@ func repair(ctx context.Context, forced bool) error {
 
 	if !forced {
 		if serverVersion != clientVersion {
-			helperVersion := serverVersion
 
 			// Suggest directly upgrading to 2.9.4 or above for older versions
 			if repairNotApplicableVersionRegex.Match([]byte(serverVersion)) {
 				return fmt.Errorf("repair command is only applicable to 2.9 control-plane versions. Please try upgrading to the latest supported versions of Linkerd i.e 2.9.4 and above")
 			}
 
-			// Use 2.9.4 CLI version for all 2.9 versions
+			// Suggest 2.9.4 CLI version for all 2.9 server versions
 			if repairApplicableVersionRegex.Match([]byte(serverVersion)) {
-				helperVersion = "stable-2.9.4"
+				return fmt.Errorf("Please run the repair command with a `2.9.4` CLI.\nRun `LINKERD2_VERSION=\"stable-2.9.4\"; curl -sL https://run.linkerd.io/install | sh` to install the server version of the CLI")
 			}
-			return fmt.Errorf("Please run the repair command with a CLI that has the same version as the control plane.\nRun `LINKERD2_VERSION=\"%s\"; curl -sL https://run.linkerd.io/install | sh` to install the server version of the CLI", helperVersion)
+
+			// Suggest server version for everything else. This includes all edge versions
+			return fmt.Errorf("Please run the repair command with a CLI that has the same version as the control plane.\nRun `LINKERD2_VERSION=\"%s\"; curl -sL https://run.linkerd.io/install | sh` to install the server version of the CLI", serverVersion)
 		}
 	}
 
