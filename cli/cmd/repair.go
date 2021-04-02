@@ -97,11 +97,11 @@ func repair(ctx context.Context, forced bool) error {
 
 			// Suggest 2.9.4 CLI version for all 2.9 server versions
 			if repairApplicableVersionRegex.Match([]byte(serverVersion)) {
-				return fmt.Errorf("Please run the repair command with a `2.9.4` CLI.\nRun `curl -sL https://run.linkerd.io/install | LINKERD2_VERSION=\"2.9.4\" sh` to install the server version of the CLI")
+				return fmt.Errorf("Please run the repair command with a `2.9.4` CLI.\nRun `export LINKERD2_VERSION=\"stable-2.9.4\"; curl -sL https://run.linkerd.io/install | sh; unset LINKERD2_VERSION` to install the server version of the CLI")
 			}
 
 			// Suggest server version for everything else. This includes all edge versions
-			return fmt.Errorf("Please run the repair command with a CLI that has the same version as the control plane.\nRun `curl -sL https://run.linkerd.io/install | LINKERD2_VERSION=\"%s\" sh` to install the server version of the CLI", serverVersion)
+			return fmt.Errorf("Please run the repair command with a CLI that has the same version as the control plane.\nRun `export LINKERD2_VERSION=\"%s\"; curl -sL https://run.linkerd.io/install | sh; unset LINKERD2_VERSION` to install the server version of the CLI", serverVersion)
 		}
 	}
 
