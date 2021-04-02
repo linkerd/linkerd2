@@ -21,9 +21,13 @@ import (
 )
 
 var (
-	repairNotApplicableVersionRegex = regexp.MustCompile("stable-2.[0-8].*")
+	// repairNotApplicableVersionRegex matches older versions of Linkerd i.e
+	// 2.8 and below
+	repairNotApplicableVersionRegex = regexp.MustCompile(`^stable-2\.[0-8]\.([0-9]+)$`)
 
-	repairApplicableVersionRegex = regexp.MustCompile("stable-2.[9].*")
+	// repairApplicableVersionRegex matches versions 2.9.4 and above where repair
+	// would be useful
+	repairApplicableVersionRegex = regexp.MustCompile(`^stable-2\.(9|[0-9]{2})\.([0-9]+)$`)
 )
 
 // newCmdRepair creates a new cobra command `repair` which re-creates the
@@ -93,11 +97,11 @@ func repair(ctx context.Context, forced bool) error {
 
 			// Suggest 2.9.4 CLI version for all 2.9 server versions
 			if repairApplicableVersionRegex.Match([]byte(serverVersion)) {
-				return fmt.Errorf("Please run the repair command with a `2.9.4` CLI.\nRun `LINKERD2_VERSION=\"stable-2.9.4\"; curl -sL https://run.linkerd.io/install | sh` to install the server version of the CLI")
+				return fmt.Errorf("Please run the repair command with a `2.9.4` CLI.\nRun `curl -sL https://run.linkerd.io/install | LINKERD2_VERSION=\"2.9.4\" sh` to install the server version of the CLI")
 			}
 
 			// Suggest server version for everything else. This includes all edge versions
-			return fmt.Errorf("Please run the repair command with a CLI that has the same version as the control plane.\nRun `LINKERD2_VERSION=\"%s\"; curl -sL https://run.linkerd.io/install | sh` to install the server version of the CLI", serverVersion)
+			return fmt.Errorf("Please run the repair command with a CLI that has the same version as the control plane.\nRun `curl -sL https://run.linkerd.io/install | LINKERD2_VERSION=\"%s\" sh` to install the server version of the CLI", serverVersion)
 		}
 	}
 
