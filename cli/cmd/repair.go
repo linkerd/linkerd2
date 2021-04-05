@@ -97,7 +97,7 @@ func repair(ctx context.Context, forced bool) error {
 
 			// Suggest 2.9.4 CLI version for all 2.9 server versions
 			if repairApplicableVersionRegex.Match([]byte(serverVersion)) {
-				return fmt.Errorf("Please run the repair command with a `2.9.4` CLI.\nRun `export LINKERD2_VERSION=\"stable-2.9.4\"; curl -sL https://run.linkerd.io/install | sh; unset LINKERD2_VERSION` to install the server version of the CLI")
+				return fmt.Errorf("Please run the repair command with a `stable-2.9.4` CLI.\nRun `export LINKERD2_VERSION=\"stable-2.9.4\"; curl -sL https://run.linkerd.io/install | sh; unset LINKERD2_VERSION` to install the server version of the CLI")
 			}
 
 			// Suggest server version for everything else. This includes all edge versions
@@ -177,8 +177,25 @@ func resetVersion(values *linkerd2.Values) error {
 	if err != nil {
 		return err
 	}
-	values.DebugContainer.Image.Version = defaults.DebugContainer.Image.Version
-	values.Proxy.Image.Version = defaults.Proxy.Image.Version
+
+	if values.DebugContainer != nil {
+		if values.DebugContainer.Image != nil {
+			values.DebugContainer.Image.Version = defaults.DebugContainer.Image.Version
+		}
+	}
+
+	if values.Proxy != nil {
+		if values.Proxy.Image != nil {
+			values.Proxy.Image.Version = defaults.Proxy.Image.Version
+		}
+	}
+
+	if values.ProxyInit != nil {
+		if values.ProxyInit.Image != nil {
+			values.ProxyInit.Image.Version = defaults.ProxyInit.Image.Version
+		}
+	}
+
 	values.CliVersion = defaults.CliVersion
 	values.ControllerImageVersion = defaults.ControllerImageVersion
 	values.LinkerdVersion = defaults.LinkerdVersion
