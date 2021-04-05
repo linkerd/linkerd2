@@ -979,12 +979,14 @@ data:
         name: cr.l5d.io/linkerd/proxy
         pullPolicy: ""
         version: install-proxy-version
+      inboundAcceptKeepalive: ""
       inboundConnectTimeout: 100ms
       isGateway: false
       isIngress: false
       logFormat: plain
       logLevel: warn,linkerd=info
       opaquePorts: 25,443,587,3306,5432,11211
+      outboundConnectKeepalive: ""
       outboundConnectTimeout: 1000ms
       ports:
         admin: 4191

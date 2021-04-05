@@ -44,9 +44,9 @@ env:
   {{- $internalDomain := printf "svc.%s." .Values.clusterDomain }}
   value: {{ternary "." $internalDomain .Values.proxy.enableExternalProfiles}}
 - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
-  value: 10000ms
+  value: {{.Values.proxy.inboundAcceptKeepalive | default "10000ms" }}
 - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
-  value: 10000ms
+  value: {{.Values.proxy.outboundConnectKeepalive | default "10000ms" }}
 {{ if .Values.proxy.opaquePorts -}}
 - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
   value: {{.Values.proxy.opaquePorts | quote}}

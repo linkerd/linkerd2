@@ -64,6 +64,8 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxyOutboundConnectTimeout:                  "6000ms",
 							k8s.ProxyInboundConnectTimeout:                   "600ms",
 							k8s.ProxyOpaquePortsAnnotation:                   "4320-4325,3306",
+							k8s.ProxyOutboundConnectKeepalive:                "20000ms",
+							k8s.ProxyInboundAcceptKeepalive:                  "50000ms",
 						},
 					},
 					Spec: corev1.PodSpec{},
@@ -103,6 +105,8 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Proxy.RequireIdentityOnInboundPorts = "8888,9999"
 				values.Proxy.OutboundConnectTimeout = "6000ms"
 				values.Proxy.InboundConnectTimeout = "600ms"
+				values.Proxy.OutboundConnectKeepalive = "20000ms"
+				values.Proxy.InboundAcceptKeepalive = "50000ms"
 				values.Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
 				return values
 			},
@@ -223,6 +227,42 @@ func TestGetOverriddenValues(t *testing.T) {
 				return values
 			},
 		},
+		{id: "use invalid duration for keepalive intervals",
+			nsAnnotations: map[string]string{
+				k8s.ProxyOutboundConnectKeepalive: "10050",
+				k8s.ProxyInboundAcceptKeepalive:   "40050",
+			},
+			spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec:       corev1.PodSpec{},
+				},
+			},
+			expected: func() *l5dcharts.Values {
+				values, _ := l5dcharts.NewValues()
+				return values
+			},
+		},
+		{id: "use valid duration for keepalive intervals",
+			nsAnnotations: map[string]string{
+				// Validate we're converting time values into ms for the proxy to parse correctly.
+				k8s.ProxyOutboundConnectKeepalive: "10s5ms",
+				k8s.ProxyInboundAcceptKeepalive:   "40s5ms",
+			},
+			spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec:       corev1.PodSpec{},
+				},
+			},
+			expected: func() *l5dcharts.Values {
+				values, _ := l5dcharts.NewValues()
+				values.Proxy.OutboundConnectKeepalive = "10005ms"
+				values.Proxy.InboundAcceptKeepalive = "40005ms"
+				return values
+			},
+		},
+
 		{id: "use named port for opaque ports",
 			nsAnnotations: make(map[string]string),
 			spec: appsv1.DeploymentSpec{

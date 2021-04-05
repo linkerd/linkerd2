@@ -109,6 +109,8 @@ type (
 		RequireIdentityOnInboundPorts string           `json:"requireIdentityOnInboundPorts"`
 		OutboundConnectTimeout        string           `json:"outboundConnectTimeout"`
 		InboundConnectTimeout         string           `json:"inboundConnectTimeout"`
+		OutboundConnectKeepalive      string           `json:"outboundConnectKeepalive"`
+		InboundAcceptKeepalive        string           `json:"inboundAcceptKeepalive"`
 		OpaquePorts                   string           `json:"opaquePorts"`
 	}
 

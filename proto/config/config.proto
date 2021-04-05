@@ -61,6 +61,10 @@ message Proxy {
   string outbound_connect_timeout = 19;
 
   string inbound_connect_timeout = 20;
+
+  string inbound_accept_keepalive = 21;
+
+  string outbound_connect_keepalive = 22;
 }
 
 message Image {

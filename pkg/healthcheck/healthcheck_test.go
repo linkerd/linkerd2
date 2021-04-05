@@ -2332,11 +2332,13 @@ data:
         name: ProxyImageName
         pullPolicy: ImagePullPolicy
         version: ProxyVersion
+      inboundConnectKeepalive: ""
       inboundConnectTimeout: ""
       isGateway: false
       logFormat: plain
       logLevel: warn,linkerd=info
       opaquePorts: ""
+      outboundConnectKeepalive: ""
       outboundConnectTimeout: ""
       ports:
         admin: 4191
@@ -2500,11 +2502,13 @@ data:
           pullPolicy: ImagePullPolicy
           version: ProxyVersion
         inboundConnectTimeout: ""
+        inboundConnectKeepalive: ""
         isGateway: false
         logFormat: plain
         logLevel: warn,linkerd=info
         opaquePorts: ""
         outboundConnectTimeout: ""
+        outboundConnectKeepalive: ""
         ports:
           admin: 4191
           control: 4190

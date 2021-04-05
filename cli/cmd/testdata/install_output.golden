@@ -961,12 +961,14 @@ data:
         name: ProxyImageName
         pullPolicy: ImagePullPolicy
         version: ProxyVersion
+      inboundAcceptKeepalive: ""
       inboundConnectTimeout: ""
       isGateway: false
       isIngress: false
       logFormat: plain
       logLevel: warn,linkerd=info
       opaquePorts: 25,443,587,3306,5432,11211
+      outboundConnectKeepalive: ""
       outboundConnectTimeout: ""
       ports:
         admin: 4191

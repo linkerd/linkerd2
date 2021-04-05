@@ -63,6 +63,8 @@ var (
 		k8s.ProxyIgnoreOutboundPortsAnnotation,
 		k8s.ProxyOutboundConnectTimeout,
 		k8s.ProxyInboundConnectTimeout,
+		k8s.ProxyOutboundConnectKeepalive,
+		k8s.ProxyInboundAcceptKeepalive,
 	}
 )
 
@@ -788,6 +790,24 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 			log.Warnf("unrecognized proxy-inbound-connect-timeout duration value found on pod annotation: %s", err.Error())
 		} else {
 			values.Proxy.InboundConnectTimeout = fmt.Sprintf("%dms", int(duration.Seconds()*1000))
+		}
+	}
+
+	if override, ok := annotations[k8s.ProxyOutboundConnectKeepalive]; ok {
+		duration, err := time.ParseDuration(override)
+		if err != nil {
+			log.Warnf("unrecognized proxy-outbound-connect-keepalive duration value found on pod annotation: %s", err.Error())
+		} else {
+			values.Proxy.OutboundConnectKeepalive = fmt.Sprintf("%dms", int(duration.Seconds()*1000))
+		}
+	}
+
+	if override, ok := annotations[k8s.ProxyInboundAcceptKeepalive]; ok {
+		duration, err := time.ParseDuration(override)
+		if err != nil {
+			log.Warnf("unrecognized proxy-inbound-accept-keepalive duration value found on pod annotation: %s", err.Error())
+		} else {
+			values.Proxy.InboundAcceptKeepalive = fmt.Sprintf("%dms", int(duration.Seconds()*1000))
 		}
 	}
 

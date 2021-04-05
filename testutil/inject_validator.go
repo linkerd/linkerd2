@@ -20,34 +20,36 @@ const debugContainerName = "linkerd-debug"
 // correct injector flags and annotations and verify
 // injected pods
 type InjectValidator struct {
-	NoInitContainer        bool
-	DisableIdentity        bool
-	AutoInject             bool
-	AdminPort              int
-	ControlPort            int
-	EnableDebug            bool
-	EnableExternalProfiles bool
-	ImagePullPolicy        string
-	InboundPort            int
-	InitImage              string
-	InitImageVersion       string
-	OutboundPort           int
-	CPULimit               string
-	CPURequest             string
-	MemoryLimit            string
-	MemoryRequest          string
-	Image                  string
-	LogLevel               string
-	LogFormat              string
-	UID                    int
-	Version                string
-	RequireIdentityOnPorts string
-	SkipOutboundPorts      string
-	OpaquePorts            string
-	SkipInboundPorts       string
-	OutboundConnectTimeout string
-	InboundConnectTimeout  string
-	WaitBeforeExitSeconds  int
+	NoInitContainer          bool
+	DisableIdentity          bool
+	AutoInject               bool
+	AdminPort                int
+	ControlPort              int
+	EnableDebug              bool
+	EnableExternalProfiles   bool
+	ImagePullPolicy          string
+	InboundPort              int
+	InitImage                string
+	InitImageVersion         string
+	OutboundPort             int
+	CPULimit                 string
+	CPURequest               string
+	MemoryLimit              string
+	MemoryRequest            string
+	Image                    string
+	LogLevel                 string
+	LogFormat                string
+	UID                      int
+	Version                  string
+	RequireIdentityOnPorts   string
+	SkipOutboundPorts        string
+	OpaquePorts              string
+	SkipInboundPorts         string
+	OutboundConnectTimeout   string
+	InboundConnectTimeout    string
+	OutboundConnectKeepalive string
+	InboundAcceptKeepalive   string
+	WaitBeforeExitSeconds    int
 }
 
 func (iv *InjectValidator) getContainer(pod *v1.PodSpec, name string, isInit bool) *v1.Container {
@@ -264,8 +266,8 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 		}
 	}
 
-	if iv.OutboundConnectTimeout != "" {
-		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT", iv.InboundConnectTimeout); err != nil {
+	if iv.InboundAcceptKeepalive != "" {
+		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE", iv.InboundAcceptKeepalive); err != nil {
 			return err
 		}
 	}
@@ -510,6 +512,14 @@ func (iv *InjectValidator) GetFlagsAndAnnotations() ([]string, map[string]string
 
 	if iv.InboundConnectTimeout != "" {
 		annotations[k8s.ProxyInboundConnectTimeout] = iv.InboundConnectTimeout
+	}
+
+	if iv.OutboundConnectKeepalive != "" {
+		annotations[k8s.ProxyOutboundConnectKeepalive] = iv.OutboundConnectKeepalive
+	}
+
+	if iv.InboundAcceptKeepalive != "" {
+		annotations[k8s.ProxyInboundAcceptKeepalive] = iv.InboundAcceptKeepalive
 	}
 
 	if iv.WaitBeforeExitSeconds != 0 {
