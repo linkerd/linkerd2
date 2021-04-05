@@ -175,8 +175,6 @@ Kubernetes: `>=1.16.0-0`
 | proxy.logLevel | string | `"warn,linkerd=info"` | Log level for the proxy |
 | proxy.opaquePorts | string | `"25,443,587,3306,5432,11211"` | Default set of opaque ports - SMTP (25,587) server-first - HTTPS (443) opaque TLS - MYSQL (3306) server-first - PostgreSQL (5432) server-first - Memcached (11211) clients do not issue any preamble, which breaks detection |
 | proxy.outboundConnectTimeout | string | `"1000ms"` | Maximum time allowed for the proxy to establish an outbound TCP connection |
-| proxy.inboundAcceptKeepalive | string | `"10000ms"` | Interval that keepalive pings will wait before sending a ping (during inbound connections) |
-| proxy.outboundConnectKeepalive | string | `"10000ms"` | Interval that keepalive pings will wait before sending a ping (while connected to an outbound server) |
 | proxy.ports.admin | int | `4191` | Admin port for the proxy container |
 | proxy.ports.control | int | `4190` | Control port for the proxy container |
 | proxy.ports.inbound | int | `4143` | Inbound port for the proxy container |
