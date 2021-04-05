@@ -201,12 +201,9 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		// prevents injector from taking a different code path in the ignress mode
 		delete(rt.overrideAnnotations, k8s.ProxyInjectAnnotation)
 		conf.AppendPodAnnotation(k8s.CreatedByAnnotation, k8s.CreatedByAnnotationValue())
-	} else {
+	} else if !rt.values.Proxy.IsIngress { // Add enabled annotation only if its not ingress mode to prevent overriding the annotation
 		// flag the auto-injector to inject the proxy, regardless of the namespace annotation
-		// Add enabled annotation only if its not ingress mode to prevent overriding the annotation
-		if !rt.values.Proxy.IsIngress {
-			conf.AppendPodAnnotation(k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled)
-		}
+		conf.AppendPodAnnotation(k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled)
 	}
 
 	patchJSON, err := conf.GetPodPatch(rt.injectProxy)
