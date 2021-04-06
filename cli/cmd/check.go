@@ -288,7 +288,7 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 					Category:    healthcheck.CategoryID(extensionCmd),
 					Description: fmt.Sprintf("Linkerd extension command %s exists", extensionCmd),
 					Err:         err,
-					HintAnchor:  "extensions",
+					HintURL:     healthcheck.DefaultHintBaseURL + "extensions",
 					Warning:     true,
 				},
 			}
@@ -316,7 +316,7 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 					Category:    healthcheck.CategoryID(extensionCmd),
 					Description: fmt.Sprintf("Running: %s", command),
 					Err:         err,
-					HintAnchor:  "extensions",
+					HintURL:     healthcheck.DefaultHintBaseURL + "extensions",
 				})
 				success = false
 			} else {

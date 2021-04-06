@@ -23,10 +23,6 @@ func TestMain(m *testing.M) {
 
 func TestRabbitMQDeploy(t *testing.T) {
 	ctx := context.Background()
-	if os.Getenv("RUN_ARM_TEST") != "" {
-		t.Skip("Skipped. RabbitMQ client image does not support ARM yet")
-	}
-
 	TestHelper.WithDataPlaneNamespace(ctx, "rabbitmq-test", map[string]string{}, t, func(t *testing.T, testNamespace string) {
 		out, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/rabbitmq-server.yaml")
 		// inject rabbitmq server
@@ -45,9 +41,6 @@ func TestRabbitMQDeploy(t *testing.T) {
 				testutil.AnnotatedError(t, "CheckPods timed-out %s", err)
 			}
 		}
-		if err := TestHelper.CheckDeployment(ctx, testNamespace, "rabbitmq", 1); err != nil {
-			testutil.AnnotatedErrorf(t, "CheckDeployment  timed-out", "Error validating deployment [%s]: \n%s", "rabbitmq", err)
-		}
 		// inject rabbitmq-client
 		stdout, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/rabbitmq-client.yaml")
 		if err != nil {
@@ -64,9 +57,6 @@ func TestRabbitMQDeploy(t *testing.T) {
 			} else {
 				testutil.AnnotatedError(t, "CheckPods timed-out %s", err)
 			}
-		}
-		if err := TestHelper.CheckDeployment(ctx, testNamespace, "rabbitmq-client", 1); err != nil {
-			testutil.AnnotatedErrorf(t, "CheckDeployment  timed-out", "Error validating deployment [%s]: \n%s", "rabbitmq", err)
 		}
 		// Verify client output
 		golden := "check.rabbitmq.golden"

@@ -26,7 +26,7 @@ func main() {
 
 	addr := cmd.String("addr", ":8084", "address to serve on")
 	metricsAddr := cmd.String("metrics-addr", ":9994", "address to serve scrapable metrics on")
-	publicAPIAddr := cmd.String("linkerd-controller-api-addr", "127.0.0.1:8085", "address of the linkerd-controller-api service")
+	publicAPIAddr := cmd.String("linkerd-controller-api-addr", "127.0.0.1:8185", "address of the linkerd-controller-api service")
 	vizAPIAddr := cmd.String("linkerd-metrics-api-addr", "127.0.0.1:8085", "address of the linkerd-metrics-api service")
 	grafanaAddr := cmd.String("grafana-addr", "", "address of the linkerd-grafana service")
 	jaegerAddr := cmd.String("jaeger-addr", "", "address of the jaeger service")

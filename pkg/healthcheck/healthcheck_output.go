@@ -93,8 +93,8 @@ func runChecksTable(wout io.Writer, hc Runner) bool {
 		fmt.Fprintf(wout, "%s %s\n", status, result.Description)
 		if result.Err != nil {
 			fmt.Fprintf(wout, "    %s\n", result.Err)
-			if result.HintAnchor != "" {
-				fmt.Fprintf(wout, "    see %s%s for hints\n", HintBaseURL, result.HintAnchor)
+			if result.HintURL != "" {
+				fmt.Fprintf(wout, "    see %s for hints\n", result.HintURL)
 			}
 		}
 	}
@@ -170,8 +170,8 @@ func runChecksJSON(wout io.Writer, werr io.Writer, hc Runner) bool {
 			if result.Err != nil {
 				currentCheck.Error = result.Err.Error()
 
-				if result.HintAnchor != "" {
-					currentCheck.Hint = fmt.Sprintf("%s%s", HintBaseURL, result.HintAnchor)
+				if result.HintURL != "" {
+					currentCheck.Hint = result.HintURL
 				}
 			}
 			currentCategory.Checks = append(currentCategory.Checks, currentCheck)
@@ -215,7 +215,7 @@ func ParseJSONCheckOutput(data []byte) (CheckResults, error) {
 				Category:    CategoryID(category.Name),
 				Description: check.Description,
 				Err:         err,
-				HintAnchor:  check.Hint,
+				HintURL:     check.Hint,
 				Warning:     check.Result == checkWarn,
 			})
 		}

@@ -87,10 +87,6 @@ func TestDirectEdges(t *testing.T) {
 			}
 		}
 
-		if err := TestHelper.CheckDeployment(ctx, testNamespace, "terminus", 1); err != nil {
-			testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", "terminus", err)
-		}
-
 		// get terminus pod ip
 
 		ip, err := TestHelper.Kubectl("", "-n", testNamespace, "get", "pod", "-ojsonpath=\"{.items[*].status.podIP}\"")
@@ -127,10 +123,6 @@ func TestDirectEdges(t *testing.T) {
 			} else {
 				testutil.AnnotatedError(t, "CheckPods timed-out", err)
 			}
-		}
-
-		if err := TestHelper.CheckDeployment(ctx, testNamespace, "slow-cooker", 1); err != nil {
-			testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "error validating deployment [%s]:\n%s", "terminus", err)
 		}
 
 		// check edges

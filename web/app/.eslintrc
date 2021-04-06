@@ -3,7 +3,7 @@
     "react",
     "promise"
   ],
-  "parser": "babel-eslint",
+  "parser": "@babel/eslint-parser",
   "parserOptions": {
     "sourceType": "module",
     "ecmaFeatures": {
@@ -30,6 +30,7 @@
     "indent": 2,
     "no-console": [1, { "allow": ["warn", "error"] }], // minor offense
     "no-restricted-imports": [2, "lodash", "@material-ui/core", "@material-ui/icons"],
+    "react/destructuring-assignment": [0],
     "react/jsx-closing-bracket-location": [2, { "nonEmpty": "after-props", "selfClosing": "after-props" }],
     "react/jsx-curly-spacing": [2, "never", {"allowMultiline": false}],
     "react/jsx-no-duplicate-props": [2, {"ignoreCase": false}],
@@ -48,7 +49,7 @@
       "skipUndeclared": false
     }],
     "semi": [2, "always"],
-    "sort-imports": [2],
+    "sort-imports": [0],
     "space-before-blocks": [2, "always"],
     "space-before-function-paren": [2, "never"],
     "strict": [2, "safe"],

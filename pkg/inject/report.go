@@ -51,6 +51,8 @@ type Report struct {
 	InjectDisabled               bool
 	InjectDisabledReason         string
 	InjectAnnotationAt           string
+	Annotatable                  bool
+	Annotated                    bool
 	AutomountServiceAccountToken bool
 
 	// Uninjected consists of two boolean flags to indicate if a proxy and
@@ -68,13 +70,13 @@ type Report struct {
 // from conf
 func newReport(conf *ResourceConfig) *Report {
 	var name string
-	if m := conf.workload.Meta; m != nil {
-		name = m.Name
-	} else if m := conf.pod.meta; m != nil {
-		name = m.Name
+	if conf.IsPod() {
+		name = conf.pod.meta.Name
 		if name == "" {
-			name = m.GenerateName
+			name = conf.pod.meta.GenerateName
 		}
+	} else if m := conf.workload.Meta; m != nil {
+		name = m.Name
 	}
 
 	report := &Report{
@@ -83,8 +85,8 @@ func newReport(conf *ResourceConfig) *Report {
 		AutomountServiceAccountToken: true,
 	}
 
-	if conf.pod.meta != nil && conf.pod.spec != nil {
-		report.InjectDisabled, report.InjectDisabledReason, report.InjectAnnotationAt = report.disableByAnnotation(conf)
+	if conf.HasPodTemplate() {
+		report.InjectDisabled, report.InjectDisabledReason, report.InjectAnnotationAt = report.disabledByAnnotation(conf)
 		report.HostNetwork = conf.pod.spec.HostNetwork
 		report.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
 		report.UDP = checkUDPPorts(conf.pod.spec)
@@ -96,8 +98,12 @@ func newReport(conf *ResourceConfig) *Report {
 				report.AutomountServiceAccountToken = false
 			}
 		}
-	} else if report.Kind != k8s.Service && report.Kind != k8s.Namespace {
+	} else {
 		report.UnsupportedResource = true
+	}
+
+	if conf.HasPodTemplate() || conf.IsService() || conf.IsNamespace() {
+		report.Annotatable = true
 	}
 
 	return report
@@ -136,6 +142,11 @@ func (r *Report) Injectable() (bool, []string) {
 	return true, nil
 }
 
+// IsAnnotatable returns true if the resource for a report can be annotated.
+func (r *Report) IsAnnotatable() bool {
+	return r.Annotatable
+}
+
 func checkUDPPorts(t *v1.PodSpec) bool {
 	// Check for ports with `protocol: UDP`, which will not be routed by Linkerd
 	for _, container := range t.Containers {
@@ -148,9 +159,10 @@ func checkUDPPorts(t *v1.PodSpec) bool {
 	return false
 }
 
-// disabledByAnnotation checks annotations for both workload, namespace and returns
-// if disabled, Inject Disabled reason and the resource where that annotation was present
-func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string, string) {
+// disabledByAnnotation checks the workload and namespace for the annotation
+// that disables injection. It returns if it is disabled, why it is disabled,
+// and the location where the annotation was present.
+func (r *Report) disabledByAnnotation(conf *ResourceConfig) (bool, string, string) {
 	// truth table of the effects of the inject annotation:
 	//
 	// origin  | namespace | pod      | inject?  | return
