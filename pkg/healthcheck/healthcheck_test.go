@@ -1960,18 +1960,6 @@ func TestDataPlanePodLabels(t *testing.T) {
 				},
 				expectedErrorMsg: "Some labels on data plane pods should be annotations:\n\t* /emoji-d9c7866bb-7v74n\n\t\tlinkerd.io/inject",
 			},
-			{
-				description: "multiple invalid labels",
-				pods: []corev1.Pod{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:   "emoji-d9c7866bb-7v74n",
-							Labels: map[string]string{k8s.ProxyInjectAnnotation: "enable", k8s.ProxyControlPortAnnotation: "3000"},
-						},
-					},
-				},
-				expectedErrorMsg: "Some labels on data plane pods should be annotations:\n\t* /emoji-d9c7866bb-7v74n\n\t\tconfig.linkerd.io/control-port\n\t\tlinkerd.io/inject",
-			},
 		} {
 			tc := tc //pin
 			t.Run(tc.description, func(t *testing.T) {
@@ -1981,6 +1969,7 @@ func TestDataPlanePodLabels(t *testing.T) {
 				if err == nil {
 					t.Fatal("Expected error, got nothing")
 				}
+				fmt.Println(err.Error())
 				if err.Error() != tc.expectedErrorMsg {
 					t.Fatalf("Unexpected error message: %s", err.Error())
 				}
