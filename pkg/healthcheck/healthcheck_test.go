@@ -1920,8 +1920,9 @@ func TestDataPlanePodLabels(t *testing.T) {
 
 	t.Run("Returns error if any labels are misconfigured", func(t *testing.T) {
 		for _, tc := range []struct {
-			description string
-			pods        []corev1.Pod
+			description      string
+			pods             []corev1.Pod
+			expectedErrorMsg string
 		}{
 			{
 				description: "config as label",
@@ -1933,6 +1934,7 @@ func TestDataPlanePodLabels(t *testing.T) {
 						},
 					},
 				},
+				expectedErrorMsg: "Some labels on data plane pods should be annotations:\n\t* /emoji-d9c7866bb-7v74n\n\t\tconfig.linkerd.io/control-port",
 			},
 			{
 				description: "alpha config as label",
@@ -1944,6 +1946,7 @@ func TestDataPlanePodLabels(t *testing.T) {
 						},
 					},
 				},
+				expectedErrorMsg: "Some labels on data plane pods should be annotations:\n\t* /emoji-d9c7866bb-7v74n\n\t\tconfig.alpha.linkerd.io/alpha-setting",
 			},
 			{
 				description: "inject annotation as label",
@@ -1955,22 +1958,40 @@ func TestDataPlanePodLabels(t *testing.T) {
 						},
 					},
 				},
+				expectedErrorMsg: "Some labels on data plane pods should be annotations:\n\t* /emoji-d9c7866bb-7v74n\n\t\tlinkerd.io/inject",
+			},
+			{
+				description: "multiple invalid labels",
+				pods: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:   "emoji-d9c7866bb-7v74n",
+							Labels: map[string]string{k8s.ProxyInjectAnnotation: "enable", k8s.ProxyControlPortAnnotation: "3000"},
+						},
+					},
+				},
+				expectedErrorMsg: "Some labels on data plane pods should be annotations:\n\t* /emoji-d9c7866bb-7v74n\n\t\tconfig.linkerd.io/control-port\n\t\tlinkerd.io/inject",
 			},
 		} {
 			tc := tc //pin
 			t.Run(tc.description, func(t *testing.T) {
 				err := checkMisconfiguredPodsLabels(tc.pods)
+				fmt.Println(err.Error())
+
 				if err == nil {
 					t.Fatal("Expected error, got nothing")
+				}
+				if err.Error() != tc.expectedErrorMsg {
+					t.Fatalf("Unexpected error message: %s", err.Error())
 				}
 			})
 		}
 	})
 }
 
-func TestServicesLabelsAndAnnotations(t *testing.T) {
+func TestServicesLabels(t *testing.T) {
 
-	t.Run("Returns nil if service labels and annotations are ok", func(t *testing.T) {
+	t.Run("Returns nil if service labels are ok", func(t *testing.T) {
 		services := []corev1.Service{
 			{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1981,7 +2002,7 @@ func TestServicesLabelsAndAnnotations(t *testing.T) {
 			},
 		}
 
-		err := checkMisconfiguredServiceLabelsAndAnnotations(services)
+		err := checkMisconfiguredServiceLabels(services)
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
@@ -1989,8 +2010,9 @@ func TestServicesLabelsAndAnnotations(t *testing.T) {
 
 	t.Run("Returns error if service labels or annotation misconfigured", func(t *testing.T) {
 		for _, tc := range []struct {
-			description string
-			services    []corev1.Service
+			description      string
+			services         []corev1.Service
+			expectedErrorMsg string
 		}{
 			{
 				description: "config as label",
@@ -2002,6 +2024,7 @@ func TestServicesLabelsAndAnnotations(t *testing.T) {
 						},
 					},
 				},
+				expectedErrorMsg: "Some labels on data plane services should be annotations:\n\t* /emoji-d9c7866bb-7v74n\n\t\tconfig.linkerd.io/control-port",
 			},
 			{
 				description: "alpha config as label",
@@ -2013,7 +2036,48 @@ func TestServicesLabelsAndAnnotations(t *testing.T) {
 						},
 					},
 				},
+				expectedErrorMsg: "Some labels on data plane services should be annotations:\n\t* /emoji-d9c7866bb-7v74n\n\t\tconfig.alpha.linkerd.io/alpha-setting",
 			},
+		} {
+			tc := tc //pin
+			t.Run(tc.description, func(t *testing.T) {
+				err := checkMisconfiguredServiceLabels(tc.services)
+				if err == nil {
+					t.Fatal("Expected error, got nothing")
+				}
+				if err.Error() != tc.expectedErrorMsg {
+					t.Fatalf("Unexpected error message: %s", err.Error())
+				}
+			})
+		}
+	})
+}
+
+func TestServicesAnnotations(t *testing.T) {
+
+	t.Run("Returns nil if service annotations are ok", func(t *testing.T) {
+		services := []corev1.Service{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "emoji-d9c7866bb-7v74n",
+					Annotations: map[string]string{k8s.ProxyControlPortAnnotation: "3000"},
+					Labels:      map[string]string{"app": "test", k8s.DefaultExportedServiceSelector: "true"},
+				},
+			},
+		}
+
+		err := checkMisconfiguredServiceAnnotations(services)
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+	})
+
+	t.Run("Returns error if service annotations are misconfigured", func(t *testing.T) {
+		for _, tc := range []struct {
+			description      string
+			services         []corev1.Service
+			expectedErrorMsg string
+		}{
 			{
 				description: "mirror as annotations",
 				services: []corev1.Service{
@@ -2024,13 +2088,17 @@ func TestServicesLabelsAndAnnotations(t *testing.T) {
 						},
 					},
 				},
+				expectedErrorMsg: "Some annotations on data plane services should be labels:\n\t* /emoji-d9c7866bb-7v74n\n\t\tmirror.linkerd.io/exported",
 			},
 		} {
 			tc := tc //pin
 			t.Run(tc.description, func(t *testing.T) {
-				err := checkMisconfiguredServiceLabelsAndAnnotations(tc.services)
+				err := checkMisconfiguredServiceAnnotations(tc.services)
 				if err == nil {
 					t.Fatal("Expected error, got nothing")
+				}
+				if err.Error() != tc.expectedErrorMsg {
+					t.Fatalf("Unexpected error message: %s", err.Error())
 				}
 			})
 		}
