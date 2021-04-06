@@ -38,7 +38,7 @@ func CheckPublicAPIClientOrRetryOrExit(hcOptions healthcheck.Options) public.Cli
 	return hc.PublicAPIClient()
 }
 
-// CheckDestinationClient builds a new destination client and executes status
+// GetDestinationClient builds a new destination client and executes status
 // checks to determine if the client can successfully connect. If the checks
 // fail, then CLI will print an error and exit. If the hcOptions.retryDeadline
 // param is specified, then the CLI will print a message to stderr and retry.

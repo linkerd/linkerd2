@@ -1,17 +1,14 @@
 package public
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 
-	"github.com/golang/protobuf/proto"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/grpc/metadata"
 )
 
 var (
@@ -61,30 +58,6 @@ func (h *handler) handleVersion(w http.ResponseWriter, req *http.Request) {
 		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
-}
-
-type streamServer struct {
-	w   protohttp.FlushableResponseWriter
-	req *http.Request
-}
-
-// satisfy the ServerStream interface
-func (s streamServer) SetHeader(metadata.MD) error  { return nil }
-func (s streamServer) SendHeader(metadata.MD) error { return nil }
-func (s streamServer) SetTrailer(metadata.MD)       {}
-func (s streamServer) Context() context.Context     { return s.req.Context() }
-func (s streamServer) SendMsg(interface{}) error    { return nil }
-func (s streamServer) RecvMsg(interface{}) error    { return nil }
-
-func (s streamServer) Send(msg proto.Message) error {
-	err := protohttp.WriteProtoToHTTPResponse(s.w, msg)
-	if err != nil {
-		protohttp.WriteErrorToHTTPResponse(s.w, err)
-		return err
-	}
-
-	s.w.Flush()
-	return nil
 }
 
 func fullURLPathFor(method string) string {
