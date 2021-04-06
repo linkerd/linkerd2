@@ -25,9 +25,8 @@ var (
 	// 2.8 and below
 	repairNotApplicableVersionRegex = regexp.MustCompile(`^stable-2\.[0-8]\.([0-9]+)$`)
 
-	// repairApplicableVersionRegex matches versions 2.9.4 and above where repair
-	// would be useful
-	repairApplicableVersionRegex = regexp.MustCompile(`^stable-2\.(9|[0-9]{2})\.([0-9]+)$`)
+	// repairApplicableVersionRegex matches versions 2.9 versions upto 2.9.4
+	repairApplicableVersionRegex = regexp.MustCompile(`^stable-2\.9\.[0-4]$`)
 )
 
 // newCmdRepair creates a new cobra command `repair` which re-creates the
@@ -93,7 +92,7 @@ func repair(ctx context.Context, forced bool) error {
 			return fmt.Errorf("repair command is only applicable to 2.9 control-plane versions. Please try upgrading to the latest supported versions of Linkerd i.e 2.9.4 and above")
 		}
 
-		// Suggest 2.9.4 CLI version for all 2.9 server versions
+		// Suggest 2.9.4 CLI version for all 2.9 server versions upto 2.9.4
 		if repairApplicableVersionRegex.Match([]byte(serverVersion)) {
 			return fmt.Errorf("Please run the repair command with a `stable-2.9.4` CLI.\nRun `export LINKERD2_VERSION=\"stable-2.9.4\"; curl -sL https://run.linkerd.io/install | sh; unset LINKERD2_VERSION` to install the server version of the CLI")
 		}
