@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -16,11 +17,11 @@ import (
 
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	netPb "github.com/linkerd/linkerd2-proxy-api/go/net"
-	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	api "github.com/linkerd/linkerd2/pkg/public"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/status"
 )
 
 type endpointsOptions struct {
@@ -70,7 +71,7 @@ func newCmdEndpoints() *cobra.Command {
 
   # get the endpoints for authorities in Linkerd's control-plane itself
   linkerd diagnostics endpoints linkerd-controller-api.linkerd.svc.cluster.local:8085
-  linkerd diagnostics endpoints linkerd-web.linkerd.svc.cluster.local:8084`
+  linkerd diagnostics endpoints web.linkerd-viz.svc.cluster.local:8084`
 
 	cmd := &cobra.Command{
 		Use:     "endpoints [flags] authorities",
@@ -90,7 +91,7 @@ destination.`,
 				return err
 			}
 
-			endpoints, err := requestEndpointsFromAPI(api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
+			endpoints, err := requestEndpointsFromAPI(api.GetDestinationClient(healthcheck.Options{
 				ControlPlaneNamespace: controlPlaneNamespace,
 				KubeConfig:            kubeconfigPath,
 				Impersonate:           impersonate,
@@ -116,18 +117,18 @@ destination.`,
 	return cmd
 }
 
-func requestEndpointsFromAPI(client public.Client, authorities []string) (endpointsInfo, error) {
+func requestEndpointsFromAPI(client destinationPb.DestinationClient, authorities []string) (endpointsInfo, error) {
 	info := make(endpointsInfo)
 	// buffered channels to avoid blocking
 	events := make(chan *destinationPb.Update, len(authorities))
-	errors := make(chan error, len(authorities))
+	errs := make(chan error, len(authorities))
 	var wg sync.WaitGroup
 
 	for _, authority := range authorities {
 		wg.Add(1)
 		go func(authority string) {
 			defer wg.Done()
-			if len(errors) == 0 {
+			if len(errs) == 0 {
 				dest := &destinationPb.GetDestination{
 					Scheme: "http:",
 					Path:   authority,
@@ -135,13 +136,16 @@ func requestEndpointsFromAPI(client public.Client, authorities []string) (endpoi
 
 				rsp, err := client.Get(context.Background(), dest)
 				if err != nil {
-					errors <- err
+					errs <- err
 					return
 				}
 
 				event, err := rsp.Recv()
 				if err != nil {
-					errors <- err
+					if grpcError, ok := status.FromError(err); ok {
+						err = errors.New(grpcError.Message())
+					}
+					errs <- err
 					return
 				}
 				events <- event
@@ -153,7 +157,7 @@ func requestEndpointsFromAPI(client public.Client, authorities []string) (endpoi
 
 	for i := 0; i < len(authorities); i++ {
 		select {
-		case err := <-errors:
+		case err := <-errs:
 			// we only care about the first error
 			return nil, err
 		case event := <-events:

@@ -1363,7 +1363,6 @@ spec:
       containers:
       - args:
         - public-api
-        - -destination-addr=linkerd-dst.linkerd.svc.cluster.local:8086
         - -controller-namespace=linkerd
         - -log-level=ControllerLogLevel
         - -log-format=ControllerLogFormat

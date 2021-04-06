@@ -61,6 +61,7 @@ linkerd-api
 -----------
 √ control plane pods are ready
 √ can initialize the client
+√ can initialize the destination client
 √ can query the control plane API
 
 linkerd-version

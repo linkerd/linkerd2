@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -35,6 +36,23 @@ func CheckPublicAPIClientOrRetryOrExit(hcOptions healthcheck.Options) public.Cli
 
 	hc.RunChecks(exitOnError)
 	return hc.PublicAPIClient()
+}
+
+// CheckDestinationClient builds a new destination client and executes status
+// checks to determine if the client can successfully connect. If the checks
+// fail, then CLI will print an error and exit. If the hcOptions.retryDeadline
+// param is specified, then the CLI will print a message to stderr and retry.
+func GetDestinationClient(hcOptions healthcheck.Options) destinationPb.DestinationClient {
+	checks := []healthcheck.CategoryID{
+		healthcheck.KubernetesAPIChecks,
+		healthcheck.LinkerdControlPlaneExistenceChecks,
+		healthcheck.LinkerdAPIChecks,
+	}
+
+	hc := healthcheck.NewHealthChecker(checks, &hcOptions)
+
+	hc.RunChecks(exitOnError)
+	return hc.DestinationClient()
 }
 
 func exitOnError(result *healthcheck.CheckResult) {

@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/golang/protobuf/proto"
-	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
@@ -17,7 +16,6 @@ import (
 
 var (
 	versionPath = fullURLPathFor("Version")
-	destGetPath = fullURLPathFor("DestinationGet")
 )
 
 type handler struct {
@@ -38,8 +36,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	switch req.URL.Path {
 	case versionPath:
 		h.handleVersion(w, req)
-	case destGetPath:
-		h.handleDestGet(w, req)
 	default:
 		http.NotFound(w, req)
 	}
@@ -61,28 +57,6 @@ func (h *handler) handleVersion(w http.ResponseWriter, req *http.Request) {
 	}
 
 	err = protohttp.WriteProtoToHTTPResponse(w, rsp)
-	if err != nil {
-		protohttp.WriteErrorToHTTPResponse(w, err)
-		return
-	}
-}
-
-func (h *handler) handleDestGet(w http.ResponseWriter, req *http.Request) {
-	flushableWriter, err := protohttp.NewStreamingWriter(w)
-	if err != nil {
-		protohttp.WriteErrorToHTTPResponse(w, err)
-		return
-	}
-
-	var protoRequest destinationPb.GetDestination
-	err = protohttp.HTTPRequestToProto(req, &protoRequest)
-	if err != nil {
-		protohttp.WriteErrorToHTTPResponse(w, err)
-		return
-	}
-
-	server := destinationServer{streamServer{w: flushableWriter, req: req}}
-	err = h.grpcServer.Get(&protoRequest, server)
 	if err != nil {
 		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
@@ -113,14 +87,6 @@ func (s streamServer) Send(msg proto.Message) error {
 	return nil
 }
 
-type destinationServer struct {
-	streamServer
-}
-
-func (s destinationServer) Send(msg *destinationPb.Update) error {
-	return s.streamServer.Send(msg)
-}
-
 func fullURLPathFor(method string) string {
 	return apiRoot + apiPrefix + method
 }
@@ -128,7 +94,6 @@ func fullURLPathFor(method string) string {
 // NewServer creates a Public API HTTP server.
 func NewServer(
 	addr string,
-	destinationClient destinationPb.DestinationClient,
 	k8sAPI *k8s.API,
 	controllerNamespace string,
 	clusterDomain string,
@@ -136,7 +101,6 @@ func NewServer(
 
 	baseHandler := &handler{
 		grpcServer: newGrpcServer(
-			destinationClient,
 			k8sAPI,
 			controllerNamespace,
 			clusterDomain,
