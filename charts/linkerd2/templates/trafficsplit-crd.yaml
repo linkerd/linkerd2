@@ -38,21 +38,6 @@ spec:
                 service:
                   description: The apex service of this split.
                   type: string
-                matches:
-                  description: The HTTP route groups that this traffic split should match.
-                  type: array
-                  items:
-                    type: object
-                    required: ['kind', 'name']
-                    properties:
-                      kind:
-                        description: Kind of the matching group.
-                        type: string
-                        enum:
-                          - HTTPRouteGroup
-                      name:
-                        description: Name of the matching group.
-                        type: string
                 backends:
                   description: The backend services of this split.
                   type: array
