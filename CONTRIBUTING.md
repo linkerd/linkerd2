@@ -16,7 +16,7 @@ as a contributor, have the legal right to make the contribution.
 
 See the [DCO](DCO) file for the full text of what you must agree to.
 
-### Option 1: commit message signoffs
+### Option 1: commit message signoffs ###
 
 One way to signify that you agree to the DCO for a commit is to add a line to
 the git commit message:
@@ -29,7 +29,7 @@ In most cases, you can add this signoff to your commit automatically with the
 `-s` flag to `git commit`. You must use your real name and a reachable email
 address (sorry, no pseudonyms or anonymous contributions).
 
-### Option 2: public statement
+### Option 2: public statement ###
 
 If you've already made the commits and don't want to engage in git shenanigans
 to retroactively apply the signoff as above, there is another option: leave a
@@ -42,7 +42,7 @@ name and a reachable email address.
 If you use this approach, the DCO bot will still complain, but maintainers will
 override the DCO bot at merge time.
 
-### Option 3: very simple changes
+### Option 3: very simple changes ###
 
 Changes that are trivial (e.g. spelling corrections, adding to ADOPTERS.md,
 one-word changes) do not require a DCO signoff. Maintainers should feel free to
