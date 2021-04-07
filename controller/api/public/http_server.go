@@ -7,7 +7,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
@@ -16,7 +15,6 @@ import (
 )
 
 var (
-	versionPath = fullURLPathFor("Version")
 	destGetPath = fullURLPathFor("DestinationGet")
 )
 
@@ -36,35 +34,12 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// Serve request
 	switch req.URL.Path {
-	case versionPath:
-		h.handleVersion(w, req)
 	case destGetPath:
 		h.handleDestGet(w, req)
 	default:
 		http.NotFound(w, req)
 	}
 
-}
-
-func (h *handler) handleVersion(w http.ResponseWriter, req *http.Request) {
-	var protoRequest pb.Empty
-	err := protohttp.HTTPRequestToProto(req, &protoRequest)
-	if err != nil {
-		protohttp.WriteErrorToHTTPResponse(w, err)
-		return
-	}
-
-	rsp, err := h.grpcServer.Version(req.Context(), &protoRequest)
-	if err != nil {
-		protohttp.WriteErrorToHTTPResponse(w, err)
-		return
-	}
-
-	err = protohttp.WriteProtoToHTTPResponse(w, rsp)
-	if err != nil {
-		protohttp.WriteErrorToHTTPResponse(w, err)
-		return
-	}
 }
 
 func (h *handler) handleDestGet(w http.ResponseWriter, req *http.Request) {

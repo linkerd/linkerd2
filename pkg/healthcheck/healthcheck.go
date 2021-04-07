@@ -1215,16 +1215,6 @@ func (hc *HealthChecker) allCategories() []Category {
 						return
 					},
 				},
-				{
-					description:   "can query the control plane API",
-					hintAnchor:    "l5d-api-control-api",
-					retryDeadline: hc.RetryDeadline,
-					fatal:         true,
-					check: func(ctx context.Context) (err error) {
-						hc.serverVersion, err = GetServerVersion(ctx, hc.apiClient)
-						return
-					},
-				},
 			},
 		},
 		{
@@ -1260,6 +1250,16 @@ func (hc *HealthChecker) allCategories() []Category {
 		{
 			ID: LinkerdControlPlaneVersionChecks,
 			checkers: []Checker{
+				{
+					description:   "can retrieve the control plane version",
+					hintAnchor:    "l5d-version-control",
+					retryDeadline: hc.RetryDeadline,
+					fatal:         true,
+					check: func(ctx context.Context) (err error) {
+						hc.serverVersion, err = GetServerVersion(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
+						return
+					},
+				},
 				{
 					description: "control plane is up-to-date",
 					hintAnchor:  "l5d-version-control",

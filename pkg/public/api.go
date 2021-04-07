@@ -1,24 +1,12 @@
 package public
 
 import (
-	"context"
 	"fmt"
 	"os"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 )
-
-// RawPublicAPIClient creates a raw public API client with no validation.
-func RawPublicAPIClient(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string, apiAddr string) (pb.ApiClient, error) {
-	if apiAddr != "" {
-		return public.NewInternalClient(controlPlaneNamespace, apiAddr)
-	}
-
-	return public.NewExternalClient(ctx, controlPlaneNamespace, kubeAPI)
-}
 
 // CheckPublicAPIClientOrRetryOrExit builds a new Public API client and executes status
 // checks to determine if the client can successfully connect to the API. If the

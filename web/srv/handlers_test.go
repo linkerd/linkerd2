@@ -8,27 +8,19 @@ import (
 	"testing"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	helpers "github.com/linkerd/linkerd2/pkg/profiles"
 	"sigs.k8s.io/yaml"
 )
 
-func TestHandleIndex(t *testing.T) {
-	mockAPIClient := &public.MockAPIClient{
-		VersionInfoToReturn: &pb.VersionInfo{
-			GoVersion:      "the best one",
-			BuildDate:      "never",
-			ReleaseVersion: "0.3.3",
-		},
-	}
+const releaseVersion = "0.3.3"
 
+func TestHandleIndex(t *testing.T) {
 	server := FakeServer()
 
 	handler := &handler{
-		render:          server.RenderTemplate,
-		publicAPIClient: mockAPIClient,
+		render:  server.RenderTemplate,
+		version: releaseVersion,
 	}
 
 	recorder := httptest.NewRecorder()
@@ -52,8 +44,7 @@ func TestHandleIndex(t *testing.T) {
 
 	expectedSubstrings := []string{
 		"<div class=\"main\" id=\"main\"",
-		"data-release-version=\"0.3.3\"",
-		"data-go-version=\"the best one\"",
+		"data-release-version=\"" + releaseVersion + "\"",
 		"data-controller-namespace=\"\"",
 		"data-uuid=\"\"",
 	}
@@ -65,18 +56,10 @@ func TestHandleIndex(t *testing.T) {
 }
 
 func TestHandleConfigDownload(t *testing.T) {
-	mockAPIClient := &public.MockAPIClient{
-		VersionInfoToReturn: &pb.VersionInfo{
-			GoVersion:      "the best one",
-			BuildDate:      "never",
-			ReleaseVersion: "0.3.3",
-		},
-	}
 	server := FakeServer()
 
 	handler := &handler{
 		render:              server.RenderTemplate,
-		publicAPIClient:     mockAPIClient,
 		controllerNamespace: "linkerd",
 		clusterDomain:       "mycluster.local",
 	}

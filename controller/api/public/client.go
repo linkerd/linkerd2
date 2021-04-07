@@ -1,7 +1,6 @@
 package public
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -11,7 +10,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	log "github.com/sirupsen/logrus"
@@ -27,9 +25,8 @@ const (
 	apiDeployment = "linkerd-controller"
 )
 
-// Client wraps one gRPC client interface for publicPb.Api:
+// Client wraps one gRPC client interface for destination
 type Client interface {
-	publicPb.ApiClient
 	destinationPb.DestinationClient
 }
 
@@ -37,12 +34,6 @@ type grpcOverHTTPClient struct {
 	serverURL             *url.URL
 	httpClient            *http.Client
 	controlPlaneNamespace string
-}
-
-func (c *grpcOverHTTPClient) Version(ctx context.Context, req *publicPb.Empty, _ ...grpc.CallOption) (*publicPb.VersionInfo, error) {
-	var msg publicPb.VersionInfo
-	err := c.apiRequest(ctx, "Version", req, &msg)
-	return &msg, err
 }
 
 func (c *grpcOverHTTPClient) Get(ctx context.Context, req *destinationPb.GetDestination, _ ...grpc.CallOption) (destinationPb.Destination_GetClient, error) {
@@ -63,25 +54,6 @@ func (c *grpcOverHTTPClient) Get(ctx context.Context, req *destinationPb.GetDest
 func (c *grpcOverHTTPClient) GetProfile(ctx context.Context, _ *destinationPb.GetDestination, _ ...grpc.CallOption) (destinationPb.Destination_GetProfileClient, error) {
 	// Not implemented through this client. The proxies use the gRPC server directly instead.
 	return nil, errors.New("Not implemented")
-}
-
-func (c *grpcOverHTTPClient) apiRequest(ctx context.Context, endpoint string, req proto.Message, protoResponse proto.Message) error {
-	url := c.endpointNameToPublicAPIURL(endpoint)
-
-	log.Debugf("Making gRPC-over-HTTP call to [%s] [%+v]", url.String(), req)
-	httpRsp, err := c.post(ctx, url, req)
-	if err != nil {
-		return err
-	}
-	defer httpRsp.Body.Close()
-	log.Debugf("gRPC-over-HTTP call returned status [%s] and content length [%d]", httpRsp.Status, httpRsp.ContentLength)
-
-	if err := protohttp.CheckIfResponseHasError(httpRsp); err != nil {
-		return err
-	}
-
-	reader := bufio.NewReader(httpRsp.Body)
-	return protohttp.FromByteStreamToProtocolBuffers(reader, protoResponse)
 }
 
 func (c *grpcOverHTTPClient) post(ctx context.Context, url *url.URL, req proto.Message) (*http.Response, error) {

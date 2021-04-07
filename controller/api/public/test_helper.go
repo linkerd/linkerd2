@@ -9,7 +9,6 @@ import (
 
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
-	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	"google.golang.org/grpc"
@@ -18,13 +17,7 @@ import (
 // MockAPIClient satisfies the Public API's gRPC interfaces (public.APIClient).
 type MockAPIClient struct {
 	ErrorToReturn                error
-	VersionInfoToReturn          *publicPb.VersionInfo
 	DestinationGetClientToReturn destinationPb.Destination_GetClient
-}
-
-// Version provides a mock of a Public API method.
-func (c *MockAPIClient) Version(ctx context.Context, in *publicPb.Empty, opts ...grpc.CallOption) (*publicPb.VersionInfo, error) {
-	return c.VersionInfoToReturn, c.ErrorToReturn
 }
 
 // Get provides a mock of a Public API method.

@@ -15,7 +15,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
-	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
@@ -85,14 +84,8 @@ func renderJSONBytes(w http.ResponseWriter, b []byte) {
 }
 
 func (h *handler) handleAPIVersion(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	version, err := h.publicAPIClient.Version(req.Context(), &publicPb.Empty{})
-
-	if err != nil {
-		renderJSONError(w, err, http.StatusInternalServerError)
-		return
-	}
 	resp := map[string]interface{}{
-		"version": version,
+		"version": h.version,
 	}
 	renderJSON(w, resp)
 }
