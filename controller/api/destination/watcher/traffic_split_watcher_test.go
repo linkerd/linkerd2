@@ -6,9 +6,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
-	ts "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha1"
+	ts "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha2"
 	logging "github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -54,11 +53,11 @@ spec:
   service: foo
   backends:
   - service: foo-v1
-    weight: 500m
+    weight: 50
   - service: foo-v2
-    weight: 500m`
+    weight: 50`
 
-	weight           = resource.MustParse("500m")
+	weight           = 50
 	testTrafficSplit = ts.TrafficSplit{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "split",
@@ -69,11 +68,11 @@ spec:
 			Backends: []ts.TrafficSplitBackend{
 				{
 					Service: "foo-v1",
-					Weight:  &weight,
+					Weight:  weight,
 				},
 				{
 					Service: "foo-v2",
-					Weight:  &weight,
+					Weight:  weight,
 				},
 			},
 		},

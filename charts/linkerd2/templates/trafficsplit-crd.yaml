@@ -14,6 +14,8 @@ metadata:
 spec:
   group: split.smi-spec.io
   scope: Namespaced
+  conversion:
+    strategy: None
   names:
     kind: TrafficSplit
     listKind: TrafficSplitList
@@ -24,7 +26,7 @@ spec:
   versions:
     - name: v1alpha1
       served: true
-      storage: true
+      storage: false
       schema:
         openAPIV3Schema:
           type: object
@@ -71,4 +73,38 @@ spec:
         type: string
         description: The apex service of this split.
         jsonPath: .spec.service
+    - name: v1alpha2
+      served: true
+      storage: true
+      additionalPrinterColumns:
+      - name: Service
+        type: string
+        description: The apex service of this split.
+        jsonPath: .spec.service
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - service
+                - backends
+              properties:
+                service:
+                  description: The apex service of this split.
+                  type: string
+                backends:
+                  description: The backend services of this split.
+                  type: array
+                  items:
+                    type: object
+                    required: ['service', 'weight']
+                    properties:
+                      service:
+                        description: Name of the Kubernetes service.
+                        type: string
+                      weight:
+                        description: Traffic weight value of this backend.
+                        type: number
   preserveUnknownFields: false

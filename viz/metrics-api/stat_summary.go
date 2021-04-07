@@ -11,7 +11,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/prometheus/common/model"
-	"github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha1"
+	"github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -264,9 +264,9 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 	return resourceResult{res: &rsp, err: nil}
 }
 
-func (s *grpcServer) getTrafficSplits(req *pb.StatSummaryRequest) ([]*v1alpha1.TrafficSplit, error) {
+func (s *grpcServer) getTrafficSplits(req *pb.StatSummaryRequest) ([]*v1alpha2.TrafficSplit, error) {
 	var err error
-	var trafficSplits []*v1alpha1.TrafficSplit
+	var trafficSplits []*v1alpha2.TrafficSplit
 
 	res := req.GetSelector().GetResource()
 	labelSelector, err := getLabelSelector(req)
@@ -279,9 +279,9 @@ func (s *grpcServer) getTrafficSplits(req *pb.StatSummaryRequest) ([]*v1alpha1.T
 	} else if res.GetName() == "" {
 		trafficSplits, err = s.k8sAPI.TS().Lister().TrafficSplits(res.GetNamespace()).List(labelSelector)
 	} else {
-		var ts *v1alpha1.TrafficSplit
+		var ts *v1alpha2.TrafficSplit
 		ts, err = s.k8sAPI.TS().Lister().TrafficSplits(res.GetNamespace()).Get(res.GetName())
-		trafficSplits = []*v1alpha1.TrafficSplit{ts}
+		trafficSplits = []*v1alpha2.TrafficSplit{ts}
 	}
 
 	return trafficSplits, err
@@ -315,7 +315,7 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 
 		for _, backend := range backends {
 			name := backend.Service
-			weight := backend.Weight.String()
+			weight := fmt.Sprint(backend.Weight)
 
 			currentLeaf := tsKey{
 				Namespace: tsStats.namespace,
