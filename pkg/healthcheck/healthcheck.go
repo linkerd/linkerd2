@@ -1421,10 +1421,16 @@ func (hc *HealthChecker) allCategories() []Category {
 // CheckProxyVersionsUpToDate checks if all the proxies are on the latest
 // installed version
 func (hc *HealthChecker) CheckProxyVersionsUpToDate(pods []corev1.Pod) error {
+	return CheckProxyVersionsUpToDate(pods, hc.LatestVersions)
+}
+
+// CheckProxyVersionsUpToDate checks if all the proxies are on the latest
+// installed version
+func CheckProxyVersionsUpToDate(pods []corev1.Pod, versions version.Channels) error {
 	outdatedPods := []string{}
 	for _, pod := range pods {
 		proxyVersion := k8s.GetProxyVersion(pod)
-		if err := hc.LatestVersions.Match(proxyVersion); err != nil {
+		if err := versions.Match(proxyVersion); err != nil {
 			outdatedPods = append(outdatedPods, fmt.Sprintf("\t* %s (%s)", pod.Name, proxyVersion))
 		}
 	}

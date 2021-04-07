@@ -27,12 +27,10 @@ var (
 )
 
 type checkOptions struct {
-	wait               time.Duration
-	output             string
-	proxy              bool
-	namespace          string
-	versionOverride    string
-	cliVersionOverride string
+	wait      time.Duration
+	output    string
+	proxy     bool
+	namespace string
 }
 
 func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
@@ -202,8 +200,6 @@ code.`,
 	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 	cmd.Flags().BoolVar(&options.proxy, "proxy", options.proxy, "Also run data-plane checks, to determine if the data plane is healthy")
 	cmd.Flags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
-	cmd.Flags().StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
-	cmd.Flags().StringVar(&options.cliVersionOverride, "cli-version-override", "", "Used to override the version of the cli (mostly for testing)")
 
 	return cmd
 }
@@ -214,10 +210,6 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		return fmt.Errorf("Validation error when executing check command: %v", err)
 	}
 
-	if options.cliVersionOverride != "" {
-		version.Version = options.cliVersionOverride
-	}
-
 	hc := healthcheck.NewHealthChecker([]healthcheck.CategoryID{}, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
@@ -226,7 +218,6 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		ImpersonateGroup:      impersonateGroup,
 		APIAddr:               apiAddr,
 		RetryDeadline:         time.Now().Add(options.wait),
-		VersionOverride:       options.versionOverride,
 		DataPlaneNamespace:    options.namespace,
 	})
 

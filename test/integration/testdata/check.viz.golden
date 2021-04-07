@@ -9,7 +9,9 @@ linkerd-viz
 √ linkerd-viz pods are injected
 √ viz extension pods are running
 √ viz extension proxies are healthy
-√ viz extension proxies are up-to-date
+‼ viz extension proxies are up-to-date
+    {{.ProxyVersionErr}}
+    see https://linkerd.io/checks/#l5d-viz-proxy-cp-version for hints
 √ viz extension proxies and cli versions match
 √ prometheus is installed and configured correctly
 √ can initialize the client

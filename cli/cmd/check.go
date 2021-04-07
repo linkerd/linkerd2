@@ -335,7 +335,7 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 func getExtensionCheckFlags(lf *pflag.FlagSet) []string {
 	extensionFlags := []string{
 		"api-addr", "context", "as", "as-group", "kubeconfig", "linkerd-namespace", "verbose",
-		"namespace", "proxy", "wait", "expected-version", "cli-version-override",
+		"namespace", "proxy", "wait",
 	}
 	cmdLineFlags := []string{}
 	for _, flag := range extensionFlags {

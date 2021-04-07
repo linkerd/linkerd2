@@ -38,10 +38,8 @@ const (
 )
 
 type checkOptions struct {
-	wait               time.Duration
-	output             string
-	versionOverride    string
-	cliVersionOverride string
+	wait   time.Duration
+	output string
 }
 
 func newCheckOptions() *checkOptions {
@@ -98,8 +96,6 @@ non-zero exit code.`,
 	}
 	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
 	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
-	cmd.Flags().StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
-	cmd.Flags().StringVar(&options.cliVersionOverride, "cli-version-override", "", "Used to override the version of the cli (mostly for testing)")
 	cmd.Flags().Bool("proxy", false, "")
 	cmd.Flags().MarkHidden("proxy")
 	cmd.Flags().StringP("namespace", "n", "", "")

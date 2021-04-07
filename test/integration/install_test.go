@@ -1,6 +1,7 @@
 package test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -9,11 +10,14 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"text/template"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/tree"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
 )
 
@@ -947,21 +951,39 @@ func TestCheckPostInstall(t *testing.T) {
 }
 
 func TestCheckViz(t *testing.T) {
-	cmd := []string{"viz", "check", "--wait=0", "--expected-version", TestHelper.GetVersion()}
+	cmd := []string{"viz", "check", "--wait=0"}
 	golden := "check.viz.golden"
 	if TestHelper.ExternalPrometheus() {
 		golden = "check.viz.external-prometheus.golden"
 	}
 
+	pods, err := TestHelper.KubernetesHelper.GetPods(context.Background(), TestHelper.GetVizNamespace(), nil)
+	if err != nil {
+		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to retrieve pods: %s", err), err)
+	}
+
+	tpl := template.Must(template.ParseFiles("testdata" + "/" + golden))
+	vars := struct {
+		ProxyVersionErr string
+	}{
+		healthcheck.CheckProxyVersionsUpToDate(pods, version.Channels{}).Error(),
+	}
+
+	var expected bytes.Buffer
+	if err := tpl.Execute(&expected, vars); err != nil {
+		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to parse check.viz.golden template: %s", err), err)
+	}
+
 	timeout := time.Minute
-	err := TestHelper.RetryFor(timeout, func() error {
+	err = TestHelper.RetryFor(timeout, func() error {
 		out, err := TestHelper.LinkerdRun(cmd...)
 		if err != nil {
 			return fmt.Errorf("'linkerd viz check' command failed\n%s", err)
 		}
-		err = TestHelper.ValidateOutput(out, golden)
-		if err != nil {
-			return fmt.Errorf("received unexpected output\n%s", err.Error())
+
+		if out != expected.String() {
+			return fmt.Errorf(
+				"Expected:\n%s\nActual:\n%s", expected.String(), out)
 		}
 		return nil
 	})
