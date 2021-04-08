@@ -1367,7 +1367,7 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 				{
-					description: "data plane service labels configured correctly",
+					description: "data plane service labels are configured correctly",
 					hintAnchor:  "l5d-data-plane-services-labels",
 					warning:     true,
 					check: func(ctx context.Context) error {
