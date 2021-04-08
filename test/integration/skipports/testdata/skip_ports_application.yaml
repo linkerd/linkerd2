@@ -1,0 +1,191 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp
+  labels:
+    app: webapp
+    project: booksapp
+spec:
+  selector:
+    app: webapp
+  type: ClusterIP
+  ports:
+  - name: service
+    port: 7000
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: webapp
+  labels:
+    app: webapp
+    project: booksapp
+    app.kubernetes.io/part-of: booksapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webapp
+      project: booksapp
+  template:
+    metadata:
+      labels:
+        app: webapp
+        project: booksapp
+    spec:
+      dnsPolicy: ClusterFirst
+      containers:
+      - name: service
+        image: buoyantio/booksapp:v0.0.5
+        env:
+        - name: DATABASE_URL
+          value: sqlite3:db/db.sqlite3
+        - name: AUTHORS_SITE
+          value: http://authors:7001
+        - name: BOOKS_SITE
+          value: http://books:7002
+        args: ["prod:webapp"]
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: 7000
+        ports:
+        - name: service
+          containerPort: 7000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: authors
+  labels:
+    app: authors
+    project: booksapp
+spec:
+  selector:
+    app: authors
+  ports:
+  - name: service
+    port: 7001
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: authors
+  labels:
+    app: authors
+    project: booksapp
+    app.kubernetes.io/part-of: booksapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: authors
+      project: booksapp
+  template:
+    metadata:
+      labels:
+        app: authors
+        project: booksapp
+    spec:
+      dnsPolicy: ClusterFirst
+      containers:
+      - name: service
+        image: buoyantio/booksapp:v0.0.5
+        env:
+        - name: DATABASE_URL
+          value: sqlite3:db/db.sqlite3
+        - name: BOOKS_SITE
+          value: http://books:7002
+        - name: FAILURE_RATE
+          value: "0.0"
+        args: ["prod:authors"]
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: 7001
+        ports:
+        - name: service
+          containerPort: 7001
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: books
+  labels:
+    app: books
+    project: booksapp
+spec:
+  selector:
+    app: books
+  ports:
+  - name: service
+    port: 7002
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: books
+  labels:
+    app: books
+    project: booksapp
+    app.kubernetes.io/part-of: booksapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: books
+      project: booksapp
+  template:
+    metadata:
+      annotations:
+        config.linkerd.io/skip-inbound-ports: "7002"
+      labels:
+        app: books
+        project: booksapp
+    spec:
+      dnsPolicy: ClusterFirst
+      containers:
+      - name: service
+        image: buoyantio/booksapp:v0.0.5
+        env:
+        - name: DATABASE_URL
+          value: sqlite3:db/db.sqlite3
+        - name: AUTHORS_SITE
+          value: http://authors:7001
+        args: ["prod:books"]
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: 7002
+        ports:
+        - name: service
+          containerPort: 7002
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: traffic
+  labels:
+    app: traffic
+    project: booksapp
+    app.kubernetes.io/part-of: booksapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traffic
+      project: booksapp
+  template:
+    metadata:
+      labels:
+        app: traffic
+        project: booksapp
+    spec:
+      dnsPolicy: ClusterFirst
+      containers:
+      - name: traffic
+        image: buoyantio/booksapp-traffic:v0.0.3
+        args:
+        - "-initial-delay=30s"
+        - "webapp:7000"
