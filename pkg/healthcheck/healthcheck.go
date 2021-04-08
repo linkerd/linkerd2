@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 
-	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	"github.com/linkerd/linkerd2/controller/api/destination"
 	"github.com/linkerd/linkerd2/controller/api/public"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
@@ -416,18 +414,17 @@ type HealthChecker struct {
 	*Options
 
 	// these fields are set in the process of running checks
-	kubeAPI           *k8s.KubernetesAPI
-	kubeVersion       *k8sVersion.Info
-	controlPlanePods  []corev1.Pod
-	apiClient         public.Client
-	destinationClient destinationPb.DestinationClient
-	latestVersions    version.Channels
-	serverVersion     string
-	linkerdConfig     *l5dcharts.Values
-	uuid              string
-	issuerCert        *tls.Cred
-	trustAnchors      []*x509.Certificate
-	cniDaemonSet      *appsv1.DaemonSet
+	kubeAPI          *k8s.KubernetesAPI
+	kubeVersion      *k8sVersion.Info
+	controlPlanePods []corev1.Pod
+	apiClient        public.Client
+	latestVersions   version.Channels
+	serverVersion    string
+	linkerdConfig    *l5dcharts.Values
+	uuid             string
+	issuerCert       *tls.Cred
+	trustAnchors     []*x509.Certificate
+	cniDaemonSet     *appsv1.DaemonSet
 }
 
 // Runner is implemented by any health-checkers that can be triggered with RunChecks()
@@ -1219,15 +1216,6 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 				{
-					description: "can initialize the destination client",
-					hintAnchor:  "l5d-destination-client",
-					fatal:       true,
-					check: func(ctx context.Context) (err error) {
-						hc.destinationClient, _, err = destination.NewExternalClient(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
-						return
-					},
-				},
-				{
 					description:   "can query the control plane API",
 					hintAnchor:    "l5d-api-control-api",
 					retryDeadline: hc.RetryDeadline,
@@ -1581,13 +1569,6 @@ func (hc *HealthChecker) KubeAPIClient() *k8s.KubernetesAPI {
 // configured and run first.
 func (hc *HealthChecker) PublicAPIClient() public.Client {
 	return hc.apiClient
-}
-
-// DestinationClient returns a fully configured destination client. This
-// client is only configured if the KubernetesAPIChecks and LinkerdAPIChecks
-// are configured and run first.
-func (hc *HealthChecker) DestinationClient() destinationPb.DestinationClient {
-	return hc.destinationClient
 }
 
 // LatestVersions returns the latest versions from Linkerd release channels

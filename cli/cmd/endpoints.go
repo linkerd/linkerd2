@@ -13,12 +13,11 @@ import (
 	"strings"
 	"sync"
 	"text/tabwriter"
-	"time"
 
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	netPb "github.com/linkerd/linkerd2-proxy-api/go/net"
-	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	api "github.com/linkerd/linkerd2/pkg/public"
+	"github.com/linkerd/linkerd2/controller/api/destination"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/status"
@@ -91,15 +90,19 @@ destination.`,
 				return err
 			}
 
-			endpoints, err := requestEndpointsFromAPI(api.GetDestinationClient(healthcheck.Options{
-				ControlPlaneNamespace: controlPlaneNamespace,
-				KubeConfig:            kubeconfigPath,
-				Impersonate:           impersonate,
-				ImpersonateGroup:      impersonateGroup,
-				KubeContext:           kubeContext,
-				APIAddr:               apiAddr,
-				RetryDeadline:         time.Time{},
-			}), args)
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			if err != nil {
+				return err
+			}
+
+			client, conn, err := destination.NewExternalClient(cmd.Context(), controlPlaneNamespace, k8sAPI)
+			if err != nil {
+				fmt.Fprint(os.Stderr, fmt.Errorf("Error creating destination client: %s", err))
+				os.Exit(1)
+			}
+			defer conn.Close()
+
+			endpoints, err := requestEndpointsFromAPI(client, args)
 			if err != nil {
 				fmt.Fprint(os.Stderr, fmt.Errorf("Destination API error: %s", err))
 				os.Exit(1)
