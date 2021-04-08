@@ -16,8 +16,10 @@ as a contributor, have the legal right to make the contribution.
 
 See the [DCO](DCO) file for the full text of what you must agree to.
 
-To signify that you agree to the DCO for a commit, you add a line to the git
-commit message:
+### Option 1: commit message signoffs ###
+
+One way to signify that you agree to the DCO for a commit is to add a line to
+the git commit message:
 
 ```txt
 Signed-off-by: Jane Smith <jane.smith@example.com>
@@ -26,6 +28,25 @@ Signed-off-by: Jane Smith <jane.smith@example.com>
 In most cases, you can add this signoff to your commit automatically with the
 `-s` flag to `git commit`. You must use your real name and a reachable email
 address (sorry, no pseudonyms or anonymous contributions).
+
+### Option 2: public statement ###
+
+If you've already made the commits and don't want to engage in git shenanigans
+to retroactively apply the signoff as above, there is another option: leave a
+comment on the PR with the following statement: "I agree to the DCO for all the
+commits in this PR."
+
+Note that this option also requires that your commits are made under your real
+name and a reachable email address.
+
+If you use this approach, the DCO bot will still complain, but maintainers will
+override the DCO bot at merge time.
+
+### Option 3: very simple changes ###
+
+Changes that are trivial (e.g. spelling corrections, adding to ADOPTERS.md,
+one-word changes) do not require a DCO signoff. Maintainers should feel free to
+override the DCO bot for these changes.
 
 ## Submitting a Pull Request ##
 

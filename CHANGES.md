@@ -1,5 +1,24 @@
 # Changes
 
+## edge-21.4.2
+
+This edge release is another candidate for `stable-2.10.1`!
+
+It includes some CLI fixes and addresses an issue where the outbound proxy
+would forward traffic to the wrong pod when running in ingress mode.
+
+Thank you to all of our users that have helped test and identify issues in 2.10!
+
+* Fixed an issue in `linkerd inject` where the wrong annotation would be
+  added when using `--ingress` flag
+* Fixed a nil pointer dereference in `linkerd repair` caused by a mismatch
+  between CLI and server versions
+* Removed an unnecessary error handling condition in multicluster check
+  (thanks @wangchenglong01!)
+* Fixed a caching issue in the outbound proxy that would cause it to
+  forward traffic to the wrong pod when running in ingress mode.
+* Removed unsupported `matches` field from TrafficSplit CRD
+
 ## edge-21.4.1
 
 This is a release candidate for `stable-2.10.1`!
