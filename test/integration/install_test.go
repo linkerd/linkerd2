@@ -504,13 +504,16 @@ func TestInstallHelm(t *testing.T) {
 	}
 
 	var chartToInstall string
+	var vizChartToInstall string
 	var args []string
 
 	if TestHelper.UpgradeHelmFromVersion() != "" {
 		chartToInstall = TestHelper.GetHelmStableChart()
+		vizChartToInstall = TestHelper.GetLinkerdVizHelmStableChart()
 		args = helmOverridesStable(helmTLSCerts)
 	} else {
 		chartToInstall = TestHelper.GetHelmChart()
+		vizChartToInstall = TestHelper.GetLinkerdVizHelmChart()
 		args = helmOverridesEdge(helmTLSCerts)
 	}
 
@@ -521,12 +524,11 @@ func TestInstallHelm(t *testing.T) {
 
 	TestHelper.WaitRollout(t)
 
-	vizChart := TestHelper.GetLinkerdVizHelmChart()
 	vizArgs := []string{
 		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
 		"--set", "namespace=" + TestHelper.GetVizNamespace(),
 	}
-	if stdout, stderr, err := TestHelper.HelmCmdPlain("install", vizChart, "l5d-viz", vizArgs...); err != nil {
+	if stdout, stderr, err := TestHelper.HelmCmdPlain("install", vizChartToInstall, "l5d-viz", vizArgs...); err != nil {
 		testutil.AnnotatedFatalf(t, "'helm install' command failed",
 			"'helm install' command failed\n%s\n%s", stdout, stderr)
 	}
