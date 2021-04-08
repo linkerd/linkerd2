@@ -9,7 +9,7 @@ would forward traffic to the wrong pod when running in ingress mode.
 
 Thank you to all of our users that have helped test and identify issues in 2.10!
 
-* Fixed an issue in `linkerd inject` where the wrong annotation would
+* Fixed an issue in `linkerd inject` where the wrong annotation would be
   added when using `--ingress` flag
 * Fixed a nil pointer dereference in `linkerd repair` caused by a mismatch
   between CLI and server versions
