@@ -17,6 +17,7 @@ Thank you to all of our users that have helped test and identify issues in 2.10!
   (thanks @wangchenglong01!)
 * Fixed a caching issue in the outbound proxy that would cause it to
   forward traffic to the wrong pod when running in ingress mode.
+* Removed unsupported `matches` field from TrafficSplit CRD
 
 ## edge-21.4.1
 
