@@ -76,18 +76,15 @@ func Inject(
 	configLabels := configToPrometheusLabels(resourceConfig)
 	proxyInjectionAdmissionRequests.With(admissionRequestLabels(ownerKind, request.Namespace, report.InjectAnnotationAt, configLabels)).Inc()
 
-	// If the pod's namespace has the opaque ports annotation but the pod does
-	// not, then it should be added to the pod template metadata.
-	opaquePorts, opaquePortsOk := resourceConfig.GetOpaquePorts()
-	if resourceConfig.IsPod() && opaquePortsOk {
-		resourceConfig.AppendPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation, opaquePorts)
-	}
-
 	// If the resource is injectable then admit it after creating a patch that
 	// adds the proxy-init and proxy containers.
 	injectable, reasons := report.Injectable()
 	if injectable {
 		resourceConfig.AppendPodAnnotation(pkgK8s.CreatedByAnnotation, fmt.Sprintf("linkerd/proxy-injector %s", version.Version))
+
+		// If namespace has annotations that do not exist on pod then copy them
+		// over to pod's template.
+		resourceConfig.AppendNamespaceAnnotations()
 		patchJSON, err := resourceConfig.GetPodPatch(true)
 		if err != nil {
 			return nil, err
@@ -110,7 +107,7 @@ func Inject(
 	// If the resource is not injectable but does need the opaque ports
 	// annotation added, then admit it after creating a patch that adds the
 	// annotation.
-	if opaquePortsOk {
+	if opaquePorts, opaquePortsOk := resourceConfig.GetConfigAnnotation(pkgK8s.ProxyOpaquePortsAnnotation); opaquePortsOk {
 		patchJSON, err := resourceConfig.CreateAnnotationPatch(opaquePorts)
 		if err != nil {
 			return nil, err
