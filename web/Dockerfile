@@ -53,13 +53,12 @@ ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -mod=readonly -o web/web -ldflags "-s -w" ./web
 
 ## package it all up
-FROM debian:buster-20210208-slim
+FROM scratch
 WORKDIR /linkerd
 
 COPY --from=await /tmp/linkerd-await .
 COPY LICENSE .
 COPY --from=golang /linkerd-build/web/web .
-RUN mkdir -p app
 COPY --from=webpack-bundle /linkerd-build/web/app/dist app/dist
 COPY web/templates templates
 COPY --from=golang /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
