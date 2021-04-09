@@ -150,9 +150,9 @@ func validateExpectedTsOutput(rows map[string]*statTsRow, expectedBackendSvc, ex
 func TestTrafficSplitCli(t *testing.T) {
 
 	for _, version := range []string{"v1alpha1", "v1alpha2"} {
+		version := version
 		ctx := context.Background()
 		TestHelper.WithDataPlaneNamespace(ctx, "trafficsplit-test", map[string]string{}, t, func(t *testing.T, prefixedNs string) {
-
 			out, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/application.yaml")
 			if err != nil {
 				testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
