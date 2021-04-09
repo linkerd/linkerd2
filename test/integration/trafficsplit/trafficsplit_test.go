@@ -189,7 +189,7 @@ func TestTrafficSplitCli(t *testing.T) {
 				}
 			}
 
-			t.Run("ensure traffic is sent to one backend only", func(t *testing.T) {
+			t.Run(fmt.Sprintf("ensure traffic is sent to one backend only for %s", version), func(t *testing.T) {
 				timeout := 40 * time.Second
 				err := TestHelper.RetryFor(timeout, func() error {
 
@@ -197,11 +197,19 @@ func TestTrafficSplitCli(t *testing.T) {
 					if err != nil {
 						testutil.AnnotatedFatal(t, "error ensuring traffic is sent to one backend only", err)
 					}
+
+					var weight string
+					if version == "v1alpha1" {
+						weight = "500m"
+					} else {
+						weight = "500"
+					}
+
 					expectedBackendSvcOutput := &statTsRow{
 						name:    "backend-traffic-split",
 						apex:    "backend-svc",
 						leaf:    "backend-svc",
-						weight:  "500m",
+						weight:  weight,
 						success: "100.00%",
 						rps:     "0.5rps",
 					}
@@ -228,7 +236,7 @@ func TestTrafficSplitCli(t *testing.T) {
 				}
 			})
 
-			t.Run("update traffic split resource with equal weights", func(t *testing.T) {
+			t.Run(fmt.Sprintf("update traffic split resource with equal weights for %s", version), func(t *testing.T) {
 
 				updatedTsResourceFile := fmt.Sprintf("testdata/%s/updated-traffic-split-leaf-weights.yaml", version)
 				updatedTsResource, err := testutil.ReadFile(updatedTsResourceFile)
@@ -245,18 +253,26 @@ func TestTrafficSplitCli(t *testing.T) {
 				}
 			})
 
-			t.Run("ensure traffic is sent to both backends", func(t *testing.T) {
+			t.Run(fmt.Sprintf("ensure traffic is sent to both backends for %s", version), func(t *testing.T) {
 				timeout := 40 * time.Second
 				err := TestHelper.RetryFor(timeout, func() error {
 					rows, err := statTrafficSplit("deploy/slow-cooker", prefixedNs)
 					if err != nil {
 						testutil.AnnotatedFatal(t, "error ensuring traffic is sent to both backends", err)
 					}
+
+					var weight string
+					if version == "v1alpha1" {
+						weight = "500m"
+					} else {
+						weight = "500"
+					}
+
 					expectedBackendSvcOutput := &statTsRow{
 						name:    "backend-traffic-split",
 						apex:    "backend-svc",
 						leaf:    "backend-svc",
-						weight:  "500m",
+						weight:  weight,
 						success: "100.00%",
 						rps:     "0.5rps",
 					}
@@ -264,7 +280,7 @@ func TestTrafficSplitCli(t *testing.T) {
 						name:    "backend-traffic-split",
 						apex:    "backend-svc",
 						leaf:    "backend-svc",
-						weight:  "500m",
+						weight:  weight,
 						success: "0.00%",
 						rps:     "0.5rps",
 					}
