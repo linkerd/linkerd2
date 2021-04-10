@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -41,6 +42,9 @@ func uninstallRunE(ctx context.Context) error {
 		return err
 	}
 
+	if len(resources) == 0 {
+		return errors.New("no resources found to uninstall")
+	}
 	for _, r := range resources {
 		if err := r.RenderResource(os.Stdout); err != nil {
 			return fmt.Errorf("error rendering Kubernetes resource: %v", err)

@@ -12,16 +12,12 @@ import (
 	mc "github.com/linkerd/linkerd2/pkg/multicluster"
 	"github.com/spf13/cobra"
 
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 func newMulticlusterUninstallCommand() *cobra.Command {
-	options, err := newMulticlusterInstallOptionsWithDefault()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
-		os.Exit(1)
-	}
 
 	cmd := &cobra.Command{
 		Use:   "uninstall",
@@ -47,7 +43,7 @@ func newMulticlusterUninstallCommand() *cobra.Command {
 			}
 
 			links, err := mc.GetLinks(cmd.Context(), k8sAPI.DynamicClient)
-			if err != nil {
+			if err != nil && !kerrors.IsNotFound(err) {
 				return err
 			}
 
@@ -63,8 +59,6 @@ func newMulticlusterUninstallCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&options.namespace, "namespace", options.namespace, "The namespace in which the multicluster add-on is to be installed. Must not be the control plane namespace. ")
-
 	return cmd
 }
 
@@ -77,6 +71,9 @@ func uninstallRunE(ctx context.Context, k8sAPI *k8s.KubernetesAPI) error {
 		return err
 	}
 
+	if len(resources) == 0 {
+		return errors.New("no resources found to uninstall")
+	}
 	for _, r := range resources {
 		if err := r.RenderResource(os.Stdout); err != nil {
 			return fmt.Errorf("error rendering Kubernetes resource: %v", err)
