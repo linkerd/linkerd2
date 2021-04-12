@@ -198,7 +198,7 @@ spec:
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName }}
       {{- end }}
-      {{- if gt (len .Values.extraInitContainers) 0 }}
+      {{- if .Values.extraInitContainers }}
       initContainers:
       {{- toYaml .Values.extraInitContainers | nindent 6 }}
       {{- end }}
