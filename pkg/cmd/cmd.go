@@ -47,7 +47,7 @@ func Uninstall(ctx context.Context, k8sAPI *k8s.KubernetesAPI, selector string) 
 	}
 
 	if len(resources) == 0 {
-		return errors.New("no resources found to uninstall")
+		return errors.New("No resources found to uninstall")
 	}
 	for _, r := range resources {
 		if err := r.RenderResource(os.Stdout); err != nil {
