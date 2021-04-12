@@ -4,9 +4,8 @@
 
 This edge supersedes `edge-21.4.2` as a release candidate for `stable-2.10.1`!
 
-This release adds support for TrafficSplit `v1alpha2`. `v1alpha1` will be
-marked deprecated and removed in a future release.
-Additionally, It includes improvements to the web and `proxy-init` images.
+This release adds support for TrafficSplit `v1alpha2`. Additionally, It includes
+improvements to the web and `proxy-init` images.
 
 * Added Support for TrafficSplit `v1alpha2`
 * Changed web base image from debian to scratch
