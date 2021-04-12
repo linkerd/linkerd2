@@ -226,8 +226,8 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 				opaquePorts = et.defaultOpaquePorts
 			}
 
-			skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(address.Pod)
-			if err != nil {
+			skippedInboundPorts, skippedErr := getPodSkippedInboundPortsAnnotations(address.Pod)
+			if skippedErr != nil {
 				et.log.Errorf("failed getting ignored inbound ports annoatation for pod: %s", err)
 			}
 

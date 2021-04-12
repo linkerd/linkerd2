@@ -14,8 +14,8 @@ import (
 var TestHelper *testutil.TestHelper
 
 var (
-	skipPortsNs         = "skip-ports-test"
-	booksappDeployments = []string{"books", "traffic", "authors", "webapp"}
+	skipPortsNs               = "skip-ports-test"
+	booksappDeployments       = []string{"books", "traffic", "authors", "webapp"}
 	httpResponseTotalMetricRE = regexp.MustCompile(
 		`route_response_total\{direction="outbound",dst="books\.skip-ports-test\.svc\.cluster\.local:7002",classification="failure".*`,
 	)
@@ -79,7 +79,7 @@ func TestSkipInboundPorts(t *testing.T) {
 
 		if httpResponseTotalMetricRE.MatchString(metrics) {
 			testutil.AnnotatedFatalf(t, "expected not to find HTTP outbound response failures to dst=books.skip-ports-test.svc.cluster.local:7002",
-			 "expected not to find HTTP outbound requests when pod is opaque\n%s", metrics)
+				"expected not to find HTTP outbound requests when pod is opaque\n%s", metrics)
 		}
 	})
 }
