@@ -38,5 +38,5 @@ func uninstallRunE(ctx context.Context) error {
 		return err
 	}
 
-	return pkgCmd.Uninstall(ctx, k8sAPI, "linkerd.io/extension=jaeger")
+	return pkgCmd.Uninstall(ctx, k8sAPI, fmt.Sprintf("%s=%s", k8s.LinkerdExtensionLabel, JaegerExtensionName))
 }
