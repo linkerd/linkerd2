@@ -134,33 +134,28 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
 	}
 
+	// Return error for an IP query
 	if ip := net.ParseIP(host); ip != nil {
-		err := s.ips.Subscribe(host, port, translator)
-		if err != nil {
-			log.Errorf("Failed to subscribe to %s: %s", dest.GetPath(), err)
-			return err
-		}
-		defer s.ips.Unsubscribe(host, port, translator)
+		return status.Errorf(codes.InvalidArgument, "Get API does not accept IP queries")
 
-	} else {
+	}
 
-		service, instanceID, err := parseK8sServiceName(host, s.clusterDomain)
-		if err != nil {
+	service, instanceID, err := parseK8sServiceName(host, s.clusterDomain)
+	if err != nil {
+		log.Debugf("Invalid service %s", dest.GetPath())
+		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+	}
+
+	err = s.endpoints.Subscribe(service, port, instanceID, translator)
+	if err != nil {
+		if _, ok := err.(watcher.InvalidService); ok {
 			log.Debugf("Invalid service %s", dest.GetPath())
 			return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
 		}
-
-		err = s.endpoints.Subscribe(service, port, instanceID, translator)
-		if err != nil {
-			if _, ok := err.(watcher.InvalidService); ok {
-				log.Debugf("Invalid service %s", dest.GetPath())
-				return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
-			}
-			log.Errorf("Failed to subscribe to %s: %s", dest.GetPath(), err)
-			return err
-		}
-		defer s.endpoints.Unsubscribe(service, port, instanceID, translator)
+		log.Errorf("Failed to subscribe to %s: %s", dest.GetPath(), err)
+		return err
 	}
+	defer s.endpoints.Unsubscribe(service, port, instanceID, translator)
 
 	select {
 	case <-s.shutdown:

@@ -124,26 +124,6 @@ func NewIPWatcher(k8sAPI *k8s.API, endpoints *EndpointsWatcher, log *logging.Ent
 /// IPWatcher ///
 ////////////////////////
 
-// Subscribe to an authority.
-// The provided listener will be updated each time the address set for the
-// given authority is changed.
-func (iw *IPWatcher) Subscribe(clusterIP string, port Port, listener EndpointUpdateListener) error {
-	iw.log.Infof("Establishing watch on service cluster ip [%s:%d]", clusterIP, port)
-	ss := iw.getOrNewServiceSubscriptions(clusterIP)
-	return ss.subscribe(port, listener)
-}
-
-// Unsubscribe removes a listener from the subscribers list for this authority.
-func (iw *IPWatcher) Unsubscribe(clusterIP string, port Port, listener EndpointUpdateListener) {
-	iw.log.Infof("Stopping watch on service cluster ip [%s:%d]", clusterIP, port)
-	ss, ok := iw.getServiceSubscriptions(clusterIP)
-	if !ok {
-		iw.log.Errorf("Cannot unsubscribe from unknown service ip [%s:%d]", clusterIP, port)
-		return
-	}
-	ss.unsubscribe(port, listener)
-}
-
 // GetSvcID returns the service that corresponds to a Cluster IP address if one
 // exists.
 func (iw *IPWatcher) GetSvcID(clusterIP string) (*ServiceID, error) {
@@ -481,35 +461,6 @@ func (ss *serviceSubscriptions) deletePod() {
 		listener.Add(singletonAddress(ss.clusterIP, port))
 	}
 	ss.pod = AddressSet{}
-}
-
-func (ss *serviceSubscriptions) subscribe(port Port, listener EndpointUpdateListener) error {
-	ss.Lock()
-	defer ss.Unlock()
-
-	if (ss.service != ServiceID{}) {
-		err := ss.endpoints.Subscribe(ss.service, port, "", listener)
-		if err != nil {
-			return err
-		}
-	} else if len(ss.pod.Addresses) != 0 {
-		podSetWithPort := ss.pod.WithPort(port)
-		listener.Add(podSetWithPort)
-	} else {
-		listener.Add(singletonAddress(ss.clusterIP, port))
-	}
-	ss.listeners[listener] = port
-	return nil
-}
-
-func (ss *serviceSubscriptions) unsubscribe(port Port, listener EndpointUpdateListener) {
-	ss.Lock()
-	defer ss.Unlock()
-
-	if (ss.service != ServiceID{}) {
-		ss.endpoints.Unsubscribe(ss.service, port, "", listener)
-	}
-	delete(ss.listeners, listener)
 }
 
 func singletonAddress(ip string, port Port) AddressSet {
