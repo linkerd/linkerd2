@@ -36,7 +36,7 @@ func TestNewValues(t *testing.T) {
 		WebhookFailurePolicy:         "Ignore",
 		OmitWebhookSideEffects:       false,
 		DisableHeartBeat:             false,
-		HeartbeatSchedule:            "0 0 * * *",
+		HeartbeatSchedule:            "",
 		InstallNamespace:             true,
 		Namespace:                    "linkerd",
 		ClusterDomain:                "cluster.local",

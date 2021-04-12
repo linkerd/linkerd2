@@ -1,5 +1,53 @@
 # Changes
 
+## edge-21.4.2
+
+This edge release is another candidate for `stable-2.10.1`!
+
+It includes some CLI fixes and addresses an issue where the outbound proxy
+would forward traffic to the wrong pod when running in ingress mode.
+
+Thank you to all of our users that have helped test and identify issues in 2.10!
+
+* Fixed an issue in `linkerd inject` where the wrong annotation would be
+  added when using `--ingress` flag
+* Fixed a nil pointer dereference in `linkerd repair` caused by a mismatch
+  between CLI and server versions
+* Removed an unnecessary error handling condition in multicluster check
+  (thanks @wangchenglong01!)
+* Fixed a caching issue in the outbound proxy that would cause it to
+  forward traffic to the wrong pod when running in ingress mode.
+* Removed unsupported `matches` field from TrafficSplit CRD
+
+## edge-21.4.1
+
+This is a release candidate for `stable-2.10.1`!
+
+This includes several fixes for the core installation as well the Multicluster,
+Jaeger, and Viz extensions. There are two significant proxy fixes that address
+TLS detection and admin server failures.
+
+Thanks to all our 2.10 users who helped discover these issues!
+
+* Fixed TCP read and write bytes/sec calculations to group by label based off
+  inbound or outbound traffic
+* Updated dashboard build to use webpack v5
+* Modified the proxy-injector to add the opaque ports annotation to pods if
+  their namespace has it set
+* Added CA certs to the Viz extension's `metrics-api` container so that it can
+  validate the certifcate of an external Prometheus
+* Fixed an issue where inbound TLS detection from non-meshed workloads could
+  break
+* Fixed an issue where the admin server's HTTP detection would fail and not
+  recover; these are now handled gracefully and without logging warnings
+* Aligned the Helm installation heartbeat schedule to match that of the CLI
+* Fixed an issue with Multicluster's serivce mirror where it's endpoint repair
+  retries were not properly rate limited
+* Removed components from the control plane dashboard that now are part of the
+  Viz extension
+* Fixed components in the Jaeger extension to set the correct Prometheus scrape
+  values
+
 ## edge-21.3.4
 
 This release fixes some issues around publishing of CLI binary

@@ -279,6 +279,7 @@ func readTestValues(ha bool, ignoreOutboundPorts string, ignoreInboundPorts stri
 	}
 	values.ProxyInit.IgnoreOutboundPorts = ignoreOutboundPorts
 	values.ProxyInit.IgnoreInboundPorts = ignoreInboundPorts
+	values.HeartbeatSchedule = "1 2 3 4 5"
 
 	return values, nil
 }

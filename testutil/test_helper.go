@@ -47,6 +47,7 @@ type helm struct {
 	chart                   string
 	multiclusterChart       string
 	vizChart                string
+	vizStableChart          string
 	stableChart             string
 	releaseName             string
 	multiclusterReleaseName string
@@ -157,6 +158,7 @@ func NewTestHelper() *TestHelper {
 	helmChart := flag.String("helm-chart", "charts/linkerd2", "path to linkerd2's Helm chart")
 	multiclusterHelmChart := flag.String("multicluster-helm-chart", "charts/linkerd-multicluster", "path to linkerd2's multicluster Helm chart")
 	vizHelmChart := flag.String("viz-helm-chart", "charts/linkerd-viz", "path to linkerd2's viz extension Helm chart")
+	vizHelmStableChart := flag.String("viz-helm-stable-chart", "charts/linkerd-viz", "path to linkerd2's viz extension stable Helm chart")
 	helmStableChart := flag.String("helm-stable-chart", "linkerd/linkerd2", "path to linkerd2's stable Helm chart")
 	helmReleaseName := flag.String("helm-release", "", "install linkerd via Helm using this release name")
 	multiclusterHelmReleaseName := flag.String("multicluster-helm-release", "", "install linkerd multicluster via Helm using this release name")
@@ -207,6 +209,7 @@ func NewTestHelper() *TestHelper {
 			chart:                   *helmChart,
 			multiclusterChart:       *multiclusterHelmChart,
 			vizChart:                *vizHelmChart,
+			vizStableChart:          *vizHelmStableChart,
 			stableChart:             *helmStableChart,
 			releaseName:             *helmReleaseName,
 			multiclusterReleaseName: *multiclusterHelmReleaseName,
@@ -294,6 +297,12 @@ func (h *TestHelper) GetMulticlusterHelmChart() string {
 // GetLinkerdVizHelmChart returns the path to the Linkerd viz Helm chart
 func (h *TestHelper) GetLinkerdVizHelmChart() string {
 	return h.helm.vizChart
+}
+
+// GetLinkerdVizHelmStableChart returns the path to the Linkerd viz Helm
+// stable chart
+func (h *TestHelper) GetLinkerdVizHelmStableChart() string {
+	return h.helm.vizStableChart
 }
 
 // GetHelmStableChart returns the path to the Linkerd Helm stable chart

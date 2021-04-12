@@ -69,7 +69,7 @@ func Mutate(collectorSvcAddr, collectorSvcAccount string) webhook.Handler {
 			return nil, err
 		}
 		applyOverrides(namespace, pod, &params)
-		ammendSvcAccount(pod.Namespace, &params)
+		amendSvcAccount(pod.Namespace, &params)
 
 		t, err := template.New("tpl").Parse(tpl)
 		if err != nil {
@@ -104,7 +104,7 @@ func applyOverrides(ns *corev1.Namespace, pod *corev1.Pod, params *Params) {
 	}
 }
 
-func ammendSvcAccount(ns string, params *Params) {
+func amendSvcAccount(ns string, params *Params) {
 	hostAndPort := strings.Split(params.CollectorSvcAddr, ":")
 	hostname := strings.Split(hostAndPort[0], ".")
 	if len(hostname) > 1 {
