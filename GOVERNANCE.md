@@ -2,6 +2,14 @@
 
 This document defines project governance for Linkerd.
 
+> The Linkerd maintainers are 100% committed to open governance and to being
+> hosted by a neutral foundation. We believe that a diverse and active set of
+> maintainers is fundamental to the long-term health of an open source project.
+> And we want YOU to join us.
+
+&mdash; [Linkerd's Commitment to Open
+Governance](https://linkerd.io/2019/10/03/linkerds-commitment-to-open-governance/)
+
 ## Contributors
 
 Linkerd is for everyone. Anyone can become a Linkerd contributor simply by

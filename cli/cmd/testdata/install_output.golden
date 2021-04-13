@@ -292,7 +292,7 @@ spec:
                   minRetriesPerSecond:
                     format: int32
                     type: integer
-                  retryRatio: 
+                  retryRatio:
                     type: number
                     format: float
                   ttl:
@@ -310,9 +310,9 @@ spec:
                       type: object
                       description: RequestMatch describes the conditions under which to match a Route.
                       properties:
-                        pathRegex: 
+                        pathRegex:
                           type: string
-                        method: 
+                        method:
                           type: string
                         all:
                           type: array
@@ -324,7 +324,7 @@ spec:
                           items:
                             type: object
                             x-kubernetes-preserve-unknown-fields: true
-                        not: 
+                        not:
                           type: array
                           items:
                             type: object
@@ -336,7 +336,7 @@ spec:
                     timeout:
                       type: string
                     responseClasses:
-                      type: array 
+                      type: array
                       items:
                         type: object
                         required:
@@ -350,7 +350,7 @@ spec:
                             properties:
                               all:
                                 type: array
-                                items: 
+                                items:
                                   type: object
                                   x-kubernetes-preserve-unknown-fields: true
                               any:
@@ -358,7 +358,7 @@ spec:
                                 items:
                                   type: object
                                   x-kubernetes-preserve-unknown-fields: true
-                              not: 
+                              not:
                                 type: array
                                 items:
                                   type: object
@@ -420,7 +420,7 @@ spec:
                   minRetriesPerSecond:
                     format: int32
                     type: integer
-                  retryRatio: 
+                  retryRatio:
                     type: number
                     format: float
                   ttl:
@@ -438,9 +438,9 @@ spec:
                       type: object
                       description: RequestMatch describes the conditions under which to match a Route.
                       properties:
-                        pathRegex: 
+                        pathRegex:
                           type: string
-                        method: 
+                        method:
                           type: string
                         all:
                           type: array
@@ -452,7 +452,7 @@ spec:
                           items:
                             type: object
                             x-kubernetes-preserve-unknown-fields: true
-                        not: 
+                        not:
                           type: array
                           items:
                             type: object
@@ -464,7 +464,7 @@ spec:
                     timeout:
                       type: string
                     responseClasses:
-                      type: array 
+                      type: array
                       items:
                         type: object
                         required:
@@ -478,7 +478,7 @@ spec:
                             properties:
                               all:
                                 type: array
-                                items: 
+                                items:
                                   type: object
                                   x-kubernetes-preserve-unknown-fields: true
                               any:
@@ -486,7 +486,7 @@ spec:
                                 items:
                                   type: object
                                   x-kubernetes-preserve-unknown-fields: true
-                              not: 
+                              not:
                                 type: array
                                 items:
                                   type: object
@@ -527,6 +527,8 @@ metadata:
 spec:
   group: split.smi-spec.io
   scope: Namespaced
+  conversion:
+    strategy: None
   names:
     kind: TrafficSplit
     listKind: TrafficSplitList
@@ -551,21 +553,6 @@ spec:
                 service:
                   description: The apex service of this split.
                   type: string
-                matches:
-                  description: The HTTP route groups that this traffic split should match.
-                  type: array
-                  items:
-                    type: object
-                    required: ['kind', 'name']
-                    properties:
-                      kind:
-                        description: Kind of the matching group.
-                        type: string
-                        enum:
-                          - HTTPRouteGroup
-                      name:
-                        description: Name of the matching group.
-                        type: string
                 backends:
                   description: The backend services of this split.
                   type: array
@@ -584,6 +571,40 @@ spec:
         type: string
         description: The apex service of this split.
         jsonPath: .spec.service
+    - name: v1alpha2
+      served: true
+      storage: false
+      additionalPrinterColumns:
+      - name: Service
+        type: string
+        description: The apex service of this split.
+        jsonPath: .spec.service
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - service
+                - backends
+              properties:
+                service:
+                  description: The apex service of this split.
+                  type: string
+                backends:
+                  description: The backend services of this split.
+                  type: array
+                  items:
+                    type: object
+                    required: ['service', 'weight']
+                    properties:
+                      service:
+                        description: Name of the Kubernetes service.
+                        type: string
+                      weight:
+                        description: Traffic weight value of this backend.
+                        type: number
   preserveUnknownFields: false
 ---
 ###
@@ -894,7 +915,7 @@ data:
     enablePodAntiAffinity: false
     grafanaUrl: ""
     heartbeatResources: null
-    heartbeatSchedule: ""
+    heartbeatSchedule: 1 2 3 4 5
     highAvailability: false
     identity:
       issuer:
@@ -1817,7 +1838,8 @@ metadata:
   annotations:
     linkerd.io/created-by: CliVersion
 spec:
-  schedule: ""
+  concurrencyPolicy: Replace
+  schedule: "1 2 3 4 5"
   successfulJobsHistoryLimit: 0
   jobTemplate:
     spec:
@@ -2334,7 +2356,7 @@ spec:
 ---
 apiVersion: v1
 data:
-  linkerd-config-overrides: Y2xpVmVyc2lvbjogQ2xpVmVyc2lvbgpjbHVzdGVyTmV0d29ya3M6IENsdXN0ZXJOZXR3b3Jrcwpjb250cm9sUGxhbmVUcmFjaW5nTmFtZXNwYWNlOiAiIgpjb250cm9sbGVySW1hZ2U6IENvbnRyb2xsZXJJbWFnZQpjb250cm9sbGVySW1hZ2VWZXJzaW9uOiBDb250cm9sbGVySW1hZ2VWZXJzaW9uCmNvbnRyb2xsZXJMb2dGb3JtYXQ6IENvbnRyb2xsZXJMb2dGb3JtYXQKY29udHJvbGxlckxvZ0xldmVsOiBDb250cm9sbGVyTG9nTGV2ZWwKZGVidWdDb250YWluZXI6CiAgaW1hZ2U6CiAgICBuYW1lOiBEZWJ1Z0ltYWdlTmFtZQogICAgcHVsbFBvbGljeTogRGVidWdJbWFnZVB1bGxQb2xpY3kKICAgIHZlcnNpb246IERlYnVnVmVyc2lvbgpoZWFydGJlYXRTY2hlZHVsZTogIiIKaWRlbnRpdHk6CiAgaXNzdWVyOgogICAgY3J0RXhwaXJ5OiAiMjAzMC0wOC0yNlQwNzoxMzo0N1oiCiAgICB0bHM6CiAgICAgIGNydFBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQogICAgICAgIE1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUpSSWdaOFJ0TzhFd2cxWGVwZjhUNDR3Q2dZSUtvWkl6ajBFQXdJd0tURW4KICAgICAgICBNQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1YTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUI0WERUSXdNRGd5CiAgICAgICAgT0RBM01UTTBOMW9YRFRNd01EZ3lOakEzTVRNME4xb3dLVEVuTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdQogICAgICAgIGEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRTEvRnAKICAgICAgICBmY1JuRGNlZEw2QWpVYVhZUHY0RElNQmFKdWZPSTVOV3R5K1hTWDdKalhnWnRNNzJkUXZSYVlhbnV4RDM2RHQxCiAgICAgICAgMi9KeHlpU2d4S1dSZG9heSthTndNRzR3RGdZRFZSMFBBUUgvQkFRREFnRUdNQklHQTFVZEV3RUIvd1FJTUFZQgogICAgICAgIEFmOENBUUF3SFFZRFZSME9CQllFRkkxV25ycU1ZS2FISE9vK3pweWlpRHEycE8wS01Da0dBMVVkRVFRaU1DQ0MKICAgICAgICBIbWxrWlc1MGFYUjVMbXhwYm10bGNtUXVZMngxYzNSbGNpNXNiMk5oYkRBS0JnZ3Foa2pPUFFRREFnTkhBREJFCiAgICAgICAgQWlBdHVvSTVYdUN0ckdWUnpTbVJUbDJyYTI4YVY5TXlUVTdkNXFuVEFGSEtTZ0lnUktDdmx1T1NnQTVPMjFwNQogICAgICAgIDUxdGRybWtIRVpScjBxbExTSmRIWWdFZk16az0KICAgICAgICAtLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCiAgICAgIGtleVBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gRUMgUFJJVkFURSBLRVktLS0tLQogICAgICAgIE1IY0NBUUVFSUFBZThuZmJ6WnU5Yy9PQjIrOHhKTTBGejdOVXdUUWF6dWxrRk5zNFRJNStvQW9HQ0NxR1NNNDkKICAgICAgICBBd0VIb1VRRFFnQUUxL0ZwZmNSbkRjZWRMNkFqVWFYWVB2NERJTUJhSnVmT0k1Tld0eStYU1g3SmpYZ1p0TTcyCiAgICAgICAgZFF2UmFZYW51eEQzNkR0MTIvSnh5aVNneEtXUmRvYXkrUT09CiAgICAgICAgLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQppZGVudGl0eVRydXN0QW5jaG9yc1BFTTogfAogIC0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQogIE1JSUJ3VENDQVdhZ0F3SUJBZ0lRZURacDVsRGFJeWdRNVVmTUtackZBVEFLQmdncWhrak9QUVFEQWpBcE1TY3cKICBKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyWlhKa0xtTnNkWE4wWlhJdWJHOWpZV3d3SGhjTk1qQXdPREk0CiAgTURjeE1qUTNXaGNOTXpBd09ESTJNRGN4TWpRM1dqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1cgogIFpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d1dUQVRCZ2NxaGtqT1BRSUJCZ2dxaGtqT1BRTUJCd05DQUFScWM3MFoKICBsMXZndzc5cmpCNXVTSVRJQ1VBNkd5ZnZTRmZjdUlpczdCL1hGU2trd0FIVTVTL3MxQUFQK1IwVFg3SEJXVUM0CiAgdWFHNFdXc2l3SktObjdtZ28zQXdiakFPQmdOVkhROEJBZjhFQkFNQ0FRWXdFZ1lEVlIwVEFRSC9CQWd3QmdFQgogIC93SUJBVEFkQmdOVkhRNEVGZ1FVNVl0alZWUGZkN0k3TkxIc24yQzI2RUJ5R1Ywd0tRWURWUjBSQkNJd0lJSWUKICBhV1JsYm5ScGRIa3ViR2x1YTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUFvR0NDcUdTTTQ5QkFNQ0Ewa0FNRVlDCiAgSVFDTjdsQkZMRER2ang2VjArWGtqcEtFUlJzSllmNWFkTXZubG9GbDQ4aWxKZ0loQU50eGhuZGNyK1FKUHVDOAogIHZnVUMwZDIvOUZNdWVJVk1iKzQ2V1RDT2pzcXIKICAtLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCmltYWdlUHVsbFBvbGljeTogSW1hZ2VQdWxsUG9saWN5CmltYWdlUHVsbFNlY3JldHM6IG51bGwKbGlua2VyZFZlcnNpb246ICIiCnByb2ZpbGVWYWxpZGF0b3I6CiAgY2FCdW5kbGU6IHByb2ZpbGUgdmFsaWRhdG9yIENBIGJ1bmRsZQogIGNydFBFTTogcHJvZmlsZSB2YWxpZGF0b3IgY3J0CiAga2V5UEVNOiBwcm9maWxlIHZhbGlkYXRvciBrZXkKcHJveHk6CiAgYXdhaXQ6IGZhbHNlCiAgaW1hZ2U6CiAgICBuYW1lOiBQcm94eUltYWdlTmFtZQogICAgcHVsbFBvbGljeTogSW1hZ2VQdWxsUG9saWN5CiAgICB2ZXJzaW9uOiBQcm94eVZlcnNpb24KICBpbmJvdW5kQ29ubmVjdFRpbWVvdXQ6ICIiCiAgb3V0Ym91bmRDb25uZWN0VGltZW91dDogIiIKICByZXNvdXJjZXM6CiAgICBjcHU6CiAgICAgIGxpbWl0OiBjcHUtbGltaXQKICAgICAgcmVxdWVzdDogY3B1LXJlcXVlc3QKICAgIG1lbW9yeToKICAgICAgbGltaXQ6IG1lbW9yeS1saW1pdAogICAgICByZXF1ZXN0OiBtZW1vcnktcmVxdWVzdApwcm94eUNvbnRhaW5lck5hbWU6IFByb3h5Q29udGFpbmVyTmFtZQpwcm94eUluaXQ6CiAgaWdub3JlT3V0Ym91bmRQb3J0czogIjQ0MyIKICBpbWFnZToKICAgIG5hbWU6IFByb3h5SW5pdEltYWdlTmFtZQogICAgcHVsbFBvbGljeTogSW1hZ2VQdWxsUG9saWN5CiAgICB2ZXJzaW9uOiBQcm94eUluaXRWZXJzaW9uCnByb3h5SW5qZWN0b3I6CiAgY2FCdW5kbGU6IHByb3h5IGluamVjdG9yIENBIGJ1bmRsZQogIGNydFBFTTogcHJveHkgaW5qZWN0b3IgY3J0CiAga2V5UEVNOiBwcm94eSBpbmplY3RvciBrZXkKd2ViaG9va0ZhaWx1cmVQb2xpY3k6IFdlYmhvb2tGYWlsdXJlUG9saWN5Cg==
+  linkerd-config-overrides: Y2xpVmVyc2lvbjogQ2xpVmVyc2lvbgpjbHVzdGVyTmV0d29ya3M6IENsdXN0ZXJOZXR3b3Jrcwpjb250cm9sUGxhbmVUcmFjaW5nTmFtZXNwYWNlOiAiIgpjb250cm9sbGVySW1hZ2U6IENvbnRyb2xsZXJJbWFnZQpjb250cm9sbGVySW1hZ2VWZXJzaW9uOiBDb250cm9sbGVySW1hZ2VWZXJzaW9uCmNvbnRyb2xsZXJMb2dGb3JtYXQ6IENvbnRyb2xsZXJMb2dGb3JtYXQKY29udHJvbGxlckxvZ0xldmVsOiBDb250cm9sbGVyTG9nTGV2ZWwKZGVidWdDb250YWluZXI6CiAgaW1hZ2U6CiAgICBuYW1lOiBEZWJ1Z0ltYWdlTmFtZQogICAgcHVsbFBvbGljeTogRGVidWdJbWFnZVB1bGxQb2xpY3kKICAgIHZlcnNpb246IERlYnVnVmVyc2lvbgpoZWFydGJlYXRTY2hlZHVsZTogMSAyIDMgNCA1CmlkZW50aXR5OgogIGlzc3VlcjoKICAgIGNydEV4cGlyeTogIjIwMzAtMDgtMjZUMDc6MTM6NDdaIgogICAgdGxzOgogICAgICBjcnRQRU06IHwKICAgICAgICAtLS0tLUJFR0lOIENFUlRJRklDQVRFLS0tLS0KICAgICAgICBNSUlCd0RDQ0FXZWdBd0lCQWdJUkFKUklnWjhSdE84RXdnMVhlcGY4VDQ0d0NnWUlLb1pJemowRUF3SXdLVEVuCiAgICAgICAgTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01CNFhEVEl3TURneQogICAgICAgIE9EQTNNVE0wTjFvWERUTXdNRGd5TmpBM01UTTBOMW93S1RFbk1DVUdBMVVFQXhNZWFXUmxiblJwZEhrdWJHbHUKICAgICAgICBhMlZ5WkM1amJIVnpkR1Z5TG14dlkyRnNNRmt3RXdZSEtvWkl6ajBDQVFZSUtvWkl6ajBEQVFjRFFnQUUxL0ZwCiAgICAgICAgZmNSbkRjZWRMNkFqVWFYWVB2NERJTUJhSnVmT0k1Tld0eStYU1g3SmpYZ1p0TTcyZFF2UmFZYW51eEQzNkR0MQogICAgICAgIDIvSnh5aVNneEtXUmRvYXkrYU53TUc0d0RnWURWUjBQQVFIL0JBUURBZ0VHTUJJR0ExVWRFd0VCL3dRSU1BWUIKICAgICAgICBBZjhDQVFBd0hRWURWUjBPQkJZRUZJMVducnFNWUthSEhPbyt6cHlpaURxMnBPMEtNQ2tHQTFVZEVRUWlNQ0NDCiAgICAgICAgSG1sa1pXNTBhWFI1TG14cGJtdGxjbVF1WTJ4MWMzUmxjaTVzYjJOaGJEQUtCZ2dxaGtqT1BRUURBZ05IQURCRQogICAgICAgIEFpQXR1b0k1WHVDdHJHVlJ6U21SVGwycmEyOGFWOU15VFU3ZDVxblRBRkhLU2dJZ1JLQ3ZsdU9TZ0E1TzIxcDUKICAgICAgICA1MXRkcm1rSEVaUnIwcWxMU0pkSFlnRWZNems9CiAgICAgICAgLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQogICAgICBrZXlQRU06IHwKICAgICAgICAtLS0tLUJFR0lOIEVDIFBSSVZBVEUgS0VZLS0tLS0KICAgICAgICBNSGNDQVFFRUlBQWU4bmZielp1OWMvT0IyKzh4Sk0wRno3TlV3VFFhenVsa0ZOczRUSTUrb0FvR0NDcUdTTTQ5CiAgICAgICAgQXdFSG9VUURRZ0FFMS9GcGZjUm5EY2VkTDZBalVhWFlQdjRESU1CYUp1Zk9JNU5XdHkrWFNYN0pqWGdadE03MgogICAgICAgIGRRdlJhWWFudXhEMzZEdDEyL0p4eWlTZ3hLV1Jkb2F5K1E9PQogICAgICAgIC0tLS0tRU5EIEVDIFBSSVZBVEUgS0VZLS0tLS0KaWRlbnRpdHlUcnVzdEFuY2hvcnNQRU06IHwKICAtLS0tLUJFR0lOIENFUlRJRklDQVRFLS0tLS0KICBNSUlCd1RDQ0FXYWdBd0lCQWdJUWVEWnA1bERhSXlnUTVVZk1LWnJGQVRBS0JnZ3Foa2pPUFFRREFqQXBNU2N3CiAgSlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d0hoY05NakF3T0RJNAogIE1EY3hNalEzV2hjTk16QXdPREkyTURjeE1qUTNXakFwTVNjd0pRWURWUVFERXg1cFpHVnVkR2wwZVM1c2FXNXIKICBaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBUnFjNzBaCiAgbDF2Z3c3OXJqQjV1U0lUSUNVQTZHeWZ2U0ZmY3VJaXM3Qi9YRlNra3dBSFU1Uy9zMUFBUCtSMFRYN0hCV1VDNAogIHVhRzRXV3Npd0pLTm43bWdvM0F3YmpBT0JnTlZIUThCQWY4RUJBTUNBUVl3RWdZRFZSMFRBUUgvQkFnd0JnRUIKICAvd0lCQVRBZEJnTlZIUTRFRmdRVTVZdGpWVlBmZDdJN05MSHNuMkMyNkVCeUdWMHdLUVlEVlIwUkJDSXdJSUllCiAgYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Bb0dDQ3FHU000OUJBTUNBMGtBTUVZQwogIElRQ043bEJGTEREdmp4NlYwK1hranBLRVJSc0pZZjVhZE12bmxvRmw0OGlsSmdJaEFOdHhobmRjcitRSlB1QzgKICB2Z1VDMGQyLzlGTXVlSVZNYis0NldUQ09qc3FyCiAgLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQppbWFnZVB1bGxQb2xpY3k6IEltYWdlUHVsbFBvbGljeQppbWFnZVB1bGxTZWNyZXRzOiBudWxsCmxpbmtlcmRWZXJzaW9uOiAiIgpwcm9maWxlVmFsaWRhdG9yOgogIGNhQnVuZGxlOiBwcm9maWxlIHZhbGlkYXRvciBDQSBidW5kbGUKICBjcnRQRU06IHByb2ZpbGUgdmFsaWRhdG9yIGNydAogIGtleVBFTTogcHJvZmlsZSB2YWxpZGF0b3Iga2V5CnByb3h5OgogIGF3YWl0OiBmYWxzZQogIGltYWdlOgogICAgbmFtZTogUHJveHlJbWFnZU5hbWUKICAgIHB1bGxQb2xpY3k6IEltYWdlUHVsbFBvbGljeQogICAgdmVyc2lvbjogUHJveHlWZXJzaW9uCiAgaW5ib3VuZENvbm5lY3RUaW1lb3V0OiAiIgogIG91dGJvdW5kQ29ubmVjdFRpbWVvdXQ6ICIiCiAgcmVzb3VyY2VzOgogICAgY3B1OgogICAgICBsaW1pdDogY3B1LWxpbWl0CiAgICAgIHJlcXVlc3Q6IGNwdS1yZXF1ZXN0CiAgICBtZW1vcnk6CiAgICAgIGxpbWl0OiBtZW1vcnktbGltaXQKICAgICAgcmVxdWVzdDogbWVtb3J5LXJlcXVlc3QKcHJveHlDb250YWluZXJOYW1lOiBQcm94eUNvbnRhaW5lck5hbWUKcHJveHlJbml0OgogIGlnbm9yZU91dGJvdW5kUG9ydHM6ICI0NDMiCiAgaW1hZ2U6CiAgICBuYW1lOiBQcm94eUluaXRJbWFnZU5hbWUKICAgIHB1bGxQb2xpY3k6IEltYWdlUHVsbFBvbGljeQogICAgdmVyc2lvbjogUHJveHlJbml0VmVyc2lvbgpwcm94eUluamVjdG9yOgogIGNhQnVuZGxlOiBwcm94eSBpbmplY3RvciBDQSBidW5kbGUKICBjcnRQRU06IHByb3h5IGluamVjdG9yIGNydAogIGtleVBFTTogcHJveHkgaW5qZWN0b3Iga2V5CndlYmhvb2tGYWlsdXJlUG9saWN5OiBXZWJob29rRmFpbHVyZVBvbGljeQo=
 kind: Secret
 metadata:
   creationTimestamp: null

@@ -240,6 +240,9 @@ func send(client *http.Client, baseURL string, v url.Values) error {
 	if err != nil {
 		return fmt.Errorf("failed to read response body: %s", err)
 	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("request failed with code %d; response body: %s", resp.StatusCode, string(body))
+	}
 
 	log.Infof("Successfully sent heartbeat: %s", string(body))
 

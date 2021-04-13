@@ -16,7 +16,7 @@ func TestCheckStatus(t *testing.T) {
 			[]healthcheck.CategoryID{},
 			&healthcheck.Options{},
 		)
-		hc.AppendCategories(*healthcheck.NewCategory("category", []healthcheck.Checker{
+		hc.AppendCategories(healthcheck.NewCategory("category", []healthcheck.Checker{
 			*healthcheck.NewChecker("check1").
 				WithCheck(func(context.Context) error {
 					return nil
@@ -50,7 +50,7 @@ func TestCheckStatus(t *testing.T) {
 			[]healthcheck.CategoryID{},
 			&healthcheck.Options{},
 		)
-		hc.AppendCategories(*healthcheck.NewCategory("category", []healthcheck.Checker{
+		hc.AppendCategories(healthcheck.NewCategory("category", []healthcheck.Checker{
 			*healthcheck.NewChecker("check1").
 				WithCheck(func(context.Context) error {
 					return nil

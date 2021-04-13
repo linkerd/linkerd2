@@ -223,7 +223,7 @@ spec:
                   minRetriesPerSecond:
                     format: int32
                     type: integer
-                  retryRatio: 
+                  retryRatio:
                     type: number
                     format: float
                   ttl:
@@ -241,9 +241,9 @@ spec:
                       type: object
                       description: RequestMatch describes the conditions under which to match a Route.
                       properties:
-                        pathRegex: 
+                        pathRegex:
                           type: string
-                        method: 
+                        method:
                           type: string
                         all:
                           type: array
@@ -255,7 +255,7 @@ spec:
                           items:
                             type: object
                             x-kubernetes-preserve-unknown-fields: true
-                        not: 
+                        not:
                           type: array
                           items:
                             type: object
@@ -267,7 +267,7 @@ spec:
                     timeout:
                       type: string
                     responseClasses:
-                      type: array 
+                      type: array
                       items:
                         type: object
                         required:
@@ -281,7 +281,7 @@ spec:
                             properties:
                               all:
                                 type: array
-                                items: 
+                                items:
                                   type: object
                                   x-kubernetes-preserve-unknown-fields: true
                               any:
@@ -289,7 +289,7 @@ spec:
                                 items:
                                   type: object
                                   x-kubernetes-preserve-unknown-fields: true
-                              not: 
+                              not:
                                 type: array
                                 items:
                                   type: object
@@ -351,7 +351,7 @@ spec:
                   minRetriesPerSecond:
                     format: int32
                     type: integer
-                  retryRatio: 
+                  retryRatio:
                     type: number
                     format: float
                   ttl:
@@ -369,9 +369,9 @@ spec:
                       type: object
                       description: RequestMatch describes the conditions under which to match a Route.
                       properties:
-                        pathRegex: 
+                        pathRegex:
                           type: string
-                        method: 
+                        method:
                           type: string
                         all:
                           type: array
@@ -383,7 +383,7 @@ spec:
                           items:
                             type: object
                             x-kubernetes-preserve-unknown-fields: true
-                        not: 
+                        not:
                           type: array
                           items:
                             type: object
@@ -395,7 +395,7 @@ spec:
                     timeout:
                       type: string
                     responseClasses:
-                      type: array 
+                      type: array
                       items:
                         type: object
                         required:
@@ -409,7 +409,7 @@ spec:
                             properties:
                               all:
                                 type: array
-                                items: 
+                                items:
                                   type: object
                                   x-kubernetes-preserve-unknown-fields: true
                               any:
@@ -417,7 +417,7 @@ spec:
                                 items:
                                   type: object
                                   x-kubernetes-preserve-unknown-fields: true
-                              not: 
+                              not:
                                 type: array
                                 items:
                                   type: object
@@ -458,6 +458,8 @@ metadata:
 spec:
   group: split.smi-spec.io
   scope: Namespaced
+  conversion:
+    strategy: None
   names:
     kind: TrafficSplit
     listKind: TrafficSplitList
@@ -482,21 +484,6 @@ spec:
                 service:
                   description: The apex service of this split.
                   type: string
-                matches:
-                  description: The HTTP route groups that this traffic split should match.
-                  type: array
-                  items:
-                    type: object
-                    required: ['kind', 'name']
-                    properties:
-                      kind:
-                        description: Kind of the matching group.
-                        type: string
-                        enum:
-                          - HTTPRouteGroup
-                      name:
-                        description: Name of the matching group.
-                        type: string
                 backends:
                   description: The backend services of this split.
                   type: array
@@ -515,6 +502,40 @@ spec:
         type: string
         description: The apex service of this split.
         jsonPath: .spec.service
+    - name: v1alpha2
+      served: true
+      storage: false
+      additionalPrinterColumns:
+      - name: Service
+        type: string
+        description: The apex service of this split.
+        jsonPath: .spec.service
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - service
+                - backends
+              properties:
+                service:
+                  description: The apex service of this split.
+                  type: string
+                backends:
+                  description: The backend services of this split.
+                  type: array
+                  items:
+                    type: object
+                    required: ['service', 'weight']
+                    properties:
+                      service:
+                        description: Name of the Kubernetes service.
+                        type: string
+                      weight:
+                        description: Traffic weight value of this backend.
+                        type: number
   preserveUnknownFields: false
 ---
 ###
@@ -922,7 +943,7 @@ data:
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v1.3.9
+        version: v1.3.11
       resources:
         cpu:
           limit: 100m
@@ -1201,7 +1222,7 @@ spec:
         - "4190,4191"
         - --outbound-ports-to-ignore
         - "443"
-        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.11
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1438,7 +1459,7 @@ spec:
         - "4190,4191"
         - --outbound-ports-to-ignore
         - "443"
-        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.11
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1695,7 +1716,7 @@ spec:
         - "4190,4191"
         - --outbound-ports-to-ignore
         - "443"
-        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.11
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1913,7 +1934,7 @@ spec:
         - "4190,4191"
         - --outbound-ports-to-ignore
         - "443"
-        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.11
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2172,7 +2193,7 @@ spec:
         - "4190,4191"
         - --outbound-ports-to-ignore
         - "443"
-        image: cr.l5d.io/linkerd/proxy-init:v1.3.9
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.11
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

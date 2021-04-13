@@ -137,10 +137,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 
 	hc := newHealthChecker(linkerdHC)
 	category := multiclusterCategory(hc)
-	if err != nil {
-		return err
-	}
-	hc.linkerdHC.AppendCategories(*category)
+	hc.linkerdHC.AppendCategories(category)
 	success := healthcheck.RunChecks(wout, werr, hc.linkerdHC, options.output)
 	if !success {
 		os.Exit(1)

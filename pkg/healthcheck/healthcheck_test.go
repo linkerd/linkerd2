@@ -60,10 +60,11 @@ func (hc *HealthChecker) addCheckAsCategory(
 	categoryID CategoryID,
 	desc string,
 ) {
-	testCategory := Category{
-		ID:       testCategoryID,
-		checkers: []Checker{},
-	}
+	testCategory := NewCategory(
+		testCategoryID,
+		[]Checker{},
+		false,
+	)
 
 	for _, cat := range hc.categories {
 		if cat.ID == categoryID {
@@ -83,9 +84,9 @@ func (hc *HealthChecker) addCheckAsCategory(
 func TestHealthChecker(t *testing.T) {
 	nullObserver := func(*CheckResult) {}
 
-	passingCheck1 := Category{
-		ID: "cat1",
-		checkers: []Checker{
+	passingCheck1 := NewCategory(
+		"cat1",
+		[]Checker{
 			{
 				description: "desc1",
 				check: func(context.Context) error {
@@ -94,12 +95,12 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
-		enabled: true,
-	}
+		true,
+	)
 
-	passingCheck2 := Category{
-		ID: "cat2",
-		checkers: []Checker{
+	passingCheck2 := NewCategory(
+		"cat2",
+		[]Checker{
 			{
 				description: "desc2",
 				check: func(context.Context) error {
@@ -108,12 +109,12 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
-		enabled: true,
-	}
+		true,
+	)
 
-	failingCheck := Category{
-		ID: "cat3",
-		checkers: []Checker{
+	failingCheck := NewCategory(
+		"cat3",
+		[]Checker{
 			{
 				description: "desc3",
 				check: func(context.Context) error {
@@ -122,12 +123,12 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
-		enabled: true,
-	}
+		true,
+	)
 
-	fatalCheck := Category{
-		ID: "cat6",
-		checkers: []Checker{
+	fatalCheck := NewCategory(
+		"cat6",
+		[]Checker{
 			{
 				description: "desc6",
 				fatal:       true,
@@ -137,12 +138,12 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
-		enabled: true,
-	}
+		true,
+	)
 
-	skippingCheck := Category{
-		ID: "cat7",
-		checkers: []Checker{
+	skippingCheck := NewCategory(
+		"cat7",
+		[]Checker{
 			{
 				description: "skip",
 				check: func(context.Context) error {
@@ -151,12 +152,12 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
-		enabled: true,
-	}
+		true,
+	)
 
-	skippingRPCCheck := Category{
-		ID: "cat8",
-		checkers: []Checker{
+	skippingRPCCheck := NewCategory(
+		"cat8",
+		[]Checker{
 			{
 				description: "skipRpc",
 				check: func(context.Context) error {
@@ -165,12 +166,12 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
-		enabled: true,
-	}
+		true,
+	)
 
-	troubleshootingCheck := Category{
-		ID: "cat9",
-		checkers: []Checker{
+	troubleshootingCheck := NewCategory(
+		"cat9",
+		[]Checker{
 			{
 				description: "failCheck",
 				hintAnchor:  "cat9",
@@ -179,8 +180,8 @@ func TestHealthChecker(t *testing.T) {
 				},
 			},
 		},
-		enabled: true,
-	}
+		true,
+	)
 
 	t.Run("Notifies observer of all results", func(t *testing.T) {
 		hc := NewHealthChecker(
@@ -282,9 +283,9 @@ func TestHealthChecker(t *testing.T) {
 		retryWindow = 0
 		returnError := true
 
-		retryCheck := Category{
-			ID: "cat7",
-			checkers: []Checker{
+		retryCheck := NewCategory(
+			"cat7",
+			[]Checker{
 				{
 					description:   "desc7",
 					retryDeadline: time.Now().Add(100 * time.Second),
@@ -297,8 +298,8 @@ func TestHealthChecker(t *testing.T) {
 					},
 				},
 			},
-			enabled: true,
-		}
+			true,
+		)
 
 		hc := NewHealthChecker(
 			[]CategoryID{},
@@ -2156,7 +2157,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.9","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.11","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}`,
 			},
@@ -2202,7 +2203,7 @@ data:
 					},
 					DisableExternalProfiles: true,
 					ProxyVersion:            "install-proxy-version",
-					ProxyInitImageVersion:   "v1.3.9",
+					ProxyInitImageVersion:   "v1.3.11",
 					DebugImage: &configPb.Image{
 						ImageName:  "cr.l5d.io/linkerd/debug",
 						PullPolicy: "IfNotPresent",
@@ -2294,7 +2295,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.9","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.11","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
   values: |
@@ -2460,7 +2461,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.9","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.11","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
   values: |

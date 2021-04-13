@@ -90,12 +90,13 @@ type OwnerRetrieverFunc func(*corev1.Pod) (string, string)
 
 // ResourceConfig contains the parsed information for a given workload
 type ResourceConfig struct {
-	// These values used for the rendering of the patch may be further overridden
-	// by the annotations on the resource or the resource's namespace.
+	// These values used for the rendering of the patch may be further
+	// overridden by the annotations on the resource or the resource's
+	// namespace.
 	values *l5dcharts.Values
 	// These annotations from the resources's namespace are used as a base.
-	// The resources's annotations will be applied on top of these, which allows
-	// the nsAnnotations to act as a default.
+	// The resources's annotations will be applied on top of these, which
+	// allows the nsAnnotations to act as a default.
 	nsAnnotations  map[string]string
 	ownerRetriever OwnerRetrieverFunc
 	origin         Origin
@@ -103,11 +104,9 @@ type ResourceConfig struct {
 	workload struct {
 		obj      runtime.Object
 		metaType metav1.TypeMeta
-
 		// Meta is the workload's metadata. It's exported so that metadata of
 		// non-workload resources can be unmarshalled by the YAML parser
-		Meta *metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
-
+		Meta     *metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 		ownerRef *metav1.OwnerReference
 	}
 
@@ -136,8 +135,9 @@ type podPatch struct {
 	DebugContainer        *l5dcharts.DebugContainer `json:"debugContainer"`
 }
 
-type servicePatch struct {
-	OpaquePorts string
+type annotationPatch struct {
+	AddRootAnnotations bool
+	OpaquePorts        string
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
@@ -148,6 +148,7 @@ func NewResourceConfig(values *l5dcharts.Values, origin Origin) *ResourceConfig 
 		origin:        origin,
 	}
 
+	config.workload.Meta = &metav1.ObjectMeta{}
 	config.pod.meta = &metav1.ObjectMeta{}
 
 	// Values can be nil for commands like Uninject
@@ -305,24 +306,36 @@ func (conf *ResourceConfig) GetPodPatch(injectProxy bool) ([]byte, error) {
 	return res, nil
 }
 
-// GetServicePatch returns the JSON patch containing the service opaque ports
-// annotation if the annotation is present on the namespace, but absent on the
-// service.
-func (conf *ResourceConfig) GetServicePatch() ([]byte, error) {
-	_, ok := conf.workload.Meta.Annotations[k8s.ProxyOpaquePortsAnnotation]
-	// There does not need to be a patch if the service already has the
-	// annotation.
+// GetOpaquePorts returns two values. The first value is the the opaque ports
+// annotation value. The second is used to decide whether or not the caller
+// should add the annotation. The caller should not add the annotation if the
+// resource already has its own.
+func (conf *ResourceConfig) GetOpaquePorts() (string, bool) {
+	_, ok := conf.pod.meta.Annotations[k8s.ProxyOpaquePortsAnnotation]
 	if ok {
-		return nil, nil
+		log.Debugf("using pod %s %s annotation value", conf.pod.meta.Name, k8s.ProxyOpaquePortsAnnotation)
+		return "", false
 	}
-	opaquePorts, ok := conf.nsAnnotations[k8s.ProxyOpaquePortsAnnotation]
-	// There does not need to be a patch if the namespace does not have the
-	// annotation.
-	if !ok {
-		return nil, nil
+	_, ok = conf.workload.Meta.Annotations[k8s.ProxyOpaquePortsAnnotation]
+	if ok {
+		log.Debugf("using service %s %s annotation value", conf.workload.Meta.Name, k8s.ProxyOpaquePortsAnnotation)
+		return "", false
 	}
-	patch := &servicePatch{
-		OpaquePorts: opaquePorts,
+	annotation, ok := conf.nsAnnotations[k8s.ProxyOpaquePortsAnnotation]
+	if ok {
+		log.Debugf("using namespace %s %s annotation value", conf.workload.Meta.Namespace, k8s.ProxyOpaquePortsAnnotation)
+		return annotation, true
+	}
+	return "", false
+}
+
+// CreateAnnotationPatch returns a json patch which adds the opaque ports
+// annotation with the `opaquePorts` value.
+func (conf *ResourceConfig) CreateAnnotationPatch(opaquePorts string) ([]byte, error) {
+	addRootAnnotations := len(conf.pod.meta.Annotations) == 0
+	patch := &annotationPatch{
+		AddRootAnnotations: addRootAnnotations,
+		OpaquePorts:        opaquePorts,
 	}
 	t, err := template.New("tpl").Parse(tpl)
 	if err != nil {
@@ -484,7 +497,6 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
-		// If annotations not present previously
 		if conf.workload.Meta.Annotations == nil {
 			conf.workload.Meta.Annotations = map[string]string{}
 		}
@@ -528,6 +540,9 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			}
 		}
 		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
+		if conf.pod.meta.Annotations == nil {
+			conf.pod.meta.Annotations = map[string]string{}
+		}
 
 	case *corev1.Service:
 		if err := yaml.Unmarshal(bytes, v); err != nil {
@@ -547,16 +562,15 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 	}
 
-	if conf.pod.meta.Annotations == nil {
-		conf.pod.meta.Annotations = map[string]string{}
-	}
-
 	return nil
 }
 
 func (conf *ResourceConfig) complete(template *corev1.PodTemplateSpec) {
 	conf.pod.spec = &template.Spec
 	conf.pod.meta = &template.ObjectMeta
+	if conf.pod.meta.Annotations == nil {
+		conf.pod.meta.Annotations = map[string]string{}
+	}
 }
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
@@ -929,20 +943,28 @@ func (conf *ResourceConfig) IsService() bool {
 	return strings.ToLower(conf.workload.metaType.Kind) == k8s.Service
 }
 
-//InjectNamespace annotates any given Namespace config
-func (conf *ResourceConfig) InjectNamespace(annotations map[string]string) ([]byte, error) {
+// IsPod checks if a given config is a workload of Kind pod.
+func (conf *ResourceConfig) IsPod() bool {
+	return strings.ToLower(conf.workload.metaType.Kind) == k8s.Pod
+}
+
+// HasPodTemplate checks if a given config has a pod template spec.
+func (conf *ResourceConfig) HasPodTemplate() bool {
+	return conf.pod.meta != nil && conf.pod.spec != nil
+}
+
+// AnnotateNamespace annotates a namespace resource config with `annotations`.
+func (conf *ResourceConfig) AnnotateNamespace(annotations map[string]string) ([]byte, error) {
 	ns, ok := conf.workload.obj.(*corev1.Namespace)
 	if !ok {
 		return nil, errors.New("can't inject namespace. Type assertion failed")
 	}
 	ns.Annotations[k8s.ProxyInjectAnnotation] = k8s.ProxyInjectEnabled
-	//For overriding annotations
 	if len(annotations) > 0 {
 		for annotation, value := range annotations {
 			ns.Annotations[annotation] = value
 		}
 	}
-
 	j, err := getFilteredJSON(ns)
 	if err != nil {
 		return nil, err
@@ -950,23 +972,18 @@ func (conf *ResourceConfig) InjectNamespace(annotations map[string]string) ([]by
 	return yaml.JSONToYAML(j)
 }
 
-// AnnotateService returns a Service with the appropriate annotations
-// Currently, a `Service` may only need the `config.linkerd.io/opaque-ports` annotation via `inject`
-// See - https://github.com/linkerd/linkerd2/pull/5721
+// AnnotateService annotates a service resource config with `annotations`.
 func (conf *ResourceConfig) AnnotateService(annotations map[string]string) ([]byte, error) {
-	ns, ok := conf.workload.obj.(*corev1.Service)
+	service, ok := conf.workload.obj.(*corev1.Service)
 	if !ok {
 		return nil, errors.New("can't inject service. Type assertion failed")
 	}
-
-	//For overriding annotations
 	if len(annotations) > 0 {
 		for annotation, value := range annotations {
-			ns.Annotations[annotation] = value
+			service.Annotations[annotation] = value
 		}
 	}
-
-	j, err := getFilteredJSON(ns)
+	j, err := getFilteredJSON(service)
 	if err != nil {
 		return nil, err
 	}

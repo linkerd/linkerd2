@@ -95,6 +95,9 @@ func TestUninjectAndInject(t *testing.T) {
 	opaquePortsConfig := defaultConfig()
 	opaquePortsConfig.Proxy.OpaquePorts = "3000,5000-6000,mysql"
 
+	ingressConfig := defaultConfig()
+	ingressConfig.Proxy.IsIngress = true
+
 	proxyIgnorePortsConfig := defaultConfig()
 	proxyIgnorePortsConfig.ProxyInit.IgnoreInboundPorts = "22,8100-8102"
 	proxyIgnorePortsConfig.ProxyInit.IgnoreOutboundPorts = "5432"
@@ -298,6 +301,13 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_deployment_opaque_ports.report",
 			injectProxy:      true,
 			testInjectConfig: opaquePortsConfig,
+		},
+		{
+			inputFileName:    "inject_emojivoto_pod.input.yml",
+			goldenFileName:   "inject_emojivoto_pod_ingress.golden.yml",
+			reportFileName:   "inject_emojivoto_pod_ingress.report",
+			injectProxy:      true,
+			testInjectConfig: ingressConfig,
 		},
 	}
 
