@@ -60,10 +60,11 @@ func (hc *HealthChecker) addCheckAsCategory(
 	categoryID CategoryID,
 	desc string,
 ) {
-	testCategory := Category{
-		ID:       testCategoryID,
-		checkers: []Checker{},
-	}
+	testCategory := NewCategory(
+		testCategoryID,
+		[]Checker{},
+		false,
+	)
 
 	for _, cat := range hc.categories {
 		if cat.ID == categoryID {
@@ -83,9 +84,9 @@ func (hc *HealthChecker) addCheckAsCategory(
 func TestHealthChecker(t *testing.T) {
 	nullObserver := func(*CheckResult) {}
 
-	passingCheck1 := Category{
-		ID: "cat1",
-		checkers: []Checker{
+	passingCheck1 := NewCategory(
+		"cat1",
+		[]Checker{
 			{
 				description: "desc1",
 				check: func(context.Context) error {
@@ -94,12 +95,12 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
-		enabled: true,
-	}
+		true,
+	)
 
-	passingCheck2 := Category{
-		ID: "cat2",
-		checkers: []Checker{
+	passingCheck2 := NewCategory(
+		"cat2",
+		[]Checker{
 			{
 				description: "desc2",
 				check: func(context.Context) error {
@@ -108,12 +109,12 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
-		enabled: true,
-	}
+		true,
+	)
 
-	failingCheck := Category{
-		ID: "cat3",
-		checkers: []Checker{
+	failingCheck := NewCategory(
+		"cat3",
+		[]Checker{
 			{
 				description: "desc3",
 				check: func(context.Context) error {
@@ -122,12 +123,12 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
-		enabled: true,
-	}
+		true,
+	)
 
-	fatalCheck := Category{
-		ID: "cat6",
-		checkers: []Checker{
+	fatalCheck := NewCategory(
+		"cat6",
+		[]Checker{
 			{
 				description: "desc6",
 				fatal:       true,
@@ -137,12 +138,12 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
-		enabled: true,
-	}
+		true,
+	)
 
-	skippingCheck := Category{
-		ID: "cat7",
-		checkers: []Checker{
+	skippingCheck := NewCategory(
+		"cat7",
+		[]Checker{
 			{
 				description: "skip",
 				check: func(context.Context) error {
@@ -151,12 +152,12 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
-		enabled: true,
-	}
+		true,
+	)
 
-	skippingRPCCheck := Category{
-		ID: "cat8",
-		checkers: []Checker{
+	skippingRPCCheck := NewCategory(
+		"cat8",
+		[]Checker{
 			{
 				description: "skipRpc",
 				check: func(context.Context) error {
@@ -165,12 +166,12 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
-		enabled: true,
-	}
+		true,
+	)
 
-	troubleshootingCheck := Category{
-		ID: "cat9",
-		checkers: []Checker{
+	troubleshootingCheck := NewCategory(
+		"cat9",
+		[]Checker{
 			{
 				description: "failCheck",
 				hintAnchor:  "cat9",
@@ -179,8 +180,8 @@ func TestHealthChecker(t *testing.T) {
 				},
 			},
 		},
-		enabled: true,
-	}
+		true,
+	)
 
 	t.Run("Notifies observer of all results", func(t *testing.T) {
 		hc := NewHealthChecker(
@@ -282,9 +283,9 @@ func TestHealthChecker(t *testing.T) {
 		retryWindow = 0
 		returnError := true
 
-		retryCheck := Category{
-			ID: "cat7",
-			checkers: []Checker{
+		retryCheck := NewCategory(
+			"cat7",
+			[]Checker{
 				{
 					description:   "desc7",
 					retryDeadline: time.Now().Add(100 * time.Second),
@@ -297,8 +298,8 @@ func TestHealthChecker(t *testing.T) {
 					},
 				},
 			},
-			enabled: true,
-		}
+			true,
+		)
 
 		hc := NewHealthChecker(
 			[]CategoryID{},
