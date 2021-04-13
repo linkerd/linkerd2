@@ -22,20 +22,6 @@ spec:
     spec:
       containers:
       - env:
-        - name: WEB_PORT
-          value: "80"
-        - name: EMOJISVC_HOST
-          value: emoji-svc.emojivoto:8080
-        - name: VOTINGSVC_HOST
-          value: voting-svc.emojivoto:8080
-        - name: INDEX_BUNDLE
-          value: dist/index_bundle.js
-        image: buoyantio/emojivoto-web:v10
-        name: web-svc
-        ports:
-        - containerPort: 80
-          name: http
-      - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_LOG_FORMAT
@@ -111,6 +97,11 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: cr.l5d.io/linkerd/proxy:test-inject-proxy-version
         imagePullPolicy: IfNotPresent
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - /usr/lib/linkerd/linkerd-await
         livenessProbe:
           httpGet:
             path: /live
@@ -135,6 +126,20 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+      - env:
+        - name: WEB_PORT
+          value: "80"
+        - name: EMOJISVC_HOST
+          value: emoji-svc.emojivoto:8080
+        - name: VOTINGSVC_HOST
+          value: voting-svc.emojivoto:8080
+        - name: INDEX_BUNDLE
+          value: dist/index_bundle.js
+        image: buoyantio/emojivoto-web:v10
+        name: web-svc
+        ports:
+        - containerPort: 80
+          name: http
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -200,20 +205,6 @@ spec:
     spec:
       containers:
       - env:
-        - name: WEB_PORT
-          value: "80"
-        - name: EMOJISVC_HOST
-          value: emoji-svc.emojivoto:8080
-        - name: VOTINGSVC_HOST
-          value: voting-svc.emojivoto:8080
-        - name: INDEX_BUNDLE
-          value: dist/index_bundle.js
-        image: buoyantio/emojivoto-web:v10
-        name: web-svc
-        ports:
-        - containerPort: 80
-          name: http
-      - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_LOG_FORMAT
@@ -289,6 +280,11 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: cr.l5d.io/linkerd/proxy:test-inject-proxy-version
         imagePullPolicy: IfNotPresent
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - /usr/lib/linkerd/linkerd-await
         livenessProbe:
           httpGet:
             path: /live
@@ -313,6 +309,20 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+      - env:
+        - name: WEB_PORT
+          value: "80"
+        - name: EMOJISVC_HOST
+          value: emoji-svc.emojivoto:8080
+        - name: VOTINGSVC_HOST
+          value: voting-svc.emojivoto:8080
+        - name: INDEX_BUNDLE
+          value: dist/index_bundle.js
+        image: buoyantio/emojivoto-web:v10
+        name: web-svc
+        ports:
+        - containerPort: 80
+          name: http
       initContainers:
       - args:
         - --incoming-proxy-port

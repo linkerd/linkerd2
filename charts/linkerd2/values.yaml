@@ -99,7 +99,7 @@ proxy:
   waitBeforeExitSeconds: 0
   #  -- If set, the application container will not start until the proxy is
   # ready
-  await: false
+  await: true
   requireIdentityOnInboundPorts: ""
   # -- Default set of opaque ports
   # - SMTP (25,587) server-first

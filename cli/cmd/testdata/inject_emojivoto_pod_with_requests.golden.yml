@@ -17,13 +17,6 @@ metadata:
   namespace: emojivoto
 spec:
   containers:
-  - command:
-    - emojivoto-vote-bot
-    env:
-    - name: WEB_HOST
-      value: web-svc.emojivoto:80
-    image: buoyantio/emojivoto-web:v10
-    name: vote-bot
   - env:
     - name: LINKERD2_PROXY_LOG
       value: warn,linkerd=info
@@ -100,6 +93,11 @@ spec:
       value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
     image: cr.l5d.io/linkerd/proxy:test-inject-proxy-version
     imagePullPolicy: IfNotPresent
+    lifecycle:
+      postStart:
+        exec:
+          command:
+          - /usr/lib/linkerd/linkerd-await
     livenessProbe:
       httpGet:
         path: /live
@@ -131,6 +129,13 @@ spec:
     volumeMounts:
     - mountPath: /var/run/linkerd/identity/end-entity
       name: linkerd-identity-end-entity
+  - command:
+    - emojivoto-vote-bot
+    env:
+    - name: WEB_HOST
+      value: web-svc.emojivoto:80
+    image: buoyantio/emojivoto-web:v10
+    name: vote-bot
   initContainers:
   - args:
     - --incoming-proxy-port

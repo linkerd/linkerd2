@@ -1,11 +1,5 @@
 ARG BUILDPLATFORM=linux/amd64
 
-FROM --platform=$BUILDPLATFORM docker.io/curlimages/curl:7.75.0  as await
-WORKDIR /tmp
-ARG LINKERD_AWAIT_VERSION=v0.2.1
-ARG TARGETARCH
-RUN curl -fsSvLo linkerd-await https://github.com/olix0r/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-${TARGETARCH} && chmod +x linkerd-await
-
 # Precompile key slow-to-build dependencies
 FROM --platform=$BUILDPLATFORM golang:1.16.2-alpine as go-deps
 WORKDIR /linkerd-build
@@ -36,7 +30,6 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/controller -tag
 
 ## package runtime
 FROM scratch
-COPY --from=await /tmp/linkerd-await /
 COPY LICENSE /linkerd/LICENSE
 COPY --from=golang /out/controller /controller
 # for heartbeat (https://versioncheck.linkerd.io/version.json)
@@ -44,4 +37,4 @@ COPY --from=golang /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 ARG LINKERD_VERSION
 ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}
-ENTRYPOINT ["/linkerd-await", "--", "/controller"]
+ENTRYPOINT ["/controller"]

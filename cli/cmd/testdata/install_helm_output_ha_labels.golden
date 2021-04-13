@@ -974,7 +974,7 @@ data:
           - disabled
     prometheusUrl: ""
     proxy:
-      await: false
+      await: true
       capabilities: null
       disableIdentity: false
       enableExternalProfiles: false
@@ -1340,6 +1340,11 @@ spec:
           readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - /usr/lib/linkerd/linkerd-await
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
@@ -1492,39 +1497,6 @@ spec:
                 - controller
             topologyKey: kubernetes.io/hostname
       containers:
-      - args:
-        - public-api
-        - -destination-addr=linkerd-dst.linkerd.svc.cluster.local:8086
-        - -controller-namespace=linkerd
-        - -log-level=info
-        - -log-format=plain
-        - -cluster-domain=cluster.local
-        image: cr.l5d.io/linkerd/controller:linkerd-version
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /ping
-            port: 9995
-          initialDelaySeconds: 10
-        name: public-api
-        ports:
-        - containerPort: 8085
-          name: http
-        - containerPort: 9995
-          name: admin-http
-        readinessProbe:
-          failureThreshold: 7
-          httpGet:
-            path: /ready
-            port: 9995
-        resources:
-          limits:
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "50Mi"
-        securityContext:
-          runAsUser: 2103
       - env:
         - name: LINKERD2_PROXY_LOG
           value: "warn,linkerd=info"
@@ -1617,9 +1589,47 @@ spec:
           readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - /usr/lib/linkerd/linkerd-await
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+      - args:
+        - public-api
+        - -destination-addr=linkerd-dst.linkerd.svc.cluster.local:8086
+        - -controller-namespace=linkerd
+        - -log-level=info
+        - -log-format=plain
+        - -cluster-domain=cluster.local
+        image: cr.l5d.io/linkerd/controller:linkerd-version
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9995
+          initialDelaySeconds: 10
+        name: public-api
+        ports:
+        - containerPort: 8085
+          name: http
+        - containerPort: 9995
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9995
+        resources:
+          limits:
+            memory: "250Mi"
+          requests:
+            cpu: "100m"
+            memory: "50Mi"
+        securityContext:
+          runAsUser: 2103
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -1785,43 +1795,6 @@ spec:
                 - destination
             topologyKey: kubernetes.io/hostname
       containers:
-      - args:
-        - destination
-        - -addr=:8086
-        - -controller-namespace=linkerd
-        - -enable-h2-upgrade=true
-        - -log-level=info
-        - -log-format=plain
-        - -enable-endpoint-slices=false
-        - -cluster-domain=cluster.local
-        - -identity-trust-domain=test.trust.domain
-        - -default-opaque-ports=25,443,587,3306,5432,11211
-        image: cr.l5d.io/linkerd/controller:linkerd-version
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /ping
-            port: 9996
-          initialDelaySeconds: 10
-        name: destination
-        ports:
-        - containerPort: 8086
-          name: grpc
-        - containerPort: 9996
-          name: admin-http
-        readinessProbe:
-          failureThreshold: 7
-          httpGet:
-            path: /ready
-            port: 9996
-        resources:
-          limits:
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "50Mi"
-        securityContext:
-          runAsUser: 2103
       - env:
         - name: LINKERD2_PROXY_LOG
           value: "warn,linkerd=info"
@@ -1914,9 +1887,51 @@ spec:
           readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - /usr/lib/linkerd/linkerd-await
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+      - args:
+        - destination
+        - -addr=:8086
+        - -controller-namespace=linkerd
+        - -enable-h2-upgrade=true
+        - -log-level=info
+        - -log-format=plain
+        - -enable-endpoint-slices=false
+        - -cluster-domain=cluster.local
+        - -identity-trust-domain=test.trust.domain
+        - -default-opaque-ports=25,443,587,3306,5432,11211
+        image: cr.l5d.io/linkerd/controller:linkerd-version
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9996
+          initialDelaySeconds: 10
+        name: destination
+        ports:
+        - containerPort: 8086
+          name: grpc
+        - containerPort: 9996
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9996
+        resources:
+          limits:
+            memory: "250Mi"
+          requests:
+            cpu: "100m"
+            memory: "50Mi"
+        securityContext:
+          runAsUser: 2103
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -2088,42 +2103,6 @@ spec:
                 - proxy-injector
             topologyKey: kubernetes.io/hostname
       containers:
-      - args:
-        - proxy-injector
-        - -log-level=info
-        - -log-format=plain
-        image: cr.l5d.io/linkerd/controller:linkerd-version
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /ping
-            port: 9995
-          initialDelaySeconds: 10
-        name: proxy-injector
-        ports:
-        - containerPort: 8443
-          name: proxy-injector
-        - containerPort: 9995
-          name: admin-http
-        readinessProbe:
-          failureThreshold: 7
-          httpGet:
-            path: /ready
-            port: 9995
-        resources:
-          limits:
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "50Mi"
-        securityContext:
-          runAsUser: 2103
-        volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
-        - mountPath: /var/run/linkerd/tls
-          name: tls
-          readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
           value: "warn,linkerd=info"
@@ -2216,9 +2195,50 @@ spec:
           readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - /usr/lib/linkerd/linkerd-await
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+      - args:
+        - proxy-injector
+        - -log-level=info
+        - -log-format=plain
+        image: cr.l5d.io/linkerd/controller:linkerd-version
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9995
+          initialDelaySeconds: 10
+        name: proxy-injector
+        ports:
+        - containerPort: 8443
+          name: proxy-injector
+        - containerPort: 9995
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9995
+        resources:
+          limits:
+            memory: "250Mi"
+          requests:
+            cpu: "100m"
+            memory: "50Mi"
+        securityContext:
+          runAsUser: 2103
+        volumeMounts:
+        - mountPath: /var/run/linkerd/config
+          name: config
+        - mountPath: /var/run/linkerd/tls
+          name: tls
+          readOnly: true
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -2405,40 +2425,6 @@ spec:
                 - sp-validator
             topologyKey: kubernetes.io/hostname
       containers:
-      - args:
-        - sp-validator
-        - -log-level=info
-        - -log-format=plain
-        image: cr.l5d.io/linkerd/controller:linkerd-version
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /ping
-            port: 9997
-          initialDelaySeconds: 10
-        name: sp-validator
-        ports:
-        - containerPort: 8443
-          name: sp-validator
-        - containerPort: 9997
-          name: admin-http
-        readinessProbe:
-          failureThreshold: 7
-          httpGet:
-            path: /ready
-            port: 9997
-        resources:
-          limits:
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "50Mi"
-        securityContext:
-          runAsUser: 2103
-        volumeMounts:
-        - mountPath: /var/run/linkerd/tls
-          name: tls
-          readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
           value: "warn,linkerd=info"
@@ -2531,9 +2517,48 @@ spec:
           readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - /usr/lib/linkerd/linkerd-await
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+      - args:
+        - sp-validator
+        - -log-level=info
+        - -log-format=plain
+        image: cr.l5d.io/linkerd/controller:linkerd-version
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9997
+          initialDelaySeconds: 10
+        name: sp-validator
+        ports:
+        - containerPort: 8443
+          name: sp-validator
+        - containerPort: 9997
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9997
+        resources:
+          limits:
+            memory: "250Mi"
+          requests:
+            cpu: "100m"
+            memory: "50Mi"
+        securityContext:
+          runAsUser: 2103
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: tls
+          readOnly: true
       initContainers:
       - args:
         - --incoming-proxy-port
