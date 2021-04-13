@@ -14,7 +14,7 @@ other types of server-centric policy, including the types of configuration
 that have been provided by `ServiceProfile`s, including timeouts, routes,
 etc.
 
-These policies will supplant existing workload-level annotations, where
+These policies will supplant existing workload-level annotations where
 possible.
 
 ## Client-side policy, v2
@@ -36,7 +36,8 @@ necessarily include request payloads). We plan to support retries for unary
 
 ## Mesh expansion
 
-Linkerd's mTLS identity only works for
+Linkerd's mTLS identity only works for resources managed by Kubernetes. We
+plan to extend Linkerd to support non-Kubernetes workloads.
 
 ## OpenMetrics
 
