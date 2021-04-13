@@ -53,7 +53,7 @@ func newMulticlusterUninstallCommand() *cobra.Command {
 				return errors.New(strings.Join(err, "\n"))
 			}
 
-			err = pkgCmd.Uninstall(cmd.Context(), k8sAPI, "linkerd.io/extension=multicluster")
+			err = pkgCmd.Uninstall(cmd.Context(), k8sAPI, fmt.Sprintf("%s=%s", k8s.LinkerdExtensionLabel, MulticlusterExtensionName))
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
