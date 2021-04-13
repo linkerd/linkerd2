@@ -410,7 +410,7 @@ type Options struct {
 // HealthChecker encapsulates all health check checkers, and clients required to
 // perform those checks.
 type HealthChecker struct {
-	categories []Category
+	categories []*Category
 	*Options
 
 	// these fields are set in the process of running checks
@@ -485,13 +485,13 @@ func (hc *HealthChecker) InitializeLinkerdGlobalConfig(ctx context.Context) erro
 }
 
 // AppendCategories returns a HealthChecker instance appending the provided Categories
-func (hc *HealthChecker) AppendCategories(categories ...Category) *HealthChecker {
+func (hc *HealthChecker) AppendCategories(categories ...*Category) *HealthChecker {
 	hc.categories = append(hc.categories, categories...)
 	return hc
 }
 
 // GetCategories returns all the categories
-func (hc *HealthChecker) GetCategories() []Category {
+func (hc *HealthChecker) GetCategories() []*Category {
 	return hc.categories
 }
 
@@ -506,11 +506,11 @@ func (hc *HealthChecker) GetCategories() []Category {
 // Note that all checks should include a `hintAnchor` with a corresponding section
 // in the linkerd check faq:
 // https://linkerd.io/checks/#
-func (hc *HealthChecker) allCategories() []Category {
-	return []Category{
-		{
-			ID: KubernetesAPIChecks,
-			checkers: []Checker{
+func (hc *HealthChecker) allCategories() []*Category {
+	return []*Category{
+		NewCategory(
+			KubernetesAPIChecks,
+			[]Checker{
 				{
 					description: "can initialize the client",
 					hintAnchor:  "k8s-api",
@@ -530,10 +530,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: KubernetesVersionChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			KubernetesVersionChecks,
+			[]Checker{
 				{
 					description: "is running the minimum Kubernetes API version",
 					hintAnchor:  "k8s-version",
@@ -549,10 +550,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdPreInstallChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdPreInstallChecks,
+			[]Checker{
 				{
 					description: "control plane namespace does not already exist",
 					hintAnchor:  "pre-ns",
@@ -632,10 +634,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdPreInstallCapabilityChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdPreInstallCapabilityChecks,
+			[]Checker{
 				{
 					description: "has NET_ADMIN capability",
 					hintAnchor:  "pre-k8s-cluster-net-admin",
@@ -653,10 +656,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdPreInstallGlobalResourcesChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdPreInstallGlobalResourcesChecks,
+			[]Checker{
 				{
 					description: "no ClusterRoles exist",
 					hintAnchor:  "pre-l5d-existence",
@@ -700,10 +704,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdControlPlaneExistenceChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdControlPlaneExistenceChecks,
+			[]Checker{
 				{
 					description: "'linkerd-config' config map exists",
 					hintAnchor:  "l5d-existence-linkerd-config",
@@ -772,10 +777,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdConfigChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdConfigChecks,
+			[]Checker{
 				{
 					description: "control plane Namespace exists",
 					hintAnchor:  "l5d-existence-ns",
@@ -841,10 +847,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdCNIPluginChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdCNIPluginChecks,
+			[]Checker{
 				{
 					description: "cni plugin ConfigMap exists",
 					hintAnchor:  "cni-plugin-cm-exists",
@@ -986,10 +993,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdIdentity,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdIdentity,
+			[]Checker{
 				{
 					description: "certificate config is valid",
 					hintAnchor:  "l5d-identity-cert-config-valid",
@@ -1092,10 +1100,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdWebhooksAndAPISvcTLS,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdWebhooksAndAPISvcTLS,
+			[]Checker{
 				{
 					description: "proxy-injector webhook has valid cert",
 					hintAnchor:  "l5d-proxy-injector-webhook-cert-valid",
@@ -1170,10 +1179,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdIdentityDataPlane,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdIdentityDataPlane,
+			[]Checker{
 				{
 					description: "data plane proxies certificate match CA",
 					hintAnchor:  "l5d-identity-data-plane-proxies-certs-match-ca",
@@ -1183,10 +1193,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdAPIChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdAPIChecks,
+			[]Checker{
 				{
 					description:         "control plane pods are ready",
 					hintAnchor:          "l5d-api-control-ready",
@@ -1226,10 +1237,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdVersionChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdVersionChecks,
+			[]Checker{
 				{
 					description: "can determine the latest version",
 					hintAnchor:  "l5d-version-latest",
@@ -1256,10 +1268,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdControlPlaneVersionChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdControlPlaneVersionChecks,
+			[]Checker{
 				{
 					description: "control plane is up-to-date",
 					hintAnchor:  "l5d-version-control",
@@ -1280,10 +1293,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdDataPlaneChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdDataPlaneChecks,
+			[]Checker{
 				{
 					description: "data plane namespace exists",
 					hintAnchor:  "l5d-data-plane-exists",
@@ -1354,10 +1368,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdHAChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdHAChecks,
+			[]Checker{
 				{
 					description: "pod injection disabled on kube-system",
 					hintAnchor:  "l5d-injection-disabled",
@@ -1386,7 +1401,8 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
+			false,
+		),
 	}
 }
 
@@ -1515,7 +1531,7 @@ func (hc *HealthChecker) LinkerdConfig() *l5dcharts.Values {
 	return hc.linkerdConfig
 }
 
-func (hc *HealthChecker) runCheck(category Category, c *Checker, observer CheckObserver) bool {
+func (hc *HealthChecker) runCheck(category *Category, c *Checker, observer CheckObserver) bool {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 		defer cancel()
