@@ -83,7 +83,7 @@ func checkForJaeger(hcOptions healthcheck.Options) {
 	}
 
 	hc := healthcheck.NewHealthChecker(checks, &hcOptions)
-	hc.AppendCategories(*jaegerCategory(hc))
+	hc.AppendCategories(jaegerCategory(hc))
 
 	hc.RunChecks(exitOnError)
 }
