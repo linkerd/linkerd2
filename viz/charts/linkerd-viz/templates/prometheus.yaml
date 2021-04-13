@@ -220,6 +220,7 @@ spec:
   template:
     metadata:
       annotations:
+        config.linkerd.io/proxy-await: "enabled"
         {{ include "partials.annotations.created-by" . }}
         {{- with .Values.prometheus.proxy }}
         {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}

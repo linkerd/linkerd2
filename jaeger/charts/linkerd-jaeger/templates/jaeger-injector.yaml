@@ -22,6 +22,7 @@ spec:
   template:
     metadata:
       annotations:
+        config.linkerd.io/proxy-await: "enabled"
         checksum/config: {{ include (print $.Template.BasePath "/rbac.yaml") . | sha256sum }}
       labels:
         linkerd.io/extension: jaeger
