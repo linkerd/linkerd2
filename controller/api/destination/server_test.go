@@ -16,13 +16,16 @@ import (
 const fullyQualifiedName = "name1.ns.svc.mycluster.local"
 const fullyQualifiedNameOpaque = "name3.ns.svc.mycluster.local"
 const fullyQualifiedNameOpaqueService = "name4.ns.svc.mycluster.local"
+const fullyQualifiedNameSkipped = "name5.ns.svc.mycluster.local"
 const clusterIP = "172.17.12.0"
 const clusterIPOpaque = "172.17.12.1"
 const podIP1 = "172.17.0.12"
 const podIP2 = "172.17.0.13"
 const podIPOpaque = "172.17.0.14"
+const podIPSkipped = "172.17.0.15"
 const port uint32 = 8989
 const opaquePort uint32 = 4242
+const skippedPort uint32 = 24224
 
 type mockDestinationGetServer struct {
 	util.MockServerStream
@@ -217,10 +220,59 @@ metadata:
   annotations:
     config.linkerd.io/opaque-ports: "4242"`,
 	}
+
+	meshedSkippedPodResource := []string{
+		`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name5
+  namespace: ns
+spec:
+  type: LoadBalancer
+  clusterIP: 172.17.13.1
+  ports:
+  - port: 24224`,
+		`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: name5
+  namespace: ns
+subsets:
+- addresses:
+  - ip: 172.17.0.15
+    targetRef:
+      kind: Pod
+      name: name5
+      namespace: ns
+  ports:
+  - port: 24224`,
+		`
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    config.linkerd.io/skip-inbound-ports: "24224"
+  name: name5
+  namespace: ns
+status:
+  phase: Running
+  podIP: 172.17.0.15
+spec:
+  containers:
+    - env:
+      - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
+        value: 0.0.0.0:4143
+      name: linkerd-proxy`,
+	}
 	res := append(meshedPodResources, clientSP...)
 	res = append(res, unmeshedPod)
 	res = append(res, meshedOpaquePodResources...)
 	res = append(res, meshedOpaqueServiceResources...)
+	res = append(res, meshedSkippedPodResource...)
 	k8sAPI, err := k8s.NewFakeAPI(res...)
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
@@ -326,6 +378,44 @@ func TestGet(t *testing.T) {
 			t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP1, port), updateAddAddress(t, stream.updates[0])[0])
 		}
 
+	})
+
+	t.Run("Return endpoint with unknown protocol hint and identity when service name contains skipped inbound port", func(t *testing.T) {
+		server := makeServer(t)
+		stream := &bufferingGetStream{
+			updates:          []*pb.Update{},
+			MockServerStream: util.NewMockServerStream(),
+		}
+
+		stream.Cancel()
+
+		path := fmt.Sprintf("%s:%d", fullyQualifiedNameSkipped, skippedPort)
+		err := server.Get(&pb.GetDestination{
+			Scheme: "k8s",
+			Path:   path,
+		}, stream)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		if len(stream.updates) == 0 || len(stream.updates) > 3 {
+			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
+		}
+
+		last := stream.updates[len(stream.updates)-1]
+
+		addrs := last.GetAdd().Addrs
+		if len(addrs) == 0 {
+			t.Fatalf("Expected len(addrs) to be > 0")
+		}
+
+		if addrs[0].ProtocolHint != nil {
+			t.Fatalf("Expected protocol hint for %s to be nil but got %+v", path, addrs[0].ProtocolHint)
+		}
+
+		if addrs[0].TlsIdentity != nil {
+			t.Fatalf("Expected protocol hint for %s to be nil but got %+v", path, addrs[0].TlsIdentity)
+		}
 	})
 }
 
@@ -758,6 +848,44 @@ func TestGetProfiles(t *testing.T) {
 		}
 		if !last.OpaqueProtocol {
 			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", opaquePort)
+		}
+	})
+
+	t.Run("Return profile with unknown protocol hint and identity when service name contains skipped inbound port", func(t *testing.T) {
+		server := makeServer(t)
+		stream := &bufferingGetProfileStream{
+			updates:          []*pb.DestinationProfile{},
+			MockServerStream: util.NewMockServerStream(),
+		}
+
+		stream.Cancel()
+
+		path := fmt.Sprintf("%s:%d", podIPSkipped, skippedPort)
+		err := server.GetProfile(&pb.GetDestination{
+			Scheme: "k8s",
+			Path:   path,
+		}, stream)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		if len(stream.updates) == 0 || len(stream.updates) > 3 {
+			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
+		}
+
+		last := stream.updates[len(stream.updates)-1]
+
+		addr := last.GetEndpoint()
+		if addr == nil {
+			t.Fatalf("Expected to not be nil")
+		}
+
+		if addr.ProtocolHint != nil {
+			t.Fatalf("Expected protocol hint for %s to be nil but got %+v", path, addr.ProtocolHint)
+		}
+
+		if addr.TlsIdentity != nil {
+			t.Fatalf("Expected protocol hint for %s to be nil but got %+v", path, addr.TlsIdentity)
 		}
 	})
 }

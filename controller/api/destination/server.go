@@ -234,7 +234,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 				skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(pod)
 				if err != nil {
-					log.Errorf("failed getting ignored inbound ports annoatation for pod: %s", err)
+					log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
 				}
 
 				endpoint, err = toWeightedAddr(podSet.Addresses[podID], opaquePorts, skippedInboundPorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, log)
@@ -491,12 +491,8 @@ func getPodOpaquePortsAnnotations(pod *corev1.Pod) (map[uint32]struct{}, bool, e
 
 func getPodSkippedInboundPortsAnnotations(pod *corev1.Pod) (map[uint32]struct{}, error) {
 	annotation, ok := pod.Annotations[labels.ProxyIgnoreInboundPortsAnnotation]
-	if !ok {
+	if !ok || annotation == "" {
 		return nil, nil
-	}
-
-	if annotation == "" {
-		return map[uint32]struct{}{}, nil
 	}
 
 	return util.ParsePorts(annotation)
