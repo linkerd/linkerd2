@@ -9,7 +9,6 @@ require (
 	github.com/clarketm/json v1.13.4
 	github.com/containernetworking/cni v0.6.1-0.20180218032124-142cde0c766c
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
-	github.com/elazarl/goproxy/ext v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/emicklei/proto v1.6.8
 	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/fatih/color v1.9.0
@@ -23,7 +22,7 @@ require (
 	github.com/imdario/mergo v0.3.8
 	github.com/julienschmidt/httprouter v1.2.0
 	github.com/linkerd/linkerd2-proxy-api v0.1.16
-	github.com/linkerd/linkerd2-proxy-init v1.3.9
+	github.com/linkerd/linkerd2-proxy-init v1.3.11
 	github.com/mattn/go-isatty v0.0.12
 	github.com/mattn/go-runewidth v0.0.4
 	github.com/nsf/termbox-go v0.0.0-20180613055208-5c94acc5e6eb
