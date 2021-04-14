@@ -72,6 +72,8 @@ if you are upgrading from `2.9.x` or below versions.
   * Fixed an issue in linkerd inject where the wrong annotation would
     be added when using --ingress flag
   * Updated `linkerd repair` to be aware of the client and server versions
+  * Updated `linkerd uninstall` to print error message when there are no
+    resources to uninstall.
 
 * Helm:
   * Aligned the Helm installation heartbeat schedule to match that of the CLI
