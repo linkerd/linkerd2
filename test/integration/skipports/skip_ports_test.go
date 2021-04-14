@@ -37,7 +37,7 @@ func TestSkipInboundPorts(t *testing.T) {
 		if err != nil {
 			testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
 		}
-		out, err = TestHelper.KubectlApply(out, skipPortsNs)
+		out, err = TestHelper.KubectlApply(out, ns)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 				"'kubectl apply' command failed\n%s", out)
@@ -45,7 +45,7 @@ func TestSkipInboundPorts(t *testing.T) {
 
 		// Check all booksapp deployments are up and running
 		for _, deploy := range booksappDeployments {
-			if err := TestHelper.CheckPods(ctx, skipPortsNs, deploy, 1); err != nil {
+			if err := TestHelper.CheckPods(ctx, ns, deploy, 1); err != nil {
 				if rce, ok := err.(*testutil.RestartCountError); ok {
 					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 				} else {
@@ -58,13 +58,13 @@ func TestSkipInboundPorts(t *testing.T) {
 		time.Sleep(30 * time.Second)
 
 		t.Run("expect webapp to not have any 5xx response errors", func(t *testing.T) {
-			pods, err := TestHelper.GetPods(ctx, skipPortsNs, map[string]string{"app": "webapp"})
+			pods, err := TestHelper.GetPods(ctx, ns, map[string]string{"app": "webapp"})
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "error getting pods", "error getting pods\n%s", err)
 			}
 
 			podName := fmt.Sprintf("pod/%s", pods[0].Name)
-			cmd := []string{"diagnostics", "proxy-metrics", "--namespace", skipPortsNs, podName}
+			cmd := []string{"diagnostics", "proxy-metrics", "--namespace", ns, podName}
 
 			metrics, err := TestHelper.LinkerdRun(cmd...)
 			if err != nil {
