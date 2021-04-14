@@ -851,7 +851,7 @@ func TestGetProfiles(t *testing.T) {
 		}
 	})
 
-	t.Run("Return profile with unknown protocol hint and identity when service name contains skipped inbound port", func(t *testing.T) {
+	t.Run("Return profile with unknown protocol hint and identity when pod contains skipped inbound port", func(t *testing.T) {
 		server := makeServer(t)
 		stream := &bufferingGetProfileStream{
 			updates:          []*pb.DestinationProfile{},
