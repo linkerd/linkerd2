@@ -7,16 +7,16 @@ SMI's TrafficSplit `v1alpha2`.
 
 There are several proxy fixes: handling `FailedPrecondition` errors gracefully,
 inbound TLS detection from non-meshed workloads, and using the correct cached
-client when the proxy is in ingress moode. The logging infrastructure has also
+client when the proxy is in ingress mode. The logging infrastructure has also
 been improved to reduce memory pressure in high-connection environments.
 
 On the control-plane side, there have been several improvements to the
 destination service such as support for Host IP lookups and ignoring pods
-"Terminating State". It also updates the proxy-injector to add opaque ports
+in "Terminating" state. It also updates the proxy-injector to add opaque ports
 annotation to pods if their namespace has it set.
 
 On the CLI side, `linkerd repair` has been updated to be aware about the control-plane
-version and suggest the relevant suggestion to generate the right config. Various
+version and suggest the relevant version to generate the right config. Various
 bugs have been fixed around `linkerd identity`, etc.
 
 **Upgrade notes**: Please refer [2.10 upgrade instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2100)
@@ -87,7 +87,7 @@ if you are upgrading from `2.9.x` or below versions.
   * Changed web's base image from debian to scratch
 
 * Multicluster:
-  * Fixed an issue with Multicluster's serivce mirror where it's endpoint
+  * Fixed an issue with Multicluster's service mirror where its endpoint
     repair retries were not properly rate limited
 
 * Jaeger:
