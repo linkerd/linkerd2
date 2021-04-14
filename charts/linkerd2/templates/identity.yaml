@@ -173,6 +173,7 @@ spec:
       {{- $r := merge .Values.identityProxyResources .Values.proxy.resources }}
       {{- $_ := set $tree.Values.proxy "resources" $r }}
       {{- end }}
+      {{- $_ := set $tree.Values.proxy "await" false }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.cniEnabled -}}
       initContainers:
