@@ -1274,11 +1274,6 @@ spec:
           readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
-        lifecycle:
-          postStart:
-            exec:
-              command:
-              - /usr/lib/linkerd/linkerd-await
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
