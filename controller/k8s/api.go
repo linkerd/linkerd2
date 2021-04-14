@@ -229,8 +229,10 @@ func NewAPI(
 			api.rs = sharedInformers.Apps().V1().ReplicaSets()
 			api.syncChecks = append(api.syncChecks, api.rs.Informer().HasSynced)
 		case SP:
-			api.sp = spSharedInformers.Linkerd().V1alpha2().ServiceProfiles()
-			api.syncChecks = append(api.syncChecks, api.sp.Informer().HasSynced)
+			if spSharedInformers != nil {
+				api.sp = spSharedInformers.Linkerd().V1alpha2().ServiceProfiles()
+				api.syncChecks = append(api.syncChecks, api.sp.Informer().HasSynced)
+			}
 		case SS:
 			api.ss = sharedInformers.Apps().V1().StatefulSets()
 			api.syncChecks = append(api.syncChecks, api.ss.Informer().HasSynced)
@@ -238,8 +240,10 @@ func NewAPI(
 			api.svc = sharedInformers.Core().V1().Services()
 			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
 		case TS:
-			api.ts = tsSharedInformers.Split().V1alpha1().TrafficSplits()
-			api.syncChecks = append(api.syncChecks, api.ts.Informer().HasSynced)
+			if tsSharedInformers != nil {
+				api.ts = tsSharedInformers.Split().V1alpha1().TrafficSplits()
+				api.syncChecks = append(api.syncChecks, api.ts.Informer().HasSynced)
+			}
 		case Node:
 			api.node = sharedInformers.Core().V1().Nodes()
 			api.syncChecks = append(api.syncChecks, api.node.Informer().HasSynced)
