@@ -194,6 +194,8 @@ func ToValues(configs *pb.All) *l5dcharts.Values {
 			OutboundConnectTimeout:   configs.GetProxy().GetOutboundConnectTimeout(),
 			InboundConnectTimeout:    configs.GetProxy().GetInboundConnectTimeout(),
 			OutboundConnectKeepalive: configs.GetProxy().GetOutboundConnectKeepalive(),
+			InboundConnectKeepalive:  configs.GetProxy().GetInboundConnectKeepalive(),
+			OutboundAcceptKeepalive:  configs.GetProxy().GetOutboundAcceptKeepalive(),
 			InboundAcceptKeepalive:   configs.GetProxy().GetInboundAcceptKeepalive(),
 		},
 		ProxyInit: &l5dcharts.ProxyInit{

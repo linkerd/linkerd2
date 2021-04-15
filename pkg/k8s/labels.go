@@ -221,6 +221,14 @@ const (
 	// period in the proxy (defaults to 10s)
 	ProxyOutboundConnectKeepalive = ProxyConfigAnnotationsPrefix + "/proxy-outbound-connect-keepalive"
 
+	// ProxyInboundConnectKeepalive can be used to configure the inbound connections's TCP keepalive
+	// period in the proxy (defaults to 10s)
+	ProxyInboundConnectKeepalive = ProxyConfigAnnotationsPrefix + "/proxy-inbound-connect-keepalive"
+
+	// ProxyOutboundAcceptKeepalive can be used to configure the outbound connections's TCP keepalive
+	// period in the proxy (defaults to 10s)
+	ProxyOutboundAcceptKeepalive = ProxyConfigAnnotationsPrefix + "/proxy-outbound-accept-keepalive"
+
 	// ProxyInboundAcceptKeepalive can be used to configure the inbound connections's TCP keepalive
 	// period in the proxy (defaults to 10s)
 	ProxyInboundAcceptKeepalive = ProxyConfigAnnotationsPrefix + "/proxy-inbound-accept-keepalive"

@@ -65,6 +65,8 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxyInboundConnectTimeout:                   "600ms",
 							k8s.ProxyOpaquePortsAnnotation:                   "4320-4325,3306",
 							k8s.ProxyOutboundConnectKeepalive:                "20000ms",
+							k8s.ProxyInboundConnectKeepalive:                 "30000ms",
+							k8s.ProxyOutboundAcceptKeepalive:                 "40000ms",
 							k8s.ProxyInboundAcceptKeepalive:                  "50000ms",
 						},
 					},
@@ -106,6 +108,8 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Proxy.OutboundConnectTimeout = "6000ms"
 				values.Proxy.InboundConnectTimeout = "600ms"
 				values.Proxy.OutboundConnectKeepalive = "20000ms"
+				values.Proxy.InboundConnectKeepalive = "30000ms"
+				values.Proxy.OutboundAcceptKeepalive = "40000ms"
 				values.Proxy.InboundAcceptKeepalive = "50000ms"
 				values.Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
 				return values
@@ -147,6 +151,10 @@ func TestGetOverriddenValues(t *testing.T) {
 				k8s.ProxyVersionOverrideAnnotation:        proxyVersionOverride,
 				k8s.ProxyWaitBeforeExitSecondsAnnotation:  "123",
 				k8s.ProxyOutboundConnectTimeout:           "6000ms",
+				k8s.ProxyOutboundConnectKeepalive:         "20000ms",
+				k8s.ProxyInboundConnectKeepalive:          "30000ms",
+				k8s.ProxyOutboundAcceptKeepalive:          "40000ms",
+				k8s.ProxyInboundAcceptKeepalive:           "50000ms",
 				k8s.ProxyInboundConnectTimeout:            "600ms",
 				k8s.ProxyOpaquePortsAnnotation:            "4320-4325,3306",
 			},
@@ -188,6 +196,10 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.ProxyInit.IgnoreOutboundPorts = "8079,8080"
 				values.Proxy.OutboundConnectTimeout = "6000ms"
 				values.Proxy.InboundConnectTimeout = "600ms"
+				values.Proxy.OutboundConnectKeepalive = "20000ms"
+				values.Proxy.InboundConnectKeepalive = "30000ms"
+				values.Proxy.OutboundAcceptKeepalive = "40000ms"
+				values.Proxy.InboundAcceptKeepalive = "50000ms"
 				values.Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
 				return values
 			},
@@ -230,6 +242,8 @@ func TestGetOverriddenValues(t *testing.T) {
 		{id: "use invalid duration for keepalive intervals",
 			nsAnnotations: map[string]string{
 				k8s.ProxyOutboundConnectKeepalive: "10050",
+				k8s.ProxyInboundConnectKeepalive:  "20050",
+				k8s.ProxyOutboundAcceptKeepalive:  "30050",
 				k8s.ProxyInboundAcceptKeepalive:   "40050",
 			},
 			spec: appsv1.DeploymentSpec{
@@ -247,6 +261,8 @@ func TestGetOverriddenValues(t *testing.T) {
 			nsAnnotations: map[string]string{
 				// Validate we're converting time values into ms for the proxy to parse correctly.
 				k8s.ProxyOutboundConnectKeepalive: "10s5ms",
+				k8s.ProxyInboundConnectKeepalive:  "20s5ms",
+				k8s.ProxyOutboundAcceptKeepalive:  "30s5ms",
 				k8s.ProxyInboundAcceptKeepalive:   "40s5ms",
 			},
 			spec: appsv1.DeploymentSpec{
@@ -258,6 +274,8 @@ func TestGetOverriddenValues(t *testing.T) {
 			expected: func() *l5dcharts.Values {
 				values, _ := l5dcharts.NewValues()
 				values.Proxy.OutboundConnectKeepalive = "10005ms"
+				values.Proxy.InboundConnectKeepalive = "20005ms"
+				values.Proxy.OutboundAcceptKeepalive = "30005ms"
 				values.Proxy.InboundAcceptKeepalive = "40005ms"
 				return values
 			},

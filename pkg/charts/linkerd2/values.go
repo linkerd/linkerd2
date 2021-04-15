@@ -110,6 +110,8 @@ type (
 		OutboundConnectTimeout        string           `json:"outboundConnectTimeout"`
 		InboundConnectTimeout         string           `json:"inboundConnectTimeout"`
 		OutboundConnectKeepalive      string           `json:"outboundConnectKeepalive"`
+		InboundConnectKeepalive       string           `json:"inboundConnectKeepalive"`
+		OutboundAcceptKeepalive       string           `json:"outboundAcceptKeepalive"`
 		InboundAcceptKeepalive        string           `json:"inboundAcceptKeepalive"`
 		OpaquePorts                   string           `json:"opaquePorts"`
 	}

@@ -64,7 +64,11 @@ message Proxy {
 
   string inbound_accept_keepalive = 21;
 
-  string outbound_connect_keepalive = 22;
+  string outbound_accept_keepalive = 22;
+
+  string inbound_connect_keepalive = 23;
+
+  string outbound_connect_keepalive = 24;
 }
 
 message Image {
