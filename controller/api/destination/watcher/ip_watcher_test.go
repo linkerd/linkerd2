@@ -33,8 +33,7 @@ spec:
 			t.Fatalf("NewFakeAPI returned an error: %s", err)
 		}
 
-		endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
-		watcher := NewIPWatcher(k8sAPI, endpoints, logging.WithField("test", t.Name()))
+		watcher := NewIPWatcher(k8sAPI, logging.WithField("test", t.Name()))
 
 		k8sAPI.Sync(nil)
 
@@ -108,8 +107,7 @@ status:
 		if err != nil {
 			t.Fatalf("failed to create new fake API: %s", err)
 		}
-		endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
-		watcher := NewIPWatcher(k8sAPI, endpoints, logging.WithField("test", t.Name()))
+		watcher := NewIPWatcher(k8sAPI, logging.WithField("test", t.Name()))
 		k8sAPI.Sync(nil)
 		// Get host IP pod that is mapped to the port `hostPort1`
 		pod, err := watcher.GetPod(hostIP, hostPort1)
