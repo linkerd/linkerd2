@@ -235,6 +235,11 @@ metadata:
 		11211: {},
 	}
 
+	err = watcher.InitializeIndexers(k8sAPI)
+	if err != nil {
+		t.Fatalf("initializeIndexers returned an error: %s", err)
+	}
+
 	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log, false)
 	opaquePorts := watcher.NewOpaquePortsWatcher(k8sAPI, log, defaultOpaquePorts)
 	profiles := watcher.NewProfileWatcher(k8sAPI, log)

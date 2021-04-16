@@ -108,7 +108,7 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
 
-	server := destination.NewServer(
+	server, err := destination.NewServer(
 		*addr,
 		*controllerNamespace,
 		*trustDomain,
@@ -119,6 +119,10 @@ func Main(args []string) {
 		opaquePorts,
 		done,
 	)
+
+	if err != nil {
+		log.Fatalf("Failed to initialize informers: %s", err)
+	}
 
 	k8sAPI.Sync(nil) // blocks until caches are synced
 

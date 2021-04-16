@@ -21,8 +21,7 @@ import (
 
 const (
 	kubeSystem = "kube-system"
-	// PodIPIndex is the key used to retrieve the Host IP Index
-	PodIPIndex = "ip"
+	podIPIndex = "ip"
 
 	// metrics labels
 	service                = "service"

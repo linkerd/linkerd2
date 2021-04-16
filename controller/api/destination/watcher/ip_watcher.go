@@ -12,8 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// HostIPIndex is the key used to retrieve the Host IP Index
-const HostIPIndex = "hostIP"
+const hostIPIndex = "hostIP"
 
 type (
 	// IPWatcher wraps a EndpointsWatcher and allows subscriptions by
@@ -60,7 +59,7 @@ func NewIPWatcher(k8sAPI *k8s.API, log *logging.Entry) *IPWatcher {
 // GetSvcID returns the service that corresponds to a Cluster IP address if one
 // exists.
 func (iw *IPWatcher) GetSvcID(clusterIP string) (*ServiceID, error) {
-	objs, err := iw.k8sAPI.Svc().Informer().GetIndexer().ByIndex(PodIPIndex, clusterIP)
+	objs, err := iw.k8sAPI.Svc().Informer().GetIndexer().ByIndex(podIPIndex, clusterIP)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
@@ -94,7 +93,7 @@ func (iw *IPWatcher) GetSvcID(clusterIP string) (*ServiceID, error) {
 func (iw *IPWatcher) GetPod(podIP string, port uint32) (*corev1.Pod, error) {
 	// First we check if the address maps to a pod in the host network.
 	addr := fmt.Sprintf("%s:%d", podIP, port)
-	hostIPPods, err := iw.getIndexedPods(HostIPIndex, addr)
+	hostIPPods, err := iw.getIndexedPods(hostIPIndex, addr)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
@@ -113,7 +112,7 @@ func (iw *IPWatcher) GetPod(podIP string, port uint32) (*corev1.Pod, error) {
 
 	// The address did not map to a pod in the host network, so now we check
 	// if the IP maps to a pod IP in the pod network.
-	podIPPods, err := iw.getIndexedPods(PodIPIndex, podIP)
+	podIPPods, err := iw.getIndexedPods(podIPIndex, podIP)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}

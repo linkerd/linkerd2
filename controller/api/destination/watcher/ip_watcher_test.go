@@ -33,6 +33,11 @@ spec:
 			t.Fatalf("NewFakeAPI returned an error: %s", err)
 		}
 
+		err = InitializeIndexers(k8sAPI)
+		if err != nil {
+			t.Fatalf("initializeIndexers returned an error: %s", err)
+		}
+
 		watcher := NewIPWatcher(k8sAPI, logging.WithField("test", t.Name()))
 
 		k8sAPI.Sync(nil)
@@ -106,6 +111,11 @@ status:
 		k8sAPI, err := k8s.NewFakeAPI(k8sConfigs...)
 		if err != nil {
 			t.Fatalf("failed to create new fake API: %s", err)
+		}
+
+		err = InitializeIndexers(k8sAPI)
+		if err != nil {
+			t.Fatalf("initializeIndexers returned an error: %s", err)
 		}
 		watcher := NewIPWatcher(k8sAPI, logging.WithField("test", t.Name()))
 		k8sAPI.Sync(nil)

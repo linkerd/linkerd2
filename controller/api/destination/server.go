@@ -21,7 +21,6 @@ import (
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
-	"k8s.io/client-go/tools/cache"
 )
 
 type (
@@ -67,54 +66,17 @@ func NewServer(
 	clusterDomain string,
 	defaultOpaquePorts map[uint32]struct{},
 	shutdown <-chan struct{},
-) *grpc.Server {
+) (*grpc.Server, error) {
 	log := logging.WithFields(logging.Fields{
 		"addr":      addr,
 		"component": "server",
 	})
 
 	// Initialize indexers that are used across watchers
-	k8sAPI.Svc().Informer().AddIndexers(cache.Indexers{watcher.PodIPIndex: func(obj interface{}) ([]string, error) {
-		if svc, ok := obj.(*corev1.Service); ok {
-			return []string{svc.Spec.ClusterIP}, nil
-		}
-		return []string{""}, fmt.Errorf("object is not a service")
-	}})
-
-	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{watcher.PodIPIndex: func(obj interface{}) ([]string, error) {
-		if pod, ok := obj.(*corev1.Pod); ok {
-			// Pods that run in the host network are indexed by the host IP
-			// indexer in the IP watcher; they should be skipped by the pod
-			// IP indexer which is responsible only for indexing pod network
-			// pods.
-			if pod.Spec.HostNetwork {
-				return nil, nil
-			}
-			return []string{pod.Status.PodIP}, nil
-		}
-		return []string{""}, fmt.Errorf("object is not a pod")
-	}})
-
-	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{watcher.HostIPIndex: func(obj interface{}) ([]string, error) {
-		if pod, ok := obj.(*corev1.Pod); ok {
-			var hostIPPods []string
-			if pod.Status.HostIP != "" {
-				// If the pod is reachable from the host network, then for
-				// each of its containers' ports that exposes a host port, add
-				// that hostIP:hostPort endpoint to the indexer.
-				for _, c := range pod.Spec.Containers {
-					for _, p := range c.Ports {
-						if p.HostPort != 0 {
-							addr := fmt.Sprintf("%s:%d", pod.Status.HostIP, p.HostPort)
-							hostIPPods = append(hostIPPods, addr)
-						}
-					}
-				}
-			}
-			return hostIPPods, nil
-		}
-		return nil, fmt.Errorf("object is not a pod")
-	}})
+	err := watcher.InitializeIndexers(k8sAPI)
+	if err != nil {
+		return nil, err
+	}
 
 	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log, enableEndpointSlices)
 	opaquePorts := watcher.NewOpaquePortsWatcher(k8sAPI, log, defaultOpaquePorts)
@@ -142,7 +104,7 @@ func NewServer(
 	s := prometheus.NewGrpcServer()
 	// linkerd2-proxy-api/destination.Destination (proxy-facing)
 	pb.RegisterDestinationServer(s, &srv)
-	return s
+	return s, nil
 }
 
 func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) error {
