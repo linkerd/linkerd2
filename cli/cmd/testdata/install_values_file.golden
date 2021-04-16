@@ -1325,7 +1325,6 @@ spec:
       containers:
       - args:
         - public-api
-        - -destination-addr=linkerd-dst.l5d.svc.example.com:8086
         - -controller-namespace=l5d
         - -log-level=info
         - -log-format=plain

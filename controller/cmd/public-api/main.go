@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/linkerd/linkerd2/controller/api/destination"
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -23,7 +22,6 @@ func Main(args []string) {
 	addr := cmd.String("addr", ":8085", "address to serve on")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 	metricsAddr := cmd.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
-	destinationAPIAddr := cmd.String("destination-addr", "127.0.0.1:8086", "address of destination service")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	clusterDomain := cmd.String("cluster-domain", "cluster.local", "kubernetes cluster domain")
 
@@ -34,12 +32,6 @@ func Main(args []string) {
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-
-	destinationClient, destinationConn, err := destination.NewClient(*destinationAPIAddr)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	defer destinationConn.Close()
 
 	k8sAPI, err := k8s.InitializeAPI(
 		ctx,
@@ -61,7 +53,6 @@ func Main(args []string) {
 
 	server := public.NewServer(
 		*addr,
-		destinationClient,
 		k8sAPI,
 		*controllerNamespace,
 		*clusterDomain,

@@ -4,13 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 
 	"github.com/golang/protobuf/proto"
-	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
@@ -30,7 +28,6 @@ const (
 // Client wraps one gRPC client interface for publicPb.Api:
 type Client interface {
 	publicPb.ApiClient
-	destinationPb.DestinationClient
 }
 
 type grpcOverHTTPClient struct {
@@ -43,26 +40,6 @@ func (c *grpcOverHTTPClient) Version(ctx context.Context, req *publicPb.Empty, _
 	var msg publicPb.VersionInfo
 	err := c.apiRequest(ctx, "Version", req, &msg)
 	return &msg, err
-}
-
-func (c *grpcOverHTTPClient) Get(ctx context.Context, req *destinationPb.GetDestination, _ ...grpc.CallOption) (destinationPb.Destination_GetClient, error) {
-	url := c.endpointNameToPublicAPIURL("DestinationGet")
-	httpRsp, err := c.post(ctx, url, req)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := getStreamClient(ctx, httpRsp)
-	if err != nil {
-		return nil, err
-	}
-
-	return &destinationClient{client}, nil
-}
-
-func (c *grpcOverHTTPClient) GetProfile(ctx context.Context, _ *destinationPb.GetDestination, _ ...grpc.CallOption) (destinationPb.Destination_GetProfileClient, error) {
-	// Not implemented through this client. The proxies use the gRPC server directly instead.
-	return nil, errors.New("Not implemented")
 }
 
 func (c *grpcOverHTTPClient) apiRequest(ctx context.Context, endpoint string, req proto.Message, protoResponse proto.Message) error {
@@ -111,16 +88,6 @@ func (c *grpcOverHTTPClient) post(ctx context.Context, url *url.URL, req proto.M
 
 func (c *grpcOverHTTPClient) endpointNameToPublicAPIURL(endpoint string) *url.URL {
 	return c.serverURL.ResolveReference(&url.URL{Path: endpoint})
-}
-
-type destinationClient struct {
-	streamClient
-}
-
-func (c destinationClient) Recv() (*destinationPb.Update, error) {
-	var msg destinationPb.Update
-	err := protohttp.FromByteStreamToProtocolBuffers(c.reader, &msg)
-	return &msg, err
 }
 
 func newClient(apiURL *url.URL, httpClientToUse *http.Client, controlPlaneNamespace string) (Client, error) {
