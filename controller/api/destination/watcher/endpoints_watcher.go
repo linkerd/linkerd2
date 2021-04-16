@@ -983,6 +983,19 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
 /// util ///
 ////////////
 
+// WithPort sets the port field in all addresses of an address set.
+func (as *AddressSet) WithPort(port Port) AddressSet {
+	wp := AddressSet{
+		Addresses: map[PodID]Address{},
+		Labels:    as.Labels,
+	}
+	for id, addr := range as.Addresses {
+		addr.Port = port
+		wp.Addresses[id] = addr
+	}
+	return wp
+}
+
 // getTargetPort returns the port specified as an argument if no service is
 // present. If the service is present and it has a port spec matching the
 // specified port, it returns the name of the service's port (not the name

@@ -26,19 +26,6 @@ type (
 	}
 )
 
-// WithPort sets the port field in all addresses of an address set.
-func (as AddressSet) WithPort(port Port) AddressSet {
-	wp := AddressSet{
-		Addresses: map[PodID]Address{},
-		Labels:    as.Labels,
-	}
-	for id, addr := range as.Addresses {
-		addr.Port = port
-		wp.Addresses[id] = addr
-	}
-	return wp
-}
-
 // NewIPWatcher creates an IPWatcher and begins watching the k8sAPI for service
 // changes.
 func NewIPWatcher(k8sAPI *k8s.API, log *logging.Entry) *IPWatcher {
@@ -158,9 +145,9 @@ func podReceivingTraffic(pod *corev1.Pod) bool {
 }
 
 // PodToAddressSet converts a Pod spec into a set of Addresses.
-func (iw *IPWatcher) PodToAddressSet(pod *corev1.Pod) AddressSet {
+func (iw *IPWatcher) PodToAddressSet(pod *corev1.Pod) *AddressSet {
 	ownerKind, ownerName := iw.k8sAPI.GetOwnerKindAndName(context.Background(), pod, true)
-	return AddressSet{
+	return &AddressSet{
 		Addresses: map[PodID]Address{
 			PodID{
 				Name:      pod.Name,
