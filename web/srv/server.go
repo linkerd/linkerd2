@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/linkerd/linkerd2/controller/api/public"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/filesonly"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -47,8 +45,8 @@ type (
 		Contents interface{}
 	}
 	appParams struct {
-		Data                *pb.VersionInfo
 		UUID                string
+		ReleaseVersion      string
 		ControllerNamespace string
 		Error               bool
 		ErrorMessage        string
@@ -89,12 +87,12 @@ func NewServer(
 	templateDir string,
 	staticDir string,
 	uuid string,
+	version string,
 	controllerNamespace string,
 	clusterDomain string,
 	reload bool,
 	reHost *regexp.Regexp,
 	apiClient vizPb.ApiClient,
-	publicAPIClient public.Client,
 	k8sAPI *k8s.KubernetesAPI,
 	hc healthChecker,
 ) *http.Server {
@@ -113,10 +111,10 @@ func NewServer(
 	wrappedServer := prometheus.WithTelemetry(server)
 	handler := &handler{
 		apiClient:           apiClient,
-		publicAPIClient:     publicAPIClient,
 		k8sAPI:              k8sAPI,
 		render:              server.RenderTemplate,
 		uuid:                uuid,
+		version:             version,
 		controllerNamespace: controllerNamespace,
 		clusterDomain:       clusterDomain,
 		grafanaProxy:        newReverseProxy(grafanaAddr, "/grafana"),

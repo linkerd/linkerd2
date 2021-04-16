@@ -1,93 +1,31 @@
 package public
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"fmt"
 	"net/http"
 	"net/url"
 
-	"github.com/golang/protobuf/proto"
-	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/protohttp"
 	log "github.com/sirupsen/logrus"
 	"go.opencensus.io/plugin/ochttp"
-	"google.golang.org/grpc"
 )
 
 const (
-	apiRoot       = "/" // Must be absolute (with a leading slash).
 	apiVersion    = "v1"
 	apiPrefix     = "api/" + apiVersion + "/" // Must be relative (without a leading slash).
 	apiPort       = 8085
 	apiDeployment = "linkerd-controller"
 )
 
-// Client wraps one gRPC client interface for publicPb.Api:
+// Client wraps one gRPC client interface for destination
 type Client interface {
-	publicPb.ApiClient
 }
 
 type grpcOverHTTPClient struct {
 	serverURL             *url.URL
 	httpClient            *http.Client
 	controlPlaneNamespace string
-}
-
-func (c *grpcOverHTTPClient) Version(ctx context.Context, req *publicPb.Empty, _ ...grpc.CallOption) (*publicPb.VersionInfo, error) {
-	var msg publicPb.VersionInfo
-	err := c.apiRequest(ctx, "Version", req, &msg)
-	return &msg, err
-}
-
-func (c *grpcOverHTTPClient) apiRequest(ctx context.Context, endpoint string, req proto.Message, protoResponse proto.Message) error {
-	url := c.endpointNameToPublicAPIURL(endpoint)
-
-	log.Debugf("Making gRPC-over-HTTP call to [%s] [%+v]", url.String(), req)
-	httpRsp, err := c.post(ctx, url, req)
-	if err != nil {
-		return err
-	}
-	defer httpRsp.Body.Close()
-	log.Debugf("gRPC-over-HTTP call returned status [%s] and content length [%d]", httpRsp.Status, httpRsp.ContentLength)
-
-	if err := protohttp.CheckIfResponseHasError(httpRsp); err != nil {
-		return err
-	}
-
-	reader := bufio.NewReader(httpRsp.Body)
-	return protohttp.FromByteStreamToProtocolBuffers(reader, protoResponse)
-}
-
-func (c *grpcOverHTTPClient) post(ctx context.Context, url *url.URL, req proto.Message) (*http.Response, error) {
-	reqBytes, err := proto.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
-
-	httpReq, err := http.NewRequest(
-		http.MethodPost,
-		url.String(),
-		bytes.NewReader(reqBytes),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	rsp, err := c.httpClient.Do(httpReq.WithContext(ctx))
-	if err != nil {
-		log.Debugf("Error invoking [%s]: %v", url.String(), err)
-	} else {
-		log.Debugf("Response from [%s] had headers: %v", url.String(), rsp.Header)
-	}
-
-	return rsp, err
-}
-
-func (c *grpcOverHTTPClient) endpointNameToPublicAPIURL(endpoint string) *url.URL {
-	return c.serverURL.ResolveReference(&url.URL{Path: endpoint})
 }
 
 func newClient(apiURL *url.URL, httpClientToUse *http.Client, controlPlaneNamespace string) (Client, error) {
