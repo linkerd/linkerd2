@@ -31,7 +31,7 @@ func TestCheckStatus(t *testing.T) {
 		))
 
 		output := bytes.NewBufferString("")
-		healthcheck.RunChecks(output, stderr, hc, tableOutput)
+		healthcheck.RunChecks(output, stderr, hc, tableOutput, false)
 
 		goldenFileBytes, err := ioutil.ReadFile("testdata/check_output.golden")
 		if err != nil {
@@ -65,7 +65,7 @@ func TestCheckStatus(t *testing.T) {
 		))
 
 		output := bytes.NewBufferString("")
-		healthcheck.RunChecks(output, stderr, hc, jsonOutput)
+		healthcheck.RunChecks(output, stderr, hc, jsonOutput, false)
 
 		goldenFileBytes, err := ioutil.ReadFile("testdata/check_output_json.golden")
 		if err != nil {

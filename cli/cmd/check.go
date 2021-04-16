@@ -1,26 +1,21 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
+
 	"strings"
 	"time"
 
-	"github.com/briandowns/spinner"
 	"github.com/linkerd/linkerd2/cli/flag"
-	jaegerCmd "github.com/linkerd/linkerd2/jaeger/cmd"
-	mcCmd "github.com/linkerd/linkerd2/multicluster/cmd"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
-	vizHealthCheck "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
-	"github.com/mattn/go-isatty"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	valuespkg "helm.sh/helm/v3/pkg/cli/values"
@@ -35,6 +30,7 @@ type checkOptions struct {
 	cniEnabled         bool
 	output             string
 	cliVersionOverride string
+	short              bool
 }
 
 func newCheckOptions() *checkOptions {
@@ -70,6 +66,7 @@ func (options *checkOptions) checkFlagSet() *pflag.FlagSet {
 	flags.StringVar(&options.cliVersionOverride, "cli-version-override", "", "Used to override the version of the cli (mostly for testing)")
 	flags.StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
 	flags.DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
+	flags.BoolVar(&options.short, "short", options.short, "Prints a check summary and only shows warnings and errors. Only for 'basic' output format")
 
 	return flags
 }
@@ -213,7 +210,8 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 		InstallManifest:       installManifest,
 	})
 
-	success := healthcheck.RunChecks(wout, werr, hc, options.output)
+	healthcheck.PrintCoreChecksHeader(wout, options.output)
+	success := healthcheck.RunChecks(wout, werr, hc, options.output, options.short)
 
 	extensionSuccess, err := runExtensionChecks(cmd, wout, werr, options)
 	if err != nil {
@@ -246,89 +244,13 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 		return success, nil
 	}
 
-	if opts.output != healthcheck.JSONOutput {
-		headerTxt := "Linkerd extensions checks"
-		fmt.Fprintln(wout)
-		fmt.Fprintln(wout, headerTxt)
-		fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
-	}
-
-	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
-	spin.Writer = wout
-
+	nsLabels := make([]string, len(namespaces))
 	for i, ns := range namespaces {
-		if opts.output != healthcheck.JSONOutput && i < len(namespaces) {
-			// add a new line to space out each check output
-			fmt.Fprintln(wout)
-		}
-		extension := ns.Labels[k8s.LinkerdExtensionLabel]
-
-		var path string
-		args := append([]string{"check"}, getExtensionCheckFlags(cmd.Flags())...)
-		var err error
-		results := healthcheck.CheckResults{
-			Results: []healthcheck.CheckResult{},
-		}
-		extensionCmd := fmt.Sprintf("linkerd-%s", extension)
-
-		switch extension {
-		case jaegerCmd.JaegerExtensionName:
-			path = os.Args[0]
-			args = append([]string{"jaeger"}, args...)
-		case vizHealthCheck.VizExtensionName:
-			path = os.Args[0]
-			args = append([]string{"viz"}, args...)
-		case mcCmd.MulticlusterExtensionName:
-			path = os.Args[0]
-			args = append([]string{"multicluster"}, args...)
-		default:
-			path, err = exec.LookPath(extensionCmd)
-			results.Results = []healthcheck.CheckResult{
-				{
-					Category:    healthcheck.CategoryID(extensionCmd),
-					Description: fmt.Sprintf("Linkerd extension command %s exists", extensionCmd),
-					Err:         err,
-					HintURL:     healthcheck.DefaultHintBaseURL + "extensions",
-					Warning:     true,
-				},
-			}
-		}
-		if err == nil {
-			if isatty.IsTerminal(os.Stdout.Fd()) {
-				spin.Suffix = fmt.Sprintf(" Running %s extension check", extension)
-				spin.Color("bold") // this calls spin.Restart()
-			}
-			plugin := exec.Command(path, args...)
-			var stdout, stderr bytes.Buffer
-			plugin.Stdout = &stdout
-			plugin.Stderr = &stderr
-			plugin.Run()
-			extensionResults, err := healthcheck.ParseJSONCheckOutput(stdout.Bytes())
-			spin.Stop()
-			if err != nil {
-				command := fmt.Sprintf("%s %s", path, strings.Join(args, " "))
-				if len(stderr.String()) > 0 {
-					err = errors.New(stderr.String())
-				} else {
-					err = fmt.Errorf("invalid extension check output from \"%s\" (JSON object expected):\n%s\n[%s]", command, stdout.String(), err)
-				}
-				results.Results = append(results.Results, healthcheck.CheckResult{
-					Category:    healthcheck.CategoryID(extensionCmd),
-					Description: fmt.Sprintf("Running: %s", command),
-					Err:         err,
-					HintURL:     healthcheck.DefaultHintBaseURL + "extensions",
-				})
-				success = false
-			} else {
-				results.Results = append(results.Results, extensionResults.Results...)
-			}
-		}
-		extensionSuccess := healthcheck.RunChecks(wout, werr, results, opts.output)
-		if !extensionSuccess {
-			success = false
-		}
+		nsLabels[i] = ns.Labels[k8s.LinkerdExtensionLabel]
 	}
-	return success, nil
+
+	extensionSuccess := healthcheck.RunExtensionsChecks(wout, werr, nsLabels, getExtensionCheckFlags(cmd.Flags()), opts.output, opts.short)
+	return extensionSuccess, nil
 }
 
 func getExtensionCheckFlags(lf *pflag.FlagSet) []string {
