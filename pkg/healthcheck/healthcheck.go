@@ -1367,6 +1367,45 @@ func (hc *HealthChecker) allCategories() []*Category {
 						return nil
 					},
 				},
+				{
+					description: "data plane pod labels are configured correctly",
+					hintAnchor:  "l5d-data-plane-pod-labels",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						pods, err := hc.GetDataPlanePods(ctx)
+						if err != nil {
+							return err
+						}
+
+						return checkMisconfiguredPodsLabels(pods)
+					},
+				},
+				{
+					description: "data plane service labels are configured correctly",
+					hintAnchor:  "l5d-data-plane-services-labels",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						services, err := hc.GetServices(ctx)
+						if err != nil {
+							return err
+						}
+
+						return checkMisconfiguredServiceLabels(services)
+					},
+				},
+				{
+					description: "data plane service annotations are configured correctly",
+					hintAnchor:  "l5d-data-plane-services-annotations",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						services, err := hc.GetServices(ctx)
+						if err != nil {
+							return err
+						}
+
+						return checkMisconfiguredServiceAnnotations(services)
+					},
+				},
 			},
 			false,
 		),
@@ -2132,6 +2171,15 @@ func (hc *HealthChecker) GetDataPlanePods(ctx context.Context) ([]corev1.Pod, er
 		return nil, err
 	}
 	return podList.Items, nil
+}
+
+// GetServices returns all services within data plane namespace
+func (hc *HealthChecker) GetServices(ctx context.Context) ([]corev1.Service, error) {
+	svcList, err := hc.kubeAPI.CoreV1().Services(hc.DataPlaneNamespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return svcList.Items, nil
 }
 
 func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace(ctx context.Context) error {
