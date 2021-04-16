@@ -63,13 +63,12 @@ type (
 // this is called by the HTTP server to actually respond to a request
 func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if !s.reHost.MatchString(req.Host) {
-		error := fmt.Sprintf(`It appears that you are trying to reach this service with a host of '%s'.
+		err := fmt.Sprintf(`It appears that you are trying to reach this service with a host of '%s'.
 This does not match /%s/ and has been denied for security reasons.
 Please see https://linkerd.io/dns-rebinding for an explanation of what is happening and how to fix it.`,
 			html.EscapeString(req.Host),
 			html.EscapeString(s.reHost.String()))
-
-		http.Error(w, error, http.StatusBadRequest)
+		http.Error(w, err, http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("X-Content-Type-Options", "nosniff")

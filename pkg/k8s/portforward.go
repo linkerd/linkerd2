@@ -229,6 +229,11 @@ func (pf *PortForward) URLFor(path string) string {
 	return fmt.Sprintf("http://%s:%d%s", pf.host, pf.localPort, path)
 }
 
+// AddressAndPort returns the address and port for the port-forward connection.
+func (pf *PortForward) AddressAndPort() string {
+	return fmt.Sprintf("%s:%d", pf.host, pf.localPort)
+}
+
 // getEphemeralPort selects a port for the port-forwarding. It binds to a free
 // ephemeral port and returns the port number.
 func getEphemeralPort() (int, error) {

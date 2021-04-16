@@ -626,8 +626,6 @@ func TestUpgradeHelm(t *testing.T) {
 		"--set", "identityProxyResources.memory.request=104Mi",
 		"--set", "proxyInjectorProxyResources.cpu.limit=1060m",
 		"--set", "proxyInjectorProxyResources.memory.request=106Mi",
-		"--set", "spValidatorProxyResources.cpu.limit=1080m",
-		"--set", "spValidatorProxyResources.memory.request=108Mi",
 		"--atomic",
 		"--wait",
 	}
@@ -823,13 +821,6 @@ var expectedResources = []expectedData{
 		cpuRequest: "20m",
 		memLimit:   "200Mi",
 		memRequest: "106Mi",
-	},
-	{
-		pod:        "linkerd-sp-validator",
-		cpuLimit:   "1080m",
-		cpuRequest: "20m",
-		memLimit:   "200Mi",
-		memRequest: "108Mi",
 	},
 }
 
