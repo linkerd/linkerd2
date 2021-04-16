@@ -178,7 +178,6 @@ var linkerdHAControlPlaneComponents = []string{
 	"linkerd-destination",
 	"linkerd-identity",
 	"linkerd-proxy-injector",
-	"linkerd-sp-validator",
 }
 
 // ExpectedServiceAccountNames is a list of the service accounts that a healthy
@@ -189,7 +188,6 @@ var ExpectedServiceAccountNames = []string{
 	"linkerd-destination",
 	"linkerd-identity",
 	"linkerd-proxy-injector",
-	"linkerd-sp-validator",
 }
 
 var (
@@ -1833,7 +1831,6 @@ func (hc *HealthChecker) expectedRBACNames() []string {
 		fmt.Sprintf("linkerd-%s-controller", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-identity", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-proxy-injector", hc.ControlPlaneNamespace),
-		fmt.Sprintf("linkerd-%s-sp-validator", hc.ControlPlaneNamespace),
 	}
 }
 
@@ -2430,7 +2427,7 @@ const running = "Running"
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
-	names := []string{"controller", "identity", "sp-validator", "proxy-injector"}
+	names := []string{"controller", "identity", "proxy-injector"}
 
 	for _, name := range names {
 		pods, found := statuses[name]

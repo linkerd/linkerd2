@@ -73,13 +73,11 @@ type (
 		IdentityResources      *Resources `json:"identityResources"`
 		ProxyInjectorResources *Resources `json:"proxyInjectorResources"`
 		PublicAPIResources     *Resources `json:"publicAPIResources"`
-		SPValidatorResources   *Resources `json:"spValidatorResources"`
 
 		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
 		IdentityProxyResources      *Resources `json:"identityProxyResources"`
 		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
 		PublicAPIProxyResources     *Resources `json:"publicAPIProxyResources"`
-		SPValidatorProxyResources   *Resources `json:"spValidatorProxyResources"`
 	}
 
 	// ConfigJSONs is the JSON encoding of the Linkerd configuration
