@@ -59,9 +59,16 @@ func NewIPWatcher(k8sAPI *k8s.API, log *logging.Entry) *IPWatcher {
 
 	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{podIPIndex: func(obj interface{}) ([]string, error) {
 		if pod, ok := obj.(*corev1.Pod); ok {
+			// Pods that run in the host network are indexed by the host IP
+			// indexer in the IP watcher; they should be skipped by the pod
+			// IP indexer which is responsible only for indexing pod network
+			// pods.
+			if pod.Spec.HostNetwork {
+				return nil, nil
+			}
 			return []string{pod.Status.PodIP}, nil
 		}
-		return nil, fmt.Errorf("object is not a pod")
+		return []string{""}, fmt.Errorf("object is not a pod")
 	}})
 
 	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{hostIPIndex: func(obj interface{}) ([]string, error) {
