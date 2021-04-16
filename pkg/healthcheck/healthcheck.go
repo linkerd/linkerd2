@@ -2363,8 +2363,6 @@ func getPodStatuses(pods []corev1.Pod) map[string]map[string][]corev1.ContainerS
 	return statuses
 }
 
-const running = "Running"
-
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
@@ -2401,20 +2399,6 @@ func validateControlPlanePods(pods []corev1.Pod) error {
 		}
 	}
 
-	return nil
-}
-
-func checkContainerRunning(pods []corev1.Pod, container string) error {
-	statuses := getPodStatuses(pods)
-	if _, ok := statuses[container]; !ok {
-		for _, pod := range pods {
-			podStatus := k8s.GetPodStatus(pod)
-			if podStatus != running {
-				return fmt.Errorf("%s status is %s", pod.Name, podStatus)
-			}
-		}
-		return fmt.Errorf("No running pods for \"%s\"", container)
-	}
 	return nil
 }
 
