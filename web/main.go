@@ -68,7 +68,6 @@ func main() {
 		healthcheck.KubernetesVersionChecks,
 		healthcheck.LinkerdConfigChecks,
 		healthcheck.LinkerdControlPlaneExistenceChecks,
-		healthcheck.LinkerdAPIChecks,
 		healthcheck.LinkerdVersionChecks,
 		healthcheck.LinkerdControlPlaneVersionChecks,
 	}

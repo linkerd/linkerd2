@@ -8,7 +8,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/cmd/heartbeat"
 	"github.com/linkerd/linkerd2/controller/cmd/identity"
 	proxyinjector "github.com/linkerd/linkerd2/controller/cmd/proxy-injector"
-	publicapi "github.com/linkerd/linkerd2/controller/cmd/public-api"
 	spvalidator "github.com/linkerd/linkerd2/controller/cmd/sp-validator"
 	servicemirror "github.com/linkerd/linkerd2/multicluster/cmd/service-mirror"
 )
@@ -28,8 +27,6 @@ func main() {
 		identity.Main(os.Args[2:])
 	case "proxy-injector":
 		proxyinjector.Main(os.Args[2:])
-	case "public-api":
-		publicapi.Main(os.Args[2:])
 	case "sp-validator":
 		spvalidator.Main(os.Args[2:])
 	case "service-mirror":

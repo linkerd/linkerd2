@@ -4,25 +4,22 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 )
 
-// CheckPublicAPIClientOrRetryOrExit builds a new Public API client and executes status
-// checks to determine if the client can successfully connect to the API. If the
-// checks fail, then CLI will print an error and exit. If the hcOptions.retryDeadline
-// param is specified, then the CLI will print a message to stderr and retry.
-func CheckPublicAPIClientOrRetryOrExit(hcOptions healthcheck.Options) public.Client {
+// CheckPublicAPIClientOrRetryOrExit executes status checks on the control
+// plane. If the checks fail, then CLI will print an error and exit. If the
+// hcOptions.retryDeadline param is specified, then the CLI will print a
+// message to stderr and retry.
+func CheckPublicAPIClientOrRetryOrExit(hcOptions healthcheck.Options) {
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.LinkerdControlPlaneExistenceChecks,
-		healthcheck.LinkerdAPIChecks,
 	}
 
 	hc := healthcheck.NewHealthChecker(checks, &hcOptions)
 
 	hc.RunChecks(exitOnError)
-	return hc.PublicAPIClient()
 }
 
 func exitOnError(result *healthcheck.CheckResult) {
@@ -38,8 +35,6 @@ func exitOnError(result *healthcheck.CheckResult) {
 			msg = "Cannot connect to Kubernetes"
 		case healthcheck.LinkerdControlPlaneExistenceChecks:
 			msg = "Cannot find Linkerd"
-		case healthcheck.LinkerdAPIChecks:
-			msg = "Cannot connect to Linkerd"
 		}
 		fmt.Fprintf(os.Stderr, "%s: %s\n", msg, result.Err)
 

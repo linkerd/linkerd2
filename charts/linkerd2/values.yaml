@@ -149,8 +149,7 @@ omitWebhookSideEffects: false
 webhookFailurePolicy: Ignore
 
 
-# controllerImage -- Docker image for the controller and identity
-# components
+# controllerImage -- Docker image for the identity component
 controllerImage: cr.l5d.io/linkerd/controller
 # -- Number of replicas for each control plane pod
 controllerReplicas: 1
@@ -274,14 +273,6 @@ profileValidator:
 # -|- CPU and Memory resources required by the SP validator (see
 #`proxy.resources` for sub-fields)
 #spValidatorResources:
-
-# -|- CPU and Memory resources required by controllers publicAPI (see
-#`proxy.resources` for sub-fields)
-#publicAPIResources:
-#-|- CPU and Memory resources required by proxy injected into controllers public
-#API pod (see `proxy.resources` for sub-fields) values
-#`proxy.resources`
-#publicAPIProxyResources:
 
 # If the namespace is controlled by an external tool or can't be installed with Helm
 # you can disable its installation. In this case:

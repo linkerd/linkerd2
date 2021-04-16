@@ -160,7 +160,6 @@ func TestNewValues(t *testing.T) {
 			},
 		}
 		expected.DestinationResources = controllerResources
-		expected.PublicAPIResources = controllerResources
 		expected.ProxyInjectorResources = controllerResources
 		expected.HeartbeatResources = controllerResources
 

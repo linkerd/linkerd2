@@ -646,15 +646,6 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-controller
-  namespace: test-ns
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ServiceAccount
-apiVersion: v1
-metadata:
   name: linkerd-destination
   namespace: test-ns
   labels:
@@ -748,15 +739,6 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-proxy-injector
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-controller
-  namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
@@ -875,15 +857,6 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-proxy-injector
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-controller
-  namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
@@ -1011,15 +984,6 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-proxy-injector
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-controller
-  namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
@@ -1163,15 +1127,6 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-controller
-  namespace: test-ns
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ServiceAccount
-apiVersion: v1
-metadata:
   name: linkerd-destination
   namespace: test-ns
   labels:
@@ -1290,23 +1245,6 @@ func TestCheckControlPlanePodExistence(t *testing.T) {
 		resources        []string
 		expected         []string
 	}{
-		{
-			checkDescription: "controller pod is running",
-			resources: []string{`
-apiVersion: v1
-kind: Pod
-metadata:
-  name: linkerd-controller-6f78cbd47-bc557
-  namespace: test-ns
-status:
-  phase: Running
-  podIP: 1.2.3.4
-`,
-			},
-			expected: []string{
-				"cat1 controller pod is running",
-			},
-		},
 		{
 			checkDescription: "'linkerd-config' config map exists",
 			resources: []string{`
@@ -1472,7 +1410,6 @@ func TestValidateControlPlanePods(t *testing.T) {
 
 	t.Run("Returns an error if not all pods are running", func(t *testing.T) {
 		pods := []corev1.Pod{
-			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
 			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodFailed, true),
 		}
@@ -1488,7 +1425,6 @@ func TestValidateControlPlanePods(t *testing.T) {
 
 	t.Run("Returns an error if not all containers are ready", func(t *testing.T) {
 		pods := []corev1.Pod{
-			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-tap-6c878df6c8-2hmtd", corev1.PodRunning, true),
 		}
@@ -1501,7 +1437,6 @@ func TestValidateControlPlanePods(t *testing.T) {
 
 	t.Run("Returns nil if all pods are running and all containers are ready", func(t *testing.T) {
 		pods := []corev1.Pod{
-			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-proxy-injector-5f79ff4844-", corev1.PodRunning, true),
 		}
@@ -1514,9 +1449,6 @@ func TestValidateControlPlanePods(t *testing.T) {
 
 	t.Run("Returns nil if, HA mode, at least one pod of each control plane component is ready", func(t *testing.T) {
 		pods := []corev1.Pod{
-			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
-			pod("linkerd-controller-6f78cbd47-bc558", corev1.PodRunning, false),
-			pod("linkerd-controller-6f78cbd47-bc559", corev1.PodFailed, false),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27983", corev1.PodRunning, false),
 			pod("linkerd-identity-6849948664-27984", corev1.PodFailed, false),
@@ -1531,7 +1463,6 @@ func TestValidateControlPlanePods(t *testing.T) {
 
 	t.Run("Returns nil if all linkerd pods are running and pod list includes non-linkerd pod", func(t *testing.T) {
 		pods := []corev1.Pod{
-			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-proxy-injector-5f79ff4844-", corev1.PodRunning, true),
 			pod("hello-43c25d", corev1.PodRunning, true),
@@ -2437,8 +2368,6 @@ data:
     omitWebhookSideEffects: false
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
-    publicAPIProxyResources: null
-    publicAPIResources: null
     stage: ""
     tolerations: null
     webhookFailurePolicy: WebhookFailurePolicy
@@ -2602,8 +2531,6 @@ data:
     omitWebhookSideEffects: false
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
-    publicAPIProxyResources: null
-    publicAPIResources: null
     stage: ""
     tolerations: null
     webhookFailurePolicy: WebhookFailurePolicy
@@ -3346,17 +3273,15 @@ func TestMinReplicaCheck(t *testing.T) {
 	}{
 		{
 			controlPlaneResourceDefs: generateAllControlPlaneDef(&controlPlaneReplicaOptions{
-				controller:    1,
-				destination:   3,
+				destination:   1,
 				identity:      3,
 				proxyInjector: 3,
 				tap:           3,
 			}, t),
-			expected: fmt.Errorf("not enough replicas available for [linkerd-controller]"),
+			expected: fmt.Errorf("not enough replicas available for [linkerd-destination]"),
 		},
 		{
 			controlPlaneResourceDefs: generateAllControlPlaneDef(&controlPlaneReplicaOptions{
-				controller:    3,
 				destination:   2,
 				identity:      1,
 				proxyInjector: 1,
@@ -3366,7 +3291,6 @@ func TestMinReplicaCheck(t *testing.T) {
 		},
 		{
 			controlPlaneResourceDefs: generateAllControlPlaneDef(&controlPlaneReplicaOptions{
-				controller:    3,
 				destination:   2,
 				identity:      2,
 				proxyInjector: 3,
@@ -3401,7 +3325,6 @@ func TestMinReplicaCheck(t *testing.T) {
 }
 
 type controlPlaneReplicaOptions struct {
-	controller    int
 	destination   int
 	identity      int
 	proxyInjector int
@@ -3429,8 +3352,6 @@ func generateAllControlPlaneDef(replicaOptions *controlPlaneReplicaOptions, t *t
 	resourceDefs := []string{}
 	for _, component := range linkerdHAControlPlaneComponents {
 		switch component {
-		case "linkerd-controller":
-			resourceDefs = append(resourceDefs, getSingleControlPlaneDef(component, replicaOptions.controller))
 		case "linkerd-destination":
 			resourceDefs = append(resourceDefs, getSingleControlPlaneDef(component, replicaOptions.destination))
 		case "linkerd-identity":

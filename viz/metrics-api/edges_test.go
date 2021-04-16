@@ -97,12 +97,12 @@ func TestEdges(t *testing.T) {
 		genInboundPromSample("emojivoto", "emoji", "web.emojivoto.serviceaccount.identity.linkerd.cluster.local"),
 		genInboundPromSample("emojivoto", "voting", "web.emojivoto.serviceaccount.identity.linkerd.cluster.local"),
 		genInboundPromSample("emojivoto", "web", "default.emojivoto.serviceaccount.identity.linkerd.cluster.local"),
-		genInboundPromSample("linkerd", "linkerd-prometheus", "linkerd-controller.linkerd.identity.linkerd.cluster.local"),
+		genInboundPromSample("linkerd", "linkerd-prometheus", "linkerd-identity.linkerd.identity.linkerd.cluster.local"),
 
 		genOutboundPromSample("emojivoto", "web", "emoji", "emojivoto", "emoji.emojivoto.serviceaccount.identity.linkerd.cluster.local"),
 		genOutboundPromSample("emojivoto", "web", "voting", "emojivoto", "voting.emojivoto.serviceaccount.identity.linkerd.cluster.local"),
 		genOutboundPromSample("emojivoto", "vote-bot", "web", "emojivoto", "web.emojivoto.serviceaccount.identity.linkerd.cluster.local"),
-		genOutboundPromSample("linkerd", "linkerd-controller", "linkerd-prometheus", "linkerd", "linkerd-prometheus.linkerd.identity.linkerd.cluster.local"),
+		genOutboundPromSample("linkerd", "linkerd-identity", "linkerd-prometheus", "linkerd", "linkerd-prometheus.linkerd.identity.linkerd.cluster.local"),
 	}
 
 	t.Run("Successfully returns edges for resource type Deployment and namespace emojivoto", func(t *testing.T) {

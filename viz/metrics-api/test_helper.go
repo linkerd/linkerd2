@@ -5,17 +5,15 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
-	"sync"
-	"time"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/linkerd/linkerd2/pkg/prometheus"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
-	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	"google.golang.org/grpc"
 )
 
-// MockAPIClient satisfies the Public API's gRPC interfaces (public.APIClient).
+// MockAPIClient satisfies the metrics-api gRPC interfaces
 type MockAPIClient struct {
 	ErrorToReturn                error
 	ListPodsResponseToReturn     *pb.ListPodsResponse
@@ -27,51 +25,39 @@ type MockAPIClient struct {
 	SelfCheckResponseToReturn    *pb.SelfCheckResponse
 }
 
-// StatSummary provides a mock of a Public API method.
+// StatSummary provides a mock of a metrics-api method.
 func (c *MockAPIClient) StatSummary(ctx context.Context, in *pb.StatSummaryRequest, opts ...grpc.CallOption) (*pb.StatSummaryResponse, error) {
 	return c.StatSummaryResponseToReturn, c.ErrorToReturn
 }
 
-// Gateways provides a mock of a Public API method.
+// Gateways provides a mock of a metrics-api method.
 func (c *MockAPIClient) Gateways(ctx context.Context, in *pb.GatewaysRequest, opts ...grpc.CallOption) (*pb.GatewaysResponse, error) {
 	return c.GatewaysResponseToReturn, c.ErrorToReturn
 }
 
-// TopRoutes provides a mock of a Public API method.
+// TopRoutes provides a mock of a metrics-api method.
 func (c *MockAPIClient) TopRoutes(ctx context.Context, in *pb.TopRoutesRequest, opts ...grpc.CallOption) (*pb.TopRoutesResponse, error) {
 	return c.TopRoutesResponseToReturn, c.ErrorToReturn
 }
 
-// Edges provides a mock of a Public API method.
+// Edges provides a mock of a metrics-api method.
 func (c *MockAPIClient) Edges(ctx context.Context, in *pb.EdgesRequest, opts ...grpc.CallOption) (*pb.EdgesResponse, error) {
 	return c.EdgesResponseToReturn, c.ErrorToReturn
 }
 
-// ListPods provides a mock of a Public API method.
+// ListPods provides a mock of a metrics-api method.
 func (c *MockAPIClient) ListPods(ctx context.Context, in *pb.ListPodsRequest, opts ...grpc.CallOption) (*pb.ListPodsResponse, error) {
 	return c.ListPodsResponseToReturn, c.ErrorToReturn
 }
 
-// ListServices provides a mock of a Public API method.
+// ListServices provides a mock of a metrics-api method.
 func (c *MockAPIClient) ListServices(ctx context.Context, in *pb.ListServicesRequest, opts ...grpc.CallOption) (*pb.ListServicesResponse, error) {
 	return c.ListServicesResponseToReturn, c.ErrorToReturn
 }
 
-// SelfCheck provides a mock of a Public API method.
+// SelfCheck provides a mock of a metrics-api method.
 func (c *MockAPIClient) SelfCheck(ctx context.Context, in *pb.SelfCheckRequest, _ ...grpc.CallOption) (*pb.SelfCheckResponse, error) {
 	return c.SelfCheckResponseToReturn, c.ErrorToReturn
-}
-
-//
-// Prometheus client
-//
-
-// MockProm satisfies the promv1.API interface for testing.
-// TODO: move this into something shared under /controller, or into /pkg
-type MockProm struct {
-	Res             model.Value
-	QueriesExecuted []string // expose the queries our Mock Prometheus receives, to test query generation
-	rwLock          sync.Mutex
 }
 
 // PodCounts is a test helper struct that is used for representing data in a
@@ -84,103 +70,7 @@ type PodCounts struct {
 	Errors      map[string]*pb.PodErrors
 }
 
-// Query performs a query for the given time.
-func (m *MockProm) Query(ctx context.Context, query string, ts time.Time) (model.Value, promv1.Warnings, error) {
-	m.rwLock.Lock()
-	defer m.rwLock.Unlock()
-	m.QueriesExecuted = append(m.QueriesExecuted, query)
-	return m.Res, nil, nil
-}
-
-// QueryRange performs a query for the given range.
-func (m *MockProm) QueryRange(ctx context.Context, query string, r promv1.Range) (model.Value, promv1.Warnings, error) {
-	m.rwLock.Lock()
-	defer m.rwLock.Unlock()
-	m.QueriesExecuted = append(m.QueriesExecuted, query)
-	return m.Res, nil, nil
-}
-
-// AlertManagers returns an overview of the current state of the Prometheus alert
-// manager discovery.
-func (m *MockProm) AlertManagers(ctx context.Context) (promv1.AlertManagersResult, error) {
-	return promv1.AlertManagersResult{}, nil
-}
-
-// Alerts returns a list of all active alerts.
-func (m *MockProm) Alerts(ctx context.Context) (promv1.AlertsResult, error) {
-	return promv1.AlertsResult{}, nil
-}
-
-// CleanTombstones removes the deleted data from disk and cleans up the existing
-// tombstones.
-func (m *MockProm) CleanTombstones(ctx context.Context) error {
-	return nil
-}
-
-// Config returns the current Prometheus configuration.
-func (m *MockProm) Config(ctx context.Context) (promv1.ConfigResult, error) {
-	return promv1.ConfigResult{}, nil
-}
-
-// DeleteSeries deletes data for a selection of series in a time range.
-func (m *MockProm) DeleteSeries(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) error {
-	return nil
-}
-
-// Flags returns the flag values that Prometheus was launched with.
-func (m *MockProm) Flags(ctx context.Context) (promv1.FlagsResult, error) {
-	return promv1.FlagsResult{}, nil
-}
-
-// LabelValues performs a query for the values of the given label.
-func (m *MockProm) LabelValues(ctx context.Context, label string, startTime time.Time, endTime time.Time) (model.LabelValues, promv1.Warnings, error) {
-	return nil, nil, nil
-}
-
-// Series finds series by label matchers.
-func (m *MockProm) Series(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) ([]model.LabelSet, promv1.Warnings, error) {
-	return nil, nil, nil
-}
-
-// Snapshot creates a snapshot of all current data into
-// snapshots/<datetime>-<rand> under the TSDB's data directory and returns the
-// directory as response.
-func (m *MockProm) Snapshot(ctx context.Context, skipHead bool) (promv1.SnapshotResult, error) {
-	return promv1.SnapshotResult{}, nil
-}
-
-// Targets returns an overview of the current state of the Prometheus target
-// discovery.
-func (m *MockProm) Targets(ctx context.Context) (promv1.TargetsResult, error) {
-	return promv1.TargetsResult{}, nil
-}
-
-// LabelNames returns all the unique label names present in the block in sorted order.
-func (m *MockProm) LabelNames(ctx context.Context, startTime time.Time, endTime time.Time) ([]string, promv1.Warnings, error) {
-	return []string{}, nil, nil
-}
-
-// Runtimeinfo returns the runtime info about Prometheus
-func (m *MockProm) Runtimeinfo(ctx context.Context) (promv1.RuntimeinfoResult, error) {
-	return promv1.RuntimeinfoResult{}, nil
-}
-
-// Metadata returns the metadata of the specified metric
-func (m *MockProm) Metadata(ctx context.Context, metric string, limit string) (map[string][]promv1.Metadata, error) {
-	return nil, nil
-}
-
-// Rules returns a list of alerting and recording rules that are currently loaded.
-func (m *MockProm) Rules(ctx context.Context) (promv1.RulesResult, error) {
-	return promv1.RulesResult{}, nil
-}
-
-// TargetsMetadata returns metadata about metrics currently scraped by the target.
-func (m *MockProm) TargetsMetadata(ctx context.Context, matchTarget string, metric string, limit string) ([]promv1.MetricMetadata, error) {
-	return []promv1.MetricMetadata{}, nil
-}
-
-// GenStatSummaryResponse generates a mock Public API StatSummaryResponse
+// GenStatSummaryResponse generates a mock metrics-api StatSummaryResponse
 // object.
 func GenStatSummaryResponse(resName, resType string, resNs []string, counts *PodCounts, basicStats bool, tcpStats bool) *pb.StatSummaryResponse {
 	rows := []*pb.StatTable_PodGroup_Row{}
@@ -242,7 +132,7 @@ func GenStatSummaryResponse(resName, resType string, resNs []string, counts *Pod
 	return resp
 }
 
-// GenStatTsResponse generates a mock Public API StatSummaryResponse
+// GenStatTsResponse generates a mock metrics-api StatSummaryResponse
 // object in response to a request for trafficsplit stats.
 func GenStatTsResponse(resName, resType string, resNs []string, basicStats bool, tsStats bool) *pb.StatSummaryResponse {
 	leaves := map[string]string{
@@ -355,17 +245,17 @@ var emojivotoEdgeRows = []*mockEdgeRow{
 var linkerdEdgeRows = []*mockEdgeRow{
 	{
 		resourceType: "deployment",
-		src:          "linkerd-controller",
+		src:          "linkerd-identity",
 		dst:          "linkerd-prometheus",
 		srcNamespace: "linkerd",
 		dstNamespace: "linkerd",
-		clientID:     "linkerd-controller.linkerd.identity.linkerd.cluster.local",
+		clientID:     "linkerd-identity.linkerd.identity.linkerd.cluster.local",
 		serverID:     "linkerd-prometheus.linkerd.identity.linkerd.cluster.local",
 		msg:          "",
 	},
 }
 
-// GenEdgesResponse generates a mock Public API EdgesResponse
+// GenEdgesResponse generates a mock metrics-api EdgesResponse
 // object.
 func GenEdgesResponse(resourceType string, edgeRowNamespace string) *pb.EdgesResponse {
 	edgeRows := emojivotoEdgeRows
@@ -410,7 +300,7 @@ func GenEdgesResponse(resourceType string, edgeRowNamespace string) *pb.EdgesRes
 	return resp
 }
 
-// GenTopRoutesResponse generates a mock Public API TopRoutesResponse object.
+// GenTopRoutesResponse generates a mock metrics-api TopRoutesResponse object.
 func GenTopRoutesResponse(routes []string, counts []uint64, outbound bool, authority string) *pb.TopRoutesResponse {
 	rows := []*pb.RouteTable_Row{}
 	for i, route := range routes {
@@ -468,16 +358,16 @@ type expectedStatRPC struct {
 	err                       error
 	k8sConfigs                []string    // k8s objects to seed the API
 	mockPromResponse          model.Value // mock out a prometheus query response
-	expectedPrometheusQueries []string    // queries we expect public-api to issue to prometheus
+	expectedPrometheusQueries []string    // queries we expect metrics-api to issue to prometheus
 }
 
-func newMockGrpcServer(exp expectedStatRPC) (*MockProm, *grpcServer, error) {
+func newMockGrpcServer(exp expectedStatRPC) (*prometheus.MockProm, *grpcServer, error) {
 	k8sAPI, err := k8s.NewFakeAPI(exp.k8sConfigs...)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	mockProm := &MockProm{Res: exp.mockPromResponse}
+	mockProm := &prometheus.MockProm{Res: exp.mockPromResponse}
 	fakeGrpcServer := newGrpcServer(
 		mockProm,
 		k8sAPI,
@@ -491,7 +381,7 @@ func newMockGrpcServer(exp expectedStatRPC) (*MockProm, *grpcServer, error) {
 	return mockProm, fakeGrpcServer, nil
 }
 
-func (exp expectedStatRPC) verifyPromQueries(mockProm *MockProm) error {
+func (exp expectedStatRPC) verifyPromQueries(mockProm *prometheus.MockProm) error {
 	// if exp.expectedPrometheusQueries is an empty slice we still want to check no queries were executed.
 	if exp.expectedPrometheusQueries != nil {
 		sort.Strings(exp.expectedPrometheusQueries)

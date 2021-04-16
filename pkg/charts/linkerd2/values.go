@@ -74,12 +74,10 @@ type (
 		HeartbeatResources     *Resources `json:"heartbeatResources"`
 		IdentityResources      *Resources `json:"identityResources"`
 		ProxyInjectorResources *Resources `json:"proxyInjectorResources"`
-		PublicAPIResources     *Resources `json:"publicAPIResources"`
 
 		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
 		IdentityProxyResources      *Resources `json:"identityProxyResources"`
 		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
-		PublicAPIProxyResources     *Resources `json:"publicAPIProxyResources"`
 	}
 
 	// ConfigJSONs is the JSON encoding of the Linkerd configuration

@@ -26,7 +26,6 @@ func TestGoodEndpoints(t *testing.T) {
 	cmd := []string{
 		"diagnostics",
 		"endpoints",
-		fmt.Sprintf("linkerd-controller-api.%s.svc.cluster.local:8085", ns),
 		fmt.Sprintf("linkerd-dst.%s.svc.cluster.local:8086", ns),
 		fmt.Sprintf("grafana.%s.svc.cluster.local:3000", vizNs),
 		fmt.Sprintf("linkerd-identity.%s.svc.cluster.local:8080", ns),

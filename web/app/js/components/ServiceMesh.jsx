@@ -57,11 +57,9 @@ const getPodClassification = pod => {
 };
 
 const componentsToDeployNames = {
-  Destination: 'linkerd-controller',
+  Destination: 'linkerd-destination',
   Identity: 'linkerd-identity',
   'Proxy Injector': 'linkerd-proxy-injector',
-  'Public API': 'linkerd-controller',
-  'Service Profile Validator': 'linkerd-sp-validator',
 };
 
 class ServiceMesh extends React.Component {

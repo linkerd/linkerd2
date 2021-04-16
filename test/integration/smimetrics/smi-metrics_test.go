@@ -70,10 +70,6 @@ func TestSMIMetrics(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			name: "linkerd-controller",
-			kind: "deployments",
-		},
-		{
 			name: "linkerd-destination",
 			kind: "deployments",
 		},

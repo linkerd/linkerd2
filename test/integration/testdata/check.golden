@@ -14,7 +14,7 @@ linkerd-existence
 √ heartbeat ServiceAccount exist
 √ control plane replica sets are ready
 √ no unschedulable pods
-√ controller pod is running
+√ control plane pods are ready
 
 linkerd-config
 --------------
@@ -44,11 +44,6 @@ linkerd-webhooks-and-apisvc-tls
 √ proxy-injector cert is valid for at least 60 days
 √ sp-validator webhook has valid cert
 √ sp-validator cert is valid for at least 60 days
-
-linkerd-api
------------
-√ control plane pods are ready
-√ can initialize the client
 
 linkerd-version
 ---------------
