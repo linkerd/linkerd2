@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
@@ -24,8 +23,7 @@ type (
 	IPWatcher struct {
 		k8sAPI *k8s.API
 
-		log          *logging.Entry
-		sync.RWMutex // This mutex protects modification of the map itself.
+		log *logging.Entry
 	}
 )
 
