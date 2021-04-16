@@ -10,10 +10,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/cache"
 )
 
-const hostIPIndex = "hostIP"
+// HostIPIndex is the key used to retrieve the Host IP Index
+const HostIPIndex = "hostIP"
 
 type (
 	// IPWatcher wraps a EndpointsWatcher and allows subscriptions by
@@ -50,48 +50,6 @@ func NewIPWatcher(k8sAPI *k8s.API, log *logging.Entry) *IPWatcher {
 		}),
 	}
 
-	k8sAPI.Svc().Informer().AddIndexers(cache.Indexers{podIPIndex: func(obj interface{}) ([]string, error) {
-		if svc, ok := obj.(*corev1.Service); ok {
-			return []string{svc.Spec.ClusterIP}, nil
-		}
-		return []string{""}, fmt.Errorf("object is not a service")
-	}})
-
-	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{podIPIndex: func(obj interface{}) ([]string, error) {
-		if pod, ok := obj.(*corev1.Pod); ok {
-			// Pods that run in the host network are indexed by the host IP
-			// indexer in the IP watcher; they should be skipped by the pod
-			// IP indexer which is responsible only for indexing pod network
-			// pods.
-			if pod.Spec.HostNetwork {
-				return nil, nil
-			}
-			return []string{pod.Status.PodIP}, nil
-		}
-		return []string{""}, fmt.Errorf("object is not a pod")
-	}})
-
-	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{hostIPIndex: func(obj interface{}) ([]string, error) {
-		if pod, ok := obj.(*corev1.Pod); ok {
-			var hostIPPods []string
-			if pod.Status.HostIP != "" {
-				// If the pod is reachable from the host network, then for
-				// each of its containers' ports that exposes a host port, add
-				// that hostIP:hostPort endpoint to the indexer.
-				for _, c := range pod.Spec.Containers {
-					for _, p := range c.Ports {
-						if p.HostPort != 0 {
-							addr := fmt.Sprintf("%s:%d", pod.Status.HostIP, p.HostPort)
-							hostIPPods = append(hostIPPods, addr)
-						}
-					}
-				}
-			}
-			return hostIPPods, nil
-		}
-		return nil, fmt.Errorf("object is not a pod")
-	}})
-
 	return iw
 }
 
@@ -102,7 +60,7 @@ func NewIPWatcher(k8sAPI *k8s.API, log *logging.Entry) *IPWatcher {
 // GetSvcID returns the service that corresponds to a Cluster IP address if one
 // exists.
 func (iw *IPWatcher) GetSvcID(clusterIP string) (*ServiceID, error) {
-	objs, err := iw.k8sAPI.Svc().Informer().GetIndexer().ByIndex(podIPIndex, clusterIP)
+	objs, err := iw.k8sAPI.Svc().Informer().GetIndexer().ByIndex(PodIPIndex, clusterIP)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
@@ -136,7 +94,7 @@ func (iw *IPWatcher) GetSvcID(clusterIP string) (*ServiceID, error) {
 func (iw *IPWatcher) GetPod(podIP string, port uint32) (*corev1.Pod, error) {
 	// First we check if the address maps to a pod in the host network.
 	addr := fmt.Sprintf("%s:%d", podIP, port)
-	hostIPPods, err := iw.getIndexedPods(hostIPIndex, addr)
+	hostIPPods, err := iw.getIndexedPods(HostIPIndex, addr)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
@@ -155,7 +113,7 @@ func (iw *IPWatcher) GetPod(podIP string, port uint32) (*corev1.Pod, error) {
 
 	// The address did not map to a pod in the host network, so now we check
 	// if the IP maps to a pod IP in the pod network.
-	podIPPods, err := iw.getIndexedPods(podIPIndex, podIP)
+	podIPPods, err := iw.getIndexedPods(PodIPIndex, podIP)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
