@@ -9,6 +9,13 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+const (
+	// PodIPIndex is the key for the index based on Pod IPs
+	PodIPIndex = "ip"
+	// HostIPIndex is the key for the index based on Host IP of pods with host network enabled
+	HostIPIndex = "hostIP"
+)
+
 type (
 	// ID is a namespace-qualified name.
 	ID struct {
@@ -47,7 +54,7 @@ func (i ID) String() string {
 
 // InitializeIndexers is used to initialize indexers on k8s infromers, to be used across watchers
 func InitializeIndexers(k8sAPI *k8s.API) error {
-	err := k8sAPI.Svc().Informer().AddIndexers(cache.Indexers{podIPIndex: func(obj interface{}) ([]string, error) {
+	err := k8sAPI.Svc().Informer().AddIndexers(cache.Indexers{PodIPIndex: func(obj interface{}) ([]string, error) {
 		if svc, ok := obj.(*corev1.Service); ok {
 			return []string{svc.Spec.ClusterIP}, nil
 		}
@@ -58,7 +65,7 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 		return fmt.Errorf("could not create an indexer for services: %s", err)
 	}
 
-	err = k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{podIPIndex: func(obj interface{}) ([]string, error) {
+	err = k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{PodIPIndex: func(obj interface{}) ([]string, error) {
 		if pod, ok := obj.(*corev1.Pod); ok {
 			// Pods that run in the host network are indexed by the host IP
 			// indexer in the IP watcher; they should be skipped by the pod
@@ -76,7 +83,7 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 		return fmt.Errorf("could not create an indexer for pods: %s", err)
 	}
 
-	err = k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{hostIPIndex: func(obj interface{}) ([]string, error) {
+	err = k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{HostIPIndex: func(obj interface{}) ([]string, error) {
 		if pod, ok := obj.(*corev1.Pod); ok {
 			var hostIPPods []string
 			if pod.Status.HostIP != "" {

@@ -21,7 +21,6 @@ import (
 
 const (
 	kubeSystem = "kube-system"
-	podIPIndex = "ip"
 
 	// metrics labels
 	service                = "service"
