@@ -30,6 +30,7 @@
 - [MattePaint](https://www.mattepaint.com/)
 - [Mentum](https://mentumqr.com/)
 - [MercedesBenz.io](https://www.mercedes-benz.io/)
+- [Microsoft](https://www.microsoft.com/)
 - [Mulligan Funding](https://www.mulliganfunding.com/)
 - [Mythical Games](https://mythicalgames.com/)
 - [National Information Solutions Cooperative (NISC)](https://nisc.coop/)
