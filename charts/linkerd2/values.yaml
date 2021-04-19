@@ -149,7 +149,7 @@ omitWebhookSideEffects: false
 webhookFailurePolicy: Ignore
 
 
-# controllerImage -- Docker image for the identity component
+# controllerImage -- Docker image for the destination and identity components
 controllerImage: cr.l5d.io/linkerd/controller
 # -- Number of replicas for each control plane pod
 controllerReplicas: 1
