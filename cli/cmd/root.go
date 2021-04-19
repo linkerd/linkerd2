@@ -23,6 +23,7 @@ const (
 
 	jsonOutput  = "json"
 	tableOutput = "table"
+	shortOutput = "short"
 )
 
 var (

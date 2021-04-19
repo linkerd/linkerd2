@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-
 	"strings"
 	"time"
 
@@ -15,7 +14,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	valuespkg "helm.sh/helm/v3/pkg/cli/values"
@@ -30,7 +28,6 @@ type checkOptions struct {
 	cniEnabled         bool
 	output             string
 	cliVersionOverride string
-	short              bool
 }
 
 func newCheckOptions() *checkOptions {
@@ -64,9 +61,8 @@ func (options *checkOptions) checkFlagSet() *pflag.FlagSet {
 
 	flags.StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
 	flags.StringVar(&options.cliVersionOverride, "cli-version-override", "", "Used to override the version of the cli (mostly for testing)")
-	flags.StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
+	flags.StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json, short")
 	flags.DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
-	flags.BoolVar(&options.short, "short", options.short, "Prints a check summary and only shows warnings and errors. Only for 'basic' output format")
 
 	return flags
 }
@@ -78,8 +74,8 @@ func (options *checkOptions) validate() error {
 	if !options.preInstallOnly && options.cniEnabled {
 		return errors.New("--linkerd-cni-enabled can only be used with --pre")
 	}
-	if options.output != tableOutput && options.output != jsonOutput {
-		return fmt.Errorf("Invalid output type '%s'. Supported output types are: %s, %s", options.output, jsonOutput, tableOutput)
+	if options.output != tableOutput && options.output != jsonOutput && options.output != shortOutput {
+		return fmt.Errorf("Invalid output type '%s'. Supported output types are: %s, %s, %s", options.output, jsonOutput, tableOutput, shortOutput)
 	}
 	return nil
 }
@@ -211,7 +207,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 	})
 
 	healthcheck.PrintCoreChecksHeader(wout, options.output)
-	success := healthcheck.RunChecks(wout, werr, hc, options.output, options.short)
+	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
 	extensionSuccess, err := runExtensionChecks(cmd, wout, werr, options)
 	if err != nil {
@@ -249,7 +245,7 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 		nsLabels[i] = ns.Labels[k8s.LinkerdExtensionLabel]
 	}
 
-	extensionSuccess := healthcheck.RunExtensionsChecks(wout, werr, nsLabels, getExtensionCheckFlags(cmd.Flags()), opts.output, opts.short)
+	extensionSuccess := healthcheck.RunExtensionsChecks(wout, werr, nsLabels, getExtensionCheckFlags(cmd.Flags()), opts.output)
 	return extensionSuccess, nil
 }
 
