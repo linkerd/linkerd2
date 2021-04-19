@@ -52,13 +52,13 @@ func (i ID) String() string {
 	return fmt.Sprintf("%s/%s", i.Namespace, i.Name)
 }
 
-// InitializeIndexers is used to initialize indexers on k8s infromers, to be used across watchers
+// InitializeIndexers is used to initialize indexers on k8s informers, to be used across watchers
 func InitializeIndexers(k8sAPI *k8s.API) error {
 	err := k8sAPI.Svc().Informer().AddIndexers(cache.Indexers{PodIPIndex: func(obj interface{}) ([]string, error) {
 		if svc, ok := obj.(*corev1.Service); ok {
 			return []string{svc.Spec.ClusterIP}, nil
 		}
-		return []string{""}, fmt.Errorf("object is not a service")
+		return nil, fmt.Errorf("object is not a service")
 	}})
 
 	if err != nil {
@@ -76,7 +76,7 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 			}
 			return []string{pod.Status.PodIP}, nil
 		}
-		return []string{""}, fmt.Errorf("object is not a pod")
+		return nil, fmt.Errorf("object is not a pod")
 	}})
 
 	if err != nil {

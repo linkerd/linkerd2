@@ -457,10 +457,10 @@ func podToAddressSet(k8sAPI *k8s.API, pod *corev1.Pod) *watcher.AddressSet {
 	ownerKind, ownerName := k8sAPI.GetOwnerKindAndName(context.Background(), pod, true)
 	return &watcher.AddressSet{
 		Addresses: map[watcher.PodID]watcher.Address{
-			watcher.PodID{
+			{
 				Name:      pod.Name,
 				Namespace: pod.Namespace,
-			}: watcher.Address{
+			}: {
 				IP:        pod.Status.PodIP,
 				Port:      0, // Will be set by individual subscriptions
 				Pod:       pod,
