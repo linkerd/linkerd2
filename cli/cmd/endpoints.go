@@ -69,7 +69,6 @@ func newCmdEndpoints() *cobra.Command {
   linkerd diagnostics endpoints -o json emoji-svc.emojivoto.svc.cluster.local:8080 web-svc.emojivoto.svc.cluster.local:80
 
   # get the endpoints for authorities in Linkerd's control-plane itself
-  linkerd diagnostics endpoints linkerd-controller-api.linkerd.svc.cluster.local:8085
   linkerd diagnostics endpoints web.linkerd-viz.svc.cluster.local:8084`
 
 	cmd := &cobra.Command{

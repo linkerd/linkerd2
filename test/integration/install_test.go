@@ -36,7 +36,6 @@ var (
 	helmTLSCerts *tls.CA
 
 	linkerdSvcEdge = []testutil.Service{
-		{Namespace: "linkerd", Name: "linkerd-controller-api"},
 		{Namespace: "linkerd", Name: "linkerd-dst"},
 		{Namespace: "linkerd-viz", Name: "grafana"},
 		{Namespace: "linkerd", Name: "linkerd-identity"},
@@ -618,8 +617,6 @@ func TestUpgradeHelm(t *testing.T) {
 		"--set", "proxy.resources.memory.limit=200Mi",
 		"--set", "proxy.resources.memory.request=100Mi",
 		// actually sets the value for the controller pod
-		"--set", "publicAPIProxyResources.cpu.limit=1010m",
-		"--set", "publicAPIProxyResources.memory.request=101Mi",
 		"--set", "destinationProxyResources.cpu.limit=1020m",
 		"--set", "destinationProxyResources.memory.request=102Mi",
 		"--set", "identityProxyResources.cpu.limit=1040m",
@@ -794,13 +791,6 @@ type expectedData struct {
 }
 
 var expectedResources = []expectedData{
-	{
-		pod:        "linkerd-controller",
-		cpuLimit:   "1010m",
-		cpuRequest: "20m",
-		memLimit:   "200Mi",
-		memRequest: "101Mi",
-	},
 	{
 		pod:        "linkerd-destination",
 		cpuLimit:   "1020m",

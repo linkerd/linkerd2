@@ -27,11 +27,11 @@
     "no_tls_reason": ""
   },
   {
-    "src": "linkerd-controller",
+    "src": "linkerd-identity",
     "src_namespace": "linkerd",
     "dst": "linkerd-prometheus",
     "dst_namespace": "linkerd",
-    "client_id": "linkerd-controller.linkerd",
+    "client_id": "linkerd-identity.linkerd",
     "server_id": "linkerd-prometheus.linkerd",
     "no_tls_reason": ""
   }

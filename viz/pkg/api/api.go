@@ -28,7 +28,7 @@ func CheckClientOrRetryOrExit(hcOptions healthcheck.Options, apiChecks bool) pb.
 	}
 
 	if apiChecks {
-		checks = append(checks, healthcheck.LinkerdAPIChecks)
+		checks = append(checks, healthcheck.LinkerdControlPlaneExistenceChecks)
 	}
 
 	hc := vizHealthCheck.NewHealthChecker(checks, &hcOptions)

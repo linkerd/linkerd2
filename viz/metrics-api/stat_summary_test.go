@@ -9,6 +9,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/prometheus"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/prometheus/common/model"
 )
@@ -1474,7 +1475,7 @@ status:
 
 		for _, exp := range expectations {
 			fakeGrpcServer := newGrpcServer(
-				&MockProm{Res: exp.mockPromResponse},
+				&prometheus.MockProm{Res: exp.mockPromResponse},
 				k8sAPI,
 				"linkerd",
 				"mycluster.local",
@@ -1498,7 +1499,7 @@ status:
 			t.Fatalf("NewFakeAPI returned an error: %s", err)
 		}
 		fakeGrpcServer := newGrpcServer(
-			&MockProm{Res: model.Vector{}},
+			&prometheus.MockProm{Res: model.Vector{}},
 			k8sAPI,
 			"linkerd",
 			"mycluster.local",
