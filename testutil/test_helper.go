@@ -69,12 +69,10 @@ type Service struct {
 // LinkerdDeployReplicasEdge is a map containing the number of replicas for each Deployment and the main
 // container name, in the current code-base
 var LinkerdDeployReplicasEdge = map[string]DeploySpec{
-	"linkerd-controller":     {"linkerd", 1},
 	"linkerd-destination":    {"linkerd", 1},
 	"tap":                    {"linkerd-viz", 1},
 	"grafana":                {"linkerd-viz", 1},
 	"linkerd-identity":       {"linkerd", 1},
-	"linkerd-sp-validator":   {"linkerd", 1},
 	"web":                    {"linkerd-viz", 1},
 	"linkerd-proxy-injector": {"linkerd", 1},
 }

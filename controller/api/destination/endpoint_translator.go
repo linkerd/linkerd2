@@ -225,7 +225,13 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			if !ok {
 				opaquePorts = et.defaultOpaquePorts
 			}
-			wa, err = toWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
+
+			skippedInboundPorts, skippedErr := getPodSkippedInboundPortsAnnotations(address.Pod)
+			if skippedErr != nil {
+				et.log.Errorf("failed getting ignored inbound ports annoatation for pod: %s", err)
+			}
+
+			wa, err = toWeightedAddr(address, opaquePorts, skippedInboundPorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 		} else {
 			var authOverride *pb.AuthorityOverride
 			if address.AuthorityOverride != "" {
@@ -315,16 +321,16 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 	}, nil
 }
 
-func toWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
+func toWeightedAddr(address watcher.Address, opaquePorts, skippedInboundPorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
 	controllerNSLabel := address.Pod.Labels[k8s.ControllerNSLabel]
 	sa, ns := k8s.GetServiceAccountAndNS(address.Pod)
 	labels := k8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
-
+	_, isSkippedInboundPort := skippedInboundPorts[address.Port]
 	// If the pod is controlled by any Linkerd control plane, then it can be
 	// hinted that this destination knows H2 (and handles our orig-proto
 	// translation)
 	var hint *pb.ProtocolHint
-	if enableH2Upgrade && controllerNSLabel != "" {
+	if enableH2Upgrade && controllerNSLabel != "" && !isSkippedInboundPort {
 		hint = &pb.ProtocolHint{
 			Protocol: &pb.ProtocolHint_H2_{
 				H2: &pb.ProtocolHint_H2{},
@@ -350,7 +356,8 @@ func toWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}, en
 	var identity *pb.TlsIdentity
 	if identityTrustDomain != "" &&
 		controllerNSLabel == controllerNS &&
-		address.Pod.Annotations[k8s.IdentityModeAnnotation] == k8s.IdentityModeDefault {
+		address.Pod.Annotations[k8s.IdentityModeAnnotation] == k8s.IdentityModeDefault &&
+		!isSkippedInboundPort {
 
 		id := fmt.Sprintf("%s.%s.serviceaccount.identity.%s.%s", sa, ns, controllerNSLabel, identityTrustDomain)
 		identity = &pb.TlsIdentity{

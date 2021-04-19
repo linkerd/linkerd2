@@ -26,12 +26,10 @@ func TestGoodEndpoints(t *testing.T) {
 	cmd := []string{
 		"diagnostics",
 		"endpoints",
-		fmt.Sprintf("linkerd-controller-api.%s.svc.cluster.local:8085", ns),
 		fmt.Sprintf("linkerd-dst.%s.svc.cluster.local:8086", ns),
 		fmt.Sprintf("grafana.%s.svc.cluster.local:3000", vizNs),
 		fmt.Sprintf("linkerd-identity.%s.svc.cluster.local:8080", ns),
 		fmt.Sprintf("linkerd-proxy-injector.%s.svc.cluster.local:443", ns),
-		fmt.Sprintf("linkerd-sp-validator.%s.svc.cluster.local:443", ns),
 		fmt.Sprintf("tap.%s.svc.cluster.local:8088", vizNs),
 		fmt.Sprintf("web.%s.svc.cluster.local:8084", vizNs),
 	}

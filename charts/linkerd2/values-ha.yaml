@@ -23,7 +23,6 @@ controllerResources: &controller_resources
     limit: 250Mi
     request: 50Mi
 destinationResources: *controller_resources
-publicAPIResources: *controller_resources
 
 # identity configuration
 identityResources:

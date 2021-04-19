@@ -1,5 +1,101 @@
 # Changes
 
+## stable-2.10.1
+
+This stable release adds CLI support for Apple Silicon M1 chips and support for
+SMI's TrafficSplit `v1alpha2`.
+
+There are several proxy fixes: handling `FailedPrecondition` errors gracefully,
+inbound TLS detection from non-meshed workloads, and using the correct cached
+client when the proxy is in ingress mode. The logging infrastructure has also
+been improved to reduce memory pressure in high-connection environments.
+
+On the control-plane side, there have been several improvements to the
+destination service such as support for Host IP lookups and ignoring pods
+in "Terminating" state. It also updates the proxy-injector to add opaque ports
+annotation to pods if their namespace has it set.
+
+On the CLI side, `linkerd repair` has been updated to be aware about the control-plane
+version and suggest the relevant version to generate the right config. Various
+bugs have been fixed around `linkerd identity`, etc.
+
+**Upgrade notes**: Please refer [2.10 upgrade instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2100)
+if you are upgrading from `2.9.x` or below versions.
+
+* Proxy:
+  * Fixed an issue where proxies could infinitely retry failed requests to the
+    `destination` controller when it returned a `FailedPrecondition`
+  * The proxy's logging infrastructure has been updated to reduce memory pressure
+    in high-connection environments.
+  * Fixed a caching issue in the outbound proxy that would cause it to
+    forward traffic to the wrong pod when running in ingress mode.
+  * Fixed an issue where inbound TLS detection from non-meshed workloads
+    could break
+  * Fixed an issue where the admin server's HTTP detection would fail and
+    not recover; these are now handled gracefully and without logging warnings
+  * Control plane proxies no longer emit warnings about the resolution stream ending.
+    This error was innocuous.
+  * Bumped the proxy-init image to v1.3.11 which updates the go version to be 1.16.2
+
+* Control Plane:
+  * Fixed an issue where the destination service would respond with too big of a
+    header and result in http2 protocol errors
+  * Fixed an issue where the destination control plane component sometimes returned
+    endpoint addresses with a 0 port number while pods were undergoing a rollout
+    (thanks @riccardofreixo!)
+  * Fixed an issue where pod lookups by host IP and host port fail even though
+    the cluster has a matching pod
+  * Updated the IP Watcher in destination to ignore pods in "Terminating" state
+    (thanks @Wenliang-CHEN!)
+  * Modified the proxy-injector to add the opaque ports annotation to pods
+    if their namespace has it set
+  * Added Support for TrafficSplit `v1alpha2`
+  * Updated all the control-plane components to use go `1.16.2`.
+
+* CLI:
+  * Fixed an issue where the linkerd identity command returned the root
+    certificate of a pod instead of its leaf certificates
+  * Fixed an issue where the destination service would respond with too
+    big of a header and result in http2 protocol errors
+  * Updated the release process to build Linkerd CLI binaries for Apple
+    Silicon M1 chips
+  * Improved error messaging when trying to install Linkerd on a cluster
+    that already had Linkerd installed
+  * Added a loading spinner to the linkerd check command when running
+    extension checks
+  * Added installNamespace toggle in the jaeger extension's install.
+    (thanks @jijeesh!)
+  * Updated healthcheck pkg to have hintBaseURL configurable, useful
+    for external extensions using that pkg
+  * Fixed TCP read and write bytes/sec calculations to group by label
+    based off inbound or outbound traffic
+  * Fixed an issue in linkerd inject where the wrong annotation would
+    be added when using --ingress flag
+  * Updated `linkerd repair` to be aware of the client and server versions
+  * Updated `linkerd uninstall` to print error message when there are no
+    resources to uninstall.
+
+* Helm:
+  * Aligned the Helm installation heartbeat schedule to match that of the CLI
+
+* Viz:
+  * Fixed an issue where the topology graph in the dashboard was no
+    longer draggable.
+  * Updated dashboard build to use webpack v5
+  * Added CA certs to the Viz extension's metrics-api container so
+    that it can validate the certifcate of an external Prometheus
+  * Removed components from the control plane dashboard that now
+    are part of the Viz extension
+  * Changed web's base image from debian to scratch
+
+* Multicluster:
+  * Fixed an issue with Multicluster's service mirror where its endpoint
+    repair retries were not properly rate limited
+
+* Jaeger:
+  * Fixed components in the Jaeger extension to set the correct Prometheus
+    scrape values
+
 ## edge-21.4.3
 
 This edge supersedes `edge-21.4.2` as a release candidate for `stable-2.10.1`!

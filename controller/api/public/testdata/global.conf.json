@@ -1,6 +1,0 @@
-{
-    "linkerdNamespace": "linkerd",
-    "cniEnabled": false,
-    "version": "dev-206ff685-foo",
-    "identityContext": null
-}

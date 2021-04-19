@@ -3,7 +3,6 @@ syntax = "proto3";
 package linkerd2.viz;
 
 import "google/protobuf/duration.proto";
-import "common/net.proto";
 
 option go_package = "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz";
 

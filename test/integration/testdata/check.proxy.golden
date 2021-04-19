@@ -14,7 +14,7 @@ linkerd-existence
 √ heartbeat ServiceAccount exist
 √ control plane replica sets are ready
 √ no unschedulable pods
-√ controller pod is running
+√ control plane pods are ready
 
 linkerd-config
 --------------
@@ -49,12 +49,6 @@ linkerd-identity-data-plane
 ---------------------------
 √ data plane proxies certificate match CA
 
-linkerd-api
------------
-√ control plane pods are ready
-√ can initialize the client
-√ can query the control plane API
-
 linkerd-version
 ---------------
 √ can determine the latest version
@@ -66,5 +60,8 @@ linkerd-data-plane
 √ data plane proxies are ready
 √ data plane is up-to-date
 √ data plane and cli versions match
+√ data plane pod labels are configured correctly
+√ data plane service labels are configured correctly
+√ data plane service annotations are configured correctly
 
 Status check results are √

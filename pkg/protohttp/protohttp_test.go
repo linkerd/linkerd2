@@ -14,7 +14,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	publicPb "github.com/linkerd/linkerd2/controller/gen/public"
 	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -216,39 +215,6 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 	})
 }
 
-func TestWriteProtoToHttpResponse(t *testing.T) {
-	t.Run("Writes valid payload", func(t *testing.T) {
-		expectedMessage := publicPb.VersionInfo{
-			ReleaseVersion: "0.0.1",
-			BuildDate:      "02/21/1983",
-			GoVersion:      "10.2.45",
-		}
-
-		responseWriter := newStubResponseWriter()
-		err := WriteProtoToHTTPResponse(responseWriter, &expectedMessage)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		assertResponseHasProtobufContentType(t, responseWriter)
-
-		payloadRead, err := deserializePayloadFromReader(bufio.NewReader(bytes.NewReader(responseWriter.body.Bytes())))
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		var actualMessage publicPb.VersionInfo
-		err = proto.Unmarshal(payloadRead, &actualMessage)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		if !proto.Equal(&actualMessage, &expectedMessage) {
-			t.Fatalf("Expected response body to contain message [%s], but got [%s]", expectedMessage.String(), actualMessage.String())
-		}
-	})
-}
-
 func TestDeserializePayloadFromReader(t *testing.T) {
 	t.Run("Can read message correctly based on payload size correct payload size to message", func(t *testing.T) {
 		expectedMessage := "this is the message"
@@ -299,50 +265,6 @@ func TestDeserializePayloadFromReader(t *testing.T) {
 
 		if string(actualMessage2) != expectedMessage2 {
 			t.Fatalf("Expecting payload to contain message:\n%s\nbut it had\n%s", expectedMessage2, actualMessage2)
-		}
-	})
-
-	t.Run("Can write and read marshalled protobuf messages", func(t *testing.T) {
-		expectedMessage := &publicPb.VersionInfo{
-			GoVersion:      "1.9.1",
-			BuildDate:      "2017.11.17",
-			ReleaseVersion: "1.2.3",
-		}
-
-		expectedReadArray, err := proto.Marshal(expectedMessage)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		serialized := SerializeAsPayload(expectedReadArray)
-
-		reader := bufio.NewReader(bytes.NewReader(serialized))
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		actualReadArray, err := deserializePayloadFromReader(reader)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		if !reflect.DeepEqual(actualReadArray, expectedReadArray) {
-			n := len(actualReadArray)
-			xor := make([]byte, n)
-			for i := 0; i < n; i++ {
-				xor[i] = actualReadArray[i] ^ expectedReadArray[i]
-			}
-			t.Fatalf("Expecting read byte array to be equal to written byte array, but they were different. xor: [%v]", xor)
-		}
-
-		actualMessage := &publicPb.VersionInfo{}
-		err = proto.Unmarshal(actualReadArray, actualMessage)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		if !proto.Equal(actualMessage, expectedMessage) {
-			t.Fatalf("Expecting payload to contain message [%s], but it had [%s]", expectedMessage, actualMessage)
 		}
 	})
 
@@ -453,27 +375,6 @@ func TestCheckIfResponseHasError(t *testing.T) {
 		actualErrorMessage := err.Error()
 		if actualErrorMessage != expectedErrorMessage {
 			t.Fatalf("Expected error message to be [%s], but it was [%s]", expectedErrorMessage, actualErrorMessage)
-		}
-	})
-
-	t.Run("returns error if response contains linkerd-error header but body isn't error message", func(t *testing.T) {
-		protoInBytes, err := proto.Marshal(&publicPb.VersionInfo{ReleaseVersion: "0.0.1"})
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		message := SerializeAsPayload(protoInBytes)
-
-		response := &http.Response{
-			Header:     make(http.Header),
-			Body:       ioutil.NopCloser(bytes.NewReader(message)),
-			StatusCode: http.StatusInternalServerError,
-		}
-		response.Header.Set(errorHeader, "error")
-
-		err = CheckIfResponseHasError(response)
-		if err == nil {
-			t.Fatalf("Expecting error, got nothing")
 		}
 	})
 
