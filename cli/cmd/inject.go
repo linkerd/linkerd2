@@ -479,7 +479,11 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 	}
 
 	if proxy.Await != baseProxy.Await {
-		overrideAnnotations[k8s.ProxyAwait] = strconv.FormatBool(proxy.Await)
+		if proxy.Await {
+			overrideAnnotations[k8s.ProxyAwait] = k8s.Enabled
+		} else {
+			overrideAnnotations[k8s.ProxyAwait] = k8s.Disabled
+		}
 	}
 
 	// Set fields that can't be converted into annotations
