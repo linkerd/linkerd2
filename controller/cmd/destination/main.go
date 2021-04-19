@@ -121,7 +121,7 @@ func Main(args []string) {
 	)
 
 	if err != nil {
-		log.Fatalf("Failed to initialize informers: %s", err)
+		log.Fatalf("Failed to initialize destination server: %s", err)
 	}
 
 	k8sAPI.Sync(nil) // blocks until caches are synced
