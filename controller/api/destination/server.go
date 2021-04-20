@@ -140,8 +140,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 
 	// Return error for an IP query
 	if ip := net.ParseIP(host); ip != nil {
-		return status.Errorf(codes.InvalidArgument, "Get API does not accept IP queries")
-
+		return status.Errorf(codes.InvalidArgument, "IP queries not supported by Get API: host=%s", host)
 	}
 
 	service, instanceID, err := parseK8sServiceName(host, s.clusterDomain)
