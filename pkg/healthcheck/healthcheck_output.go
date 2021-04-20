@@ -173,79 +173,21 @@ func RunChecks(wout io.Writer, werr io.Writer, hc Runner, output string) bool {
 		return runChecksJSON(wout, werr, hc)
 	}
 
-	if output == ShortOutput {
-		return runChecksShort(wout, hc)
-	}
-
-	return runChecksTable(wout, hc)
+	return runChecksTable(wout, hc, output)
 }
 
-func runChecksShort(wout io.Writer, hc Runner) bool {
+func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 	var lastCategory CategoryID
-
 	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	spin.Writer = wout
 
+	statusCounter := map[string]int{}
 	prettyPrintResults := func(result *CheckResult) {
-		spin.Stop()
-		if result.Retry {
-			if isatty.IsTerminal(os.Stdout.Fd()) {
-				spin.Suffix = fmt.Sprintf(" %s", result.Err)
-				spin.Color("bold") // this calls spin.Restart()
-			}
+		if output == ShortOutput && result.Err == nil {
+			statusCounter[okStatus] += 1
 			return
 		}
 
-		if result.Err == nil {
-			return
-		}
-
-		status := failStatus
-		if result.Warning {
-			status = warnStatus
-		}
-
-		if lastCategory != result.Category {
-			if lastCategory != "" {
-				fmt.Fprintln(wout)
-			}
-
-			fmt.Fprintln(wout, result.Category)
-			fmt.Fprintln(wout, strings.Repeat("-", len(result.Category)))
-
-			lastCategory = result.Category
-		}
-
-		fmt.Fprintf(wout, "%s %s\n", status, result.Description)
-		if result.Err != nil {
-			fmt.Fprintf(wout, "    %s\n", result.Err)
-			if result.HintURL != "" {
-				fmt.Fprintf(wout, "    see %s for hints\n", result.HintURL)
-			}
-		}
-	}
-
-	success := hc.RunChecks(prettyPrintResults)
-	// this empty line separates final results from the checks list in the output
-	fmt.Fprintln(wout, "")
-
-	if !success {
-		fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
-	} else {
-		fmt.Fprintf(wout, "Status check results are %s\n", okStatus)
-	}
-
-	return success
-}
-
-func runChecksTable(wout io.Writer, hc Runner) bool {
-	var lastCategory CategoryID
-	var prettyPrintResults CheckObserver
-
-	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
-	spin.Writer = wout
-
-	prettyPrintResults = func(result *CheckResult) {
 		if lastCategory != result.Category {
 			if lastCategory != "" {
 				fmt.Fprintln(wout)
@@ -273,6 +215,7 @@ func runChecksTable(wout io.Writer, hc Runner) bool {
 				status = warnStatus
 			}
 		}
+		statusCounter[status] += 1
 
 		fmt.Fprintf(wout, "%s %s\n", status, result.Description)
 		if result.Err != nil {
@@ -291,6 +234,11 @@ func runChecksTable(wout io.Writer, hc Runner) bool {
 		fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
 	} else {
 		fmt.Fprintf(wout, "Status check results are %s\n", okStatus)
+	}
+
+	if output == ShortOutput {
+		fmt.Fprintf(wout, "OK: %d, WARNING: %d, FAIL: %d\n",
+			statusCounter[okStatus], statusCounter[warnStatus], statusCounter[failStatus])
 	}
 
 	return success
