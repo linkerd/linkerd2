@@ -14,7 +14,7 @@ linkerd-existence
 √ heartbeat ServiceAccount exist
 √ control plane replica sets are ready
 √ no unschedulable pods
-√ controller pod is running
+√ control plane pods are ready
 
 linkerd-config
 --------------
@@ -45,12 +45,6 @@ linkerd-webhooks-and-apisvc-tls
 √ sp-validator webhook has valid cert
 √ sp-validator cert is valid for at least 60 days
 
-linkerd-api
------------
-√ control plane pods are ready
-√ can initialize the client
-√ can query the control plane API
-
 linkerd-version
 ---------------
 √ can determine the latest version
@@ -58,6 +52,7 @@ linkerd-version
 
 control-plane-version
 ---------------------
+√ can retrieve the control plane version
 √ control plane is up-to-date
 √ control plane and cli versions match
 

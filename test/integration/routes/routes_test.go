@@ -39,15 +39,11 @@ func TestRoutes(t *testing.T) {
 		s string
 		c int
 	}{
-		{"linkerd-controller-api", 7},
 		{"linkerd-destination", 1},
 		{"linkerd-dst", 6},
 		{"linkerd-dst-headless", 3},
 		{"linkerd-identity", 3},
 		{"linkerd-identity-headless", 1},
-
-		{"POST /api/v1/ListPods", 1},
-		{"POST /api/v1/", 6},
 		{"POST /io.linkerd.proxy.destination.Destination/Get", 4},
 	}
 

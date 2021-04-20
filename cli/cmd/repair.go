@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -77,11 +76,7 @@ func repair(ctx context.Context, forced bool) error {
 	// Check if the CLI version matches with that of the server
 	clientVersion := version.Version
 	var serverVersion string
-	publicClient, err := public.NewExternalClient(ctx, controlPlaneNamespace, k8sAPI)
-	if err != nil {
-		return err
-	}
-	serverVersion, err = healthcheck.GetServerVersion(ctx, publicClient)
+	serverVersion, err = healthcheck.GetServerVersion(ctx, controlPlaneNamespace, k8sAPI)
 	if err != nil {
 		return err
 	}

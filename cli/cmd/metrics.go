@@ -67,10 +67,10 @@ func newCmdMetrics() *cobra.Command {
   # Get metrics from the web deployment in the emojivoto namespace.
   linkerd diagnostics proxy-metrics -n emojivoto deploy/web
 
-  # Get metrics from the linkerd-controller pod in the linkerd namespace.
+  # Get metrics from the linkerd-destination pod in the linkerd namespace.
   linkerd diagnostics proxy-metrics -n linkerd $(
     kubectl --namespace linkerd get pod \
-      --selector linkerd.io/control-plane-component=controller \
+      --selector linkerd.io/control-plane-component=destination \
       --output name
   )`,
 		Args: cobra.ExactArgs(1),

@@ -35,8 +35,6 @@ type (
 		gatewayProbeSeconds     uint32
 		gatewayProbePort        uint32
 		namespace               string
-		gatewayNginxImage       string
-		gatewayNginxVersion     string
 		remoteMirrorCredentials bool
 		gatewayServiceType      string
 	}
@@ -162,8 +160,6 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().Uint32Var(&options.gatewayPort, "gateway-port", options.gatewayPort, "The port on the gateway used for all incoming traffic")
 	cmd.Flags().Uint32Var(&options.gatewayProbeSeconds, "gateway-probe-seconds", options.gatewayProbeSeconds, "The interval at which the gateway will be checked for being alive in seconds")
 	cmd.Flags().Uint32Var(&options.gatewayProbePort, "gateway-probe-port", options.gatewayProbePort, "The liveness check port of the gateway")
-	cmd.Flags().StringVar(&options.gatewayNginxImage, "gateway-nginx-image", options.gatewayNginxImage, "The nginx image to be used")
-	cmd.Flags().StringVar(&options.gatewayNginxVersion, "gateway-nginx-image-version", options.gatewayNginxVersion, "The version of nginx to be used")
 	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "service-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the service account which can be used by service mirror components in source clusters to discover exported services")
 	cmd.Flags().StringVar(&options.gatewayServiceType, "gateway-service-type", options.gatewayServiceType, "Overwrite Service type for gateway service")
 	cmd.Flags().DurationVar(&wait, "wait", 300*time.Second, "Wait for core control-plane components to be available")
@@ -194,8 +190,6 @@ func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, er
 		gatewayProbeSeconds:     defaults.GatewayProbeSeconds,
 		gatewayProbePort:        defaults.GatewayProbePort,
 		namespace:               defaults.Namespace,
-		gatewayNginxImage:       defaults.GatewayNginxImage,
-		gatewayNginxVersion:     defaults.GatewayNginxImageVersion,
 		remoteMirrorCredentials: true,
 		gatewayServiceType:      defaults.GatewayServiceType,
 	}, nil
@@ -229,8 +223,6 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 	defaults.GatewayPort = opts.gatewayPort
 	defaults.GatewayProbeSeconds = opts.gatewayProbeSeconds
 	defaults.GatewayProbePort = opts.gatewayProbePort
-	defaults.GatewayNginxImage = opts.gatewayNginxImage
-	defaults.GatewayNginxImageVersion = opts.gatewayNginxVersion
 	defaults.IdentityTrustDomain = values.IdentityTrustDomain
 	defaults.LinkerdNamespace = controlPlaneNamespace
 	defaults.ProxyOutboundPort = uint32(values.Proxy.Ports.Outbound)
