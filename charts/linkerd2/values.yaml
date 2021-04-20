@@ -119,7 +119,7 @@ proxyInit:
     # @default -- imagePullPolicy
     pullPolicy: ""
     # -- Tag for the proxy-init container Docker image
-    version: v1.3.9
+    version: v1.3.11
   resources:
     cpu:
       # -- Maximum amount of CPU units that the proxy-init container can use
@@ -149,8 +149,7 @@ omitWebhookSideEffects: false
 webhookFailurePolicy: Ignore
 
 
-# controllerImage -- Docker image for the controller and identity
-# components
+# controllerImage -- Docker image for the destination and identity components
 controllerImage: cr.l5d.io/linkerd/controller
 # -- Number of replicas for each control plane pod
 controllerReplicas: 1
@@ -211,7 +210,7 @@ identity:
 # disableHeartBeat -- Set to true to not start the heartbeat cronjob
 disableHeartBeat: false
 # -- Config for the heartbeat cronjob
-heartbeatSchedule: "0 0 * * *"
+# heartbeatSchedule: "0 0 * * *"
 
 # proxy injector configuration
 proxyInjector:
@@ -274,17 +273,6 @@ profileValidator:
 # -|- CPU and Memory resources required by the SP validator (see
 #`proxy.resources` for sub-fields)
 #spValidatorResources:
-# -|- CPU and Memory resources required by proxy injected into the SP validator
-#pod (see `proxy.resources` for sub-fields)
-#spValidatorProxyResources:
-
-# -|- CPU and Memory resources required by controllers publicAPI (see
-#`proxy.resources` for sub-fields)
-#publicAPIResources:
-#-|- CPU and Memory resources required by proxy injected into controllers public
-#API pod (see `proxy.resources` for sub-fields) values
-#`proxy.resources`
-#publicAPIProxyResources:
 
 # If the namespace is controlled by an external tool or can't be installed with Helm
 # you can disable its installation. In this case:

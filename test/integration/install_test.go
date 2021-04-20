@@ -36,7 +36,6 @@ var (
 	helmTLSCerts *tls.CA
 
 	linkerdSvcEdge = []testutil.Service{
-		{Namespace: "linkerd", Name: "linkerd-controller-api"},
 		{Namespace: "linkerd", Name: "linkerd-dst"},
 		{Namespace: "linkerd-viz", Name: "grafana"},
 		{Namespace: "linkerd", Name: "linkerd-identity"},
@@ -136,10 +135,6 @@ func TestUpgradeTestAppWorksBeforeUpgrade(t *testing.T) {
 				} else {
 					testutil.AnnotatedError(t, "CheckPods timed-out", err)
 				}
-			}
-
-			if err := TestHelper.CheckDeployment(ctx, testAppNamespace, deploy, 1); err != nil {
-				testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
 			}
 		}
 
@@ -257,6 +252,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"--controller-log-level", "debug",
 			"--proxy-version", TestHelper.GetVersion(),
 			"--skip-inbound-ports", skippedInboundPorts,
+			"--set", "heartbeatSchedule=1 2 3 4 5",
 		}
 		vizCmd  = []string{"viz", "install"}
 		vizArgs = []string{
@@ -465,8 +461,8 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 }
 
 // These need to be updated (if there are changes) once a new stable is released
-func helmOverridesStable(root *tls.CA) []string {
-	return []string{
+func helmOverridesStable(root *tls.CA) ([]string, []string) {
+	coreArgs := []string{
 		"--set", "controllerLogLevel=debug",
 		"--set", "linkerdVersion=" + TestHelper.UpgradeHelmFromVersion(),
 		"--set", "proxy.image.version=" + TestHelper.UpgradeHelmFromVersion(),
@@ -476,12 +472,17 @@ func helmOverridesStable(root *tls.CA) []string {
 		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
 		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
 	}
+	vizArgs := []string{
+		"--set", "linkerdVersion=" + TestHelper.UpgradeHelmFromVersion(),
+		"--set", "namespace=" + TestHelper.GetVizNamespace(),
+	}
+	return coreArgs, vizArgs
 }
 
 // These need to correspond to the flags in the current edge
-func helmOverridesEdge(root *tls.CA) []string {
+func helmOverridesEdge(root *tls.CA) ([]string, []string) {
 	skippedInboundPortsEscaped := strings.Replace(skippedInboundPorts, ",", "\\,", 1)
-	return []string{
+	coreArgs := []string{
 		"--set", "controllerLogLevel=debug",
 		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
 		// these ports will get verified in test/integration/inject
@@ -491,6 +492,11 @@ func helmOverridesEdge(root *tls.CA) []string {
 		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
 		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
 	}
+	vizArgs := []string{
+		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
+		"--set", "namespace=" + TestHelper.GetVizNamespace(),
+	}
+	return coreArgs, vizArgs
 }
 
 func TestInstallHelm(t *testing.T) {
@@ -507,14 +513,18 @@ func TestInstallHelm(t *testing.T) {
 	}
 
 	var chartToInstall string
+	var vizChartToInstall string
 	var args []string
+	var vizArgs []string
 
 	if TestHelper.UpgradeHelmFromVersion() != "" {
 		chartToInstall = TestHelper.GetHelmStableChart()
-		args = helmOverridesStable(helmTLSCerts)
+		vizChartToInstall = TestHelper.GetLinkerdVizHelmStableChart()
+		args, vizArgs = helmOverridesStable(helmTLSCerts)
 	} else {
 		chartToInstall = TestHelper.GetHelmChart()
-		args = helmOverridesEdge(helmTLSCerts)
+		vizChartToInstall = TestHelper.GetLinkerdVizHelmChart()
+		args, vizArgs = helmOverridesEdge(helmTLSCerts)
 	}
 
 	if stdout, stderr, err := TestHelper.HelmInstall(chartToInstall, args...); err != nil {
@@ -524,12 +534,7 @@ func TestInstallHelm(t *testing.T) {
 
 	TestHelper.WaitRollout(t)
 
-	vizChart := TestHelper.GetLinkerdVizHelmChart()
-	vizArgs := []string{
-		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
-		"--set", "namespace=" + TestHelper.GetVizNamespace(),
-	}
-	if stdout, stderr, err := TestHelper.HelmCmdPlain("install", vizChart, "l5d-viz", vizArgs...); err != nil {
+	if stdout, stderr, err := TestHelper.HelmCmdPlain("install", vizChartToInstall, "l5d-viz", vizArgs...); err != nil {
 		testutil.AnnotatedFatalf(t, "'helm install' command failed",
 			"'helm install' command failed\n%s\n%s", stdout, stderr)
 	}
@@ -540,7 +545,7 @@ func TestControlPlaneResourcesPostInstall(t *testing.T) {
 	expectedDeployments := testutil.LinkerdDeployReplicasEdge
 	if !TestHelper.ExternalPrometheus() {
 		expectedServices = append(expectedServices, testutil.Service{Namespace: "linkerd-viz", Name: "prometheus"})
-		expectedDeployments["prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1, Containers: []string{}}
+		expectedDeployments["prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1}
 	}
 
 	// Upgrade Case
@@ -612,27 +617,24 @@ func TestUpgradeHelm(t *testing.T) {
 		"--set", "proxy.resources.memory.limit=200Mi",
 		"--set", "proxy.resources.memory.request=100Mi",
 		// actually sets the value for the controller pod
-		"--set", "publicAPIProxyResources.cpu.limit=1010m",
-		"--set", "publicAPIProxyResources.memory.request=101Mi",
 		"--set", "destinationProxyResources.cpu.limit=1020m",
 		"--set", "destinationProxyResources.memory.request=102Mi",
 		"--set", "identityProxyResources.cpu.limit=1040m",
 		"--set", "identityProxyResources.memory.request=104Mi",
 		"--set", "proxyInjectorProxyResources.cpu.limit=1060m",
 		"--set", "proxyInjectorProxyResources.memory.request=106Mi",
-		"--set", "spValidatorProxyResources.cpu.limit=1080m",
-		"--set", "spValidatorProxyResources.memory.request=108Mi",
 		"--atomic",
 		"--wait",
 	}
-	args = append(args, helmOverridesEdge(helmTLSCerts)...)
+	extraArgs, extraVizArgs := helmOverridesEdge(helmTLSCerts)
+	args = append(args, extraArgs...)
 	if stdout, stderr, err := TestHelper.HelmUpgrade(TestHelper.GetHelmChart(), args...); err != nil {
 		testutil.AnnotatedFatalf(t, "'helm upgrade' command failed",
 			"'helm upgrade' command failed\n%s\n%s", stdout, stderr)
 	}
 
 	vizChart := TestHelper.GetLinkerdVizHelmChart()
-	vizArgs := []string{"--wait"}
+	vizArgs := append(extraVizArgs, "--wait")
 	if stdout, stderr, err := TestHelper.HelmCmdPlain("upgrade", vizChart, "l5d-viz", vizArgs...); err != nil {
 		testutil.AnnotatedFatalf(t, "'helm upgrade' command failed",
 			"'helm upgrade' command failed\n%s\n%s", stdout, stderr)
@@ -734,7 +736,7 @@ func TestOverridesSecret(t *testing.T) {
 	t.Run("Check if any unknown fields sneaked in", func(t *testing.T) {
 		knownKeys := tree.Tree{
 			"controllerLogLevel": "debug",
-			"heartbeatSchedule":  extractValue(t, "heartbeatSchedule"),
+			"heartbeatSchedule":  "1 2 3 4 5",
 			"identity": map[string]interface{}{
 				"issuer": map[string]interface{}{},
 			},
@@ -790,13 +792,6 @@ type expectedData struct {
 
 var expectedResources = []expectedData{
 	{
-		pod:        "linkerd-controller",
-		cpuLimit:   "1010m",
-		cpuRequest: "20m",
-		memLimit:   "200Mi",
-		memRequest: "101Mi",
-	},
-	{
 		pod:        "linkerd-destination",
 		cpuLimit:   "1020m",
 		cpuRequest: "20m",
@@ -816,13 +811,6 @@ var expectedResources = []expectedData{
 		cpuRequest: "20m",
 		memLimit:   "200Mi",
 		memRequest: "106Mi",
-	},
-	{
-		pod:        "linkerd-sp-validator",
-		cpuLimit:   "1080m",
-		cpuRequest: "20m",
-		memLimit:   "200Mi",
-		memRequest: "108Mi",
 	},
 }
 
@@ -1158,7 +1146,7 @@ func TestCheckProxy(t *testing.T) {
 func TestRestarts(t *testing.T) {
 	expectedDeployments := testutil.LinkerdDeployReplicasEdge
 	if !TestHelper.ExternalPrometheus() {
-		expectedDeployments["prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1, Containers: []string{}}
+		expectedDeployments["prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1}
 	}
 	for deploy, spec := range expectedDeployments {
 		if err := TestHelper.CheckPods(context.Background(), spec.Namespace, deploy, spec.Replicas); err != nil {

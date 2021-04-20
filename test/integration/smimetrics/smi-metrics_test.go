@@ -68,15 +68,7 @@ func TestSMIMetrics(t *testing.T) {
 		}
 	}
 
-	if err := TestHelper.CheckDeployment(ctx, testNamespace, "smi-metrics", 1); err != nil {
-		testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "error validating deployment [%s]:\n%s", "terminus", err)
-	}
-
 	testCases := []testCase{
-		{
-			name: "linkerd-controller",
-			kind: "deployments",
-		},
 		{
 			name: "linkerd-destination",
 			kind: "deployments",

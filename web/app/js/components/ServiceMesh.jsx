@@ -57,14 +57,9 @@ const getPodClassification = pod => {
 };
 
 const componentsToDeployNames = {
-  Destination: 'linkerd-controller',
-  Grafana: 'grafana',
+  Destination: 'linkerd-destination',
   Identity: 'linkerd-identity',
-  Prometheus: 'prometheus',
-  'Public API': 'linkerd-controller',
-  'Service Profile Validator': 'linkerd-sp-validator',
-  Tap: 'linkerd-tap',
-  'Web UI': 'web',
+  'Proxy Injector': 'linkerd-proxy-injector',
 };
 
 class ServiceMesh extends React.Component {
@@ -234,8 +229,7 @@ class ServiceMesh extends React.Component {
         <StatusTable
           data={components}
           statusColumnTitle="Pod Status"
-          shouldLink={false}
-          api={this.api} />
+          shouldLink={false} />
       </React.Fragment>
     );
   }

@@ -11,6 +11,7 @@ import (
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/prometheus"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/prometheus/common/model"
 )
@@ -394,7 +395,7 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			mProm := MockProm{Res: exp.promRes}
+			mProm := prometheus.MockProm{Res: exp.promRes}
 
 			fakeGrpcServer := newGrpcServer(
 				&mProm,
@@ -426,7 +427,7 @@ status:
 }
 
 // TODO: consider refactoring with expectedStatRPC.verifyPromQueries
-func verifyPromQueries(mProm *MockProm, namespace string) error {
+func verifyPromQueries(mProm *prometheus.MockProm, namespace string) error {
 	namespaceSelector := fmt.Sprintf("namespace=\"%s\"", namespace)
 	for _, element := range mProm.QueriesExecuted {
 		if strings.Contains(element, namespaceSelector) {
@@ -498,7 +499,7 @@ metadata:
 			}
 
 			fakeGrpcServer := newGrpcServer(
-				&MockProm{},
+				&prometheus.MockProm{},
 				k8sAPI,
 				"linkerd",
 				"mycluster.local",

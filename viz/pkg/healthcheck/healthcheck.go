@@ -67,9 +67,9 @@ func (hc *HealthChecker) RunChecks(observer healthcheck.CheckObserver) bool {
 
 // VizCategory returns a healthcheck.Category containing checkers
 // to verify the health of viz components
-func (hc *HealthChecker) VizCategory() healthcheck.Category {
+func (hc *HealthChecker) VizCategory() *healthcheck.Category {
 
-	return *healthcheck.NewCategory(LinkerdVizExtensionCheck, []healthcheck.Checker{
+	return healthcheck.NewCategory(LinkerdVizExtensionCheck, []healthcheck.Checker{
 		*healthcheck.NewChecker("linkerd-viz Namespace exists").
 			WithHintAnchor("l5d-viz-ns-exists").
 			Fatal().
@@ -246,9 +246,9 @@ func (hc *HealthChecker) VizCategory() healthcheck.Category {
 
 // VizDataPlaneCategory returns a healthcheck.Category containing checkers
 // to verify the data-plane metrics in prometheus and the tap injection
-func (hc *HealthChecker) VizDataPlaneCategory() healthcheck.Category {
+func (hc *HealthChecker) VizDataPlaneCategory() *healthcheck.Category {
 
-	return *healthcheck.NewCategory(LinkerdVizExtensionDataPlaneCheck, []healthcheck.Checker{
+	return healthcheck.NewCategory(LinkerdVizExtensionDataPlaneCheck, []healthcheck.Checker{
 		*healthcheck.NewChecker("data plane namespace exists").
 			WithHintAnchor("l5d-data-plane-exists").
 			Fatal().

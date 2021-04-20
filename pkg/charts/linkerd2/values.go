@@ -1,6 +1,7 @@
 package linkerd2
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
@@ -72,14 +74,10 @@ type (
 		HeartbeatResources     *Resources `json:"heartbeatResources"`
 		IdentityResources      *Resources `json:"identityResources"`
 		ProxyInjectorResources *Resources `json:"proxyInjectorResources"`
-		PublicAPIResources     *Resources `json:"publicAPIResources"`
-		SPValidatorResources   *Resources `json:"spValidatorResources"`
 
 		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
 		IdentityProxyResources      *Resources `json:"identityProxyResources"`
 		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
-		PublicAPIProxyResources     *Resources `json:"publicAPIProxyResources"`
-		SPValidatorProxyResources   *Resources `json:"spValidatorProxyResources"`
 	}
 
 	// ConfigJSONs is the JSON encoding of the Linkerd configuration
@@ -230,6 +228,18 @@ func NewValues() (*Values, error) {
 	v.ProxyContainerName = k8s.ProxyContainerName
 
 	return v, nil
+}
+
+// ValuesFromConfigMap converts the data in linkerd-config into
+// a Values struct
+func ValuesFromConfigMap(cm *corev1.ConfigMap) (*Values, error) {
+	raw, ok := cm.Data["values"]
+	if !ok {
+		return nil, errors.New("Linkerd values not found in ConfigMap")
+	}
+	v := &Values{}
+	err := yaml.Unmarshal([]byte(raw), &v)
+	return v, err
 }
 
 // MergeHAValues retrieves the default HA values and merges them into the received values

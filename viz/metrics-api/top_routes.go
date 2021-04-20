@@ -240,15 +240,16 @@ func (s *grpcServer) getRouteMetrics(ctx context.Context, req *pb.TopRoutesReque
 	groupBy := "rt_route"
 
 	queries := map[promType]string{
-		promRequests: routeReqQuery,
+		promRequests: fmt.Sprintf(routeReqQuery, reqLabels, timeWindow, groupBy),
 	}
 
 	if req.GetOutbound() != nil && req.GetNone() == nil {
 		// If this req has an Outbound, then query the actual request counts as well.
-		queries[promActualRequests] = actualRouteReqQuery
+		queries[promActualRequests] = fmt.Sprintf(actualRouteReqQuery, reqLabels, timeWindow, groupBy)
 	}
 
-	results, err := s.getPrometheusMetrics(ctx, queries, routeLatencyQuantileQuery, reqLabels, timeWindow, groupBy)
+	quantileQueries := generateQuantileQueries(routeLatencyQuantileQuery, reqLabels, timeWindow, groupBy)
+	results, err := s.getPrometheusMetrics(ctx, queries, quantileQueries)
 	if err != nil {
 		return nil, err
 	}

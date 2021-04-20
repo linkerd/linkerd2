@@ -2,16 +2,23 @@ package healthcheck
 
 import (
 	"context"
+	"fmt"
 
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 )
 
-// GetServerVersion returns the Linkerd Public API server version
-func GetServerVersion(ctx context.Context, apiClient pb.ApiClient) (string, error) {
-	rsp, err := apiClient.Version(ctx, &pb.Empty{})
+// GetServerVersion returns Linkerd's version, as set in linkerd-config
+func GetServerVersion(ctx context.Context, controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (string, error) {
+	cm, _, err := FetchLinkerdConfigMap(ctx, kubeAPI, controlPlaneNamespace)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to fetch linkerd-config: %s", err)
 	}
 
-	return rsp.GetReleaseVersion(), nil
+	values, err := linkerd2.ValuesFromConfigMap(cm)
+	if err != nil {
+		return "", fmt.Errorf("failed to load values from linkerd-config: %s", err)
+	}
+
+	return values.LinkerdVersion, nil
 }

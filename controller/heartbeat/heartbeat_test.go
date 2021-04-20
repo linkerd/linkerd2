@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/prometheus/common/model"
 )
 
@@ -135,7 +135,7 @@ func TestPromValues(t *testing.T) {
 	for i, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			v := PromValues(&public.MockProm{Res: tc.promRes}, tc.namespace)
+			v := PromValues(&prometheus.MockProm{Res: tc.promRes}, tc.namespace)
 			if !reflect.DeepEqual(v, tc.expected) {
 				t.Fatalf("PromValues returned: %+v, expected: %+v", v, tc.expected)
 			}

@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/api/public"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
@@ -106,12 +105,6 @@ const (
 	// checks must be added first.
 	LinkerdControlPlaneExistenceChecks CategoryID = "linkerd-existence"
 
-	// LinkerdAPIChecks adds a series of checks to validate that the control plane
-	// is successfully serving the public API.
-	// These checks are dependent on the output of KubernetesAPIChecks, so those
-	// checks must be added first.
-	LinkerdAPIChecks CategoryID = "linkerd-api"
-
 	// LinkerdVersionChecks adds a series of checks to query for the latest
 	// version, and validate the CLI is up to date.
 	LinkerdVersionChecks CategoryID = "linkerd-version"
@@ -119,17 +112,16 @@ const (
 	// LinkerdControlPlaneVersionChecks adds a series of checks to validate that
 	// the control plane is running the latest available version.
 	// These checks are dependent on the following:
-	// 1) `apiClient` from LinkerdControlPlaneExistenceChecks
-	// 2) `latestVersions` from LinkerdVersionChecks
-	// 3) `serverVersion` from `LinkerdControlPlaneExistenceChecks`
+	// 1) `latestVersions` from LinkerdVersionChecks
+	// 2) `serverVersion` from `LinkerdControlPlaneExistenceChecks`
 	LinkerdControlPlaneVersionChecks CategoryID = "control-plane-version"
 
-	// LinkerdDataPlaneChecks adds data plane checks to validate that the data
-	// plane namespace exists, and that the proxy containers are in a ready
-	// state and running the latest available version.
-	// These checks are dependent on the output of KubernetesAPIChecks,
-	// `apiClient` from LinkerdControlPlaneExistenceChecks, and `latestVersions`
-	// from LinkerdVersionChecks, so those checks must be added first.
+	// LinkerdDataPlaneChecks adds data plane checks to validate that the
+	// data plane namespace exists, and that the proxy containers are in a
+	// ready state and running the latest available version.  These checks
+	// are dependent on the output of KubernetesAPIChecks and
+	// `latestVersions` from LinkerdVersionChecks, so those checks must be
+	// added first.
 	LinkerdDataPlaneChecks CategoryID = "linkerd-data-plane"
 
 	// LinkerdHAChecks adds checks to validate that the HA configuration
@@ -160,10 +152,10 @@ const (
 	keyKeyName                    = "tls.key"
 )
 
-// HintBaseURL is the base URL on the linkerd.io website that all check hints
+// DefaultHintBaseURL is the base URL on the linkerd.io website that all check hints
 // point to. Each check adds its own `hintAnchor` to specify a location on the
 // page.
-const HintBaseURL = "https://linkerd.io/checks/#"
+const DefaultHintBaseURL = "https://linkerd.io/checks/#"
 
 // AllowedClockSkew sets the allowed skew in clock synchronization
 // between the system running inject command and the node(s), being
@@ -174,22 +166,18 @@ const HintBaseURL = "https://linkerd.io/checks/#"
 const AllowedClockSkew = 5*time.Minute + tls.DefaultClockSkewAllowance
 
 var linkerdHAControlPlaneComponents = []string{
-	"linkerd-controller",
 	"linkerd-destination",
 	"linkerd-identity",
 	"linkerd-proxy-injector",
-	"linkerd-sp-validator",
 }
 
 // ExpectedServiceAccountNames is a list of the service accounts that a healthy
 // Linkerd installation should have. Note that linkerd-heartbeat is optional,
 // so it doesn't appear here.
 var ExpectedServiceAccountNames = []string{
-	"linkerd-controller",
 	"linkerd-destination",
 	"linkerd-identity",
 	"linkerd-proxy-injector",
-	"linkerd-sp-validator",
 }
 
 var (
@@ -355,7 +343,7 @@ func (c *Checker) WithCheck(check func(context.Context) error) *Checker {
 type CheckResult struct {
 	Category    CategoryID
 	Description string
-	HintAnchor  string
+	HintURL     string
 	Retry       bool
 	Warning     bool
 	Err         error
@@ -369,15 +357,26 @@ type Category struct {
 	ID       CategoryID
 	checkers []Checker
 	enabled  bool
+	// hintBaseURL provides a base URL with more information
+	// about the check
+	hintBaseURL string
 }
 
 // NewCategory returns an instance of Category with the specified data
+// and the DefaultHintBaseURL
 func NewCategory(id CategoryID, checkers []Checker, enabled bool) *Category {
 	return &Category{
-		ID:       id,
-		checkers: checkers,
-		enabled:  enabled,
+		ID:          id,
+		checkers:    checkers,
+		enabled:     enabled,
+		hintBaseURL: DefaultHintBaseURL,
 	}
+}
+
+// WithHintBaseURL returns a Category with the provided hintBaseURL
+func (c *Category) WithHintBaseURL(hintBaseURL string) *Category {
+	c.hintBaseURL = hintBaseURL
+	return c
 }
 
 // Options specifies configuration for a HealthChecker.
@@ -399,14 +398,13 @@ type Options struct {
 // HealthChecker encapsulates all health check checkers, and clients required to
 // perform those checks.
 type HealthChecker struct {
-	categories []Category
+	categories []*Category
 	*Options
 
 	// these fields are set in the process of running checks
 	kubeAPI          *k8s.KubernetesAPI
 	kubeVersion      *k8sVersion.Info
 	controlPlanePods []corev1.Pod
-	apiClient        public.Client
 	latestVersions   version.Channels
 	serverVersion    string
 	linkerdConfig    *l5dcharts.Values
@@ -474,13 +472,13 @@ func (hc *HealthChecker) InitializeLinkerdGlobalConfig(ctx context.Context) erro
 }
 
 // AppendCategories returns a HealthChecker instance appending the provided Categories
-func (hc *HealthChecker) AppendCategories(categories ...Category) *HealthChecker {
+func (hc *HealthChecker) AppendCategories(categories ...*Category) *HealthChecker {
 	hc.categories = append(hc.categories, categories...)
 	return hc
 }
 
 // GetCategories returns all the categories
-func (hc *HealthChecker) GetCategories() []Category {
+func (hc *HealthChecker) GetCategories() []*Category {
 	return hc.categories
 }
 
@@ -495,11 +493,11 @@ func (hc *HealthChecker) GetCategories() []Category {
 // Note that all checks should include a `hintAnchor` with a corresponding section
 // in the linkerd check faq:
 // https://linkerd.io/checks/#
-func (hc *HealthChecker) allCategories() []Category {
-	return []Category{
-		{
-			ID: KubernetesAPIChecks,
-			checkers: []Checker{
+func (hc *HealthChecker) allCategories() []*Category {
+	return []*Category{
+		NewCategory(
+			KubernetesAPIChecks,
+			[]Checker{
 				{
 					description: "can initialize the client",
 					hintAnchor:  "k8s-api",
@@ -519,10 +517,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: KubernetesVersionChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			KubernetesVersionChecks,
+			[]Checker{
 				{
 					description: "is running the minimum Kubernetes API version",
 					hintAnchor:  "k8s-version",
@@ -538,10 +537,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdPreInstallChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdPreInstallChecks,
+			[]Checker{
 				{
 					description: "control plane namespace does not already exist",
 					hintAnchor:  "pre-ns",
@@ -621,10 +621,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdPreInstallCapabilityChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdPreInstallCapabilityChecks,
+			[]Checker{
 				{
 					description: "has NET_ADMIN capability",
 					hintAnchor:  "pre-k8s-cluster-net-admin",
@@ -642,10 +643,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdPreInstallGlobalResourcesChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdPreInstallGlobalResourcesChecks,
+			[]Checker{
 				{
 					description: "no ClusterRoles exist",
 					hintAnchor:  "pre-l5d-existence",
@@ -689,10 +691,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdControlPlaneExistenceChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdControlPlaneExistenceChecks,
+			[]Checker{
 				{
 					description: "'linkerd-config' config map exists",
 					hintAnchor:  "l5d-existence-linkerd-config",
@@ -743,28 +746,26 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 				{
-					description:         "controller pod is running",
-					hintAnchor:          "l5d-existence-controller",
+					description:         "control plane pods are ready",
+					hintAnchor:          "l5d-api-control-ready",
 					retryDeadline:       hc.RetryDeadline,
 					surfaceErrorOnRetry: true,
 					fatal:               true,
 					check: func(ctx context.Context) error {
-						// save this into hc.controlPlanePods, since this check only
-						// succeeds when all pods are up
 						var err error
 						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.ControlPlaneNamespace)
 						if err != nil {
 							return err
 						}
-
-						return checkContainerRunning(hc.controlPlanePods, "controller")
+						return validateControlPlanePods(hc.controlPlanePods)
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdConfigChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdConfigChecks,
+			[]Checker{
 				{
 					description: "control plane Namespace exists",
 					hintAnchor:  "l5d-existence-ns",
@@ -830,10 +831,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdCNIPluginChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdCNIPluginChecks,
+			[]Checker{
 				{
 					description: "cni plugin ConfigMap exists",
 					hintAnchor:  "cni-plugin-cm-exists",
@@ -975,10 +977,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdIdentity,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdIdentity,
+			[]Checker{
 				{
 					description: "certificate config is valid",
 					hintAnchor:  "l5d-identity-cert-config-valid",
@@ -1081,10 +1084,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdWebhooksAndAPISvcTLS,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdWebhooksAndAPISvcTLS,
+			[]Checker{
 				{
 					description: "proxy-injector webhook has valid cert",
 					hintAnchor:  "l5d-proxy-injector-webhook-cert-valid",
@@ -1159,10 +1163,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdIdentityDataPlane,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdIdentityDataPlane,
+			[]Checker{
 				{
 					description: "data plane proxies certificate match CA",
 					hintAnchor:  "l5d-identity-data-plane-proxies-certs-match-ca",
@@ -1172,53 +1177,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdAPIChecks,
-			checkers: []Checker{
-				{
-					description:         "control plane pods are ready",
-					hintAnchor:          "l5d-api-control-ready",
-					retryDeadline:       hc.RetryDeadline,
-					surfaceErrorOnRetry: true,
-					fatal:               true,
-					check: func(ctx context.Context) error {
-						var err error
-						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.ControlPlaneNamespace)
-						if err != nil {
-							return err
-						}
-						return validateControlPlanePods(hc.controlPlanePods)
-					},
-				},
-				{
-					description: "can initialize the client",
-					hintAnchor:  "l5d-api-control-client",
-					fatal:       true,
-					check: func(ctx context.Context) (err error) {
-						if hc.APIAddr != "" {
-							hc.apiClient, err = public.NewInternalClient(hc.ControlPlaneNamespace, hc.APIAddr)
-						} else {
-							hc.apiClient, err = public.NewExternalClient(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
-						}
-						return
-					},
-				},
-				{
-					description:   "can query the control plane API",
-					hintAnchor:    "l5d-api-control-api",
-					retryDeadline: hc.RetryDeadline,
-					fatal:         true,
-					check: func(ctx context.Context) (err error) {
-						hc.serverVersion, err = GetServerVersion(ctx, hc.apiClient)
-						return
-					},
-				},
-			},
-		},
-		{
-			ID: LinkerdVersionChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdVersionChecks,
+			[]Checker{
 				{
 					description: "can determine the latest version",
 					hintAnchor:  "l5d-version-latest",
@@ -1245,10 +1208,21 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdControlPlaneVersionChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdControlPlaneVersionChecks,
+			[]Checker{
+				{
+					description:   "can retrieve the control plane version",
+					hintAnchor:    "l5d-version-control",
+					retryDeadline: hc.RetryDeadline,
+					fatal:         true,
+					check: func(ctx context.Context) (err error) {
+						hc.serverVersion, err = GetServerVersion(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
+						return
+					},
+				},
 				{
 					description: "control plane is up-to-date",
 					hintAnchor:  "l5d-version-control",
@@ -1269,10 +1243,11 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
-		{
-			ID: LinkerdDataPlaneChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdDataPlaneChecks,
+			[]Checker{
 				{
 					description: "data plane namespace exists",
 					hintAnchor:  "l5d-data-plane-exists",
@@ -1342,11 +1317,51 @@ func (hc *HealthChecker) allCategories() []Category {
 						return nil
 					},
 				},
+				{
+					description: "data plane pod labels are configured correctly",
+					hintAnchor:  "l5d-data-plane-pod-labels",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						pods, err := hc.GetDataPlanePods(ctx)
+						if err != nil {
+							return err
+						}
+
+						return checkMisconfiguredPodsLabels(pods)
+					},
+				},
+				{
+					description: "data plane service labels are configured correctly",
+					hintAnchor:  "l5d-data-plane-services-labels",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						services, err := hc.GetServices(ctx)
+						if err != nil {
+							return err
+						}
+
+						return checkMisconfiguredServiceLabels(services)
+					},
+				},
+				{
+					description: "data plane service annotations are configured correctly",
+					hintAnchor:  "l5d-data-plane-services-annotations",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						services, err := hc.GetServices(ctx)
+						if err != nil {
+							return err
+						}
+
+						return checkMisconfiguredServiceAnnotations(services)
+					},
+				},
 			},
-		},
-		{
-			ID: LinkerdHAChecks,
-			checkers: []Checker{
+			false,
+		),
+		NewCategory(
+			LinkerdHAChecks,
+			[]Checker{
 				{
 					description: "pod injection disabled on kube-system",
 					hintAnchor:  "l5d-injection-disabled",
@@ -1375,7 +1390,8 @@ func (hc *HealthChecker) allCategories() []Category {
 					},
 				},
 			},
-		},
+			false,
+		),
 	}
 }
 
@@ -1483,7 +1499,7 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 			for _, checker := range c.checkers {
 				checker := checker // pin
 				if checker.check != nil {
-					if !hc.runCheck(c.ID, &checker, observer) {
+					if !hc.runCheck(c, &checker, observer) {
 						if !checker.warning {
 							success = false
 						}
@@ -1504,7 +1520,7 @@ func (hc *HealthChecker) LinkerdConfig() *l5dcharts.Values {
 	return hc.linkerdConfig
 }
 
-func (hc *HealthChecker) runCheck(categoryID CategoryID, c *Checker, observer CheckObserver) bool {
+func (hc *HealthChecker) runCheck(category *Category, c *Checker, observer CheckObserver) bool {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 		defer cancel()
@@ -1515,15 +1531,15 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *Checker, observer Ch
 		}
 
 		checkResult := &CheckResult{
-			Category:    categoryID,
+			Category:    category.ID,
 			Description: c.description,
-			HintAnchor:  c.hintAnchor,
 			Warning:     c.warning,
+			HintURL:     fmt.Sprintf("%s%s", category.hintBaseURL, c.hintAnchor),
 		}
 		if vs, ok := err.(*VerboseSuccess); ok {
 			checkResult.Description = fmt.Sprintf("%s\n%s", checkResult.Description, vs.Message)
 		} else if err != nil {
-			checkResult.Err = &CategoryError{categoryID, err}
+			checkResult.Err = &CategoryError{category.ID, err}
 		}
 
 		if checkResult.Err != nil && time.Now().Before(c.retryDeadline) {
@@ -1551,13 +1567,6 @@ func (hc *HealthChecker) controlPlaneComponentsSelector() string {
 // only configured if the KubernetesAPIChecks are configured and run first.
 func (hc *HealthChecker) KubeAPIClient() *k8s.KubernetesAPI {
 	return hc.kubeAPI
-}
-
-// PublicAPIClient returns a fully configured public API client. This client is
-// only configured if the KubernetesAPIChecks and LinkerdAPIChecks are
-// configured and run first.
-func (hc *HealthChecker) PublicAPIClient() public.Client {
-	return hc.apiClient
 }
 
 // LatestVersions returns the latest versions from Linkerd release channels
@@ -1764,10 +1773,8 @@ func (hc *HealthChecker) CheckNamespace(ctx context.Context, namespace string, s
 
 func (hc *HealthChecker) expectedRBACNames() []string {
 	return []string{
-		fmt.Sprintf("linkerd-%s-controller", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-identity", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-proxy-injector", hc.ControlPlaneNamespace),
-		fmt.Sprintf("linkerd-%s-sp-validator", hc.ControlPlaneNamespace),
 	}
 }
 
@@ -2107,6 +2114,15 @@ func (hc *HealthChecker) GetDataPlanePods(ctx context.Context) ([]corev1.Pod, er
 	return podList.Items, nil
 }
 
+// GetServices returns all services within data plane namespace
+func (hc *HealthChecker) GetServices(ctx context.Context) ([]corev1.Service, error) {
+	svcList, err := hc.kubeAPI.CoreV1().Services(hc.DataPlaneNamespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return svcList.Items, nil
+}
+
 func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace(ctx context.Context) error {
 	ns, err := hc.kubeAPI.CoreV1().Namespaces().Get(ctx, "kube-system", metav1.GetOptions{})
 	if err != nil {
@@ -2326,9 +2342,6 @@ func CheckCanPerformAction(ctx context.Context, api *k8s.KubernetesAPI, verb, na
 // component =>
 //   pod name =>
 //     container statuses
-// "controller" =>
-//   "linkerd-controller-6f78cbd47-bc557" =>
-//     [destination status, public-api status, ...]
 func getPodStatuses(pods []corev1.Pod) map[string]map[string][]corev1.ContainerStatus {
 	statuses := make(map[string]map[string][]corev1.ContainerStatus)
 
@@ -2350,12 +2363,10 @@ func getPodStatuses(pods []corev1.Pod) map[string]map[string][]corev1.ContainerS
 	return statuses
 }
 
-const running = "Running"
-
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
-	names := []string{"controller", "identity", "sp-validator", "proxy-injector"}
+	names := []string{"identity", "proxy-injector"}
 
 	for _, name := range names {
 		pods, found := statuses[name]
@@ -2388,20 +2399,6 @@ func validateControlPlanePods(pods []corev1.Pod) error {
 		}
 	}
 
-	return nil
-}
-
-func checkContainerRunning(pods []corev1.Pod, container string) error {
-	statuses := getPodStatuses(pods)
-	if _, ok := statuses[container]; !ok {
-		for _, pod := range pods {
-			podStatus := k8s.GetPodStatus(pod)
-			if podStatus != running {
-				return fmt.Errorf("%s status is %s", pod.Name, podStatus)
-			}
-		}
-		return fmt.Errorf("No running pods for \"%s\"", container)
-	}
 	return nil
 }
 

@@ -31,5 +31,6 @@ FROM scratch
 COPY --from=await /tmp/linkerd-await /
 COPY LICENSE /linkerd/LICENSE
 COPY --from=golang /out/metrics-api /metrics-api
+COPY --from=golang /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 ENTRYPOINT ["/linkerd-await", "--", "/metrics-api"]

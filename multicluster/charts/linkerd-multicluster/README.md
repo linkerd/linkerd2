@@ -72,14 +72,10 @@ Kubernetes: `>=1.16.0-0`
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | gateway | bool | `true` | If the gateway component should be installed |
-| gatewayLocalProbePath | string | `"/health-local"` | The path that will be used by the local liveness checks to ensure the gateway is alive |
-| gatewayLocalProbePort | int | `8888` | The port that will be used by the local liveness checks to ensure the gateway is alive |
 | gatewayName | string | `"linkerd-gateway"` | The name of the gateway that will be installed |
-| gatewayNginxImage | string | `"nginx"` | The Nginx image |
-| gatewayNginxImageVersion | float | `1.17` | The version of the Nginx image |
 | gatewayPort | int | `4143` | The port on which all the gateway will accept incoming traffic |
-| gatewayProbePath | string | `"/health"` | The path that will be used by remote clusters for determining whether the gateway is alive |
-| gatewayProbePort | int | `4181` | The port used for liveliness probing |
+| gatewayProbePath | string | `"/ready"` | The path that will be used by remote clusters for determining whether the gateway is alive |
+| gatewayProbePort | int | `4191` | The port used for liveliness probing |
 | gatewayProbeSeconds | int | `3` | The interval (in seconds) between liveness probes |
 | gatewayServiceType | string | `"LoadBalancer"` | Service Type of gateway Service |
 | identityTrustDomain | string | `"cluster.local"` | Identity Trust Domain of the certificate authority |

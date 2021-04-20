@@ -9,6 +9,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/prometheus"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/prometheus/common/model"
 )
@@ -742,8 +743,8 @@ status:
 						`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
 						`sum(increase(response_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
 						`sum(tcp_open_connections{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}) by (namespace, pod)`,
-						`sum(increase(tcp_read_bytes_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod)`,
-						`sum(increase(tcp_write_bytes_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod)`,
+						`sum(increase(tcp_read_bytes_total{direction="inbound", namespace="emojivoto", peer="src", pod="emojivoto-1"}[1m])) by (namespace, pod)`,
+						`sum(increase(tcp_write_bytes_total{direction="inbound", namespace="emojivoto", peer="src", pod="emojivoto-1"}[1m])) by (namespace, pod)`,
 					},
 				},
 				req: &pb.StatSummaryRequest{
@@ -756,6 +757,67 @@ status:
 					},
 					TimeWindow: "1m",
 					TcpStats:   true,
+				},
+				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
+					Status:      "Running",
+					MeshedPods:  1,
+					RunningPods: 1,
+					FailedPods:  0,
+				}, true, true),
+			},
+		}
+
+		testStatSummary(t, expectations)
+	})
+
+	t.Run("Queries prometheus for outbound TCP stats if --to resource is specified", func(t *testing.T) {
+
+		expectations := []statSumExpected{
+			{
+
+				expectedStatRPC: expectedStatRPC{
+					err: nil,
+					k8sConfigs: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-1
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    linkerd.io/control-plane-ns: linkerd
+status:
+  phase: Running
+`,
+					},
+					mockPromResponse: prometheusMetric("emojivoto-1", "pod"),
+					expectedPrometheusQueries: []string{
+						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+						`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+						`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+						`sum(increase(response_total{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
+						`sum(tcp_open_connections{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}) by (namespace, pod)`,
+						`sum(increase(tcp_read_bytes_total{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", peer="dst", pod="emojivoto-1"}[1m])) by (namespace, pod)`,
+						`sum(increase(tcp_write_bytes_total{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", peer="dst", pod="emojivoto-1"}[1m])) by (namespace, pod)`,
+					},
+				},
+				req: &pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Name:      "emojivoto-1",
+							Namespace: "emojivoto",
+							Type:      pkgK8s.Pod,
+						},
+					},
+					TimeWindow: "1m",
+					TcpStats:   true,
+					Outbound: &pb.StatSummaryRequest_ToResource{
+						ToResource: &pb.Resource{
+							Name:      "emojivoto-2",
+							Namespace: "emojivoto",
+							Type:      pkgK8s.Pod,
+						},
+					},
 				},
 				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
 					Status:      "Running",
@@ -1413,7 +1475,7 @@ status:
 
 		for _, exp := range expectations {
 			fakeGrpcServer := newGrpcServer(
-				&MockProm{Res: exp.mockPromResponse},
+				&prometheus.MockProm{Res: exp.mockPromResponse},
 				k8sAPI,
 				"linkerd",
 				"mycluster.local",
@@ -1437,7 +1499,7 @@ status:
 			t.Fatalf("NewFakeAPI returned an error: %s", err)
 		}
 		fakeGrpcServer := newGrpcServer(
-			&MockProm{Res: model.Vector{}},
+			&prometheus.MockProm{Res: model.Vector{}},
 			k8sAPI,
 			"linkerd",
 			"mycluster.local",

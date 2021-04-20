@@ -1,27 +1,21 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
 
+	pkgCmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/k8s/resource"
 	mc "github.com/linkerd/linkerd2/pkg/multicluster"
 	"github.com/spf13/cobra"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 func newMulticlusterUninstallCommand() *cobra.Command {
-	options, err := newMulticlusterInstallOptionsWithDefault()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
-		os.Exit(1)
-	}
 
 	cmd := &cobra.Command{
 		Use:   "uninstall",
@@ -47,7 +41,7 @@ func newMulticlusterUninstallCommand() *cobra.Command {
 			}
 
 			links, err := mc.GetLinks(cmd.Context(), k8sAPI.DynamicClient)
-			if err != nil {
+			if err != nil && !kerrors.IsNotFound(err) {
 				return err
 			}
 
@@ -59,28 +53,14 @@ func newMulticlusterUninstallCommand() *cobra.Command {
 				return errors.New(strings.Join(err, "\n"))
 			}
 
-			return uninstallRunE(cmd.Context(), k8sAPI)
+			err = pkgCmd.Uninstall(cmd.Context(), k8sAPI, fmt.Sprintf("%s=%s", k8s.LinkerdExtensionLabel, MulticlusterExtensionName))
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			return nil
 		},
 	}
 
-	cmd.Flags().StringVar(&options.namespace, "namespace", options.namespace, "The namespace in which the multicluster add-on is to be installed. Must not be the control plane namespace. ")
-
 	return cmd
-}
-
-func uninstallRunE(ctx context.Context, k8sAPI *k8s.KubernetesAPI) error {
-
-	resources, err := resource.FetchKubernetesResources(ctx, k8sAPI,
-		metav1.ListOptions{LabelSelector: "linkerd.io/extension=linkerd-multicluster"},
-	)
-	if err != nil {
-		return err
-	}
-
-	for _, r := range resources {
-		if err := r.RenderResource(os.Stdout); err != nil {
-			return fmt.Errorf("error rendering Kubernetes resource: %v", err)
-		}
-	}
-	return nil
 }

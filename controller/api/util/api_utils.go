@@ -13,7 +13,7 @@ import (
 )
 
 /*
-  Shared utilities for interacting with the controller public api
+  Shared utilities for interacting with the controller APIs
 */
 
 // GRPCError generates a gRPC error code, as defined in

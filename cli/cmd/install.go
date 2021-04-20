@@ -62,24 +62,20 @@ var (
 	templatesConfigStage = []string{
 		"templates/namespace.yaml",
 		"templates/identity-rbac.yaml",
-		"templates/controller-rbac.yaml",
 		"templates/destination-rbac.yaml",
 		"templates/heartbeat-rbac.yaml",
 		"templates/serviceprofile-crd.yaml",
 		"templates/trafficsplit-crd.yaml",
 		"templates/proxy-injector-rbac.yaml",
-		"templates/sp-validator-rbac.yaml",
 		"templates/psp.yaml",
 	}
 
 	templatesControlPlaneStage = []string{
 		"templates/config.yaml",
 		"templates/identity.yaml",
-		"templates/controller.yaml",
 		"templates/destination.yaml",
 		"templates/heartbeat.yaml",
 		"templates/proxy-injector.yaml",
-		"templates/sp-validator.yaml",
 	}
 
 	ignoreCluster bool
@@ -306,9 +302,6 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 	if err != nil {
 		return err
 	}
-
-	t := time.Now().Add(10 * time.Minute).UTC()
-	values.HeartbeatSchedule = fmt.Sprintf("%d %d * * * ", t.Minute(), t.Hour())
 
 	return render(w, values, stage, options)
 }

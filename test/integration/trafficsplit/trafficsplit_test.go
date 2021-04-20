@@ -148,123 +148,154 @@ func validateExpectedTsOutput(rows map[string]*statTsRow, expectedBackendSvc, ex
 }
 
 func TestTrafficSplitCli(t *testing.T) {
-	out, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/traffic_split_application.yaml")
-	if err != nil {
-		testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
-	}
 
-	ctx := context.Background()
-	TestHelper.WithDataPlaneNamespace(ctx, "trafficsplit-test", map[string]string{}, t, func(t *testing.T, prefixedNs string) {
-		out, err = TestHelper.KubectlApply(out, prefixedNs)
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-				"'kubectl apply' command failed\n%s", out)
-		}
-
-		// wait for deployments to start
-		for _, deploy := range []string{"backend", "failing", "slow-cooker"} {
-			if err := TestHelper.CheckPods(ctx, prefixedNs, deploy, 1); err != nil {
-				if rce, ok := err.(*testutil.RestartCountError); ok {
-					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
-				} else {
-					testutil.AnnotatedError(t, "CheckPods timed-out", err)
-				}
-			}
-
-			if err := TestHelper.CheckDeployment(ctx, prefixedNs, deploy, 1); err != nil {
-				testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
-			}
-		}
-
-		t.Run("ensure traffic is sent to one backend only", func(t *testing.T) {
-			timeout := 40 * time.Second
-			err := TestHelper.RetryFor(timeout, func() error {
-
-				rows, err := statTrafficSplit("deploy/slow-cooker", prefixedNs)
-				if err != nil {
-					testutil.AnnotatedFatal(t, "error ensuring traffic is sent to one backend only", err)
-				}
-				expectedBackendSvcOutput := &statTsRow{
-					name:    "backend-traffic-split",
-					apex:    "backend-svc",
-					leaf:    "backend-svc",
-					weight:  "500m",
-					success: "100.00%",
-					rps:     "0.5rps",
-				}
-				expectedFailingSvcOutput := &statTsRow{
-					name:       "backend-traffic-split",
-					apex:       "backend-svc",
-					leaf:       "backend-svc",
-					weight:     "0",
-					success:    "-",
-					rps:        "-",
-					latencyP50: "-",
-					latencyP95: "-",
-					latencyP99: "-",
-				}
-
-				if err := validateExpectedTsOutput(rows, expectedBackendSvcOutput, expectedFailingSvcOutput); err != nil {
-					return err
-				}
-				return nil
-			})
-
+	for _, version := range []string{"v1alpha1", "v1alpha2"} {
+		// pin version variable
+		version := version
+		ctx := context.Background()
+		TestHelper.WithDataPlaneNamespace(ctx, fmt.Sprintf("trafficsplit-test-%s", version), map[string]string{}, t, func(t *testing.T, prefixedNs string) {
+			out, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/application.yaml")
 			if err != nil {
-				testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out ensuring traffic is sent to one backend only (%s)", timeout), err)
+				testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
 			}
-		})
 
-		t.Run("update traffic split resource with equal weights", func(t *testing.T) {
+			out, err = TestHelper.KubectlApply(out, prefixedNs)
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+					"'kubectl apply' command failed\n%s", out)
+			}
 
-			updatedTsResourceFile := "testdata/updated-traffic-split-leaf-weights.yaml"
-			updatedTsResource, err := testutil.ReadFile(updatedTsResourceFile)
+			TsResourceFile := fmt.Sprintf("testdata/%s/traffic-split-leaf-weights.yaml", version)
+			TsResource, err := testutil.ReadFile(TsResourceFile)
 
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "cannot read updated traffic split resource",
-					"cannot read updated traffic split resource: %s, %s", updatedTsResource, err)
+					"cannot read updated traffic split resource: %s, %s", TsResource, err)
 			}
 
-			out, err := TestHelper.KubectlApply(updatedTsResource, prefixedNs)
+			out, err = TestHelper.KubectlApply(TsResource, prefixedNs)
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "failed to update traffic split resource",
 					"failed to update traffic split resource: %s\n %s", err, out)
 			}
-		})
 
-		t.Run("ensure traffic is sent to both backends", func(t *testing.T) {
-			timeout := 40 * time.Second
-			err := TestHelper.RetryFor(timeout, func() error {
-				rows, err := statTrafficSplit("deploy/slow-cooker", prefixedNs)
+			// wait for deployments to start
+			for _, deploy := range []string{"backend", "failing", "slow-cooker"} {
+				if err := TestHelper.CheckPods(ctx, prefixedNs, deploy, 1); err != nil {
+					if rce, ok := err.(*testutil.RestartCountError); ok {
+						testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+					} else {
+						testutil.AnnotatedError(t, "CheckPods timed-out", err)
+					}
+				}
+			}
+
+			t.Run(fmt.Sprintf("ensure traffic is sent to one backend only for %s", version), func(t *testing.T) {
+				timeout := 40 * time.Second
+				err := TestHelper.RetryFor(timeout, func() error {
+
+					rows, err := statTrafficSplit("deploy/slow-cooker", prefixedNs)
+					if err != nil {
+						testutil.AnnotatedFatal(t, "error ensuring traffic is sent to one backend only", err)
+					}
+
+					var weight string
+					if version == "v1alpha1" {
+						weight = "500m"
+					} else {
+						weight = "500"
+					}
+
+					expectedBackendSvcOutput := &statTsRow{
+						name:    "backend-traffic-split",
+						apex:    "backend-svc",
+						leaf:    "backend-svc",
+						weight:  weight,
+						success: "100.00%",
+						rps:     "0.5rps",
+					}
+					expectedFailingSvcOutput := &statTsRow{
+						name:       "backend-traffic-split",
+						apex:       "backend-svc",
+						leaf:       "backend-svc",
+						weight:     "0",
+						success:    "-",
+						rps:        "-",
+						latencyP50: "-",
+						latencyP95: "-",
+						latencyP99: "-",
+					}
+
+					if err := validateExpectedTsOutput(rows, expectedBackendSvcOutput, expectedFailingSvcOutput); err != nil {
+						return err
+					}
+					return nil
+				})
+
 				if err != nil {
-					testutil.AnnotatedFatal(t, "error ensuring traffic is sent to both backends", err)
+					testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out ensuring traffic is sent to one backend only (%s)", timeout), err)
 				}
-				expectedBackendSvcOutput := &statTsRow{
-					name:    "backend-traffic-split",
-					apex:    "backend-svc",
-					leaf:    "backend-svc",
-					weight:  "500m",
-					success: "100.00%",
-					rps:     "0.5rps",
-				}
-				expectedFailingSvcOutput := &statTsRow{
-					name:    "backend-traffic-split",
-					apex:    "backend-svc",
-					leaf:    "backend-svc",
-					weight:  "500m",
-					success: "0.00%",
-					rps:     "0.5rps",
-				}
-
-				if err := validateExpectedTsOutput(rows, expectedBackendSvcOutput, expectedFailingSvcOutput); err != nil {
-					return err
-				}
-				return nil
 			})
 
-			if err != nil {
-				testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out ensuring traffic is sent to both backends (%s)", timeout), err)
-			}
+			t.Run(fmt.Sprintf("update traffic split resource with equal weights for %s", version), func(t *testing.T) {
+
+				updatedTsResourceFile := fmt.Sprintf("testdata/%s/updated-traffic-split-leaf-weights.yaml", version)
+				updatedTsResource, err := testutil.ReadFile(updatedTsResourceFile)
+
+				if err != nil {
+					testutil.AnnotatedFatalf(t, "cannot read updated traffic split resource",
+						"cannot read updated traffic split resource: %s, %s", updatedTsResource, err)
+				}
+
+				out, err := TestHelper.KubectlApply(updatedTsResource, prefixedNs)
+				if err != nil {
+					testutil.AnnotatedFatalf(t, "failed to update traffic split resource",
+						"failed to update traffic split resource: %s\n %s", err, out)
+				}
+			})
+
+			t.Run(fmt.Sprintf("ensure traffic is sent to both backends for %s", version), func(t *testing.T) {
+				timeout := 40 * time.Second
+				err := TestHelper.RetryFor(timeout, func() error {
+					rows, err := statTrafficSplit("deploy/slow-cooker", prefixedNs)
+					if err != nil {
+						testutil.AnnotatedFatal(t, "error ensuring traffic is sent to both backends", err)
+					}
+
+					var weight string
+					if version == "v1alpha1" {
+						weight = "500m"
+					} else {
+						weight = "500"
+					}
+
+					expectedBackendSvcOutput := &statTsRow{
+						name:    "backend-traffic-split",
+						apex:    "backend-svc",
+						leaf:    "backend-svc",
+						weight:  weight,
+						success: "100.00%",
+						rps:     "0.5rps",
+					}
+					expectedFailingSvcOutput := &statTsRow{
+						name:    "backend-traffic-split",
+						apex:    "backend-svc",
+						leaf:    "backend-svc",
+						weight:  weight,
+						success: "0.00%",
+						rps:     "0.5rps",
+					}
+
+					if err := validateExpectedTsOutput(rows, expectedBackendSvcOutput, expectedFailingSvcOutput); err != nil {
+						return err
+					}
+					return nil
+				})
+
+				if err != nil {
+					testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out ensuring traffic is sent to both backends (%s)", timeout), err)
+				}
+			})
 		})
-	})
+	}
 }

@@ -117,10 +117,11 @@ func (s *grpcServer) getGatewaysMetrics(ctx context.Context, req *pb.GatewaysReq
 	labels, groupBy := buildGatewaysRequestLabels(req)
 
 	promQueries := map[promType]string{
-		promGatewayAlive: gatewayAliveQuery,
+		promGatewayAlive: fmt.Sprintf(gatewayAliveQuery, labels.String(), groupBy.String()),
 	}
 
-	metricsResp, err := s.getPrometheusMetrics(ctx, promQueries, gatewayLatencyQuantileQuery, labels.String(), timeWindow, groupBy.String())
+	quantileQueries := generateQuantileQueries(gatewayLatencyQuantileQuery, labels.String(), timeWindow, groupBy.String())
+	metricsResp, err := s.getPrometheusMetrics(ctx, promQueries, quantileQueries)
 
 	if err != nil {
 		return nil, err

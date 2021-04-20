@@ -36,7 +36,7 @@ func TestNewValues(t *testing.T) {
 		WebhookFailurePolicy:         "Ignore",
 		OmitWebhookSideEffects:       false,
 		DisableHeartBeat:             false,
-		HeartbeatSchedule:            "0 0 * * *",
+		HeartbeatSchedule:            "",
 		InstallNamespace:             true,
 		Namespace:                    "linkerd",
 		ClusterDomain:                "cluster.local",
@@ -160,9 +160,7 @@ func TestNewValues(t *testing.T) {
 			},
 		}
 		expected.DestinationResources = controllerResources
-		expected.PublicAPIResources = controllerResources
 		expected.ProxyInjectorResources = controllerResources
-		expected.SPValidatorResources = controllerResources
 		expected.HeartbeatResources = controllerResources
 
 		expected.IdentityResources = &Resources{

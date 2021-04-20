@@ -47,6 +47,7 @@ type helm struct {
 	chart                   string
 	multiclusterChart       string
 	vizChart                string
+	vizStableChart          string
 	stableChart             string
 	releaseName             string
 	multiclusterReleaseName string
@@ -55,9 +56,8 @@ type helm struct {
 
 // DeploySpec is used to hold information about what deploys we should verify during testing
 type DeploySpec struct {
-	Namespace  string
-	Replicas   int
-	Containers []string
+	Namespace string
+	Replicas  int
 }
 
 // Service is used to hold information about a Service we should verify during testing
@@ -69,14 +69,12 @@ type Service struct {
 // LinkerdDeployReplicasEdge is a map containing the number of replicas for each Deployment and the main
 // container name, in the current code-base
 var LinkerdDeployReplicasEdge = map[string]DeploySpec{
-	"linkerd-controller":     {"linkerd", 1, []string{"public-api"}},
-	"linkerd-destination":    {"linkerd", 1, []string{"destination"}},
-	"tap":                    {"linkerd-viz", 1, []string{"tap"}},
-	"grafana":                {"linkerd-viz", 1, []string{}},
-	"linkerd-identity":       {"linkerd", 1, []string{"identity"}},
-	"linkerd-sp-validator":   {"linkerd", 1, []string{"sp-validator"}},
-	"web":                    {"linkerd-viz", 1, []string{"web"}},
-	"linkerd-proxy-injector": {"linkerd", 1, []string{"proxy-injector"}},
+	"linkerd-destination":    {"linkerd", 1},
+	"tap":                    {"linkerd-viz", 1},
+	"grafana":                {"linkerd-viz", 1},
+	"linkerd-identity":       {"linkerd", 1},
+	"web":                    {"linkerd-viz", 1},
+	"linkerd-proxy-injector": {"linkerd", 1},
 }
 
 // LinkerdDeployReplicasStable is a map containing the number of replicas for each Deployment and the main
@@ -139,7 +137,7 @@ func NewGenericTestHelper(
 // MulticlusterDeployReplicas is a map containing the number of replicas for each Deployment and the main
 // container name for multicluster components
 var MulticlusterDeployReplicas = map[string]DeploySpec{
-	"linkerd-gateway": {"linkerd-multicluster", 1, []string{"nginx"}},
+	"linkerd-gateway": {"linkerd-multicluster", 1},
 }
 
 // NewTestHelper creates a new instance of TestHelper for the current test run.
@@ -159,6 +157,7 @@ func NewTestHelper() *TestHelper {
 	helmChart := flag.String("helm-chart", "charts/linkerd2", "path to linkerd2's Helm chart")
 	multiclusterHelmChart := flag.String("multicluster-helm-chart", "charts/linkerd-multicluster", "path to linkerd2's multicluster Helm chart")
 	vizHelmChart := flag.String("viz-helm-chart", "charts/linkerd-viz", "path to linkerd2's viz extension Helm chart")
+	vizHelmStableChart := flag.String("viz-helm-stable-chart", "charts/linkerd-viz", "path to linkerd2's viz extension stable Helm chart")
 	helmStableChart := flag.String("helm-stable-chart", "linkerd/linkerd2", "path to linkerd2's stable Helm chart")
 	helmReleaseName := flag.String("helm-release", "", "install linkerd via Helm using this release name")
 	multiclusterHelmReleaseName := flag.String("multicluster-helm-release", "", "install linkerd multicluster via Helm using this release name")
@@ -209,6 +208,7 @@ func NewTestHelper() *TestHelper {
 			chart:                   *helmChart,
 			multiclusterChart:       *multiclusterHelmChart,
 			vizChart:                *vizHelmChart,
+			vizStableChart:          *vizHelmStableChart,
 			stableChart:             *helmStableChart,
 			releaseName:             *helmReleaseName,
 			multiclusterReleaseName: *multiclusterHelmReleaseName,
@@ -296,6 +296,12 @@ func (h *TestHelper) GetMulticlusterHelmChart() string {
 // GetLinkerdVizHelmChart returns the path to the Linkerd viz Helm chart
 func (h *TestHelper) GetLinkerdVizHelmChart() string {
 	return h.helm.vizChart
+}
+
+// GetLinkerdVizHelmStableChart returns the path to the Linkerd viz Helm
+// stable chart
+func (h *TestHelper) GetLinkerdVizHelmStableChart() string {
+	return h.helm.vizStableChart
 }
 
 // GetHelmStableChart returns the path to the Linkerd Helm stable chart

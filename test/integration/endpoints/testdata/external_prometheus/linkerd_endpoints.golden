@@ -9,13 +9,6 @@
   \{
     "namespace": "{{.Ns}}",
     "ip": "\d+\.\d+\.\d+\.\d+",
-    "port": 8085,
-    "pod": "linkerd\-controller\-[a-f0-9]+\-[a-z0-9]+",
-    "service": "linkerd\-controller\-api\.{{.Ns}}"
-  \},
-  \{
-    "namespace": "{{.Ns}}",
-    "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8086,
     "pod": "linkerd\-destination\-[a-f0-9]+\-[a-z0-9]+",
     "service": "linkerd\-dst\.{{.Ns}}"
@@ -33,13 +26,6 @@
     "port": 8443,
     "pod": "linkerd\-proxy\-injector-[a-f0-9]+\-[a-z0-9]+",
     "service": "linkerd\-proxy\-injector\.{{.Ns}}"
-  \},
-  \{
-    "namespace": "{{.Ns}}",
-    "ip": "\d+\.\d+\.\d+\.\d+",
-    "port": 8443,
-    "pod": "linkerd\-sp\-validator-[a-f0-9]+\-[a-z0-9]+",
-    "service": "linkerd\-sp\-validator\.{{.Ns}}"
   \},
   \{
     "namespace": "{{.VizNs}}",
