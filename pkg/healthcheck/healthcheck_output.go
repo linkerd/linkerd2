@@ -184,7 +184,7 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 	statusCounter := map[string]int{}
 	prettyPrintResults := func(result *CheckResult) {
 		if output == ShortOutput && result.Err == nil {
-			statusCounter[okStatus] += 1
+			statusCounter[okStatus]++
 			return
 		}
 
@@ -215,7 +215,7 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 				status = warnStatus
 			}
 		}
-		statusCounter[status] += 1
+		statusCounter[status]++
 
 		fmt.Fprintf(wout, "%s %s\n", status, result.Description)
 		if result.Err != nil {
