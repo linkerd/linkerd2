@@ -64,6 +64,7 @@ var (
 		k8s.ProxyIgnoreOutboundPortsAnnotation,
 		k8s.ProxyOutboundConnectTimeout,
 		k8s.ProxyInboundConnectTimeout,
+		k8s.ProxyAwait,
 	}
 	// ProxyAlphaConfigAnnotations is the list of all alpha configuration
 	// (config.alpha prefix) that can be applied to a pod or namespace.
