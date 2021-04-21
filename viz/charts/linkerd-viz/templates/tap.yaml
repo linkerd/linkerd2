@@ -55,7 +55,6 @@ spec:
   template:
     metadata:
       annotations:
-        config.linkerd.io/proxy-await: "enabled"
         {{- if empty .Values.cliVersion }}
         checksum/config: {{ include (print $.Template.BasePath "/tap-rbac.yaml") . | sha256sum }}
         {{- end }}

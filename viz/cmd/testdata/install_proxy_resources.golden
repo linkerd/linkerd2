@@ -10,6 +10,7 @@ metadata:
     linkerd.io/extension: viz
   annotations:
     linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
 ---
 ###
 ### Metrics API RBAC
@@ -459,7 +460,6 @@ spec:
   template:
     metadata:
       annotations:
-        config.linkerd.io/proxy-await: "enabled"
         checksum/config: 0d5b035f4d141dc2c13e1f89046de78fe0fb1208075734c3977400b866f2db51
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
@@ -599,7 +599,6 @@ spec:
   template:
     metadata:
       annotations:
-        config.linkerd.io/proxy-await: "enabled"
         linkerd.io/created-by: linkerd/helm dev-undefined
         config.linkerd.io/proxy-cpu-request: "500m"
         config.linkerd.io/proxy-cpu-limit: "100m"
@@ -852,7 +851,6 @@ spec:
   template:
     metadata:
       annotations:
-        config.linkerd.io/proxy-await: "enabled"
         linkerd.io/created-by: linkerd/helm dev-undefined
         config.linkerd.io/proxy-cpu-request: "500m"
         config.linkerd.io/proxy-cpu-limit: "100m"
@@ -962,7 +960,6 @@ spec:
   template:
     metadata:
       annotations:
-        config.linkerd.io/proxy-await: "enabled"
         checksum/config: 2ab0ec921e7f9cb65f62dd4f2ebb77d06827c9621f473c3a9c42ad2741603c3e
         linkerd.io/created-by: linkerd/helm dev-undefined
         config.linkerd.io/proxy-cpu-request: "500m"
@@ -1131,7 +1128,6 @@ spec:
   template:
     metadata:
       annotations:
-        config.linkerd.io/proxy-await: "enabled"
         checksum/config: 954486b77f49f95fc44392cf8ea7672033f74102bab63103d00a61ea7895c281
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
@@ -1227,7 +1223,6 @@ spec:
   template:
     metadata:
       annotations:
-        config.linkerd.io/proxy-await: "enabled"
         linkerd.io/created-by: linkerd/helm dev-undefined
         config.linkerd.io/proxy-cpu-request: "500m"
         config.linkerd.io/proxy-cpu-limit: "100m"
