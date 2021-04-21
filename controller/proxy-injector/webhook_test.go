@@ -49,6 +49,16 @@ func confNsWithoutOpaquePorts() *inject.ResourceConfig {
 		WithNsAnnotations(map[string]string{pkgK8s.ProxyInjectAnnotation: pkgK8s.ProxyInjectEnabled})
 }
 
+func confNsWithConfigAnnotations() *inject.ResourceConfig {
+	return inject.
+		NewResourceConfig(values, inject.OriginWebhook).
+		WithNsAnnotations(map[string]string{
+			pkgK8s.ProxyInjectAnnotation:                pkgK8s.ProxyInjectEnabled,
+			pkgK8s.ProxyIgnoreOutboundPortsAnnotation:   "34567",
+			pkgK8s.ProxyWaitBeforeExitSecondsAnnotation: "300",
+			"config.linkerd.io/invalid-key":             "invalid-value",
+		})
+}
 func TestGetPodPatch(t *testing.T) {
 
 	values.Proxy.DisableIdentity = true
@@ -140,6 +150,7 @@ func TestGetPodPatch(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
+
 		expectedPatch, err := unmarshalPatch(expectedPatchBytes)
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
@@ -169,6 +180,45 @@ func TestGetPodPatch(t *testing.T) {
 				expectedPatchBytes, patchJSON)
 		}
 
+	})
+
+	t.Run("by checking pod inherits config annotations from namespace", func(t *testing.T) {
+		expectedPatchBytes, err := factory.FileContents("pod-with-ns-annotations.patch.json")
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+		expectedPatch, err := unmarshalPatch(expectedPatchBytes)
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+
+		pod, err := factory.FileContents("pod-inject-enabled.yaml")
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+		fakeReq := getFakePodReq(pod)
+		conf := confNsWithConfigAnnotations().
+			WithKind(fakeReq.Kind.Kind).
+			WithOwnerRetriever(ownerRetrieverFake)
+		_, err = conf.ParseMetaAndYAML(fakeReq.Object.Raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// The namespace has two config annotations: one valid and one invalid
+		// the pod patch should only contain the valid annotation.
+		conf.AppendNamespaceAnnotations()
+		patchJSON, err := conf.GetPodPatch(true)
+		if err != nil {
+			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
+		}
+		actualPatch, err := unmarshalPatch(patchJSON)
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+		if !reflect.DeepEqual(expectedPatch, actualPatch) {
+			t.Fatalf("The actual patch didn't match what was expected.\nExpected: %s\nActual: %s", expectedPatchBytes, patchJSON)
+		}
 	})
 
 	t.Run("by checking container spec", func(t *testing.T) {
@@ -288,7 +338,7 @@ func TestGetAnnotationPatch(t *testing.T) {
 					t.Fatal(err)
 				}
 				var patchJSON []byte
-				opaquePorts, ok := fullConf.GetOpaquePorts()
+				opaquePorts, ok := fullConf.GetConfigAnnotation(pkgK8s.ProxyOpaquePortsAnnotation)
 				if ok {
 					fullConf.AppendPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation, opaquePorts)
 					patchJSON, err = fullConf.CreateAnnotationPatch(opaquePorts)

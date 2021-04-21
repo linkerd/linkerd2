@@ -52,6 +52,7 @@ var (
 		k8s.ProxyCPULimitAnnotation,
 		k8s.ProxyCPURequestAnnotation,
 		k8s.ProxyImageAnnotation,
+		k8s.ProxyLogFormatAnnotation,
 		k8s.ProxyLogLevelAnnotation,
 		k8s.ProxyMemoryLimitAnnotation,
 		k8s.ProxyMemoryRequestAnnotation,
@@ -63,6 +64,11 @@ var (
 		k8s.ProxyIgnoreOutboundPortsAnnotation,
 		k8s.ProxyOutboundConnectTimeout,
 		k8s.ProxyInboundConnectTimeout,
+	}
+	// ProxyAlphaConfigAnnotations is the list of all alpha configuration
+	// (config.alpha prefix) that can be applied to a pod or namespace.
+	ProxyAlphaConfigAnnotations = []string{
+		k8s.ProxyWaitBeforeExitSecondsAnnotation,
 	}
 )
 
@@ -186,6 +192,29 @@ func (conf *ResourceConfig) GetOwnerRef() *metav1.OwnerReference {
 	return conf.workload.ownerRef
 }
 
+// AppendNamespaceAnnotations allows pods to inherit config specific annotations
+// from the namespace they belong to. If the namespace has a valid config key
+// that the pod does not, then it is appended to the pod's template
+func (conf *ResourceConfig) AppendNamespaceAnnotations() {
+	for _, key := range ProxyAnnotations {
+		if _, found := conf.nsAnnotations[key]; !found {
+			continue
+		}
+		if val, ok := conf.GetConfigAnnotation(key); ok {
+			conf.AppendPodAnnotation(key, val)
+		}
+	}
+
+	for _, key := range ProxyAlphaConfigAnnotations {
+		if _, found := conf.nsAnnotations[key]; !found {
+			continue
+		}
+		if val, ok := conf.GetConfigAnnotation(key); ok {
+			conf.AppendPodAnnotation(key, val)
+		}
+	}
+}
+
 // AppendPodAnnotations appends the given annotations to the pod spec in conf
 func (conf *ResourceConfig) AppendPodAnnotations(annotations map[string]string) {
 	for annotation, value := range annotations {
@@ -220,7 +249,6 @@ func (conf *ResourceConfig) ParseMetaAndYAML(bytes []byte) (*Report, error) {
 // GetOverriddenValues returns the final Values struct which is created
 // by overiding annoatated configuration on top of default Values
 func (conf *ResourceConfig) GetOverriddenValues() (*linkerd2.Values, error) {
-
 	// Make a copy of Values and mutate that
 	copyValues, err := conf.values.DeepCopy()
 	if err != nil {
@@ -306,24 +334,24 @@ func (conf *ResourceConfig) GetPodPatch(injectProxy bool) ([]byte, error) {
 	return res, nil
 }
 
-// GetOpaquePorts returns two values. The first value is the the opaque ports
-// annotation value. The second is used to decide whether or not the caller
+// GetConfigAnnotation returns two values. The first value is the the annotation
+// value for a given key. The second is used to decide whether or not the caller
 // should add the annotation. The caller should not add the annotation if the
 // resource already has its own.
-func (conf *ResourceConfig) GetOpaquePorts() (string, bool) {
-	_, ok := conf.pod.meta.Annotations[k8s.ProxyOpaquePortsAnnotation]
+func (conf *ResourceConfig) GetConfigAnnotation(annotationKey string) (string, bool) {
+	_, ok := conf.pod.meta.Annotations[annotationKey]
 	if ok {
-		log.Debugf("using pod %s %s annotation value", conf.pod.meta.Name, k8s.ProxyOpaquePortsAnnotation)
+		log.Debugf("using pod %s %s annotation value", conf.pod.meta.Name, annotationKey)
 		return "", false
 	}
-	_, ok = conf.workload.Meta.Annotations[k8s.ProxyOpaquePortsAnnotation]
+	_, ok = conf.workload.Meta.Annotations[annotationKey]
 	if ok {
-		log.Debugf("using service %s %s annotation value", conf.workload.Meta.Name, k8s.ProxyOpaquePortsAnnotation)
+		log.Debugf("using service %s %s annotation value", conf.workload.Meta.Name, annotationKey)
 		return "", false
 	}
-	annotation, ok := conf.nsAnnotations[k8s.ProxyOpaquePortsAnnotation]
+	annotation, ok := conf.nsAnnotations[annotationKey]
 	if ok {
-		log.Debugf("using namespace %s %s annotation value", conf.workload.Meta.Namespace, k8s.ProxyOpaquePortsAnnotation)
+		log.Debugf("using namespace %s %s annotation value", conf.workload.Meta.Namespace, annotationKey)
 		return annotation, true
 	}
 	return "", false
@@ -697,11 +725,18 @@ func (conf *ResourceConfig) injectPodAnnotations(values *podPatch) {
 
 func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 	annotations := make(map[string]string)
-	for k, v := range conf.nsAnnotations {
-		annotations[k] = v
-	}
 	for k, v := range conf.pod.meta.Annotations {
 		annotations[k] = v
+	}
+
+	// If injecting from CLI, skip applying overrides from new annotations;
+	// overrides in this case should already be applied through flags.
+	if conf.origin != OriginCLI {
+		// Override base values inferred from current pod annotations with
+		// values from annotations that will be applied to pod after the patch.
+		for k, v := range conf.pod.annotations {
+			annotations[k] = v
+		}
 	}
 
 	if override, ok := annotations[k8s.ProxyInjectAnnotation]; ok {
