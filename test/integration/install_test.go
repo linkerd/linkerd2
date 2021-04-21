@@ -885,6 +885,8 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 		}
 	}
 
+	expected := getCheckOutput(t, golden)
+
 	timeout := time.Minute * 5
 	err := TestHelper.RetryFor(timeout, func() error {
 		if cliVersionOverride != "" {
@@ -897,29 +899,32 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 			return fmt.Errorf("'linkerd check' command failed\n%s\n%s", err, out)
 		}
 
-		err = TestHelper.ContainsOutput(out, golden)
-		if err != nil {
-			return fmt.Errorf("received unexpected output\n%s", err.Error())
+		if !strings.Contains(out, expected) {
+			return fmt.Errorf(
+				"Expected:\n%s\nActual:\n%s", expected, out)
 		}
 
 		for _, ext := range TestHelper.GetInstalledExtensions() {
 			if ext == multiclusterExtensionName {
 				// multicluster check --proxy and multicluster check have the same output
 				// so use the same golden file.
-				err = TestHelper.ContainsOutput(out, "check.multicluster.golden")
-				if err != nil {
-					return fmt.Errorf("received unexpected output\n%s", err.Error())
+				expected = getCheckOutput(t, "check.multicluster.golden")
+				if !strings.Contains(out, expected) {
+					return fmt.Errorf(
+						"Expected:\n%s\nActual:\n%s", expected, out)
 				}
 			} else if ext == vizExtensionName {
 				if stage == proxyStage {
-					err = TestHelper.ContainsOutput(out, "check.viz.proxy.golden")
-					if err != nil {
-						return fmt.Errorf("received unexpected output\n%s", err.Error())
+					expected = getCheckOutput(t, "check.viz.proxy.golden")
+					if !strings.Contains(out, expected) {
+						return fmt.Errorf(
+							"Expected:\n%s\nActual:\n%s", expected, out)
 					}
 				} else {
-					err = TestHelper.ContainsOutput(out, "check.viz.golden")
-					if err != nil {
-						return fmt.Errorf("received unexpected output\n%s", err.Error())
+					expected = getCheckOutput(t, "check.viz.golden")
+					if !strings.Contains(out, expected) {
+						return fmt.Errorf(
+							"Expected:\n%s\nActual:\n%s", expected, out)
 					}
 				}
 			}
@@ -930,6 +935,27 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 	if err != nil {
 		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd check' command timed-out (%s)", timeout), err)
 	}
+}
+
+func getCheckOutput(t *testing.T, goldenFile string) string {
+	pods, err := TestHelper.KubernetesHelper.GetPods(context.Background(), TestHelper.GetVizNamespace(), nil)
+	if err != nil {
+		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to retrieve pods: %s", err), err)
+	}
+
+	tpl := template.Must(template.ParseFiles("testdata" + "/" + goldenFile))
+	vars := struct {
+		ProxyVersionErr string
+	}{
+		healthcheck.CheckProxyVersionsUpToDate(pods, version.Channels{}).Error(),
+	}
+
+	var expected bytes.Buffer
+	if err := tpl.Execute(&expected, vars); err != nil {
+		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to parse check.viz.golden template: %s", err), err)
+	}
+
+	return expected.String()
 }
 
 // TODO: run this after a `linkerd install config`
