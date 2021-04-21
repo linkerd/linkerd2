@@ -184,6 +184,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 			checks = append(checks, healthcheck.LinkerdControlPlaneExistenceChecks)
 			checks = append(checks, healthcheck.LinkerdIdentity)
 			checks = append(checks, healthcheck.LinkerdWebhooksAndAPISvcTLS)
+			checks = append(checks, healthcheck.LinkerdControlPlaneProxyChecks)
 
 			if options.dataPlaneOnly {
 				checks = append(checks, healthcheck.LinkerdDataPlaneChecks)
