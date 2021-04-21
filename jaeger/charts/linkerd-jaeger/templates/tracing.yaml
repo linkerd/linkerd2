@@ -153,6 +153,7 @@ spec:
   template:
     metadata:
       annotations:
+        config.linkerd.io/proxy-await: "enabled"
         prometheus.io/path: /metrics
         prometheus.io/port: "14269"
         prometheus.io/scrape: "true"

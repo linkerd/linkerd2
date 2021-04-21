@@ -27,32 +27,6 @@ spec:
         linkerd.io/workload-ns: heptio-contour
     spec:
       containers:
-      - args:
-        - serve
-        - --incluster
-        command:
-        - contour
-        image: gcr.io/heptio-images/contour:master
-        imagePullPolicy: Always
-        name: contour
-      - args:
-        - --config-path /config/contour.yaml
-        - --service-cluster cluster0
-        - --service-node node0
-        - --log-level info
-        - --v2-config-only
-        command:
-        - envoy
-        image: docker.io/envoyproxy/envoy-alpine:v1.6.0
-        name: envoy
-        ports:
-        - containerPort: 8080
-          name: http
-        - containerPort: 8443
-          name: https
-        volumeMounts:
-        - mountPath: /config
-          name: contour-config
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
@@ -129,6 +103,11 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: cr.l5d.io/linkerd/proxy:test-inject-proxy-version
         imagePullPolicy: IfNotPresent
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - /usr/lib/linkerd/linkerd-await
         livenessProbe:
           httpGet:
             path: /live
@@ -153,6 +132,32 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+      - args:
+        - serve
+        - --incluster
+        command:
+        - contour
+        image: gcr.io/heptio-images/contour:master
+        imagePullPolicy: Always
+        name: contour
+      - args:
+        - --config-path /config/contour.yaml
+        - --service-cluster cluster0
+        - --service-node node0
+        - --log-level info
+        - --v2-config-only
+        command:
+        - envoy
+        image: docker.io/envoyproxy/envoy-alpine:v1.6.0
+        name: envoy
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 8443
+          name: https
+        volumeMounts:
+        - mountPath: /config
+          name: contour-config
       initContainers:
       - args:
         - bootstrap

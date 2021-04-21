@@ -478,6 +478,14 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 		overrideAnnotations[k8s.ProxyWaitBeforeExitSecondsAnnotation] = uintToString(proxy.WaitBeforeExitSeconds)
 	}
 
+	if proxy.Await != baseProxy.Await {
+		if proxy.Await {
+			overrideAnnotations[k8s.ProxyAwait] = k8s.Enabled
+		} else {
+			overrideAnnotations[k8s.ProxyAwait] = k8s.Disabled
+		}
+	}
+
 	// Set fields that can't be converted into annotations
 	values.Namespace = controlPlaneNamespace
 

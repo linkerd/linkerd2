@@ -59,7 +59,7 @@
       "emptyDir": {},
       "name": "linkerd-proxy-init-xtables-lock"
     }
-  },  
+  },
   {
     "op": "add",
     "path": "{{$prefix}}/spec/initContainers/-",
@@ -90,7 +90,11 @@
   {{- end }}
   {
     "op": "add",
+  {{- if .Values.proxy.await }}
+    "path": "{{$prefix}}/spec/containers/0",
+  {{- else }}
     "path": "{{$prefix}}/spec/containers/-",
+  {{- end }}
     "value":
       {{- include "partials.proxy" . | fromYaml | toPrettyJson | nindent 6 }}
   },

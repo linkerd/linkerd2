@@ -19,11 +19,6 @@ spec:
         linkerd.io/workload-ns: ""
     spec:
       containers:
-      - image: redis
-        name: redis
-        ports:
-        - containerPort: 6379
-          name: server
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
@@ -100,6 +95,11 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - /usr/lib/linkerd/linkerd-await
         livenessProbe:
           httpGet:
             path: /live
@@ -124,6 +124,11 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+      - image: redis
+        name: redis
+        ports:
+        - containerPort: 6379
+          name: server
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -186,11 +191,6 @@ spec:
         linkerd.io/workload-ns: ""
     spec:
       containers:
-      - image: nginx
-        name: nginx
-        ports:
-        - containerPort: 80
-          name: http
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
@@ -267,6 +267,11 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - /usr/lib/linkerd/linkerd-await
         livenessProbe:
           httpGet:
             path: /live
@@ -291,6 +296,11 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+      - image: nginx
+        name: nginx
+        ports:
+        - containerPort: 80
+          name: http
       initContainers:
       - args:
         - --incoming-proxy-port

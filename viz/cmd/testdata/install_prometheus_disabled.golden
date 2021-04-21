@@ -11,6 +11,7 @@ metadata:
   annotations:
     viz.linkerd.io/external-prometheus: external-prom.com
     linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
 ---
 ###
 ### Metrics API RBAC

@@ -10,6 +10,7 @@ metadata:
     linkerd.io/extension: viz
   annotations:
     linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
 ---
 ###
 ### Metrics API RBAC

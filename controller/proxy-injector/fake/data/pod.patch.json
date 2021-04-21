@@ -93,7 +93,7 @@
   },
   {
     "op": "add",
-    "path": "/spec/containers/-",
+    "path": "/spec/containers/0",
     "value": {
       "env": [
         {
@@ -179,6 +179,15 @@
       ],
       "image": "cr.l5d.io/linkerd/proxy:dev-undefined",
       "imagePullPolicy": "IfNotPresent",
+      "lifecycle": {
+        "postStart": {
+          "exec": {
+            "command": [
+              "/usr/lib/linkerd/linkerd-await"
+            ]
+          }
+        }
+      },
       "livenessProbe": {
         "httpGet": {
           "path": "/live",

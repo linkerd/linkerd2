@@ -17,26 +17,6 @@ spec:
         linkerd.io/workload-ns: ""
     spec:
       containers:
-      - args:
-        - terminus
-        - --grpc-server-port
-        - "9090"
-        - --response-text
-        - c1
-        image: buoyantio/bb:v0.0.6
-        name: http-to-grpc-two-replicas-c1
-        ports:
-        - containerPort: 9090
-      - args:
-        - terminus
-        - --grpc-server-port
-        - "8080"
-        - --response-text
-        - c2
-        image: buoyantio/bb:v0.0.6
-        name: http-to-grpc-two-replicas-c2
-        ports:
-        - containerPort: 9090
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
@@ -113,6 +93,11 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: cr.l5d.io/linkerd/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - /usr/lib/linkerd/linkerd-await
         livenessProbe:
           httpGet:
             path: /live
@@ -137,6 +122,26 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+      - args:
+        - terminus
+        - --grpc-server-port
+        - "9090"
+        - --response-text
+        - c1
+        image: buoyantio/bb:v0.0.6
+        name: http-to-grpc-two-replicas-c1
+        ports:
+        - containerPort: 9090
+      - args:
+        - terminus
+        - --grpc-server-port
+        - "8080"
+        - --response-text
+        - c2
+        image: buoyantio/bb:v0.0.6
+        name: http-to-grpc-two-replicas-c2
+        ports:
+        - containerPort: 9090
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -197,26 +202,6 @@ spec:
         linkerd.io/workload-ns: ""
     spec:
       containers:
-      - args:
-        - terminus
-        - --grpc-server-port
-        - "9090"
-        - --response-text
-        - c1
-        image: buoyantio/bb:v0.0.6
-        name: http-to-grpc-one-replica-c1
-        ports:
-        - containerPort: 9090
-      - args:
-        - terminus
-        - --grpc-server-port
-        - "8080"
-        - --response-text
-        - c2
-        image: buoyantio/bb:v0.0.6
-        name: http-to-grpc-one-replica-c2
-        ports:
-        - containerPort: 9090
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
@@ -293,6 +278,11 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: cr.l5d.io/linkerd/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - /usr/lib/linkerd/linkerd-await
         livenessProbe:
           httpGet:
             path: /live
@@ -317,6 +307,26 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+      - args:
+        - terminus
+        - --grpc-server-port
+        - "9090"
+        - --response-text
+        - c1
+        image: buoyantio/bb:v0.0.6
+        name: http-to-grpc-one-replica-c1
+        ports:
+        - containerPort: 9090
+      - args:
+        - terminus
+        - --grpc-server-port
+        - "8080"
+        - --response-text
+        - c2
+        image: buoyantio/bb:v0.0.6
+        name: http-to-grpc-one-replica-c2
+        ports:
+        - containerPort: 9090
       initContainers:
       - args:
         - --incoming-proxy-port

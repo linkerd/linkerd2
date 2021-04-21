@@ -83,6 +83,7 @@ func TestNewValues(t *testing.T) {
 			OutboundConnectTimeout: "1000ms",
 			InboundConnectTimeout:  "100ms",
 			OpaquePorts:            "25,443,587,3306,5432,11211",
+			Await:                  true,
 		},
 		ProxyInit: &ProxyInit{
 			Image: &Image{
