@@ -1442,7 +1442,7 @@ func CheckProxyVersionsUpToDate(pods []corev1.Pod, versions version.Channels) er
 	}
 	if len(outdatedPods) > 0 {
 		podList := strings.Join(outdatedPods, "\n")
-		return fmt.Errorf("Some data plane pods are not running the current version:\n%s", podList)
+		return fmt.Errorf("some proxies are not running the current version:\n%s", podList)
 	}
 	return nil
 }
@@ -1470,7 +1470,7 @@ func (hc *HealthChecker) CheckCertAndAnchors(cert *tls.Cred, trustAnchors []*x50
 		}
 	}
 	if len(expiredAnchors) > 0 {
-		return fmt.Errorf("Anchors not within their validity period:\n\t%s", strings.Join(expiredAnchors, "\n\t"))
+		return fmt.Errorf("anchors not within their validity period:\n\t%s", strings.Join(expiredAnchors, "\n\t"))
 	}
 
 	// check cert validity
