@@ -267,6 +267,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				t.Fatal(err)
 			}
 
+			resourceConfig.AppendNamespaceAnnotations()
 			actual, err := resourceConfig.GetOverriddenValues()
 			if err != nil {
 				t.Fatal(err)
