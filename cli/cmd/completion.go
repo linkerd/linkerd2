@@ -32,7 +32,7 @@ func newCmdCompletion() *cobra.Command {
   echo "autoload -U compinit; compinit" >> ~/.zshrc
 
   # To load completions for each session, execute once:
-  linkerd completion zsh > "${fpath[1]}/_linkerd"
+  linkerd completion zsh > "${fpath[1]}/_linkerd" && exec $SHELL
 
   # You will need to start a new shell for this setup to take effect.
 
