@@ -52,15 +52,12 @@ func (cr CheckResults) RunChecks(observer CheckObserver) bool {
 	return success
 }
 
-// PrintCoreChecksHeader writes the core checks header if the output format is not
-// JSON. Used by the check cmd package.
-func PrintCoreChecksHeader(wout io.Writer, output string) {
-	if output != JSONOutput {
-		headerTxt := "Linkerd core checks"
-		fmt.Fprintln(wout, headerTxt)
-		fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
-		fmt.Fprintln(wout)
-	}
+// PrintCoreChecksHeader writes the core checks header.
+func PrintCoreChecksHeader(wout io.Writer) {
+	headerTxt := "Linkerd core checks"
+	fmt.Fprintln(wout, headerTxt)
+	fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
+	fmt.Fprintln(wout)
 }
 
 // RunExtensionsChecks runs checks for each extension name passed into the `extensions` parameter
@@ -78,7 +75,7 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 	spin.Writer = wout
 
 	success := true
-	for i, extension := range extensions {
+	for _, extension := range extensions {
 		var path string
 		args := append([]string{"check"}, flags...)
 		var err error
@@ -149,7 +146,7 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 			}
 		}
 
-		if output != JSONOutput && i < len(extensions) {
+		if output != JSONOutput {
 			// add a new line to space out each check output
 			fmt.Fprintln(wout)
 			if output == ShortOutput && !containsErr {
@@ -181,10 +178,8 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	spin.Writer = wout
 
-	statusCounter := map[string]int{}
 	prettyPrintResults := func(result *CheckResult) {
 		if output == ShortOutput && result.Err == nil {
-			statusCounter[okStatus]++
 			return
 		}
 
@@ -215,7 +210,6 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 				status = warnStatus
 			}
 		}
-		statusCounter[status]++
 
 		fmt.Fprintf(wout, "%s %s\n", status, result.Description)
 		if result.Err != nil {
@@ -234,11 +228,6 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 		fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
 	} else {
 		fmt.Fprintf(wout, "Status check results are %s\n", okStatus)
-	}
-
-	if output == ShortOutput {
-		fmt.Fprintf(wout, "OK: %d, WARNING: %d, FAIL: %d\n",
-			statusCounter[okStatus], statusCounter[warnStatus], statusCounter[failStatus])
 	}
 
 	return success

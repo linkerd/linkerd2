@@ -206,7 +206,10 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 		InstallManifest:       installManifest,
 	})
 
-	healthcheck.PrintCoreChecksHeader(wout, options.output)
+	if options.output != jsonOutput {
+		healthcheck.PrintCoreChecksHeader(wout)
+	}
+
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
 	extensionSuccess, err := runExtensionChecks(cmd, wout, werr, options)
