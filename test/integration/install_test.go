@@ -885,7 +885,7 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 		}
 	}
 
-	expected := getCheckOutput(t, golden)
+	expected := getCheckOutput(t, golden, TestHelper.GetLinkerdNamespace())
 
 	timeout := time.Minute * 5
 	err := TestHelper.RetryFor(timeout, func() error {
@@ -908,20 +908,20 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 			if ext == multiclusterExtensionName {
 				// multicluster check --proxy and multicluster check have the same output
 				// so use the same golden file.
-				expected = getCheckOutput(t, "check.multicluster.golden")
+				expected = getCheckOutput(t, "check.multicluster.golden", TestHelper.GetMulticlusterNamespace())
 				if !strings.Contains(out, expected) {
 					return fmt.Errorf(
 						"Expected:\n%s\nActual:\n%s", expected, out)
 				}
 			} else if ext == vizExtensionName {
 				if stage == proxyStage {
-					expected = getCheckOutput(t, "check.viz.proxy.golden")
+					expected = getCheckOutput(t, "check.viz.proxy.golden", TestHelper.GetVizNamespace())
 					if !strings.Contains(out, expected) {
 						return fmt.Errorf(
 							"Expected:\n%s\nActual:\n%s", expected, out)
 					}
 				} else {
-					expected = getCheckOutput(t, "check.viz.golden")
+					expected = getCheckOutput(t, "check.viz.golden", TestHelper.GetVizNamespace())
 					if !strings.Contains(out, expected) {
 						return fmt.Errorf(
 							"Expected:\n%s\nActual:\n%s", expected, out)
@@ -937,8 +937,8 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 	}
 }
 
-func getCheckOutput(t *testing.T, goldenFile string) string {
-	pods, err := TestHelper.KubernetesHelper.GetPods(context.Background(), TestHelper.GetVizNamespace(), nil)
+func getCheckOutput(t *testing.T, goldenFile string, namespace string) string {
+	pods, err := TestHelper.KubernetesHelper.GetPods(context.Background(), namespace, nil)
 	if err != nil {
 		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to retrieve pods: %s", err), err)
 	}
