@@ -21,7 +21,6 @@ import (
 
 const (
 	kubeSystem = "kube-system"
-	podIPIndex = "ip"
 
 	// metrics labels
 	service                = "service"
@@ -145,20 +144,6 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry, enableEndpointSlic
 			"component": "endpoints-watcher",
 		}),
 	}
-
-	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{podIPIndex: func(obj interface{}) ([]string, error) {
-		if pod, ok := obj.(*corev1.Pod); ok {
-			// Pods that run in the host network are indexed by the host IP
-			// indexer in the IP watcher; they should be skipped by the pod
-			// IP indexer which is responsible only for indexing pod network
-			// pods.
-			if pod.Spec.HostNetwork {
-				return nil, nil
-			}
-			return []string{pod.Status.PodIP}, nil
-		}
-		return []string{""}, fmt.Errorf("object is not a pod")
-	}})
 
 	k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ew.addService,
@@ -996,6 +981,19 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
 ////////////
 /// util ///
 ////////////
+
+// WithPort sets the port field in all addresses of an address set.
+func (as *AddressSet) WithPort(port Port) AddressSet {
+	wp := AddressSet{
+		Addresses: map[PodID]Address{},
+		Labels:    as.Labels,
+	}
+	for id, addr := range as.Addresses {
+		addr.Port = port
+		wp.Addresses[id] = addr
+	}
+	return wp
+}
 
 // getTargetPort returns the port specified as an argument if no service is
 // present. If the service is present and it has a port spec matching the
