@@ -209,7 +209,7 @@ func multiclusterCategory(hc *healthChecker) *healthcheck.Category {
 
 	checkers = append(checkers,
 		*healthcheck.NewChecker("multicluster extension proxies are healthy").
-			WithHintAnchor("l5d-jaeger-proxy-healthy").
+			WithHintAnchor("l5d-multicluster-proxy-healthy").
 			Fatal().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
@@ -225,7 +225,7 @@ func multiclusterCategory(hc *healthChecker) *healthcheck.Category {
 
 	checkers = append(checkers,
 		*healthcheck.NewChecker("multicluster extension proxies are up-to-date").
-			WithHintAnchor("l5d-jaeger-proxy-cp-version").
+			WithHintAnchor("l5d-multicluster-proxy-cp-version").
 			Warning().
 			WithCheck(func(ctx context.Context) error {
 				var err error
@@ -257,7 +257,7 @@ func multiclusterCategory(hc *healthChecker) *healthcheck.Category {
 
 	checkers = append(checkers,
 		*healthcheck.NewChecker("multicluster extension proxies and cli versions match").
-			WithHintAnchor("l5d-jaeger-proxy-cli-version").
+			WithHintAnchor("l5d-multicluster-proxy-cli-version").
 			Warning().
 			WithCheck(func(ctx context.Context) error {
 				var pods []corev1.Pod
