@@ -1435,9 +1435,11 @@ func (hc *HealthChecker) CheckProxyVersionsUpToDate(pods []corev1.Pod) error {
 func CheckProxyVersionsUpToDate(pods []corev1.Pod, versions version.Channels) error {
 	outdatedPods := []string{}
 	for _, pod := range pods {
-		proxyVersion := k8s.GetProxyVersion(pod)
-		if err := versions.Match(proxyVersion); err != nil {
-			outdatedPods = append(outdatedPods, fmt.Sprintf("\t* %s (%s)", pod.Name, proxyVersion))
+		if containsProxy(pod) {
+			proxyVersion := k8s.GetProxyVersion(pod)
+			if err := versions.Match(proxyVersion); err != nil {
+				outdatedPods = append(outdatedPods, fmt.Sprintf("\t* %s (%s)", pod.Name, proxyVersion))
+			}
 		}
 	}
 	if len(outdatedPods) > 0 {
