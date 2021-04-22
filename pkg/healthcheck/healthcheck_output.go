@@ -137,25 +137,9 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 				results.Results = append(results.Results, extensionResults.Results...)
 			}
 		}
-
-		var containsErr bool
-		for _, res := range results.Results {
-			if res.Err != nil {
-				containsErr = true
-				break
-			}
-		}
-
-		if output != JSONOutput {
-			// add a new line to space out each check output
-			fmt.Fprintln(wout)
-			if output == ShortOutput && !containsErr {
-				fmt.Fprintln(wout, string(results.Results[0].Category))
-				fmt.Fprintln(wout, strings.Repeat("-", len(string(results.Results[0].Category))))
-			}
-		}
-
-		extensionSuccess := RunChecks(wout, werr, results, output)
+		// add a new line to space out each check output
+		fmt.Fprintln(wout)
+		extensionSuccess := RunChecks(wout, werr, results, fmt.Sprintf("extension-%s", output))
 		if !extensionSuccess {
 			success = false
 		}
@@ -178,49 +162,64 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	spin.Writer = wout
 
+	// We set up different printing functions because we need to handle
+	// 3 check formatting output use cases:
+	//  1. the default check output in `table` format
+	//  2. the summarized output in `short` format for core checks only
+	//  3. the summarized output in `short` format for extension checks
+	//     and core checks together
 	prettyPrintResults := func(result *CheckResult) {
-		if output == ShortOutput && result.Err == nil {
-			return
-		}
+		lastCategory = printCategory(wout, lastCategory, result)
 
-		if lastCategory != result.Category {
-			if lastCategory != "" {
-				fmt.Fprintln(wout)
-			}
+		restartSpinnerOnRetry(spin, result)
 
-			fmt.Fprintln(wout, result.Category)
-			fmt.Fprintln(wout, strings.Repeat("-", len(result.Category)))
+		status := getResultStatus(result)
 
-			lastCategory = result.Category
-		}
-
-		spin.Stop()
-		if result.Retry {
-			if isatty.IsTerminal(os.Stdout.Fd()) {
-				spin.Suffix = fmt.Sprintf(" %s", result.Err)
-				spin.Color("bold") // this calls spin.Restart()
-			}
-			return
-		}
-
-		status := okStatus
-		if result.Err != nil {
-			status = failStatus
-			if result.Warning {
-				status = warnStatus
-			}
-		}
-
-		fmt.Fprintf(wout, "%s %s\n", status, result.Description)
-		if result.Err != nil {
-			fmt.Fprintf(wout, "    %s\n", result.Err)
-			if result.HintURL != "" {
-				fmt.Fprintf(wout, "    see %s for hints\n", result.HintURL)
-			}
-		}
+		printResultDescription(wout, status, result)
 	}
 
-	success := hc.RunChecks(prettyPrintResults)
+	prettyPrintResultsShort := func(result *CheckResult) {
+		// bail out early and skip printing if we've got an okStatus
+		if result.Err == nil {
+			return
+		}
+
+		lastCategory = printCategory(wout, lastCategory, result)
+
+		restartSpinnerOnRetry(spin, result)
+
+		status := getResultStatus(result)
+
+		printResultDescription(wout, status, result)
+	}
+
+	prettyPrintResultsExtensionShort := func(result *CheckResult) {
+		lastCategory = printCategory(wout, lastCategory, result)
+
+		// bail out early and skip printing if we've got an okStatus
+		// Note: we still print the category headers to show which
+		// extension check we are running.
+		if result.Err == nil {
+			return
+		}
+
+		restartSpinnerOnRetry(spin, result)
+
+		status := getResultStatus(result)
+
+		printResultDescription(wout, status, result)
+	}
+
+	var success bool
+	switch output {
+	case "short":
+		success = hc.RunChecks(prettyPrintResultsShort)
+	case "extension-short":
+		success = hc.RunChecks(prettyPrintResultsExtensionShort)
+	default:
+		success = hc.RunChecks(prettyPrintResults)
+	}
+
 	// this empty line separates final results from the checks list in the output
 	fmt.Fprintln(wout, "")
 
@@ -342,4 +341,55 @@ func parseJSONCheckOutput(data []byte) (CheckResults, error) {
 		}
 	}
 	return CheckResults{results}, nil
+}
+
+func printResultDescription(wout io.Writer, status string, result *CheckResult) {
+	fmt.Fprintf(wout, "%s %s\n", status, result.Description)
+
+	if result.Err == nil {
+		return
+	}
+
+	fmt.Fprintf(wout, "    %s\n", result.Err)
+	if result.HintURL != "" {
+		fmt.Fprintf(wout, "    see %s for hints\n", result.HintURL)
+	}
+}
+
+func getResultStatus(result *CheckResult) string {
+	status := okStatus
+	if result.Err != nil {
+		status = failStatus
+		if result.Warning {
+			status = warnStatus
+		}
+	}
+
+	return status
+}
+
+func restartSpinnerOnRetry(spin *spinner.Spinner, result *CheckResult) {
+	spin.Stop()
+	if result.Retry {
+		if isatty.IsTerminal(os.Stdout.Fd()) {
+			spin.Suffix = fmt.Sprintf(" %s", result.Err)
+			spin.Color("bold") // this calls spin.Restart()
+		}
+		return
+	}
+}
+
+func printCategory(wout io.Writer, lastCategory CategoryID, result *CheckResult) CategoryID {
+	if lastCategory == result.Category {
+		return lastCategory
+	}
+
+	if lastCategory != "" {
+		fmt.Fprintln(wout)
+	}
+
+	fmt.Fprintln(wout, result.Category)
+	fmt.Fprintln(wout, strings.Repeat("-", len(result.Category)))
+
+	return result.Category
 }
