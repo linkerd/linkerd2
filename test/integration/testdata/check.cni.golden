@@ -68,4 +68,10 @@ control-plane-version
 √ control plane is up-to-date
 √ control plane and cli versions match
 
+linkerd-control-plane-proxy
+---------------------------
+√ control plane proxies are healthy
+√ control plane proxies are up-to-date
+√ control plane proxies and cli versions match
+
 Status check results are √

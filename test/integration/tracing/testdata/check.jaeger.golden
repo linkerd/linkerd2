@@ -5,5 +5,10 @@ linkerd-jaeger
 √ collector config map exists
 √ jaeger extension pods are injected
 √ jaeger extension pods are running
+√ jaeger extension proxies are healthy
+‼ jaeger extension proxies are up-to-date
+    {{.ProxyVersionErr}}
+    see https://linkerd.io/checks/#l5d-jaeger-proxy-cp-version for hints
+√ jaeger extension proxies and cli versions match
 
 Status check results are √

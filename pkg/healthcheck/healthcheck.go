@@ -124,6 +124,10 @@ const (
 	// added first.
 	LinkerdDataPlaneChecks CategoryID = "linkerd-data-plane"
 
+	// LinkerdControlPlaneProxyChecks adds data plane checks to validate the
+	// control-plane proxies. The checkers include running and version checks
+	LinkerdControlPlaneProxyChecks CategoryID = "linkerd-control-plane-proxy"
+
 	// LinkerdHAChecks adds checks to validate that the HA configuration
 	// is correct. These checks are no ops if linkerd is not in HA mode
 	LinkerdHAChecks CategoryID = "linkerd-ha-checks"
@@ -405,7 +409,7 @@ type HealthChecker struct {
 	kubeAPI          *k8s.KubernetesAPI
 	kubeVersion      *k8sVersion.Info
 	controlPlanePods []corev1.Pod
-	latestVersions   version.Channels
+	LatestVersions   version.Channels
 	serverVersion    string
 	linkerdConfig    *l5dcharts.Values
 	uuid             string
@@ -1188,13 +1192,13 @@ func (hc *HealthChecker) allCategories() []*Category {
 					warning:     true,
 					check: func(ctx context.Context) (err error) {
 						if hc.VersionOverride != "" {
-							hc.latestVersions, err = version.NewChannels(hc.VersionOverride)
+							hc.LatestVersions, err = version.NewChannels(hc.VersionOverride)
 						} else {
 							uuid := "unknown"
 							if hc.uuid != "" {
 								uuid = hc.uuid
 							}
-							hc.latestVersions, err = version.GetLatestVersions(ctx, uuid, "cli")
+							hc.LatestVersions, err = version.GetLatestVersions(ctx, uuid, "cli")
 						}
 						return
 					},
@@ -1204,7 +1208,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					hintAnchor:  "l5d-version-cli",
 					warning:     true,
 					check: func(context.Context) error {
-						return hc.latestVersions.Match(version.Version)
+						return hc.LatestVersions.Match(version.Version)
 					},
 				},
 			},
@@ -1228,7 +1232,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					hintAnchor:  "l5d-version-control",
 					warning:     true,
 					check: func(context.Context) error {
-						return hc.latestVersions.Match(hc.serverVersion)
+						return hc.LatestVersions.Match(hc.serverVersion)
 					},
 				},
 				{
@@ -1240,6 +1244,48 @@ func (hc *HealthChecker) allCategories() []*Category {
 							return fmt.Errorf("control plane running %s but cli running %s", hc.serverVersion, version.Version)
 						}
 						return nil
+					},
+				},
+			},
+			false,
+		),
+		NewCategory(
+			LinkerdControlPlaneProxyChecks,
+			[]Checker{
+				{
+					description:         "control plane proxies are healthy",
+					hintAnchor:          "l5d-cp-proxy-healthy",
+					retryDeadline:       hc.RetryDeadline,
+					surfaceErrorOnRetry: true,
+					fatal:               true,
+					check: func(ctx context.Context) error {
+						return hc.CheckProxyHealth(ctx, hc.ControlPlaneNamespace, hc.ControlPlaneNamespace)
+					},
+				},
+				{
+					description: "control plane proxies are up-to-date",
+					hintAnchor:  "l5d-cp-proxy-version",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						podList, err := hc.kubeAPI.CoreV1().Pods(hc.ControlPlaneNamespace).List(ctx, metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
+						if err != nil {
+							return err
+						}
+
+						return hc.CheckProxyVersionsUpToDate(podList.Items)
+					},
+				},
+				{
+					description: "control plane proxies and cli versions match",
+					hintAnchor:  "l5d-cp-proxy-cli-version",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						podList, err := hc.kubeAPI.CoreV1().Pods(hc.ControlPlaneNamespace).List(ctx, metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
+						if err != nil {
+							return err
+						}
+
+						return CheckIfProxyVersionsMatchWithCLI(podList.Items)
 					},
 				},
 			},
@@ -1284,18 +1330,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 							return err
 						}
 
-						outdatedPods := []string{}
-						for _, pod := range pods {
-							proxyVersion := k8s.GetProxyVersion(pod)
-							if err = hc.latestVersions.Match(proxyVersion); err != nil {
-								outdatedPods = append(outdatedPods, fmt.Sprintf("\t* %s (%s)", pod.Name, proxyVersion))
-							}
-						}
-						if len(outdatedPods) > 0 {
-							podList := strings.Join(outdatedPods, "\n")
-							return fmt.Errorf("Some data plane pods are not running the current version:\n%s", podList)
-						}
-						return nil
+						return hc.CheckProxyVersionsUpToDate(pods)
 					},
 				},
 				{
@@ -1308,13 +1343,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 							return err
 						}
 
-						for _, pod := range pods {
-							proxyVersion := k8s.GetProxyVersion(pod)
-							if proxyVersion != version.Version {
-								return fmt.Errorf("%s running %s but cli running %s", pod.Name, proxyVersion, version.Version)
-							}
-						}
-						return nil
+						return CheckIfProxyVersionsMatchWithCLI(pods)
 					},
 				},
 				{
@@ -1395,6 +1424,41 @@ func (hc *HealthChecker) allCategories() []*Category {
 	}
 }
 
+// CheckProxyVersionsUpToDate checks if all the proxies are on the latest
+// installed version
+func (hc *HealthChecker) CheckProxyVersionsUpToDate(pods []corev1.Pod) error {
+	return CheckProxyVersionsUpToDate(pods, hc.LatestVersions)
+}
+
+// CheckProxyVersionsUpToDate checks if all the proxies are on the latest
+// installed version
+func CheckProxyVersionsUpToDate(pods []corev1.Pod, versions version.Channels) error {
+	outdatedPods := []string{}
+	for _, pod := range pods {
+		proxyVersion := k8s.GetProxyVersion(pod)
+		if err := versions.Match(proxyVersion); err != nil {
+			outdatedPods = append(outdatedPods, fmt.Sprintf("\t* %s (%s)", pod.Name, proxyVersion))
+		}
+	}
+	if len(outdatedPods) > 0 {
+		podList := strings.Join(outdatedPods, "\n")
+		return fmt.Errorf("some proxies are not running the current version:\n%s", podList)
+	}
+	return nil
+}
+
+// CheckIfProxyVersionsMatchWithCLI checks if the latest proxy version
+// matches that of the CLI
+func CheckIfProxyVersionsMatchWithCLI(pods []corev1.Pod) error {
+	for _, pod := range pods {
+		proxyVersion := k8s.GetProxyVersion(pod)
+		if proxyVersion != version.Version {
+			return fmt.Errorf("%s running %s but cli running %s", pod.Name, proxyVersion, version.Version)
+		}
+	}
+	return nil
+}
+
 // CheckCertAndAnchors checks if the given cert and anchors are valid
 func (hc *HealthChecker) CheckCertAndAnchors(cert *tls.Cred, trustAnchors []*x509.Certificate, identityName string) error {
 
@@ -1406,7 +1470,7 @@ func (hc *HealthChecker) CheckCertAndAnchors(cert *tls.Cred, trustAnchors []*x50
 		}
 	}
 	if len(expiredAnchors) > 0 {
-		return fmt.Errorf("Anchors not within their validity period:\n\t%s", strings.Join(expiredAnchors, "\n\t"))
+		return fmt.Errorf("anchors not within their validity period:\n\t%s", strings.Join(expiredAnchors, "\n\t"))
 	}
 
 	// check cert validity
@@ -1416,6 +1480,29 @@ func (hc *HealthChecker) CheckCertAndAnchors(cert *tls.Cred, trustAnchors []*x50
 
 	if err := cert.Verify(tls.CertificatesToPool(trustAnchors), identityName, time.Time{}); err != nil {
 		return fmt.Errorf("cert is not issued by the trust anchor: %s", err)
+	}
+
+	return nil
+}
+
+// CheckProxyHealth checks for the data-plane proxies health in the given namespace
+// These checks consist of status and identity
+func (hc *HealthChecker) CheckProxyHealth(ctx context.Context, controlPlaneNamespace, namespace string) error {
+	podList, err := hc.kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
+	if err != nil {
+		return err
+	}
+
+	// Validate the status of the pods
+	err = validateDataPlanePods(podList.Items, controlPlaneNamespace)
+	if err != nil {
+		return err
+	}
+
+	// Check proxy certificates
+	err = checkPodsProxiesCertificate(ctx, *hc.kubeAPI, namespace, controlPlaneNamespace)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -1569,9 +1656,9 @@ func (hc *HealthChecker) KubeAPIClient() *k8s.KubernetesAPI {
 	return hc.kubeAPI
 }
 
-// LatestVersions returns the latest versions from Linkerd release channels
-func (hc *HealthChecker) LatestVersions() version.Channels {
-	return hc.latestVersions
+// UUID returns the UUID of the installation
+func (hc *HealthChecker) UUID() string {
+	return hc.uuid
 }
 
 func (hc *HealthChecker) checkLinkerdConfigConfigMap(ctx context.Context) (string, *l5dcharts.Values, error) {
@@ -2025,12 +2112,16 @@ func GetMeshedPodsIdentityData(ctx context.Context, api kubernetes.Interface, da
 }
 
 func (hc *HealthChecker) checkDataPlaneProxiesCertificate(ctx context.Context) error {
-	meshedPods, err := GetMeshedPodsIdentityData(ctx, hc.kubeAPI.Interface, hc.DataPlaneNamespace)
+	return checkPodsProxiesCertificate(ctx, *hc.kubeAPI, hc.DataPlaneNamespace, hc.ControlPlaneNamespace)
+}
+
+func checkPodsProxiesCertificate(ctx context.Context, kubeAPI k8s.KubernetesAPI, targetNamespace, controlPlaneNamespace string) error {
+	meshedPods, err := GetMeshedPodsIdentityData(ctx, kubeAPI, targetNamespace)
 	if err != nil {
 		return err
 	}
 
-	_, values, err := FetchCurrentConfiguration(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
+	_, values, err := FetchCurrentConfiguration(ctx, kubeAPI, controlPlaneNamespace)
 	if err != nil {
 		return err
 	}
@@ -2039,7 +2130,7 @@ func (hc *HealthChecker) checkDataPlaneProxiesCertificate(ctx context.Context) e
 	offendingPods := []string{}
 	for _, pod := range meshedPods {
 		if strings.TrimSpace(pod.Anchors) != strings.TrimSpace(trustAnchorsPem) {
-			if hc.DataPlaneNamespace == "" {
+			if targetNamespace == "" {
 				offendingPods = append(offendingPods, fmt.Sprintf("* %s/%s", pod.Namespace, pod.Name))
 			} else {
 				offendingPods = append(offendingPods, fmt.Sprintf("* %s", pod.Name))

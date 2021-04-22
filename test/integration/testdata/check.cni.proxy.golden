@@ -66,6 +66,12 @@ linkerd-version
 √ can determine the latest version
 √ cli is up-to-date
 
+linkerd-control-plane-proxy
+---------------------------
+√ control plane proxies are healthy
+√ control plane proxies are up-to-date
+√ control plane proxies and cli versions match
+
 linkerd-data-plane
 ------------------
 √ data plane namespace exists

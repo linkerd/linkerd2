@@ -545,22 +545,6 @@ func (h *TestHelper) ValidateOutput(out, fixtureFile string) error {
 	return nil
 }
 
-// ContainsOutput validates that a string is a substring in the contents
-// of a file in the test's testdata directory.
-func (h *TestHelper) ContainsOutput(out, fixtureFile string) error {
-	expected, err := ReadFile("testdata/" + fixtureFile)
-	if err != nil {
-		return err
-	}
-
-	if !strings.Contains(out, expected) {
-		return fmt.Errorf(
-			"Expected:\n%s\nActual:\n%s", expected, out)
-	}
-
-	return nil
-}
-
 // CheckVersion validates the output of the "linkerd version" command.
 func (h *TestHelper) CheckVersion(serverVersion string) error {
 	out, err := h.LinkerdRun("version")

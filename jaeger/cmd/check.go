@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -26,8 +27,10 @@ var (
 )
 
 type checkOptions struct {
-	wait   time.Duration
-	output string
+	wait      time.Duration
+	output    string
+	proxy     bool
+	namespace string
 }
 
 func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
@@ -103,6 +106,57 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 				}
 
 				return healthcheck.CheckPodsRunning(pods, "")
+
+			}))
+
+	checkers = append(checkers,
+		*healthcheck.NewChecker("jaeger extension proxies are healthy").
+			WithHintAnchor("l5d-jaeger-proxy-healthy").
+			Fatal().
+			WithRetryDeadline(hc.RetryDeadline).
+			SurfaceErrorOnRetry().
+			WithCheck(func(ctx context.Context) error {
+				return hc.CheckProxyHealth(ctx, hc.ControlPlaneNamespace, jaegerNamespace)
+			}))
+
+	checkers = append(checkers,
+		*healthcheck.NewChecker("jaeger extension proxies are up-to-date").
+			WithHintAnchor("l5d-jaeger-proxy-cp-version").
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				var err error
+				if hc.VersionOverride != "" {
+					hc.LatestVersions, err = version.NewChannels(hc.VersionOverride)
+				} else {
+					uuid := "unknown"
+					if hc.UUID() != "" {
+						uuid = hc.UUID()
+					}
+					hc.LatestVersions, err = version.GetLatestVersions(ctx, uuid, "cli")
+				}
+				if err != nil {
+					return err
+				}
+
+				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, jaegerNamespace)
+				if err != nil {
+					return err
+				}
+
+				return hc.CheckProxyVersionsUpToDate(pods)
+			}))
+
+	checkers = append(checkers,
+		*healthcheck.NewChecker("jaeger extension proxies and cli versions match").
+			WithHintAnchor("l5d-jaeger-proxy-cli-version").
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, jaegerNamespace)
+				if err != nil {
+					return err
+				}
+
+				return healthcheck.CheckIfProxyVersionsMatchWithCLI(pods)
 			}))
 
 	return healthcheck.NewCategory(linkerdJaegerExtensionCheck, checkers, true)
@@ -144,10 +198,8 @@ code.`,
 
 	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
 	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
-	cmd.Flags().Bool("proxy", false, "Also run data-plane checks, to determine if the data plane is healthy")
-	cmd.Flags().StringP("namespace", "n", "", "Namespace to use for --proxy checks (default: all namespaces)")
-	cmd.Flags().MarkHidden("proxy")
-	cmd.Flags().MarkHidden("namespace")
+	cmd.Flags().BoolVar(&options.proxy, "proxy", options.proxy, "Also run data-plane checks, to determine if the data plane is healthy")
+	cmd.Flags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 
 	return cmd
 }
@@ -166,6 +218,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		ImpersonateGroup:      impersonateGroup,
 		APIAddr:               apiAddr,
 		RetryDeadline:         time.Now().Add(options.wait),
+		DataPlaneNamespace:    options.namespace,
 	})
 
 	err = hc.InitializeKubeAPIClient()

@@ -1,14 +1,18 @@
 package tracing
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
 )
 
@@ -79,9 +83,27 @@ func TestTracing(t *testing.T) {
 		if err != nil {
 			return fmt.Errorf("'linkerd jaeger check' command failed\n%s\n%s", err, out)
 		}
-		err = TestHelper.ValidateOutput(out, golden)
+
+		pods, err := TestHelper.KubernetesHelper.GetPods(context.Background(), tracingNs, nil)
 		if err != nil {
-			return fmt.Errorf("received unexpected output\n%s", err.Error())
+			testutil.AnnotatedFatal(t, fmt.Sprintf("failed to retrieve pods: %s", err), err)
+		}
+
+		tpl := template.Must(template.ParseFiles("testdata" + "/" + golden))
+		vars := struct {
+			ProxyVersionErr string
+		}{
+			healthcheck.CheckProxyVersionsUpToDate(pods, version.Channels{}).Error(),
+		}
+
+		var expected bytes.Buffer
+		if err := tpl.Execute(&expected, vars); err != nil {
+			testutil.AnnotatedFatal(t, fmt.Sprintf("failed to parse check.viz.golden template: %s", err), err)
+		}
+
+		if out != expected.String() {
+			return fmt.Errorf(
+				"Expected:\n%s\nActual:\n%s", expected.String(), out)
 		}
 		return nil
 	})
