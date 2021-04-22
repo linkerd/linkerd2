@@ -232,5 +232,9 @@ func generateAnnotationsDocs() []annotationDoc {
 			Name:        k8s.ProxyAwait,
 			Description: "The application container will not start until the proxy is ready; accepted values are `enabled` and `disabled`",
 		},
+		{
+			Name:        k8s.CloseWaitTimeoutAnnotation,
+			Description: "Sets nf_conntrack_tcp_timeout_close_wait. Accepts a duration string, e.g. `1m` or `3600s`",
+		},
 	}
 }
