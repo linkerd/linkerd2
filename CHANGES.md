@@ -1,5 +1,44 @@
 # Changes
 
+## edge-21.4.4
+
+This edge release further consolidates the control plane by removing the
+linkerd-controller deployment and moving the sp-validator container into the
+destination deployment.
+
+Annotation inheritance has been added so that all Linkerd annotations
+on a namespace resource will be inherited by pods within that namespace.
+In addition, the `config.linkerd.io/proxy-await` annotation has been added which
+enables the [linkerd-await](https://github.com/linkerd/linkerd-await)
+functionality by default, simplifying the implementation of the await behavior.
+Setting the annotation value to disabled will prevent this behavior.
+
+Some of the `linkerd check` functionality has been updated. The command
+ensures that annotations and labels are properly located in the YAML and adds
+proxy checks for the control plane and extension pods.
+
+Finally, the nginx container has been removed from the Multicluster gateway pod,
+which will impact upgrades. Please see the note below.
+
+**Upgrade note:** When the Multicluster extension is updated in both of the
+source and target clusters there won't be any downtime because this change only
+affects the readiness probe. The multicluster links must be re-generated with
+the `linkerd mc link` command and the `linkerd mc gateways` will show
+the target cluster as not alive until the `linkerd mc link` command is re-run,
+however that shouldn't affect existing endpoints pointing to the target cluster.
+
+* Added proxy checks for core control plane and extension pods
+* Added support for awaiting proxy readiness using an annotation
+* Added namespace annotation inheritance to pods
+* Removed the linkerd-controller pod
+* Moved sp-validator container into the destination deployment
+* Added check verifying that labels and annotations are not mixed up
+  (thanks @szymongib)
+* Enabled support for extra initContainers to the linkerd-cni daemonset
+  (thanks @mhulscher!)
+* Removed nginx container from multicluster gateway pod
+* Added an error message when there is nothing to uninstall
+
 ## stable-2.10.1
 
 This stable release adds CLI support for Apple Silicon M1 chips and support for
