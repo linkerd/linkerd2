@@ -127,3 +127,27 @@ spec:
         ports:
         - containerPort: 9999
       restartPolicy: OnFailure
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: slow-cooker-opaque-unmeshed-svc
+spec:
+  template:
+    metadata:
+      labels:
+        app: slow-cooker-opaque-unmeshed-svc
+    spec:
+      containers:
+      - name: slow-cooker-opaque-unmeshed-svc
+        image: buoyantio/slow_cooker:1.3.0
+        command:
+        - "/bin/sh"
+        args:
+        - "-c"
+        - |
+          sleep 15 # wait for pods to start
+          /slow_cooker/slow_cooker -qps 1 -metric-addr 0.0.0.0:9999 http://svc-opaque-unmeshed:8080
+        ports:
+        - containerPort: 9999
+      restartPolicy: OnFailure

@@ -15,15 +15,26 @@ import (
 var TestHelper *testutil.TestHelper
 
 var (
-	opaquePodApp = "opaque-pod"
-	opaquePodSC  = "slow-cooker-opaque-pod"
-	opaqueSvcApp = "opaque-service"
-	opaqueSvcSC  = "slow-cooker-opaque-service"
-	tcpMetricRE  = regexp.MustCompile(
+	opaquePodApp         = "opaque-pod"
+	opaquePodSC          = "slow-cooker-opaque-pod"
+	opaqueSvcApp         = "opaque-service"
+	opaqueSvcSC          = "slow-cooker-opaque-service"
+	opaqueUnmeshedSvcPod = "opaque-unmeshed-svc"
+	opaqueUnmeshedSvcSC  = "slow-cooker-opaque-unmeshed-svc"
+	tcpMetricRE          = regexp.MustCompile(
 		`tcp_open_total\{direction="inbound",peer="src",target_addr="[0-9\.]+:[0-9]+",tls="true",client_id="default\.linkerd-opaque-ports-test\.serviceaccount\.identity\.linkerd\.cluster\.local"\} [0-9]+`,
+	)
+	tcpMetricUnmeshedRE = regexp.MustCompile(
+		`tcp_open_total\{direction="inbound",peer="src",target_addr="[0-9\.]+:[0-9]+",tls="no_identity",no_tls_reason=".+"\} [0-9]+`,
 	)
 	httpRequestTotalMetricRE = regexp.MustCompile(
 		`request_total\{direction="outbound",authority="[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:8080",target_addr="[0-9\.]+:8080",tls="true",.*`,
+	)
+	httpRequestTotalUnmeshedRE = regexp.MustCompile(
+		`request_total\{direction="outbound",authority="[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:8080",target_addr="[0-9\.]+:8080",tls="no_identity",.*`,
+	)
+	httpRespUnmeshedRE = regexp.MustCompile(
+		`response_latency_ms_bucket\{direction="inbound",target_addr="[0-9\.]+:[0-9]+",tls="no_identity",no_tls_reason="no_tls_from_remote",.*\}`,
 	)
 )
 
@@ -46,7 +57,12 @@ func TestOpaquePorts(t *testing.T) {
 			"failed to create %s namespace: %s", opaquePortsNs, err)
 	}
 
-	out, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/opaque_ports_application.yaml")
+	out, err := TestHelper.KubectlApplyFile("testdata/opaque_ports_unmeshed.yaml", opaquePortsNs)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed", "'kubectl apply' command failed\n%s", out)
+	}
+
+	out, err = TestHelper.LinkerdRun("inject", "--manual", "testdata/opaque_ports_application.yaml")
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
 	}
@@ -67,6 +83,14 @@ func TestOpaquePorts(t *testing.T) {
 
 	// Check that the opaque service test application started correctly.
 	if err := TestHelper.CheckPods(ctx, opaquePortsNs, opaqueSvcApp, 1); err != nil {
+		if rce, ok := err.(*testutil.RestartCountError); ok {
+			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+		} else {
+			testutil.AnnotatedError(t, "CheckPods timed-out", err)
+		}
+	}
+
+	if err := TestHelper.CheckPods(ctx, opaquePortsNs, opaqueUnmeshedSvcPod, 1); err != nil {
 		if rce, ok := err.(*testutil.RestartCountError); ok {
 			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 		} else {
@@ -128,6 +152,45 @@ func TestOpaquePorts(t *testing.T) {
 		}
 		if !tcpMetricRE.MatchString(metrics) {
 			testutil.AnnotatedFatalf(t, "failed to find expected TCP metric when pod is opaque", "failed to find expected TCP metric when pod is opaque\n%s", metrics)
+		}
+	})
+
+	t.Run("expect inbound TCP connection metric with no TLS identity for traffic between meshed and unmeshed opaque service", func(t *testing.T) {
+		// Slow cooker is meshed, should have valid outbound TCP metrics and no
+		// HTTP metrics
+		pods, err := TestHelper.GetPods(ctx, opaquePortsNs,
+			map[string]string{"app": opaqueUnmeshedSvcSC})
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "error getting pods", "error getting pods\n%s", err)
+		}
+		metrics, err := getPodMetrics(pods[0], opaquePortsNs)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "error getting metrics for pod", "error getting metrics for pod\n%s", err)
+		}
+
+		if httpRequestTotalUnmeshedRE.MatchString(metrics) {
+			testutil.AnnotatedFatalf(t, "expected not to find HTTP outbound requests when service is opaque", "expected not to find HTTP outbound requests when service is opaque\n%s", metrics)
+		}
+		if !tcpMetricUnmeshedRE.MatchString(metrics) {
+			testutil.AnnotatedFatalf(t, "failed to find expected TCP metric when pod is opaque",
+				"failed to find expected TCP metrics when pod is opaque\n%s", metrics)
+		}
+
+		// Service is not meshed, should not have any valid metrics (no inbound TCP or HTTP)
+		pods, err = TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": opaqueUnmeshedSvcPod})
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "error getting pods", "error getting pods\n%s", err)
+		}
+		metrics, err = getPodMetrics(pods[0], opaquePortsNs)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "error getting metrics for pod", "error getting metrics for pod\n%s", err)
+		}
+		if tcpMetricUnmeshedRE.MatchString(metrics) {
+			testutil.AnnotatedFatalf(t, "found TCP metric when pod is unmeshed and opaque", "found TCP metrics when pod is unmeshed and opaque\n%s", metrics)
+		}
+
+		if httpRespUnmeshedRE.MatchString(metrics) {
+			testutil.AnnotatedFatalf(t, "found HTTP Response metric when pod is unmeshed and opaque", "found HTTP Response metric when pod is unmeshed and opaque\n%s", metrics)
 		}
 	})
 }
