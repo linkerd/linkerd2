@@ -9,7 +9,7 @@ destination deployment.
 Annotation inheritance has been added so that all Linkerd annotations
 on a namespace resource will be inherited by pods within that namespace.
 In addition, the `config.linkerd.io/proxy-await` annotation has been added which
-enables the [linkerd-await](https://github.com/olix0r/linkerd-await)
+enables the [linkerd-await](https://github.com/linkerd/linkerd-await)
 functionality by default, simplifying the implementation of the await behavior.
 Setting the annotation value to disabled will prevent this behavior.
 
@@ -33,7 +33,7 @@ however that shouldn't affect existing endpoints pointing to the target cluster.
 * Removed the linkerd-controller pod
 * Moved sp-validator container into the destination deployment
 * Added check verifying that labels and annotations are not mixed up
-  (thanks @szymongib@)
+  (thanks @szymongib)
 * Enabled support for extra initContainers to the linkerd-cni daemonset
   (thanks @mhulscher!)
 * Removed nginx container from multicluster gateway pod
