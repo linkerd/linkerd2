@@ -31,6 +31,11 @@ func TestMain(m *testing.M) {
 //////////////////////
 
 func TestSkipInboundPorts(t *testing.T) {
+
+	if os.Getenv("RUN_ARM_TEST") != "" {
+		t.Skip("Skipping Skip Inbound Ports test. TODO: Build multi-arch emojivoto")
+	}
+
 	ctx := context.Background()
 	TestHelper.WithDataPlaneNamespace(ctx, skipPortsNs, nil, t, func(t *testing.T, ns string) {
 		out, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/skip_ports_application.yaml")
