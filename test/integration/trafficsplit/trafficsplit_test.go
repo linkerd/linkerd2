@@ -217,7 +217,7 @@ func TestTrafficSplitCli(t *testing.T) {
 					expectedFailingSvcOutput := &statTsRow{
 						name:       "backend-traffic-split",
 						apex:       "backend-svc",
-						leaf:       "backend-svc",
+						leaf:       "failing-svc",
 						weight:     "0",
 						success:    "-",
 						rps:        "-",
@@ -280,7 +280,7 @@ func TestTrafficSplitCli(t *testing.T) {
 					expectedFailingSvcOutput := &statTsRow{
 						name:    "backend-traffic-split",
 						apex:    "backend-svc",
-						leaf:    "backend-svc",
+						leaf:    "failing-svc",
 						weight:  weight,
 						success: "0.00%",
 						rps:     "0.5rps",
