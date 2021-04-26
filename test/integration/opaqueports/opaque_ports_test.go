@@ -33,9 +33,6 @@ var (
 	httpRequestTotalUnmeshedRE = regexp.MustCompile(
 		`request_total\{direction="outbound",authority="[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:8080",target_addr="[0-9\.]+:8080",tls="no_identity",.*`,
 	)
-	httpRespUnmeshedRE = regexp.MustCompile(
-		`response_latency_ms_bucket\{direction="inbound",target_addr="[0-9\.]+:[0-9]+",tls="no_identity",no_tls_reason="no_tls_from_remote",.*\}`,
-	)
 )
 
 func TestMain(m *testing.M) {
@@ -57,12 +54,7 @@ func TestOpaquePorts(t *testing.T) {
 			"failed to create %s namespace: %s", opaquePortsNs, err)
 	}
 
-	out, err := TestHelper.KubectlApplyFile("testdata/opaque_ports_unmeshed.yaml", opaquePortsNs)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed", "'kubectl apply' command failed\n%s", out)
-	}
-
-	out, err = TestHelper.LinkerdRun("inject", "--manual", "testdata/opaque_ports_application.yaml")
+	out, err := TestHelper.LinkerdRun("inject", "testdata/opaque_ports_application.yaml")
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
 	}
@@ -174,23 +166,6 @@ func TestOpaquePorts(t *testing.T) {
 		if !tcpMetricUnmeshedRE.MatchString(metrics) {
 			testutil.AnnotatedFatalf(t, "failed to find expected TCP metric when pod is opaque",
 				"failed to find expected TCP metrics when pod is opaque\n%s", metrics)
-		}
-
-		// Service is not meshed, should not have any valid metrics (no inbound TCP or HTTP)
-		pods, err = TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": opaqueUnmeshedSvcPod})
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "error getting pods", "error getting pods\n%s", err)
-		}
-		metrics, err = getPodMetrics(pods[0], opaquePortsNs)
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "error getting metrics for pod", "error getting metrics for pod\n%s", err)
-		}
-		if tcpMetricUnmeshedRE.MatchString(metrics) {
-			testutil.AnnotatedFatalf(t, "found TCP metric when pod is unmeshed and opaque", "found TCP metrics when pod is unmeshed and opaque\n%s", metrics)
-		}
-
-		if httpRespUnmeshedRE.MatchString(metrics) {
-			testutil.AnnotatedFatalf(t, "found HTTP Response metric when pod is unmeshed and opaque", "found HTTP Response metric when pod is unmeshed and opaque\n%s", metrics)
 		}
 	})
 }

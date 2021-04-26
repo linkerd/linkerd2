@@ -133,17 +133,6 @@ func (h *KubernetesHelper) KubectlApply(stdin string, namespace string) (string,
 	return h.Kubectl(stdin, args...)
 }
 
-// KubectlApplyFile applies a given configuration file in a namespace without
-// reading the file contents into memory. If no namespace is provided, it does
-// not specify the '--namespace' flag.
-func (h *KubernetesHelper) KubectlApplyFile(path string, namespace string) (string, error) {
-	args := []string{"apply", "-f", path}
-	if namespace != "" {
-		args = append(args, "--namespace", namespace)
-	}
-	return h.Kubectl("", args...)
-}
-
 // KubectlApplyWithArgs applies a given configuration string with the passed
 // flags
 func (h *KubernetesHelper) KubectlApplyWithArgs(stdin string, cmdArgs ...string) (string, error) {
