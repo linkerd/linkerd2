@@ -56,7 +56,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 		Args:  cobra.NoArgs,
 		Example: `  # Default install.
   linkerd multicluster install | kubectl apply -f -
-  
+
 The installation can be configured by using the --set, --values, --set-string and --set-file flags.
 A full list of configurable values can be found at https://github.com/linkerd/linkerd2/blob/main/multicluster/charts/linkerd-multicluster/README.md
   `,
@@ -185,13 +185,13 @@ func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, er
 	}
 
 	return &multiclusterInstallOptions{
-		gateway:                 defaults.Gateway,
-		gatewayPort:             defaults.GatewayPort,
-		gatewayProbeSeconds:     defaults.GatewayProbeSeconds,
-		gatewayProbePort:        defaults.GatewayProbePort,
+		gateway:                 defaults.Gateway.Enabled,
+		gatewayPort:             defaults.Gateway.Port,
+		gatewayProbeSeconds:     defaults.Gateway.Probe.Seconds,
+		gatewayProbePort:        defaults.Gateway.Probe.Port,
 		namespace:               defaults.Namespace,
 		remoteMirrorCredentials: true,
-		gatewayServiceType:      defaults.GatewayServiceType,
+		gatewayServiceType:      defaults.Gateway.ServiceType,
 	}, nil
 }
 
@@ -219,16 +219,16 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 	}
 
 	defaults.Namespace = opts.namespace
-	defaults.Gateway = opts.gateway
-	defaults.GatewayPort = opts.gatewayPort
-	defaults.GatewayProbeSeconds = opts.gatewayProbeSeconds
-	defaults.GatewayProbePort = opts.gatewayProbePort
+	defaults.Gateway.Enabled = opts.gateway
+	defaults.Gateway.Port = opts.gatewayPort
+	defaults.Gateway.Probe.Seconds = opts.gatewayProbeSeconds
+	defaults.Gateway.Probe.Port = opts.gatewayProbePort
 	defaults.IdentityTrustDomain = values.IdentityTrustDomain
 	defaults.LinkerdNamespace = controlPlaneNamespace
 	defaults.ProxyOutboundPort = uint32(values.Proxy.Ports.Outbound)
 	defaults.LinkerdVersion = version.Version
 	defaults.RemoteMirrorServiceAccount = opts.remoteMirrorCredentials
-	defaults.GatewayServiceType = opts.gatewayServiceType
+	defaults.Gateway.ServiceType = opts.gatewayServiceType
 
 	return defaults, nil
 }
