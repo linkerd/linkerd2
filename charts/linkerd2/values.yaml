@@ -151,6 +151,8 @@ omitWebhookSideEffects: false
 # -- Failure policy for the proxy injector
 webhookFailurePolicy: Ignore
 
+# -- enabled / disabled deploying CRDs. IF this is set to false, you must ensure the CRDs are deployed to the cluster before deploying this helm chart.
+deployCRDs: true
 
 # controllerImage -- Docker image for the destination and identity components
 controllerImage: cr.l5d.io/linkerd/controller

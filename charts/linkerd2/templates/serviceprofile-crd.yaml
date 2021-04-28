@@ -1,4 +1,5 @@
 ---
+{{ - if .Values.deployCRDs }}
 ###
 ### Service Profile CRD
 ###
@@ -277,3 +278,4 @@ spec:
     kind: ServiceProfile
     shortNames:
     - sp
+{{- end }}
