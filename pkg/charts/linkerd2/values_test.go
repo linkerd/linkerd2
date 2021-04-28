@@ -35,6 +35,7 @@ func TestNewValues(t *testing.T) {
 		EnablePodAntiAffinity:        false,
 		WebhookFailurePolicy:         "Ignore",
 		OmitWebhookSideEffects:       false,
+		DeployCRDs:                   true,
 		DisableHeartBeat:             false,
 		HeartbeatSchedule:            "",
 		InstallNamespace:             true,
