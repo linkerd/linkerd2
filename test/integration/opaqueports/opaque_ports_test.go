@@ -27,6 +27,9 @@ var (
 	tcpMetricUnmeshedRE = regexp.MustCompile(
 		`tcp_open_total\{direction="inbound",peer="src",target_addr="[0-9\.]+:[0-9]+",tls="no_identity",no_tls_reason=".+"\} [0-9]+`,
 	)
+	tcpMetricOutUnmeshedRE = regexp.MustCompile(
+		`tcp_open_total\{direction="outbound",peer="dst",authority="[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:[0-9]+",target_addr="[0-9\.]+:[0-9]+",tls="no_identity",no_tls_reason="not_provided_by_service_discovery",.*\} [0-9]+`,
+	)
 	httpRequestTotalMetricRE = regexp.MustCompile(
 		`request_total\{direction="outbound",authority="[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:8080",target_addr="[0-9\.]+:8080",tls="true",.*`,
 	)
@@ -82,6 +85,7 @@ func TestOpaquePorts(t *testing.T) {
 		}
 	}
 
+	// Check that the unmeshed opaque service application started successfully.
 	if err := TestHelper.CheckPods(ctx, opaquePortsNs, opaqueUnmeshedSvcPod, 1); err != nil {
 		if rce, ok := err.(*testutil.RestartCountError); ok {
 			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
@@ -148,8 +152,8 @@ func TestOpaquePorts(t *testing.T) {
 	})
 
 	t.Run("expect inbound TCP connection metric with no TLS identity for traffic between meshed and unmeshed opaque service", func(t *testing.T) {
-		// Slow cooker is meshed, should have valid outbound TCP metrics and no
-		// HTTP metrics
+		// Slow cooker is meshed, should have valid outbound TCP metric, valid
+		// inbound TCP metric and no HTTP metric.
 		pods, err := TestHelper.GetPods(ctx, opaquePortsNs,
 			map[string]string{"app": opaqueUnmeshedSvcSC})
 		if err != nil {
@@ -164,8 +168,10 @@ func TestOpaquePorts(t *testing.T) {
 			testutil.AnnotatedFatalf(t, "expected not to find HTTP outbound requests when service is opaque", "expected not to find HTTP outbound requests when service is opaque\n%s", metrics)
 		}
 		if !tcpMetricUnmeshedRE.MatchString(metrics) {
-			testutil.AnnotatedFatalf(t, "failed to find expected TCP metric when pod is opaque",
-				"failed to find expected TCP metrics when pod is opaque\n%s", metrics)
+			testutil.AnnotatedFatalf(t, "failed to find expected TCP inbound metric when pod is opaque", "failed to find expected TCP inbound metric when pod is opaque\n%s", metrics)
+		}
+		if !tcpMetricOutUnmeshedRE.MatchString(metrics) {
+			testutil.AnnotatedFatalf(t, "failed to find expected TCP outbound metric when pod is opaque", "failed to find expected TCP outbound metric when pod is opaque\n%s", metrics)
 		}
 	})
 }
