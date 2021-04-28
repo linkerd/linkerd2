@@ -24,9 +24,6 @@ var (
 	tcpMetricRE          = regexp.MustCompile(
 		`tcp_open_total\{direction="inbound",peer="src",target_addr="[0-9\.]+:[0-9]+",tls="true",client_id="default\.linkerd-opaque-ports-test\.serviceaccount\.identity\.linkerd\.cluster\.local"\} [0-9]+`,
 	)
-	tcpMetricUnmeshedRE = regexp.MustCompile(
-		`tcp_open_total\{direction="inbound",peer="src",target_addr="[0-9\.]+:[0-9]+",tls="no_identity",no_tls_reason=".+"\} [0-9]+`,
-	)
 	tcpMetricOutUnmeshedRE = regexp.MustCompile(
 		`tcp_open_total\{direction="outbound",peer="dst",authority="[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:[0-9]+",target_addr="[0-9\.]+:[0-9]+",tls="no_identity",no_tls_reason="not_provided_by_service_discovery",.*\} [0-9]+`,
 	)
@@ -166,9 +163,6 @@ func TestOpaquePorts(t *testing.T) {
 
 		if httpRequestTotalUnmeshedRE.MatchString(metrics) {
 			testutil.AnnotatedFatalf(t, "expected not to find HTTP outbound requests when service is opaque", "expected not to find HTTP outbound requests when service is opaque\n%s", metrics)
-		}
-		if !tcpMetricUnmeshedRE.MatchString(metrics) {
-			testutil.AnnotatedFatalf(t, "failed to find expected TCP inbound metric when pod is opaque", "failed to find expected TCP inbound metric when pod is opaque\n%s", metrics)
 		}
 		if !tcpMetricOutUnmeshedRE.MatchString(metrics) {
 			testutil.AnnotatedFatalf(t, "failed to find expected TCP outbound metric when pod is opaque", "failed to find expected TCP outbound metric when pod is opaque\n%s", metrics)
