@@ -829,6 +829,7 @@ data:
         name: cr.l5d.io/linkerd/debug
         pullPolicy: ""
         version: test-debug-version
+    deployCRDs: true
     destinationProxyResources: null
     destinationResources:
       cpu:

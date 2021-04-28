@@ -811,6 +811,7 @@ data:
         name: DebugImageName
         pullPolicy: DebugImagePullPolicy
         version: DebugVersion
+    deployCRDs: true
     destinationProxyResources: null
     destinationResources: null
     disableHeartBeat: false

@@ -811,6 +811,7 @@ data:
         name: my.custom.registry/linkerd-io/debug
         pullPolicy: ""
         version: install-debug-version
+    deployCRDs: true
     destinationProxyResources: null
     destinationResources: null
     disableHeartBeat: false

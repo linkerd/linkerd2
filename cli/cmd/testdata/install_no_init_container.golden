@@ -808,6 +808,7 @@ data:
         name: cr.l5d.io/linkerd/debug
         pullPolicy: ""
         version: install-debug-version
+    deployCRDs: true
     destinationProxyResources: null
     destinationResources: null
     disableHeartBeat: false
