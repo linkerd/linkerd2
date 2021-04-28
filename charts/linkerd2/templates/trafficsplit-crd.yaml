@@ -1,5 +1,5 @@
 ---
-{{ - if .Values.deployCRDs }}
+{{- if .Values.deployCRDs }}
 ###
 ### TrafficSplit CRD
 ### Copied from github.com/servicemeshinterface/smi-sdk-go/blob/d4e76b1cd7a33ead5f38d1262dd838a31c80f4e5/crds/split.yaml

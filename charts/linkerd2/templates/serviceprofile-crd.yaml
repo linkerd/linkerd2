@@ -1,5 +1,5 @@
 ---
-{{ - if .Values.deployCRDs }}
+{{- if .Values.deployCRDs }}
 ###
 ### Service Profile CRD
 ###
