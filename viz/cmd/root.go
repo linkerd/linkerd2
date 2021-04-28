@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	"github.com/fatih/color"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -17,9 +18,9 @@ const (
 	defaultLinkerdNamespace = "linkerd"
 	maxRps                  = 100.0
 
-	jsonOutput  = "json"
-	tableOutput = "table"
-	wideOutput  = "wide"
+	jsonOutput  = healthcheck.JSONOutput
+	tableOutput = healthcheck.TableOutput
+	wideOutput  = healthcheck.WideOutput
 )
 
 var (

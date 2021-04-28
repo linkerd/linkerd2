@@ -10,6 +10,7 @@ import (
 	"github.com/linkerd/linkerd2/cli/flag"
 	jaeger "github.com/linkerd/linkerd2/jaeger/cmd"
 	multicluster "github.com/linkerd/linkerd2/multicluster/cmd"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	viz "github.com/linkerd/linkerd2/viz/cmd"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -21,8 +22,9 @@ const (
 	defaultClusterDomain    = "cluster.local"
 	defaultDockerRegistry   = "cr.l5d.io/linkerd"
 
-	jsonOutput  = "json"
-	tableOutput = "table"
+	jsonOutput  = healthcheck.JSONOutput
+	tableOutput = healthcheck.TableOutput
+	shortOutput = healthcheck.ShortOutput
 )
 
 var (
