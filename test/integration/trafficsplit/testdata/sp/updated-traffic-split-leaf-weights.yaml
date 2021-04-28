@@ -1,0 +1,11 @@
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: backend-svc.linkerd-trafficsplit-test-sp.svc.cluster.local
+spec:
+  dstOverrides:
+  - authority: "backend-svc.linkerd-trafficsplit-test-sp.svc.cluster.local.:8080"
+    weight: 500m
+  - authority: "failing-svc.linkerd-trafficsplit-test-sp.svc.cluster.local.:8080"
+    weight: 500m
+---
