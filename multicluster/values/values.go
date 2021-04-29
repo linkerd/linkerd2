@@ -35,19 +35,21 @@ type Values struct {
 	RemoteMirrorServiceAccount     bool     `json:"remoteMirrorServiceAccount"`
 	RemoteMirrorServiceAccountName string   `json:"remoteMirrorServiceAccountName"`
 	TargetClusterName              string   `json:"targetClusterName"`
-	GatewayServiceType             string   `json:"gatewayServiceType"`
 }
 
+// Group for any Gateway Service options
 type Gateway struct {
 	Enabled            bool              `json:"bool"`
 	Name               string            `json:"name"`
 	Port               uint32            `json:"port"`
-	ServiceType        string            `json:"LoadBalancer"`
+	NodePort           uint32            `json:"nodePort"`
+	ServiceType        string            `json:"serviceType"`
 	Probe              *Probe            `json:"probe"`
 	ServiceAnnotations map[string]string `json:"serviceAnnotations"`
 	LoadBalancerIP     string            `json:"loadBalancerIP"`
 }
 
+// Group for Gateway Probe options
 type Probe struct {
 	Path     string `json:"path"`
 	Port     uint32 `json:"port"`
