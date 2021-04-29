@@ -392,9 +392,6 @@ func TestTrafficSplitCliWithSP(t *testing.T) {
 						Name:               "backend",
 						Meshed:             "1/1",
 						Success:            "100.00%",
-						P50Latency:         "1ms",
-						P95Latency:         "1ms",
-						P99Latency:         "1ms",
 						TCPOpenConnections: "1",
 					},
 				}
@@ -446,18 +443,12 @@ func TestTrafficSplitCliWithSP(t *testing.T) {
 						Name:               "backend",
 						Meshed:             "1/1",
 						Success:            "100.00%",
-						P50Latency:         "1ms",
-						P95Latency:         "1ms",
-						P99Latency:         "1ms",
 						TCPOpenConnections: "1",
 					},
 					{
 						Name:               "failing",
 						Meshed:             "1/1",
 						Success:            "0.00%",
-						P50Latency:         "1ms",
-						P95Latency:         "1ms",
-						P99Latency:         "1ms",
 						TCPOpenConnections: "1",
 					},
 				}
@@ -502,19 +493,24 @@ func compareRowStat(expectedRow, actualRow *testutil.RowStat) error {
 			expectedRow.Meshed, actualRow.Meshed)
 	}
 
-	if actualRow.P50Latency != expectedRow.P50Latency {
-		return fmt.Errorf("Expected p50 to be '%s', got '%s'",
-			expectedRow.P50Latency, actualRow.P50Latency)
+	if !strings.HasSuffix(actualRow.Rps, "rps") {
+		return fmt.Errorf("Unexpected rps for [%s], got [%s]",
+			actualRow.Name, actualRow.Rps)
 	}
 
-	if actualRow.P95Latency != expectedRow.P95Latency {
-		return fmt.Errorf("Expected p95 to be '%s', got '%s'",
-			expectedRow.P95Latency, actualRow.P95Latency)
+	if !strings.HasSuffix(actualRow.P50Latency, "ms") {
+		return fmt.Errorf("Unexpected p50 latency for [%s], got [%s]",
+			actualRow.Name, actualRow.P50Latency)
 	}
 
-	if actualRow.P99Latency != expectedRow.P99Latency {
-		return fmt.Errorf("Expected p99 to be '%s', got '%s'",
-			expectedRow.P99Latency, actualRow.P99Latency)
+	if !strings.HasSuffix(actualRow.P95Latency, "ms") {
+		return fmt.Errorf("Unexpected p95 latency for [%s], got [%s]",
+			actualRow.Name, actualRow.P95Latency)
+	}
+
+	if !strings.HasSuffix(actualRow.P99Latency, "ms") {
+		return fmt.Errorf("Unexpected p99 latency for [%s], got [%s]",
+			actualRow.Name, actualRow.P99Latency)
 	}
 
 	if actualRow.Success != expectedRow.Success {
