@@ -1,5 +1,13 @@
 # Changes
 
+## stable-2.9.5
+
+This stable release fixes an issue where the destination service is throttled
+after overwhelming the Kubernetes API server with node topology queries. This
+results in the destination service failing requests and spiking in latency. By
+moving to a shared informer for these queries, the information is now fetched
+asynchronously.
+
 ## stable-2.9.4
 
 This stable release fixes an issue that prevented the proxy from being able to

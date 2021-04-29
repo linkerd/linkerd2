@@ -104,11 +104,11 @@ jobs:
         - deep
         - external-issuer
         - helm-deep
-        - helm-upgrade
+        # - helm-upgrade
         - multicluster
         - uninstall
-        #- upgrade-edge
-        - upgrade-stable
+        # - upgrade-edge
+        # - upgrade-stable
         - cni-calico-deep
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
