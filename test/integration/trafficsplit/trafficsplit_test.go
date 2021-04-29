@@ -338,7 +338,7 @@ func TestTrafficSplitCliWithSP(t *testing.T) {
 	version := "sp"
 	ctx := context.Background()
 	TestHelper.WithDataPlaneNamespace(ctx, fmt.Sprintf("trafficsplit-test-%s", version), map[string]string{}, t, func(t *testing.T, prefixedNs string) {
-		out, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/application.yaml")
+		out, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/applications-at-diff-ports.yaml")
 		if err != nil {
 			testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
 		}

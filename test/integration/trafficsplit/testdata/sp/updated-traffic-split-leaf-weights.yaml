@@ -4,8 +4,8 @@ metadata:
   name: backend-svc.linkerd-trafficsplit-test-sp.svc.cluster.local
 spec:
   dstOverrides:
-  - authority: "backend-svc.linkerd-trafficsplit-test-sp.svc.cluster.local.:8080"
+  - authority: "backend-svc.linkerd-trafficsplit-test-sp.svc.cluster.local"
     weight: 500m
-  - authority: "failing-svc.linkerd-trafficsplit-test-sp.svc.cluster.local.:8080"
+  - authority: "failing-svc.linkerd-trafficsplit-test-sp.svc.cluster.local:8081"
     weight: 500m
 ---
