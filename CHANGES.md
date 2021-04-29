@@ -6,15 +6,17 @@ This edge release adds a new `--short` flag to `linkerd check` to show a
 summary of the check output. This release also includes various proxy bug fixes
 and improvements.
 
-* Fixes a task leak that could be triggered when clients disconnect when
-  a service is in failfast.
-* Improves admin server protocol detection so that error messages are
-  more descriptive about the underlying problem.
-* Fixes panics found in fuzz testing. These panics were extremely
-  unlikely to occur in practice and would require very specific
-  configuration overrides to be triggered.
-* Adds support for a `--short` flag to the check command to output a summary
-  of check results
+* Proxy
+  * Fixes a task leak that could be triggered when clients disconnect when
+    a service is in failfast.
+  * Improves admin server protocol detection so that error messages are
+    more descriptive about the underlying problem.
+  * Fixes panics found in fuzz testing. These panics were extremely
+    unlikely to occur in practice and would require very specific
+    configuration overrides to be triggered.
+* CLI
+  * Adds support for a `--short` flag to the check command to output a summary
+    of check results
 
 ## edge-21.4.4
 
