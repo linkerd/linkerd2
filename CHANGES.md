@@ -2,7 +2,7 @@
 
 ## edge-21.4.5
 
-This edge release adds a new `--short` flag to `linkerd check` to show a
+This edge release adds a new output format `short` for `linkerd check` to show a
 summary of the check output. This release also includes various proxy bug fixes
 and improvements.
 
@@ -15,8 +15,8 @@ and improvements.
     unlikely to occur in practice and would require very specific
     configuration overrides to be triggered.
 * CLI
-  * Added support for a `--short` flag to the check command to output a summary
-    of check results
+  * Added support for a new `short` format for the `--output` flag of the `check`
+    command to show a summary of check results
 
 ## edge-21.4.4
 
