@@ -31,7 +31,7 @@ var (
 		`request_total\{direction="outbound",authority="[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:8080",target_addr="[0-9\.]+:8080",tls="true",.*`,
 	)
 	httpRequestTotalUnmeshedRE = regexp.MustCompile(
-		`request_total\{direction="outbound",authority="[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:8080",target_addr="[0-9\.]+:8080",tls="no_identity",.*`,
+		`request_total\{direction="outbound",authority="svc-opaque-unmeshed\.linkerd-opaque-ports-test\.svc\.cluster\.local:8080",target_addr="[0-9\.]+:8080",tls="no_identity",.*`,
 	)
 )
 
