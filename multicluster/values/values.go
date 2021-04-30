@@ -37,7 +37,7 @@ type Values struct {
 	TargetClusterName              string   `json:"targetClusterName"`
 }
 
-// Group for any Gateway Service options
+// Gateway contains all opttions related to the Gateway Service
 type Gateway struct {
 	Enabled            bool              `json:"bool"`
 	Name               string            `json:"name"`
@@ -49,7 +49,7 @@ type Gateway struct {
 	LoadBalancerIP     string            `json:"loadBalancerIP"`
 }
 
-// Group for Gateway Probe options
+// Probe contains all options for the Probe Service
 type Probe struct {
 	Path     string `json:"path"`
 	Port     uint32 `json:"port"`
