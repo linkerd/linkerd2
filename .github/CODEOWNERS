@@ -1,14 +1,2 @@
 # By default, the maintainers group is responsible for everything.
-*			@linkerd/maintainers
-
-# These documents have special review requirements:
-/CHANGES.md		@adleong @olix0r
-/CODE_OF_CONDUCT.md	@olix0r
-/CONTRIBUTING.md	@olix0r
-/DCO    		@olix0r
-/GOVERNANCE.md		@olix0r
-/LICENSE		@olix0r
-/MAINTAINERS.md		@olix0r
-/README.md	    	@olix0r
-/SECURITY.md		@olix0r
-/SECURITY_AUDIT.pdf	@olix0r
+*   @linkerd/maintainers
