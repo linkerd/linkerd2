@@ -3,6 +3,7 @@ package destination
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -199,7 +200,48 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		}
 		if svcID != nil {
 			service = *svcID
-			fqn = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
+			// Get headless annotation
+			annotations, err := getServiceAnnotations(s.k8sAPI, svcID)
+			if err != nil {
+				fmt.Printf("No annotations: %s", err)
+				return err
+			}
+			// If the service has multicluster headless annotation, create
+			// translator with endpoints should only have one endpoint. N.B: it
+			// would be worthwhile to do this more efficiently such as checking
+			// cached endpoints objects from the EndpointsWatcher
+			if _, found := annotations[labels.RemoteServiceHeadless]; found {
+				ep, err := s.k8sAPI.Endpoint().Lister().Endpoints(svcID.Namespace).Get(svcID.Name)
+				if err != nil {
+					return err
+				}
+				addressSet, gatewayIdentity, err := headlessToAddressSet(svcID, ep)
+				if err != nil {
+					return err
+				}
+
+				endpoint, err := toStatefulAddr(addressSet.Addresses[*svcID], gatewayIdentity, s.log)
+
+				// [namespace:default service:mehdb-1-east target_cluster:east target_service:mehdb-1 target_service_namespace:mehdb]
+				endpoint.MetricLabels = map[string]string{
+					"namespace":                svcID.Namespace,
+					"service":                  svcID.Name,
+					"target_cluster":           ep.Labels[labels.RemoteClusterNameLabel],
+					"target_service":           annotations[labels.RemoteServiceFqName],
+					"target_service_namespace": svcID.Namespace,
+				}
+				translator := newProfileTranslator(stream, log, "", port, endpoint)
+				translator.Update(nil)
+				select {
+				case <-s.shutdown:
+				case <-stream.Context().Done():
+					log.Debugf("GetProfile(%+v) cancelled", dest)
+				}
+
+				return nil
+			} else {
+				fqn = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
+			}
 		} else {
 			// If the IP does not map to a service, check if it maps to a pod
 			pod, err := getPod(s.k8sAPI, ip.String(), port, log)
@@ -386,6 +428,14 @@ func getSvcID(k8sAPI *k8s.API, clusterIP string, log *logging.Entry) (*watcher.S
 	return service, nil
 }
 
+func getServiceAnnotations(k8sAPI *k8s.API, svcID *watcher.ServiceID) (map[string]string, error) {
+	service, err := k8sAPI.Svc().Lister().Services(svcID.Namespace).Get(svcID.Name)
+	if err != nil {
+		return nil, err
+	}
+	return service.Annotations, nil
+}
+
 // getPod returns a pod that maps to the given IP address. The pod can either
 // be in the host network or the pod network. If the pod is in the host
 // network, then it must have a container port that exposes `port` as a host
@@ -475,6 +525,27 @@ func podToAddressSet(k8sAPI *k8s.API, pod *corev1.Pod) *watcher.AddressSet {
 		},
 		Labels: map[string]string{"namespace": pod.Namespace},
 	}
+}
+
+// headlessToAddressSet converts a StatefulSet clusterIP Service's Endpoints
+// object to a set of Addresses.
+func headlessToAddressSet(svcID *watcher.ServiceID, ep *corev1.Endpoints) (*watcher.AddressSet, string, error) {
+	identity, ok := ep.Annotations[labels.RemoteGatewayIdentity]
+	if !ok {
+		return nil, "", errors.New("Endpoints does not contain a valid gateway identity")
+	}
+	// We need to get port from the Endpoints object so we can connect to the Gateway
+	gatewayAddr := ep.Subsets[0].Addresses[0]
+	port := ep.Subsets[0].Ports[0].Port
+	fmt.Printf("Addr: %s for %s/%s", &gatewayAddr, svcID.Namespace, svcID.Name)
+	return &watcher.AddressSet{
+		Addresses: map[watcher.ServiceID]watcher.Address{
+			*svcID: {
+				IP:   gatewayAddr.IP,
+				Port: uint32(port),
+			},
+		},
+	}, identity, nil
 }
 
 ////////////

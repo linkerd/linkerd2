@@ -16,7 +16,7 @@ metadata:
     {{ include "partials.annotations.created-by" $ }}
 rules:
 - apiGroups: [""]
-  resources: ["services"]
+  resources: ["services, pods"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
   resources: ["configmaps"]

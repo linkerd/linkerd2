@@ -407,6 +407,9 @@ const (
 	// on the remote cluster
 	RemoteServiceFqName = SvcMirrorPrefix + "/remote-svc-fq-name"
 
+	// RemoteServiceHeadless indicates whether the mirrored service is headless
+	RemoteServiceHeadless = SvcMirrorPrefix + "/remote-svc-headless"
+
 	// RemoteGatewayResourceVersionAnnotation is the last observed remote resource
 	// version of the gateway for a particular mirrored service. It is used
 	// in cases we detect a change in a remote gateway
