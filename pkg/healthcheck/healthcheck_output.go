@@ -1,11 +1,13 @@
 package healthcheck
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -21,6 +23,8 @@ const (
 	TableOutput = "table"
 	// WideOutput is used to specify the wide output format
 	WideOutput = "wide"
+	// ShortOutput is used to specify the short output format
+	ShortOutput = "short"
 )
 
 var (
@@ -48,58 +52,174 @@ func (cr CheckResults) RunChecks(observer CheckObserver) bool {
 	return success
 }
 
+// PrintCoreChecksHeader writes the core checks header.
+func PrintCoreChecksHeader(wout io.Writer) {
+	headerTxt := "Linkerd core checks"
+	fmt.Fprintln(wout, headerTxt)
+	fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
+	fmt.Fprintln(wout)
+}
+
+// RunExtensionsChecks runs checks for each extension name passed into the `extensions` parameter
+// and handles formatting the output for each extension's check. This function also handles
+// finding the extension in the user's path and runs it.
+func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, flags []string, output string) bool {
+	if output != JSONOutput {
+		headerTxt := "Linkerd extensions checks"
+		fmt.Fprintln(wout)
+		fmt.Fprintln(wout, headerTxt)
+		fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
+	}
+
+	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	spin.Writer = wout
+
+	success := true
+	for _, extension := range extensions {
+		var path string
+		args := append([]string{"check"}, flags...)
+		var err error
+		results := CheckResults{
+			Results: []CheckResult{},
+		}
+		extensionCmd := fmt.Sprintf("linkerd-%s", extension)
+
+		switch extension {
+		case "jaeger":
+			path = os.Args[0]
+			args = append([]string{"jaeger"}, args...)
+		case "viz":
+			path = os.Args[0]
+			args = append([]string{"viz"}, args...)
+		case "multicluster":
+			path = os.Args[0]
+			args = append([]string{"multicluster"}, args...)
+		default:
+			path, err = exec.LookPath(extensionCmd)
+			results.Results = []CheckResult{
+				{
+					Category:    CategoryID(extensionCmd),
+					Description: fmt.Sprintf("Linkerd extension command %s exists", extensionCmd),
+					Err:         err,
+					HintURL:     DefaultHintBaseURL + "extensions",
+					Warning:     true,
+				},
+			}
+		}
+
+		if err == nil {
+			if isatty.IsTerminal(os.Stdout.Fd()) {
+				spin.Suffix = fmt.Sprintf(" Running %s extension check", extension)
+				spin.Color("bold") // this calls spin.Restart()
+			}
+			plugin := exec.Command(path, args...)
+			var stdout, stderr bytes.Buffer
+			plugin.Stdout = &stdout
+			plugin.Stderr = &stderr
+			plugin.Run()
+			extensionResults, err := parseJSONCheckOutput(stdout.Bytes())
+			spin.Stop()
+			if err != nil {
+				command := fmt.Sprintf("%s %s", path, strings.Join(args, " "))
+				if len(stderr.String()) > 0 {
+					err = errors.New(stderr.String())
+				} else {
+					err = fmt.Errorf("invalid extension check output from \"%s\" (JSON object expected):\n%s\n[%s]", command, stdout.String(), err)
+				}
+				results.Results = append(results.Results, CheckResult{
+					Category:    CategoryID(extensionCmd),
+					Description: fmt.Sprintf("Running: %s", command),
+					Err:         err,
+					HintURL:     DefaultHintBaseURL + "extensions",
+				})
+				success = false
+			} else {
+				results.Results = append(results.Results, extensionResults.Results...)
+			}
+		}
+		// add a new line to space out each check output
+		fmt.Fprintln(wout)
+		extensionSuccess := RunChecks(wout, werr, results, fmt.Sprintf("extension-%s", output))
+		if !extensionSuccess {
+			success = false
+		}
+	}
+
+	return success
+}
+
 // RunChecks runs the checks that are part of hc
 func RunChecks(wout io.Writer, werr io.Writer, hc Runner, output string) bool {
 	if output == JSONOutput {
 		return runChecksJSON(wout, werr, hc)
 	}
-	return runChecksTable(wout, hc)
+
+	return runChecksTable(wout, hc, output)
 }
 
-func runChecksTable(wout io.Writer, hc Runner) bool {
+func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 	var lastCategory CategoryID
 	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	spin.Writer = wout
 
+	// We set up different printing functions because we need to handle
+	// 3 check formatting output use cases:
+	//  1. the default check output in `table` format
+	//  2. the summarized output in `short` format for core checks only
+	//  3. the summarized output in `short` format for extension checks
+	//     and core checks together
 	prettyPrintResults := func(result *CheckResult) {
-		if lastCategory != result.Category {
-			if lastCategory != "" {
-				fmt.Fprintln(wout)
-			}
+		lastCategory = printCategory(wout, lastCategory, result)
 
-			fmt.Fprintln(wout, result.Category)
-			fmt.Fprintln(wout, strings.Repeat("-", len(result.Category)))
+		restartSpinnerOnRetry(spin, result)
 
-			lastCategory = result.Category
-		}
+		status := getResultStatus(result)
 
-		spin.Stop()
-		if result.Retry {
-			if isatty.IsTerminal(os.Stdout.Fd()) {
-				spin.Suffix = fmt.Sprintf(" %s", result.Err)
-				spin.Color("bold") // this calls spin.Restart()
-			}
+		printResultDescription(wout, status, result)
+	}
+
+	prettyPrintResultsShort := func(result *CheckResult) {
+		// bail out early and skip printing if we've got an okStatus
+		if result.Err == nil {
 			return
 		}
 
-		status := okStatus
-		if result.Err != nil {
-			status = failStatus
-			if result.Warning {
-				status = warnStatus
-			}
-		}
+		lastCategory = printCategory(wout, lastCategory, result)
 
-		fmt.Fprintf(wout, "%s %s\n", status, result.Description)
-		if result.Err != nil {
-			fmt.Fprintf(wout, "    %s\n", result.Err)
-			if result.HintURL != "" {
-				fmt.Fprintf(wout, "    see %s for hints\n", result.HintURL)
-			}
-		}
+		restartSpinnerOnRetry(spin, result)
+
+		status := getResultStatus(result)
+
+		printResultDescription(wout, status, result)
 	}
 
-	success := hc.RunChecks(prettyPrintResults)
+	prettyPrintResultsExtensionShort := func(result *CheckResult) {
+		lastCategory = printCategory(wout, lastCategory, result)
+
+		// bail out early and skip printing if we've got an okStatus
+		// Note: we still print the category headers to show which
+		// extension check we are running.
+		if result.Err == nil {
+			return
+		}
+
+		restartSpinnerOnRetry(spin, result)
+
+		status := getResultStatus(result)
+
+		printResultDescription(wout, status, result)
+	}
+
+	var success bool
+	switch output {
+	case "short":
+		success = hc.RunChecks(prettyPrintResultsShort)
+	case "extension-short":
+		success = hc.RunChecks(prettyPrintResultsExtensionShort)
+	default:
+		success = hc.RunChecks(prettyPrintResults)
+	}
+
 	// this empty line separates final results from the checks list in the output
 	fmt.Fprintln(wout, "")
 
@@ -198,7 +318,7 @@ func runChecksJSON(wout io.Writer, werr io.Writer, hc Runner) bool {
 // output mode. The data is expected to be a checkOutput struct serialized
 // to json. In addition to deserializing, this function will convert the result
 // to a CheckResults struct.
-func ParseJSONCheckOutput(data []byte) (CheckResults, error) {
+func parseJSONCheckOutput(data []byte) (CheckResults, error) {
 	var checks checkOutput
 	err := json.Unmarshal(data, &checks)
 	if err != nil {
@@ -221,4 +341,55 @@ func ParseJSONCheckOutput(data []byte) (CheckResults, error) {
 		}
 	}
 	return CheckResults{results}, nil
+}
+
+func printResultDescription(wout io.Writer, status string, result *CheckResult) {
+	fmt.Fprintf(wout, "%s %s\n", status, result.Description)
+
+	if result.Err == nil {
+		return
+	}
+
+	fmt.Fprintf(wout, "    %s\n", result.Err)
+	if result.HintURL != "" {
+		fmt.Fprintf(wout, "    see %s for hints\n", result.HintURL)
+	}
+}
+
+func getResultStatus(result *CheckResult) string {
+	status := okStatus
+	if result.Err != nil {
+		status = failStatus
+		if result.Warning {
+			status = warnStatus
+		}
+	}
+
+	return status
+}
+
+func restartSpinnerOnRetry(spin *spinner.Spinner, result *CheckResult) {
+	spin.Stop()
+	if result.Retry {
+		if isatty.IsTerminal(os.Stdout.Fd()) {
+			spin.Suffix = fmt.Sprintf(" %s", result.Err)
+			spin.Color("bold") // this calls spin.Restart()
+		}
+		return
+	}
+}
+
+func printCategory(wout io.Writer, lastCategory CategoryID, result *CheckResult) CategoryID {
+	if lastCategory == result.Category {
+		return lastCategory
+	}
+
+	if lastCategory != "" {
+		fmt.Fprintln(wout)
+	}
+
+	fmt.Fprintln(wout, result.Category)
+	fmt.Fprintln(wout, strings.Repeat("-", len(result.Category)))
+
+	return result.Category
 }
