@@ -171,7 +171,9 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 	prettyPrintResults := func(result *CheckResult) {
 		lastCategory = printCategory(wout, lastCategory, result)
 
-		if restartSpinnerOnRetry(spin, result) {
+		spin.Stop()
+		if result.Retry {
+			restartSpinner(spin, result)
 			return
 		}
 
@@ -188,7 +190,9 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 
 		lastCategory = printCategory(wout, lastCategory, result)
 
-		if restartSpinnerOnRetry(spin, result) {
+		spin.Stop()
+		if result.Retry {
+			restartSpinner(spin, result)
 			return
 		}
 
@@ -207,7 +211,9 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 			return
 		}
 
-		if restartSpinnerOnRetry(spin, result) {
+		spin.Stop()
+		if result.Retry {
+			restartSpinner(spin, result)
 			return
 		}
 
@@ -374,17 +380,11 @@ func getResultStatus(result *CheckResult) string {
 	return status
 }
 
-func restartSpinnerOnRetry(spin *spinner.Spinner, result *CheckResult) bool {
-	spin.Stop()
-	if result.Retry {
-		if isatty.IsTerminal(os.Stdout.Fd()) {
-			spin.Suffix = fmt.Sprintf(" %s", result.Err)
-			spin.Color("bold") // this calls spin.Restart()
-		}
-		return true
+func restartSpinner(spin *spinner.Spinner, result *CheckResult) {
+	if isatty.IsTerminal(os.Stdout.Fd()) {
+		spin.Suffix = fmt.Sprintf(" %s", result.Err)
+		spin.Color("bold") // this calls spin.Restart()
 	}
-
-	return false
 }
 
 func printCategory(wout io.Writer, lastCategory CategoryID, result *CheckResult) CategoryID {
