@@ -105,15 +105,3 @@ spec:
           /slow_cooker/slow_cooker http://backend-svc:8080
         ports:
         - containerPort: 9999
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: slow-cooker
-spec:
-  selector:
-    app: slow-cooker
-  ports:
-  - name: metrics
-    port: 9999
-    targetPort: 9999
