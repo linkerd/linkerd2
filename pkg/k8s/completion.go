@@ -12,9 +12,9 @@ import (
 )
 
 type CommandCompletion struct {
-	k8sAPI                  *KubernetesAPI
-	namespace               string
-	allNamespaces           bool
+	k8sAPI        *KubernetesAPI
+	namespace     string
+	allNamespaces bool
 }
 
 func NewCommandCompletion(
