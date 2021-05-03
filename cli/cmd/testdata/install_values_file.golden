@@ -364,8 +364,6 @@ spec:
           spec:
             type: object
             description: Spec is the custom resource spec
-            required:
-            - routes
             properties:
               dstOverrides:
                 type: array

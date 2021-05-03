@@ -125,15 +125,6 @@ spec:
       pathRegex: /route-1`,
 		},
 		{
-			err: errors.New("ServiceProfile \"name.ns.svc.cluster.local\" has no routes"),
-			sp: `apiVersion: linkerd.io/v1alpha2
-kind: ServiceProfile
-metadata:
-  name: name.ns.svc.cluster.local
-  namespace: linkerd-ns
-spec:`,
-		},
-		{
 			err: errors.New("ServiceProfile \"name.ns.svc.cluster.local\" has a route with no condition"),
 			sp: `apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile

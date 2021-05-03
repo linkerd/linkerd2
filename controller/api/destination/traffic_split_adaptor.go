@@ -65,9 +65,11 @@ func (tsa *trafficSplitAdaptor) publish() {
 			overrides = append(overrides, dst)
 		}
 		merged.Spec.DstOverrides = overrides
-	} else {
-		// If there is no traffic split, always return a destination override
-		// so that it's known the host is a service.
+	}
+
+	// If there are no destination overrides set, always return a destination override
+	// so that it's known the host is a service.
+	if len(merged.Spec.DstOverrides) == 0 {
 		dst := &sp.WeightedDst{
 			Authority: fmt.Sprintf("%s.%s.svc.%s.:%d", tsa.id.Name, tsa.id.Namespace, tsa.clusterDomain, tsa.port),
 			Weight:    resource.MustParse("1"),

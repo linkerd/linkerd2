@@ -62,10 +62,6 @@ func Validate(data []byte) error {
 		return fmt.Errorf("ServiceProfile \"%s\" has invalid name: %s", serviceProfile.Name, errs[0])
 	}
 
-	if len(serviceProfile.Spec.Routes) == 0 {
-		return fmt.Errorf("ServiceProfile \"%s\" has no routes", serviceProfile.Name)
-	}
-
 	for _, route := range serviceProfile.Spec.Routes {
 		if route.Name == "" {
 			return fmt.Errorf("ServiceProfile \"%s\" has a route with no name", serviceProfile.Name)
