@@ -3,7 +3,6 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
@@ -11,12 +10,15 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+// CommandCompletion generates CLI suggestions from resources in a given cluster
+// It uses a list of arguments and a substring from the CLI to filter suggestions.
 type CommandCompletion struct {
 	k8sAPI        *KubernetesAPI
 	namespace     string
 	allNamespaces bool
 }
 
+// NewCommandCompletion creates a command completion module
 func NewCommandCompletion(
 	k8sAPI *KubernetesAPI,
 	namespace string,
@@ -27,24 +29,39 @@ func NewCommandCompletion(
 	}
 }
 
+// WithAllNamespaces modifies CommandCompletion to search for
+// resource suggestions across all cluster namespaces
 func (c *CommandCompletion) WithAllNamespaces() *CommandCompletion {
 	c.allNamespaces = true
 	return c
 }
 
+// Complete accepts a list of arguments and a substring to generate CLI suggestions.
+// `args` represent a list of arguments a user has already enterd in the CLI. These
+// arguments are used for determining what resource type we'd like to receive
+// suggestions for as well as a list of resources names that have already provided.
+// `toComplete` represents the string prefix of a resource name that we'd like to
+// use to search for suggestions
+//
+// If `args` is empty, send back a list of all resource types support by the CLI.
+// If `args` has at least one or more items, assume that the first item in `args`
+// is the resource type we are trying to get suggestions for e.g. Deployment, StatefulSets.
+//
+// Complete is generic enough so that it can find suggestions for any type of resource
+// in a Kubernetes cluster. It does this by first querying what GroupVersion a resource
+// belongs to and then does a dynamic `List` query to get resources under that GroupVersion
 func (c *CommandCompletion) Complete(args []string, toComplete string) ([]string, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 
 	suggestions := []string{}
-	autoCmpRegexp := regexp.MustCompile(fmt.Sprintf("^%s.*", toComplete))
 	if len(args) == 0 && toComplete == "" {
 		return StatAllResourceTypes, nil
 	}
 
 	if len(args) == 0 && toComplete != "" {
 		for _, t := range StatAllResourceTypes {
-			if autoCmpRegexp.MatchString(t) {
+			if strings.HasPrefix(t, toComplete) {
 				suggestions = append(suggestions, t)
 			}
 		}
@@ -56,16 +73,9 @@ func (c *CommandCompletion) Complete(args []string, toComplete string) ([]string
 		return nil, fmt.Errorf("%s not a valid resource name", args)
 	}
 
-	var namespace string
-	if c.namespace != "" {
-		namespace = c.namespace
-	} else if c.namespace == "" && !c.allNamespaces {
-		namespace = "default"
-	}
-
 	// if we are looking for namespace suggestions clear namespace selector
 	if resType == "namespace" {
-		namespace = ""
+		c.namespace = ""
 	}
 
 	// Similar to kubectl, we don't provide resource completion
@@ -81,7 +91,7 @@ func (c *CommandCompletion) Complete(args []string, toComplete string) ([]string
 
 	uList, err := c.k8sAPI.DynamicClient.
 		Resource(*gvr).
-		Namespace(namespace).
+		Namespace(c.namespace).
 		List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
@@ -90,7 +100,7 @@ func (c *CommandCompletion) Complete(args []string, toComplete string) ([]string
 	otherResources := args[1:]
 	for _, u := range uList.Items {
 		name := u.GetName()
-		if autoCmpRegexp.MatchString(name) &&
+		if strings.HasPrefix(name, toComplete) &&
 			!containsResource(name, otherResources) {
 			suggestions = append(suggestions, name)
 		}
@@ -105,10 +115,17 @@ func (c *CommandCompletion) getGroupVersionKindForResource(resourceName string) 
 		return nil, err
 	}
 
+	// find the plural name to ensure the resource we are searching for is not a subresource
+	// i.e. deployment/scale
+	pluralResourceName, err := PluralResourceNameFromFriendlyName(resourceName)
+	if err != nil {
+		return nil, fmt.Errorf("%s not a valid resource name", resourceName)
+	}
+
 	var gvr *schema.GroupVersionResource
 	for _, res := range apiResourceList {
 		for _, r := range res.APIResources {
-			if strings.ToLower(r.Kind) == resourceName {
+			if strings.ToLower(r.Kind) == resourceName && r.Name == pluralResourceName {
 				gv := strings.Split(res.GroupVersion, "/")
 
 				if len(gv) == 1 && gv[0] == "v1" {

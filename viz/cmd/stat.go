@@ -174,6 +174,10 @@ If no resource name is specified, displays stats about all resources of the spec
 				return nil, cobra.ShellCompDirectiveError
 			}
 
+			if options.namespace == "" {
+				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+			}
+
 			cc := k8s.NewCommandCompletion(k8sAPI, options.namespace)
 
 			if options.allNamespaces {
