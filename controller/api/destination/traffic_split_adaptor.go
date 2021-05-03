@@ -67,7 +67,7 @@ func (tsa *trafficSplitAdaptor) publish() {
 		merged.Spec.DstOverrides = overrides
 	}
 
-	// If there DstOverrides set, always return a destination override
+	// If there are no destination overrides set, always return a destination override
 	// so that it's known the host is a service.
 	if len(merged.Spec.DstOverrides) == 0 {
 		dst := &sp.WeightedDst{
