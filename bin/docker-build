@@ -23,3 +23,4 @@ fi
 "$bindir"/docker-build-jaeger-webhook
 "$bindir"/docker-build-metrics-api
 "$bindir"/docker-build-tap
+"$bindir"/docker-build-smi-adaptor

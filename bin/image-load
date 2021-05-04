@@ -79,7 +79,7 @@ fi
 "$bin" version
 
 rm -f load_fail
-for img in proxy controller web metrics-api grafana debug cni-plugin jaeger-webhook tap; do
+for img in proxy controller web metrics-api grafana debug cni-plugin jaeger-webhook tap smi-adaptor; do
   printf 'Importing %s...\n' $img
   if [ $archive ]; then
     param="image-archives/$img.tar"

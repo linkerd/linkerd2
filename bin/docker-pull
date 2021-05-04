@@ -14,6 +14,6 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 # shellcheck source=_docker.sh
 . "$bindir"/_docker.sh
 
-for img in cli-bin cni-plugin controller metrics-api debug grafana proxy web jaeger-webhook tap; do
+for img in cli-bin cni-plugin controller metrics-api debug grafana proxy web jaeger-webhook tap smi-adaptor; do
     docker_pull $img "$tag"
 done

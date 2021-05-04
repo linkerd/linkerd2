@@ -1,0 +1,12 @@
+{{- if (.Values.installNamespace) -}}
+---
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: {{.Values.namespace}}
+  labels:
+    linkerd.io/extension: smi
+  annotations:
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
+{{ end -}}

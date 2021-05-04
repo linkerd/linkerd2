@@ -1,0 +1,44 @@
+---
+###
+### Destination Controller Service
+###
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: smi-adaptor
+  labels:
+    linkerd.io/control-plane-component: smi-adaptor
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
+rules:
+- apiGroups: ["linkerd.io"]
+  resources: ["serviceprofiles"]
+  verbs: ["list", "get", "watch", "create", "update"]
+- apiGroups: ["split.smi-spec.io"]
+  resources: ["trafficsplits"]
+  verbs: ["list", "get", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: smi-adaptor
+  labels:
+    linkerd.io/control-plane-component: smi-adaptor
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: smi-adaptor
+subjects:
+- kind: ServiceAccount
+  name: smi-adaptor
+  namespace: {{.Values.namespace}}
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: smi-adaptor
+  namespace: {{.Values.namespace}}
+  labels:
+    linkerd.io/control-plane-component: smi-adaptor
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
+{{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}

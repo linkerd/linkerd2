@@ -11,6 +11,7 @@ import (
 	jaeger "github.com/linkerd/linkerd2/jaeger/cmd"
 	multicluster "github.com/linkerd/linkerd2/multicluster/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	smi "github.com/linkerd/linkerd2/smi/cmd"
 	viz "github.com/linkerd/linkerd2/viz/cmd"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -120,6 +121,7 @@ func init() {
 	RootCmd.AddCommand(jaeger.NewCmdJaeger())
 	RootCmd.AddCommand(multicluster.NewCmdMulticluster())
 	RootCmd.AddCommand(viz.NewCmdViz())
+	RootCmd.AddCommand(smi.NewCmdSMI())
 
 	// Viz Extension sub commands
 	RootCmd.AddCommand(deprecateCmd(viz.NewCmdDashboard()))

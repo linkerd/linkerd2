@@ -1,0 +1,30 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    linkerd.io/control-plane-component: smi-adaptor
+  name: smi-adaptor
+  namespace: {{.Values.namespace}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      linkerd.io/control-plane-component: smi-adaptor
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+      labels:
+        linkerd.io/control-plane-component: smi-adaptor
+    spec:
+      containers:
+      - args:
+        - smi-adaptor
+        - -cluster-domain={{.Values.clusterDomain}}
+        image: {{.Values.adaptor.image.name}}:{{default .Values.adaptor.image.version}}
+        name: smi-adaptor
+        ports:
+        - containerPort: 9999
+          name: admin-http
+      serviceAccountName: smi-adaptor

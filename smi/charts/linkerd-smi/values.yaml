@@ -1,0 +1,11 @@
+namespace: smi
+
+installNamespace: true
+clusterDomain: cluster.local
+linkerdVersion: &linkerd_version linkerdVersionValue
+
+adaptor:
+  image: 
+    name: cr.l5d.io/linkerd/smi-adaptor
+    version: *linkerd_version
+    pullPolicy: IfNotPresent

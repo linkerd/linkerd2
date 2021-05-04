@@ -9,6 +9,7 @@ require (
 	github.com/clarketm/json v1.13.4
 	github.com/containernetworking/cni v0.6.1-0.20180218032124-142cde0c766c
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
+	github.com/elazarl/goproxy/ext v0.0.0-20210110162100-a92cc753f88e // indirect
 	github.com/emicklei/proto v1.6.8
 	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/fatih/color v1.9.0

@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         # Keep in sync with release.yaml matrix build
-        target: [proxy, controller, metrics-api, web, cni-plugin, debug, cli-bin, grafana, jaeger-webhook, tap]
+        target: [proxy, controller, metrics-api, web, cni-plugin, debug, cli-bin, grafana, jaeger-webhook, smi-adaptor, tap]
     name: Docker build (${{ matrix.target }})
     timeout-minutes: 30
     steps:

@@ -8,6 +8,7 @@ setValues() {
     sed -i "s/$1/$2/" multicluster/charts/linkerd-multicluster/values.yaml
     sed -i "s/$1/$2/" jaeger/charts/linkerd-jaeger/values.yaml
     sed -i "s/$1/$2/" viz/charts/linkerd-viz/values.yaml
+    sed -i "s/$1/$2/" smi/charts/linkerd-smi/values.yaml
 }
 
 showErr() {
@@ -27,6 +28,7 @@ rm -f charts/linkerd2-cni/charts/*
 rm -f charts/patch/charts/*
 rm -f jaeger/charts/linkerd-jaeger/charts/*
 rm -f viz/charts/linkerd-viz/charts/*
+rm -f smi/charts/linkerd-smi/charts/*
 
 "$bindir"/helm dep up "$rootdir"/multicluster/charts/linkerd-multicluster
 "$bindir"/helm lint "$rootdir"/multicluster/charts/linkerd-multicluster
@@ -42,6 +44,8 @@ rm -f viz/charts/linkerd-viz/charts/*
 "$bindir"/helm lint "$rootdir"/jaeger/charts/linkerd-jaeger
 "$bindir"/helm dep up "$rootdir"/viz/charts/linkerd-viz
 "$bindir"/helm lint "$rootdir"/viz/charts/linkerd-viz
+"$bindir"/helm dep up "$rootdir"/smi/charts/linkerd-smi
+"$bindir"/helm lint "$rootdir"/smi/charts/linkerd-smi
 
 # `bin/helm-build package` assumes the presence of "$rootdir"/target/helm/index-pre.yaml which is downloaded in the chart_deploy CI job
 if [ "$1" = package ]; then
@@ -67,6 +71,7 @@ if [ "$1" = package ]; then
     "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/multicluster/charts/linkerd-multicluster
     "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/jaeger/charts/linkerd-jaeger
     "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/viz/charts/linkerd-viz
+    "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/smi/charts/linkerd-smi
 
     mv "$rootdir"/target/helm/index-pre.yaml "$rootdir"/target/helm/index-pre-"$version".yaml
     "$bindir"/helm repo index --url "https://helm.linkerd.io/$repo/" --merge "$rootdir"/target/helm/index-pre-"$version".yaml "$rootdir"/target/helm

@@ -1,0 +1,8 @@
+The Linkerd SMI extension was successfully installed 🎉
+
+To make sure everything works as expected, run the following:
+
+  linkerd smi check
+
+
+Looking for more? Visit https://linkerd.io/2/getting-started/
