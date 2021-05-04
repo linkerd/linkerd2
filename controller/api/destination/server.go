@@ -26,11 +26,10 @@ import (
 
 type (
 	server struct {
-		endpoints     *watcher.EndpointsWatcher
-		opaquePorts   *watcher.OpaquePortsWatcher
-		profiles      *watcher.ProfileWatcher
-		trafficSplits *watcher.TrafficSplitWatcher
-		nodes         coreinformers.NodeInformer
+		endpoints   *watcher.EndpointsWatcher
+		opaquePorts *watcher.OpaquePortsWatcher
+		profiles    *watcher.ProfileWatcher
+		nodes       coreinformers.NodeInformer
 
 		enableH2Upgrade     bool
 		controllerNS        string
@@ -81,13 +80,11 @@ func NewServer(
 	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log, enableEndpointSlices)
 	opaquePorts := watcher.NewOpaquePortsWatcher(k8sAPI, log, defaultOpaquePorts)
 	profiles := watcher.NewProfileWatcher(k8sAPI, log)
-	trafficSplits := watcher.NewTrafficSplitWatcher(k8sAPI, log)
 
 	srv := server{
 		endpoints,
 		opaquePorts,
 		profiles,
-		trafficSplits,
 		k8sAPI.Node(),
 		enableH2Upgrade,
 		controllerNS,
@@ -284,22 +281,13 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// and pushes them onto the gRPC stream.
 	translator := newProfileTranslator(stream, log, fqn, port, nil)
 
-	// The traffic split adaptor merges profile updates with traffic split
-	// updates and publishes the result to the profile translator.
-	tsAdaptor := newTrafficSplitAdaptor(translator, service, port, s.clusterDomain)
-
-	// Subscribe the adaptor to traffic split updates.
-	err = s.trafficSplits.Subscribe(service, tsAdaptor)
-	if err != nil {
-		log.Warnf("Failed to subscribe to traffic split for %s: %s", path, err)
-		return err
-	}
-	defer s.trafficSplits.Unsubscribe(service, tsAdaptor)
+	// The service profile adaptor publishes the result to the profile translator.
+	spAdaptor := newServiceProfileAdaptor(translator, service, port, s.clusterDomain)
 
 	// The opaque ports adaptor merges profile updates with service opaque
-	// port annotation updates; it then publishes the result to the traffic
-	// split adaptor.
-	opaquePortsAdaptor := newOpaquePortsAdaptor(tsAdaptor)
+	// port annotation updates; it then publishes the result to the service
+	// profile adaptor.
+	opaquePortsAdaptor := newOpaquePortsAdaptor(spAdaptor)
 
 	// Subscribe the adaptor to service updates.
 	err = s.opaquePorts.Subscribe(service, opaquePortsAdaptor)
