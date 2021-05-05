@@ -182,6 +182,8 @@ func validateExpectedTsOutput(rows map[string]*statTsRow, expectedBackendSvc, ex
 
 func TestTrafficSplitCli(t *testing.T) {
 
+	t.Skip("Skipped, as native support for `TrafficSplit` is removed. This will be enabled once the SMI extension is added.")
+
 	for _, version := range []string{"v1alpha1", "v1alpha2"} {
 		// pin version variable
 		version := version
