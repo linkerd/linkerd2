@@ -281,13 +281,14 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// and pushes them onto the gRPC stream.
 	translator := newProfileTranslator(stream, log, fqn, port, nil)
 
-	// The service profile adaptor publishes the result to the profile translator.
-	spAdaptor := newServiceProfileAdaptor(translator, service, port, s.clusterDomain)
+	// The dstOverridesAdaptor publishes the resultant service profiles
+	// with dstOverrides to the profile translator.
+	dstOverridesAdaptor := newDSTOverridesAdaptor(translator, service, port, s.clusterDomain)
 
 	// The opaque ports adaptor merges profile updates with service opaque
 	// port annotation updates; it then publishes the result to the service
 	// profile adaptor.
-	opaquePortsAdaptor := newOpaquePortsAdaptor(spAdaptor)
+	opaquePortsAdaptor := newOpaquePortsAdaptor(dstOverridesAdaptor)
 
 	// Subscribe the adaptor to service updates.
 	err = s.opaquePorts.Subscribe(service, opaquePortsAdaptor)

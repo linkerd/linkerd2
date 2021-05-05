@@ -8,7 +8,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-type serviceprofileAdaptor struct {
+// dstOverridesAdaptor holds an underlying ProfileUpdateListener and updates
+// that listener with changes to the dstOverrides field of serviceProfiles.
+type dstOverridesAdaptor struct {
 	listener      watcher.ProfileUpdateListener
 	id            watcher.ServiceID
 	port          watcher.Port
@@ -16,8 +18,8 @@ type serviceprofileAdaptor struct {
 	clusterDomain string
 }
 
-func newServiceProfileAdaptor(listener watcher.ProfileUpdateListener, id watcher.ServiceID, port watcher.Port, clusterDomain string) *serviceprofileAdaptor {
-	return &serviceprofileAdaptor{
+func newDSTOverridesAdaptor(listener watcher.ProfileUpdateListener, id watcher.ServiceID, port watcher.Port, clusterDomain string) *dstOverridesAdaptor {
+	return &dstOverridesAdaptor{
 		listener:      listener,
 		id:            id,
 		port:          port,
@@ -25,12 +27,12 @@ func newServiceProfileAdaptor(listener watcher.ProfileUpdateListener, id watcher
 	}
 }
 
-func (spa *serviceprofileAdaptor) Update(profile *sp.ServiceProfile) {
+func (spa *dstOverridesAdaptor) Update(profile *sp.ServiceProfile) {
 	spa.profile = profile
 	spa.publish()
 }
 
-func (spa *serviceprofileAdaptor) publish() {
+func (spa *dstOverridesAdaptor) publish() {
 	merged := sp.ServiceProfile{}
 	if spa.profile != nil {
 		merged = *spa.profile
