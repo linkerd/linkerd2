@@ -53,7 +53,10 @@ func (tsa *trafficSplitAdaptor) publish() {
 	if tsa.profile != nil {
 		merged = *tsa.profile
 	}
-	if tsa.split != nil {
+
+	// Update only if `dstOverrides` is empty, to give preference
+	// to serviceprofiles over trafficsplits
+	if tsa.split != nil && len(merged.Spec.DstOverrides) == 0 {
 		overrides := []*sp.WeightedDst{}
 		for _, backend := range tsa.split.Spec.Backends {
 			dst := &sp.WeightedDst{
