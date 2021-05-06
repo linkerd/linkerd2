@@ -27,25 +27,25 @@ func newDSTOverridesAdaptor(listener watcher.ProfileUpdateListener, id watcher.S
 	}
 }
 
-func (spa *dstOverridesAdaptor) Update(profile *sp.ServiceProfile) {
-	spa.profile = profile
-	spa.publish()
+func (doa *dstOverridesAdaptor) Update(profile *sp.ServiceProfile) {
+	doa.profile = profile
+	doa.publish()
 }
 
-func (spa *dstOverridesAdaptor) publish() {
+func (doa *dstOverridesAdaptor) publish() {
 	merged := sp.ServiceProfile{}
-	if spa.profile != nil {
-		merged = *spa.profile
+	if doa.profile != nil {
+		merged = *doa.profile
 	}
 	// If there are no destination overrides set, always return a destination override
 	// so that it's known the host is a service.
 	if len(merged.Spec.DstOverrides) == 0 {
 		dst := &sp.WeightedDst{
-			Authority: fmt.Sprintf("%s.%s.svc.%s.:%d", spa.id.Name, spa.id.Namespace, spa.clusterDomain, spa.port),
+			Authority: fmt.Sprintf("%s.%s.svc.%s.:%d", doa.id.Name, doa.id.Namespace, doa.clusterDomain, doa.port),
 			Weight:    resource.MustParse("1"),
 		}
 		merged.Spec.DstOverrides = []*sp.WeightedDst{dst}
 	}
 
-	spa.listener.Update(&merged)
+	doa.listener.Update(&merged)
 }
