@@ -215,12 +215,13 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 				if err != nil {
 					return err
 				}
-				addressSet, gatewayIdentity, err := headlessToAddressSet(svcID, ep)
+
+				addressSet, err := headlessToAddressSet(ep, svcID, port)
 				if err != nil {
 					return err
 				}
 
-				endpoint, err := toStatefulAddr(addressSet.Addresses[*svcID], gatewayIdentity, s.log)
+				endpoint, err := toStatefulAddr(addressSet.Addresses[*svcID], s.log)
 
 				// [namespace:default service:mehdb-1-east target_cluster:east target_service:mehdb-1 target_service_namespace:mehdb]
 				endpoint.MetricLabels = map[string]string{
@@ -529,23 +530,33 @@ func podToAddressSet(k8sAPI *k8s.API, pod *corev1.Pod) *watcher.AddressSet {
 
 // headlessToAddressSet converts a StatefulSet clusterIP Service's Endpoints
 // object to a set of Addresses.
-func headlessToAddressSet(svcID *watcher.ServiceID, ep *corev1.Endpoints) (*watcher.AddressSet, string, error) {
-	identity, ok := ep.Annotations[labels.RemoteGatewayIdentity]
-	if !ok {
-		return nil, "", errors.New("Endpoints does not contain a valid gateway identity")
-	}
+func headlessToAddressSet(ep *corev1.Endpoints, svcID *watcher.ServiceID, srcPort uint32) (*watcher.AddressSet, error) {
 	// We need to get port from the Endpoints object so we can connect to the Gateway
 	gatewayAddr := ep.Subsets[0].Addresses[0]
-	port := ep.Subsets[0].Ports[0].Port
-	fmt.Printf("Addr: %s for %s/%s", &gatewayAddr, svcID.Namespace, svcID.Name)
+	endpointPort := ep.Subsets[0].Ports[0].Port
+
+	// Gateway Identity from Endpoints annotation
+	identity, ok := ep.Annotations[labels.RemoteGatewayIdentity]
+	if !ok {
+		return nil, errors.New("Endpoints does not contain a valid gateway identity")
+	}
+
+	fqn, ok := ep.Annotations[labels.RemoteServiceFqName]
+	if !ok {
+		return nil, errors.New("Endpoints does not contain a valid remote authority")
+	}
+
+	authorityOverride := fmt.Sprintf("%s:%d", fqn, srcPort)
 	return &watcher.AddressSet{
 		Addresses: map[watcher.ServiceID]watcher.Address{
 			*svcID: {
-				IP:   gatewayAddr.IP,
-				Port: uint32(port),
+				IP:                gatewayAddr.IP,
+				Port:              uint32(endpointPort),
+				Identity:          identity,
+				AuthorityOverride: authorityOverride,
 			},
 		},
-	}, identity, nil
+	}, nil
 }
 
 ////////////

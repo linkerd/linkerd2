@@ -321,7 +321,13 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 	}, nil
 }
 
-func toStatefulAddr(address watcher.Address, gatewayIdentity string, log *logging.Entry) (*pb.WeightedAddr, error) {
+func toStatefulAddr(address watcher.Address, log *logging.Entry) (*pb.WeightedAddr, error) {
+	// for the prototype, only assume one gateway
+	tcpAddr, err := toAddr(address)
+	if err != nil {
+		return nil, err
+	}
+
 	hint := &pb.ProtocolHint{
 		Protocol: &pb.ProtocolHint_H2_{
 			H2: &pb.ProtocolHint_H2{},
@@ -331,22 +337,20 @@ func toStatefulAddr(address watcher.Address, gatewayIdentity string, log *loggin
 	identity := &pb.TlsIdentity{
 		Strategy: &pb.TlsIdentity_DnsLikeIdentity_{
 			DnsLikeIdentity: &pb.TlsIdentity_DnsLikeIdentity{
-				Name: gatewayIdentity,
+				Name: address.Identity,
 			},
 		},
 	}
 
-	tcpAddr, err := toAddr(address)
-	if err != nil {
-		return nil, err
-	}
+	authority := &pb.AuthorityOverride{AuthorityOverride: address.AuthorityOverride}
 
 	return &pb.WeightedAddr{
-		Addr:         tcpAddr,
-		Weight:       defaultWeight,
-		MetricLabels: make(map[string]string),
-		TlsIdentity:  identity,
-		ProtocolHint: hint,
+		Addr:              tcpAddr,
+		Weight:            defaultWeight,
+		AuthorityOverride: authority,
+		MetricLabels:      make(map[string]string),
+		TlsIdentity:       identity,
+		ProtocolHint:      hint,
 	}, nil
 }
 
