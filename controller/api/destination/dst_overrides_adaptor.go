@@ -2,6 +2,7 @@ package destination
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
@@ -45,6 +46,16 @@ func (doa *dstOverridesAdaptor) publish() {
 			Weight:    resource.MustParse("1"),
 		}
 		merged.Spec.DstOverrides = []*sp.WeightedDst{dst}
+	} else {
+		// Set port in authority if not present already
+		for _, dst := range merged.Spec.DstOverrides {
+			// Authority should be a FQDN with port
+			// Use the port from GetProfile is absent in authority
+			hostPort := strings.Split(dst.Authority, ":")
+			if len(hostPort) == 1 {
+				dst.Authority = fmt.Sprintf("%s:%d", dst.Authority, doa.port)
+			}
+		}
 	}
 
 	doa.listener.Update(&merged)
