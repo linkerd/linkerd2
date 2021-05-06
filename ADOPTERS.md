@@ -7,6 +7,7 @@
 - [Apester](https://apester.com)
 - [AppddictionStudio](https://appddicitonstudio.com)
 - [Attest](https://www.askattest.com)
+- [Bink](https://bink.com)
 - [Buoyant](https://buoyant.io)
 - [Candide](https://candidegardening.com)
 - [Celonis](https://celonis.com)
