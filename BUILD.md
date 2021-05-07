@@ -440,7 +440,6 @@ Now, to make a pod use your image, add the following annotations to it:
 
 ```yaml
 config.linkerd.io/proxy-version: dev
-config.linkerd.io/proxy-await: disabled
 ```
 
 ### Multi-architecture builds
