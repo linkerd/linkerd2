@@ -160,11 +160,6 @@ const (
 	keyKeyName                    = "tls.key"
 )
 
-// DefaultHintBaseURL is the base URL on the linkerd.io website that all check hints
-// point to. Each check adds its own `hintAnchor` to specify a location on the
-// page.
-const DefaultHintBaseURL = "https://linkerd.io/checks/#"
-
 // AllowedClockSkew sets the allowed skew in clock synchronization
 // between the system running inject command and the node(s), being
 // based on assumed node's heartbeat interval (5 minutes) plus default TLS
@@ -375,13 +370,12 @@ type Category struct {
 }
 
 // NewCategory returns an instance of Category with the specified data
-// and the DefaultHintBaseURL
 func NewCategory(id CategoryID, checkers []Checker, enabled bool) *Category {
 	return &Category{
 		ID:          id,
 		checkers:    checkers,
 		enabled:     enabled,
-		hintBaseURL: DefaultHintBaseURL,
+		hintBaseURL: HintBaseURL(version.Version),
 	}
 }
 
@@ -505,7 +499,7 @@ func (hc *HealthChecker) GetCategories() []*Category {
 //
 // Note that all checks should include a `hintAnchor` with a corresponding section
 // in the linkerd check faq:
-// https://linkerd.io/checks/#
+// https://linkerd.io/{major-version}/checks/#
 func (hc *HealthChecker) allCategories() []*Category {
 	return []*Category{
 		NewCategory(

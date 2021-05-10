@@ -106,7 +106,7 @@ instead of the output format described above.  E.g.
         },
         {
           "description": "linkerd-viz Namespace exists",
-          "hint": "https://linkerd.io/checks/#l5d-viz-ns-exists",
+          "hint": "https://linkerd.io/2/checks/#l5d-viz-ns-exists",
           "error": "could not find the linkerd-viz extension",
           "result": "error"
         }
