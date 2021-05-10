@@ -13,9 +13,8 @@ import (
 // CommandCompletion generates CLI suggestions from resources in a given cluster
 // It uses a list of arguments and a substring from the CLI to filter suggestions.
 type CommandCompletion struct {
-	k8sAPI        *KubernetesAPI
-	namespace     string
-	allNamespaces bool
+	k8sAPI    *KubernetesAPI
+	namespace string
 }
 
 // NewCommandCompletion creates a command completion module
@@ -27,13 +26,6 @@ func NewCommandCompletion(
 		k8sAPI:    k8sAPI,
 		namespace: namespace,
 	}
-}
-
-// WithAllNamespaces modifies CommandCompletion to search for
-// resource suggestions across all cluster namespaces
-func (c *CommandCompletion) WithAllNamespaces() *CommandCompletion {
-	c.allNamespaces = true
-	return c
 }
 
 // Complete accepts a list of arguments and a substring to generate CLI suggestions.
@@ -122,42 +114,44 @@ func (c *CommandCompletion) getGroupVersionKindForResource(resourceName string) 
 		return nil, fmt.Errorf("%s not a valid resource name", resourceName)
 	}
 
-	var gvr *schema.GroupVersionResource
-	for _, res := range apiResourceList {
-		for _, r := range res.APIResources {
-			if strings.ToLower(r.Kind) == resourceName && r.Name == pluralResourceName {
-				gv := strings.Split(res.GroupVersion, "/")
-
-				if len(gv) == 1 && gv[0] == "v1" {
-					gvr = &schema.GroupVersionResource{
-						Version:  gv[0],
-						Resource: r.Name,
-					}
-					break
-				}
-
-				if len(gv) != 2 {
-					return nil, fmt.Errorf("could not find the requested resource")
-				}
-
-				gvr = &schema.GroupVersionResource{
-					Group:    gv[0],
-					Version:  gv[1],
-					Resource: r.Name,
-				}
-			}
-		}
-
-		if gvr != nil {
-			break
-		}
-	}
-
-	if gvr == nil {
+	gvr, err := findGroupVersionResource(resourceName, pluralResourceName, apiResourceList)
+	if err != nil {
 		return nil, fmt.Errorf("could not find GroupVersionResource for %s", resourceName)
 	}
 
 	return gvr, nil
+}
+
+func findGroupVersionResource(singularName string, pluralName string, apiResourceList []*metav1.APIResourceList) (*schema.GroupVersionResource, error) {
+	err := fmt.Errorf("could not find the requested resource")
+	for _, res := range apiResourceList {
+		for _, r := range res.APIResources {
+			if strings.ToLower(r.Kind) != singularName || r.Name != pluralName {
+				continue
+			}
+
+			gv := strings.Split(res.GroupVersion, "/")
+
+			if len(gv) == 1 && gv[0] == "v1" {
+				return &schema.GroupVersionResource{
+					Version:  gv[0],
+					Resource: r.Name,
+				}, nil
+			}
+
+			if len(gv) != 2 {
+				return nil, err
+			}
+
+			return &schema.GroupVersionResource{
+				Group:    gv[0],
+				Version:  gv[1],
+				Resource: r.Name,
+			}, nil
+		}
+	}
+
+	return nil, err
 }
 
 func containsResource(resource string, otherResources []string) bool {

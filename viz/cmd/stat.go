@@ -21,6 +21,7 @@ import (
 	"github.com/linkerd/linkerd2/viz/pkg/api"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	v1 "k8s.io/api/core/v1"
 )
 
 type statOptions struct {
@@ -178,11 +179,11 @@ If no resource name is specified, displays stats about all resources of the spec
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
 			}
 
-			cc := k8s.NewCommandCompletion(k8sAPI, options.namespace)
-
 			if options.allNamespaces {
-				cc = cc.WithAllNamespaces()
+				options.namespace = v1.NamespaceAll
 			}
+
+			cc := k8s.NewCommandCompletion(k8sAPI, options.namespace)
 
 			results, err := cc.Complete(args, toComplete)
 			if err != nil {
