@@ -25,6 +25,8 @@ import (
 )
 
 const (
+	// CreatedOrUpdatedBySMIAdaptorFor annotation is added to the SP resource
+	// by the SMI adaptor whenever a creation or updatation is done
 	CreatedOrUpdatedBySMIAdaptorFor = "smi.linkerd.io/updated-for"
 )
 
