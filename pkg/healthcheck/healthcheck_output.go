@@ -8,11 +8,13 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/mattn/go-isatty"
 )
 
@@ -25,12 +27,19 @@ const (
 	WideOutput = "wide"
 	// ShortOutput is used to specify the short output format
 	ShortOutput = "short"
+
+	// DefaultHintBaseURL is the default base URL on the linkerd.io website
+	// that all check hints for the latest linkerd version point to. Each
+	// check adds its own `hintAnchor` to specify a location on the page.
+	DefaultHintBaseURL = "https://linkerd.io/2/checks/#"
 )
 
 var (
 	okStatus   = color.New(color.FgGreen, color.Bold).SprintFunc()("\u221A")  // √
 	warnStatus = color.New(color.FgYellow, color.Bold).SprintFunc()("\u203C") // ‼
 	failStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u00D7")    // ×
+
+	reStableVersion = regexp.MustCompile(`stable-(\d\.\d+)\.`)
 )
 
 // CheckResults contains a slice of CheckResult structs.
@@ -101,7 +110,7 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 					Category:    CategoryID(extensionCmd),
 					Description: fmt.Sprintf("Linkerd extension command %s exists", extensionCmd),
 					Err:         err,
-					HintURL:     DefaultHintBaseURL + "extensions",
+					HintURL:     HintBaseURL(version.Version) + "extensions",
 					Warning:     true,
 				},
 			}
@@ -130,7 +139,7 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 					Category:    CategoryID(extensionCmd),
 					Description: fmt.Sprintf("Running: %s", command),
 					Err:         err,
-					HintURL:     DefaultHintBaseURL + "extensions",
+					HintURL:     HintBaseURL(version.Version) + "extensions",
 				})
 				success = false
 			} else {
@@ -400,4 +409,14 @@ func printCategory(wout io.Writer, lastCategory CategoryID, result *CheckResult)
 	fmt.Fprintln(wout, strings.Repeat("-", len(result.Category)))
 
 	return result.Category
+}
+
+// HintBaseURL returns the base URL on the linkerd.io website that check hints
+// point to, depending on the version
+func HintBaseURL(ver string) string {
+	stableVersion := reStableVersion.FindStringSubmatch(ver)
+	if stableVersion == nil {
+		return DefaultHintBaseURL
+	}
+	return fmt.Sprintf("https://linkerd.io/%s/checks/#", stableVersion[1])
 }
