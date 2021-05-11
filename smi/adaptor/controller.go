@@ -307,9 +307,6 @@ func (c *SMIController) toServiceProfile(ts *trafficsplit.TrafficSplit) *service
 				CreatedOrUpdatedBySMIAdaptorFor: ts.Name,
 			},
 		},
-		Spec: serviceprofile.ServiceProfileSpec{
-			Routes: []*serviceprofile.RouteSpec{},
-		},
 	}
 
 	for _, backend := range ts.Spec.Backends {
