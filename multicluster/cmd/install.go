@@ -30,13 +30,9 @@ import (
 
 type (
 	multiclusterInstallOptions struct {
-		gateway                 bool
-		gatewayPort             uint32
-		gatewayProbeSeconds     uint32
-		gatewayProbePort        uint32
+		gateway                 multicluster.Gateway
 		namespace               string
 		remoteMirrorCredentials bool
-		gatewayServiceType      string
 	}
 )
 
@@ -56,7 +52,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 		Args:  cobra.NoArgs,
 		Example: `  # Default install.
   linkerd multicluster install | kubectl apply -f -
-  
+
 The installation can be configured by using the --set, --values, --set-string and --set-file flags.
 A full list of configurable values can be found at https://github.com/linkerd/linkerd2/blob/main/multicluster/charts/linkerd-multicluster/README.md
   `,
@@ -156,12 +152,12 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 
 	flags.AddValueOptionsFlags(cmd.Flags(), &valuesOptions)
 	cmd.Flags().StringVar(&options.namespace, "namespace", options.namespace, "The namespace in which the multicluster add-on is to be installed. Must not be the control plane namespace. ")
-	cmd.Flags().BoolVar(&options.gateway, "gateway", options.gateway, "If the gateway component should be installed")
-	cmd.Flags().Uint32Var(&options.gatewayPort, "gateway-port", options.gatewayPort, "The port on the gateway used for all incoming traffic")
-	cmd.Flags().Uint32Var(&options.gatewayProbeSeconds, "gateway-probe-seconds", options.gatewayProbeSeconds, "The interval at which the gateway will be checked for being alive in seconds")
-	cmd.Flags().Uint32Var(&options.gatewayProbePort, "gateway-probe-port", options.gatewayProbePort, "The liveness check port of the gateway")
+	cmd.Flags().BoolVar(&options.gateway.Enabled, "gateway", options.gateway.Enabled, "If the gateway component should be installed")
+	cmd.Flags().Uint32Var(&options.gateway.Port, "gateway-port", options.gateway.Port, "The port on the gateway used for all incoming traffic")
+	cmd.Flags().Uint32Var(&options.gateway.Probe.Seconds, "gateway-probe-seconds", options.gateway.Probe.Seconds, "The interval at which the gateway will be checked for being alive in seconds")
+	cmd.Flags().Uint32Var(&options.gateway.Probe.Port, "gateway-probe-port", options.gateway.Probe.Port, "The liveness check port of the gateway")
 	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "service-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the service account which can be used by service mirror components in source clusters to discover exported services")
-	cmd.Flags().StringVar(&options.gatewayServiceType, "gateway-service-type", options.gatewayServiceType, "Overwrite Service type for gateway service")
+	cmd.Flags().StringVar(&options.gateway.ServiceType, "gateway-service-type", options.gateway.ServiceType, "Overwrite Service type for gateway service")
 	cmd.Flags().DurationVar(&wait, "wait", 300*time.Second, "Wait for core control-plane components to be available")
 
 	// Hide developer focused flags in release builds.
@@ -185,13 +181,9 @@ func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, er
 	}
 
 	return &multiclusterInstallOptions{
-		gateway:                 defaults.Gateway,
-		gatewayPort:             defaults.GatewayPort,
-		gatewayProbeSeconds:     defaults.GatewayProbeSeconds,
-		gatewayProbePort:        defaults.GatewayProbePort,
+		gateway:                 *defaults.Gateway,
 		namespace:               defaults.Namespace,
 		remoteMirrorCredentials: true,
-		gatewayServiceType:      defaults.GatewayServiceType,
 	}, nil
 }
 
@@ -219,16 +211,16 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 	}
 
 	defaults.Namespace = opts.namespace
-	defaults.Gateway = opts.gateway
-	defaults.GatewayPort = opts.gatewayPort
-	defaults.GatewayProbeSeconds = opts.gatewayProbeSeconds
-	defaults.GatewayProbePort = opts.gatewayProbePort
+	defaults.Gateway.Enabled = opts.gateway.Enabled
+	defaults.Gateway.Port = opts.gateway.Port
+	defaults.Gateway.Probe.Seconds = opts.gateway.Probe.Seconds
+	defaults.Gateway.Probe.Port = opts.gateway.Probe.Port
 	defaults.IdentityTrustDomain = values.IdentityTrustDomain
 	defaults.LinkerdNamespace = controlPlaneNamespace
 	defaults.ProxyOutboundPort = uint32(values.Proxy.Ports.Outbound)
 	defaults.LinkerdVersion = version.Version
 	defaults.RemoteMirrorServiceAccount = opts.remoteMirrorCredentials
-	defaults.GatewayServiceType = opts.gatewayServiceType
+	defaults.Gateway.ServiceType = opts.gateway.ServiceType
 
 	return defaults, nil
 }

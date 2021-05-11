@@ -10,5 +10,5 @@ metadata:
 spec:
   ports:
   - name: mc-probe
-    port: {{.Values.gatewayProbePort}}
+    port: {{.Values.gateway.probe.port}}
     protocol: TCP

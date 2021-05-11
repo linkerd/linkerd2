@@ -108,7 +108,7 @@ func buildMulticlusterAllowValues(ctx context.Context, opts *allowOptions) (*mcc
 
 	defaults.Namespace = opts.namespace
 	defaults.LinkerdVersion = version.Version
-	defaults.Gateway = false
+	defaults.Gateway.Enabled = false
 	defaults.ServiceMirror = false
 	defaults.RemoteMirrorServiceAccount = true
 	defaults.RemoteMirrorServiceAccountName = opts.serviceAccountName

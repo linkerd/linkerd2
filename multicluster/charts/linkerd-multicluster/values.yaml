@@ -1,16 +1,29 @@
-# -- If the gateway component should be installed
-gateway: true
-# -- The name of the gateway that will be installed
-gatewayName: linkerd-gateway
-# -- The port on which all the gateway will accept incoming traffic
-gatewayPort: 4143
-# -- The path that will be used by remote clusters for determining whether the
-# gateway is alive
-gatewayProbePath: /ready
-# -- The port used for liveliness probing
-gatewayProbePort: 4191
-# -- The interval (in seconds) between liveness probes
-gatewayProbeSeconds: 3
+gateway:
+  # -- If the gateway component should be installed
+  enabled: true
+  # -- The name of the gateway that will be installed
+  name: linkerd-gateway
+  # -- The port on which all the gateway will accept incoming traffic
+  port: 4143
+  # -- Service Type of gateway Service
+  serviceType: LoadBalancer
+  # nodePort -- Set the gateway nodePort (for LoadBalancer or NodePort) to a specific value
+  # nodePort:
+  probe:
+    # -- The path that will be used by remote clusters for determining whether the
+    # gateway is alive
+    path: /ready
+    # -- The port used for liveliness probing
+    port: 4191
+    # nodePort -- Set the probe nodePort (for LoadBalancer or NodePort) to a specific value
+    # nodePort:
+    # -- The interval (in seconds) between liveness probes
+    seconds: 3
+  # -- Annotations to add to the gateway service
+  serviceAnnotations: {}
+  # -- Set loadBalancerIP on gateway service
+  loadBalancerIP: ""
+
 # -- If the namespace should be installed
 installNamespace: true
 # -- Control plane version
@@ -24,8 +37,6 @@ remoteMirrorServiceAccount: true
 # -- The name of the service account used to allow remote clusters to mirror
 # local services
 remoteMirrorServiceAccountName: linkerd-service-mirror-remote-access-default
-# -- Service Type of gateway Service
-gatewayServiceType: LoadBalancer
 # -- Namespace of linkerd installation
 linkerdNamespace: linkerd
 # -- Identity Trust Domain of the certificate authority

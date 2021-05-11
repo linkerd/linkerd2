@@ -18,29 +18,43 @@ const (
 
 // Values contains the top-level elements in the Helm charts
 type Values struct {
-	CliVersion                     string `json:"cliVersion"`
-	ControllerImage                string `json:"controllerImage"`
-	ControllerImageVersion         string `json:"controllerImageVersion"`
-	Gateway                        bool   `json:"gateway"`
-	GatewayName                    string `json:"gatewayName"`
-	GatewayPort                    uint32 `json:"gatewayPort"`
-	GatewayProbePath               string `json:"gatewayProbePath"`
-	GatewayProbePort               uint32 `json:"gatewayProbePort"`
-	GatewayProbeSeconds            uint32 `json:"gatewayProbeSeconds"`
-	IdentityTrustDomain            string `json:"identityTrustDomain"`
-	InstallNamespace               bool   `json:"installNamespace"`
-	LinkerdNamespace               string `json:"linkerdNamespace"`
-	LinkerdVersion                 string `json:"linkerdVersion"`
-	Namespace                      string `json:"namespace"`
-	ProxyOutboundPort              uint32 `json:"proxyOutboundPort"`
-	ServiceMirror                  bool   `json:"serviceMirror"`
-	LogLevel                       string `json:"logLevel"`
-	ServiceMirrorRetryLimit        uint32 `json:"serviceMirrorRetryLimit"`
-	ServiceMirrorUID               int64  `json:"serviceMirrorUID"`
-	RemoteMirrorServiceAccount     bool   `json:"remoteMirrorServiceAccount"`
-	RemoteMirrorServiceAccountName string `json:"remoteMirrorServiceAccountName"`
-	TargetClusterName              string `json:"targetClusterName"`
-	GatewayServiceType             string `json:"gatewayServiceType"`
+	CliVersion                     string   `json:"cliVersion"`
+	ControllerImage                string   `json:"controllerImage"`
+	ControllerImageVersion         string   `json:"controllerImageVersion"`
+	Gateway                        *Gateway `json:"gateway"`
+	IdentityTrustDomain            string   `json:"identityTrustDomain"`
+	InstallNamespace               bool     `json:"installNamespace"`
+	LinkerdNamespace               string   `json:"linkerdNamespace"`
+	LinkerdVersion                 string   `json:"linkerdVersion"`
+	Namespace                      string   `json:"namespace"`
+	ProxyOutboundPort              uint32   `json:"proxyOutboundPort"`
+	ServiceMirror                  bool     `json:"serviceMirror"`
+	LogLevel                       string   `json:"logLevel"`
+	ServiceMirrorRetryLimit        uint32   `json:"serviceMirrorRetryLimit"`
+	ServiceMirrorUID               int64    `json:"serviceMirrorUID"`
+	RemoteMirrorServiceAccount     bool     `json:"remoteMirrorServiceAccount"`
+	RemoteMirrorServiceAccountName string   `json:"remoteMirrorServiceAccountName"`
+	TargetClusterName              string   `json:"targetClusterName"`
+}
+
+// Gateway contains all opttions related to the Gateway Service
+type Gateway struct {
+	Enabled            bool              `json:"enabled"`
+	Name               string            `json:"name"`
+	Port               uint32            `json:"port"`
+	NodePort           uint32            `json:"nodePort"`
+	ServiceType        string            `json:"serviceType"`
+	Probe              *Probe            `json:"probe"`
+	ServiceAnnotations map[string]string `json:"serviceAnnotations"`
+	LoadBalancerIP     string            `json:"loadBalancerIP"`
+}
+
+// Probe contains all options for the Probe Service
+type Probe struct {
+	Path     string `json:"path"`
+	Port     uint32 `json:"port"`
+	NodePort uint32 `json:"nodePort"`
+	Seconds  uint32 `json:"seconds"`
 }
 
 // NewInstallValues returns a new instance of the Values type.
