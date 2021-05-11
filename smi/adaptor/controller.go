@@ -25,9 +25,13 @@ import (
 )
 
 const (
-	// CreatedOrUpdatedBySMIAdaptorFor annotation is added to the SP resource
+	// createdOrUpdatedBySMIAdaptorFor annotation is added to the SP resource
 	// by the SMI adaptor whenever a creation or updatation is done
-	CreatedOrUpdatedBySMIAdaptorFor = "smi.linkerd.io/updated-for"
+	createdOrUpdatedBySMIAdaptorFor = "smi.linkerd.io/updated-for"
+
+	// ignoreServiceProfileAnnotation is used with Service Profiles
+	// to prevent the SMI adaptor from changing it
+	ignoreServiceProfileAnnotation = "smi.linkerd.io/skip"
 )
 
 // SMIController is an adaptor that converts SMI resources
@@ -190,7 +194,7 @@ func (c *SMIController) syncHandler(key string) error {
 		if errors.IsNotFound(err) {
 			// Check if there is a relevant SP that was created or updated by SMI Controller
 			selector := labels.NewSelector()
-			r, err := labels.NewRequirement(CreatedOrUpdatedBySMIAdaptorFor, selection.Equals, []string{name})
+			r, err := labels.NewRequirement(createdOrUpdatedBySMIAdaptorFor, selection.Equals, []string{name})
 			if err != nil {
 				return err
 			}
@@ -203,6 +207,11 @@ func (c *SMIController) syncHandler(key string) error {
 			if len(sps) != 0 {
 				// Empty dstOverrides in the SP
 				sp := sps[0]
+				if ignoreAnnotationPresent(sp) {
+					log.Infof("skipping %s sp as ignore annotation is present", sp.Name)
+					return nil
+				}
+
 				sp.Spec.DstOverrides = nil
 				_, err = c.spclientset.LinkerdV1alpha2().ServiceProfiles(namespace).Update(context.Background(), sp, metav1.UpdateOptions{})
 				if err != nil {
@@ -223,8 +232,12 @@ func (c *SMIController) syncHandler(key string) error {
 			return err
 		}
 	} else {
-		// Update the existing resource if it does not exist
 		log.Infof("Service Profile already present")
+		if ignoreAnnotationPresent(sp) {
+			log.Infof("skipping %s sp as ignore annotation is present", sp.Name)
+			return nil
+		}
+
 		// Check if SP Matches the TS, and update if it not
 		spFromTs := c.toServiceProfile(ts)
 		if !equal(spFromTs, sp) {
@@ -239,6 +252,11 @@ func (c *SMIController) syncHandler(key string) error {
 	}
 
 	return nil
+}
+
+func ignoreAnnotationPresent(sp *serviceprofile.ServiceProfile) bool {
+	_, ok := sp.Annotations[ignoreServiceProfileAnnotation]
+	return ok
 }
 
 func equal(spA *serviceprofile.ServiceProfile, spB *serviceprofile.ServiceProfile) bool {
@@ -285,7 +303,7 @@ func (c *SMIController) enqueue(obj interface{}) {
 // updateDstOverrides updates the dstOverrides of the given serviceprofile
 // to match that of the trafficsplit
 func updateDstOverrides(sp *serviceprofile.ServiceProfile, ts *trafficsplit.TrafficSplit, clusterDomain string) {
-	sp.Annotations[CreatedOrUpdatedBySMIAdaptorFor] = ts.Name
+	sp.Annotations[createdOrUpdatedBySMIAdaptorFor] = ts.Name
 	sp.Spec.DstOverrides = []*serviceprofile.WeightedDst{}
 	for _, backend := range ts.Spec.Backends {
 		weightedDst := &serviceprofile.WeightedDst{
@@ -304,7 +322,7 @@ func (c *SMIController) toServiceProfile(ts *trafficsplit.TrafficSplit) *service
 			Name:      fmt.Sprintf("%s.%s.svc.%s", ts.Spec.Service, ts.Namespace, c.clusterDomain),
 			Namespace: ts.Namespace,
 			Annotations: map[string]string{
-				CreatedOrUpdatedBySMIAdaptorFor: ts.Name,
+				createdOrUpdatedBySMIAdaptorFor: ts.Name,
 			},
 		},
 	}
