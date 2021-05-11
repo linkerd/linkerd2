@@ -8,7 +8,7 @@ metadata:
     mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 rules:
 - apiGroups: [""]
-  resources: ["endpoints", "services", "pods"]
+  resources: ["endpoints", "services"]
   verbs: ["list", "get", "watch", "create", "delete", "update"]
 - apiGroups: [""]
   resources: ["namespaces"]

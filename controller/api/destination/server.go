@@ -206,10 +206,12 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 				fmt.Printf("No annotations: %s", err)
 				return err
 			}
-			// If the service has multicluster headless annotation, create
-			// translator with endpoints should only have one endpoint. N.B: it
-			// would be worthwhile to do this more efficiently such as checking
-			// cached endpoints objects from the EndpointsWatcher
+			// If the service is mirrored (and headless), avoid making a call to
+			// Get and instead return just one endpoint from GetProfile with the
+			// gateway IP N.B: it  would be worthwhile to do this more
+			// efficiently such as checking cached endpoints objects from the
+			// EndpointsWatcher Question: can we make this more generic to deal
+			// with any mirrored service this way?
 			if _, found := annotations[labels.RemoteServiceHeadless]; found {
 				ep, err := s.k8sAPI.Endpoint().Lister().Endpoints(svcID.Namespace).Get(svcID.Name)
 				if err != nil {

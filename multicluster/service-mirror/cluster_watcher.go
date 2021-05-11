@@ -15,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
@@ -95,6 +96,11 @@ type (
 		svc *corev1.Service
 	}
 
+	// OnUpdateEndpointsCalled is issued when the onUpdate function of the
+	// shared Endpoints informer is called
+	OnUpdateEndpointsCalled struct {
+		ep *corev1.Endpoints
+	}
 	// OnDeleteCalled is issued when the onDelete function of the
 	// shared informer is called
 	OnDeleteCalled struct {
@@ -128,7 +134,7 @@ func NewRemoteClusterServiceWatcher(
 	repairPeriod time.Duration,
 
 ) (*RemoteClusterServiceWatcher, error) {
-	remoteAPI, err := k8s.InitializeAPIForConfig(ctx, cfg, false, k8s.Svc, k8s.Pod)
+	remoteAPI, err := k8s.InitializeAPIForConfig(ctx, cfg, false, k8s.Svc, k8s.Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize api for target cluster %s: %s", clusterName, err)
 	}
@@ -180,10 +186,6 @@ func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceAnnotations(remoteSer
 		annotations[consts.ProxyOpaquePortsAnnotation] = opaquePorts
 	}
 
-	headless, ok := serviceAnnotations[consts.RemoteServiceHeadless]
-	if ok && strings.EqualFold("enabled", headless) {
-		annotations[consts.RemoteServiceHeadless] = headless
-	}
 	return annotations
 }
 
@@ -411,12 +413,11 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 		return err
 	}
 
-	annotations := rcsw.getMirroredServiceAnnotations(remoteService)
 	serviceToCreate := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        localServiceName,
 			Namespace:   remoteService.Namespace,
-			Annotations: annotations,
+			Annotations: rcsw.getMirroredServiceAnnotations(remoteService),
 			Labels:      rcsw.getMirroredServiceLabels(),
 		},
 		Spec: corev1.ServiceSpec{
@@ -437,103 +438,74 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 			},
 		},
 	}
-	// If service to create is headless, explictly set the clusterIP to None
-	_, isHeadless := annotations[consts.RemoteServiceHeadless]
-	if isHeadless {
+
+	// Service to mirror is headless if its clusterIP is 'None'; it needs to
+	// have a clusterIP service created for each hostname in its Endpoints
+	// object.
+	if remoteService.Spec.ClusterIP == "None" {
+		// If service to create is headless, explictly set the clusterIP to None
 		serviceToCreate.Spec.ClusterIP = "None"
-		pods, err := rcsw.remoteAPIClient.GetPodsFor(remoteService, false)
+		epNamespace, epName := remoteService.Namespace, remoteService.Name
+		ep, err := rcsw.remoteAPIClient.Endpoint().Lister().Endpoints(epNamespace).Get(epName)
 		if err != nil {
 			return err
 		}
-		// Create a map of Endpoints where the key is the service name and the
-		// value is the clusterIP service
-		setEndpoints := make(map[string]string, len(pods))
+		// Each Endpoints has a set of Subsets where each subset has a set of IPs
+		// for a given set of ports. To get the full list of hosts in an Endpoints
+		// object, we need to check each Subset's Addresses (IPs).
+		// szHosts as a variable holds the size of all addresses in all subsets, sz of
+		// address x ports, for the prototype assume Endpoints only have 1 subset
+		szHosts := len(ep.Subsets[0].Addresses)
 
-		// For each pod, we want to create a service. All services will be set
-		// as endpoints in the headless service's Endpoints object.
-		for _, pod := range pods {
-			// Create annotations for pod's service
-			podAnnotations := map[string]string{
-				consts.RemoteResourceVersionAnnotation: pod.ResourceVersion, // needed to detect real changes
-				consts.RemoteServiceFqName:             fmt.Sprintf("%s.%s.%s.svc.%s", pod.Name, remoteService.Name, remoteService.Namespace, rcsw.link.TargetClusterDomain),
-				consts.RemoteServiceHeadless:           "enabled",
-			}
-			podLocalName := rcsw.mirroredResourceName(pod.Name)
-			// Create service spec, clusterIP
-			podSvc := &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:        podLocalName,
-					Namespace:   remoteService.Namespace,
-					Annotations: podAnnotations,
-				},
-				Spec: corev1.ServiceSpec{
-					Ports: remapRemoteServicePorts(remoteService.Spec.Ports),
-				},
-			}
-			podEndpoints := &corev1.Endpoints{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      podSvc.Name,
-					Namespace: podSvc.Namespace,
-					Labels: map[string]string{
-						consts.MirroredResourceLabel:  "true",
-						consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
-					},
-					Annotations: map[string]string{
-						consts.RemoteServiceFqName: podSvc.Annotations[consts.RemoteServiceFqName],
-					},
-				},
-				Subsets: []corev1.EndpointSubset{
-					{
-						Addresses: gatewayAddresses,
-						Ports:     rcsw.getEndpointsPorts(ev.service),
-					},
-				},
-			}
+		// To mirror a headless service, we need to create a clusterIP for each
+		// host in its Endpoints.
+		// epSet is a map that holds all of the Endpoints hosts to be created in
+		// the src cluster, with keys set to the clusterIP serviceName and the
+		// value to its clusterIP in the src cluster.
+		epSet := make(map[string]string, szHosts)
 
-			if rcsw.link.GatewayIdentity != "" {
-				podEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
+		// For each host, we want to create a service. All services will be set
+		// as hosts in the headless service's Endpoints object (in the src
+		// cluster). For prototype, assume only one subset.
+		for _, addr := range ep.Subsets[0].Addresses {
+			// Create annotations for host's service
+			ref := addr.TargetRef
+			if ref == nil {
+				// ignore addresses w/o a backing pod (if they exist)
+				continue
 			}
-
-			podInfo := fmt.Sprintf("%s/%s", pod.Namespace, pod.Name)
-			rcsw.log.Infof("Creating new service %s for headless mirror %s", podInfo, serviceInfo)
-			if _, err := rcsw.localAPIClient.Client.CoreV1().Services(remoteService.Namespace).Create(ctx, podSvc, metav1.CreateOptions{}); err != nil {
-				if !kerrors.IsAlreadyExists(err) {
-					// we might have created it during earlier attempt, if that is not the case, we retry
-					return RetryableError{[]error{err}}
-				}
-			}
-
-			rcsw.log.Infof("Creating a new Endpoints for %s", podInfo)
-			if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(ev.service.Namespace).Create(ctx, podEndpoints, metav1.CreateOptions{}); err != nil {
-				// we clean up after ourselves
-				rcsw.localAPIClient.Client.CoreV1().Services(ev.service.Namespace).Delete(ctx, podLocalName, metav1.DeleteOptions{})
-				// and retry
-				return RetryableError{[]error{err}}
-			}
-
-			createdService, err := rcsw.localAPIClient.Client.CoreV1().Services(ev.service.Namespace).Get(ctx, podLocalName, metav1.GetOptions{})
+			// Name of the backing targetRef, generally a *pod*
+			refLocalName := rcsw.mirroredResourceName(ref.Name)
+			err := rcsw.createHeadlessMirroredHost(ctx, ref, remoteService, refLocalName)
 			if err != nil {
+				rcsw.log.Errorf("failed to create headless mirrored hosts for %s: %v", refLocalName, err)
+			}
+
+			createdService, err := rcsw.localAPIClient.Client.CoreV1().Services(remoteService.Namespace).Get(ctx, refLocalName, metav1.GetOptions{})
+			if err != nil {
+				rcsw.log.Debugf("failed to list clusterIP Service for mirrored host %s/%s: %v", epNamespace, addr.Hostname, err)
 				return err
 			}
-			setEndpoints[podLocalName] = createdService.Spec.ClusterIP
+			epSet[ref.Name] = createdService.Spec.ClusterIP
 		}
 
-		// Create Endpoints for headless service
-		addrs := make([]corev1.EndpointAddress, len(pods))
+		// Create Endpoints Subset (& Addresses) for headless service
+		headlessAdresses := make([]corev1.EndpointAddress, len(epSet))
 		index := 0
-		for name, clusterIP := range setEndpoints {
+		for name, clusterIP := range epSet {
 			addr := corev1.EndpointAddress{
 				Hostname: name,
 				IP:       clusterIP,
 			}
-			addrs[index] = addr
+			headlessAdresses[index] = addr
 			index += 1
 		}
-		rcsw.log.Debugf("Endpoint addresses for %s: %v", ev.service, addrs)
+		rcsw.log.Debugf("Endpoint addresses for %s: %v", ev.service, headlessAdresses)
+		// For prototype, assume only one port. Goes along with our 1 Subset assumption
 		epPort := corev1.EndpointPort{Port: (ev.service.Spec.Ports[0].Port)}
 		endpointsToCreate.Subsets = []corev1.EndpointSubset{
 			{
-				Addresses: addrs,
+				Addresses: headlessAdresses,
 				Ports:     []corev1.EndpointPort{epPort},
 			},
 		}
@@ -674,6 +646,8 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent(ctx context.Context) (
 		err = rcsw.createOrUpdateService(ev.svc)
 	case *OnUpdateCalled:
 		err = rcsw.createOrUpdateService(ev.svc)
+	case *OnUpdateEndpointsCalled:
+		err = rcsw.updateHeadlessEndpoints(ctx, ev.ep)
 	case *OnDeleteCalled:
 		rcsw.handleOnDelete(ev.svc)
 	case *RemoteServiceCreated:
@@ -762,6 +736,40 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 			},
 			UpdateFunc: func(old, new interface{}) {
 				rcsw.eventsQueue.Add(&OnUpdateCalled{new.(*corev1.Service)})
+			},
+		},
+	)
+	// Add an event handler for Endpoints object to see whether we need to
+	// update mirrored headless services. We only care if an Endpoints is
+	// updated and if it belongs
+	// to a headless service.
+	rcsw.remoteAPIClient.Endpoint().Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			UpdateFunc: func(old, new interface{}) {
+				if old.(v1.Object).GetNamespace() == "kube-system" {
+					return
+				}
+
+				ep, ok := new.(*corev1.Endpoints)
+				if !ok {
+					rcsw.log.Errorf("error processing Endpoints resource, got %#v, expected *corev1.Endpoints", new)
+					return
+				}
+
+				// Avoid processing if we don't have all addresses ready. We
+				// should process the event when all pods are ready to accept
+				// traffic
+				if len(ep.Subsets[0].NotReadyAddresses) != 0 {
+					return
+				}
+
+				if _, found := ep.Labels["service.kubernetes.io/headless"]; !found {
+					// Not an Endpoints object for a headless service? Then we likely don't want
+					// to update anything.
+					return
+				}
+
+				rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{ep})
 			},
 		},
 	)
@@ -871,10 +879,10 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 		updatedService := svc.DeepCopy()
 
 		// For the purpose of the StatefulSet prototype, if we encounter a
-		// service with headless annotation skip repairing its endpoints. In the
+		// service with no clusterIP skip repairing its endpoints. In the
 		// actual implementation, we would want to reconcile the endpoints
 		// objects with the clusterIP services
-		if _, found := svc.Annotations[consts.RemoteServiceHeadless]; found {
+		if svc.Spec.ClusterIP == "None" {
 			rcsw.log.Debugf("Skipped repairing Endpoints for %s/%s", svc.Namespace, svc.Name)
 			continue
 		}
@@ -932,4 +940,222 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateEndpoints(ctx context.Con
 	}
 
 	return nil
+}
+
+func (rcsw *RemoteClusterServiceWatcher) updateHeadlessEndpoints(ctx context.Context, remoteEp *corev1.Endpoints) error {
+	// Get local version of the Endpoints object and diff
+	localEpName := rcsw.mirroredResourceName(remoteEp.Name)
+	ep, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(remoteEp.Namespace).Get(ctx, localEpName, metav1.GetOptions{})
+	localEp := ep.DeepCopy()
+	if err != nil {
+		// When a service is updated so is its Endpoints object. When we update
+		// a remote service (such as adding the exported annotation), its
+		// Endpoints update will be picked up by the shared informer. In such
+		// cases, we want to leave the creation of Endpoints to the service
+		// creation function.
+		if kerrors.IsNotFound(err) {
+			// This line checks whether we have an Endpoints object in the local
+			// cluster. If we don't, and the Endpoints updated in the remote cluster
+			// is headless then skip update, it will likely be done by
+			// createOrUpdateService fn.
+			if _, found := remoteEp.Labels["service.kubernetes.io/headless"]; found {
+				return nil
+			}
+		} else {
+			return err
+		}
+	}
+
+	// Just as before, to simplify the prototype assume only one subset. Not the
+	// healthiest of assumptions but imo keeps the complexity lower.
+	remoteHosts := make(map[string]*corev1.EndpointAddress)
+	for _, addr := range remoteEp.Subsets[0].Addresses {
+		// Only add addresses whose target ref is not nil and whose hostname is
+		// not empty
+		if addr.Hostname != "" && addr.TargetRef != nil {
+			remoteHosts[addr.Hostname] = &addr
+		}
+	}
+
+	localHosts := make(map[string]*corev1.EndpointAddress)
+	for _, addr := range localEp.Subsets[0].Addresses {
+		// These will have a nil target ref since its remote
+		if addr.Hostname != "" {
+			localHosts[addr.Hostname] = &addr
+		}
+	}
+	if len(localHosts) == len(remoteHosts) {
+		// Assumes a StatefulSet => pod identifier is always consecutive
+		// requires a discussion to see whether a headless svc may have
+		// non-deterministic pod names, in which case comparing the lengths
+		// wouldn't suffice to draw a diff conclusion (can have the same number
+		// of hosts but all named differently, which for a SSet wouldn't apply)
+		return nil
+	}
+
+	// At this point we know we have an Endpoints for our headless service in
+	// the local cluster and it is different to the remote object. All that
+	// remains is to see what has changed between the two: add a diff, reconcile
+	// (by either creating more clusterIP services or deleting the ones whose
+	// hosts  are no longer part of the remote Endpoints)
+	add, rm := diffEndpointsHosts(remoteHosts, localHosts)
+	if len(add) == 0 && len(rm) == 0 {
+		// Nothing to see here
+		rcsw.log.Debugf("No difference for Endpoints %s/%s", localEp.Namespace, localEp.Name)
+		return nil
+	}
+
+	remoteService, err := rcsw.remoteAPIClient.Svc().Lister().Services(remoteEp.Namespace).Get(remoteEp.Name)
+	// Will hold new host + IPs, initialize with existing address set to
+	// avoid deleting entries from array
+	newHostSet := make(map[string]string)
+	for _, addr := range localEp.Subsets[0].Addresses {
+		newHostSet[addr.Hostname] = addr.IP
+	}
+
+	if len(rm) > 0 {
+		for _, host := range rm {
+			// delete clusterIP service
+			localName := rcsw.mirroredResourceName(host)
+			err := rcsw.localAPIClient.Client.CoreV1().Services(remoteService.Namespace).Delete(ctx, localName, metav1.DeleteOptions{})
+			if err != nil {
+				rcsw.log.Errorf("error deleting unused headless clusterIP %s/%s: %v", remoteService.Namespace, localName, err)
+			}
+			// remove the host from the set
+			delete(newHostSet, host)
+		}
+	}
+
+	// We need to add new clusterIP services for each additional host and
+	// then add the IP as an address
+	if len(add) > 0 {
+		for _, host := range add {
+			localName := rcsw.mirroredResourceName(host)
+			ref := remoteHosts[host].TargetRef
+			err := rcsw.createHeadlessMirroredHost(ctx, ref, remoteService, localName)
+			if err != nil {
+				rcsw.log.Debugf("could not create clusterIP for host %s/%s: %v", localEp.Namespace, host, err)
+				return err
+			}
+			// Get created service and add it to newHostSet
+			createdService, err := rcsw.localAPIClient.Client.CoreV1().Services(remoteService.Namespace).Get(ctx, localName, metav1.GetOptions{})
+			if err != nil {
+				rcsw.log.Debugf("could not retrieve clusterIP service for host %s/%s: %v", localEp.Namespace, host, err)
+				return err
+			}
+			rcsw.log.Debugf("Adding host %s(%s) to Endpoints %s/%s", host, createdService.Spec.ClusterIP, localEp.Namespace, localEp.Name)
+			newHostSet[host] = createdService.Spec.ClusterIP
+		}
+	}
+
+	// Create Endpoints Subset (& Addresses) for headless service
+	headlessAdresses := make([]corev1.EndpointAddress, len(newHostSet))
+	index := 0
+	for name, clusterIP := range newHostSet {
+		addr := corev1.EndpointAddress{
+			Hostname: name,
+			IP:       clusterIP,
+		}
+		headlessAdresses[index] = addr
+		index += 1
+	}
+	epPort := corev1.EndpointPort{Port: (remoteService.Spec.Ports[0].Port)}
+	localEp.Subsets = []corev1.EndpointSubset{
+		{
+			Addresses: headlessAdresses,
+			Ports:     []corev1.EndpointPort{epPort},
+		},
+	}
+	_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(localEp.Namespace).Update(ctx, localEp, metav1.UpdateOptions{})
+	if err != nil {
+		return RetryableError{[]error{err}}
+	}
+
+	return nil
+}
+
+func (rcsw *RemoteClusterServiceWatcher) createHeadlessMirroredHost(ctx context.Context, targetRef *corev1.ObjectReference, remoteService *corev1.Service, refLocalName string) error {
+	gatewayAddresses, err := rcsw.resolveGatewayAddress()
+	if err != nil {
+		return err
+	}
+
+	hostAnnotations := map[string]string{
+		// needed to detect real changes
+		consts.RemoteResourceVersionAnnotation: targetRef.ResourceVersion,
+		consts.RemoteServiceFqName:             fmt.Sprintf("%s.%s.%s.svc.%s", targetRef.Name, remoteService.Name, remoteService.Namespace, rcsw.link.TargetClusterDomain),
+		consts.RemoteServiceHeadless:           "true",
+	}
+	// Create service spec, clusterIP
+	hostSvc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        refLocalName,
+			Namespace:   remoteService.Namespace,
+			Annotations: hostAnnotations,
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: remapRemoteServicePorts(remoteService.Spec.Ports),
+		},
+	}
+	hostEndpoints := &corev1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hostSvc.Name,
+			Namespace: hostSvc.Namespace,
+			Labels: map[string]string{
+				consts.MirroredResourceLabel:  "true",
+				consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
+			},
+			Annotations: map[string]string{
+				consts.RemoteServiceFqName: hostSvc.Annotations[consts.RemoteServiceFqName],
+			},
+		},
+		Subsets: []corev1.EndpointSubset{
+			{
+				Addresses: gatewayAddresses,
+				Ports:     rcsw.getEndpointsPorts(remoteService),
+			},
+		},
+	}
+
+	if rcsw.link.GatewayIdentity != "" {
+		hostEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
+	}
+
+	serviceInfo := fmt.Sprintf("%s/%s", remoteService.Namespace, remoteService.Name)
+	podInfo := fmt.Sprintf("%s/%s", targetRef.Namespace, targetRef.Name)
+	rcsw.log.Infof("Creating new service %s for headless mirror %s", podInfo, serviceInfo)
+	if _, err := rcsw.localAPIClient.Client.CoreV1().Services(remoteService.Namespace).Create(ctx, hostSvc, metav1.CreateOptions{}); err != nil {
+		if !kerrors.IsAlreadyExists(err) {
+			// we might have created it during earlier attempt, if that is not the case, we retry
+			return RetryableError{[]error{err}}
+		}
+	}
+
+	rcsw.log.Infof("Creating a new Endpoints for %s", podInfo)
+	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(remoteService.Namespace).Create(ctx, hostEndpoints, metav1.CreateOptions{}); err != nil {
+		// we clean up after ourselves
+		rcsw.localAPIClient.Client.CoreV1().Services(remoteService.Namespace).Delete(ctx, refLocalName, metav1.DeleteOptions{})
+		// and retry
+		return RetryableError{[]error{err}}
+	}
+
+	return nil
+}
+
+// diffEndpointsHosts checks whether a local Endpoints object has the same host
+// addresses as its remote counterpart
+func diffEndpointsHosts(remote, local map[string]*corev1.EndpointAddress) (add, rm []string) {
+	add, rm = make([]string, 0, len(remote)), make([]string, 0, len(remote))
+	for host := range remote {
+		if _, found := local[host]; !found {
+			add = append(add, host)
+		}
+	}
+
+	for host := range local {
+		if _, found := remote[host]; !found {
+			rm = append(rm, host)
+		}
+	}
+	return
 }
