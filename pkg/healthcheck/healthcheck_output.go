@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -21,12 +22,19 @@ const (
 	TableOutput = "table"
 	// WideOutput is used to specify the wide output format
 	WideOutput = "wide"
+
+	// DefaultHintBaseURL is the default base URL on the linkerd.io website
+	// that all check hints for the latest linkerd version point to. Each
+	// check adds its own `hintAnchor` to specify a location on the page.
+	DefaultHintBaseURL = "https://linkerd.io/2/checks/#"
 )
 
 var (
 	okStatus   = color.New(color.FgGreen, color.Bold).SprintFunc()("\u221A")  // √
 	warnStatus = color.New(color.FgYellow, color.Bold).SprintFunc()("\u203C") // ‼
 	failStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u00D7")    // ×
+
+	reStableVersion = regexp.MustCompile(`stable-(\d\.\d+)\.`)
 )
 
 // CheckResults contains a slice of CheckResult structs.
@@ -221,4 +229,14 @@ func ParseJSONCheckOutput(data []byte) (CheckResults, error) {
 		}
 	}
 	return CheckResults{results}, nil
+}
+
+// HintBaseURL returns the base URL on the linkerd.io website that check hints
+// point to, depending on the version
+func HintBaseURL(ver string) string {
+	stableVersion := reStableVersion.FindStringSubmatch(ver)
+	if stableVersion == nil {
+		return DefaultHintBaseURL
+	}
+	return fmt.Sprintf("https://linkerd.io/%s/checks/#", stableVersion[1])
 }

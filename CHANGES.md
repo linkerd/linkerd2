@@ -1,5 +1,18 @@
 # Changes
 
+## stable-2.10.2
+
+This stable release fixes a proxy task leak that could be triggered when clients
+disconnect when a service is in failfast. It also includes fixes for the fuzz
+testing that was performed on the proxy and its dependencies; check out the
+[Introducing fuzz testing for
+Linkerd](https://linkerd.io/2021/05/07/fuzz-testing-for-linkerd/) blog post for
+a summary of that work!
+
+The `check` command also prints versioned hint URLs now. After the 2.10 release,
+enough changed from previous stable releases that the documentation had to be
+separated by stable versions.
+
 ## stable-2.10.1
 
 This stable release adds CLI support for Apple Silicon M1 chips and support for
