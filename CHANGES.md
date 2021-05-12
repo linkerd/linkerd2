@@ -5,7 +5,9 @@
 This stable release fixes a proxy task leak that could be triggered when clients
 disconnect when a service is in failfast. It also includes fixes for the fuzz
 testing that was performed on the proxy and its dependencies; check out the
-[Introducing fuzz testing for Linkerd](https://linkerd.io/2021/05/07/fuzz-testing-for-linkerd/) blog post for a summary of that work!
+[Introducing fuzz testing for
+Linkerd](https://linkerd.io/2021/05/07/fuzz-testing-for-linkerd/) blog post for
+a summary of that work!
 
 ## stable-2.10.1
 
