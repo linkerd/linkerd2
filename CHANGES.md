@@ -9,6 +9,10 @@ testing that was performed on the proxy and its dependencies; check out the
 Linkerd](https://linkerd.io/2021/05/07/fuzz-testing-for-linkerd/) blog post for
 a summary of that work!
 
+The `check` command also prints versioned hint URLs now. After the 2.10 release,
+enough changed from previous stable releases that the documentation had to be
+separated by stable versions.
+
 ## stable-2.10.1
 
 This stable release adds CLI support for Apple Silicon M1 chips and support for
