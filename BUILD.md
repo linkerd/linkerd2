@@ -424,7 +424,8 @@ bin/docker-build-proxy
 
 #### Locally built proxy
 
-If you want to deploy a locally built proxy, you can build it in the [`linkerd2-proxy`](https://github.com/linkerd/linkerd2-proxy) repo by running:
+If you want to deploy a locally built proxy, you can build it in the
+[`linkerd2-proxy`](https://github.com/linkerd/linkerd2-proxy) repo by running:
 
 ```bash
 DOCKER_TAG=cr.l5d.io/linkerd/proxy:dev make docker
