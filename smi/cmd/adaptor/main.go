@@ -83,7 +83,6 @@ func main() {
 		*clusterDomain,
 		tsClient,
 		spClient,
-		spInformerFactory.Linkerd().V1alpha2().ServiceProfiles(),
 		tsInformerFactory.Split().V1alpha1().TrafficSplits(),
 	)
 

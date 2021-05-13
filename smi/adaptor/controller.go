@@ -7,17 +7,12 @@ import (
 
 	serviceprofile "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	spclientset "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
-	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha2"
-	splisters "github.com/linkerd/linkerd2/controller/gen/client/listers/serviceprofile/v1alpha2"
 	trafficsplit "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha1"
 	tsclientset "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	informers "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/informers/externalversions/split/v1alpha1"
-	listers "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/listers/split/v1alpha1"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -25,8 +20,8 @@ import (
 )
 
 const (
-	// createdOrUpdatedBySMIAdaptorFor annotation is added to the SP resource
-	// by the SMI adaptor whenever a creation or updatation is done
+	// createdOrUpdatedBySMIAdaptorFor label is added to a service profile resource
+	// whenever it has been created or updated by the SMI adaptor
 	createdOrUpdatedBySMIAdaptorFor = "smi.linkerd.io/updated-for"
 
 	// ignoreServiceProfileAnnotation is used with Service Profiles
@@ -40,13 +35,11 @@ type SMIController struct {
 	kubeclientset kubernetes.Interface
 	clusterDomain string
 
-	// TrafficSplit clientset, informers and Listers
+	// TrafficSplit clientset
 	tsclientset tsclientset.Interface
-	tsLister    listers.TrafficSplitLister
 	tsSynced    cache.InformerSynced
 
-	// Service Profile Lister
-	spLister    splisters.ServiceProfileLister
+	// ServiceProfile clientset
 	spclientset spclientset.Interface
 
 	// workqueue is a rate limited work queue. This is used to queue work to be
@@ -60,17 +53,14 @@ func NewController(
 	clusterDomain string,
 	tsclientset tsclientset.Interface,
 	spclientset spclientset.Interface,
-	spInformer spinformers.ServiceProfileInformer,
 	tsInformer informers.TrafficSplitInformer) *SMIController {
 
 	controller := &SMIController{
 		kubeclientset: kubeclientset,
 		clusterDomain: clusterDomain,
 		tsclientset:   tsclientset,
-		tsLister:      tsInformer.Lister(),
 		tsSynced:      tsInformer.Informer().HasSynced,
 		spclientset:   spclientset,
-		spLister:      spInformer.Lister(),
 		workqueue:     workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "TrafficSplits"),
 	}
 
@@ -156,7 +146,7 @@ func (c *SMIController) processNextWorkItem() bool {
 		}
 		// Run the syncHandler, passing it the namespace/name string of the
 		// Ts resource to be synced.
-		if err := c.syncHandler(key); err != nil {
+		if err := c.syncHandler(context.Background(), key); err != nil {
 			// Put the item back on the workqueue to handle any transient errors.
 			c.workqueue.AddRateLimited(key)
 			return fmt.Errorf("error syncing '%s': %s, requeuing", key, err.Error())
@@ -179,7 +169,7 @@ func (c *SMIController) processNextWorkItem() bool {
 // syncHandler compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the Ts resource
 // with the current status of the resource.
-func (c *SMIController) syncHandler(key string) error {
+func (c *SMIController) syncHandler(ctx context.Context, key string) error {
 	// Convert the namespace/name string into a distinct namespace and name
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
@@ -188,66 +178,68 @@ func (c *SMIController) syncHandler(key string) error {
 	}
 
 	// Get the Ts resource with this namespace/name
-	ts, err := c.tsLister.TrafficSplits(namespace).Get(name)
+	ts, err := c.tsclientset.SplitV1alpha1().TrafficSplits(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		// Check if TS does not exit anymore
 		if errors.IsNotFound(err) {
+			// TS does not exit anymore
 			// Check if there is a relevant SP that was created or updated by SMI Controller
-			selector := labels.NewSelector()
-			r, err := labels.NewRequirement(createdOrUpdatedBySMIAdaptorFor, selection.Equals, []string{name})
-			if err != nil {
-				return err
-			}
-			selector.Add(*r)
-			sps, err := c.spLister.ServiceProfiles(namespace).List(selector)
+			// and clean up its dstOverrides
+			log.Infof("trafficsplit/%s is deleted, trying to cleanup the relevant serviceprofile", name)
+			selector := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", createdOrUpdatedBySMIAdaptorFor, name)}
+			sps, err := c.spclientset.LinkerdV1alpha2().ServiceProfiles(namespace).List(ctx, selector)
 			if err != nil {
 				return err
 			}
 
-			if len(sps) != 0 {
-				// Empty dstOverrides in the SP
-				sp := sps[0]
-				if ignoreAnnotationPresent(sp) {
-					log.Infof("skipping %s sp as ignore annotation is present", sp.Name)
-					return nil
-				}
-
-				sp.Spec.DstOverrides = nil
-				_, err = c.spclientset.LinkerdV1alpha2().ServiceProfiles(namespace).Update(context.Background(), sp, metav1.UpdateOptions{})
-				if err != nil {
-					return err
-				}
+			// return as there are no relevant sp's
+			if len(sps.Items) == 0 {
+				log.Warnf("couldn't find the relevant serviceprofile for trafficsplit/%s, skipping", name)
+				return nil
 			}
+
+			// Empty dstOverrides in the SP
+			sp := sps.Items[0]
+			if ignoreAnnotationPresent(&sp) {
+				log.Infof("skipping clean up of serviceprofile/%s as ignore annotation is present", sp.Name)
+				return nil
+			}
+
+			sp.Spec.DstOverrides = nil
+			_, err = c.spclientset.LinkerdV1alpha2().ServiceProfiles(namespace).Update(ctx, &sp, metav1.UpdateOptions{})
+			if err != nil {
+				return err
+			}
+			log.Infof("cleaned up `dstOverrides` of serviceprofile/%s", sp.Name)
 			return nil
 		}
 		return err
 	}
 
-	// Check if the Service Profile is already Present
-	sp, err := c.spLister.ServiceProfiles(ts.Namespace).Get(fmt.Sprintf("%s.%s.svc.%s", ts.Spec.Service, ts.Namespace, c.clusterDomain))
+	// Check if the Service Profile is already present
+	sp, err := c.spclientset.LinkerdV1alpha2().ServiceProfiles(ts.Namespace).Get(ctx, fmt.Sprintf("%s.%s.svc.%s", ts.Spec.Service, ts.Namespace, c.clusterDomain), metav1.GetOptions{})
 	if err != nil {
 		// Create a Service Profile resource as it does not exist
-		_, err = c.spclientset.LinkerdV1alpha2().ServiceProfiles(ts.Namespace).Create(context.Background(), c.toServiceProfile(ts), metav1.CreateOptions{})
+		sp, err = c.spclientset.LinkerdV1alpha2().ServiceProfiles(ts.Namespace).Create(ctx, c.toServiceProfile(ts), metav1.CreateOptions{})
 		if err != nil {
 			return err
 		}
+		log.Infof("created serviceprofile/%s for trafficsplit/%s", sp.Name, ts.Name)
 	} else {
-		log.Infof("Service Profile already present")
-		if ignoreAnnotationPresent(sp) {
-			log.Infof("skipping %s sp as ignore annotation is present", sp.Name)
-			return nil
-		}
-
+		log.Infof("serviceprofile/%s already present", sp.Name)
 		// Check if SP Matches the TS, and update if it not
 		spFromTs := c.toServiceProfile(ts)
 		if !equal(spFromTs, sp) {
 			log.Infof("serviceprofile/%s does not match trafficscplit/%s", sp.Name, ts.Name)
+			if ignoreAnnotationPresent(sp) {
+				log.Infof("skipping updation of serviceprofile/%s as ignore annotation is present", sp.Name)
+				return nil
+			}
 			updateDstOverrides(sp, ts, c.clusterDomain)
-			log.Infof("Updated Service Profile as it's not equivalent to the relevant TS")
-			_, err = c.spclientset.LinkerdV1alpha2().ServiceProfiles(ts.Namespace).Update(context.Background(), sp, metav1.UpdateOptions{})
+			_, err = c.spclientset.LinkerdV1alpha2().ServiceProfiles(ts.Namespace).Update(ctx, sp, metav1.UpdateOptions{})
 			if err != nil {
 				return err
 			}
+			log.Infof("updated serviceprofile/%s as it's not equivalent to trafficsplit/%s", sp.Name, ts.Name)
 		}
 	}
 
@@ -272,14 +264,20 @@ func equal(spA *serviceprofile.ServiceProfile, spB *serviceprofile.ServiceProfil
 		return false
 	}
 
-	for index, dstA := range spA.Spec.DstOverrides {
-		dstB := spB.Spec.DstOverrides[index]
+	dstOverridesA := make(map[string]string)
+	for _, dstA := range spA.Spec.DstOverrides {
+		dstOverridesA[dstA.Authority] = dstA.Weight.String()
+	}
 
-		if dstA.Authority != dstB.Authority {
+	// Check if all the authorties from spB exist
+	// in dstOverridesA with the same weight
+	for _, dstB := range spB.Spec.DstOverrides {
+		weight, ok := dstOverridesA[dstB.Authority]
+		if !ok {
 			return false
 		}
 
-		if !dstA.Weight.Equal(dstB.Weight) {
+		if weight != dstB.Weight.String() {
 			return false
 		}
 	}
@@ -303,7 +301,7 @@ func (c *SMIController) enqueue(obj interface{}) {
 // updateDstOverrides updates the dstOverrides of the given serviceprofile
 // to match that of the trafficsplit
 func updateDstOverrides(sp *serviceprofile.ServiceProfile, ts *trafficsplit.TrafficSplit, clusterDomain string) {
-	sp.Annotations[createdOrUpdatedBySMIAdaptorFor] = ts.Name
+	sp.Labels[createdOrUpdatedBySMIAdaptorFor] = ts.Name
 	sp.Spec.DstOverrides = []*serviceprofile.WeightedDst{}
 	for _, backend := range ts.Spec.Backends {
 		weightedDst := &serviceprofile.WeightedDst{
@@ -321,7 +319,7 @@ func (c *SMIController) toServiceProfile(ts *trafficsplit.TrafficSplit) *service
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s.%s.svc.%s", ts.Spec.Service, ts.Namespace, c.clusterDomain),
 			Namespace: ts.Namespace,
-			Annotations: map[string]string{
+			Labels: map[string]string{
 				createdOrUpdatedBySMIAdaptorFor: ts.Name,
 			},
 		},
