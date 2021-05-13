@@ -7,7 +7,6 @@ support for traffic splitting through ServiceProfiles, among other fixes and
 improvements. Additionally, support has also been introduced for `NodePort`
 type services to the multicluster helm chart.
 
-
 * Added support for traffic splitting through a ServiceProfile's `dstOverrides`
   field.
 * Added `nodePorts` option to the multicluster helm chart (thanks @psmit!)
