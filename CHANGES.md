@@ -25,7 +25,6 @@ type services to the multicluster helm chart.
   running in ingress-mode will not unexpectedly revert to insecure
   communication as a result.
 
-
 ## edge-21.4.5
 
 This edge release adds a new output format `short` for `linkerd check` to show a
