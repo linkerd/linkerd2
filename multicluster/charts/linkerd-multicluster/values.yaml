@@ -5,6 +5,17 @@ gateway:
   name: linkerd-gateway
   # -- The port on which all the gateway will accept incoming traffic
   port: 4143
+  # -- The number of gateway replicas
+  replicas: 1
+
+  resources: {}
+
+  nodeSelector: {}
+  
+  tolerations: []
+
+  affinity: {}
+
   # -- Service Type of gateway Service
   serviceType: LoadBalancer
   # nodePort -- Set the gateway nodePort (for LoadBalancer or NodePort) to a specific value

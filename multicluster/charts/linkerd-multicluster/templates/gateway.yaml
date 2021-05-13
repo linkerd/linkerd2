@@ -15,7 +15,7 @@ metadata:
   name: {{.Values.gateway.name}}
   namespace: {{.Values.namespace}}
 spec:
-  replicas: 1
+  replicas: {{.Values.gateway.replicas}}
   selector:
     matchLabels:
       app: {{.Values.gateway.name}}
@@ -32,6 +32,20 @@ spec:
       containers:
         - name: pause
           image: gcr.io/google_containers/pause
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+      {{- with .Values.gateway.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.gateway.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.gateway.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       serviceAccountName: {{.Values.gateway.name}}
 ---
 apiVersion: v1
