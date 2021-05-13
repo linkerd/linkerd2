@@ -36,6 +36,7 @@ var (
 		"templates/tap-injector-rbac.yaml",
 		"templates/tap-injector.yaml",
 		"templates/web.yaml",
+		"templates/service-profiles.yaml",
 	}
 )
 
