@@ -361,7 +361,7 @@ func (conf *ResourceConfig) GetConfigAnnotation(annotationKey string) (string, b
 // CreateAnnotationPatch returns a json patch which adds the opaque ports
 // annotation with the `opaquePorts` value.
 func (conf *ResourceConfig) CreateAnnotationPatch(opaquePorts string) ([]byte, error) {
-	addRootAnnotations := len(conf.pod.meta.Annotations) == 0
+	addRootAnnotations := len(conf.workload.Meta.Annotations) == 0
 	patch := &annotationPatch{
 		AddRootAnnotations: addRootAnnotations,
 		OpaquePorts:        opaquePorts,
