@@ -62,7 +62,7 @@ func (c *CommandCompletion) Complete(args []string, toComplete string) ([]string
 
 	resType, err := CanonicalResourceNameFromFriendlyName(args[0])
 	if err != nil {
-		return nil, fmt.Errorf("%s not a valid resource name", args)
+		return nil, fmt.Errorf("%s is not a valid resource name", args)
 	}
 
 	// if we are looking for namespace suggestions clear namespace selector
@@ -70,8 +70,9 @@ func (c *CommandCompletion) Complete(args []string, toComplete string) ([]string
 		c.namespace = ""
 	}
 
-	// Similar to kubectl, we don't provide resource completion
-	// when the resource provided is in format <kind>/<resourceName>
+	// Similar to kubectl's completion for bash and zsh only, we don't provide
+	// resource completion when the resource provided is in format
+	// <kind>/<resourceName>.
 	if strings.Contains(args[0], "/") {
 		return []string{}, nil
 	}
@@ -92,6 +93,14 @@ func (c *CommandCompletion) Complete(args []string, toComplete string) ([]string
 	otherResources := args[1:]
 	for _, u := range uList.Items {
 		name := u.GetName()
+
+		// Filter out the list of resource items returned from k8s API to
+		// only include items that have the prefix `toComplete` and items
+		// that aren't in the list of resources already provided in the
+		// list of arguments.
+		//
+		// This is useful so that we avoid duplicate suggestions if they
+		// are already in the list of args
 		if strings.HasPrefix(name, toComplete) &&
 			!containsResource(name, otherResources) {
 			suggestions = append(suggestions, name)
@@ -126,6 +135,12 @@ func findGroupVersionResource(singularName string, pluralName string, apiResourc
 	err := fmt.Errorf("could not find the requested resource")
 	for _, res := range apiResourceList {
 		for _, r := range res.APIResources {
+
+			// Make sure we get a resource type where its Kind matches the
+			// singularName passed into this function and its Name (which is always
+			// the pluralName of an api resource) matches the pluralName passed
+			// into this function. Skip further processing of this APIResource
+			// if this is not the case.
 			if strings.ToLower(r.Kind) != singularName || r.Name != pluralName {
 				continue
 			}
