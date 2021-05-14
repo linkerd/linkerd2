@@ -11,6 +11,7 @@ import (
 	"github.com/linkerd/linkerd2/multicluster/static"
 	multicluster "github.com/linkerd/linkerd2/multicluster/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	mc "github.com/linkerd/linkerd2/pkg/multicluster"
@@ -322,6 +323,10 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().StringVar(&opts.dockerRegistry, "registry", opts.dockerRegistry, "Docker registry to pull service mirror controller image from")
 	cmd.Flags().StringVarP(&opts.selector, "selector", "l", opts.selector, "Selector (label query) to filter which services in the target cluster to mirror")
 	cmd.Flags().StringVar(&opts.gatewayAddresses, "gateway-addresses", opts.gatewayAddresses, "If specified overwrites gateway addresses when gateway service is not type LoadBalancer (comma separated list)")
+
+	pkgcmd.ConfigureNamespaceFlagCompletion(
+		cmd, []string{"namespace", "gateway-namespace"},
+		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
 
 	return cmd
 }

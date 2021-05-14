@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/k8s/resource"
 	mc "github.com/linkerd/linkerd2/pkg/multicluster"
@@ -94,6 +95,10 @@ func newUnlinkCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&opts.namespace, "namespace", defaultMulticlusterNamespace, "The namespace for the service account")
 	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "Cluster name")
+
+	pkgcmd.ConfigureNamespaceFlagCompletion(
+		cmd, []string{"namespace"},
+		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
 
 	return cmd
 }
