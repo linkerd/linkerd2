@@ -71,6 +71,7 @@ Kubernetes: `>=1.16.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| collector.enabled | bool | `true` | Set to false to exclude collector installation |
 | collector.image.name | string | `"omnition/opencensus-collector"` |  |
 | collector.image.pullPolicy | string | `"Always"` |  |
 | collector.image.version | string | `"0.1.11"` |  |
