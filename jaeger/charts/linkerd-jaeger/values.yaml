@@ -4,21 +4,45 @@ installNamespace: true
 
 namespace: linkerd-jaeger
 
+# -- Default nodeSelector section, See the
+# [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
+nodeSelector: &default_node_selector
+  beta.kubernetes.io/os: linux
+
+# -- Default tolerations section, See the
+# [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+# for more information
+tolerations: &default_tolerations
+
 collector:
-  image: 
+  image:
     name: omnition/opencensus-collector
     version: 0.1.11
     pullPolicy: Always
-  # resources:
+
+  # -- NodeSelector section, See the
+  # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
+  nodeSelector: *default_node_selector
+  # -- Tolerations section, See the
+  # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+  # for more information
+  tolerations: *default_tolerations
 
   # -- address of the jaeger backend to send traces to
   jaegerAddr:
 
 jaeger:
-  image: 
+  image:
     name: jaegertracing/all-in-one
     version: 1.19.2
     pullPolicy: Always
+  # -- NodeSelector section, See the
+  # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
+  nodeSelector: *default_node_selector
+  # -- Tolerations section, See the
+  # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+  # for more information
+  tolerations: *default_tolerations
 
 linkerdVersion: &linkerd_version linkerdVersionValue
 
@@ -39,7 +63,7 @@ webhook:
   collectorSvcAccount: collector
 
   failurePolicy: Ignore
-  image: 
+  image:
     name: cr.l5d.io/linkerd/jaeger-webhook
     version: *linkerd_version
     pullPolicy: IfNotPresent
@@ -53,3 +77,11 @@ webhook:
   objectSelector:
     #matchLabels:
     #  foo: bar
+
+  # -- NodeSelector section, See the
+  # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
+  nodeSelector: *default_node_selector
+  # -- Tolerations section, See the
+  # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+  # for more information
+  tolerations: *default_tolerations
