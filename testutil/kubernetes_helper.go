@@ -327,6 +327,10 @@ func (h *KubernetesHelper) WaitRollout(t *testing.T) {
 		if deploySpec.Namespace == "linkerd" {
 			o, err := h.Kubectl("", "--namespace=linkerd", "rollout", "status", "--timeout=120s", "deploy/"+deploy)
 			if err != nil {
+				getOut, _ := h.Kubectl("", "--namespace=linkerd", "get", "-o", "yaml", "deploy/"+deploy)
+				t.Logf("deploy/%s get: %s", deploy, getOut)
+				describeOut, _ := h.Kubectl("", "--namespace=linkerd", "describe", "deploy/"+deploy)
+				t.Logf("deploy/%s describe: %s", deploy, describeOut)
 				AnnotatedFatalf(t,
 					fmt.Sprintf("failed to wait rollout of deploy/%s", deploy),
 					"failed to wait for rollout of deploy/%s: %s: %s", deploy, err, o)
