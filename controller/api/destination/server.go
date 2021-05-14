@@ -206,31 +206,29 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 				fmt.Printf("No annotations: %s", err)
 				return err
 			}
-			// If the service is mirrored (and headless), avoid making a call to
-			// Get and instead return just one endpoint from GetProfile with the
-			// gateway IP N.B: it  would be worthwhile to do this more
-			// efficiently such as checking cached endpoints objects from the
-			// EndpointsWatcher Question: can we make this more generic to deal
-			// with any mirrored service this way?
-			if _, found := annotations[labels.RemoteServiceHeadless]; found {
+			// If the service is mirrored, avoid making a call to Get and
+			// instead return just one endpoint from GetProfile with the gateway
+			// IP N.B: it  would be worthwhile to do this more efficiently such
+			// as checking cached endpoints objects from the EndpointsWatcher
+			if remoteFqn, found := annotations[labels.RemoteServiceFqName]; found {
 				ep, err := s.k8sAPI.Endpoint().Lister().Endpoints(svcID.Namespace).Get(svcID.Name)
 				if err != nil {
 					return err
 				}
 
-				addressSet, err := headlessToAddressSet(ep, svcID, port)
+				addressSet, err := mirroredServiceToAddressSet(ep, svcID, port)
 				if err != nil {
 					return err
 				}
 
-				endpoint, err := toStatefulAddr(addressSet.Addresses[*svcID], s.log)
+				endpoint, err := toGatewayAddr(addressSet.Addresses[*svcID], s.log)
 
 				// [namespace:default service:mehdb-1-east target_cluster:east target_service:mehdb-1 target_service_namespace:mehdb]
 				endpoint.MetricLabels = map[string]string{
 					"namespace":                svcID.Namespace,
 					"service":                  svcID.Name,
 					"target_cluster":           ep.Labels[labels.RemoteClusterNameLabel],
-					"target_service":           annotations[labels.RemoteServiceFqName],
+					"target_service":           remoteFqn,
 					"target_service_namespace": svcID.Namespace,
 				}
 				translator := newProfileTranslator(stream, log, "", port, endpoint)
@@ -530,9 +528,9 @@ func podToAddressSet(k8sAPI *k8s.API, pod *corev1.Pod) *watcher.AddressSet {
 	}
 }
 
-// headlessToAddressSet converts a StatefulSet clusterIP Service's Endpoints
-// object to a set of Addresses.
-func headlessToAddressSet(ep *corev1.Endpoints, svcID *watcher.ServiceID, srcPort uint32) (*watcher.AddressSet, error) {
+// mirroredServiceToAddressSet converts a clusterIP Service's Endpoints object
+// to a single endpoint address pointing to the remote gateway.
+func mirroredServiceToAddressSet(ep *corev1.Endpoints, svcID *watcher.ServiceID, srcPort uint32) (*watcher.AddressSet, error) {
 	// We need to get port from the Endpoints object so we can connect to the Gateway
 	gatewayAddr := ep.Subsets[0].Addresses[0]
 	endpointPort := ep.Subsets[0].Ports[0].Port
