@@ -4,12 +4,14 @@
 
 This edge release adds support for versioned hint URLs in `linkerd check` and
 support for traffic splitting through ServiceProfiles, among other fixes and
-improvements. Additionally, support has also been introduced for `NodePort`
-type services to the multicluster helm chart.
+improvements. Additionally, more options have been added to the
+linkerd-multicluster and linkerd-jaeger helm charts.
 
 * Added support for traffic splitting through a ServiceProfile's `dstOverrides`
   field.
-* Added `nodePorts` option to the multicluster helm chart (thanks @psmit!)
+* Added `nodePorts` option to the multicluster helm chart (thanks @psmit!).
+* Added `nodeSelector` and toleration options to the linkerd-jaeger helm chart
+  (thanks @aatarasoff!).
 * Added versioned hint URLs to the CLI `check` command when encountering an
   error; each major CLI version will now point to that version's relevant
   section in the Linkerd troubleshooting page.
