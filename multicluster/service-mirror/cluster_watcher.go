@@ -700,10 +700,8 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 					return
 				}
 
-				// Avoid processing if we don't have all addresses ready. We
-				// should process the event when all pods are ready to accept
-				// traffic
-				if len(ep.Subsets[0].NotReadyAddresses) != 0 {
+				// If we have at least 1 Ready Address process the object.
+				if len(ep.Subsets[0].Addresses) == 0 {
 					return
 				}
 
