@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	"github.com/fatih/color"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -69,6 +70,12 @@ func NewCmdJaeger() *cobra.Command {
 	jaegerCmd.AddCommand(newCmdList())
 	jaegerCmd.AddCommand(newCmdUninstall())
 
+	// resource-aware completion flag configurations
+	pkgcmd.ConfigureNamespaceFlagCompletion(
+		jaegerCmd, []string{"linkerd-namespace"},
+		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
+
+	pkgcmd.ConfigureKubeContextFlagCompletion(jaegerCmd, kubeconfigPath)
 	return jaegerCmd
 }
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/linkerd/linkerd2/cli/flag"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -138,6 +139,9 @@ non-zero exit code.`,
 	cmd.Flags().AddFlagSet(nonConfigFlags)
 
 	cmd.AddCommand(newCmdCheckConfig(options))
+
+	pkgcmd.ConfigureNamespaceFlagCompletion(cmd, []string{"namespace"},
+		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
 
 	return cmd
 }
