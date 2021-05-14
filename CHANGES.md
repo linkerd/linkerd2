@@ -16,6 +16,8 @@ type services to the multicluster helm chart.
 * Fixed an issue in the CLI `check` command where error messages for
   healthchecks that were being retried would be outputted repeatedly instead of
   just once.
+* Fixed an issue in the proxy injector where a namespace annotated with opaque
+  ports would overwrite all service annotations.
 * Fixed a regression in the proxy that caused all logs to be output with ANSI
   control characters, by default logs are output in plaintext now.
 * Simplified proxy internals in order to distinguish endpoint-forwarding logic
