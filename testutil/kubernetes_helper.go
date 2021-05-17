@@ -182,7 +182,7 @@ func (h *KubernetesHelper) GetResources(ctx context.Context, containerName, depl
 func (h *KubernetesHelper) CheckPods(ctx context.Context, namespace string, deploymentName string, replicas int) error {
 	var checkedPods []corev1.Pod
 
-	err := h.retryFor(6*time.Minute, func() error {
+	err := h.retryFor(60*time.Minute, func() error {
 		checkedPods = []corev1.Pod{}
 		pods, err := h.GetPodsForDeployment(ctx, namespace, deploymentName)
 		if err != nil {
@@ -325,7 +325,7 @@ func (h *KubernetesHelper) URLFor(ctx context.Context, namespace, deployName str
 func (h *KubernetesHelper) WaitRollout(t *testing.T) {
 	for deploy, deploySpec := range LinkerdDeployReplicasEdge {
 		if deploySpec.Namespace == "linkerd" {
-			o, err := h.Kubectl("", "--namespace=linkerd", "rollout", "status", "--timeout=120s", "deploy/"+deploy)
+			o, err := h.Kubectl("", "--namespace=linkerd", "rollout", "status", "--timeout=60m", "deploy/"+deploy)
 			if err != nil {
 				AnnotatedFatalf(t,
 					fmt.Sprintf("failed to wait rollout of deploy/%s", deploy),
