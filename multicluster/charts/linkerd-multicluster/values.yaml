@@ -7,15 +7,20 @@ gateway:
   port: 4143
   # -- The number of gateway replicas
   replicas: 1
-
+  # -- Default resources for the gateway pods. If null, that resource won't be set
   resources: {}
-
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi 
+  # -- Node Selector settings for the gateway pods. (https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector)
   nodeSelector: {}
-  
+  # -- Toleration settings for the gateway pods. (https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/)
   tolerations: []
-
+  # -- Affinity for gateway pods. (https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity)
   affinity: {}
-
   # -- Service Type of gateway Service
   serviceType: LoadBalancer
   # nodePort -- Set the gateway nodePort (for LoadBalancer or NodePort) to a specific value

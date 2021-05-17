@@ -71,15 +71,20 @@ Kubernetes: `>=1.16.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| gateway.affinity | object | `{}` | Affinity for gateway pods. (https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity) |
 | gateway.enabled | bool | `true` | If the gateway component should be installed |
 | gateway.loadBalancerIP | string | `""` | Set loadBalancerIP on gateway service |
 | gateway.name | string | `"linkerd-gateway"` | The name of the gateway that will be installed |
+| gateway.nodeSelector | object | `{}` |  |
 | gateway.port | int | `4143` | The port on which all the gateway will accept incoming traffic |
 | gateway.probe.path | string | `"/ready"` | The path that will be used by remote clusters for determining whether the gateway is alive |
 | gateway.probe.port | int | `4191` | The port used for liveliness probing |
 | gateway.probe.seconds | int | `3` |  |
+| gateway.replicas | int | `1` | The number of gateway replicas |
+| gateway.resources | object | `{}` | Default resources for the gateway pods. If null, that resource won't be set |
 | gateway.serviceAnnotations | object | `{}` | Annotations to add to the gateway service |
 | gateway.serviceType | string | `"LoadBalancer"` | Service Type of gateway Service |
+| gateway.tolerations | list | `[]` | Toleration settings for the gateway pods. (https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/) |
 | identityTrustDomain | string | `"cluster.local"` | Identity Trust Domain of the certificate authority |
 | installNamespace | bool | `true` | If the namespace should be installed |
 | linkerdNamespace | string | `"linkerd"` | Namespace of linkerd installation |

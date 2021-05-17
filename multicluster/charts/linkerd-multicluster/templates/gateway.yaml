@@ -32,8 +32,10 @@ spec:
       containers:
         - name: pause
           image: gcr.io/google_containers/pause
+          {{- with .Values.gateway.resources }}
           resources:
-            {{- toYaml .Values.gateway.resources | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
       {{- with .Values.gateway.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
