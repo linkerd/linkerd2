@@ -14,7 +14,8 @@ gateway:
     #   memory: 128Mi
     # requests:
     #   cpu: 100m
-    #   memory: 128Mi 
+    #   memory: 128Mi
+
   # -- Node Selector settings for the gateway pods. (https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector)
   nodeSelector: {}
   # -- Toleration settings for the gateway pods. (https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/)
