@@ -868,7 +868,7 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 	var golden string
 	proxyStage := "proxy"
 	if stage == proxyStage {
-		cmd = []string{"check", "--proxy", "--expected-version", expectedVersion, "--namespace", namespace, "--wait=0"}
+		cmd = []string{"check", "--proxy", "--expected-version", expectedVersion, "--namespace", namespace, "--wait=60m"}
 		// if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
 		// golden = "check.multicluster.proxy.golden"
 		// } else if TestHelper.CNI() {
@@ -878,10 +878,10 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 			golden = "check.proxy.golden"
 		}
 	} else if stage == "config" {
-		cmd = []string{"check", "config", "--expected-version", expectedVersion, "--wait=0"}
+		cmd = []string{"check", "config", "--expected-version", expectedVersion, "--wait=60m"}
 		golden = "check.config.golden"
 	} else {
-		cmd = []string{"check", "--expected-version", expectedVersion, "--wait=0"}
+		cmd = []string{"check", "--expected-version", expectedVersion, "--wait=60m"}
 		// if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
 		// golden = "check.multicluster.golden"
 		// } else if TestHelper.CNI() {
@@ -949,7 +949,7 @@ func TestCheckPostInstall(t *testing.T) {
 }
 
 func TestCheckViz(t *testing.T) {
-	cmd := []string{"viz", "check", "--wait=0"}
+	cmd := []string{"viz", "check", "--wait=60m"}
 	golden := "check.viz.golden"
 	if TestHelper.ExternalPrometheus() {
 		golden = "check.viz.external-prometheus.golden"
@@ -1172,7 +1172,7 @@ func TestRestarts(t *testing.T) {
 
 func TestCheckMulticluster(t *testing.T) {
 	if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
-		cmd := []string{"multicluster", "check", "--wait=0"}
+		cmd := []string{"multicluster", "check", "--wait=60m"}
 		golden := "check.multicluster.golden"
 		timeout := time.Minute
 		err := TestHelper.RetryFor(timeout, func() error {
