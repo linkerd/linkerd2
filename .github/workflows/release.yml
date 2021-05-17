@@ -93,49 +93,49 @@ jobs:
         name: image-archives
     - name: Run CLI Integration tests
       run: go test --failfast --mod=readonly ".\test\cli" --linkerd=$PWD\image-archives\linkerd-windows.exe --cli-tests -v
-  integration_tests:
-    strategy:
-      matrix:
-        integration_test:
-        - cluster-domain
-        - deep
-        - external-issuer
-        - external-prometheus-deep
-        - external-resources
-        - helm-deep
-        - helm-upgrade
-        - uninstall
-        - upgrade-edge
-        - upgrade-stable
-        - cni-calico-deep
-    needs: [docker_build]
-    name: Integration tests (${{ matrix.integration_test }})
-    timeout-minutes: 30
-    runs-on: ubuntu-20.04
-    steps:
-    - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
-    - name: Try to load cached Go modules
-      # actions/cache@v1.1.2
-      uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-    - name: Set environment variables from scripts
-      run: |
-        TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
-        CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-amd64"
-        echo "CMD=$CMD" >> $GITHUB_ENV
-        echo "TAG=$TAG" >> $GITHUB_ENV
-    - name: Run integration tests
-      run: |
-        bin/docker-pull-binaries $TAG
-        # Validate the CLI version matches the current build tag.
-        [[ "$TAG" == "$($CMD version --short --client)" ]]
-        bin/tests --images skip --name ${{ matrix.integration_test }} "$CMD"
+  # integration_tests:
+  #   strategy:
+  #     matrix:
+  #       integration_test:
+  #       - cluster-domain
+  #       - deep
+  #       - external-issuer
+  #       - external-prometheus-deep
+  #       - external-resources
+  #       - helm-deep
+  #       - helm-upgrade
+  #       - uninstall
+  #       - upgrade-edge
+  #       - upgrade-stable
+  #       - cni-calico-deep
+  #   needs: [docker_build]
+  #   name: Integration tests (${{ matrix.integration_test }})
+  #   timeout-minutes: 30
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #   - name: Checkout code
+  #     # actions/checkout@v2
+  #     uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+  #   - name: Try to load cached Go modules
+  #     # actions/cache@v1.1.2
+  #     uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
+  #     with:
+  #       path: ~/go/pkg/mod
+  #       key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+  #       restore-keys: |
+  #         ${{ runner.os }}-go-
+  #   - name: Set environment variables from scripts
+  #     run: |
+  #       TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
+  #       CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-amd64"
+  #       echo "CMD=$CMD" >> $GITHUB_ENV
+  #       echo "TAG=$TAG" >> $GITHUB_ENV
+  #   - name: Run integration tests
+  #     run: |
+  #       bin/docker-pull-binaries $TAG
+  #       # Validate the CLI version matches the current build tag.
+  #       [[ "$TAG" == "$($CMD version --short --client)" ]]
+  #       bin/tests --images skip --name ${{ matrix.integration_test }} "$CMD"
   arm64_integration_tests:
     name: ARM64 integration tests
     timeout-minutes: 60
@@ -177,7 +177,7 @@ jobs:
       #if: startsWith(github.ref, 'refs/tags/stable')
       env:
         RUN_ARM_TEST: 1
-      run: bin/tests --name deep --images skip --skip-cluster-create "$CMD"
+      run: bin/tests --images skip --skip-cluster-create "$CMD"
     - name: CNI tests
       #if: startsWith(github.ref, 'refs/tags/stable')
       run: |
