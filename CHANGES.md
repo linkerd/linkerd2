@@ -9,9 +9,10 @@ testing that was performed on the proxy and its dependencies; check out the
 Linkerd](https://linkerd.io/2021/05/07/fuzz-testing-for-linkerd/) blog post for
 a summary of that work!
 
-The `check` command also prints versioned hint URLs now. After the 2.10 release,
-enough changed from previous stable releases that the documentation had to be
-separated by stable versions.
+* Added versions to the the hint URLs output by the `check` command so that
+  users are directed to the correct stable version documentation
+* Fixed an issue where the opaque ports annotation on a namespace would
+  overwrite the annotations on services in that namespace
 
 ## stable-2.10.1
 
