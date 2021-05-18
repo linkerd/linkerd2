@@ -2500,6 +2500,12 @@ func validateDataPlanePods(pods []corev1.Pod, targetNamespace string) error {
 
 	for _, pod := range pods {
 		status := k8s.GetPodStatus(pod)
+		// Skip validing meshed pods that are in the `Completed` state
+		// as they do not have a running proxy
+		if status == "Completed" {
+			continue
+		}
+
 		if status != "Running" && status != "Evicted" {
 			return fmt.Errorf("The \"%s\" pod is not running", pod.Name)
 		}
