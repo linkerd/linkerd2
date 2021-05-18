@@ -62,7 +62,7 @@ var AllResources = []string{
 
 // StatAllResourceTypes represents the resources to query in StatSummary when Resource.Type is "all"
 var StatAllResourceTypes = []string{
-	// TODO: add Namespace here to decrease queries from the web process
+	Namespace,
 	DaemonSet,
 	StatefulSet,
 	Job,
