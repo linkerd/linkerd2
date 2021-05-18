@@ -1,5 +1,34 @@
 # Changes
 
+## edge-21.5.1
+
+This edge release adds support for versioned hint URLs in `linkerd check` and
+support for traffic splitting through ServiceProfiles, among other fixes and
+improvements. Additionally, more options have been added to the
+linkerd-multicluster and linkerd-jaeger helm charts.
+
+* Added support for traffic splitting through a ServiceProfile's `dstOverrides`
+  field.
+* Added `nodePorts` option to the multicluster helm chart (thanks @psmit!).
+* Added `nodeSelector` and toleration options to the linkerd-jaeger helm chart
+  (thanks @aatarasoff!).
+* Added versioned hint URLs to the CLI `check` command when encountering an
+  error; each major CLI version will now point to that version's relevant
+  section in the Linkerd troubleshooting page.
+* Fixed an issue in the CLI `check` command where error messages for
+  healthchecks that were being retried would be outputted repeatedly instead of
+  just once.
+* Fixed an issue in the proxy injector where a namespace annotated with opaque
+  ports would overwrite all service annotations.
+* Fixed a regression in the proxy that caused all logs to be output with ANSI
+  control characters, by default logs are output in plaintext now.
+* Simplified proxy internals in order to distinguish endpoint-forwarding logic
+  from the handling of load balanced services.
+* Simplified the ingress-mode outbound proxy by requiring the
+  `l5d-dst-override` header and by failing non-HTTP communication. Proxies
+  running in ingress-mode will not unexpectedly revert to insecure
+  communication as a result.
+
 ## edge-21.4.5
 
 This edge release adds a new output format `short` for `linkerd check` to show a
