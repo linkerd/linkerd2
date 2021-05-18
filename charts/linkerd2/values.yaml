@@ -105,16 +105,21 @@ proxy:
   # - SMTP (25,587) server-first
   # - HTTPS (443) opaque TLS
   # - MYSQL (3306) server-first
+  # - Galera (4444) server-first
   # - PostgreSQL (5432) server-first
+  # - Redis (6379) server-first
+  # - ElasticSearch (9300) server-first
   # - Memcached (11211) clients do not issue any preamble, which breaks detection
-  opaquePorts: "25,443,587,3306,5432,11211"
+  opaquePorts: "25,443,587,3306,4444,5432,6379,9300,11211"
 
 # proxy-init configuration
 proxyInit:
-  # -- Default set of inbound ports to skip via itpables
-  ignoreInboundPorts: ""
-  # -- Default set of outbound ports to skip via itpables
-  ignoreOutboundPorts: ""
+  # -- Default set of inbound ports to skip via iptables
+  # - Galera (4567,4568) UDP
+  ignoreInboundPorts: "4567,4568"
+  # -- Default set of outbound ports to skip via iptables
+  # - Galera (4567,4568) UDP
+  ignoreOutboundPorts: "4567,4568"
   image:
     # -- Docker image for the proxy-init container
     name: cr.l5d.io/linkerd/proxy-init
