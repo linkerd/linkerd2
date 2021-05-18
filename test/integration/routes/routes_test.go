@@ -40,11 +40,8 @@ func TestRoutes(t *testing.T) {
 		c int
 	}{
 		{"linkerd-destination", 1},
-		{"linkerd-dst", 6},
-		{"linkerd-dst-headless", 3},
 		{"linkerd-identity", 3},
-		{"linkerd-identity-headless", 1},
-		{"POST /io.linkerd.proxy.destination.Destination/Get", 4},
+		{"linkerd-proxy-injector", 2},
 	}
 
 	for _, r := range routeStrings {
