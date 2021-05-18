@@ -34,6 +34,7 @@ spec:
     condition:
       method: POST
       pathRegex: /api/v1/Edges
+{{ if .Values.prometheus.enabled -}}
 ---
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
@@ -54,6 +55,8 @@ spec:
     condition:
       method: GET
       pathRegex: /api/v1/series
+{{ end -}}
+{{ if .Values.grafana.enabled -}}
 ---
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
@@ -106,3 +109,4 @@ spec:
     condition:
       method: GET
       pathRegex: /public/img/.*
+{{ end -}}
