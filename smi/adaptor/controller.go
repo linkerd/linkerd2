@@ -3,6 +3,7 @@ package adaptor
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	serviceprofile "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
@@ -20,9 +21,6 @@ import (
 )
 
 const (
-	// createdOrUpdatedBySMIAdaptorFor label is added to a service profile resource
-	// whenever it has been created or updated by the SMI adaptor
-	createdOrUpdatedBySMIAdaptorFor = "smi.linkerd.io/updated-for"
 
 	// ignoreServiceProfileAnnotation is used with Service Profiles
 	// to prevent the SMI adaptor from changing it
@@ -66,11 +64,11 @@ func NewController(
 
 	// Set up an event handler for when Ts resources change
 	tsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.enqueue,
+		AddFunc: controller.enqueueTS,
 		UpdateFunc: func(old, new interface{}) {
-			controller.enqueue(new)
+			controller.enqueueTS(new)
 		},
-		DeleteFunc: controller.enqueue,
+		DeleteFunc: controller.enqueueTS,
 	})
 
 	return controller
@@ -171,7 +169,7 @@ func (c *SMIController) processNextWorkItem() bool {
 // with the current status of the resource.
 func (c *SMIController) syncHandler(ctx context.Context, key string) error {
 	// Convert the namespace/name string into a distinct namespace and name
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	namespace, name, service, err := splitTrafficSplitKey(key)
 	if err != nil {
 		log.Errorf("invalid resource key: %s", key)
 		return nil
@@ -185,27 +183,19 @@ func (c *SMIController) syncHandler(ctx context.Context, key string) error {
 			// Check if there is a relevant SP that was created or updated by SMI Controller
 			// and clean up its dstOverrides
 			log.Infof("trafficsplit/%s is deleted, trying to cleanup the relevant serviceprofile", name)
-			selector := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", createdOrUpdatedBySMIAdaptorFor, name)}
-			sps, err := c.spclientset.LinkerdV1alpha2().ServiceProfiles(namespace).List(ctx, selector)
+			sp, err := c.spclientset.LinkerdV1alpha2().ServiceProfiles(namespace).Get(ctx, c.toFQDN(service, namespace), metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
 
-			// return as there are no relevant sp's
-			if len(sps.Items) == 0 {
-				log.Warnf("couldn't find the relevant serviceprofile for trafficsplit/%s, skipping", name)
-				return nil
-			}
-
 			// Empty dstOverrides in the SP
-			sp := sps.Items[0]
-			if ignoreAnnotationPresent(&sp) {
+			if ignoreAnnotationPresent(sp) {
 				log.Infof("skipping clean up of serviceprofile/%s as ignore annotation is present", sp.Name)
 				return nil
 			}
 
 			sp.Spec.DstOverrides = nil
-			_, err = c.spclientset.LinkerdV1alpha2().ServiceProfiles(namespace).Update(ctx, &sp, metav1.UpdateOptions{})
+			_, err = c.spclientset.LinkerdV1alpha2().ServiceProfiles(namespace).Update(ctx, sp, metav1.UpdateOptions{})
 			if err != nil {
 				return err
 			}
@@ -216,7 +206,7 @@ func (c *SMIController) syncHandler(ctx context.Context, key string) error {
 	}
 
 	// Check if the Service Profile is already present
-	sp, err := c.spclientset.LinkerdV1alpha2().ServiceProfiles(ts.Namespace).Get(ctx, fmt.Sprintf("%s.%s.svc.%s", ts.Spec.Service, ts.Namespace, c.clusterDomain), metav1.GetOptions{})
+	sp, err := c.spclientset.LinkerdV1alpha2().ServiceProfiles(ts.Namespace).Get(ctx, c.toFQDN(ts.Spec.Service, ts.Namespace), metav1.GetOptions{})
 	if err != nil {
 		// Create a Service Profile resource as it does not exist
 		sp, err = c.spclientset.LinkerdV1alpha2().ServiceProfiles(ts.Namespace).Create(ctx, c.toServiceProfile(ts), metav1.CreateOptions{})
@@ -285,27 +275,46 @@ func equal(spA *serviceprofile.ServiceProfile, spB *serviceprofile.ServiceProfil
 	return true
 }
 
-// enqueue takes a Ts or SP resource and converts it into a namespace/name
+// enqueueTS takes a Ts resource and converts it into a key
 // string which is then put onto the work queue. This method should *not* be
-// passed resources of any type other than Ts or SP.
-func (c *SMIController) enqueue(obj interface{}) {
+// passed resources of any type other than TS.
+func (c *SMIController) enqueueTS(obj interface{}) {
 	var key string
 	var err error
-	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
+	if key, err = trafficSplitKeyFunc(obj); err != nil {
 		log.Error(err)
 		return
 	}
 	c.workqueue.Add(key)
 }
 
+// trafficSplitKeyFunc takes a TS, and gives back a
+// namespace/name/service key string
+func trafficSplitKeyFunc(obj interface{}) (string, error) {
+	ts, ok := obj.(*trafficsplit.TrafficSplit)
+	if !ok {
+		return "", fmt.Errorf("couldn't convert the object in the queue to a trafficsplit")
+	}
+
+	return ts.Namespace + "/" + ts.Name + "/" + ts.Spec.Service, nil
+}
+
+func splitTrafficSplitKey(key string) (namespace, name, service string, err error) {
+	parts := strings.Split(key, "/")
+	if len(parts) != 3 {
+		return "", "", "", fmt.Errorf("unexpected key format: %q", key)
+	}
+
+	return parts[0], parts[1], parts[2], nil
+}
+
 // updateDstOverrides updates the dstOverrides of the given serviceprofile
 // to match that of the trafficsplit
 func updateDstOverrides(sp *serviceprofile.ServiceProfile, ts *trafficsplit.TrafficSplit, clusterDomain string) {
-	sp.Labels[createdOrUpdatedBySMIAdaptorFor] = ts.Name
 	sp.Spec.DstOverrides = []*serviceprofile.WeightedDst{}
 	for _, backend := range ts.Spec.Backends {
 		weightedDst := &serviceprofile.WeightedDst{
-			Authority: fmt.Sprintf("%s.%s.svc.%s", backend.Service, ts.Namespace, clusterDomain),
+			Authority: fqdn(backend.Service, ts.Namespace, clusterDomain),
 			Weight:    *backend.Weight,
 		}
 		sp.Spec.DstOverrides = append(sp.Spec.DstOverrides, weightedDst)
@@ -317,17 +326,14 @@ func updateDstOverrides(sp *serviceprofile.ServiceProfile, ts *trafficsplit.Traf
 func (c *SMIController) toServiceProfile(ts *trafficsplit.TrafficSplit) *serviceprofile.ServiceProfile {
 	spResource := serviceprofile.ServiceProfile{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s.%s.svc.%s", ts.Spec.Service, ts.Namespace, c.clusterDomain),
+			Name:      c.toFQDN(ts.Spec.Service, ts.Namespace),
 			Namespace: ts.Namespace,
-			Labels: map[string]string{
-				createdOrUpdatedBySMIAdaptorFor: ts.Name,
-			},
 		},
 	}
 
 	for _, backend := range ts.Spec.Backends {
 		weightedDst := &serviceprofile.WeightedDst{
-			Authority: fmt.Sprintf("%s.%s.svc.%s", backend.Service, ts.Namespace, c.clusterDomain),
+			Authority: c.toFQDN(backend.Service, ts.Namespace),
 			Weight:    *backend.Weight,
 		}
 
@@ -335,4 +341,12 @@ func (c *SMIController) toServiceProfile(ts *trafficsplit.TrafficSplit) *service
 	}
 
 	return &spResource
+}
+
+func (c *SMIController) toFQDN(service, namespace string) string {
+	return fqdn(service, namespace, c.clusterDomain)
+}
+
+func fqdn(service, namespace, clusterDomain string) string {
+	return fmt.Sprintf("%s.%s.svc.%s", service, namespace, clusterDomain)
 }
