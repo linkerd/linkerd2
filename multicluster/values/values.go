@@ -39,14 +39,19 @@ type Values struct {
 
 // Gateway contains all opttions related to the Gateway Service
 type Gateway struct {
-	Enabled            bool              `json:"enabled"`
-	Name               string            `json:"name"`
-	Port               uint32            `json:"port"`
-	NodePort           uint32            `json:"nodePort"`
-	ServiceType        string            `json:"serviceType"`
-	Probe              *Probe            `json:"probe"`
-	ServiceAnnotations map[string]string `json:"serviceAnnotations"`
-	LoadBalancerIP     string            `json:"loadBalancerIP"`
+	Enabled            bool                   `json:"enabled"`
+	Name               string                 `json:"name"`
+	Port               uint32                 `json:"port"`
+	Replicas           uint32                 `json:"replicas"`
+	Resources          *Resources             `json:"resources"`
+	NodeSelector       map[string]string      `json:"nodeSelector"`
+	Tolerations        []interface{}          `json:"tolerations"`
+	Affinity           map[string]interface{} `json:"affinity"`
+	NodePort           uint32                 `json:"nodePort"`
+	ServiceType        string                 `json:"serviceType"`
+	Probe              *Probe                 `json:"probe"`
+	ServiceAnnotations map[string]string      `json:"serviceAnnotations"`
+	LoadBalancerIP     string                 `json:"loadBalancerIP"`
 }
 
 // Probe contains all options for the Probe Service
@@ -55,6 +60,18 @@ type Probe struct {
 	Port     uint32 `json:"port"`
 	NodePort uint32 `json:"nodePort"`
 	Seconds  uint32 `json:"seconds"`
+}
+
+// Constraints wraps the Limit and Request settings for computational resources
+type Constraints struct {
+	Limit   string `json:"limit"`
+	Request string `json:"request"`
+}
+
+// Resources represents the computational resources setup for a given container
+type Resources struct {
+	CPU    Constraints `json:"cpu"`
+	Memory Constraints `json:"memory"`
 }
 
 // NewInstallValues returns a new instance of the Values type.
