@@ -89,9 +89,15 @@ func FetchKubernetesResources(ctx context.Context, k *k8s.KubernetesAPI, options
 	}
 	resources = append(resources, clusterRoleBindings...)
 
-	roleBindings, err := fetchKubeSystemRoleBindings(ctx, k, options)
+	roles, err := fetchRoles(ctx, k, options)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch RoleBindings from kube-system namespace:%v", err)
+		return nil, fmt.Errorf("could not fetch Roles:%v", err)
+	}
+	resources = append(resources, roles...)
+
+	roleBindings, err := fetchRoleBindings(ctx, k, options)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch RoleBindings:%v", err)
 	}
 	resources = append(resources, roleBindings...)
 
@@ -162,11 +168,23 @@ func fetchClusterRoleBindings(ctx context.Context, k *k8s.KubernetesAPI, options
 	return resources, nil
 }
 
-// Although role bindings are namespaced resources in nature
-// some admin role bindings are created and persisted in the kube-system namespace and will not be deleted
-// when the namespace is deleted
-func fetchKubeSystemRoleBindings(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]Kubernetes, error) {
-	list, err := k.RbacV1().RoleBindings("kube-system").List(ctx, options)
+func fetchRoles(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]Kubernetes, error) {
+	list, err := k.RbacV1().Roles("").List(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+
+	resources := make([]Kubernetes, len(list.Items))
+	for i, item := range list.Items {
+		r := New(rbac.SchemeGroupVersion.String(), "Role", item.Name)
+		r.Namespace = item.Namespace
+		resources[i] = r
+	}
+	return resources, nil
+}
+
+func fetchRoleBindings(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]Kubernetes, error) {
+	list, err := k.RbacV1().RoleBindings("").List(ctx, options)
 	if err != nil {
 		return nil, err
 	}
