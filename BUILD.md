@@ -422,6 +422,27 @@ proxy binary:
 bin/docker-build-proxy
 ```
 
+#### Locally built proxy
+
+If you want to deploy a locally built proxy, you can build it in the
+[`linkerd2-proxy`](https://github.com/linkerd/linkerd2-proxy) repo by running:
+
+```bash
+DOCKER_TAG=cr.l5d.io/linkerd/proxy:dev make docker
+```
+
+Then, in this repo, run:
+
+```bash
+./bin/k3d image import cr.l5d.io/linkerd/proxy:dev
+```
+
+Now, to make a pod use your image, add the following annotations to it:
+
+```yaml
+config.linkerd.io/proxy-version: dev
+```
+
 ### Multi-architecture builds
 
 Besides the default Linux/amd64 architecture, you can build controller images
