@@ -532,7 +532,7 @@ func getHostAndPort(authority string) (string, watcher.Port, error) {
 	if len(hostPort) == 2 {
 		var err error
 		port, err = strconv.Atoi(hostPort[1])
-		if err != nil {
+		if err != nil || port <= 0 || port > 65535 {
 			return "", 0, fmt.Errorf("Invalid port %s", hostPort[1])
 		}
 	}
