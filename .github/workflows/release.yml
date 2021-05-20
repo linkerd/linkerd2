@@ -16,8 +16,7 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -77,8 +76,7 @@ jobs:
     needs: [docker_build]
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Try to load cached Go modules
       # actions/cache@v1.1.2
       uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
@@ -114,8 +112,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Try to load cached Go modules
       # actions/cache@v1.1.2
       uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
@@ -144,8 +141,7 @@ jobs:
     steps:
     - name: Checkout code
       #if: startsWith(github.ref, 'refs/tags/stable')
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Try to load cached Go modules
       #if: startsWith(github.ref, 'refs/tags/stable')
       # actions/cache@v1.1.2
@@ -197,8 +193,7 @@ jobs:
     steps:
     - name: Checkout code
       if: startsWith(github.ref, 'refs/tags/stable')
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Chocolatey - update nuspec
       if: startsWith(github.ref, 'refs/tags/stable')
       run: |
@@ -225,8 +220,7 @@ jobs:
     needs: [choco_pack]
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -286,8 +280,7 @@ jobs:
     needs: [website_publish]
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -316,8 +309,7 @@ jobs:
     needs: [gh_release]
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Configure gsutils
       # linkerd/linkerd2-action-gcloud@v1.0.1
       uses: linkerd/linkerd2-action-gcloud@308c4df7314264c90d240e77e27d0d875d3c8ec1
