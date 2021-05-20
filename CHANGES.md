@@ -1,5 +1,29 @@
 # Changes
 
+## edge-21.5.2
+
+This edge release updates the proxy-init container to check whether the iptables
+rules have already been added, which prevents errors if the proxy-init container
+is restarted. Also, the `viz stat` command now has tab completion for Kubernetes
+resources, saving you precious keystrokes! Finally, the proxy has been updated
+with several fixes and improvements.
+
+* Added instructions to `build.md` for using a locally built proxy
+  (thanks @jroper!)
+* Added support for Kubernetes resource aware tab completion to the `viz stat`
+  command
+* Updated `proxy-init` to skip configuring firewall if rules exists
+* Fixed `viz uninstall` to delete all RBAC objects (thanks @aryan9600!)
+* Improved diagnostics for rejected profile discovery
+* Added the `l5d-client-id` header on mutually-authenticated inbound requests so
+  that applications can discover the client's identity.
+* Reduced proxy resource usage when there are no profiles
+* Changed the admin server to assume all meshed connections are HTTP/2 and fail
+  connections when that is not the case
+* Updated the proxy to require the `l5d-dst-override` header on outbound
+  requests when the proxy is in ingress-mode
+* Removed support for TCP-forwarding in ingress-mode
+
 ## edge-21.5.1
 
 This edge release adds support for versioned hint URLs in `linkerd check` and
