@@ -77,7 +77,7 @@ func ConfigureNamespaceFlagCompletion(
 				}
 
 				cc := k8s.NewCommandCompletion(k8sAPI, "")
-				results, err := cc.Complete([]string{"namespaces"}, toComplete)
+				results, err := cc.Complete([]string{k8s.Namespace}, toComplete)
 				if err != nil {
 					return nil, cobra.ShellCompDirectiveError
 				}

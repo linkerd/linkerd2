@@ -86,7 +86,7 @@ func NewCmdEdges() *cobra.Command {
   linkerd viz edges po --all-namespaces`,
 		Args: cobra.ExactArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			// This command requires only one argument. Ff we already have
+			// This command requires only one argument. If we already have
 			// one after requesting autocompletion i.e. [tab][tab]
 			// skip running validArgsFunction
 			if len(args) > 0 {

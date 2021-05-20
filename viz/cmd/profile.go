@@ -94,7 +94,7 @@ func newCmdProfile() *cobra.Command {
 
 			// Profiles require completion for only services so prepend the service resource
 			// type to the list of args
-			results, err := cc.Complete([]string{"service"}, toComplete)
+			results, err := cc.Complete([]string{k8s.Service}, toComplete)
 			if err != nil {
 				return nil, cobra.ShellCompDirectiveError
 			}
