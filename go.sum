@@ -465,8 +465,8 @@ github.com/lightstep/lightstep-tracer-common/golang/gogo v0.0.0-20190605223551-b
 github.com/lightstep/lightstep-tracer-go v0.18.1/go.mod h1:jlF1pusYV4pidLvZ+XD0UBX0ZE6WURAspgAczcDHrL4=
 github.com/linkerd/linkerd2-proxy-api v0.1.16 h1:Qjqbw5Bw3QYUJpUSpYHr4nkJqBRnTlsFUwncCtCdOEs=
 github.com/linkerd/linkerd2-proxy-api v0.1.16/go.mod h1:yFz+DCCEomC3vpsChFzfCuOuSJtzx7jMNNHBIlbFil0=
-github.com/linkerd/linkerd2-proxy-init v1.3.11 h1:RVwHgkOVVVQWoZqiFURsXZFjXvtOG8/+v9kqb+XEmoE=
-github.com/linkerd/linkerd2-proxy-init v1.3.11/go.mod h1:iYv3JOgCBpOr6T5qjfE1IeO9/33oaq349kOFMNyvoeM=
+github.com/linkerd/linkerd2-proxy-init v1.3.12 h1:/8fuDFLaa+dq1hZYuL06Fo6kHuq2T+VC10m3goVf3t0=
+github.com/linkerd/linkerd2-proxy-init v1.3.12/go.mod h1:iYv3JOgCBpOr6T5qjfE1IeO9/33oaq349kOFMNyvoeM=
 github.com/lithammer/dedent v1.1.0/go.mod h1:jrXYCQtgg0nJiN+StA2KgR7w6CiQNv9Fd/Z9BP0jIOc=
 github.com/lyft/protoc-gen-validate v0.0.13/go.mod h1:XbGvPuh87YZc5TdIa2/I4pLk0QoUACkjt2znoq26NVQ=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=

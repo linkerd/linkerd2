@@ -917,7 +917,7 @@ data:
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v1.3.11
+        version: v1.3.12
       resources:
         cpu:
           limit: 100m
@@ -1187,7 +1187,7 @@ spec:
         - "4190,4191,22,8100-8102"
         - --outbound-ports-to-ignore
         - "5432,443"
-        image: cr.l5d.io/linkerd/proxy-init:v1.3.11
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.12
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1494,7 +1494,7 @@ spec:
         - "4190,4191,22,8100-8102"
         - --outbound-ports-to-ignore
         - "5432,443"
-        image: cr.l5d.io/linkerd/proxy-init:v1.3.11
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.12
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1764,7 +1764,7 @@ spec:
         - "4190,4191,22,8100-8102"
         - --outbound-ports-to-ignore
         - "5432,443"
-        image: cr.l5d.io/linkerd/proxy-init:v1.3.11
+        image: cr.l5d.io/linkerd/proxy-init:v1.3.12
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
