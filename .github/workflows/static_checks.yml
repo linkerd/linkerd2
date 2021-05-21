@@ -40,7 +40,14 @@ jobs:
       - name: Prerequisites
         run: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install unzip
       - name: Checkout code
+<<<<<<< HEAD
           uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+||||||| 685b1d43
+        # actions/checkout@v2
+        uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+=======
+        uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+>>>>>>> main
       - name: Diff proto files
         run: bin/protoc-diff
   shellcheck:
