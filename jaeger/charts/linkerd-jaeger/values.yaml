@@ -14,6 +14,64 @@ nodeSelector: &default_node_selector
 # for more information
 tolerations: &default_tolerations
 
+# New opentelemetry collector
+opentelemetry:
+  # -- If enabled then OpenTelemetry collector is used instead of OpenCensus Collector, See the
+  # [OpenTelemetry Collector documentation](https://opentelemetry.io/docs/collector/)
+  # for more information
+  enabled: false
+
+  collector:
+    image:
+      name: otel/opentelemetry-collector
+      version: 0.27.0
+      pullPolicy: Always
+
+    # -- NodeSelector section, See the
+    # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
+    nodeSelector: *default_node_selector
+    # -- Tolerations section, See the
+    # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+    # for more information
+    tolerations: *default_tolerations
+
+    # -- address of the jaeger backend to send traces to
+    jaegerAddr: &jaegerAddr jaeger.linkerd-jaeger:14250
+
+    # -- OpenTelemetry Collector config, See the
+    # [Configuration docs](https://opentelemetry.io/docs/collector/configuration/)
+    # for more information
+    config:
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+            http:
+        opencensus:
+        zipkin:
+        jaeger:
+          protocols:
+            grpc:
+            thrift_http:
+            thrift_compact:
+            thrift_binary:
+      processors:
+        batch:
+      extensions:
+        health_check:
+      exporters:
+        jaeger:
+          endpoint: *jaegerAddr
+          insecure: true
+      service:
+        extensions: [health_check]
+        pipelines:
+          traces:
+            receivers: [otlp,opencensus,zipkin,jaeger]
+            processors: [batch]
+            exporters: [jaeger]
+
+# Deprecated collector. Please use opentelemetry section
 collector:
   image:
     name: omnition/opencensus-collector
@@ -32,6 +90,7 @@ collector:
   jaegerAddr:
 
 jaeger:
+  enabled: true
   image:
     name: jaegertracing/all-in-one
     version: 1.19.2

@@ -78,6 +78,7 @@ Kubernetes: `>=1.16.0-0`
 | collector.nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | collector.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | installNamespace | bool | `true` | Set to false when installing in a custom namespace. |
+| jaeger.enabled | bool | `true` |  |
 | jaeger.image.name | string | `"jaegertracing/all-in-one"` |  |
 | jaeger.image.pullPolicy | string | `"Always"` |  |
 | jaeger.image.version | string | `"1.19.2"` |  |
@@ -86,6 +87,14 @@ Kubernetes: `>=1.16.0-0`
 | linkerdVersion | string | `"linkerdVersionValue"` |  |
 | namespace | string | `"linkerd-jaeger"` |  |
 | nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | Default nodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
+| opentelemetry.collector.config | object | `{"exporters":{"jaeger":{"endpoint":"jaeger.linkerd-jaeger:14250","insecure":true}},"extensions":{"health_check":null},"processors":{"batch":null},"receivers":{"jaeger":{"protocols":{"grpc":null,"thrift_binary":null,"thrift_compact":null,"thrift_http":null}},"opencensus":null,"otlp":{"protocols":{"grpc":null,"http":null}},"zipkin":null},"service":{"extensions":["health_check"],"pipelines":{"traces":{"exporters":["jaeger"],"processors":["batch"],"receivers":["otlp","opencensus","zipkin","jaeger"]}}}}` | (string) opentelemetry config, See the [Configuration docs](https://opentelemetry.io/docs/collector/configuration/) for more information |
+| opentelemetry.collector.image.name | string | `"otel/opentelemetry-collector"` |  |
+| opentelemetry.collector.image.pullPolicy | string | `"Always"` |  |
+| opentelemetry.collector.image.version | string | `"0.27.0"` |  |
+| opentelemetry.collector.jaegerAddr | string | `"jaeger.linkerd-jaeger:14250"` | address of the jaeger backend to send traces to |
+| opentelemetry.collector.nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
+| opentelemetry.collector.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
+| opentelemetry.enabled | bool | `false` | If enabled then OpenTelemetry collector is used instead of OpenCensus Collector, See the [OpenTelemetry Collector documentation](https://opentelemetry.io/docs/collector/) for more information |
 | tolerations | string | `nil` | Default tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | webhook.caBundle | string | `""` | if empty, Helm will auto-generate this field, unless externalSecret is set to true. |
 | webhook.collectorSvcAccount | string | `"collector"` | service account associated with the collector instance |

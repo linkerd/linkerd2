@@ -1,0 +1,118 @@
+{{- if .Values.opentelemetry.enabled -}}
+---
+###
+### Tracing Collector Service
+###
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: collector-config
+  namespace: {{.Values.namespace}}
+  labels:
+    component: collector
+data:
+  collector-config: |
+    {{- with .Values.opentelemetry.collector.config }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector
+  namespace: {{.Values.namespace}}
+  labels:
+    component: collector
+spec:
+  type: ClusterIP
+  ports:
+  - name: otlp
+    port: 4317
+    protocol: TCP
+    targetPort: 4317
+  - name: opencensus
+    port: 55678
+    protocol: TCP
+    targetPort: 55678
+  - name: zipkin
+    port: 9411
+    protocol: TCP
+    targetPort: 9411
+  - name: jaeger-thrift
+    port: 14268
+    protocol: TCP
+    targetPort: 14268
+  - name: jaeger-grpc
+    port: 14250
+    protocol: TCP
+    targetPort: 14250
+  selector:
+    component: collector
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: collector
+    app.kubernetes.io/part-of: Linkerd
+    component: collector
+  name: collector
+  namespace: {{.Values.namespace}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: collector
+  minReadySeconds: 5
+  progressDeadlineSeconds: 120
+  template:
+    metadata:
+      annotations:
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8888"
+        prometheus.io/scrape: "true"
+      labels:
+        component: collector
+    spec:
+      {{- if .Values.opentelemetry.collector.tolerations -}}
+      {{- include "linkerd.tolerations" (dict "Values" .Values.opentelemetry.collector) | nindent 6 }}
+      {{- end -}}
+      {{- include "linkerd.node-selector" (dict "Values" .Values.opentelemetry.collector) | nindent 6 }}
+      containers:
+      - command:
+        - /otelcol
+        - --config=/conf/collector-config.yaml
+        env:
+        - name: GOGC
+          value: "80"
+        image: {{.Values.opentelemetry.collector.image.name}}:{{.Values.opentelemetry.collector.image.version}}
+        imagePullPolicy: {{.Values.opentelemetry.collector.image.pullPolicy}}
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 13133
+        name: ot-collector
+        ports:
+        - containerPort: 4317
+        - containerPort: 55678
+        - containerPort: 9411
+        - containerPort: 14268
+        - containerPort: 14250
+        - containerPort: 8888
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 13133
+        {{- if .Values.opentelemetry.collector.resources -}}
+        {{- include "partials.resources" .Values.opentelemetry.collector.resources | nindent 8 }}
+        {{- end }}
+        volumeMounts:
+        - mountPath: /conf
+          name: collector-config-val
+      serviceAccountName: collector
+      volumes:
+      - configMap:
+          items:
+          - key: collector-config
+            path: collector-config.yaml
+          name: collector-config
+        name: collector-config-val
+{{- end -}}

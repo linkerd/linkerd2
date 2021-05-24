@@ -1,0 +1,73 @@
+{{- if .Values.jaeger.enabled -}}
+---
+###
+### Tracing Jaeger Service
+###
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger
+  namespace: {{.Values.namespace}}
+  labels:
+    component: jaeger
+spec:
+  type: ClusterIP
+  selector:
+    component: jaeger
+  ports:
+    - name: collection
+      port: 14268
+    - name: grpc
+      port: 14250
+    - name: ui
+      port: 16686
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: jaeger
+    app.kubernetes.io/part-of: Linkerd
+    component: jaeger
+  name: jaeger
+  namespace: {{.Values.namespace}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: jaeger
+  template:
+    metadata:
+      annotations:
+        config.linkerd.io/proxy-await: "enabled"
+        prometheus.io/path: /metrics
+        prometheus.io/port: "14269"
+        prometheus.io/scrape: "true"
+      labels:
+        component: jaeger
+    spec:
+      {{- if .Values.jaeger.tolerations -}}
+      {{- include "linkerd.tolerations" (dict "Values" .Values.jaeger) | nindent 6 }}
+      {{- end -}}
+      {{- include "linkerd.node-selector" (dict "Values" .Values.jaeger) | nindent 6 }}
+      containers:
+      - args:
+        - --query.base-path=/jaeger
+        image: {{.Values.jaeger.image.name}}:{{.Values.jaeger.image.version}}
+        imagePullPolicy: {{.Values.jaeger.image.pullPolicy}}
+        name: jaeger
+        ports:
+        - containerPort: 14269
+          name: admin
+        - containerPort: 14268
+          name: collection
+        - containerPort: 14250
+          name: grpc
+        - containerPort: 16686
+          name: ui
+        {{- if .Values.jaeger.resources -}}
+        {{- include "partials.resources" .Values.jaeger.resources | nindent 8 }}
+        {{- end }}
+      dnsPolicy: ClusterFirst
+      serviceAccountName: jaeger
+{{- end -}}
