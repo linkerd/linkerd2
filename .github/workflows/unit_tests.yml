@@ -16,8 +16,7 @@ jobs:
       image: golang:1.16.2
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Go unit tests
       run: |
         go get gotest.tools/gotestsum@v0.4.2
@@ -31,8 +30,7 @@ jobs:
       image: node:14-stretch
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Yarn setup
       run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
     - name: JS unit tests

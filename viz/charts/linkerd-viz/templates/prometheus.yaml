@@ -224,7 +224,7 @@ spec:
         {{- with .Values.prometheus.proxy }}
         {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}
         {{- end }}
-        {{- with .Values.podAnnotations }}{{  . | trim | nindent 8 }}{{- end }}
+        {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
         linkerd.io/extension: viz
         component: prometheus

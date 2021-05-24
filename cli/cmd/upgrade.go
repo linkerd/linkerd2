@@ -33,9 +33,8 @@ const (
 )
 
 var (
-	addOnOverwrite bool
-	manifests      string
-	force          bool
+	manifests string
+	force     bool
 )
 
 /* The upgrade commands all follow the same flow:
@@ -230,10 +229,6 @@ func makeUpgradeFlags() *pflag.FlagSet {
 	upgradeFlags.BoolVar(
 		&force, "force", false,
 		"Force upgrade operation even when issuer certificate does not work with the trust anchors of all proxies",
-	)
-	upgradeFlags.BoolVar(
-		&addOnOverwrite, "addon-overwrite", false,
-		"Overwrite add-on configuration instead of loading the existing config (or reset to defaults if no new config is specified)",
 	)
 	return upgradeFlags
 }
