@@ -115,4 +115,4 @@ spec:
             path: collector-config.yaml
           name: collector-config
         name: collector-config-val
-{{- end -}}
+{{ end -}}

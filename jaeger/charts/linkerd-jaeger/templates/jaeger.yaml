@@ -70,4 +70,4 @@ spec:
         {{- end }}
       dnsPolicy: ClusterFirst
       serviceAccountName: jaeger
-{{- end -}}
+{{ end -}}
