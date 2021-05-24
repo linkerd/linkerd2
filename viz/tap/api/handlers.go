@@ -120,8 +120,8 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 		return
 	}
 
-	h.log.Debugf("SubjectAccessReview: namespace: %s, resource: %s, name: %s, user: %s, group: %s",
-		namespace, resource, name, req.Header.Get(h.usernameHeader), req.Header[h.groupHeader],
+	h.log.Debugf("SubjectAccessReview: namespace: %s, resource: %s, name: %s, user: <%s>, group: <%s>",
+		namespace, resource, name, h.usernameHeader, h.groupHeader,
 	)
 
 	// TODO: it's possible this SubjectAccessReview is redundant, consider
@@ -137,7 +137,7 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 		"tap",
 		name,
 		req.Header.Get(h.usernameHeader),
-		req.Header[h.groupHeader],
+		req.Header.Values(h.groupHeader),
 	)
 	if err != nil {
 		err = fmt.Errorf("tap authorization failed (%s), visit %s for more information", err, pkg.TapRbacURL)
