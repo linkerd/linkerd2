@@ -70,7 +70,6 @@ linkerd_namespace=${2:-l5d-scale}
 
 "$linkerd_path" -l "$linkerd_namespace" install | kubectl apply -f -
 "$linkerd_path" -l "$linkerd_namespace" check --expected-version="$linkerd_version"
-"$linkerd_path" -l "$linkerd_namespace" install-sp | kubectl apply -f -
 
 #
 # Deploy Books

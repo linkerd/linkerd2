@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	templatesVIz = []string{
+	templatesViz = []string{
 		"templates/namespace.yaml",
 		"templates/metrics-api-rbac.yaml",
 		"templates/grafana-rbac.yaml",
@@ -36,6 +36,7 @@ var (
 		"templates/tap-injector-rbac.yaml",
 		"templates/tap-injector.yaml",
 		"templates/web.yaml",
+		"templates/service-profiles.yaml",
 	}
 )
 
@@ -116,7 +117,7 @@ func render(w io.Writer, valuesOverrides map[string]interface{}) error {
 		{Name: chartutil.ValuesfileName},
 	}
 
-	for _, template := range templatesVIz {
+	for _, template := range templatesViz {
 		files = append(files,
 			&loader.BufferedFile{Name: template},
 		)
