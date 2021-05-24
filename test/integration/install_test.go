@@ -1025,21 +1025,6 @@ func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 	}
 }
 
-func TestInstallSP(t *testing.T) {
-	cmd := []string{"diagnostics", "install-sp"}
-
-	out, err := TestHelper.LinkerdRun(cmd...)
-	if err != nil {
-		testutil.AnnotatedFatal(t, "'linkerd install-sp' command failed", err)
-	}
-
-	out, err = TestHelper.KubectlApply(out, TestHelper.GetLinkerdNamespace())
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-			"'kubectl apply' command failed\n%s", out)
-	}
-}
-
 func TestDashboard(t *testing.T) {
 	dashboardPort := 52237
 	dashboardURL := fmt.Sprintf("http://localhost:%d", dashboardPort)
