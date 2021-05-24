@@ -1653,6 +1653,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "emoji-d9c7866bb-7v74n"},
 				Status: corev1.PodStatus{
 					Phase: "Succeeded",
+					Reason: "Completed",
 					ContainerStatuses: []corev1.ContainerStatus{
 						{
 							Name:  k8s.ProxyContainerName,
@@ -1689,6 +1690,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "web-6cfbccc48-5g8px"},
 				Status: corev1.PodStatus{
 					Phase: "Succeeded",
+					Reason: "Completed",
 					ContainerStatuses: []corev1.ContainerStatus{
 						{
 							Name:  k8s.ProxyContainerName,
@@ -1699,7 +1701,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 			},
 		}
 
-		err := checkMisconfiguredPodsLabels(pods)
+		err := validateDataPlanePods(pods, "emojivoto")
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
