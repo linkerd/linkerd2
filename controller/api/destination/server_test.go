@@ -413,12 +413,12 @@ func TestGet(t *testing.T) {
 			t.Fatalf("Expected len(addrs) to be > 0")
 		}
 
-		if addrs[0].ProtocolHint != nil {
+		if addrs[0].GetProtocolHint().GetProtocol() != nil || addrs[0].GetProtocolHint().GetOpaqueTransport() != nil {
 			t.Fatalf("Expected protocol hint for %s to be nil but got %+v", path, addrs[0].ProtocolHint)
 		}
 
 		if addrs[0].TlsIdentity != nil {
-			t.Fatalf("Expected protocol hint for %s to be nil but got %+v", path, addrs[0].TlsIdentity)
+			t.Fatalf("Expected TLS identity for %s to be nil but got %+v", path, addrs[0].TlsIdentity)
 		}
 	})
 }
@@ -682,10 +682,10 @@ func TestGetProfiles(t *testing.T) {
 		if !exists {
 			t.Fatalf("Expected 'namespace' metric label to exist but it did not")
 		}
-		if first.Endpoint.ProtocolHint == nil {
+		if first.GetEndpoint().GetProtocolHint() == nil {
 			t.Fatalf("Expected protocol hint but found none")
 		}
-		if first.Endpoint.ProtocolHint.GetOpaqueTransport() != nil {
+		if first.GetEndpoint().GetProtocolHint().GetOpaqueTransport() != nil {
 			t.Fatalf("Expected pod to not support opaque traffic on port %d", port)
 		}
 		if first.Endpoint.Addr.String() != epAddr.String() {
@@ -745,7 +745,7 @@ func TestGetProfiles(t *testing.T) {
 		if first.Endpoint == nil {
 			t.Fatalf("Expected response to have endpoint field")
 		}
-		if first.Endpoint.ProtocolHint != nil {
+		if first.Endpoint.GetProtocolHint().GetProtocol() != nil || first.Endpoint.GetProtocolHint().GetOpaqueTransport() != nil {
 			t.Fatalf("Expected no protocol hint but found one")
 		}
 	})
@@ -884,12 +884,12 @@ func TestGetProfiles(t *testing.T) {
 			t.Fatalf("Expected to not be nil")
 		}
 
-		if addr.ProtocolHint != nil {
+		if addr.GetProtocolHint().GetProtocol() != nil || addr.GetProtocolHint().GetOpaqueTransport() != nil {
 			t.Fatalf("Expected protocol hint for %s to be nil but got %+v", path, addr.ProtocolHint)
 		}
 
 		if addr.TlsIdentity != nil {
-			t.Fatalf("Expected protocol hint for %s to be nil but got %+v", path, addr.TlsIdentity)
+			t.Fatalf("Expected TLS identity for %s to be nil but got %+v", path, addr.TlsIdentity)
 		}
 	})
 }
