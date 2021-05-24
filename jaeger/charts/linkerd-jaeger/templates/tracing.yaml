@@ -1,3 +1,4 @@
+{{- if .Values.collector.enabled }}
 ---
 ###
 ### Tracing Collector Service
@@ -119,6 +120,8 @@ spec:
             path: collector-config.yaml
           name: collector-config
         name: collector-config-val
+{{- end }}
+{{- if .Values.jaeger.enabled }}
 ---
 ###
 ### Tracing Jaeger Service
@@ -186,3 +189,4 @@ spec:
         {{- end }}
       dnsPolicy: ClusterFirst
       serviceAccountName: jaeger
+{{- end }}
