@@ -71,11 +71,11 @@ Kubernetes: `>=1.16.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| gateway.affinity | object | `{}` | Affinity for gateway pods. (https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity) |
+| gateway.affinity | object | `{}` | [Affinity](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity) settings for gateway pods. |
 | gateway.enabled | bool | `true` | If the gateway component should be installed |
 | gateway.loadBalancerIP | string | `""` | Set loadBalancerIP on gateway service |
 | gateway.name | string | `"linkerd-gateway"` | The name of the gateway that will be installed |
-| gateway.nodeSelector | object | `{}` | Node Selector settings for the gateway pods. (https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector) |
+| gateway.nodeSelector | object | `{}` | [Node Selector](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector) settings for the gateway pods. |
 | gateway.port | int | `4143` | The port on which all the gateway will accept incoming traffic |
 | gateway.probe.path | string | `"/ready"` | The path that will be used by remote clusters for determining whether the gateway is alive |
 | gateway.probe.port | int | `4191` | The port used for liveliness probing |
@@ -84,7 +84,7 @@ Kubernetes: `>=1.16.0-0`
 | gateway.resources | object | `{}` | Default resources for the gateway pods. If null, that resource won't be set |
 | gateway.serviceAnnotations | object | `{}` | Annotations to add to the gateway service |
 | gateway.serviceType | string | `"LoadBalancer"` | Service Type of gateway Service |
-| gateway.tolerations | list | `[]` | Toleration settings for the gateway pods. (https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/) |
+| gateway.tolerations | list | `[]` | [Toleration](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/) settings for the gateway pods. |
 | identityTrustDomain | string | `"cluster.local"` | Identity Trust Domain of the certificate authority |
 | installNamespace | bool | `true` | If the namespace should be installed |
 | linkerdNamespace | string | `"linkerd"` | Namespace of linkerd installation |

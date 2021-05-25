@@ -16,11 +16,11 @@ gateway:
     #   cpu: 100m
     #   memory: 128Mi
 
-  # -- Node Selector settings for the gateway pods. (https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector)
+  # -- [Node Selector](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector) settings for the gateway pods.
   nodeSelector: {}
-  # -- Toleration settings for the gateway pods. (https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/)
+  # -- [Toleration](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/) settings for the gateway pods.
   tolerations: []
-  # -- Affinity for gateway pods. (https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity)
+  # -- [Affinity](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity) settings for gateway pods.
   affinity: {}
   # -- Service Type of gateway Service
   serviceType: LoadBalancer
