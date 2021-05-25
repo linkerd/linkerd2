@@ -253,30 +253,10 @@ If no resource name is specified, displays stats about all resources of the spec
 	cmd.PersistentFlags().StringVarP(&options.labelSelector, "selector", "l", options.labelSelector, "Selector (label query) to filter on, supports '=', '==', and '!='")
 	cmd.PersistentFlags().BoolVar(&options.unmeshed, "unmeshed", options.unmeshed, "If present, include unmeshed resources in the output")
 
-	configureFlagCompletions(cmd)
+	pkgcmd.ConfigureNamespaceFlagCompletion(
+		cmd, []string{"namespace", "to-namespace", "from-namespace"},
+		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
 	return cmd
-}
-
-func configureFlagCompletions(cmd *cobra.Command) {
-	flagNames := []string{"namespace", "to-namespace", "from-namespace"}
-	for _, flagName := range flagNames {
-		cmd.RegisterFlagCompletionFunc(flagName,
-			func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-				k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-				if err != nil {
-					return nil, cobra.ShellCompDirectiveError
-				}
-
-				cc := k8s.NewCommandCompletion(k8sAPI, "")
-				results, err := cc.Complete([]string{"namespaces"}, toComplete)
-				if err != nil {
-					cobra.CompErrorln(err.Error())
-					return nil, cobra.ShellCompDirectiveError
-				}
-
-				return results, cobra.ShellCompDirectiveDefault
-			})
-	}
 }
 
 func respToRows(resp *pb.StatSummaryResponse) []*pb.StatTable_PodGroup_Row {
