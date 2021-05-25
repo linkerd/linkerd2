@@ -1,10 +1,11 @@
 name: Static checks
 on:
-  pull_request: {}
+  pull_request:
+    paths-ignore:
+    - 'web/app/package.json'
   push:
     paths-ignore:
-    - '*.md'
-    - '**/*.md'
+    - 'web/app/package.json'
     branches:
     - main
 jobs:
