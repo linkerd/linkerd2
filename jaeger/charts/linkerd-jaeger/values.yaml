@@ -30,14 +30,11 @@ collector:
   # for more information
   tolerations: *default_tolerations
 
-  # -- address of the jaeger backend to send traces to.
-  # It uses jaeger gRPC API
-  jaegerAddr: &jaegerAddr jaeger.linkerd-jaeger:14250
-
   # -- OpenTelemetry Collector config, See the
   # [Configuration docs](https://opentelemetry.io/docs/collector/configuration/)
   # for more information
-  config:
+  # @default -- see `value.yaml` for actual configuration
+  config: |
     receivers:
       otlp:
         protocols:
@@ -57,7 +54,7 @@ collector:
       health_check:
     exporters:
       jaeger:
-        endpoint: *jaegerAddr
+        endpoint: jaeger.linkerd-jaeger:14250
         insecure: true
     service:
       extensions: [health_check]

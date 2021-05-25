@@ -12,7 +12,7 @@ metadata:
     component: collector
 data:
   collector-config: |
-    {{- with .Values.collector.config }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    {{- .Values.collector.config | trim | nindent 4 }}
 ---
 apiVersion: v1
 kind: Service

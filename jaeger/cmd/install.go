@@ -25,8 +25,8 @@ var (
 		"templates/namespace.yaml",
 		"templates/jaeger-injector.yaml",
 		"templates/rbac.yaml",
-		"templates/jaeger.yaml",
 		"templates/opentelemetry-collector.yaml",
+		"templates/jaeger.yaml",
 	}
 )
 
