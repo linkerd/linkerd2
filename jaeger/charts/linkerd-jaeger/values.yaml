@@ -15,8 +15,8 @@ nodeSelector: &default_node_selector
 tolerations: &default_tolerations
 
 collector:
+  # -- Set to false to exclude collector installation
   enabled: true
-
   image:
     name: otel/opentelemetry-collector
     version: 0.27.0
@@ -68,8 +68,8 @@ collector:
           exporters: [jaeger]
 
 jaeger:
+  # -- Set to false to exclude all-in-one Jaeger installation
   enabled: true
-
   image:
     name: jaegertracing/all-in-one
     version: 1.19.2

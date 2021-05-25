@@ -1,11 +1,9 @@
-package installsp
-
-// Template provides the base template for the `linkerd install-sp` command.
-const Template = `apiVersion: linkerd.io/v1alpha2
+---
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
-  name: linkerd-controller-api.{{.Namespace}}.svc.{{.ClusterDomain}}
-  namespace: {{.Namespace}}
+  name: metrics-api.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}
+  namespace: {{.Values.namespace}}
 spec:
   routes:
   - name: POST /api/v1/StatSummary
@@ -24,52 +22,25 @@ spec:
     condition:
       method: POST
       pathRegex: /api/v1/ListServices
-  - name: POST /api/v1/Version
-    condition:
-      method: POST
-      pathRegex: /api/v1/Version
   - name: POST /api/v1/SelfCheck
     condition:
       method: POST
       pathRegex: /api/v1/SelfCheck
+  - name: POST /api/v1/Gateways
+    condition:
+      method: POST
+      pathRegex: /api/v1/Gateways
+  - name: POST /api/v1/Edges
+    condition:
+      method: POST
+      pathRegex: /api/v1/Edges
+{{ if .Values.prometheus.enabled -}}
 ---
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
-  name: linkerd-dst.{{.Namespace}}.svc.{{.ClusterDomain}}
-  namespace: {{.Namespace}}
-spec:
-  routes:
-  - name: POST /io.linkerd.proxy.destination.Destination/Get
-    condition:
-      method: POST
-      pathRegex: /io\.linkerd\.proxy\.destination\.Destination/Get
-  - name: POST /io.linkerd.proxy.destination.Destination/GetProfile
-    condition:
-      method: POST
-      pathRegex: /io\.linkerd\.proxy\.destination\.Destination/GetProfile
----
-apiVersion: linkerd.io/v1alpha2
-kind: ServiceProfile
-metadata:
-  name: linkerd-dst-headless.{{.Namespace}}.svc.{{.ClusterDomain}}
-  namespace: {{.Namespace}}
-spec:
-  routes:
-  - name: POST /io.linkerd.proxy.destination.Destination/Get
-    condition:
-      method: POST
-      pathRegex: /io\.linkerd\.proxy\.destination\.Destination/Get
-  - name: POST /io.linkerd.proxy.destination.Destination/GetProfile
-    condition:
-      method: POST
-      pathRegex: /io\.linkerd\.proxy\.destination\.Destination/GetProfile
----
-apiVersion: linkerd.io/v1alpha2
-kind: ServiceProfile
-metadata:
-  name: linkerd-prometheus.{{.Namespace}}.svc.{{.ClusterDomain}}
-  namespace: {{.Namespace}}
+  name: prometheus.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}
+  namespace: {{.Values.namespace}}
 spec:
   routes:
   - name: POST /api/v1/query
@@ -84,12 +55,14 @@ spec:
     condition:
       method: GET
       pathRegex: /api/v1/series
+{{ end -}}
+{{ if .Values.grafana.enabled -}}
 ---
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
-  name: linkerd-grafana.{{.Namespace}}.svc.{{.ClusterDomain}}
-  namespace: {{.Namespace}}
+  name: grafana.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}
+  namespace: {{.Values.namespace}}
 spec:
   routes:
   - name: GET /api/annotations
@@ -136,4 +109,4 @@ spec:
     condition:
       method: GET
       pathRegex: /public/img/.*
-`
+{{ end -}}

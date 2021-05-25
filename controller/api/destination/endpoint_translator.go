@@ -329,12 +329,12 @@ func toWeightedAddr(address watcher.Address, opaquePorts, skippedInboundPorts ma
 	// If the pod is controlled by any Linkerd control plane, then it can be
 	// hinted that this destination knows H2 (and handles our orig-proto
 	// translation)
-	var hint *pb.ProtocolHint
-	if enableH2Upgrade && controllerNSLabel != "" && !isSkippedInboundPort {
-		hint = &pb.ProtocolHint{
-			Protocol: &pb.ProtocolHint_H2_{
+	hint := &pb.ProtocolHint{}
+	if controllerNSLabel != "" && !isSkippedInboundPort {
+		if enableH2Upgrade {
+			hint.Protocol = &pb.ProtocolHint_H2_{
 				H2: &pb.ProtocolHint_H2{},
-			},
+			}
 		}
 		if _, ok := opaquePorts[address.Port]; ok {
 			port, err := getInboundPort(&address.Pod.Spec)

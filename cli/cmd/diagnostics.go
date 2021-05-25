@@ -27,16 +27,12 @@ This command provides subcommands to diagnose the functionality of Linkerd.`,
  
   # Get the endpoints for authorities in Linkerd's control-plane itself
   linkerd diagnostics endpoints web.linkerd-viz.svc.cluster.local:8084
-
-  # Install service profiles for the control-plane components.
-  linkerd diagnostics install-sp
   `,
 	}
 
 	diagnosticsCmd.AddCommand(newCmdControllerMetrics())
 	diagnosticsCmd.AddCommand(newCmdEndpoints())
 	diagnosticsCmd.AddCommand(newCmdMetrics())
-	diagnosticsCmd.AddCommand(newCmdInstallSP())
 
 	return diagnosticsCmd
 }
