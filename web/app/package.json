@@ -90,6 +90,7 @@
   },
   "resolutions": {
     "@lingui/**/**/minimist": ">=1.2.5",
+    "multicast-dns": "7.2.3",
     "webpack-dev-server/selfsigned/node-forge": ">=0.10.0"
   },
   "jest": {
