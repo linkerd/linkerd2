@@ -32,7 +32,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 525d4805deeeee18bbcd97ab075362fcae2250d997ff311665a0b7b464eebdc4
+        checksum/config: c5371d061c7e836de5b1f45e11898cd3692ecc62346cdcb1e439ec2ccad71a31
       labels:
         linkerd.io/extension: jaeger
         component: jaeger-injector
@@ -89,6 +89,7 @@ spec:
   - name: jaeger-injector
     port: 443
     targetPort: jaeger-injector
+
 ---
 ###
 ### collector RBAC
@@ -107,7 +108,6 @@ apiVersion: v1
 metadata:
   name: jaeger
   namespace: linkerd-jaeger
-
 ---
 ###
 ### Jaeger Injector RBAC
@@ -178,6 +178,7 @@ webhooks:
     apiVersions: ["v1"]
     resources: ["pods"]
   sideEffects: None
+
 ---
 ###
 ### Tracing Collector Service
