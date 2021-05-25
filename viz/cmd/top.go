@@ -18,7 +18,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	metricsAPI "github.com/linkerd/linkerd2/viz/metrics-api"
 	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
-	vizpkg "github.com/linkerd/linkerd2/viz/pkg"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
 	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	"github.com/linkerd/linkerd2/viz/tap/pkg"
@@ -320,8 +319,33 @@ func NewCmdTop() *cobra.Command {
 
   # display traffic for the web-dlbvj pod in the default namespace
   linkerd viz top pod/web-dlbvj`,
-		Args:      cobra.RangeArgs(1, 2),
-		ValidArgs: vizpkg.ValidTargets,
+		Args: cobra.RangeArgs(1, 2),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			// This command requires at most two arguments if we already have
+			// two after requesting autocompletion i.e. [tab][tab]
+			// skip running validArgsFunction
+			if len(args) > 1 {
+				return nil, cobra.ShellCompDirectiveError
+			}
+
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+
+			if options.namespace == "" {
+				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+			}
+
+			cc := k8s.NewCommandCompletion(k8sAPI, options.namespace)
+
+			results, err := cc.Complete(args, toComplete)
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+
+			return results, cobra.ShellCompDirectiveDefault
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
@@ -397,6 +421,9 @@ func NewCmdTop() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&options.routes, "routes", options.routes, "Display data per route instead of per path")
 	cmd.PersistentFlags().StringVarP(&options.labelSelector, "selector", "l", options.labelSelector, "Selector (label query) to filter on, supports '=', '==', and '!='")
 
+	pkgcmd.ConfigureNamespaceFlagCompletion(
+		cmd, []string{"namespace", "to-namespace"},
+		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
 	return cmd
 }
 

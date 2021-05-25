@@ -60,6 +60,12 @@ func (c *CommandCompletion) Complete(args []string, toComplete string) ([]string
 		return suggestions, nil
 	}
 
+	// Similar to kubectl, we don't provide resource completion
+	// when the resource provided is in format <kind>/<resourceName>
+	if strings.Contains(args[0], "/") {
+		return []string{}, nil
+	}
+
 	resType, err := CanonicalResourceNameFromFriendlyName(args[0])
 	if err != nil {
 		return nil, fmt.Errorf("%s is not a valid resource name", args)
@@ -68,13 +74,6 @@ func (c *CommandCompletion) Complete(args []string, toComplete string) ([]string
 	// if we are looking for namespace suggestions clear namespace selector
 	if resType == "namespace" {
 		c.namespace = ""
-	}
-
-	// Similar to kubectl's completion for bash and zsh only, we don't provide
-	// resource completion when the resource provided is in format
-	// <kind>/<resourceName>.
-	if strings.Contains(args[0], "/") {
-		return []string{}, nil
 	}
 
 	gvr, err := c.getGroupVersionKindForResource(resType)
