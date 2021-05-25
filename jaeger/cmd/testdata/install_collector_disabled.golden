@@ -32,7 +32,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 09b8c09754744aff9027048d3863d2401e4547f07d87f6e3dee643947adb0976
+        checksum/config: 5bd7cf79e2089450866c91a4f139e93835bef192c11323db78aeb8c255fcf3b4
       labels:
         linkerd.io/extension: jaeger
         component: jaeger-injector
@@ -166,6 +166,39 @@ webhooks:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
+  name: jaeger
+  namespace: linkerd-jaeger
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: psp
+  namespace: linkerd-jaeger
+  labels:
+    linkerd.io/extension: jaeger
+rules:
+- apiGroups: ['policy', 'extensions']
+  resources: ['podsecuritypolicies']
+  verbs: ['use']
+  resourceNames:
+  - linkerd-linkerd-control-plane
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jaeger-psp
+  namespace: linkerd-jaeger
+  labels:
+    linkerd.io/extension: jaeger
+roleRef:
+  kind: Role
+  name: psp
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: jaeger-injector
+  namespace: linkerd-jaeger
+- kind: ServiceAccount
   name: jaeger
   namespace: linkerd-jaeger
 ---

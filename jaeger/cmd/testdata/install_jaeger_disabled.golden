@@ -32,7 +32,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 83c7853cc6f0083c78ce1a1862e1f02c4eccb7d2fa90d3ffa924ac75d728ad95
+        checksum/config: 526f4fb77f64bd384cc6913967444c5faec551a8cba1ad2cb87cb77ef767318d
       labels:
         linkerd.io/extension: jaeger
         component: jaeger-injector
@@ -168,6 +168,39 @@ webhooks:
     apiVersions: ["v1"]
     resources: ["pods"]
   sideEffects: None
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: psp
+  namespace: linkerd-jaeger
+  labels:
+    linkerd.io/extension: jaeger
+rules:
+- apiGroups: ['policy', 'extensions']
+  resources: ['podsecuritypolicies']
+  verbs: ['use']
+  resourceNames:
+  - linkerd-linkerd-control-plane
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jaeger-psp
+  namespace: linkerd-jaeger
+  labels:
+    linkerd.io/extension: jaeger
+roleRef:
+  kind: Role
+  name: psp
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: collector
+  namespace: linkerd-jaeger
+- kind: ServiceAccount
+  name: jaeger-injector
+  namespace: linkerd-jaeger
 ---
 ###
 ### Tracing Collector Service

@@ -69,11 +69,11 @@ metadata:
 webhooks:
 - name: jaeger-injector.linkerd.io
   {{- if .Values.webhook.namespaceSelector }}
-  namespaceSelector: 
+  namespaceSelector:
 {{ toYaml .Values.webhook.namespaceSelector | trim | indent 4 -}}
   {{- end }}
   {{- if .Values.webhook.objectSelector }}
-  objectSelector: 
+  objectSelector:
 {{ toYaml .Values.webhook.objectSelector | trim | indent 4 -}}
   {{- end }}
   clientConfig:
@@ -94,7 +94,7 @@ webhooks:
     apiVersions: ["v1"]
     resources: ["pods"]
   sideEffects: None
-{{- if .Values.jaeger.enabled }}
+{{ if .Values.jaeger.enabled -}}
 ---
 ###
 ### jaeger RBAC
@@ -104,4 +104,4 @@ apiVersion: v1
 metadata:
   name: jaeger
   namespace: {{.Values.namespace}}
-{{- end -}}
+{{ end -}}
