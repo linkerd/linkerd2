@@ -26,7 +26,6 @@ var (
 		"templates/jaeger-injector.yaml",
 		"templates/rbac.yaml",
 		"templates/jaeger.yaml",
-		"templates/opencensus-collector.yaml",
 		"templates/opentelemetry-collector.yaml",
 	}
 )
