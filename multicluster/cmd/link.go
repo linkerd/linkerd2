@@ -205,13 +205,14 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				return err
 			}
 
-			gatewayPort := opts.gatewayPort
-			if gatewayPort == 0 {
-				serviceGatewayPort, err := extractGatewayPort(gateway)
-				if err != nil {
-					return err
-				}
-				gatewayPort = serviceGatewayPort
+			gatewayPort, err := extractGatewayPort(gateway)
+			if err != nil {
+				return err
+			}
+
+			// Override with user provided gateway port if present
+			if opts.gatewayPort != 0 {
+				gatewayPort = opts.gatewayPort
 			}
 
 			selector, err := metav1.ParseToLabelSelector(opts.selector)
@@ -326,7 +327,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().StringVar(&opts.logLevel, "log-level", opts.logLevel, "Log level for the Multicluster components")
 	cmd.Flags().StringVar(&opts.dockerRegistry, "registry", opts.dockerRegistry, "Docker registry to pull service mirror controller image from")
 	cmd.Flags().StringVarP(&opts.selector, "selector", "l", opts.selector, "Selector (label query) to filter which services in the target cluster to mirror")
-	cmd.Flags().StringVar(&opts.gatewayAddresses, "gateway-addresses", opts.gatewayAddresses, "If specified overwrites gateway addresses when gateway service is not type LoadBalancer (comma separated list)")
+	cmd.Flags().StringVar(&opts.gatewayAddresses, "gateway-addresses", opts.gatewayAddresses, "If specified, overwrites gateway addresses when gateway service is not type LoadBalancer (comma separated list)")
 	cmd.Flags().Uint32Var(&opts.gatewayPort, "gateway-port", opts.gatewayPort, "If specified, overwrites gateway port when gateway service is not type LoadBalancer")
 
 	return cmd
