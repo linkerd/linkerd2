@@ -5,9 +5,15 @@ name: CodeQL
 on:
   push:
     branches: [ main, stable-* ]
+    paths-ignore:
+    - '*.md'
+    - '**/*.md'
   pull_request:
     # The branches below must be a subset of the branches above
     branches: [ main, stable-* ]
+    paths-ignore:
+    - '*.md'
+    - '**/*.md'
   schedule:
     - cron: '40 5 * * 3'
 
