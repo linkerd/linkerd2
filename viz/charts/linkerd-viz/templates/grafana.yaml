@@ -117,10 +117,10 @@ spec:
         namespace: {{.Values.namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
-      {{- if .Values.tolerations -}}
-      {{- include "linkerd.tolerations" . | nindent 6 }}
+      {{- if .Values.grafana.tolerations -}}
+      {{- include "linkerd.tolerations" (dict "Values" .Values.grafana) | nindent 6 }}
       {{- end -}}
-      {{- include "linkerd.node-selector" . | nindent 6 }}
+      {{- include "linkerd.node-selector" (dict "Values" .Values.grafana) | nindent 6 }}
       containers:
       - env:
         - name: GF_PATHS_DATA

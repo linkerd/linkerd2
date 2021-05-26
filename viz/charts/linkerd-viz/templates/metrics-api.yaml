@@ -57,10 +57,10 @@ spec:
         component: metrics-api
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
-      {{- if .Values.tolerations -}}
-      {{- include "linkerd.tolerations" . | nindent 6 }}
+      {{- if .Values.metricsAPI.tolerations -}}
+      {{- include "linkerd.tolerations" (dict "Values" .Values.metricsAPI) | nindent 6 }}
       {{- end -}}
-      {{- include "linkerd.node-selector" . | nindent 6 }}
+      {{- include "linkerd.node-selector" (dict "Values" .Values.metricsAPI) | nindent 6 }}
       {{- if .Values.enablePodAntiAffinity -}}
       {{- $local := dict "component" "metrics-api" "label" "component" -}}
       {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
