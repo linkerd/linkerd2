@@ -628,9 +628,10 @@ func TestUpgradeHelm(t *testing.T) {
 		"--set", "proxyInjectorProxyResources.cpu.limit=1060m",
 		"--set", "proxyInjectorProxyResources.memory.request=106Mi",
 		"--atomic",
+		"--timeout", "60m",
 		"--wait",
 	}
-	extraArgs, extraVizArgs := helmOverridesEdge(helmTLSCerts)
+	extraArgs, vizArgs := helmOverridesEdge(helmTLSCerts)
 	args = append(args, extraArgs...)
 	if stdout, stderr, err := TestHelper.HelmUpgrade(TestHelper.GetHelmChart(), args...); err != nil {
 		testutil.AnnotatedFatalf(t, "'helm upgrade' command failed",
@@ -638,7 +639,6 @@ func TestUpgradeHelm(t *testing.T) {
 	}
 
 	vizChart := TestHelper.GetLinkerdVizHelmChart()
-	vizArgs := append(extraVizArgs, "--wait")
 	if stdout, stderr, err := TestHelper.HelmCmdPlain("upgrade", vizChart, "l5d-viz", vizArgs...); err != nil {
 		testutil.AnnotatedFatalf(t, "'helm upgrade' command failed",
 			"'helm upgrade' command failed\n%s\n%s", stdout, stderr)
@@ -1022,21 +1022,6 @@ func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 		}
 	} else {
 		t.Skip("Skipping for non upgrade test")
-	}
-}
-
-func TestInstallSP(t *testing.T) {
-	cmd := []string{"diagnostics", "install-sp"}
-
-	out, err := TestHelper.LinkerdRun(cmd...)
-	if err != nil {
-		testutil.AnnotatedFatal(t, "'linkerd install-sp' command failed", err)
-	}
-
-	out, err = TestHelper.KubectlApply(out, TestHelper.GetLinkerdNamespace())
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-			"'kubectl apply' command failed\n%s", out)
 	}
 }
 

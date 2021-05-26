@@ -1,10 +1,11 @@
 name: Static checks
 on:
-  pull_request: {}
+  pull_request:
+    paths-ignore:
+    - 'web/app/package.json'
   push:
     paths-ignore:
-    - '*.md'
-    - '**/*.md'
+    - 'web/app/package.json'
     branches:
     - main
 jobs:
@@ -13,7 +14,7 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
     container:
-      image: golang:1.16.2
+      image: golang:1.16.4
     steps:
     - name: Checkout code
       uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
@@ -24,7 +25,7 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
     container:
-      image: golang:1.16.2
+      image: golang:1.16.4
     steps:
     - name: Checkout code
       uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
@@ -35,7 +36,7 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
     container:
-      image: golang:1.16.2
+      image: golang:1.16.4
     steps:
       - name: Prerequisites
         run: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install unzip
