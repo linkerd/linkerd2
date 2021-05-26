@@ -27,6 +27,18 @@ func TestRender(t *testing.T) {
 			nil,
 			"install_default.golden",
 		},
+		{
+			map[string]interface{}{
+				"jaeger": map[string]interface{}{"enabled": false},
+			},
+			"install_jaeger_disabled.golden",
+		},
+		{
+			map[string]interface{}{
+				"collector": map[string]interface{}{"enabled": false},
+			},
+			"install_collector_disabled.golden",
+		},
 	}
 
 	for i, tc := range testCases {

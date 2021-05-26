@@ -32,7 +32,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 93ee231f45614b315429e63eb8c79ca948062c4f47b19c8c273ab943bd182ff3
+        checksum/config: 83c7853cc6f0083c78ce1a1862e1f02c4eccb7d2fa90d3ffa924ac75d728ad95
       labels:
         linkerd.io/extension: jaeger
         component: jaeger-injector
@@ -170,15 +170,6 @@ webhooks:
   sideEffects: None
 ---
 ###
-### jaeger RBAC
-###
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: jaeger
-  namespace: linkerd-jaeger
----
-###
 ### Tracing Collector Service
 ###
 apiVersion: v1
@@ -293,65 +284,3 @@ spec:
             path: collector-config.yaml
           name: collector-config
         name: collector-config-val
----
-###
-### Tracing Jaeger Service
-###
-apiVersion: v1
-kind: Service
-metadata:
-  name: jaeger
-  namespace: linkerd-jaeger
-  labels:
-    component: jaeger
-spec:
-  type: ClusterIP
-  selector:
-    component: jaeger
-  ports:
-    - name: collection
-      port: 14268
-    - name: ui
-      port: 16686
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
-    app.kubernetes.io/name: jaeger
-    app.kubernetes.io/part-of: Linkerd
-    component: jaeger
-  name: jaeger
-  namespace: linkerd-jaeger
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      component: jaeger
-  template:
-    metadata:
-      annotations:
-        config.linkerd.io/proxy-await: "enabled"
-        prometheus.io/path: /metrics
-        prometheus.io/port: "14269"
-        prometheus.io/scrape: "true"
-      labels:
-        component: jaeger
-    spec:
-      nodeSelector:
-        beta.kubernetes.io/os: linux
-      containers:
-      - args:
-        - --query.base-path=/jaeger
-        image: jaegertracing/all-in-one:1.19.2
-        imagePullPolicy: Always
-        name: jaeger
-        ports:
-        - containerPort: 14269
-          name: admin
-        - containerPort: 14268
-          name: collection
-        - containerPort: 16686
-          name: ui
-      dnsPolicy: ClusterFirst
-      serviceAccountName: jaeger

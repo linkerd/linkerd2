@@ -32,7 +32,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 93ee231f45614b315429e63eb8c79ca948062c4f47b19c8c273ab943bd182ff3
+        checksum/config: 09b8c09754744aff9027048d3863d2401e4547f07d87f6e3dee643947adb0976
       labels:
         linkerd.io/extension: jaeger
         component: jaeger-injector
@@ -89,15 +89,6 @@ spec:
   - name: jaeger-injector
     port: 443
     targetPort: jaeger-injector
----
-###
-### collector RBAC
-###
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: collector
-  namespace: linkerd-jaeger
 ---
 ###
 ### Jaeger Injector RBAC
@@ -177,122 +168,6 @@ apiVersion: v1
 metadata:
   name: jaeger
   namespace: linkerd-jaeger
----
-###
-### Tracing Collector Service
-###
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: collector-config
-  namespace: linkerd-jaeger
-  labels:
-    component: collector
-data:
-  collector-config: |
-    receivers:
-      opencensus:
-        port: 55678
-      zipkin:
-        port: 9411
-      jaeger:
-        jaeger-thrift-http-port: 14268
-    queued-exporters:
-      jaeger-all-in-one:
-        num-workers: 4
-        queue-size: 100
-        retry-on-failure: true
-        sender-type: jaeger-thrift-http
-        jaeger-thrift-http:
-          collector-endpoint: http://jaeger.linkerd-jaeger:14268/api/traces
-          timeout: 5s
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: collector
-  namespace: linkerd-jaeger
-  labels:
-    component: collector
-spec:
-  type: ClusterIP
-  ports:
-  - name: opencensus
-    port: 55678
-    protocol: TCP
-    targetPort: 55678
-  - name: zipkin
-    port: 9411
-    protocol: TCP
-    targetPort: 9411
-  - name: jaeger
-    port: 14268
-    protocol: TCP
-    targetPort: 14268
-  selector:
-    component: collector
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
-    app.kubernetes.io/name: collector
-    app.kubernetes.io/part-of: Linkerd
-    component: collector
-  name: collector
-  namespace: linkerd-jaeger
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      component: collector
-  minReadySeconds: 5
-  progressDeadlineSeconds: 120
-  template:
-    metadata:
-      annotations:
-        prometheus.io/path: /metrics
-        prometheus.io/port: "8888"
-        prometheus.io/scrape: "true"
-      labels:
-        component: collector
-    spec:
-      nodeSelector:
-        beta.kubernetes.io/os: linux
-      containers:
-      - command:
-        - /occollector_linux
-        - --config=/conf/collector-config.yaml
-        env:
-        - name: GOGC
-          value: "80"
-        image: omnition/opencensus-collector:0.1.11
-        imagePullPolicy: Always
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 13133
-        name: oc-collector
-        ports:
-        - containerPort: 55678
-        - containerPort: 9411
-        - containerPort: 14268
-        - containerPort: 8888
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 13133
-        volumeMounts:
-        - mountPath: /conf
-          name: collector-config-val
-      serviceAccountName: collector
-      volumes:
-      - configMap:
-          items:
-          - key: collector-config
-            path: collector-config.yaml
-          name: collector-config
-        name: collector-config-val
 ---
 ###
 ### Tracing Jaeger Service

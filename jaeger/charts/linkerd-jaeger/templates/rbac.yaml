@@ -1,4 +1,4 @@
-{{- if .Values.collector.enabled }}
+{{- if .Values.collector.enabled -}}
 ---
 ###
 ### collector RBAC
@@ -8,18 +8,7 @@ apiVersion: v1
 metadata:
   name: collector
   namespace: {{.Values.namespace}}
-{{- end }}
-{{- if .Values.jaeger.enabled }}
----
-###
-### jaeger RBAC
-###
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: jaeger
-  namespace: {{.Values.namespace}}
-{{- end }}
+{{ end -}}
 ---
 ###
 ### Jaeger Injector RBAC
@@ -105,3 +94,14 @@ webhooks:
     apiVersions: ["v1"]
     resources: ["pods"]
   sideEffects: None
+{{- if .Values.jaeger.enabled }}
+---
+###
+### jaeger RBAC
+###
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: jaeger
+  namespace: {{.Values.namespace}}
+{{- end -}}
