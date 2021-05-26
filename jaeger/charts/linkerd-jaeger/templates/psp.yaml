@@ -11,7 +11,7 @@ rules:
   resources: ['podsecuritypolicies']
   verbs: ['use']
   resourceNames:
-  - linkerd-linkerd-control-plane
+  - linkerd-{{.Values.linkerdNamespace}}-control-plane
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
