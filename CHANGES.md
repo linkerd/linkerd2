@@ -3,13 +3,24 @@
 ## edge-21.5.3
 
 This edge release contains various improvements to the Viz and Jaeger install
-charts, along with bug fixes in the CLI, and destination. Additionally, This
-release adds kubernetes aware autocompletion to all viz commands, along with
+charts, along with bug fixes in the CLI, and destination. This release also
+adds kubernetes aware autocompletion to all viz commands, along with
 ServiceProfiles to be part of the default `viz install`.
+
+Finally, the proxy has been updated to continue supporting requests without
+`l5d-dst-override` in ingress-mode proxies, to no longer include query parameters
+in the OpenCensus trace spans, and to prevent timeouts with controlelr clients
+of components with more than one replica.
 
 * Separated protocol hint setting from H2 upgrades in destination profile
   response, thus preventing `hint.OpaqueTransport` field from not being set when
   H2 upgrades are disabled
+* Updated OpenCensus trace spans for HTTP requests to no longer include query
+  parameters (thanks @aatarasoff!)
+* Reverted [linkerd/linkerd2-proxy#992](https://github.com/linkerd/linkerd2-proxy/pull/992)
+  to support requests without `l5d-dst-override` in ingress-mode proxies
+* Fixed an issue in the proxy to prevent timeouts with controller clients
+  of components with more than one replica
 * Fixed `linkerd check --proxy` failure with pods that are part of Jobs
 * Updated `viz install` to also include ServiceProfiles of its components.
   As a side-effect, `linkerd diagnostics install-sp` cmd has been removed
