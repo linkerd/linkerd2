@@ -3,8 +3,12 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/util"
@@ -21,11 +25,13 @@ import (
 type metricsOptions struct {
 	namespace string
 	pod       string
+	obfuscate bool
 }
 
 func newMetricsOptions() *metricsOptions {
 	return &metricsOptions{
-		pod: "",
+		pod:       "",
+		obfuscate: false,
 	}
 }
 
@@ -95,6 +101,9 @@ func newCmdMetrics() *cobra.Command {
 				content := fmt.Sprintf("#\n# POD %s (%d of %d)\n#\n", result.pod, i+1, len(results))
 				if result.err == nil {
 					content += string(result.metrics)
+					if options.obfuscate {
+						content = obfuscate(content)
+					}
 				} else {
 					content += fmt.Sprintf("# ERROR %s\n", result.err)
 				}
@@ -107,6 +116,7 @@ func newCmdMetrics() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of resource")
+	cmd.PersistentFlags().BoolVar(&options.obfuscate, "obfuscate", options.obfuscate, "Obfuscate sensitive information")
 
 	return cmd
 }
@@ -266,4 +276,41 @@ func isOwner(u types.UID, ownerRefs []metav1.OwnerReference) bool {
 		}
 	}
 	return false
+}
+
+func getMetricLabels() []string {
+	return []string{
+		"authority",
+		"dst_service",
+		"dst_namespace",
+		"target_addr",
+		"server_id",
+		"client_id",
+	}
+}
+
+func obfuscate(input string) string {
+	var obfuscated []string
+	lines := strings.Split(input, "\n")
+	for i := range lines {
+		json := regexp.MustCompile(`[\\{\\}\\s]+`).Split(lines[i], -1)
+		if len(json) == 3 {
+			jsonSlice := strings.Split(json[1], ",")
+			for i, keyValues := range jsonSlice {
+				keyValue := strings.Split(keyValues, "=")
+				for _, ov := range getMetricLabels() {
+					if keyValue[0] == ov {
+						hash := sha256.Sum256([]byte(keyValue[1]))
+						keyValue[1] = hex.EncodeToString(hash[:])[0:10]
+						jsonSlice[i] = strings.Join(keyValue, "=")
+					}
+				}
+			}
+
+			json[1] = fmt.Sprintf("{%s} ", strings.Join(jsonSlice, ","))
+			result := strings.Join(json, "")
+			obfuscated = append(obfuscated, result)
+		}
+	}
+	return strings.Join(obfuscated, "\n")
 }
