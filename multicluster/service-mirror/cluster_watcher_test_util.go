@@ -113,6 +113,66 @@ var createExportedService = &testEnvironment{
 	},
 }
 
+var createExportedHeadlessService = &testEnvironment{
+	events: []interface{}{
+		&RemoteServiceCreated{
+			service: remoteHeadlessService("service-one", "ns2", "111", map[string]string{
+				consts.DefaultExportedServiceSelector: "true",
+			}, []corev1.ServicePort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		},
+		&OnAddEndpointsCalled{
+			ep: remoteHeadlessEndpoints("service-one", "ns2", "112", "192.0.0.1", []corev1.EndpointPort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		},
+	},
+	remoteResources: []string{
+		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "mc-gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod),
+		remoteHeadlessSvcAsYaml("service-one", "ns2", "111",
+			[]corev1.ServicePort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+	},
+	link: multicluster.Link{
+		TargetClusterName:   clusterName,
+		TargetClusterDomain: clusterDomain,
+		GatewayIdentity:     "gateway-identity",
+		GatewayAddress:      "192.0.2.127",
+		GatewayPort:         888,
+		ProbeSpec:           defaultProbeSpec,
+		Selector:            *defaultSelector,
+	},
+}
+
 var deleteMirrorService = &testEnvironment{
 	events: []interface{}{
 		&RemoteServiceDeleted{
@@ -228,6 +288,113 @@ var updateServiceWithChangedPorts = &testEnvironment{
 	},
 }
 
+var updateEndpointsWithChangedHosts = &testEnvironment{
+	events: []interface{}{
+		&OnUpdateEndpointsCalled{
+			ep: remoteHeadlessEndpointsUpdate("service-two", "eptest", "112", "192.0.0.1", []corev1.EndpointPort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		},
+	},
+	remoteResources: []string{
+		gatewayAsYaml("gateway", "gateway-ns", "currentGatewayResVersion", "192.0.2.127", "mc-gateway", 888, "", defaultProbePort, defaultProbePath, defaultProbePeriod),
+		remoteServiceAsYaml("service-two", "eptest", "222",
+			[]corev1.ServicePort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+	},
+	localResources: []string{
+		mirrorHeadlessServiceAsYaml("service-two-remote", "eptest", "222",
+			[]corev1.ServicePort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		mirrorNestedHeadlessAsYaml("pod-0", "service-two-remote", "eptest", "333", []corev1.ServicePort{
+			{
+				Name:     "port1",
+				Protocol: "TCP",
+				Port:     555,
+			},
+			{
+				Name:     "port2",
+				Protocol: "TCP",
+				Port:     666,
+			},
+		}),
+		headlessEndpointsAsYaml(
+			"service-two-remote",
+			"eptest",
+			"pod-0",
+			"",
+			"gateway-identity",
+			[]corev1.EndpointPort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		nestedEndpointsAsYaml(
+			"service-two-remote",
+			"eptest",
+			"pod-0",
+			"192.0.2.127",
+			"gateway-identity",
+			[]corev1.EndpointPort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     888,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     888,
+				},
+			}),
+	},
+	link: multicluster.Link{
+		TargetClusterName:   clusterName,
+		TargetClusterDomain: clusterDomain,
+		GatewayIdentity:     "gateway-identity",
+		GatewayAddress:      "192.0.2.127",
+		GatewayPort:         888,
+		ProbeSpec:           defaultProbeSpec,
+		Selector:            *defaultSelector,
+	},
+}
 var clusterUnregistered = &testEnvironment{
 	events: []interface{}{
 		&ClusterUnregistered{},
@@ -456,8 +623,111 @@ func remoteService(name, namespace, resourceVersion string, labels map[string]st
 	}
 }
 
+func remoteHeadlessService(name, namespace, resourceVersion string, labels map[string]string, ports []corev1.ServicePort) *corev1.Service {
+	return &corev1.Service{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            name,
+			Namespace:       namespace,
+			ResourceVersion: resourceVersion,
+			Labels:          labels,
+		},
+		Spec: corev1.ServiceSpec{
+			ClusterIP: "None",
+			Ports:     ports,
+		},
+	}
+}
+
+func remoteHeadlessEndpoints(name, namespace, resourceVersion, address string, ports []corev1.EndpointPort) *corev1.Endpoints {
+	return &corev1.Endpoints{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Endpoints",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            name,
+			Namespace:       namespace,
+			ResourceVersion: resourceVersion,
+			Labels: map[string]string{
+				"service.kubernetes.io/headless":      "",
+				consts.DefaultExportedServiceSelector: "true",
+			},
+		},
+		Subsets: []corev1.EndpointSubset{
+			{
+				Addresses: []corev1.EndpointAddress{
+					{
+						Hostname: "pod-0",
+						IP:       address,
+						TargetRef: &corev1.ObjectReference{
+							Name:            "pod-0",
+							ResourceVersion: resourceVersion,
+						},
+					},
+				},
+				Ports: ports,
+			},
+		},
+	}
+}
+
+func remoteHeadlessEndpointsUpdate(name, namespace, resourceVersion, address string, ports []corev1.EndpointPort) *corev1.Endpoints {
+	return &corev1.Endpoints{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Endpoints",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            name,
+			Namespace:       namespace,
+			ResourceVersion: resourceVersion,
+			Labels: map[string]string{
+				"service.kubernetes.io/headless":      "",
+				consts.DefaultExportedServiceSelector: "true",
+			},
+		},
+		Subsets: []corev1.EndpointSubset{
+			{
+				Addresses: []corev1.EndpointAddress{
+					{
+						Hostname: "pod-0",
+						IP:       address,
+						TargetRef: &corev1.ObjectReference{
+							Name:            "pod-0",
+							ResourceVersion: resourceVersion,
+						},
+					},
+					{
+						Hostname: "pod-1",
+						IP:       address,
+						TargetRef: &corev1.ObjectReference{
+							Name:            "pod-1",
+							ResourceVersion: resourceVersion,
+						},
+					},
+				},
+				Ports: ports,
+			},
+		},
+	}
+}
+
 func remoteServiceAsYaml(name, namespace, resourceVersion string, ports []corev1.ServicePort) string {
 	svc := remoteService(name, namespace, resourceVersion, nil, ports)
+
+	bytes, err := yaml.Marshal(svc)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return string(bytes)
+}
+
+func remoteHeadlessSvcAsYaml(name, namespace, resourceVersion string, ports []corev1.ServicePort) string {
+	svc := remoteHeadlessService(name, namespace, resourceVersion, nil, ports)
 
 	bytes, err := yaml.Marshal(svc)
 	if err != nil {
@@ -491,6 +761,39 @@ func mirrorService(name, namespace, resourceVersion string, ports []corev1.Servi
 	}
 }
 
+func mirrorHeadlessService(name, namespace, resourceVersion string, ports []corev1.ServicePort) *corev1.Service {
+	svc := mirrorService(name, namespace, resourceVersion, ports)
+	svc.Spec.ClusterIP = "None"
+	return svc
+}
+
+func mirrorNestedService(hostname, rootName, namespace, resourceVersion string, ports []corev1.ServicePort) *corev1.Service {
+	annotations := make(map[string]string)
+	annotations[consts.RemoteResourceVersionAnnotation] = resourceVersion
+	annotations[consts.RemoteServiceFqName] = fmt.Sprintf("%s.%s.%s.svc.cluster.local", hostname, strings.Replace(rootName, "-remote", "", 1), namespace)
+
+	return &corev1.Service{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", hostname, clusterName),
+			Namespace: namespace,
+			Labels: map[string]string{
+
+				consts.MirroredRootHeadlessLabel: rootName,
+				consts.RemoteClusterNameLabel:    clusterName,
+				consts.MirroredResourceLabel:     "true",
+			},
+			Annotations: annotations,
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: ports,
+		},
+	}
+}
+
 func mirrorServiceAsYaml(name, namespace, resourceVersion string, ports []corev1.ServicePort) string {
 	svc := mirrorService(name, namespace, resourceVersion, ports)
 
@@ -498,6 +801,27 @@ func mirrorServiceAsYaml(name, namespace, resourceVersion string, ports []corev1
 	if err != nil {
 		log.Fatal(err)
 	}
+	return string(bytes)
+}
+
+func mirrorHeadlessServiceAsYaml(name, namespace, resourceVersion string, ports []corev1.ServicePort) string {
+	svc := mirrorHeadlessService(name, namespace, resourceVersion, ports)
+
+	bytes, err := yaml.Marshal(svc)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return string(bytes)
+}
+
+func mirrorNestedHeadlessAsYaml(hostname, rootName, namespace, resourceVersion string, ports []corev1.ServicePort) string {
+	svc := mirrorNestedService(hostname, rootName, namespace, resourceVersion, ports)
+
+	bytes, err := yaml.Marshal(svc)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	return string(bytes)
 }
 
@@ -593,6 +917,93 @@ func endpoints(name, namespace, gatewayIP string, gatewayIdentity string, ports 
 	return endpoints
 }
 
+func nestedEndpoints(rootName, namespace, hostname, gatewayIP, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
+	localName := fmt.Sprintf("%s-%s", hostname, clusterName)
+	ep := endpoints(localName, namespace, gatewayIP, gatewayIdentity, ports)
+
+	ep.Annotations[consts.RemoteServiceFqName] = fmt.Sprintf("%s.%s.%s.svc.cluster.local", hostname, strings.Replace(rootName, "-remote", "", 1), namespace)
+
+	return ep
+}
+
+func headlessEndpoints(name, namespace, hostname, hostIP, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
+	endpoints := &corev1.Endpoints{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Endpoints",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				consts.RemoteClusterNameLabel: clusterName,
+				consts.MirroredResourceLabel:  "true",
+			},
+			Annotations: map[string]string{
+				consts.RemoteServiceFqName: fmt.Sprintf("%s.%s.svc.cluster.local", strings.Replace(name, "-remote", "", 1), namespace),
+			},
+		},
+		Subsets: []corev1.EndpointSubset{
+			{
+				Addresses: []corev1.EndpointAddress{
+					{
+						Hostname: hostname,
+						IP:       hostIP,
+					},
+				},
+				Ports: ports,
+			},
+		},
+	}
+
+	if gatewayIdentity != "" {
+		endpoints.Annotations[consts.RemoteGatewayIdentity] = gatewayIdentity
+	}
+
+	return endpoints
+}
+
+func headlessEndpointsUpdated(name, namespace string, hostnames, hostIPs []string, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
+	endpoints := &corev1.Endpoints{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Endpoints",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				consts.RemoteClusterNameLabel: clusterName,
+				consts.MirroredResourceLabel:  "true",
+			},
+			Annotations: map[string]string{
+				consts.RemoteServiceFqName: fmt.Sprintf("%s.%s.svc.cluster.local", strings.Replace(name, "-remote", "", 1), namespace),
+			},
+		},
+		Subsets: []corev1.EndpointSubset{
+			{
+				Addresses: []corev1.EndpointAddress{
+					{
+						Hostname: hostnames[0],
+						IP:       hostIPs[0],
+					},
+					{
+						Hostname: hostnames[1],
+						IP:       hostIPs[1],
+					},
+				},
+				Ports: ports,
+			},
+		},
+	}
+
+	if gatewayIdentity != "" {
+		endpoints.Annotations[consts.RemoteGatewayIdentity] = gatewayIdentity
+	}
+
+	return endpoints
+}
+
 func endpointsAsYaml(name, namespace, gatewayIP, gatewayIdentity string, ports []corev1.EndpointPort) string {
 	ep := endpoints(name, namespace, gatewayIP, gatewayIdentity, ports)
 
@@ -600,5 +1011,27 @@ func endpointsAsYaml(name, namespace, gatewayIP, gatewayIdentity string, ports [
 	if err != nil {
 		log.Fatal(err)
 	}
+	return string(bytes)
+}
+
+func headlessEndpointsAsYaml(name, namespace, hostname, hostIP, gatewayIdentity string, ports []corev1.EndpointPort) string {
+	ep := headlessEndpoints(name, namespace, hostname, hostIP, gatewayIdentity, ports)
+
+	bytes, err := yaml.Marshal(ep)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return string(bytes)
+}
+
+func nestedEndpointsAsYaml(name, namespace, hostname, gatewayIP, gatewayIdentity string, ports []corev1.EndpointPort) string {
+	ep := nestedEndpoints(name, namespace, hostname, gatewayIP, gatewayIdentity, ports)
+
+	bytes, err := yaml.Marshal(ep)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	return string(bytes)
 }

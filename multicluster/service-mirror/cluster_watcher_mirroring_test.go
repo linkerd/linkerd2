@@ -122,6 +122,78 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 				}),
 			},
 		},
+		{
+			description: "create headless service and endpoints when gateway can be resolved",
+			environment: createExportedHeadlessService,
+			expectedLocalServices: []*corev1.Service{
+				mirrorHeadlessService(
+					"service-one-remote",
+					"ns2",
+					"111",
+					[]corev1.ServicePort{
+						{
+							Name:     "port1",
+							Protocol: "TCP",
+							Port:     555,
+						},
+						{
+							Name:     "port2",
+							Protocol: "TCP",
+							Port:     666,
+						},
+					}),
+				mirrorNestedService(
+					"pod-0",
+					"service-one-remote",
+					"ns2",
+					"112",
+					[]corev1.ServicePort{
+						{
+							Name:     "port1",
+							Protocol: "TCP",
+							Port:     555,
+						},
+						{
+							Name:     "port2",
+							Protocol: "TCP",
+							Port:     666,
+						},
+					},
+				),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{
+				headlessEndpoints("service-one-remote", "ns2", "pod-0", "", "gateway-identity", []corev1.EndpointPort{
+					{
+						Name:     "port1",
+						Port:     555,
+						Protocol: "TCP",
+					},
+					{
+						Name:     "port2",
+						Port:     666,
+						Protocol: "TCP",
+					},
+				}),
+				nestedEndpoints(
+					"service-one-remote",
+					"ns2",
+					"pod-0",
+					"192.0.2.127",
+					"gateway-identity",
+					[]corev1.EndpointPort{
+						{
+							Name:     "port1",
+							Port:     888,
+							Protocol: "TCP",
+						},
+						{
+							Name:     "port2",
+							Port:     888,
+							Protocol: "TCP",
+						},
+					}),
+			},
+		},
 	} {
 		tc := tt // pin
 		tc.run(t)
@@ -174,6 +246,112 @@ func TestRemoteServiceUpdatedMirroring(t *testing.T) {
 						Protocol: "TCP",
 					},
 				}),
+			},
+		},
+	} {
+		tc := tt // pin
+		tc.run(t)
+	}
+}
+
+func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
+	for _, tt := range []mirroringTestCase{
+		{
+			description: "updates Endpoints hosts on remote and local Endpoints",
+			environment: updateEndpointsWithChangedHosts,
+			expectedLocalServices: []*corev1.Service{
+				mirrorHeadlessService("service-two-remote", "eptest", "222", []corev1.ServicePort{
+					{
+						Name:     "port1",
+						Protocol: "TCP",
+						Port:     555,
+					},
+					{
+						Name:     "port2",
+						Protocol: "TCP",
+						Port:     666,
+					},
+				}),
+				mirrorNestedService("pod-0", "service-two-remote", "eptest", "333", []corev1.ServicePort{
+					{
+						Name:     "port1",
+						Protocol: "TCP",
+						Port:     555,
+					},
+					{
+						Name:     "port2",
+						Protocol: "TCP",
+						Port:     666,
+					},
+				}),
+				mirrorNestedService("pod-1", "service-two-remote", "eptest", "112", []corev1.ServicePort{
+					{
+						Name:     "port1",
+						Protocol: "TCP",
+						Port:     555,
+					},
+					{
+						Name:     "port2",
+						Protocol: "TCP",
+						Port:     666,
+					},
+				}),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{
+				headlessEndpointsUpdated(
+					"service-two-remote",
+					"eptest",
+					[]string{"pod-0", "pod-1"},
+					[]string{"", ""},
+					"gateway-identity",
+					[]corev1.EndpointPort{
+						{
+							Name:     "port1",
+							Port:     555,
+							Protocol: "TCP",
+						},
+						{
+							Name:     "port2",
+							Port:     666,
+							Protocol: "TCP",
+						},
+					}),
+				nestedEndpoints(
+					"service-two-remote",
+					"eptest",
+					"pod-0",
+					"192.0.2.127",
+					"gateway-identity",
+					[]corev1.EndpointPort{
+						{
+							Name:     "port1",
+							Port:     888,
+							Protocol: "TCP",
+						},
+						{
+							Name:     "port2",
+							Port:     888,
+							Protocol: "TCP",
+						},
+					}),
+				nestedEndpoints(
+					"service-two-remote",
+					"eptest",
+					"pod-1",
+					"192.0.2.127",
+					"gateway-identity",
+					[]corev1.EndpointPort{
+						{
+							Name:     "port1",
+							Port:     888,
+							Protocol: "TCP",
+						},
+						{
+							Name:     "port2",
+							Port:     888,
+							Protocol: "TCP",
+						},
+					}),
 			},
 		},
 	} {

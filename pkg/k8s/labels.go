@@ -395,6 +395,10 @@ const (
 	// MirroredGatewayLabel indicates that this is a mirrored gateway
 	MirroredGatewayLabel = SvcMirrorPrefix + "/mirrored-gateway"
 
+	// MirrorerdRootHeadlessLabel indicates the root headless service for
+	// mirrored headless hosts.
+	MirroredRootHeadlessLabel = SvcMirrorPrefix + "/root-headless-name"
+
 	// RemoteClusterNameLabel put on a local mirrored service, it
 	// allows us to associate a mirrored service with a remote cluster
 	RemoteClusterNameLabel = SvcMirrorPrefix + "/cluster-name"
@@ -406,9 +410,6 @@ const (
 	// RemoteServiceFqName is the fully qualified name of the mirrored service
 	// on the remote cluster
 	RemoteServiceFqName = SvcMirrorPrefix + "/remote-svc-fq-name"
-
-	// RemoteServiceHeadless indicates whether the mirrored service is headless
-	RemoteServiceHeadless = SvcMirrorPrefix + "/remote-svc-headless"
 
 	// RemoteGatewayResourceVersionAnnotation is the last observed remote resource
 	// version of the gateway for a particular mirrored service. It is used
