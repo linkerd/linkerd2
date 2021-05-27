@@ -9,7 +9,7 @@ ServiceProfiles to be part of the default `viz install`.
 
 Finally, the proxy has been updated to continue supporting requests without
 `l5d-dst-override` in ingress-mode proxies, to no longer include query parameters
-in the OpenCensus trace spans, and to prevent timeouts with controlelr clients
+in the OpenCensus trace spans, and to prevent timeouts with controller clients
 of components with more than one replica.
 
 * Separated protocol hint setting from H2 upgrades in destination profile
@@ -35,7 +35,7 @@ of components with more than one replica.
 * Fixed a templating issue in Viz, making `podAnnotations` field
   work with prometheus
 * Updated Golang version to 1.16.4
-* Removed unecessary `--addon-overwrite` flag in `linkerd upgrade`
+* Removed unnecessary `--addon-overwrite` flag in `linkerd upgrade`
 
 ## edge-21.5.2
 
