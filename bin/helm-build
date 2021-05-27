@@ -71,6 +71,8 @@ if [ "$1" = package ]; then
     mv "$rootdir"/target/helm/index-pre.yaml "$rootdir"/target/helm/index-pre-"$version".yaml
     "$bindir"/helm repo index --url "https://helm.linkerd.io/$repo/" --merge "$rootdir"/target/helm/index-pre-"$version".yaml "$rootdir"/target/helm
 
+    cp "$rootdir"/charts/linkerd2/artifacthub-repo.yml "$rootdir"/target/helm/
+
     # restore version in Values files
     setValues "$fullVersion" "linkerdVersionValue"
 fi
