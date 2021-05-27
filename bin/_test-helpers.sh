@@ -237,10 +237,6 @@ setup_cluster() {
   if [ -z "$skip_cluster_create" ]; then
     create_cluster "$@"
     image_load "$name"
-    if [ -n "$cleanup_docker" ]; then
-      rm -rf image-archives
-      docker system prune --force --all
-    fi
   fi
   check_cluster
 }
@@ -323,6 +319,10 @@ start_test() {
 start_single_test() {
   name=$1
   setup_cluster "$@"
+  if [ -n "$cleanup_docker" ]; then
+    rm -rf image-archives
+    docker system prune --force --all
+  fi
   run_"$name"_test
   exit_on_err "error calling 'run_${name}_test'"
   finish "$name"
@@ -331,6 +331,10 @@ start_single_test() {
 start_multicluster_test() {
   setup_cluster source "$@"
   setup_cluster target "$@"
+  if [ -n "$cleanup_docker" ]; then
+    rm -rf image-archives
+    docker system prune --force --all
+  fi
   run_multicluster_test
   exit_on_err "error calling 'run_multicluster_test'"
   finish source
