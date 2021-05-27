@@ -995,7 +995,7 @@ func TestCheckViz(t *testing.T) {
 		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to parse check.viz.golden template: %s", err), err)
 	}
 
-	timeout := time.Minute
+	timeout := 5 * time.Minute
 	err = TestHelper.RetryFor(timeout, func() error {
 		out, err := TestHelper.LinkerdRun(cmd...)
 		if err != nil {
