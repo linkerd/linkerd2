@@ -23,6 +23,7 @@ import (
 	valuespkg "helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/engine"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
@@ -327,8 +328,27 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	pkgcmd.ConfigureNamespaceFlagCompletion(
 		cmd, []string{"namespace", "gateway-namespace"},
 		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
-
+	configureClusterNameFlagCompletion(cmd)
 	return cmd
+}
+
+func configureClusterNameFlagCompletion(cmd *cobra.Command) {
+	cmd.RegisterFlagCompletionFunc("cluster-name",
+		func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+
+			cc := k8s.NewCommandCompletion(k8sAPI, v1.NamespaceAll)
+			results, err := cc.Complete([]string{strings.ToLower(k8s.LinkKind)}, toComplete)
+			if err != nil {
+				cobra.CompErrorln(err.Error())
+				return nil, cobra.ShellCompDirectiveError
+			}
+
+			return results, cobra.ShellCompDirectiveDefault
+		})
 }
 
 func newLinkOptionsWithDefault() (*linkOptions, error) {

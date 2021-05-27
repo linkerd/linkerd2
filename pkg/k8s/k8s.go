@@ -90,6 +90,7 @@ var resourceNames = []resourceName{
 	{"sp", "serviceprofile", "serviceprofiles"},
 	{"sts", "statefulset", "statefulsets"},
 	{"ts", "trafficsplit", "trafficsplits"},
+	{"", "link", "links"},
 	{"all", "all", "all"},
 }
 

@@ -100,5 +100,6 @@ func newUnlinkCommand() *cobra.Command {
 		cmd, []string{"namespace"},
 		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
 
+	configureClusterNameFlagCompletion(cmd)
 	return cmd
 }
