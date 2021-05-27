@@ -77,7 +77,46 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 		testCompare(t, expected.Spec, listener.Profiles[0].Spec)
 	})
 
-	t.Run("Profile merged with traffic split", func(t *testing.T) {
+	t.Run("Profile merged with traffic split when `dstOverrides` is empty", func(t *testing.T) {
+		listener := watcher.NewBufferingProfileListener()
+		adaptor := newTrafficSplitAdaptor(listener, watcher.ServiceID{Name: "foo", Namespace: "ns"}, watcher.Port(80), "cluster.local")
+
+		adaptor.Update(&sp.ServiceProfile{
+			Spec: sp.ServiceProfileSpec{
+				Routes: []*sp.RouteSpec{
+					{
+						Name: "route",
+					},
+				},
+				DstOverrides: []*sp.WeightedDst{},
+			},
+		})
+		adaptor.UpdateTrafficSplit(split)
+
+		if len(listener.Profiles) != 2 {
+			t.Fatalf("Expected two profile updated, got %d", len(listener.Profiles))
+		}
+
+		expected := &sp.ServiceProfile{
+			Spec: sp.ServiceProfileSpec{
+				Routes: []*sp.RouteSpec{
+					{
+						Name: "route",
+					},
+				},
+				DstOverrides: []*sp.WeightedDst{
+					{
+						Authority: "bar.ns.svc.cluster.local.:80",
+						Weight:    resource.MustParse("1000m"),
+					},
+				},
+			},
+		}
+
+		testCompare(t, expected.Spec, listener.Profiles[1].Spec)
+	})
+
+	t.Run("Profile taking priority over traffic split when `dstOverrides` is not empty", func(t *testing.T) {
 		listener := watcher.NewBufferingProfileListener()
 		adaptor := newTrafficSplitAdaptor(listener, watcher.ServiceID{Name: "foo", Namespace: "ns"}, watcher.Port(80), "cluster.local")
 
@@ -97,8 +136,8 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 				},
 				DstOverrides: []*sp.WeightedDst{
 					{
-						Authority: "bar.ns.svc.cluster.local.:80",
-						Weight:    resource.MustParse("1000m"),
+						Authority: "foo.ns.svc.cluster.local.:80",
+						Weight:    resource.MustParse("1"),
 					},
 				},
 			},
