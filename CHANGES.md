@@ -1,5 +1,31 @@
 # Changes
 
+## edge-21.5.3
+
+This edge release contains various improvements to the Viz and Jaeger install
+charts, along with bug fixes in the CLI, and destination. Additionally, This
+release adds kubernetes aware autocompletion to all viz commands, along with
+ServiceProfiles to be part of the default `viz install`.
+
+* Separated protocol hint setting from H2 upgrades in destination profile
+  response, thus preventing `hint.OpaqueTransport` field from not being set when
+  H2 upgrades are disabled
+* Fixed `linkerd check --proxy` failure with pods that are part of Jobs
+* Updated `viz install` to also include ServiceProfiles of its components.
+  As a side-effect, `linkerd diagnostics install-sp` cmd has been removed
+* Added support for Kubernetes resource aware tab completion for all
+  viz commands
+* Updated destination to prefer `ServiceProfile.dstOverrides` over
+  `TrafficSplit` when both are present for a service
+* Added toggle flags for `collector` and `jaeger` components in the
+  jaeger extension (thanks @tarvip!)
+* Added support for setting `nodeselector`, `toleration` fields for components
+  in the Viz extension (thanks @aatarasoff!)
+* Fixed a templating issue in Viz, making `podAnnotations` field
+  work with prometheus
+* Updated Golang version to 1.16.4
+* Removed unecessary `--addon-overwrite` flag in `linkerd upgrade`
+
 ## edge-21.5.2
 
 This edge release updates the proxy-init container to check whether the iptables
