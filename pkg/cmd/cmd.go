@@ -92,6 +92,6 @@ func ConfigureNamespaceFlagCompletion(
 func ConfigureOutputFlagCompletion(cmd *cobra.Command) {
 	cmd.RegisterFlagCompletionFunc("output",
 		func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return []string{"basic", "json"}, cobra.ShellCompDirectiveDefault
+			return []string{"basic", "json", "short", "table"}, cobra.ShellCompDirectiveDefault
 		})
 }
