@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -102,4 +103,22 @@ func newUnlinkCommand() *cobra.Command {
 
 	configureClusterNameFlagCompletion(cmd)
 	return cmd
+}
+
+func configureClusterNameFlagCompletion(cmd *cobra.Command) {
+	cmd.RegisterFlagCompletionFunc("cluster-name",
+		func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+
+			cc := k8s.NewCommandCompletion(k8sAPI, corev1.NamespaceAll)
+			results, err := cc.Complete([]string{strings.ToLower(k8s.LinkKind)}, toComplete)
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+
+			return results, cobra.ShellCompDirectiveDefault
+		})
 }
