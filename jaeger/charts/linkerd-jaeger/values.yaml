@@ -18,8 +18,8 @@ collector:
   # -- Set to false to exclude collector installation
   enabled: true
   image:
-    name: omnition/opencensus-collector
-    version: 0.1.11
+    name: otel/opentelemetry-collector
+    version: 0.27.0
     pullPolicy: Always
 
   # -- NodeSelector section, See the
@@ -30,8 +30,39 @@ collector:
   # for more information
   tolerations: *default_tolerations
 
-  # -- address of the jaeger backend to send traces to
-  jaegerAddr:
+  # -- OpenTelemetry Collector config, See the
+  # [Configuration docs](https://opentelemetry.io/docs/collector/configuration/)
+  # for more information
+  # @default -- see `value.yaml` for actual configuration
+  config: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+          http:
+      opencensus:
+      zipkin:
+      jaeger:
+        protocols:
+          grpc:
+          thrift_http:
+          thrift_compact:
+          thrift_binary:
+    processors:
+      batch:
+    extensions:
+      health_check:
+    exporters:
+      jaeger:
+        endpoint: jaeger.linkerd-jaeger:14250
+        insecure: true
+    service:
+      extensions: [health_check]
+      pipelines:
+        traces:
+          receivers: [otlp,opencensus,zipkin,jaeger]
+          processors: [batch]
+          exporters: [jaeger]
 
 jaeger:
   # -- Set to false to exclude all-in-one Jaeger installation
@@ -40,6 +71,7 @@ jaeger:
     name: jaegertracing/all-in-one
     version: 1.19.2
     pullPolicy: Always
+
   # -- NodeSelector section, See the
   # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
   nodeSelector: *default_node_selector

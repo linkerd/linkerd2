@@ -191,21 +191,33 @@ metadata:
 data:
   collector-config: |
     receivers:
+      otlp:
+        protocols:
+          grpc:
+          http:
       opencensus:
-        port: 55678
       zipkin:
-        port: 9411
       jaeger:
-        jaeger-thrift-http-port: 14268
-    queued-exporters:
-      jaeger-all-in-one:
-        num-workers: 4
-        queue-size: 100
-        retry-on-failure: true
-        sender-type: jaeger-thrift-http
-        jaeger-thrift-http:
-          collector-endpoint: http://jaeger.linkerd-jaeger:14268/api/traces
-          timeout: 5s
+        protocols:
+          grpc:
+          thrift_http:
+          thrift_compact:
+          thrift_binary:
+    processors:
+      batch:
+    extensions:
+      health_check:
+    exporters:
+      jaeger:
+        endpoint: jaeger.linkerd-jaeger:14250
+        insecure: true
+    service:
+      extensions: [health_check]
+      pipelines:
+        traces:
+          receivers: [otlp,opencensus,zipkin,jaeger]
+          processors: [batch]
+          exporters: [jaeger]
 ---
 apiVersion: v1
 kind: Service
@@ -217,6 +229,10 @@ metadata:
 spec:
   type: ClusterIP
   ports:
+  - name: otlp
+    port: 4317
+    protocol: TCP
+    targetPort: 4317
   - name: opencensus
     port: 55678
     protocol: TCP
@@ -225,10 +241,14 @@ spec:
     port: 9411
     protocol: TCP
     targetPort: 9411
-  - name: jaeger
+  - name: jaeger-thrift
     port: 14268
     protocol: TCP
     targetPort: 14268
+  - name: jaeger-grpc
+    port: 14250
+    protocol: TCP
+    targetPort: 14250
   selector:
     component: collector
 ---
@@ -261,22 +281,24 @@ spec:
         beta.kubernetes.io/os: linux
       containers:
       - command:
-        - /occollector_linux
+        - /otelcol
         - --config=/conf/collector-config.yaml
         env:
         - name: GOGC
           value: "80"
-        image: omnition/opencensus-collector:0.1.11
+        image: otel/opentelemetry-collector:0.27.0
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
             path: /
             port: 13133
-        name: oc-collector
+        name: ot-collector
         ports:
+        - containerPort: 4317
         - containerPort: 55678
         - containerPort: 9411
         - containerPort: 14268
+        - containerPort: 14250
         - containerPort: 8888
         readinessProbe:
           httpGet:
@@ -311,6 +333,8 @@ spec:
   ports:
     - name: collection
       port: 14268
+    - name: grpc
+      port: 14250
     - name: ui
       port: 16686
 ---
@@ -351,6 +375,8 @@ spec:
           name: admin
         - containerPort: 14268
           name: collection
+        - containerPort: 14250
+          name: grpc
         - containerPort: 16686
           name: ui
       dnsPolicy: ClusterFirst

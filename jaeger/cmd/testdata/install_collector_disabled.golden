@@ -186,6 +186,8 @@ spec:
   ports:
     - name: collection
       port: 14268
+    - name: grpc
+      port: 14250
     - name: ui
       port: 16686
 ---
@@ -226,6 +228,8 @@ spec:
           name: admin
         - containerPort: 14268
           name: collection
+        - containerPort: 14250
+          name: grpc
         - containerPort: 16686
           name: ui
       dnsPolicy: ClusterFirst
