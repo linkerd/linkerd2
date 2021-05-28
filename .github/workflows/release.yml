@@ -4,7 +4,7 @@ on:
     tags:
     - "*"
 permissions: 
-  content: read
+  contents: read
 env:
   GH_ANNOTATION: true
 jobs:
