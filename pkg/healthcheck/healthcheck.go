@@ -136,6 +136,10 @@ const (
 	/// plugin is installed and ready
 	LinkerdCNIPluginChecks CategoryID = "linkerd-cni-plugin"
 
+	// LinkerdOpaquePortsDefinitionChecks adds checks to validate that the opaque-ports
+	// label has been defined both in the service and the corresponding deployment
+	LinkerdOpaquePortsDefinitionChecks CategoryID = "linkerd-opaque-ports-definition"
+
 	// LinkerdCNIResourceLabel is the label key that is used to identify
 	// whether a Kubernetes resource is related to the install-cni command
 	// The value is expected to be "true", "false" or "", where "false" and
@@ -1415,6 +1419,19 @@ func (hc *HealthChecker) allCategories() []*Category {
 			},
 			false,
 		),
+		NewCategory(
+			LinkerdOpaquePortsDefinitionChecks,
+			[]Checker{
+				{
+					description: "the opaque-ports labels have been properly defined",
+					hintAnchor:  "linkerd-opaque-ports-definition",
+					check: func(ctx context.Context) error {
+						return hc.checkMisconfiguredOpaquePortAnnotations(ctx, hc.DataPlaneNamespace)
+					},
+				},
+			},
+			false,
+		),
 	}
 }
 
@@ -2189,6 +2206,70 @@ func checkResources(resourceName string, objects []runtime.Object, expectedNames
 	}
 
 	return nil
+}
+
+func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Context, namespace string) error {
+	services, err := hc.GetServices(ctx)
+	if err != nil {
+		return err
+	}
+
+	pods, err := hc.kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	var errStrings []string
+
+	for _, service := range services {
+		if mismatch := misconfiguredOpaquePortAnnotationsInService(service, pods); mismatch {
+			errStrings = append(
+				errStrings,
+				fmt.Sprintf("%s annotation is not properly configured in service %s",
+					k8s.ProxyOpaquePortsAnnotation,
+					service.Name),
+			)
+		}
+	}
+
+	if len(errStrings) >= 1 {
+		return fmt.Errorf(strings.Join(errStrings, "\n"))
+	}
+
+	return nil
+}
+
+func misconfiguredOpaquePortAnnotationsInService(service corev1.Service, pods *corev1.PodList) bool {
+	for _, pod := range pods.Items {
+		// The endpoints for headless services are handled differently so don't check this type of services
+		if service.Spec.ClusterIP != "None" && serviceMatchesPod(service, pod) {
+			if podAnnotation, found := pod.Annotations[k8s.ProxyOpaquePortsAnnotation]; found {
+				if svcAnnotation, found := service.Annotations[k8s.ProxyOpaquePortsAnnotation]; found {
+					if svcAnnotation != podAnnotation {
+						return true
+					}
+				} else {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func serviceMatchesPod(service corev1.Service, pod corev1.Pod) bool {
+	podSelector := service.Spec.Selector
+	for k, sv := range podSelector {
+		if pv, ok := pod.Labels[k]; ok {
+			if sv != pv {
+				return false
+			}
+		} else {
+			return false
+		}
+	}
+
+	return true
 }
 
 // GetDataPlanePods returns all the pods with data plane
