@@ -86,3 +86,12 @@ func ConfigureNamespaceFlagCompletion(
 			})
 	}
 }
+
+// ConfigureOutputFlagCompletion sets up resource-aware completion for command
+// flags that accept an output name.
+func ConfigureOutputFlagCompletion(cmd *cobra.Command) {
+	cmd.RegisterFlagCompletionFunc("output",
+		func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return []string{"basic", "json", "short", "table"}, cobra.ShellCompDirectiveDefault
+		})
+}
