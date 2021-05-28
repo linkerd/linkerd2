@@ -222,12 +222,13 @@ func (h *KubernetesHelper) CheckPods(ctx context.Context, namespace string, depl
 		for _, status := range append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...) {
 			errStr := fmt.Sprintf("Container [%s] in pod [%s] in namespace [%s] has restart count [%d]",
 				status.Name, pod.Name, pod.Namespace, status.RestartCount)
-			if status.RestartCount == 1 {
+			if status.RestartCount == 0 {
+				continue
+			}
+			if status.RestartCount < 3 {
 				return &RestartCountError{errStr}
 			}
-			if status.RestartCount > 1 {
-				return errors.New(errStr)
-			}
+			return errors.New(errStr)
 		}
 	}
 
