@@ -8,6 +8,8 @@ on:
     - 'web/app/package.json'
     branches:
     - main
+permissions: 
+  content: read
 jobs:
   go_lint:
     name: Go lint

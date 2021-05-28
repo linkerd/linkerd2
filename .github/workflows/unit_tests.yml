@@ -10,6 +10,8 @@ on:
     - '**/*.md'
     branches:
     - main
+permissions: 
+  content: read
 jobs:
   go_unit_tests:
     name: Go unit tests

@@ -3,6 +3,8 @@ on:
   push:
     tags:
     - "*"
+permissions: 
+  content: read
 env:
   GH_ANNOTATION: true
 jobs:
@@ -218,6 +220,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
     runs-on: ubuntu-20.04
     needs: [choco_pack]
+    permissions:
+      contents: write
     steps:
     - name: Checkout code
       uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
@@ -264,6 +268,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
     runs-on: ubuntu-20.04
     needs: [gh_release]
+    permissions:
+      contents: write
     steps:
     - name: Create linkerd/website repository dispatch event
       # peter-evans/repository-dispatch@v1
