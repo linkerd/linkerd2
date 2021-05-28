@@ -3297,6 +3297,152 @@ func TestMinReplicaCheck(t *testing.T) {
 	}
 }
 
+func TestCheckOpaquePortAnnotations(t *testing.T) {
+	hc := NewHealthChecker(
+		[]CategoryID{LinkerdOpaquePortsDefinitionChecks},
+		&Options{
+			DataPlaneNamespace: "test-ns",
+		},
+	)
+
+	var err error
+
+	var testCases = []struct {
+		resources []string
+		expected  error
+	}{
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-service-1
+  namespace: test-ns
+spec:
+  ports:
+    - name: elasticsearch
+      port: 9200
+      protocol: TCP
+      targetPort: 9200
+  selector:
+    service: service-1
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-service-deployment
+  namespace: test-ns
+  labels:
+    service: service-1
+spec:
+  containers:
+    - name: test
+      image: "test-service"
+`,
+			},
+			expected: nil,
+		},
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-service-1
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
+spec:
+  ports:
+    - name: elasticsearch
+      port: 9200
+      protocol: TCP
+      targetPort: 9200
+  selector:
+    service: service-1
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-service-deployment
+  namespace: test-ns
+  service: service-1
+  labels:
+    service: service-1
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
+spec:
+  containers:
+    - name: test
+      image: "test-service"
+`,
+			},
+			expected: nil,
+		},
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-service-1
+  namespace: test-ns
+spec:
+  ports:
+    - name: elasticsearch
+      port: 9200
+      protocol: TCP
+      targetPort: 9200
+  selector:
+    service: service-1
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-service-deployment
+  namespace: test-ns
+  service: service-1
+  labels:
+    service: service-1
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
+spec:
+  containers:
+    - name: test
+      image: "test-service"
+`,
+			},
+			expected: fmt.Errorf("config.linkerd.io/opaque-ports annotation is not properly configured in service test-service-1"),
+		},
+	}
+
+	for i, tc := range testCases {
+		tc := tc //pin
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			hc.kubeAPI, err = k8s.NewFakeAPI(tc.resources...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = hc.checkMisconfiguredOpaquePortAnnotations(context.Background(), "test-ns")
+			if err == nil && tc.expected != nil {
+				t.Log("Expected error: nil")
+				t.Logf("Received error: %s\n", err)
+				t.Fatal("test case failed")
+			}
+			if err != nil {
+				fmt.Println(tc.expected.Error())
+				fmt.Println(err.Error())
+				if err.Error() != tc.expected.Error() {
+					t.Logf("Expected error: %s\n", tc.expected)
+					t.Logf("Received error: %s\n", err)
+					t.Fatal("test case failed")
+				}
+			}
+		})
+	}
+}
+
 type controlPlaneReplicaOptions struct {
 	destination   int
 	identity      int
