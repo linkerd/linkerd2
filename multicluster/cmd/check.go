@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/multicluster"
@@ -102,6 +103,12 @@ non-zero exit code.`,
 	cmd.Flags().MarkHidden("proxy")
 	cmd.Flags().StringP("namespace", "n", "", "")
 	cmd.Flags().MarkHidden("namespace")
+
+	pkgcmd.ConfigureNamespaceFlagCompletion(
+		cmd, []string{"namespace"},
+		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
+	pkgcmd.ConfigureOutputFlagCompletion(cmd)
+
 	return cmd
 }
 

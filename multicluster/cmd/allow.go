@@ -8,6 +8,7 @@ import (
 	"github.com/linkerd/linkerd2/multicluster/static"
 	mccharts "github.com/linkerd/linkerd2/multicluster/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
@@ -78,6 +79,10 @@ func newAllowCommand() *cobra.Command {
 	cmd.Flags().StringVar(&opts.namespace, "namespace", defaultMulticlusterNamespace, "The destination namespace for the service account.")
 	cmd.Flags().BoolVar(&opts.ignoreCluster, "ignore-cluster", false, "Ignore cluster configuration")
 	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account-name", "", "The name of the multicluster access service account")
+
+	pkgcmd.ConfigureNamespaceFlagCompletion(
+		cmd, []string{"namespace"},
+		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
 
 	return cmd
 }

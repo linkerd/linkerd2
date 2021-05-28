@@ -11,6 +11,7 @@ import (
 	"github.com/linkerd/linkerd2/multicluster/static"
 	multicluster "github.com/linkerd/linkerd2/multicluster/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	mc "github.com/linkerd/linkerd2/pkg/multicluster"
@@ -330,6 +331,9 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().StringVar(&opts.gatewayAddresses, "gateway-addresses", opts.gatewayAddresses, "If specified, overwrites gateway addresses when gateway service is not type LoadBalancer (comma separated list)")
 	cmd.Flags().Uint32Var(&opts.gatewayPort, "gateway-port", opts.gatewayPort, "If specified, overwrites gateway port when gateway service is not type LoadBalancer")
 
+	pkgcmd.ConfigureNamespaceFlagCompletion(
+		cmd, []string{"namespace", "gateway-namespace"},
+		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
 	return cmd
 }
 
