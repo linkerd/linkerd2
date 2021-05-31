@@ -63,6 +63,10 @@ linkerd-control-plane-proxy
 √ control plane proxies are up-to-date
 √ control plane proxies and cli versions match
 
+linkerd-opaque-ports-definition
+-------------------------------
+√ the opaque-ports labels have been properly defined
+
 linkerd-data-plane
 ------------------
 √ data plane namespace exists
