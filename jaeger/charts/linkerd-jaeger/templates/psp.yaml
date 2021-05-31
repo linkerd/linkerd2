@@ -5,7 +5,7 @@ metadata:
   name: psp
   namespace: {{.Values.namespace}}
   labels:
-    linkerd.io/extension: viz
+    linkerd.io/extension: jaeger
 rules:
 - apiGroups: ['policy', 'extensions']
   resources: ['podsecuritypolicies']
@@ -16,35 +16,25 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: viz-psp
+  name: jaeger-psp
   namespace: {{.Values.namespace}}
   labels:
-    linkerd.io/extension: viz
-    namespace: {{.Values.namespace}}
+    linkerd.io/extension: jaeger
 roleRef:
   kind: Role
   name: psp
   apiGroup: rbac.authorization.k8s.io
 subjects:
+{{ if .Values.collector.enabled -}}
 - kind: ServiceAccount
-  name: tap
-  namespace: {{.Values.namespace}}
-- kind: ServiceAccount
-  name: web
-  namespace: {{.Values.namespace}}
-{{ if .Values.grafana.enabled -}}
-- kind: ServiceAccount
-  name: grafana
-  namespace: {{.Values.namespace}}
-{{ end -}}
-{{ if .Values.prometheus.enabled -}}
-- kind: ServiceAccount
-  name: prometheus
+  name: collector
   namespace: {{.Values.namespace}}
 {{ end -}}
 - kind: ServiceAccount
-  name: metrics-api
+  name: jaeger-injector
   namespace: {{.Values.namespace}}
+{{ if .Values.jaeger.enabled -}}
 - kind: ServiceAccount
-  name: tap-injector
+  name: jaeger
   namespace: {{.Values.namespace}}
+{{ end -}}

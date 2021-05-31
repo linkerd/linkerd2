@@ -85,6 +85,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				{Name: chartutil.ChartfileName},
 				{Name: "templates/namespace.yaml"},
 				{Name: "templates/gateway.yaml"},
+				{Name: "templates/psp.yaml"},
 				{Name: "templates/remote-access-service-mirror-rbac.yaml"},
 				{Name: "templates/link-crd.yaml"},
 			}
