@@ -4,6 +4,9 @@ installNamespace: true
 
 namespace: linkerd-jaeger
 
+# -- Namespace of the Linkerd core control-plane install
+linkerdNamespace: linkerd
+
 # -- Default nodeSelector section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
 nodeSelector: &default_node_selector
