@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"sort"
 	"strings"
 	"time"
@@ -756,6 +757,19 @@ func (hc *HealthChecker) allCategories() []*Category {
 							return err
 						}
 						return validateControlPlanePods(hc.controlPlanePods)
+					},
+				},
+				{
+					description: "cluster networks contains all node podCIDRs",
+					hintAnchor:  "l5d-cluster-networks-cidr",
+					check: func(ctx context.Context) error {
+						// We explicitly initialize the config here so that we dont rely on the "l5d-existence-linkerd-config"
+						// check to set the clusterNetworks value, since `linkerd check config` will skip that check.
+						err := hc.InitializeLinkerdGlobalConfig(ctx)
+						if err != nil {
+							return err
+						}
+						return hc.checkClusterNetworks(ctx)
 					},
 				},
 			},
@@ -1853,6 +1867,48 @@ func (hc *HealthChecker) CheckNamespace(ctx context.Context, namespace string, s
 		return fmt.Errorf("The \"%s\" namespace already exists", namespace)
 	}
 	return nil
+}
+
+func (hc *HealthChecker) checkClusterNetworks(ctx context.Context) error {
+	nodes, err := hc.kubeAPI.GetNodes(ctx)
+	if err != nil {
+		return err
+	}
+	clusterNetworks := strings.Split(hc.linkerdConfig.ClusterNetworks, ",")
+	clusterIPNets := make([]*net.IPNet, len(clusterNetworks))
+	for i, clusterNetwork := range clusterNetworks {
+		_, clusterIPNets[i], err = net.ParseCIDR(clusterNetwork)
+		if err != nil {
+			return err
+		}
+	}
+	var badPodCIDRS []string
+	for _, node := range nodes {
+		podCIDR := node.Spec.PodCIDR
+		podIP, podIPNet, err := net.ParseCIDR(podCIDR)
+		if err != nil {
+			return err
+		}
+		exists := cluterNetworksContainCIDR(clusterIPNets, podIPNet, podIP)
+		if !exists {
+			badPodCIDRS = append(badPodCIDRS, podCIDR)
+		}
+	}
+	if len(badPodCIDRS) > 0 {
+		return fmt.Errorf("node has podCIDR(s) %v which are not contained in the Linkerd clusterNetworks.\n\tTry installing linkerd via --set clusterNetworks=%s", badPodCIDRS, strings.Join(badPodCIDRS, ","))
+	}
+	return nil
+}
+
+func cluterNetworksContainCIDR(clusterIPNets []*net.IPNet, podIPNet *net.IPNet, podIP net.IP) bool {
+	for _, clusterIPNet := range clusterIPNets {
+		clusterIPMaskOnes, _ := clusterIPNet.Mask.Size()
+		podCIDRMaskOnes, _ := podIPNet.Mask.Size()
+		if clusterIPNet.Contains(podIP) && podCIDRMaskOnes >= clusterIPMaskOnes {
+			return true
+		}
+	}
+	return false
 }
 
 func (hc *HealthChecker) expectedRBACNames() []string {

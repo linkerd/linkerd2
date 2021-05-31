@@ -1204,6 +1204,107 @@ data:
 	}
 }
 
+func TestCheckClusterNetworks(t *testing.T) {
+	var testCases = []struct {
+		checkDescription string
+		k8sConfigs       []string
+		expected         []string
+	}{
+		{
+			checkDescription: "cluster networks contains all node podCIDRs",
+			k8sConfigs: []string{`
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-ns
+`,
+				`
+apiVersion: v1
+kind: Node
+metadata:
+  name: linkerd-test-ns-identity
+spec:
+  podCIDR: 90.10.90.24/24
+`,
+				`
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+data:
+  values: |
+    clusterNetworks: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
+`,
+			},
+			expected: []string{
+				"linkerd-existence cluster networks contains all node podCIDRs: node has podCIDR(s) [90.10.90.24/24] which are not contained in the Linkerd clusterNetworks.\n\tTry installing linkerd via --set clusterNetworks=90.10.90.24/24",
+			},
+		},
+		{
+			checkDescription: "cluster networks contains all node podCIDRs",
+			k8sConfigs: []string{`
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-ns
+`,
+				`
+apiVersion: v1
+kind: Node
+metadata:
+  name: linkerd-test-ns-identity
+spec:
+  podCIDR: 10.0.0.24/24
+`,
+				`
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+data:
+  values: |
+    clusterNetworks: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
+`,
+			},
+			expected: []string{
+				"linkerd-existence cluster networks contains all node podCIDRs",
+			},
+		},
+	}
+
+	for i, tc := range testCases {
+		tc := tc // pin
+		t.Run(fmt.Sprintf("%d: returns expected config result", i), func(t *testing.T) {
+			hc := NewHealthChecker(
+				[]CategoryID{},
+				&Options{
+					ControlPlaneNamespace: "test-ns",
+				},
+			)
+
+			var err error
+			hc.kubeAPI, err = k8s.NewFakeAPI(tc.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+
+			obs := newObserver()
+			hc.addCheckAsCategory("linkerd-existence", LinkerdControlPlaneExistenceChecks,
+				tc.checkDescription)
+			hc.RunChecks(obs.resultFn)
+			if !reflect.DeepEqual(obs.results, tc.expected) {
+				t.Fatalf("Expected results\n%s,\nbut got:\n%s", strings.Join(tc.expected, "\n"), strings.Join(obs.results, "\n"))
+			}
+		})
+	}
+}
+
 func proxiesWithCertificates(certificates ...string) []string {
 	result := []string{}
 	for i, certificate := range certificates {
