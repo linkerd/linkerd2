@@ -65,7 +65,7 @@ linkerd-control-plane-proxy
 
 linkerd-opaque-ports-definition
 -------------------------------
-√ the opaque-ports labels have been properly defined
+√ the opaque-ports annotations have been properly defined
 
 linkerd-multicluster
 --------------------
