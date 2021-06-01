@@ -40,7 +40,10 @@ Available Commands:
     --name: the argument to this option is the specific test to run
     --skip-cluster-create: skip k3d cluster creation step and run tests in an existing cluster
     --skip-cluster-delete: if the tests succeed, don't delete the created resources nor the cluster
-    --images: by default load images into the cluster from the local docker cache (docker), or from tar files located under the 'image-archives' directory (archive), or completely skip image loading (skip)
+    --images: set to 'docker' (default) to load images into the cluster from the local docker cache;
+      set to 'preload' to also load them from the local docker cache, after having pulled them from
+      a public registry (appears to be faster than having k3d pulling them itself);
+      set to 'archive' to load the images from tar files located under the image-archives directory
     --cleanup-docker: delete the 'images-archive' directory and prune the docker cache"
 }
 
@@ -80,7 +83,7 @@ handle_tests_input() {
           tests_usage "$0" >&2
           exit 64
         fi
-        if [[ $images != "docker" && $images != "archive" && $images != "skip" ]]; then
+        if [[ $images != "docker" && $images != "archive" && $images != "preload" ]]; then
           echo 'Error: the argument for --images was invalid' >&2
           tests_usage "$0" >&2
           exit 64
@@ -290,6 +293,10 @@ image_load() {
   case $images in
     docker)
       "$bindir"/image-load --k3d --cluster "$cluster_name" "${images_load[@]}"
+      exit_on_err "error calling '$bindir/image-load'"
+      ;;
+    preload)
+      "$bindir"/image-load --k3d --cluster "$cluster_name" --preload "${images_load[@]}"
       exit_on_err "error calling '$bindir/image-load'"
       ;;
     archive)

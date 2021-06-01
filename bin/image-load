@@ -6,6 +6,7 @@ kind=""
 k3d=""
 cluster=""
 archive=""
+preload=""
 images_default=(proxy controller web metrics-api grafana debug cni-plugin jaeger-webhook tap)
 images=()
 
@@ -13,7 +14,7 @@ usage() {
   printf "Load into KinD/k3d the referred Linkerd images. If no images are specified all of them are loaded (%s)\n" "${images_default[*]}"
   echo ""
   echo "Usage:"
-  echo "    bin/image-load [--kind] [--k3d] [--cluster name] [--archive] [image] [image]..."
+  echo "    bin/image-load [--kind] [--k3d] [--cluster name] [--preload] [--archive] [image] [image]..."
   echo ""
   echo "Examples:"
   echo ""
@@ -30,6 +31,7 @@ usage() {
   echo "    --cluster: target cluster name (defaults to 'k3s-default' under k3d, and 'kind' under KinD)."
   echo "    --kind: use a KinD cluster (default)."
   echo "    --k3d: use a k3d cluster."
+  echo "    --preload: pull the docker images from a public registry prior to loading them into the cluster, which appears to be faster than having k3d pulling them itself."
   echo "    --archive: load the images from local .tar files in the current directory."
 }
 
@@ -54,6 +56,9 @@ do
       ;;
     --k3d)
       k3d=1
+      ;;
+    --preload)
+      preload=1
       ;;
     --archive)
       archive=1
@@ -121,6 +126,9 @@ for i in "${!images[@]}"; do
     param="image-archives/${images[$i]}.tar"
   else
     param="$DOCKER_REGISTRY/${images[$i]}:$TAG"
+    if [ $preload ]; then
+      "$bindir"/docker pull -q "$param" || (echo "Error pulling image $param"; touch load_fail) &
+    fi
   fi
 
   if [ -n "$kind" ]; then
@@ -133,15 +141,14 @@ for i in "${!images[@]}"; do
   fi
 done
 
-if [ -n "$kind" ]; then
-  wait < <(jobs -p)
-else
-  printf 'Importing %s...\n' "${images[@]}"
-  "$bin" "${image_sub_cmd[@]}" "${images[@]}"
-fi
-
+wait < <(jobs -p)
 if [ -f load_fail ]; then
   echo "Loading docker images into the cluster failed."
   rm load_fail
   exit 1
+fi
+
+if [ -n "$k3d" ]; then
+  printf 'Importing %s...\n' "${images[@]}"
+  "$bin" "${image_sub_cmd[@]}" "${images[@]}"
 fi
