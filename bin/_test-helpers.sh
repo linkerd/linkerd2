@@ -9,6 +9,7 @@ set +e
 export default_test_names=(deep external-issuer external-prometheus-deep helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
 export external_resource_test_names=(external-resources)
 export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}" "${external_resource_test_names[*]}")
+images_load_default=(proxy controller web metrics-api grafana tap)
 
 tests_usage() {
   progname="${0##*/}"
@@ -279,13 +280,20 @@ Help:
 
 image_load() {
   cluster_name=$1
+  images_load=("${images_load_default[@]}")
+  if [[ "$cluster_name" = *deep ]]; then
+    images_load+=(jaeger-webhook)
+  fi
+  if [ "$cluster_name" = "cni-calico-deep" ]; then
+    images_load+=(cni-plugin)
+  fi
   case $images in
     docker)
-      "$bindir"/image-load --k3d --cluster "$cluster_name"
+      "$bindir"/image-load --k3d --cluster "$cluster_name" "${images_load[@]}"
       exit_on_err "error calling '$bindir/image-load'"
       ;;
     archive)
-      "$bindir"/image-load --k3d --archive --cluster "$cluster_name"
+      "$bindir"/image-load --k3d --archive --cluster "$cluster_name" "${images_load[@]}"
       exit_on_err "error calling '$bindir/image-load'"
       ;;
   esac
