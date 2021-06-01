@@ -4,6 +4,7 @@ set -eo pipefail
 
 kind=""
 k3d=""
+cluster=""
 archive=""
 images_default=(proxy controller web metrics-api grafana debug cni-plugin jaeger-webhook tap)
 images=()
@@ -12,7 +13,7 @@ usage() {
   printf "Load into KinD/k3d the referred Linkerd images. If no images are specified all of them are loaded (%s)\n" "${images_default[*]}"
   echo ""
   echo "Usage:"
-  echo "    bin/image-load [--kind] [--k3d] [--archive] [image] [image]..."
+  echo "    bin/image-load [--kind] [--k3d] [--cluster name] [--archive] [image] [image]..."
   echo ""
   echo "Examples:"
   echo ""
@@ -26,6 +27,7 @@ usage() {
   echo "    bin/image-load --k3d --archive"
   echo ""
   echo "Available Commands:"
+  echo "    --cluster: target cluster name (defaults to 'k3s-default' under k3d, and 'kind' under KinD)."
   echo "    --kind: use a KinD cluster (default)."
   echo "    --k3d: use a k3d cluster."
   echo "    --archive: load the images from local .tar files in the current directory."
@@ -37,6 +39,15 @@ do
     -h|--help)
       usage
       exit 0
+      ;;
+    --cluster)
+      cluster=$2
+      if [ -z "$cluster" ]; then
+        echo 'Error: the argument for --cluster was not specified' >&2
+        usage
+        exit 1
+      fi
+      shift
       ;;
     --kind)
       kind=1
@@ -74,13 +85,17 @@ if [ -n "$k3d" ]; then
     usage
     exit 1
   fi
-  cluster=${1:-"k3s-default"}
+  if [ -z "$cluster" ]; then
+    cluster="k3s-default"
+  fi
   bin="$bindir"/k3d
   image_sub_cmd=(image import -c "$cluster")
 else
   kind=1
-  cluster=${1:-"kind"}
   bin="$bindir"/kind
+  if [ -z "$cluster" ]; then
+    cluster="kind"
+  fi
   if [ $archive ]; then
     image_sub_cmd=(load image-archive --name "$cluster")
   else

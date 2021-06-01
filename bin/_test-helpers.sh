@@ -281,11 +281,11 @@ image_load() {
   cluster_name=$1
   case $images in
     docker)
-      "$bindir"/image-load --k3d "$cluster_name"
+      "$bindir"/image-load --k3d --cluster "$cluster_name"
       exit_on_err "error calling '$bindir/image-load'"
       ;;
     archive)
-      "$bindir"/image-load --k3d --archive "$cluster_name"
+      "$bindir"/image-load --k3d --archive --cluster "$cluster_name"
       exit_on_err "error calling '$bindir/image-load'"
       ;;
   esac
