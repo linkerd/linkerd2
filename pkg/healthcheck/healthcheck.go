@@ -137,7 +137,7 @@ const (
 	LinkerdCNIPluginChecks CategoryID = "linkerd-cni-plugin"
 
 	// LinkerdOpaquePortsDefinitionChecks adds checks to validate that the opaque-ports
-	// label has been defined both in the service and the corresponding deployment
+	// label has been defined both in the service and the corresponding pods
 	LinkerdOpaquePortsDefinitionChecks CategoryID = "linkerd-opaque-ports-definition"
 
 	// LinkerdCNIResourceLabel is the label key that is used to identify
