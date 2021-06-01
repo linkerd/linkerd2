@@ -136,8 +136,9 @@ const (
 	/// plugin is installed and ready
 	LinkerdCNIPluginChecks CategoryID = "linkerd-cni-plugin"
 
-	// LinkerdOpaquePortsDefinitionChecks adds checks to validate that the opaque-ports
-	// label has been defined both in the service and the corresponding pods
+	// LinkerdOpaquePortsDefinitionChecks adds checks to validate that the
+	// opaque-ports label has been defined both in the service and the
+	// corresponding pods
 	LinkerdOpaquePortsDefinitionChecks CategoryID = "linkerd-opaque-ports-definition"
 
 	// LinkerdCNIResourceLabel is the label key that is used to identify
@@ -2208,8 +2209,8 @@ func checkResources(resourceName string, objects []runtime.Object, expectedNames
 	return nil
 }
 
-// Check if there's a pod with the opaque-ports annotation defined but a service selecting the
-// aforementioned pod doesn't define it
+// Check if there's a pod with the opaque-ports annotation defined but a
+// service selecting the aforementioned pod doesn't define it
 func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Context, namespace string) error {
 	services, err := hc.GetServices(ctx)
 	if err != nil {
