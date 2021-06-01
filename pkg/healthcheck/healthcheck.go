@@ -154,8 +154,6 @@ const (
 	certKeyName                   = "tls.crt"
 	keyOldKeyName                 = "key.pem"
 	keyKeyName                    = "tls.key"
-
-	podStatusRunning = "Running"
 )
 
 // AllowedClockSkew sets the allowed skew in clock synchronization
@@ -1432,7 +1430,7 @@ func CheckProxyVersionsUpToDate(pods []corev1.Pod, versions version.Channels) er
 	outdatedPods := []string{}
 	for _, pod := range pods {
 		status := k8s.GetPodStatus(pod)
-		if status == podStatusRunning && containsProxy(pod) {
+		if status == string(corev1.PodRunning) && containsProxy(pod) {
 			proxyVersion := k8s.GetProxyVersion(pod)
 			if err := versions.Match(proxyVersion); err != nil {
 				outdatedPods = append(outdatedPods, fmt.Sprintf("\t* %s (%s)", pod.Name, proxyVersion))
@@ -2509,7 +2507,7 @@ func validateDataPlanePods(pods []corev1.Pod, targetNamespace string) error {
 			continue
 		}
 
-		if status != podStatusRunning && status != "Evicted" {
+		if status != string(corev1.PodRunning) && status != "Evicted" {
 			return fmt.Errorf("The \"%s\" pod is not running", pod.Name)
 		}
 
@@ -2583,7 +2581,7 @@ func CheckPodsRunning(pods []corev1.Pod, podsNotFoundMsg string) error {
 		return fmt.Errorf(podsNotFoundMsg)
 	}
 	for _, pod := range pods {
-		if pod.Status.Phase != podStatusRunning {
+		if pod.Status.Phase != corev1.PodRunning {
 			return fmt.Errorf("%s status is %s", pod.Name, pod.Status.Phase)
 		}
 
