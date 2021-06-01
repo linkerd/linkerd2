@@ -2208,6 +2208,8 @@ func checkResources(resourceName string, objects []runtime.Object, expectedNames
 	return nil
 }
 
+// Check if there's a pod with the opaque-ports annotation defined but a service selecting the
+// aforementioned pod doesn't define it
 func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Context, namespace string) error {
 	services, err := hc.GetServices(ctx)
 	if err != nil {
