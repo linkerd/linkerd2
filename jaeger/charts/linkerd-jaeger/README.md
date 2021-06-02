@@ -43,7 +43,7 @@ helm install linkerd/linkerd-jaeger
 
 ## Get involved
 
-* Check out Linkerd's source code at [Github][linkerd2].
+* Check out Linkerd's source code at [GitHub][linkerd2].
 * Join Linkerd's [user mailing list][linkerd-users], [developer mailing
   list][linkerd-dev], and [announcements mailing list][linkerd-announce].
 * Follow [@linkerd][twitter] on Twitter.

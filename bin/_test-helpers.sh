@@ -563,7 +563,7 @@ run_external-resources_test(){
 }
 
 # exit_on_err should be called right after a command to check the result status
-# and eventually generate a Github error annotation. Do not use after calls to
+# and eventually generate a GitHub error annotation. Do not use after calls to
 # `go test` as that generates its own annotations. Note this should be called
 # outside subshells in order for the script to terminate.
 exit_on_err() {
