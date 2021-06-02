@@ -2246,17 +2246,35 @@ func misconfiguredOpaquePortAnnotationsInService(service corev1.Service, pods *c
 	for _, pod := range pods.Items {
 		// The endpoints for headless services are handled differently so don't check this type of services
 		if service.Spec.ClusterIP != "None" && serviceMatchesPod(service, pod) {
-			if podAnnotation, found := pod.Annotations[k8s.ProxyOpaquePortsAnnotation]; found {
-				if svcAnnotation, found := service.Annotations[k8s.ProxyOpaquePortsAnnotation]; found {
-					if svcAnnotation != podAnnotation {
-						return true
-					}
-				} else {
-					return true
-				}
-			}
+			return missconfiguredOpaqueAnnotation(service.Annotations, pod.Annotations)
 		}
 	}
+	return false
+}
+
+func missconfiguredOpaqueAnnotation(svcAnnotations map[string]string, podAnnotations map[string]string) bool {
+	// If the pod has the annotation, check that the service has it as well
+	if podAnnotation, found := podAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
+		if svcAnnotation, found := svcAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
+			if svcAnnotation != podAnnotation {
+				return true
+			}
+		} else {
+			return true
+		}
+	}
+
+	// If the service has the annotation, check that the pod has it as well
+	if svcAnnotation, found := svcAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
+		if podAnnotation, found := podAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
+			if svcAnnotation != podAnnotation {
+				return true
+			}
+		} else {
+			return true
+		}
+	}
+
 	return false
 }
 
