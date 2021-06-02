@@ -116,7 +116,7 @@ handle_tests_input() {
           exit 64
         fi
         if [ -n "$linkerd_path" ]; then
-          echo "Multliple linkerd paths specified:" >&2
+          echo "Multiple linkerd paths specified:" >&2
           echo "  $linkerd_path" >&2
           echo "  $1" >&2
           tests_usage "$0" >&2
@@ -163,7 +163,7 @@ handle_cleanup_input() {
           exit 64
         fi
         if [ -n "$linkerd_path" ]; then
-          echo "Multliple linkerd paths specified:" >&2
+          echo "Multiple linkerd paths specified:" >&2
           echo "  $linkerd_path" >&2
           echo "  $1" >&2
           cleanup_usage "$0" >&2
