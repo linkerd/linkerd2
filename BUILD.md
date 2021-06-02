@@ -73,7 +73,7 @@ its extensions are written in Go. The dashboard UI is a React application.
   - [`web`](web): Provides a UI dashboard to view and drive the control plane.
 - [`multicluster extension`](multicluster)
   - [`linkerd-gateway`]: Accepts requests from other clusters and forwards them
-    to the appropriate destionation in the local cluster.
+    to the appropriate destination in the local cluster.
   - [`linkerd-service-mirror-xxx`](multicluster/service-mirror): Controller
     observing the labeling of exported services in the target cluster, each one
     for which it will create a mirrored service in the local cluster.
