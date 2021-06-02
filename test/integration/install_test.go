@@ -462,7 +462,14 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
 	}
-	expectedVizDeployments := testutil.LinkerdVizDeployReplicas
+
+	// It is necessary to clone LinkerdVizDeployReplicas so that we do not
+	// mutate it's original value.
+	vizDeployments := testutil.LinkerdVizDeployReplicas
+	expectedVizDeployments := make(map[string]testutil.DeploySpec)
+	for k, v := range vizDeployments {
+		expectedVizDeployments[k] = v
+	}
 	if TestHelper.ExternalPrometheus() {
 		delete(expectedVizDeployments, "prometheus")
 	}
@@ -546,7 +553,14 @@ func TestInstallHelm(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'helm install' command failed",
 			"'helm install' command failed\n%s\n%s", stdout, stderr)
 	}
-	expectedVizDeployments := testutil.LinkerdVizDeployReplicas
+
+	// It is necessary to clone LinkerdVizDeployReplicas so that we do not
+	// mutate it's original value.
+	vizDeployments := testutil.LinkerdVizDeployReplicas
+	expectedVizDeployments := make(map[string]testutil.DeploySpec)
+	for k, v := range vizDeployments {
+		expectedVizDeployments[k] = v
+	}
 	if TestHelper.ExternalPrometheus() {
 		delete(expectedVizDeployments, "prometheus")
 	}
@@ -653,7 +667,14 @@ func TestUpgradeHelm(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'helm upgrade' command failed",
 			"'helm upgrade' command failed\n%s\n%s", stdout, stderr)
 	}
-	expectedVizDeployments := testutil.LinkerdVizDeployReplicas
+
+	// It is necessary to clone LinkerdVizDeployReplicas so that we do not
+	// mutate it's original value.
+	vizDeployments := testutil.LinkerdVizDeployReplicas
+	expectedVizDeployments := make(map[string]testutil.DeploySpec)
+	for k, v := range vizDeployments {
+		expectedVizDeployments[k] = v
+	}
 	if TestHelper.ExternalPrometheus() {
 		delete(expectedVizDeployments, "prometheus")
 	}
