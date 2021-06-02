@@ -42,7 +42,7 @@ var (
 	alphaNumDash = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
 )
 
-// NewCmdViz returns a new jeager command
+// NewCmdViz returns a new jaeger command
 func NewCmdViz() *cobra.Command {
 	vizCmd := &cobra.Command{
 		Use:   "viz",
