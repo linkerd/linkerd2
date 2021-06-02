@@ -75,10 +75,6 @@ linkerd-control-plane-proxy
 √ control plane proxies are up-to-date
 √ control plane proxies and cli versions match
 
-linkerd-opaque-ports-definition
--------------------------------
-√ the opaque-ports annotations have been properly defined
-
 linkerd-data-plane
 ------------------
 √ data plane namespace exists
@@ -88,5 +84,9 @@ linkerd-data-plane
 √ data plane pod labels are configured correctly
 √ data plane service labels are configured correctly
 √ data plane service annotations are configured correctly
+
+linkerd-opaque-ports-definition
+-------------------------------
+√ the opaque-ports annotations have been properly defined
 
 Status check results are √
