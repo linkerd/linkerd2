@@ -462,7 +462,11 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
 	}
-	TestHelper.WaitRollout(t, testutil.LinkerdVizDeployReplicas)
+	expectedVizDeployments := testutil.LinkerdVizDeployReplicas
+	if TestHelper.ExternalPrometheus() {
+		delete(expectedVizDeployments, "prometheus")
+	}
+	TestHelper.WaitRollout(t, expectedVizDeployments)
 }
 
 // These need to be updated (if there are changes) once a new stable is released
@@ -542,7 +546,11 @@ func TestInstallHelm(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'helm install' command failed",
 			"'helm install' command failed\n%s\n%s", stdout, stderr)
 	}
-	TestHelper.WaitRollout(t, testutil.LinkerdVizDeployReplicas)
+	expectedVizDeployments := testutil.LinkerdVizDeployReplicas
+	if TestHelper.ExternalPrometheus() {
+		delete(expectedVizDeployments, "prometheus")
+	}
+	TestHelper.WaitRollout(t, expectedVizDeployments)
 }
 
 func TestControlPlaneResourcesPostInstall(t *testing.T) {
@@ -645,7 +653,11 @@ func TestUpgradeHelm(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'helm upgrade' command failed",
 			"'helm upgrade' command failed\n%s\n%s", stdout, stderr)
 	}
-	TestHelper.WaitRollout(t, testutil.LinkerdVizDeployReplicas)
+	expectedVizDeployments := testutil.LinkerdVizDeployReplicas
+	if TestHelper.ExternalPrometheus() {
+		delete(expectedVizDeployments, "prometheus")
+	}
+	TestHelper.WaitRollout(t, expectedVizDeployments)
 
 	TestHelper.AddInstalledExtension(vizExtensionName)
 }
