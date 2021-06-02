@@ -943,12 +943,18 @@ func getCheckOutput(t *testing.T, goldenFile string, namespace string) string {
 		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to retrieve pods: %s", err), err)
 	}
 
+	proxyVersionErr := ""
+	err = healthcheck.CheckProxyVersionsUpToDate(pods, version.Channels{})
+	if err != nil {
+		proxyVersionErr = err.Error()
+	}
+
 	tpl := template.Must(template.ParseFiles("testdata" + "/" + goldenFile))
 	vars := struct {
 		ProxyVersionErr string
 		HintURL         string
 	}{
-		healthcheck.CheckProxyVersionsUpToDate(pods, version.Channels{}).Error(),
+		proxyVersionErr,
 		healthcheck.HintBaseURL(TestHelper.GetVersion()),
 	}
 
