@@ -230,7 +230,7 @@ if you are upgrading from `2.9.x` or below versions.
     longer draggable.
   * Updated dashboard build to use webpack v5
   * Added CA certs to the Viz extension's metrics-api container so
-    that it can validate the certifcate of an external Prometheus
+    that it can validate the certificate of an external Prometheus
   * Removed components from the control plane dashboard that now
     are part of the Viz extension
   * Changed web's base image from debian to scratch
@@ -290,7 +290,7 @@ Thanks to all our 2.10 users who helped discover these issues!
 * Modified the proxy-injector to add the opaque ports annotation to pods if
   their namespace has it set
 * Added CA certs to the Viz extension's `metrics-api` container so that it can
-  validate the certifcate of an external Prometheus
+  validate the certificate of an external Prometheus
 * Fixed an issue where inbound TLS detection from non-meshed workloads could
   break
 * Fixed an issue where the admin server's HTTP detection would fail and not
