@@ -2453,7 +2453,7 @@ func getPodStatuses(pods []corev1.Pod) map[string]map[string][]corev1.ContainerS
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
-	names := []string{"identity", "proxy-injector"}
+	names := []string{"destination", "identity", "proxy-injector"}
 
 	for _, name := range names {
 		pods, found := statuses[name]
