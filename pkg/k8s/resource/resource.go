@@ -55,7 +55,7 @@ func NewNamespaced(apiVersion, kind, name, namespace string) Kubernetes {
 	}
 }
 
-// RenderResource renders a kuberetes object as a yaml object
+// RenderResource renders a kubernetes object as a yaml object
 func (r Kubernetes) RenderResource(w io.Writer) error {
 	b, err := yaml.Marshal(r)
 	if err != nil {
