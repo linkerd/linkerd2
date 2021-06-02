@@ -111,9 +111,9 @@ proxy:
 
 # proxy-init configuration
 proxyInit:
-  # -- Default set of inbound ports to skip via itpables
+  # -- Default set of inbound ports to skip via iptables
   ignoreInboundPorts: ""
-  # -- Default set of outbound ports to skip via itpables
+  # -- Default set of outbound ports to skip via iptables
   ignoreOutboundPorts: ""
   image:
     # -- Docker image for the proxy-init container
