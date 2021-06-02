@@ -446,7 +446,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 				"kubectl apply command failed\n%s", out)
 		}
 
-		// Update args to use external proemtheus
+		// Update args to use external prometheus
 		vizArgs = append(vizArgs, "--set", "prometheusUrl=http://prometheus.external-prometheus.svc.cluster.local:9090", "--set", "prometheus.enabled=false")
 	}
 
