@@ -674,7 +674,7 @@ the robustness of the opaque transport.
 * Changed opaque-port transport to be advertised via ALPN so that new proxies
   will not initiate opaque-transport connections to proxies from prior edge
   releases
-* Added inbound proxy transport metrics with `tls="passhtru"` when forwarding
+* Added inbound proxy transport metrics with `tls="passthru"` when forwarding
   non-mesh TLS connections
 * Thanks to @hs0210 for adding new unit tests!
 
