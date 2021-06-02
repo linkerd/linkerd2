@@ -1791,7 +1791,7 @@ func (hc *HealthChecker) FetchCredsFromSecret(ctx context.Context, namespace str
 	return cred, nil
 }
 
-// FetchCredsFromOldSecret function can be removed in later versions, once eihter all webhook secrets are recreated for each update
+// FetchCredsFromOldSecret function can be removed in later versions, once either all webhook secrets are recreated for each update
 // (see https://github.com/linkerd/linkerd2/issues/4813)
 // or later releases are only expected to update from the new names.
 func (hc *HealthChecker) FetchCredsFromOldSecret(ctx context.Context, namespace string, secretName string) (*tls.Cred, error) {
