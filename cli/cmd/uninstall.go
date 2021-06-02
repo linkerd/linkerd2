@@ -35,7 +35,7 @@ This command provides all Kubernetes namespace-scoped and cluster-scoped resourc
 			if !force {
 
 				var fail bool
-				// Retrtieve any installed extensions
+				// Retrieve any installed extensions
 				extensionNamespaces, err := k8sAPI.GetAllNamespacesWithExtensionLabel(cmd.Context())
 				if err != nil {
 					return err
