@@ -198,7 +198,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 
 	if rt.injectProxy {
 		// delete the inject annotation if present as its not needed in the manual case
-		// prevents injector from taking a different code path in the ignress mode
+		// prevents injector from taking a different code path in the ingress mode
 		delete(rt.overrideAnnotations, k8s.ProxyInjectAnnotation)
 		conf.AppendPodAnnotation(k8s.CreatedByAnnotation, k8s.CreatedByAnnotationValue())
 	} else if !rt.values.Proxy.IsIngress { // Add enabled annotation only if its not ingress mode to prevent overriding the annotation
