@@ -248,7 +248,7 @@ func (conf *ResourceConfig) ParseMetaAndYAML(bytes []byte) (*Report, error) {
 }
 
 // GetOverriddenValues returns the final Values struct which is created
-// by overiding annoatated configuration on top of default Values
+// by overiding annotated configuration on top of default Values
 func (conf *ResourceConfig) GetOverriddenValues() (*linkerd2.Values, error) {
 	// Make a copy of Values and mutate that
 	copyValues, err := conf.values.DeepCopy()
