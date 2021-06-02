@@ -823,7 +823,7 @@ async runtime.
   `linkerd-jaeger` extension is working correctly
 * Added new `linkerd jaeger uninstall` CLI command to print the `linkerd-jaeger`
   extension's resources so that they can be piped into `kubectl delete`
-* Fixed an issue where the `linkerd-cni` daemgitonset may not be installed on all
+* Fixed an issue where the `linkerd-cni` daemonset may not be installed on all
   intended nodes, due to missing tolerations to the `linkerd-cni` Helm chart
   (thanks @rish-onesignal!)
 * Fixed an issue where the `tap` APIServer would not refresh its certs
