@@ -1941,7 +1941,7 @@ func (hc *HealthChecker) checkServiceAccounts(ctx context.Context, saNames []str
 	return CheckServiceAccounts(ctx, hc.kubeAPI, saNames, ns, labelSelector)
 }
 
-// CheckServiceAccounts check for serivceaccounts
+// CheckServiceAccounts check for serviceaccounts
 func CheckServiceAccounts(ctx context.Context, api *k8s.KubernetesAPI, saNames []string, ns, labelSelector string) error {
 	options := metav1.ListOptions{
 		LabelSelector: labelSelector,

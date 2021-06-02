@@ -296,7 +296,7 @@ Thanks to all our 2.10 users who helped discover these issues!
 * Fixed an issue where the admin server's HTTP detection would fail and not
   recover; these are now handled gracefully and without logging warnings
 * Aligned the Helm installation heartbeat schedule to match that of the CLI
-* Fixed an issue with Multicluster's serivce mirror where it's endpoint repair
+* Fixed an issue with Multicluster's service mirror where it's endpoint repair
   retries were not properly rate limited
 * Removed components from the control plane dashboard that now are part of the
   Viz extension
