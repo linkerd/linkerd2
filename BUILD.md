@@ -28,7 +28,7 @@ about testing from source can be found in the [TEST.md](TEST.md) guide.
     - [First time setup](#first-time-setup)
     - [Run web standalone](#run-web-standalone)
     - [Webpack dev server](#webpack-dev-server)
-    - [Javascript dependencies](#javascript-dependencies)
+    - [JavaScript dependencies](#javascript-dependencies)
     - [Translations](#translations)
   - [Rust](#rust)
     - [Docker](#docker)
@@ -381,7 +381,7 @@ To develop with a webpack dev server:
 2. Go to [http://localhost:7777](http://localhost:7777) to see everything
    running.
 
-#### Javascript dependencies
+#### JavaScript dependencies
 
 To add a JS dependency:
 
