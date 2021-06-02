@@ -32,7 +32,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: cc99e06df34fab44bf1a6b2a80839f971716ff9ee14c130b9d74f0a0a3d60605
+        checksum/config: 1388bf30cdbc3236d7a52e0a115ee8ae1095140cb5b89c7b97fd30fdffad07f9
       labels:
         linkerd.io/extension: jaeger
         component: jaeger-injector
@@ -143,7 +143,7 @@ metadata:
 type: kubernetes.io/tls
 data:
   tls.crt: dGVzdC13ZWJob29rLWNydC1wZW0=
-  tls.key: dGVzdC13ZWJoaG9vay1rZXktcGVt
+  tls.key: dGVzdC13ZWJob29rLWtleS1wZW0=
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
