@@ -3506,9 +3506,7 @@ spec:
 				fmt.Println(tc.expected.Error())
 				fmt.Println(err.Error())
 				if err.Error() != tc.expected.Error() {
-					t.Logf("Expected error: %s\n", tc.expected)
-					t.Logf("Received error: %s\n", err)
-					t.Fatal("test case failed")
+					t.Fatalf("Expected error: %s, received: %s", tc.expected, err)
 				}
 			}
 		})
