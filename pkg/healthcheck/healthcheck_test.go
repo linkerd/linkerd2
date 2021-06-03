@@ -3494,7 +3494,7 @@ spec:
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			hc.kubeAPI, err = k8s.NewFakeAPI(tc.resources...)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("unexpected error: %s", err)
 			}
 			err = hc.checkMisconfiguredOpaquePortAnnotations(context.Background(), "test-ns")
 			if err == nil && tc.expected != nil {
