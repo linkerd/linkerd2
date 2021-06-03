@@ -1773,12 +1773,11 @@ func TestDataPlanePodLabels(t *testing.T) {
 			tc := tc //pin
 			t.Run(tc.description, func(t *testing.T) {
 				err := checkMisconfiguredPodsLabels(tc.pods)
-				fmt.Println(err.Error())
 
 				if err == nil {
 					t.Fatal("Expected error, got nothing")
 				}
-				fmt.Println(err.Error())
+
 				if err.Error() != tc.expectedErrorMsg {
 					t.Fatalf("Unexpected error message: %s", err.Error())
 				}
@@ -3501,8 +3500,6 @@ spec:
 				t.Fatalf("Expected check to be successful, got: %s", err)
 			}
 			if err != nil {
-				fmt.Println(tc.expected.Error())
-				fmt.Println(err.Error())
 				if err.Error() != tc.expected.Error() {
 					t.Fatalf("Expected error: %s, received: %s", tc.expected, err)
 				}
