@@ -465,9 +465,8 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 	// It is necessary to clone LinkerdVizDeployReplicas so that we do not
 	// mutate it's original value.
-	vizDeployments := testutil.LinkerdVizDeployReplicas
 	expectedVizDeployments := make(map[string]testutil.DeploySpec)
-	for k, v := range vizDeployments {
+	for k, v := range testutil.LinkerdVizDeployReplicas {
 		expectedVizDeployments[k] = v
 	}
 	if TestHelper.ExternalPrometheus() {
@@ -556,9 +555,8 @@ func TestInstallHelm(t *testing.T) {
 
 	// It is necessary to clone LinkerdVizDeployReplicas so that we do not
 	// mutate it's original value.
-	vizDeployments := testutil.LinkerdVizDeployReplicas
 	expectedVizDeployments := make(map[string]testutil.DeploySpec)
-	for k, v := range vizDeployments {
+	for k, v := range testutil.LinkerdVizDeployReplicas {
 		expectedVizDeployments[k] = v
 	}
 	if TestHelper.ExternalPrometheus() {
@@ -670,9 +668,8 @@ func TestUpgradeHelm(t *testing.T) {
 
 	// It is necessary to clone LinkerdVizDeployReplicas so that we do not
 	// mutate it's original value.
-	vizDeployments := testutil.LinkerdVizDeployReplicas
 	expectedVizDeployments := make(map[string]testutil.DeploySpec)
-	for k, v := range vizDeployments {
+	for k, v := range testutil.LinkerdVizDeployReplicas {
 		expectedVizDeployments[k] = v
 	}
 	if TestHelper.ExternalPrometheus() {
