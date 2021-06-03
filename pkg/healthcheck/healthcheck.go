@@ -137,7 +137,7 @@ const (
 	LinkerdCNIPluginChecks CategoryID = "linkerd-cni-plugin"
 
 	// LinkerdOpaquePortsDefinitionChecks adds checks to validate that the
-	// opaque-ports label has been defined both in the service and the
+	// "opaque ports" annotation has been defined both in the service and the
 	// corresponding pods
 	LinkerdOpaquePortsDefinitionChecks CategoryID = "linkerd-opaque-ports-definition"
 
@@ -1424,7 +1424,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 			LinkerdOpaquePortsDefinitionChecks,
 			[]Checker{
 				{
-					description: "opaque-ports are properly annotated",
+					description: "opaque ports are properly annotated",
 					hintAnchor:  "linkerd-opaque-ports-definition",
 					check: func(ctx context.Context) error {
 						return hc.checkMisconfiguredOpaquePortAnnotations(ctx, hc.DataPlaneNamespace)
@@ -2209,7 +2209,7 @@ func checkResources(resourceName string, objects []runtime.Object, expectedNames
 	return nil
 }
 
-// Check if there's a pod with the opaque-ports annotation defined but a
+// Check if there's a pod with the "opaque ports" annotation defined but a
 // service selecting the aforementioned pod doesn't define it
 func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Context, namespace string) error {
 	services, err := hc.GetServices(ctx)

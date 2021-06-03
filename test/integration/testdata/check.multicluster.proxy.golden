@@ -72,6 +72,6 @@ linkerd-multicluster
 
 linkerd-opaque-ports-definition
 -------------------------------
-√ opaque-ports are properly annotated
+√ opaque ports are properly annotated
 
 Status check results are √
