@@ -134,7 +134,7 @@ jobs:
         bin/docker-pull-binaries $TAG
         # Validate the CLI version matches the current build tag.
         [[ "$TAG" == "$($CMD version --short --client)" ]]
-        bin/tests --images skip --name ${{ matrix.integration_test }} "$CMD"
+        bin/tests --images preload --name ${{ matrix.integration_test }} "$CMD"
   arm64_integration_tests:
     name: ARM64 integration tests
     timeout-minutes: 60
@@ -175,7 +175,7 @@ jobs:
       #if: startsWith(github.ref, 'refs/tags/stable')
       env:
         RUN_ARM_TEST: 1
-      run: bin/tests --name deep --images skip --skip-cluster-create "$CMD"
+      run: bin/tests --name deep --images preload --skip-cluster-create "$CMD"
     - name: CNI tests
       #if: startsWith(github.ref, 'refs/tags/stable')
       run: |
