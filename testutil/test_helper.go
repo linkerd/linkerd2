@@ -67,19 +67,28 @@ type Service struct {
 }
 
 // LinkerdDeployReplicasEdge is a map containing the number of replicas for each Deployment and the main
-// container name, in the current code-base
+// container name in the current core installation
 var LinkerdDeployReplicasEdge = map[string]DeploySpec{
 	"linkerd-destination":    {"linkerd", 1},
-	"tap":                    {"linkerd-viz", 1},
-	"grafana":                {"linkerd-viz", 1},
 	"linkerd-identity":       {"linkerd", 1},
-	"web":                    {"linkerd-viz", 1},
 	"linkerd-proxy-injector": {"linkerd", 1},
 }
 
 // LinkerdDeployReplicasStable is a map containing the number of replicas for each Deployment and the main
 // container name. Override whenever edge deviates from stable.
 var LinkerdDeployReplicasStable = LinkerdDeployReplicasEdge
+
+// LinkerdVizDeployReplicas is a map containing the number of replicas for
+// each Deployment and the main container name in the current linkerd-viz
+// installation
+var LinkerdVizDeployReplicas = map[string]DeploySpec{
+	"prometheus":   {"linkerd-viz", 1},
+	"metrics-api":  {"linkerd-viz", 1},
+	"grafana":      {"linkerd-viz", 1},
+	"tap":          {"linkerd-viz", 1},
+	"tap-injector": {"linkerd-viz", 1},
+	"web":          {"linkerd-viz", 1},
+}
 
 // NewGenericTestHelper returns a new *TestHelper from the options provided as function parameters.
 // This helper was created to be able to reuse this package without hard restrictions
