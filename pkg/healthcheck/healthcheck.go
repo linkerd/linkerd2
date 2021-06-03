@@ -1429,7 +1429,8 @@ func (hc *HealthChecker) CheckProxyVersionsUpToDate(pods []corev1.Pod) error {
 func CheckProxyVersionsUpToDate(pods []corev1.Pod, versions version.Channels) error {
 	outdatedPods := []string{}
 	for _, pod := range pods {
-		if containsProxy(pod) {
+		status := k8s.GetPodStatus(pod)
+		if status == string(corev1.PodRunning) && containsProxy(pod) {
 			proxyVersion := k8s.GetProxyVersion(pod)
 			if err := versions.Match(proxyVersion); err != nil {
 				outdatedPods = append(outdatedPods, fmt.Sprintf("\t* %s (%s)", pod.Name, proxyVersion))
@@ -2506,7 +2507,7 @@ func validateDataPlanePods(pods []corev1.Pod, targetNamespace string) error {
 			continue
 		}
 
-		if status != "Running" && status != "Evicted" {
+		if status != string(corev1.PodRunning) && status != "Evicted" {
 			return fmt.Errorf("The \"%s\" pod is not running", pod.Name)
 		}
 
@@ -2580,7 +2581,7 @@ func CheckPodsRunning(pods []corev1.Pod, podsNotFoundMsg string) error {
 		return fmt.Errorf(podsNotFoundMsg)
 	}
 	for _, pod := range pods {
-		if pod.Status.Phase != "Running" {
+		if pod.Status.Phase != corev1.PodRunning {
 			return fmt.Errorf("%s status is %s", pod.Name, pod.Status.Phase)
 		}
 
