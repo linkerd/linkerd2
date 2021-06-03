@@ -79,6 +79,6 @@ linkerd-control-plane-proxy
 
 linkerd-opaque-ports-definition
 -------------------------------
-√ the opaque-ports annotations have been properly defined
+√ opaque-ports are properly annotated
 
 Status check results are √

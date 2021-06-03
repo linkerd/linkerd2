@@ -1424,7 +1424,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 			LinkerdOpaquePortsDefinitionChecks,
 			[]Checker{
 				{
-					description: "the opaque-ports annotations have been properly defined",
+					description: "opaque-ports are properly annotated",
 					hintAnchor:  "linkerd-opaque-ports-definition",
 					check: func(ctx context.Context) error {
 						return hc.checkMisconfiguredOpaquePortAnnotations(ctx, hc.DataPlaneNamespace)
