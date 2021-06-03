@@ -8,6 +8,8 @@ import (
 	pkgCmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 func newCmdUninstall() *cobra.Command {
@@ -38,5 +40,11 @@ func uninstallRunE(ctx context.Context) error {
 		return err
 	}
 
-	return pkgCmd.Uninstall(ctx, k8sAPI, fmt.Sprintf("%s=%s", k8s.LinkerdExtensionLabel, ExtensionName))
+	extensionReq, err := labels.NewRequirement(k8s.LinkerdExtensionLabel, selection.In, []string{ExtensionName, LegacyExtensionName})
+	if err != nil {
+		return err
+	}
+
+	selector := labels.NewSelector().Add(*extensionReq)
+	return pkgCmd.Uninstall(ctx, k8sAPI, selector.String())
 }
