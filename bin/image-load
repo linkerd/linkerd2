@@ -141,13 +141,7 @@ for i in "${!images[@]}"; do
   fi
 done
 
-if [ -n "$kind" ]; then
-  wait < <(jobs -p)
-else
-  printf 'Importing %s...\n' "${images[@]}"
-  "$bin" "${image_sub_cmd[@]}" "${images[@]}"
-fi
-
+wait < <(jobs -p)
 if [ -f load_fail ]; then
   echo "Loading docker images into the cluster failed."
   rm load_fail
