@@ -102,7 +102,7 @@ then
   then
     distro="kind"
   fi
-  "$bindir"/image-load --"$distro" --archive "$cluster"
+  "$bindir"/image-load --"$distro" --archive --cluster "$cluster"
 else
   for image in cni-plugin controller debug grafana proxy web
   do
