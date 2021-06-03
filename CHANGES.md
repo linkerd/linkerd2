@@ -4,7 +4,8 @@
 
 This release adds support for retrying HTTP/2 requests with small (<64KB)
 message bodies, allowing the proxy to properly buffer message bodies when
-responses are classified as a failure.
+responses are classified as a failure. Documentation on how to configure
+retries can be found [here](https://linkerd.io/2.10/tasks/configuring-retries/)
 
 This release also modifies the proxy's identity subsystem to instantiate a
 client on-demand so client connections are not retained continually. Also
@@ -26,6 +27,8 @@ multicluster CLI extensions.
   on-demand
 * Fixed Viz's `uninstall` command to remove viz installations that used the
   legacy `linkerd.io/extension: linkerd-viz` label (thanks @jsoref!)
+* Expanded the "linkerd-existence" health check to also check for the
+  destination pod readiness
 
 ## edge-21.5.3
 
