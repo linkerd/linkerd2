@@ -3498,9 +3498,7 @@ spec:
 			}
 			err = hc.checkMisconfiguredOpaquePortAnnotations(context.Background(), "test-ns")
 			if err == nil && tc.expected != nil {
-				t.Log("Expected error: nil")
-				t.Logf("Received error: %s\n", err)
-				t.Fatal("test case failed")
+				t.Fatalf("Expected check to be successful, got: %s", err)
 			}
 			if err != nil {
 				fmt.Println(tc.expected.Error())
