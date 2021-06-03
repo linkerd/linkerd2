@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
@@ -2217,15 +2218,24 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 		return err
 	}
 
-	pods, err := hc.kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-
 	var errStrings []string
 
 	for _, service := range services {
-		if mismatch := misconfiguredOpaquePortAnnotationsInService(service, pods); mismatch {
+		if service.Spec.ClusterIP == "None" {
+			// skip headless services; they're handled differently
+			continue
+		}
+
+		labelSet := labels.Set(service.Spec.Selector)
+		pods, err := hc.kubeAPI.CoreV1().Pods(namespace).List(
+			ctx,
+			metav1.ListOptions{LabelSelector: labelSet.AsSelector().String()},
+		)
+		if err != nil {
+			return err
+		}
+
+		if mismatch := misconfiguredOpaquePortAnnotationsInService(service, pods); mismatch != nil {
 			errStrings = append(
 				errStrings,
 				fmt.Sprintf("%s annotation is not properly configured in service %s",
@@ -2242,25 +2252,24 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 	return nil
 }
 
-func misconfiguredOpaquePortAnnotationsInService(service corev1.Service, pods *corev1.PodList) bool {
+func misconfiguredOpaquePortAnnotationsInService(service corev1.Service, pods *corev1.PodList) error {
 	for _, pod := range pods.Items {
-		// The endpoints for headless services are handled differently so don't check this type of services
-		if service.Spec.ClusterIP != "None" && serviceMatchesPod(service, pod) {
-			return misconfiguredOpaqueAnnotation(service.Annotations, pod.Annotations)
+		if err := misconfiguredOpaqueAnnotation(service.Annotations, pod.Annotations); err != nil {
+			return err
 		}
 	}
-	return false
+	return nil
 }
 
-func misconfiguredOpaqueAnnotation(svcAnnotations map[string]string, podAnnotations map[string]string) bool {
+func misconfiguredOpaqueAnnotation(svcAnnotations map[string]string, podAnnotations map[string]string) error {
 	// If the pod has the annotation, check that the service has it as well
 	if podAnnotation, found := podAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
 		if svcAnnotation, found := svcAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
 			if svcAnnotation != podAnnotation {
-				return true
+				return fmt.Errorf("Both the pod and the service have the annotation but values don't match")
 			}
 		} else {
-			return true
+			return fmt.Errorf("The pod has the annotation but the service doesn't")
 		}
 	}
 
@@ -2268,29 +2277,14 @@ func misconfiguredOpaqueAnnotation(svcAnnotations map[string]string, podAnnotati
 	if svcAnnotation, found := svcAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
 		if podAnnotation, found := podAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
 			if svcAnnotation != podAnnotation {
-				return true
+				return fmt.Errorf("Both the pod and the service have the annotation but values don't match")
 			}
 		} else {
-			return true
+			return fmt.Errorf("The service has the annotation but the pod doesn't")
 		}
 	}
 
-	return false
-}
-
-func serviceMatchesPod(service corev1.Service, pod corev1.Pod) bool {
-	podSelector := service.Spec.Selector
-	for k, sv := range podSelector {
-		if pv, ok := pod.Labels[k]; ok {
-			if sv != pv {
-				return false
-			}
-		} else {
-			return false
-		}
-	}
-
-	return true
+	return nil
 }
 
 // GetDataPlanePods returns all the pods with data plane
