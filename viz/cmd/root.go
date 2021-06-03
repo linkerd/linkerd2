@@ -14,6 +14,10 @@ const (
 	// ExtensionName is the value that the viz extension resources should be labeled with
 	ExtensionName = "viz"
 
+	// LegacyExtensionName is the value that the viz extension resources were labeled with
+	// until 15d1809bd043192bb21cacbc96112cce35bf384f
+	LegacyExtensionName = "linkerd-viz"
+
 	vizChartName            = "linkerd-viz"
 	defaultLinkerdNamespace = "linkerd"
 	maxRps                  = 100.0
