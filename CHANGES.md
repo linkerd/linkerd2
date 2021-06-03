@@ -1,5 +1,35 @@
 # Changes
 
+## edge-21.6.1
+
+This release adds support for retrying HTTP/2 requests with small (<64KB)
+message bodies, allowing the proxy to properly buffer message bodies when
+responses are classified as a failure. Documentation on how to configure
+retries can be found [here](https://linkerd.io/2.10/tasks/configuring-retries/).
+
+This release also modifies the proxy's identity subsystem to instantiate a
+client on-demand so client connections are not retained continually. Also
+included in this release are various bug fixes and improvements as well as
+expanding support for resource-aware tab completion in the jaeger and
+multicluster CLI extensions.
+
+* Added support for specifying a `gateway-port` flag for the `multicluster link`
+  command (thanks @psmit!)
+* Added support for Kubernetes resource aware tab completion for `jaeger` and
+  `multicluster` commands
+* Fixed an issue where `viz`, `jaeger` and `multicluster` extensions could not
+  be installed on `PodSecurityPolicy`-enabled clusters
+* Fixed an issue where `linkerd check --proxy` could incorrectly report
+  out-of-date proxy versions caused by incorrect regex (thanks @aryan9600!)
+* Added support for the proxy to retry HTTP/2 requests with message bodies
+  <= 64KB
+* Modified the proxy's controller stack to create new client connections
+  on-demand
+* Fixed Viz's `uninstall` command to remove viz installations that used the
+  legacy `linkerd.io/extension: linkerd-viz` label (thanks @jsoref!)
+* Expanded the "linkerd-existence" health check to also check for the
+  destination pod readiness
+
 ## edge-21.5.3
 
 This edge release contains various improvements to the Viz and Jaeger install
