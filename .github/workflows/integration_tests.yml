@@ -12,6 +12,8 @@ on:
     - 'web/app/package.json'
     branches:
     - main
+permissions: 
+  contents: read
 env:
   GH_ANNOTATION: true
 jobs:

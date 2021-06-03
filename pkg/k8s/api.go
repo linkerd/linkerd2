@@ -271,7 +271,7 @@ func GetProxyVersion(pod corev1.Pod) string {
 	for _, container := range pod.Spec.Containers {
 		if container.Name == ProxyContainerName {
 			parts := strings.Split(container.Image, ":")
-			return parts[1]
+			return parts[len(parts)-1]
 		}
 	}
 	return ""
