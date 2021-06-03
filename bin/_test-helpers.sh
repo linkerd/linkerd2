@@ -210,10 +210,6 @@ check_linkerd_binary() {
 
 ##### Cluster helpers #####
 
-create_cluster() {
-  "$bindir"/k3d cluster create "$@"
-}
-
 check_cluster() {
   check_if_k8s_reachable
   check_if_l5d_exists
@@ -236,7 +232,7 @@ setup_cluster() {
 
   test_setup
   if [ -z "$skip_cluster_create" ]; then
-    create_cluster "$@"
+    "$bindir"/k3d cluster create "$@"
     image_load "$name"
   fi
   check_cluster
@@ -301,19 +297,20 @@ image_load() {
 
 start_test() {
   local name=$1
+  local config=(--no-hostip --k3s-server-arg '--disable=local-storage,metrics-server')
 
   case $name in
     cluster-domain)
-      config=("$name" --k3s-server-arg --cluster-domain=custom.domain)
+      config=("$name" "${config[@]}" --no-lb --k3s-server-arg --cluster-domain=custom.domain --k3s-server-arg '--disable=servicelb,traefik')
       ;;
     cni-calico-deep)
-      config=("$name" --k3s-server-arg --write-kubeconfig-mode=644 --k3s-server-arg --flannel-backend=none --k3s-server-arg --cluster-cidr=192.168.0.0/16 --k3s-server-arg --disable=traefik)
+      config=("$name" "${config[@]}" --no-lb --k3s-server-arg --write-kubeconfig-mode=644 --k3s-server-arg --flannel-backend=none --k3s-server-arg --cluster-cidr=192.168.0.0/16 --k3s-server-arg '--disable=servicelb,traefik')
       ;;
     multicluster)
-      config=(--network multicluster-test)
+      config=("${config[@]}" --network multicluster-test)
       ;;
     *)
-      config=("$name")
+      config=("$name" "${config[@]}" --no-lb --k3s-server-arg '--disable=servicelb,traefik')
       ;;
   esac
 

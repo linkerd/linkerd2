@@ -430,7 +430,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"'kubectl apply' command failed\n%s", cmdOut)
 	}
 
-	TestHelper.WaitRollout(t)
+	TestHelper.WaitRollout(t, testutil.LinkerdDeployReplicasEdge)
 
 	if TestHelper.ExternalPrometheus() {
 
@@ -462,6 +462,17 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
 	}
+
+	// It is necessary to clone LinkerdVizDeployReplicas so that we do not
+	// mutate it's original value.
+	expectedVizDeployments := make(map[string]testutil.DeploySpec)
+	for k, v := range testutil.LinkerdVizDeployReplicas {
+		expectedVizDeployments[k] = v
+	}
+	if TestHelper.ExternalPrometheus() {
+		delete(expectedVizDeployments, "prometheus")
+	}
+	TestHelper.WaitRollout(t, expectedVizDeployments)
 }
 
 // These need to be updated (if there are changes) once a new stable is released
@@ -535,13 +546,23 @@ func TestInstallHelm(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'helm install' command failed",
 			"'helm install' command failed\n%s\n%s", stdout, stderr)
 	}
-
-	TestHelper.WaitRollout(t)
+	TestHelper.WaitRollout(t, testutil.LinkerdDeployReplicasEdge)
 
 	if stdout, stderr, err := TestHelper.HelmCmdPlain("install", vizChartToInstall, "l5d-viz", vizArgs...); err != nil {
 		testutil.AnnotatedFatalf(t, "'helm install' command failed",
 			"'helm install' command failed\n%s\n%s", stdout, stderr)
 	}
+
+	// It is necessary to clone LinkerdVizDeployReplicas so that we do not
+	// mutate it's original value.
+	expectedVizDeployments := make(map[string]testutil.DeploySpec)
+	for k, v := range testutil.LinkerdVizDeployReplicas {
+		expectedVizDeployments[k] = v
+	}
+	if TestHelper.ExternalPrometheus() {
+		delete(expectedVizDeployments, "prometheus")
+	}
+	TestHelper.WaitRollout(t, expectedVizDeployments)
 }
 
 func TestControlPlaneResourcesPostInstall(t *testing.T) {
@@ -637,12 +658,25 @@ func TestUpgradeHelm(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'helm upgrade' command failed",
 			"'helm upgrade' command failed\n%s\n%s", stdout, stderr)
 	}
+	TestHelper.WaitRollout(t, testutil.LinkerdDeployReplicasEdge)
 
 	vizChart := TestHelper.GetLinkerdVizHelmChart()
 	if stdout, stderr, err := TestHelper.HelmCmdPlain("upgrade", vizChart, "l5d-viz", vizArgs...); err != nil {
 		testutil.AnnotatedFatalf(t, "'helm upgrade' command failed",
 			"'helm upgrade' command failed\n%s\n%s", stdout, stderr)
 	}
+
+	// It is necessary to clone LinkerdVizDeployReplicas so that we do not
+	// mutate it's original value.
+	expectedVizDeployments := make(map[string]testutil.DeploySpec)
+	for k, v := range testutil.LinkerdVizDeployReplicas {
+		expectedVizDeployments[k] = v
+	}
+	if TestHelper.ExternalPrometheus() {
+		delete(expectedVizDeployments, "prometheus")
+	}
+	TestHelper.WaitRollout(t, expectedVizDeployments)
+
 	TestHelper.AddInstalledExtension(vizExtensionName)
 }
 
@@ -943,12 +977,18 @@ func getCheckOutput(t *testing.T, goldenFile string, namespace string) string {
 		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to retrieve pods: %s", err), err)
 	}
 
+	proxyVersionErr := ""
+	err = healthcheck.CheckProxyVersionsUpToDate(pods, version.Channels{})
+	if err != nil {
+		proxyVersionErr = err.Error()
+	}
+
 	tpl := template.Must(template.ParseFiles("testdata" + "/" + goldenFile))
 	vars := struct {
 		ProxyVersionErr string
 		HintURL         string
 	}{
-		healthcheck.CheckProxyVersionsUpToDate(pods, version.Channels{}).Error(),
+		proxyVersionErr,
 		healthcheck.HintBaseURL(TestHelper.GetVersion()),
 	}
 

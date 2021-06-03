@@ -320,17 +320,15 @@ func (h *KubernetesHelper) URLFor(ctx context.Context, namespace, deployName str
 	return pf.URLFor(""), nil
 }
 
-// WaitRollout blocks until all the deployments in the linkerd namespace have been
-// completely rolled out (and their pods are ready)
-func (h *KubernetesHelper) WaitRollout(t *testing.T) {
-	for deploy, deploySpec := range LinkerdDeployReplicasEdge {
-		if deploySpec.Namespace == "linkerd" {
-			o, err := h.Kubectl("", "--namespace=linkerd", "rollout", "status", "--timeout=60m", "deploy/"+deploy)
-			if err != nil {
-				AnnotatedFatalf(t,
-					fmt.Sprintf("failed to wait rollout of deploy/%s", deploy),
-					"failed to wait for rollout of deploy/%s: %s: %s", deploy, err, o)
-			}
+// WaitRollout blocks until all the given deployments have been completely
+// rolled out (and their pods are ready)
+func (h *KubernetesHelper) WaitRollout(t *testing.T, deploys map[string]DeploySpec) {
+	for deploy, deploySpec := range deploys {
+		o, err := h.Kubectl("", "--namespace="+deploySpec.Namespace, "rollout", "status", "--timeout=60m", "deploy/"+deploy)
+		if err != nil {
+			AnnotatedFatalf(t,
+				fmt.Sprintf("failed to wait rollout of deploy/%s", deploy),
+				"failed to wait for rollout of deploy/%s: %s: %s", deploy, err, o)
 		}
 	}
 }
