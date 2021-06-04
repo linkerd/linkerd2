@@ -30,6 +30,10 @@ const (
 	// MulticlusterExtensionName is the name of the multicluster extension
 	MulticlusterExtensionName = "multicluster"
 
+	// MulticlusterLegacyExtension is the name of the multicluster extension
+	// prior to stable-2.10.0 when the linkerd prefix was removed.
+	MulticlusterLegacyExtension = "linkerd-multicluster"
+
 	// linkerdMulticlusterExtensionCheck adds checks related to the multicluster extension
 	linkerdMulticlusterExtensionCheck healthcheck.CategoryID = "linkerd-multicluster"
 
