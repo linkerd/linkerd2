@@ -9,6 +9,7 @@ set +e
 export default_test_names=(deep external-issuer external-prometheus-deep helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
 export external_resource_test_names=(external-resources)
 export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}" "${external_resource_test_names[*]}")
+images_load_default=(proxy controller web metrics-api grafana tap)
 
 tests_usage() {
   progname="${0##*/}"
@@ -39,7 +40,10 @@ Available Commands:
     --name: the argument to this option is the specific test to run
     --skip-cluster-create: skip k3d cluster creation step and run tests in an existing cluster
     --skip-cluster-delete: if the tests succeed, don't delete the created resources nor the cluster
-    --images: by default load images into the cluster from the local docker cache (docker), or from tar files located under the 'image-archives' directory (archive), or completely skip image loading (skip)
+    --images: set to 'docker' (default) to load images into the cluster from the local docker cache;
+      set to 'preload' to also load them from the local docker cache, after having pulled them from
+      a public registry (appears to be faster than having k3d pulling them itself);
+      set to 'archive' to load the images from tar files located under the image-archives directory
     --cleanup-docker: delete the 'images-archive' directory and prune the docker cache"
 }
 
@@ -79,7 +83,7 @@ handle_tests_input() {
           tests_usage "$0" >&2
           exit 64
         fi
-        if [[ $images != "docker" && $images != "archive" && $images != "skip" ]]; then
+        if [[ $images != "docker" && $images != "archive" && $images != "preload" ]]; then
           echo 'Error: the argument for --images was invalid' >&2
           tests_usage "$0" >&2
           exit 64
@@ -275,13 +279,24 @@ Help:
 
 image_load() {
   cluster_name=$1
+  images_load=("${images_load_default[@]}")
+  if [[ "$cluster_name" = *deep ]]; then
+    images_load+=(jaeger-webhook)
+  fi
+  if [ "$cluster_name" = "cni-calico-deep" ]; then
+    images_load+=(cni-plugin)
+  fi
   case $images in
     docker)
-      "$bindir"/image-load --k3d --cluster "$cluster_name"
+      "$bindir"/image-load --k3d --cluster "$cluster_name" "${images_load[@]}"
+      exit_on_err "error calling '$bindir/image-load'"
+      ;;
+    preload)
+      "$bindir"/image-load --k3d --cluster "$cluster_name" --preload "${images_load[@]}"
       exit_on_err "error calling '$bindir/image-load'"
       ;;
     archive)
-      "$bindir"/image-load --k3d --archive --cluster "$cluster_name"
+      "$bindir"/image-load --k3d --archive --cluster "$cluster_name" "${images_load[@]}"
       exit_on_err "error calling '$bindir/image-load'"
       ;;
   esac
