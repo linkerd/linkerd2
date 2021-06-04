@@ -216,9 +216,6 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 					Namespace: pod.Namespace,
 					Name:      pod.Name,
 				}
-				if err != nil {
-					log.Errorf("failed to set opaque port annotation on pod: %s", err)
-				}
 				var ok bool
 				opaquePorts, ok, err = getPodOpaquePortsAnnotations(pod)
 				if err != nil {
