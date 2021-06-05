@@ -48,11 +48,11 @@ func (c *CommandCompletion) Complete(args []string, toComplete string) ([]string
 
 	suggestions := []string{}
 	if len(args) == 0 && toComplete == "" {
-		return StatAllResourceTypes, nil
+		return CompletionResourceTypes, nil
 	}
 
 	if len(args) == 0 && toComplete != "" {
-		for _, t := range StatAllResourceTypes {
+		for _, t := range CompletionResourceTypes {
 			if strings.HasPrefix(t, toComplete) {
 				suggestions = append(suggestions, t)
 			}
