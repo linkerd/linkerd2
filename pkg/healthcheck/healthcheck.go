@@ -2238,9 +2238,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 		if mismatch := misconfiguredOpaquePortAnnotationsInService(service, pods); mismatch != nil {
 			errStrings = append(
 				errStrings,
-				fmt.Sprintf("%s annotation is not properly configured in service %s",
-					k8s.ProxyOpaquePortsAnnotation,
-					service.Name),
+				mismatch.Error(),
 			)
 		}
 	}
@@ -2254,22 +2252,25 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 
 func misconfiguredOpaquePortAnnotationsInService(service corev1.Service, pods *corev1.PodList) error {
 	for _, pod := range pods.Items {
-		if err := misconfiguredOpaqueAnnotation(service.Annotations, pod.Annotations); err != nil {
+		if err := misconfiguredOpaqueAnnotation(service, pod); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func misconfiguredOpaqueAnnotation(svcAnnotations map[string]string, podAnnotations map[string]string) error {
+func misconfiguredOpaqueAnnotation(service corev1.Service, pod corev1.Pod) error {
+	svcAnnotations := service.Annotations
+	podAnnotations := pod.Annotations
+
 	// If the pod has the annotation, check that the service has it as well
 	if podAnnotation, found := podAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
 		if svcAnnotation, found := svcAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
 			if svcAnnotation != podAnnotation {
-				return fmt.Errorf("Both the pod and the service have the annotation but values don't match")
+				return fmt.Errorf("Pod %s and service %s have the annotation but values don't match", pod.Name, service.Name)
 			}
 		} else {
-			return fmt.Errorf("The pod has the annotation but the service doesn't")
+			return fmt.Errorf("Pod %s has the annotation but service %s doesn't", pod.Name, service.Name)
 		}
 	}
 
@@ -2277,10 +2278,10 @@ func misconfiguredOpaqueAnnotation(svcAnnotations map[string]string, podAnnotati
 	if svcAnnotation, found := svcAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
 		if podAnnotation, found := podAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
 			if svcAnnotation != podAnnotation {
-				return fmt.Errorf("Both the pod and the service have the annotation but values don't match")
+				return fmt.Errorf("Pod %s and the service %s have the annotation but values don't match", pod.Name, service.Name)
 			}
 		} else {
-			return fmt.Errorf("The service has the annotation but the pod doesn't")
+			return fmt.Errorf("Service %s has the annotation but pod %s doesn't", service.Name, pod.Name)
 		}
 	}
 
