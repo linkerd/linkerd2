@@ -10,6 +10,7 @@ import (
 	"github.com/linkerd/linkerd2/cli/flag"
 	jaeger "github.com/linkerd/linkerd2/jaeger/cmd"
 	multicluster "github.com/linkerd/linkerd2/multicluster/cmd"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	viz "github.com/linkerd/linkerd2/viz/cmd"
 	log "github.com/sirupsen/logrus"
@@ -128,6 +129,13 @@ func init() {
 	RootCmd.AddCommand(deprecateCmd(viz.NewCmdStat()))
 	RootCmd.AddCommand(deprecateCmd(viz.NewCmdTap()))
 	RootCmd.AddCommand(deprecateCmd(viz.NewCmdTop()))
+
+	// resource-aware completion flag configurations
+	pkgcmd.ConfigureNamespaceFlagCompletion(
+		RootCmd, []string{"linkerd-namespace", "cni-namespace"},
+		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
+
+	pkgcmd.ConfigureKubeContextFlagCompletion(RootCmd, kubeconfigPath)
 }
 
 func deprecateCmd(cmd *cobra.Command) *cobra.Command {

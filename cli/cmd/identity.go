@@ -47,16 +47,38 @@ func newCmdIdentity() *cobra.Command {
 		Use:   "identity [flags] (PODS)",
 		Short: "Display the certificate(s) of one or more selected pod(s)",
 		Long: `Display the certificate(s) of one or more selected pod(s).
-		
+
 This command initiates a port-forward to a given pod or a set of pods and fetches the TLS certificate.
 		`,
-		Example: ` 
+		Example: `
  # Get certificate from pod foo-bar in the default namespace.
  linkerd identity foo-bar
-		
+
  # Get certificate from all pods with the label name=nginx
  linkerd identity -l name=nginx
 		`,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+
+			if options.namespace == "" {
+				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+			}
+
+			cc := k8s.NewCommandCompletion(k8sAPI, options.namespace)
+
+			// insert pod resource type as first argument to suggest
+			// pod resources only
+			args = append([]string{k8s.Pod}, args...)
+			results, err := cc.Complete(args, toComplete)
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+
+			return results, cobra.ShellCompDirectiveDefault
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
@@ -104,6 +126,10 @@ This command initiates a port-forward to a given pod or a set of pods and fetche
 
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the pod")
 	cmd.PersistentFlags().StringVarP(&options.selector, "selector", "l", options.selector, "Selector (label query) to filter on, supports ‘=’, ‘==’, and ‘!=’ ")
+
+	pkgcmd.ConfigureNamespaceFlagCompletion(cmd, []string{"namespace"},
+		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
+
 	return cmd
 }
 

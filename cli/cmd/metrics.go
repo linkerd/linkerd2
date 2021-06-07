@@ -108,6 +108,9 @@ func newCmdMetrics() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of resource")
 
+	pkgcmd.ConfigureNamespaceFlagCompletion(cmd, []string{"namespace"},
+		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
+
 	return cmd
 }
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -85,6 +86,13 @@ components on a cluster, manage credentials and link clusters together.`,
 	multiclusterCmd.AddCommand(newMulticlusterUninstallCommand())
 	multiclusterCmd.AddCommand(newGatewaysCommand())
 	multiclusterCmd.AddCommand(newAllowCommand())
+
+	// resource-aware completion flag configurations
+	pkgcmd.ConfigureNamespaceFlagCompletion(
+		multiclusterCmd, []string{"linkerd-namespace"},
+		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
+
+	pkgcmd.ConfigureKubeContextFlagCompletion(multiclusterCmd, kubeconfigPath)
 	return multiclusterCmd
 }
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/k8s/resource"
@@ -93,5 +94,34 @@ func ConfigureOutputFlagCompletion(cmd *cobra.Command) {
 	cmd.RegisterFlagCompletionFunc("output",
 		func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return []string{"basic", "json", "short", "table"}, cobra.ShellCompDirectiveDefault
+		})
+}
+
+// ConfigureKubeContextFlagCompletion sets up resource-aware completion for command
+// flags based off of a kubeconfig
+func ConfigureKubeContextFlagCompletion(cmd *cobra.Command, kubeconfigPath string) {
+	cmd.RegisterFlagCompletionFunc("context",
+		func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			rules := clientcmd.NewDefaultClientConfigLoadingRules()
+			rules.ExplicitPath = kubeconfigPath
+			loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, &clientcmd.ConfigOverrides{})
+			config, err := loader.RawConfig()
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+
+			suggestions := []string{}
+			uniqClusters := map[string]struct{}{}
+			for _, ctx := range config.Contexts {
+				clusterName := ctx.Cluster
+				if strings.HasPrefix(clusterName, toComplete) {
+					if _, ok := uniqClusters[clusterName]; !ok {
+						suggestions = append(suggestions, ctx.Cluster)
+						uniqClusters[clusterName] = struct{}{}
+					}
+				}
+			}
+
+			return suggestions, cobra.ShellCompDirectiveDefault
 		})
 }

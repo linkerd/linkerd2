@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	"github.com/fatih/color"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -87,5 +88,11 @@ func NewCmdViz() *cobra.Command {
 	vizCmd.AddCommand(NewCmdTop())
 	vizCmd.AddCommand(newCmdUninstall())
 
+	// resource-aware completion flag configurations
+	pkgcmd.ConfigureNamespaceFlagCompletion(
+		vizCmd, []string{"linkerd-namespace"},
+		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
+
+	pkgcmd.ConfigureKubeContextFlagCompletion(vizCmd, kubeconfigPath)
 	return vizCmd
 }

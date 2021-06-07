@@ -17,6 +17,7 @@ import (
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	netPb "github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -115,6 +116,8 @@ destination.`,
 	}
 
 	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, fmt.Sprintf("Output format; one of: \"%s\" or \"%s\"", tableOutput, jsonOutput))
+
+	pkgcmd.ConfigureOutputFlagCompletion(cmd)
 
 	return cmd
 }
