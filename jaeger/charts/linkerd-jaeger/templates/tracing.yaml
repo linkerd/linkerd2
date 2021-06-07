@@ -83,6 +83,11 @@ spec:
         env:
         - name: GOGC
           value: "80"
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
         image: {{.Values.collector.image.name}}:{{.Values.collector.image.version}}
         imagePullPolicy: {{.Values.collector.image.pullPolicy}}
         livenessProbe:

@@ -200,7 +200,7 @@ data:
       health_check:
     exporters:
       jaeger:
-        endpoint: jaeger.linkerd-jaeger:14250
+        endpoint: jaeger.${POD_NAMESPACE}:14250
         insecure: true
     service:
       extensions: [health_check]
@@ -277,6 +277,11 @@ spec:
         env:
         - name: GOGC
           value: "80"
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
         image: otel/opentelemetry-collector:0.27.0
         imagePullPolicy: Always
         livenessProbe:

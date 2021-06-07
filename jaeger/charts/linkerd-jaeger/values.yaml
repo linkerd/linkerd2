@@ -54,7 +54,7 @@ collector:
       health_check:
     exporters:
       jaeger:
-        endpoint: jaeger.linkerd-jaeger:14250
+        endpoint: jaeger.${POD_NAMESPACE}:14250
         insecure: true
     service:
       extensions: [health_check]
