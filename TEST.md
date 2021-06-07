@@ -12,7 +12,7 @@ of this repo, unless otherwise indicated by a `cd` command.
 
 - [Unit tests](#unit-tests)
   - [Go](#go)
-  - [Javascript](#javascript)
+  - [JavaScript](#javascript)
   - [Shell](#shell)
 - [Integration tests](#integration-tests)
   - [Prerequisites](#prerequisites)
@@ -54,9 +54,9 @@ automatically regenerated with the command:
 go test ./cli/cmd/... --update
 ```
 
-### Javascript
+### JavaScript
 
-Javascript dependencies are managed via [yarn](https://yarnpkg.com/) and
+JavaScript dependencies are managed via [yarn](https://yarnpkg.com/) and
 [webpack](https://webpack.js.org/). We use
 [jest](https://facebook.github.io/jest) as our test runner.
 

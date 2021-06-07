@@ -121,7 +121,7 @@ type ResourceConfig struct {
 		meta *metav1.ObjectMeta
 		// This fields hold labels and annotations which are to be added to the
 		// injected resource. This is different from meta.Labels and
-		// meta.Annotationswhich are the labels and annotations on the original
+		// meta.Annotations which are the labels and annotations on the original
 		// resource before injection.
 		labels      map[string]string
 		annotations map[string]string
@@ -248,7 +248,7 @@ func (conf *ResourceConfig) ParseMetaAndYAML(bytes []byte) (*Report, error) {
 }
 
 // GetOverriddenValues returns the final Values struct which is created
-// by overiding annoatated configuration on top of default Values
+// by overriding annotated configuration on top of default Values
 func (conf *ResourceConfig) GetOverriddenValues() (*linkerd2.Values, error) {
 	// Make a copy of Values and mutate that
 	copyValues, err := conf.values.DeepCopy()

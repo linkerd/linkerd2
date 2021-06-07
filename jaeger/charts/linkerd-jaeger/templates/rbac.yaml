@@ -82,7 +82,7 @@ webhooks:
       namespace: {{ .Values.namespace }}
       path: "/"
 {{- if and (.Values.webhook.externalSecret) (empty .Values.webhook.caBundle) }}
-  {{- fail "If webhook.externalSecret is true then you need to provide webook.caBundle" }}
+  {{- fail "If webhook.externalSecret is true then you need to provide webhook.caBundle" }}
 {{- end }}
     caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.webhook.caBundle)) (empty .Values.webhook.caBundle) }}
   failurePolicy: {{.Values.webhook.failurePolicy}}

@@ -94,7 +94,7 @@ func TestOpaquePorts(t *testing.T) {
 	// Wait for slow-cookers to start sending requests
 	time.Sleep(20 * time.Second)
 
-	t.Run("expect absent HTTP outbound requests for opaque-pod slow clooker", func(t *testing.T) {
+	t.Run("expect absent HTTP outbound requests for opaque-pod slow cooker", func(t *testing.T) {
 		// Check the slow cooker metrics
 		pods, err := TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": opaquePodSC})
 		if err != nil {

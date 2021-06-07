@@ -260,7 +260,7 @@ func upgrade(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, stage
 		return bytes.Buffer{}, err
 	}
 	// If there is no linkerd-config-overrides secret, assume we are upgrading
-	// from a verion of Linkerd prior to the introduction of this secret.  In
+	// from a version of Linkerd prior to the introduction of this secret.  In
 	// this case we load the values from the legacy linkerd-config configmap.
 	if values == nil {
 		values, err = loadStoredValuesLegacy(ctx, k)

@@ -120,7 +120,7 @@ handle_tests_input() {
           exit 64
         fi
         if [ -n "$linkerd_path" ]; then
-          echo "Multliple linkerd paths specified:" >&2
+          echo "Multiple linkerd paths specified:" >&2
           echo "  $linkerd_path" >&2
           echo "  $1" >&2
           tests_usage "$0" >&2
@@ -167,7 +167,7 @@ handle_cleanup_input() {
           exit 64
         fi
         if [ -n "$linkerd_path" ]; then
-          echo "Multliple linkerd paths specified:" >&2
+          echo "Multiple linkerd paths specified:" >&2
           echo "  $linkerd_path" >&2
           echo "  $1" >&2
           cleanup_usage "$0" >&2
@@ -578,7 +578,7 @@ run_external-resources_test(){
 }
 
 # exit_on_err should be called right after a command to check the result status
-# and eventually generate a Github error annotation. Do not use after calls to
+# and eventually generate a GitHub error annotation. Do not use after calls to
 # `go test` as that generates its own annotations. Note this should be called
 # outside subshells in order for the script to terminate.
 exit_on_err() {

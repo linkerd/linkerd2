@@ -260,7 +260,7 @@ if you are upgrading from `2.9.x` or below versions.
     longer draggable.
   * Updated dashboard build to use webpack v5
   * Added CA certs to the Viz extension's metrics-api container so
-    that it can validate the certifcate of an external Prometheus
+    that it can validate the certificate of an external Prometheus
   * Removed components from the control plane dashboard that now
     are part of the Viz extension
   * Changed web's base image from debian to scratch
@@ -320,13 +320,13 @@ Thanks to all our 2.10 users who helped discover these issues!
 * Modified the proxy-injector to add the opaque ports annotation to pods if
   their namespace has it set
 * Added CA certs to the Viz extension's `metrics-api` container so that it can
-  validate the certifcate of an external Prometheus
+  validate the certificate of an external Prometheus
 * Fixed an issue where inbound TLS detection from non-meshed workloads could
   break
 * Fixed an issue where the admin server's HTTP detection would fail and not
   recover; these are now handled gracefully and without logging warnings
 * Aligned the Helm installation heartbeat schedule to match that of the CLI
-* Fixed an issue with Multicluster's serivce mirror where it's endpoint repair
+* Fixed an issue with Multicluster's service mirror where it's endpoint repair
   retries were not properly rate limited
 * Removed components from the control plane dashboard that now are part of the
   Viz extension
@@ -704,7 +704,7 @@ the robustness of the opaque transport.
 * Changed opaque-port transport to be advertised via ALPN so that new proxies
   will not initiate opaque-transport connections to proxies from prior edge
   releases
-* Added inbound proxy transport metrics with `tls="passhtru"` when forwarding
+* Added inbound proxy transport metrics with `tls="passthru"` when forwarding
   non-mesh TLS connections
 * Thanks to @hs0210 for adding new unit tests!
 
@@ -853,7 +853,7 @@ async runtime.
   `linkerd-jaeger` extension is working correctly
 * Added new `linkerd jaeger uninstall` CLI command to print the `linkerd-jaeger`
   extension's resources so that they can be piped into `kubectl delete`
-* Fixed an issue where the `linkerd-cni` daemgitonset may not be installed on all
+* Fixed an issue where the `linkerd-cni` daemonset may not be installed on all
   intended nodes, due to missing tolerations to the `linkerd-cni` Helm chart
   (thanks @rish-onesignal!)
 * Fixed an issue where the `tap` APIServer would not refresh its certs

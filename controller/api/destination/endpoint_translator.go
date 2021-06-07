@@ -228,7 +228,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 
 			skippedInboundPorts, skippedErr := getPodSkippedInboundPortsAnnotations(address.Pod)
 			if skippedErr != nil {
-				et.log.Errorf("failed getting ignored inbound ports annoatation for pod: %s", err)
+				et.log.Errorf("failed getting ignored inbound ports annotation for pod: %s", err)
 			}
 
 			wa, err = toWeightedAddr(address, opaquePorts, skippedInboundPorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)

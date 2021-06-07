@@ -84,7 +84,7 @@ const (
 	// Enabled is used by annotations whose valid values include "enabled".
 	Enabled = "enabled"
 
-	// Disabled is used by annotations whose valid values incluce "disabled".
+	// Disabled is used by annotations whose valid values include "disabled".
 	Disabled = "disabled"
 
 	/*

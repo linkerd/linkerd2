@@ -58,7 +58,7 @@ func echoAnnotationWarn(t *testing.T, args ...interface{}) {
 
 // Error is a wrapper around t.Error()
 // args are passed to t.Error(args) and each arg will be sent to stdout formatted
-// as a Github annotation when the envFlag environment variable is set
+// as a GitHub annotation when the envFlag environment variable is set
 func Error(t *testing.T, args ...interface{}) {
 	t.Helper()
 	echoAnnotationErr(t, args...)
@@ -66,7 +66,7 @@ func Error(t *testing.T, args ...interface{}) {
 }
 
 // AnnotatedError is similar to Error() but it also admits a msg string that
-// will be used as the Github annotation
+// will be used as the GitHub annotation
 func AnnotatedError(t *testing.T, msg string, args ...interface{}) {
 	t.Helper()
 	echoAnnotationErr(t, msg)
@@ -75,7 +75,7 @@ func AnnotatedError(t *testing.T, msg string, args ...interface{}) {
 
 // Errorf is a wrapper around t.Errorf()
 // format and args are passed to t.Errorf(format, args) and the formatted
-// message will be sent to stdout as a Github annotation when the envFlag
+// message will be sent to stdout as a GitHub annotation when the envFlag
 // environment variable is set
 func Errorf(t *testing.T, format string, args ...interface{}) {
 	t.Helper()
@@ -84,7 +84,7 @@ func Errorf(t *testing.T, format string, args ...interface{}) {
 }
 
 // AnnotatedErrorf is similar to Errorf() but it also admits a msg string that
-// will be used as the Github annotation
+// will be used as the GitHub annotation
 func AnnotatedErrorf(t *testing.T, msg, format string, args ...interface{}) {
 	t.Helper()
 	echoAnnotationErr(t, msg)
@@ -93,7 +93,7 @@ func AnnotatedErrorf(t *testing.T, msg, format string, args ...interface{}) {
 
 // Fatal is a wrapper around t.Fatal()
 // args are passed to t.Fatal(args) and each arg will be sent to stdout formatted
-// as a Github annotation when the envFlag environment variable is set
+// as a GitHub annotation when the envFlag environment variable is set
 func Fatal(t *testing.T, args ...interface{}) {
 	t.Helper()
 	echoAnnotationErr(t, args)
@@ -101,7 +101,7 @@ func Fatal(t *testing.T, args ...interface{}) {
 }
 
 // AnnotatedFatal is similar to Fatal() but it also admits a msg string that
-// will be used as the Github annotation
+// will be used as the GitHub annotation
 func AnnotatedFatal(t *testing.T, msg string, args ...interface{}) {
 	t.Helper()
 	echoAnnotationErr(t, msg)
@@ -110,7 +110,7 @@ func AnnotatedFatal(t *testing.T, msg string, args ...interface{}) {
 
 // Fatalf is a wrapper around t.Errorf()
 // format and args are passed to t.Fatalf(format, args) and the formatted
-// message will be sent to stdout as a Github annotation when the envFlag
+// message will be sent to stdout as a GitHub annotation when the envFlag
 // environment variable is set
 func Fatalf(t *testing.T, format string, args ...interface{}) {
 	t.Helper()
@@ -119,7 +119,7 @@ func Fatalf(t *testing.T, format string, args ...interface{}) {
 }
 
 // AnnotatedFatalf is similar to Fatalf() but it also admits a msg string that
-// will be used as the Github annotation
+// will be used as the GitHub annotation
 func AnnotatedFatalf(t *testing.T, msg, format string, args ...interface{}) {
 	t.Helper()
 	echoAnnotationErr(t, msg)
@@ -127,7 +127,7 @@ func AnnotatedFatalf(t *testing.T, msg, format string, args ...interface{}) {
 }
 
 // AnnotatedWarn is a wrapper around t.Log() but it also admits a msg string that
-// will be used as the Github warning annotation
+// will be used as the GitHub warning annotation
 func AnnotatedWarn(t *testing.T, msg string, args ...interface{}) {
 	t.Helper()
 	echoAnnotationWarn(t, msg)

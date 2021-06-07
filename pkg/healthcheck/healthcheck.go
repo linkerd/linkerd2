@@ -1792,7 +1792,7 @@ func (hc *HealthChecker) FetchCredsFromSecret(ctx context.Context, namespace str
 	return cred, nil
 }
 
-// FetchCredsFromOldSecret function can be removed in later versions, once eihter all webhook secrets are recreated for each update
+// FetchCredsFromOldSecret function can be removed in later versions, once either all webhook secrets are recreated for each update
 // (see https://github.com/linkerd/linkerd2/issues/4813)
 // or later releases are only expected to update from the new names.
 func (hc *HealthChecker) FetchCredsFromOldSecret(ctx context.Context, namespace string, secretName string) (*tls.Cred, error) {
@@ -1942,7 +1942,7 @@ func (hc *HealthChecker) checkServiceAccounts(ctx context.Context, saNames []str
 	return CheckServiceAccounts(ctx, hc.kubeAPI, saNames, ns, labelSelector)
 }
 
-// CheckServiceAccounts check for serivceaccounts
+// CheckServiceAccounts check for serviceaccounts
 func CheckServiceAccounts(ctx context.Context, api *k8s.KubernetesAPI, saNames []string, ns, labelSelector string) error {
 	options := metav1.ListOptions{
 		LabelSelector: labelSelector,

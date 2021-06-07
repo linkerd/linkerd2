@@ -37,7 +37,7 @@ type Values struct {
 	TargetClusterName              string   `json:"targetClusterName"`
 }
 
-// Gateway contains all opttions related to the Gateway Service
+// Gateway contains all options related to the Gateway Service
 type Gateway struct {
 	Enabled            bool              `json:"enabled"`
 	Name               string            `json:"name"`

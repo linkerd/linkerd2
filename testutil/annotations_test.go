@@ -43,7 +43,7 @@ func restoreStdout(outC chan string, origStdout *os.File) string {
 func TestError(t *testing.T) {
 	msg := "This is an error"
 
-	// redirect stdout temporarily to catch the Github annotation output
+	// redirect stdout temporarily to catch the GitHub annotation output
 	origStdout, outC := redirectStdout(t)
 	Error(&testing.T{}, msg)
 	out := restoreStdout(outC, origStdout)
@@ -58,7 +58,7 @@ func TestAnnotatedErrorf(t *testing.T) {
 	str := "foobar"
 	msgDesc := "This is a generic error"
 
-	// redirect stdout temporarily to catch the Github annotation output
+	// redirect stdout temporarily to catch the GitHub annotation output
 	origStdout, outC := redirectStdout(t)
 	AnnotatedErrorf(&testing.T{}, msgDesc, msgFormat, str)
 	out := restoreStdout(outC, origStdout)
