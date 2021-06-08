@@ -2239,7 +2239,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 		pods := make([]*corev1.Pod, 0)
 		for _, subset := range endpoint.Subsets {
 			for _, addr := range subset.Addresses {
-				if addr.TargetRef.Kind == "Pod" {
+				if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
 					pod, err := hc.kubeAPI.CoreV1().Pods(namespace).Get(ctx, addr.TargetRef.Name, metav1.GetOptions{})
 					if err != nil {
 						return err
