@@ -75,6 +75,7 @@ var StatAllResourceTypes = []string{
 	ReplicaSet,
 }
 
+// CompletionResourceTypes represents resources the CLI's uses for autocompleting resource type names
 var CompletionResourceTypes = []string{
 	Namespace,
 	DaemonSet,
