@@ -65,8 +65,4 @@ linkerd-control-plane-proxy
 √ control plane proxies are up-to-date
 √ control plane proxies and cli versions match
 
-linkerd-opaque-ports-definition
--------------------------------
-√ opaque ports are properly annotated
-
 Status check results are √

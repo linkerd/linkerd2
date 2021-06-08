@@ -1384,6 +1384,18 @@ func (hc *HealthChecker) allCategories() []*Category {
 						return checkMisconfiguredServiceAnnotations(services)
 					},
 				},
+				{
+					description: "opaque ports are properly annotated",
+					hintAnchor:  "linkerd-opaque-ports-definition",
+					check: func(ctx context.Context) error {
+						if hc.DataPlaneNamespace == "" {
+							// when checking proxies in all namespaces, this check is a no-op
+							return nil
+						}
+
+						return hc.checkMisconfiguredOpaquePortAnnotations(ctx, hc.DataPlaneNamespace)
+					},
+				},
 			},
 			false,
 		),
@@ -1415,24 +1427,6 @@ func (hc *HealthChecker) allCategories() []*Category {
 							return hc.checkMinReplicasAvailable(ctx)
 						}
 						return &SkipError{Reason: "not run for non HA installs"}
-					},
-				},
-			},
-			false,
-		),
-		NewCategory(
-			LinkerdOpaquePortsDefinitionChecks,
-			[]Checker{
-				{
-					description: "opaque ports are properly annotated",
-					hintAnchor:  "linkerd-opaque-ports-definition",
-					check: func(ctx context.Context) error {
-						if hc.DataPlaneNamespace == "" {
-							// when checking proxies in all namespaces, this check is a no-op
-							return nil
-						}
-
-						return hc.checkMisconfiguredOpaquePortAnnotations(ctx, hc.DataPlaneNamespace)
 					},
 				},
 			},
