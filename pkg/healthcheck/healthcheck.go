@@ -2267,10 +2267,10 @@ func misconfiguredOpaqueAnnotation(service corev1.Service, pod corev1.Pod) error
 	if podAnnotation, found := podAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
 		if svcAnnotation, found := svcAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
 			if svcAnnotation != podAnnotation {
-				return fmt.Errorf("Pod %s and service %s have the annotation but values don't match", pod.Name, service.Name)
+				return fmt.Errorf("pod/%s and service/%s have the annotation but values don't match", pod.Name, service.Name)
 			}
 		} else {
-			return fmt.Errorf("Pod %s has the annotation but service %s doesn't", pod.Name, service.Name)
+			return fmt.Errorf("pod/%s has the annotation but service/%s doesn't", pod.Name, service.Name)
 		}
 	}
 
@@ -2278,10 +2278,10 @@ func misconfiguredOpaqueAnnotation(service corev1.Service, pod corev1.Pod) error
 	if svcAnnotation, found := svcAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
 		if podAnnotation, found := podAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
 			if svcAnnotation != podAnnotation {
-				return fmt.Errorf("Pod %s and the service %s have the annotation but values don't match", pod.Name, service.Name)
+				return fmt.Errorf("pod/%s and service/%s have the annotation but values don't match", pod.Name, service.Name)
 			}
 		} else {
-			return fmt.Errorf("Service %s has the annotation but pod %s doesn't", service.Name, pod.Name)
+			return fmt.Errorf("service/%s has the annotation but pod/%s doesn't", service.Name, pod.Name)
 		}
 	}
 

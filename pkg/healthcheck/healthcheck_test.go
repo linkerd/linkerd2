@@ -3412,7 +3412,7 @@ spec:
       image: "test-service"
 `,
 			},
-			expected: fmt.Errorf("Pod my-service-deployment has the annotation but service test-service-1 doesn't"),
+			expected: fmt.Errorf("pod/my-service-deployment has the annotation but service/test-service-1 doesn't"),
 		},
 		{
 			resources: []string{`
@@ -3447,7 +3447,7 @@ spec:
       image: "test-service"
 `,
 			},
-			expected: fmt.Errorf("Service test-service-1 has the annotation but pod my-service-deployment doesn't"),
+			expected: fmt.Errorf("service/test-service-1 has the annotation but pod/my-service-deployment doesn't"),
 		},
 		{
 			resources: []string{`
@@ -3484,7 +3484,7 @@ spec:
       image: "test-service"
 `,
 			},
-			expected: fmt.Errorf("Pod my-service-deployment and service test-service-1 have the annotation but values don't match"),
+			expected: fmt.Errorf("pod/my-service-deployment and service/test-service-1 have the annotation but values don't match"),
 		},
 	}
 
