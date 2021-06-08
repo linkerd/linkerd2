@@ -82,7 +82,12 @@ This command provides all Kubernetes namespace-scoped and cluster-scoped resourc
 				}
 			}
 
-			err = pkgCmd.Uninstall(cmd.Context(), k8sAPI, k8s.ControllerNSLabel)
+			selector, err := pkgCmd.GetLabelSelector(k8s.ControllerNSLabel)
+			if err != nil {
+				return err
+			}
+
+			err = pkgCmd.Uninstall(cmd.Context(), k8sAPI, selector)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
 			}

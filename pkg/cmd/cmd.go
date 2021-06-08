@@ -13,6 +13,8 @@ import (
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -124,4 +126,23 @@ func ConfigureKubeContextFlagCompletion(cmd *cobra.Command, kubeconfigPath strin
 
 			return suggestions, cobra.ShellCompDirectiveDefault
 		})
+}
+
+// GetLabelSelector creates a label selector as a string based on a label key
+// whose value may be in the set provided as an argument to the function. If the
+// value set is empty then the selector will match resources where the label key
+// exists regardless of value.
+func GetLabelSelector(labelKey string, labelValues ...string) (string, error) {
+	selectionOp := selection.In
+	if len(labelValues) < 1 {
+		selectionOp = selection.Exists
+	}
+
+	labelRequirement, err := labels.NewRequirement(labelKey, selectionOp, labelValues)
+	if err != nil {
+		return "", err
+	}
+
+	selector := labels.NewSelector().Add(*labelRequirement)
+	return selector.String(), nil
 }

@@ -19,6 +19,10 @@ const (
 	// JaegerExtensionName is the name of jaeger extension
 	JaegerExtensionName = "jaeger"
 
+	// JaegerLegacyExtension is the name of the jaeger extension prior to
+	// stable-2.10.0 when the linkerd prefix was removed.
+	JaegerLegacyExtension = "linkerd-jaeger"
+
 	// linkerdJaegerExtensionCheck adds checks related to the jaeger extension
 	linkerdJaegerExtensionCheck healthcheck.CategoryID = "linkerd-jaeger"
 )
