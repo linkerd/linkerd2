@@ -182,12 +182,12 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 			if options.dataPlaneOnly {
 				checks = append(checks, healthcheck.LinkerdDataPlaneChecks)
 				checks = append(checks, healthcheck.LinkerdIdentityDataPlane)
+				checks = append(checks, healthcheck.LinkerdOpaquePortsDefinitionChecks)
 			} else {
 				checks = append(checks, healthcheck.LinkerdControlPlaneVersionChecks)
 			}
 			checks = append(checks, healthcheck.LinkerdCNIPluginChecks)
 			checks = append(checks, healthcheck.LinkerdHAChecks)
-			checks = append(checks, healthcheck.LinkerdOpaquePortsDefinitionChecks)
 		}
 	}
 
