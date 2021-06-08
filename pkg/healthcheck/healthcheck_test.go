@@ -3625,7 +3625,7 @@ subsets:
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
-			err = hc.checkMisconfiguredOpaquePortAnnotations(context.Background(), "test-ns")
+			err = hc.checkMisconfiguredOpaquePortAnnotations(context.Background())
 			if err == nil && tc.expected != nil {
 				t.Fatalf("Expected check to be successful, got: %s", err)
 			}

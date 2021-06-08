@@ -1388,12 +1388,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					description: "opaque ports are properly annotated",
 					hintAnchor:  "linkerd-opaque-ports-definition",
 					check: func(ctx context.Context) error {
-						if hc.DataPlaneNamespace == "" {
-							// when checking proxies in all namespaces, this check is a no-op
-							return nil
-						}
-
-						return hc.checkMisconfiguredOpaquePortAnnotations(ctx, hc.DataPlaneNamespace)
+						return hc.checkMisconfiguredOpaquePortAnnotations(ctx)
 					},
 				},
 			},
@@ -2210,7 +2205,7 @@ func checkResources(resourceName string, objects []runtime.Object, expectedNames
 
 // Check if there's a pod with the "opaque ports" annotation defined but a
 // service selecting the aforementioned pod doesn't define it
-func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Context, namespace string) error {
+func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Context) error {
 	services, err := hc.GetServices(ctx)
 	if err != nil {
 		return err
@@ -2224,7 +2219,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 			continue
 		}
 
-		endpoint, err := hc.kubeAPI.CoreV1().Endpoints(namespace).Get(ctx, service.Name, metav1.GetOptions{})
+		endpoint, err := hc.kubeAPI.CoreV1().Endpoints(service.Namespace).Get(ctx, service.Name, metav1.GetOptions{})
 
 		if err != nil {
 			return err
@@ -2234,7 +2229,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 		for _, subset := range endpoint.Subsets {
 			for _, addr := range subset.Addresses {
 				if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
-					pod, err := hc.kubeAPI.CoreV1().Pods(namespace).Get(ctx, addr.TargetRef.Name, metav1.GetOptions{})
+					pod, err := hc.kubeAPI.CoreV1().Pods(service.Namespace).Get(ctx, addr.TargetRef.Name, metav1.GetOptions{})
 					if err != nil {
 						return err
 					}
