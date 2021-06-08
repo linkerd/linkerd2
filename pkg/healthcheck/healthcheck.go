@@ -2244,7 +2244,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 	}
 
 	if len(errStrings) >= 1 {
-		return fmt.Errorf(strings.Join(errStrings, "\n"))
+		return fmt.Errorf(strings.Join(errStrings, "\n    "))
 	}
 
 	return nil
