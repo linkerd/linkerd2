@@ -2268,29 +2268,22 @@ func misconfiguredOpaquePortAnnotationsInService(service corev1.Service, pods []
 }
 
 func misconfiguredOpaqueAnnotation(service corev1.Service, pod *corev1.Pod) error {
-	svcAnnotations := service.Annotations
-	podAnnotations := pod.Annotations
+	svcAnnotation, svcAnnotationOk := service.Annotations[k8s.ProxyOpaquePortsAnnotation]
+	podAnnotation, podAnnotationOk := pod.Annotations[k8s.ProxyOpaquePortsAnnotation]
 
-	// If the pod has the annotation, check that the service has it as well
-	if podAnnotation, found := podAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
-		if svcAnnotation, found := svcAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
-			if svcAnnotation != podAnnotation {
-				return fmt.Errorf("pod/%s and service/%s have the annotation %s but values don't match", pod.Name, service.Name, k8s.ProxyOpaquePortsAnnotation)
-			}
-		} else {
-			return fmt.Errorf("pod/%s has the annotation %s but service/%s doesn't", pod.Name, k8s.ProxyOpaquePortsAnnotation, service.Name)
+	if svcAnnotationOk && podAnnotationOk {
+		if svcAnnotation != podAnnotation {
+			return fmt.Errorf("pod/%s and service/%s have the annotation %s but values don't match", pod.Name, service.Name, k8s.ProxyOpaquePortsAnnotation)
 		}
+
+		return nil
 	}
 
-	// If the service has the annotation, check that the pod has it as well
-	if svcAnnotation, found := svcAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
-		if podAnnotation, found := podAnnotations[k8s.ProxyOpaquePortsAnnotation]; found {
-			if svcAnnotation != podAnnotation {
-				return fmt.Errorf("pod/%s and service/%s have the annotation %s but values don't match", pod.Name, service.Name, k8s.ProxyOpaquePortsAnnotation)
-			}
-		} else {
-			return fmt.Errorf("service/%s has the annotation %s but pod/%s doesn't", service.Name, k8s.ProxyOpaquePortsAnnotation, pod.Name)
-		}
+	if svcAnnotationOk {
+		return fmt.Errorf("service/%s has the annotation %s but pod/%s doesn't", service.Name, k8s.ProxyOpaquePortsAnnotation, pod.Name)
+	}
+	if podAnnotationOk {
+		return fmt.Errorf("pod/%s has the annotation %s but service/%s doesn't", pod.Name, k8s.ProxyOpaquePortsAnnotation, service.Name)
 	}
 
 	return nil
