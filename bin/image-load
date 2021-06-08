@@ -44,11 +44,6 @@ do
       ;;
     --cluster)
       cluster=$2
-      if [ -z "$cluster" ]; then
-        echo 'Error: the argument for --cluster was not specified' >&2
-        usage
-        exit 1
-      fi
       shift
       ;;
     --kind)
