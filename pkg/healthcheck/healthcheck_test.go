@@ -3490,7 +3490,7 @@ subsets:
     protocol: TCP
 `,
 			},
-			expected: fmt.Errorf("pod/my-service-deployment has the annotation but service/test-service-1 doesn't"),
+			expected: fmt.Errorf("pod/my-service-deployment has the annotation %s but service/test-service-1 doesn't", k8s.ProxyOpaquePortsAnnotation),
 		},
 		{
 			resources: []string{`
@@ -3551,7 +3551,7 @@ subsets:
     protocol: TCP		
 `,
 			},
-			expected: fmt.Errorf("service/test-service-1 has the annotation but pod/my-service-deployment doesn't"),
+			expected: fmt.Errorf("service/test-service-1 has the annotation %s but pod/my-service-deployment doesn't", k8s.ProxyOpaquePortsAnnotation),
 		},
 		{
 			resources: []string{`
@@ -3614,7 +3614,7 @@ subsets:
     protocol: TCP
 `,
 			},
-			expected: fmt.Errorf("pod/my-service-deployment and service/test-service-1 have the annotation but values don't match"),
+			expected: fmt.Errorf("pod/my-service-deployment and service/test-service-1 have the annotation %s but values don't match", k8s.ProxyOpaquePortsAnnotation),
 		},
 	}
 
