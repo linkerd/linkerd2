@@ -3339,6 +3339,32 @@ spec:
     - name: test
       image: "test-service"
 `,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  annotations:
+    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
+  creationTimestamp: "2021-06-08T08:38:03Z"
+  labels:
+    service: test-service-1
+  name: test-service-1
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.244.3.12
+    nodeName: nodename-1
+    targetRef:
+      kind: Pod
+      name: my-service-deployment
+      namespace: test-ns
+      resourceVersion: "20661"
+      uid: b37782aa-1458-4153-8399-dabc2b29aaae
+  ports:
+  - name: http-port
+    port: 8080
+    protocol: TCP
+`,
 			},
 			expected: nil,
 		},
@@ -3376,6 +3402,32 @@ spec:
     - name: test
       image: "test-service"
 `,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  annotations:
+    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
+  creationTimestamp: "2021-06-08T08:38:03Z"
+  labels:
+    service: test-service-1
+  name: test-service-1
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.244.3.12
+    nodeName: nodename-1
+    targetRef:
+      kind: Pod
+      name: my-service-deployment
+      namespace: test-ns
+      resourceVersion: "20661"
+      uid: b37782aa-1458-4153-8399-dabc2b29aaae
+  ports:
+  - name: http-port
+    port: 8080
+    protocol: TCP			
+`,
 			},
 			expected: nil,
 		},
@@ -3411,6 +3463,32 @@ spec:
     - name: test
       image: "test-service"
 `,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  annotations:
+    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
+  creationTimestamp: "2021-06-08T08:38:03Z"
+  labels:
+    service: test-service-1
+  name: test-service-1
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.244.3.12
+    nodeName: nodename-1
+    targetRef:
+      kind: Pod
+      name: my-service-deployment
+      namespace: test-ns
+      resourceVersion: "20661"
+      uid: b37782aa-1458-4153-8399-dabc2b29aaae
+  ports:
+  - name: http-port
+    port: 8080
+    protocol: TCP
+`,
 			},
 			expected: fmt.Errorf("pod/my-service-deployment has the annotation but service/test-service-1 doesn't"),
 		},
@@ -3445,6 +3523,32 @@ spec:
   containers:
     - name: test
       image: "test-service"
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  annotations:
+    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
+  creationTimestamp: "2021-06-08T08:38:03Z"
+  labels:
+    service: test-service-1
+  name: test-service-1
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.244.3.12
+    nodeName: nodename-1
+    targetRef:
+      kind: Pod
+      name: my-service-deployment
+      namespace: test-ns
+      resourceVersion: "20661"
+      uid: b37782aa-1458-4153-8399-dabc2b29aaae
+  ports:
+  - name: http-port
+    port: 8080
+    protocol: TCP		
 `,
 			},
 			expected: fmt.Errorf("service/test-service-1 has the annotation but pod/my-service-deployment doesn't"),
@@ -3482,6 +3586,32 @@ spec:
   containers:
     - name: test
       image: "test-service"
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  annotations:
+    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
+  creationTimestamp: "2021-06-08T08:38:03Z"
+  labels:
+    service: test-service-1
+  name: test-service-1
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.244.3.12
+    nodeName: nodename-1
+    targetRef:
+      kind: Pod
+      name: my-service-deployment
+      namespace: test-ns
+      resourceVersion: "20661"
+      uid: b37782aa-1458-4153-8399-dabc2b29aaae
+  ports:
+  - name: http-port
+    port: 8080
+    protocol: TCP
 `,
 			},
 			expected: fmt.Errorf("pod/my-service-deployment and service/test-service-1 have the annotation but values don't match"),

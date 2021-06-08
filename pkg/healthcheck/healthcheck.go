@@ -27,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
@@ -1428,6 +1427,11 @@ func (hc *HealthChecker) allCategories() []*Category {
 					description: "opaque ports are properly annotated",
 					hintAnchor:  "linkerd-opaque-ports-definition",
 					check: func(ctx context.Context) error {
+						if hc.DataPlaneNamespace == "" {
+							// when checking proxies in all namespaces, this check is a no-op
+							return nil
+						}
+
 						return hc.checkMisconfiguredOpaquePortAnnotations(ctx, hc.DataPlaneNamespace)
 					},
 				},
@@ -2226,13 +2230,23 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 			continue
 		}
 
-		labelSet := labels.Set(service.Spec.Selector)
-		pods, err := hc.kubeAPI.CoreV1().Pods(namespace).List(
-			ctx,
-			metav1.ListOptions{LabelSelector: labelSet.AsSelector().String()},
-		)
+		endpoint, err := hc.kubeAPI.CoreV1().Endpoints(namespace).Get(ctx, service.Name, metav1.GetOptions{})
+
 		if err != nil {
 			return err
+		}
+
+		pods := make([]*corev1.Pod, 0)
+		for _, subset := range endpoint.Subsets {
+			for _, addr := range subset.Addresses {
+				if addr.TargetRef.Kind == "Pod" {
+					pod, err := hc.kubeAPI.CoreV1().Pods(namespace).Get(ctx, addr.TargetRef.Name, metav1.GetOptions{})
+					if err != nil {
+						return err
+					}
+					pods = append(pods, pod)
+				}
+			}
 		}
 
 		if mismatch := misconfiguredOpaquePortAnnotationsInService(service, pods); mismatch != nil {
@@ -2250,8 +2264,8 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 	return nil
 }
 
-func misconfiguredOpaquePortAnnotationsInService(service corev1.Service, pods *corev1.PodList) error {
-	for _, pod := range pods.Items {
+func misconfiguredOpaquePortAnnotationsInService(service corev1.Service, pods []*corev1.Pod) error {
+	for _, pod := range pods {
 		if err := misconfiguredOpaqueAnnotation(service, pod); err != nil {
 			return err
 		}
@@ -2259,7 +2273,7 @@ func misconfiguredOpaquePortAnnotationsInService(service corev1.Service, pods *c
 	return nil
 }
 
-func misconfiguredOpaqueAnnotation(service corev1.Service, pod corev1.Pod) error {
+func misconfiguredOpaqueAnnotation(service corev1.Service, pod *corev1.Pod) error {
 	svcAnnotations := service.Annotations
 	podAnnotations := pod.Annotations
 
