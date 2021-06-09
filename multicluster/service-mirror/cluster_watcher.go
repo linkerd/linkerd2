@@ -30,15 +30,16 @@ type (
 	// it can be requeued up to N times, to ensure that the failure is not due to some temporary network
 	// problems or general glitch in the Matrix.
 	RemoteClusterServiceWatcher struct {
-		serviceMirrorNamespace string
-		link                   *multicluster.Link
-		remoteAPIClient        *k8s.API
-		localAPIClient         *k8s.API
-		stopper                chan struct{}
-		log                    *logging.Entry
-		eventsQueue            workqueue.RateLimitingInterface
-		requeueLimit           int
-		repairPeriod           time.Duration
+		serviceMirrorNamespace  string
+		link                    *multicluster.Link
+		remoteAPIClient         *k8s.API
+		localAPIClient          *k8s.API
+		stopper                 chan struct{}
+		log                     *logging.Entry
+		eventsQueue             workqueue.RateLimitingInterface
+		requeueLimit            int
+		repairPeriod            time.Duration
+		headlessServicesEnabled bool
 	}
 
 	// RemoteServiceCreated is generated whenever a remote service is created Observing
@@ -137,7 +138,7 @@ func NewRemoteClusterServiceWatcher(
 	link *multicluster.Link,
 	requeueLimit int,
 	repairPeriod time.Duration,
-
+	enableHeadlessSvc bool,
 ) (*RemoteClusterServiceWatcher, error) {
 	remoteAPI, err := k8s.InitializeAPIForConfig(ctx, cfg, false, k8s.Svc, k8s.Endpoint)
 	if err != nil {
@@ -159,9 +160,10 @@ func NewRemoteClusterServiceWatcher(
 			"cluster":    clusterName,
 			"apiAddress": cfg.Host,
 		}),
-		eventsQueue:  workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
-		requeueLimit: requeueLimit,
-		repairPeriod: repairPeriod,
+		eventsQueue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		requeueLimit:            requeueLimit,
+		repairPeriod:            repairPeriod,
+		headlessServicesEnabled: enableHeadlessSvc,
 	}, nil
 }
 
@@ -433,8 +435,8 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 	// If the service to mirror is headless (its clusterIP is 'None') then we
 	// create a mirrored headless service and exit early.  We leave Endpoint
 	// creation for the mirrorerd service to the Endpoint informer.
-	if remoteService.Spec.ClusterIP == "None" {
-		serviceToCreate.Spec.ClusterIP = "None"
+	if rcsw.headlessServicesEnabled && remoteService.Spec.ClusterIP == corev1.ClusterIPNone {
+		serviceToCreate.Spec.ClusterIP = corev1.ClusterIPNone
 		rcsw.log.Infof("Creating a new headless service mirror for %s", serviceInfo)
 		if _, err := rcsw.localAPIClient.Client.CoreV1().Services(remoteService.Namespace).Create(ctx, serviceToCreate, metav1.CreateOptions{}); err != nil {
 			if !kerrors.IsAlreadyExists(err) {
@@ -546,7 +548,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 			clusterName := localSvc.Labels[consts.RemoteClusterNameLabel]
 			if isMirroredRes && (clusterName == rcsw.link.TargetClusterName) {
 				// If headless, also delete its nested services.
-				if localSvc.Spec.ClusterIP == "None" {
+				if localSvc.Spec.ClusterIP == corev1.ClusterIPNone {
 					err = rcsw.deleteHeadlessMirrors(service.Namespace, localName)
 					if err != nil {
 						return RetryableError{[]error{err}}
@@ -577,7 +579,7 @@ func (rcsw *RemoteClusterServiceWatcher) getMirrorServices() ([]*corev1.Service,
 
 func (rcsw *RemoteClusterServiceWatcher) handleOnDelete(service *corev1.Service) error {
 	if rcsw.isExportedService(service) {
-		if service.Spec.ClusterIP == "None" {
+		if service.Spec.ClusterIP == corev1.ClusterIPNone {
 			// If the service is headless, add all of its clusterIPs as events
 			// in the queuea
 			localName := rcsw.mirroredResourceName(service.Name)
@@ -706,70 +708,71 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 			},
 		},
 	)
+	if rcsw.headlessServicesEnabled {
+		rcsw.remoteAPIClient.Endpoint().Informer().AddEventHandler(
+			cache.ResourceEventHandlerFuncs{
+				AddFunc: func(obj interface{}) {
+					if obj.(metav1.Object).GetNamespace() == "kube-system" {
+						return
+					}
 
-	rcsw.remoteAPIClient.Endpoint().Informer().AddEventHandler(
-		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				if obj.(metav1.Object).GetNamespace() == "kube-system" {
-					return
-				}
+					ep, ok := obj.(*corev1.Endpoints)
+					if !ok {
+						rcsw.log.Errorf("error processing Endpoints resource, got %#v, expected *corev1.Endpoints", ep)
+						return
+					}
 
-				ep, ok := obj.(*corev1.Endpoints)
-				if !ok {
-					rcsw.log.Errorf("error processing Endpoints resource, got %#v, expected *corev1.Endpoints", ep)
-					return
-				}
+					if _, found := ep.Labels["service.kubernetes.io/headless"]; !found {
+						// Not an Endpoints object for a headless service? Then we likely don't want
+						// to update anything.
+						return
+					}
 
-				if _, found := ep.Labels["service.kubernetes.io/headless"]; !found {
-					// Not an Endpoints object for a headless service? Then we likely don't want
-					// to update anything.
-					return
-				}
+					// If Endpoints belong to an unexported service, ignore.
+					if _, found := ep.Labels[consts.DefaultExportedServiceSelector]; !found {
+						return
+					}
 
-				// If Endpoints belong to an unexported service, ignore.
-				if _, found := ep.Labels[consts.DefaultExportedServiceSelector]; !found {
-					return
-				}
+					if err := checkEndpointsValid(ep); err != nil {
+						rcsw.log.Infof("Skipping Endpoints resource: %v", err)
+						return
+					}
+					rcsw.eventsQueue.Add(&OnAddEndpointsCalled{ep})
+				},
+				UpdateFunc: func(old, new interface{}) {
+					if old.(metav1.Object).GetNamespace() == "kube-system" {
+						return
+					}
 
-				if err := checkEndpointsValid(ep); err != nil {
-					rcsw.log.Infof("Skipping Endpoints resource: %v", err)
-					return
-				}
-				rcsw.eventsQueue.Add(&OnAddEndpointsCalled{ep})
+					ep, ok := new.(*corev1.Endpoints)
+					if !ok {
+						rcsw.log.Errorf("error processing Endpoints resource, got %#v, expected *corev1.Endpoints", new)
+						return
+					}
+
+					if _, found := ep.Labels["service.kubernetes.io/headless"]; !found {
+						// Not an Endpoints object for a headless service? Then we likely don't want
+						// to update anything.
+						return
+					}
+
+					// If Endpoints belong to an unexported service, ignore. Do we
+					// want to also check the value here and ensure it is set to
+					// true?
+					if _, found := ep.Labels[consts.DefaultExportedServiceSelector]; !found {
+						return
+					}
+
+					if err := checkEndpointsValid(ep); err != nil {
+						rcsw.log.Infof("Skipping Endpoints resource: %v", err)
+						return
+					}
+
+					rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{ep})
+				},
 			},
-			UpdateFunc: func(old, new interface{}) {
-				if old.(metav1.Object).GetNamespace() == "kube-system" {
-					return
-				}
-
-				ep, ok := new.(*corev1.Endpoints)
-				if !ok {
-					rcsw.log.Errorf("error processing Endpoints resource, got %#v, expected *corev1.Endpoints", new)
-					return
-				}
-
-				if _, found := ep.Labels["service.kubernetes.io/headless"]; !found {
-					// Not an Endpoints object for a headless service? Then we likely don't want
-					// to update anything.
-					return
-				}
-
-				// If Endpoints belong to an unexported service, ignore. Do we
-				// want to also check the value here and ensure it is set to
-				// true?
-				if _, found := ep.Labels[consts.DefaultExportedServiceSelector]; !found {
-					return
-				}
-
-				if err := checkEndpointsValid(ep); err != nil {
-					rcsw.log.Infof("Skipping Endpoints resource: %v", err)
-					return
-				}
-
-				rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{ep})
-			},
-		},
-	)
+		)
+	}
 	go rcsw.processEvents(ctx)
 
 	// We need to issue a RepairEndpoints immediately to populate the gateway
@@ -875,7 +878,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 	for _, svc := range mirrorServices {
 		updatedService := svc.DeepCopy()
 
-		if svc.Spec.ClusterIP == "None" {
+		if svc.Spec.ClusterIP == corev1.ClusterIPNone {
 			rcsw.log.Debugf("Skipped repairing Endpoints for %s/%s", svc.Namespace, svc.Name)
 			continue
 		}

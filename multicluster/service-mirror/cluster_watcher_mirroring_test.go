@@ -178,17 +178,17 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 					"service-one-remote",
 					"ns2",
 					"pod-0",
-					"192.0.2.127",
+					"192.0.2.129",
 					"gateway-identity",
 					[]corev1.EndpointPort{
 						{
 							Name:     "port1",
-							Port:     888,
+							Port:     889,
 							Protocol: "TCP",
 						},
 						{
 							Name:     "port2",
-							Port:     888,
+							Port:     889,
 							Protocol: "TCP",
 						},
 					}),

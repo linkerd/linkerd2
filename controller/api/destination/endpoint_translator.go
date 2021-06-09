@@ -321,8 +321,7 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 	}, nil
 }
 
-func toGatewayAddr(address watcher.Address, log *logging.Entry) (*pb.WeightedAddr, error) {
-	// for the prototype, only assume one gateway
+func toGatewayAddr(address watcher.Address) (*pb.WeightedAddr, error) {
 	tcpAddr, err := toAddr(address)
 	if err != nil {
 		return nil, err

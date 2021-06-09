@@ -395,7 +395,7 @@ const (
 	// MirroredGatewayLabel indicates that this is a mirrored gateway
 	MirroredGatewayLabel = SvcMirrorPrefix + "/mirrored-gateway"
 
-	// MirrorerdRootHeadlessLabel indicates the root headless service for
+	// MirroredRootHeadlessLabel indicates the root headless service for
 	// mirrored headless hosts.
 	MirroredRootHeadlessLabel = SvcMirrorPrefix + "/root-headless-name"
 

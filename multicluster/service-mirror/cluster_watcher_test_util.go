@@ -147,7 +147,7 @@ var createExportedHeadlessService = &testEnvironment{
 		},
 	},
 	remoteResources: []string{
-		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "mc-gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod),
+		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.129", "gateway", 889, "gateway-identity", 123456, "/probe1", 120),
 		remoteHeadlessSvcAsYaml("service-one", "ns2", "111",
 			[]corev1.ServicePort{
 				{
@@ -166,10 +166,14 @@ var createExportedHeadlessService = &testEnvironment{
 		TargetClusterName:   clusterName,
 		TargetClusterDomain: clusterDomain,
 		GatewayIdentity:     "gateway-identity",
-		GatewayAddress:      "192.0.2.127",
-		GatewayPort:         888,
-		ProbeSpec:           defaultProbeSpec,
-		Selector:            *defaultSelector,
+		GatewayAddress:      "192.0.2.129",
+		GatewayPort:         889,
+		ProbeSpec: multicluster.ProbeSpec{
+			Port:   123456,
+			Path:   "/probe1",
+			Period: 120,
+		},
+		Selector: *defaultSelector,
 	},
 }
 

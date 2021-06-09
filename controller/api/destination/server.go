@@ -221,7 +221,10 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 					return err
 				}
 
-				endpoint, err := toGatewayAddr(addressSet.Addresses[*svcID], s.log)
+				endpoint, err := toGatewayAddr(addressSet.Addresses[*svcID])
+				if err != nil {
+					return err
+				}
 
 				// [namespace:default service:mehdb-1-east target_cluster:east target_service:mehdb-1 target_service_namespace:mehdb]
 				endpoint.MetricLabels = map[string]string{
@@ -240,9 +243,10 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 				}
 
 				return nil
-			} else {
-				fqn = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
 			}
+
+			fqn = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
+
 		} else {
 			// If the IP does not map to a service, check if it maps to a pod
 			pod, err := getPod(s.k8sAPI, ip.String(), port, log)
