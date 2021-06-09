@@ -84,7 +84,7 @@ helm install \
 
 ## Get involved
 
-* Check out Linkerd's source code at [Github][linkerd2].
+* Check out Linkerd's source code at [GitHub][linkerd2].
 * Join Linkerd's [user mailing list][linkerd-users], [developer mailing
   list][linkerd-dev], and [announcements mailing list][linkerd-announce].
 * Follow [@linkerd][twitter] on Twitter.
@@ -188,11 +188,11 @@ Kubernetes: `>=1.16.0-0`
 | proxy.uid | int | `2102` | User id under which the proxy runs |
 | proxy.waitBeforeExitSeconds | int | `0` | If set the proxy sidecar will stay alive for at least the given period before receiving SIGTERM signal from Kubernetes but no longer than pod's `terminationGracePeriodSeconds`. See [Lifecycle hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks) for more info on container lifecycle hooks. |
 | proxyInit.closeWaitTimeoutSecs | int | `0` |  |
-| proxyInit.ignoreInboundPorts | string | `""` | Default set of inbound ports to skip via itpables |
-| proxyInit.ignoreOutboundPorts | string | `""` | Default set of outbound ports to skip via itpables |
+| proxyInit.ignoreInboundPorts | string | `""` | Default set of inbound ports to skip via iptables |
+| proxyInit.ignoreOutboundPorts | string | `""` | Default set of outbound ports to skip via iptables |
 | proxyInit.image.name | string | `"cr.l5d.io/linkerd/proxy-init"` | Docker image for the proxy-init container |
 | proxyInit.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy-init container Docker image |
-| proxyInit.image.version | string | `"v1.3.11"` | Tag for the proxy-init container Docker image |
+| proxyInit.image.version | string | `"v1.3.12"` | Tag for the proxy-init container Docker image |
 | proxyInit.resources.cpu.limit | string | `"100m"` | Maximum amount of CPU units that the proxy-init container can use |
 | proxyInit.resources.cpu.request | string | `"10m"` | Amount of CPU units that the proxy-init container requests |
 | proxyInit.resources.memory.limit | string | `"50Mi"` | Maximum amount of memory that the proxy-init container can use |

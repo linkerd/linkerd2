@@ -43,7 +43,7 @@ helm install linkerd/linkerd-viz
 
 ## Get involved
 
-* Check out Linkerd's source code at [Github][linkerd2].
+* Check out Linkerd's source code at [GitHub][linkerd2].
 * Join Linkerd's [user mailing list][linkerd-users], [developer mailing
   list][linkerd-dev], and [announcements mailing list][linkerd-announce].
 * Follow [@linkerd][twitter] on Twitter.
@@ -96,11 +96,13 @@ Kubernetes: `>=1.16.0-0`
 | grafana.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the grafana instance |
 | grafana.image.registry | string | defaultRegistry | Docker registry for the grafana instance |
 | grafana.image.tag | string | linkerdVersion | Docker image tag for the grafana instance |
+| grafana.nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | grafana.proxy | string | `nil` |  |
 | grafana.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the grafana container can use |
 | grafana.resources.cpu.request | string | `nil` | Amount of CPU units that the grafana container requests |
 | grafana.resources.memory.limit | string | `nil` | Maximum amount of memory that grafana container can use |
 | grafana.resources.memory.request | string | `nil` | Amount of memory that the grafana container requests |
+| grafana.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | grafanaUrl | string | `""` | url of external grafana instance with reverse proxy configured. |
 | identityTrustDomain | string | clusterDomain | Trust domain used for identity |
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
@@ -114,14 +116,16 @@ Kubernetes: `>=1.16.0-0`
 | metricsAPI.image.registry | string | defaultRegistry | Docker registry for the metrics-api component |
 | metricsAPI.image.tag | string | linkerdVersion | Docker image tag for the metrics-api component |
 | metricsAPI.logLevel | string | defaultLogLevel | log level of the metrics-api component |
+| metricsAPI.nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | metricsAPI.proxy | string | `nil` |  |
 | metricsAPI.replicas | int | `1` | number of replicas of the metrics-api component |
 | metricsAPI.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the metrics-api container can use |
 | metricsAPI.resources.cpu.request | string | `nil` | Amount of CPU units that the metrics-api container requests |
 | metricsAPI.resources.memory.limit | string | `nil` | Maximum amount of memory that metrics-api container can use |
 | metricsAPI.resources.memory.request | string | `nil` | Amount of memory that the metrics-api container requests |
+| metricsAPI.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | namespace | string | `"linkerd-viz"` | Namespace in which the Linkerd Viz extension has to be installed |
-| nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
+| nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | Default nodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | prometheus.alertRelabelConfigs | string | `nil` | Alert relabeling is applied to alerts before they are sent to the Alertmanager. |
 | prometheus.alertmanagers | string | `nil` | Alertmanager instances the Prometheus server sends alerts to configured via the static_configs parameter. |
 | prometheus.args | object | `{"config.file":"/etc/prometheus/prometheus.yml","storage.tsdb.path":"/data","storage.tsdb.retention.time":"6h"}` | Command line options for Prometheus binary |
@@ -132,6 +136,7 @@ Kubernetes: `>=1.16.0-0`
 | prometheus.image.registry | string | `"prom"` | Docker registry for the prometheus instance |
 | prometheus.image.tag | string | `"v2.19.3"` | Docker image tag for the prometheus instance |
 | prometheus.logLevel | string | defaultLogLevel | log level of the prometheus instance |
+| prometheus.nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | prometheus.proxy | string | `nil` |  |
 | prometheus.remoteWrite | string | `nil` | Allows transparently sending samples to an endpoint. Mostly used for long term storage. |
 | prometheus.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the prometheus container can use |
@@ -141,6 +146,7 @@ Kubernetes: `>=1.16.0-0`
 | prometheus.ruleConfigMapMounts | string | `nil` | Alerting/recording rule ConfigMap mounts (sub-path names must end in ´_rules.yml´ or ´_rules.yaml´) |
 | prometheus.scrapeConfigs | string | `nil` | A scrapeConfigs section specifies a set of targets and parameters describing how to scrape them. |
 | prometheus.sidecarContainers | string | `nil` | A sidecarContainers section specifies a list of secondary containers to run in the prometheus pod e.g. to export data to non-prometheus systems |
+| prometheus.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | prometheusUrl | string | `""` | url of external prometheus instance |
 | tap.UID | string | `nil` | UID for the dashboard resource |
 | tap.caBundle | string | `""` | Bundle of CA certificates for Tap component. If not provided then Helm will use the certificate generated  for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
@@ -177,7 +183,7 @@ Kubernetes: `>=1.16.0-0`
 | tapInjector.resources.cpu.request | string | `nil` | Amount of CPU units that the tapInjector container requests |
 | tapInjector.resources.memory.limit | string | `nil` | Maximum amount of memory that tapInjector container can use |
 | tapInjector.resources.memory.request | string | `nil` | Amount of memory that the tapInjector container requests |
-| tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
+| tolerations | string | `nil` | Default tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.4.0](https://github.com/norwoodj/helm-docs/releases/v1.4.0)

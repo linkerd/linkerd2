@@ -148,7 +148,7 @@ func checkTrafficMetrics(metrics v1alpha1.TrafficMetrics, name string) error {
 	if metrics.Name == name {
 		return nil
 	}
-	return fmt.Errorf("excpected %s, but got %s", name, metrics.Name)
+	return fmt.Errorf("expected %s, but got %s", name, metrics.Name)
 
 }
 
@@ -156,5 +156,5 @@ func checkTrafficMetricsList(metrics v1alpha1.TrafficMetricsList, name string, n
 	if metrics.Resource.Name == name && len(metrics.Items) == numberOfEdges {
 		return nil
 	}
-	return fmt.Errorf("excpected %s with %d edges, but got %s with %d edges", name, numberOfEdges, metrics.Resource.Name, len(metrics.Items))
+	return fmt.Errorf("expected %s with %d edges, but got %s with %d edges", name, numberOfEdges, metrics.Resource.Name, len(metrics.Items))
 }

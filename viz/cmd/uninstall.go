@@ -38,5 +38,10 @@ func uninstallRunE(ctx context.Context) error {
 		return err
 	}
 
-	return pkgCmd.Uninstall(ctx, k8sAPI, fmt.Sprintf("%s=%s", k8s.LinkerdExtensionLabel, ExtensionName))
+	selector, err := pkgCmd.GetLabelSelector(k8s.LinkerdExtensionLabel, ExtensionName, LegacyExtensionName)
+	if err != nil {
+		return err
+	}
+
+	return pkgCmd.Uninstall(ctx, k8sAPI, selector)
 }

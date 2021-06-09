@@ -83,7 +83,7 @@ func (opw *OpaquePortsWatcher) Subscribe(id ServiceID, listener OpaquePortsUpdat
 	return nil
 }
 
-// Unsubscribe unsubscries a listener from service.
+// Unsubscribe unsubscribes a listener from service.
 func (opw *OpaquePortsWatcher) Unsubscribe(id ServiceID, listener OpaquePortsUpdateListener) {
 	opw.Lock()
 	defer opw.Unlock()

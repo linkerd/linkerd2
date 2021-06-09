@@ -1,3 +1,6 @@
+Linkerd core checks
+===================
+
 kubernetes-api
 --------------
 √ can initialize the client

@@ -43,7 +43,7 @@ helm install linkerd/linkerd-multicluster
 
 ## Get involved
 
-* Check out Linkerd's source code at [Github][linkerd2].
+* Check out Linkerd's source code at [GitHub][linkerd2].
 * Join Linkerd's [user mailing list][linkerd-users], [developer mailing
   list][linkerd-dev], and [announcements mailing list][linkerd-announce].
 * Follow [@linkerd][twitter] on Twitter.
@@ -71,13 +71,15 @@ Kubernetes: `>=1.16.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| gateway | bool | `true` | If the gateway component should be installed |
-| gatewayName | string | `"linkerd-gateway"` | The name of the gateway that will be installed |
-| gatewayPort | int | `4143` | The port on which all the gateway will accept incoming traffic |
-| gatewayProbePath | string | `"/ready"` | The path that will be used by remote clusters for determining whether the gateway is alive |
-| gatewayProbePort | int | `4191` | The port used for liveliness probing |
-| gatewayProbeSeconds | int | `3` | The interval (in seconds) between liveness probes |
-| gatewayServiceType | string | `"LoadBalancer"` | Service Type of gateway Service |
+| gateway.enabled | bool | `true` | If the gateway component should be installed |
+| gateway.loadBalancerIP | string | `""` | Set loadBalancerIP on gateway service |
+| gateway.name | string | `"linkerd-gateway"` | The name of the gateway that will be installed |
+| gateway.port | int | `4143` | The port on which all the gateway will accept incoming traffic |
+| gateway.probe.path | string | `"/ready"` | The path that will be used by remote clusters for determining whether the gateway is alive |
+| gateway.probe.port | int | `4191` | The port used for liveliness probing |
+| gateway.probe.seconds | int | `3` |  |
+| gateway.serviceAnnotations | object | `{}` | Annotations to add to the gateway service |
+| gateway.serviceType | string | `"LoadBalancer"` | Service Type of gateway Service |
 | identityTrustDomain | string | `"cluster.local"` | Identity Trust Domain of the certificate authority |
 | installNamespace | bool | `true` | If the namespace should be installed |
 | linkerdNamespace | string | `"linkerd"` | Namespace of linkerd installation |

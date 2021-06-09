@@ -111,9 +111,9 @@ proxy:
 
 # proxy-init configuration
 proxyInit:
-  # -- Default set of inbound ports to skip via itpables
+  # -- Default set of inbound ports to skip via iptables
   ignoreInboundPorts: ""
-  # -- Default set of outbound ports to skip via itpables
+  # -- Default set of outbound ports to skip via iptables
   ignoreOutboundPorts: ""
   image:
     # -- Docker image for the proxy-init container
@@ -122,7 +122,7 @@ proxyInit:
     # @default -- imagePullPolicy
     pullPolicy: ""
     # -- Tag for the proxy-init container Docker image
-    version: v1.3.11
+    version: v1.3.12
   resources:
     cpu:
       # -- Maximum amount of CPU units that the proxy-init container can use

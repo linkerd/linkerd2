@@ -1323,6 +1323,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 	t.Run("Returns an error if not all pods are running", func(t *testing.T) {
 		pods := []corev1.Pod{
 			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
+			pod("linkerd-destination-9849948665-37082", corev1.PodFailed, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodFailed, true),
 		}
 
@@ -1330,7 +1331,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "No running pods for \"linkerd-identity\"" {
+		if err.Error() != "No running pods for \"linkerd-destination\"" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -1349,6 +1350,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 
 	t.Run("Returns nil if all pods are running and all containers are ready", func(t *testing.T) {
 		pods := []corev1.Pod{
+			pod("linkerd-destination-9849948665-37082", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-proxy-injector-5f79ff4844-", corev1.PodRunning, true),
 		}
@@ -1361,6 +1363,9 @@ func TestValidateControlPlanePods(t *testing.T) {
 
 	t.Run("Returns nil if, HA mode, at least one pod of each control plane component is ready", func(t *testing.T) {
 		pods := []corev1.Pod{
+			pod("linkerd-destination-9843948665-48082", corev1.PodRunning, true),
+			pod("linkerd-destination-9843948665-48083", corev1.PodRunning, false),
+			pod("linkerd-destination-9843948665-48084", corev1.PodFailed, false),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27983", corev1.PodRunning, false),
 			pod("linkerd-identity-6849948664-27984", corev1.PodFailed, false),
@@ -1375,6 +1380,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 
 	t.Run("Returns nil if all linkerd pods are running and pod list includes non-linkerd pod", func(t *testing.T) {
 		pods := []corev1.Pod{
+			pod("linkerd-destination-9843948665-48082", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-proxy-injector-5f79ff4844-", corev1.PodRunning, true),
 			pod("hello-43c25d", corev1.PodRunning, true),
@@ -1634,6 +1640,67 @@ func TestValidateDataPlanePods(t *testing.T) {
 						{
 							Name:  k8s.ProxyContainerName,
 							Ready: true,
+						},
+					},
+				},
+			},
+		}
+
+		err := validateDataPlanePods(pods, "emojivoto")
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+	})
+
+	// This test relates to https://github.com/linkerd/linkerd2/issues/6128
+	t.Run("Returns nil if some pods are in the Succeeded phase and their proxies are no longer ready", func(t *testing.T) {
+		pods := []corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "emoji-d9c7866bb-7v74n"},
+				Status: corev1.PodStatus{
+					Phase:  "Succeeded",
+					Reason: "Completed",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: false,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "vote-bot-644b8cb6b4-g8nlr"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "voting-65b9fffd77-rlwsd"},
+				Status: corev1.PodStatus{
+					Phase: "Running",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: true,
+						},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "web-6cfbccc48-5g8px"},
+				Status: corev1.PodStatus{
+					Phase:  "Succeeded",
+					Reason: "Completed",
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  k8s.ProxyContainerName,
+							Ready: false,
 						},
 					},
 				},
@@ -2055,7 +2122,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.11","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.12","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}`,
 			},
@@ -2101,7 +2168,7 @@ data:
 					},
 					DisableExternalProfiles: true,
 					ProxyVersion:            "install-proxy-version",
-					ProxyInitImageVersion:   "v1.3.11",
+					ProxyInitImageVersion:   "v1.3.12",
 					DebugImage: &configPb.Image{
 						ImageName:  "cr.l5d.io/linkerd/debug",
 						PullPolicy: "IfNotPresent",
@@ -2193,7 +2260,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.11","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.12","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
   values: |
@@ -2355,7 +2422,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.11","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.12","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
   values: |

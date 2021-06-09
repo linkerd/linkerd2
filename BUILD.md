@@ -28,7 +28,7 @@ about testing from source can be found in the [TEST.md](TEST.md) guide.
     - [First time setup](#first-time-setup)
     - [Run web standalone](#run-web-standalone)
     - [Webpack dev server](#webpack-dev-server)
-    - [Javascript dependencies](#javascript-dependencies)
+    - [JavaScript dependencies](#javascript-dependencies)
     - [Translations](#translations)
   - [Rust](#rust)
     - [Docker](#docker)
@@ -73,7 +73,7 @@ its extensions are written in Go. The dashboard UI is a React application.
   - [`web`](web): Provides a UI dashboard to view and drive the control plane.
 - [`multicluster extension`](multicluster)
   - [`linkerd-gateway`]: Accepts requests from other clusters and forwards them
-    to the appropriate destionation in the local cluster.
+    to the appropriate destination in the local cluster.
   - [`linkerd-service-mirror-xxx`](multicluster/service-mirror): Controller
     observing the labeling of exported services in the target cluster, each one
     for which it will create a mirrored service in the local cluster.
@@ -375,13 +375,13 @@ To develop with a webpack dev server:
       on :8185
     - `grafana` is port-forwarded from the Kubernetes cluster via `kubectl` on
       :3000
-    - `metrics-api` is port-forwarded from the Kubernets cluster via `kubectl`
+    - `metrics-api` is port-forwarded from the Kubernetes cluster via `kubectl`
       on :8085
 
 2. Go to [http://localhost:7777](http://localhost:7777) to see everything
    running.
 
-#### Javascript dependencies
+#### JavaScript dependencies
 
 To add a JS dependency:
 
@@ -420,6 +420,27 @@ proxy binary:
 
 ```bash
 bin/docker-build-proxy
+```
+
+#### Locally built proxy
+
+If you want to deploy a locally built proxy, you can build it in the
+[`linkerd2-proxy`](https://github.com/linkerd/linkerd2-proxy) repo by running:
+
+```bash
+DOCKER_TAG=cr.l5d.io/linkerd/proxy:dev make docker
+```
+
+Then, in this repo, run:
+
+```bash
+./bin/k3d image import cr.l5d.io/linkerd/proxy:dev
+```
+
+Now, to make a pod use your image, add the following annotations to it:
+
+```yaml
+config.linkerd.io/proxy-version: dev
 ```
 
 ### Multi-architecture builds

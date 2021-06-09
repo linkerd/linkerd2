@@ -33,9 +33,8 @@ const (
 )
 
 var (
-	addOnOverwrite bool
-	manifests      string
-	force          bool
+	manifests string
+	force     bool
 )
 
 /* The upgrade commands all follow the same flow:
@@ -231,10 +230,6 @@ func makeUpgradeFlags() *pflag.FlagSet {
 		&force, "force", false,
 		"Force upgrade operation even when issuer certificate does not work with the trust anchors of all proxies",
 	)
-	upgradeFlags.BoolVar(
-		&addOnOverwrite, "addon-overwrite", false,
-		"Overwrite add-on configuration instead of loading the existing config (or reset to defaults if no new config is specified)",
-	)
 	return upgradeFlags
 }
 
@@ -265,7 +260,7 @@ func upgrade(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, stage
 		return bytes.Buffer{}, err
 	}
 	// If there is no linkerd-config-overrides secret, assume we are upgrading
-	// from a verion of Linkerd prior to the introduction of this secret.  In
+	// from a version of Linkerd prior to the introduction of this secret.  In
 	// this case we load the values from the legacy linkerd-config configmap.
 	if values == nil {
 		values, err = loadStoredValuesLegacy(ctx, k)

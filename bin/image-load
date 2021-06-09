@@ -4,30 +4,47 @@ set -eo pipefail
 
 kind=""
 k3d=""
+cluster=""
 archive=""
+preload=""
+images_default=(proxy controller web metrics-api grafana debug cni-plugin jaeger-webhook tap)
+images=()
+
+usage() {
+  printf "Load into KinD/k3d the referred Linkerd images. If no images are specified all of them are loaded (%s)\n" "${images_default[*]}"
+  echo ""
+  echo "Usage:"
+  echo "    bin/image-load [--kind] [--k3d] [--cluster name] [--preload] [--archive] [image] [image]..."
+  echo ""
+  echo "Examples:"
+  echo ""
+  echo "    # Load all the images from the local docker instance into KinD"
+  echo "    bin/image-load"
+  echo ""
+  echo "    # Load only the proxy and controller images into k3d"
+  echo "    bin/image-load --k3d proxy controller"
+  echo ""
+  echo "    # Load all the images from tar files located under the 'image-archives' directory into k3d"
+  echo "    bin/image-load --k3d --archive"
+  echo ""
+  echo "Available Commands:"
+  echo "    --cluster: target cluster name (defaults to 'k3s-default' under k3d, and 'kind' under KinD)."
+  echo "    --kind: use a KinD cluster (default)."
+  echo "    --k3d: use a k3d cluster."
+  echo "    --preload: pull the docker images from a public registry prior to loading them into the cluster, which appears to be faster than having k3d pulling them itself."
+  echo "    --archive: load the images from local .tar files in the current directory."
+}
 
 while :
 do
   case $1 in
     -h|--help)
-      echo "Load into KinD/k3d the images for Linkerd's proxy, controller, metrics-api, web, grafana, cli-bin, tap, debug and cni-plugin."
-      echo ""
-      echo "Usage:"
-      echo "    bin/image-load [--kind] [--k3d] [--archive]"
-      echo ""
-      echo "Examples:"
-      echo ""
-      echo "    # Load images from the local docker instance into KinD"
-      echo "    bin/image-load"
-      echo ""
-      echo "    # Load images from tar files located under the 'image-archives' directory into k3d"
-      echo "    bin/image-load --k3d --archive"
-      echo ""
-      echo "Available Commands:"
-      echo "    --kind: use a KinD cluster (default)."
-      echo "    --k3d: use a k3d cluster."
-      echo "    --archive: load the images from local .tar files in the current directory."
+      usage
       exit 0
+      ;;
+    --cluster)
+      cluster=$2
+      shift
       ;;
     --kind)
       kind=1
@@ -35,14 +52,29 @@ do
     --k3d)
       k3d=1
       ;;
+    --preload)
+      preload=1
+      ;;
     --archive)
       archive=1
       ;;
     *)
-      break
+      if [ -z "$1" ]; then
+        break
+      fi
+      if echo "$1" | grep -q '^-.*' ; then
+        echo "Unexpected flag: $1" >&2
+        usage
+        exit 1
+      fi
+      images+=("$1")
   esac
   shift
 done
+
+if [ ${#images[@]} -eq 0 ]; then
+  images=("${images_default[@]}")
+fi
 
 bindir=$( cd "${0%/*}" && pwd )
 
@@ -50,15 +82,20 @@ if [ -n "$k3d" ]; then
   if [ -n "$kind" ]; then
     echo $k3d
     echo "Error: --kind and --k3d can't be used simultaneously" >&2
+    usage
     exit 1
   fi
-  cluster=${1:-"k3s-default"}
+  if [ -z "$cluster" ]; then
+    cluster="k3s-default"
+  fi
   bin="$bindir"/k3d
   image_sub_cmd=(image import -c "$cluster")
 else
   kind=1
-  cluster=${1:-"kind"}
   bin="$bindir"/kind
+  if [ -z "$cluster" ]; then
+    cluster="kind"
+  fi
   if [ $archive ]; then
     image_sub_cmd=(load image-archive --name "$cluster")
   else
@@ -79,19 +116,23 @@ fi
 "$bin" version
 
 rm -f load_fail
-for img in proxy controller web metrics-api grafana debug cni-plugin jaeger-webhook tap; do
-  printf 'Importing %s...\n' $img
+for i in "${!images[@]}"; do
   if [ $archive ]; then
-    param="image-archives/$img.tar"
+    param="image-archives/${images[$i]}.tar"
   else
-    param="$DOCKER_REGISTRY/$img:$TAG"
+    param="$DOCKER_REGISTRY/${images[$i]}:$TAG"
+    if [ $preload ]; then
+      "$bindir"/docker pull -q "$param" || (echo "Error pulling image $param"; touch load_fail) &
+    fi
   fi
 
   if [ -n "$kind" ]; then
+    printf 'Importing %s...\n' "${images[$i]}"
     "$bin" "${image_sub_cmd[@]}" "${param[@]}" || touch load_fail &
   else
     # "k3d image import" commands don't behave well when parallelized
-    "$bin" "${image_sub_cmd[@]}" "${param[@]}"
+    # but all the images can be loaded in a single invocation
+    images[$i]=$param
   fi
 done
 
@@ -100,4 +141,9 @@ if [ -f load_fail ]; then
   echo "Loading docker images into the cluster failed."
   rm load_fail
   exit 1
+fi
+
+if [ -n "$k3d" ]; then
+  printf 'Importing %s...\n' "${images[@]}"
+  "$bin" "${image_sub_cmd[@]}" "${images[@]}"
 fi

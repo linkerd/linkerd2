@@ -196,7 +196,7 @@ func OverrideFromFile(values map[string]interface{}, fs http.FileSystem, chartNa
 }
 
 // MergeMaps returns the resultant map after merging given two maps of type map[string]interface{}
-// The inputs are not mutated and the second map i.e b's values take predence during merge.
+// The inputs are not mutated and the second map i.e b's values take precedence during merge.
 // This gives semantically correct merge compared with `mergo.Merge` (with boolean values).
 // See https://github.com/imdario/mergo/issues/129
 func MergeMaps(a, b map[string]interface{}) map[string]interface{} {

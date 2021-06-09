@@ -9,6 +9,7 @@ set +e
 export default_test_names=(deep external-issuer external-prometheus-deep helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
 export external_resource_test_names=(external-resources)
 export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}" "${external_resource_test_names[*]}")
+images_load_default=(proxy controller web metrics-api grafana tap)
 
 tests_usage() {
   progname="${0##*/}"
@@ -39,7 +40,10 @@ Available Commands:
     --name: the argument to this option is the specific test to run
     --skip-cluster-create: skip k3d cluster creation step and run tests in an existing cluster
     --skip-cluster-delete: if the tests succeed, don't delete the created resources nor the cluster
-    --images: by default load images into the cluster from the local docker cache (docker), or from tar files located under the 'image-archives' directory (archive), or completely skip image loading (skip)
+    --images: set to 'docker' (default) to load images into the cluster from the local docker cache;
+      set to 'preload' to also load them from the local docker cache, after having pulled them from
+      a public registry (appears to be faster than having k3d pulling them itself);
+      set to 'archive' to load the images from tar files located under the image-archives directory
     --cleanup-docker: delete the 'images-archive' directory and prune the docker cache"
 }
 
@@ -79,7 +83,7 @@ handle_tests_input() {
           tests_usage "$0" >&2
           exit 64
         fi
-        if [[ $images != "docker" && $images != "archive" && $images != "skip" ]]; then
+        if [[ $images != "docker" && $images != "archive" && $images != "preload" ]]; then
           echo 'Error: the argument for --images was invalid' >&2
           tests_usage "$0" >&2
           exit 64
@@ -116,7 +120,7 @@ handle_tests_input() {
           exit 64
         fi
         if [ -n "$linkerd_path" ]; then
-          echo "Multliple linkerd paths specified:" >&2
+          echo "Multiple linkerd paths specified:" >&2
           echo "  $linkerd_path" >&2
           echo "  $1" >&2
           tests_usage "$0" >&2
@@ -163,7 +167,7 @@ handle_cleanup_input() {
           exit 64
         fi
         if [ -n "$linkerd_path" ]; then
-          echo "Multliple linkerd paths specified:" >&2
+          echo "Multiple linkerd paths specified:" >&2
           echo "  $linkerd_path" >&2
           echo "  $1" >&2
           cleanup_usage "$0" >&2
@@ -209,10 +213,6 @@ check_linkerd_binary() {
 
 ##### Cluster helpers #####
 
-create_cluster() {
-  "$bindir"/k3d cluster create "$@"
-}
-
 check_cluster() {
   check_if_k8s_reachable
   check_if_l5d_exists
@@ -235,12 +235,8 @@ setup_cluster() {
 
   test_setup
   if [ -z "$skip_cluster_create" ]; then
-    create_cluster "$@"
+    "$bindir"/k3d cluster create "$@"
     image_load "$name"
-    if [ -n "$cleanup_docker" ]; then
-      rm -rf image-archives
-      docker system prune --force --all
-    fi
   fi
   check_cluster
 }
@@ -283,13 +279,24 @@ Help:
 
 image_load() {
   cluster_name=$1
+  images_load=("${images_load_default[@]}")
+  if [[ "$cluster_name" = *deep ]]; then
+    images_load+=(jaeger-webhook)
+  fi
+  if [ "$cluster_name" = "cni-calico-deep" ]; then
+    images_load+=(cni-plugin)
+  fi
   case $images in
     docker)
-      "$bindir"/image-load --k3d "$cluster_name"
+      "$bindir"/image-load --k3d --cluster "$cluster_name" "${images_load[@]}"
+      exit_on_err "error calling '$bindir/image-load'"
+      ;;
+    preload)
+      "$bindir"/image-load --k3d --cluster "$cluster_name" --preload "${images_load[@]}"
       exit_on_err "error calling '$bindir/image-load'"
       ;;
     archive)
-      "$bindir"/image-load --k3d --archive "$cluster_name"
+      "$bindir"/image-load --k3d --archive --cluster "$cluster_name" "${images_load[@]}"
       exit_on_err "error calling '$bindir/image-load'"
       ;;
   esac
@@ -297,19 +304,20 @@ image_load() {
 
 start_test() {
   local name=$1
+  local config=(--no-hostip --k3s-server-arg '--disable=local-storage,metrics-server')
 
   case $name in
     cluster-domain)
-      config=("$name" --k3s-server-arg --cluster-domain=custom.domain)
+      config=("$name" "${config[@]}" --no-lb --k3s-server-arg --cluster-domain=custom.domain --k3s-server-arg '--disable=servicelb,traefik')
       ;;
     cni-calico-deep)
-      config=("$name" --k3s-server-arg --write-kubeconfig-mode=644 --k3s-server-arg --flannel-backend=none --k3s-server-arg --cluster-cidr=192.168.0.0/16 --k3s-server-arg --disable=traefik)
+      config=("$name" "${config[@]}" --no-lb --k3s-server-arg --write-kubeconfig-mode=644 --k3s-server-arg --flannel-backend=none --k3s-server-arg --cluster-cidr=192.168.0.0/16 --k3s-server-arg '--disable=servicelb,traefik')
       ;;
     multicluster)
-      config=(--network multicluster-test)
+      config=("${config[@]}" --network multicluster-test)
       ;;
     *)
-      config=("$name")
+      config=("$name" "${config[@]}" --no-lb --k3s-server-arg '--disable=servicelb,traefik')
       ;;
   esac
 
@@ -323,6 +331,10 @@ start_test() {
 start_single_test() {
   name=$1
   setup_cluster "$@"
+  if [ -n "$cleanup_docker" ]; then
+    rm -rf image-archives
+    docker system prune --force --all
+  fi
   run_"$name"_test
   exit_on_err "error calling 'run_${name}_test'"
   finish "$name"
@@ -331,6 +343,10 @@ start_single_test() {
 start_multicluster_test() {
   setup_cluster source "$@"
   setup_cluster target "$@"
+  if [ -n "$cleanup_docker" ]; then
+    rm -rf image-archives
+    docker system prune --force --all
+  fi
   run_multicluster_test
   exit_on_err "error calling 'run_multicluster_test'"
   finish source
@@ -348,7 +364,7 @@ run_test(){
 
   printf 'Test script: [%s] Params: [%s]\n' "${filename##*/}" "$*"
   # Exit on failure here
-  GO111MODULE=on go test --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --helm-path="$helm_path" --k8s-context="$context" --integration-tests "$@" || exit 1
+  GO111MODULE=on go test -test.timeout=60m --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --helm-path="$helm_path" --k8s-context="$context" --integration-tests "$@" || exit 1
 }
 
 # Returns the latest version for the release channel
@@ -386,7 +402,7 @@ install_version() {
 
     (
         set -x
-        "$linkerd_path" check 2>&1
+        "$linkerd_path" check --wait 60m 2>&1
     )
     exit_on_err 'install_version() - linkerd check failed'
 
@@ -562,7 +578,7 @@ run_external-resources_test(){
 }
 
 # exit_on_err should be called right after a command to check the result status
-# and eventually generate a Github error annotation. Do not use after calls to
+# and eventually generate a GitHub error annotation. Do not use after calls to
 # `go test` as that generates its own annotations. Note this should be called
 # outside subshells in order for the script to terminate.
 exit_on_err() {

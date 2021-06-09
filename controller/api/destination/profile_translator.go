@@ -2,6 +2,8 @@ package destination
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
@@ -104,18 +106,26 @@ func (pt *profileTranslator) toServiceProfile(profile *sp.ServiceProfile) (*pb.D
 	return &pb.DestinationProfile{
 		Routes:             routes,
 		RetryBudget:        budget,
-		DstOverrides:       toDstOverrides(profile.Spec.DstOverrides),
+		DstOverrides:       toDstOverrides(profile.Spec.DstOverrides, pt.port),
 		FullyQualifiedName: pt.fullyQualifiedName,
 		Endpoint:           pt.endpoint,
 		OpaqueProtocol:     opaqueProtocol,
 	}, nil
 }
 
-func toDstOverrides(dsts []*sp.WeightedDst) []*pb.WeightedDst {
+func toDstOverrides(dsts []*sp.WeightedDst, port uint32) []*pb.WeightedDst {
 	pbDsts := []*pb.WeightedDst{}
 	for _, dst := range dsts {
+		authority := dst.Authority
+		// Authority should be a FQDN with port
+		// Use the port from GetProfile is absent in authority
+		hostPort := strings.Split(authority, ":")
+		if len(hostPort) == 1 {
+			authority = fmt.Sprintf("%s:%d", authority, port)
+		}
+
 		pbDst := &pb.WeightedDst{
-			Authority: dst.Authority,
+			Authority: authority,
 			// Weights are expressed in decimillis: 10_000 represents 100%
 			Weight: uint32(dst.Weight.MilliValue() * millisPerDecimilli),
 		}

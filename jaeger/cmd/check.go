@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
@@ -17,6 +18,10 @@ const (
 
 	// JaegerExtensionName is the name of jaeger extension
 	JaegerExtensionName = "jaeger"
+
+	// JaegerLegacyExtension is the name of the jaeger extension prior to
+	// stable-2.10.0 when the linkerd prefix was removed.
+	JaegerLegacyExtension = "linkerd-jaeger"
 
 	// linkerdJaegerExtensionCheck adds checks related to the jaeger extension
 	linkerdJaegerExtensionCheck healthcheck.CategoryID = "linkerd-jaeger"
@@ -200,6 +205,11 @@ code.`,
 	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 	cmd.Flags().BoolVar(&options.proxy, "proxy", options.proxy, "Also run data-plane checks, to determine if the data plane is healthy")
 	cmd.Flags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
+
+	pkgcmd.ConfigureNamespaceFlagCompletion(
+		cmd, []string{"namespace"},
+		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
+	pkgcmd.ConfigureOutputFlagCompletion(cmd)
 
 	return cmd
 }

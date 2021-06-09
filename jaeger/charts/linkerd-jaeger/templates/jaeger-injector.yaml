@@ -27,6 +27,10 @@ spec:
         linkerd.io/extension: jaeger
         component: jaeger-injector
     spec:
+      {{- if .Values.webhook.tolerations -}}
+      {{- include "linkerd.tolerations" (dict "Values" .Values.webhook) | nindent 6 }}
+      {{- end -}}
+      {{- include "linkerd.node-selector" (dict "Values" .Values.webhook) | nindent 6 }}
       containers:
       - args:
         - -collector-svc-addr={{.Values.webhook.collectorSvcAddr}}

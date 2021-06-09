@@ -1,23 +1,25 @@
 name: Static checks
 on:
-  pull_request: {}
+  pull_request:
+    paths-ignore:
+    - 'web/app/package.json'
   push:
     paths-ignore:
-    - '*.md'
-    - '**/*.md'
+    - 'web/app/package.json'
     branches:
     - main
+permissions: 
+  contents: read
 jobs:
   go_lint:
     name: Go lint
     timeout-minutes: 10
     runs-on: ubuntu-20.04
     container:
-      image: golang:1.16.2
+      image: golang:1.16.4
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Go lint
       run: bin/lint --verbose
   go_format:
@@ -25,11 +27,10 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
     container:
-      image: golang:1.16.2
+      image: golang:1.16.4
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Format
       run: bin/fmt
   proto_diff:
@@ -37,13 +38,12 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
     container:
-      image: golang:1.16.2
+      image: golang:1.16.4
     steps:
       - name: Prerequisites
         run: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install unzip
       - name: Checkout code
-        # actions/checkout@v2
-        uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+        uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
       - name: Diff proto files
         run: bin/protoc-diff
   shellcheck:
@@ -52,8 +52,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: shellcheck
       # For more information on shellcheck failures:
       # https://github.com/koalaman/shellcheck/wiki/Checks
@@ -65,8 +64,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Chocolatey - lint
       # devblackops/github-action-psscriptanalyzer@v2.3.0
       uses: devblackops/github-action-psscriptanalyzer@819c15c7d02dec0611fe3ded6f8e259b0b925754
@@ -82,8 +80,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Markdown lint
       run: bin/markdownlint-all
   chart_docs_diff:
@@ -91,7 +88,6 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Check docs for diff
       run: bin/helm-docs-diff

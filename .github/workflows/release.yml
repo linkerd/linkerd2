@@ -3,6 +3,8 @@ on:
   push:
     tags:
     - "*"
+permissions: 
+  contents: read
 env:
   GH_ANNOTATION: true
 jobs:
@@ -16,8 +18,7 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -77,8 +78,7 @@ jobs:
     needs: [docker_build]
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Try to load cached Go modules
       # actions/cache@v1.1.2
       uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
@@ -110,12 +110,11 @@ jobs:
         - cni-calico-deep
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
-    timeout-minutes: 30
+    timeout-minutes: 60
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Try to load cached Go modules
       # actions/cache@v1.1.2
       uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
@@ -135,7 +134,7 @@ jobs:
         bin/docker-pull-binaries $TAG
         # Validate the CLI version matches the current build tag.
         [[ "$TAG" == "$($CMD version --short --client)" ]]
-        bin/tests --images skip --name ${{ matrix.integration_test }} "$CMD"
+        bin/tests --images preload --name ${{ matrix.integration_test }} "$CMD"
   arm64_integration_tests:
     name: ARM64 integration tests
     timeout-minutes: 60
@@ -144,8 +143,7 @@ jobs:
     steps:
     - name: Checkout code
       #if: startsWith(github.ref, 'refs/tags/stable')
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Try to load cached Go modules
       #if: startsWith(github.ref, 'refs/tags/stable')
       # actions/cache@v1.1.2
@@ -177,7 +175,7 @@ jobs:
       #if: startsWith(github.ref, 'refs/tags/stable')
       env:
         RUN_ARM_TEST: 1
-      run: bin/tests --name deep --images skip --skip-cluster-create "$CMD"
+      run: bin/tests --name deep --images preload --skip-cluster-create "$CMD"
     - name: CNI tests
       #if: startsWith(github.ref, 'refs/tags/stable')
       run: |
@@ -197,8 +195,7 @@ jobs:
     steps:
     - name: Checkout code
       if: startsWith(github.ref, 'refs/tags/stable')
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Chocolatey - update nuspec
       if: startsWith(github.ref, 'refs/tags/stable')
       run: |
@@ -223,10 +220,11 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
     runs-on: ubuntu-20.04
     needs: [choco_pack]
+    permissions:
+      contents: write
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -270,6 +268,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
     runs-on: ubuntu-20.04
     needs: [gh_release]
+    permissions:
+      contents: write
     steps:
     - name: Create linkerd/website repository dispatch event
       # peter-evans/repository-dispatch@v1
@@ -286,8 +286,7 @@ jobs:
     needs: [website_publish]
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -316,8 +315,7 @@ jobs:
     needs: [gh_release]
     steps:
     - name: Checkout code
-      # actions/checkout@v2
-      uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Configure gsutils
       # linkerd/linkerd2-action-gcloud@v1.0.1
       uses: linkerd/linkerd2-action-gcloud@308c4df7314264c90d240e77e27d0d875d3c8ec1

@@ -34,7 +34,7 @@ func TestTreeGetString(t *testing.T) {
 		},
 		{
 			values,
-			[]string{"global", "namespac"},
+			[]string{"global", "namespace"},
 			"",
 			fmt.Errorf("could not find node global"),
 		},

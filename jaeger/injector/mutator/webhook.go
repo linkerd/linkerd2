@@ -10,7 +10,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/webhook"
 	"github.com/linkerd/linkerd2/jaeger/pkg/labels"
-	l5dLables "github.com/linkerd/linkerd2/pkg/k8s"
+	l5dLabels "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/common/log"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	collectorSvcAddrAnnotation    = l5dLables.ProxyConfigAnnotationsPrefix + "/trace-collector"
-	collectorSvcAccountAnnotation = l5dLables.ProxyConfigAnnotationsPrefixAlpha +
+	collectorSvcAddrAnnotation    = l5dLabels.ProxyConfigAnnotationsPrefix + "/trace-collector"
+	collectorSvcAccountAnnotation = l5dLabels.ProxyConfigAnnotationsPrefixAlpha +
 		"/trace-collector-service-account"
 )
 

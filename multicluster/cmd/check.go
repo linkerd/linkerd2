@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/multicluster"
@@ -28,6 +29,10 @@ import (
 const (
 	// MulticlusterExtensionName is the name of the multicluster extension
 	MulticlusterExtensionName = "multicluster"
+
+	// MulticlusterLegacyExtension is the name of the multicluster extension
+	// prior to stable-2.10.0 when the linkerd prefix was removed.
+	MulticlusterLegacyExtension = "linkerd-multicluster"
 
 	// linkerdMulticlusterExtensionCheck adds checks related to the multicluster extension
 	linkerdMulticlusterExtensionCheck healthcheck.CategoryID = "linkerd-multicluster"
@@ -102,6 +107,12 @@ non-zero exit code.`,
 	cmd.Flags().MarkHidden("proxy")
 	cmd.Flags().StringP("namespace", "n", "", "")
 	cmd.Flags().MarkHidden("namespace")
+
+	pkgcmd.ConfigureNamespaceFlagCompletion(
+		cmd, []string{"namespace"},
+		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
+	pkgcmd.ConfigureOutputFlagCompletion(cmd)
+
 	return cmd
 }
 

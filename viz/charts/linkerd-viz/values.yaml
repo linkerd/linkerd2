@@ -28,9 +28,9 @@ installNamespace: true
 # -- Namespace in which the Linkerd Viz extension has to be installed
 namespace: linkerd-viz
 
-# -- NodeSelector section, See the
+# -- Default nodeSelector section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
-nodeSelector:
+nodeSelector: &default_node_selector
   beta.kubernetes.io/os: linux
 
 # -- For Private docker registries, authentication is needed.
@@ -38,10 +38,10 @@ nodeSelector:
 imagePullSecrets: []
 # - name: my-private-docker-registry-login-secret
 
-# -- Tolerations section, See the
+# -- Default tolerations section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
 # for more information
-tolerations:
+tolerations: &default_tolerations
 
 # -- Enables Pod Anti Affinity logic to balance the placement of replicas
 # across hosts and zones for High Availability.
@@ -97,6 +97,14 @@ metricsAPI:
 
   # -- UID for the metrics-api resource
   UID:
+
+  # -- NodeSelector section, See the
+  # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
+  nodeSelector: *default_node_selector
+  # -- Tolerations section, See the
+  # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+  # for more information
+  tolerations: *default_tolerations
 
 # tap configuration
 tap:
@@ -183,7 +191,7 @@ tapInjector:
     # matchLabels:
     #   foo: bar
   # -- UID for the tapInjector resource
-  UID: 
+  UID:
   failurePolicy: Ignore
   resources:
     cpu:
@@ -297,6 +305,14 @@ grafana:
     # -- If set, overrides default proxy resources for the proxy injected
     # into the grafana component
     # resources:
+
+  # -- NodeSelector section, See the
+  # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
+  nodeSelector: *default_node_selector
+  # -- Tolerations section, See the
+  # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+  # for more information
+  tolerations: *default_tolerations
 
 prometheus:
   # -- toggle field to enable or disable prometheus
@@ -425,3 +441,11 @@ prometheus:
     # -- If set, overrides default proxy resources for the proxy injected
     # into the prometheus component
     # resources:
+
+  # -- NodeSelector section, See the
+  # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
+  nodeSelector: *default_node_selector
+  # -- Tolerations section, See the
+  # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+  # for more information
+  tolerations: *default_tolerations

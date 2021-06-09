@@ -127,7 +127,7 @@ Describe any implementation changes which are particularly complex or
 unintuitive.
 
 List any follow-up work that will need to be done in a future PR and link to any
-relevant Github issues.
+relevant GitHub issues.
 
 #### Validation ####
 

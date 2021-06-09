@@ -156,11 +156,6 @@ const (
 	keyKeyName                    = "tls.key"
 )
 
-// DefaultHintBaseURL is the base URL on the linkerd.io website that all check hints
-// point to. Each check adds its own `hintAnchor` to specify a location on the
-// page.
-const DefaultHintBaseURL = "https://linkerd.io/checks/#"
-
 // AllowedClockSkew sets the allowed skew in clock synchronization
 // between the system running inject command and the node(s), being
 // based on assumed node's heartbeat interval (5 minutes) plus default TLS
@@ -367,13 +362,12 @@ type Category struct {
 }
 
 // NewCategory returns an instance of Category with the specified data
-// and the DefaultHintBaseURL
 func NewCategory(id CategoryID, checkers []Checker, enabled bool) *Category {
 	return &Category{
 		ID:          id,
 		checkers:    checkers,
 		enabled:     enabled,
-		hintBaseURL: DefaultHintBaseURL,
+		hintBaseURL: HintBaseURL(version.Version),
 	}
 }
 
@@ -496,7 +490,7 @@ func (hc *HealthChecker) GetCategories() []*Category {
 //
 // Note that all checks should include a `hintAnchor` with a corresponding section
 // in the linkerd check faq:
-// https://linkerd.io/checks/#
+// https://linkerd.io/{major-version}/checks/#
 func (hc *HealthChecker) allCategories() []*Category {
 	return []*Category{
 		NewCategory(
@@ -1435,7 +1429,8 @@ func (hc *HealthChecker) CheckProxyVersionsUpToDate(pods []corev1.Pod) error {
 func CheckProxyVersionsUpToDate(pods []corev1.Pod, versions version.Channels) error {
 	outdatedPods := []string{}
 	for _, pod := range pods {
-		if containsProxy(pod) {
+		status := k8s.GetPodStatus(pod)
+		if status == string(corev1.PodRunning) && containsProxy(pod) {
 			proxyVersion := k8s.GetProxyVersion(pod)
 			if err := versions.Match(proxyVersion); err != nil {
 				outdatedPods = append(outdatedPods, fmt.Sprintf("\t* %s (%s)", pod.Name, proxyVersion))
@@ -1797,7 +1792,7 @@ func (hc *HealthChecker) FetchCredsFromSecret(ctx context.Context, namespace str
 	return cred, nil
 }
 
-// FetchCredsFromOldSecret function can be removed in later versions, once eihter all webhook secrets are recreated for each update
+// FetchCredsFromOldSecret function can be removed in later versions, once either all webhook secrets are recreated for each update
 // (see https://github.com/linkerd/linkerd2/issues/4813)
 // or later releases are only expected to update from the new names.
 func (hc *HealthChecker) FetchCredsFromOldSecret(ctx context.Context, namespace string, secretName string) (*tls.Cred, error) {
@@ -1947,7 +1942,7 @@ func (hc *HealthChecker) checkServiceAccounts(ctx context.Context, saNames []str
 	return CheckServiceAccounts(ctx, hc.kubeAPI, saNames, ns, labelSelector)
 }
 
-// CheckServiceAccounts check for serivceaccounts
+// CheckServiceAccounts check for serviceaccounts
 func CheckServiceAccounts(ctx context.Context, api *k8s.KubernetesAPI, saNames []string, ns, labelSelector string) error {
 	options := metav1.ListOptions{
 		LabelSelector: labelSelector,
@@ -2459,7 +2454,7 @@ func getPodStatuses(pods []corev1.Pod) map[string]map[string][]corev1.ContainerS
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
-	names := []string{"identity", "proxy-injector"}
+	names := []string{"destination", "identity", "proxy-injector"}
 
 	for _, name := range names {
 		pods, found := statuses[name]
@@ -2506,7 +2501,13 @@ func validateDataPlanePods(pods []corev1.Pod, targetNamespace string) error {
 
 	for _, pod := range pods {
 		status := k8s.GetPodStatus(pod)
-		if status != "Running" && status != "Evicted" {
+		// Skip validating meshed pods that are in the `Completed` state
+		// as they do not have a running proxy
+		if status == "Completed" {
+			continue
+		}
+
+		if status != string(corev1.PodRunning) && status != "Evicted" {
 			return fmt.Errorf("The \"%s\" pod is not running", pod.Name)
 		}
 
@@ -2580,7 +2581,7 @@ func CheckPodsRunning(pods []corev1.Pod, podsNotFoundMsg string) error {
 		return fmt.Errorf(podsNotFoundMsg)
 	}
 	for _, pod := range pods {
-		if pod.Status.Phase != "Running" {
+		if pod.Status.Phase != corev1.PodRunning {
 			return fmt.Errorf("%s status is %s", pod.Name, pod.Status.Phase)
 		}
 

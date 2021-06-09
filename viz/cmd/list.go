@@ -5,7 +5,6 @@ import (
 	"os"
 
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	vizLabels "github.com/linkerd/linkerd2/viz/pkg/labels"
 	"github.com/spf13/cobra"
@@ -26,7 +25,7 @@ func newCmdList() *cobra.Command {
 		Short: "Lists which pods can be tapped",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			k8sAPI, err := pkgK8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 			if err != nil {
 				return err
 			}
@@ -90,5 +89,8 @@ func newCmdList() *cobra.Command {
 	cmd.Flags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "The namespace to list pods in")
 	cmd.Flags().BoolVarP(&options.allNamespaces, "all-namespaces", "A", options.allNamespaces, "If present, list pods across all namespaces")
 
+	pkgcmd.ConfigureNamespaceFlagCompletion(
+		cmd, []string{"namespace"},
+		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
 	return cmd
 }

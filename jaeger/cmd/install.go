@@ -25,6 +25,7 @@ var (
 		"templates/namespace.yaml",
 		"templates/jaeger-injector.yaml",
 		"templates/rbac.yaml",
+		"templates/psp.yaml",
 		"templates/tracing.yaml",
 	}
 )
@@ -43,7 +44,7 @@ func newCmdInstall() *cobra.Command {
   linkerd jaeger install | kubectl apply -f -
   # Install Jaeger extension into a non-default namespace.
   linkerd jaeger install --namespace custom | kubectl apply -f -
-  
+
 The installation can be configured by using the --set, --values, --set-string and --set-file flags.
 A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/jaeger/charts/linkerd-jaeger/README.md
   `,

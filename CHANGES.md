@@ -1,5 +1,143 @@
 # Changes
 
+## edge-21.6.1
+
+This release adds support for retrying HTTP/2 requests with small (<64KB)
+message bodies, allowing the proxy to properly buffer message bodies when
+responses are classified as a failure. Documentation on how to configure
+retries can be found [here](https://linkerd.io/2.10/tasks/configuring-retries/).
+
+This release also modifies the proxy's identity subsystem to instantiate a
+client on-demand so client connections are not retained continually. Also
+included in this release are various bug fixes and improvements as well as
+expanding support for resource-aware tab completion in the jaeger and
+multicluster CLI extensions.
+
+* Added support for specifying a `gateway-port` flag for the `multicluster link`
+  command (thanks @psmit!)
+* Added support for Kubernetes resource aware tab completion for `jaeger` and
+  `multicluster` commands
+* Fixed an issue where `viz`, `jaeger` and `multicluster` extensions could not
+  be installed on `PodSecurityPolicy`-enabled clusters
+* Fixed an issue where `linkerd check --proxy` could incorrectly report
+  out-of-date proxy versions caused by incorrect regex (thanks @aryan9600!)
+* Added support for the proxy to retry HTTP/2 requests with message bodies
+  <= 64KB
+* Modified the proxy's controller stack to create new client connections
+  on-demand
+* Fixed Viz's `uninstall` command to remove viz installations that used the
+  legacy `linkerd.io/extension: linkerd-viz` label (thanks @jsoref!)
+* Expanded the "linkerd-existence" health check to also check for the
+  destination pod readiness
+
+## edge-21.5.3
+
+This edge release contains various improvements to the Viz and Jaeger install
+charts, along with bug fixes in the CLI, and destination. This release also
+adds kubernetes aware autocompletion to all viz commands, along with
+ServiceProfiles to be part of the default `viz install`.
+
+Finally, the proxy has been updated to continue supporting requests without
+`l5d-dst-override` in ingress-mode proxies, to no longer include query parameters
+in the OpenCensus trace spans, and to prevent timeouts with controller clients
+of components with more than one replica.
+
+* Separated protocol hint setting from H2 upgrades in destination profile
+  response, thus preventing `hint.OpaqueTransport` field from not being set when
+  H2 upgrades are disabled
+* Updated OpenCensus trace spans for HTTP requests to no longer include query
+  parameters (thanks @aatarasoff!)
+* Reverted [linkerd/linkerd2-proxy#992](https://github.com/linkerd/linkerd2-proxy/pull/992)
+  to support requests without `l5d-dst-override` in ingress-mode proxies
+* Fixed an issue in the proxy to prevent timeouts with controller clients
+  of components with more than one replica
+* Fixed `linkerd check --proxy` failure with pods that are part of Jobs
+* Updated `viz install` to also include ServiceProfiles of its components.
+  As a side-effect, `linkerd diagnostics install-sp` cmd has been removed
+* Added support for Kubernetes resource aware tab completion for all
+  viz commands
+* Updated destination to prefer `ServiceProfile.dstOverrides` over
+  `TrafficSplit` when both are present for a service
+* Added toggle flags for `collector` and `jaeger` components in the
+  jaeger extension (thanks @tarvip!)
+* Added support for setting `nodeselector`, `toleration` fields for components
+  in the Viz extension (thanks @aatarasoff!)
+* Fixed a templating issue in Viz, making `podAnnotations` field
+  work with prometheus
+* Updated Golang version to 1.16.4
+* Removed unnecessary `--addon-overwrite` flag in `linkerd upgrade`
+
+## edge-21.5.2
+
+This edge release updates the proxy-init container to check whether the iptables
+rules have already been added, which prevents errors if the proxy-init container
+is restarted. Also, the `viz stat` command now has tab completion for Kubernetes
+resources, saving you precious keystrokes! Finally, the proxy has been updated
+with several fixes and improvements.
+
+* Added instructions to `build.md` for using a locally built proxy
+  (thanks @jroper!)
+* Added support for Kubernetes resource aware tab completion to the `viz stat`
+  command
+* Updated `proxy-init` to skip configuring firewall if rules exists
+* Fixed `viz uninstall` to delete all RBAC objects (thanks @aryan9600!)
+* Improved diagnostics for rejected profile discovery
+* Added the `l5d-client-id` header on mutually-authenticated inbound requests so
+  that applications can discover the client's identity.
+* Reduced proxy resource usage when there are no profiles
+* Changed the admin server to assume all meshed connections are HTTP/2 and fail
+  connections when that is not the case
+* Updated the proxy to require the `l5d-dst-override` header on outbound
+  requests when the proxy is in ingress-mode
+* Removed support for TCP-forwarding in ingress-mode
+
+## edge-21.5.1
+
+This edge release adds support for versioned hint URLs in `linkerd check` and
+support for traffic splitting through ServiceProfiles, among other fixes and
+improvements. Additionally, more options have been added to the
+linkerd-multicluster and linkerd-jaeger helm charts.
+
+* Added support for traffic splitting through a ServiceProfile's `dstOverrides`
+  field.
+* Added `nodePorts` option to the multicluster helm chart (thanks @psmit!).
+* Added `nodeSelector` and toleration options to the linkerd-jaeger helm chart
+  (thanks @aatarasoff!).
+* Added versioned hint URLs to the CLI `check` command when encountering an
+  error; each major CLI version will now point to that version's relevant
+  section in the Linkerd troubleshooting page.
+* Fixed an issue in the CLI `check` command where error messages for
+  healthchecks that were being retried would be outputted repeatedly instead of
+  just once.
+* Fixed an issue in the proxy injector where a namespace annotated with opaque
+  ports would overwrite all service annotations.
+* Fixed a regression in the proxy that caused all logs to be output with ANSI
+  control characters, by default logs are output in plaintext now.
+* Simplified proxy internals in order to distinguish endpoint-forwarding logic
+  from the handling of load balanced services.
+* Simplified the ingress-mode outbound proxy by requiring the
+  `l5d-dst-override` header and by failing non-HTTP communication. Proxies
+  running in ingress-mode will not unexpectedly revert to insecure
+  communication as a result.
+
+## edge-21.4.5
+
+This edge release adds a new output format `short` for `linkerd check` to show a
+summary of the check output. This release also includes various proxy bug fixes
+and improvements.
+
+* Proxy
+  * Fixed a task leak that would be triggered when clients disconnect a
+    service in failfast.
+  * Improved admin server protocol detection so that error messages are
+    more descriptive about the underlying problem.
+  * Fixed panics found in fuzz testing. These panics were extremely
+    unlikely to occur in practice and would require very specific
+    configuration overrides to be triggered.
+* CLI
+  * Added support for a new `short` format for the `--output` flag of the `check`
+    command to show a summary of check results
+
 ## edge-21.4.4
 
 This edge release further consolidates the control plane by removing the
@@ -122,7 +260,7 @@ if you are upgrading from `2.9.x` or below versions.
     longer draggable.
   * Updated dashboard build to use webpack v5
   * Added CA certs to the Viz extension's metrics-api container so
-    that it can validate the certifcate of an external Prometheus
+    that it can validate the certificate of an external Prometheus
   * Removed components from the control plane dashboard that now
     are part of the Viz extension
   * Changed web's base image from debian to scratch
@@ -182,13 +320,13 @@ Thanks to all our 2.10 users who helped discover these issues!
 * Modified the proxy-injector to add the opaque ports annotation to pods if
   their namespace has it set
 * Added CA certs to the Viz extension's `metrics-api` container so that it can
-  validate the certifcate of an external Prometheus
+  validate the certificate of an external Prometheus
 * Fixed an issue where inbound TLS detection from non-meshed workloads could
   break
 * Fixed an issue where the admin server's HTTP detection would fail and not
   recover; these are now handled gracefully and without logging warnings
 * Aligned the Helm installation heartbeat schedule to match that of the CLI
-* Fixed an issue with Multicluster's serivce mirror where it's endpoint repair
+* Fixed an issue with Multicluster's service mirror where it's endpoint repair
   retries were not properly rate limited
 * Removed components from the control plane dashboard that now are part of the
   Viz extension
@@ -566,7 +704,7 @@ the robustness of the opaque transport.
 * Changed opaque-port transport to be advertised via ALPN so that new proxies
   will not initiate opaque-transport connections to proxies from prior edge
   releases
-* Added inbound proxy transport metrics with `tls="passhtru"` when forwarding
+* Added inbound proxy transport metrics with `tls="passthru"` when forwarding
   non-mesh TLS connections
 * Thanks to @hs0210 for adding new unit tests!
 
@@ -715,7 +853,7 @@ async runtime.
   `linkerd-jaeger` extension is working correctly
 * Added new `linkerd jaeger uninstall` CLI command to print the `linkerd-jaeger`
   extension's resources so that they can be piped into `kubectl delete`
-* Fixed an issue where the `linkerd-cni` daemgitonset may not be installed on all
+* Fixed an issue where the `linkerd-cni` daemonset may not be installed on all
   intended nodes, due to missing tolerations to the `linkerd-cni` Helm chart
   (thanks @rish-onesignal!)
 * Fixed an issue where the `tap` APIServer would not refresh its certs

@@ -169,7 +169,7 @@ func BytesToTree(bytes []byte) (Tree, error) {
 	return tree, nil
 }
 
-// Diff mashals two objects into their yaml representations and then performs
+// Diff marshals two objects into their yaml representations and then performs
 // a diff on those Trees.  It returns a Tree which represents all of the fields
 // in y which differ from x.
 func Diff(x interface{}, y interface{}) (Tree, error) {

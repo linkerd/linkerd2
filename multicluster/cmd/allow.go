@@ -8,6 +8,7 @@ import (
 	"github.com/linkerd/linkerd2/multicluster/static"
 	mccharts "github.com/linkerd/linkerd2/multicluster/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
@@ -79,6 +80,10 @@ func newAllowCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&opts.ignoreCluster, "ignore-cluster", false, "Ignore cluster configuration")
 	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account-name", "", "The name of the multicluster access service account")
 
+	pkgcmd.ConfigureNamespaceFlagCompletion(
+		cmd, []string{"namespace"},
+		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
+
 	return cmd
 }
 
@@ -108,7 +113,7 @@ func buildMulticlusterAllowValues(ctx context.Context, opts *allowOptions) (*mcc
 
 	defaults.Namespace = opts.namespace
 	defaults.LinkerdVersion = version.Version
-	defaults.Gateway = false
+	defaults.Gateway.Enabled = false
 	defaults.ServiceMirror = false
 	defaults.RemoteMirrorServiceAccount = true
 	defaults.RemoteMirrorServiceAccountName = opts.serviceAccountName

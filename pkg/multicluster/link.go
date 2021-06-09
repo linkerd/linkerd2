@@ -200,7 +200,7 @@ func ExtractProbeSpec(gateway *corev1.Service) (ProbeSpec, error) {
 		return ProbeSpec{}, errors.New("probe path is empty")
 	}
 
-	port, err := extractPort(gateway.Spec.Ports, consts.ProbePortName)
+	port, err := extractPort(gateway.Spec, consts.ProbePortName)
 	if err != nil {
 		return ProbeSpec{}, err
 	}
@@ -248,9 +248,12 @@ func GetLink(ctx context.Context, client dynamic.Interface, namespace, name stri
 	return NewLink(*unstructured)
 }
 
-func extractPort(port []corev1.ServicePort, portName string) (uint32, error) {
-	for _, p := range port {
+func extractPort(spec corev1.ServiceSpec, portName string) (uint32, error) {
+	for _, p := range spec.Ports {
 		if p.Name == portName {
+			if spec.Type == "NodePort" {
+				return uint32(p.NodePort), nil
+			}
 			return uint32(p.Port), nil
 		}
 	}

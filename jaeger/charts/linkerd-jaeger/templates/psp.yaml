@@ -1,0 +1,40 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: psp
+  namespace: {{.Values.namespace}}
+  labels:
+    linkerd.io/extension: jaeger
+rules:
+- apiGroups: ['policy', 'extensions']
+  resources: ['podsecuritypolicies']
+  verbs: ['use']
+  resourceNames:
+  - linkerd-{{.Values.linkerdNamespace}}-control-plane
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jaeger-psp
+  namespace: {{.Values.namespace}}
+  labels:
+    linkerd.io/extension: jaeger
+roleRef:
+  kind: Role
+  name: psp
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+{{ if .Values.collector.enabled -}}
+- kind: ServiceAccount
+  name: collector
+  namespace: {{.Values.namespace}}
+{{ end -}}
+- kind: ServiceAccount
+  name: jaeger-injector
+  namespace: {{.Values.namespace}}
+{{ if .Values.jaeger.enabled -}}
+- kind: ServiceAccount
+  name: jaeger
+  namespace: {{.Values.namespace}}
+{{ end -}}
