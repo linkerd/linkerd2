@@ -84,5 +84,6 @@ linkerd-data-plane
 √ data plane pod labels are configured correctly
 √ data plane service labels are configured correctly
 √ data plane service annotations are configured correctly
+√ opaque ports are properly annotated
 
 Status check results are √

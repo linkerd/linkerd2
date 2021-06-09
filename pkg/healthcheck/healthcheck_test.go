@@ -1779,12 +1779,11 @@ func TestDataPlanePodLabels(t *testing.T) {
 			tc := tc //pin
 			t.Run(tc.description, func(t *testing.T) {
 				err := checkMisconfiguredPodsLabels(tc.pods)
-				fmt.Println(err.Error())
 
 				if err == nil {
 					t.Fatal("Expected error, got nothing")
 				}
-				fmt.Println(err.Error())
+
 				if err.Error() != tc.expectedErrorMsg {
 					t.Fatalf("Unexpected error message: %s", err.Error())
 				}
@@ -3297,6 +3296,348 @@ func TestMinReplicaCheck(t *testing.T) {
 					t.Logf("Expected error: %s\n", tc.expected)
 					t.Logf("Received error: %s\n", err)
 					t.Fatal("test case failed")
+				}
+			}
+		})
+	}
+}
+
+func TestCheckOpaquePortAnnotations(t *testing.T) {
+	hc := NewHealthChecker(
+		[]CategoryID{LinkerdOpaquePortsDefinitionChecks},
+		&Options{
+			DataPlaneNamespace: "test-ns",
+		},
+	)
+
+	var err error
+
+	var testCases = []struct {
+		resources []string
+		expected  error
+	}{
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-service-1
+  namespace: test-ns
+spec:
+  ports:
+    - name: elasticsearch
+      port: 9200
+      protocol: TCP
+      targetPort: 9200
+  selector:
+    service: service-1
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-service-deployment
+  namespace: test-ns
+  labels:
+    service: service-1
+spec:
+  containers:
+    - name: test
+      image: "test-service"
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  annotations:
+    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
+  creationTimestamp: "2021-06-08T08:38:03Z"
+  labels:
+    service: test-service-1
+  name: test-service-1
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.244.3.12
+    nodeName: nodename-1
+    targetRef:
+      kind: Pod
+      name: my-service-deployment
+      namespace: test-ns
+      resourceVersion: "20661"
+      uid: b37782aa-1458-4153-8399-dabc2b29aaae
+  ports:
+  - name: http-port
+    port: 8080
+    protocol: TCP
+`,
+			},
+			expected: nil,
+		},
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-service-1
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
+spec:
+  ports:
+    - name: elasticsearch
+      port: 9200
+      protocol: TCP
+      targetPort: 9200
+  selector:
+    service: service-1
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-service-deployment
+  namespace: test-ns
+  service: service-1
+  labels:
+    service: service-1
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
+spec:
+  containers:
+    - name: test
+      image: "test-service"
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  annotations:
+    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
+  creationTimestamp: "2021-06-08T08:38:03Z"
+  labels:
+    service: test-service-1
+  name: test-service-1
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.244.3.12
+    nodeName: nodename-1
+    targetRef:
+      kind: Pod
+      name: my-service-deployment
+      namespace: test-ns
+      resourceVersion: "20661"
+      uid: b37782aa-1458-4153-8399-dabc2b29aaae
+  ports:
+  - name: http-port
+    port: 8080
+    protocol: TCP			
+`,
+			},
+			expected: nil,
+		},
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-service-1
+  namespace: test-ns
+spec:
+  ports:
+    - name: http
+      port: 9200
+      protocol: TCP
+      targetPort: 9200
+  selector:
+    service: service-1
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-service-deployment
+  namespace: test-ns
+  service: service-1
+  labels:
+    service: service-1
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
+spec:
+  containers:
+    - name: test
+      image: "test-service"
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  annotations:
+    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
+  creationTimestamp: "2021-06-08T08:38:03Z"
+  labels:
+    service: test-service-1
+  name: test-service-1
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.244.3.12
+    nodeName: nodename-1
+    targetRef:
+      kind: Pod
+      name: my-service-deployment
+      namespace: test-ns
+      resourceVersion: "20661"
+      uid: b37782aa-1458-4153-8399-dabc2b29aaae
+  ports:
+  - name: http-port
+    port: 8080
+    protocol: TCP
+`,
+			},
+			expected: fmt.Errorf("\t* pod/my-service-deployment has the annotation %s but service/test-service-1 doesn't", k8s.ProxyOpaquePortsAnnotation),
+		},
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-service-1
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
+spec:
+  ports:
+    - name: http
+      port: 9200
+      protocol: TCP
+      targetPort: 9200
+  selector:
+    service: service-1
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-service-deployment
+  namespace: test-ns
+  service: service-1
+  labels:
+    service: service-1
+spec:
+  containers:
+    - name: test
+      image: "test-service"
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  annotations:
+    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
+  creationTimestamp: "2021-06-08T08:38:03Z"
+  labels:
+    service: test-service-1
+  name: test-service-1
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.244.3.12
+    nodeName: nodename-1
+    targetRef:
+      kind: Pod
+      name: my-service-deployment
+      namespace: test-ns
+      resourceVersion: "20661"
+      uid: b37782aa-1458-4153-8399-dabc2b29aaae
+  ports:
+  - name: http-port
+    port: 8080
+    protocol: TCP		
+`,
+			},
+			expected: fmt.Errorf("\t* service/test-service-1 has the annotation %s but pod/my-service-deployment doesn't", k8s.ProxyOpaquePortsAnnotation),
+		},
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-service-1
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
+spec:
+  ports:
+    - name: elasticsearch
+      port: 9200
+      protocol: TCP
+      targetPort: 9200
+  selector:
+    service: service-1
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-service-deployment
+  namespace: test-ns
+  service: service-1
+  labels:
+    service: service-1
+  annotations:
+    config.linkerd.io/opaque-ports: "9300"
+spec:
+  containers:
+    - name: test
+      image: "test-service"
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  annotations:
+    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
+  creationTimestamp: "2021-06-08T08:38:03Z"
+  labels:
+    service: test-service-1
+  name: test-service-1
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.244.3.12
+    nodeName: nodename-1
+    targetRef:
+      kind: Pod
+      name: my-service-deployment
+      namespace: test-ns
+      resourceVersion: "20661"
+      uid: b37782aa-1458-4153-8399-dabc2b29aaae
+  ports:
+  - name: http-port
+    port: 8080
+    protocol: TCP
+`,
+			},
+			expected: fmt.Errorf("\t* pod/my-service-deployment and service/test-service-1 have the annotation %s but values don't match", k8s.ProxyOpaquePortsAnnotation),
+		},
+	}
+
+	for i, tc := range testCases {
+		tc := tc //pin
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			hc.kubeAPI, err = k8s.NewFakeAPI(tc.resources...)
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			err = hc.checkMisconfiguredOpaquePortAnnotations(context.Background())
+			if err == nil && tc.expected != nil {
+				t.Fatalf("Expected check to be successful, got: %s", err)
+			}
+			if err != nil {
+				if err.Error() != tc.expected.Error() {
+					t.Fatalf("Expected error: %s, received: %s", tc.expected, err)
 				}
 			}
 		})

@@ -136,6 +136,11 @@ const (
 	/// plugin is installed and ready
 	LinkerdCNIPluginChecks CategoryID = "linkerd-cni-plugin"
 
+	// LinkerdOpaquePortsDefinitionChecks adds checks to validate that the
+	// "opaque ports" annotation has been defined both in the service and the
+	// corresponding pods
+	LinkerdOpaquePortsDefinitionChecks CategoryID = "linkerd-opaque-ports-definition"
+
 	// LinkerdCNIResourceLabel is the label key that is used to identify
 	// whether a Kubernetes resource is related to the install-cni command
 	// The value is expected to be "true", "false" or "", where "false" and
@@ -1379,6 +1384,13 @@ func (hc *HealthChecker) allCategories() []*Category {
 						return checkMisconfiguredServiceAnnotations(services)
 					},
 				},
+				{
+					description: "opaque ports are properly annotated",
+					hintAnchor:  "linkerd-opaque-ports-definition",
+					check: func(ctx context.Context) error {
+						return hc.checkMisconfiguredOpaquePortAnnotations(ctx)
+					},
+				},
 			},
 			false,
 		),
@@ -2187,6 +2199,87 @@ func checkResources(resourceName string, objects []runtime.Object, expectedNames
 	if len(missing) > 0 {
 		sort.Strings(missing)
 		return fmt.Errorf("missing %s: %s", resourceName, strings.Join(missing, ", "))
+	}
+
+	return nil
+}
+
+// Check if there's a pod with the "opaque ports" annotation defined but a
+// service selecting the aforementioned pod doesn't define it
+func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Context) error {
+	services, err := hc.GetServices(ctx)
+	if err != nil {
+		return err
+	}
+
+	var errStrings []string
+
+	for _, service := range services {
+		if service.Spec.ClusterIP == "None" {
+			// skip headless services; they're handled differently
+			continue
+		}
+
+		endpoint, err := hc.kubeAPI.CoreV1().Endpoints(service.Namespace).Get(ctx, service.Name, metav1.GetOptions{})
+
+		if err != nil {
+			return err
+		}
+
+		pods := make([]*corev1.Pod, 0)
+		for _, subset := range endpoint.Subsets {
+			for _, addr := range subset.Addresses {
+				if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
+					pod, err := hc.kubeAPI.CoreV1().Pods(service.Namespace).Get(ctx, addr.TargetRef.Name, metav1.GetOptions{})
+					if err != nil {
+						return err
+					}
+					pods = append(pods, pod)
+				}
+			}
+		}
+
+		if mismatch := misconfiguredOpaquePortAnnotationsInService(service, pods); mismatch != nil {
+			errStrings = append(
+				errStrings,
+				fmt.Sprintf("\t* %s", mismatch.Error()),
+			)
+		}
+	}
+
+	if len(errStrings) >= 1 {
+		return fmt.Errorf(strings.Join(errStrings, "\n    "))
+	}
+
+	return nil
+}
+
+func misconfiguredOpaquePortAnnotationsInService(service corev1.Service, pods []*corev1.Pod) error {
+	for _, pod := range pods {
+		if err := misconfiguredOpaqueAnnotation(service, pod); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func misconfiguredOpaqueAnnotation(service corev1.Service, pod *corev1.Pod) error {
+	svcAnnotation, svcAnnotationOk := service.Annotations[k8s.ProxyOpaquePortsAnnotation]
+	podAnnotation, podAnnotationOk := pod.Annotations[k8s.ProxyOpaquePortsAnnotation]
+
+	if svcAnnotationOk && podAnnotationOk {
+		if svcAnnotation != podAnnotation {
+			return fmt.Errorf("pod/%s and service/%s have the annotation %s but values don't match", pod.Name, service.Name, k8s.ProxyOpaquePortsAnnotation)
+		}
+
+		return nil
+	}
+
+	if svcAnnotationOk {
+		return fmt.Errorf("service/%s has the annotation %s but pod/%s doesn't", service.Name, k8s.ProxyOpaquePortsAnnotation, pod.Name)
+	}
+	if podAnnotationOk {
+		return fmt.Errorf("pod/%s has the annotation %s but service/%s doesn't", pod.Name, k8s.ProxyOpaquePortsAnnotation, service.Name)
 	}
 
 	return nil
