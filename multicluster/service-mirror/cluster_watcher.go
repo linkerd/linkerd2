@@ -978,9 +978,6 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx con
 
 			hostName := address.TargetRef.Name
 			hostLocalName := rcsw.mirroredResourceName(hostName)
-			if _, found := localServiceNames[hostLocalName]; found {
-				continue
-			}
 			// use a shared informer
 			localService, err := rcsw.localAPIClient.Svc().Lister().Services(remoteEp.Namespace).Get(hostLocalName)
 			if err != nil {
@@ -1000,8 +997,8 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx con
 				Hostname: hostName,
 				IP:       localService.Spec.ClusterIP,
 			})
-
 		}
+
 		if len(newAddresses) == 0 {
 			continue
 		}
@@ -1065,10 +1062,6 @@ func (rcsw *RemoteClusterServiceWatcher) handleHeadlessEndpointsCreated(ctx cont
 			// Create annotations for host's service
 			if addr.TargetRef == nil {
 				// ignore addresses w/o a backing pod (if they exist)
-				continue
-			}
-
-			if _, found := hosts[addr.TargetRef.Name]; found {
 				continue
 			}
 
