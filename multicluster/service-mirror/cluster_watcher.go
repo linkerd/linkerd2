@@ -1002,7 +1002,9 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx con
 			})
 
 		}
-
+		if len(newAddresses) == 0 {
+			continue
+		}
 		// copy ports, create subset
 		newSubsets = append(newSubsets, corev1.EndpointSubset{
 			Addresses: newAddresses,
@@ -1082,15 +1084,16 @@ func (rcsw *RemoteClusterServiceWatcher) handleHeadlessEndpointsCreated(ctx cont
 				IP:       createdService.Spec.ClusterIP,
 			})
 
-			if len(newAddresses) == 0 {
-				continue
-			}
-
-			subsetsToCreate = append(subsetsToCreate, corev1.EndpointSubset{
-				Addresses: newAddresses,
-				Ports:     subset.DeepCopy().Ports,
-			})
 		}
+
+		if len(newAddresses) == 0 {
+			continue
+		}
+
+		subsetsToCreate = append(subsetsToCreate, corev1.EndpointSubset{
+			Addresses: newAddresses,
+			Ports:     subset.DeepCopy().Ports,
+		})
 	}
 
 	endpointsToCreate := &corev1.Endpoints{
