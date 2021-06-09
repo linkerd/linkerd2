@@ -62,6 +62,21 @@ var AllResources = []string{
 
 // StatAllResourceTypes represents the resources to query in StatSummary when Resource.Type is "all"
 var StatAllResourceTypes = []string{
+	DaemonSet,
+	StatefulSet,
+	Job,
+	Deployment,
+	ReplicationController,
+	Pod,
+	Service,
+	TrafficSplit,
+	Authority,
+	CronJob,
+	ReplicaSet,
+}
+
+// CompletionResourceTypes represents resources the CLI's uses for autocompleting resource type names
+var CompletionResourceTypes = []string{
 	Namespace,
 	DaemonSet,
 	StatefulSet,
