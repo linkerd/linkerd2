@@ -2241,7 +2241,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 		if mismatch := misconfiguredOpaquePortAnnotationsInService(service, pods); mismatch != nil {
 			errStrings = append(
 				errStrings,
-				mismatch.Error(),
+				fmt.Sprintf("\t* %s", mismatch.Error()),
 			)
 		}
 	}
