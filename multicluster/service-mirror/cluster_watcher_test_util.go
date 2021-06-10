@@ -57,13 +57,14 @@ func (te *testEnvironment) runEnvironment(watcherQueue workqueue.RateLimitingInt
 	localAPI.Sync(nil)
 
 	watcher := RemoteClusterServiceWatcher{
-		link:            &te.link,
-		remoteAPIClient: remoteAPI,
-		localAPIClient:  localAPI,
-		stopper:         nil,
-		log:             logging.WithFields(logging.Fields{"cluster": clusterName}),
-		eventsQueue:     watcherQueue,
-		requeueLimit:    0,
+		link:                    &te.link,
+		remoteAPIClient:         remoteAPI,
+		localAPIClient:          localAPI,
+		stopper:                 nil,
+		log:                     logging.WithFields(logging.Fields{"cluster": clusterName}),
+		eventsQueue:             watcherQueue,
+		requeueLimit:            0,
+		headlessServicesEnabled: true,
 	}
 
 	for _, ev := range te.events {
