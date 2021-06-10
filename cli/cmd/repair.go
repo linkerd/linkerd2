@@ -146,7 +146,12 @@ func repair(ctx context.Context, forced bool) error {
 		return fmt.Errorf("Failed to convert Values into a map: %s", err)
 	}
 
-	overrides, err := renderOverrides(valuesMap, true)
+	chart, err := getChart("", values.HighAvailability)
+	if err != nil {
+		return err
+	}
+
+	overrides, err := renderOverrides(chart.Values, valuesMap, true)
 	if err != nil {
 		return fmt.Errorf("Failed to render overrides: %s", err)
 	}

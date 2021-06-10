@@ -164,7 +164,7 @@ spec:
           httpGet:
             path: /ready
             port: 9996
-        {{- if .Values.destinationResources -}}
+        {{- if not (empty .Values.destinationResources) -}}
         {{- include "partials.resources" .Values.destinationResources | nindent 8 }}
         {{- end }}
         securityContext:

@@ -18,12 +18,17 @@ import (
 )
 
 const (
-	helmDefaultChartDir     = "linkerd2"
-	helmDefaultHAValuesFile = "values-ha.yaml"
+	// HelmDefaultHAValuesFile is the name of the values file containing
+	// the defaults for HA installations
+	HelmDefaultHAValuesFile = "values-ha.yaml"
+
+	helmDefaultChartDir = "linkerd2"
 )
 
 type (
-	// Values contains the top-level elements in the Helm charts
+	// Values contains the entries in values[-ha].yaml that are referred to in go code
+	// If a value is only used in templates and is not referred to in go code, it doesn't
+	// require an entry here
 	Values struct {
 		ControllerImage              string              `json:"controllerImage"`
 		ControllerReplicas           uint                `json:"controllerReplicas"`
@@ -52,8 +57,6 @@ type (
 		ControlPlaneTracingNamespace string              `json:"controlPlaneTracingNamespace"`
 		IdentityTrustAnchorsPEM      string              `json:"identityTrustAnchorsPEM"`
 		IdentityTrustDomain          string              `json:"identityTrustDomain"`
-		PrometheusURL                string              `json:"prometheusUrl"`
-		GrafanaURL                   string              `json:"grafanaUrl"`
 		ImagePullSecrets             []map[string]string `json:"imagePullSecrets"`
 		LinkerdVersion               string              `json:"linkerdVersion"`
 
@@ -257,7 +260,7 @@ func MergeHAValues(values *Values) error {
 func readDefaults(ha bool) (*Values, error) {
 	var valuesFile *loader.BufferedFile
 	if ha {
-		valuesFile = &loader.BufferedFile{Name: helmDefaultHAValuesFile}
+		valuesFile = &loader.BufferedFile{Name: HelmDefaultHAValuesFile}
 	} else {
 		valuesFile = &loader.BufferedFile{Name: chartutil.ValuesfileName}
 	}

@@ -530,6 +530,16 @@ Whenever you make changes to the files under
 [`bin/helm-build`](bin/helm-build) which will refresh the dependencies and lint
 the templates.
 
+You can add new entries to
+[`charts/linkerd2/values.yaml`](charts/linkerd2/values.yaml) and use them in the
+templates after running [`bin/helm-build`](bin/helm-build). Those values are
+persisted into the `linkerd-config` ConfigMap at install/upgrade time. In the
+CLI code you can retrieve that config with
+`healthcheck.FetchCurrentConfiguration()`, which will also return an instance of
+the `l5dcharts.Values` struct. In order to include your new `values.yaml` entry
+there, you just need to declare it in the struct in
+[`pkg/charts/linkerd2/values.go`](pkg/charts/linkerd2/values.go).
+
 ### Generating Helm charts docs
 
 Whenever a new chart is created, or updated a README should be generated from

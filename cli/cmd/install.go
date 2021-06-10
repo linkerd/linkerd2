@@ -20,6 +20,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tree"
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	valuespkg "helm.sh/helm/v3/pkg/cli/values"
@@ -214,6 +215,9 @@ A full list of configurable values can be found at https://www.github.com/linker
 }
 
 func newCmdInstall() *cobra.Command {
+	// Note this only retrieves the default values referred to in the
+	// l5dcharts.Values struct.  Default values from values[-ha].yaml that
+	// are not referred in that struct are not required until below in render()
 	values, err := l5dcharts.NewValues()
 	var options valuespkg.Options
 
@@ -306,14 +310,74 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 	return render(w, values, stage, options)
 }
 
+// render first builds the Helm chart object containing all the default values
+// in chart.Values, because now all the values[-ha].yaml entries are required
+// (not just the ones from the l5dcharts.Values struct) before rendering the
+// chart. Then the overridden values are merged into those defaults, which are
+// passed into the templates. Finally, the linkerd-config-overrides secret is
+// rendered
 func render(w io.Writer, values *l5dcharts.Values, stage string, options valuespkg.Options) error {
 
 	// Set any global flags if present, common with install and upgrade
 	values.Namespace = controlPlaneNamespace
 	values.Stage = stage
+	valuesMap, err := values.ToMap()
+	if err != nil {
+		return err
+	}
 
+	chart, err := getChart(stage, values.HighAvailability)
+	if err != nil {
+		return err
+	}
+	defaultValues := chart.Values
+
+	// Merge-in values from values.yaml not referred in l5dcharts.Values
+	chart.Values = charts.MergeMaps(chart.Values, valuesMap)
+
+	// Merge-in override values passed as --set* flags
+	valuesOverrides, err := options.MergeValues(nil)
+	if err != nil {
+		return err
+	}
+	vals, err := chartutil.CoalesceValues(chart, valuesOverrides)
+	if err != nil {
+		return err
+	}
+
+	renderedTemplates, err := engine.Render(chart, map[string]interface{}{"Values": vals})
+	if err != nil {
+		return err
+	}
+
+	var buf bytes.Buffer
+	for _, tmpl := range chart.Templates {
+		t := path.Join(chart.Metadata.Name, tmpl.Name)
+		if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
+			return err
+		}
+	}
+
+	if stage == "" || stage == controlPlaneStage {
+		overrides, err := renderOverrides(defaultValues, vals, false)
+		if err != nil {
+			return err
+		}
+		buf.WriteString(yamlSep)
+		buf.WriteString(string(overrides))
+	}
+
+	_, err = w.Write(buf.Bytes())
+	return err
+}
+
+// getChart returns a helm chart object, with its .Values field filled with all
+// the default values from values.yaml, and merging-in values-ha.yaml if
+// necessary
+func getChart(stage string, ha bool) (*chart.Chart, error) {
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
+		{Name: chartutil.ValuesfileName},
 	}
 
 	if stage == "" || stage == configStage {
@@ -339,65 +403,58 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 		)
 	}
 
-	// Load all chart files into buffer
+	// Load all chart files contents into buffer
 	if err := charts.FilesReader(static.Templates, helmDefaultChartDir+"/", files); err != nil {
-		return err
+		return nil, err
 	}
 
-	// Load all partial chart files into buffer
+	// Load all partial chart files contents into buffer
 	if err := charts.FilesReader(static.Templates, "", partialFiles); err != nil {
-		return err
+		return nil, err
 	}
 
 	// Create a Chart obj from the files
 	chart, err := loader.LoadFiles(append(files, partialFiles...))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// Store final Values generated from values.yaml and CLI flags
-	chart.Values, err = values.ToMap()
-	if err != nil {
-		return err
-	}
-
-	// Create values override
-	valuesOverrides, err := options.MergeValues(nil)
-	if err != nil {
-		return err
-	}
-
-	vals, err := chartutil.CoalesceValues(chart, valuesOverrides)
-	if err != nil {
-		return err
-	}
-
-	// Attach the final values into the `Values` field for rendering to work
-	renderedTemplates, err := engine.Render(chart, map[string]interface{}{"Values": vals})
-	if err != nil {
-		return err
-	}
-
-	// Merge templates and inject
-	var buf bytes.Buffer
-	for _, tmpl := range chart.Templates {
-		t := path.Join(chart.Metadata.Name, tmpl.Name)
-		if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
-			return err
-		}
-	}
-
-	if stage == "" || stage == controlPlaneStage {
-		overrides, err := renderOverrides(vals, false)
+	if ha {
+		haValues, err := getHaValues()
 		if err != nil {
-			return err
+			return nil, err
 		}
-		buf.WriteString(yamlSep)
-		buf.WriteString(string(overrides))
+
+		// merge values-ha.yaml values into values.yaml values
+		chart.Values = charts.MergeMaps(chart.Values, haValues)
 	}
 
-	_, err = w.Write(buf.Bytes())
-	return err
+	return chart, nil
+}
+
+func getHaValues() (map[string]interface{}, error) {
+	files := []*loader.BufferedFile{
+		{Name: chartutil.ChartfileName},
+		{Name: l5dcharts.HelmDefaultHAValuesFile},
+	}
+	if err := charts.FilesReader(static.Templates, helmDefaultChartDir+"/", files); err != nil {
+		return nil, err
+	}
+
+	// Helm only parses values from values.yaml, so rename values-ha.yaml
+	// to values.yaml
+	for _, file := range files {
+		if file.Name == l5dcharts.HelmDefaultHAValuesFile {
+			file.Name = chartutil.ValuesfileName
+		}
+	}
+
+	haChart, err := loader.LoadFiles(files)
+	if err != nil {
+		return nil, err
+	}
+
+	return haChart.Values, nil
 }
 
 // renderOverrides outputs the Secret/linkerd-config-overrides resource which
@@ -411,11 +468,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 // with Helm. If stringData is set to true, the secret will be rendered using
 // the StringData field instead of the Data field, making the output more
 // human readable.
-func renderOverrides(values chartutil.Values, stringData bool) ([]byte, error) {
-	defaults, err := l5dcharts.NewValues()
-	if err != nil {
-		return nil, err
-	}
+func renderOverrides(defaults map[string]interface{}, values chartutil.Values, stringData bool) ([]byte, error) {
 	// Remove unnecessary fields, including fields added by helm's `chartutil.CoalesceValues`
 	delete(values, "configs")
 	delete(values, "partials")

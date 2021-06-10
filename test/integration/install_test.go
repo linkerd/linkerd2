@@ -773,14 +773,39 @@ func TestOverridesSecret(t *testing.T) {
 
 	t.Run("Check if any unknown fields sneaked in", func(t *testing.T) {
 		knownKeys := tree.Tree{
+			"cliVersion":             "linkerd/cli " + TestHelper.GetVersion(),
+			"controllerImageVersion": TestHelper.GetVersion(),
+			"debugContainer": map[string]interface{}{
+				"image": map[string]interface{}{
+					"version": TestHelper.GetVersion(),
+				},
+			},
 			"controllerLogLevel": "debug",
 			"heartbeatSchedule":  "1 2 3 4 5",
+			"highAvailability":   false,
 			"identity": map[string]interface{}{
 				"issuer": map[string]interface{}{},
 			},
 			"identityTrustAnchorsPEM": extractValue(t, "identityTrustAnchorsPEM"),
+			"linkerdVersion":          TestHelper.GetVersion(),
+			"proxy": map[string]interface{}{
+				"capabilities":    nil,
+				"disableIdentity": false,
+				"image": map[string]interface{}{
+					"version": TestHelper.GetVersion(),
+				},
+				"isGateway":   false,
+				"isIngress":   false,
+				"saMountPath": nil,
+			},
+			"proxyContainerName": "linkerd-proxy",
 			"proxyInit": map[string]interface{}{
+				"capabilities":       nil,
 				"ignoreInboundPorts": skippedInboundPorts,
+				"saMountPath":        nil,
+				"xtMountPath": map[string]interface{}{
+					"readOnly": false,
+				},
 			},
 		}
 

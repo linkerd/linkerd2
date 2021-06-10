@@ -839,7 +839,6 @@ data:
     enableEndpointSlices: false
     enableH2Upgrade: true
     enablePodAntiAffinity: true
-    grafanaUrl: ""
     heartbeatResources:
       cpu:
         limit: ""
@@ -891,7 +890,6 @@ data:
           operator: NotIn
           values:
           - disabled
-    prometheusUrl: ""
     proxy:
       await: true
       capabilities: null

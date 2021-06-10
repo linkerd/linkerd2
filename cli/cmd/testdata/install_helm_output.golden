@@ -833,7 +833,6 @@ data:
     enableEndpointSlices: false
     enableH2Upgrade: true
     enablePodAntiAffinity: false
-    grafanaUrl: ""
     heartbeatResources: null
     heartbeatSchedule: 1 2 3 4 5
     highAvailability: false
@@ -869,7 +868,6 @@ data:
           operator: NotIn
           values:
           - disabled
-    prometheusUrl: ""
     proxy:
       await: true
       capabilities: null
