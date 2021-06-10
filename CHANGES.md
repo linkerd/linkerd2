@@ -5,24 +5,25 @@
 This release fixes a problem with the HTTP body buffering that was added
 to support gRPC retries. Now, Only requests with a retry configuration
 are buffered (and only when their bodies are less than 64KB).
-Additionally, An Issue where forwarded HTTP traffic could fail to
-detect when the target pod was deleted, causing connections to forever
-has been fixed. This only impacted traffic forwarded directly to pod IPs
-(and not load balanced services)
 
-Finally, This release also includes some fixes in the CLI and dashboard.
+Additionally, An issue with the outbound ingress-mode proxy where forwarded
+HTTP traffic could fail to detect when the target pod was deleted, causing
+connections to retry forever has been fixed. This only impacted traffic
+forwarded directly to pod IPs (and not load balanced services).
+
+Finally, this release also includes some fixes in the CLI and dashboard.
 
 * Added a new check that verifies if the opaque ports annotation is
   misconfigured on services or pods (thanks @migue!)
 * Added support for resource aware completion for core linkerd command
-* Fixed an issue where `namespace` resource was also being shown
-  in the topology graph
-* Added uninstall cmd support for legacy extension installs
-* Updated core proxy dependencies i.e futures, hyper, socket2,
-  and tokio
+* Fixed an issue where `namespace` resource was erroneously being shown
+  in the dashboard's topology graph
+* Added uninstall command support for legacy extension installs
 * Updated the proxy to only wrap bodies when a request can be retried
 * Updated the proxy to prevent buffering indefinitely on requests
-  when endpoints are updated in ingress mode.
+  when endpoints are updated in ingress mode
+* Fixed spelling mistakes across various files in the project
+  (thanks @jsoref!)
 
 ## edge-21.6.1
 
