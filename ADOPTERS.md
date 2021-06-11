@@ -8,6 +8,7 @@
 - [AppddictionStudio](https://appddicitonstudio.com)
 - [Attest](https://www.askattest.com)
 - [Bink](https://bink.com)
+- [Boomin](https://www.boomin.com)
 - [Buoyant](https://buoyant.io)
 - [Candide](https://candidegardening.com)
 - [Celonis](https://celonis.com)
