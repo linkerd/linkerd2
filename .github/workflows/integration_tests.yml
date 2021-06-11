@@ -2,8 +2,6 @@ name: Integration tests
 on:
   pull_request:
     paths-ignore:
-    - '*.md'
-    - '**/*.md'
     - 'web/app/package.json'
   push:
     paths-ignore:
@@ -12,7 +10,7 @@ on:
     - 'web/app/package.json'
     branches:
     - main
-permissions: 
+permissions:
   contents: read
 env:
   GH_ANNOTATION: true
