@@ -818,13 +818,14 @@ func TestOverridesSecret(t *testing.T) {
 			knownKeys["clusterDomain"] = TestHelper.GetClusterDomain()
 		}
 
+		if TestHelper.ExternalIssuer() || TestHelper.Multicluster() {
+			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["crtExpiry"] = extractValue(t, "identity", "issuer", "crtExpiry")
+		}
+
 		if TestHelper.ExternalIssuer() {
 			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["issuanceLifetime"] = "15s"
 			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["scheme"] = "kubernetes.io/tls"
 		} else {
-			if !TestHelper.Multicluster() {
-				knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["crtExpiry"] = extractValue(t, "identity", "issuer", "crtExpiry")
-			}
 			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["tls"] = map[string]interface{}{
 				"crtPEM": extractValue(t, "identity", "issuer", "tls", "crtPEM"),
 				"keyPEM": extractValue(t, "identity", "issuer", "tls", "keyPEM"),
