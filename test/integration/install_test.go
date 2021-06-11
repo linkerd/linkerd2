@@ -784,7 +784,9 @@ func TestOverridesSecret(t *testing.T) {
 			"heartbeatSchedule":  "1 2 3 4 5",
 			"highAvailability":   false,
 			"identity": map[string]interface{}{
-				"issuer": map[string]interface{}{},
+				"issuer": map[string]interface{}{
+					"crtExpiry": extractValue(t, "identity", "issuer", "crtExpiry"),
+				},
 			},
 			"identityTrustAnchorsPEM": extractValue(t, "identityTrustAnchorsPEM"),
 			"linkerdVersion":          TestHelper.GetVersion(),
@@ -816,10 +818,6 @@ func TestOverridesSecret(t *testing.T) {
 
 		if TestHelper.GetClusterDomain() != "cluster.local" {
 			knownKeys["clusterDomain"] = TestHelper.GetClusterDomain()
-		}
-
-		if TestHelper.ExternalIssuer() || TestHelper.Multicluster() {
-			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["crtExpiry"] = extractValue(t, "identity", "issuer", "crtExpiry")
 		}
 
 		if TestHelper.ExternalIssuer() {
