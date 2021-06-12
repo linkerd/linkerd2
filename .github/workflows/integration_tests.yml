@@ -2,7 +2,6 @@ name: Integration tests
 on:
   pull_request:
     paths-ignore:
-    - 'web/app/package.json'
   push:
     paths-ignore:
     - '*.md'
