@@ -1,7 +1,6 @@
 name: Integration tests
 on:
-  pull_request:
-    paths-ignore:
+  pull_request: {}
   push:
     paths-ignore:
     - '*.md'
