@@ -624,6 +624,9 @@ func (conf *ResourceConfig) injectPodSpec(values *podPatch) {
 				values.Proxy.Capabilities.Add = append(values.Proxy.Capabilities.Add, string(add))
 			}
 			for _, drop := range sc.Capabilities.Drop {
+				if string(drop) == "NET_RAW" || string(drop) == "NET_ADMIN" {
+					continue
+				}
 				values.Proxy.Capabilities.Drop = append(values.Proxy.Capabilities.Drop, string(drop))
 			}
 		}
