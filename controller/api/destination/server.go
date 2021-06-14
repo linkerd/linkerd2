@@ -384,9 +384,6 @@ func (s *server) sendPodProfile(stream pb.Destination_GetProfileServer, pod *cor
 
 	// If there are opaque ports then update the profile translator
 	// with a service profile that has those values
-	//
-	// TODO: Remove endpoint from profileTranslator and set it here
-	// similar to opaque ports
 	if len(opaquePorts) != 0 {
 		sp := sp.ServiceProfile{}
 		sp.Spec.OpaquePorts = opaquePorts
