@@ -206,57 +206,13 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			if err != nil {
 				return err
 			}
-			var endpoint *pb.WeightedAddr
-			opaquePorts := make(map[uint32]struct{})
-			if pod != nil {
-				// If the IP maps to a pod, we create a single endpoint and
-				// return it in the DestinationProfile response
-				podSet := podToAddressSet(s.k8sAPI, pod).WithPort(port)
-				podID := watcher.PodID{
-					Namespace: pod.Namespace,
-					Name:      pod.Name,
-				}
-				var ok bool
-				opaquePorts, ok, err = getPodOpaquePortsAnnotations(pod)
-				if err != nil {
-					log.Errorf("failed to get opaque ports annotation for pod: %s", err)
-				}
-				// If the opaque ports annotation was not set, then set the
-				// endpoint's opaque ports to the default value.
-				if !ok {
-					opaquePorts = s.defaultOpaquePorts
-				}
 
-				skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(pod)
-				if err != nil {
-					log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
-				}
-
-				endpoint, err = toWeightedAddr(podSet.Addresses[podID], opaquePorts, skippedInboundPorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, log)
-				if err != nil {
-					return err
-				}
-				// `Get` doesn't include the namespace in the per-endpoint
-				// metadata, so it needs to be special-cased.
-				endpoint.MetricLabels["namespace"] = pod.Namespace
-			}
-
-			// When the IP does not map to a service, the default profile is
-			// sent without subscribing for future updates. If the IP mapped
-			// to a pod, then the endpoint will be set in the response.
-			translator := newProfileTranslator(stream, log, "", port, endpoint)
-
-			// If there are opaque ports then update the profile translator
-			// with a service profile that has those values
-			//
-			// TODO: Remove endpoint from profileTranslator and set it here
-			// similar to opaque ports
-			if len(opaquePorts) != 0 {
-				sp := sp.ServiceProfile{}
-				sp.Spec.OpaquePorts = opaquePorts
-				translator.Update(&sp)
-			} else {
-				translator.Update(nil)
+			// If the IP maps to a pod, we create a single endpoint and
+			// return it in the DestinationProfile response
+			err = s.sendPodProfile(stream, pod, port)
+			if err != nil {
+				log.Debugf("Failed to send profile response to pod: %v", err)
+				return err
 			}
 
 			select {
@@ -268,11 +224,38 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			return nil
 		}
 	} else {
-		service, _, err = parseK8sServiceName(host, s.clusterDomain)
+		var podName string
+		service, podName, err = parseK8sServiceName(host, s.clusterDomain)
 		if err != nil {
 			log.Debugf("Invalid service %s", path)
 			return status.Errorf(codes.InvalidArgument, "invalid service: %s", err)
 		}
+
+		// If the pod name (instance ID) is not empty, it means we parsed a DNS
+		// name. When we fetch the profile using a pod's DNS name, we want to
+		// return an endpoint in the profile response.
+		if podName != "" {
+			pod, err := s.k8sAPI.Pod().Lister().Pods(service.Namespace).Get(podName)
+			if err != nil {
+				log.Debugf("Failed to get pod %s/%s: %s", service.Namespace, podName, err)
+				return err
+			}
+
+			err = s.sendPodProfile(stream, pod, port)
+			if err != nil {
+				log.Debugf("Failed to send profile response to pod %s/%s: %v", service.Namespace, podName, err)
+				return err
+			}
+
+			select {
+			case <-s.shutdown:
+			case <-stream.Context().Done():
+				log.Debugf("GetProfile(%+v) cancelled", dest)
+			}
+
+			return nil
+		}
+
 		fqn = host
 	}
 
@@ -348,6 +331,68 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	case <-s.shutdown:
 	case <-stream.Context().Done():
 		log.Debugf("GetProfile(%+v) cancelled", dest)
+	}
+
+	return nil
+}
+
+// sendPodProfile accepts the GetProfile response stream, a pod and its port and
+// returns an error if it cannot stream a profile response back to the client. The
+// profile response sent here is different to a service's since it also includes
+// an endpoint.
+func (s *server) sendPodProfile(stream pb.Destination_GetProfileServer, pod *corev1.Pod, port uint32) error {
+	log := s.log
+	var endpoint *pb.WeightedAddr
+	opaquePorts := make(map[uint32]struct{})
+	var err error
+	if pod != nil {
+		podSet := podToAddressSet(s.k8sAPI, pod).WithPort(port)
+		podID := watcher.PodID{
+			Namespace: pod.Namespace,
+			Name:      pod.Name,
+		}
+		var ok bool
+		opaquePorts, ok, err = getPodOpaquePortsAnnotations(pod)
+		if err != nil {
+			log.Errorf("failed to get opaque ports annotation for pod: %s", err)
+		}
+
+		// If the opaque ports annotation was not set, then set the
+		// endpoint's opaque ports to the default value.
+		if !ok {
+			opaquePorts = s.defaultOpaquePorts
+		}
+
+		skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(pod)
+		if err != nil {
+			log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
+		}
+
+		endpoint, err = toWeightedAddr(podSet.Addresses[podID], opaquePorts, skippedInboundPorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
+		if err != nil {
+			return err
+		}
+		// `Get` doesn't include the namespace in the per-endpoint
+		// metadata, so it needs to be special-cased.
+		endpoint.MetricLabels["namespace"] = pod.Namespace
+	}
+
+	// When the IP does not map to a service, the default profile is sent
+	// without subscribing for future updates. If the IP/DNS name is mapped to a
+	// pod, then the endpoint will be set in the response.
+	translator := newProfileTranslator(stream, log, "", port, endpoint)
+
+	// If there are opaque ports then update the profile translator
+	// with a service profile that has those values
+	//
+	// TODO: Remove endpoint from profileTranslator and set it here
+	// similar to opaque ports
+	if len(opaquePorts) != 0 {
+		sp := sp.ServiceProfile{}
+		sp.Spec.OpaquePorts = opaquePorts
+		translator.Update(&sp)
+	} else {
+		translator.Update(nil)
 	}
 
 	return nil

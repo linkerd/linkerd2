@@ -18,12 +18,14 @@ const fullyQualifiedName = "name1.ns.svc.mycluster.local"
 const fullyQualifiedNameOpaque = "name3.ns.svc.mycluster.local"
 const fullyQualifiedNameOpaqueService = "name4.ns.svc.mycluster.local"
 const fullyQualifiedNameSkipped = "name5.ns.svc.mycluster.local"
+const fullyQualifiedPodDNS = "pod-0.statefulset-svc.ns.svc.mycluster.local"
 const clusterIP = "172.17.12.0"
 const clusterIPOpaque = "172.17.12.1"
 const podIP1 = "172.17.0.12"
 const podIP2 = "172.17.0.13"
 const podIPOpaque = "172.17.0.14"
 const podIPSkipped = "172.17.0.15"
+const podIPStatefulSet = "172.17.13.15"
 const port uint32 = 8989
 const opaquePort uint32 = 4242
 const skippedPort uint32 = 24224
@@ -269,11 +271,54 @@ spec:
         value: 0.0.0.0:4143
       name: linkerd-proxy`,
 	}
+
+	meshedStatefulSetPodResource := []string{
+		`
+apiVersion: v1
+kind: Service
+metadata:
+  name: statefulset-svc
+  namespace: ns
+spec:
+  type: LoadBalancer
+  clusterIP: 172.17.13.5
+  ports:
+  - port: 8989`,
+		`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name:	statefulset-svc
+  namespace: ns
+subsets:
+- addresses:
+  - ip: 172.17.13.15
+    hostname: pod-0
+    targetRef:
+      kind: Pod
+      name: pod-0
+      namespace: ns
+  ports:
+  - port: 8989`,
+		`
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+  name: pod-0
+  namespace: ns
+status:
+  phase: Running
+  podIP: 172.17.13.15`,
+	}
+
 	res := append(meshedPodResources, clientSP...)
 	res = append(res, unmeshedPod)
 	res = append(res, meshedOpaquePodResources...)
 	res = append(res, meshedOpaqueServiceResources...)
 	res = append(res, meshedSkippedPodResource...)
+	res = append(res, meshedStatefulSetPodResource...)
 	k8sAPI, err := k8s.NewFakeAPI(res...)
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
@@ -641,6 +686,56 @@ func TestGetProfiles(t *testing.T) {
 		routes := last.GetRoutes()
 		if len(routes) != 1 {
 			t.Fatalf("Expected 1 route but got %d: %v", len(routes), routes)
+		}
+	})
+
+	t.Run("Return profile with endpoint when using pod DNS", func(t *testing.T) {
+		server := makeServer(t)
+		stream := &bufferingGetProfileStream{
+			updates:          []*pb.DestinationProfile{},
+			MockServerStream: util.NewMockServerStream(),
+		}
+		stream.Cancel()
+
+		epAddr, err := toAddress(podIPStatefulSet, port)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		err = server.GetProfile(&pb.GetDestination{
+			Scheme:       "k8s",
+			Path:         fmt.Sprintf("%s:%d", fullyQualifiedPodDNS, port),
+			ContextToken: "ns:ns",
+		}, stream)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		// An explanation for why we expect 1 to 3 updates is in test cases
+		// above
+		if len(stream.updates) == 0 || len(stream.updates) > 3 {
+			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
+		}
+
+		first := stream.updates[0]
+		if first.Endpoint == nil {
+			t.Fatalf("Expected response to have endpoint field")
+		}
+		if first.OpaqueProtocol {
+			t.Fatalf("Expected port %d to not be an opaque protocol, but it was", port)
+		}
+		_, exists := first.Endpoint.MetricLabels["namespace"]
+		if !exists {
+			t.Fatalf("Expected 'namespace' metric label to exist but it did not")
+		}
+		if first.GetEndpoint().GetProtocolHint() == nil {
+			t.Fatalf("Expected protocol hint but found none")
+		}
+		if first.GetEndpoint().GetProtocolHint().GetOpaqueTransport() != nil {
+			t.Fatalf("Expected pod to not support opaque traffic on port %d", port)
+		}
+		if first.Endpoint.Addr.String() != epAddr.String() {
+			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
 		}
 	})
 
