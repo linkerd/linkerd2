@@ -1,9 +1,6 @@
 name: Unit tests
 on:
-  pull_request:
-    paths-ignore:
-    - '*.md'
-    - '**/*.md'
+  pull_request: {}
   push:
     paths-ignore:
     - '*.md'
