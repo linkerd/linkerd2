@@ -1154,7 +1154,7 @@ status:
 
 		k8sAPI.Sync(nil)
 		// Get host IP pod that is mapped to the port `hostPort1`
-		pod, err := getPod(k8sAPI, hostIP, hostPort1, logging.WithFields(nil))
+		pod, err := getPodByIP(k8sAPI, hostIP, hostPort1, logging.WithFields(nil))
 		if err != nil {
 			t.Fatalf("failed to get pod: %s", err)
 		}
@@ -1167,7 +1167,7 @@ status:
 		// Get host IP pod that is mapped to the port `hostPort2`; this tests
 		// that the indexer properly adds multiple containers from a single
 		// pod.
-		pod, err = getPod(k8sAPI, hostIP, hostPort2, logging.WithFields(nil))
+		pod, err = getPodByIP(k8sAPI, hostIP, hostPort2, logging.WithFields(nil))
 		if err != nil {
 			t.Fatalf("failed to get pod: %s", err)
 		}
@@ -1178,7 +1178,7 @@ status:
 			t.Fatalf("expected pod name to be %s, but got %s", expectedPodName, pod.Name)
 		}
 		// Get host IP pod with unmapped host port
-		pod, err = getPod(k8sAPI, hostIP, 12347, logging.WithFields(nil))
+		pod, err = getPodByIP(k8sAPI, hostIP, 12347, logging.WithFields(nil))
 		if err != nil {
 			t.Fatalf("expected no error when getting host IP pod with unmapped host port, but got: %s", err)
 		}
@@ -1186,7 +1186,7 @@ status:
 			t.Fatal("expected no pod to be found with unmapped host port")
 		}
 		// Get pod IP pod and expect an error
-		_, err = getPod(k8sAPI, podIP, 12346, logging.WithFields(nil))
+		_, err = getPodByIP(k8sAPI, podIP, 12346, logging.WithFields(nil))
 		if err == nil {
 			t.Fatal("expected error when getting by pod IP and unmapped host port, but got none")
 		}
