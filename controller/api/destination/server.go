@@ -237,7 +237,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		// name. When we fetch the profile using a pod's DNS name, we want to
 		// return an endpoint in the profile response.
 		if hostname != "" {
-			pod, err := getPodByHostname(s.k8sAPI, hostname, service, s.log)
+			pod, err := getPodByHostname(s.k8sAPI, hostname, service)
 			if err != nil {
 				log.Errorf("Failed to get pod for hostname %s: %v", hostname, err)
 			}
@@ -431,7 +431,7 @@ func getSvcID(k8sAPI *k8s.API, clusterIP string, log *logging.Entry) (*watcher.S
 // instanceID). The hostname is generally the prefix of the pod's DNS name;
 // since it may be arbitrary we need to look at the corresponding service's
 // Endpoints object to see whether the hostname matches a pod.
-func getPodByHostname(k8sAPI *k8s.API, hostname string, svcID watcher.ServiceID, log *logging.Entry) (*corev1.Pod, error) {
+func getPodByHostname(k8sAPI *k8s.API, hostname string, svcID watcher.ServiceID) (*corev1.Pod, error) {
 	ep, err := k8sAPI.Endpoint().Lister().Endpoints(svcID.Namespace).Get(svcID.Name)
 	if err != nil {
 		return nil, err
