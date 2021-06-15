@@ -548,7 +548,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 			clusterName := localSvc.Labels[consts.RemoteClusterNameLabel]
 			if isMirroredRes && (clusterName == rcsw.link.TargetClusterName) {
 				// If headless, also delete its nested services.
-				if localSvc.Spec.ClusterIP == corev1.ClusterIPNone {
+				if rcsw.headlessServicesEnabled && localSvc.Spec.ClusterIP == corev1.ClusterIPNone {
 					err = rcsw.deleteHeadlessMirrors(service.Namespace, localName)
 					if err != nil {
 						return RetryableError{[]error{err}}
