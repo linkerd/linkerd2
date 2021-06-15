@@ -1,4 +1,4 @@
-#repositoryID: The ID of the Artifact Hub repository where the packages will be published to (optional, but it enables verified publisher)
+#repositoryID: To be determined after the stable repo gets claimed
 owners:
   - name: olix0r
     email: ver@buoyant.io
