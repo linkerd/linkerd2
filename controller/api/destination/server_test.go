@@ -269,7 +269,6 @@ spec:
         value: 0.0.0.0:4143
       name: linkerd-proxy`,
 	}
-
 	res := append(meshedPodResources, clientSP...)
 	res = append(res, unmeshedPod)
 	res = append(res, meshedOpaquePodResources...)
