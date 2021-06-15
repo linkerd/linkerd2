@@ -11,10 +11,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
-	labels "github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const fullyQualifiedName = "name1.ns.svc.mycluster.local"
@@ -23,12 +20,10 @@ const fullyQualifiedNameOpaqueService = "name4.ns.svc.mycluster.local"
 const fullyQualifiedNameSkipped = "name5.ns.svc.mycluster.local"
 const clusterIP = "172.17.12.0"
 const clusterIPOpaque = "172.17.12.1"
-const clusterIPMirror = "172.17.13.20"
 const podIP1 = "172.17.0.12"
 const podIP2 = "172.17.0.13"
 const podIPOpaque = "172.17.0.14"
 const podIPSkipped = "172.17.0.15"
-const gatewayIP = "172.20.0.6"
 const port uint32 = 8989
 const opaquePort uint32 = 4242
 const skippedPort uint32 = 24224
@@ -275,65 +270,11 @@ spec:
       name: linkerd-proxy`,
 	}
 
-	meshedMirroredResources := []string{
-		`
-apiVersion: v1
-kind: Service
-metadata:
-  annotations:
-    mirror.linkerd.io/remote-resource-version: "5503"
-    mirror.linkerd.io/remote-svc-fq-name: mirror-0.mirror.ns.svc.cluster.local
-    mirror.linkerd.io/remote-svc-headless: "true"
-  creationTimestamp: "2021-05-28T13:54:23Z"
-  labels:
-    mirror.linkerd.io/cluster-name: remote
-    mirror.linkerd.io/mirrored-service: "true"
-    mirror.linkerd.io/root-headless-name: mirror-remote
-  name: mirror-0-remote
-  namespace: ns
-  resourceVersion: "10290"
-  uid: b120bc3c-530c-4475-8f1a-61e5e10fa204
-spec:
-  clusterIP: 172.17.13.20
-  clusterIPs:
-  - 172.17.13.20
-  ports:
-  - port: 8989
-    protocol: TCP
-    targetPort: 9876
-  sessionAffinity: None
-  type: ClusterIP
-status:
-  loadBalancer: {}`,
-		`
-apiVersion: v1
-kind: Endpoints
-metadata:
-  annotations:
-    mirror.linkerd.io/remote-gateway-identity: gateway.multicluster.serviceaccount.identity.linkerd.cluster.local"
-    mirror.linkerd.io/remote-svc-fq-name: mirror-0.mirror.ns.svc.cluster.local
-  creationTimestamp: "2021-06-01T09:24:16Z"
-  labels:
-    mirror.linkerd.io/cluster-name: remote
-    mirror.linkerd.io/mirrored-service: "true"
-  name: mirror-0-remote
-  namespace: ns
-  resourceVersion: "241678"
-  uid: 17704d07-81e7-4837-a31c-fb7f4dac0e88
-subsets:
-- addresses:
-  - ip: 172.20.0.6
-  ports:
-  - port: 4143
-    protocol: TCP`,
-	}
-
 	res := append(meshedPodResources, clientSP...)
 	res = append(res, unmeshedPod)
 	res = append(res, meshedOpaquePodResources...)
 	res = append(res, meshedOpaqueServiceResources...)
 	res = append(res, meshedSkippedPodResource...)
-	res = append(res, meshedMirroredResources...)
 	k8sAPI, err := k8s.NewFakeAPI(res...)
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
@@ -750,107 +691,6 @@ func TestGetProfiles(t *testing.T) {
 		}
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
-		}
-	})
-
-	t.Run("Return profile with endpoint when resolving mirrored service", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          []*pb.DestinationProfile{},
-			MockServerStream: util.NewMockServerStream(),
-		}
-		stream.Cancel()
-
-		// Endpoints object to get expected proxy endpoint
-		mirrorEp := &corev1.Endpoints{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Endpoints",
-				APIVersion: "v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "mirror-0-remote",
-				Namespace: "ns",
-				Labels: map[string]string{
-					labels.RemoteClusterNameLabel: "remote",
-					labels.MirroredResourceLabel:  "true",
-				},
-				Annotations: map[string]string{
-					labels.RemoteServiceFqName: fmt.Sprintf(
-						"%s.%s.%s.svc.cluster.local",
-						"mirror-0",
-						"mirror",
-						"ns"),
-					labels.RemoteGatewayIdentity: "gateway.multicluster.serviceaccount.identity.linkerd.cluster.local",
-				},
-			},
-			Subsets: []corev1.EndpointSubset{
-				{
-					Addresses: []corev1.EndpointAddress{
-						{
-							IP: gatewayIP,
-						},
-					},
-					Ports: []corev1.EndpointPort{
-						{
-							Port: 4143,
-						},
-					},
-				},
-			},
-		}
-
-		svcID := &watcher.ServiceID{
-			Namespace: "test",
-			Name:      "mirror-0-remote",
-		}
-
-		addrSet, err := mirroredServiceToAddressSet(mirrorEp, svcID, port)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
-		epAddr, err := toGatewayAddr(addrSet.Addresses[*svcID])
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
-		err = server.GetProfile(&pb.GetDestination{
-			Scheme: "k8s",
-			Path:   fmt.Sprintf("%s:%d", clusterIPMirror, port),
-		}, stream)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
-		// An explanation for why we expect 1 to 3 updates is in test cases
-		// above
-		if len(stream.updates) == 0 || len(stream.updates) > 3 {
-			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
-		}
-
-		first := stream.updates[0]
-		if first.Endpoint == nil {
-			t.Fatalf("Expected response to have endpoint field")
-		}
-		if first.OpaqueProtocol {
-			t.Fatalf("Expected port %d to not be an opaque protocol, but it was", port)
-		}
-		_, exists := first.Endpoint.MetricLabels["namespace"]
-		if !exists {
-			t.Fatalf("Expected 'namespace' metric label to exist but it did not")
-		}
-		if first.GetEndpoint().GetProtocolHint() == nil {
-			t.Fatalf("Expected protocol hint but found none")
-		}
-		if first.GetEndpoint().GetProtocolHint().GetOpaqueTransport() != nil {
-			t.Fatalf("Expected pod to not support opaque traffic on port %d", port)
-		}
-		if first.Endpoint.Addr.String() != epAddr.Addr.String() {
-			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Addr.Ip, first.Endpoint.Addr.Ip)
-		}
-
-		if first.Endpoint.AuthorityOverride.String() != epAddr.AuthorityOverride.String() {
-			t.Fatalf("Expected authorityOverride to be %s, but it was %s", epAddr.AuthorityOverride.String(), first.Endpoint.AuthorityOverride.String())
 		}
 	})
 

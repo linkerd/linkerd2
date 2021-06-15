@@ -321,38 +321,6 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 	}, nil
 }
 
-func toGatewayAddr(address watcher.Address) (*pb.WeightedAddr, error) {
-	tcpAddr, err := toAddr(address)
-	if err != nil {
-		return nil, err
-	}
-
-	hint := &pb.ProtocolHint{
-		Protocol: &pb.ProtocolHint_H2_{
-			H2: &pb.ProtocolHint_H2{},
-		},
-	}
-
-	identity := &pb.TlsIdentity{
-		Strategy: &pb.TlsIdentity_DnsLikeIdentity_{
-			DnsLikeIdentity: &pb.TlsIdentity_DnsLikeIdentity{
-				Name: address.Identity,
-			},
-		},
-	}
-
-	authority := &pb.AuthorityOverride{AuthorityOverride: address.AuthorityOverride}
-
-	return &pb.WeightedAddr{
-		Addr:              tcpAddr,
-		Weight:            defaultWeight,
-		AuthorityOverride: authority,
-		MetricLabels:      make(map[string]string),
-		TlsIdentity:       identity,
-		ProtocolHint:      hint,
-	}, nil
-}
-
 func toWeightedAddr(address watcher.Address, opaquePorts, skippedInboundPorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
 	controllerNSLabel := address.Pod.Labels[k8s.ControllerNSLabel]
 	sa, ns := k8s.GetServiceAccountAndNS(address.Pod)

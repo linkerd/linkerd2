@@ -3,7 +3,6 @@ package destination
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -200,53 +199,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		}
 		if svcID != nil {
 			service = *svcID
-			// Get headless annotation
-			annotations, err := getServiceAnnotations(s.k8sAPI, svcID)
-			if err != nil {
-				fmt.Printf("No annotations: %s", err)
-				return err
-			}
-			// If the service is mirrored, avoid making a call to Get and
-			// instead return just one endpoint from GetProfile with the gateway
-			// IP N.B: it  would be worthwhile to do this more efficiently such
-			// as checking cached endpoints objects from the EndpointsWatcher
-			if remoteFqn, found := annotations[labels.RemoteServiceFqName]; found {
-				ep, err := s.k8sAPI.Endpoint().Lister().Endpoints(svcID.Namespace).Get(svcID.Name)
-				if err != nil {
-					return err
-				}
-
-				addressSet, err := mirroredServiceToAddressSet(ep, svcID, port)
-				if err != nil {
-					return err
-				}
-
-				endpoint, err := toGatewayAddr(addressSet.Addresses[*svcID])
-				if err != nil {
-					return err
-				}
-
-				// [namespace:default service:mehdb-1-east target_cluster:east target_service:mehdb-1 target_service_namespace:mehdb]
-				endpoint.MetricLabels = map[string]string{
-					"namespace":                svcID.Namespace,
-					"service":                  svcID.Name,
-					"target_cluster":           ep.Labels[labels.RemoteClusterNameLabel],
-					"target_service":           remoteFqn,
-					"target_service_namespace": svcID.Namespace,
-				}
-				translator := newProfileTranslator(stream, log, "", port, endpoint)
-				translator.Update(nil)
-				select {
-				case <-s.shutdown:
-				case <-stream.Context().Done():
-					log.Debugf("GetProfile(%+v) cancelled", dest)
-				}
-
-				return nil
-			}
-
 			fqn = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
-
 		} else {
 			// If the IP does not map to a service, check if it maps to a pod
 			pod, err := getPod(s.k8sAPI, ip.String(), port, log)
@@ -430,14 +383,6 @@ func getSvcID(k8sAPI *k8s.API, clusterIP string, log *logging.Entry) (*watcher.S
 	return service, nil
 }
 
-func getServiceAnnotations(k8sAPI *k8s.API, svcID *watcher.ServiceID) (map[string]string, error) {
-	service, err := k8sAPI.Svc().Lister().Services(svcID.Namespace).Get(svcID.Name)
-	if err != nil {
-		return nil, err
-	}
-	return service.Annotations, nil
-}
-
 // getPod returns a pod that maps to the given IP address. The pod can either
 // be in the host network or the pod network. If the pod is in the host
 // network, then it must have a container port that exposes `port` as a host
@@ -527,37 +472,6 @@ func podToAddressSet(k8sAPI *k8s.API, pod *corev1.Pod) *watcher.AddressSet {
 		},
 		Labels: map[string]string{"namespace": pod.Namespace},
 	}
-}
-
-// mirroredServiceToAddressSet converts a clusterIP Service's Endpoints object
-// to a single endpoint address pointing to the remote gateway.
-func mirroredServiceToAddressSet(ep *corev1.Endpoints, svcID *watcher.ServiceID, srcPort uint32) (*watcher.AddressSet, error) {
-	// We need to get port from the Endpoints object so we can connect to the Gateway
-	gatewayAddr := ep.Subsets[0].Addresses[0]
-	endpointPort := ep.Subsets[0].Ports[0].Port
-
-	// Gateway Identity from Endpoints annotation
-	identity, ok := ep.Annotations[labels.RemoteGatewayIdentity]
-	if !ok {
-		return nil, errors.New("Endpoints does not contain a valid gateway identity")
-	}
-
-	fqn, ok := ep.Annotations[labels.RemoteServiceFqName]
-	if !ok {
-		return nil, errors.New("Endpoints does not contain a valid remote authority")
-	}
-
-	authorityOverride := fmt.Sprintf("%s:%d", fqn, srcPort)
-	return &watcher.AddressSet{
-		Addresses: map[watcher.ServiceID]watcher.Address{
-			*svcID: {
-				IP:                gatewayAddr.IP,
-				Port:              uint32(endpointPort),
-				Identity:          identity,
-				AuthorityOverride: authorityOverride,
-			},
-		},
-	}, nil
 }
 
 ////////////
