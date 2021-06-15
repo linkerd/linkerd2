@@ -2,7 +2,7 @@
 
 set -eu
 
-k3dversion=v3.4.0
+k3dversion=v4.4.5
 
 bindir=$( cd "${0%/*}" && pwd )
 targetbin=$( cd "$bindir"/.. && pwd )/target/bin
