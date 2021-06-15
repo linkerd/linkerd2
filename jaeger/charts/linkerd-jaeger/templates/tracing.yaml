@@ -12,22 +12,7 @@ metadata:
     component: collector
 data:
   collector-config: |
-    receivers:
-      opencensus:
-        port: 55678
-      zipkin:
-        port: 9411
-      jaeger:
-        jaeger-thrift-http-port: 14268
-    queued-exporters:
-      jaeger-all-in-one:
-        num-workers: 4
-        queue-size: 100
-        retry-on-failure: true
-        sender-type: jaeger-thrift-http
-        jaeger-thrift-http:
-          collector-endpoint: {{.Values.collector.jaegerAddr | default (printf "http://%s.%s:14268/api/traces" "jaeger" .Values.namespace) }}
-          timeout: 5s
+    {{- .Values.collector.config | trim | nindent 4 }}
 ---
 apiVersion: v1
 kind: Service
@@ -39,6 +24,10 @@ metadata:
 spec:
   type: ClusterIP
   ports:
+  - name: otlp
+    port: 4317
+    protocol: TCP
+    targetPort: 4317
   - name: opencensus
     port: 55678
     protocol: TCP
@@ -47,10 +36,14 @@ spec:
     port: 9411
     protocol: TCP
     targetPort: 9411
-  - name: jaeger
+  - name: jaeger-thrift
     port: 14268
     protocol: TCP
     targetPort: 14268
+  - name: jaeger-grpc
+    port: 14250
+    protocol: TCP
+    targetPort: 14250
   selector:
     component: collector
 ---
@@ -85,22 +78,29 @@ spec:
       {{- include "linkerd.node-selector" (dict "Values" .Values.collector) | nindent 6 }}
       containers:
       - command:
-        - /occollector_linux
+        - /otelcol
         - --config=/conf/collector-config.yaml
         env:
         - name: GOGC
           value: "80"
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
         image: {{.Values.collector.image.name}}:{{.Values.collector.image.version}}
         imagePullPolicy: {{.Values.collector.image.pullPolicy}}
         livenessProbe:
           httpGet:
             path: /
             port: 13133
-        name: oc-collector
+        name: ot-collector
         ports:
+        - containerPort: 4317
         - containerPort: 55678
         - containerPort: 9411
         - containerPort: 14268
+        - containerPort: 14250
         - containerPort: 8888
         readinessProbe:
           httpGet:
@@ -140,6 +140,8 @@ spec:
   ports:
     - name: collection
       port: 14268
+    - name: grpc
+      port: 14250
     - name: ui
       port: 16686
 ---
@@ -182,6 +184,8 @@ spec:
           name: admin
         - containerPort: 14268
           name: collection
+        - containerPort: 14250
+          name: grpc
         - containerPort: 16686
           name: ui
         {{- if .Values.jaeger.resources -}}
