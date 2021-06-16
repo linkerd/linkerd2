@@ -6,7 +6,7 @@ require (
 	contrib.go.opencensus.io/exporter/ocagent v0.6.0
 	github.com/Azure/go-autorest/autorest v0.11.3 // indirect
 	github.com/briandowns/spinner v0.0.0-20190212173954-5cf08d0ac778
-	github.com/clarketm/json v1.13.4
+	github.com/clarketm/json v1.15.7
 	github.com/containernetworking/cni v0.6.1-0.20180218032124-142cde0c766c
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/emicklei/proto v1.6.8
