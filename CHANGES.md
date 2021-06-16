@@ -1,5 +1,19 @@
 # Changes
 
+## edge-21.6.3
+
+This release moves the Linkerd proxy to a more minimal Docker base image,
+adds a check for detecting certain network misconfigurations, and replaces
+the deprecated OpenCensus collector with the OpenTelemetry collecting in the
+jaeger extension.
+
+* Switched the Linkerd proxy's base docker image from Debian to a minimal
+  distroless base image (thanks @tskinn!)
+* Added a check to verify that Linkerd's clusterNetworks settings match the
+  cluster's pod CIDR networks (thanks @aryan9600!)
+* Replaced the deprecated OpenCensus collector with the OpenTelemetry
+  collector in the jaeger extension (thanks @aatarasoff!)
+
 ## edge-21.6.2
 
 This release fixes a problem with the HTTP body buffering that was added
