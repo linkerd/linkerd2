@@ -32,7 +32,7 @@ metadata:
   uid: fake-uuid`,
 			},
 			url.Values{
-				"k8s-version":  []string{"v0.0.0-master+$Format:%h$"},
+				"k8s-version":  []string{"v0.0.0-master+$Format:%H$"},
 				"install-time": []string{"1550234096"},
 				"uuid":         []string{"fake-uuid"},
 			},
@@ -48,7 +48,7 @@ metadata:
   uid: fake-uuid`,
 			},
 			url.Values{
-				"k8s-version": []string{"v0.0.0-master+$Format:%h$"},
+				"k8s-version": []string{"v0.0.0-master+$Format:%H$"},
 			},
 		},
 		{
@@ -72,7 +72,7 @@ metadata:
     linkerd.io/extension: viz`,
 			},
 			url.Values{
-				"k8s-version":  []string{"v0.0.0-master+$Format:%h$"},
+				"k8s-version":  []string{"v0.0.0-master+$Format:%H$"},
 				"install-time": []string{"1550234096"},
 				"uuid":         []string{"fake-uuid"},
 				"ext-viz":      []string{"1"},
