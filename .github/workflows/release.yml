@@ -36,7 +36,7 @@ jobs:
         restore-keys: ${{ runner.os }}-buildx-${{ matrix.target }}-
     - name: Set up Docker Buildx
       # crazy-max/ghaction-docker-buildx@v3.2.0
-      uses: crazy-max/ghaction-docker-buildx@552c9de485482d9bbaa6fa035ee55e518e1e3cb9
+      uses: crazy-max/ghaction-docker-buildx@126d331dc69f4a1aa02452e374835e6a5d565613
     - name: Build & Push Multi Arch Images
       env:
         #DOCKER_TRACE: 1
