@@ -213,7 +213,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			// profile response.
 			err = s.sendEndpointProfile(stream, pod, port)
 			if err != nil {
-				log.Debugf("Failed to send profile response to pod: %v", err)
+				log.Debugf("Failed to send profile response to IP %s: %v", ip.String(), err)
 				return err
 			}
 
@@ -337,11 +337,9 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	return nil
 }
 
-// sendEndpointProfile will send a DestinationProfile response that contains an
-// endpoint to the client. It accepts the gRPC stream object an optional pod and
-// the port used in the GetProfile request. If the pod argument is supplied,
-// then sendEndpointProfile will reply with an endpoint; otherwise, the response
-// will contain the default profile.
+// sendEndpointProfile sends a DestinationProfile response back to the client.
+// If the pod argument is provided, the profile sent to the client will
+// include an endpoint. Otherwise, the default profile is sent.
 func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod *corev1.Pod, port uint32) error {
 	log := s.log
 	var endpoint *pb.WeightedAddr
@@ -379,9 +377,9 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 		endpoint.MetricLabels["namespace"] = pod.Namespace
 	}
 
-	// When the IP does not map to a service, the default profile is sent
-	// without subscribing for future updates. If the IP/DNS name is mapped to a
-	// pod, then the endpoint will be set in the response.
+	// Send the default profile without subscribing for future updates. The
+	// profile response will also include an endpoint if the IP (or hostname)
+	// sent in the profile request maps to a pod.
 	translator := newProfileTranslator(stream, log, "", port, endpoint)
 
 	// If there are opaque ports then update the profile translator
@@ -451,7 +449,7 @@ func getPodByHostname(k8sAPI *k8s.API, hostname string, svcID watcher.ServiceID)
 		}
 	}
 
-	return nil, fmt.Errorf("no pod found in Endpoints %s/%s", svcID.Namespace, svcID.Name)
+	return nil, fmt.Errorf("no pod found in Endpoints %s/%s for hostname %s", svcID.Namespace, svcID.Name, hostname)
 }
 
 // getPodByIP returns a pod that maps to the given IP address. The pod can either
