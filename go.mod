@@ -4,7 +4,6 @@ go 1.16
 
 require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.0
-	github.com/Azure/go-autorest/autorest v0.11.3 // indirect
 	github.com/briandowns/spinner v0.0.0-20190212173954-5cf08d0ac778
 	github.com/clarketm/json v1.15.7
 	github.com/containernetworking/cni v0.6.1-0.20180218032124-142cde0c766c
@@ -14,7 +13,7 @@ require (
 	github.com/fatih/color v1.9.0
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-openapi/spec v0.19.3
+	github.com/go-openapi/spec v0.19.5
 	github.com/golang/protobuf v1.4.3
 	github.com/gorilla/websocket v1.4.2
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
@@ -39,16 +38,16 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	go.opencensus.io v0.22.3
-	golang.org/x/net v0.0.0-20200707034311-ab3426394381
-	golang.org/x/tools v0.0.0-20200616133436-c1934b75d054
+	golang.org/x/net v0.0.0-20210224082022-3d97a244fca7
+	golang.org/x/tools v0.1.0
 	google.golang.org/grpc v1.31.1
-	google.golang.org/protobuf v1.24.0
+	google.golang.org/protobuf v1.25.0
 	helm.sh/helm/v3 v3.4.1
-	k8s.io/api v0.19.3
-	k8s.io/apiextensions-apiserver v0.19.3
-	k8s.io/apimachinery v0.19.3
-	k8s.io/client-go v0.19.3
-	k8s.io/code-generator v0.19.3
+	k8s.io/api v0.21.1
+	k8s.io/apiextensions-apiserver v0.21.1
+	k8s.io/apimachinery v0.21.1
+	k8s.io/client-go v0.21.1
+	k8s.io/code-generator v0.21.1
 	k8s.io/klog/v2 v2.9.0
 	k8s.io/kube-aggregator v0.18.8
 	sigs.k8s.io/yaml v1.2.0
