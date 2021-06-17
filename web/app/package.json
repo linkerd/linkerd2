@@ -25,7 +25,7 @@
     "lodash": "4.17.19",
     "path": "0.12.7",
     "prop-types": "15.7.2",
-    "query-string": "^6.12.1",
+    "query-string": "^7.0.0",
     "react": "16.13.1",
     "react-dom": "16.13.1",
     "react-linkify": "1.0.0-alpha",
