@@ -4,7 +4,7 @@
 
 This release moves the Linkerd proxy to a more minimal Docker base image,
 adds a check for detecting certain network misconfigurations, and replaces
-the deprecated OpenCensus collector with the OpenTelemetry collecting in the
+the deprecated OpenCensus collector with the OpenTelemetry collector in the
 jaeger extension.
 
 * Switched the Linkerd proxy's base docker image from Debian to a minimal
