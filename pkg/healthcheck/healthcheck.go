@@ -2263,34 +2263,46 @@ func checkResources(resourceName string, objects []runtime.Object, expectedNames
 // Check if there's a pod with the "opaque ports" annotation defined but a
 // service selecting the aforementioned pod doesn't define it
 func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Context) error {
+
+	// Pre-fetch services, endpoints and pods for the data plane namespace
+	// to prevent numerous requests to the API server
 	services, err := hc.GetServices(ctx)
 	if err != nil {
 		return err
 	}
 
-	var errStrings []string
+	endpoints, err := hc.GetEndpoints(ctx)
+	if err != nil {
+		return fmt.Errorf("couldn't list endpoints in the cluster: %s", err)
+	}
 
+	dataPlanePods, err := hc.GetDataPlanePods(ctx)
+	if err != nil {
+		return err
+	}
+
+	podsMap := make(map[string]corev1.Pod)
+	for _, pod := range dataPlanePods {
+		podsMap[pod.Name] = pod
+	}
+
+	var errStrings []string
 	for _, service := range services {
 		if service.Spec.ClusterIP == "None" {
 			// skip headless services; they're handled differently
 			continue
 		}
 
-		endpoint, err := hc.kubeAPI.CoreV1().Endpoints(service.Namespace).Get(ctx, service.Name, metav1.GetOptions{})
-
-		if err != nil {
-			return err
-		}
-
+		endpoint := endpoints[service.Namespace+"/"+service.Name]
 		pods := make([]*corev1.Pod, 0)
 		for _, subset := range endpoint.Subsets {
 			for _, addr := range subset.Addresses {
 				if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
-					pod, err := hc.kubeAPI.CoreV1().Pods(service.Namespace).Get(ctx, addr.TargetRef.Name, metav1.GetOptions{})
-					if err != nil {
-						return err
+					pod, ok := podsMap[addr.TargetRef.Name]
+					if !ok {
+						return fmt.Errorf("couldn't find pod for")
 					}
-					pods = append(pods, pod)
+					pods = append(pods, &pod)
 				}
 			}
 		}
@@ -2358,6 +2370,23 @@ func (hc *HealthChecker) GetServices(ctx context.Context) ([]corev1.Service, err
 		return nil, err
 	}
 	return svcList.Items, nil
+}
+
+// GetServices returns all endpoints within data plane namespace as a map
+// with key as `<endpointsNamespace>/<endpointsName>`
+func (hc *HealthChecker) GetEndpoints(ctx context.Context) (map[string]corev1.Endpoints, error) {
+	allEndpoints, err := hc.kubeAPI.CoreV1().Endpoints(hc.DataPlaneNamespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	endpointsMap := make(map[string]corev1.Endpoints)
+	for _, endpoints := range allEndpoints.Items {
+		endpointsMap[endpoints.Namespace+"/"+endpoints.Name] = endpoints
+
+	}
+
+	return endpointsMap, nil
 }
 
 func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace(ctx context.Context) error {
