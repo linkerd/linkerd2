@@ -22,7 +22,7 @@
     "d3-selection": "2.0.0",
     "date-fns": "2.12.0",
     "locales-detector": "2.26.0",
-    "lodash": "4.17.19",
+    "lodash": "4.17.21",
     "path": "0.12.7",
     "prop-types": "15.7.2",
     "query-string": "^7.0.0",
