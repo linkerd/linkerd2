@@ -3,7 +3,7 @@ on:
   push:
     tags:
     - "*"
-permissions: 
+permissions:
   contents: read
 env:
   GH_ANNOTATION: true
@@ -35,8 +35,8 @@ jobs:
         key: ${{ runner.os }}-buildx-${{ matrix.target }}-${{ env.TAG }}
         restore-keys: ${{ runner.os }}-buildx-${{ matrix.target }}-
     - name: Set up Docker Buildx
-      # crazy-max/ghaction-docker-buildx@v3.2.0
-      uses: crazy-max/ghaction-docker-buildx@552c9de485482d9bbaa6fa035ee55e518e1e3cb9
+      # crazy-max/ghaction-docker-buildx@v3.3.1
+      uses: crazy-max/ghaction-docker-buildx@126d331dc69f4a1aa02452e374835e6a5d565613
     - name: Build & Push Multi Arch Images
       env:
         #DOCKER_TRACE: 1
@@ -203,8 +203,8 @@ jobs:
         (Get-Content bin\win\linkerd.nuspec).replace('LINKERD_VERSION', $LINKERD_VERSION) | Set-Content bin\win\linkerd.nuspec
     - name: Chocolatey - pack
       if: startsWith(github.ref, 'refs/tags/stable')
-      # crazy-max/ghaction-chocolatey@v1.2.2
-      uses: crazy-max/ghaction-chocolatey@55c91883732fd892124a2d957cd02e4682aa6fc5
+      # crazy-max/ghaction-chocolatey@v1.5.0
+      uses: crazy-max/ghaction-chocolatey@d025252287b66c3fb7d795cc8932dec97630cd53
       with:
         args: pack bin/win/linkerd.nuspec
     - name: Chocolatey - upload package
@@ -273,7 +273,7 @@ jobs:
     steps:
     - name: Create linkerd/website repository dispatch event
       # peter-evans/repository-dispatch@v1
-      uses: peter-evans/repository-dispatch@0ae1c4b014bff102f1063cd67a53fc4a91311d1b
+      uses: peter-evans/repository-dispatch@ce5485de42c9b2622d2ed064be479e8ed65e76f4
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
         repository: linkerd/website
@@ -317,8 +317,8 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
     - name: Configure gsutils
-      # linkerd/linkerd2-action-gcloud@v1.0.1
-      uses: linkerd/linkerd2-action-gcloud@308c4df7314264c90d240e77e27d0d875d3c8ec1
+      # linkerd/linkerd2-action-gcloud@v1.0.2
+      uses: linkerd/linkerd2-action-gcloud@f01c9de238d33e87029fddb7f2f9a1fb93903b8f
       with:
         cloud_sdk_service_account_key: ${{ secrets.LINKERD_SITE_TOKEN }}
         gcp_project: ${{ secrets.LINKERD_SITE_PROJECT }}
