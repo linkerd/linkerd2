@@ -3,7 +3,7 @@ module github.com/linkerd/linkerd2
 go 1.16
 
 require (
-	contrib.go.opencensus.io/exporter/ocagent v0.6.0
+	contrib.go.opencensus.io/exporter/ocagent v0.7.0
 	github.com/Azure/go-autorest/autorest v0.11.3 // indirect
 	github.com/briandowns/spinner v0.0.0-20190212173954-5cf08d0ac778
 	github.com/clarketm/json v1.15.7
@@ -38,7 +38,7 @@ require (
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
-	go.opencensus.io v0.22.2
+	go.opencensus.io v0.22.3
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	golang.org/x/tools v0.0.0-20200616133436-c1934b75d054
 	google.golang.org/grpc v1.31.1
