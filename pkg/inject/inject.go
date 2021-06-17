@@ -663,8 +663,8 @@ func (conf *ResourceConfig) injectPodSpec(values *podPatch) {
 func (conf *ResourceConfig) injectProxyInit(values *podPatch) {
 
 	// Fill common fields from Proxy into ProxyInit
-	values.ProxyInit.Capabilities = &l5dcharts.Capabilities{}
 	if values.Proxy.Capabilities != nil {
+		values.ProxyInit.Capabilities = &l5dcharts.Capabilities{}
 		values.ProxyInit.Capabilities.Add = values.Proxy.Capabilities.Add
 		values.ProxyInit.Capabilities.Drop = []string{}
 		for _, drop := range values.Proxy.Capabilities.Drop {
