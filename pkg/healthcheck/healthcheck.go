@@ -2300,7 +2300,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 				if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
 					pod, ok := podsMap[addr.TargetRef.Name]
 					if !ok {
-						return fmt.Errorf("couldn't find pod for")
+						return fmt.Errorf("couldn't find pod for %s", addr.TargetRef.Name)
 					}
 					pods = append(pods, &pod)
 				}
@@ -2372,7 +2372,7 @@ func (hc *HealthChecker) GetServices(ctx context.Context) ([]corev1.Service, err
 	return svcList.Items, nil
 }
 
-// GetServices returns all endpoints within data plane namespace as a map
+// GetEndpoints returns all endpoints within data plane namespace as a map
 // with key as `<endpointsNamespace>/<endpointsName>`
 func (hc *HealthChecker) GetEndpoints(ctx context.Context) (map[string]corev1.Endpoints, error) {
 	allEndpoints, err := hc.kubeAPI.CoreV1().Endpoints(hc.DataPlaneNamespace).List(ctx, metav1.ListOptions{})
