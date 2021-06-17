@@ -88,7 +88,7 @@ jobs:
           ${{ runner.os }}-go-
     - name: Download image archives
       # actions/download-artifact@v1
-      uses: actions/download-artifact@18f0f591fbc635562c815484d73b6e8e3980482e
+      uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
       with:
         name: image-archives
     - name: Run CLI Integration tests
@@ -134,7 +134,7 @@ jobs:
         echo "DOCKER_REGISTRY=cr.l5d.io/linkerd" >> $GITHUB_ENV
     - name: Download image archives
       # actions/download-artifact@v1
-      uses: actions/download-artifact@18f0f591fbc635562c815484d73b6e8e3980482e
+      uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
       with:
         name: image-archives
     - name: Load cli-bin image into local docker images
