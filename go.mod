@@ -3,7 +3,8 @@ module github.com/linkerd/linkerd2
 go 1.16
 
 require (
-	contrib.go.opencensus.io/exporter/ocagent v0.6.0
+	contrib.go.opencensus.io/exporter/ocagent v0.7.0
+	github.com/Azure/go-autorest/autorest v0.11.3 // indirect
 	github.com/briandowns/spinner v0.0.0-20190212173954-5cf08d0ac778
 	github.com/clarketm/json v1.15.7
 	github.com/containernetworking/cni v0.6.1-0.20180218032124-142cde0c766c
@@ -48,7 +49,7 @@ require (
 	k8s.io/apimachinery v0.21.0
 	k8s.io/client-go v0.21.0
 	k8s.io/code-generator v0.21.0
-	k8s.io/klog/v2 v2.8.0
+	k8s.io/klog/v2 v2.9.0
 	k8s.io/kube-aggregator v0.18.8
 	rsc.io/letsencrypt v0.0.3 // indirect
 	sigs.k8s.io/yaml v1.2.0
