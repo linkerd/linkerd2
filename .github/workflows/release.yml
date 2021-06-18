@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -28,14 +28,12 @@ jobs:
         echo "DOCKER_REGISTRY=ghcr.io/linkerd" >> $GITHUB_ENV
         echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
     - name: Cache docker layers
-      # actions/cache@v2.0.0
       uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
       with:
         path: ${{ env.DOCKER_BUILDKIT_CACHE }}
         key: ${{ runner.os }}-buildx-${{ matrix.target }}-${{ env.TAG }}
         restore-keys: ${{ runner.os }}-buildx-${{ matrix.target }}-
     - name: Set up Docker Buildx
-      # crazy-max/ghaction-docker-buildx@v3.3.1
       uses: crazy-max/ghaction-docker-buildx@126d331dc69f4a1aa02452e374835e6a5d565613
     - name: Build & Push Multi Arch Images
       env:
@@ -65,7 +63,6 @@ jobs:
     # https://github.com/actions/upload-artifact/issues/8
     - name: Upload artifact
       if: matrix.target == 'cli-bin'
-      # actions/upload-artifact@v2
       uses: actions/upload-artifact@27121b0bdffd731efa15d66772be8dc71245d074
       with:
         name: image-archives
@@ -78,16 +75,14 @@ jobs:
     needs: [docker_build]
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Try to load cached Go modules
-      # actions/cache@v1.1.2
       uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: ${{ runner.os }}-go-
     - name: Download image archives
-      # actions/download-artifact@v1
       uses: actions/download-artifact@18f0f591fbc635562c815484d73b6e8e3980482e
       with:
         name: image-archives
@@ -114,9 +109,8 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Try to load cached Go modules
-      # actions/cache@v1.1.2
       uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
       with:
         path: ~/go/pkg/mod
@@ -143,10 +137,9 @@ jobs:
     steps:
     - name: Checkout code
       #if: startsWith(github.ref, 'refs/tags/stable')
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Try to load cached Go modules
       #if: startsWith(github.ref, 'refs/tags/stable')
-      # actions/cache@v1.1.2
       uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
       with:
         path: ~/go/pkg/mod
@@ -195,7 +188,7 @@ jobs:
     steps:
     - name: Checkout code
       if: startsWith(github.ref, 'refs/tags/stable')
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Chocolatey - update nuspec
       if: startsWith(github.ref, 'refs/tags/stable')
       run: |
@@ -203,13 +196,11 @@ jobs:
         (Get-Content bin\win\linkerd.nuspec).replace('LINKERD_VERSION', $LINKERD_VERSION) | Set-Content bin\win\linkerd.nuspec
     - name: Chocolatey - pack
       if: startsWith(github.ref, 'refs/tags/stable')
-      # crazy-max/ghaction-chocolatey@v1.5.0
       uses: crazy-max/ghaction-chocolatey@d025252287b66c3fb7d795cc8932dec97630cd53
       with:
         args: pack bin/win/linkerd.nuspec
     - name: Chocolatey - upload package
       if: startsWith(github.ref, 'refs/tags/stable')
-      # actions/upload-artifact@v2
       uses: actions/upload-artifact@27121b0bdffd731efa15d66772be8dc71245d074
       with:
         name: choco
@@ -224,7 +215,7 @@ jobs:
       contents: write
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -233,7 +224,6 @@ jobs:
         extract_release_notes NOTES.md
     - name: Download choco package
       if: startsWith(github.ref, 'refs/tags/stable')
-      # actions/download-artifact@v1
       uses: actions/download-artifact@18f0f591fbc635562c815484d73b6e8e3980482e
       with:
         name: choco
@@ -246,7 +236,6 @@ jobs:
         mv choco/linkerd.*.nupkg target/release/linkerd2-cli-stable-$VERSION.nupkg || true
     - name: Create release
       id: create_release
-      # softprops/action-gh-release@v1
       uses: softprops/action-gh-release@91409e712cf565ce9eff10c87a8d1b11b81757ae
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -272,7 +261,6 @@ jobs:
       contents: write
     steps:
     - name: Create linkerd/website repository dispatch event
-      # peter-evans/repository-dispatch@v1
       uses: peter-evans/repository-dispatch@ce5485de42c9b2622d2ed064be479e8ed65e76f4
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
@@ -286,7 +274,7 @@ jobs:
     needs: [website_publish]
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -315,9 +303,8 @@ jobs:
     needs: [gh_release]
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Configure gsutils
-      # linkerd/linkerd2-action-gcloud@v1.0.2
       uses: linkerd/linkerd2-action-gcloud@f01c9de238d33e87029fddb7f2f9a1fb93903b8f
       with:
         cloud_sdk_service_account_key: ${{ secrets.LINKERD_SITE_TOKEN }}
