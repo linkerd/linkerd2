@@ -4,7 +4,6 @@ go 1.16
 
 require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.0
-	github.com/Azure/go-autorest/autorest v0.11.3 // indirect
 	github.com/briandowns/spinner v0.0.0-20190212173954-5cf08d0ac778
 	github.com/clarketm/json v1.15.7
 	github.com/containernetworking/cni v0.6.1-0.20180218032124-142cde0c766c
