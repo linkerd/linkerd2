@@ -32,6 +32,10 @@ env:
   value: 127.0.0.1:{{.Values.proxy.ports.outbound}}
 - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
   value: 0.0.0.0:{{.Values.proxy.ports.inbound}}
+- name: LINKERD2_PROXY_INBOUND_IPS
+  valueFrom:
+    fieldRef:
+      fieldPath: status.podIPs
 {{ if .Values.proxy.isGateway -}}
 - name: LINKERD2_PROXY_INBOUND_GATEWAY_SUFFIXES
   value: {{printf "svc.%s." .Values.clusterDomain}}
