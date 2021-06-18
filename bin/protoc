@@ -3,7 +3,7 @@
 set -eu
 
 # If $PROTOC is set, use that instead of downloading a new copy of protoc.
-if [ -n "$PROTOC" ]; then
+if [ -n "${PROTOC:-}" ]; then
     exec "$PROTOC" "$@"
 fi
 
