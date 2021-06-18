@@ -23,7 +23,7 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -33,8 +33,7 @@ jobs:
         echo "DOCKER_REGISTRY=cr.l5d.io/linkerd" >> $GITHUB_ENV
         echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
     - name: Cache docker layers
-      # actions/cache@v2.0.0
-      uses: actions/cache@b8204782bbb5f872091ecc5eb9cb7d004e35b1fa
+      uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
       with:
         path: ${{ env.DOCKER_BUILDKIT_CACHE }}
         key: ${{ runner.os }}-buildx-${{ matrix.target }}-${{ env.TAG }}
@@ -64,8 +63,7 @@ jobs:
     #
     # https://github.com/actions/upload-artifact/issues/8
     - name: Upload artifact
-      # actions/upload-artifact@v1
-      uses: actions/upload-artifact@3446296876d12d4e3a0f3145a3c87e67bf0a16b5
+      uses: actions/upload-artifact@27121b0bdffd731efa15d66772be8dc71245d074
       with:
         name: image-archives
         path: /home/runner/archives
@@ -77,17 +75,15 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Try to load cached Go modules
-      # actions/cache@v1.1.2
-      uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
+      uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
     - name: Download image archives
-      # actions/download-artifact@v2
       uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
       with:
         name: image-archives
@@ -117,10 +113,9 @@ jobs:
     timeout-minutes: 60
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Try to load cached Go modules
-      # actions/cache@v1.1.2
-      uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
+      uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -134,7 +129,6 @@ jobs:
         . bin/_docker.sh
         echo "DOCKER_REGISTRY=cr.l5d.io/linkerd" >> $GITHUB_ENV
     - name: Download image archives
-      # actions/download-artifact@v2
       uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
       with:
         name: image-archives
