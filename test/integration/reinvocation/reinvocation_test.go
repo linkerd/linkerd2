@@ -52,7 +52,7 @@ func TestReinvocation(t *testing.T) {
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "failed to read modrule.yaml", "failed to read modrule.yaml: %s", err)
 		}
-		err = TestHelper.RetryFor(30*time.Second, func() error {
+		err = TestHelper.RetryFor(40*time.Second, func() error {
 			o, err := TestHelper.KubectlApply(modruleYAML, ns)
 			if err != nil {
 				return fmt.Errorf("%s\n%s", err, o)
@@ -102,6 +102,7 @@ func TestReinvocation(t *testing.T) {
 		}
 
 		injectionValidator := testutil.InjectValidator{
+			NoInitContainer: TestHelper.CNI() || TestHelper.Calico(),
 			// ****** TODO ****** this proofs the changes made by the z-kubemod mutating webhook
 			// weren't surfaced by the injector. Once the injector implements reinvocation
 			// the log level should be "debug"
