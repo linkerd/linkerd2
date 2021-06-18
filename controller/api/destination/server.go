@@ -213,7 +213,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			// profile response.
 			err = s.sendEndpointProfile(stream, pod, port)
 			if err != nil {
-				log.Debugf("Failed to send profile response to IP %s: %v", ip.String(), err)
+				log.Debugf("Failed to send profile response for endpoint %s:%d: %v", ip.String(), port, err)
 				return err
 			}
 
