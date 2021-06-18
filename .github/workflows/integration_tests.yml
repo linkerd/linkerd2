@@ -87,7 +87,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
     - name: Download image archives
-      # actions/download-artifact@v1
+      # actions/download-artifact@v2
       uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
       with:
         name: image-archives
@@ -133,7 +133,7 @@ jobs:
         . bin/_docker.sh
         echo "DOCKER_REGISTRY=cr.l5d.io/linkerd" >> $GITHUB_ENV
     - name: Download image archives
-      # actions/download-artifact@v1
+      # actions/download-artifact@v2
       uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
       with:
         name: image-archives
