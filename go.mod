@@ -43,11 +43,11 @@ require (
 	google.golang.org/grpc v1.38.0
 	google.golang.org/protobuf v1.25.0
 	helm.sh/helm/v3 v3.6.1
-	k8s.io/api v0.21.0
-	k8s.io/apiextensions-apiserver v0.21.0
-	k8s.io/apimachinery v0.21.0
-	k8s.io/client-go v0.21.0
-	k8s.io/code-generator v0.21.0
+	k8s.io/api v0.21.2
+	k8s.io/apiextensions-apiserver v0.21.2
+	k8s.io/apimachinery v0.21.2
+	k8s.io/client-go v0.21.2
+	k8s.io/code-generator v0.21.2
 	k8s.io/klog/v2 v2.9.0
 	k8s.io/kube-aggregator v0.18.8
 	rsc.io/letsencrypt v0.0.3 // indirect
