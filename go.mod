@@ -41,8 +41,9 @@ require (
 	go.opencensus.io v0.22.3
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	golang.org/x/tools v0.0.0-20200616133436-c1934b75d054
-	google.golang.org/grpc v1.31.1
-	google.golang.org/protobuf v1.24.0
+	google.golang.org/grpc v1.38.0
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0 // indirect
+	google.golang.org/protobuf v1.25.0
 	helm.sh/helm/v3 v3.4.1
 	k8s.io/api v0.19.3
 	k8s.io/apiextensions-apiserver v0.19.3
