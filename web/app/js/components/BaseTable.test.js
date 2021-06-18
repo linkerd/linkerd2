@@ -2,6 +2,7 @@ import _merge from 'lodash/merge';
 import ApiHelpers from './util/ApiHelpers.jsx';
 import BaseTable from './BaseTable.jsx';
 import TableBody from '@material-ui/core/TableBody';
+import FilterListIcon from '@material-ui/icons/FilterList';
 import TableRow from '@material-ui/core/TableRow';
 import { routerWrap } from '../../test/testHelpers.jsx';
 import { mount } from 'enzyme';
@@ -30,7 +31,7 @@ describe("Tests for <BaseTable>", () => {
         deployment: "authors",
         namespace: "default",
         key: "default-deployment-authors",
-        pods: {totalPods: "1", meshedPods: "1"}
+        pods: { totalPods: "1", meshedPods: "1" }
       }],
       tableColumns: tableColumns,
     });
@@ -51,13 +52,13 @@ describe("Tests for <BaseTable>", () => {
         deployment: "authors",
         namespace: "default",
         key: "default-deployment-authors",
-        pods: {totalPods: "1", meshedPods: "1"}
+        pods: { totalPods: "1", meshedPods: "1" }
       },
       {
         deployment: "books",
         namespace: "default",
         key: "default-deployment-books",
-        pods: {totalPods: "2", meshedPods: "1"}
+        pods: { totalPods: "2", meshedPods: "1" }
       }],
       tableColumns: tableColumns,
       enableFilter: true
@@ -91,13 +92,13 @@ describe("Tests for <BaseTable>", () => {
         deployment: "authors",
         namespace: "default",
         key: "default-deployment-authors",
-        pods: {totalPods: "1", meshedPods: "1"}
+        pods: { totalPods: "1", meshedPods: "1" }
       },
       {
         deployment: "books",
         namespace: "default",
         key: "default-deployment-books",
-        pods: {totalPods: "2", meshedPods: "1"}
+        pods: { totalPods: "2", meshedPods: "1" }
       }],
       tableColumns: tableColumns,
       enableFilter: true
@@ -107,14 +108,14 @@ describe("Tests for <BaseTable>", () => {
     const table = component.dive();
     expect(table.find(TableBody).find(TableRow)).toHaveLength(2);
     const enableFilter = component.prop("enableFilter");
-    const filterIcon = table.find("FilterListIcon");
+    const filterIcon = table.find(FilterListIcon);
     expect(enableFilter).toEqual(true);
-    expect(filterIcon).toHaveLength(1);
+    expect(filterIcon).toBeDefined();
 
     filterIcon.simulate("click");
     setTimeout(() => {
       const input = table.find("input");
-      input.simulate("change", {target: {value: "authors"}});
+      input.simulate("change", { target: { value: "authors" } });
       expect(table.html()).not.toContain('books');
       expect(table.html()).toContain('authors');
       expect(table.find(TableBody).find(TableRow)).toHaveLength(1);
