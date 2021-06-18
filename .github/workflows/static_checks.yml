@@ -19,7 +19,7 @@ jobs:
       image: golang:1.16.4
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Go lint
       run: bin/lint --verbose
   go_format:
@@ -30,7 +30,7 @@ jobs:
       image: golang:1.16.4
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Format
       run: bin/fmt
   proto_diff:
@@ -43,7 +43,7 @@ jobs:
       - name: Prerequisites
         run: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install unzip
       - name: Checkout code
-        uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+        uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
       - name: Diff proto files
         run: bin/protoc-diff
   shellcheck:
@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: shellcheck
       # For more information on shellcheck failures:
       # https://github.com/koalaman/shellcheck/wiki/Checks
@@ -64,9 +64,8 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Chocolatey - lint
-      # devblackops/github-action-psscriptanalyzer@v2.3.0
       uses: devblackops/github-action-psscriptanalyzer@47643b05d29d2e63ab8ec3fcbac4f409df6c98e2
       env:
         # https://github.com/devblackops/github-action-psscriptanalyzer/pull/3/files
@@ -80,7 +79,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Markdown lint
       run: bin/markdownlint-all
   chart_docs_diff:
@@ -88,6 +87,6 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Check docs for diff
       run: bin/helm-docs-diff
