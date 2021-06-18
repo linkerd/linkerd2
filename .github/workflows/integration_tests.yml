@@ -93,7 +93,7 @@ jobs:
         name: image-archives
     - name: Run CLI Integration tests
       run: |
-        go test --failfast --mod=readonly ".\test\cli" --linkerd=$PWD\image-archives\linkerd-windows.exe --cli-tests -v
+        go test --failfast --mod=readonly ".\test\cli" --linkerd=$PWD\linkerd-windows.exe --cli-tests -v
   integration_tests:
     strategy:
       matrix:
@@ -138,7 +138,7 @@ jobs:
       with:
         name: image-archives
     - name: Load cli-bin image into local docker images
-      run: docker load < image-archives/cli-bin.tar
+      run: docker load < cli-bin.tar
     - name: Install CLI
       run: |
         # Copy the CLI out of the local cli-bin container.
