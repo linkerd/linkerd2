@@ -40,7 +40,7 @@ require (
 	go.opencensus.io v0.22.3
 	golang.org/x/net v0.0.0-20210224082022-3d97a244fca7
 	golang.org/x/tools v0.1.0
-	google.golang.org/grpc v1.31.1
+	google.golang.org/grpc v1.38.0
 	google.golang.org/protobuf v1.25.0
 	helm.sh/helm/v3 v3.6.1
 	k8s.io/api v0.21.0
