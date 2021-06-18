@@ -91,6 +91,7 @@ jobs:
       uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
       with:
         name: image-archives
+        path: image-archives
     - name: Run CLI Integration tests
       run: |
         go test --failfast --mod=readonly ".\test\cli" --linkerd=$PWD\image-archives\linkerd-windows.exe --cli-tests -v
@@ -137,6 +138,7 @@ jobs:
       uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
       with:
         name: image-archives
+        path: image-archives
     - name: Load cli-bin image into local docker images
       run: docker load < image-archives/cli-bin.tar
     - name: Install CLI

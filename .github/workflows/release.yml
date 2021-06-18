@@ -91,6 +91,7 @@ jobs:
       uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
       with:
         name: image-archives
+        path: image-archives
     - name: Run CLI Integration tests
       run: go test --failfast --mod=readonly ".\test\cli" --linkerd=$PWD\image-archives\linkerd-windows.exe --cli-tests -v
   integration_tests:
@@ -237,6 +238,7 @@ jobs:
       uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
       with:
         name: choco
+        path: choco
     - name: Pull CLI binaries
       env:
         DOCKER_MULTIARCH: 1
