@@ -33,7 +33,7 @@ jobs:
         echo "DOCKER_REGISTRY=cr.l5d.io/linkerd" >> $GITHUB_ENV
         echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
     - name: Cache docker layers
-      uses: actions/cache@b8204782bbb5f872091ecc5eb9cb7d004e35b1fa
+      uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
       with:
         path: ${{ env.DOCKER_BUILDKIT_CACHE }}
         key: ${{ runner.os }}-buildx-${{ matrix.target }}-${{ env.TAG }}
@@ -77,7 +77,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Try to load cached Go modules
-      uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
+      uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -114,7 +114,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Try to load cached Go modules
-      uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
+      uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
