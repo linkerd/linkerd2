@@ -17,3 +17,4 @@ vendor
 **/charts/**/charts
 package-lock.json
 .vscode
+**/coverage*
