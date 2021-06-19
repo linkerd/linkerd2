@@ -18,7 +18,7 @@
     "css-mediaquery": "^0.1.2",
     "d3-drag": "2.0.0",
     "d3-force": "2.0.1",
-    "d3-format": "2.0.0",
+    "d3-format": "3.0.1",
     "d3-selection": "2.0.0",
     "date-fns": "2.12.0",
     "locales-detector": "2.26.0",
