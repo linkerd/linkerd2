@@ -103,7 +103,7 @@ func TestReinvocation(t *testing.T) {
 
 		injectionValidator := testutil.InjectValidator{
 			NoInitContainer: TestHelper.CNI() || TestHelper.Calico(),
-			// ****** TODO ****** this proofs the changes made by the z-kubemod mutating webhook
+			// ****** TODO ****** this proves the changes made by the z-kubemod mutating webhook
 			// weren't surfaced by the injector. Once the injector implements reinvocation
 			// the log level should be "debug"
 			LogLevel: "warn,linkerd=info",
