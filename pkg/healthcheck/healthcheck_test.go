@@ -3407,8 +3407,7 @@ func TestCheckOpaquePortAnnotations(t *testing.T) {
 	hc := NewHealthChecker(
 		[]CategoryID{LinkerdOpaquePortsDefinitionChecks},
 		&Options{
-			DataPlaneNamespace:    "test-ns",
-			ControlPlaneNamespace: "linkerd",
+			DataPlaneNamespace: "test-ns",
 		},
 	)
 
@@ -3441,7 +3440,6 @@ metadata:
   name: my-service-deployment
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: linkerd
     service: service-1
 spec:
   containers:
@@ -3504,7 +3502,6 @@ metadata:
   service: service-1
   labels:
     service: service-1
-    linkerd.io/control-plane-ns: linkerd
   annotations:
     config.linkerd.io/opaque-ports: "9200"
 spec:
@@ -3566,7 +3563,6 @@ metadata:
   service: service-1
   labels:
     service: service-1
-    linkerd.io/control-plane-ns: linkerd
   annotations:
     config.linkerd.io/opaque-ports: "9200"
 spec:
@@ -3629,7 +3625,6 @@ metadata:
   namespace: test-ns
   service: service-1
   labels:
-    linkerd.io/control-plane-ns: linkerd
     service: service-1
 spec:
   containers:
@@ -3691,7 +3686,6 @@ metadata:
   namespace: test-ns
   service: service-1
   labels:
-    linkerd.io/control-plane-ns: linkerd
     service: service-1
   annotations:
     config.linkerd.io/opaque-ports: "9300"
