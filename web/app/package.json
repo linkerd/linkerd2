@@ -32,7 +32,7 @@
     "react-page-visibility": "^6.1.0",
     "react-router": "5.1.2",
     "react-router-dom": "5.1.2",
-    "react-router-prop-types": "1.0.4",
+    "react-router-prop-types": "1.0.5",
     "use-query-params": "1.1.1",
     "whatwg-fetch": "3.0.0"
   },
