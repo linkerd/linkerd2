@@ -2273,7 +2273,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 
 	endpoints, err := hc.GetEndpoints(ctx)
 	if err != nil {
-		return fmt.Errorf("couldn't list endpoints in the cluster: %s", err)
+		return fmt.Errorf("couldn't list endpoints in the namespace/%s: %s", hc.DataPlaneNamespace, err)
 	}
 
 	dataPlanePods, err := hc.GetDataPlanePods(ctx)
@@ -2300,7 +2300,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 				if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
 					pod, ok := podsMap[addr.TargetRef.Name]
 					if !ok {
-						return fmt.Errorf("couldn't find pod for %s", addr.TargetRef.Name)
+						return fmt.Errorf("could not find pod %s mentioned in the endpoint %s/%s as a target", pod.Name, endpoint.Namespace, endpoint.Name)
 					}
 					pods = append(pods, &pod)
 				}
