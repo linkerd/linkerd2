@@ -9,7 +9,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/k8s/resource"
-	"github.com/prometheus/common/log"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
