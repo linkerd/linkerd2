@@ -1754,7 +1754,7 @@
   resolved "https://registry.yarnpkg.com/@types/prettier/-/prettier-2.2.3.tgz#ef65165aea2924c9359205bf748865b8881753c0"
   integrity sha512-PijRCG/K3s3w1We6ynUKdxEc5AcuuH3NBmMDP8uvKVp6X43UY7NQlTzczakXP3DJR0F4dfNQIGjU2cUeRYs2AA==
 
-"@types/prop-types@*", "@types/prop-types@^15.5.3":
+"@types/prop-types@*", "@types/prop-types@^15.7.3":
   version "15.7.3"
   resolved "https://registry.yarnpkg.com/@types/prop-types/-/prop-types-15.7.3.tgz#2ab0d5da2e5815f94b0b9d4b95d1e5f243ab2ca7"
   integrity sha512-KfRL3PuHmqQLOG+2tGpRO26Ctg+Cq1E01D2DMriKEATHgWLfeNDmq9e29Q9WIky0dQ3NPkd1mzYH8Lm936Z9qw==
@@ -2767,10 +2767,10 @@ babel-plugin-jest-hoist@^26.6.2:
     "@types/babel__core" "^7.0.0"
     "@types/babel__traverse" "^7.0.6"
 
-babel-plugin-macros@^3.0.1:
-  version "3.0.1"
-  resolved "https://registry.yarnpkg.com/babel-plugin-macros/-/babel-plugin-macros-3.0.1.tgz#0d412d68f5b3d1b64358f24ab099bd148724e2a9"
-  integrity sha512-CKt4+Oy9k2wiN+hT1uZzOw7d8zb1anbQpf7KLwaaXRCi/4pzKdFKHf7v5mvoPmjkmxshh7eKZQuRop06r5WP4w==
+babel-plugin-macros@^3.1.0:
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/babel-plugin-macros/-/babel-plugin-macros-3.1.0.tgz#9ef6dc74deb934b4db344dc973ee851d148c50c1"
+  integrity sha512-Cg7TFGpIr01vOQNODXOOaGz2NpCU5gl8x1qJFbb6hbZxR7XrcE2vtbAsTAbJ7/xwJtUuJEw8K8Zr/AE0LHlesg==
   dependencies:
     "@babel/runtime" "^7.12.5"
     cosmiconfig "^7.0.0"
@@ -9011,7 +9011,7 @@ prop-types-exact@^1.2.0:
     object.assign "^4.1.0"
     reflect.ownkeys "^0.2.0"
 
-prop-types@15.7.2, prop-types@^15.6.1, prop-types@^15.6.2, prop-types@^15.7.2:
+prop-types@15.7.2, prop-types@^15.6.2, prop-types@^15.7.2:
   version "15.7.2"
   resolved "https://registry.yarnpkg.com/prop-types/-/prop-types-15.7.2.tgz#52c41e75b8c87e72b9d9360e0206b99dcbffa6c5"
   integrity sha512-8QQikdH7//R2vurIJSutZ1smHYTcLpRWEOlHnzcWHmBYrOGUysKwSsrC89BCiFj3CbrfJ/nXFdJepOVrY1GCHQ==
@@ -9252,13 +9252,13 @@ react-router-dom@5.1.2:
     tiny-invariant "^1.0.2"
     tiny-warning "^1.0.0"
 
-react-router-prop-types@1.0.4:
-  version "1.0.4"
-  resolved "https://registry.yarnpkg.com/react-router-prop-types/-/react-router-prop-types-1.0.4.tgz#74716e92d014bb51ee4376ee198f34903cf8dc1d"
-  integrity sha512-tXDQe0pnBTXjFivBa69hYibtgI3hz+Q/VmhMT7vIzYVPv574dd+lIuBIWOBH9dZkHeSuD6iur6zkmss3QVTeew==
+react-router-prop-types@1.0.5:
+  version "1.0.5"
+  resolved "https://registry.yarnpkg.com/react-router-prop-types/-/react-router-prop-types-1.0.5.tgz#2e671d8412a793106bf70dc15c9ecc83ea4bc15b"
+  integrity sha512-q1xlFU2ol2U5zeVbA5hyBuxD3scHenqgMgCTuJQUanA2SyG8A3Fb1S6DleOo1cnGJB5Q05hnLge64kRj+xsuPA==
   dependencies:
-    "@types/prop-types" "^15.5.3"
-    prop-types "^15.6.1"
+    "@types/prop-types" "^15.7.3"
+    prop-types "^15.7.2"
 
 react-router@5.1.2:
   version "5.1.2"
