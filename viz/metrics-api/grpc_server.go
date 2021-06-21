@@ -24,6 +24,7 @@ type Server interface {
 }
 
 type grpcServer struct {
+	pb.UnimplementedApiServer
 	prometheusAPI       promv1.API
 	k8sAPI              *k8s.API
 	controllerNamespace string

@@ -37,6 +37,7 @@ const defaultMaxRps = 100.0
 
 // GRPCTapServer describes the gRPC server implementing pb.TapServer
 type GRPCTapServer struct {
+	tapPb.UnimplementedTapServer
 	tapPort             uint
 	k8sAPI              *k8s.API
 	controllerNamespace string

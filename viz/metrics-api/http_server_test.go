@@ -19,6 +19,7 @@ type mockServer struct {
 }
 
 type mockGrpcServer struct {
+	pb.UnimplementedApiServer
 	mockServer
 }
 
