@@ -69,8 +69,8 @@ func (m *MockProm) Flags(ctx context.Context) (promv1.FlagsResult, error) {
 	return promv1.FlagsResult{}, nil
 }
 
-// LabelValues performs a query for the values of the given label.
-func (m *MockProm) LabelValues(ctx context.Context, label string, startTime time.Time, endTime time.Time) (model.LabelValues, promv1.Warnings, error) {
+// LabelValues performs a query for the values of the given label, time range and matchers.
+func (m *MockProm) LabelValues(ctx context.Context, label string, matches []string, startTime time.Time, endTime time.Time) (model.LabelValues, promv1.Warnings, error) {
 	return nil, nil, nil
 }
 
@@ -92,8 +92,8 @@ func (m *MockProm) Targets(ctx context.Context) (promv1.TargetsResult, error) {
 	return promv1.TargetsResult{}, nil
 }
 
-// LabelNames returns all the unique label names present in the block in sorted order.
-func (m *MockProm) LabelNames(ctx context.Context, startTime time.Time, endTime time.Time) ([]string, promv1.Warnings, error) {
+// LabelNames returns the unique label names present in the block in sorted order by given time range and matchers.
+func (m *MockProm) LabelNames(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) ([]string, promv1.Warnings, error) {
 	return []string{}, nil, nil
 }
 
@@ -115,4 +115,19 @@ func (m *MockProm) Rules(ctx context.Context) (promv1.RulesResult, error) {
 // TargetsMetadata returns metadata about metrics currently scraped by the target.
 func (m *MockProm) TargetsMetadata(ctx context.Context, matchTarget string, metric string, limit string) ([]promv1.MetricMetadata, error) {
 	return []promv1.MetricMetadata{}, nil
+}
+
+// Buildinfo returns various build information properties about the Prometheus server
+func (m *MockProm) Buildinfo(ctx context.Context) (promv1.BuildinfoResult, error) {
+	return promv1.BuildinfoResult{}, nil
+}
+
+// QueryExemplars performs a query for exemplars by the given query and time range.
+func (m *MockProm) QueryExemplars(ctx context.Context, query string, startTime time.Time, endTime time.Time) ([]promv1.ExemplarQueryResult, error) {
+	return []promv1.ExemplarQueryResult{}, nil
+}
+
+// TSDB returns the cardinality statistics.
+func (m *MockProm) TSDB(ctx context.Context) (promv1.TSDBResult, error) {
+	return promv1.TSDBResult{}, nil
 }
