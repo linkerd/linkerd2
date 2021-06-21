@@ -31,7 +31,7 @@ describe("Tests for <BaseTable>", () => {
         deployment: "authors",
         namespace: "default",
         key: "default-deployment-authors",
-        pods: { totalPods: "1", meshedPods: "1" }
+        pods: {totalPods: "1", meshedPods: "1"}
       }],
       tableColumns: tableColumns,
     });
@@ -52,13 +52,13 @@ describe("Tests for <BaseTable>", () => {
         deployment: "authors",
         namespace: "default",
         key: "default-deployment-authors",
-        pods: { totalPods: "1", meshedPods: "1" }
+        pods: {totalPods: "1", meshedPods: "1"}
       },
       {
         deployment: "books",
         namespace: "default",
         key: "default-deployment-books",
-        pods: { totalPods: "2", meshedPods: "1" }
+        pods: {totalPods: "2", meshedPods: "1"}
       }],
       tableColumns: tableColumns,
       enableFilter: true
@@ -92,13 +92,13 @@ describe("Tests for <BaseTable>", () => {
         deployment: "authors",
         namespace: "default",
         key: "default-deployment-authors",
-        pods: { totalPods: "1", meshedPods: "1" }
+        pods: {totalPods: "1", meshedPods: "1"}
       },
       {
         deployment: "books",
         namespace: "default",
         key: "default-deployment-books",
-        pods: { totalPods: "2", meshedPods: "1" }
+        pods: {totalPods: "2", meshedPods: "1"}
       }],
       tableColumns: tableColumns,
       enableFilter: true
@@ -110,12 +110,12 @@ describe("Tests for <BaseTable>", () => {
     const enableFilter = component.prop("enableFilter");
     const filterIcon = table.find(FilterListIcon);
     expect(enableFilter).toEqual(true);
-    expect(filterIcon).toBeDefined();
+    expect(filterIcon).toHaveLength(1);
 
     filterIcon.simulate("click");
     setTimeout(() => {
       const input = table.find("input");
-      input.simulate("change", { target: { value: "authors" } });
+      input.simulate("change", {target: {value: "authors"}});
       expect(table.html()).not.toContain('books');
       expect(table.html()).toContain('authors');
       expect(table.find(TableBody).find(TableRow)).toHaveLength(1);
