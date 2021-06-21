@@ -84,9 +84,10 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
     - name: Download image archives
-      uses: actions/download-artifact@18f0f591fbc635562c815484d73b6e8e3980482e
+      uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
       with:
         name: image-archives
+        path: image-archives
     - name: Run CLI Integration tests
       run: |
         go test --failfast --mod=readonly ".\test\cli" --linkerd=$PWD\image-archives\linkerd-windows.exe --cli-tests -v
@@ -128,9 +129,10 @@ jobs:
         . bin/_docker.sh
         echo "DOCKER_REGISTRY=cr.l5d.io/linkerd" >> $GITHUB_ENV
     - name: Download image archives
-      uses: actions/download-artifact@18f0f591fbc635562c815484d73b6e8e3980482e
+      uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
       with:
         name: image-archives
+        path: image-archives
     - name: Load cli-bin image into local docker images
       run: docker load < image-archives/cli-bin.tar
     - name: Install CLI
