@@ -13,10 +13,10 @@ The Linkerd maintainers are:
 
 The Linkerd Steering Committee members are:
 
-* Chris Campbell @campbel
-* Christian Hüning @christianhuening
-* Justin Turner @justin-turner-heb
-* William King @quentusrex
+* Chris Campbell @campbel (HP)
+* Christian Hüning @christianhuening (finleap connect)
+* Justin Turner @justin-turner-heb (HEB)
+* William King @quentusrex (Subspace)
 
 ## Emeriti
 
