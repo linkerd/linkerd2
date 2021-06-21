@@ -2276,6 +2276,11 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 		return fmt.Errorf("couldn't list endpoints in the namespace/%s: %s", hc.DataPlaneNamespace, err)
 	}
 
+	endpointsMap := make(map[string]corev1.Endpoints)
+	for _, endpoints := range endpoints {
+		endpointsMap[endpoints.Namespace+"/"+endpoints.Name] = endpoints
+	}
+
 	dataPlanePods, err := hc.GetDataPlanePods(ctx)
 	if err != nil {
 		return err
@@ -2293,7 +2298,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 			continue
 		}
 
-		endpoint := endpoints[service.Namespace+"/"+service.Name]
+		endpoint := endpointsMap[service.Namespace+"/"+service.Name]
 		pods := make([]*corev1.Pod, 0)
 		for _, subset := range endpoint.Subsets {
 			for _, addr := range subset.Addresses {
@@ -2372,21 +2377,14 @@ func (hc *HealthChecker) GetServices(ctx context.Context) ([]corev1.Service, err
 	return svcList.Items, nil
 }
 
-// GetEndpoints returns all endpoints within data plane namespace as a map
-// with key as `<endpointsNamespace>/<endpointsName>`
-func (hc *HealthChecker) GetEndpoints(ctx context.Context) (map[string]corev1.Endpoints, error) {
+// GetEndpoints returns all endpoints within data plane namespace
+func (hc *HealthChecker) GetEndpoints(ctx context.Context) ([]corev1.Endpoints, error) {
 	allEndpoints, err := hc.kubeAPI.CoreV1().Endpoints(hc.DataPlaneNamespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	endpointsMap := make(map[string]corev1.Endpoints)
-	for _, endpoints := range allEndpoints.Items {
-		endpointsMap[endpoints.Namespace+"/"+endpoints.Name] = endpoints
-
-	}
-
-	return endpointsMap, nil
+	return allEndpoints.Items, nil
 }
 
 func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace(ctx context.Context) error {
