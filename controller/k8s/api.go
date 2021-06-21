@@ -260,8 +260,14 @@ func NewAPI(
 // Sync waits for all informers to be synced.
 func (api *API) Sync(stopCh <-chan struct{}) {
 	api.sharedInformers.Start(stopCh)
-	api.spSharedInformers.Start(stopCh)
-	api.tsSharedInformers.Start(stopCh)
+
+	if api.spSharedInformers != nil {
+		api.spSharedInformers.Start(stopCh)
+	}
+
+	if api.tsSharedInformers != nil {
+		api.tsSharedInformers.Start(stopCh)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
+	k8sAPI "github.com/linkerd/linkerd2/controller/k8s"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/identity"
@@ -28,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
@@ -2263,32 +2265,15 @@ func checkResources(resourceName string, objects []runtime.Object, expectedNames
 // Check if there's a pod with the "opaque ports" annotation defined but a
 // service selecting the aforementioned pod doesn't define it
 func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Context) error {
+	// Initialize and sync the kubernetes API
+	// This is used instead of `hc.kubeAPI` to limit multiple k8s API requests
+	// and use the caching logic in the shared informers
+	api := k8sAPI.NewAPI(hc.kubeAPI, nil, nil, k8sAPI.Endpoint, k8sAPI.Pod, k8sAPI.Svc)
+	api.Sync(ctx.Done())
 
-	// Pre-fetch services, endpoints and pods for the data plane namespace
-	// to prevent numerous requests to the API server
-	services, err := hc.GetServices(ctx)
+	services, err := api.Svc().Lister().Services(hc.DataPlaneNamespace).List(labels.Everything())
 	if err != nil {
 		return err
-	}
-
-	endpoints, err := hc.GetEndpoints(ctx)
-	if err != nil {
-		return fmt.Errorf("couldn't list endpoints in the namespace/%s: %s", hc.DataPlaneNamespace, err)
-	}
-
-	endpointsMap := make(map[string]corev1.Endpoints)
-	for _, endpoints := range endpoints {
-		endpointsMap[endpoints.Namespace+"/"+endpoints.Name] = endpoints
-	}
-
-	dataPlanePods, err := hc.GetDataPlanePods(ctx)
-	if err != nil {
-		return err
-	}
-
-	podsMap := make(map[string]corev1.Pod)
-	for _, pod := range dataPlanePods {
-		podsMap[pod.Name] = pod
 	}
 
 	var errStrings []string
@@ -2298,16 +2283,20 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 			continue
 		}
 
-		endpoint := endpointsMap[service.Namespace+"/"+service.Name]
+		endpoint, err := api.Endpoint().Lister().Endpoints(service.Namespace).Get(service.Name)
+		if err != nil {
+			return err
+		}
+
 		pods := make([]*corev1.Pod, 0)
 		for _, subset := range endpoint.Subsets {
 			for _, addr := range subset.Addresses {
 				if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
-					pod, ok := podsMap[addr.TargetRef.Name]
-					if !ok {
-						return fmt.Errorf("could not find pod %s mentioned in the endpoint %s/%s as a target", pod.Name, endpoint.Namespace, endpoint.Name)
+					pod, err := api.Pod().Lister().Pods(service.Namespace).Get(addr.TargetRef.Name)
+					if err != nil {
+						return err
 					}
-					pods = append(pods, &pod)
+					pods = append(pods, pod)
 				}
 			}
 		}
@@ -2327,7 +2316,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 	return nil
 }
 
-func misconfiguredOpaquePortAnnotationsInService(service corev1.Service, pods []*corev1.Pod) error {
+func misconfiguredOpaquePortAnnotationsInService(service *corev1.Service, pods []*corev1.Pod) error {
 	for _, pod := range pods {
 		if err := misconfiguredOpaqueAnnotation(service, pod); err != nil {
 			return err
@@ -2336,7 +2325,7 @@ func misconfiguredOpaquePortAnnotationsInService(service corev1.Service, pods []
 	return nil
 }
 
-func misconfiguredOpaqueAnnotation(service corev1.Service, pod *corev1.Pod) error {
+func misconfiguredOpaqueAnnotation(service *corev1.Service, pod *corev1.Pod) error {
 	svcAnnotation, svcAnnotationOk := service.Annotations[k8s.ProxyOpaquePortsAnnotation]
 	podAnnotation, podAnnotationOk := pod.Annotations[k8s.ProxyOpaquePortsAnnotation]
 
@@ -2375,16 +2364,6 @@ func (hc *HealthChecker) GetServices(ctx context.Context) ([]corev1.Service, err
 		return nil, err
 	}
 	return svcList.Items, nil
-}
-
-// GetEndpoints returns all endpoints within data plane namespace
-func (hc *HealthChecker) GetEndpoints(ctx context.Context) ([]corev1.Endpoints, error) {
-	allEndpoints, err := hc.kubeAPI.CoreV1().Endpoints(hc.DataPlaneNamespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	return allEndpoints.Items, nil
 }
 
 func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace(ctx context.Context) error {
