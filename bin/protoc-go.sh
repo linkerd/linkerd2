@@ -5,6 +5,7 @@ set -eu
 bindir=$( cd "${0%/*}" && pwd )
 
 go install -mod=readonly github.com/golang/protobuf/protoc-gen-go
+go install -mod=readonly google.golang.org/grpc/cmd/protoc-gen-go-grpc
 
 rm -rf controller/gen/common controller/gen/config viz/metrics-api/gen viz/tap/gen
 mkdir -p controller/gen/common/net viz/metrics-api/gen/viz viz/tap/gen/tap
