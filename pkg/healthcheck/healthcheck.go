@@ -13,7 +13,7 @@ import (
 	"time"
 
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
-	k8sAPI "github.com/linkerd/linkerd2/controller/k8s"
+	controllerK8s "github.com/linkerd/linkerd2/controller/k8s"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/identity"
@@ -2268,10 +2268,10 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 	// Initialize and sync the kubernetes API
 	// This is used instead of `hc.kubeAPI` to limit multiple k8s API requests
 	// and use the caching logic in the shared informers
-	api := k8sAPI.NewAPI(hc.kubeAPI, nil, nil, k8sAPI.Endpoint, k8sAPI.Pod, k8sAPI.Svc)
-	api.Sync(ctx.Done())
+	kubeAPI := controllerK8s.NewAPI(hc.kubeAPI, nil, nil, controllerK8s.Endpoint, controllerK8s.Pod, controllerK8s.Svc)
+	kubeAPI.Sync(ctx.Done())
 
-	services, err := api.Svc().Lister().Services(hc.DataPlaneNamespace).List(labels.Everything())
+	services, err := kubeAPI.Svc().Lister().Services(hc.DataPlaneNamespace).List(labels.Everything())
 	if err != nil {
 		return err
 	}
@@ -2283,7 +2283,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 			continue
 		}
 
-		endpoint, err := api.Endpoint().Lister().Endpoints(service.Namespace).Get(service.Name)
+		endpoint, err := kubeAPI.Endpoint().Lister().Endpoints(service.Namespace).Get(service.Name)
 		if err != nil {
 			return err
 		}
@@ -2292,7 +2292,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 		for _, subset := range endpoint.Subsets {
 			for _, addr := range subset.Addresses {
 				if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
-					pod, err := api.Pod().Lister().Pods(service.Namespace).Get(addr.TargetRef.Name)
+					pod, err := kubeAPI.Pod().Lister().Pods(service.Namespace).Get(addr.TargetRef.Name)
 					if err != nil {
 						return err
 					}
