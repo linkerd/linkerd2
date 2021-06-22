@@ -6,7 +6,7 @@ require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.0
 	github.com/briandowns/spinner v0.0.0-20190212173954-5cf08d0ac778
 	github.com/clarketm/json v1.15.7
-	github.com/containernetworking/cni v0.6.1-0.20180218032124-142cde0c766c
+	github.com/containernetworking/cni v0.8.0
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/emicklei/proto v1.9.0
 	github.com/evanphx/json-patch v4.9.0+incompatible
@@ -55,6 +55,24 @@ require (
 	sigs.k8s.io/yaml v1.2.0
 )
 
-// to avoid the `github.com/golang/protobuf/protoc-gen-go/generator` deprecation warning
-// (see https://github.com/golang/protobuf/issues/1104)
-replace github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.14.8
+// exclude (
+// github.com/Microsoft/hcsshim v0.8.17
+// github.com/deislabs/oras v0.12.0
+// sigs.k8s.io/kustomize/api v0.8.10
+// sigs.k8s.io/kustomize/api v0.8.9
+// sigs.k8s.io/kustomize/api v0.8.8
+// sigs.k8s.io/kustomize/api v0.8.7
+// sigs.k8s.io/kustomize/api v0.8.6
+// )
+
+replace (
+	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.14
+	github.com/containerd/containerd => github.com/containerd/containerd v1.5.0-beta.4
+	github.com/deislabs/oras => github.com/deislabs/oras v0.11.1
+	// to avoid the `github.com/golang/protobuf/protoc-gen-go/generator` deprecation warning
+	// (see https://github.com/golang/protobuf/issues/1104)
+	github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.14.8
+	// https://github.com/klauspost/compress/issues/355
+	github.com/klauspost/compress => github.com/klauspost/compress v1.11.13
+	sigs.k8s.io/kustomize/api => sigs.k8s.io/kustomize/api v0.8.5
+)
