@@ -435,6 +435,7 @@ func getPodByHostname(k8sAPI *k8s.API, hostname string, svcID watcher.ServiceID)
 		return nil, err
 	}
 
+	//TODO: add support for headless services with non-pod endpoints.
 	for _, subset := range ep.Subsets {
 		for _, addr := range subset.Addresses {
 			if addr.TargetRef == nil || addr.TargetRef.Kind != "Pod" {
