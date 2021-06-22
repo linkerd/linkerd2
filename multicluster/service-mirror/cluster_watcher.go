@@ -339,7 +339,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Co
 // Deletes a locally mirrored service as it is not present on the remote cluster anymore
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ctx context.Context, ev *RemoteServiceDeleted) error {
 	localServiceName := rcsw.mirroredResourceName(ev.Name)
-	localService, err := rcsw.localAPIClient.Svc().Lister().Services(ev.Namespace).Get(ev.Name)
+	localService, err := rcsw.localAPIClient.Svc().Lister().Services(ev.Namespace).Get(localServiceName)
 	var errors []error
 	if err != nil {
 		errors = append(errors, fmt.Errorf("could not fetch Service %s/%s: %s", ev.Namespace, localServiceName, err))
@@ -349,7 +349,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ctx context.
 	// services.
 	if rcsw.headlessServicesEnabled && localService.Spec.ClusterIP == corev1.ClusterIPNone {
 		matchLabels := map[string]string{
-			consts.MirroredRootHeadlessLabel: localServiceName,
+			consts.MirroredHeadlessSvcNameLabel: localServiceName,
 		}
 		endpointMirrorServices, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
 		if err != nil {
@@ -993,7 +993,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx con
 
 	headlessMirrorName := rcsw.mirroredResourceName(exportedService.Name)
 	matchLabels := map[string]string{
-		consts.MirroredRootHeadlessLabel: headlessMirrorName,
+		consts.MirroredHeadlessSvcNameLabel: headlessMirrorName,
 	}
 
 	// Fetch all Endpoint Mirror services that belong to the same Headless Mirror
@@ -1126,7 +1126,7 @@ func (rcsw *RemoteClusterServiceWatcher) createEndpointMirrorService(ctx context
 
 	endpointMirrorLabels := rcsw.getMirroredServiceLabels()
 	mirrorServiceName := rcsw.mirroredResourceName(exportedService.Name)
-	endpointMirrorLabels[consts.MirroredRootHeadlessLabel] = mirrorServiceName
+	endpointMirrorLabels[consts.MirroredHeadlessSvcNameLabel] = mirrorServiceName
 
 	// Create service spec, clusterIP
 	endpointMirrorService := &corev1.Service{

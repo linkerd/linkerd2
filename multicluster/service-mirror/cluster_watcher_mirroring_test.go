@@ -28,13 +28,13 @@ func (tc *mirroringTestCase) run(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-
 		if tc.expectedLocalServices == nil {
 			// ensure the are no local services
 			services, err := localAPI.Client.CoreV1().Services(corev1.NamespaceAll).List(context.Background(), metav1.ListOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			if len(services.Items) > 0 {
 				t.Fatalf("Was expecting no local services but instead found %v", services.Items)
 
@@ -126,7 +126,7 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 			description: "create headless service and endpoints when gateway can be resolved",
 			environment: createExportedHeadlessService,
 			expectedLocalServices: []*corev1.Service{
-				mirrorHeadlessService(
+				headlessMirrorService(
 					"service-one-remote",
 					"ns2",
 					"111",
@@ -142,7 +142,7 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 							Port:     666,
 						},
 					}),
-				mirrorNestedService(
+				endpointMirrorService(
 					"pod-0",
 					"service-one-remote",
 					"ns2",
@@ -162,7 +162,7 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 				),
 			},
 			expectedLocalEndpoints: []*corev1.Endpoints{
-				headlessEndpoints("service-one-remote", "ns2", "pod-0", "", "gateway-identity", []corev1.EndpointPort{
+				headlessMirrorEndpoints("service-one-remote", "ns2", "pod-0", "", "gateway-identity", []corev1.EndpointPort{
 					{
 						Name:     "port1",
 						Port:     555,
@@ -174,7 +174,7 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 						Protocol: "TCP",
 					},
 				}),
-				nestedEndpoints(
+				endpointMirrorEndpoints(
 					"service-one-remote",
 					"ns2",
 					"pod-0",
@@ -260,7 +260,7 @@ func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
 			description: "updates Endpoints hosts on remote and local Endpoints",
 			environment: updateEndpointsWithChangedHosts,
 			expectedLocalServices: []*corev1.Service{
-				mirrorHeadlessService("service-two-remote", "eptest", "222", []corev1.ServicePort{
+				headlessMirrorService("service-two-remote", "eptest", "222", []corev1.ServicePort{
 					{
 						Name:     "port1",
 						Protocol: "TCP",
@@ -272,7 +272,7 @@ func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
 						Port:     666,
 					},
 				}),
-				mirrorNestedService("pod-0", "service-two-remote", "eptest", "333", []corev1.ServicePort{
+				endpointMirrorService("pod-0", "service-two-remote", "eptest", "333", []corev1.ServicePort{
 					{
 						Name:     "port1",
 						Protocol: "TCP",
@@ -284,7 +284,7 @@ func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
 						Port:     666,
 					},
 				}),
-				mirrorNestedService("pod-1", "service-two-remote", "eptest", "112", []corev1.ServicePort{
+				endpointMirrorService("pod-1", "service-two-remote", "eptest", "112", []corev1.ServicePort{
 					{
 						Name:     "port1",
 						Protocol: "TCP",
@@ -298,7 +298,7 @@ func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
 				}),
 			},
 			expectedLocalEndpoints: []*corev1.Endpoints{
-				headlessEndpointsUpdated(
+				headlessMirrorEndpointsUpdated(
 					"service-two-remote",
 					"eptest",
 					[]string{"pod-0", "pod-1"},
@@ -316,7 +316,7 @@ func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
 							Protocol: "TCP",
 						},
 					}),
-				nestedEndpoints(
+				endpointMirrorEndpoints(
 					"service-two-remote",
 					"eptest",
 					"pod-0",
@@ -334,7 +334,7 @@ func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
 							Protocol: "TCP",
 						},
 					}),
-				nestedEndpoints(
+				endpointMirrorEndpoints(
 					"service-two-remote",
 					"eptest",
 					"pod-1",

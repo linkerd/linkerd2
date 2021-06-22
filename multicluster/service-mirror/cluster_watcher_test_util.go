@@ -47,12 +47,10 @@ func (te *testEnvironment) runEnvironment(watcherQueue workqueue.RateLimitingInt
 	if err != nil {
 		return nil, err
 	}
-
 	localAPI, err := k8s.NewFakeAPI(te.localResources...)
 	if err != nil {
 		return nil, err
 	}
-
 	remoteAPI.Sync(nil)
 	localAPI.Sync(nil)
 
@@ -328,7 +326,7 @@ var updateEndpointsWithChangedHosts = &testEnvironment{
 			}),
 	},
 	localResources: []string{
-		mirrorHeadlessServiceAsYaml("service-two-remote", "eptest", "222",
+		headlessMirrorAsYaml("service-two-remote", "eptest", "222",
 			[]corev1.ServicePort{
 				{
 					Name:     "port1",
@@ -341,7 +339,7 @@ var updateEndpointsWithChangedHosts = &testEnvironment{
 					Port:     666,
 				},
 			}),
-		mirrorNestedHeadlessAsYaml("pod-0", "service-two-remote", "eptest", "333", []corev1.ServicePort{
+		endpointMirrorAsYaml("pod-0", "service-two-remote", "eptest", "333", []corev1.ServicePort{
 			{
 				Name:     "port1",
 				Protocol: "TCP",
@@ -353,7 +351,7 @@ var updateEndpointsWithChangedHosts = &testEnvironment{
 				Port:     666,
 			},
 		}),
-		headlessEndpointsAsYaml(
+		headlessMirrorEndpointsAsYaml(
 			"service-two-remote",
 			"eptest",
 			"pod-0",
@@ -371,7 +369,7 @@ var updateEndpointsWithChangedHosts = &testEnvironment{
 					Port:     666,
 				},
 			}),
-		nestedEndpointsAsYaml(
+		endpointMirrorEndpointsAsYaml(
 			"service-two-remote",
 			"eptest",
 			"pod-0",
@@ -766,13 +764,13 @@ func mirrorService(name, namespace, resourceVersion string, ports []corev1.Servi
 	}
 }
 
-func mirrorHeadlessService(name, namespace, resourceVersion string, ports []corev1.ServicePort) *corev1.Service {
+func headlessMirrorService(name, namespace, resourceVersion string, ports []corev1.ServicePort) *corev1.Service {
 	svc := mirrorService(name, namespace, resourceVersion, ports)
 	svc.Spec.ClusterIP = "None"
 	return svc
 }
 
-func mirrorNestedService(hostname, rootName, namespace, resourceVersion string, ports []corev1.ServicePort) *corev1.Service {
+func endpointMirrorService(hostname, rootName, namespace, resourceVersion string, ports []corev1.ServicePort) *corev1.Service {
 	annotations := make(map[string]string)
 	annotations[consts.RemoteResourceVersionAnnotation] = resourceVersion
 	annotations[consts.RemoteServiceFqName] = fmt.Sprintf("%s.%s.%s.svc.cluster.local", hostname, strings.Replace(rootName, "-remote", "", 1), namespace)
@@ -787,9 +785,9 @@ func mirrorNestedService(hostname, rootName, namespace, resourceVersion string, 
 			Namespace: namespace,
 			Labels: map[string]string{
 
-				consts.MirroredRootHeadlessLabel: rootName,
-				consts.RemoteClusterNameLabel:    clusterName,
-				consts.MirroredResourceLabel:     "true",
+				consts.MirroredHeadlessSvcNameLabel: rootName,
+				consts.RemoteClusterNameLabel:       clusterName,
+				consts.MirroredResourceLabel:        "true",
 			},
 			Annotations: annotations,
 		},
@@ -809,8 +807,8 @@ func mirrorServiceAsYaml(name, namespace, resourceVersion string, ports []corev1
 	return string(bytes)
 }
 
-func mirrorHeadlessServiceAsYaml(name, namespace, resourceVersion string, ports []corev1.ServicePort) string {
-	svc := mirrorHeadlessService(name, namespace, resourceVersion, ports)
+func headlessMirrorAsYaml(name, namespace, resourceVersion string, ports []corev1.ServicePort) string {
+	svc := headlessMirrorService(name, namespace, resourceVersion, ports)
 
 	bytes, err := yaml.Marshal(svc)
 	if err != nil {
@@ -819,8 +817,8 @@ func mirrorHeadlessServiceAsYaml(name, namespace, resourceVersion string, ports 
 	return string(bytes)
 }
 
-func mirrorNestedHeadlessAsYaml(hostname, rootName, namespace, resourceVersion string, ports []corev1.ServicePort) string {
-	svc := mirrorNestedService(hostname, rootName, namespace, resourceVersion, ports)
+func endpointMirrorAsYaml(hostname, rootName, namespace, resourceVersion string, ports []corev1.ServicePort) string {
+	svc := endpointMirrorService(hostname, rootName, namespace, resourceVersion, ports)
 
 	bytes, err := yaml.Marshal(svc)
 	if err != nil {
@@ -922,16 +920,17 @@ func endpoints(name, namespace, gatewayIP string, gatewayIdentity string, ports 
 	return endpoints
 }
 
-func nestedEndpoints(rootName, namespace, hostname, gatewayIP, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
+func endpointMirrorEndpoints(rootName, namespace, hostname, gatewayIP, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
 	localName := fmt.Sprintf("%s-%s", hostname, clusterName)
 	ep := endpoints(localName, namespace, gatewayIP, gatewayIdentity, ports)
 
 	ep.Annotations[consts.RemoteServiceFqName] = fmt.Sprintf("%s.%s.%s.svc.cluster.local", hostname, strings.Replace(rootName, "-remote", "", 1), namespace)
+	ep.Labels[consts.MirroredHeadlessSvcNameLabel] = rootName
 
 	return ep
 }
 
-func headlessEndpoints(name, namespace, hostname, hostIP, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
+func headlessMirrorEndpoints(name, namespace, hostname, hostIP, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
 	endpoints := &corev1.Endpoints{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Endpoints",
@@ -968,7 +967,7 @@ func headlessEndpoints(name, namespace, hostname, hostIP, gatewayIdentity string
 	return endpoints
 }
 
-func headlessEndpointsUpdated(name, namespace string, hostnames, hostIPs []string, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
+func headlessMirrorEndpointsUpdated(name, namespace string, hostnames, hostIPs []string, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
 	endpoints := &corev1.Endpoints{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Endpoints",
@@ -1019,8 +1018,8 @@ func endpointsAsYaml(name, namespace, gatewayIP, gatewayIdentity string, ports [
 	return string(bytes)
 }
 
-func headlessEndpointsAsYaml(name, namespace, hostname, hostIP, gatewayIdentity string, ports []corev1.EndpointPort) string {
-	ep := headlessEndpoints(name, namespace, hostname, hostIP, gatewayIdentity, ports)
+func headlessMirrorEndpointsAsYaml(name, namespace, hostname, hostIP, gatewayIdentity string, ports []corev1.EndpointPort) string {
+	ep := headlessMirrorEndpoints(name, namespace, hostname, hostIP, gatewayIdentity, ports)
 
 	bytes, err := yaml.Marshal(ep)
 	if err != nil {
@@ -1030,8 +1029,8 @@ func headlessEndpointsAsYaml(name, namespace, hostname, hostIP, gatewayIdentity 
 	return string(bytes)
 }
 
-func nestedEndpointsAsYaml(name, namespace, hostname, gatewayIP, gatewayIdentity string, ports []corev1.EndpointPort) string {
-	ep := nestedEndpoints(name, namespace, hostname, gatewayIP, gatewayIdentity, ports)
+func endpointMirrorEndpointsAsYaml(name, namespace, hostname, gatewayIP, gatewayIdentity string, ports []corev1.EndpointPort) string {
+	ep := endpointMirrorEndpoints(name, namespace, hostname, gatewayIP, gatewayIdentity, ports)
 
 	bytes, err := yaml.Marshal(ep)
 	if err != nil {
