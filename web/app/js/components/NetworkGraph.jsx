@@ -1,4 +1,6 @@
 import 'whatwg-fetch';
+import 'regenerator-runtime/runtime';
+import 'core-js/stable';
 import { forceCenter, forceLink, forceManyBody, forceSimulation } from 'd3-force';
 import { select, selectAll } from 'd3-selection';
 import PropTypes from 'prop-types';
