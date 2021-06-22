@@ -31,7 +31,7 @@
     "react-dom": "16.13.1",
     "react-linkify": "1.0.0-alpha",
     "react-page-visibility": "^6.1.0",
-    "react-router": "5.1.2",
+    "react-router": "5.2.0",
     "react-router-dom": "5.1.2",
     "react-router-prop-types": "1.0.5",
     "regenerator-runtime": "^0.13.7",
