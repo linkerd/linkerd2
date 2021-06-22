@@ -8,5 +8,11 @@
       "plugins": ["transform-react-remove-prop-types"]
     }
   },
-  "presets": ["@babel/preset-env", "@babel/preset-react"]
+  "presets": [
+    ["@babel/preset-env",
+      { // Copied from https://newbedev.com/babel-7-referenceerror-regeneratorruntime-is-not-defined
+        "useBuiltIns": "entry",
+        "corejs": 3
+      }
+    ], "@babel/preset-react"]
 }
