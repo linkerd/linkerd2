@@ -15,11 +15,12 @@
     "@material-ui/icons": "4.11.2",
     "@material-ui/lab": "^4.0.0-alpha.58",
     "classnames": "2.3.1",
+    "core-js": "^3.15.0",
     "css-mediaquery": "^0.1.2",
     "d3-drag": "2.0.0",
     "d3-force": "2.0.1",
     "d3-format": "3.0.1",
-    "d3-selection": "2.0.0",
+    "d3-selection": "3.0.0",
     "date-fns": "2.12.0",
     "locales-detector": "2.26.0",
     "lodash": "4.17.21",
@@ -33,6 +34,7 @@
     "react-router": "5.1.2",
     "react-router-dom": "5.1.2",
     "react-router-prop-types": "1.0.5",
+    "regenerator-runtime": "^0.13.7",
     "use-query-params": "1.1.1",
     "whatwg-fetch": "3.0.0"
   },
@@ -99,7 +101,7 @@
       "./node_modules/jest-enzyme/lib/index.js"
     ],
     "transformIgnorePatterns": [
-      "./node_modules/(?!d3-format)"
+      "./node_modules/?!(d3-format|d3-selection)"
     ],
     "moduleNameMapper": {
       "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/__mocks__/fileMock.js",
