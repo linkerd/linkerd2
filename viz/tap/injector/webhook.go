@@ -9,7 +9,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/webhook"
 	vizLabels "github.com/linkerd/linkerd2/viz/pkg/labels"
-	"github.com/prometheus/common/log"
+	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"

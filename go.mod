@@ -29,7 +29,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
 	github.com/prometheus/client_golang v1.11.0
-	github.com/prometheus/common v0.26.0
+	github.com/prometheus/common v0.29.0
 	github.com/sergi/go-diff v1.2.0
 	github.com/servicemeshinterface/smi-sdk-go v0.5.0
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
@@ -37,8 +37,8 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
-	go.opencensus.io v0.22.3
-	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
+	go.opencensus.io v0.22.4
+	golang.org/x/net v0.0.0-20210525063256-abc453219eb5
 	golang.org/x/tools v0.1.3
 	google.golang.org/grpc v1.38.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
