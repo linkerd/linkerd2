@@ -202,61 +202,19 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			fqn = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
 		} else {
 			// If the IP does not map to a service, check if it maps to a pod
-			pod, err := getPod(s.k8sAPI, ip.String(), port, log)
+			pod, err := getPodByIP(s.k8sAPI, ip.String(), port, log)
 			if err != nil {
 				return err
 			}
-			var endpoint *pb.WeightedAddr
-			opaquePorts := make(map[uint32]struct{})
-			if pod != nil {
-				// If the IP maps to a pod, we create a single endpoint and
-				// return it in the DestinationProfile response
-				podSet := podToAddressSet(s.k8sAPI, pod).WithPort(port)
-				podID := watcher.PodID{
-					Namespace: pod.Namespace,
-					Name:      pod.Name,
-				}
-				var ok bool
-				opaquePorts, ok, err = getPodOpaquePortsAnnotations(pod)
-				if err != nil {
-					log.Errorf("failed to get opaque ports annotation for pod: %s", err)
-				}
-				// If the opaque ports annotation was not set, then set the
-				// endpoint's opaque ports to the default value.
-				if !ok {
-					opaquePorts = s.defaultOpaquePorts
-				}
 
-				skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(pod)
-				if err != nil {
-					log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
-				}
-
-				endpoint, err = toWeightedAddr(podSet.Addresses[podID], opaquePorts, skippedInboundPorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, log)
-				if err != nil {
-					return err
-				}
-				// `Get` doesn't include the namespace in the per-endpoint
-				// metadata, so it needs to be special-cased.
-				endpoint.MetricLabels["namespace"] = pod.Namespace
-			}
-
-			// When the IP does not map to a service, the default profile is
-			// sent without subscribing for future updates. If the IP mapped
-			// to a pod, then the endpoint will be set in the response.
-			translator := newProfileTranslator(stream, log, "", port, endpoint)
-
-			// If there are opaque ports then update the profile translator
-			// with a service profile that has those values
-			//
-			// TODO: Remove endpoint from profileTranslator and set it here
-			// similar to opaque ports
-			if len(opaquePorts) != 0 {
-				sp := sp.ServiceProfile{}
-				sp.Spec.OpaquePorts = opaquePorts
-				translator.Update(&sp)
-			} else {
-				translator.Update(nil)
+			// The IP may or may not map to a pod (pod argument can be nil). If
+			// pod is not nil we will return a single endpoint in the
+			// DestinationProfile response, otherwise we return a default
+			// profile response.
+			err = s.sendEndpointProfile(stream, pod, port)
+			if err != nil {
+				log.Debugf("Failed to send profile response for endpoint %s:%d: %v", ip.String(), port, err)
+				return err
 			}
 
 			select {
@@ -268,11 +226,37 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			return nil
 		}
 	} else {
-		service, _, err = parseK8sServiceName(host, s.clusterDomain)
+		var hostname string
+		service, hostname, err = parseK8sServiceName(host, s.clusterDomain)
 		if err != nil {
 			log.Debugf("Invalid service %s", path)
 			return status.Errorf(codes.InvalidArgument, "invalid service: %s", err)
 		}
+
+		// If the pod name (instance ID) is not empty, it means we parsed a DNS
+		// name. When we fetch the profile using a pod's DNS name, we want to
+		// return an endpoint in the profile response.
+		if hostname != "" {
+			pod, err := getPodByHostname(s.k8sAPI, hostname, service)
+			if err != nil {
+				log.Errorf("Failed to get pod for hostname %s: %v", hostname, err)
+			}
+
+			err = s.sendEndpointProfile(stream, pod, port)
+			if err != nil {
+				log.Debugf("Failed to send profile response for host %s: %v", hostname, err)
+				return err
+			}
+
+			select {
+			case <-s.shutdown:
+			case <-stream.Context().Done():
+				log.Debugf("GetProfile(%+v) cancelled", dest)
+			}
+
+			return nil
+		}
+
 		fqn = host
 	}
 
@@ -353,6 +337,64 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	return nil
 }
 
+// sendEndpointProfile sends a DestinationProfile response back to the client.
+// If the pod argument is provided, the profile sent to the client will
+// include an endpoint. Otherwise, the default profile is sent.
+func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod *corev1.Pod, port uint32) error {
+	log := s.log
+	var endpoint *pb.WeightedAddr
+	opaquePorts := make(map[uint32]struct{})
+	var err error
+	if pod != nil {
+		podSet := podToAddressSet(s.k8sAPI, pod).WithPort(port)
+		podID := watcher.PodID{
+			Namespace: pod.Namespace,
+			Name:      pod.Name,
+		}
+		var ok bool
+		opaquePorts, ok, err = getPodOpaquePortsAnnotations(pod)
+		if err != nil {
+			log.Errorf("failed to get opaque ports annotation for pod: %s", err)
+		}
+
+		// If the opaque ports annotation was not set, then set the
+		// endpoint's opaque ports to the default value.
+		if !ok {
+			opaquePorts = s.defaultOpaquePorts
+		}
+
+		skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(pod)
+		if err != nil {
+			log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
+		}
+
+		endpoint, err = toWeightedAddr(podSet.Addresses[podID], opaquePorts, skippedInboundPorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
+		if err != nil {
+			return err
+		}
+		// `Get` doesn't include the namespace in the per-endpoint
+		// metadata, so it needs to be special-cased.
+		endpoint.MetricLabels["namespace"] = pod.Namespace
+	}
+
+	// Send the default profile without subscribing for future updates. The
+	// profile response will also include an endpoint if the IP (or hostname)
+	// sent in the profile request maps to a pod.
+	translator := newProfileTranslator(stream, log, "", port, endpoint)
+
+	// If there are opaque ports then update the profile translator
+	// with a service profile that has those values
+	if len(opaquePorts) != 0 {
+		sp := sp.ServiceProfile{}
+		sp.Spec.OpaquePorts = opaquePorts
+		translator.Update(&sp)
+	} else {
+		translator.Update(nil)
+	}
+
+	return nil
+}
+
 // getSvcID returns the service that corresponds to a Cluster IP address if one
 // exists.
 func getSvcID(k8sAPI *k8s.API, clusterIP string, log *logging.Entry) (*watcher.ServiceID, error) {
@@ -383,11 +425,39 @@ func getSvcID(k8sAPI *k8s.API, clusterIP string, log *logging.Entry) (*watcher.S
 	return service, nil
 }
 
-// getPod returns a pod that maps to the given IP address. The pod can either
+// getPodByHostname returns a pod that maps to the given hostname (or an
+// instanceID). The hostname is generally the prefix of the pod's DNS name;
+// since it may be arbitrary we need to look at the corresponding service's
+// Endpoints object to see whether the hostname matches a pod.
+func getPodByHostname(k8sAPI *k8s.API, hostname string, svcID watcher.ServiceID) (*corev1.Pod, error) {
+	ep, err := k8sAPI.Endpoint().Lister().Endpoints(svcID.Namespace).Get(svcID.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	//TODO: add support for headless services with non-pod endpoints.
+	for _, subset := range ep.Subsets {
+		for _, addr := range subset.Addresses {
+			if addr.TargetRef == nil || addr.TargetRef.Kind != "Pod" {
+				continue
+			}
+
+			if hostname == addr.Hostname {
+				podName := addr.TargetRef.Name
+				podNamespace := addr.TargetRef.Namespace
+				return k8sAPI.Pod().Lister().Pods(podNamespace).Get(podName)
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("no pod found in Endpoints %s/%s for hostname %s", svcID.Namespace, svcID.Name, hostname)
+}
+
+// getPodByIP returns a pod that maps to the given IP address. The pod can either
 // be in the host network or the pod network. If the pod is in the host
 // network, then it must have a container port that exposes `port` as a host
 // port.
-func getPod(k8sAPI *k8s.API, podIP string, port uint32, log *logging.Entry) (*corev1.Pod, error) {
+func getPodByIP(k8sAPI *k8s.API, podIP string, port uint32, log *logging.Entry) (*corev1.Pod, error) {
 	// First we check if the address maps to a pod in the host network.
 	addr := fmt.Sprintf("%s:%d", podIP, port)
 	hostIPPods, err := getIndexedPods(k8sAPI, watcher.HostIPIndex, addr)
