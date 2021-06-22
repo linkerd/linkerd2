@@ -703,6 +703,7 @@ webhooks:
     caBundle: dGVzdC1wcm94eS1pbmplY3Rvci1jYS1idW5kbGU=
   failurePolicy: Fail
   admissionReviewVersions: ["v1", "v1beta1"]
+  reinvocationPolicy: IfNeeded
   rules:
   - operations: [ "CREATE" ]
     apiGroups: [""]
@@ -1728,7 +1729,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 5e2cfa2bd882cd79c2104f822ff8062620bd9103e176aa47064940e2e0fbcff6
+        checksum/config: f96549a803c94c26c0b6096c94c24437ecbcc3dc661c2002ee3699e5ade4f39d
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version

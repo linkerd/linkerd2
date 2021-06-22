@@ -103,10 +103,7 @@ func TestReinvocation(t *testing.T) {
 
 		injectionValidator := testutil.InjectValidator{
 			NoInitContainer: TestHelper.CNI() || TestHelper.Calico(),
-			// ****** TODO ****** this proves the changes made by the z-kubemod mutating webhook
-			// weren't surfaced by the injector. Once the injector implements reinvocation
-			// the log level should be "debug"
-			LogLevel: "warn,linkerd=info",
+			LogLevel: "debug",
 		}
 		if err := injectionValidator.ValidatePod(&pod.Spec); err != nil {
 			testutil.AnnotatedFatalf(t, "received unexpected output", "received unexpected output\n%s", err.Error())

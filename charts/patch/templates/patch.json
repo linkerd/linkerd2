@@ -1,5 +1,38 @@
 {{ $prefix := .Values.pathPrefix -}}
+{{ $alreadyInjected := .Values.alreadyInjected -}}
 [
+  {{- if $alreadyInjected }}
+  {
+    "op": "remove",
+    "path": "/metadata/annotations/linkerd.io~1created-by"
+  },
+  {
+    "op": "remove",
+    "path": "/metadata/annotations/linkerd.io~1identity-mode"
+  },
+  {
+    "op": "remove",
+    "path": "/metadata/annotations/linkerd.io~1proxy-version"
+  },
+  {{- if gt .Values.proxyInitIndex -1.0 }}
+  {
+    "op": "remove",
+    "path": "/spec/initContainers/{{ .Values.proxyInitIndex }}"
+  },
+  {{- end }}
+  {{ range .Values.containerIndices }}
+  {
+    "op": "remove",
+    "path": "/spec/containers/{{ . }}"
+  },
+  {{- end }}
+  {{ range .Values.volumeIndices }}
+  {
+    "op": "remove",
+    "path": "{{$prefix}}/spec/volumes/{{ . }}"
+  },
+  {{- end }}
+  {{- end }}
   {{- if .Values.addRootMetadata }}
   {
     "op": "add",
@@ -29,6 +62,12 @@
   },
   {{- end }}
   {{- range $label, $value := .Values.labels }}
+  {{- if $alreadyInjected }}
+  {
+    "op": "remove",
+    "path": "{{$prefix}}/metadata/labels/{{$label | replace "/" "~1"}}"
+  },
+  {{- end }}
   {
     "op": "add",
     "path": "{{$prefix}}/metadata/labels/{{$label | replace "/" "~1"}}",

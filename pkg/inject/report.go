@@ -12,7 +12,7 @@ import (
 
 const (
 	hostNetworkEnabled                   = "host_network_enabled"
-	sidecarExists                        = "sidecar_already_exists"
+	otherSidecarExists                   = "sidecar_already_exists"
 	unsupportedResource                  = "unsupported_resource"
 	injectEnableAnnotationAbsent         = "injection_enable_annotation_absent"
 	injectDisableAnnotationPresent       = "injection_disable_annotation_present"
@@ -28,7 +28,7 @@ var (
 	// Reasons is a map of inject skip reasons with human readable sentences
 	Reasons = map[string]string{
 		hostNetworkEnabled:                   "hostNetwork is enabled",
-		sidecarExists:                        "pod has a sidecar injected already",
+		otherSidecarExists:                   "pod has a 3rd party sidecar injected already",
 		unsupportedResource:                  "this resource kind is unsupported",
 		injectEnableAnnotationAbsent:         fmt.Sprintf("neither the namespace nor the pod have the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled),
 		injectDisableAnnotationPresent:       fmt.Sprintf("pod has the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectDisabled),
@@ -45,7 +45,7 @@ type Report struct {
 	Kind                         string
 	Name                         string
 	HostNetwork                  bool
-	Sidecar                      bool
+	OtherSidecar                 bool
 	UDP                          bool // true if any port in any container has `protocol: UDP`
 	UnsupportedResource          bool
 	InjectDisabled               bool
@@ -88,7 +88,7 @@ func newReport(conf *ResourceConfig) *Report {
 	if conf.HasPodTemplate() {
 		report.InjectDisabled, report.InjectDisabledReason, report.InjectAnnotationAt = report.disabledByAnnotation(conf)
 		report.HostNetwork = conf.pod.spec.HostNetwork
-		report.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
+		report.OtherSidecar = healthcheck.Has3rdPartySidecars(conf.pod.spec)
 		report.UDP = checkUDPPorts(conf.pod.spec)
 		if conf.pod.spec.AutomountServiceAccountToken != nil {
 			report.AutomountServiceAccountToken = *conf.pod.spec.AutomountServiceAccountToken
@@ -122,8 +122,8 @@ func (r *Report) Injectable() (bool, []string) {
 	if r.HostNetwork {
 		reasons = append(reasons, hostNetworkEnabled)
 	}
-	if r.Sidecar {
-		reasons = append(reasons, sidecarExists)
+	if r.OtherSidecar {
+		reasons = append(reasons, otherSidecarExists)
 	}
 	if r.UnsupportedResource {
 		reasons = append(reasons, unsupportedResource)
@@ -232,8 +232,8 @@ func (r *Report) ThrowInjectError() []error {
 		errs = append(errs, errors.New(Reasons[hostNetworkEnabled]))
 	}
 
-	if r.Sidecar {
-		errs = append(errs, errors.New(Reasons[sidecarExists]))
+	if r.OtherSidecar {
+		errs = append(errs, errors.New(Reasons[otherSidecarExists]))
 	}
 
 	if r.UDP {

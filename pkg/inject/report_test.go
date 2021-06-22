@@ -78,8 +78,7 @@ func TestInjectable(t *testing.T) {
 					k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
 				},
 			},
-			injectable: false,
-			reasons:    []string{sidecarExists},
+			injectable: true,
 		},
 		{
 			podSpec: &corev1.PodSpec{
@@ -104,8 +103,7 @@ func TestInjectable(t *testing.T) {
 					k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
 				},
 			},
-			injectable: false,
-			reasons:    []string{sidecarExists},
+			injectable: true,
 		},
 		{
 			unsupportedResource: true,
@@ -241,7 +239,7 @@ func TestInjectable(t *testing.T) {
 			},
 
 			injectable: false,
-			reasons:    []string{hostNetworkEnabled, sidecarExists, injectEnableAnnotationAbsent},
+			reasons:    []string{hostNetworkEnabled, injectEnableAnnotationAbsent},
 		},
 		{
 			podSpec: &corev1.PodSpec{},

@@ -259,7 +259,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 			warningsPrinted = true
 		}
 
-		if r.Sidecar {
+		if r.OtherSidecar {
 			sidecar = append(sidecar, r.ResName())
 			warningsPrinted = true
 		}

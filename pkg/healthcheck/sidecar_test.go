@@ -8,7 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func TestHasExistingSidecars(t *testing.T) {
+func TestHas3rdPartySidecars(t *testing.T) {
 	for _, tc := range []struct {
 		podSpec  *corev1.PodSpec
 		expected bool
@@ -42,7 +42,7 @@ func TestHasExistingSidecars(t *testing.T) {
 					},
 				},
 			},
-			expected: true,
+			expected: false,
 		},
 		{
 			podSpec: &corev1.PodSpec{
@@ -62,7 +62,7 @@ func TestHasExistingSidecars(t *testing.T) {
 					},
 				},
 			},
-			expected: true,
+			expected: false,
 		},
 		{
 			podSpec: &corev1.PodSpec{
@@ -82,7 +82,7 @@ func TestHasExistingSidecars(t *testing.T) {
 					},
 				},
 			},
-			expected: true,
+			expected: false,
 		},
 		{
 			podSpec: &corev1.PodSpec{
@@ -102,7 +102,7 @@ func TestHasExistingSidecars(t *testing.T) {
 					},
 				},
 			},
-			expected: true,
+			expected: false,
 		},
 		{
 			podSpec: &corev1.PodSpec{
@@ -115,8 +115,8 @@ func TestHasExistingSidecars(t *testing.T) {
 			expected: true,
 		},
 	} {
-		if !reflect.DeepEqual(HasExistingSidecars(tc.podSpec), tc.expected) {
-			t.Errorf("expected: %v, got: %v", tc.expected, HasExistingSidecars(tc.podSpec))
+		if !reflect.DeepEqual(Has3rdPartySidecars(tc.podSpec), tc.expected) {
+			t.Errorf("expected: %v, got: %v", tc.expected, Has3rdPartySidecars(tc.podSpec))
 		}
 	}
 }

@@ -229,6 +229,10 @@ func TestGetPodPatch(t *testing.T) {
 
 		fakeReq := getFakePodReq(deployment)
 		conf := confNsDisabled().WithKind(fakeReq.Kind.Kind)
+		_, err = conf.ParseMetaAndYAML(fakeReq.Object.Raw)
+		if err != nil {
+			t.Fatalf("Unexpected ParseMetaAndYAML error: %s", err)
+		}
 		patchJSON, err := conf.GetPodPatch(true)
 		if err != nil {
 			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)

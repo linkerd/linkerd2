@@ -1,2 +1,2 @@
 Error transforming resources:
-failed to inject deployment/web: pod has a sidecar injected already
+failed to inject deployment/web: pod has a 3rd party sidecar injected already

@@ -117,29 +117,18 @@ type ResourceConfig struct {
 		ownerRef *metav1.OwnerReference
 	}
 
-	pod struct {
-		meta *metav1.ObjectMeta
-		// This fields hold labels and annotations which are to be added to the
-		// injected resource. This is different from meta.Labels and
-		// meta.Annotations which are the labels and annotations on the original
-		// resource before injection.
-		labels      map[string]string
-		annotations map[string]string
-		spec        *corev1.PodSpec
-	}
+	pod pod
 }
 
-type podPatch struct {
-	l5dcharts.Values
-	PathPrefix            string                    `json:"pathPrefix"`
-	AddRootMetadata       bool                      `json:"addRootMetadata"`
-	AddRootAnnotations    bool                      `json:"addRootAnnotations"`
-	Annotations           map[string]string         `json:"annotations"`
-	AddRootLabels         bool                      `json:"addRootLabels"`
-	AddRootInitContainers bool                      `json:"addRootInitContainers"`
-	AddRootVolumes        bool                      `json:"addRootVolumes"`
-	Labels                map[string]string         `json:"labels"`
-	DebugContainer        *l5dcharts.DebugContainer `json:"debugContainer"`
+type pod struct {
+	meta *metav1.ObjectMeta
+	// This fields hold labels and annotations which are to be added to the
+	// injected resource. This is different from meta.Labels and
+	// meta.Annotations which are the labels and annotations on the original
+	// resource before injection.
+	labels      map[string]string
+	annotations map[string]string
+	spec        *corev1.PodSpec
 }
 
 type annotationPatch struct {
@@ -281,13 +270,11 @@ func (conf *ResourceConfig) GetPodPatch(injectProxy bool) ([]byte, error) {
 		}
 	}
 
-	patch := &podPatch{
-		Values:      *values,
-		Annotations: map[string]string{},
-		Labels:      map[string]string{},
-	}
+	patch := newPodPatch(*values)
+
 	switch strings.ToLower(conf.workload.metaType.Kind) {
 	case k8s.Pod:
+		patch.addRemovals(conf.pod)
 	case k8s.CronJob:
 		patch.PathPrefix = "/spec/jobTemplate/spec/template"
 	default:
@@ -305,7 +292,7 @@ func (conf *ResourceConfig) GetPodPatch(injectProxy bool) ([]byte, error) {
 		}
 	}
 
-	rawValues, err := yaml.Marshal(patch)
+	rawValues, err := patch.getYAML()
 	if err != nil {
 		return nil, err
 	}
