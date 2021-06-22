@@ -103,7 +103,7 @@ func TestReinvocation(t *testing.T) {
 
 		injectionValidator := testutil.InjectValidator{
 			NoInitContainer: TestHelper.CNI() || TestHelper.Calico(),
-			LogLevel: "debug",
+			LogLevel:        "debug",
 		}
 		if err := injectionValidator.ValidatePod(&pod.Spec); err != nil {
 			testutil.AnnotatedFatalf(t, "received unexpected output", "received unexpected output\n%s", err.Error())
