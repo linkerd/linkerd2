@@ -16,8 +16,8 @@ import (
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	pkgTls "github.com/linkerd/linkerd2/pkg/tls"
 	pb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
-	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
