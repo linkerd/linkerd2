@@ -10,7 +10,7 @@ require (
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/emicklei/proto v1.9.0
 	github.com/evanphx/json-patch v4.9.0+incompatible
-	github.com/fatih/color v1.9.0
+	github.com/fatih/color v1.12.0
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.19.5
