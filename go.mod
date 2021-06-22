@@ -18,7 +18,7 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/imdario/mergo v0.3.11
+	github.com/imdario/mergo v0.3.12
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/linkerd/linkerd2-proxy-api v0.1.18
 	github.com/linkerd/linkerd2-proxy-init v1.3.12
