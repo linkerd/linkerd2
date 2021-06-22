@@ -347,7 +347,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ctx context.
 
 	// If the mirror service is headless, also delete its endpoint mirror
 	// services.
-	if localService.Spec.ClusterIP == corev1.ClusterIPNone {
+	if rcsw.headlessServicesEnabled && localService.Spec.ClusterIP == corev1.ClusterIPNone {
 		matchLabels := map[string]string{
 			consts.MirroredRootHeadlessLabel: localServiceName,
 		}
@@ -595,7 +595,7 @@ func (rcsw *RemoteClusterServiceWatcher) getMirrorServices() ([]*corev1.Service,
 	return services, nil
 }
 
-func (rcsw *RemoteClusterServiceWatcher) handleOnDelete(service *corev1.Service) error {
+func (rcsw *RemoteClusterServiceWatcher) handleOnDelete(service *corev1.Service) {
 	if rcsw.isExportedService(service) {
 		rcsw.eventsQueue.Add(&RemoteServiceDeleted{
 			Name:      service.Name,
@@ -604,7 +604,6 @@ func (rcsw *RemoteClusterServiceWatcher) handleOnDelete(service *corev1.Service)
 	} else {
 		rcsw.log.Infof("Skipping OnDelete for service %s", service)
 	}
-	return nil
 }
 
 func (rcsw *RemoteClusterServiceWatcher) processNextEvent(ctx context.Context) (bool, interface{}, error) {
@@ -628,7 +627,7 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent(ctx context.Context) (
 	case *OnUpdateEndpointsCalled:
 		err = rcsw.createOrUpdateHeadlessEndpoints(ctx, ev.ep)
 	case *OnDeleteCalled:
-		err = rcsw.handleOnDelete(ev.svc)
+		rcsw.handleOnDelete(ev.svc)
 	case *RemoteServiceCreated:
 		err = rcsw.handleRemoteServiceCreated(ctx, ev)
 	case *RemoteServiceUpdated:
@@ -1054,7 +1053,7 @@ func (rcsw *RemoteClusterServiceWatcher) createHeadlessMirrorEndpoints(ctx conte
 			endpointMirrorName := rcsw.mirroredResourceName(addr.Hostname)
 			createdService, err := rcsw.createEndpointMirrorService(ctx, addr.Hostname, exportedEndpoints.ResourceVersion, endpointMirrorName, exportedService)
 			if err != nil {
-				rcsw.log.Errorf("error creating Endpoint Mirror service %s/%s for Exported Headless service %s: %v", endpointMirrorName, exportedService.Namespace, exportedServiceInfo)
+				rcsw.log.Errorf("error creating Endpoint Mirror service %s/%s for Exported Headless service %s: %v", endpointMirrorName, exportedService.Namespace, exportedServiceInfo, err)
 				continue
 			}
 
