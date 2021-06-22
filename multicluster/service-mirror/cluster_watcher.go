@@ -339,8 +339,30 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Co
 // Deletes a locally mirrored service as it is not present on the remote cluster anymore
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ctx context.Context, ev *RemoteServiceDeleted) error {
 	localServiceName := rcsw.mirroredResourceName(ev.Name)
-	rcsw.log.Infof("Deleting mirrored service %s/%s", ev.Namespace, localServiceName)
+	localService, err := rcsw.localAPIClient.Svc().Lister().Services(ev.Namespace).Get(ev.Name)
 	var errors []error
+	if err != nil {
+		errors = append(errors, fmt.Errorf("could not fetch Service %s/%s: %s", ev.Namespace, localServiceName, err))
+	}
+
+	if localService.Spec.ClusterIP == corev1.ClusterIPNone {
+		matchLabels := map[string]string{
+			consts.MirroredRootHeadlessLabel: localServiceName,
+		}
+		endpointMirrorServices, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
+		if err != nil {
+			errors = append(errors, fmt.Errorf("could not fetch Endpoint Mirrors for Service %s/%s: %s", ev.Namespace, localServiceName, err))
+		}
+
+		for _, endpointMirror := range endpointMirrorServices {
+			rcsw.eventsQueue.Add(&RemoteServiceDeleted{
+				Name:      endpointMirror.Name,
+				Namespace: endpointMirror.Namespace,
+			})
+		}
+	}
+
+	rcsw.log.Infof("Deleting mirrored service %s/%s", ev.Namespace, localServiceName)
 	if err := rcsw.localAPIClient.Client.CoreV1().Services(ev.Namespace).Delete(ctx, localServiceName, metav1.DeleteOptions{}); err != nil {
 		if !kerrors.IsNotFound(err) {
 			errors = append(errors, fmt.Errorf("could not delete Service: %s/%s: %s", ev.Namespace, localServiceName, err))
