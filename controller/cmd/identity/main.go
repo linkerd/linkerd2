@@ -24,6 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	v1machinery "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
@@ -149,8 +150,11 @@ func Main(args []string) {
 		log.Fatalf("Failed to construct k8s event recorder: %s", err)
 	}
 
-	recordEventFunc := func(eventType, reason, message string) {
-		recorder.Event(deployment, eventType, reason, message)
+	recordEventFunc := func(parent runtime.Object, eventType, reason, message string) {
+		if parent == nil {
+			parent = deployment
+		}
+		recorder.Event(parent, eventType, reason, message)
 	}
 
 	//

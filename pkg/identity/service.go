@@ -7,10 +7,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/golang/protobuf/ptypes"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/identity"
@@ -43,7 +46,7 @@ type (
 		issuer                                     *tls.Issuer
 		issuerMutex                                *sync.RWMutex
 		validity                                   *tls.Validity
-		recordEvent                                func(eventType, reason, message string)
+		recordEvent                                func(parent runtime.Object, eventType, reason, message string)
 		expectedName, issuerPathCrt, issuerPathKey string
 	}
 
@@ -95,11 +98,11 @@ func (svc *Service) Run(issuerEvent <-chan struct{}, issuerError <-chan error) {
 			if err := svc.Initialize(); err != nil {
 				message := fmt.Sprintf("Skipping issuer update as certs could not be read from disk: %s", err)
 				log.Warn(message)
-				svc.recordEvent(v1.EventTypeWarning, eventTypeSkipped, message)
+				svc.recordEvent(nil, v1.EventTypeWarning, eventTypeSkipped, message)
 			} else {
 				message := "Updated identity issuer"
 				log.Infof(message)
-				svc.recordEvent(v1.EventTypeNormal, eventTypeUpdated, message)
+				svc.recordEvent(nil, v1.EventTypeNormal, eventTypeUpdated, message)
 			}
 		case err := <-issuerError:
 			log.Warnf("Received error from fs watcher: %s", err)
@@ -127,7 +130,7 @@ func (svc *Service) loadCredentials() (tls.Issuer, error) {
 }
 
 // NewService creates a new identity service.
-func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.Validity, recordEvent func(eventType, reason, message string), expectedName, issuerPathCrt, issuerPathKey string) *Service {
+func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.Validity, recordEvent func(parent runtime.Object, eventType, reason, message string), expectedName, issuerPathCrt, issuerPathKey string) *Service {
 	return &Service{
 		validator,
 		trustAnchors,
@@ -179,7 +182,7 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 	if err := svc.ensureIssuerStillValid(); err != nil {
 		log.Errorf("could not process CSR because of CA cert validation failure: %s - CSR Identity : %s", err, reqIdentity)
 		message := fmt.Sprintf("%s - CSR Identity : %s", err.Error(), reqIdentity)
-		svc.recordEvent(v1.EventTypeWarning, eventTypeFailed, message)
+		svc.recordEvent(nil, v1.EventTypeWarning, eventTypeFailed, message)
 		return nil, err
 	}
 
@@ -234,8 +237,15 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 	hasher := md5.New()
 	hasher.Write(crts[0])
 	hash := hex.EncodeToString(hasher.Sum(nil))
+	identitySegments := strings.Split(tokIdentity, ".")
 	msg := fmt.Sprintf("issued certificate for %s until %s: %s", tokIdentity, crt.Certificate.NotAfter, hash)
-	svc.recordEvent(v1.EventTypeNormal, eventTypeIssuedLeafCert, msg)
+	sa := v1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      identitySegments[0],
+			Namespace: identitySegments[1],
+		},
+	}
+	svc.recordEvent(&sa, v1.EventTypeNormal, eventTypeIssuedLeafCert, msg)
 	log.Info(msg)
 
 	// Bundle issuer crt with certificate so the trust path to the root can be verified.
