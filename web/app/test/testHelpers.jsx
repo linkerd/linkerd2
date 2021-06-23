@@ -2,7 +2,7 @@ import _merge from 'lodash/merge';
 import ApiHelpers from '../js/components/util/ApiHelpers.jsx';
 import { createMemoryHistory } from 'history';
 import React from 'react';
-import { Route, Router } from 'react-router';
+import { Route, Router } from 'react-router-dom';
 import { I18nProvider } from '@lingui/react';
 import catalogEn from './../js/locales/en/messages.js';
 
