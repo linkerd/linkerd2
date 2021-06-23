@@ -2,7 +2,9 @@ package identity
 
 import (
 	"context"
+	"crypto/md5"
 	"crypto/x509"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sync"
@@ -26,10 +28,11 @@ const (
 
 	// EnvTrustAnchors is the environment variable holding the trust anchors for
 	// the proxy identity.
-	EnvTrustAnchors  = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
-	eventTypeSkipped = "IssuerUpdateSkipped"
-	eventTypeUpdated = "IssuerUpdated"
-	eventTypeFailed  = "IssuerValidationFailed"
+	EnvTrustAnchors         = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
+	eventTypeSkipped        = "IssuerUpdateSkipped"
+	eventTypeUpdated        = "IssuerUpdated"
+	eventTypeFailed         = "IssuerValidationFailed"
+	eventTypeIssuedLeafCert = "IssuedLeafCertificate"
 )
 
 type (
@@ -222,14 +225,20 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 		log.Fatal("the issuer provided a certificate without key material")
 	}
 
-	// Bundle issuer crt with certificate so the trust path to the root can be verified.
-	log.Infof("certifying %s until %s", tokIdentity, crt.Certificate.NotAfter)
 	validUntil, err := ptypes.TimestampProto(crt.Certificate.NotAfter)
 	if err != nil {
 		log.Errorf("invalid expiry time: %s", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	hasher := md5.New()
+	hasher.Write(crts[0])
+	hash := hex.EncodeToString(hasher.Sum(nil))
+	msg := fmt.Sprintf("issued certificate for %s until %s: %s", tokIdentity, crt.Certificate.NotAfter, hash)
+	svc.recordEvent(v1.EventTypeNormal, eventTypeIssuedLeafCert, msg)
+	log.Info(msg)
+
+	// Bundle issuer crt with certificate so the trust path to the root can be verified.
 	rsp := &pb.CertifyResponse{
 		LeafCertificate:          crts[0],
 		IntermediateCertificates: crts[1:],
