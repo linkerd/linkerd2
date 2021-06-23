@@ -4,6 +4,7 @@
 - [Allotrac](https://allotrac.com.au)
 - [AlphaSights](https://www.alphasights.com)
 - [Altinn](https://www.altinn.no/en/)
+- [ANNA Money](https://anna.money)
 - [Apester](https://apester.com)
 - [AppddictionStudio](https://appddicitonstudio.com)
 - [Attest](https://www.askattest.com)
