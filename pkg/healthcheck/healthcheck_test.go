@@ -3734,9 +3734,9 @@ subsets:
 			}
 			err = hc.checkMisconfiguredOpaquePortAnnotations(context.Background())
 			if err == nil && tc.expected != nil {
-				t.Fatalf("Expected check to be successful, got: %s", err)
+				t.Fatalf("Expected check to fail with %s", tc.expected.Error())
 			}
-			if err != nil {
+			if err != nil && tc.expected != nil {
 				if err.Error() != tc.expected.Error() {
 					t.Fatalf("Expected error: %s, received: %s", tc.expected, err)
 				}
