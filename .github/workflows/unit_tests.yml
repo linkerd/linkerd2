@@ -1,16 +1,13 @@
 name: Unit tests
 on:
-  pull_request:
-    paths-ignore:
-    - '*.md'
-    - '**/*.md'
+  pull_request: {}
   push:
     paths-ignore:
     - '*.md'
     - '**/*.md'
     branches:
     - main
-permissions: 
+permissions:
   contents: read
 jobs:
   go_unit_tests:
@@ -21,12 +18,17 @@ jobs:
       image: golang:1.16.4
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Go unit tests
       run: |
         go get gotest.tools/gotestsum@v0.4.2
         # TODO: validate bin/protoc-go.sh does not dirty the repo
-        gotestsum -- -cover -race -v -mod=readonly ./...
+        gotestsum -- -cover -coverprofile=coverage.out -race -v -mod=readonly ./...
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@29386c70ef20e286228c72b668a06fd0e8399192
+      with:
+        files: ./coverage.out
+        flags: unittests,golang
   js_unit_tests:
     name: JS unit tests
     timeout-minutes: 30
@@ -35,7 +37,7 @@ jobs:
       image: node:14-stretch
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Yarn setup
       run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
     - name: JS unit tests
@@ -43,4 +45,9 @@ jobs:
         export PATH="$HOME/.yarn/bin:$PATH"
         export NODE_ENV=test
         bin/web --frozen-lockfile
-        bin/web test --reporters="jest-dot-reporter" --reporters="./gh_ann_reporter.js"
+        bin/web test --reporters="jest-dot-reporter" --reporters="./gh_ann_reporter.js" --coverage
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@29386c70ef20e286228c72b668a06fd0e8399192
+      with:
+        directory: ./web/app/coverage
+        flags: unittests,javascript

@@ -1,0 +1,15 @@
+apiVersion: api.kubemod.io/v1beta1
+kind: ModRule
+metadata:
+  name: my-modrule
+spec:
+  type: Patch
+  match:
+    - select: '$.kind'
+      matchValue: Pod
+  patch:
+    # Add custom annotation.
+    - op: add
+      path: /metadata/annotations/config.linkerd.io~1proxy-log-level
+      value: "debug"
+

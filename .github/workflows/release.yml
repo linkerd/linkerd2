@@ -3,7 +3,7 @@ on:
   push:
     tags:
     - "*"
-permissions: 
+permissions:
   contents: read
 env:
   GH_ANNOTATION: true
@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -28,15 +28,13 @@ jobs:
         echo "DOCKER_REGISTRY=ghcr.io/linkerd" >> $GITHUB_ENV
         echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
     - name: Cache docker layers
-      # actions/cache@v2.0.0
-      uses: actions/cache@b8204782bbb5f872091ecc5eb9cb7d004e35b1fa
+      uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
       with:
         path: ${{ env.DOCKER_BUILDKIT_CACHE }}
         key: ${{ runner.os }}-buildx-${{ matrix.target }}-${{ env.TAG }}
         restore-keys: ${{ runner.os }}-buildx-${{ matrix.target }}-
     - name: Set up Docker Buildx
-      # crazy-max/ghaction-docker-buildx@v3.2.0
-      uses: crazy-max/ghaction-docker-buildx@552c9de485482d9bbaa6fa035ee55e518e1e3cb9
+      uses: crazy-max/ghaction-docker-buildx@126d331dc69f4a1aa02452e374835e6a5d565613
     - name: Build & Push Multi Arch Images
       env:
         #DOCKER_TRACE: 1
@@ -65,8 +63,7 @@ jobs:
     # https://github.com/actions/upload-artifact/issues/8
     - name: Upload artifact
       if: matrix.target == 'cli-bin'
-      # actions/upload-artifact@v1
-      uses: actions/upload-artifact@3446296876d12d4e3a0f3145a3c87e67bf0a16b5
+      uses: actions/upload-artifact@27121b0bdffd731efa15d66772be8dc71245d074
       with:
         name: image-archives
         path: /home/runner/archives
@@ -78,19 +75,18 @@ jobs:
     needs: [docker_build]
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Try to load cached Go modules
-      # actions/cache@v1.1.2
-      uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
+      uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: ${{ runner.os }}-go-
     - name: Download image archives
-      # actions/download-artifact@v1
-      uses: actions/download-artifact@18f0f591fbc635562c815484d73b6e8e3980482e
+      uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
       with:
         name: image-archives
+        path: image-archives
     - name: Run CLI Integration tests
       run: go test --failfast --mod=readonly ".\test\cli" --linkerd=$PWD\image-archives\linkerd-windows.exe --cli-tests -v
   integration_tests:
@@ -114,10 +110,9 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Try to load cached Go modules
-      # actions/cache@v1.1.2
-      uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
+      uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -143,11 +138,10 @@ jobs:
     steps:
     - name: Checkout code
       #if: startsWith(github.ref, 'refs/tags/stable')
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Try to load cached Go modules
       #if: startsWith(github.ref, 'refs/tags/stable')
-      # actions/cache@v1.1.2
-      uses: actions/cache@70655ec8323daeeaa7ef06d7c56e1b9191396cbe
+      uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -195,7 +189,7 @@ jobs:
     steps:
     - name: Checkout code
       if: startsWith(github.ref, 'refs/tags/stable')
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Chocolatey - update nuspec
       if: startsWith(github.ref, 'refs/tags/stable')
       run: |
@@ -203,14 +197,12 @@ jobs:
         (Get-Content bin\win\linkerd.nuspec).replace('LINKERD_VERSION', $LINKERD_VERSION) | Set-Content bin\win\linkerd.nuspec
     - name: Chocolatey - pack
       if: startsWith(github.ref, 'refs/tags/stable')
-      # crazy-max/ghaction-chocolatey@v1.2.2
-      uses: crazy-max/ghaction-chocolatey@55c91883732fd892124a2d957cd02e4682aa6fc5
+      uses: crazy-max/ghaction-chocolatey@d025252287b66c3fb7d795cc8932dec97630cd53
       with:
         args: pack bin/win/linkerd.nuspec
     - name: Chocolatey - upload package
       if: startsWith(github.ref, 'refs/tags/stable')
-      # actions/upload-artifact@v2.01
-      uses: actions/upload-artifact@97b7dace6c8d860ce9708aba808be6a2ee4cbc3a
+      uses: actions/upload-artifact@27121b0bdffd731efa15d66772be8dc71245d074
       with:
         name: choco
         path: ./linkerd.*.nupkg
@@ -224,7 +216,7 @@ jobs:
       contents: write
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -233,10 +225,10 @@ jobs:
         extract_release_notes NOTES.md
     - name: Download choco package
       if: startsWith(github.ref, 'refs/tags/stable')
-      # actions/download-artifact@v1
-      uses: actions/download-artifact@18f0f591fbc635562c815484d73b6e8e3980482e
+      uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
       with:
         name: choco
+        path: choco
     - name: Pull CLI binaries
       env:
         DOCKER_MULTIARCH: 1
@@ -246,7 +238,6 @@ jobs:
         mv choco/linkerd.*.nupkg target/release/linkerd2-cli-stable-$VERSION.nupkg || true
     - name: Create release
       id: create_release
-      # softprops/action-gh-release@v1
       uses: softprops/action-gh-release@91409e712cf565ce9eff10c87a8d1b11b81757ae
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -272,8 +263,7 @@ jobs:
       contents: write
     steps:
     - name: Create linkerd/website repository dispatch event
-      # peter-evans/repository-dispatch@v1
-      uses: peter-evans/repository-dispatch@0ae1c4b014bff102f1063cd67a53fc4a91311d1b
+      uses: peter-evans/repository-dispatch@ce5485de42c9b2622d2ed064be479e8ed65e76f4
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
         repository: linkerd/website
@@ -286,7 +276,7 @@ jobs:
     needs: [website_publish]
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -315,10 +305,9 @@ jobs:
     needs: [gh_release]
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # v2.3.4
+      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Configure gsutils
-      # linkerd/linkerd2-action-gcloud@v1.0.1
-      uses: linkerd/linkerd2-action-gcloud@308c4df7314264c90d240e77e27d0d875d3c8ec1
+      uses: linkerd/linkerd2-action-gcloud@f01c9de238d33e87029fddb7f2f9a1fb93903b8f
       with:
         cloud_sdk_service_account_key: ${{ secrets.LINKERD_SITE_TOKEN }}
         gcp_project: ${{ secrets.LINKERD_SITE_PROJECT }}
@@ -329,6 +318,7 @@ jobs:
         mkdir -p target/helm
         gsutil cp gs://helm.linkerd.io/edge/index.yaml target/helm/index-pre.yaml
         bin/helm-build package
+        cp charts/artifacthub-repo-edge.yml target/helm/artifacthub-repo.yml
         gsutil rsync target/helm gs://helm.linkerd.io/edge
     - name: Stable Helm chart creation and upload
       if: startsWith(github.ref, 'refs/tags/stable')
@@ -336,4 +326,5 @@ jobs:
         mkdir -p target/helm
         gsutil cp gs://helm.linkerd.io/stable/index.yaml target/helm/index-pre.yaml
         bin/helm-build package
+        cp charts/artifacthub-repo-stable.yml target/helm/artifacthub-repo.yml
         gsutil rsync target/helm gs://helm.linkerd.io/stable

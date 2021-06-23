@@ -6,7 +6,7 @@ import (
 
 	"github.com/linkerd/linkerd2-proxy-init/ports"
 	"github.com/linkerd/linkerd2/controller/gen/config"
-	"github.com/prometheus/common/log"
+	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 )
 

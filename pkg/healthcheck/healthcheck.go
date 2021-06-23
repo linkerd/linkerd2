@@ -7,11 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"sort"
 	"strings"
 	"time"
 
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
+	controllerK8s "github.com/linkerd/linkerd2/controller/k8s"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/identity"
@@ -27,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
@@ -135,6 +138,11 @@ const (
 	// LinkerdCNIPluginChecks adds checks to validate that the CNI
 	/// plugin is installed and ready
 	LinkerdCNIPluginChecks CategoryID = "linkerd-cni-plugin"
+
+	// LinkerdOpaquePortsDefinitionChecks adds checks to validate that the
+	// "opaque ports" annotation has been defined both in the service and the
+	// corresponding pods
+	LinkerdOpaquePortsDefinitionChecks CategoryID = "linkerd-opaque-ports-definition"
 
 	// LinkerdCNIResourceLabel is the label key that is used to identify
 	// whether a Kubernetes resource is related to the install-cni command
@@ -758,6 +766,19 @@ func (hc *HealthChecker) allCategories() []*Category {
 						return validateControlPlanePods(hc.controlPlanePods)
 					},
 				},
+				{
+					description: "cluster networks contains all node podCIDRs",
+					hintAnchor:  "l5d-cluster-networks-cidr",
+					check: func(ctx context.Context) error {
+						// We explicitly initialize the config here so that we dont rely on the "l5d-existence-linkerd-config"
+						// check to set the clusterNetworks value, since `linkerd check config` will skip that check.
+						err := hc.InitializeLinkerdGlobalConfig(ctx)
+						if err != nil {
+							return err
+						}
+						return hc.checkClusterNetworks(ctx)
+					},
+				},
 			},
 			false,
 		),
@@ -1379,6 +1400,13 @@ func (hc *HealthChecker) allCategories() []*Category {
 						return checkMisconfiguredServiceAnnotations(services)
 					},
 				},
+				{
+					description: "opaque ports are properly annotated",
+					hintAnchor:  "linkerd-opaque-ports-definition",
+					check: func(ctx context.Context) error {
+						return hc.checkMisconfiguredOpaquePortAnnotations(ctx)
+					},
+				},
 			},
 			false,
 		),
@@ -1855,6 +1883,48 @@ func (hc *HealthChecker) CheckNamespace(ctx context.Context, namespace string, s
 	return nil
 }
 
+func (hc *HealthChecker) checkClusterNetworks(ctx context.Context) error {
+	nodes, err := hc.kubeAPI.GetNodes(ctx)
+	if err != nil {
+		return err
+	}
+	clusterNetworks := strings.Split(hc.linkerdConfig.ClusterNetworks, ",")
+	clusterIPNets := make([]*net.IPNet, len(clusterNetworks))
+	for i, clusterNetwork := range clusterNetworks {
+		_, clusterIPNets[i], err = net.ParseCIDR(clusterNetwork)
+		if err != nil {
+			return err
+		}
+	}
+	var badPodCIDRS []string
+	for _, node := range nodes {
+		podCIDR := node.Spec.PodCIDR
+		podIP, podIPNet, err := net.ParseCIDR(podCIDR)
+		if err != nil {
+			return err
+		}
+		exists := cluterNetworksContainCIDR(clusterIPNets, podIPNet, podIP)
+		if !exists {
+			badPodCIDRS = append(badPodCIDRS, podCIDR)
+		}
+	}
+	if len(badPodCIDRS) > 0 {
+		return fmt.Errorf("node has podCIDR(s) %v which are not contained in the Linkerd clusterNetworks.\n\tTry installing linkerd via --set clusterNetworks=%s", badPodCIDRS, strings.Join(badPodCIDRS, ","))
+	}
+	return nil
+}
+
+func cluterNetworksContainCIDR(clusterIPNets []*net.IPNet, podIPNet *net.IPNet, podIP net.IP) bool {
+	for _, clusterIPNet := range clusterIPNets {
+		clusterIPMaskOnes, _ := clusterIPNet.Mask.Size()
+		podCIDRMaskOnes, _ := podIPNet.Mask.Size()
+		if clusterIPNet.Contains(podIP) && podCIDRMaskOnes >= clusterIPMaskOnes {
+			return true
+		}
+	}
+	return false
+}
+
 func (hc *HealthChecker) expectedRBACNames() []string {
 	return []string{
 		fmt.Sprintf("linkerd-%s-identity", hc.ControlPlaneNamespace),
@@ -2187,6 +2257,92 @@ func checkResources(resourceName string, objects []runtime.Object, expectedNames
 	if len(missing) > 0 {
 		sort.Strings(missing)
 		return fmt.Errorf("missing %s: %s", resourceName, strings.Join(missing, ", "))
+	}
+
+	return nil
+}
+
+// Check if there's a pod with the "opaque ports" annotation defined but a
+// service selecting the aforementioned pod doesn't define it
+func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Context) error {
+	// Initialize and sync the kubernetes API
+	// This is used instead of `hc.kubeAPI` to limit multiple k8s API requests
+	// and use the caching logic in the shared informers
+	// TODO: move the shared informer code out of `controller/`, and into `pkg` to simplify the dependency tree.
+	kubeAPI := controllerK8s.NewAPI(hc.kubeAPI, nil, nil, controllerK8s.Endpoint, controllerK8s.Pod, controllerK8s.Svc)
+	kubeAPI.Sync(ctx.Done())
+
+	services, err := kubeAPI.Svc().Lister().Services(hc.DataPlaneNamespace).List(labels.Everything())
+	if err != nil {
+		return err
+	}
+
+	var errStrings []string
+	for _, service := range services {
+		if service.Spec.ClusterIP == "None" {
+			// skip headless services; they're handled differently
+			continue
+		}
+
+		endpoint, err := kubeAPI.Endpoint().Lister().Endpoints(service.Namespace).Get(service.Name)
+		if err != nil {
+			return err
+		}
+
+		pods := make([]*corev1.Pod, 0)
+		for _, subset := range endpoint.Subsets {
+			for _, addr := range subset.Addresses {
+				if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
+					pod, err := kubeAPI.Pod().Lister().Pods(service.Namespace).Get(addr.TargetRef.Name)
+					if err != nil {
+						return err
+					}
+					pods = append(pods, pod)
+				}
+			}
+		}
+
+		if mismatch := misconfiguredOpaquePortAnnotationsInService(service, pods); mismatch != nil {
+			errStrings = append(
+				errStrings,
+				fmt.Sprintf("\t* %s", mismatch.Error()),
+			)
+		}
+	}
+
+	if len(errStrings) >= 1 {
+		return fmt.Errorf(strings.Join(errStrings, "\n    "))
+	}
+
+	return nil
+}
+
+func misconfiguredOpaquePortAnnotationsInService(service *corev1.Service, pods []*corev1.Pod) error {
+	for _, pod := range pods {
+		if err := misconfiguredOpaqueAnnotation(service, pod); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func misconfiguredOpaqueAnnotation(service *corev1.Service, pod *corev1.Pod) error {
+	svcAnnotation, svcAnnotationOk := service.Annotations[k8s.ProxyOpaquePortsAnnotation]
+	podAnnotation, podAnnotationOk := pod.Annotations[k8s.ProxyOpaquePortsAnnotation]
+
+	if svcAnnotationOk && podAnnotationOk {
+		if svcAnnotation != podAnnotation {
+			return fmt.Errorf("pod/%s and service/%s have the annotation %s but values don't match", pod.Name, service.Name, k8s.ProxyOpaquePortsAnnotation)
+		}
+
+		return nil
+	}
+
+	if svcAnnotationOk {
+		return fmt.Errorf("service/%s has the annotation %s but pod/%s doesn't", service.Name, k8s.ProxyOpaquePortsAnnotation, pod.Name)
+	}
+	if podAnnotationOk {
+		return fmt.Errorf("pod/%s has the annotation %s but service/%s doesn't", pod.Name, k8s.ProxyOpaquePortsAnnotation, service.Name)
 	}
 
 	return nil
