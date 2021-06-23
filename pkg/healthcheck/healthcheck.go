@@ -13,6 +13,7 @@ import (
 	"time"
 
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
+	controllerK8s "github.com/linkerd/linkerd2/controller/k8s"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/identity"
@@ -28,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
@@ -2263,21 +2265,26 @@ func checkResources(resourceName string, objects []runtime.Object, expectedNames
 // Check if there's a pod with the "opaque ports" annotation defined but a
 // service selecting the aforementioned pod doesn't define it
 func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Context) error {
-	services, err := hc.GetServices(ctx)
+	// Initialize and sync the kubernetes API
+	// This is used instead of `hc.kubeAPI` to limit multiple k8s API requests
+	// and use the caching logic in the shared informers
+	// TODO: move the shared informer code out of `controller/`, and into `pkg` to simplify the dependency tree.
+	kubeAPI := controllerK8s.NewAPI(hc.kubeAPI, nil, nil, controllerK8s.Endpoint, controllerK8s.Pod, controllerK8s.Svc)
+	kubeAPI.Sync(ctx.Done())
+
+	services, err := kubeAPI.Svc().Lister().Services(hc.DataPlaneNamespace).List(labels.Everything())
 	if err != nil {
 		return err
 	}
 
 	var errStrings []string
-
 	for _, service := range services {
 		if service.Spec.ClusterIP == "None" {
 			// skip headless services; they're handled differently
 			continue
 		}
 
-		endpoint, err := hc.kubeAPI.CoreV1().Endpoints(service.Namespace).Get(ctx, service.Name, metav1.GetOptions{})
-
+		endpoint, err := kubeAPI.Endpoint().Lister().Endpoints(service.Namespace).Get(service.Name)
 		if err != nil {
 			return err
 		}
@@ -2286,7 +2293,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 		for _, subset := range endpoint.Subsets {
 			for _, addr := range subset.Addresses {
 				if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
-					pod, err := hc.kubeAPI.CoreV1().Pods(service.Namespace).Get(ctx, addr.TargetRef.Name, metav1.GetOptions{})
+					pod, err := kubeAPI.Pod().Lister().Pods(service.Namespace).Get(addr.TargetRef.Name)
 					if err != nil {
 						return err
 					}
@@ -2310,7 +2317,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 	return nil
 }
 
-func misconfiguredOpaquePortAnnotationsInService(service corev1.Service, pods []*corev1.Pod) error {
+func misconfiguredOpaquePortAnnotationsInService(service *corev1.Service, pods []*corev1.Pod) error {
 	for _, pod := range pods {
 		if err := misconfiguredOpaqueAnnotation(service, pod); err != nil {
 			return err
@@ -2319,7 +2326,7 @@ func misconfiguredOpaquePortAnnotationsInService(service corev1.Service, pods []
 	return nil
 }
 
-func misconfiguredOpaqueAnnotation(service corev1.Service, pod *corev1.Pod) error {
+func misconfiguredOpaqueAnnotation(service *corev1.Service, pod *corev1.Pod) error {
 	svcAnnotation, svcAnnotationOk := service.Annotations[k8s.ProxyOpaquePortsAnnotation]
 	podAnnotation, podAnnotationOk := pod.Annotations[k8s.ProxyOpaquePortsAnnotation]
 
