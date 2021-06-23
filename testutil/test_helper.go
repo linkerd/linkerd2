@@ -35,6 +35,7 @@ type TestHelper struct {
 	uninstall          bool
 	cni                bool
 	calico             bool
+	cilium             bool
 	certsPath          string
 	httpClient         http.Client
 	KubernetesHelper
@@ -180,6 +181,7 @@ func NewTestHelper() *TestHelper {
 	uninstall := flag.Bool("uninstall", false, "whether to run the 'linkerd uninstall' integration test")
 	cni := flag.Bool("cni", false, "whether to install linkerd with CNI enabled")
 	calico := flag.Bool("calico", false, "whether to install calico CNI plugin")
+	cilium := flag.Bool("cilium", false, "whether to install cilium networking")
 	certsPath := flag.String("certs-path", "", "if non-empty, 'linkerd install' will use the files ca.crt, issuer.crt and issuer.key under this path in its --identity-* flags")
 	flag.Parse()
 
@@ -227,6 +229,7 @@ func NewTestHelper() *TestHelper {
 		externalIssuer:     *externalIssuer,
 		externalPrometheus: *externalPrometheus,
 		cni:                *cni,
+		cilium:             *cilium,
 		calico:             *calico,
 		uninstall:          *uninstall,
 		certsPath:          *certsPath,
@@ -367,6 +370,11 @@ func (h *TestHelper) CNI() bool {
 // Calico determines whether Calico CNI plug-in is enabled
 func (h *TestHelper) Calico() bool {
 	return h.calico
+}
+
+// Cilium determines whether Cilium is enabled
+func (h *TestHelper) Cilium() bool {
+	return h.cilium
 }
 
 // AddInstalledExtension adds an extension name to installedExtensions to

@@ -245,6 +245,12 @@ func TestInstallCNIPlugin(t *testing.T) {
 	}
 }
 
+// func TestInstallCilium(t *testing.T) {
+// 	if !TestHelper.Cilium() {
+// 		return
+// 	}
+// }
+
 func TestInstallOrUpgradeCli(t *testing.T) {
 	if TestHelper.GetHelmReleaseName() != "" {
 		return

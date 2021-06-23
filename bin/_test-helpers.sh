@@ -8,7 +8,7 @@ set +e
 
 export default_test_names=(deep external-issuer external-prometheus-deep helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
 export external_resource_test_names=(external-resources)
-export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}" "${external_resource_test_names[*]}")
+export all_test_names=(cluster-domain cni-calico-deep cilium-deep multicluster "${default_test_names[*]}" "${external_resource_test_names[*]}")
 images_load_default=(proxy controller web metrics-api grafana tap)
 
 tests_usage() {
@@ -17,7 +17,7 @@ tests_usage() {
 
 Optionally specify a test with the --name flag: [${all_test_names[*]}]
 
-Note: The cluster-domain, cni-calico-deep and multicluster tests require a custom cluster configuration (see bin/_test-helpers.sh)
+Note: The cluster-domain, cni-calico-deep, cilium-deep and multicluster tests require a custom cluster configuration (see bin/_test-helpers.sh)
 
 Usage:
     ${progname} [--images docker|archive|skip] [--name test-name] [--skip-cluster-create] /path/to/linkerd
@@ -304,7 +304,7 @@ image_load() {
 
 start_test() {
   local name=$1
-  local config=(--no-hostip --k3s-server-arg '--disable=local-storage,metrics-server')
+  local config=(--k3s-server-arg '--disable=local-storage,metrics-server')
 
   case $name in
     cluster-domain)
@@ -316,6 +316,9 @@ start_test() {
     multicluster)
       config=("${config[@]}" --network multicluster-test)
       ;;
+    cilium-deep)
+      config=("$name" "${config[@]}" --no-lb --k3s-server-arg "--disable=servicelb,traefik" --k3s-server-arg "--disable-network-policy" --k3s-server-arg "--flannel-backend=none")
+      ;;
     *)
       config=("$name" "${config[@]}" --no-lb --k3s-server-arg '--disable=servicelb,traefik')
       ;;
@@ -323,6 +326,8 @@ start_test() {
 
   if [ "$name" == "multicluster" ]; then
     start_multicluster_test "${config[@]}"
+  elif [ "$name" == "cilium-deep" ] ; then
+    start_cilium_test "${config[@]}"
   else
     start_single_test "${config[@]}"
   fi
@@ -351,6 +356,38 @@ start_multicluster_test() {
   exit_on_err "error calling 'run_multicluster_test'"
   finish source
   finish target
+}
+
+start_cilium_test() {
+  name=$1
+  export helm_path="$bindir"/helm
+
+  setup_cluster "$@"
+  if [ -n "$cleanup_docker" ]; then
+    rm -rf image-archives
+    docker system prune --force --all
+  fi
+
+  # Configure bpf filesystem
+  docker exec -it "k3d-$name-server-0" mount bpffs /sys/fs/bpf -t bpf
+  docker exec -it "k3d-$name-server-0" mount --make-shared /sys/fs/bpf
+
+  "$helm_path" repo add cilium https://helm.cilium.io/
+  "$helm_path" install cilium cilium/cilium --version 1.9.1 \
+   --namespace kube-system \
+   --set kubeProxyReplacement=probe \
+   --set hostServices.enabled=true \
+   --set externalIPs.enabled=true \
+   --set k8sServiceHost=k3d-cilium-deep-server-0 \
+   --set k8sServicePort=6443 \
+   --set nodePort.enabled=true \
+   --set hostPort.enabled=true \
+   --set bpf.masquerade=false \
+   --set image.pullPolicy=IfNotPresent \
+   --set ipam.mode=kubernetes
+  run_"$name"_test
+  exit_on_err "error calling 'run_${name}_test'"
+  finish "$name"
 }
 
 multicluster_link() {
@@ -527,6 +564,15 @@ run_deep_test() {
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
   for test in "${tests[@]}"; do
     run_test "$test"
+  done
+}
+
+run_cilium-deep_test(){
+  local tests=()
+  run_test "$test_directory/install_test.go" --cilium
+  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
+  for test in "${tests[@]}"; do
+    run_test "$test" --cilium
   done
 }
 
