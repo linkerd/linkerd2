@@ -274,7 +274,7 @@ func (conf *ResourceConfig) GetPodPatch(injectProxy bool) ([]byte, error) {
 
 	switch strings.ToLower(conf.workload.metaType.Kind) {
 	case k8s.Pod:
-		patch.addRemovals(conf.pod)
+		patch.addReinvokeRemovals(conf.pod)
 	case k8s.CronJob:
 		patch.PathPrefix = "/spec/jobTemplate/spec/template"
 	default:

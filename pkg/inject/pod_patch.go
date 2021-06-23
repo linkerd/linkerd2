@@ -3,6 +3,7 @@ package inject
 import (
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
 )
@@ -38,9 +39,10 @@ func (patch *podPatch) getYAML() ([]byte, error) {
 	return yaml.Marshal(patch)
 }
 
-func (patch *podPatch) addRemovals(p pod) {
+func (patch *podPatch) addReinvokeRemovals(p pod) {
 	patch.checkContainers(p.spec)
 	if !patch.AlreadyInjected {
+		log.Debugf("skipped remove statements in patch for pod %s/%s", p.meta.Namespace, getPodName(p))
 		return
 	}
 	patch.volumesIndices(p.spec.Volumes)

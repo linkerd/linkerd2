@@ -71,10 +71,7 @@ type Report struct {
 func newReport(conf *ResourceConfig) *Report {
 	var name string
 	if conf.IsPod() {
-		name = conf.pod.meta.Name
-		if name == "" {
-			name = conf.pod.meta.GenerateName
-		}
+		name = getPodName(conf.pod)
 	} else if m := conf.workload.Meta; m != nil {
 		name = m.Name
 	}
@@ -241,4 +238,12 @@ func (r *Report) ThrowInjectError() []error {
 	}
 
 	return errs
+}
+
+func getPodName(p pod) string {
+	name := p.meta.Name
+	if name == "" {
+		name = p.meta.GenerateName
+	}
+	return name
 }
