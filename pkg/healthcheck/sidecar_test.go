@@ -115,8 +115,8 @@ func TestHas3rdPartySidecars(t *testing.T) {
 			expected: true,
 		},
 	} {
-		if !reflect.DeepEqual(Has3rdPartySidecars(tc.podSpec), tc.expected) {
-			t.Errorf("expected: %v, got: %v", tc.expected, Has3rdPartySidecars(tc.podSpec))
+		if !reflect.DeepEqual(HasThirdPartySidecars(tc.podSpec), tc.expected) {
+			t.Errorf("expected: %v, got: %v", tc.expected, HasThirdPartySidecars(tc.podSpec))
 		}
 	}
 }

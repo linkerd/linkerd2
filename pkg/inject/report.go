@@ -85,7 +85,7 @@ func newReport(conf *ResourceConfig) *Report {
 	if conf.HasPodTemplate() {
 		report.InjectDisabled, report.InjectDisabledReason, report.InjectAnnotationAt = report.disabledByAnnotation(conf)
 		report.HostNetwork = conf.pod.spec.HostNetwork
-		report.OtherSidecar = healthcheck.Has3rdPartySidecars(conf.pod.spec)
+		report.OtherSidecar = healthcheck.HasThirdPartySidecars(conf.pod.spec)
 		report.UDP = checkUDPPorts(conf.pod.spec)
 		if conf.pod.spec.AutomountServiceAccountToken != nil {
 			report.AutomountServiceAccountToken = *conf.pod.spec.AutomountServiceAccountToken
