@@ -72,7 +72,7 @@
     "eslint-webpack-plugin": "^2.5.4",
     "file-loader": "^6.2.0",
     "history": "5.0.0",
-    "html-webpack-plugin": "^5.3.1",
+    "html-webpack-plugin": "^5.3.2",
     "jest": "^26.6.3",
     "jest-dot-reporter": "1.0.14",
     "jest-enzyme": "7.1.2",
