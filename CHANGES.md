@@ -1,6 +1,6 @@
 # Changes
 
-## edge-21.6.4
+## edge-21.6.5
 
 This release contains a few improvements, from many contributors!  Also under
 the hood, the destination service has received updates in preparation to the
