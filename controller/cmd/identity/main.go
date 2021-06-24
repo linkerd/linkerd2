@@ -141,7 +141,7 @@ func Main(args []string) {
 	// Create K8s event recorder
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{
-		Interface: k8sAPI.CoreV1().Events(*controllerNS),
+		Interface: k8sAPI.CoreV1().Events(""),
 	})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: componentName})
 	deployment, err := k8sAPI.AppsV1().Deployments(*controllerNS).Get(ctx, componentName, v1machinery.GetOptions{})
