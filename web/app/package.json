@@ -9,6 +9,7 @@
     "@fortawesome/free-regular-svg-icons": "5.13.0",
     "@fortawesome/free-solid-svg-icons": "5.13.0",
     "@fortawesome/react-fontawesome": "0.1.9",
+    "@lingui/core": "^3.10.4",
     "@lingui/macro": "3.10.2",
     "@lingui/react": "2.9.2",
     "@material-ui/core": "4.11.4",
@@ -24,6 +25,7 @@
     "date-fns": "2.22.1",
     "locales-detector": "2.26.0",
     "lodash": "4.17.21",
+    "make-plural": "^6.2.2",
     "path": "0.12.7",
     "prop-types": "15.7.2",
     "query-string": "^7.0.0",
@@ -106,5 +108,17 @@
       "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/__mocks__/fileMock.js",
       "\\.(css|less)$": "<rootDir>/__mocks__/styleMock.js"
     }
+  },
+  "lingui": {
+    "catalogs": [
+      {
+        "path": "<rootDir>/js/locales/{locale}/messages"
+      }
+    ],
+    "locales": [
+      "en",
+      "es"
+    ],
+    "format": "minimal"
   }
 }
