@@ -1,5 +1,22 @@
 # Changes
 
+## edge-21.6.4
+
+This release contains a few improvements, from many contributors!  Also under
+the hood, the destination service has received updates in preparation to the
+upcoming support for StatefulSets across multicluster.
+
+* Improved the `linkerd check --proxy` command to avoid hitting a timeout when
+  dealing with large clusters
+* Fixed the web component permissions in order to properly run the podCIDR check
+  (thanks @aryan9600!)
+* Avoid having the proxy-init container fail when the main container is
+  configured to drop either the NET_RAW or NET_ADMIN capabilities (thanks
+  @aryan9600!)
+* Upgraded the proxy-init image to improve the output in "simulate" mode (thanks
+  @liuerfire!) and to log to stdout instead of stderr (thanks @mo4islona!)
+* Added test-coverage reports to PRs (thanks @akshitgrover!)
+
 ## edge-21.6.3
 
 This release moves the Linkerd proxy to a more minimal Docker base image,
