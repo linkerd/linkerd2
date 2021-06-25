@@ -32,6 +32,9 @@ func TestReinvocation(t *testing.T) {
 	//   so it runs after the linkerd injector (they're run alphabetically)
 	// - The command from the job generating the mwc cert and secret has been slightly changed in order
 	//   to account for that renaming (see yaml)
+	if os.Getenv("RUN_ARM_TEST") != "" {
+		t.Skip("Skipped. Kubemod does not support ARM yet")
+	}
 	kubemodYAML, err := testutil.ReadFile("testdata/kubemod.yaml")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to read kubemod.yaml", "failed to read kubemod.yaml: %s", err)
