@@ -84,7 +84,7 @@
     "sinon-stub-promise": "4.0.0",
     "style-loader": "^2.0.0",
     "url-loader": "^4.1.1",
-    "wdio-chromedriver-service": "6.0.2",
+    "wdio-chromedriver-service": "6.0.4",
     "webdriverio": "6.1.2",
     "webpack": "^5.40.0",
     "webpack-bundle-analyzer": "4.4.2",
