@@ -408,6 +408,12 @@ yarn lingui extract
 yarn lingui compile # done automatically in bin/web run
 ```
 
+Finally, make sure the new locale is also referred in the following places:
+
+- Under the `lingui` section in `package.json`
+- In the `make-plural/plurals` import in `index.js`
+- In the `langOptions` object in `index.js`
+
 ### Rust
 
 All Rust development happens in the
