@@ -11,6 +11,8 @@ import Community from './components/Community.jsx';
 import CssBaseline from '@material-ui/core/CssBaseline';
 import Gateway from './components/Gateway.jsx';
 import { I18nProvider } from '@lingui/react';
+import { i18n } from '@lingui/core';
+import { en, es } from 'make-plural/plurals';
 import Namespace from './components/Namespace.jsx';
 import Navigation from './components/Navigation.jsx';
 import NoMatch from './components/NoMatch.jsx';
@@ -55,10 +57,23 @@ const detectedLocales = new LocaleResolver(
   [new DETECTORS.NavigatorDetector()],
   [new TRANSFORMERS.FallbacksTransformer()],
 ).getLocales();
-const catalogOptions = { en: catalogEn, es: catalogEs };
+const langOptions = {
+  en: {
+    catalog: catalogEn,
+    plurals: en,
+  },
+  es: {
+    catalog: catalogEs,
+    plurals: es,
+  },
+};
 const selectedLocale =
-    _find(detectedLocales, l => !_isEmpty(catalogOptions[l])) || 'en';
-const selectedCatalog = catalogOptions[selectedLocale] || catalogEn;
+    _find(detectedLocales, l => !_isEmpty(langOptions[l])) || 'en';
+const selectedLangOptions = langOptions[selectedLocale] || langOptions.en;
+
+i18n.loadLocaleData(selectedLocale, { plurals: selectedLangOptions.plurals });
+i18n.load(selectedLocale, selectedLangOptions.catalog.messages);
+i18n.activate(selectedLocale);
 
 class App extends React.Component {
   constructor(props) {
@@ -89,9 +104,7 @@ class App extends React.Component {
   render() {
     return (
       <AppContext.Provider value={this.state}>
-        <I18nProvider
-          language={selectedLocale}
-          catalogs={{ [selectedLocale]: selectedCatalog }}>
+        <I18nProvider i18n={i18n}>
           <AppHTML />
         </I18nProvider>
       </AppContext.Provider>
