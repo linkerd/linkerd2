@@ -890,7 +890,7 @@ data:
       isIngress: false
       logFormat: plain
       logLevel: warn,linkerd=info
-      opaquePorts: 25,443,587,3306,5432,11211
+      opaquePorts: 25,443,587,3306,4444,5432,6379,9300,11211
       outboundConnectTimeout: ""
       ports:
         admin: 4191
@@ -912,7 +912,7 @@ data:
     proxyInit:
       capabilities: null
       closeWaitTimeoutSecs: 0
-      ignoreInboundPorts: ""
+      ignoreInboundPorts: 4567,4568
       ignoreOutboundPorts: "443"
       image:
         name: ProxyInitImageName
@@ -1102,7 +1102,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
-          value: "25,443,587,3306,5432,11211"
+          value: "25,443,587,3306,4444,5432,6379,9300,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1351,7 +1351,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
-          value: "25,443,587,3306,5432,11211"
+          value: "25,443,587,3306,4444,5432,6379,9300,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1445,7 +1445,7 @@ spec:
         - -enable-endpoint-slices=false
         - -cluster-domain=cluster.local
         - -identity-trust-domain=cluster.local
-        - -default-opaque-ports=25,443,587,3306,5432,11211
+        - -default-opaque-ports=25,443,587,3306,4444,5432,6379,9300,11211
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1656,7 +1656,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
-          value: "25,443,587,3306,5432,11211"
+          value: "25,443,587,3306,4444,5432,6379,9300,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:
