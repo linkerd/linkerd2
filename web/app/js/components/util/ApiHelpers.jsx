@@ -147,7 +147,11 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   };
 
   const fetchExtension = name => {
-    return apiFetch(`${l5dExtensionsPath}?extension_name=${name}`);
+    let extensionPath = l5dExtensionsPath;
+    if (name) {
+      extensionPath += `?extension_name=${name}`;
+    }
+    return apiFetch(extensionPath);
   };
 
   const fetchResourceDefinition = (namespace, resourceType, resourceName) => {

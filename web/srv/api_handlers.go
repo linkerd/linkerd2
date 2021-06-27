@@ -439,17 +439,25 @@ func (h *handler) handleGetExtension(w http.ResponseWriter, req *http.Request, _
 	extensionName := req.FormValue("extension_name")
 
 	resp := map[string]interface{}{}
-	ns, err := h.k8sAPI.GetNamespaceWithExtensionLabel(ctx, extensionName)
-	if err != nil && strings.HasPrefix(err.Error(), "could not find") {
-		renderJSON(w, resp)
-		return
-	} else if err != nil {
-		renderJSONError(w, err, http.StatusInternalServerError)
-		return
+	if extensionName == "" {
+		extensions, err := h.k8sAPI.GetAllNamespacesWithExtensionLabel(ctx)
+		if err != nil {
+			renderJSONError(w, err, http.StatusInternalServerError)
+			return
+		}
+		resp["extensions"] = extensions
+	} else {
+		ns, err := h.k8sAPI.GetNamespaceWithExtensionLabel(ctx, extensionName)
+		if err != nil && strings.HasPrefix(err.Error(), "could not find") {
+			renderJSON(w, resp)
+			return
+		} else if err != nil {
+			renderJSONError(w, err, http.StatusInternalServerError)
+			return
+		}
+		resp["extensionName"] = ns.GetLabels()[k8s.LinkerdExtensionLabel]
+		resp["namespace"] = ns.Name
 	}
-
-	resp["extensionName"] = ns.GetLabels()[k8s.LinkerdExtensionLabel]
-	resp["namespace"] = ns.Name
 
 	renderJSON(w, resp)
 }
