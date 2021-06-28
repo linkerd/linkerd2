@@ -841,7 +841,7 @@ data:
       capabilities: null
       closeWaitTimeoutSecs: 0
       ignoreInboundPorts: 4567,4568
-      ignoreOutboundPorts:  4567,4568
+      ignoreOutboundPorts: 4567,4568
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
@@ -1116,9 +1116,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190,4191"
+        - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
-        - "443"
+        - "4567,4568,443"
         image: cr.l5d.io/linkerd/proxy-init:v1.3.13
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1427,9 +1427,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190,4191"
+        - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
-        - "443"
+        - "4567,4568,443"
         image: cr.l5d.io/linkerd/proxy-init:v1.3.13
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1652,9 +1652,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190,4191"
+        - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
-        - "443"
+        - "4567,4568,443"
         image: cr.l5d.io/linkerd/proxy-init:v1.3.13
         imagePullPolicy: IfNotPresent
         name: linkerd-init
