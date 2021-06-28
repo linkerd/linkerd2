@@ -156,9 +156,7 @@ func validateTrafficSplit(actual *statTsRow, expected *statTsRow) error {
 	return nil
 }
 
-func validateExpectedTsOutput(rows map[string]*statTsRow, expectedBackendSvc, expectedFailingSvc *statTsRow) error {
-	backendSvcLeafKey := "backend-svc"
-	backendFailingSvcLeafKey := "failing-svc"
+func validateExpectedTsOutput(rows map[string]*statTsRow, expectedBackendSvc, expectedFailingSvc *statTsRow, backendSvcLeafKey, backendFailingSvcLeafKey string) error {
 
 	backendRow, ok := rows[backendSvcLeafKey]
 	if !ok {
@@ -182,7 +180,7 @@ func validateExpectedTsOutput(rows map[string]*statTsRow, expectedBackendSvc, ex
 
 func TestTrafficSplitCli(t *testing.T) {
 
-	for _, version := range []string{"v1alpha1", "v1alpha2"} {
+	for _, version := range []string{"v1alpha1", "v1alpha2", "sp"} {
 		// pin version variable
 		version := version
 		ctx := context.Background()
@@ -233,24 +231,36 @@ func TestTrafficSplitCli(t *testing.T) {
 					}
 
 					var weight string
-					if version == "v1alpha1" {
+					if version == "v1alpha1" || version == "sp" {
 						weight = "500m"
 					} else {
 						weight = "500"
 					}
 
+					name := "backend-traffic-split"
+					apex := "backend-svc"
+					backendLeaf := "backend-svc"
+					failingLeaf := "failing-svc"
+
+					if version == "sp" {
+						name = "backend-svc.default.svc.cluster.local"
+						apex = "backend-svc.default.svc.cluster.local"
+						backendLeaf = "backend-svc.default.svc.cluster.local.:8080"
+						failingLeaf = "failing-svc.default.svc.cluster.local.:8080"
+					}
+
 					expectedBackendSvcOutput := &statTsRow{
-						name:    "backend-traffic-split",
-						apex:    "backend-svc",
-						leaf:    "backend-svc",
+						name:    name,
+						apex:    apex,
+						leaf:    backendLeaf,
 						weight:  weight,
 						success: "100.00%",
 						rps:     "0.5rps",
 					}
 					expectedFailingSvcOutput := &statTsRow{
-						name:       "backend-traffic-split",
-						apex:       "backend-svc",
-						leaf:       "failing-svc",
+						name:       name,
+						apex:       apex,
+						leaf:       failingLeaf,
 						weight:     "0",
 						success:    "-",
 						rps:        "-",
@@ -259,7 +269,7 @@ func TestTrafficSplitCli(t *testing.T) {
 						latencyP99: "-",
 					}
 
-					if err := validateExpectedTsOutput(rows, expectedBackendSvcOutput, expectedFailingSvcOutput); err != nil {
+					if err := validateExpectedTsOutput(rows, expectedBackendSvcOutput, expectedFailingSvcOutput, backendLeaf, failingLeaf); err != nil {
 						return err
 					}
 					return nil
@@ -296,30 +306,41 @@ func TestTrafficSplitCli(t *testing.T) {
 					}
 
 					var weight string
-					if version == "v1alpha1" {
+					if version == "v1alpha1" || version == "sp" {
 						weight = "500m"
 					} else {
 						weight = "500"
 					}
 
+					name := "backend-traffic-split"
+					apex := "backend-svc"
+					backendLeaf := "backend-svc"
+					failingLeaf := "failing-svc"
+					if version == "sp" {
+						name = "backend-svc.default.svc.cluster.local"
+						apex = "backend-svc.default.svc.cluster.local"
+						backendLeaf = "backend-svc.default.svc.cluster.local.:8080"
+						failingLeaf = "failing-svc.default.svc.cluster.local.:8080"
+					}
+
 					expectedBackendSvcOutput := &statTsRow{
-						name:    "backend-traffic-split",
-						apex:    "backend-svc",
-						leaf:    "backend-svc",
+						name:    name,
+						apex:    apex,
+						leaf:    backendLeaf,
 						weight:  weight,
 						success: "100.00%",
 						rps:     "0.5rps",
 					}
 					expectedFailingSvcOutput := &statTsRow{
-						name:    "backend-traffic-split",
-						apex:    "backend-svc",
-						leaf:    "failing-svc",
+						name:    name,
+						apex:    apex,
+						leaf:    failingLeaf,
 						weight:  weight,
 						success: "0.00%",
 						rps:     "0.5rps",
 					}
 
-					if err := validateExpectedTsOutput(rows, expectedBackendSvcOutput, expectedFailingSvcOutput); err != nil {
+					if err := validateExpectedTsOutput(rows, expectedBackendSvcOutput, expectedFailingSvcOutput, backendLeaf, failingLeaf); err != nil {
 						return err
 					}
 					return nil

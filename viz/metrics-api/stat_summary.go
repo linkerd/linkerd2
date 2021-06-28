@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 
 	proto "github.com/golang/protobuf/proto"
 	"github.com/linkerd/linkerd2/controller/api/util"
+	"github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/prometheus/common/model"
@@ -284,7 +286,41 @@ func (s *grpcServer) getTrafficSplits(req *pb.StatSummaryRequest) ([]*v1alpha1.T
 		trafficSplits = []*v1alpha1.TrafficSplit{ts}
 	}
 
-	return trafficSplits, err
+	var serviceProfiles []*v1alpha2.ServiceProfile
+	if res.GetNamespace() == "" {
+		serviceProfiles, err = s.k8sAPI.SP().Lister().List(labelSelector)
+	} else if res.GetName() == "" {
+		serviceProfiles, err = s.k8sAPI.SP().Lister().ServiceProfiles(res.GetNamespace()).List(labelSelector)
+	} else {
+		var sp *v1alpha2.ServiceProfile
+		sp, err = s.k8sAPI.SP().Lister().ServiceProfiles(res.GetNamespace()).Get(res.GetName())
+		serviceProfiles = []*v1alpha2.ServiceProfile{sp}
+	}
+
+	for _, sp := range serviceProfiles {
+		// Append only the ones with `dstOverrides`
+		if len(sp.Spec.DstOverrides) != 0 {
+			trafficSplits = append(trafficSplits, spToTS(sp))
+		}
+	}
+
+	return trafficSplits, nil
+}
+
+func spToTS(sp *v1alpha2.ServiceProfile) *v1alpha1.TrafficSplit {
+	var ts v1alpha1.TrafficSplit
+
+	ts.Name = sp.Name
+	ts.Namespace = sp.Namespace
+	ts.Spec.Service = sp.Name
+	for _, dstOverride := range sp.Spec.DstOverrides {
+		ts.Spec.Backends = append(ts.Spec.Backends, v1alpha1.TrafficSplitBackend{
+			Weight:  &dstOverride.Weight,
+			Service: dstOverride.Authority,
+		})
+	}
+
+	return &ts
 }
 
 func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
@@ -315,6 +351,9 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 
 		for _, backend := range backends {
 			name := backend.Service
+			if strings.Contains(name, ".") {
+				name = strings.Split(name, ".")[0]
+			}
 			weight := backend.Weight.String()
 
 			currentLeaf := tsKey{
@@ -534,8 +573,14 @@ func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSum
 
 	apex := tsStats.apex
 	namespace := tsStats.namespace
-	// TODO: add cluster domain to stringToMatch
-	stringToMatch := fmt.Sprintf("%s.%s.svc", apex, namespace)
+
+	var stringToMatch string
+	if !strings.Contains(apex, "svc") {
+		// TODO: add cluster domain to stringToMatch
+		stringToMatch = fmt.Sprintf("%s.%s.svc", apex, namespace)
+	} else {
+		stringToMatch = apex
+	}
 
 	reqLabels := generateLabelStringWithRegex(labels, "authority", stringToMatch)
 
