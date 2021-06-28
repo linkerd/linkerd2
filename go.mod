@@ -42,7 +42,7 @@ require (
 	golang.org/x/tools v0.1.4
 	google.golang.org/grpc v1.38.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
-	google.golang.org/protobuf v1.26.0
+	google.golang.org/protobuf v1.27.0
 	helm.sh/helm/v3 v3.6.1
 	k8s.io/api v0.21.2
 	k8s.io/apiextensions-apiserver v0.21.2
