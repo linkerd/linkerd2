@@ -90,7 +90,7 @@ proxy:
       # -- Maximum amount of memory that the proxy requests
       request: ""
   # -- User id under which the proxy runs
-  uid: 2102
+  uid: 65532
   # -- If set the proxy sidecar will stay alive for at
   # least the given period before receiving SIGTERM signal from Kubernetes but
   # no longer than pod's `terminationGracePeriodSeconds`. See [Lifecycle

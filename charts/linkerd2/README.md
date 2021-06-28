@@ -185,7 +185,7 @@ Kubernetes: `>=1.16.0-0`
 | proxy.resources.cpu.request | string | `""` | Amount of CPU units that the proxy requests |
 | proxy.resources.memory.limit | string | `""` | Maximum amount of memory that the proxy can use |
 | proxy.resources.memory.request | string | `""` | Maximum amount of memory that the proxy requests |
-| proxy.uid | int | `2102` | User id under which the proxy runs |
+| proxy.uid | int | `65532` | User id under which the proxy runs |
 | proxy.waitBeforeExitSeconds | int | `0` | If set the proxy sidecar will stay alive for at least the given period before receiving SIGTERM signal from Kubernetes but no longer than pod's `terminationGracePeriodSeconds`. See [Lifecycle hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks) for more info on container lifecycle hooks. |
 | proxyInit.closeWaitTimeoutSecs | int | `0` |  |
 | proxyInit.ignoreInboundPorts | string | `""` | Default set of inbound ports to skip via iptables |
