@@ -13,7 +13,11 @@ import (
 
 var TestHelper *testutil.TestHelper
 
-const zeroRPS = "0.0rps"
+const (
+	zeroRPS          = "0.0rps"
+	backendSvc       = "backend-svc"
+	backendAuthority = "backend-svc.default.svc.cluster.local"
+)
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
@@ -243,8 +247,8 @@ func TestTrafficSplitCli(t *testing.T) {
 					failingLeaf := "failing-svc"
 
 					if version == "sp" {
-						name = "backend-svc.default.svc.cluster.local"
-						apex = "backend-svc.default.svc.cluster.local"
+						name = backendAuthority
+						apex = backendAuthority
 						backendLeaf = "backend-svc.default.svc.cluster.local.:8080"
 						failingLeaf = "failing-svc.default.svc.cluster.local.:8080"
 					}
@@ -313,12 +317,12 @@ func TestTrafficSplitCli(t *testing.T) {
 					}
 
 					name := "backend-traffic-split"
-					apex := "backend-svc"
-					backendLeaf := "backend-svc"
+					apex := backendSvc
+					backendLeaf := backendSvc
 					failingLeaf := "failing-svc"
 					if version == "sp" {
-						name = "backend-svc.default.svc.cluster.local"
-						apex = "backend-svc.default.svc.cluster.local"
+						name = backendAuthority
+						apex = backendAuthority
 						backendLeaf = "backend-svc.default.svc.cluster.local.:8080"
 						failingLeaf = "failing-svc.default.svc.cluster.local.:8080"
 					}

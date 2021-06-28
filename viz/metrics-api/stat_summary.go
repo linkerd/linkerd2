@@ -285,6 +285,9 @@ func (s *grpcServer) getTrafficSplits(req *pb.StatSummaryRequest) ([]*v1alpha1.T
 		ts, err = s.k8sAPI.TS().Lister().TrafficSplits(res.GetNamespace()).Get(res.GetName())
 		trafficSplits = []*v1alpha1.TrafficSplit{ts}
 	}
+	if err != nil {
+		return nil, err
+	}
 
 	var serviceProfiles []*v1alpha2.ServiceProfile
 	if res.GetNamespace() == "" {
@@ -295,6 +298,9 @@ func (s *grpcServer) getTrafficSplits(req *pb.StatSummaryRequest) ([]*v1alpha1.T
 		var sp *v1alpha2.ServiceProfile
 		sp, err = s.k8sAPI.SP().Lister().ServiceProfiles(res.GetNamespace()).Get(res.GetName())
 		serviceProfiles = []*v1alpha2.ServiceProfile{sp}
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	for _, sp := range serviceProfiles {
