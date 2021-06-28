@@ -11,7 +11,7 @@
     "@fortawesome/react-fontawesome": "0.1.9",
     "@lingui/core": "^3.10.4",
     "@lingui/macro": "3.10.2",
-    "@lingui/react": "2.9.2",
+    "@lingui/react": "3.10.2",
     "@material-ui/core": "4.11.4",
     "@material-ui/icons": "4.11.2",
     "@material-ui/lab": "^4.0.0-alpha.58",
@@ -37,7 +37,7 @@
     "react-router-prop-types": "1.0.5",
     "regenerator-runtime": "^0.13.7",
     "use-query-params": "1.2.2",
-    "whatwg-fetch": "3.0.0"
+    "whatwg-fetch": "3.6.2"
   },
   "devDependencies": {
     "@babel/core": "^7.14.6",
@@ -75,8 +75,7 @@
     "file-loader": "^6.2.0",
     "history": "5.0.0",
     "html-webpack-plugin": "^5.3.2",
-    "jest": "^26.6.3",
-    "jest-dot-reporter": "1.0.14",
+    "jest": "^27.0.5",
     "jest-enzyme": "7.1.2",
     "lodash-webpack-plugin": "^0.11.6",
     "react-test-renderer": "16.13.1",
@@ -97,8 +96,9 @@
     "webpack-dev-server/selfsigned/node-forge": ">=0.10.0"
   },
   "jest": {
-    "testEnvironment": "enzyme",
+    "testEnvironment": "jsdom",
     "setupFilesAfterEnv": [
+      "<rootDir>/setupTests.js",
       "./node_modules/jest-enzyme/lib/index.js"
     ],
     "transformIgnorePatterns": [

@@ -4,8 +4,9 @@ import BaseTable from './BaseTable.jsx';
 import TableBody from '@material-ui/core/TableBody';
 import FilterListIcon from '@material-ui/icons/FilterList';
 import TableRow from '@material-ui/core/TableRow';
-import { routerWrap } from '../../test/testHelpers.jsx';
-import { mount } from 'enzyme';
+import { routerWrap, i18nWrap } from '../../test/testHelpers.jsx';
+import { mount, shallow } from 'enzyme';
+import React from 'react';
 
 describe("Tests for <BaseTable>", () => {
   const defaultProps = {
@@ -78,7 +79,7 @@ describe("Tests for <BaseTable>", () => {
       tableColumns: tableColumns,
     });
 
-    const component = mount(routerWrap(BaseTable, extraProps));
+    const component = mount(i18nWrap(routerWrap(BaseTable, extraProps)));
     const table = component.find("BaseTable");
     expect(table).toBeDefined();
     const emptyCard = table.find("EmptyCard");
