@@ -725,8 +725,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 						return
 					}
 
-					if err := isExportedHeadlessEndpoints(obj); err != nil {
-						rcsw.log.Debugf("skipping processing Endpoints object: %v", err)
+					if ok := isExportedHeadlessEndpoints(obj, rcsw.log); !ok {
 						return
 					}
 
@@ -737,8 +736,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 						return
 					}
 
-					if err := isExportedHeadlessEndpoints(new); err != nil {
-						rcsw.log.Debugf("skipping processing Endpoints object: %v", err)
+					if ok := isExportedHeadlessEndpoints(new, rcsw.log); !ok {
 						return
 					}
 
@@ -1186,22 +1184,25 @@ func (rcsw *RemoteClusterServiceWatcher) createEndpointMirrorService(ctx context
 
 // isExportedHeadlessEndpoints checks if an endpoints object belongs to a
 // headless exported service.
-func isExportedHeadlessEndpoints(obj interface{}) error {
+func isExportedHeadlessEndpoints(obj interface{}, log *logging.Entry) bool {
 	ep, ok := obj.(*corev1.Endpoints)
 	if !ok {
-		return fmt.Errorf("got %#v, expected *corev1.Endpoints", ep)
+		log.Errorf("error processing Endpoints object: got %#v, expected *corev1.Endpoints", ep)
+		return false
 	}
 
 	if _, found := ep.Labels[corev1.IsHeadlessService]; !found {
 		// Not an Endpoints object for a headless service? Then we likely don't want
 		// to update anything.
-		return fmt.Errorf("Endpoints object missing %s label", corev1.IsHeadlessService)
+		log.Debugf("skipped processing Endpoints object %s/%s: missing %s label", ep.Namespace, ep.Name, corev1.IsHeadlessService)
+		return false
 	}
 
 	// If Endpoints belong to an unexported service, ignore.
 	if _, found := ep.Labels[consts.DefaultExportedServiceSelector]; !found {
-		return fmt.Errorf("Endpoints object missing %s label", consts.DefaultExportedServiceSelector)
+		log.Debugf("skipped processing Endpoints object %s/%s: missing %s label", ep.Namespace, ep.Name, consts.DefaultExportedServiceSelector)
+		return false
 	}
 
-	return nil
+	return true
 }
