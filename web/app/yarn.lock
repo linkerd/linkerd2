@@ -1046,10 +1046,10 @@
   dependencies:
     "@fortawesome/fontawesome-common-types" "^0.2.28"
 
-"@fortawesome/react-fontawesome@0.1.9":
-  version "0.1.9"
-  resolved "https://registry.yarnpkg.com/@fortawesome/react-fontawesome/-/react-fontawesome-0.1.9.tgz#c865b9286c707407effcec99958043711367cd02"
-  integrity sha512-49V3WNysLZU5fZ3sqSuys4nGRytsrxJktbv3vuaXkEoxv22C6T7TEG0TW6+nqVjMnkfCQd5xOnmJoZHMF78tOw==
+"@fortawesome/react-fontawesome@0.1.14":
+  version "0.1.14"
+  resolved "https://registry.yarnpkg.com/@fortawesome/react-fontawesome/-/react-fontawesome-0.1.14.tgz#bf28875c3935b69ce2dc620e1060b217a47f64ca"
+  integrity sha512-4wqNb0gRLVaBm/h+lGe8UfPPivcbuJ6ecI4hIgW0LjI7kzpYB9FkN0L9apbVzg+lsBdcTf0AlBtODjcSX5mmKA==
   dependencies:
     prop-types "^15.7.2"
 
@@ -3766,10 +3766,10 @@ core-js-pure@^3.15.0:
   resolved "https://registry.yarnpkg.com/core-js-pure/-/core-js-pure-3.15.1.tgz#8356f6576fa2aa8e54ca6fe02620968ff010eed7"
   integrity sha512-OZuWHDlYcIda8sJLY4Ec6nWq2hRjlyCqCZ+jCflyleMkVt3tPedDVErvHslyS2nbO+SlBFMSBJYvtLMwxnrzjA==
 
-core-js@^3.15.1:
-  version "3.15.1"
-  resolved "https://registry.yarnpkg.com/core-js/-/core-js-3.15.1.tgz#6c08ab88abdf56545045ccf5fd81f47f407e7f1a"
-  integrity sha512-h8VbZYnc9pDzueiS2610IULDkpFFPunHwIpl8yRwFahAEEdSpHlTy3h3z3rKq5h11CaUdBEeRViu9AYvbxiMeg==
+core-js@^3.15.2:
+  version "3.15.2"
+  resolved "https://registry.yarnpkg.com/core-js/-/core-js-3.15.2.tgz#740660d2ff55ef34ce664d7e2455119c5bdd3d61"
+  integrity sha512-tKs41J7NJVuaya8DxIOCnl8QuPHx5/ZVbFo1oKgVl1qHFBBrDctzQGtuLjPpRdNTWmKPH6oEvgN/MUID+l485Q==
 
 core-util-is@1.0.2, core-util-is@~1.0.0:
   version "1.0.2"
