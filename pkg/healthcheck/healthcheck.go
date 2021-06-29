@@ -154,6 +154,8 @@ const (
 	linkerdCNIResourceName       = "linkerd-cni"
 	linkerdCNIConfigMapName      = "linkerd-cni-config"
 
+	podCIDRUnavailableSkipReason = "skipping check because the nodes aren't exposing podCIDR"
+
 	proxyInjectorOldTLSSecretName = "linkerd-proxy-injector-tls"
 	proxyInjectorTLSSecretName    = "linkerd-proxy-injector-k8s-tls"
 	spValidatorOldTLSSecretName   = "linkerd-sp-validator-tls"
@@ -1897,8 +1899,13 @@ func (hc *HealthChecker) checkClusterNetworks(ctx context.Context) error {
 		}
 	}
 	var badPodCIDRS []string
+	var podCIDRExists bool
 	for _, node := range nodes {
 		podCIDR := node.Spec.PodCIDR
+		if podCIDR == "" {
+			continue
+		}
+		podCIDRExists = true
 		podIP, podIPNet, err := net.ParseCIDR(podCIDR)
 		if err != nil {
 			return err
@@ -1907,6 +1914,10 @@ func (hc *HealthChecker) checkClusterNetworks(ctx context.Context) error {
 		if !exists {
 			badPodCIDRS = append(badPodCIDRS, podCIDR)
 		}
+	}
+	if !podCIDRExists {
+		// DigitalOcean for example, doesn't expose spec.podCIDR (#6398)
+		return &SkipError{Reason: podCIDRUnavailableSkipReason}
 	}
 	if len(badPodCIDRS) > 0 {
 		return fmt.Errorf("node has podCIDR(s) %v which are not contained in the Linkerd clusterNetworks.\n\tTry installing linkerd via --set clusterNetworks=%s", badPodCIDRS, strings.Join(badPodCIDRS, ","))
