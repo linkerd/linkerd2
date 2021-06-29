@@ -8,6 +8,7 @@ import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
 import { mount } from 'enzyme';
 import { createMemoryHistory } from 'history';
+import { i18nWrap } from '../../test/testHelpers.jsx';
 
 function createMatchMedia(width) {
   return query => ({
@@ -132,9 +133,11 @@ describe('Namespace Select Button', () => {
     });
 
     const component = mount(
-      <BrowserRouter>
-        <Navigation {...extraProps} />
-      </BrowserRouter>
+      i18nWrap(
+        <BrowserRouter>
+          <Navigation {...extraProps} />
+        </BrowserRouter>
+      )
     );
 
     const input = component.find("input");
@@ -143,9 +146,11 @@ describe('Namespace Select Button', () => {
 
   it('renders emojivoto text', () => {
     const component = mount(
-      <BrowserRouter>
-        <Navigation {...defaultProps} />
-      </BrowserRouter>
+      i18nWrap(
+        <BrowserRouter>
+          <Navigation {...defaultProps} />
+        </BrowserRouter>
+      )
     );
 
     const input = component.find("input");
