@@ -82,7 +82,7 @@
     "react-test-renderer": "16.13.1",
     "sinon": "11.1.1",
     "sinon-stub-promise": "4.0.0",
-    "style-loader": "^2.0.0",
+    "style-loader": "^3.0.0",
     "url-loader": "^4.1.1",
     "wdio-chromedriver-service": "6.0.4",
     "webdriverio": "6.1.2",
