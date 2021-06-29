@@ -18,7 +18,7 @@
     "classnames": "2.3.1",
     "core-js": "^3.15.1",
     "css-mediaquery": "^0.1.2",
-    "d3-drag": "2.0.0",
+    "d3-drag": "3.0.0",
     "d3-force": "2.0.1",
     "d3-format": "3.0.1",
     "d3-selection": "3.0.0",
