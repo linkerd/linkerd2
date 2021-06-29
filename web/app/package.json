@@ -31,7 +31,7 @@
     "prop-types": "15.7.2",
     "query-string": "^7.0.0",
     "react": "16.14.0",
-    "react-dom": "16.13.1",
+    "react-dom": "16.14.0",
     "react-linkify": "1.0.0-alpha",
     "react-page-visibility": "^6.1.0",
     "react-router-dom": "5.2.0",
