@@ -19,7 +19,7 @@
     "core-js": "^3.15.2",
     "css-mediaquery": "^0.1.2",
     "d3-drag": "3.0.0",
-    "d3-force": "2.0.1",
+    "d3-force": "3.0.0",
     "d3-format": "3.0.1",
     "d3-selection": "3.0.0",
     "date-fns": "2.22.1",
