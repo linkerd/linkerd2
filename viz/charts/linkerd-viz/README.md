@@ -38,7 +38,7 @@ release, just replace with `linkerd-edge`.
 ## Installing the Viz Extension Chart
 
 ```bash
-helm install linkerd/linkerd-viz
+helm install linkerd-viz linkerd/linkerd-viz
 ```
 
 ## Get involved
