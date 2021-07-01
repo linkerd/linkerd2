@@ -1,5 +1,19 @@
 # Changes
 
+## edge-21.7.1
+
+This edge release adds support for emitting Kubernetes events in the identity
+controller when issuing leaf certificates. The event includes the identity,
+expiry date, and a hash of the certificate. Additionally, this release contains
+many dependency updates for the control plane's components, and it includes a
+fix for an issue with the clusterNetworks healthcheck.
+
+* Updated the identity controller to emit Kubernetes events when successfully
+  issuing leaf certificates to injected pods.
+* Fixed an issue in `linkerd check` where the clusterNetworks healthcheck
+  would fail if the `podCIDR` field is omitted from a node's spec.
+* Removed unnecessary controller port-forward logic from the `bin/web` script.
+
 ## edge-21.6.5
 
 This release contains a few improvements, from many contributors!  Also under
