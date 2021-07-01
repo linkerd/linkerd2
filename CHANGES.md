@@ -8,7 +8,7 @@ expiry date, and a hash of the certificate. Additionally, this release fixes an
 issue with the clusterNetworks healthcheck.
 
 * Updated the identity controller to emit Kubernetes events when successfully
-  issuing leaf certificates to injected pods 
+  issuing leaf certificates to injected pods.
 * Fixed an issue in `linkerd check` where the clusterNetworks healthcheck
   would fail if the `podCIDR` field is omitted from a node's spec.
 * Removed unnecessary controller port-forward logic from the `bin/web` script.
