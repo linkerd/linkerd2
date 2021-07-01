@@ -41,6 +41,7 @@
 - [Nexxiot](https://www.nexxiot.com)
 - [Nordstrom](https://nordstrom.com/)
 - [Novolabs](https://novolabs.com)
+- [p3r](https://www.p3r.one/)
 - [Paybase](https://paybase.io/)
 - [Personio](https://www.personio.com/)
 - [PlayStudios Asia](https://www.playstudios.asia)
