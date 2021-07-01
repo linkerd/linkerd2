@@ -13,13 +13,19 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 )
+
+const eventTypeSkipped = "ServiceMirroringSkipped"
 
 type (
 	// RemoteClusterServiceWatcher is a watcher instantiated for every cluster that is being watched
@@ -35,6 +41,7 @@ type (
 		remoteAPIClient         *k8s.API
 		localAPIClient          *k8s.API
 		stopper                 chan struct{}
+		recorder                record.EventRecorder
 		log                     *logging.Entry
 		eventsQueue             workqueue.RateLimitingInterface
 		requeueLimit            int
@@ -149,6 +156,15 @@ func NewRemoteClusterServiceWatcher(
 		return nil, fmt.Errorf("cannot connect to api for target cluster %s: %s", clusterName, err)
 	}
 
+	// Create k8s event recorder
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{
+		Interface: remoteAPI.Client.CoreV1().Events(""),
+	})
+	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{
+		Component: fmt.Sprintf("linkerd-service-mirror-%s", clusterName),
+	})
+
 	stopper := make(chan struct{})
 	return &RemoteClusterServiceWatcher{
 		serviceMirrorNamespace: serviceMirrorNamespace,
@@ -156,6 +172,7 @@ func NewRemoteClusterServiceWatcher(
 		remoteAPIClient:        remoteAPI,
 		localAPIClient:         localAPI,
 		stopper:                stopper,
+		recorder:               recorder,
 		log: logging.WithFields(logging.Fields{
 			"cluster":    clusterName,
 			"apiAddress": cfg.Host,
@@ -462,9 +479,17 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 	// create a mirrored headless service and exit early.  We leave Endpoint
 	// creation for the mirrored service to the Endpoint informer.
 	if rcsw.headlessServicesEnabled && remoteService.Spec.ClusterIP == corev1.ClusterIPNone {
+		// Headless services are not constrained to define a port in their spec
+		// because they may be used for DNS configuration only. If a service
+		// does not have any ports in its spec, we skip processing it.
+		if len(remoteService.Spec.Ports) == 0 {
+			rcsw.recorder.Event(remoteService, v1.EventTypeNormal, eventTypeSkipped, "Skipped mirroring service: object spec has no exposed ports")
+			rcsw.log.Infof("Skipped creating Headless Mirror for %s: service object spec has no exposed ports", serviceInfo)
+			return nil
+		}
+
 		serviceToCreate.Spec.ClusterIP = corev1.ClusterIPNone
 		rcsw.log.Infof("Creating a new Headless Mirror service for %s", serviceInfo)
-
 		if _, err := rcsw.localAPIClient.Client.CoreV1().Services(remoteService.Namespace).Create(ctx, serviceToCreate, metav1.CreateOptions{}); err != nil {
 			if !kerrors.IsAlreadyExists(err) {
 				// we might have created it during earlier attempt, if that is not the case, we retry
@@ -926,6 +951,19 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateEndpoints(ctx context.Con
 // (hostname). If the Headless Mirror does have an endpoints object, then the
 // function updates it by either creating or deleting Endpoint Mirrors.
 func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx context.Context, exportedEndpoints *corev1.Endpoints) error {
+	exportedService, err := rcsw.remoteAPIClient.Svc().Lister().Services(exportedEndpoints.Namespace).Get(exportedEndpoints.Name)
+	if err != nil {
+		rcsw.log.Debugf("failed to retrieve Exported service %s/%s when updating its Headless Mirror endpoints: %v", exportedEndpoints.Namespace, exportedEndpoints.Name, err)
+		return fmt.Errorf("error retrieving Exported service %s/%s: %v", exportedEndpoints.Namespace, exportedEndpoints.Name, err)
+	}
+
+	// If the exported service does not have any exposed ports then neither will
+	// its corresponding endpoint mirrors. If this is the case, skip processing
+	// the endpoints object to avoid a validation error.
+	if len(exportedService.Spec.Ports) == 0 {
+		return nil
+	}
+
 	headlessMirrorEpName := rcsw.mirroredResourceName(exportedEndpoints.Name)
 	headlessMirrorEndpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(exportedEndpoints.Namespace).Get(headlessMirrorEpName)
 	if err != nil {
@@ -942,12 +980,6 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx con
 	}
 
 	mirrorEndpoints := headlessMirrorEndpoints.DeepCopy()
-	exportedService, err := rcsw.remoteAPIClient.Svc().Lister().Services(exportedEndpoints.Namespace).Get(exportedEndpoints.Name)
-	if err != nil {
-		rcsw.log.Debugf("failed to retrieve Exported service %s/%s when updating its Headless Mirror endpoints: %v", exportedEndpoints.Namespace, exportedEndpoints.Name, err)
-		return fmt.Errorf("error retrieving Exported service %s/%s: %v", exportedEndpoints.Namespace, exportedEndpoints.Name, err)
-	}
-
 	endpointMirrors := make(map[string]struct{})
 	newSubsets := make([]corev1.EndpointSubset, 0, len(exportedEndpoints.Subsets))
 	for _, subset := range exportedEndpoints.Subsets {
