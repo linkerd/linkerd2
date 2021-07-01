@@ -41,6 +41,7 @@
 - [Nexxiot](https://www.nexxiot.com)
 - [Nordstrom](https://nordstrom.com/)
 - [Novolabs](https://novolabs.com)
+- [p3r](https://www.p3r.one/)
 - [Paybase](https://paybase.io/)
 - [Personio](https://www.personio.com/)
 - [PlayStudios Asia](https://www.playstudios.asia)
@@ -61,6 +62,7 @@
 - [YouMail](https://www.youmail.com)
 - [OLX Brasil](https://www.olx.com.br)
 - [Zimpler](https://www.zimpler.com/)
+
 
 If you're using Linkerd 2.x and aren't on this list, please [submit a pull
 request](https://github.com/linkerd/linkerd2/edit/main/ADOPTERS.md)!
