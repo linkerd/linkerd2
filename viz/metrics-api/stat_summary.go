@@ -111,8 +111,8 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		go func() {
 			if isNonK8sResourceQuery(statReq.GetSelector().GetResource().GetType()) {
 				resultChan <- s.nonK8sResourceQuery(ctx, statReq)
-			} else if isTrafficSplitQuery(statReq.GetSelector().GetResource().GetType()) {
-				resultChan <- s.trafficSplitResourceQuery(ctx, statReq)
+			} else if statReq.GetSelector().GetResource().GetType() == k8s.Service {
+				resultChan <- s.serviceResourceQuery(ctx, statReq)
 			} else {
 				resultChan <- s.k8sResourceQuery(ctx, statReq)
 			}
@@ -287,58 +287,29 @@ func (s *grpcServer) getTrafficSplits(req *pb.StatSummaryRequest) ([]*v1alpha1.T
 	return trafficSplits, err
 }
 
-func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
-	tss, err := s.getTrafficSplits(req)
-
-	if err != nil {
-		return resourceResult{res: nil, err: err}
-	}
-
-	tsBasicStats := make(map[tsKey]*pb.BasicStats)
+func (s *grpcServer) serviceResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
-
-	for _, ts := range tss {
-		backends := ts.Spec.Backends
-
-		tsStats := &trafficSplitStats{
-			namespace: ts.ObjectMeta.Namespace,
-			name:      ts.ObjectMeta.Name,
-			apex:      ts.Spec.Service,
+	if !req.SkipStats {
+		tsBasicStats, err := s.getTrafficSplitMetrics(ctx, req, req.TimeWindow)
+		if err != nil {
+			return resourceResult{res: nil, err: err}
 		}
 
-		if !req.SkipStats {
-			tsBasicStats, err = s.getTrafficSplitMetrics(ctx, req, tsStats, req.TimeWindow)
-			if err != nil {
-				return resourceResult{res: nil, err: err}
-			}
-		}
-
-		for _, backend := range backends {
-			name := backend.Service
-			weight := backend.Weight.String()
-
-			currentLeaf := tsKey{
-				Namespace: tsStats.namespace,
-				Type:      k8s.TrafficSplit,
-				Name:      tsStats.name,
-				Apex:      tsStats.apex,
-				Leaf:      name,
-			}
-
+		for key, stats := range tsBasicStats {
 			trafficSplitStats := &pb.TrafficSplitStats{
-				Apex:   tsStats.apex,
-				Leaf:   name,
-				Weight: weight,
+				Apex:   key.Apex,
+				Leaf:   key.Leaf,
+				Weight: key.Weight,
 			}
 
 			row := pb.StatTable_PodGroup_Row{
 				Resource: &pb.Resource{
-					Name:      tsStats.name,
-					Namespace: tsStats.namespace,
+					Name:      key.Apex,
+					Namespace: key.Namespace,
 					Type:      req.GetSelector().GetResource().GetType(),
 				},
 				TimeWindow: req.TimeWindow,
-				Stats:      tsBasicStats[currentLeaf],
+				Stats:      stats,
 				TsStats:    trafficSplitStats,
 			}
 			rows = append(rows, &row)
@@ -528,12 +499,12 @@ func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequ
 	return basicStats, tcpStats, nil
 }
 
-func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSummaryRequest, tsStats *trafficSplitStats, timeWindow string) (map[tsKey]*pb.BasicStats, error) {
+func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[tsKey]*pb.BasicStats, error) {
 	tsBasicStats := make(map[tsKey]*pb.BasicStats)
 	labels, groupBy := buildTrafficSplitRequestLabels(req)
 
-	apex := tsStats.apex
-	namespace := tsStats.namespace
+	apex := req.Selector.Resource.Name
+	namespace := req.Selector.Resource.Namespace
 	// TODO: add cluster domain to stringToMatch
 	stringToMatch := fmt.Sprintf("%s.%s.svc", apex, namespace)
 
@@ -555,7 +526,7 @@ func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSum
 	for rKey, basicStatsVal := range basicStats {
 		tsBasicStats[tsKey{
 			Namespace: namespace,
-			Name:      tsStats.name,
+			Name:      apex,
 			Type:      req.Selector.Resource.Type,
 			Apex:      apex,
 			Leaf:      rKey.Name,

@@ -499,7 +499,7 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		headers = append(headers, "STATUS")
 	}
 
-	if resourceType == k8s.TrafficSplit {
+	if resourceType == k8s.Service {
 		headers = append(headers,
 			fmt.Sprintf(apexTemplate, apexHeader),
 			fmt.Sprintf(leafTemplate, leafHeader),
@@ -516,7 +516,7 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		"LATENCY_P99",
 	}...)
 
-	if resourceType != k8s.TrafficSplit {
+	if resourceType != k8s.Service {
 		headers = append(headers, "TCP_CONN")
 	}
 
@@ -542,7 +542,7 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			templateStringEmpty = "%s\t" + templateStringEmpty
 		}
 
-		if resourceType == k8s.TrafficSplit {
+		if resourceType == k8s.Service {
 			templateString = "%s\t%s\t%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
 			templateStringEmpty = "%s\t%s\t%s\t%s\t-\t-\t-\t-\t-\t"
 		}
@@ -593,7 +593,7 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			values = append(values, stats[key].status)
 		}
 
-		if resourceType == k8s.TrafficSplit {
+		if resourceType == k8s.Service {
 			values = append(values,
 				stats[key].tsStats.apex+strings.Repeat(" ", apexPadding),
 				stats[key].tsStats.leaf+strings.Repeat(" ", leafPadding),
@@ -672,7 +672,7 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 					Kind:      resourceType,
 					Name:      name,
 				}
-				if resourceType != k8s.TrafficSplit {
+				if resourceType != k8s.Service {
 					entry.Meshed = stats[key].meshed
 				}
 				if stats[key].rowStats != nil {
