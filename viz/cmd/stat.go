@@ -277,6 +277,10 @@ func requestStatsFromAPI(client pb.ApiClient, req *pb.StatSummaryRequest) (*pb.S
 	if e := resp.GetError(); e != nil {
 		return nil, fmt.Errorf("StatSummary API response error: %v", e.Error)
 	}
+	log.DebugFn(func() []interface{} {
+		respJson, _ := json.Marshal(resp)
+		return []interface{}{string(respJson)}
+	})
 
 	return resp, nil
 }
@@ -373,7 +377,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 
 		namespace := r.Resource.Namespace
 		key := fmt.Sprintf("%s/%s", namespace, name)
-		if r.Resource.Type == k8s.TrafficSplit {
+		if r.Resource.Type == k8s.Service {
 			key = fmt.Sprintf("%s/%s/%s", namespace, name, r.TsStats.Leaf)
 		}
 		resourceKey := r.Resource.Type
@@ -476,7 +480,7 @@ func showTCPBytes(options *statOptions, resourceType string) bool {
 }
 
 func showTCPConns(resourceType string) bool {
-	return resourceType != k8s.Authority && resourceType != k8s.TrafficSplit
+	return resourceType != k8s.Authority && resourceType != k8s.Service
 }
 
 func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType string, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxWeightLength int, options *statOptions) {

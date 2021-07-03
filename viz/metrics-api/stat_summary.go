@@ -5,15 +5,18 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 
 	proto "github.com/golang/protobuf/proto"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/model"
 	"github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -523,13 +526,30 @@ func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSum
 
 	basicStats, _ := processPrometheusMetrics(req, results, groupBy) // we don't need tcpStat info for traffic split
 
+	spName := fmt.Sprintf("%s.%s.svc.%s", apex, namespace, s.clusterDomain)
+	log.Debugf("looking up sp: %s", spName)
+	profile, err := s.k8sAPI.SP().Lister().ServiceProfiles(namespace).Get(spName)
+	weights := map[string]*resource.Quantity{}
+	if err != nil {
+		for _, dst := range profile.Spec.DstOverrides {
+			dstSvc := strings.Split(dst.Authority, ".")[0]
+			weights[dstSvc] = &dst.Weight
+		}
+	}
+	log.Debugf("got weights: %v", weights)
+
 	for rKey, basicStatsVal := range basicStats {
+		weight := ""
+		if weights[rKey.Name] != nil {
+			weight = weights[rKey.Name].String()
+		}
 		tsBasicStats[tsKey{
 			Namespace: namespace,
 			Name:      apex,
 			Type:      req.Selector.Resource.Type,
 			Apex:      apex,
 			Leaf:      rKey.Name,
+			Weight:    weight,
 		}] = basicStatsVal
 	}
 	return tsBasicStats, nil
