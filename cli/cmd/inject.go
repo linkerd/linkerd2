@@ -412,6 +412,10 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 		overrideAnnotations[k8s.ProxyOpaquePortsAnnotation] = proxy.OpaquePorts
 	}
 
+	if proxy.PodInboundPorts != baseProxy.PodInboundPorts {
+		overrideAnnotations[k8s.ProxyOutboundPortAnnotation] = proxy.PodInboundPorts
+	}
+
 	if proxy.Image.Name != baseProxy.Image.Name {
 		overrideAnnotations[k8s.ProxyImageAnnotation] = proxy.Image.Name
 	}

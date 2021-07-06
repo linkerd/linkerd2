@@ -48,6 +48,7 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxyInboundPortAnnotation:                   "5000",
 							k8s.ProxyAdminPortAnnotation:                     "5001",
 							k8s.ProxyOutboundPortAnnotation:                  "5002",
+							k8s.ProxyPodInboundPortsAnnotation:               "1234,5678",
 							k8s.ProxyIgnoreInboundPortsAnnotation:            "4222,6222",
 							k8s.ProxyIgnoreOutboundPortsAnnotation:           "8079,8080",
 							k8s.ProxyCPURequestAnnotation:                    "0.15",
@@ -78,6 +79,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Proxy.Image.Name = "cr.l5d.io/linkerd/proxy"
 				values.Proxy.Image.PullPolicy = pullPolicy
 				values.Proxy.Image.Version = proxyVersionOverride
+				values.Proxy.PodInboundPorts = "1234,5678"
 				values.Proxy.Ports.Control = 4000
 				values.Proxy.Ports.Inbound = 5000
 				values.Proxy.Ports.Admin = 5001
@@ -132,6 +134,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				k8s.ProxyInboundPortAnnotation:            "5000",
 				k8s.ProxyAdminPortAnnotation:              "5001",
 				k8s.ProxyOutboundPortAnnotation:           "5002",
+				k8s.ProxyPodInboundPortsAnnotation:        "1234,5678",
 				k8s.ProxyIgnoreInboundPortsAnnotation:     "4222,6222",
 				k8s.ProxyIgnoreOutboundPortsAnnotation:    "8079,8080",
 				k8s.ProxyCPURequestAnnotation:             "0.15",
@@ -162,6 +165,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Proxy.Image.Name = "cr.l5d.io/linkerd/proxy"
 				values.Proxy.Image.PullPolicy = pullPolicy
 				values.Proxy.Image.Version = proxyVersionOverride
+				values.Proxy.PodInboundPorts = "1234,5678"
 				values.Proxy.Ports.Control = 4000
 				values.Proxy.Ports.Inbound = 5000
 				values.Proxy.Ports.Admin = 5001
@@ -238,9 +242,9 @@ func TestGetOverriddenValues(t *testing.T) {
 					},
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							corev1.Container{
+							{
 								Ports: []corev1.ContainerPort{
-									corev1.ContainerPort{
+									{
 										Name:          "mysql",
 										ContainerPort: 3306,
 									},
@@ -253,6 +257,7 @@ func TestGetOverriddenValues(t *testing.T) {
 			expected: func() *l5dcharts.Values {
 				values, _ := l5dcharts.NewValues()
 				values.Proxy.OpaquePorts = "3306"
+				values.Proxy.PodInboundPorts = "3306"
 				return values
 			},
 		},
