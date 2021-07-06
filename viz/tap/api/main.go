@@ -44,6 +44,7 @@ func Main(args []string) {
 		k8s.Pod,
 		k8s.RC,
 		k8s.Svc,
+		k8s.SP,
 		k8s.RS,
 		k8s.Node,
 	)
