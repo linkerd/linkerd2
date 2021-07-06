@@ -93,7 +93,7 @@ class ErrorModal extends React.Component {
         <Grid
           container
           direction="row"
-          justify="space-between"
+          justifyContent="space-between"
           alignItems="center">
           <Grid item>
             <Typography variant="subtitle1" gutterBottom>{container}</Typography>
