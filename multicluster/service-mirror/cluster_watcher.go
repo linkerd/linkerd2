@@ -476,8 +476,8 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 	}
 
 	// If the service to mirror is headless (its clusterIP is 'None') then we
-	// create a mirrored headless service and exit early.  We leave Endpoint
-	// creation for the mirrored service to the Endpoint informer.
+	// create a headless mirror and exit early.  We leave Endpoint creation to
+	// the Endpoint informer's handler.
 	if rcsw.headlessServicesEnabled && remoteService.Spec.ClusterIP == corev1.ClusterIPNone {
 		// Headless services are not constrained to define a port in their spec
 		// because they may be used for DNS configuration only. If a service
@@ -1019,6 +1019,14 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx con
 			Addresses: newAddresses,
 			Ports:     subset.DeepCopy().Ports,
 		})
+	}
+
+	// When the endpoints object of the exported service has no named addresses
+	// (i.e an address with a hostname) then exit early; an exported service
+	// with no named addresses should be a clusterIP mirror, even if the
+	// exported service is headless.
+	if len(newSubsets) == 0 {
+		return nil
 	}
 
 	headlessMirrorName := rcsw.mirroredResourceName(exportedService.Name)
