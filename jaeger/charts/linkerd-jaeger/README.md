@@ -37,8 +37,16 @@ release, just replace with `linkerd-edge`.
 
 ## Installing the Jaeger Extension Chart
 
+### Helm v3
+
 ```bash
-helm install linkerd/linkerd-jaeger
+helm install linkerd-jaeger linkerd/linkerd-jaeger
+```
+
+### Helm v2
+
+```bash
+helm install --name linkerd-jaeger linkerd/linkerd-jaeger
 ```
 
 ## Get involved
