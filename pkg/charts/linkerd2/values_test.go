@@ -86,6 +86,8 @@ func TestNewValues(t *testing.T) {
 			Await:                  true,
 		},
 		ProxyInit: &ProxyInit{
+			IgnoreInboundPorts:  "4567,4568",
+			IgnoreOutboundPorts: "4567,4568",
 			Image: &Image{
 				Name:    "cr.l5d.io/linkerd/proxy-init",
 				Version: testVersion,
