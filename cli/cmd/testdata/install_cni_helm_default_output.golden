@@ -125,6 +125,7 @@ data:
         "outgoing-proxy-port": 4140,
         "proxy-uid": 2102,
         "ports-to-redirect": [],
+        "inbound-ports-to-ignore": ["4191","4190"],
         "simulate": false,
         "use-wait-flag": false
       }
