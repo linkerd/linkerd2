@@ -37,8 +37,16 @@ release, just replace with `linkerd-edge`.
 
 ## Installing the Multicluster Extension Chart
 
+### Helm v3
+
 ```bash
-helm install linkerd/linkerd-multicluster
+helm install linkerd-multicluster linkerd/linkerd-multicluster
+```
+
+### Helm v2
+
+```bash
+helm install --name linkerd-multicluster linkerd/linkerd-multicluster
 ```
 
 ## Get involved
