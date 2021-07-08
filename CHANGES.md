@@ -1,5 +1,19 @@
 # Changes
 
+## edge-21.7.2
+
+This edge release focuses on dependency updates and has a couple of functional
+changes. First, the Dockerfile used to build the proxy has been updated to use
+the default `distroless` image, rather than the `non-root` variant. This change
+is safe because the proxy already runs as non-root within the container. Second,
+the `ignoreInboundPorts` parameter has been added in the linkerd2-cni helm
+charts in order to enable tap support.
+
+* Updated several project dependencies
+* Updated the Dockerfile-proxy to use the default distroless image, because
+  the proxy already runs as non-root within the container
+* Added `ignoreInboundPorts` parameter to the linkerd2-cni plugin helm chart
+
 ## edge-21.7.1
 
 This edge release adds support for emitting Kubernetes events in the identity
