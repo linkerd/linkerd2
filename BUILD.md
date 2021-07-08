@@ -63,7 +63,7 @@ its extensions are written in Go. The dashboard UI is a React application.
   - [`identity`](controller/identity): Provides a CA to distribute certificates
     to proxies for them to establish mTLS connections between them.
 - [`viz extension`](viz)
-  - ['metrics-api`](viz/metrics-api): Accepts requests from API clients such as
+  - [`metrics-api`](viz/metrics-api): Accepts requests from API clients such as
     cli and web, serving metrics from the proxies in the cluster through
     Prometheus queries.
   - [`tap`](viz/tap/api): Provides a live pipeline of requests.
