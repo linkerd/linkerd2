@@ -172,7 +172,8 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 		}
 		installManifest, err = renderInstallManifest(cmd.Context())
 		if err != nil {
-			return fmt.Errorf("Error rendering install manifest: %v", err)
+			fmt.Fprint(os.Stderr, fmt.Errorf("Error rendering install manifest: %v", err))
+			os.Exit(1)
 		}
 	} else {
 		checks = append(checks, healthcheck.LinkerdConfigChecks)
