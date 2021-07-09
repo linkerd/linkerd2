@@ -21,6 +21,19 @@ data:
   key.pem: {{b64enc (required "Please provide the identity issue private key" .Values.identity.issuer.tls.keyPEM | trim)}}
 {{- end}}
 ---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-identity-trust-roots
+  namespace: {{.Values.namespace}}
+  labels:
+    linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+data:
+  ca.pem: |{{.Values.identityTrustAnchorsPEM | trim | nindent 4}}
+---
 kind: Service
 apiVersion: v1
 metadata:

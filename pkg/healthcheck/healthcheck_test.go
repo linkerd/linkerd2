@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -14,7 +13,6 @@ import (
 	"github.com/golang/protobuf/ptypes/duration"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
-	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -1300,106 +1298,6 @@ data:
 			hc.RunChecks(obs.resultFn)
 			if !reflect.DeepEqual(obs.results, tc.expected) {
 				t.Fatalf("Expected results\n%s,\nbut got:\n%s", strings.Join(tc.expected, "\n"), strings.Join(obs.results, "\n"))
-			}
-		})
-	}
-}
-
-func proxiesWithCertificates(certificates ...string) []string {
-	result := []string{}
-	for i, certificate := range certificates {
-		result = append(result, fmt.Sprintf(`
-apiVersion: v1
-kind: Pod
-metadata:
-  name: pod-%d
-  namespace: namespace-%d
-  labels:
-    %s: linkerd
-spec:
-  containers:
-  - name: %s
-    env:
-    - name: %s
-      value: %s
-`, i, i, k8s.ControllerNSLabel, k8s.ProxyContainerName, identity.EnvTrustAnchors, certificate))
-	}
-	return result
-}
-
-func TestCheckDataPlaneProxiesCertificate(t *testing.T) {
-	const currentCertificate = "current-certificate"
-	const oldCertificate = "old-certificate"
-
-	linkerdConfigMap := fmt.Sprintf(`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: %s
-data:
-  global: |
-    {"identityContext":{"trustAnchorsPem": "%s"}}
-`, k8s.ConfigConfigMapName, currentCertificate)
-
-	var testCases = []struct {
-		checkDescription string
-		resources        []string
-		namespace        string
-		expectedErr      error
-	}{
-		{
-			checkDescription: "all proxies match CA certificate (all namespaces)",
-			resources:        proxiesWithCertificates(currentCertificate, currentCertificate),
-			namespace:        "",
-			expectedErr:      nil,
-		},
-		{
-			checkDescription: "some proxies match CA certificate (all namespaces)",
-			resources:        proxiesWithCertificates(currentCertificate, oldCertificate),
-			namespace:        "",
-			expectedErr:      errors.New("Some pods do not have the current trust bundle and must be restarted:\n\t* namespace-1/pod-1"),
-		},
-		{
-			checkDescription: "no proxies match CA certificate (all namespaces)",
-			resources:        proxiesWithCertificates(oldCertificate, oldCertificate),
-			namespace:        "",
-			expectedErr:      errors.New("Some pods do not have the current trust bundle and must be restarted:\n\t* namespace-0/pod-0\n\t* namespace-1/pod-1"),
-		},
-		{
-			checkDescription: "some proxies match CA certificate (match in target namespace)",
-			resources:        proxiesWithCertificates(currentCertificate, oldCertificate),
-			namespace:        "namespace-0",
-			expectedErr:      nil,
-		},
-		{
-			checkDescription: "some proxies match CA certificate (unmatch in target namespace)",
-			resources:        proxiesWithCertificates(currentCertificate, oldCertificate),
-			namespace:        "namespace-1",
-			expectedErr:      errors.New("Some pods do not have the current trust bundle and must be restarted:\n\t* pod-1"),
-		},
-		{
-			checkDescription: "no proxies match CA certificate (specific namespace)",
-			resources:        proxiesWithCertificates(oldCertificate, oldCertificate),
-			namespace:        "namespace-0",
-			expectedErr:      errors.New("Some pods do not have the current trust bundle and must be restarted:\n\t* pod-0"),
-		},
-	}
-
-	for id, testCase := range testCases {
-		testCase := testCase
-		t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
-			hc := NewHealthChecker([]CategoryID{}, &Options{})
-			hc.DataPlaneNamespace = testCase.namespace
-
-			var err error
-			hc.kubeAPI, err = k8s.NewFakeAPI(append(testCase.resources, linkerdConfigMap)...)
-			if err != nil {
-				t.Fatalf("Unexpected error: %q", err)
-			}
-
-			err = hc.checkDataPlaneProxiesCertificate(context.Background())
-			if !reflect.DeepEqual(err, testCase.expectedErr) {
-				t.Fatalf("Error %q does not match expected error: %q", err, testCase.expectedErr)
 			}
 		})
 	}

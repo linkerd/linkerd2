@@ -212,6 +212,22 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 				}
 				continue
 			}
+
+			if id == "ConfigMap/linkerd-identity-trust-roots" {
+				if pathMatch(diff.path, []string{"data", "ca.pem"}) {
+					ca, err := base64.StdEncoding.DecodeString(issuerCerts.ca)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if diff.b.(string) != string(ca) {
+						diff.a = string(ca)
+						t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+					}
+				} else {
+					t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+				}
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
