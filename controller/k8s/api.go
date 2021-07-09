@@ -492,7 +492,7 @@ func (api *API) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod, retry 
 			}
 		}
 	case "ReplicaSet":
-		parentObj, err = api.RS().Lister().ReplicaSets(pod.Namespace).Get(parent.Name)
+		rsObj, err := api.RS().Lister().ReplicaSets(pod.Namespace).Get(parent.Name)
 		if err != nil {
 			log.Warnf("failed to retrieve replicaset from indexer %s/%s: %s", pod.Namespace, parent.Name, err)
 			if retry {
@@ -502,6 +502,15 @@ func (api *API) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod, retry 
 				}
 			}
 		}
+
+		if ok := isValidRSParent(rsObj); !ok {
+			return strings.ToLower(parent.Kind), parent.Name
+		}
+		// Check if the rsObject parent is valid
+		// if it is, then overwrite parentObj
+		// otherwise, just return the pod's parent Kind and Name
+		parentObj = rsObj
+
 	default:
 		return strings.ToLower(parent.Kind), parent.Name
 	}
@@ -1098,4 +1107,27 @@ func isPendingOrRunning(pod *corev1.Pod) bool {
 
 func isFailed(pod *corev1.Pod) bool {
 	return pod.Status.Phase == corev1.PodFailed
+}
+
+func isValidRSParent(rs *appsv1.ReplicaSet) bool {
+	if rs == nil || len(rs.GetOwnerReferences()) != 1 {
+		return false
+	}
+
+	validParents := []string{
+		k8s.Deployment,
+		k8s.StatefulSet,
+		k8s.ReplicationController,
+		k8s.Job,
+	}
+
+	owner := rs.GetOwnerReferences()[0]
+	ownerKind := strings.ToLower(owner.Kind)
+	for _, parent := range validParents {
+		if ownerKind == parent {
+			return true
+		}
+	}
+
+	return false
 }
