@@ -147,6 +147,10 @@
           }
         },
         {
+          "name": "LINKERD2_PROXY_INBOUND_PORTS",
+          "value": "80"
+        },
+        {
           "name": "LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES",
           "value": "svc.cluster.local."
         },

@@ -886,6 +886,7 @@ data:
       logLevel: warn,linkerd=info
       opaquePorts: 25,443,587,3306,4444,5432,6379,9300,11211
       outboundConnectTimeout: 1000ms
+      podInboundPorts: ""
       ports:
         admin: 4191
         control: 4190
@@ -1099,6 +1100,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: status.podIPs
+        - name: LINKERD2_PROXY_INBOUND_PORTS
+          value: "8080,9990"
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -1337,6 +1340,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: status.podIPs
+        - name: LINKERD2_PROXY_INBOUND_PORTS
+          value: "8086,9996"
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -1633,6 +1638,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: status.podIPs
+        - name: LINKERD2_PROXY_INBOUND_PORTS
+          value: "8443,9995"
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE

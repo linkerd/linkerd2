@@ -59,6 +59,7 @@ spec:
       {{- $_ := set $tree.Values.proxy "resources" $r }}
       {{- end }}
       {{- $_ := set $tree.Values.proxy "await" true }}
+      {{- $_ := set $tree.Values.proxy "podInboundPorts" "8443,9995" }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       - args:
         - proxy-injector
