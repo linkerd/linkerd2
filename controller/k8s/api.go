@@ -503,7 +503,7 @@ func (api *API) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod, retry 
 			}
 		}
 
-		if ok := isValidRSParent(rsObj); !ok {
+		if isValidRSParent(rsObj) {
 			return strings.ToLower(parent.Kind), parent.Name
 		}
 		parentObj = rsObj
