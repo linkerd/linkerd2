@@ -496,7 +496,7 @@ func (api *API) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod, retry 
 		if err != nil {
 			log.Warnf("failed to retrieve replicaset from indexer %s/%s: %s", pod.Namespace, parent.Name, err)
 			if retry {
-				parentObj, err = api.Client.AppsV1().ReplicaSets(pod.Namespace).Get(ctx, parent.Name, metav1.GetOptions{})
+				rsObj, err = api.Client.AppsV1().ReplicaSets(pod.Namespace).Get(ctx, parent.Name, metav1.GetOptions{})
 				if err != nil {
 					log.Warnf("failed to retrieve replicaset from direct API call %s/%s: %s", pod.Namespace, parent.Name, err)
 				}
@@ -506,9 +506,6 @@ func (api *API) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod, retry 
 		if ok := isValidRSParent(rsObj); !ok {
 			return strings.ToLower(parent.Kind), parent.Name
 		}
-		// Check if the rsObject parent is valid
-		// if it is, then overwrite parentObj
-		// otherwise, just return the pod's parent Kind and Name
 		parentObj = rsObj
 
 	default:
@@ -1114,20 +1111,21 @@ func isValidRSParent(rs *appsv1.ReplicaSet) bool {
 		return false
 	}
 
-	validParents := []string{
-		k8s.Deployment,
-		k8s.StatefulSet,
-		k8s.ReplicationController,
+	validParentKinds := []string{
 		k8s.Job,
+		k8s.ReplicationController,
+		k8s.StatefulSet,
+		k8s.DaemonSet,
+		k8s.Deployment,
+		k8s.CronJob,
 	}
 
-	owner := rs.GetOwnerReferences()[0]
-	ownerKind := strings.ToLower(owner.Kind)
-	for _, parent := range validParents {
-		if ownerKind == parent {
+	rsOwner := rs.GetOwnerReferences()[0]
+	rsOwnerKind := strings.ToLower(rsOwner.Kind)
+	for _, kind := range validParentKinds {
+		if rsOwnerKind == kind {
 			return true
 		}
 	}
-
 	return false
 }
