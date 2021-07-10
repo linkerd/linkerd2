@@ -13,10 +13,10 @@ import (
 	"time"
 
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/controller/identity"
 	controllerK8s "github.com/linkerd/linkerd2/controller/k8s"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
-	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"

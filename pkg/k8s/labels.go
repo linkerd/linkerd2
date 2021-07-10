@@ -362,6 +362,9 @@ const (
 	// MountPathTLSCrtPEM is the path at which the TLS cert PEM file is mounted.
 	MountPathTLSCrtPEM = MountPathTLSBase + "/tls.crt"
 
+	// MountPathTrustRootsPEM is the path at which the TLS ca bundle PEM file is mounted.
+	MountPathTrustRootsPEM = MountPathBase + "/trust-roots/ca-bundle.crt"
+
 	// MountPathXtablesLock is the path at which the proxy init container mounts xtables
 	// This is necessary for xtables-legacy support
 	MountPathXtablesLock = "/run"

@@ -17,6 +17,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/identity"
+	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -42,7 +43,8 @@ type (
 	// Service implements the gRPC service in terms of a Validator and Issuer.
 	Service struct {
 		validator                                  Validator
-		trustAnchors                               *x509.CertPool
+		k8sAPI                                     *k8s.API
+		controlPlaneNamespace                      string
 		issuer                                     *tls.Issuer
 		issuerMutex                                *sync.RWMutex
 		validity                                   *tls.Validity
@@ -115,13 +117,17 @@ func (svc *Service) loadCredentials() (tls.Issuer, error) {
 		svc.issuerPathKey,
 		svc.issuerPathCrt,
 	)
-
 	if err != nil {
-		return nil, fmt.Errorf("failed to read CA from disk: %s", err)
+		return nil, fmt.Errorf("failed to read cert from disk: %s", err)
+	}
+
+	trustAnchors, err := svc.trustAnchors()
+	if err != nil {
+		return nil, err
 	}
 
 	// Don't verify with dns name as this is not a leaf certificate
-	if err := creds.Crt.Verify(svc.trustAnchors, "", time.Time{}); err != nil {
+	if err := creds.Crt.Verify(trustAnchors, "", time.Time{}); err != nil {
 		return nil, fmt.Errorf("failed to verify issuer credentials for '%s' with trust anchors: %s", svc.expectedName, err)
 	}
 
@@ -130,10 +136,11 @@ func (svc *Service) loadCredentials() (tls.Issuer, error) {
 }
 
 // NewService creates a new identity service.
-func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.Validity, recordEvent func(parent runtime.Object, eventType, reason, message string), expectedName, issuerPathCrt, issuerPathKey string) *Service {
+func NewService(validator Validator, k8sAPI *k8s.API, controlPlaneNamespace string, validity *tls.Validity, recordEvent func(parent runtime.Object, eventType, reason, message string), expectedName, issuerPathCrt, issuerPathKey string) *Service {
 	return &Service{
 		validator,
-		trustAnchors,
+		k8sAPI,
+		controlPlaneNamespace,
 		nil,
 		&sync.RWMutex{},
 		validity,
@@ -150,14 +157,28 @@ func Register(g *grpc.Server, s *Service) {
 	pb.RegisterIdentityServer(g, s)
 }
 
+func (svc *Service) trustAnchors() (*x509.CertPool, error) {
+	cm, err := svc.k8sAPI.CM().Lister().ConfigMaps(svc.controlPlaneNamespace).Get("linkerd-identity-trust-roots")
+	if err != nil {
+		return nil, err
+	}
+
+	return tls.DecodePEMCertPool(cm.Data["ca-bundle.crt"])
+}
+
 // ensureIssuerStillValid should check that the CA is still good time wise
 // and verifies just fine with the provided trust anchors
 func (svc *Service) ensureIssuerStillValid() error {
+	trustAnchors, err := svc.trustAnchors()
+	if err != nil {
+		return err
+	}
+
 	issuer := *svc.issuer
 	switch is := issuer.(type) {
 	case *tls.CA:
 		// Don't verify with dns name as this is not a leaf certificate
-		return is.Cred.Verify(svc.trustAnchors, "", time.Time{})
+		return is.Cred.Verify(trustAnchors, "", time.Time{})
 	default:
 		return fmt.Errorf("unsupported issuer type. Expected *tls.CA, got %v", is)
 	}

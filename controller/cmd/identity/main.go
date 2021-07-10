@@ -2,7 +2,6 @@ package identity
 
 import (
 	"context"
-	"encoding/base64"
 	"flag"
 	"fmt"
 	"net"
@@ -12,10 +11,10 @@ import (
 	"syscall"
 	"time"
 
-	idctl "github.com/linkerd/linkerd2/controller/identity"
+	"github.com/linkerd/linkerd2/controller/identity"
+	controllerK8s "github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
-	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -29,8 +28,6 @@ import (
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 )
-
-const envTrustAnchors = "LINKERD2_IDENTITY_TRUST_ANCHORS"
 
 // Main executes the identity subcommand
 func Main(args []string) {
@@ -56,13 +53,6 @@ func Main(args []string) {
 
 	flags.ConfigureAndParse(cmd, args)
 
-	encodedIdentityTrustAnchorPEM := os.Getenv(envTrustAnchors)
-	rawPEM, err := base64.StdEncoding.DecodeString(encodedIdentityTrustAnchorPEM)
-	if err != nil {
-		log.Fatalf("could not decode identity trust anchors PEM: %s", err.Error())
-	}
-
-	identityTrustAnchorPEM := string(rawPEM)
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -81,14 +71,9 @@ func Main(args []string) {
 		issuerPathKey = filepath.Join(*issuerPath, corev1.TLSPrivateKeyKey)
 	}
 
-	dom, err := idctl.NewTrustDomain(*controllerNS, *trustDomain)
+	dom, err := identity.NewTrustDomain(*controllerNS, *trustDomain)
 	if err != nil {
 		log.Fatalf("Invalid trust domain: %s", err.Error())
-	}
-
-	trustAnchors, err := tls.DecodePEMCertPool(identityTrustAnchorPEM)
-	if err != nil {
-		log.Fatalf("Failed to read trust anchors: %s", err)
 	}
 
 	validity := tls.Validity{
@@ -133,7 +118,7 @@ func Main(args []string) {
 	if err != nil {
 		log.Fatalf("Failed to load kubeconfig: %s: %s", *kubeConfigPath, err)
 	}
-	v, err := idctl.NewK8sTokenValidator(ctx, k8sAPI, dom)
+	v, err := identity.NewK8sTokenValidator(ctx, k8sAPI, dom)
 	if err != nil {
 		log.Fatalf("Failed to initialize identity service: %s", err)
 	}
@@ -157,10 +142,12 @@ func Main(args []string) {
 		recorder.Event(parent, eventType, reason, message)
 	}
 
+	api := controllerK8s.NewAPI(k8sAPI, nil, nil, controllerK8s.CM)
+
 	//
 	// Create, initialize and run service
 	//
-	svc := identity.NewService(v, trustAnchors, &validity, recordEventFunc, expectedName, issuerPathCrt, issuerPathKey)
+	svc := identity.NewService(v, api, *controllerNS, &validity, recordEventFunc, expectedName, issuerPathCrt, issuerPathKey)
 	if err = svc.Initialize(); err != nil {
 		log.Fatalf("Failed to initialize identity service: %s", err)
 	}

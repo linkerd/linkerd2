@@ -59,6 +59,7 @@ spec:
       {{- $_ := set $tree.Values.proxy "resources" $r }}
       {{- end }}
       {{- $_ := set $tree.Values.proxy "await" true }}
+      {{- $_ := set $tree.Values.proxy.loadTrustBundleFromConfigMap true }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       - args:
         - proxy-injector
@@ -90,6 +91,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
+        - mountPath: /var/run/linkerd/trust-roots
+          name: trust-roots
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
@@ -105,6 +108,9 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
+      - configMap:
+          name: linkerd-identity-trust-roots
+        name: trust-roots
       - name: tls
         secret:
           secretName: linkerd-proxy-injector-k8s-tls
