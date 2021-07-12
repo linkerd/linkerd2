@@ -125,6 +125,10 @@ func (svc *Service) loadCredentials() (tls.Issuer, error) {
 		return nil, fmt.Errorf("failed to verify issuer credentials for '%s' with trust anchors: %s", svc.expectedName, err)
 	}
 
+	if !creds.Certificate.IsCA {
+		return nil, fmt.Errorf("failed to verify issuer certificate: it must be an intermediate-CA, but it is not")
+	}
+
 	log.Debugf("Loaded issuer cert: %s", creds.EncodeCertificatePEM())
 	return tls.NewCA(*creds, *svc.validity), nil
 }
