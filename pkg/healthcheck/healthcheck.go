@@ -13,7 +13,6 @@ import (
 	"time"
 
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
-	"github.com/linkerd/linkerd2/controller/identity"
 	controllerK8s "github.com/linkerd/linkerd2/controller/k8s"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
@@ -164,6 +163,10 @@ const (
 	certKeyName                   = "tls.crt"
 	keyOldKeyName                 = "key.pem"
 	keyKeyName                    = "tls.key"
+
+	// EnvTrustAnchors is the environment variable holding the trust anchors for
+	// the proxy identity.
+	EnvTrustAnchors = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
 )
 
 // AllowedClockSkew sets the allowed skew in clock synchronization
@@ -2164,7 +2167,7 @@ func GetMeshedPodsIdentityData(ctx context.Context, api kubernetes.Interface, da
 				continue
 			}
 			for _, envVar := range containerSpec.Env {
-				if envVar.Name != identity.EnvTrustAnchors {
+				if envVar.Name != EnvTrustAnchors {
 					continue
 				}
 				pods = append(pods, MeshedPodIdentityData{

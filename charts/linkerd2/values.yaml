@@ -108,9 +108,6 @@ proxy:
   # - PostgreSQL (5432) server-first
   # - Memcached (11211) clients do not issue any preamble, which breaks detection
   opaquePorts: "25,443,587,3306,5432,11211"
-  # -- If set, load the trust bundle directly from the linkerd-identity-trust-roots
-  # configmap using the downward API
-  loadTrustBundleFromConfigMap: false
 
 # proxy-init configuration
 proxyInit:

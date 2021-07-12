@@ -109,7 +109,6 @@ type (
 		InboundConnectTimeout         string           `json:"inboundConnectTimeout"`
 		OpaquePorts                   string           `json:"opaquePorts"`
 		Await                         bool             `json:"await"`
-		LoadTrustBundleFromConfigMap  bool             `json:"loadTrustBundleFromConfigMap"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container
