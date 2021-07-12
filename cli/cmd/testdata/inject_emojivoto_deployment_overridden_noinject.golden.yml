@@ -17,6 +17,7 @@ spec:
         app: web-svc
     spec:
       containers:
+      - name: ""
       - env:
         - name: WEB_PORT
           value: "80"

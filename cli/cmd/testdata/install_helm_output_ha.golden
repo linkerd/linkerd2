@@ -853,6 +853,7 @@ data:
       issuer:
         clockSkewAllowance: 20s
         crtExpiry: Jul 30 17:21:14 2020
+        externalCA: false
         issuanceLifetime: 24h0m0s
         scheme: linkerd.io/tls
         tls:
@@ -900,6 +901,7 @@ data:
       inboundConnectTimeout: 100ms
       isGateway: false
       isIngress: false
+      loadTrustBundleFromConfigMap: false
       logFormat: plain
       logLevel: warn,linkerd=info
       opaquePorts: 25,443,587,3306,5432,11211
@@ -999,7 +1001,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 data:
-  ca.pem: |
+  ca-bundle.crt: |
     test-trust-anchor
 ---
 kind: Service
@@ -1124,8 +1126,6 @@ spec:
         - -identity-clock-skew-allowance=20s
         - -identity-scheme=linkerd.io/tls
         env:
-        - name: LINKERD2_IDENTITY_TRUST_ANCHORS
-          value: "dGVzdC10cnVzdC1hbmNob3I="
         - name: LINKERD_DISABLED
           value: "linkerd-await cannot block the identity controller"
         image: cr.l5d.io/linkerd/controller:linkerd-version
@@ -1204,6 +1204,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
+        
           valueFrom:
             configMapKeyRef:
               name: linkerd-identity-trust-roots
@@ -1488,6 +1489,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
+        
           valueFrom:
             configMapKeyRef:
               name: linkerd-identity-trust-roots
@@ -1826,6 +1828,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
+        
           valueFrom:
             configMapKeyRef:
               name: linkerd-identity-trust-roots
@@ -1918,6 +1921,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
+        - mountPath: /var/run/linkerd/trust-roots
+          name: trust-roots
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
@@ -1962,6 +1967,9 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
+      - configMap:
+          name: linkerd-identity-trust-roots
+        name: trust-roots
       - name: tls
         secret:
           secretName: linkerd-proxy-injector-k8s-tls
