@@ -1113,11 +1113,9 @@ func isValidRSParent(rs *appsv1.ReplicaSet) bool {
 
 	validParentKinds := []string{
 		k8s.Job,
-		k8s.ReplicationController,
 		k8s.StatefulSet,
 		k8s.DaemonSet,
 		k8s.Deployment,
-		k8s.CronJob,
 	}
 
 	rsOwner := rs.GetOwnerReferences()[0]
