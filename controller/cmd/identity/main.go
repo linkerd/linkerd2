@@ -69,7 +69,6 @@ func Main(args []string) {
 		issuerPathCrt = filepath.Join(*issuerPath, corev1.TLSCertKey)
 		issuerPathKey = filepath.Join(*issuerPath, corev1.TLSPrivateKeyKey)
 	}
-	issuerPathCA := filepath.Join(*issuerPath, k8s.IdentityIssuerTrustAnchorsName)
 
 	dom, err := identity.NewTrustDomain(*controllerNS, *trustDomain)
 	if err != nil {
@@ -102,12 +101,19 @@ func Main(args []string) {
 	issuerError := make(chan error)
 
 	//
-	// Create and start FS creds watcher
+	// Create and start FS creds watchers
 	//
-	watcher := tls.NewFsCredsWatcher(*issuerPath, issuerEvent, issuerError)
+	issuerWatcher := tls.NewFsCredsWatcher(*issuerPath, issuerEvent, issuerError)
 	go func() {
-		if err := watcher.StartWatching(ctx); err != nil {
-			log.Fatalf("Failed to start creds watcher: %s", err)
+		if err := issuerWatcher.StartWatching(ctx); err != nil {
+			log.Fatalf("Failed to start issuer watcher: %s", err)
+		}
+	}()
+
+	trustRootWatcher := tls.NewFsCredsWatcher(k8s.MountPathTrustRootsBase, issuerEvent, issuerError)
+	go func() {
+		if err := trustRootWatcher.StartWatching(ctx); err != nil {
+			log.Fatalf("Failed to start trust root watcher: %s", err)
 		}
 	}()
 
@@ -145,7 +151,7 @@ func Main(args []string) {
 	//
 	// Create, initialize and run service
 	//
-	svc := identity.NewService(v, &validity, recordEventFunc, expectedName, issuerPathCrt, issuerPathKey, issuerPathCA)
+	svc := identity.NewService(v, &validity, recordEventFunc, expectedName, issuerPathCrt, issuerPathKey, k8s.MountPathTrustRootsPEM)
 	if err = svc.Initialize(); err != nil {
 		log.Fatalf("Failed to initialize identity service: %s", err)
 	}

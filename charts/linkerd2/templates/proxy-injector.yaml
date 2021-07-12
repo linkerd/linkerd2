@@ -93,7 +93,7 @@ spec:
           name: config
         - mountPath: /var/run/linkerd/tls
           name: trust-roots
-        - mountPath: /var/run/linkerd/tls
+        - mountPath: /var/run/linkerd/identity/trust-roots
           name: tls
           readOnly: true
       {{ if not .Values.cniEnabled -}}

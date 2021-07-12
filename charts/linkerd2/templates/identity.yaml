@@ -182,7 +182,7 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
-        - mountPath: /var/run/linkerd/identity/issuer
+        - mountPath: /var/run/linkerd/identity/trust-roots
           name: trust-roots
       {{- if not (empty .Values.identityProxyResources) }}
       {{- $r := merge .Values.identityProxyResources .Values.proxy.resources }}

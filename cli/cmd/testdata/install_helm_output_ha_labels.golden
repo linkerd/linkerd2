@@ -1168,7 +1168,7 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
-        - mountPath: /var/run/linkerd/identity/issuer
+        - mountPath: /var/run/linkerd/identity/trust-roots
           name: trust-roots
       - env:
         - name: LINKERD2_PROXY_LOG
@@ -1951,7 +1951,7 @@ spec:
           name: config
         - mountPath: /var/run/linkerd/tls
           name: trust-roots
-        - mountPath: /var/run/linkerd/tls
+        - mountPath: /var/run/linkerd/identity/trust-roots
           name: tls
           readOnly: true
       initContainers:

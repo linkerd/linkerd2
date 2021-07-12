@@ -336,6 +336,10 @@ const (
 	// MountPathBase is the base directory of the mount path.
 	MountPathBase = "/var/run/linkerd"
 
+	MountPathTrustRootsBase = MountPathBase + "/identity/trust-roots"
+
+	MountPathTrustRootsPEM = MountPathTrustRootsBase + "/ca-bundle.crt"
+
 	// MountPathServiceAccount is the default path where Kubernetes stores
 	// the service account token
 	MountPathServiceAccount = "/var/run/secrets/kubernetes.io/serviceaccount"
@@ -364,9 +368,6 @@ const (
 
 	// MountPathTLSCrtPEM is the path at which the TLS cert PEM file is mounted.
 	MountPathTLSCrtPEM = MountPathTLSBase + "/tls.crt"
-
-	// MountPathTrustRootsPEM is the path at which the TLS ca bundle PEM file is mounted.
-	MountPathTrustRootsPEM = MountPathTLSBase + "/ca-bundle.crt"
 
 	// MountPathXtablesLock is the path at which the proxy init container mounts xtables
 	// This is necessary for xtables-legacy support
