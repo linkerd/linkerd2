@@ -77,7 +77,7 @@ env:
   valueFrom:
     configMapKeyRef:
       name: linkerd-identity-trust-roots
-      key: ca.pem
+      key: ca-bundle.crt
 {{ else }}
   value: |
     {{- required "Please provide the identity trust anchors" .Values.identityTrustAnchorsPEM | trim | nindent 4 }}

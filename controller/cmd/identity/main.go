@@ -144,6 +144,8 @@ func Main(args []string) {
 
 	api := controllerK8s.NewAPI(k8sAPI, nil, nil, controllerK8s.CM)
 
+	api.Sync(nil)
+
 	//
 	// Create, initialize and run service
 	//
