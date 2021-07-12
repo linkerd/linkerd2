@@ -49,6 +49,7 @@ spec:
   volumes:
   - hostPath
   - secret
+  - emptyDir
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -246,6 +247,10 @@ spec:
         - mountPath: /host{{.Values.destCNINetDir}}
           name: cni-net-dir
         {{- end }}
+        - mountPath: /tmp
+          name: linkerd-tmp-dir
+        securityContext:
+          readOnlyRootFilesystem: true
       volumes:
       {{- if ne .Values.destCNIBinDir .Values.destCNINetDir }}
       - name: cni-bin-dir
@@ -259,3 +264,5 @@ spec:
         hostPath:
           path: {{.Values.destCNINetDir}}
       {{- end }}
+      - name: linkerd-tmp-dir
+        emptyDir: {}
