@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/identity"
-	controllerK8s "github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -70,6 +69,7 @@ func Main(args []string) {
 		issuerPathCrt = filepath.Join(*issuerPath, corev1.TLSCertKey)
 		issuerPathKey = filepath.Join(*issuerPath, corev1.TLSPrivateKeyKey)
 	}
+	issuerPathCA := filepath.Join(*issuerPath, k8s.IdentityIssuerTrustAnchorsName)
 
 	dom, err := identity.NewTrustDomain(*controllerNS, *trustDomain)
 	if err != nil {
@@ -142,14 +142,10 @@ func Main(args []string) {
 		recorder.Event(parent, eventType, reason, message)
 	}
 
-	api := controllerK8s.NewAPI(k8sAPI, nil, nil, controllerK8s.CM)
-
-	api.Sync(nil)
-
 	//
 	// Create, initialize and run service
 	//
-	svc := identity.NewService(v, api, *controllerNS, &validity, recordEventFunc, expectedName, issuerPathCrt, issuerPathKey)
+	svc := identity.NewService(v, &validity, recordEventFunc, expectedName, issuerPathCrt, issuerPathKey, issuerPathCA)
 	if err = svc.Initialize(); err != nil {
 		log.Fatalf("Failed to initialize identity service: %s", err)
 	}

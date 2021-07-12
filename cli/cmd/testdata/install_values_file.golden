@@ -19,6 +19,10 @@ rules:
 - apiGroups: [""]
   resources: ["events"]
   verbs: ["create", "patch"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+  resourceNames: ["linkerd-identity-trust-roots"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1084,6 +1088,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
+        - mountPath: /var/run/linkerd/identity/issuer
+          name: trust-roots
       - env:
         - name: LINKERD2_PROXY_LOG
           value: "warn,linkerd=info"
@@ -1135,7 +1141,7 @@ spec:
           valueFrom:
             configMapKeyRef:
               name: linkerd-identity-trust-roots
-              key: ca.pem
+              key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -1222,6 +1228,9 @@ spec:
       - name: identity-issuer
         secret:
           secretName: linkerd-identity-issuer
+      - configMap:
+          name: linkerd-identity-trust-roots
+        name: trust-roots
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -1374,7 +1383,7 @@ spec:
           valueFrom:
             configMapKeyRef:
               name: linkerd-identity-trust-roots
-              key: ca.pem
+              key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -1669,7 +1678,7 @@ spec:
           valueFrom:
             configMapKeyRef:
               name: linkerd-identity-trust-roots
-              key: ca.pem
+              key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -1747,7 +1756,7 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
-        - mountPath: /var/run/linkerd/trust-roots
+        - mountPath: /var/run/linkerd/tls
           name: trust-roots
         - mountPath: /var/run/linkerd/tls
           name: tls

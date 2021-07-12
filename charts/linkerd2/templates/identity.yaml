@@ -182,6 +182,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
+        - mountPath: /var/run/linkerd/identity/issuer
+          name: trust-roots
       {{- if not (empty .Values.identityProxyResources) }}
       {{- $r := merge .Values.identityProxyResources .Values.proxy.resources }}
       {{- $_ := set $tree.Values.proxy "resources" $r }}
@@ -201,6 +203,9 @@ spec:
       - name: identity-issuer
         secret:
           secretName: linkerd-identity-issuer
+      - configMap:
+          name: linkerd-identity-trust-roots
+        name: trust-roots
       {{ if not .Values.cniEnabled -}}
       - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}

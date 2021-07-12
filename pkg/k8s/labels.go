@@ -299,6 +299,9 @@ const (
 	// IdentityIssuerTrustAnchorsNameExternal is the issuer's certificate file (when using cert-manager).
 	IdentityIssuerTrustAnchorsNameExternal = "ca.crt"
 
+	// IdentityIssuerTrustAnchorsName is the trust anchors name.
+	IdentityIssuerTrustAnchorsName = "ca-bundle.crt"
+
 	// ProxyPortName is the name of the Linkerd Proxy's proxy port.
 	ProxyPortName = "linkerd-proxy"
 
@@ -363,7 +366,7 @@ const (
 	MountPathTLSCrtPEM = MountPathTLSBase + "/tls.crt"
 
 	// MountPathTrustRootsPEM is the path at which the TLS ca bundle PEM file is mounted.
-	MountPathTrustRootsPEM = MountPathBase + "/trust-roots/ca-bundle.crt"
+	MountPathTrustRootsPEM = MountPathTLSBase + "/ca-bundle.crt"
 
 	// MountPathXtablesLock is the path at which the proxy init container mounts xtables
 	// This is necessary for xtables-legacy support
