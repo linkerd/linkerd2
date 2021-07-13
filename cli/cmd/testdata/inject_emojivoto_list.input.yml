@@ -16,7 +16,6 @@ items:
           app: web-svc
       spec:
         containers:
-        - name: ""
         - env:
           - name: WEB_PORT
             value: "80"
@@ -47,7 +46,6 @@ items:
           app: emoji-svc
       spec:
         containers:
-        - name: ""
         - env:
           - name: GRPC_PORT
             value: "8080"

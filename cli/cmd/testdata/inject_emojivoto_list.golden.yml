@@ -132,7 +132,6 @@ items:
           volumeMounts:
           - mountPath: /var/run/linkerd/identity/end-entity
             name: linkerd-identity-end-entity
-        - name: ""
         - env:
           - name: WEB_PORT
             value: "80"
@@ -319,7 +318,6 @@ items:
           volumeMounts:
           - mountPath: /var/run/linkerd/identity/end-entity
             name: linkerd-identity-end-entity
-        - name: ""
         - env:
           - name: GRPC_PORT
             value: "8080"

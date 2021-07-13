@@ -1189,11 +1189,20 @@ func (hc *HealthChecker) allCategories() []*Category {
 			},
 			false,
 		),
-		// TODO: Add a check which validates that the proxy's trust roots match
-		// the control plane trust bundle.  However, since the trust roots are
-		// loaded from linkerd-identity-trust-roots configmap at proxy startup,
-		// we can't know the proxy's trust roots just by looking at the
-		// manifest.
+		NewCategory(
+			LinkerdIdentityDataPlane,
+			[]Checker{
+				{
+					description: "data plane proxies certificate match CA",
+					hintAnchor:  "l5d-identity-data-plane-proxies-certs-match-ca",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						return hc.checkDataPlaneProxiesCertificate(ctx)
+					},
+				},
+			},
+			false,
+		),
 		NewCategory(
 			LinkerdVersionChecks,
 			[]Checker{
@@ -1520,7 +1529,11 @@ func (hc *HealthChecker) CheckProxyHealth(ctx context.Context, controlPlaneNames
 		return err
 	}
 
-	// TODO: Check if proxy trust roots match the control plane's trust bundle.
+	// Check proxy certificates
+	err = checkPodsProxiesCertificate(ctx, *hc.kubeAPI, namespace, controlPlaneNamespace)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -2177,6 +2190,42 @@ func GetMeshedPodsIdentityData(ctx context.Context, api kubernetes.Interface, da
 		}
 	}
 	return pods, nil
+}
+
+func (hc *HealthChecker) checkDataPlaneProxiesCertificate(ctx context.Context) error {
+	return checkPodsProxiesCertificate(ctx, *hc.kubeAPI, hc.DataPlaneNamespace, hc.ControlPlaneNamespace)
+}
+
+func checkPodsProxiesCertificate(ctx context.Context, kubeAPI k8s.KubernetesAPI, targetNamespace, controlPlaneNamespace string) error {
+	meshedPods, err := GetMeshedPodsIdentityData(ctx, kubeAPI, targetNamespace)
+	if err != nil {
+		return err
+	}
+
+	_, values, err := FetchCurrentConfiguration(ctx, kubeAPI, controlPlaneNamespace)
+	if err != nil {
+		return err
+	}
+
+	trustAnchorsPem := values.IdentityTrustAnchorsPEM
+	offendingPods := []string{}
+	for _, pod := range meshedPods {
+		// Skip control plane pods since they load their trust anchors from the linkerd-identity-trust-anchors configmap.
+		if pod.Namespace == controlPlaneNamespace {
+			continue
+		}
+		if strings.TrimSpace(pod.Anchors) != strings.TrimSpace(trustAnchorsPem) {
+			if targetNamespace == "" {
+				offendingPods = append(offendingPods, fmt.Sprintf("* %s/%s", pod.Namespace, pod.Name))
+			} else {
+				offendingPods = append(offendingPods, fmt.Sprintf("* %s", pod.Name))
+			}
+		}
+	}
+	if len(offendingPods) == 0 {
+		return nil
+	}
+	return fmt.Errorf("Some pods do not have the current trust bundle and must be restarted:\n\t%s", strings.Join(offendingPods, "\n\t"))
 }
 
 func checkResources(resourceName string, objects []runtime.Object, expectedNames []string, shouldExist bool) error {

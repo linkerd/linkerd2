@@ -7,7 +7,6 @@ metadata:
   namespace: emojivoto
 spec:
   containers:
-  - name: ""
   - command:
     - emojivoto-vote-bot
     env:

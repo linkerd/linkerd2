@@ -21,7 +21,6 @@ spec:
         app: contour
     spec:
       containers:
-      - name: ""
       - args:
         - serve
         - --incluster

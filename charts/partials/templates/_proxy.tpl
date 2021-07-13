@@ -73,7 +73,7 @@ env:
 - name: LINKERD2_PROXY_IDENTITY_DIR
   value: /var/run/linkerd/identity/end-entity
 - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-{{ if .Values.proxy.loadTrustBundleFromConfigMap }}
+{{- if .Values.proxy.loadTrustBundleFromConfigMap }}
   valueFrom:
     configMapKeyRef:
       name: linkerd-identity-trust-roots

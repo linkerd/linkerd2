@@ -33,10 +33,6 @@ rules:
 - apiGroups: [""]
   resources: ["events"]
   verbs: ["create", "patch"]
-- apiGroups: [""]
-  resources: ["configmaps"]
-  verbs: ["get", "list", "watch"]
-  resourceNames: ["linkerd-identity-trust-roots"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1079,7 +1075,6 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-        
           valueFrom:
             configMapKeyRef:
               name: linkerd-identity-trust-roots
@@ -1321,7 +1316,6 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-        
           valueFrom:
             configMapKeyRef:
               name: linkerd-identity-trust-roots
@@ -1567,7 +1561,6 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-        
           valueFrom:
             configMapKeyRef:
               name: linkerd-identity-trust-roots
@@ -1649,9 +1642,9 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
-        - mountPath: /var/run/linkerd/tls
-          name: trust-roots
         - mountPath: /var/run/linkerd/identity/trust-roots
+          name: trust-roots
+        - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
       initContainers:

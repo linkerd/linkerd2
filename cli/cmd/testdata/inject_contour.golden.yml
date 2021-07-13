@@ -136,7 +136,6 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
-      - name: ""
       - args:
         - serve
         - --incluster
