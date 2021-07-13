@@ -342,8 +342,10 @@ const (
 	// MountPathBase is the base directory of the mount path.
 	MountPathBase = "/var/run/linkerd"
 
+	// MountPathTrustRootsBase is the base directory of the trust roots.
 	MountPathTrustRootsBase = MountPathBase + "/identity/trust-roots"
 
+	// MountPathTrustRootsPEM is the path at which the trust bundle is mounted.
 	MountPathTrustRootsPEM = MountPathTrustRootsBase + "/ca-bundle.crt"
 
 	// MountPathServiceAccount is the default path where Kubernetes stores

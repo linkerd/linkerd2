@@ -138,7 +138,7 @@ func (svc *Service) loadCredentials() (tls, error) {
 	}
 
 	if !creds.Certificate.IsCA {
-		return nil, fmt.Errorf("failed to verify issuer certificate: it must be an intermediate-CA, but it is not")
+		return tls{}, fmt.Errorf("failed to verify issuer certificate: it must be an intermediate-CA, but it is not")
 	}
 
 	log.Debugf("Loaded issuer cert: %s", creds.EncodeCertificatePEM())
