@@ -36,6 +36,10 @@ env:
   valueFrom:
     fieldRef:
       fieldPath: status.podIPs
+{{ if .Values.proxy.podInboundPorts -}}
+- name: LINKERD2_PROXY_INBOUND_PORTS
+  value: {{ .Values.proxy.podInboundPorts | quote }}
+{{ end -}}
 {{ if .Values.proxy.isGateway -}}
 - name: LINKERD2_PROXY_INBOUND_GATEWAY_SUFFIXES
   value: {{printf "svc.%s." .Values.clusterDomain}}

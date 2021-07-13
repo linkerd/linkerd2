@@ -182,6 +182,12 @@ const (
 	// config.
 	ProxyOutboundPortAnnotation = ProxyConfigAnnotationsPrefix + "/outbound-port"
 
+	// ProxyPodInboundPortsAnnotation can be used to set a comma-separated
+	// list of (non-proxy) container ports exposed by the pod spec. Useful
+	// when other mutating webhooks inject sidecar containers after the
+	// proxy injector has run.
+	ProxyPodInboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/pod-inbound-ports"
+
 	// ProxyCPURequestAnnotation can be used to override the requestCPU config.
 	ProxyCPURequestAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-cpu-request"
 

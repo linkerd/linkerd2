@@ -1060,6 +1060,31 @@ metadata:
     name: my-cronjob`,
 			},
 		},
+		{
+			expectedOwnerKind: "replicaset",
+			expectedOwnerName: "invalid-rs-parent-2abdffa",
+			podConfig: `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: invalid-rs-parent-dcfq4
+  namespace: default
+  ownerReferences:
+  - apiVersion: v1
+    kind: ReplicaSet
+    name: invalid-rs-parent-2abdffa`,
+			extraConfigs: []string{`
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: invalid-rs-parent-2abdffa
+  namespace: default
+  ownerReferences:
+  - apiVersion: invalidParent/v1
+    kind: InvalidParentKind
+    name: invalid-parent`,
+			},
+		},
 	} {
 		tt := tt // pin
 		for _, retry := range []bool{
