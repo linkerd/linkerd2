@@ -85,7 +85,7 @@
     "style-loader": "^3.1.0",
     "url-loader": "^4.1.1",
     "wdio-chromedriver-service": "6.0.4",
-    "webdriverio": "7.7.5",
+    "webdriverio": "7.7.6",
     "webpack": "^5.44.0",
     "webpack-bundle-analyzer": "4.4.2",
     "webpack-cli": "4.7.2",
