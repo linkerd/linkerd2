@@ -1,0 +1,18 @@
+[package]
+name = "linkerd-policy-controller-k8s-api"
+version = "0.1.0"
+edition = "2018"
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+futures = { version = "0.3", default-features = false }
+k8s-openapi = { version = "0.12.0", default-features = false, features = ["v1_20"] }
+kube = { version = "0.58.1", default-features = false, features = ["client", "derive", "native-tls"] }
+kube-runtime = { version = "0.58.1", default-features = false }
+schemars = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.8"
+tokio = { version = "1", features = ["time"] }
+tracing = "0.1"

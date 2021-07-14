@@ -1,0 +1,20 @@
+[package]
+name = "linkerd-policy-controller-grpc"
+version = "0.1.0"
+edition = "2018"
+license = "Apache-2.0"
+publish = false
+
+[features]
+rustfmt = ["linkerd2-proxy-api/rustfmt"]
+
+[dependencies]
+async-stream = "0.3"
+async-trait = "0.1"
+drain = "0.1"
+futures = "0.3"
+linkerd2-proxy-api = { git = "https://github.com/linkerd/linkerd2-proxy-api", branch = "ver/inbound", features = ["inbound", "server"] }
+linkerd-policy-controller-core = { path = "../core" }
+tokio = { version = "1", features = ["macros"] }
+tonic = { version = "0.5", default-features = false, features = ["transport"] }
+tracing =  "0.1"
