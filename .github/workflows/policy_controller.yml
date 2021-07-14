@@ -1,6 +1,9 @@
 name: Policy Controller
 
 on:
+  push:
+    branches:
+      - ver/policy-controller # WIP
   pull_request:
     paths:
       - ./policy-controller/
