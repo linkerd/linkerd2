@@ -21,7 +21,7 @@ rules:
 - apiGroups: [""]
   resources: ["configmaps"]
   verbs: ["get"]
-  resourceNames: ["linkerd-config"]  
+  resourceNames: ["linkerd-config"]
 ---
 apiVersion: v1
 kind: ServiceAccount
