@@ -8,7 +8,7 @@ been added which counts proxy errors encountered before a protocol can be
 detected. Finally, the request errors metric has been split into separate
 inbound and outbound directions.
 
-* Skip printing `check --pre` command usage if it fails after being unable to
+* Fixed printing `check --pre` command usage if it fails after being unable to
   connect to Kubernetes (thanks @rdileep13!)
 * Updated the default skip and opaque ports to match that which is listed in the
   [documentation](https://linkerd.io/2.10/features/protocol-detection/#configuring-protocol-detection)
