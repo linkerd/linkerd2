@@ -100,7 +100,7 @@ done
 
 echo "Wrote linkerd CNI binaries to ${dir}"
 
-TMP_CONF='/linkerd/linkerd-cni.conf.default'
+TMP_CONF='/tmp/linkerd-cni.conf.default'
 # If specified, overwrite the network configuration file.
 : "${CNI_NETWORK_CONFIG_FILE:=}"
 : "${CNI_NETWORK_CONFIG:=}"
