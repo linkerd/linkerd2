@@ -16,7 +16,6 @@ import (
 	controllerK8s "github.com/linkerd/linkerd2/controller/k8s"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
-	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -164,6 +163,10 @@ const (
 	certKeyName                   = "tls.crt"
 	keyOldKeyName                 = "key.pem"
 	keyKeyName                    = "tls.key"
+
+	// EnvTrustAnchors is the environment variable holding the trust anchors for
+	// the proxy identity.
+	EnvTrustAnchors = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
 )
 
 // AllowedClockSkew sets the allowed skew in clock synchronization
@@ -2177,7 +2180,7 @@ func GetMeshedPodsIdentityData(ctx context.Context, api kubernetes.Interface, da
 				continue
 			}
 			for _, envVar := range containerSpec.Env {
-				if envVar.Name != identity.EnvTrustAnchors {
+				if envVar.Name != EnvTrustAnchors {
 					continue
 				}
 				pods = append(pods, MeshedPodIdentityData{
@@ -2207,6 +2210,10 @@ func checkPodsProxiesCertificate(ctx context.Context, kubeAPI k8s.KubernetesAPI,
 	trustAnchorsPem := values.IdentityTrustAnchorsPEM
 	offendingPods := []string{}
 	for _, pod := range meshedPods {
+		// Skip control plane pods since they load their trust anchors from the linkerd-identity-trust-anchors configmap.
+		if pod.Namespace == controlPlaneNamespace {
+			continue
+		}
 		if strings.TrimSpace(pod.Anchors) != strings.TrimSpace(trustAnchorsPem) {
 			if targetNamespace == "" {
 				offendingPods = append(offendingPods, fmt.Sprintf("* %s/%s", pod.Namespace, pod.Name))

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/identity"
-	"github.com/linkerd/linkerd2/pkg/tls"
+	pkgTls "github.com/linkerd/linkerd2/pkg/tls"
 )
 
 type fakeValidator struct {
@@ -15,11 +15,11 @@ type fakeValidator struct {
 }
 
 type fakeIssuer struct {
-	result tls.Crt
+	result pkgTls.Crt
 	err    error
 }
 
-func (fi *fakeIssuer) IssueEndEntityCrt(*x509.CertificateRequest) (tls.Crt, error) {
+func (fi *fakeIssuer) IssueEndEntityCrt(*x509.CertificateRequest) (pkgTls.Crt, error) {
 	return fi.result, fi.err
 }
 
@@ -28,8 +28,8 @@ func (fk *fakeValidator) Validate(context.Context, []byte) (string, error) {
 }
 
 func TestServiceNotReady(t *testing.T) {
-	//ch := make(chan tls.Issuer, 1)
-	svc := NewService(&fakeValidator{"successful-result", nil}, nil, nil, nil, "", "", "")
+	//ch := make(chan pkgTls.Issuer, 1)
+	svc := NewService(&fakeValidator{"successful-result", nil}, nil, nil, "", "", "", "")
 	req := &pb.CertifyRequest{
 		Identity:                  "some-identity",
 		Token:                     []byte{},
@@ -50,8 +50,11 @@ func TestServiceNotReady(t *testing.T) {
 }
 
 func TestInvalidRequestArguments(t *testing.T) {
-	svc := NewService(&fakeValidator{"successful-result", nil}, nil, nil, nil, "", "", "")
-	svc.updateIssuer(&fakeIssuer{tls.Crt{}, nil})
+	svc := NewService(&fakeValidator{"successful-result", nil}, nil, nil, "", "", "", "")
+	svc.updateIssuer(tls{
+		issuer:       &fakeIssuer{pkgTls.Crt{}, nil},
+		trustAnchors: nil,
+	})
 	fakeData := "fake-data"
 	invalidCsr := func() *pb.CertifyRequest {
 		return &pb.CertifyRequest{

@@ -14,7 +14,6 @@ import (
 	"github.com/golang/protobuf/ptypes/duration"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
-	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -1322,7 +1321,7 @@ spec:
     env:
     - name: %s
       value: %s
-`, i, i, k8s.ControllerNSLabel, k8s.ProxyContainerName, identity.EnvTrustAnchors, certificate))
+`, i, i, k8s.ControllerNSLabel, k8s.ProxyContainerName, EnvTrustAnchors, certificate))
 	}
 	return result
 }

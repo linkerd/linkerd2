@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/linkerd/linkerd2/pkg/identity"
 	kauthnApi "k8s.io/api/authentication/v1"
 	kauthzApi "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,7 +30,7 @@ func NewK8sTokenValidator(
 	ctx context.Context,
 	k8s k8s.Interface,
 	domain *TrustDomain,
-) (identity.Validator, error) {
+) (Validator, error) {
 	if err := checkAccess(ctx, k8s.AuthorizationV1()); err != nil {
 		return nil, err
 	}
@@ -50,22 +49,22 @@ func (k *K8sTokenValidator) Validate(ctx context.Context, tok []byte) (string, e
 	}
 
 	if rvw.Status.Error != "" {
-		return "", identity.InvalidToken{Reason: rvw.Status.Error}
+		return "", InvalidToken{Reason: rvw.Status.Error}
 	}
 	if !rvw.Status.Authenticated {
-		return "", identity.NotAuthenticated{}
+		return "", NotAuthenticated{}
 	}
 
 	// Determine the identity associated with the token's userinfo.
 	uns := strings.Split(rvw.Status.User.Username, ":")
 	if len(uns) != 4 || uns[0] != "system" {
 		msg := fmt.Sprintf("Username must be in form system:TYPE:NS:SA: %s", rvw.Status.User.Username)
-		return "", identity.InvalidToken{Reason: msg}
+		return "", InvalidToken{Reason: msg}
 	}
 	uns = uns[1:]
 	for _, l := range uns {
 		if errs := validation.IsDNS1123Label(l); len(errs) > 0 {
-			return "", identity.InvalidToken{Reason: fmt.Sprintf("Not a label: %s", l)}
+			return "", InvalidToken{Reason: fmt.Sprintf("Not a label: %s", l)}
 		}
 	}
 

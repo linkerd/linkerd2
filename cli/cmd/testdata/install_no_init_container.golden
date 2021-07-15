@@ -820,6 +820,7 @@ data:
       issuer:
         clockSkewAllowance: 20s
         crtExpiry: "2030-08-26T07:13:47Z"
+        externalCA: false
         issuanceLifetime: 24h0m0s
         scheme: linkerd.io/tls
         tls:
@@ -962,6 +963,31 @@ data:
   crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUpSSWdaOFJ0TzhFd2cxWGVwZjhUNDR3Q2dZSUtvWkl6ajBFQXdJd0tURW4KTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01CNFhEVEl3TURneQpPREEzTVRNME4xb1hEVE13TURneU5qQTNNVE0wTjFvd0tURW5NQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1CmEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRTEvRnAKZmNSbkRjZWRMNkFqVWFYWVB2NERJTUJhSnVmT0k1Tld0eStYU1g3SmpYZ1p0TTcyZFF2UmFZYW51eEQzNkR0MQoyL0p4eWlTZ3hLV1Jkb2F5K2FOd01HNHdEZ1lEVlIwUEFRSC9CQVFEQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCCkFmOENBUUF3SFFZRFZSME9CQllFRkkxV25ycU1ZS2FISE9vK3pweWlpRHEycE8wS01Da0dBMVVkRVFRaU1DQ0MKSG1sa1pXNTBhWFI1TG14cGJtdGxjbVF1WTJ4MWMzUmxjaTVzYjJOaGJEQUtCZ2dxaGtqT1BRUURBZ05IQURCRQpBaUF0dW9JNVh1Q3RyR1ZSelNtUlRsMnJhMjhhVjlNeVRVN2Q1cW5UQUZIS1NnSWdSS0N2bHVPU2dBNU8yMXA1CjUxdGRybWtIRVpScjBxbExTSmRIWWdFZk16az0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==
   key.pem: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUFBZThuZmJ6WnU5Yy9PQjIrOHhKTTBGejdOVXdUUWF6dWxrRk5zNFRJNStvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFMS9GcGZjUm5EY2VkTDZBalVhWFlQdjRESU1CYUp1Zk9JNU5XdHkrWFNYN0pqWGdadE03MgpkUXZSYVlhbnV4RDM2RHQxMi9KeHlpU2d4S1dSZG9heStRPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQ==
 ---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-identity-trust-roots
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+data:
+  ca-bundle.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIBwTCCAWagAwIBAgIQeDZp5lDaIygQ5UfMKZrFATAKBggqhkjOPQQDAjApMScw
+    JQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwODI4
+    MDcxMjQ3WhcNMzAwODI2MDcxMjQ3WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5r
+    ZXJkLmNsdXN0ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARqc70Z
+    l1vgw79rjB5uSITICUA6GyfvSFfcuIis7B/XFSkkwAHU5S/s1AAP+R0TX7HBWUC4
+    uaG4WWsiwJKNn7mgo3AwbjAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB
+    /wIBATAdBgNVHQ4EFgQU5YtjVVPfd7I7NLHsn2C26EByGV0wKQYDVR0RBCIwIIIe
+    aWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0kAMEYC
+    IQCN7lBFLDDvjx6V0+XkjpKERRsJYf5adMvnloFl48ilJgIhANtxhndcr+QJPuC8
+    vgUC0d2/9FMueIVMb+46WTCOjsqr
+    -----END CERTIFICATE-----
+---
 kind: Service
 apiVersion: v1
 metadata:
@@ -1045,8 +1071,6 @@ spec:
         - -identity-clock-skew-allowance=20s
         - -identity-scheme=linkerd.io/tls
         env:
-        - name: LINKERD2_IDENTITY_TRUST_ANCHORS
-          value: "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3VENDQVdhZ0F3SUJBZ0lRZURacDVsRGFJeWdRNVVmTUtackZBVEFLQmdncWhrak9QUVFEQWpBcE1TY3cKSlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d0hoY05NakF3T0RJNApNRGN4TWpRM1doY05NekF3T0RJMk1EY3hNalEzV2pBcE1TY3dKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyClpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d1dUQVRCZ2NxaGtqT1BRSUJCZ2dxaGtqT1BRTUJCd05DQUFScWM3MFoKbDF2Z3c3OXJqQjV1U0lUSUNVQTZHeWZ2U0ZmY3VJaXM3Qi9YRlNra3dBSFU1Uy9zMUFBUCtSMFRYN0hCV1VDNAp1YUc0V1dzaXdKS05uN21nbzNBd2JqQU9CZ05WSFE4QkFmOEVCQU1DQVFZd0VnWURWUjBUQVFIL0JBZ3dCZ0VCCi93SUJBVEFkQmdOVkhRNEVGZ1FVNVl0alZWUGZkN0k3TkxIc24yQzI2RUJ5R1Ywd0tRWURWUjBSQkNJd0lJSWUKYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Bb0dDQ3FHU000OUJBTUNBMGtBTUVZQwpJUUNON2xCRkxERHZqeDZWMCtYa2pwS0VSUnNKWWY1YWRNdm5sb0ZsNDhpbEpnSWhBTnR4aG5kY3IrUUpQdUM4CnZnVUMwZDIvOUZNdWVJVk1iKzQ2V1RDT2pzcXIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
         - name: LINKERD_DISABLED
           value: "linkerd-await cannot block the identity controller"
         image: cr.l5d.io/linkerd/controller:install-control-plane-version
@@ -1072,6 +1096,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
+        - mountPath: /var/run/linkerd/identity/trust-roots
+          name: trust-roots
       - env:
         - name: LINKERD2_PROXY_LOG
           value: "warn,linkerd=info"
@@ -1121,19 +1147,10 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          value: |
-            -----BEGIN CERTIFICATE-----
-            MIIBwTCCAWagAwIBAgIQeDZp5lDaIygQ5UfMKZrFATAKBggqhkjOPQQDAjApMScw
-            JQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwODI4
-            MDcxMjQ3WhcNMzAwODI2MDcxMjQ3WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5r
-            ZXJkLmNsdXN0ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARqc70Z
-            l1vgw79rjB5uSITICUA6GyfvSFfcuIis7B/XFSkkwAHU5S/s1AAP+R0TX7HBWUC4
-            uaG4WWsiwJKNn7mgo3AwbjAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB
-            /wIBATAdBgNVHQ4EFgQU5YtjVVPfd7I7NLHsn2C26EByGV0wKQYDVR0RBCIwIIIe
-            aWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0kAMEYC
-            IQCN7lBFLDDvjx6V0+XkjpKERRsJYf5adMvnloFl48ilJgIhANtxhndcr+QJPuC8
-            vgUC0d2/9FMueIVMb+46WTCOjsqr
-            -----END CERTIFICATE-----
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-identity-trust-roots
+              key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -1184,6 +1201,9 @@ spec:
       - name: identity-issuer
         secret:
           secretName: linkerd-identity-issuer
+      - configMap:
+          name: linkerd-identity-trust-roots
+        name: trust-roots
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -1332,19 +1352,10 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          value: |
-            -----BEGIN CERTIFICATE-----
-            MIIBwTCCAWagAwIBAgIQeDZp5lDaIygQ5UfMKZrFATAKBggqhkjOPQQDAjApMScw
-            JQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwODI4
-            MDcxMjQ3WhcNMzAwODI2MDcxMjQ3WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5r
-            ZXJkLmNsdXN0ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARqc70Z
-            l1vgw79rjB5uSITICUA6GyfvSFfcuIis7B/XFSkkwAHU5S/s1AAP+R0TX7HBWUC4
-            uaG4WWsiwJKNn7mgo3AwbjAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB
-            /wIBATAdBgNVHQ4EFgQU5YtjVVPfd7I7NLHsn2C26EByGV0wKQYDVR0RBCIwIIIe
-            aWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0kAMEYC
-            IQCN7lBFLDDvjx6V0+XkjpKERRsJYf5adMvnloFl48ilJgIhANtxhndcr+QJPuC8
-            vgUC0d2/9FMueIVMb+46WTCOjsqr
-            -----END CERTIFICATE-----
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-identity-trust-roots
+              key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -1599,19 +1610,10 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          value: |
-            -----BEGIN CERTIFICATE-----
-            MIIBwTCCAWagAwIBAgIQeDZp5lDaIygQ5UfMKZrFATAKBggqhkjOPQQDAjApMScw
-            JQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwODI4
-            MDcxMjQ3WhcNMzAwODI2MDcxMjQ3WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5r
-            ZXJkLmNsdXN0ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARqc70Z
-            l1vgw79rjB5uSITICUA6GyfvSFfcuIis7B/XFSkkwAHU5S/s1AAP+R0TX7HBWUC4
-            uaG4WWsiwJKNn7mgo3AwbjAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB
-            /wIBATAdBgNVHQ4EFgQU5YtjVVPfd7I7NLHsn2C26EByGV0wKQYDVR0RBCIwIIIe
-            aWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0kAMEYC
-            IQCN7lBFLDDvjx6V0+XkjpKERRsJYf5adMvnloFl48ilJgIhANtxhndcr+QJPuC8
-            vgUC0d2/9FMueIVMb+46WTCOjsqr
-            -----END CERTIFICATE-----
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-identity-trust-roots
+              key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -1689,6 +1691,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
+        - mountPath: /var/run/linkerd/identity/trust-roots
+          name: trust-roots
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
@@ -1697,6 +1701,9 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
+      - configMap:
+          name: linkerd-identity-trust-roots
+        name: trust-roots
       - name: tls
         secret:
           secretName: linkerd-proxy-injector-k8s-tls

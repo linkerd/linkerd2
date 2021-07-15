@@ -187,6 +187,8 @@ debugContainer:
     version: ""
 
 identity:
+  # -- If the linkerd-identity-trust-roots ConfigMap has already been created
+  externalCA: false
   issuer:
     scheme: linkerd.io/tls
 

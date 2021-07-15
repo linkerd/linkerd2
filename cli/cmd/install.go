@@ -375,7 +375,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 	// Attach the final values into the `Values` field for rendering to work
 	renderedTemplates, err := engine.Render(chart, map[string]interface{}{"Values": vals})
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to render the template: %s", err)
 	}
 
 	// Merge templates and inject

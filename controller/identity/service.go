@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"strings"
 	"sync"
 	"time"
@@ -17,7 +18,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/identity"
-	"github.com/linkerd/linkerd2/pkg/tls"
+	pkgTls "github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -29,9 +30,6 @@ const (
 	// the identity service.
 	DefaultIssuanceLifetime = 24 * time.Hour
 
-	// EnvTrustAnchors is the environment variable holding the trust anchors for
-	// the proxy identity.
-	EnvTrustAnchors         = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
 	eventTypeSkipped        = "IssuerUpdateSkipped"
 	eventTypeUpdated        = "IssuerUpdated"
 	eventTypeFailed         = "IssuerValidationFailed"
@@ -39,15 +37,19 @@ const (
 )
 
 type (
+	tls struct {
+		issuer       pkgTls.Issuer
+		trustAnchors *x509.CertPool
+	}
+
 	// Service implements the gRPC service in terms of a Validator and Issuer.
 	Service struct {
-		validator                                  Validator
-		trustAnchors                               *x509.CertPool
-		issuer                                     *tls.Issuer
-		issuerMutex                                *sync.RWMutex
-		validity                                   *tls.Validity
-		recordEvent                                func(parent runtime.Object, eventType, reason, message string)
-		expectedName, issuerPathCrt, issuerPathKey string
+		validator                                                Validator
+		tls                                                      tls
+		tlsMutex                                                 *sync.RWMutex
+		validity                                                 *pkgTls.Validity
+		recordEvent                                              func(parent runtime.Object, eventType, reason, message string)
+		expectedName, issuerPathCrt, issuerPathKey, issuerPathCA string
 	}
 
 	// Validator implementors accept a bearer token, validates it, and returns a
@@ -83,11 +85,11 @@ func (svc *Service) Initialize() error {
 	return nil
 }
 
-func (svc *Service) updateIssuer(newIssuer tls.Issuer) {
-	svc.issuerMutex.Lock()
-	svc.issuer = &newIssuer
-	log.Debug("Issuer has been updated")
-	svc.issuerMutex.Unlock()
+func (svc *Service) updateIssuer(credentials tls) {
+	svc.tlsMutex.Lock()
+	svc.tls = credentials
+	log.Debug("TLS credentials have been updated")
+	svc.tlsMutex.Unlock()
 }
 
 // Run reads from the issuer and error channels and reloads the issuer certs when necessary
@@ -110,41 +112,54 @@ func (svc *Service) Run(issuerEvent <-chan struct{}, issuerError <-chan error) {
 	}
 }
 
-func (svc *Service) loadCredentials() (tls.Issuer, error) {
-	creds, err := tls.ReadPEMCreds(
+func (svc *Service) loadCredentials() (tls, error) {
+	creds, err := pkgTls.ReadPEMCreds(
 		svc.issuerPathKey,
 		svc.issuerPathCrt,
 	)
-
 	if err != nil {
-		return nil, fmt.Errorf("failed to read CA from disk: %s", err)
+		return tls{}, fmt.Errorf("failed to read cert from disk: %s", err)
+	}
+
+	// Read and decode trust anchors pool from disk.
+	anchorsPEM, err := ioutil.ReadFile(svc.issuerPathCA)
+	if err != nil {
+		return tls{}, fmt.Errorf("failed to read trust anchors from disk: %w", err)
+	}
+
+	trustAnchors, err := pkgTls.DecodePEMCertPool(string(anchorsPEM))
+	if err != nil {
+		return tls{}, fmt.Errorf("failed to decode trust anchors: %w", err)
 	}
 
 	// Don't verify with dns name as this is not a leaf certificate
-	if err := creds.Crt.Verify(svc.trustAnchors, "", time.Time{}); err != nil {
-		return nil, fmt.Errorf("failed to verify issuer credentials for '%s' with trust anchors: %s", svc.expectedName, err)
+	if err := creds.Crt.Verify(trustAnchors, "", time.Time{}); err != nil {
+		return tls{}, fmt.Errorf("failed to verify issuer credentials for '%s' with trust anchors: %s", svc.expectedName, err)
 	}
 
 	if !creds.Certificate.IsCA {
-		return nil, fmt.Errorf("failed to verify issuer certificate: it must be an intermediate-CA, but it is not")
+		return tls{}, fmt.Errorf("failed to verify issuer certificate: it must be an intermediate-CA, but it is not")
 	}
 
 	log.Debugf("Loaded issuer cert: %s", creds.EncodeCertificatePEM())
-	return tls.NewCA(*creds, *svc.validity), nil
+	return tls{
+		issuer:       pkgTls.NewCA(*creds, *svc.validity),
+		trustAnchors: trustAnchors,
+	}, nil
 }
 
 // NewService creates a new identity service.
-func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.Validity, recordEvent func(parent runtime.Object, eventType, reason, message string), expectedName, issuerPathCrt, issuerPathKey string) *Service {
+func NewService(validator Validator, validity *pkgTls.Validity, recordEvent func(parent runtime.Object, eventType, reason, message string), expectedName, issuerPathCrt, issuerPathKey, issuerPathCA string) *Service {
 	return &Service{
 		validator,
-		trustAnchors,
-		nil,
+		tls{},
 		&sync.RWMutex{},
 		validity,
 		recordEvent,
 		expectedName,
 		issuerPathCrt,
 		issuerPathKey,
+		issuerPathCA,
 	}
 }
 
@@ -157,11 +172,10 @@ func Register(g *grpc.Server, s *Service) {
 // ensureIssuerStillValid should check that the CA is still good time wise
 // and verifies just fine with the provided trust anchors
 func (svc *Service) ensureIssuerStillValid() error {
-	issuer := *svc.issuer
-	switch is := issuer.(type) {
-	case *tls.CA:
+	switch is := svc.tls.issuer.(type) {
+	case *pkgTls.CA:
 		// Don't verify with dns name as this is not a leaf certificate
-		return is.Cred.Verify(svc.trustAnchors, "", time.Time{})
+		return is.Cred.Verify(svc.tls.trustAnchors, "", time.Time{})
 	default:
 		return fmt.Errorf("unsupported issuer type. Expected *tls.CA, got %v", is)
 	}
@@ -169,10 +183,10 @@ func (svc *Service) ensureIssuerStillValid() error {
 
 // Certify validates identity and signs certificates.
 func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.CertifyResponse, error) {
-	svc.issuerMutex.RLock()
-	defer svc.issuerMutex.RUnlock()
+	svc.tlsMutex.RLock()
+	defer svc.tlsMutex.RUnlock()
 
-	if svc.issuer == nil {
+	if svc.tls.issuer == nil {
 		log.Warn("Certificate issuer is not ready")
 		return nil, status.Error(codes.Unavailable, "cert issuer not ready yet")
 	}
@@ -222,8 +236,7 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 	}
 
 	// Create a certificate
-	issuer := *svc.issuer
-	crt, err := issuer.IssueEndEntityCrt(csr)
+	crt, err := svc.tls.issuer.IssueEndEntityCrt(csr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

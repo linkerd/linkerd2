@@ -853,6 +853,7 @@ data:
       issuer:
         clockSkewAllowance: 20s
         crtExpiry: Jul 30 17:21:14 2020
+        externalCA: false
         issuanceLifetime: 24h0m0s
         scheme: linkerd.io/tls
         tls:
@@ -989,6 +990,20 @@ data:
   crt.pem: dGVzdC1jcnQtcGVt
   key.pem: dGVzdC1rZXktcGVt
 ---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-identity-trust-roots
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+data:
+  ca-bundle.crt: |
+    test-trust-anchor
+---
 kind: Service
 apiVersion: v1
 metadata:
@@ -1111,8 +1126,6 @@ spec:
         - -identity-clock-skew-allowance=20s
         - -identity-scheme=linkerd.io/tls
         env:
-        - name: LINKERD2_IDENTITY_TRUST_ANCHORS
-          value: "dGVzdC10cnVzdC1hbmNob3I="
         - name: LINKERD_DISABLED
           value: "linkerd-await cannot block the identity controller"
         image: cr.l5d.io/linkerd/controller:linkerd-version
@@ -1144,6 +1157,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
+        - mountPath: /var/run/linkerd/identity/trust-roots
+          name: trust-roots
       - env:
         - name: LINKERD2_PROXY_LOG
           value: "warn,linkerd=info"
@@ -1193,8 +1208,10 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          value: |
-            test-trust-anchor
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-identity-trust-roots
+              key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -1286,6 +1303,9 @@ spec:
       - name: identity-issuer
         secret:
           secretName: linkerd-identity-issuer
+      - configMap:
+          name: linkerd-identity-trust-roots
+        name: trust-roots
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -1477,8 +1497,10 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          value: |
-            test-trust-anchor
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-identity-trust-roots
+              key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -1815,8 +1837,10 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          value: |
-            test-trust-anchor
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-identity-trust-roots
+              key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -1905,6 +1929,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
+        - mountPath: /var/run/linkerd/identity/trust-roots
+          name: trust-roots
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
@@ -1949,6 +1975,9 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
+      - configMap:
+          name: linkerd-identity-trust-roots
+        name: trust-roots
       - name: tls
         secret:
           secretName: linkerd-proxy-injector-k8s-tls
