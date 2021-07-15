@@ -35,7 +35,7 @@ jobs:
     continue-on-error: ${{ matrix.checks == 'advisories' }}
     steps:
       - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
-      - run: cargo install cargo-deny
+      - run: curl -Lo - https://github.com/EmbarkStudios/cargo-deny/releases/download/0.9.1/cargo-deny-0.9.1-x86_64-unknown-linux-musl.tar.gz | (cd ~/.cargo/bin && tar --strip-components=1 -zxf - cargo-deny-0.9.1-x86_64-unknown-linux-musl/cargo-deny)
       - run: cargo deny check ${{ matrix.checks }}
 
   clippy:
