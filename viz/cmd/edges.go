@@ -11,12 +11,12 @@ import (
 	"text/tabwriter"
 
 	"github.com/fatih/color"
-	coreUtil "github.com/linkerd/linkerd2/controller/api/util"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/metrics-api/util"
+	"github.com/linkerd/linkerd2/viz/pkg"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
@@ -197,7 +197,7 @@ func validateEdgesRequestInputs(targets []*pb.Resource, options *edgesOptions) e
 }
 
 func buildEdgesRequests(resources []string, options *edgesOptions) ([]*pb.EdgesRequest, error) {
-	targets, err := coreUtil.BuildResources(options.namespace, resources)
+	targets, err := pkg.BuildResources(options.namespace, resources)
 
 	if err != nil {
 		return nil, err

@@ -5,9 +5,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/api/util"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
@@ -122,18 +122,25 @@ func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 	// objects in Public API protobuf form for submission to the Public API
 	// (which we don't need). Refactor this API to strictly support parsing
 	// resource strings.
-	res, err := util.BuildResource(namespace, resource)
-	if err != nil {
-		return nil, err
-	}
+	elems := strings.Split(resource, "/")
 
-	if res.GetName() == "" {
+	if len(elems) == 1 {
 		return nil, errors.New("no resource name provided")
 	}
 
+	if len(elems) != 2 {
+		return nil, fmt.Errorf("invalid resource string: %s", resource)
+	}
+
+	typ, err := k8s.CanonicalResourceNameFromFriendlyName(elems[0])
+	if err != nil {
+		return nil, err
+	}
+	name := elems[1]
+
 	// special case if a single pod was specified
-	if res.GetType() == k8s.Pod {
-		pod, err := clientset.CoreV1().Pods(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
+	if typ == k8s.Pod {
+		pod, err := clientset.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -142,7 +149,7 @@ func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 
 	var matchLabels map[string]string
 	var ownerUID types.UID
-	switch res.GetType() {
+	switch typ {
 	case k8s.CronJob:
 		jobs, err := clientset.BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
@@ -162,7 +169,7 @@ func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 		return pods, nil
 
 	case k8s.DaemonSet:
-		ds, err := clientset.AppsV1().DaemonSets(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
+		ds, err := clientset.AppsV1().DaemonSets(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -170,7 +177,7 @@ func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 		ownerUID = ds.GetUID()
 
 	case k8s.Deployment:
-		deployment, err := clientset.AppsV1().Deployments(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
+		deployment, err := clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -200,7 +207,7 @@ func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 		return pods, nil
 
 	case k8s.Job:
-		job, err := clientset.BatchV1().Jobs(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
+		job, err := clientset.BatchV1().Jobs(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -208,7 +215,7 @@ func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 		ownerUID = job.GetUID()
 
 	case k8s.ReplicaSet:
-		rs, err := clientset.AppsV1().ReplicaSets(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
+		rs, err := clientset.AppsV1().ReplicaSets(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -216,7 +223,7 @@ func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 		ownerUID = rs.GetUID()
 
 	case k8s.ReplicationController:
-		rc, err := clientset.CoreV1().ReplicationControllers(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
+		rc, err := clientset.CoreV1().ReplicationControllers(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -224,7 +231,7 @@ func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 		ownerUID = rc.GetUID()
 
 	case k8s.StatefulSet:
-		ss, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
+		ss, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -232,7 +239,7 @@ func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 		ownerUID = ss.GetUID()
 
 	default:
-		return nil, fmt.Errorf("unsupported resource type: %s", res.GetType())
+		return nil, fmt.Errorf("unsupported resource type: %s", name)
 	}
 
 	podList, err := clientset.

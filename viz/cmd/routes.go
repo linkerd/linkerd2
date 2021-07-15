@@ -12,7 +12,6 @@ import (
 	"text/tabwriter"
 	"time"
 
-	coreUtil "github.com/linkerd/linkerd2/controller/api/util"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -360,7 +359,7 @@ func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRout
 		return nil, err
 	}
 
-	target, err := coreUtil.BuildResource(options.namespace, resource)
+	target, err := pkg.BuildResource(options.namespace, resource)
 	if err != nil {
 		return nil, err
 	}
@@ -381,7 +380,7 @@ func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRout
 		if options.toNamespace == "" {
 			options.toNamespace = options.namespace
 		}
-		toRes, err := coreUtil.BuildResource(options.toNamespace, options.toResource)
+		toRes, err := pkg.BuildResource(options.toNamespace, options.toResource)
 		if err != nil {
 			return nil, err
 		}
