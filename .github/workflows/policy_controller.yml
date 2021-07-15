@@ -3,7 +3,7 @@ name: Policy Controller
 on:
   pull_request:
     paths:
-      - ./policy-controller/**
+      - 'policy-controller/**'
 
 permissions:
   contents: read
