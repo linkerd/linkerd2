@@ -2,7 +2,7 @@ name: 'Lock Threads'
 
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '0 * * * *'
 
 permissions:
   issues: write
@@ -12,7 +12,7 @@ jobs:
   action:
     runs-on: ubuntu-latest
     steps:
-      - uses: dessant/lock-threads@v2
+      - uses: dessant/lock-threads@1621939cecf8586399a6b60d2a7af9469232b5b6
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           issue-lock-inactive-days: '30'
+          process-only: 'issues'
