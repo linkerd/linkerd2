@@ -6,7 +6,7 @@
 clusterDomain: cluster.local
 
 # -- The cluster networks for which service discovery is performed. This should
-# include the pod network but need not include the node network.
+# include the pod and service networks, but need not include the node network.
 #
 # By default, all private networks are specified so that resolution works in
 # typical Kubernetes environments.
