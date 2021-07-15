@@ -1,5 +1,30 @@
 # Changes
 
+## edge-21.7.3
+
+This edge release introduces several changes around metrics. ReplicaSets are now
+a supported resource and metrics can be associated with them. A new metric has
+been added which counts proxy errors encountered before a protocol can be
+detected. Finally, the request errors metric has been split into separate
+inbound and outbound directions.
+
+* Skip printing `check --pre` command usage if it fails after being unable to
+  connect to Kubernetes (thanks @rdileep13!)
+* Updated the default skip and opaque ports to match that which is listed in the
+  [documentation](https://linkerd.io/2.10/features/protocol-detection/#configuring-protocol-detection)
+* Added the `LINKERD2_PROXY_INBOUND_PORTS` environment variable during proxy
+  injection which will be used by ongoing policy changes
+* Added client-go cache size metrics to the `diagnostics controller-metrics`
+  command
+* Added validation that the certificate provided by an external issuer is a CA
+  (thanks @rumanzo!)
+* Added metrics support for ReplicaSets
+* Replaced the `request_errors_total` metric with two new metrics:
+  `inbound_http_errors_total` and `outbound_http_errors_total`
+* Introduced the `inbound_tcp_accept_errors_total` and
+  `outbound_tcp_accept_errors_total` metrics which count proxy errors
+  encountered before a protocol can be detected
+
 ## edge-21.7.2
 
 This edge release focuses on dependency updates and has a couple of functional
