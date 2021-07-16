@@ -13,7 +13,7 @@ async-stream = "0.3"
 async-trait = "0.1"
 drain = "0.1"
 futures = "0.3"
-linkerd2-proxy-api = { git = "https://github.com/linkerd/linkerd2-proxy-api", branch = "ver/inbound", features = ["inbound", "server"] }
+linkerd2-proxy-api = { version = "0.2", features = ["inbound", "server"] }
 linkerd-policy-controller-core = { path = "../core" }
 tokio = { version = "1", features = ["macros"] }
 tonic = { version = "0.5", default-features = false, features = ["transport"] }
