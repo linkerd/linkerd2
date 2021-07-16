@@ -50,7 +50,7 @@ require (
 	k8s.io/client-go v0.21.3
 	k8s.io/code-generator v0.21.3
 	k8s.io/klog/v2 v2.10.0
-	k8s.io/kube-aggregator v0.21.2
+	k8s.io/kube-aggregator v0.21.3
 	rsc.io/letsencrypt v0.0.3 // indirect
 	sigs.k8s.io/yaml v1.2.0
 )
