@@ -4,7 +4,7 @@
 use futures::prelude::*;
 use linkerd2_proxy_api::inbound::{
     self as proto,
-    inbound_server_discovery_server::{InboundServerDiscovery, InboundServerDiscoveryServer},
+    inbound_server_policies_server::{InboundServerPolicies, InboundServerPoliciesServer},
 };
 use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, DiscoverInboundServer, IdentityMatch, InboundServer,
@@ -32,7 +32,7 @@ where
         shutdown: impl std::future::Future<Output = ()>,
     ) -> Result<(), tonic::transport::Error> {
         tonic::transport::Server::builder()
-            .add_service(InboundServerDiscoveryServer::new(self))
+            .add_service(InboundServerPoliciesServer::new(self))
             .serve_with_shutdown(addr, shutdown)
             .await
     }
@@ -74,7 +74,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<T> InboundServerDiscovery for Server<T>
+impl<T> InboundServerPolicies for Server<T>
 where
     T: DiscoverInboundServer<(String, String, u16)> + Send + Sync + 'static,
 {
