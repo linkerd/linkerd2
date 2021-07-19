@@ -331,7 +331,7 @@ func statHasRequestData(stat *pb.BasicStats) bool {
 }
 
 func isPodOwnerResource(typ string) bool {
-	return typ != k8s.TrafficSplit && typ != k8s.Authority
+	return typ != k8s.TrafficSplit && typ != k8s.Authority && typ != k8s.ServiceProfile
 }
 
 func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) {
@@ -373,7 +373,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 
 		namespace := r.Resource.Namespace
 		key := fmt.Sprintf("%s/%s", namespace, name)
-		if r.Resource.Type == k8s.TrafficSplit {
+		if r.Resource.Type == k8s.TrafficSplit || r.Resource.Type == k8s.ServiceProfile {
 			key = fmt.Sprintf("%s/%s/%s", namespace, name, r.TsStats.Leaf)
 		}
 		resourceKey := r.Resource.Type
@@ -476,7 +476,7 @@ func showTCPBytes(options *statOptions, resourceType string) bool {
 }
 
 func showTCPConns(resourceType string) bool {
-	return resourceType != k8s.Authority && resourceType != k8s.TrafficSplit
+	return resourceType != k8s.Authority && resourceType != k8s.TrafficSplit && resourceType != k8s.ServiceProfile
 }
 
 func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType string, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxWeightLength int, options *statOptions) {
@@ -499,7 +499,7 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		headers = append(headers, "STATUS")
 	}
 
-	if resourceType == k8s.TrafficSplit {
+	if resourceType == k8s.TrafficSplit || resourceType == k8s.ServiceProfile {
 		headers = append(headers,
 			fmt.Sprintf(apexTemplate, apexHeader),
 			fmt.Sprintf(leafTemplate, leafHeader),
@@ -516,7 +516,7 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		"LATENCY_P99",
 	}...)
 
-	if resourceType != k8s.TrafficSplit {
+	if resourceType != k8s.TrafficSplit && resourceType != k8s.ServiceProfile {
 		headers = append(headers, "TCP_CONN")
 	}
 
@@ -542,7 +542,7 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			templateStringEmpty = "%s\t" + templateStringEmpty
 		}
 
-		if resourceType == k8s.TrafficSplit {
+		if resourceType == k8s.TrafficSplit || resourceType == k8s.ServiceProfile {
 			templateString = "%s\t%s\t%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
 			templateStringEmpty = "%s\t%s\t%s\t%s\t-\t-\t-\t-\t-\t"
 		}
@@ -593,7 +593,7 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			values = append(values, stats[key].status)
 		}
 
-		if resourceType == k8s.TrafficSplit {
+		if resourceType == k8s.TrafficSplit || resourceType == k8s.ServiceProfile {
 			values = append(values,
 				stats[key].tsStats.apex+strings.Repeat(" ", apexPadding),
 				stats[key].tsStats.leaf+strings.Repeat(" ", leafPadding),
