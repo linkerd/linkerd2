@@ -5,7 +5,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
-	"github.com/linkerd/linkerd2/viz/pkg"
+	"github.com/linkerd/linkerd2/viz/pkg/util"
 	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 )
 
@@ -43,18 +43,18 @@ type TapRequestParams struct {
 // BuildTapByResourceRequest builds a Public API TapByResourceRequest from a
 // TapRequestParams.
 func BuildTapByResourceRequest(params TapRequestParams) (*tapPb.TapByResourceRequest, error) {
-	target, err := pkg.BuildResource(params.Namespace, params.Resource)
+	target, err := util.BuildResource(params.Namespace, params.Resource)
 	if err != nil {
 		return nil, fmt.Errorf("target resource invalid: %s", err)
 	}
-	if !contains(pkg.ValidTargets, target.Type) {
+	if !contains(util.ValidTargets, target.Type) {
 		return nil, fmt.Errorf("unsupported resource type [%s]", target.Type)
 	}
 
 	matches := []*tapPb.TapByResourceRequest_Match{}
 
 	if params.ToResource != "" {
-		destination, err := pkg.BuildResource(params.ToNamespace, params.ToResource)
+		destination, err := util.BuildResource(params.ToNamespace, params.ToResource)
 		if err != nil {
 			return nil, fmt.Errorf("destination resource invalid: %s", err)
 		}

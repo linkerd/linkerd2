@@ -16,8 +16,8 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/metrics-api/util"
-	"github.com/linkerd/linkerd2/viz/pkg"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
+	pkgUtil "github.com/linkerd/linkerd2/viz/pkg/util"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
 )
@@ -197,7 +197,7 @@ func validateEdgesRequestInputs(targets []*pb.Resource, options *edgesOptions) e
 }
 
 func buildEdgesRequests(resources []string, options *edgesOptions) ([]*pb.EdgesRequest, error) {
-	targets, err := pkg.BuildResources(options.namespace, resources)
+	targets, err := pkgUtil.BuildResources(options.namespace, resources)
 
 	if err != nil {
 		return nil, err

@@ -118,10 +118,6 @@ func newCmdMetrics() *cobra.Command {
 // list of pods belonging to that resource.
 // This could move into `pkg/k8s` if becomes more generally useful.
 func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace string, resource string) ([]corev1.Pod, error) {
-	// TODO: BuildResource parses a resource string (which we need), but returns
-	// objects in Public API protobuf form for submission to the Public API
-	// (which we don't need). Refactor this API to strictly support parsing
-	// resource strings.
 	elems := strings.Split(resource, "/")
 
 	if len(elems) == 1 {

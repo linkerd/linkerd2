@@ -9,7 +9,7 @@ import (
 	proto "github.com/golang/protobuf/proto"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
-	"github.com/linkerd/linkerd2/viz/pkg"
+	"github.com/linkerd/linkerd2/viz/pkg/util"
 	"github.com/prometheus/common/model"
 	"github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -122,7 +122,7 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 	for i := 0; i < len(resourcesToQuery); i++ {
 		result := <-resultChan
 		if result.err != nil {
-			return nil, pkg.GRPCError(result.err)
+			return nil, util.GRPCError(result.err)
 		}
 		statTables = append(statTables, result.res)
 	}

@@ -19,8 +19,8 @@ import (
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/util"
 	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
-	"github.com/linkerd/linkerd2/viz/pkg"
 	vizLabels "github.com/linkerd/linkerd2/viz/pkg/labels"
+	pkgUtil "github.com/linkerd/linkerd2/viz/pkg/util"
 	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -75,7 +75,7 @@ func (s *GRPCTapServer) TapByResource(req *tapPb.TapByResourceRequest, stream ta
 
 	objects, err := s.k8sAPI.GetObjects(res.GetNamespace(), res.GetType(), res.GetName(), labelSelector)
 	if err != nil {
-		return pkg.GRPCError(err)
+		return pkgUtil.GRPCError(err)
 	}
 
 	pods := []*corev1.Pod{}
@@ -84,7 +84,7 @@ func (s *GRPCTapServer) TapByResource(req *tapPb.TapByResourceRequest, stream ta
 	for _, object := range objects {
 		podsFor, err := s.k8sAPI.GetPodsFor(object, false)
 		if err != nil {
-			return pkg.GRPCError(err)
+			return pkgUtil.GRPCError(err)
 		}
 
 		for _, pod := range podsFor {
@@ -132,7 +132,7 @@ func (s *GRPCTapServer) TapByResource(req *tapPb.TapByResourceRequest, stream ta
 
 	match, err := makeByResourceMatch(req.GetMatch())
 	if err != nil {
-		return pkg.GRPCError(err)
+		return pkgUtil.GRPCError(err)
 	}
 
 	extract := &proxy.ObserveRequest_Extract{}
@@ -169,7 +169,7 @@ func (s *GRPCTapServer) TapByResource(req *tapPb.TapByResourceRequest, stream ta
 		case event := <-events:
 			err := stream.Send(event)
 			if err != nil {
-				return pkg.GRPCError(err)
+				return pkgUtil.GRPCError(err)
 			}
 		}
 	}
