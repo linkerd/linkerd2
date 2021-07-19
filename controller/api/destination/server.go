@@ -26,6 +26,8 @@ import (
 
 type (
 	server struct {
+		pb.UnimplementedDestinationServer
+
 		endpoints     *watcher.EndpointsWatcher
 		opaquePorts   *watcher.OpaquePortsWatcher
 		profiles      *watcher.ProfileWatcher
@@ -84,6 +86,7 @@ func NewServer(
 	trafficSplits := watcher.NewTrafficSplitWatcher(k8sAPI, log)
 
 	srv := server{
+		pb.UnimplementedDestinationServer{},
 		endpoints,
 		opaquePorts,
 		profiles,
