@@ -1461,6 +1461,18 @@ func TestValidateControlPlanePods(t *testing.T) {
 		}
 	})
 
+	// This test is just for ensuring full coverage of the validateControlPlanePods function
+	t.Run("Returns an error if the only pod is not ready", func(t *testing.T) {
+		pods := []corev1.Pod{
+			pod("linkerd-proxy-injector-5f79ff4844-", corev1.PodRunning, false),
+		}
+
+		err := validateControlPlanePods(pods)
+		if err == nil {
+			t.Fatal("Expected error, got nothing")
+		}
+	})
+
 	t.Run("Returns nil if, HA mode, at least one pod of each control plane component is ready", func(t *testing.T) {
 		pods := []corev1.Pod{
 			pod("linkerd-destination-9843948665-48082", corev1.PodRunning, true),
