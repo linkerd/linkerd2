@@ -138,19 +138,10 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		},
 	}
 
-	fmt.Printf("Sent reply as %+v", statTables)
 	return &rsp, nil
 }
 
-func isInvalidServiceRequest(selector *pb.ResourceSelection, fromResource *pb.Resource) bool {
-	if fromResource != nil {
-		return fromResource.Type == k8s.Service
-	}
-
-	return selector.Resource.Type == k8s.Service
-}
-
-// isServiceProfileQuery returns true if the request is for a service
+// isServiceQuery returns true if the request is for a service
 func (s *grpcServer) isServiceQuery(req *pb.StatSummaryRequest) bool {
 	return req.Selector.Resource.Type == k8s.Service
 }
@@ -505,7 +496,7 @@ func (s *grpcServer) serviceResourceQuery(ctx context.Context, req *pb.StatSumma
 	}
 
 	svcBasicStats := make(map[rKey]*pb.BasicStats)
-	svcTcpStats := make(map[rKey]*pb.TcpStats)
+	svcTCPStats := make(map[rKey]*pb.TcpStats)
 
 	for _, svc := range svcs {
 		serviceStats := &svcStats{
@@ -515,7 +506,7 @@ func (s *grpcServer) serviceResourceQuery(ctx context.Context, req *pb.StatSumma
 
 		if !req.SkipStats {
 			var err error
-			svcBasicStats, svcTcpStats, err = s.getSvcMetrics(ctx, req, req.TimeWindow)
+			svcBasicStats, svcTCPStats, err = s.getSvcMetrics(ctx, req, req.TimeWindow)
 			if err != nil {
 				return resourceResult{res: nil, err: err}
 			}
@@ -527,14 +518,6 @@ func (s *grpcServer) serviceResourceQuery(ctx context.Context, req *pb.StatSumma
 			Name:      serviceStats.name,
 		}
 
-		fmt.Println("Recieved keys as")
-		for k, v := range svcBasicStats {
-			fmt.Printf("%+v:%+v", k, v)
-		}
-
-		fmt.Println("Searching For")
-		fmt.Printf("%+v", currentLeaf)
-
 		row := pb.StatTable_PodGroup_Row{
 			Resource: &pb.Resource{
 				Name:      serviceStats.name,
@@ -543,7 +526,7 @@ func (s *grpcServer) serviceResourceQuery(ctx context.Context, req *pb.StatSumma
 			},
 			TimeWindow: req.TimeWindow,
 			Stats:      svcBasicStats[currentLeaf],
-			TcpStats:   svcTcpStats[currentLeaf],
+			TcpStats:   svcTCPStats[currentLeaf],
 		}
 		rows = append(rows, &row)
 	}
