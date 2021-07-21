@@ -62,7 +62,7 @@ func TestLocalhostServer(t *testing.T) {
 			}
 		}
 
-		err = TestHelper.RetryFor(20*time.Second, func() error {
+		err = TestHelper.RetryFor(50*time.Second, func() error {
 			// Use a short time window so that transient errors at startup
 			// fall out of the window.
 			out, err := TestHelper.LinkerdRun("viz", "stat", "-n", ns, "deploy/slow-cooker", "--to", "deploy/nginx", "-t", "30s", "-o", "json")
