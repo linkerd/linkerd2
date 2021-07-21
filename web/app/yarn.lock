@@ -1005,10 +1005,10 @@
     ts-node "^9"
     tslib "^2"
 
-"@eslint/eslintrc@^0.4.2":
-  version "0.4.2"
-  resolved "https://registry.yarnpkg.com/@eslint/eslintrc/-/eslintrc-0.4.2.tgz#f63d0ef06f5c0c57d76c4ab5f63d3835c51b0179"
-  integrity sha512-8nmGq/4ycLpIwzvhI4tNDmQztZ8sp+hI7cyG8i1nQDhkAbRzHpXPidRAHlNvCZQpJTKw5ItIpMw9RSToGF00mg==
+"@eslint/eslintrc@^0.4.3":
+  version "0.4.3"
+  resolved "https://registry.yarnpkg.com/@eslint/eslintrc/-/eslintrc-0.4.3.tgz#9e42981ef035beb3dd49add17acb96e8ff6f394c"
+  integrity sha512-J6KFFz5QCYUJq3pf0mjEcCJVERbzv71PUIDczuh9JkwGEzced6CO5ADLHB1rbf/+oPBtoPfMYNOpGDzCANlbXw==
   dependencies:
     ajv "^6.12.4"
     debug "^4.1.1"
@@ -1425,10 +1425,10 @@
     "@babel/runtime" "^7.11.2"
     "@lingui/core" "^3.10.2"
 
-"@material-ui/core@4.12.1":
-  version "4.12.1"
-  resolved "https://registry.yarnpkg.com/@material-ui/core/-/core-4.12.1.tgz#ac8f081498047aa02bb6ee70b77c5dad6a2a6e73"
-  integrity sha512-C6hYsjkWCTfBx9FaqxhCZCITBagh7fyCKFtHyvO3tTOcBw6NJaktdhNZ2n82jQdQdgfFvg6OOxi7OOzsAdAcBQ==
+"@material-ui/core@4.12.2":
+  version "4.12.2"
+  resolved "https://registry.yarnpkg.com/@material-ui/core/-/core-4.12.2.tgz#59a8b19f16b8c218d912f37f5ae70473c3c82c73"
+  integrity sha512-Q1npB8V73IC+eV2X6as+g71MpEGQwqKHUI2iujY62npk35V8nMx/bUXAHjv5kKG1BZ8s8XUWoG6s/VkjYPjjQA==
   dependencies:
     "@babel/runtime" "^7.4.4"
     "@material-ui/styles" "^4.11.4"
@@ -1736,10 +1736,15 @@
   dependencies:
     "@types/istanbul-lib-report" "*"
 
-"@types/json-schema@*", "@types/json-schema@^7.0.5", "@types/json-schema@^7.0.6":
+"@types/json-schema@*", "@types/json-schema@^7.0.5":
   version "7.0.7"
   resolved "https://registry.yarnpkg.com/@types/json-schema/-/json-schema-7.0.7.tgz#98a993516c859eb0d5c4c8f098317a9ea68db9ad"
   integrity sha512-cxWFQVseBm6O9Gbw1IWb8r6OS4OhSt3hPZLkFApLjM8TEXROBuQGLAH2i2gZpcXdLBIrpXuTDhH7Vbm1iXmNGA==
+
+"@types/json-schema@^7.0.7":
+  version "7.0.8"
+  resolved "https://registry.yarnpkg.com/@types/json-schema/-/json-schema-7.0.8.tgz#edf1bf1dbf4e04413ca8e5b17b3b7d7d54b59818"
+  integrity sha512-YSBPTLTVm2e2OoQIDYx8HaeWJ5tTToLH67kXR7zYNGupXMEHa2++G8k+DczX2cFVgalypqtyZIcU19AFcmOpmg==
 
 "@types/json5@^0.0.29":
   version "0.0.29"
@@ -2128,31 +2133,23 @@
     webdriver "7.0.0"
     webdriverio "7.0.0"
 
-"@wdio/sync@7.7.7":
-  version "7.7.7"
-  resolved "https://registry.yarnpkg.com/@wdio/sync/-/sync-7.7.7.tgz#820fdd4da04e0c5d90898c2f8d62d64d8997d870"
-  integrity sha512-RrOjms6zrr/XeFV29+5XzGgJF40e1EkaZM9fr2nWYJr8s5pIQzYDga9ymDanHsGBk81tO15mFrx2KDiamcPw4Q==
+"@wdio/sync@7.7.8":
+  version "7.7.8"
+  resolved "https://registry.yarnpkg.com/@wdio/sync/-/sync-7.7.8.tgz#923f6019b693ee37d160277c18e78054121749b3"
+  integrity sha512-oshd3ER+R6Y2n/p7VWzmvLfuUglH2dliXLfBqsbhU6+e7zQN0MglSEVCPcscx+ymqEY9DQDEPf3vYaUVdwdgcw==
   dependencies:
     "@types/fibers" "^3.1.0"
     "@types/puppeteer" "^5.4.0"
     "@wdio/logger" "7.7.0"
     "@wdio/types" "7.7.7"
     fibers "^5.0.0"
-    webdriverio "7.7.7"
+    webdriverio "7.7.8"
 
 "@wdio/types@7.0.0":
   version "7.0.0"
   resolved "https://registry.yarnpkg.com/@wdio/types/-/types-7.0.0.tgz#cb21b3894fffa44e5fa7379e31e19506d2ba00b7"
   integrity sha512-DhNmKKF26MIjlUndmH5IsnnmxZEpGQvOpTsANPagadO0D8KePUoItG9Jxx3enxQ7f3YDQuRSXh/thDkp3nJujg==
   dependencies:
-    got "^11.8.1"
-
-"@wdio/types@7.7.5":
-  version "7.7.5"
-  resolved "https://registry.yarnpkg.com/@wdio/types/-/types-7.7.5.tgz#74122c03a3b5d8a14e437b644f26982c9b418412"
-  integrity sha512-1LwlF/O9ohpnR9k1aVfdDSJ44UqpC6Lk6vk5lXNddlTvFzUV6a+fT6odm22LfMrazBxD2+rtKU43CIDX6kdxCw==
-  dependencies:
-    "@types/node" "^15.12.5"
     got "^11.8.1"
 
 "@wdio/types@7.7.7":
@@ -2177,14 +2174,6 @@
   dependencies:
     "@wdio/logger" "7.0.0"
     "@wdio/types" "7.0.0"
-
-"@wdio/utils@7.7.5":
-  version "7.7.5"
-  resolved "https://registry.yarnpkg.com/@wdio/utils/-/utils-7.7.5.tgz#f87bf4778fddb080230ff025dfac89e59b10b1cd"
-  integrity sha512-iWJRhBUf913pXUNvETt5ldQVoe1PsPUpzf9gbYbME8YPDSR6iAFnSKNTMEv/wqhSnWxsQ07J1ardsxj6O8/RsA==
-  dependencies:
-    "@wdio/logger" "7.7.0"
-    "@wdio/types" "7.7.5"
 
 "@wdio/utils@7.7.7":
   version "7.7.7"
@@ -3827,10 +3816,10 @@ cross-spawn@^7.0.2, cross-spawn@^7.0.3:
     shebang-command "^2.0.0"
     which "^2.0.1"
 
-css-loader@^6.0.0:
-  version "6.0.0"
-  resolved "https://registry.yarnpkg.com/css-loader/-/css-loader-6.0.0.tgz#e3f9131229df43e081876f434dc2f4605be9d5ae"
-  integrity sha512-xi3iTbHekvk5dWWdqfQKNsEm2g3Vr20uRwHzfXF+pHsaFGMuxTrqR1y8PY+st5G7wqid4/pBSiaqZsO6iaGN5g==
+css-loader@^6.2.0:
+  version "6.2.0"
+  resolved "https://registry.yarnpkg.com/css-loader/-/css-loader-6.2.0.tgz#9663d9443841de957a3cb9bcea2eda65b3377071"
+  integrity sha512-/rvHfYRjIpymZblf49w8jYcRo2y9gj6rV8UroHGmBxKrIyGLokpycyKzp9OkitvqT29ZSpzJ0Ic7SpnJX3sC8g==
   dependencies:
     icss-utils "^5.1.0"
     postcss "^8.2.15"
@@ -4206,10 +4195,10 @@ devtools-protocol@^0.0.849057:
   resolved "https://registry.yarnpkg.com/devtools-protocol/-/devtools-protocol-0.0.849057.tgz#5fa64e2c5ad4499a30aa9e8da82613afc4b1aa77"
   integrity sha512-gelr0GCBy0fztR4iKbX3LN5jRjhLtmXVI+L87HARqxshVD9uvipbaadpkas1wvgybqIa1ZBgqm+zkd8qVGvupg==
 
-devtools-protocol@^0.0.900357:
-  version "0.0.900357"
-  resolved "https://registry.yarnpkg.com/devtools-protocol/-/devtools-protocol-0.0.900357.tgz#ba9fb13354691e87f5ab0ff45345beae1c0ae993"
-  integrity sha512-8CK9MPmjiu80uTxv6T4Etm8a+cX2Cf0fBSZHdDCm70WWgY4ku07MdPVfNuNDrihhybDg6cMmT0QIxKy/8tUnbA==
+devtools-protocol@^0.0.901419:
+  version "0.0.901419"
+  resolved "https://registry.yarnpkg.com/devtools-protocol/-/devtools-protocol-0.0.901419.tgz#79b5459c48fe7e1c5563c02bd72f8fec3e0cebcd"
+  integrity sha512-4INMPwNm9XRpBukhNbF7OB6fNTTCaI8pzy/fXg0xQzAy5h3zL1P8xT3QazgKqBrb/hAYwIBizqDBZ7GtJE74QQ==
 
 devtools@6.12.1:
   version "6.12.1"
@@ -4242,10 +4231,10 @@ devtools@7.0.0:
     ua-parser-js "^0.7.21"
     uuid "^8.0.0"
 
-devtools@7.7.7:
-  version "7.7.7"
-  resolved "https://registry.yarnpkg.com/devtools/-/devtools-7.7.7.tgz#e748cd67a8430d2349f1589d6bb3c6ac8f77d3cf"
-  integrity sha512-ej/l06ccE24PC3WDtuG7HomAnYmM1Hd9NQrjgJtl59RFKBfkyRwoNgMqHMjSTsmn25WW1RBj76cF0lURyu/8Yw==
+devtools@7.7.8:
+  version "7.7.8"
+  resolved "https://registry.yarnpkg.com/devtools/-/devtools-7.7.8.tgz#4ddf9f3516ff46b8d1e558d89a35342ce27fa7bd"
+  integrity sha512-BVo8DgdERZC+XeljU3F6pFxvkdHwIRl8Vfnh2vUEx393D1j4FA6Fgm5mPAEmB/ZmVr6DVPGBNc/00qneM/DPxA==
   dependencies:
     "@types/node" "^15.12.5"
     "@wdio/config" "7.7.7"
@@ -4819,13 +4808,13 @@ eslint-webpack-plugin@^2.5.4:
     normalize-path "^3.0.0"
     schema-utils "^3.0.0"
 
-eslint@^7.30.0:
-  version "7.30.0"
-  resolved "https://registry.yarnpkg.com/eslint/-/eslint-7.30.0.tgz#6d34ab51aaa56112fd97166226c9a97f505474f8"
-  integrity sha512-VLqz80i3as3NdloY44BQSJpFw534L9Oh+6zJOUaViV4JPd+DaHwutqP7tcpkW3YiXbK6s05RZl7yl7cQn+lijg==
+eslint@^7.31.0:
+  version "7.31.0"
+  resolved "https://registry.yarnpkg.com/eslint/-/eslint-7.31.0.tgz#f972b539424bf2604907a970860732c5d99d3aca"
+  integrity sha512-vafgJpSh2ia8tnTkNUkwxGmnumgckLh5aAbLa1xRmIn9+owi8qBNGKL+B881kNKNTy7FFqTEkpNkUvmw0n6PkA==
   dependencies:
     "@babel/code-frame" "7.12.11"
-    "@eslint/eslintrc" "^0.4.2"
+    "@eslint/eslintrc" "^0.4.3"
     "@humanwhocodes/config-array" "^0.5.0"
     ajv "^6.10.0"
     chalk "^4.0.0"
@@ -9776,12 +9765,12 @@ schema-utils@^2.6.5:
     ajv "^6.12.4"
     ajv-keywords "^3.5.2"
 
-schema-utils@^3.0.0:
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/schema-utils/-/schema-utils-3.0.0.tgz#67502f6aa2b66a2d4032b4279a2944978a0913ef"
-  integrity sha512-6D82/xSzO094ajanoOSbe4YvXWMfn2A//8Y1+MUqFAJul5Bs+yn36xbK9OtNDcRVSBJ9jjeoXftM6CfztsjOAA==
+schema-utils@^3.0.0, schema-utils@^3.1.0:
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/schema-utils/-/schema-utils-3.1.0.tgz#95986eb604f66daadeed56e379bfe7a7f963cdb9"
+  integrity sha512-tTEaeYkyIhEZ9uWgAjDerWov3T9MgX8dhhy2r0IGeeX4W8ngtGl1++dUve/RUqzuaASSh7shwCDJjEzthxki8w==
   dependencies:
-    "@types/json-schema" "^7.0.6"
+    "@types/json-schema" "^7.0.7"
     ajv "^6.12.5"
     ajv-keywords "^3.5.2"
 
@@ -10377,10 +10366,10 @@ strip-json-comments@3.1.1, strip-json-comments@^3.1.0, strip-json-comments@^3.1.
   resolved "https://registry.yarnpkg.com/strip-json-comments/-/strip-json-comments-3.1.1.tgz#31f1281b3832630434831c310c01cccda8cbe006"
   integrity sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==
 
-style-loader@^3.1.0:
-  version "3.1.0"
-  resolved "https://registry.yarnpkg.com/style-loader/-/style-loader-3.1.0.tgz#e52a22ca2fd1f54c03f2c3e69b10182e68120908"
-  integrity sha512-HYVvBMX3RX7zx71pquZV6EcnPN7Deba+zQteSxCLqt3bxYRphmeMr+2mZMrIZjZ7IMa6aOUhNGn8cXGvWMjClw==
+style-loader@^3.2.1:
+  version "3.2.1"
+  resolved "https://registry.yarnpkg.com/style-loader/-/style-loader-3.2.1.tgz#63cb920ec145c8669e9a50e92961452a1ef5dcde"
+  integrity sha512-1k9ZosJCRFaRbY6hH49JFlRB0fVSbmnyq1iTPjNxUmGVjBNEmwrrHPenhlp+Lgo51BojHSf6pl2FcqYaN3PfVg==
 
 suffix@^0.1.0:
   version "0.1.1"
@@ -11144,10 +11133,10 @@ webdriverio@7.0.0:
     serialize-error "^8.0.0"
     webdriver "7.0.0"
 
-webdriverio@7.7.7:
-  version "7.7.7"
-  resolved "https://registry.yarnpkg.com/webdriverio/-/webdriverio-7.7.7.tgz#74c273613340fcfe2e9984161f8039d220192888"
-  integrity sha512-DOCBLSnZbe/XEzCD1R8OlRL+WOERjk1Np7BrCV8SiegoMeTxZkwWv5knu4f1swCK9l8lzbF2s5HIEXD3rvZ1jg==
+webdriverio@7.7.8:
+  version "7.7.8"
+  resolved "https://registry.yarnpkg.com/webdriverio/-/webdriverio-7.7.8.tgz#d10d2c1ad224a302a442e179b9918640fef21713"
+  integrity sha512-v4BcH8WVX77TsYsHg+kGPg0/QxfpAh8A3KCe+3feCkL8P5ys4RNwb0L9GChJyGIE0LO0ZBj7VtTuMs+HNowreg==
   dependencies:
     "@types/aria-query" "^4.2.1"
     "@types/node" "^15.12.5"
@@ -11162,8 +11151,8 @@ webdriverio@7.7.7:
     atob "^2.1.2"
     css-shorthand-properties "^1.1.1"
     css-value "^0.0.1"
-    devtools "7.7.7"
-    devtools-protocol "^0.0.900357"
+    devtools "7.7.8"
+    devtools-protocol "^0.0.901419"
     fs-extra "^10.0.0"
     get-port "^5.1.1"
     grapheme-splitter "^1.0.2"
@@ -11302,10 +11291,10 @@ webpack-sources@^2.3.0:
     source-list-map "^2.0.1"
     source-map "^0.6.1"
 
-webpack@^5.44.0:
-  version "5.44.0"
-  resolved "https://registry.yarnpkg.com/webpack/-/webpack-5.44.0.tgz#97b13a02bd79fb71ac6301ce697920660fa214a1"
-  integrity sha512-I1S1w4QLoKmH19pX6YhYN0NiSXaWY8Ou00oA+aMcr9IUGeF5azns+IKBkfoAAG9Bu5zOIzZt/mN35OffBya8AQ==
+webpack@^5.45.1:
+  version "5.45.1"
+  resolved "https://registry.yarnpkg.com/webpack/-/webpack-5.45.1.tgz#d78dcbeda18a872dc62b0455d3ed3dcfd1c886bb"
+  integrity sha512-68VT2ZgG9EHs6h6UxfV2SEYewA9BA3SOLSnC2NEbJJiEwbAiueDL033R1xX0jzjmXvMh0oSeKnKgbO2bDXIEyQ==
   dependencies:
     "@types/eslint-scope" "^3.7.0"
     "@types/estree" "^0.0.50"
@@ -11325,7 +11314,7 @@ webpack@^5.44.0:
     loader-runner "^4.2.0"
     mime-types "^2.1.27"
     neo-async "^2.6.2"
-    schema-utils "^3.0.0"
+    schema-utils "^3.1.0"
     tapable "^2.1.1"
     terser-webpack-plugin "^5.1.3"
     watchpack "^2.2.0"
