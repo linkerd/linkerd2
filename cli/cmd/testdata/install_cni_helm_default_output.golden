@@ -30,6 +30,7 @@ spec:
   volumes:
   - hostPath
   - secret
+  - emptyDir
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -199,6 +200,10 @@ spec:
           name: cni-bin-dir
         - mountPath: /host/etc/cni/net.d
           name: cni-net-dir
+        - mountPath: /tmp
+          name: linkerd-tmp-dir
+        securityContext:
+          readOnlyRootFilesystem: true
       volumes:
       - name: cni-bin-dir
         hostPath:
@@ -206,3 +211,5 @@ spec:
       - name: cni-net-dir
         hostPath:
           path: /etc/cni/net.d
+      - name: linkerd-tmp-dir
+        emptyDir: {}
