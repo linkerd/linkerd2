@@ -957,10 +957,12 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx con
 		return fmt.Errorf("error retrieving Exported service %s/%s: %v", exportedEndpoints.Namespace, exportedEndpoints.Name, err)
 	}
 
-	// If the exported service does not have any exposed ports then neither will
-	// its corresponding endpoint mirrors. If this is the case, skip processing
-	// the endpoints object to avoid a validation error.
-	if len(exportedService.Spec.Ports) == 0 {
+	// Check whether the endpoints should be processed for a headless exported
+	// service. If the exported service does not have any ports exposed, then
+	// neither will its corresponding endpoint mirrors. If the exported service
+	// does not have any named hosts, then it should not be created as a
+	// headless mirror.
+	if len(exportedService.Spec.Ports) == 0 || !isValidHeadlessService(exportedService, rcsw.remoteAPIClient, rcsw.log) {
 		return nil
 	}
 
