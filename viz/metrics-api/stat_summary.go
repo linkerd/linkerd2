@@ -82,6 +82,11 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		return statSummaryError(req, "StatSummary request missing Selector Resource"), nil
 	}
 
+	// special case to check for services
+	if isInvalidServiceRequest(req) {
+		return statSummaryError(req, "service is not supported as a target on 'from' queries, or as a target with 'to' queries"), nil
+	}
+
 	switch req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
 		if req.Outbound.(*pb.StatSummaryRequest_ToResource).ToResource.Type == k8s.All {
@@ -141,9 +146,26 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 	return &rsp, nil
 }
 
+// isInvalidServiceRequest checks if the Service Request is invalid
+func isInvalidServiceRequest(req *pb.StatSummaryRequest) bool {
+	// stat <> --from svc/*
+	if req.GetFromResource() != nil {
+		return req.GetFromResource().GetType() == k8s.Service
+	}
+
+	// stat svc/* --to <>
+	if req.GetSelector().GetResource().GetType() == k8s.Service {
+		if req.GetToResource() != nil {
+			return false
+		}
+	}
+
+	return false
+}
+
 // isServiceQuery returns true if the request is for a service
 func (s *grpcServer) isServiceQuery(req *pb.StatSummaryRequest) bool {
-	return req.Selector.Resource.Type == k8s.Service
+	return req.Selector.Resource.Type == k8s.Service || req.GetFromResource().GetType() == k8s.Service || req.GetToResource().GetType() == k8s.Service
 }
 
 // isServiceProfileQuery returns true if the request is for a service
@@ -715,15 +737,11 @@ func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequ
 
 func (s *grpcServer) getSvcMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats, error) {
 
-	labels, groupBy := buildServiceRequestLabels(req)
-
-	authority := fmt.Sprintf("%s.%s.svc.%s", req.Selector.Resource.Name, req.Selector.Resource.Namespace, s.clusterDomain)
-	reqLabels := generateLabelStringWithRegex(labels, "authority", authority)
+	reqLabels, groupBy := s.buildServiceRequestLabels(req)
 
 	promQueries := map[promType]string{
 		promRequests: fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupBy.String()),
 	}
-
 	quantileQueries := generateQuantileQueries(latencyQuantileQuery, reqLabels, timeWindow, groupBy.String())
 	results, err := s.getPrometheusMetrics(ctx, promQueries, quantileQueries)
 
@@ -735,32 +753,33 @@ func (s *grpcServer) getSvcMetrics(ctx context.Context, req *pb.StatSummaryReque
 	return basicStats, tcpStats, nil
 }
 
-func buildServiceRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labelNames model.LabelNames) {
-	// Trafficsplit labels are always direction="outbound". If the --from or --to flags were used,
-	// we merge an additional ToResource or FromResource label. Trafficsplit metrics results are
-	// always grouped by dst_service.
-	// N.b. requests to a traffic split may come from any namespace so we do not do any filtering
-	// by namespace.
-	labels = model.LabelSet{
+func (s *grpcServer) buildServiceRequestLabels(req *pb.StatSummaryRequest) (string, model.LabelNames) {
+	labels := model.LabelSet{
 		"direction": model.LabelValue("outbound"),
 	}
 
+	namespace := req.GetSelector().GetResource().GetNamespace()
+	name := req.GetSelector().GetResource().GetName()
+
 	switch out := req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
-
-		labels = labels.Merge(promDstQueryLabels(out.ToResource))
-
+		// if --to flag is passed, ToResource is always a service here
+		// thus override namespace, name
+		namespace = out.ToResource.GetNamespace()
+		name = out.ToResource.GetName()
+		labels = labels.Merge(promQueryLabels(req.GetSelector().GetResource()))
 	case *pb.StatSummaryRequest_FromResource:
-
-		labels = labels.Merge(promQueryLabels(out.FromResource))
-
+		// if --from flag is passed, FromResource is never a service here
+		labels = labels.Merge(promQueryLabels(req.GetFromResource()))
 	default:
 		// no extra labels needed
 	}
 
+	reqLabels := generateLabelStringWithRegex(labels, "authority", fmt.Sprintf("%s.%s.svc.%s", name, namespace, s.clusterDomain))
+
 	groupBy := model.LabelNames{model.LabelName("dst_namespace"), model.LabelName("dst_service")}
 
-	return labels, groupBy
+	return reqLabels, groupBy
 }
 
 func (s *grpcServer) getServiceProfileMetrics(ctx context.Context, req *pb.StatSummaryRequest, tsStats *trafficSplitStats, timeWindow string) (map[tsKey]*pb.BasicStats, error) {
