@@ -257,7 +257,7 @@ func TestRemoteServiceUpdatedMirroring(t *testing.T) {
 func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
 	for _, tt := range []mirroringTestCase{
 		{
-			description: "updates Endpoints hosts on remote and local Endpoints",
+			description: "updates headless mirror service with new remote Endpoints hosts",
 			environment: updateEndpointsWithChangedHosts,
 			expectedLocalServices: []*corev1.Service{
 				headlessMirrorService("service-two-remote", "eptest", "222", []corev1.ServicePort{
