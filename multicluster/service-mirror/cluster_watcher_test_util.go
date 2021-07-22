@@ -160,6 +160,18 @@ var createExportedHeadlessService = &testEnvironment{
 					Port:     666,
 				},
 			}),
+		remoteHeadlessEndpointsAsYaml("service-one", "ns2", "112", "192.0.0.1", []corev1.EndpointPort{
+			{
+				Name:     "port1",
+				Protocol: "TCP",
+				Port:     555,
+			},
+			{
+				Name:     "port2",
+				Protocol: "TCP",
+				Port:     666,
+			},
+		}),
 	},
 	link: multicluster.Link{
 		TargetClusterName:   clusterName,
@@ -310,7 +322,7 @@ var updateEndpointsWithChangedHosts = &testEnvironment{
 	},
 	remoteResources: []string{
 		gatewayAsYaml("gateway", "gateway-ns", "currentGatewayResVersion", "192.0.2.127", "mc-gateway", 888, "", defaultProbePort, defaultProbePath, defaultProbePeriod),
-		remoteServiceAsYaml("service-two", "eptest", "222",
+		remoteHeadlessSvcAsYaml("service-two", "eptest", "222",
 			[]corev1.ServicePort{
 				{
 					Name:     "port1",
@@ -739,6 +751,15 @@ func remoteHeadlessSvcAsYaml(name, namespace, resourceVersion string, ports []co
 	return string(bytes)
 }
 
+func remoteHeadlessEndpointsAsYaml(name, namespace, resourceVersion, address string, ports []corev1.EndpointPort) string {
+	ep := remoteHeadlessEndpoints(name, namespace, resourceVersion, address, ports)
+
+	bytes, err := yaml.Marshal(ep)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return string(bytes)
+}
 func mirrorService(name, namespace, resourceVersion string, ports []corev1.ServicePort) *corev1.Service {
 	annotations := make(map[string]string)
 	annotations[consts.RemoteResourceVersionAnnotation] = resourceVersion
