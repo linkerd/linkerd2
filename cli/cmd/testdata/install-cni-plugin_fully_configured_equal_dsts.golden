@@ -28,6 +28,7 @@ spec:
   volumes:
   - hostPath
   - secret
+  - emptyDir
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -123,7 +124,7 @@ data:
         "outgoing-proxy-port": 5140,
         "proxy-uid": 12102,
         "ports-to-redirect": [],
-        "inbound-ports-to-ignore": ["5190","5191"],
+        "inbound-ports-to-ignore": ["4191","4190"],
         "simulate": false,
         "use-wait-flag": false
       }
@@ -196,8 +197,14 @@ spec:
         volumeMounts:
         - mountPath: /host/etc/kubernetes/cni/net.d
           name: cni-net-dir
+        - mountPath: /tmp
+          name: linkerd-tmp-dir
+        securityContext:
+          readOnlyRootFilesystem: true
       volumes:
       - name: cni-net-dir
         hostPath:
           path: /etc/kubernetes/cni/net.d
+      - name: linkerd-tmp-dir
+        emptyDir: {}
 ---

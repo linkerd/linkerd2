@@ -1,7 +1,7 @@
 import _merge from 'lodash/merge';
 import ApiHelpers from './util/ApiHelpers.jsx';
 import MetricsTable from './MetricsTable.jsx';
-import { routerWrap } from '../../test/testHelpers.jsx';
+import { i18nAndRouterWrap } from '../../test/testHelpers.jsx';
 import { mount } from 'enzyme';
 
 describe('Tests for <MetricsTable>', () => {
@@ -20,7 +20,7 @@ describe('Tests for <MetricsTable>', () => {
       }],
       resource: "deployment"
     });
-    const component = mount(routerWrap(MetricsTable, extraProps));
+    const component = mount(i18nAndRouterWrap(MetricsTable, extraProps));
 
     const table = component.find("BaseTable");
 
@@ -45,7 +45,7 @@ describe('Tests for <MetricsTable>', () => {
       resource: 'deployment',
       enableFilter: true
     });
-    const component = mount(routerWrap(MetricsTable, extraProps));
+    const component = mount(i18nAndRouterWrap(MetricsTable, extraProps));
 
     const table = component.find('BaseTable');
 
@@ -62,7 +62,7 @@ describe('Tests for <MetricsTable>', () => {
 
   it('omits the namespace column for the namespace resource', () => {
     let extraProps = _merge({}, defaultProps, { metrics: [], resource: "namespace"});
-    const component = mount(routerWrap(MetricsTable, extraProps));
+    const component = mount(i18nAndRouterWrap(MetricsTable, extraProps));
 
     const table = component.find("BaseTable");
 
@@ -76,7 +76,7 @@ describe('Tests for <MetricsTable>', () => {
       resource: "deployment",
       showNamespaceColumn: false
     });
-    const component = mount(routerWrap(MetricsTable, extraProps));
+    const component = mount(i18nAndRouterWrap(MetricsTable, extraProps));
 
     const table = component.find("BaseTable");
 
@@ -91,7 +91,7 @@ describe('Tests for <MetricsTable>', () => {
       showNamespaceColumn: false,
       jaeger: 'jaeger.xyz'
     });
-    const component = mount(routerWrap(MetricsTable, extraProps));
+    const component = mount(i18nAndRouterWrap(MetricsTable, extraProps));
     const table = component.find("BaseTable");
 
     expect(table).toBeDefined();
@@ -105,7 +105,7 @@ describe('Tests for <MetricsTable>', () => {
       showNamespaceColumn: false,
       grafana: 'grafana.xyz'
     });
-    const component = mount(routerWrap(MetricsTable, extraProps));
+    const component = mount(i18nAndRouterWrap(MetricsTable, extraProps));
     const table = component.find("BaseTable");
 
     expect(table).toBeDefined();
@@ -120,7 +120,7 @@ describe('Tests for <MetricsTable>', () => {
       jaeger: 'jaeger.xyz',
       grafana: 'grafana.xyz'
     });
-    const component = mount(routerWrap(MetricsTable, extraProps));
+    const component = mount(i18nAndRouterWrap(MetricsTable, extraProps));
     const table = component.find("BaseTable");
 
     expect(table).toBeDefined();
@@ -129,7 +129,7 @@ describe('Tests for <MetricsTable>', () => {
 
   it('adds apex, leaf and weight columns, and omits meshed and grafana column, for a trafficsplit resource', () => {
     let extraProps = _merge({}, defaultProps, { metrics: [], resource: "trafficsplit"});
-    const component = mount(routerWrap(MetricsTable, extraProps));
+    const component = mount(i18nAndRouterWrap(MetricsTable, extraProps));
 
     const table = component.find("BaseTable");
 

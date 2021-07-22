@@ -10,6 +10,10 @@ outboundProxyPort: 4140
 ignoreInboundPorts: ""
 # -- Default set of outbound ports to skip via iptables
 ignoreOutboundPorts: ""
+# -- Admin port for the proxy container
+proxyAdminPort: 4191
+# -- Control port for the proxy container
+proxyControlPort: 4190
 # -- Docker image for the CNI plugin
 cniPluginImage:   "cr.l5d.io/linkerd/cni-plugin"
 # -- Tag for the CNI container Docker image

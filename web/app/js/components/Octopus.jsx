@@ -128,7 +128,7 @@ class Octopus extends React.Component {
             <CardContent>
 
               <Typography variant={type === 'neighbor' ? 'subtitle1' : 'h6'} align="center">
-                { this.linkedResourceTitle(resource, display) }
+                {this.linkedResourceTitle(resource, display)}
               </Typography>
 
               <Progress variant="determinate" value={resource.successRate * 100} />
@@ -147,10 +147,10 @@ class Octopus extends React.Component {
     return (
       <TableBody>
         {resource.isLeafService &&
-        <TableRow>
-          <TableCell><Typography>Weight</Typography></TableCell>
-          <TableCell align="right"><Typography>{resource.tsStats.weight}</Typography></TableCell>
-        </TableRow>
+          <TableRow>
+            <TableCell><Typography>Weight</Typography></TableCell>
+            <TableCell align="right"><Typography>{resource.tsStats.weight}</Typography></TableCell>
+          </TableRow>
         }
         <TableRow>
           <TableCell><Typography>SR</Typography></TableCell>
@@ -161,10 +161,10 @@ class Octopus extends React.Component {
           <TableCell align="right"><Typography>{metricToFormatter.NO_UNIT(resource.requestRate)}</Typography></TableCell>
         </TableRow>
         {!resource.isApexService &&
-        <TableRow>
-          <TableCell><Typography>P99</Typography></TableCell>
-          <TableCell align="right"><Typography>{metricToFormatter.LATENCY(_get(resource, 'latency.P99'))}</Typography></TableCell>
-        </TableRow>
+          <TableRow>
+            <TableCell><Typography>P99</Typography></TableCell>
+            <TableCell align="right"><Typography>{metricToFormatter.LATENCY(_get(resource, 'latency.P99'))}</Typography></TableCell>
+          </TableRow>
         }
       </TableBody>
     );
@@ -220,7 +220,7 @@ class Octopus extends React.Component {
           <Card className={classes.neighborNode}>
             <CardContent>
               <Typography variant="subtitle1">
-                + { neighbors.length } more...
+                + {neighbors.length} more...
               </Typography>
               <Progress variant="determinate" value={100} />
               {
@@ -256,12 +256,12 @@ class Octopus extends React.Component {
         const height = elementTop + halfElement;
         return { type: 'flat', inboundType: 'flat', height };
 
-      // Elements underneath main element
+        // Elements underneath main element
       } else if (elementTop + halfElement >= fullHeight / 2) {
         const height = !isOutbound ? elementTop - fullHeight / 2 + halfElement - inboundAlignment : fullHeight - elementTop - halfElement + inboundAlignment;
         return { type: 'down', inboundType: 'up', height, elementHeight };
 
-      // Elements over main element
+        // Elements over main element
       } else {
         const height = !isOutbound ? elementTop + halfElement + inboundAlignment : fullHeight / 2 - elementTop - halfElement - inboundAlignment;
         return { type: 'up', inboundType: 'down', height, elementHeight };
@@ -293,7 +293,7 @@ class Octopus extends React.Component {
     const display = this.getNeighborDisplayData(neighbors);
 
     const numUpstreams = _size(display.upstreams.displayed) + (_isEmpty(unmeshedSources) ? 0 : 1) +
-       (_isEmpty(display.upstreams.collapsed) ? 0 : 1);
+      (_isEmpty(display.upstreams.collapsed) ? 0 : 1);
 
     const numDownstreams = _size(display.downstreams.displayed) + (_isEmpty(display.downstreams.collapsed) ? 0 : 1);
 
@@ -303,7 +303,7 @@ class Octopus extends React.Component {
           <Grid
             container
             direction="row"
-            justify="center"
+            justifyContent="center"
             alignItems="center">
 
             <RootRef rootRef={this.upstreamsContainer}>
@@ -311,7 +311,7 @@ class Octopus extends React.Component {
                 container
                 spacing={3}
                 direction="column"
-                justify="center"
+                justifyContent="center"
                 alignItems="center"
                 item
                 xs={3}>
@@ -338,7 +338,7 @@ class Octopus extends React.Component {
                 container
                 spacing={3}
                 direction="column"
-                justify="center"
+                justifyContent="center"
                 alignItems="center"
                 item
                 xs={3}>

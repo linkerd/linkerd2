@@ -27,8 +27,10 @@ export const getAggregatedTrafficSplitMetrics = resourceMetrics => {
     return acc + n;
   }, 0);
   const aggregatedSuccessRate = sumSuccessRates / totalRPS || 0;
-  return { successRate: aggregatedSuccessRate,
-    totalRPS };
+  return {
+    successRate: aggregatedSuccessRate,
+    totalRPS,
+  };
 };
 
 const generateApexMetrics = resourceMetrics => {
@@ -61,7 +63,7 @@ const TrafficSplitDetail = ({ resourceMetrics, resourceName, resourceRsp, resour
 
   return (
     <div>
-      <Grid container justify="space-between" alignItems="center">
+      <Grid container justifyContent="space-between" alignItems="center">
         <Grid item><Typography variant="h5">{resourceType}/{resourceName}</Typography></Grid>
       </Grid>
 

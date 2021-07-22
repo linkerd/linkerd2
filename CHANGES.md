@@ -1,5 +1,75 @@
 # Changes
 
+## edge-21.7.3
+
+This edge release introduces several changes around metrics. ReplicaSets are now
+a supported resource and metrics can be associated with them. A new metric has
+been added which counts proxy errors encountered before a protocol can be
+detected. Finally, the request errors metric has been split into separate
+inbound and outbound directions.
+
+* Fixed printing `check --pre` command usage if it fails after being unable to
+  connect to Kubernetes (thanks @rdileep13!)
+* Updated the default skip and opaque ports to match that which is listed in the
+  [documentation](https://linkerd.io/2.10/features/protocol-detection/#configuring-protocol-detection)
+* Added the `LINKERD2_PROXY_INBOUND_PORTS` environment variable during proxy
+  injection which will be used by ongoing policy changes
+* Added client-go cache size metrics to the `diagnostics controller-metrics`
+  command
+* Added validation that the certificate provided by an external issuer is a CA
+  (thanks @rumanzo!)
+* Added metrics support for ReplicaSets
+* Replaced the `request_errors_total` metric with two new metrics:
+  `inbound_http_errors_total` and `outbound_http_errors_total`
+* Introduced the `inbound_tcp_accept_errors_total` and
+  `outbound_tcp_accept_errors_total` metrics which count proxy errors
+  encountered before a protocol can be detected
+
+## edge-21.7.2
+
+This edge release focuses on dependency updates and has a couple of functional
+changes. First, the Dockerfile used to build the proxy has been updated to use
+the default `distroless` image, rather than the non-root variant. This change
+is safe because the proxy already runs as non-root within the container. Second,
+the `ignoreInboundPorts` parameter has been added in the linkerd2-cni helm
+charts in order to enable tap support.
+
+* Updated several project dependencies
+* Updated the Dockerfile-proxy to use the default distroless image, because
+  the proxy already runs as non-root within the container
+* Added `ignoreInboundPorts` parameter to the linkerd2-cni plugin helm chart
+
+## edge-21.7.1
+
+This edge release adds support for emitting Kubernetes events in the identity
+controller when issuing leaf certificates. The event includes the identity,
+expiry date, and a hash of the certificate. Additionally, this release contains
+many dependency updates for the control plane's components, and it includes a
+fix for an issue with the clusterNetworks healthcheck.
+
+* Updated the identity controller to emit Kubernetes events when successfully
+  issuing leaf certificates to injected pods.
+* Fixed an issue in `linkerd check` where the clusterNetworks healthcheck
+  would fail if the `podCIDR` field is omitted from a node's spec.
+* Removed unnecessary controller port-forward logic from the `bin/web` script.
+
+## edge-21.6.5
+
+This release contains a few improvements, from many contributors!  Also under
+the hood, the destination service has received updates in preparation to the
+upcoming support for StatefulSets across multicluster.
+
+* Improved the `linkerd check --proxy` command to avoid hitting a timeout when
+  dealing with large clusters
+* Fixed the web component permissions in order to properly run the podCIDR check
+  (thanks @aryan9600!)
+* Avoid having the proxy-init container fail when the main container is
+  configured to drop either the NET_RAW or NET_ADMIN capabilities (thanks
+  @aryan9600!)
+* Upgraded the proxy-init image to improve the output in "simulate" mode (thanks
+  @liuerfire!) and to log to stdout instead of stderr (thanks @mo4islona!)
+* Added test-coverage reports to PRs (thanks @akshitgrover!)
+
 ## edge-21.6.3
 
 This release moves the Linkerd proxy to a more minimal Docker base image,

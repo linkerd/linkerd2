@@ -27,14 +27,8 @@ USAGE
 }; function --help { '-h' ;}
 
 check-for-linkerd-and-viz() {
-  controller_pod=$(get-pod linkerd controller)
   metrics_api_pod=$(get-pod linkerd-viz metrics-api)
   grafana_pod=$(get-pod linkerd-viz grafana)
-
-  if [[ -z "${controller_pod// }" ]]; then
-    err 'Controller is not running. Have you installed Linkerd?'
-    exit 1
-  fi
 
   if [[ -z "${metrics_api_pod// }" ]]; then
     err 'Metrics-api is not running. Have you installed Linkerd-Viz?'
@@ -111,7 +105,6 @@ run() {
   build
 
   check-for-linkerd-and-viz && (
-    port-forward linkerd controller 8185 8085 &
     port-forward linkerd-viz metrics-api 8085 &
     port-forward linkerd-viz grafana 3000 &
   )

@@ -107,6 +107,7 @@ type (
 		RequireIdentityOnInboundPorts string           `json:"requireIdentityOnInboundPorts"`
 		OutboundConnectTimeout        string           `json:"outboundConnectTimeout"`
 		InboundConnectTimeout         string           `json:"inboundConnectTimeout"`
+		PodInboundPorts               string           `json:"podInboundPorts"`
 		OpaquePorts                   string           `json:"opaquePorts"`
 		Await                         bool             `json:"await"`
 	}
@@ -275,7 +276,7 @@ func readDefaults(ha bool) (*Values, error) {
 
 // Merge merges the non-empty properties of src into v.
 // A new Values instance is returned. Neither src nor v are mutated after
-// calling merge.
+// calling Merge.
 func (v Values) Merge(src Values) (Values, error) {
 	// By default, mergo.Merge doesn't overwrite any existing non-empty values
 	// in its first argument. So in HA mode, we are merging values.yaml into

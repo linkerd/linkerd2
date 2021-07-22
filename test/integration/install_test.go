@@ -432,6 +432,13 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 	TestHelper.WaitRollout(t, testutil.LinkerdDeployReplicasEdge)
 
+	// It is necessary to clone LinkerdVizDeployReplicas so that we do not
+	// mutate its original value.
+	expectedDeployments := make(map[string]testutil.DeploySpec)
+	for k, v := range testutil.LinkerdVizDeployReplicas {
+		expectedDeployments[k] = v
+	}
+
 	if TestHelper.ExternalPrometheus() {
 
 		// Install external prometheus
@@ -445,6 +452,8 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 				"kubectl apply command failed\n%s", out)
 		}
+
+		expectedDeployments["prometheus"] = testutil.DeploySpec{Namespace: "external-prometheus", Replicas: 1}
 
 		// Update args to use external prometheus
 		vizArgs = append(vizArgs, "--set", "prometheusUrl=http://prometheus.external-prometheus.svc.cluster.local:9090", "--set", "prometheus.enabled=false")
@@ -463,16 +472,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"'kubectl apply' command failed\n%s", out)
 	}
 
-	// It is necessary to clone LinkerdVizDeployReplicas so that we do not
-	// mutate it's original value.
-	expectedVizDeployments := make(map[string]testutil.DeploySpec)
-	for k, v := range testutil.LinkerdVizDeployReplicas {
-		expectedVizDeployments[k] = v
-	}
-	if TestHelper.ExternalPrometheus() {
-		delete(expectedVizDeployments, "prometheus")
-	}
-	TestHelper.WaitRollout(t, expectedVizDeployments)
+	TestHelper.WaitRollout(t, expectedDeployments)
 }
 
 // These need to be updated (if there are changes) once a new stable is released
@@ -553,16 +553,7 @@ func TestInstallHelm(t *testing.T) {
 			"'helm install' command failed\n%s\n%s", stdout, stderr)
 	}
 
-	// It is necessary to clone LinkerdVizDeployReplicas so that we do not
-	// mutate it's original value.
-	expectedVizDeployments := make(map[string]testutil.DeploySpec)
-	for k, v := range testutil.LinkerdVizDeployReplicas {
-		expectedVizDeployments[k] = v
-	}
-	if TestHelper.ExternalPrometheus() {
-		delete(expectedVizDeployments, "prometheus")
-	}
-	TestHelper.WaitRollout(t, expectedVizDeployments)
+	TestHelper.WaitRollout(t, testutil.LinkerdVizDeployReplicas)
 }
 
 func TestControlPlaneResourcesPostInstall(t *testing.T) {
@@ -666,16 +657,7 @@ func TestUpgradeHelm(t *testing.T) {
 			"'helm upgrade' command failed\n%s\n%s", stdout, stderr)
 	}
 
-	// It is necessary to clone LinkerdVizDeployReplicas so that we do not
-	// mutate it's original value.
-	expectedVizDeployments := make(map[string]testutil.DeploySpec)
-	for k, v := range testutil.LinkerdVizDeployReplicas {
-		expectedVizDeployments[k] = v
-	}
-	if TestHelper.ExternalPrometheus() {
-		delete(expectedVizDeployments, "prometheus")
-	}
-	TestHelper.WaitRollout(t, expectedVizDeployments)
+	TestHelper.WaitRollout(t, testutil.LinkerdVizDeployReplicas)
 
 	TestHelper.AddInstalledExtension(vizExtensionName)
 }

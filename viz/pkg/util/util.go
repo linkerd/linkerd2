@@ -8,9 +8,27 @@ import (
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// ValidTargets specifies resource types allowed as a target:
+// - target resource on an inbound query
+// - target resource on an outbound 'to' query
+// - destination resource on an outbound 'from' query
+var ValidTargets = []string{
+	k8s.Authority,
+	k8s.CronJob,
+	k8s.DaemonSet,
+	k8s.Deployment,
+	k8s.Job,
+	k8s.Namespace,
+	k8s.Pod,
+	k8s.ReplicaSet,
+	k8s.ReplicationController,
+	k8s.StatefulSet,
+}
 
 /*
   Shared utilities for interacting with the controller APIs

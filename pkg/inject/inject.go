@@ -49,6 +49,7 @@ var (
 		k8s.ProxyInitImageAnnotation,
 		k8s.ProxyInitImageVersionAnnotation,
 		k8s.ProxyOutboundPortAnnotation,
+		k8s.ProxyPodInboundPortsAnnotation,
 		k8s.ProxyCPULimitAnnotation,
 		k8s.ProxyCPURequestAnnotation,
 		k8s.ProxyImageAnnotation,
@@ -256,6 +257,7 @@ func (conf *ResourceConfig) GetOverriddenValues() (*linkerd2.Values, error) {
 		return nil, err
 	}
 
+	copyValues.Proxy.PodInboundPorts = getPodInboundPorts(conf.pod.spec)
 	conf.applyAnnotationOverrides(copyValues)
 	return copyValues, nil
 }
@@ -808,6 +810,10 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		}
 	}
 
+	if override, ok := annotations[k8s.ProxyPodInboundPortsAnnotation]; ok {
+		values.Proxy.PodInboundPorts = override
+	}
+
 	if override, ok := annotations[k8s.ProxyLogLevelAnnotation]; ok {
 		values.Proxy.LogLevel = override
 	}
@@ -1059,4 +1065,16 @@ func ToWholeCPUCores(q k8sResource.Quantity) (int64, error) {
 		return n, nil
 	}
 	return 0, fmt.Errorf("Could not parse cores: %s", q.String())
+}
+
+func getPodInboundPorts(podSpec *corev1.PodSpec) string {
+	ports := []string{}
+	if podSpec != nil {
+		for _, container := range podSpec.Containers {
+			for _, port := range container.Ports {
+				ports = append(ports, strconv.Itoa(int(port.ContainerPort)))
+			}
+		}
+	}
+	return strings.Join(ports, ",")
 }

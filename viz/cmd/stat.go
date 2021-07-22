@@ -11,7 +11,6 @@ import (
 	"text/tabwriter"
 	"time"
 
-	coreUtil "github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/pkg/cmd"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -19,6 +18,7 @@ import (
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/metrics-api/util"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
+	pkgUtil "github.com/linkerd/linkerd2/viz/pkg/util"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
@@ -716,20 +716,20 @@ func getNamePrefix(resourceType string) string {
 }
 
 func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.StatSummaryRequest, error) {
-	targets, err := coreUtil.BuildResources(options.namespace, resources)
+	targets, err := pkgUtil.BuildResources(options.namespace, resources)
 	if err != nil {
 		return nil, err
 	}
 
 	var toRes, fromRes *pb.Resource
 	if options.toResource != "" {
-		toRes, err = coreUtil.BuildResource(options.toNamespace, options.toResource)
+		toRes, err = pkgUtil.BuildResource(options.toNamespace, options.toResource)
 		if err != nil {
 			return nil, err
 		}
 	}
 	if options.fromResource != "" {
-		fromRes, err = coreUtil.BuildResource(options.fromNamespace, options.fromResource)
+		fromRes, err = pkgUtil.BuildResource(options.fromNamespace, options.fromResource)
 		if err != nil {
 			return nil, err
 		}

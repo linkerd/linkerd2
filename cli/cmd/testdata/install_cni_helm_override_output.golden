@@ -30,6 +30,7 @@ spec:
   volumes:
   - hostPath
   - secret
+  - emptyDir
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -125,6 +126,7 @@ data:
         "outgoing-proxy-port": 5678,
         "proxy-uid": 1111,
         "ports-to-redirect": [],
+        "inbound-ports-to-ignore": ["4191","4190"],
         "simulate": false,
         "use-wait-flag": true
       }
@@ -199,6 +201,10 @@ spec:
           name: cni-bin-dir
         - mountPath: /host/etc/cni/net.d-test
           name: cni-net-dir
+        - mountPath: /tmp
+          name: linkerd-tmp-dir
+        securityContext:
+          readOnlyRootFilesystem: true
       volumes:
       - name: cni-bin-dir
         hostPath:
@@ -206,3 +212,5 @@ spec:
       - name: cni-net-dir
         hostPath:
           path: /etc/cni/net.d-test
+      - name: linkerd-tmp-dir
+        emptyDir: {}

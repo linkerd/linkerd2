@@ -6,7 +6,7 @@
 clusterDomain: cluster.local
 
 # -- The cluster networks for which service discovery is performed. This should
-# include the pod network but need not include the node network.
+# include the pod and service networks, but need not include the node network.
 #
 # By default, all private networks are specified so that resolution works in
 # typical Kubernetes environments.
@@ -105,16 +105,21 @@ proxy:
   # - SMTP (25,587) server-first
   # - HTTPS (443) opaque TLS
   # - MYSQL (3306) server-first
+  # - Galera (4444) server-first
   # - PostgreSQL (5432) server-first
+  # - Redis (6379) server-first
+  # - ElasticSearch (9300) server-first
   # - Memcached (11211) clients do not issue any preamble, which breaks detection
-  opaquePorts: "25,443,587,3306,5432,11211"
+  opaquePorts: "25,443,587,3306,4444,5432,6379,9300,11211"
 
 # proxy-init configuration
 proxyInit:
   # -- Default set of inbound ports to skip via iptables
-  ignoreInboundPorts: ""
+  # - Galera (4567,4568)
+  ignoreInboundPorts: "4567,4568"
   # -- Default set of outbound ports to skip via iptables
-  ignoreOutboundPorts: ""
+  # - Galera (4567,4568)
+  ignoreOutboundPorts: "4567,4568"
   image:
     # -- Docker image for the proxy-init container
     name: cr.l5d.io/linkerd/proxy-init
@@ -122,7 +127,7 @@ proxyInit:
     # @default -- imagePullPolicy
     pullPolicy: ""
     # -- Tag for the proxy-init container Docker image
-    version: v1.3.12
+    version: v1.3.13
   resources:
     cpu:
       # -- Maximum amount of CPU units that the proxy-init container can use

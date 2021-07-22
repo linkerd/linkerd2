@@ -63,7 +63,7 @@ its extensions are written in Go. The dashboard UI is a React application.
   - [`identity`](controller/identity): Provides a CA to distribute certificates
     to proxies for them to establish mTLS connections between them.
 - [`viz extension`](viz)
-  - ['metrics-api`](viz/metrics-api): Accepts requests from API clients such as
+  - [`metrics-api`](viz/metrics-api): Accepts requests from API clients such as
     cli and web, serving metrics from the proxies in the cluster through
     Prometheus queries.
   - [`tap`](viz/tap/api): Provides a live pipeline of requests.
@@ -371,8 +371,6 @@ To develop with a webpack dev server:
     - `web` on :7777. This is the golang process that serves the dashboard.
     - `webpack-dev-server` on :8080 to manage rebuilding/reloading of the
       javascript.
-    - `controller` is port-forwarded from the Kubernetes cluster via `kubectl`
-      on :8185
     - `grafana` is port-forwarded from the Kubernetes cluster via `kubectl` on
       :3000
     - `metrics-api` is port-forwarded from the Kubernetes cluster via `kubectl`
@@ -407,6 +405,12 @@ yarn lingui extract
 ...
 yarn lingui compile # done automatically in bin/web run
 ```
+
+Finally, make sure the new locale is also referred in the following places:
+
+- Under the `lingui` section in `package.json`
+- In the `make-plural/plurals` import in `index.js`
+- In the `langOptions` object in `index.js`
 
 ### Rust
 
