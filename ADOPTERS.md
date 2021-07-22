@@ -24,6 +24,7 @@
 - [HomeChoice](https://www.homechoice.co.za/)
 - [HP Inc](https://www8.hp.com/us/en/home.html)
 - [In Loco](https://inloco.com.br/en/)
+- [Ingrid](https://ingrid.com/)
 - [Just Football](https://justfootball.io)
 - [K3 Business Technologies](https://www.k3btg.com)
 - [Kairos](https://kairos.com)
