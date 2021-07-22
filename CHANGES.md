@@ -1,5 +1,20 @@
 # Changes
 
+## edge-21.7.4
+
+This release continues to focus on dependency updates. It also adds proxy a
+change that add a new `l5d-proxy-error` information header to distinguish
+proxy generated errors from application generated errors.
+
+* Updated several project dependencies
+* Added a new `l5d-proxy-error` on responses that allows proxy-generated error
+  responses to be distinguished from application-generated error responses.
+* Removed support for configuring HTTP/2 keepalives via the proxy.
+  Configuring this setting would sometimes cause conflicts with Go gRPC servers
+  and clients
+* Added a new `target_addr` label to `*_tcp_accept_errors` metrics to improve
+  diagnostics, especially for TLS detection timeouts
+
 ## edge-21.7.3
 
 This edge release introduces several changes around metrics. ReplicaSets are now
