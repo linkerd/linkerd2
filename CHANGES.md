@@ -2,8 +2,8 @@
 
 ## edge-21.7.4
 
-This release continues to focus on dependency updates. It also adds proxy a
-change that add a new `l5d-proxy-error` information header to distinguish
+This release continues to focus on dependency updates. It also adds the
+`l5d-proxy-error` information header to distinguish proxy generated errors
 proxy generated errors from application generated errors.
 
 * Updated several project dependencies
