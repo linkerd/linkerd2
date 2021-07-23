@@ -321,7 +321,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Co
 			if kerrors.IsNotFound(err) {
 				continue
 			}
-			errors = append(errors, fmt.Errorf("Could not delete  service %s/%s: %s", svc.Namespace, svc.Name, err))
+			errors = append(errors, fmt.Errorf("Could not delete service %s/%s: %s", svc.Namespace, svc.Name, err))
 		} else {
 			rcsw.log.Infof("Deleted service %s/%s", svc.Namespace, svc.Name)
 		}
@@ -329,7 +329,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Co
 
 	endpoints, err := rcsw.localAPIClient.Endpoint().Lister().List(labels.Set(matchLabels).AsSelector())
 	if err != nil {
-		innerErr := fmt.Errorf("could not retrieve Endpoints that need cleaning up: %s", err)
+		innerErr := fmt.Errorf("could not retrieve endpoints that need cleaning up: %s", err)
 		if kerrors.IsNotFound(err) {
 			return innerErr
 		}
@@ -341,9 +341,9 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Co
 			if kerrors.IsNotFound(err) {
 				continue
 			}
-			errors = append(errors, fmt.Errorf("Could not delete  Endpoints %s/%s: %s", endpoint.Namespace, endpoint.Name, err))
+			errors = append(errors, fmt.Errorf("Could not delete endpoints %s/%s: %s", endpoint.Namespace, endpoint.Name, err))
 		} else {
-			rcsw.log.Infof("Deleted Endpoints %s/%s", endpoint.Namespace, endpoint.Name)
+			rcsw.log.Infof("Deleted endpoints %s/%s", endpoint.Namespace, endpoint.Name)
 		}
 	}
 
@@ -359,7 +359,11 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ctx context.
 	localService, err := rcsw.localAPIClient.Svc().Lister().Services(ev.Namespace).Get(localServiceName)
 	var errors []error
 	if err != nil {
-		errors = append(errors, fmt.Errorf("could not fetch Service %s/%s: %s", ev.Namespace, localServiceName, err))
+		if kerrors.IsNotFound(err) {
+			rcsw.log.Debugf("Failed to delete mirror service %s/%s: %v", ev.Namespace, ev.Name, err)
+			return nil
+		}
+		errors = append(errors, fmt.Errorf("could not fetch service %s/%s: %s", ev.Namespace, localServiceName, err))
 	}
 
 	// If the mirror service is headless, also delete its endpoint mirror
@@ -370,14 +374,14 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ctx context.
 		}
 		endpointMirrorServices, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
 		if err != nil {
-			errors = append(errors, fmt.Errorf("could not fetch Endpoint Mirrors for Service %s/%s: %s", ev.Namespace, localServiceName, err))
+			errors = append(errors, fmt.Errorf("could not fetch endpoint mirrors for service %s/%s: %s", ev.Namespace, localServiceName, err))
 		}
 
 		for _, endpointMirror := range endpointMirrorServices {
 			err = rcsw.localAPIClient.Client.CoreV1().Services(endpointMirror.Namespace).Delete(ctx, endpointMirror.Name, metav1.DeleteOptions{})
 			if err != nil {
 				if !kerrors.IsNotFound(err) {
-					errors = append(errors, fmt.Errorf("could not delete Endpoint Mirror %s/%s: %s", endpointMirror.Namespace, endpointMirror.Name, err))
+					errors = append(errors, fmt.Errorf("could not delete endpoint mirror %s/%s: %s", endpointMirror.Namespace, endpointMirror.Name, err))
 				}
 			}
 		}
@@ -386,7 +390,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ctx context.
 	rcsw.log.Infof("Deleting mirrored service %s/%s", ev.Namespace, localServiceName)
 	if err := rcsw.localAPIClient.Client.CoreV1().Services(ev.Namespace).Delete(ctx, localServiceName, metav1.DeleteOptions{}); err != nil {
 		if !kerrors.IsNotFound(err) {
-			errors = append(errors, fmt.Errorf("could not delete Service: %s/%s: %s", ev.Namespace, localServiceName, err))
+			errors = append(errors, fmt.Errorf("could not delete service: %s/%s: %s", ev.Namespace, localServiceName, err))
 		}
 	}
 
@@ -394,7 +398,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ctx context.
 		return RetryableError{errors}
 	}
 
-	rcsw.log.Infof("Successfully deleted Service: %s/%s", ev.Namespace, localServiceName)
+	rcsw.log.Infof("Successfully deleted service: %s/%s", ev.Namespace, localServiceName)
 	return nil
 }
 
@@ -538,7 +542,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 		}
 	}
 
-	rcsw.log.Infof("Creating a new Endpoints for %s", serviceInfo)
+	rcsw.log.Infof("Creating a new endpoints for %s", serviceInfo)
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(ev.service.Namespace).Create(ctx, endpointsToCreate, metav1.CreateOptions{}); err != nil {
 		// we clean up after ourselves
 		rcsw.localAPIClient.Client.CoreV1().Services(ev.service.Namespace).Delete(ctx, localServiceName, metav1.DeleteOptions{})
@@ -880,7 +884,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 		// their Endpoints created with hostnames and nested clusterIP services,
 		// we should avoid replacing these with the gateway address.
 		if svc.Spec.ClusterIP == corev1.ClusterIPNone {
-			rcsw.log.Debugf("Skipped repairing Endpoints for %s/%s", svc.Namespace, svc.Name)
+			rcsw.log.Debugf("Skipped repairing endpoints for %s/%s", svc.Namespace, svc.Name)
 			continue
 		}
 		endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(svc.Namespace).Get(svc.Name)
@@ -973,7 +977,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx con
 		}
 
 		if err := rcsw.createHeadlessMirrorEndpoints(ctx, exportedService, exportedEndpoints); err != nil {
-			rcsw.log.Debugf("failed to create headless mirrors for Endpoints %s/%s: %v", exportedEndpoints.Namespace, exportedEndpoints.Name, err)
+			rcsw.log.Debugf("failed to create headless mirrors for endpoints %s/%s: %v", exportedEndpoints.Namespace, exportedEndpoints.Name, err)
 			return err
 		}
 
@@ -1197,7 +1201,7 @@ func (rcsw *RemoteClusterServiceWatcher) createEndpointMirrorService(ctx context
 
 	exportedServiceInfo := fmt.Sprintf("%s/%s", exportedService.Namespace, exportedService.Name)
 	endpointMirrorInfo := fmt.Sprintf("%s/%s", endpointMirrorService.Namespace, endpointMirrorName)
-	rcsw.log.Infof("Creating a new Endpoint Mirror service %s for Exported Headless service %s", endpointMirrorInfo, exportedServiceInfo)
+	rcsw.log.Infof("Creating a new endpoint mirror service %s for exported headless service %s", endpointMirrorInfo, exportedServiceInfo)
 	createdService, err := rcsw.localAPIClient.Client.CoreV1().Services(endpointMirrorService.Namespace).Create(ctx, endpointMirrorService, metav1.CreateOptions{})
 	if err != nil {
 		if !kerrors.IsAlreadyExists(err) {
@@ -1206,7 +1210,7 @@ func (rcsw *RemoteClusterServiceWatcher) createEndpointMirrorService(ctx context
 		}
 	}
 
-	rcsw.log.Infof("Creating a new endpoints object for Endpoint Mirror service %s", endpointMirrorInfo)
+	rcsw.log.Infof("Creating a new endpoints object for endpoint mirror service %s", endpointMirrorInfo)
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpointMirrorService.Namespace).Create(ctx, endpointMirrorEndpoints, metav1.CreateOptions{}); err != nil {
 		// If we cannot create an Endpoints object for the Endpoint Mirror
 		// service, then delete the Endpoint Mirror service we just created
@@ -1241,7 +1245,7 @@ func shouldExportAsHeadless(ctx context.Context, service *corev1.Service, k8sAPI
 		}
 	}
 
-	log.Debugf("Service %s cannot be exported as headless: no named addresses in its Endpoints object", serviceInfo)
+	log.Debugf("Service %s cannot be exported as headless: no named addresses in its endpoints object", serviceInfo)
 	return false
 }
 
@@ -1250,20 +1254,20 @@ func shouldExportAsHeadless(ctx context.Context, service *corev1.Service, k8sAPI
 func isExportedHeadlessEndpoints(obj interface{}, log *logging.Entry) bool {
 	ep, ok := obj.(*corev1.Endpoints)
 	if !ok {
-		log.Errorf("error processing Endpoints object: got %#v, expected *corev1.Endpoints", ep)
+		log.Errorf("error processing endpoints object: got %#v, expected *corev1.Endpoints", ep)
 		return false
 	}
 
 	if _, found := ep.Labels[corev1.IsHeadlessService]; !found {
 		// Not an Endpoints object for a headless service? Then we likely don't want
 		// to update anything.
-		log.Debugf("skipped processing Endpoints object %s/%s: missing %s label", ep.Namespace, ep.Name, corev1.IsHeadlessService)
+		log.Debugf("skipped processing endpoints object %s/%s: missing %s label", ep.Namespace, ep.Name, corev1.IsHeadlessService)
 		return false
 	}
 
 	// If Endpoints belong to an unexported service, ignore.
 	if _, found := ep.Labels[consts.DefaultExportedServiceSelector]; !found {
-		log.Debugf("skipped processing Endpoints object %s/%s: missing %s label", ep.Namespace, ep.Name, consts.DefaultExportedServiceSelector)
+		log.Debugf("skipped processing endpoints object %s/%s: missing %s label", ep.Namespace, ep.Name, consts.DefaultExportedServiceSelector)
 		return false
 	}
 
