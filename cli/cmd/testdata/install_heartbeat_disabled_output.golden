@@ -1027,7 +1027,7 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
-        - mountPath: /var/run/linkerd/identity/trust-roots
+        - mountPath: /var/run/linkerd/identity/trust-roots/
           name: trust-roots
       - env:
         - name: LINKERD2_PROXY_LOG

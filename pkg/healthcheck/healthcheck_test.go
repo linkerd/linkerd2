@@ -14,6 +14,7 @@ import (
 	"github.com/golang/protobuf/ptypes/duration"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -1321,7 +1322,7 @@ spec:
     env:
     - name: %s
       value: %s
-`, i, i, k8s.ControllerNSLabel, k8s.ProxyContainerName, EnvTrustAnchors, certificate))
+`, i, i, k8s.ControllerNSLabel, k8s.ProxyContainerName, identity.EnvTrustAnchors, certificate))
 	}
 	return result
 }
@@ -1462,8 +1463,10 @@ func TestValidateControlPlanePods(t *testing.T) {
 	})
 
 	// This test is just for ensuring full coverage of the validateControlPlanePods function
-	t.Run("Returns an error if the only pod is not ready", func(t *testing.T) {
+	t.Run("Returns an error if all the controller pods are not ready", func(t *testing.T) {
 		pods := []corev1.Pod{
+			pod("linkerd-destination-9849948665-37082", corev1.PodRunning, false),
+			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, false),
 			pod("linkerd-proxy-injector-5f79ff4844-", corev1.PodRunning, false),
 		}
 

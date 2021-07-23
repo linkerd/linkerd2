@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/signal"
@@ -11,9 +12,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/identity"
+	idctl "github.com/linkerd/linkerd2/controller/identity"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
+	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -52,6 +54,11 @@ func Main(args []string) {
 
 	flags.ConfigureAndParse(cmd, args)
 
+	identityTrustAnchorPEM, err := ioutil.ReadFile(k8s.MountPathTrustRootsPEM)
+	if err != nil {
+		log.Fatalf("could not read identity trust anchors PEM: %s", err.Error())
+	}
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -70,9 +77,14 @@ func Main(args []string) {
 		issuerPathKey = filepath.Join(*issuerPath, corev1.TLSPrivateKeyKey)
 	}
 
-	dom, err := identity.NewTrustDomain(*controllerNS, *trustDomain)
+	dom, err := idctl.NewTrustDomain(*controllerNS, *trustDomain)
 	if err != nil {
 		log.Fatalf("Invalid trust domain: %s", err.Error())
+	}
+
+	trustAnchors, err := tls.DecodePEMCertPool(string(identityTrustAnchorPEM))
+	if err != nil {
+		log.Fatalf("Failed to read trust anchors: %s", err)
 	}
 
 	validity := tls.Validity{
@@ -101,19 +113,12 @@ func Main(args []string) {
 	issuerError := make(chan error)
 
 	//
-	// Create and start FS creds watchers
+	// Create and start FS creds watcher
 	//
-	issuerWatcher := tls.NewFsCredsWatcher(*issuerPath, issuerEvent, issuerError)
+	watcher := tls.NewFsCredsWatcher(*issuerPath, issuerEvent, issuerError)
 	go func() {
-		if err := issuerWatcher.StartWatching(ctx); err != nil {
-			log.Fatalf("Failed to start issuer watcher: %s", err)
-		}
-	}()
-
-	trustRootWatcher := tls.NewFsCredsWatcher(k8s.MountPathTrustRootsBase, issuerEvent, issuerError)
-	go func() {
-		if err := trustRootWatcher.StartWatching(ctx); err != nil {
-			log.Fatalf("Failed to start trust root watcher: %s", err)
+		if err := watcher.StartWatching(ctx); err != nil {
+			log.Fatalf("Failed to start creds watcher: %s", err)
 		}
 	}()
 
@@ -124,7 +129,7 @@ func Main(args []string) {
 	if err != nil {
 		log.Fatalf("Failed to load kubeconfig: %s: %s", *kubeConfigPath, err)
 	}
-	v, err := identity.NewK8sTokenValidator(ctx, k8sAPI, dom)
+	v, err := idctl.NewK8sTokenValidator(ctx, k8sAPI, dom)
 	if err != nil {
 		log.Fatalf("Failed to initialize identity service: %s", err)
 	}
@@ -151,7 +156,7 @@ func Main(args []string) {
 	//
 	// Create, initialize and run service
 	//
-	svc := identity.NewService(v, &validity, recordEventFunc, expectedName, issuerPathCrt, issuerPathKey, k8s.MountPathTrustRootsPEM)
+	svc := identity.NewService(v, trustAnchors, &validity, recordEventFunc, expectedName, issuerPathCrt, issuerPathKey)
 	if err = svc.Initialize(); err != nil {
 		log.Fatalf("Failed to initialize identity service: %s", err)
 	}
