@@ -165,7 +165,7 @@ func isInvalidServiceRequest(req *pb.StatSummaryRequest) bool {
 
 // isServiceQuery returns true if the request is for a service
 func (s *grpcServer) isServiceQuery(req *pb.StatSummaryRequest) bool {
-	return req.Selector.Resource.Type == k8s.Service || req.GetFromResource().GetType() == k8s.Service || req.GetToResource().GetType() == k8s.Service
+	return req.Selector.Resource.Type == k8s.Service || req.GetFromResource().GetType() == k8s.Service
 }
 
 // isServiceProfileQuery returns true if the request is for a service
