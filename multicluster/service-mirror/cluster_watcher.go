@@ -478,7 +478,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 	// If the service to mirror is headless (its clusterIP is 'None') then we
 	// create a headless mirror and exit early.  We leave Endpoint creation to
 	// the Endpoint informer's handler.
-	if rcsw.headlessServicesEnabled && shouldExportAsHeadless(remoteService, rcsw.remoteAPIClient, rcsw.log) {
+	if rcsw.headlessServicesEnabled && shouldExportAsHeadless(ctx, remoteService, rcsw.remoteAPIClient, rcsw.log) {
 		// Headless services are not constrained to define a port in their spec
 		// because they may be used for DNS configuration only. If a service
 		// does not have any ports in its spec, we skip processing it.
@@ -1222,13 +1222,13 @@ func (rcsw *RemoteClusterServiceWatcher) createEndpointMirrorService(ctx context
 // one named address in the associated endpoints object (an address with a
 // hostname). If a service is a valid headless service, its mirror will also be
 // headless, otherwise, the mirror will be a clusterIP service.
-func shouldExportAsHeadless(service *corev1.Service, k8sAPI *k8s.API, log *logging.Entry) bool {
+func shouldExportAsHeadless(ctx context.Context, service *corev1.Service, k8sAPI *k8s.API, log *logging.Entry) bool {
 	if service.Spec.ClusterIP != corev1.ClusterIPNone {
 		return false
 	}
 
 	serviceInfo := fmt.Sprintf("%s/%s", service.Namespace, service.Name)
-	serviceEndpoints, err := k8sAPI.Endpoint().Lister().Endpoints(service.Namespace).Get(service.Name)
+	serviceEndpoints, err := k8sAPI.Client.CoreV1().Endpoints(service.Namespace).Get(ctx, service.Name, metav1.GetOptions{})
 	if err != nil {
 		log.Errorf("Failed to check if service %s should be exported as headless: %s", serviceInfo, err)
 		return false
