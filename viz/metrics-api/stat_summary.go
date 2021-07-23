@@ -153,13 +153,6 @@ func isInvalidServiceRequest(req *pb.StatSummaryRequest) bool {
 		return req.GetFromResource().GetType() == k8s.Service
 	}
 
-	// stat svc/* --to <>
-	if req.GetSelector().GetResource().GetType() == k8s.Service {
-		if req.GetToResource() != nil {
-			return false
-		}
-	}
-
 	return false
 }
 
@@ -763,14 +756,13 @@ func (s *grpcServer) buildServiceRequestLabels(req *pb.StatSummaryRequest) (stri
 
 	switch out := req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
-		// if --to flag is passed, ToResource is always a service here
-		// thus override namespace, name
-		namespace = out.ToResource.GetNamespace()
-		name = out.ToResource.GetName()
-		labels = labels.Merge(promQueryLabels(req.GetSelector().GetResource()))
+		// if --to flag is passed, Calculate traffic sent to the service
+		// with additional filtering narrowing down to the workload
+		// it is sent to.
+		labels = labels.Merge(promDstQueryLabels(out.ToResource))
 	case *pb.StatSummaryRequest_FromResource:
 		// if --from flag is passed, FromResource is never a service here
-		labels = labels.Merge(promQueryLabels(req.GetFromResource()))
+		labels = labels.Merge(promQueryLabels(out.FromResource))
 	default:
 		// no extra labels needed
 	}
