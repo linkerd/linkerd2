@@ -16,7 +16,7 @@ type jsonStats struct {
 	Name               string   `json:"name"`
 	Success            *float64 `json:"success"`
 	Rps                *float64 `json:"rps"`
-	TcpOpenConnections *int     `json:"tcp_open_connections"`
+	TCPOpenConnections *int     `json:"tcp_open_connections"`
 }
 
 var TestHelper *testutil.TestHelper
@@ -92,7 +92,7 @@ func TestLocalhostServer(t *testing.T) {
 			if *stats[0].Success != 1.0 {
 				return fmt.Errorf("expected perfect success-rate from slowcooker to nginx: %s", out)
 			}
-			if *stats[0].TcpOpenConnections == 0 {
+			if *stats[0].TCPOpenConnections == 0 {
 				return fmt.Errorf("expected tcp connection from slowcooker to nginx: %s", out)
 			}
 
