@@ -77,6 +77,11 @@ env:
 - name: LINKERD2_PROXY_IDENTITY_DIR
   value: /var/run/linkerd/identity/end-entity
 - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
+{{- /*
+Pods in the `linkerd` namespace are not injected by the proxy injector and instead obtain
+the trust anchor bundle from the `linkerd-identity-trust-roots` configmap. This should not
+be used in other contexts.
+*/}}
 {{- if .Values.proxy.loadTrustBundleFromConfigMap }}
   valueFrom:
     configMapKeyRef:
