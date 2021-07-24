@@ -12,10 +12,11 @@ import (
 )
 
 type jsonStats struct {
-	Namespace string   `json:"namespace"`
-	Name      string   `json:"name"`
-	Success   *float64 `json:"success"`
-	Rps       *float64 `json:"rps"`
+	Namespace          string   `json:"namespace"`
+	Name               string   `json:"name"`
+	Success            *float64 `json:"success"`
+	Rps                *float64 `json:"rps"`
+	TcpOpenConnections *int     `json:"tcp_open_connections"`
 }
 
 var TestHelper *testutil.TestHelper
@@ -90,6 +91,9 @@ func TestLocalhostServer(t *testing.T) {
 			// sent to a port which is only bound to localhost should fail.
 			if *stats[0].Success != 1.0 {
 				return fmt.Errorf("expected perfect success-rate from slowcooker to nginx: %s", out)
+			}
+			if *stats[0].TcpOpenConnections == 0 {
+				return fmt.Errorf("expected tcp connection from slowcooker to nginx: %s", out)
 			}
 
 			return nil
