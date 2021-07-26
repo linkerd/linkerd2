@@ -735,7 +735,21 @@ func (s *grpcServer) getSvcMetrics(ctx context.Context, req *pb.StatSummaryReque
 	promQueries := map[promType]string{
 		promRequests: fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupBy.String()),
 	}
-	quantileQueries := generateQuantileQueries(latencyQuantileQuery, reqLabels, timeWindow, groupBy.String())
+
+	authroity := fmt.Sprintf("%s.%s.svc.%s", req.GetSelector().GetResource().GetName(), req.GetSelector().GetResource().GetNamespace(), s.clusterDomain)
+	labels := generateLabelStringWithRegex(reqLabels, "authority", authroity)
+
+	if req.TcpStats {
+		promQueries[promTCPConnections] = fmt.Sprintf(tcpConnectionsQuery, reqLabels.String(), groupBy.String())
+		// Service stats always need to have `peer=dst`, cuz there is no `src` with `authority` label
+		tcpLabels := reqLabels.Merge(promPeerLabel("dst"))
+		tcpLabelString := generateLabelStringWithRegex(tcpLabels, "authority", authroity)
+		promQueries[promTCPReadBytes] = fmt.Sprintf(tcpReadBytesQuery, tcpLabelString, timeWindow, groupBy.String())
+		promQueries[promTCPWriteBytes] = fmt.Sprintf(tcpWriteBytesQuery, tcpLabelString, timeWindow, groupBy.String())
+
+	}
+
+	quantileQueries := generateQuantileQueries(latencyQuantileQuery, labels, timeWindow, groupBy.String())
 	results, err := s.getPrometheusMetrics(ctx, promQueries, quantileQueries)
 
 	if err != nil {
@@ -746,13 +760,10 @@ func (s *grpcServer) getSvcMetrics(ctx context.Context, req *pb.StatSummaryReque
 	return basicStats, tcpStats, nil
 }
 
-func (s *grpcServer) buildServiceRequestLabels(req *pb.StatSummaryRequest) (string, model.LabelNames) {
+func (s *grpcServer) buildServiceRequestLabels(req *pb.StatSummaryRequest) (model.LabelSet, model.LabelNames) {
 	labels := model.LabelSet{
 		"direction": model.LabelValue("outbound"),
 	}
-
-	namespace := req.GetSelector().GetResource().GetNamespace()
-	name := req.GetSelector().GetResource().GetName()
 
 	switch out := req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
@@ -767,11 +778,9 @@ func (s *grpcServer) buildServiceRequestLabels(req *pb.StatSummaryRequest) (stri
 		// no extra labels needed
 	}
 
-	reqLabels := generateLabelStringWithRegex(labels, "authority", fmt.Sprintf("%s.%s.svc.%s", name, namespace, s.clusterDomain))
-
 	groupBy := model.LabelNames{model.LabelName("dst_namespace"), model.LabelName("dst_service")}
 
-	return reqLabels, groupBy
+	return labels, groupBy
 }
 
 func (s *grpcServer) getServiceProfileMetrics(ctx context.Context, req *pb.StatSummaryRequest, tsStats *trafficSplitStats, timeWindow string) (map[tsKey]*pb.BasicStats, error) {

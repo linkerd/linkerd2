@@ -476,7 +476,7 @@ func showTCPBytes(options *statOptions, resourceType string) bool {
 }
 
 func showTCPConns(resourceType string) bool {
-	return resourceType != k8s.Authority && resourceType != k8s.TrafficSplit && resourceType != k8s.Service
+	return resourceType != k8s.Authority && resourceType != k8s.TrafficSplit
 }
 
 func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType string, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxWeightLength int, options *statOptions) {
@@ -523,7 +523,7 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		"LATENCY_P99",
 	}...)
 
-	if resourceType != k8s.TrafficSplit && resourceType != k8s.Service {
+	if resourceType != k8s.TrafficSplit && !hasTsStats {
 		headers = append(headers, "TCP_CONN")
 	}
 
