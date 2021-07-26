@@ -22,6 +22,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type statOptions struct {
@@ -197,7 +198,13 @@ If no resource name is specified, displays stats about all resources of the spec
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
 			}
 
-			reqs, err := buildStatSummaryRequests(args, options)
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			if err != nil {
+				fmt.Fprint(os.Stderr, err.Error())
+				os.Exit(1)
+			}
+
+			reqs, err := buildStatSummaryRequests(cmd.Context(), k8sAPI, args, options)
 			if err != nil {
 				return fmt.Errorf("error creating metrics request while making stats request: %v", err)
 			}
@@ -309,20 +316,18 @@ type row struct {
 	meshed string
 	status string
 	*rowStats
-	*tsStats
+	*dstStats
 }
 
-type tsStats struct {
-	apex   string
-	leaf   string
+type dstStats struct {
+	dst    string
 	weight string
 }
 
 var (
 	nameHeader      = "NAME"
 	namespaceHeader = "NAMESPACE"
-	apexHeader      = "APEX"
-	leafHeader      = "LEAF"
+	dstHeader       = "DST"
 	weightHeader    = "WEIGHT"
 )
 
@@ -337,8 +342,7 @@ func isPodOwnerResource(typ string) bool {
 func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) {
 	maxNameLength := len(nameHeader)
 	maxNamespaceLength := len(namespaceHeader)
-	maxApexLength := len(apexHeader)
-	maxLeafLength := len(leafHeader)
+	maxDstLength := len(dstHeader)
 	maxWeightLength := len(weightHeader)
 
 	statTables := make(map[string]map[string]*row)
@@ -412,25 +416,19 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 			}
 		}
 		if r.TsStats != nil {
-			leaf := r.TsStats.Leaf
-			apex := r.TsStats.Apex
+			dst := r.TsStats.Leaf
 			weight := r.TsStats.Weight
 
-			if len(leaf) > maxLeafLength {
-				maxLeafLength = len(leaf)
-			}
-
-			if len(apex) > maxApexLength {
-				maxApexLength = len(apex)
+			if len(dst) > maxDstLength {
+				maxDstLength = len(dst)
 			}
 
 			if len(weight) > maxWeightLength {
 				maxWeightLength = len(weight)
 			}
 
-			statTables[resourceKey][key].tsStats = &tsStats{
-				apex:   apex,
-				leaf:   leaf,
+			statTables[resourceKey][key].dstStats = &dstStats{
+				dst:    dst,
 				weight: weight,
 			}
 		}
@@ -442,13 +440,13 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 			fmt.Fprintln(os.Stderr, "No traffic found.")
 			return
 		}
-		printStatTables(statTables, w, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxWeightLength, options)
+		printStatTables(statTables, w, maxNameLength, maxNamespaceLength, maxDstLength, maxWeightLength, options)
 	case jsonOutput:
 		printStatJSON(statTables, w)
 	}
 }
 
-func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxWeightLength int, options *statOptions) {
+func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxDstLength, maxWeightLength int, options *statOptions) {
 	usePrefix := false
 	if len(statTables) > 1 {
 		usePrefix = true
@@ -465,7 +463,7 @@ func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer,
 			if !usePrefix {
 				resourceTypeLabel = ""
 			}
-			printSingleStatTable(stats, resourceTypeLabel, resourceType, w, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxWeightLength, options)
+			printSingleStatTable(stats, resourceTypeLabel, resourceType, w, maxNameLength, maxNamespaceLength, maxDstLength, maxWeightLength, options)
 		}
 	}
 }
@@ -479,18 +477,17 @@ func showTCPConns(resourceType string) bool {
 	return resourceType != k8s.Authority && resourceType != k8s.TrafficSplit
 }
 
-func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType string, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxWeightLength int, options *statOptions) {
+func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType string, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxDstLength, maxWeightLength int, options *statOptions) {
 	headers := make([]string, 0)
 	nameTemplate := fmt.Sprintf("%%-%ds", maxNameLength)
 	namespaceTemplate := fmt.Sprintf("%%-%ds", maxNamespaceLength)
-	apexTemplate := fmt.Sprintf("%%-%ds", maxApexLength)
-	leafTemplate := fmt.Sprintf("%%-%ds", maxLeafLength)
+	dstTemplate := fmt.Sprintf("%%-%ds", maxDstLength)
 	weightTemplate := fmt.Sprintf("%%-%ds", maxWeightLength)
 
-	hasTsStats := false
+	hasDstStats := false
 	for _, r := range stats {
-		if r.tsStats != nil {
-			hasTsStats = true
+		if r.dstStats != nil {
+			hasDstStats = true
 		}
 	}
 
@@ -506,10 +503,9 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		headers = append(headers, "STATUS")
 	}
 
-	if hasTsStats {
+	if hasDstStats {
 		headers = append(headers,
-			fmt.Sprintf(apexTemplate, apexHeader),
-			fmt.Sprintf(leafTemplate, leafHeader),
+			fmt.Sprintf(dstTemplate, dstHeader),
 			fmt.Sprintf(weightTemplate, weightHeader))
 	} else {
 		headers = append(headers, "MESHED")
@@ -523,7 +519,7 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		"LATENCY_P99",
 	}...)
 
-	if resourceType != k8s.TrafficSplit && !hasTsStats {
+	if resourceType != k8s.TrafficSplit && !hasDstStats {
 		headers = append(headers, "TCP_CONN")
 	}
 
@@ -549,9 +545,9 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			templateStringEmpty = "%s\t" + templateStringEmpty
 		}
 
-		if hasTsStats {
-			templateString = "%s\t%s\t%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
-			templateStringEmpty = "%s\t%s\t%s\t%s\t-\t-\t-\t-\t-\t"
+		if hasDstStats {
+			templateString = "%s\t%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
+			templateStringEmpty = "%s\t%s\t%s\t-\t-\t-\t-\t-\t"
 		}
 
 		if !showTCPConns(resourceType) {
@@ -583,15 +579,11 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			padding = maxNameLength - len(name)
 		}
 
-		apexPadding := 0
-		leafPadding := 0
+		dstPadding := 0
 
-		if stats[key].tsStats != nil {
-			if maxApexLength > len(stats[key].tsStats.apex) {
-				apexPadding = maxApexLength - len(stats[key].tsStats.apex)
-			}
-			if maxLeafLength > len(stats[key].tsStats.leaf) {
-				leafPadding = maxLeafLength - len(stats[key].tsStats.leaf)
+		if stats[key].dstStats != nil {
+			if maxDstLength > len(stats[key].dstStats.dst) {
+				dstPadding = maxDstLength - len(stats[key].dstStats.dst)
 			}
 		}
 
@@ -600,11 +592,10 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			values = append(values, stats[key].status)
 		}
 
-		if hasTsStats {
+		if hasDstStats {
 			values = append(values,
-				stats[key].tsStats.apex+strings.Repeat(" ", apexPadding),
-				stats[key].tsStats.leaf+strings.Repeat(" ", leafPadding),
-				stats[key].tsStats.weight,
+				stats[key].dstStats.dst+strings.Repeat(" ", dstPadding),
+				stats[key].dstStats.weight,
 			)
 		} else {
 			values = append(values, []interface{}{
@@ -661,8 +652,7 @@ type jsonStats struct {
 	TCPConnections *uint64  `json:"tcp_open_connections,omitempty"`
 	TCPReadBytes   *float64 `json:"tcp_read_bytes_rate,omitempty"`
 	TCPWriteBytes  *float64 `json:"tcp_write_bytes_rate,omitempty"`
-	Apex           string   `json:"apex,omitempty"`
-	Leaf           string   `json:"leaf,omitempty"`
+	Dst            string   `json:"dst,omitempty"`
 	Weight         string   `json:"weight,omitempty"`
 }
 
@@ -696,9 +686,8 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 					}
 				}
 
-				if stats[key].tsStats != nil {
-					entry.Apex = stats[key].apex
-					entry.Leaf = stats[key].leaf
+				if stats[key].dstStats != nil {
+					entry.Dst = stats[key].dstStats.dst
 					entry.Weight = stats[key].weight
 				}
 				entries = append(entries, entry)
@@ -722,10 +711,22 @@ func getNamePrefix(resourceType string) string {
 	return canonicalType + "/"
 }
 
-func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.StatSummaryRequest, error) {
+func buildStatSummaryRequests(ctx context.Context, k8sAPI *k8s.KubernetesAPI, resources []string, options *statOptions) ([]*pb.StatSummaryRequest, error) {
 	targets, err := pkgUtil.BuildResources(options.namespace, resources)
 	if err != nil {
 		return nil, err
+	}
+
+	// Convert traffic split queries into service queries.
+	for i, target := range targets {
+		if target.GetType() == k8s.TrafficSplit {
+			ts, err := k8sAPI.TsClient.SplitV1alpha1().TrafficSplits(target.GetNamespace()).Get(ctx, target.GetName(), metav1.GetOptions{})
+			if err != nil {
+				return nil, err
+			}
+			targets[i].Name = ts.Spec.Service
+			targets[i].Type = k8s.Service
+		}
 	}
 
 	var toRes, fromRes *pb.Resource

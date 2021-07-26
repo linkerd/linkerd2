@@ -264,7 +264,6 @@ type edgeRow struct {
 
 const (
 	srcHeader          = "SRC"
-	dstHeader          = "DST"
 	srcNamespaceHeader = "SRC_NS"
 	dstNamespaceHeader = "DST_NS"
 	clientHeader       = "CLIENT_ID"

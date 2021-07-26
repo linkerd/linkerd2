@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"testing"
 
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
@@ -127,7 +128,7 @@ func TestStat(t *testing.T) {
 		args := []string{"po", "web"}
 		expectedError := "stats for a resource cannot be retrieved by name across all namespaces"
 
-		_, err := buildStatSummaryRequests(args, options)
+		_, err := buildStatSummaryRequests(context.Background(), nil, args, options)
 		if err == nil || err.Error() != expectedError {
 			t.Fatalf("Expected error [%s] instead got [%s]", expectedError, err)
 		}
@@ -143,7 +144,7 @@ func TestStat(t *testing.T) {
 		args := []string{"ns", "test"}
 		expectedError := "--to and --from flags are mutually exclusive"
 
-		_, err := buildStatSummaryRequests(args, options)
+		_, err := buildStatSummaryRequests(context.Background(), nil, args, options)
 		if err == nil || err.Error() != expectedError {
 			t.Fatalf("Expected error [%s] instead got [%s]", expectedError, err)
 		}
@@ -159,7 +160,7 @@ func TestStat(t *testing.T) {
 		args := []string{"po"}
 		expectedError := "--to-namespace and --from-namespace flags are mutually exclusive"
 
-		_, err := buildStatSummaryRequests(args, options)
+		_, err := buildStatSummaryRequests(context.Background(), nil, args, options)
 		if err == nil || err.Error() != expectedError {
 			t.Fatalf("Expected error [%s] instead got [%s]", expectedError, err)
 		}
@@ -175,7 +176,7 @@ func TestStat(t *testing.T) {
 		args := []string{"po"}
 		expectedError := "--all-namespaces and --namespace flags are mutually exclusive"
 
-		_, err := buildStatSummaryRequests(args, options)
+		_, err := buildStatSummaryRequests(context.Background(), nil, args, options)
 		if err == nil || err.Error() != expectedError {
 			t.Fatalf("Expected error [%s] instead got [%s]", expectedError, err)
 		}
@@ -190,7 +191,7 @@ func TestStat(t *testing.T) {
 		args := []string{"ns", "foo"}
 		expectedError := "--to-namespace flag is incompatible with namespace resource type"
 
-		_, err := buildStatSummaryRequests(args, options)
+		_, err := buildStatSummaryRequests(context.Background(), nil, args, options)
 		if err == nil || err.Error() != expectedError {
 			t.Fatalf("Expected error [%s] instead got [%s]", expectedError, err)
 		}
@@ -205,7 +206,7 @@ func TestStat(t *testing.T) {
 		args := []string{"ns/bar"}
 		expectedError := "--from-namespace flag is incompatible with namespace resource type"
 
-		_, err := buildStatSummaryRequests(args, options)
+		_, err := buildStatSummaryRequests(context.Background(), nil, args, options)
 		if err == nil || err.Error() != expectedError {
 			t.Fatalf("Expected error [%s] instead got [%s]", expectedError, err)
 		}
@@ -220,7 +221,7 @@ func TestStat(t *testing.T) {
 		args := []string{"ns/bar"}
 		expectedError := "metrics time window needs to be at least 15s"
 
-		_, err := buildStatSummaryRequests(args, options)
+		_, err := buildStatSummaryRequests(context.Background(), nil, args, options)
 		if err == nil || err.Error() != expectedError {
 			t.Fatalf("Expected error [%s] instead got [%s]", expectedError, err)
 		}
@@ -243,7 +244,7 @@ func testStatCall(exp paramsExp, resourceType string, t *testing.T) {
 	if exp.options.namespace == "" {
 		exp.options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
 	}
-	reqs, err := buildStatSummaryRequests(args, exp.options)
+	reqs, err := buildStatSummaryRequests(context.Background(), nil, args, exp.options)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
