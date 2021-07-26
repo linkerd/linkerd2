@@ -269,9 +269,6 @@ rules:
 - apiGroups: ["admissionregistration.k8s.io"]
   resources: ["mutatingwebhookconfigurations", "validatingwebhookconfigurations"]
   verbs: ["list"]
-- apiGroups: ["policy"]
-  resources: ["podsecuritypolicies"]
-  verbs: ["list"]
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list"]
@@ -351,49 +348,7 @@ metadata:
     linkerd.io/extension: viz
     component: web
     namespace: linkerd-viz
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: psp
-  namespace: linkerd-viz
-  labels:
-    linkerd.io/extension: viz
-rules:
-- apiGroups: ['policy', 'extensions']
-  resources: ['podsecuritypolicies']
-  verbs: ['use']
-  resourceNames:
-  - linkerd-linkerd-control-plane
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: viz-psp
-  namespace: linkerd-viz
-  labels:
-    linkerd.io/extension: viz
-    namespace: linkerd-viz
-roleRef:
-  kind: Role
-  name: psp
-  apiGroup: rbac.authorization.k8s.io
-subjects:
-- kind: ServiceAccount
-  name: tap
-  namespace: linkerd-viz
-- kind: ServiceAccount
-  name: web
-  namespace: linkerd-viz
-- kind: ServiceAccount
-  name: grafana
-  namespace: linkerd-viz
-- kind: ServiceAccount
-  name: metrics-api
-  namespace: linkerd-viz
-- kind: ServiceAccount
-  name: tap-injector
-  namespace: linkerd-viz
+
 ---
 ###
 ### Metrics API

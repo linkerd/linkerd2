@@ -1,3 +1,4 @@
+{{ if .Values.enablePSP -}}
 ---
 ###
 ### Control Plane PSP
@@ -100,3 +101,4 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-sp-validator
   namespace: {{.Values.namespace}}
+{{- end }}

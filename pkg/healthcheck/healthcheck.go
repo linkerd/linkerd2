@@ -63,13 +63,6 @@ const (
 	// checks must be added first.
 	LinkerdPreInstallChecks CategoryID = "pre-kubernetes-setup"
 
-	// LinkerdPreInstallCapabilityChecks adds a check to validate the user has the
-	// capabilities necessary to deploy Linkerd. For example, the NET_ADMIN and
-	// NET_RAW capabilities are required by the `linkerd-init` container to modify
-	// IP tables. These checks are not run when the `--linkerd-cni-enabled` flag
-	// is set.
-	LinkerdPreInstallCapabilityChecks CategoryID = "pre-kubernetes-capability"
-
 	// LinkerdPreInstallGlobalResourcesChecks adds a series of checks to determine
 	// the existence of the global resources like cluster roles, cluster role
 	// bindings, mutating webhook configuration validating webhook configuration
@@ -632,28 +625,6 @@ func (hc *HealthChecker) allCategories() []*Category {
 			false,
 		),
 		NewCategory(
-			LinkerdPreInstallCapabilityChecks,
-			[]Checker{
-				{
-					description: "has NET_ADMIN capability",
-					hintAnchor:  "pre-k8s-cluster-net-admin",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						return hc.checkCapability(ctx, "NET_ADMIN")
-					},
-				},
-				{
-					description: "has NET_RAW capability",
-					hintAnchor:  "pre-k8s-cluster-net-raw",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						return hc.checkCapability(ctx, "NET_RAW")
-					},
-				},
-			},
-			false,
-		),
-		NewCategory(
 			LinkerdPreInstallGlobalResourcesChecks,
 			[]Checker{
 				{
@@ -689,13 +660,6 @@ func (hc *HealthChecker) allCategories() []*Category {
 					hintAnchor:  "pre-l5d-existence",
 					check: func(ctx context.Context) error {
 						return hc.checkValidatingWebhookConfigurations(ctx, false)
-					},
-				},
-				{
-					description: "no PodSecurityPolicies exist",
-					hintAnchor:  "pre-l5d-existence",
-					check: func(ctx context.Context) error {
-						return hc.checkPodSecurityPolicies(ctx, false)
 					},
 				},
 			},
@@ -843,14 +807,6 @@ func (hc *HealthChecker) allCategories() []*Category {
 						return hc.checkValidatingWebhookConfigurations(ctx, true)
 					},
 				},
-				{
-					description: "control plane PodSecurityPolicies exist",
-					hintAnchor:  "l5d-existence-psp",
-					fatal:       true,
-					check: func(ctx context.Context) error {
-						return hc.checkPodSecurityPolicies(ctx, true)
-					},
-				},
 			},
 			false,
 		),
@@ -866,22 +822,6 @@ func (hc *HealthChecker) allCategories() []*Category {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
 						_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.CNINamespace).Get(ctx, linkerdCNIConfigMapName, metav1.GetOptions{})
-						return err
-					},
-				},
-				{
-					description: "cni plugin PodSecurityPolicy exists",
-					hintAnchor:  "cni-plugin-psp-exists",
-					fatal:       true,
-					check: func(ctx context.Context) error {
-						if !hc.CNIEnabled {
-							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
-						}
-						pspName := fmt.Sprintf("linkerd-%s-cni", hc.CNINamespace)
-						_, err := hc.kubeAPI.PolicyV1beta1().PodSecurityPolicies().Get(ctx, pspName, metav1.GetOptions{})
-						if kerrors.IsNotFound(err) {
-							return fmt.Errorf("missing PodSecurityPolicy: %s", pspName)
-						}
 						return err
 					},
 				},
@@ -911,36 +851,6 @@ func (hc *HealthChecker) allCategories() []*Category {
 						_, err := hc.kubeAPI.RbacV1().ClusterRoleBindings().Get(ctx, linkerdCNIResourceName, metav1.GetOptions{})
 						if kerrors.IsNotFound(err) {
 							return fmt.Errorf("missing ClusterRoleBinding: %s", linkerdCNIResourceName)
-						}
-						return err
-					},
-				},
-				{
-					description: "cni plugin Role exists",
-					hintAnchor:  "cni-plugin-r-exists",
-					fatal:       true,
-					check: func(ctx context.Context) error {
-						if !hc.CNIEnabled {
-							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
-						}
-						_, err := hc.kubeAPI.RbacV1().Roles(hc.CNINamespace).Get(ctx, linkerdCNIResourceName, metav1.GetOptions{})
-						if kerrors.IsNotFound(err) {
-							return fmt.Errorf("missing Role: %s", linkerdCNIResourceName)
-						}
-						return err
-					},
-				},
-				{
-					description: "cni plugin RoleBinding exists",
-					hintAnchor:  "cni-plugin-rb-exists",
-					fatal:       true,
-					check: func(ctx context.Context) error {
-						if !hc.CNIEnabled {
-							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
-						}
-						_, err := hc.kubeAPI.RbacV1().RoleBindings(hc.CNINamespace).Get(ctx, linkerdCNIResourceName, metav1.GetOptions{})
-						if kerrors.IsNotFound(err) {
-							return fmt.Errorf("missing RoleBinding: %s", linkerdCNIResourceName)
 						}
 						return err
 					},
@@ -2137,23 +2047,6 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Contex
 	return checkResources("ValidatingWebhookConfigurations", objects, []string{k8s.SPValidatorWebhookConfigName}, shouldExist)
 }
 
-func (hc *HealthChecker) checkPodSecurityPolicies(ctx context.Context, shouldExist bool) error {
-	options := metav1.ListOptions{
-		LabelSelector: hc.controlPlaneComponentsSelector(),
-	}
-	psp, err := hc.kubeAPI.PolicyV1beta1().PodSecurityPolicies().List(ctx, options)
-	if err != nil {
-		return err
-	}
-
-	objects := []runtime.Object{}
-	for _, item := range psp.Items {
-		item := item // pin
-		objects = append(objects, &item)
-	}
-	return checkResources("PodSecurityPolicies", objects, []string{fmt.Sprintf("linkerd-%s-control-plane", hc.ControlPlaneNamespace)}, shouldExist)
-}
-
 // MeshedPodIdentityData contains meshed pod details + trust anchors of the proxy
 type MeshedPodIdentityData struct {
 	Name      string
@@ -2447,48 +2340,6 @@ func (hc *HealthChecker) checkCanGet(ctx context.Context, namespace, group, vers
 	return CheckCanPerformAction(ctx, hc.kubeAPI, "get", namespace, group, version, resource)
 }
 
-func (hc *HealthChecker) checkCapability(ctx context.Context, cap string) error {
-	if hc.kubeAPI == nil {
-		// we should never get here
-		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
-	}
-
-	pspList, err := hc.kubeAPI.PolicyV1beta1().PodSecurityPolicies().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-
-	if len(pspList.Items) == 0 {
-		// no PodSecurityPolicies found, assume PodSecurityPolicy admission controller is disabled
-		return nil
-	}
-
-	// if PodSecurityPolicies are found, validate one exists that:
-	// 1) permits usage
-	// AND
-	// 2) provides the specified capability
-	for _, psp := range pspList.Items {
-		err := k8s.ResourceAuthz(
-			ctx,
-			hc.kubeAPI,
-			"",
-			"use",
-			"policy",
-			"v1beta1",
-			"podsecuritypolicies",
-			psp.GetName(),
-		)
-		if err == nil {
-			for _, capability := range psp.Spec.AllowedCapabilities {
-				if capability == "*" || string(capability) == cap {
-					return nil
-				}
-			}
-		}
-	}
-
-	return fmt.Errorf("found %d PodSecurityPolicies, but none provide %s, proxy injection will fail if the PSP admission controller is running", len(pspList.Items), cap)
-}
 func (hc *HealthChecker) checkExtensionAPIServerAuthentication(ctx context.Context) error {
 	if hc.kubeAPI == nil {
 		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")

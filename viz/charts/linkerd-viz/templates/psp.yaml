@@ -1,3 +1,4 @@
+{{ if .Values.enablePSP -}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -48,3 +49,4 @@ subjects:
 - kind: ServiceAccount
   name: tap-injector
   namespace: {{.Values.namespace}}
+{{- end }}
