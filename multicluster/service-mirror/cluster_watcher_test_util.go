@@ -100,6 +100,7 @@ var createExportedService = &testEnvironment{
 	},
 	remoteResources: []string{
 		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "mc-gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod),
+		endpointsAsYaml("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{}),
 	},
 	link: multicluster.Link{
 		TargetClusterName:   clusterName,
