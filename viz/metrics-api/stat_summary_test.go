@@ -1410,9 +1410,7 @@ status:
 														Type:      pkgK8s.Service,
 														Name:      "emoji-svc",
 													},
-													TimeWindow:      "1m",
-													MeshedPodCount:  1,
-													RunningPodCount: 1,
+													TimeWindow: "1m",
 												},
 											},
 										},
@@ -1514,29 +1512,6 @@ status:
 				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
-							Type: pkgK8s.Service,
-						},
-					},
-				},
-			},
-			{
-				req: &pb.StatSummaryRequest{
-					Selector: &pb.ResourceSelection{
-						Resource: &pb.Resource{
-							Type: pkgK8s.Service,
-						},
-					},
-					Outbound: &pb.StatSummaryRequest_ToResource{
-						ToResource: &pb.Resource{
-							Type: pkgK8s.Pod,
-						},
-					},
-				},
-			},
-			{
-				req: &pb.StatSummaryRequest{
-					Selector: &pb.ResourceSelection{
-						Resource: &pb.Resource{
 							Type: pkgK8s.Pod,
 						},
 					},
@@ -1568,6 +1543,29 @@ status:
 					Outbound: &pb.StatSummaryRequest_ToResource{
 						ToResource: &pb.Resource{
 							Type: pkgK8s.Service,
+						},
+					},
+				},
+			},
+			{
+				req: &pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Type: pkgK8s.Service,
+						},
+					},
+				},
+			},
+			{
+				req: &pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Type: pkgK8s.Service,
+						},
+					},
+					Outbound: &pb.StatSummaryRequest_ToResource{
+						ToResource: &pb.Resource{
+							Type: pkgK8s.Pod,
 						},
 					},
 				},
