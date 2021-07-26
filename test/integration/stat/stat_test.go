@@ -146,7 +146,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			{
 				args: []string{"viz", "stat", "svc", "prometheus", "-n", TestHelper.GetVizNamespace(), "--from", "deploy/metrics-api", "--from-namespace", TestHelper.GetVizNamespace()},
 				expectedRows: map[string]string{
-					"prometheus": "1/1",
+					"prometheus": "-",
 				},
 			},
 		}...,
