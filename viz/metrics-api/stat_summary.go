@@ -736,14 +736,14 @@ func (s *grpcServer) getSvcMetrics(ctx context.Context, req *pb.StatSummaryReque
 		promRequests: fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupBy.String()),
 	}
 
-	authroity := fmt.Sprintf("%s.%s.svc.%s", req.GetSelector().GetResource().GetName(), req.GetSelector().GetResource().GetNamespace(), s.clusterDomain)
-	labels := generateLabelStringWithRegex(reqLabels, "authority", authroity)
+	authority := fmt.Sprintf("%s.%s.svc.%s", req.GetSelector().GetResource().GetName(), req.GetSelector().GetResource().GetNamespace(), s.clusterDomain)
+	labels := generateLabelStringWithRegex(reqLabels, string(authorityLabel), authority)
 
 	if req.TcpStats {
 		promQueries[promTCPConnections] = fmt.Sprintf(tcpConnectionsQuery, reqLabels.String(), groupBy.String())
 		// Service stats always need to have `peer=dst`, cuz there is no `src` with `authority` label
 		tcpLabels := reqLabels.Merge(promPeerLabel("dst"))
-		tcpLabelString := generateLabelStringWithRegex(tcpLabels, "authority", authroity)
+		tcpLabelString := generateLabelStringWithRegex(tcpLabels, string(authorityLabel), authority)
 		promQueries[promTCPReadBytes] = fmt.Sprintf(tcpReadBytesQuery, tcpLabelString, timeWindow, groupBy.String())
 		promQueries[promTCPWriteBytes] = fmt.Sprintf(tcpWriteBytesQuery, tcpLabelString, timeWindow, groupBy.String())
 
@@ -791,7 +791,7 @@ func (s *grpcServer) getServiceProfileMetrics(ctx context.Context, req *pb.StatS
 	namespace := tsStats.namespace
 	stringToMatch := apex
 
-	reqLabels := generateLabelStringWithRegex(labels, "authority", stringToMatch)
+	reqLabels := generateLabelStringWithRegex(labels, string(authorityLabel), stringToMatch)
 
 	promQueries := map[promType]string{
 		promRequests: fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupBy.String()),
@@ -827,7 +827,7 @@ func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSum
 	// TODO: add cluster domain to stringToMatch
 	stringToMatch := fmt.Sprintf("%s.%s.svc", apex, namespace)
 
-	reqLabels := generateLabelStringWithRegex(labels, "authority", stringToMatch)
+	reqLabels := generateLabelStringWithRegex(labels, string(authorityLabel), stringToMatch)
 
 	promQueries := map[promType]string{
 		promRequests: fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupBy.String()),
