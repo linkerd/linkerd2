@@ -8,6 +8,7 @@
 - [Apester](https://apester.com)
 - [AppddictionStudio](https://appddicitonstudio.com)
 - [Attest](https://www.askattest.com)
+- [Bede Gaming](https://bedegaming.com)
 - [Bink](https://bink.com)
 - [Boomin](https://www.boomin.com)
 - [Buoyant](https://buoyant.io)
