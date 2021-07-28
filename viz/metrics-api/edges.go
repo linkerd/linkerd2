@@ -42,7 +42,7 @@ func (s *grpcServer) Edges(ctx context.Context, req *pb.EdgesRequest) (*pb.Edges
 	dstResourceType := "dst_" + resourceType
 	labelsOutbound := promDirectionLabels("outbound")
 	labelsOutboundStr := generateLabelStringWithExclusion(labelsOutbound, string(resourceType), string(dstResourceType))
-	query := fmt.Sprintf(edgesQuery, "tcp_open_total", labelsOutboundStr, resourceType, resourceType)
+	query := fmt.Sprintf(edgesQuery, "tcp_open_connections", labelsOutboundStr, resourceType, resourceType)
 
 	promResult, err := s.queryProm(ctx, query)
 	if err != nil {
@@ -52,6 +52,9 @@ func (s *grpcServer) Edges(ctx context.Context, req *pb.EdgesRequest) (*pb.Edges
 	edgeMap := make(map[edgeKey]*pb.Edge)
 
 	for _, sample := range promResult {
+		if sample.Value == 0.0 {
+			continue
+		}
 		key := edgeKey{
 			src:   string(sample.Metric[resourceType]),
 			srcNs: string(sample.Metric[model.LabelName("namespace")]),
