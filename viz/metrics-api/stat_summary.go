@@ -8,13 +8,13 @@ import (
 	"strings"
 
 	proto "github.com/golang/protobuf/proto"
-	"github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	vizutil "github.com/linkerd/linkerd2/viz/pkg/util"
 	"github.com/prometheus/common/model"
-	"github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha1"
+	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -36,12 +36,10 @@ type rKey struct {
 	Name      string
 }
 
-type tsKey struct {
+type dstKey struct {
 	Namespace string
-	Type      string
-	Name      string
-	Apex      string
-	Leaf      string
+	Service   string
+	Dst       string
 	Weight    string
 }
 
@@ -62,17 +60,6 @@ type podStats struct {
 	total  uint64
 	failed uint64
 	errors map[string]*pb.PodErrors
-}
-
-type svcStats struct {
-	namespace string
-	name      string
-}
-
-type trafficSplitStats struct {
-	namespace string
-	name      string
-	apex      string
 }
 
 func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
@@ -117,9 +104,7 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		go func() {
 			if isNonK8sResourceQuery(statReq.GetSelector().GetResource().GetType()) {
 				resultChan <- s.nonK8sResourceQuery(ctx, statReq)
-			} else if isTrafficSplitQuery(statReq.GetSelector().GetResource().GetType()) {
-				resultChan <- s.trafficSplitResourceQuery(ctx, statReq)
-			} else if s.isServiceQuery(statReq) {
+			} else if statReq.GetSelector().GetResource().GetType() == k8s.Service || statReq.GetSelector().GetResource().GetType() == k8s.TrafficSplit {
 				resultChan <- s.serviceResourceQuery(ctx, statReq)
 			} else {
 				resultChan <- s.k8sResourceQuery(ctx, statReq)
@@ -143,6 +128,8 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		},
 	}
 
+	fmt.Printf("Response is %+v\n", statTables)
+
 	return &rsp, nil
 }
 
@@ -154,67 +141,6 @@ func isInvalidServiceRequest(req *pb.StatSummaryRequest) bool {
 	}
 
 	return false
-}
-
-// isServiceQuery returns true if the request is for a service
-func (s *grpcServer) isServiceQuery(req *pb.StatSummaryRequest) bool {
-	return req.Selector.Resource.Type == k8s.Service || req.GetFromResource().GetType() == k8s.Service
-}
-
-// isServiceProfileQuery returns true if the request is for a service
-// with non-empty ServiceProfile.dstOverrides
-func (s *grpcServer) isServiceProfileQuery(req *pb.StatSummaryRequest) bool {
-	// check if the request is for a service
-	if req.Selector.Resource.Type != k8s.Service {
-		return false
-	}
-
-	// check if a relevant ServiceProfile with non-empty dstOverrides exist
-	svc, err := s.k8sAPI.GetServices(req.Selector.GetResource().Namespace, req.Selector.GetResource().Name)
-	if err != nil {
-		return false
-	}
-
-	if len(svc) != 0 {
-		sp := s.k8sAPI.GetServiceProfileFor(svc[0], "", s.clusterDomain)
-		return sp.Spec.DstOverrides != nil
-	}
-
-	return false
-}
-
-func (s *grpcServer) getServiceProfiles(req *pb.StatSummaryRequest) ([]*v1alpha2.ServiceProfile, error) {
-	var err error
-	var serviceProfiles []*v1alpha2.ServiceProfile
-
-	res := req.GetSelector().GetResource()
-	labelSelector, err := getLabelSelector(req)
-	if err != nil {
-		return nil, err
-	}
-
-	if res.GetNamespace() == "" {
-		serviceProfiles, err = s.k8sAPI.SP().Lister().List(labelSelector)
-	} else if res.GetName() == "" {
-		serviceProfiles, err = s.k8sAPI.SP().Lister().ServiceProfiles(res.GetNamespace()).List(labelSelector)
-	} else {
-		var sp *v1alpha2.ServiceProfile
-		spName := fmt.Sprintf("%s.%s.svc.%s", res.GetName(), res.GetNamespace(), s.clusterDomain)
-		fmt.Sprintln("searching for", spName)
-		sp, err = s.k8sAPI.SP().Lister().ServiceProfiles(res.GetNamespace()).Get(spName)
-		if err != nil {
-			return nil, fmt.Errorf("No ServiceProfile found for svc %s/%s", res.GetNamespace(), res.GetName())
-		}
-		serviceProfiles = []*v1alpha2.ServiceProfile{sp}
-	}
-
-	for _, sp := range serviceProfiles {
-		if len(sp.Spec.DstOverrides) == 0 {
-			return nil, fmt.Errorf("serviceProfile/%s has no dstOverrides", sp.Name)
-		}
-	}
-
-	return serviceProfiles, err
 }
 
 func statSummaryError(req *pb.StatSummaryRequest, message string) *pb.StatSummaryResponse {
@@ -336,212 +262,62 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 	return resourceResult{res: &rsp, err: nil}
 }
 
-func (s *grpcServer) getTrafficSplits(req *pb.StatSummaryRequest) ([]*v1alpha1.TrafficSplit, error) {
-	var err error
-	var trafficSplits []*v1alpha1.TrafficSplit
-
-	res := req.GetSelector().GetResource()
-	labelSelector, err := getLabelSelector(req)
-	if err != nil {
-		return nil, err
-	}
-
-	if res.GetNamespace() == "" {
-		trafficSplits, err = s.k8sAPI.TS().Lister().List(labelSelector)
-	} else if res.GetName() == "" {
-		trafficSplits, err = s.k8sAPI.TS().Lister().TrafficSplits(res.GetNamespace()).List(labelSelector)
-	} else {
-		var ts *v1alpha1.TrafficSplit
-		ts, err = s.k8sAPI.TS().Lister().TrafficSplits(res.GetNamespace()).Get(res.GetName())
-		trafficSplits = []*v1alpha1.TrafficSplit{ts}
-	}
-
-	return trafficSplits, err
-}
-
-func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
-	tss, err := s.getTrafficSplits(req)
-
-	if err != nil {
-		return resourceResult{res: nil, err: err}
-	}
-
-	tsBasicStats := make(map[tsKey]*pb.BasicStats)
-	rows := make([]*pb.StatTable_PodGroup_Row, 0)
-
-	for _, ts := range tss {
-		backends := ts.Spec.Backends
-
-		tsStats := &trafficSplitStats{
-			namespace: ts.ObjectMeta.Namespace,
-			name:      ts.ObjectMeta.Name,
-			apex:      ts.Spec.Service,
-		}
-
-		if !req.SkipStats {
-			tsBasicStats, err = s.getTrafficSplitMetrics(ctx, req, tsStats, req.TimeWindow)
-			if err != nil {
-				return resourceResult{res: nil, err: err}
-			}
-		}
-
-		for _, backend := range backends {
-			name := backend.Service
-			weight := backend.Weight.String()
-
-			currentLeaf := tsKey{
-				Namespace: tsStats.namespace,
-				Type:      k8s.TrafficSplit,
-				Name:      tsStats.name,
-				Apex:      tsStats.apex,
-				Leaf:      name,
-			}
-
-			trafficSplitStats := &pb.TrafficSplitStats{
-				Apex:   tsStats.apex,
-				Leaf:   name,
-				Weight: weight,
-			}
-
-			row := pb.StatTable_PodGroup_Row{
-				Resource: &pb.Resource{
-					Name:      tsStats.name,
-					Namespace: tsStats.namespace,
-					Type:      req.GetSelector().GetResource().GetType(),
-				},
-				TimeWindow: req.TimeWindow,
-				Stats:      tsBasicStats[currentLeaf],
-				TsStats:    trafficSplitStats,
-			}
-			rows = append(rows, &row)
-		}
-	}
-
-	// sort rows before returning in order to have a consistent order for tests
-	rows = sortTrafficSplitRows(rows)
-
-	rsp := pb.StatTable{
-		Table: &pb.StatTable_PodGroup_{
-			PodGroup: &pb.StatTable_PodGroup{
-				Rows: rows,
-			},
-		},
-	}
-
-	return resourceResult{res: &rsp, err: nil}
-}
-
 func (s *grpcServer) serviceResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
 
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
+	dstBasicStats := make(map[dstKey]*pb.BasicStats)
+	dstTCPStats := make(map[dstKey]*pb.TcpStats)
 
-	// check if the service has an ServiceProfile with dstOverrides
-	if s.isServiceProfileQuery(req) {
-		sps, err := s.getServiceProfiles(req)
+	if !req.SkipStats {
+		var err error
+		dstBasicStats, dstTCPStats, err = s.getServiceMetrics(ctx, req, req.TimeWindow)
 		if err != nil {
 			return resourceResult{res: nil, err: err}
 		}
-
-		tsBasicStats := make(map[tsKey]*pb.BasicStats)
-
-		for _, sp := range sps {
-			weightedDsts := sp.Spec.DstOverrides
-			tsStats := &trafficSplitStats{
-				namespace: sp.Namespace,
-				name:      sp.Name,
-				apex:      sp.Name,
-			}
-
-			if !req.SkipStats {
-				tsBasicStats, err = s.getServiceProfileMetrics(ctx, req, tsStats, req.TimeWindow)
-				if err != nil {
-					return resourceResult{res: nil, err: err}
-				}
-			}
-
-			for _, weightedDst := range weightedDsts {
-				name := strings.Split(weightedDst.Authority, ".")[0]
-				weight := weightedDst.Weight.String()
-
-				currentLeaf := tsKey{
-					Namespace: tsStats.namespace,
-					Type:      req.GetSelector().GetResource().GetType(),
-					Name:      tsStats.name,
-					Apex:      tsStats.apex,
-					Leaf:      name,
-				}
-
-				trafficSplitStats := &pb.TrafficSplitStats{
-					Apex:   tsStats.apex,
-					Leaf:   name,
-					Weight: weight,
-				}
-
-				row := pb.StatTable_PodGroup_Row{
-					Resource: &pb.Resource{
-						Name:      tsStats.name,
-						Namespace: tsStats.namespace,
-						Type:      req.GetSelector().GetResource().GetType(),
-					},
-					TimeWindow: req.TimeWindow,
-					Stats:      tsBasicStats[currentLeaf],
-					TsStats:    trafficSplitStats,
-				}
-				rows = append(rows, &row)
-			}
-		}
-
-		// sort rows before returning in order to have a consistent order for tests
-		rows = sortTrafficSplitRows(rows)
-
-		rsp := pb.StatTable{
-			Table: &pb.StatTable_PodGroup_{
-				PodGroup: &pb.StatTable_PodGroup{
-					Rows: rows,
-				},
-			},
-		}
-
-		return resourceResult{res: &rsp, err: nil}
 	}
 
-	svcs, err := s.k8sAPI.GetServices(req.Selector.GetResource().Namespace, req.Selector.GetResource().Name)
-	if err != nil {
-		return resourceResult{res: nil, err: err}
+	weights := make(map[dstKey]string)
+	for k := range dstBasicStats {
+		weights[k] = ""
 	}
 
-	svcBasicStats := make(map[rKey]*pb.BasicStats)
-	svcTCPStats := make(map[rKey]*pb.TcpStats)
+	name := req.GetSelector().GetResource().GetName()
+	namespace := req.GetSelector().GetResource().GetNamespace()
 
-	for _, svc := range svcs {
-		serviceStats := &svcStats{
-			namespace: svc.Namespace,
-			name:      svc.Name,
+	// Check if a ServiceProfile exists for the Service
+	spName := fmt.Sprintf("%s.%s.svc.%s", name, namespace, s.clusterDomain)
+	sp, err := s.k8sAPI.SP().Lister().ServiceProfiles(namespace).Get(spName)
+	if err == nil {
+		for _, weightedDst := range sp.Spec.DstOverrides {
+			weights[dstKey{
+				Namespace: namespace,
+				Service:   name,
+				Dst:       dstFromAuthority(weightedDst.Authority),
+			}] = weightedDst.Weight.String()
 		}
+	} else if !kerrors.IsNotFound(err) {
+		log.Errorf("Failed to get weights from ServiceProfile %s: %v", spName, err)
+	}
 
-		if !req.SkipStats {
-			var err error
-			svcBasicStats, svcTCPStats, err = s.getSvcMetrics(ctx, req, req.TimeWindow)
-			if err != nil {
-				return resourceResult{res: nil, err: err}
-			}
-		}
-
-		currentLeaf := rKey{
-			Namespace: serviceStats.namespace,
-			Type:      req.GetSelector().GetResource().GetType(),
-			Name:      serviceStats.name,
-		}
-
+	for k, weight := range weights {
 		row := pb.StatTable_PodGroup_Row{
 			Resource: &pb.Resource{
-				Name:      serviceStats.name,
-				Namespace: serviceStats.namespace,
+				Name:      k.Service,
+				Namespace: k.Namespace,
 				Type:      req.GetSelector().GetResource().GetType(),
 			},
 			TimeWindow: req.TimeWindow,
-			Stats:      svcBasicStats[currentLeaf],
-			TcpStats:   svcTCPStats[currentLeaf],
+			Stats:      dstBasicStats[k],
+			TcpStats:   dstTCPStats[k],
+		}
+
+		// Set TrafficSplitStats only when weight is not empty
+		if weight != "" {
+			row.TsStats = &pb.TrafficSplitStats{
+				Apex:   k.Service,
+				Leaf:   k.Dst,
+				Weight: weight,
+			}
 		}
 		rows = append(rows, &row)
 	}
@@ -556,6 +332,7 @@ func (s *grpcServer) serviceResourceQuery(ctx context.Context, req *pb.StatSumma
 			},
 		},
 	}
+
 	return resourceResult{res: &rsp, err: nil}
 }
 
@@ -606,10 +383,6 @@ func (s *grpcServer) nonK8sResourceQuery(ctx context.Context, req *pb.StatSummar
 
 func isNonK8sResourceQuery(resourceType string) bool {
 	return resourceType == k8s.Authority
-}
-
-func isTrafficSplitQuery(resourceType string) bool {
-	return resourceType == k8s.TrafficSplit
 }
 
 // get the list of objects for which we want to return results
@@ -664,28 +437,30 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labe
 	return
 }
 
-func buildTrafficSplitRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labelNames model.LabelNames) {
-	// Trafficsplit labels are always direction="outbound". If the --from or --to flags were used,
-	// we merge an additional ToResource or FromResource label. Trafficsplit metrics results are
-	// always grouped by dst_service.
-	// N.b. requests to a traffic split may come from any namespace so we do not do any filtering
-	// by namespace.
+func buildServiceRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labelNames model.LabelNames) {
+	// Service Request labels are always direction="outbound". If the --from or --to flags were used,
+	// we merge an additional ToResource or FromResource label. Service metrics results are
+	// always grouped by dst_service, and dst_namespace (to avoid conflicts) .
 	labels = model.LabelSet{
 		"direction": model.LabelValue("outbound"),
 	}
 
 	switch out := req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
+		// if --to flag is passed, Calculate traffic sent to the service
+		// with additional filtering narrowing down to the workload
+		// it is sent to.
 		labels = labels.Merge(promDstQueryLabels(out.ToResource))
 
 	case *pb.StatSummaryRequest_FromResource:
+		// if --from flag is passed, FromResource is never a service here
 		labels = labels.Merge(promQueryLabels(out.FromResource))
 
 	default:
 		// no extra labels needed
 	}
 
-	groupBy := model.LabelNames{model.LabelName("dst_service")}
+	groupBy := model.LabelNames{model.LabelName("dst_namespace"), model.LabelName("dst_service")}
 
 	return labels, groupBy
 }
@@ -728,130 +503,55 @@ func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequ
 	return basicStats, tcpStats, nil
 }
 
-func (s *grpcServer) getSvcMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats, error) {
+func (s *grpcServer) getServiceMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[dstKey]*pb.BasicStats, map[dstKey]*pb.TcpStats, error) {
+	dstBasicStats := make(map[dstKey]*pb.BasicStats)
+	dstTCPStats := make(map[dstKey]*pb.TcpStats)
+	labels, groupBy := buildServiceRequestLabels(req)
 
-	reqLabels, groupBy := s.buildServiceRequestLabels(req)
+	service := req.GetSelector().GetResource().GetName()
+	namespace := req.GetSelector().GetResource().GetNamespace()
+	authority := fmt.Sprintf("%s.%s.svc.%s", service, namespace, s.clusterDomain)
+
+	reqLabels := generateLabelStringWithRegex(labels, string(authorityLabel), authority)
 
 	promQueries := map[promType]string{
 		promRequests: fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupBy.String()),
 	}
 
-	authority := fmt.Sprintf("%s.%s.svc.%s", req.GetSelector().GetResource().GetName(), req.GetSelector().GetResource().GetNamespace(), s.clusterDomain)
-	labels := generateLabelStringWithRegex(reqLabels, string(authorityLabel), authority)
-
 	if req.TcpStats {
-		promQueries[promTCPConnections] = fmt.Sprintf(tcpConnectionsQuery, reqLabels.String(), groupBy.String())
+		promQueries[promTCPConnections] = fmt.Sprintf(tcpConnectionsQuery, labels.String(), groupBy.String())
 		// Service stats always need to have `peer=dst`, cuz there is no `src` with `authority` label
-		tcpLabels := reqLabels.Merge(promPeerLabel("dst"))
+		tcpLabels := labels.Merge(promPeerLabel("dst"))
 		tcpLabelString := generateLabelStringWithRegex(tcpLabels, string(authorityLabel), authority)
 		promQueries[promTCPReadBytes] = fmt.Sprintf(tcpReadBytesQuery, tcpLabelString, timeWindow, groupBy.String())
 		promQueries[promTCPWriteBytes] = fmt.Sprintf(tcpWriteBytesQuery, tcpLabelString, timeWindow, groupBy.String())
-
 	}
 
-	quantileQueries := generateQuantileQueries(latencyQuantileQuery, labels, timeWindow, groupBy.String())
+	quantileQueries := generateQuantileQueries(latencyQuantileQuery, reqLabels, timeWindow, groupBy.String())
 	results, err := s.getPrometheusMetrics(ctx, promQueries, quantileQueries)
-
 	if err != nil {
 		return nil, nil, err
 	}
 
 	basicStats, tcpStats := processPrometheusMetrics(req, results, groupBy)
-	return basicStats, tcpStats, nil
-}
-
-func (s *grpcServer) buildServiceRequestLabels(req *pb.StatSummaryRequest) (model.LabelSet, model.LabelNames) {
-	labels := model.LabelSet{
-		"direction": model.LabelValue("outbound"),
-	}
-
-	switch out := req.Outbound.(type) {
-	case *pb.StatSummaryRequest_ToResource:
-		// if --to flag is passed, Calculate traffic sent to the service
-		// with additional filtering narrowing down to the workload
-		// it is sent to.
-		labels = labels.Merge(promDstQueryLabels(out.ToResource))
-	case *pb.StatSummaryRequest_FromResource:
-		// if --from flag is passed, FromResource is never a service here
-		labels = labels.Merge(promQueryLabels(out.FromResource))
-	default:
-		// no extra labels needed
-	}
-
-	groupBy := model.LabelNames{model.LabelName("dst_namespace"), model.LabelName("dst_service")}
-
-	return labels, groupBy
-}
-
-func (s *grpcServer) getServiceProfileMetrics(ctx context.Context, req *pb.StatSummaryRequest, tsStats *trafficSplitStats, timeWindow string) (map[tsKey]*pb.BasicStats, error) {
-	tsBasicStats := make(map[tsKey]*pb.BasicStats)
-	labels, groupBy := buildTrafficSplitRequestLabels(req)
-
-	apex := tsStats.apex
-	namespace := tsStats.namespace
-	stringToMatch := apex
-
-	reqLabels := generateLabelStringWithRegex(labels, string(authorityLabel), stringToMatch)
-
-	promQueries := map[promType]string{
-		promRequests: fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupBy.String()),
-	}
-
-	quantileQueries := generateQuantileQueries(latencyQuantileQuery, reqLabels, timeWindow, groupBy.String())
-	results, err := s.getPrometheusMetrics(ctx, promQueries, quantileQueries)
-
-	if err != nil {
-		return nil, err
-	}
-
-	basicStats, _ := processPrometheusMetrics(req, results, groupBy) // we don't need tcpStat info for traffic split
 
 	for rKey, basicStatsVal := range basicStats {
-		tsBasicStats[tsKey{
-			Namespace: namespace,
-			Name:      tsStats.name,
-			Type:      req.GetSelector().GetResource().GetType(),
-			Apex:      apex,
-			Leaf:      rKey.Name,
+		dstBasicStats[dstKey{
+			Namespace: rKey.Namespace,
+			Service:   service,
+			Dst:       rKey.Name,
 		}] = basicStatsVal
 	}
-	return tsBasicStats, nil
-}
 
-func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSummaryRequest, tsStats *trafficSplitStats, timeWindow string) (map[tsKey]*pb.BasicStats, error) {
-	tsBasicStats := make(map[tsKey]*pb.BasicStats)
-	labels, groupBy := buildTrafficSplitRequestLabels(req)
-
-	apex := tsStats.apex
-	namespace := tsStats.namespace
-	// TODO: add cluster domain to stringToMatch
-	stringToMatch := fmt.Sprintf("%s.%s.svc", apex, namespace)
-
-	reqLabels := generateLabelStringWithRegex(labels, string(authorityLabel), stringToMatch)
-
-	promQueries := map[promType]string{
-		promRequests: fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupBy.String()),
+	for rKey, tcpStatsVal := range tcpStats {
+		dstTCPStats[dstKey{
+			Namespace: rKey.Namespace,
+			Service:   service,
+			Dst:       rKey.Name,
+		}] = tcpStatsVal
 	}
 
-	quantileQueries := generateQuantileQueries(latencyQuantileQuery, reqLabels, timeWindow, groupBy.String())
-	results, err := s.getPrometheusMetrics(ctx, promQueries, quantileQueries)
-
-	if err != nil {
-		return nil, err
-	}
-
-	basicStats, _ := processPrometheusMetrics(req, results, groupBy) // we don't need tcpStat info for traffic split
-
-	for rKey, basicStatsVal := range basicStats {
-		tsBasicStats[tsKey{
-			Namespace: namespace,
-			Name:      tsStats.name,
-			Type:      req.Selector.Resource.Type,
-			Apex:      apex,
-			Leaf:      rKey.Name,
-		}] = basicStatsVal
-	}
-	return tsBasicStats, nil
+	return dstBasicStats, dstTCPStats, nil
 }
 
 func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, groupBy model.LabelNames) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats) {
@@ -1006,4 +706,14 @@ func getLabelSelector(req *pb.StatSummaryRequest) (labels.Selector, error) {
 		}
 	}
 	return labelSelector, nil
+}
+
+func dstFromAuthority(authority string) string {
+	// name.namespace.svc.suffix
+	labels := strings.Split(authority, ".")
+	if len(labels) >= 3 && labels[2] == "svc" {
+		// name
+		return labels[0]
+	}
+	return authority
 }
