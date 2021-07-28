@@ -305,6 +305,9 @@ const (
 	// IdentityIssuerTrustAnchorsNameExternal is the issuer's certificate file (when using cert-manager).
 	IdentityIssuerTrustAnchorsNameExternal = "ca.crt"
 
+	// IdentityIssuerTrustAnchorsName is the trust anchors name.
+	IdentityIssuerTrustAnchorsName = "ca-bundle.crt"
+
 	// ProxyPortName is the name of the Linkerd Proxy's proxy port.
 	ProxyPortName = "linkerd-proxy"
 
@@ -338,6 +341,12 @@ const (
 
 	// MountPathBase is the base directory of the mount path.
 	MountPathBase = "/var/run/linkerd"
+
+	// MountPathTrustRootsBase is the base directory of the trust roots.
+	MountPathTrustRootsBase = MountPathBase + "/identity/trust-roots"
+
+	// MountPathTrustRootsPEM is the path at which the trust bundle is mounted.
+	MountPathTrustRootsPEM = MountPathTrustRootsBase + "/ca-bundle.crt"
 
 	// MountPathServiceAccount is the default path where Kubernetes stores
 	// the service account token

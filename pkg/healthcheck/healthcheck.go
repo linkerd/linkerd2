@@ -2207,6 +2207,10 @@ func checkPodsProxiesCertificate(ctx context.Context, kubeAPI k8s.KubernetesAPI,
 	trustAnchorsPem := values.IdentityTrustAnchorsPEM
 	offendingPods := []string{}
 	for _, pod := range meshedPods {
+		// Skip control plane pods since they load their trust anchors from the linkerd-identity-trust-anchors configmap.
+		if pod.Namespace == controlPlaneNamespace {
+			continue
+		}
 		if strings.TrimSpace(pod.Anchors) != strings.TrimSpace(trustAnchorsPem) {
 			if targetNamespace == "" {
 				offendingPods = append(offendingPods, fmt.Sprintf("* %s/%s", pod.Namespace, pod.Name))

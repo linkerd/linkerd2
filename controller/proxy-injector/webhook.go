@@ -3,6 +3,7 @@ package injector
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"strings"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -40,6 +41,13 @@ func Inject(
 	if err != nil {
 		return nil, err
 	}
+
+	caPEM, err := ioutil.ReadFile(pkgK8s.MountPathTrustRootsPEM)
+	if err != nil {
+		return nil, err
+	}
+	valuesConfig.IdentityTrustAnchorsPEM = string(caPEM)
+
 	namespace, err := api.NS().Lister().Get(request.Namespace)
 	if err != nil {
 		return nil, err
