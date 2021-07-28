@@ -374,7 +374,9 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ctx context.
 		}
 		endpointMirrorServices, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
 		if err != nil {
-			errors = append(errors, fmt.Errorf("could not fetch endpoint mirrors for service %s/%s: %s", ev.Namespace, localServiceName, err))
+			if !kerrors.IsNotFound(err) {
+				errors = append(errors, fmt.Errorf("could not fetch endpoint mirrors for mirror service %s/%s: %s", ev.Namespace, localServiceName, err))
+			}
 		}
 
 		for _, endpointMirror := range endpointMirrorServices {
@@ -937,17 +939,27 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateEndpoints(ctx context.Con
 	return nil
 }
 
-// createOrUpdateHeadlessEndpoints processes endpoints objects for Exported
-// Headless services. When an endpoints object is created or updated in the
+// createOrUpdateHeadlessEndpoints processes endpoints objects for exported
+// headless services. When an endpoints object is created or updated in the
 // remote cluster, it will be processed here in order to reconcile the local
 // cluster state with the remote cluster state.
 //
-// If the Headless Mirror service does not yet have a corresponding endpoints
-// object in the local cluster, when we process the Exported service's endpoints
-// in this function, we will create the endpoints object for the Headless Mirror
-// and also create an Endpoint Mirror service for each of the endpoints' named addresses
-// (hostname). If the Headless Mirror does have an endpoints object, then the
-// function updates it by either creating or deleting Endpoint Mirrors.
+// createOrUpdateHeadlessEndpoints is also responsible for creating the service
+// mirror in the source cluster. In order for an exported headless service to be
+// mirrored as headless, it must have at least one port defined and at least one
+// named address in its endpoints object (e.g a deployment would not work since
+// pods may not have arbitrary hostnames). As such, when an endpoints object is
+// first processed, if there is no mirror service, we create one, by looking at
+// the endpoints object itself. If the exported service is deemed to be valid
+// for headless mirroring, then the function will create the headless mirror and
+// then create an endpoints object for it in the source cluster. If it is not
+// valid, the exported service will be mirrored as clusterIP and its endpoints
+// will point to the gateway.
+//
+// When creating endpoints for a headless mirror, we also create an endpoint
+// mirror (clusterIP) service for each of the endpoints' named addresses. If the
+// headless mirror exists and has an endpoints object, we simply update by
+// either creating or deleting endpoint mirror services.
 func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx context.Context, exportedEndpoints *corev1.Endpoints) error {
 	exportedService, err := rcsw.remoteAPIClient.Svc().Lister().Services(exportedEndpoints.Namespace).Get(exportedEndpoints.Name)
 	if err != nil {
@@ -971,6 +983,8 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx con
 			return err
 		}
 
+		// If the mirror service does not exist, create it, either as clusterIP
+		// or as headless.
 		mirrorService, err = rcsw.createRemoteHeadlessService(ctx, exportedService, exportedEndpoints)
 		if err != nil {
 			return err
@@ -1086,6 +1100,16 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx con
 	return nil
 }
 
+// createRemoteHeadlessService creates a mirror service for an exported headless
+// service. Whether the mirror will be created as a headless or clusterIP
+// service depends on the endpoints object associated with the exported service.
+// If there is at least one named address, then the service will be mirrored as
+// headless.
+//
+// Note: we do not check for any exposed ports because it was previously done
+// when the service was picked up by the service mirror. We also do not need to
+// check if the exported service is headless; its endpoints will be processed
+// only if it is headless so we are certain at this point that is the case.
 func (rcsw *RemoteClusterServiceWatcher) createRemoteHeadlessService(ctx context.Context, exportedService *corev1.Service, exportedEndpoints *corev1.Endpoints) (*corev1.Service, error) {
 	// If we don't have any subsets to process then avoid creating the service.
 	// We need at least one address to be make a decision (whether we should
@@ -1115,7 +1139,7 @@ func (rcsw *RemoteClusterServiceWatcher) createRemoteHeadlessService(ctx context
 		},
 	}
 
-	if shouldExportAsHeadlessService(exportedEndpoints) {
+	if shouldExportAsHeadlessService(exportedEndpoints, rcsw.log) {
 		serviceToCreate.Spec.ClusterIP = corev1.ClusterIPNone
 		rcsw.log.Infof("Creating a new headless service mirror for %s", serviceInfo)
 	} else {
@@ -1282,11 +1306,13 @@ func (rcsw *RemoteClusterServiceWatcher) createEndpointMirrorService(ctx context
 	return createdService, nil
 }
 
-// isValidHeadlessService checks if a service is headless and it has at least
-// one named address in the associated endpoints object (an address with a
-// hostname). If a service is a valid headless service, its mirror will also be
-// headless, otherwise, the mirror will be a clusterIP service.
-func shouldExportAsHeadlessService(endpoints *corev1.Endpoints) bool {
+// shouldExportAsHeadlessService checks if an exported service should be
+// mirrored as a headless service or as a clusterIP service, based on its
+// endpoints object. For an exported service to be a headless mirror, it needs
+// to have at least one named address in its endpoints (that is, a pod with a
+// `hostname`). If the endpoints object does not contain at least one named
+// address, it should be exported as clusterIP.
+func shouldExportAsHeadlessService(endpoints *corev1.Endpoints, log *logging.Entry) bool {
 	for _, subset := range endpoints.Subsets {
 		for _, addr := range subset.Addresses {
 			if addr.Hostname != "" {
@@ -1300,6 +1326,7 @@ func shouldExportAsHeadlessService(endpoints *corev1.Endpoints) bool {
 			}
 		}
 	}
+	log.Infof("Service %s/%s should not be exported as headless: no named addresses in its endpoints object", endpoints.Namespace, endpoints.Name)
 	return false
 }
 
