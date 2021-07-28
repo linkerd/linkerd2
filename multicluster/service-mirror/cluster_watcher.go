@@ -483,7 +483,6 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 		if len(remoteService.Spec.Ports) == 0 {
 			rcsw.recorder.Event(remoteService, v1.EventTypeNormal, eventTypeSkipped, "Skipped mirroring service: object spec has no exposed ports")
 			rcsw.log.Infof("Skipped creating headless mirror for %s: service object spec has no exposed ports", serviceInfo)
-			return nil
 		}
 		return nil
 	}
