@@ -85,8 +85,8 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		return statSummaryError(req, "StatSummary request missing Selector Resource"), nil
 	}
 
-	// special case to check for services
-	if isInvalidServiceRequest(req) {
+	// err if --from is a service
+	if req.GetFromResource() != nil && req.GetFromResource().GetType() == k8s.Service {
 		return statSummaryError(req, "service is not supported as a target on 'from' queries, or as a target with 'to' queries"), nil
 	}
 
@@ -149,16 +149,6 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 	fmt.Printf("Response is %+v\n", statTables)
 
 	return &rsp, nil
-}
-
-// isInvalidServiceRequest checks if the Service Request is invalid
-func isInvalidServiceRequest(req *pb.StatSummaryRequest) bool {
-	// stat <> --from svc/*
-	if req.GetFromResource() != nil {
-		return req.GetFromResource().GetType() == k8s.Service
-	}
-
-	return false
 }
 
 func statSummaryError(req *pb.StatSummaryRequest, message string) *pb.StatSummaryResponse {
