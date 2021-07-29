@@ -410,6 +410,10 @@ const (
 	// MirroredGatewayLabel indicates that this is a mirrored gateway
 	MirroredGatewayLabel = SvcMirrorPrefix + "/mirrored-gateway"
 
+	// MirroredHeadlessSvcNameLabel indicates the root headless service for
+	// mirrored headless hosts.
+	MirroredHeadlessSvcNameLabel = SvcMirrorPrefix + "/headless-mirror-svc-name"
+
 	// RemoteClusterNameLabel put on a local mirrored service, it
 	// allows us to associate a mirrored service with a remote cluster
 	RemoteClusterNameLabel = SvcMirrorPrefix + "/cluster-name"
