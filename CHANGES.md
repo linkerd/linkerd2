@@ -1,5 +1,15 @@
 # Changes
 
+## edge-21.7.5
+
+This release updates Linkerd to store the identity trust root in a ConfigMap to
+make it easier to manage and rotate the trust root.  The release also lays the
+groundwork for StatefulSet support in the multicluster extension.
+
+* Added a `linkerd-identity-trust-roots` ConfigMap which contains the configured
+  trust root bundle
+* Introduced support for StatefulSets across multicluster (disabled by default)
+
 ## edge-21.7.4
 
 This release continues to focus on dependency updates. It also adds the
