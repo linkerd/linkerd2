@@ -30,4 +30,4 @@ subjects:
 - kind: ServiceAccount
   name: {{.Values.gateway.name}}
   namespace: {{.Values.namespace}}
-{{- end }}
+{{ end -}}

@@ -626,7 +626,6 @@ webhooks:
     apiVersions: ["v1"]
     resources: ["pods", "services"]
   sideEffects: None
-
 ---
 kind: ConfigMap
 apiVersion: v1

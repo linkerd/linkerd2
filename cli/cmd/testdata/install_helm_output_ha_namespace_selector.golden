@@ -711,7 +711,6 @@ webhooks:
   sideEffects: None
 ---
 # Source: linkerd2/templates/psp.yaml
-
 ---
 # Source: linkerd2/templates/config.yaml
 ---

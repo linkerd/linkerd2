@@ -49,4 +49,4 @@ subjects:
 - kind: ServiceAccount
   name: tap-injector
   namespace: {{.Values.namespace}}
-{{- end }}
+{{ end -}}

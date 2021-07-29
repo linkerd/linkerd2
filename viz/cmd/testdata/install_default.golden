@@ -388,7 +388,6 @@ metadata:
     linkerd.io/extension: viz
     component: web
     namespace: linkerd-viz
-
 ---
 ###
 ### Metrics API

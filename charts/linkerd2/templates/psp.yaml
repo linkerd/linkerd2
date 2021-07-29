@@ -101,4 +101,4 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-sp-validator
   namespace: {{.Values.namespace}}
-{{- end }}
+{{ end -}}
