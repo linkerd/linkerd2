@@ -457,12 +457,12 @@ func remapRemoteServicePorts(ports []corev1.ServicePort) []corev1.ServicePort {
 
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.Context, ev *RemoteServiceCreated) error {
 	remoteService := ev.service.DeepCopy()
-	serviceInfo := fmt.Sprintf("%s/%s", remoteService.Namespace, remoteService.Name)
-	localServiceName := rcsw.mirroredResourceName(remoteService.Name)
-
 	if rcsw.headlessServicesEnabled && remoteService.Spec.ClusterIP == corev1.ClusterIPNone {
 		return nil
 	}
+
+	serviceInfo := fmt.Sprintf("%s/%s", remoteService.Namespace, remoteService.Name)
+	localServiceName := rcsw.mirroredResourceName(remoteService.Name)
 
 	if err := rcsw.mirrorNamespaceIfNecessary(ctx, remoteService.Namespace); err != nil {
 		return err
