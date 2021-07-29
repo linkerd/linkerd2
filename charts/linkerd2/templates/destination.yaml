@@ -133,6 +133,7 @@ spec:
       {{- $_ := set $tree.Values.proxy "resources" $r }}
       {{- end }}
       {{- $_ := set $tree.Values.proxy "await" true }}
+      {{- $_ := set $tree.Values.proxy "loadTrustBundleFromConfigMap" true }}
       {{- $_ := set $tree.Values.proxy "podInboundPorts" "8086,9996" }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       - args:
