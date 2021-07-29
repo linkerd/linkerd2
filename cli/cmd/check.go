@@ -167,8 +167,6 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 		checks = append(checks, healthcheck.LinkerdPreInstallChecks)
 		if options.cniEnabled {
 			checks = append(checks, healthcheck.LinkerdCNIPluginChecks)
-		} else {
-			checks = append(checks, healthcheck.LinkerdPreInstallCapabilityChecks)
 		}
 		installManifest, err = renderInstallManifest(cmd.Context())
 		if err != nil {
