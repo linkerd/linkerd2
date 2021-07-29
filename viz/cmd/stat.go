@@ -309,7 +309,14 @@ type row struct {
 	meshed string
 	status string
 	*rowStats
+	*tsStats
 	*dstStats
+}
+
+type tsStats struct {
+	apex   string
+	leaf   string
+	weight string
 }
 
 type dstStats struct {
@@ -320,6 +327,8 @@ type dstStats struct {
 var (
 	nameHeader      = "NAME"
 	namespaceHeader = "NAMESPACE"
+	apexHeader      = "APEX"
+	leafHeader      = "LEAF"
 	weightHeader    = "WEIGHT"
 )
 
@@ -334,6 +343,8 @@ func isPodOwnerResource(typ string) bool {
 func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) {
 	maxNameLength := len(nameHeader)
 	maxNamespaceLength := len(namespaceHeader)
+	maxApexLength := len(apexHeader)
+	maxLeafLength := len(leafHeader)
 	maxDstLength := len(dstHeader)
 	maxWeightLength := len(weightHeader)
 
@@ -408,20 +419,38 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 			}
 		}
 		if r.TsStats != nil {
-			dst := r.TsStats.Leaf
-			weight := r.TsStats.Weight
+			if r.GetResource().GetType() == k8s.TrafficSplit {
+				leaf := r.TsStats.Leaf
+				apex := r.TsStats.Apex
 
-			if len(dst) > maxDstLength {
-				maxDstLength = len(dst)
-			}
+				if len(leaf) > maxLeafLength {
+					maxLeafLength = len(leaf)
+				}
 
-			if len(weight) > maxWeightLength {
-				maxWeightLength = len(weight)
-			}
+				if len(apex) > maxApexLength {
+					maxApexLength = len(apex)
+				}
 
-			statTables[resourceKey][key].dstStats = &dstStats{
-				dst:    dst,
-				weight: weight,
+				statTables[resourceKey][key].tsStats = &tsStats{
+					apex: apex,
+					leaf: leaf,
+				}
+			} else {
+				dst := r.TsStats.Leaf
+				weight := r.TsStats.Weight
+
+				if len(dst) > maxDstLength {
+					maxDstLength = len(dst)
+				}
+
+				if len(weight) > maxWeightLength {
+					maxWeightLength = len(weight)
+				}
+
+				statTables[resourceKey][key].dstStats = &dstStats{
+					dst:    dst,
+					weight: weight,
+				}
 			}
 		}
 	}
@@ -432,13 +461,13 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 			fmt.Fprintln(os.Stderr, "No traffic found.")
 			return
 		}
-		printStatTables(statTables, w, maxNameLength, maxNamespaceLength, maxDstLength, maxWeightLength, options)
+		printStatTables(statTables, w, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxDstLength, maxWeightLength, options)
 	case jsonOutput:
 		printStatJSON(statTables, w)
 	}
 }
 
-func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxDstLength, maxWeightLength int, options *statOptions) {
+func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxDstLength, maxWeightLength int, options *statOptions) {
 	usePrefix := false
 	if len(statTables) > 1 {
 		usePrefix = true
@@ -455,7 +484,7 @@ func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer,
 			if !usePrefix {
 				resourceTypeLabel = ""
 			}
-			printSingleStatTable(stats, resourceTypeLabel, resourceType, w, maxNameLength, maxNamespaceLength, maxDstLength, maxWeightLength, options)
+			printSingleStatTable(stats, resourceTypeLabel, resourceType, w, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxDstLength, maxWeightLength, options)
 		}
 	}
 }
@@ -469,10 +498,12 @@ func showTCPConns(resourceType string) bool {
 	return resourceType != k8s.Authority && resourceType != k8s.TrafficSplit
 }
 
-func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType string, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxDstLength, maxWeightLength int, options *statOptions) {
+func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType string, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxDstLength, maxWeightLength int, options *statOptions) {
 	headers := make([]string, 0)
 	nameTemplate := fmt.Sprintf("%%-%ds", maxNameLength)
 	namespaceTemplate := fmt.Sprintf("%%-%ds", maxNamespaceLength)
+	apexTemplate := fmt.Sprintf("%%-%ds", maxApexLength)
+	leafTemplate := fmt.Sprintf("%%-%ds", maxLeafLength)
 	dstTemplate := fmt.Sprintf("%%-%ds", maxDstLength)
 	weightTemplate := fmt.Sprintf("%%-%ds", maxWeightLength)
 
@@ -482,6 +513,16 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			hasDstStats = true
 		}
 	}
+
+	hasTsStats := false
+	for _, r := range stats {
+		if r.tsStats != nil {
+			hasTsStats = true
+		}
+	}
+
+	fmt.Println("dst", hasDstStats)
+	fmt.Println("ts", hasTsStats)
 
 	if options.allNamespaces {
 		headers = append(headers,
@@ -498,6 +539,11 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 	if hasDstStats {
 		headers = append(headers,
 			fmt.Sprintf(dstTemplate, dstHeader),
+			fmt.Sprintf(weightTemplate, weightHeader))
+	} else if hasTsStats {
+		headers = append(headers,
+			fmt.Sprintf(apexTemplate, apexHeader),
+			fmt.Sprintf(leafTemplate, leafHeader),
 			fmt.Sprintf(weightTemplate, weightHeader))
 	} else {
 		headers = append(headers, "MESHED")
@@ -537,7 +583,10 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			templateStringEmpty = "%s\t" + templateStringEmpty
 		}
 
-		if hasDstStats {
+		if hasTsStats {
+			templateString = "%s\t%s\t%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
+			templateStringEmpty = "%s\t%s\t%s\t%s\t-\t-\t-\t-\t-\t"
+		} else if hasDstStats {
 			templateString = "%s\t%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
 			templateStringEmpty = "%s\t%s\t%s\t-\t-\t-\t-\t-\t"
 		}
@@ -571,9 +620,18 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			padding = maxNameLength - len(name)
 		}
 
+		apexPadding := 0
+		leafPadding := 0
 		dstPadding := 0
 
-		if stats[key].dstStats != nil {
+		if stats[key].tsStats != nil {
+			if maxApexLength > len(stats[key].tsStats.apex) {
+				apexPadding = maxApexLength - len(stats[key].tsStats.apex)
+			}
+			if maxLeafLength > len(stats[key].tsStats.leaf) {
+				leafPadding = maxLeafLength - len(stats[key].tsStats.leaf)
+			}
+		} else if stats[key].dstStats != nil {
 			if maxDstLength > len(stats[key].dstStats.dst) {
 				dstPadding = maxDstLength - len(stats[key].dstStats.dst)
 			}
@@ -584,7 +642,13 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			values = append(values, stats[key].status)
 		}
 
-		if hasDstStats {
+		if hasTsStats {
+			values = append(values,
+				stats[key].tsStats.apex+strings.Repeat(" ", apexPadding),
+				stats[key].tsStats.leaf+strings.Repeat(" ", leafPadding),
+				stats[key].tsStats.weight,
+			)
+		} else if hasDstStats {
 			values = append(values,
 				stats[key].dstStats.dst+strings.Repeat(" ", dstPadding),
 				stats[key].dstStats.weight,
@@ -644,6 +708,8 @@ type jsonStats struct {
 	TCPConnections *uint64  `json:"tcp_open_connections,omitempty"`
 	TCPReadBytes   *float64 `json:"tcp_read_bytes_rate,omitempty"`
 	TCPWriteBytes  *float64 `json:"tcp_write_bytes_rate,omitempty"`
+	Apex           string   `json:"apex,omitempty"`
+	Leaf           string   `json:"leaf,omitempty"`
 	Dst            string   `json:"dst,omitempty"`
 	Weight         string   `json:"weight,omitempty"`
 }
@@ -678,9 +744,13 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 					}
 				}
 
-				if stats[key].dstStats != nil {
+				if stats[key].tsStats != nil {
+					entry.Apex = stats[key].apex
+					entry.Leaf = stats[key].leaf
+					entry.Weight = stats[key].tsStats.weight
+				} else if stats[key].dstStats != nil {
 					entry.Dst = stats[key].dstStats.dst
-					entry.Weight = stats[key].weight
+					entry.Weight = stats[key].dstStats.weight
 				}
 				entries = append(entries, entry)
 			}
