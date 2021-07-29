@@ -37,9 +37,9 @@ func Launch(
 		log.Fatalf("failed to initialize the webhook server: %s", err)
 	}
 
-	k8sAPI.Sync(nil)
-
 	go s.Start()
+
+	k8sAPI.Sync(nil)
 	go admin.StartServer(metricsAddr)
 
 	<-stop
