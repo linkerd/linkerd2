@@ -151,6 +151,10 @@ imagePullSecrets: []
 # -- Allow proxies to perform transparent HTTP/2 upgrading
 enableH2Upgrade: true
 
+# -- Add a PSP resource and bind it to the control plane ServiceAccounts. Note
+# PSP has been deprecated since k8s v1.21
+enablePSP: false
+
 # -- Omit the `sideEffects` flag in the webhook manifests
 omitWebhookSideEffects: false
 # -- Failure policy for the proxy injector

@@ -98,6 +98,7 @@ Kubernetes: `>=1.16.0-0`
 | defaultLogLevel | string | `"info"` | Log level for all the viz components |
 | defaultRegistry | string | `"cr.l5d.io/linkerd"` | Docker registry for all viz components |
 | defaultUID | int | `2103` | UID for all the viz components |
+| enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
 | enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
 | grafana.enabled | bool | `true` | toggle field to enable or disable grafana |
 | grafana.image.name | string | `"grafana"` | Docker image name for the grafana instance |
