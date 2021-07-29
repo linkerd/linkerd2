@@ -422,6 +422,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 			if r.GetResource().GetType() == k8s.TrafficSplit {
 				leaf := r.TsStats.Leaf
 				apex := r.TsStats.Apex
+				weight := r.TsStats.Weight
 
 				if len(leaf) > maxLeafLength {
 					maxLeafLength = len(leaf)
@@ -432,8 +433,9 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 				}
 
 				statTables[resourceKey][key].tsStats = &tsStats{
-					apex: apex,
-					leaf: leaf,
+					apex:   apex,
+					leaf:   leaf,
+					weight: weight,
 				}
 			} else {
 				dst := r.TsStats.Leaf
@@ -520,9 +522,6 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			hasTsStats = true
 		}
 	}
-
-	fmt.Println("dst", hasDstStats)
-	fmt.Println("ts", hasTsStats)
 
 	if options.allNamespaces {
 		headers = append(headers,

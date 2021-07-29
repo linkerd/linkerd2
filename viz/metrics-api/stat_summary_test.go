@@ -1406,11 +1406,16 @@ status:
 											Rows: []*pb.StatTable_PodGroup_Row{
 												{
 													Resource: &pb.Resource{
-														Namespace: "emojivoto",
-														Type:      pkgK8s.Service,
-														Name:      "emoji-svc",
+														Type: pkgK8s.Service,
 													},
 													TimeWindow: "1m",
+													Stats: &pb.BasicStats{
+														SuccessCount: 123,
+														FailureCount: 0,
+														LatencyMsP50: 123,
+														LatencyMsP95: 123,
+														LatencyMsP99: 123,
+													},
 												},
 											},
 										},
