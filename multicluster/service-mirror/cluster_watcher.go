@@ -477,13 +477,6 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 	}
 
 	if rcsw.headlessServicesEnabled && remoteService.Spec.ClusterIP == corev1.ClusterIPNone {
-		// Headless services are not constrained to define a port in their spec
-		// because they may be used for DNS configuration only. If a service
-		// does not have any ports in its spec, we skip processing it.
-		if len(remoteService.Spec.Ports) == 0 {
-			rcsw.recorder.Event(remoteService, v1.EventTypeNormal, eventTypeSkipped, "Skipped mirroring service: object spec has no exposed ports")
-			rcsw.log.Infof("Skipped creating headless mirror for %s: service object spec has no exposed ports", serviceInfo)
-		}
 		return nil
 	}
 
@@ -972,6 +965,8 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx con
 	// as a headless mirror. If the service does not have any named addresses in
 	// its Endpoints object, then the endpoints should not be processed.
 	if len(exportedService.Spec.Ports) == 0 {
+		rcsw.recorder.Event(exportedService, v1.EventTypeNormal, eventTypeSkipped, "Skipped mirroring service: object spec has no exposed ports")
+		rcsw.log.Infof("Skipped creating headless mirror for %s/%s: service object spec has no exposed ports", exportedService.Namespace, exportedService.Name)
 		return nil
 	}
 
