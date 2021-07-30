@@ -14,8 +14,6 @@ USAGE: web <command>
   * build - build the assets
   * dev - run a dev server (with live reloading). Options:
       -p $DEV_PORT
-  * integration (cloud|local) - run the integration tests
-      Note: Sauce Connect tunnel must be open for cloud tests
   * port-forward - setup a tunnel to a controller component and port
       Example: port-forward linkerd controller 8085
   * run - run a local server (sans. reloading)
@@ -121,20 +119,6 @@ setup() {
 function test {
   cd "$ROOT"/web/app
   yarn jest "$@"
-}
-
-integration() {
-  if [[ $# -ne 1 || ($1 != "cloud" && $1 != "local") ]]; then
-    echo "usage: bin/${0##*/} integration (cloud|local)" >&2
-    exit 1
-  fi
-  if [ "$1" = cloud ]; then
-    cd "$ROOT"/web/app && \
-    ./node_modules/.bin/wdio ./integration/wdio-sauce.conf.js
-  else
-    cd "$ROOT"/web/app && \
-    ./node_modules/.bin/wdio ./integration/wdio.conf.js
-  fi
 }
 
 main() {
