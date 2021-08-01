@@ -448,7 +448,7 @@ func (h *handler) handleGetExtensions(w http.ResponseWriter, req *http.Request, 
 
 		type Extension struct {
 			Name string `json:"name"`
-			Uid  string `json:"uid"`
+			UID  string `json:"uid"`
 		}
 
 		extensionObject := Extension{}
@@ -456,7 +456,7 @@ func (h *handler) handleGetExtensions(w http.ResponseWriter, req *http.Request, 
 		if len(extensions) > 0 {
 			for _, extension := range extensions {
 				extensionObject.Name = extension.ObjectMeta.Name
-				extensionObject.Uid = string(extension.ObjectMeta.UID)
+				extensionObject.UID = string(extension.ObjectMeta.UID)
 				extensionList = append(extensionList, extensionObject)
 			}
 		}
