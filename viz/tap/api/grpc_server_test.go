@@ -39,6 +39,7 @@ func (m *mockTapByResourceServer) Send(event *tapPb.TapEvent) error {
 
 // mockProxyTapServer satisfies proxy.tap.TapServer
 type mockProxyTapServer struct {
+	proxy.UnimplementedTapServer
 	mockControllerServer mockTapByResourceServer // for cancellation
 	ctx                  context.Context
 }

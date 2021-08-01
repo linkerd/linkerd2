@@ -26,6 +26,7 @@ Kubernetes: `>=1.16.0-0`
 | cniPluginVersion | string | `"linkerdVersionValue"` | Tag for the CNI container Docker image |
 | destCNIBinDir | string | `"/opt/cni/bin"` | Directory on the host where the CNI configuration will be placed |
 | destCNINetDir | string | `"/etc/cni/net.d"` | Directory on the host where the CNI plugin binaries reside |
+| enablePSP | bool | `false` | Add a PSP resource and bind it to the linkerd-cni ServiceAccounts. Note PSP has been deprecated since k8s v1.21 |
 | extraInitContainers | list | `[]` | Add additional initContainers to the daemonset |
 | ignoreInboundPorts | string | `""` | Default set of inbound ports to skip via iptables |
 | ignoreOutboundPorts | string | `""` | Default set of outbound ports to skip via iptables |
@@ -37,6 +38,8 @@ Kubernetes: `>=1.16.0-0`
 | outboundProxyPort | int | `4140` | Outbound port for the proxy container |
 | portsToRedirect | string | `""` | Ports to redirect to proxy |
 | priorityClassName | string | `""` | Kubernetes priorityClassName for the CNI plugin's Pods |
+| proxyAdminPort | int | `4191` | Admin port for the proxy container |
+| proxyControlPort | int | `4190` | Control port for the proxy container |
 | proxyUID | int | `2102` | User id under which the proxy shall be ran |
 | useWaitFlag | bool | `false` | Configures the CNI plugin to use the -w flag for the iptables command |
 

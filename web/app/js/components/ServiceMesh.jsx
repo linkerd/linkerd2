@@ -244,7 +244,7 @@ class ServiceMesh extends React.Component {
 
     return (
       <React.Fragment>
-        <Grid container justify="space-between">
+        <Grid container justifyContent="space-between">
           <Grid item xs={3}>
             <Typography variant="h6"><Trans>Control plane</Trans></Typography>
           </Grid>
@@ -320,7 +320,7 @@ class ServiceMesh extends React.Component {
       <Card elevation={3}>
         <CardContent>
           <Typography variant="body2">{message}</Typography>
-          { numUnadded > 0 ? incompleteMeshMessage() : null }
+          {numUnadded > 0 ? incompleteMeshMessage() : null}
         </CardContent>
       </Card>
     );
@@ -332,8 +332,8 @@ class ServiceMesh extends React.Component {
 
     return (
       <div className="page-content">
-        { !error ? null : <ErrorBanner message={error} /> }
-        { !loaded ? <Spinner /> : (
+        {!error ? null : <ErrorBanner message={error} />}
+        {!loaded ? <Spinner /> : (
           <div>
             {this.proxyCount() === 0 ?
               <CallToAction

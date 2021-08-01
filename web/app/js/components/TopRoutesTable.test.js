@@ -1,7 +1,7 @@
 import _merge from 'lodash/merge';
 import ApiHelpers from './util/ApiHelpers.jsx';
 import TopRoutesTable from './TopRoutesTable.jsx';
-import { routerWrap } from '../../test/testHelpers.jsx';
+import { i18nAndRouterWrap } from '../../test/testHelpers.jsx';
 import { mount } from 'enzyme';
 
 describe("Tests for <TopRoutesTable>", () => {
@@ -22,7 +22,7 @@ describe("Tests for <TopRoutesTable>", () => {
         name: "authors:7001"
       }],
     });
-    const component = mount(routerWrap(TopRoutesTable, extraProps));
+    const component = mount(i18nAndRouterWrap(TopRoutesTable, extraProps));
 
     const table = component.find("BaseTable");
     expect(table).toBeDefined();
@@ -52,7 +52,7 @@ describe("Tests for <TopRoutesTable>", () => {
       }],
       enableFilter: true
     });
-    const component = mount(routerWrap(TopRoutesTable, extraProps));
+    const component = mount(i18nAndRouterWrap(TopRoutesTable, extraProps));
 
     const table = component.find("BaseTable");
 

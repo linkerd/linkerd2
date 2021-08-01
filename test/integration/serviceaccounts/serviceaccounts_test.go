@@ -55,21 +55,4 @@ func TestServiceAccountsMatch(t *testing.T) {
 	if len(saNames) < len(expectedNames) || !namesMatch(saNames) {
 		testutil.Fatalf(t, "the service account list doesn't match the expected list: %s", expectedNames)
 	}
-
-	res, err = TestHelper.Kubectl("",
-		"-n", TestHelper.GetLinkerdNamespace(),
-		"get", "rolebindings", "linkerd-psp",
-		"--output", "jsonpath={.subjects[*].name}",
-	)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "error retrieving list of linkerd-psp rolebindings",
-			"error retrieving list of linkerd-psp rolebindings: %s", err)
-	}
-	saNamesPSP := strings.Split(res, " ")
-
-	if len(saNamesPSP) < len(expectedNames) || !namesMatch(saNamesPSP) {
-		t.Fatalf(
-			"The service accounts in the linkerd-psp rolebindings don't match the expected list: %s",
-			expectedNames)
-	}
 }

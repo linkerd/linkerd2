@@ -3,10 +3,9 @@ package pkg
 import (
 	"fmt"
 
-	"github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
-	"github.com/linkerd/linkerd2/viz/pkg"
+	"github.com/linkerd/linkerd2/viz/pkg/util"
 	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 )
 
@@ -48,7 +47,7 @@ func BuildTapByResourceRequest(params TapRequestParams) (*tapPb.TapByResourceReq
 	if err != nil {
 		return nil, fmt.Errorf("target resource invalid: %s", err)
 	}
-	if !contains(pkg.ValidTargets, target.Type) {
+	if !contains(util.ValidTargets, target.Type) {
 		return nil, fmt.Errorf("unsupported resource type [%s]", target.Type)
 	}
 

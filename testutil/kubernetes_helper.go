@@ -326,9 +326,10 @@ func (h *KubernetesHelper) WaitRollout(t *testing.T, deploys map[string]DeploySp
 	for deploy, deploySpec := range deploys {
 		o, err := h.Kubectl("", "--namespace="+deploySpec.Namespace, "rollout", "status", "--timeout=60m", "deploy/"+deploy)
 		if err != nil {
+			oEvt, _ := h.Kubectl("", "--namespace="+deploySpec.Namespace, "get", "event", "--field-selector", "involvedObject.name="+deploy)
 			AnnotatedFatalf(t,
 				fmt.Sprintf("failed to wait rollout of deploy/%s", deploy),
-				"failed to wait for rollout of deploy/%s: %s: %s", deploy, err, o)
+				"failed to wait for rollout of deploy/%s: %s: %s\nEvents:\n%s", deploy, err, o, oEvt)
 		}
 	}
 }

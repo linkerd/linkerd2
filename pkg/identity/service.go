@@ -41,12 +41,14 @@ const (
 type (
 	// Service implements the gRPC service in terms of a Validator and Issuer.
 	Service struct {
-		validator                                  Validator
-		trustAnchors                               *x509.CertPool
-		issuer                                     *tls.Issuer
-		issuerMutex                                *sync.RWMutex
-		validity                                   *tls.Validity
-		recordEvent                                func(parent runtime.Object, eventType, reason, message string)
+		pb.UnimplementedIdentityServer
+		validator    Validator
+		trustAnchors *x509.CertPool
+		issuer       *tls.Issuer
+		issuerMutex  *sync.RWMutex
+		validity     *tls.Validity
+		recordEvent  func(parent runtime.Object, eventType, reason, message string)
+
 		expectedName, issuerPathCrt, issuerPathKey string
 	}
 
@@ -125,6 +127,10 @@ func (svc *Service) loadCredentials() (tls.Issuer, error) {
 		return nil, fmt.Errorf("failed to verify issuer credentials for '%s' with trust anchors: %s", svc.expectedName, err)
 	}
 
+	if !creds.Certificate.IsCA {
+		return nil, fmt.Errorf("failed to verify issuer certificate: it must be an intermediate-CA, but it is not")
+	}
+
 	log.Debugf("Loaded issuer cert: %s", creds.EncodeCertificatePEM())
 	return tls.NewCA(*creds, *svc.validity), nil
 }
@@ -132,6 +138,7 @@ func (svc *Service) loadCredentials() (tls.Issuer, error) {
 // NewService creates a new identity service.
 func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.Validity, recordEvent func(parent runtime.Object, eventType, reason, message string), expectedName, issuerPathCrt, issuerPathKey string) *Service {
 	return &Service{
+		pb.UnimplementedIdentityServer{},
 		validator,
 		trustAnchors,
 		nil,
