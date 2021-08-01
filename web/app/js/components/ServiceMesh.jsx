@@ -158,10 +158,6 @@ class ServiceMesh extends React.Component {
     this.setState({ pendingRequests: false });
   }
 
-  stopFetchingInstalledExtensions() {
-    this.api.cancelCurrentRequests();
-  }
-
   extractNsStatuses = nsData => {
     const podsByNs = _get(nsData, ['ok', 'statTables', 0, 'podGroup', 'rows'], []);
     const dataPlaneNamespaces = podsByNs.map(ns => {
