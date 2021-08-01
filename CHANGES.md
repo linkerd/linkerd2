@@ -1,5 +1,86 @@
 # Changes
 
+## edge-21.7.5
+
+This release updates Linkerd to store the identity trust root in a ConfigMap to
+make it easier to manage and rotate the trust root.  The release also lays the
+groundwork for StatefulSet support in the multicluster extension and removes
+deprecated PSP resources by default.
+
+* Added a `linkerd-identity-trust-roots` ConfigMap which contains the configured
+  trust root bundle
+* Introduced support for StatefulSets across multicluster (disabled by default)
+* Stopped installing PSP resources by default since these are deprecated as
+  of Kubernetes v1.21
+
+## edge-21.7.4
+
+This release continues to focus on dependency updates. It also adds the
+`l5d-proxy-error` information header to distinguish proxy generated errors
+proxy generated errors from application generated errors.
+
+* Updated several project dependencies
+* Added a new `l5d-proxy-error` on responses that allows proxy-generated error
+  responses to be distinguished from application-generated error responses.
+* Removed support for configuring HTTP/2 keepalives via the proxy.
+  Configuring this setting would sometimes cause conflicts with Go gRPC servers
+  and clients
+* Added a new `target_addr` label to `*_tcp_accept_errors` metrics to improve
+  diagnostics, especially for TLS detection timeouts
+
+## edge-21.7.3
+
+This edge release introduces several changes around metrics. ReplicaSets are now
+a supported resource and metrics can be associated with them. A new metric has
+been added which counts proxy errors encountered before a protocol can be
+detected. Finally, the request errors metric has been split into separate
+inbound and outbound directions.
+
+* Fixed printing `check --pre` command usage if it fails after being unable to
+  connect to Kubernetes (thanks @rdileep13!)
+* Updated the default skip and opaque ports to match that which is listed in the
+  [documentation](https://linkerd.io/2.10/features/protocol-detection/#configuring-protocol-detection)
+* Added the `LINKERD2_PROXY_INBOUND_PORTS` environment variable during proxy
+  injection which will be used by ongoing policy changes
+* Added client-go cache size metrics to the `diagnostics controller-metrics`
+  command
+* Added validation that the certificate provided by an external issuer is a CA
+  (thanks @rumanzo!)
+* Added metrics support for ReplicaSets
+* Replaced the `request_errors_total` metric with two new metrics:
+  `inbound_http_errors_total` and `outbound_http_errors_total`
+* Introduced the `inbound_tcp_accept_errors_total` and
+  `outbound_tcp_accept_errors_total` metrics which count proxy errors
+  encountered before a protocol can be detected
+
+## edge-21.7.2
+
+This edge release focuses on dependency updates and has a couple of functional
+changes. First, the Dockerfile used to build the proxy has been updated to use
+the default `distroless` image, rather than the non-root variant. This change
+is safe because the proxy already runs as non-root within the container. Second,
+the `ignoreInboundPorts` parameter has been added in the linkerd2-cni helm
+charts in order to enable tap support.
+
+* Updated several project dependencies
+* Updated the Dockerfile-proxy to use the default distroless image, because
+  the proxy already runs as non-root within the container
+* Added `ignoreInboundPorts` parameter to the linkerd2-cni plugin helm chart
+
+## edge-21.7.1
+
+This edge release adds support for emitting Kubernetes events in the identity
+controller when issuing leaf certificates. The event includes the identity,
+expiry date, and a hash of the certificate. Additionally, this release contains
+many dependency updates for the control plane's components, and it includes a
+fix for an issue with the clusterNetworks healthcheck.
+
+* Updated the identity controller to emit Kubernetes events when successfully
+  issuing leaf certificates to injected pods.
+* Fixed an issue in `linkerd check` where the clusterNetworks healthcheck
+  would fail if the `podCIDR` field is omitted from a node's spec.
+* Removed unnecessary controller port-forward logic from the `bin/web` script.
+
 ## edge-21.6.5
 
 This release contains a few improvements, from many contributors!  Also under

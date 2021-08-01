@@ -200,13 +200,13 @@ class TopRoutes extends React.Component {
     return (
       <CardContent>
         <Grid container direction="column" spacing={2}>
-          <Grid item container spacing={4} alignItems="center" justify="flex-start">
+          <Grid item container spacing={4} alignItems="center" justifyContent="flex-start">
             <Grid item>
-              { this.renderNamespaceDropdown(<Trans>formNamespace</Trans>, 'namespace', <Trans>formNamespaceHelpText</Trans>) }
+              {this.renderNamespaceDropdown(<Trans>formNamespace</Trans>, 'namespace', <Trans>formNamespaceHelpText</Trans>)}
             </Grid>
 
             <Grid item>
-              { this.renderResourceDropdown(<Trans>formResource</Trans>, 'resource_name', 'resource_type', <Trans>formResourceHelpText</Trans>) }
+              {this.renderResourceDropdown(<Trans>formResource</Trans>, 'resource_name', 'resource_type', <Trans>formResourceHelpText</Trans>)}
             </Grid>
 
             <Grid item>
@@ -230,13 +230,13 @@ class TopRoutes extends React.Component {
             </Grid>
           </Grid>
 
-          <Grid item container spacing={4} alignItems="center" justify="flex-start">
+          <Grid item container spacing={4} alignItems="center" justifyContent="flex-start">
             <Grid item>
-              { this.renderNamespaceDropdown(<Trans>formToNamespace</Trans>, 'to_namespace', <Trans>formToNamespaceHelpText</Trans>) }
+              {this.renderNamespaceDropdown(<Trans>formToNamespace</Trans>, 'to_namespace', <Trans>formToNamespaceHelpText</Trans>)}
             </Grid>
 
             <Grid item>
-              { this.renderResourceDropdown(<Trans>formToResource</Trans>, 'to_name', 'to_type', <Trans>formToResourceHelpText</Trans>) }
+              {this.renderResourceDropdown(<Trans>formToResource</Trans>, 'to_name', 'to_type', <Trans>formToResourceHelpText</Trans>)}
             </Grid>
           </Grid>
         </Grid>
@@ -330,15 +330,15 @@ class TopRoutes extends React.Component {
           <ErrorBanner message={error} onHideMessage={() => this.setState({ error: null })} />
         }
         <Card elevation={3}>
-          { this.renderRoutesQueryForm() }
+          {this.renderRoutesQueryForm()}
           {
             emptyQuery ? null :
             <QueryToCliCmd
               cmdName="routes"
               query={cliQueryToDisplay}
               resource={toResourceName(query, 'resource_type', 'resource_name')} />
-            }
-          { !requestInProgress || !this._isMounted ? null : <TopRoutesModule query={query} /> }
+          }
+          {!requestInProgress || !this._isMounted ? null : <TopRoutesModule query={query} />}
         </Card>
       </div>
     );

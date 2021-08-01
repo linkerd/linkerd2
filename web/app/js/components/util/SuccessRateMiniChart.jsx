@@ -6,7 +6,7 @@ import _isNil from 'lodash/isNil';
 import { metricToFormatter } from './Utils.js';
 
 const SuccessRateMiniChart = ({ sr }) => (
-  <Grid container justify="flex-end" alignItems="center" spacing={1}>
+  <Grid container justifyContent="flex-end" alignItems="center" spacing={1}>
     <Grid item>{metricToFormatter.SUCCESS_RATE(sr)}</Grid>
     <Grid item>{_isNil(sr) ? null :
     <SuccessRateDot sr={sr} />

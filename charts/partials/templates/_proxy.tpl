@@ -36,6 +36,10 @@ env:
   valueFrom:
     fieldRef:
       fieldPath: status.podIPs
+{{ if .Values.proxy.podInboundPorts -}}
+- name: LINKERD2_PROXY_INBOUND_PORTS
+  value: {{ .Values.proxy.podInboundPorts | quote }}
+{{ end -}}
 {{ if .Values.proxy.isGateway -}}
 - name: LINKERD2_PROXY_INBOUND_GATEWAY_SUFFIXES
   value: {{printf "svc.%s." .Values.clusterDomain}}
@@ -73,8 +77,20 @@ env:
 - name: LINKERD2_PROXY_IDENTITY_DIR
   value: /var/run/linkerd/identity/end-entity
 - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
+{{- /*
+Pods in the `linkerd` namespace are not injected by the proxy injector and instead obtain
+the trust anchor bundle from the `linkerd-identity-trust-roots` configmap. This should not
+be used in other contexts.
+*/}}
+{{- if .Values.proxy.loadTrustBundleFromConfigMap }}
+  valueFrom:
+    configMapKeyRef:
+      name: linkerd-identity-trust-roots
+      key: ca-bundle.crt
+{{ else }}
   value: |
-  {{- required "Please provide the identity trust anchors" .Values.identityTrustAnchorsPEM | trim | nindent 4 }}
+    {{- required "Please provide the identity trust anchors" .Values.identityTrustAnchorsPEM | trim | nindent 4 }}
+{{ end -}}
 - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
   value: /var/run/secrets/kubernetes.io/serviceaccount/token
 - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR

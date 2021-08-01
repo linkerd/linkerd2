@@ -151,7 +151,7 @@ export class ResourceDetailBase extends React.Component {
 
     let apiRequests =
       [
-      // inbound stats for this resource
+        // inbound stats for this resource
         this.api.fetchMetrics(
           `${this.api.urlsForResource(resourceType, namespace, true)}&resource_name=${resourceName}`,
         ),
@@ -363,7 +363,7 @@ export class ResourceDetailBase extends React.Component {
     }
     return (
       <div>
-        <Grid container justify="space-between" alignItems="center">
+        <Grid container justifyContent="space-between" alignItems="center">
           <Grid item><Typography variant="h5">{resourceType}/{resourceName}</Typography></Grid>
           <Grid item>
             <Grid container spacing={1}>

@@ -38,3 +38,5 @@ export function i18nWrap(Component) {
     </I18nProvider>
   );
 }
+
+export function i18nAndRouterWrap(component, props) { return i18nWrap(routerWrap(component, props))};

@@ -712,90 +712,6 @@ webhooks:
 ---
 # Source: linkerd2/templates/psp.yaml
 ---
-###
-### Control Plane PSP
-###
-apiVersion: policy/v1beta1
-kind: PodSecurityPolicy
-metadata:
-  name: linkerd-linkerd-control-plane
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-spec:
-  allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: true
-  allowedCapabilities:
-  - NET_ADMIN
-  - NET_RAW
-  requiredDropCapabilities:
-  - ALL
-  hostNetwork: false
-  hostIPC: false
-  hostPID: false
-  seLinux:
-    rule: RunAsAny
-  runAsUser:
-    rule: RunAsAny
-  supplementalGroups:
-    rule: MustRunAs
-    ranges:
-    - min: 1
-      max: 65535
-  fsGroup:
-    rule: MustRunAs
-    ranges:
-    - min: 1
-      max: 65535
-  volumes:
-  - configMap
-  - emptyDir
-  - secret
-  - projected
-  - downwardAPI
-  - persistentVolumeClaim
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: linkerd-psp
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-rules:
-- apiGroups: ['policy', 'extensions']
-  resources: ['podsecuritypolicies']
-  verbs: ['use']
-  resourceNames:
-  - linkerd-linkerd-control-plane
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: linkerd-psp
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-roleRef:
-  kind: Role
-  name: linkerd-psp
-  apiGroup: rbac.authorization.k8s.io
-subjects:
-- kind: ServiceAccount
-  name: linkerd-destination
-  namespace: linkerd
-- kind: ServiceAccount
-  name: linkerd-heartbeat
-  namespace: linkerd
-- kind: ServiceAccount
-  name: linkerd-identity
-  namespace: linkerd
-- kind: ServiceAccount
-  name: linkerd-proxy-injector
-  namespace: linkerd
-- kind: ServiceAccount
-  name: linkerd-sp-validator
-  namespace: linkerd
----
 # Source: linkerd2/templates/config.yaml
 ---
 kind: ConfigMap
@@ -853,6 +769,7 @@ data:
       issuer:
         clockSkewAllowance: 20s
         crtExpiry: Jul 30 17:21:14 2020
+        externalCA: false
         issuanceLifetime: 24h0m0s
         scheme: linkerd.io/tls
         tls:
@@ -902,8 +819,9 @@ data:
       isIngress: false
       logFormat: plain
       logLevel: warn,linkerd=info
-      opaquePorts: 25,443,587,3306,5432,11211
+      opaquePorts: 25,443,587,3306,4444,5432,6379,9300,11211
       outboundConnectTimeout: 1000ms
+      podInboundPorts: ""
       ports:
         admin: 4191
         control: 4190
@@ -987,6 +905,20 @@ metadata:
 data:
   crt.pem: dGVzdC1jcnQtcGVt
   key.pem: dGVzdC1rZXktcGVt
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-identity-trust-roots
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+data:
+  ca-bundle.crt: |
+    test-trust-anchor
 ---
 kind: Service
 apiVersion: v1
@@ -1110,8 +1042,6 @@ spec:
         - -identity-clock-skew-allowance=20s
         - -identity-scheme=linkerd.io/tls
         env:
-        - name: LINKERD2_IDENTITY_TRUST_ANCHORS
-          value: "dGVzdC10cnVzdC1hbmNob3I="
         - name: LINKERD_DISABLED
           value: "linkerd-await cannot block the identity controller"
         image: cr.l5d.io/linkerd/controller:linkerd-version
@@ -1143,6 +1073,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
+        - mountPath: /var/run/linkerd/identity/trust-roots/
+          name: trust-roots
       - env:
         - name: LINKERD2_PROXY_LOG
           value: "warn,linkerd=info"
@@ -1168,6 +1100,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: status.podIPs
+        - name: LINKERD2_PROXY_INBOUND_PORTS
+          value: "8080,9990"
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -1175,7 +1109,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
-          value: "25,443,587,3306,5432,11211"
+          value: "25,443,587,3306,4444,5432,6379,9300,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1190,8 +1124,10 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          value: |
-            test-trust-anchor
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-identity-trust-roots
+              key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -1283,6 +1219,9 @@ spec:
       - name: identity-issuer
         secret:
           secretName: linkerd-identity-issuer
+      - configMap:
+          name: linkerd-identity-trust-roots
+        name: trust-roots
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -1450,6 +1389,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: status.podIPs
+        - name: LINKERD2_PROXY_INBOUND_PORTS
+          value: "8086,9996"
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -1457,7 +1398,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
-          value: "25,443,587,3306,5432,11211"
+          value: "25,443,587,3306,4444,5432,6379,9300,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1472,8 +1413,10 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          value: |
-            test-trust-anchor
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-identity-trust-roots
+              key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -1539,7 +1482,7 @@ spec:
         - -enable-endpoint-slices=false
         - -cluster-domain=cluster.local
         - -identity-trust-domain=test.trust.domain
-        - -default-opaque-ports=25,443,587,3306,5432,11211
+        - -default-opaque-ports=25,443,587,3306,4444,5432,6379,9300,11211
         image: cr.l5d.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1786,6 +1729,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: status.podIPs
+        - name: LINKERD2_PROXY_INBOUND_PORTS
+          value: "8443,9995"
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -1793,7 +1738,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
-          value: "25,443,587,3306,5432,11211"
+          value: "25,443,587,3306,4444,5432,6379,9300,11211"
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1808,8 +1753,10 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          value: |
-            test-trust-anchor
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-identity-trust-roots
+              key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -1898,6 +1845,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
+        - mountPath: /var/run/linkerd/identity/trust-roots
+          name: trust-roots
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
@@ -1942,6 +1891,9 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
+      - configMap:
+          name: linkerd-identity-trust-roots
+        name: trust-roots
       - name: tls
         secret:
           secretName: linkerd-proxy-injector-k8s-tls

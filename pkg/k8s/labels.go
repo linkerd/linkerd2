@@ -182,6 +182,12 @@ const (
 	// config.
 	ProxyOutboundPortAnnotation = ProxyConfigAnnotationsPrefix + "/outbound-port"
 
+	// ProxyPodInboundPortsAnnotation can be used to set a comma-separated
+	// list of (non-proxy) container ports exposed by the pod spec. Useful
+	// when other mutating webhooks inject sidecar containers after the
+	// proxy injector has run.
+	ProxyPodInboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/pod-inbound-ports"
+
 	// ProxyCPURequestAnnotation can be used to override the requestCPU config.
 	ProxyCPURequestAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-cpu-request"
 
@@ -299,6 +305,9 @@ const (
 	// IdentityIssuerTrustAnchorsNameExternal is the issuer's certificate file (when using cert-manager).
 	IdentityIssuerTrustAnchorsNameExternal = "ca.crt"
 
+	// IdentityIssuerTrustAnchorsName is the trust anchors name.
+	IdentityIssuerTrustAnchorsName = "ca-bundle.crt"
+
 	// ProxyPortName is the name of the Linkerd Proxy's proxy port.
 	ProxyPortName = "linkerd-proxy"
 
@@ -332,6 +341,12 @@ const (
 
 	// MountPathBase is the base directory of the mount path.
 	MountPathBase = "/var/run/linkerd"
+
+	// MountPathTrustRootsBase is the base directory of the trust roots.
+	MountPathTrustRootsBase = MountPathBase + "/identity/trust-roots"
+
+	// MountPathTrustRootsPEM is the path at which the trust bundle is mounted.
+	MountPathTrustRootsPEM = MountPathTrustRootsBase + "/ca-bundle.crt"
 
 	// MountPathServiceAccount is the default path where Kubernetes stores
 	// the service account token
@@ -394,6 +409,10 @@ const (
 
 	// MirroredGatewayLabel indicates that this is a mirrored gateway
 	MirroredGatewayLabel = SvcMirrorPrefix + "/mirrored-gateway"
+
+	// MirroredHeadlessSvcNameLabel indicates the root headless service for
+	// mirrored headless hosts.
+	MirroredHeadlessSvcNameLabel = SvcMirrorPrefix + "/headless-mirror-svc-name"
 
 	// RemoteClusterNameLabel put on a local mirrored service, it
 	// allows us to associate a mirrored service with a remote cluster

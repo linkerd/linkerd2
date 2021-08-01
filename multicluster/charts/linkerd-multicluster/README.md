@@ -37,8 +37,16 @@ release, just replace with `linkerd-edge`.
 
 ## Installing the Multicluster Extension Chart
 
+### Helm v3
+
 ```bash
-helm install linkerd/linkerd-multicluster
+helm install linkerd-multicluster linkerd/linkerd-multicluster
+```
+
+### Helm v2
+
+```bash
+helm install --name linkerd-multicluster linkerd/linkerd-multicluster
 ```
 
 ## Get involved
@@ -71,6 +79,7 @@ Kubernetes: `>=1.16.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
 | gateway.enabled | bool | `true` | If the gateway component should be installed |
 | gateway.loadBalancerIP | string | `""` | Set loadBalancerIP on gateway service |
 | gateway.name | string | `"linkerd-gateway"` | The name of the gateway that will be installed |

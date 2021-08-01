@@ -10,6 +10,10 @@ outboundProxyPort: 4140
 ignoreInboundPorts: ""
 # -- Default set of outbound ports to skip via iptables
 ignoreOutboundPorts: ""
+# -- Admin port for the proxy container
+proxyAdminPort: 4191
+# -- Control port for the proxy container
+proxyControlPort: 4190
 # -- Docker image for the CNI plugin
 cniPluginImage:   "cr.l5d.io/linkerd/cni-plugin"
 # -- Tag for the CNI container Docker image
@@ -28,6 +32,10 @@ destCNIBinDir:    "/opt/cni/bin"
 useWaitFlag:      false
 # -- Kubernetes priorityClassName for the CNI plugin's Pods
 priorityClassName: ""
+
+# -- Add a PSP resource and bind it to the linkerd-cni ServiceAccounts.
+# Note PSP has been deprecated since k8s v1.21
+enablePSP: false
 
 # -|- Tolerations section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)

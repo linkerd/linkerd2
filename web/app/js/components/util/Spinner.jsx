@@ -13,7 +13,7 @@ const styles = theme => ({
 function CircularIndeterminate(props) {
   const { classes } = props;
   return (
-    <Grid container justify="center">
+    <Grid container justifyContent="center">
       <CircularProgress className={classes.progress} />
     </Grid>
   );

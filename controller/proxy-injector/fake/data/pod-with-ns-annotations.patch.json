@@ -64,7 +64,7 @@
         "--proxy-uid",
         "2102",
         "--inbound-ports-to-ignore",
-        "4190,4191",
+        "4190,4191,4567,4568",
         "--outbound-ports-to-ignore",
         "34567"
       ],
@@ -157,6 +157,10 @@
           }
         },
         {
+          "name": "LINKERD2_PROXY_INBOUND_PORTS",
+          "value": "80"
+        },
+        {
           "name": "LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES",
           "value": "svc.cluster.local."
         },
@@ -170,7 +174,7 @@
         },
         {
           "name": "LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION",
-          "value": "25,443,587,3306,5432,11211"
+          "value": "25,443,587,3306,4444,5432,6379,9300,11211"
         },
         {
           "name": "_pod_ns",

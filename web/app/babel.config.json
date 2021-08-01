@@ -12,7 +12,8 @@
     ["@babel/preset-env",
       { // Copied from https://newbedev.com/babel-7-referenceerror-regeneratorruntime-is-not-defined
         "useBuiltIns": "entry",
-        "corejs": 3
+        "corejs": 3,
+        "targets": {"node": "current"}
       }
     ], "@babel/preset-react"]
 }

@@ -37,8 +37,16 @@ release, just replace with `linkerd-edge`.
 
 ## Installing the Jaeger Extension Chart
 
+### Helm v3
+
 ```bash
-helm install linkerd/linkerd-jaeger
+helm install linkerd-jaeger linkerd/linkerd-jaeger
+```
+
+### Helm v2
+
+```bash
+helm install --name linkerd-jaeger linkerd/linkerd-jaeger
 ```
 
 ## Get involved
@@ -78,6 +86,7 @@ Kubernetes: `>=1.16.0-0`
 | collector.image.version | string | `"0.27.0"` |  |
 | collector.nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | collector.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
+| enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
 | installNamespace | bool | `true` | Set to false when installing in a custom namespace. |
 | jaeger.enabled | bool | `true` | Set to false to exclude all-in-one Jaeger installation |
 | jaeger.image.name | string | `"jaegertracing/all-in-one"` |  |

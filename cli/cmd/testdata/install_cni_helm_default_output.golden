@@ -10,27 +10,6 @@ metadata:
     linkerd.io/cni-resource: "true"
     config.linkerd.io/admission-webhooks: disabled
 ---
-apiVersion: policy/v1beta1
-kind: PodSecurityPolicy
-metadata:
-  name: linkerd-linkerd-cni-cni
-  labels:
-    linkerd.io/cni-resource: "true"
-spec:
-  allowPrivilegeEscalation: false
-  fsGroup:
-    rule: RunAsAny
-  hostNetwork: true
-  runAsUser:
-    rule: RunAsAny
-  seLinux:
-    rule: RunAsAny
-  supplementalGroups:
-    rule: RunAsAny
-  volumes:
-  - hostPath
-  - secret
----
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -38,36 +17,6 @@ metadata:
   namespace: linkerd-cni
   labels:
     linkerd.io/cni-resource: "true"
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: linkerd-cni
-  namespace: linkerd-cni
-  labels:
-    linkerd.io/cni-resource: "true"
-rules:
-- apiGroups: ['extensions', 'policy']
-  resources: ['podsecuritypolicies']
-  resourceNames:
-  - linkerd-linkerd-cni-cni
-  verbs: ['use']
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: linkerd-cni
-  namespace: linkerd-cni
-  labels:
-    linkerd.io/cni-resource: "true"
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: linkerd-cni
-subjects:
-- kind: ServiceAccount
-  name: linkerd-cni
-  namespace: linkerd-cni
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -125,6 +74,7 @@ data:
         "outgoing-proxy-port": 4140,
         "proxy-uid": 2102,
         "ports-to-redirect": [],
+        "inbound-ports-to-ignore": ["4191","4190"],
         "simulate": false,
         "use-wait-flag": false
       }
@@ -198,6 +148,10 @@ spec:
           name: cni-bin-dir
         - mountPath: /host/etc/cni/net.d
           name: cni-net-dir
+        - mountPath: /tmp
+          name: linkerd-tmp-dir
+        securityContext:
+          readOnlyRootFilesystem: true
       volumes:
       - name: cni-bin-dir
         hostPath:
@@ -205,3 +159,5 @@ spec:
       - name: cni-net-dir
         hostPath:
           path: /etc/cni/net.d
+      - name: linkerd-tmp-dir
+        emptyDir: {}
