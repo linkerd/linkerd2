@@ -120,10 +120,7 @@ class ServiceMesh extends React.Component {
 
   getInstalledExtensions() {
     const { extensions } = this.state;
-    let extensionList = [];
-    if (!_isEmpty(extensions.extensions)) {
-      extensionList = extensions.extensions.map(extension => extension.metadata);
-    }
+    const extensionList = !_isEmpty(extensions.extensions) ? JSON.parse(extensions.extensions) : [];
     return extensionList;
   }
 
@@ -159,6 +156,10 @@ class ServiceMesh extends React.Component {
     window.clearInterval(this.timerId);
     this.api.cancelCurrentRequests();
     this.setState({ pendingRequests: false });
+  }
+
+  stopFetchingInstalledExtensions() {
+    this.api.cancelCurrentRequests();
   }
 
   extractNsStatuses = nsData => {

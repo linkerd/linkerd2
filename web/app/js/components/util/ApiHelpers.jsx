@@ -61,7 +61,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   const servicesPath = '/api/services';
   const edgesPath = '/api/edges';
   const gatewaysPath = '/api/gateways';
-  const l5dExtensionsPath = '/api/extension';
+  const l5dExtensionsPath = '/api/extensions';
 
   const validMetricsWindows = {
     '10s': '10 minutes',
