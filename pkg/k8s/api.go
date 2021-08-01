@@ -181,6 +181,7 @@ func (kubeAPI *KubernetesAPI) GetAllNamespacesWithExtensionLabel(ctx context.Con
 	if err != nil {
 		return nil, err
 	}
+
 	return namespaces.Items, nil
 }
 
