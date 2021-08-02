@@ -62,6 +62,8 @@ const (
 	tcpConnectionsQuery  = "sum(tcp_open_connections%s) by (%s)"
 	tcpReadBytesQuery    = "sum(increase(tcp_read_bytes_total%s[%s])) by (%s)"
 	tcpWriteBytesQuery   = "sum(increase(tcp_write_bytes_total%s[%s])) by (%s)"
+
+	regexAny = ".+"
 )
 
 type podStats struct {
@@ -653,6 +655,10 @@ func (s *grpcServer) getServiceMetrics(ctx context.Context, req *pb.StatSummaryR
 
 	service := req.GetSelector().GetResource().GetName()
 	namespace := req.GetSelector().GetResource().GetNamespace()
+
+	if service == "" {
+		service = regexAny
+	}
 	authority := fmt.Sprintf("%s.%s.svc.%s", service, namespace, s.clusterDomain)
 
 	reqLabels := generateLabelStringWithRegex(labels, string(authorityLabel), authority)
@@ -662,10 +668,10 @@ func (s *grpcServer) getServiceMetrics(ctx context.Context, req *pb.StatSummaryR
 	}
 
 	if req.TcpStats {
-		promQueries[promTCPConnections] = fmt.Sprintf(tcpConnectionsQuery, labels.String(), groupBy.String())
 		// Service stats always need to have `peer=dst`, cuz there is no `src` with `authority` label
 		tcpLabels := labels.Merge(promPeerLabel("dst"))
 		tcpLabelString := generateLabelStringWithRegex(tcpLabels, string(authorityLabel), authority)
+		promQueries[promTCPConnections] = fmt.Sprintf(tcpConnectionsQuery, tcpLabelString, groupBy.String())
 		promQueries[promTCPReadBytes] = fmt.Sprintf(tcpReadBytesQuery, tcpLabelString, timeWindow, groupBy.String())
 		promQueries[promTCPWriteBytes] = fmt.Sprintf(tcpWriteBytesQuery, tcpLabelString, timeWindow, groupBy.String())
 	}
@@ -679,17 +685,31 @@ func (s *grpcServer) getServiceMetrics(ctx context.Context, req *pb.StatSummaryR
 	basicStats, tcpStats := processPrometheusMetrics(req, results, groupBy)
 
 	for rKey, basicStatsVal := range basicStats {
+
+		// Use the returned `dst_service` in the `all` svc case
+		svcName := service
+		if svcName == regexAny {
+			svcName = rKey.Name
+		}
+
 		dstBasicStats[dstKey{
 			Namespace: rKey.Namespace,
-			Service:   service,
+			Service:   svcName,
 			Dst:       rKey.Name,
 		}] = basicStatsVal
 	}
 
 	for rKey, tcpStatsVal := range tcpStats {
+
+		// Use the returned `dst_service` in the `all` svc case
+		svcName := service
+		if svcName == regexAny {
+			svcName = rKey.Name
+		}
+
 		dstTCPStats[dstKey{
 			Namespace: rKey.Namespace,
-			Service:   service,
+			Service:   svcName,
 			Dst:       rKey.Name,
 		}] = tcpStatsVal
 	}
