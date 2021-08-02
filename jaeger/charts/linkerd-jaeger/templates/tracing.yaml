@@ -175,8 +175,8 @@ spec:
       {{- include "linkerd.node-selector" (dict "Values" .Values.jaeger) | nindent 6 }}
       containers:
       - args:
-        {{  range .Values.jaeger.args }}
-        - {{ . }}
+        {{-  range .Values.jaeger.args }}
+        - {{ . -}}
         {{ end }}
         image: {{.Values.jaeger.image.name}}:{{.Values.jaeger.image.version}}
         imagePullPolicy: {{.Values.jaeger.image.pullPolicy}}
