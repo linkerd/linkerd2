@@ -371,6 +371,10 @@ func ensureIssuerCertWorksWithAllProxies(ctx context.Context, k *k8s.KubernetesA
 		return err
 	}
 	for _, pod := range meshedPods {
+		// Skip control plane pods since they load their trust anchors from the linkerd-identity-trust-anchors configmap.
+		if pod.Namespace == controlPlaneNamespace {
+			continue
+		}
 		anchors, err := tls.DecodePEMCertPool(pod.Anchors)
 
 		if anchors != nil {
