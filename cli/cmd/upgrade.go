@@ -257,7 +257,7 @@ func upgradeRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, s
 func upgrade(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, stage string, options valuespkg.Options) (bytes.Buffer, error) {
 	values, err := loadStoredValues(ctx, k)
 	if err != nil {
-		return bytes.Buffer{}, err
+		return bytes.Buffer{}, fmt.Errorf("failed to load stored values: %w", err)
 	}
 	// If there is no linkerd-config-overrides secret, assume we are upgrading
 	// from a version of Linkerd prior to the introduction of this secret.  In
@@ -371,6 +371,10 @@ func ensureIssuerCertWorksWithAllProxies(ctx context.Context, k *k8s.KubernetesA
 		return err
 	}
 	for _, pod := range meshedPods {
+		// Skip control plane pods since they load their trust anchors from the linkerd-identity-trust-anchors configmap.
+		if pod.Namespace == controlPlaneNamespace {
+			continue
+		}
 		anchors, err := tls.DecodePEMCertPool(pod.Anchors)
 
 		if anchors != nil {

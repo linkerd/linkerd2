@@ -8,7 +8,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	admissionRegistration "k8s.io/api/admissionregistration/v1"
 	core "k8s.io/api/core/v1"
-	policy "k8s.io/api/policy/v1beta1"
 	rbac "k8s.io/api/rbac/v1"
 	apiextension "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -112,12 +111,6 @@ func FetchKubernetesResources(ctx context.Context, k *k8s.KubernetesAPI, options
 		return nil, fmt.Errorf("could not fetch APIService CRDs:%v", err)
 	}
 	resources = append(resources, apiCRDs...)
-
-	psps, err := fetchPodSecurityPolicy(ctx, k, options)
-	if err != nil {
-		return nil, fmt.Errorf("could not fetch PodSecurityPolicy resources:%v", err)
-	}
-	resources = append(resources, psps...)
 
 	mutatinghooks, err := fetchMutatingWebhooksConfiguration(ctx, k, options)
 	if err != nil {
@@ -224,20 +217,6 @@ func fetchNamespace(ctx context.Context, k *k8s.KubernetesAPI, options metav1.Li
 		r.Namespace = item.Namespace
 		resources[i] = r
 	}
-	return resources, nil
-}
-
-func fetchPodSecurityPolicy(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]Kubernetes, error) {
-	list, err := k.PolicyV1beta1().PodSecurityPolicies().List(ctx, options)
-	if err != nil {
-		return nil, err
-	}
-
-	resources := make([]Kubernetes, len(list.Items))
-	for i, item := range list.Items {
-		resources[i] = New(policy.SchemeGroupVersion.String(), "PodSecurityPolicy", item.Name)
-	}
-
 	return resources, nil
 }
 

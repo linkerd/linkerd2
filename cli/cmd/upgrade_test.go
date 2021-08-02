@@ -212,6 +212,22 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 				}
 				continue
 			}
+
+			if id == "ConfigMap/linkerd-identity-trust-roots" {
+				if pathMatch(diff.path, []string{"data", "ca-bundle.crt"}) {
+					ca, err := base64.StdEncoding.DecodeString(issuerCerts.ca)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if diff.b.(string) != string(ca) {
+						diff.a = string(ca)
+						t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+					}
+				} else {
+					t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+				}
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
@@ -554,7 +570,7 @@ func renderInstall(t *testing.T, values *linkerd2.Values) bytes.Buffer {
 func renderUpgrade(installManifest string, upgradeOpts []flag.Flag) (bytes.Buffer, error) {
 	k, err := k8s.NewFakeAPIFromManifests([]io.Reader{strings.NewReader(installManifest)})
 	if err != nil {
-		return bytes.Buffer{}, err
+		return bytes.Buffer{}, fmt.Errorf("failed to initialize fake API: %w\n\n%s", err, installManifest)
 	}
 
 	return upgrade(context.Background(), k, upgradeOpts, "", valuespkg.Options{})
@@ -563,7 +579,7 @@ func renderUpgrade(installManifest string, upgradeOpts []flag.Flag) (bytes.Buffe
 func renderInstallAndUpgrade(t *testing.T, installOpts *charts.Values, upgradeOpts []flag.Flag) (bytes.Buffer, bytes.Buffer, error) {
 	err := validateValues(context.Background(), nil, installOpts)
 	if err != nil {
-		return bytes.Buffer{}, bytes.Buffer{}, err
+		return bytes.Buffer{}, bytes.Buffer{}, fmt.Errorf("failed to validate values: %w", err)
 	}
 	installBuf := renderInstall(t, installOpts)
 	upgradeBuf, err := renderUpgrade(installBuf.String(), upgradeOpts)

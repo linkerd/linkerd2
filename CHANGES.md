@@ -1,5 +1,18 @@
 # Changes
 
+## edge-21.7.5
+
+This release updates Linkerd to store the identity trust root in a ConfigMap to
+make it easier to manage and rotate the trust root.  The release also lays the
+groundwork for StatefulSet support in the multicluster extension and removes
+deprecated PSP resources by default.
+
+* Added a `linkerd-identity-trust-roots` ConfigMap which contains the configured
+  trust root bundle
+* Introduced support for StatefulSets across multicluster (disabled by default)
+* Stopped installing PSP resources by default since these are deprecated as
+  of Kubernetes v1.21
+
 ## edge-21.7.4
 
 This release continues to focus on dependency updates. It also adds the
