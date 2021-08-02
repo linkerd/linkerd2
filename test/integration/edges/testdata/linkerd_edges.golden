@@ -1,20 +1,29 @@
 \[
   \{
-    "src": "linkerd\-controller",
-    "src_namespace": "{{.Ns}}",
-    "dst": "linkerd\-prometheus",
+    "src": "prometheus",
+    "src_namespace": "{{.VizNs}}",
+    "dst": "linkerd\-destination",
     "dst_namespace": "{{.Ns}}",
-    "client_id": "linkerd\-controller.{{.Ns}}",
-    "server_id": "linkerd\-prometheus.{{.Ns}}",
+    "client_id": "prometheus.{{.VizNs}}",
+    "server_id": "linkerd\-destination.{{.Ns}}",
     "no_tls_reason": ""
   \},
   \{
-    "src": "linkerd\-web",
-    "src_namespace": "{{.Ns}}",
-    "dst": "linkerd\-controller",
+    "src": "prometheus",
+    "src_namespace": "{{.VizNs}}",
+    "dst": "linkerd\-identity",
     "dst_namespace": "{{.Ns}}",
-    "client_id": "linkerd\-web.{{.Ns}}",
-    "server_id": "linkerd\-controller.{{.Ns}}",
+    "client_id": "prometheus.{{.VizNs}}",
+    "server_id": "linkerd\-identity.{{.Ns}}",
+    "no_tls_reason": ""
+  \},
+  \{
+    "src": "prometheus",
+    "src_namespace": "{{.VizNs}}",
+    "dst": "linkerd\-proxy\-injector",
+    "dst_namespace": "{{.Ns}}",
+    "client_id": "prometheus.{{.VizNs}}",
+    "server_id": "linkerd\-proxy\-injector.{{.Ns}}",
     "no_tls_reason": ""
   \}
 \]
