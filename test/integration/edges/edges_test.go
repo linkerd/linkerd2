@@ -28,7 +28,10 @@ func TestMain(m *testing.M) {
 
 func TestEdges(t *testing.T) {
 	ns := TestHelper.GetLinkerdNamespace()
-	vizNs := TestHelper.GetVizNamespace()
+	promNs := TestHelper.GetVizNamespace()
+	if TestHelper.ExternalPrometheus() {
+		promNs = "external-prometheus"
+	}
 	cmd := []string{
 		"edges",
 		"-n", ns,
@@ -42,9 +45,9 @@ func TestEdges(t *testing.T) {
 
 	tpl := template.Must(template.ParseFiles("testdata/linkerd_edges.golden"))
 	vars := struct {
-		Ns    string
-		VizNs string
-	}{ns, vizNs}
+		Ns     string
+		PromNs string
+	}{ns, promNs}
 	var b bytes.Buffer
 	if err := tpl.Execute(&b, vars); err != nil {
 		t.Fatalf("failed to parse linkerd_edges.golden template: %s", err)

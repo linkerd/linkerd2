@@ -1,28 +1,28 @@
 \[
   \{
     "src": "prometheus",
-    "src_namespace": "{{.VizNs}}",
+    "src_namespace": "{{.PromNs}}",
     "dst": "linkerd\-destination",
     "dst_namespace": "{{.Ns}}",
-    "client_id": "prometheus.{{.VizNs}}",
+    "client_id": "prometheus.{{.PromNs}}",
     "server_id": "linkerd\-destination.{{.Ns}}",
     "no_tls_reason": ""
   \},
   \{
     "src": "prometheus",
-    "src_namespace": "{{.VizNs}}",
+    "src_namespace": "{{.PromNs}}",
     "dst": "linkerd\-identity",
     "dst_namespace": "{{.Ns}}",
-    "client_id": "prometheus.{{.VizNs}}",
+    "client_id": "prometheus.{{.PromNs}}",
     "server_id": "linkerd\-identity.{{.Ns}}",
     "no_tls_reason": ""
   \},
   \{
     "src": "prometheus",
-    "src_namespace": "{{.VizNs}}",
+    "src_namespace": "{{.PromNs}}",
     "dst": "linkerd\-proxy\-injector",
     "dst_namespace": "{{.Ns}}",
-    "client_id": "prometheus.{{.VizNs}}",
+    "client_id": "prometheus.{{.PromNs}}",
     "server_id": "linkerd\-proxy\-injector.{{.Ns}}",
     "no_tls_reason": ""
   \}
