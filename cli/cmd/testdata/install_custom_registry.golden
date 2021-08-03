@@ -226,6 +226,296 @@ metadata:
     linkerd.io/control-plane-component: heartbeat
     linkerd.io/control-plane-ns: linkerd
 ---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: servers.policy.linkerd.io
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  group: policy.linkerd.io
+  names:
+    kind: Server
+    plural: servers
+    singular: server
+    shortNames: [srv]
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+
+      # additionalPrinterColumns:
+      #   - jsonPath: .spec.port
+      #     name: podSelector
+      #     type: string
+      #   - jsonPath: .spec.podSelector
+      #     name: port
+      #     type: string
+
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required:
+                - podSelector
+                - port
+              properties:
+
+                podSelector:
+                  type: object
+                  description: >-
+                    Selects pods in the same namespace.
+                  properties:
+                    matchLabels:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    matchExpressions:
+                      type: array
+                      items:
+                        type: object
+                        required: [key, operator, values]
+                        properties:
+                          key:
+                            type: string
+                          operator:
+                            type: string
+                            enum: [In, NotIn]
+                          values:
+                            type: array
+                            items:
+                              type: string
+
+                port:
+                  description: >-
+                    A port name or number. Must exist in a pod spec.
+                  x-kubernetes-int-or-string: true
+
+                proxyProtocol:
+                  description: >-
+                    Configures protocol discovery for inbound connections.
+
+                    Supersedes the `config.linkerd.io/opaque-ports` annotation.
+                  type: string
+                  default: unknown
+                  enum:
+                    - unknown
+                    - HTTP/1
+                    - HTTP/2
+                    - gRPC
+                    - opaque
+                    - TLS
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: serverauthorizations.policy.linkerd.io
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  group: policy.linkerd.io
+  scope: Namespaced
+
+  names:
+    kind: ServerAuthorization
+    plural: serverauthorizations
+    singular: serverauthorization
+    shortNames: [saz]
+
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+
+      # additionalPrinterColumns:
+      #   - jsonPath: .spec.server.name
+      #     name: server
+      #     type: string
+      #   - jsonPath: .spec.client.networks[*]
+      #     name: networks
+      #     type: string
+      #   - jsonPath: .spec.client.identities[*]
+      #     name: identities
+      #     type: string
+      #   - jsonPath: .spec.client.serviceAccounts[*]
+      #     name: service accounts
+      #     type: string
+
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              description: >-
+                Authorizes clients to communicate with Linkerd-proxied servers.
+
+              type: object
+              required: [server, client]
+              properties:
+
+                server:
+                  description: >-
+                    Identifies servers in the same namespace for which this
+                    authorization applies.
+
+                    Only one of `name` or `selector` may be specified.
+
+                  type: object
+                  oneOf:
+                    - required: [name]
+                    - required: [selector]
+                  properties:
+                    name:
+                      description: References a `Server` instance by name
+                      type: string
+                      pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+
+                    selector:
+                      description: >-
+                        A label query over servers on which this authorization applies.
+
+                      type: object
+                      oneOf:
+                        - required: [matchLabels]
+                        - required: [matchExpressions]
+                      properties:
+                        matchLabels:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        matchExpressions:
+                          type: array
+                          items:
+                            type: object
+                            required: [key, operator, value]
+                            properties:
+                              key:
+                                type: string
+                              operator:
+                                type: string
+                                enum: [In, NotIn]
+                              values:
+                                type: array
+                                items:
+                                  type: string
+
+                client:
+                  description:  Describes clients authorized to access a server.
+                  type: object
+                  oneOf:
+                    - required: [meshTLS]
+                    - required: [unauthenticated]
+                  properties:
+
+                    networks:
+                      description: >-
+                        Limits the client IP addresses to which this
+                        authorization applies. If unset, the server chooses a
+                        default (typically, all IPs or the cluster's pod
+                        network).
+                      type: array
+                      items:
+                        type: object
+                        required: [cidr]
+                        properties:
+                          cidr:
+                            type: string
+                          except:
+                            type: array
+                            items:
+                              type: string
+
+                    unauthenticated:
+                      description: >-
+                        Authorizes unauthenticated clients to access a server.
+                      type: boolean
+
+                    meshTLS:
+                      type: object
+                      oneOf:
+                        - required: [unauthenticatedTLS]
+                        - required: [identities]
+                        - required: [serviceAccounts]
+
+                      properties:
+                        unauthenticatedTLS:
+                          type: boolean
+                          description: >-
+                            Indicates that no client identity is required for
+                            communication.
+
+                            This is mostly important for the identity
+                            controller, which must terminate TLS connections
+                            from clients that do not yet have a certificate.
+
+                        identities:
+                          description: >-
+                            Authorizes clients with the provided proxy identity
+                            strings (as provided via MTLS)
+
+                            The `*` prefix can be used to match all identities in
+                            a domain. An identity string of `*` indicates that
+                            all authentication clients are authorized.
+
+                          type: array
+                          items:
+                            type: string
+                            pattern: '^(\*|[a-z0-9]([-a-z0-9]*[a-z0-9])?)(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$'
+
+                        serviceAccounts:
+                          description: >-
+                            Authorizes clients with the provided proxy identity
+                            service accounts (as provided via MTLS)
+
+                          type: array
+                          items:
+                            type: object
+                            required: [name]
+                            properties:
+                              name:
+                                description: The ServiceAccount's name.
+                                type: string
+                                pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+
+                              namespace:
+                                description: >-
+                                  The ServiceAccount's namespace. If unset, the
+                                  authorization's namespace is usd.
+                                type: string
+                                pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+
+                              #selector:
+                              #  type: object
+                              #  oneOf:
+                              #    - required: [matchLabels]
+                              #    - required: [matchExpressions]
+                              #  properties:
+                              #    matchLabels:
+                              #      type: object
+                              #      x-kubernetes-preserve-unknown-fields: true
+                              #    matchExpressions:
+                              #      type: array
+                              #      items:
+                              #        type: object
+                              #        required: [key, operator, values]
+                              #        properties:
+                              #          key:
+                              #            type: string
+                              #          operator:
+                              #            type: string
+                              #            enum: [In, NotIn]
+                              #          values:
+                              #            type: array
+                              #              type: string
+                              #            items:
+---
 ###
 ### Service Profile CRD
 ###
