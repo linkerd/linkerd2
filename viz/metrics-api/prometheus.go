@@ -162,7 +162,7 @@ func generateLabelStringWithRegex(l model.LabelSet, labelName string, stringToMa
 	for l, v := range l {
 		lstrs = append(lstrs, fmt.Sprintf("%s=%q", l, v))
 	}
-	lstrs = append(lstrs, fmt.Sprintf(`%s=~"^%s.+"`, labelName, stringToMatch))
+	lstrs = append(lstrs, fmt.Sprintf(`%s=~"^%s.*"`, labelName, stringToMatch))
 
 	sort.Strings(lstrs)
 	return fmt.Sprintf("{%s}", strings.Join(lstrs, ", "))
