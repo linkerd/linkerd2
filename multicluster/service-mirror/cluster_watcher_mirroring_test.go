@@ -28,13 +28,13 @@ func (tc *mirroringTestCase) run(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-
 		if tc.expectedLocalServices == nil {
 			// ensure the are no local services
 			services, err := localAPI.Client.CoreV1().Services(corev1.NamespaceAll).List(context.Background(), metav1.ListOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			if len(services.Items) > 0 {
 				t.Fatalf("Was expecting no local services but instead found %v", services.Items)
 
@@ -122,6 +122,78 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 				}),
 			},
 		},
+		{
+			description: "create headless service and endpoints when gateway can be resolved",
+			environment: createExportedHeadlessService,
+			expectedLocalServices: []*corev1.Service{
+				headlessMirrorService(
+					"service-one-remote",
+					"ns2",
+					"111",
+					[]corev1.ServicePort{
+						{
+							Name:     "port1",
+							Protocol: "TCP",
+							Port:     555,
+						},
+						{
+							Name:     "port2",
+							Protocol: "TCP",
+							Port:     666,
+						},
+					}),
+				endpointMirrorService(
+					"pod-0",
+					"service-one-remote",
+					"ns2",
+					"112",
+					[]corev1.ServicePort{
+						{
+							Name:     "port1",
+							Protocol: "TCP",
+							Port:     555,
+						},
+						{
+							Name:     "port2",
+							Protocol: "TCP",
+							Port:     666,
+						},
+					},
+				),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{
+				headlessMirrorEndpoints("service-one-remote", "ns2", "pod-0", "", "gateway-identity", []corev1.EndpointPort{
+					{
+						Name:     "port1",
+						Port:     555,
+						Protocol: "TCP",
+					},
+					{
+						Name:     "port2",
+						Port:     666,
+						Protocol: "TCP",
+					},
+				}),
+				endpointMirrorEndpoints(
+					"service-one-remote",
+					"ns2",
+					"pod-0",
+					"192.0.2.129",
+					"gateway-identity",
+					[]corev1.EndpointPort{
+						{
+							Name:     "port1",
+							Port:     889,
+							Protocol: "TCP",
+						},
+						{
+							Name:     "port2",
+							Port:     889,
+							Protocol: "TCP",
+						},
+					}),
+			},
+		},
 	} {
 		tc := tt // pin
 		tc.run(t)
@@ -174,6 +246,112 @@ func TestRemoteServiceUpdatedMirroring(t *testing.T) {
 						Protocol: "TCP",
 					},
 				}),
+			},
+		},
+	} {
+		tc := tt // pin
+		tc.run(t)
+	}
+}
+
+func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
+	for _, tt := range []mirroringTestCase{
+		{
+			description: "updates headless mirror service with new remote Endpoints hosts",
+			environment: updateEndpointsWithChangedHosts,
+			expectedLocalServices: []*corev1.Service{
+				headlessMirrorService("service-two-remote", "eptest", "222", []corev1.ServicePort{
+					{
+						Name:     "port1",
+						Protocol: "TCP",
+						Port:     555,
+					},
+					{
+						Name:     "port2",
+						Protocol: "TCP",
+						Port:     666,
+					},
+				}),
+				endpointMirrorService("pod-0", "service-two-remote", "eptest", "333", []corev1.ServicePort{
+					{
+						Name:     "port1",
+						Protocol: "TCP",
+						Port:     555,
+					},
+					{
+						Name:     "port2",
+						Protocol: "TCP",
+						Port:     666,
+					},
+				}),
+				endpointMirrorService("pod-1", "service-two-remote", "eptest", "112", []corev1.ServicePort{
+					{
+						Name:     "port1",
+						Protocol: "TCP",
+						Port:     555,
+					},
+					{
+						Name:     "port2",
+						Protocol: "TCP",
+						Port:     666,
+					},
+				}),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{
+				headlessMirrorEndpointsUpdated(
+					"service-two-remote",
+					"eptest",
+					[]string{"pod-0", "pod-1"},
+					[]string{"", ""},
+					"gateway-identity",
+					[]corev1.EndpointPort{
+						{
+							Name:     "port1",
+							Port:     555,
+							Protocol: "TCP",
+						},
+						{
+							Name:     "port2",
+							Port:     666,
+							Protocol: "TCP",
+						},
+					}),
+				endpointMirrorEndpoints(
+					"service-two-remote",
+					"eptest",
+					"pod-0",
+					"192.0.2.127",
+					"gateway-identity",
+					[]corev1.EndpointPort{
+						{
+							Name:     "port1",
+							Port:     888,
+							Protocol: "TCP",
+						},
+						{
+							Name:     "port2",
+							Port:     888,
+							Protocol: "TCP",
+						},
+					}),
+				endpointMirrorEndpoints(
+					"service-two-remote",
+					"eptest",
+					"pod-1",
+					"192.0.2.127",
+					"gateway-identity",
+					[]corev1.EndpointPort{
+						{
+							Name:     "port1",
+							Port:     888,
+							Protocol: "TCP",
+						},
+						{
+							Name:     "port2",
+							Port:     888,
+							Protocol: "TCP",
+						},
+					}),
 			},
 		},
 	} {

@@ -1,5 +1,33 @@
 # Changes
 
+## edge-21.7.5
+
+This release updates Linkerd to store the identity trust root in a ConfigMap to
+make it easier to manage and rotate the trust root.  The release also lays the
+groundwork for StatefulSet support in the multicluster extension and removes
+deprecated PSP resources by default.
+
+* Added a `linkerd-identity-trust-roots` ConfigMap which contains the configured
+  trust root bundle
+* Introduced support for StatefulSets across multicluster (disabled by default)
+* Stopped installing PSP resources by default since these are deprecated as
+  of Kubernetes v1.21
+
+## edge-21.7.4
+
+This release continues to focus on dependency updates. It also adds the
+`l5d-proxy-error` information header to distinguish proxy generated errors
+proxy generated errors from application generated errors.
+
+* Updated several project dependencies
+* Added a new `l5d-proxy-error` on responses that allows proxy-generated error
+  responses to be distinguished from application-generated error responses.
+* Removed support for configuring HTTP/2 keepalives via the proxy.
+  Configuring this setting would sometimes cause conflicts with Go gRPC servers
+  and clients
+* Added a new `target_addr` label to `*_tcp_accept_errors` metrics to improve
+  diagnostics, especially for TLS detection timeouts
+
 ## edge-21.7.3
 
 This edge release introduces several changes around metrics. ReplicaSets are now

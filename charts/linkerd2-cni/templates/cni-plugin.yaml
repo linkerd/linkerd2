@@ -29,6 +29,19 @@ metadata:
     config.linkerd.io/admission-webhooks: disabled
 ---
 {{ end -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: linkerd-cni
+  namespace: {{.Values.namespace}}
+  labels:
+    linkerd.io/cni-resource: "true"
+{{- if .Values.imagePullSecrets }}
+imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 2 }}
+{{- end }}
+{{ if .Values.enablePSP -}}
+---
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
@@ -49,18 +62,7 @@ spec:
   volumes:
   - hostPath
   - secret
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: linkerd-cni
-  namespace: {{.Values.namespace}}
-  labels:
-    linkerd.io/cni-resource: "true"
-{{- if .Values.imagePullSecrets }}
-imagePullSecrets:
-{{ toYaml .Values.imagePullSecrets | indent 2 }}
-{{- end }}
+  - emptyDir
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -91,6 +93,7 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-cni
   namespace: {{.Values.namespace}}
+{{ end -}}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -243,6 +246,10 @@ spec:
         - mountPath: /host{{.Values.destCNINetDir}}
           name: cni-net-dir
         {{- end }}
+        - mountPath: /tmp
+          name: linkerd-tmp-dir
+        securityContext:
+          readOnlyRootFilesystem: true
       volumes:
       {{- if ne .Values.destCNIBinDir .Values.destCNINetDir }}
       - name: cni-bin-dir
@@ -256,3 +263,5 @@ spec:
         hostPath:
           path: {{.Values.destCNINetDir}}
       {{- end }}
+      - name: linkerd-tmp-dir
+        emptyDir: {}

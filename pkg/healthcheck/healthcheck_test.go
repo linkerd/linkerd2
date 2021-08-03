@@ -479,54 +479,6 @@ status:
 
 }
 
-func TestCheckCapability(t *testing.T) {
-	tests := []struct {
-		k8sConfigs []string
-		err        error
-	}{
-		{
-			[]string{},
-			nil,
-		},
-		{
-			[]string{`apiVersion: policy/v1beta1
-kind: PodSecurityPolicy
-metadata:
-  name: restricted
-spec:
-  requiredDropCapabilities:
-    - ALL`,
-			},
-			fmt.Errorf("found 1 PodSecurityPolicies, but none provide TEST_CAP, proxy injection will fail if the PSP admission controller is running"),
-		},
-	}
-
-	for i, test := range tests {
-		test := test // pin
-		t.Run(fmt.Sprintf("%d: returns expected capability result", i), func(t *testing.T) {
-			hc := NewHealthChecker(
-				[]CategoryID{},
-				&Options{},
-			)
-
-			var err error
-			hc.kubeAPI, err = k8s.NewFakeAPI(test.k8sConfigs...)
-			if err != nil {
-				t.Fatalf("Unexpected error: %s", err)
-			}
-
-			err = hc.checkCapability(context.Background(), "TEST_CAP")
-			if err != nil || test.err != nil {
-				if (err == nil && test.err != nil) ||
-					(err != nil && test.err == nil) ||
-					(err.Error() != test.err.Error()) {
-					t.Fatalf("Unexpected error (Expected: %s, Got: %s)", test.err, err)
-				}
-			}
-		})
-	}
-}
-
 func TestConfigExists(t *testing.T) {
 	testCases := []struct {
 		k8sConfigs []string
@@ -993,7 +945,6 @@ metadata:
 				"linkerd-config control plane CustomResourceDefinitions exist",
 				"linkerd-config control plane MutatingWebhookConfigurations exist",
 				"linkerd-config control plane ValidatingWebhookConfigurations exist",
-				"linkerd-config control plane PodSecurityPolicies exist: missing PodSecurityPolicies: linkerd-test-ns-control-plane",
 			},
 		},
 		{
@@ -1104,14 +1055,6 @@ metadata:
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
-				`
-apiVersion: policy/v1beta1
-kind: PodSecurityPolicy
-metadata:
-  name: linkerd-test-ns-control-plane
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
 			},
 			[]string{
 				"linkerd-config control plane Namespace exists",
@@ -1121,7 +1064,6 @@ metadata:
 				"linkerd-config control plane CustomResourceDefinitions exist",
 				"linkerd-config control plane MutatingWebhookConfigurations exist",
 				"linkerd-config control plane ValidatingWebhookConfigurations exist",
-				"linkerd-config control plane PodSecurityPolicies exist",
 			},
 		},
 	}
@@ -1463,8 +1405,10 @@ func TestValidateControlPlanePods(t *testing.T) {
 	})
 
 	// This test is just for ensuring full coverage of the validateControlPlanePods function
-	t.Run("Returns an error if the only pod is not ready", func(t *testing.T) {
+	t.Run("Returns an error if all the controller pods are not ready", func(t *testing.T) {
 		pods := []corev1.Pod{
+			pod("linkerd-destination-9849948665-37082", corev1.PodRunning, false),
+			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, false),
 			pod("linkerd-proxy-injector-5f79ff4844-", corev1.PodRunning, false),
 		}
 
@@ -2044,7 +1988,6 @@ func TestLinkerdPreInstallGlobalResourcesChecks(t *testing.T) {
 			"pre-linkerd-global-resources no CustomResourceDefinitions exist",
 			"pre-linkerd-global-resources no MutatingWebhookConfigurations exist",
 			"pre-linkerd-global-resources no ValidatingWebhookConfigurations exist",
-			"pre-linkerd-global-resources no PodSecurityPolicies exist",
 		}
 		if !reflect.DeepEqual(observer.results, expected) {
 			testutil.AnnotatedErrorf(t, "Mismatch result", "Mismatch result.\nExpected: %v\n Actual: %v\n", expected, observer.results)
@@ -2083,12 +2026,6 @@ metadata:
   name: validating-webhook-configuration
   labels:
     linkerd.io/control-plane-ns: test-ns`,
-			`apiVersion: policy/v1beta1
-kind: PodSecurityPolicy
-metadata:
-  name: pod-security-policy
-  labels:
-    linkerd.io/control-plane-ns: test-ns`,
 		}
 
 		var err error
@@ -2109,7 +2046,6 @@ metadata:
 			"pre-linkerd-global-resources no CustomResourceDefinitions exist: CustomResourceDefinitions found but should not exist: custom-resource-definition",
 			"pre-linkerd-global-resources no MutatingWebhookConfigurations exist: MutatingWebhookConfigurations found but should not exist: mutating-webhook-configuration",
 			"pre-linkerd-global-resources no ValidatingWebhookConfigurations exist: ValidatingWebhookConfigurations found but should not exist: validating-webhook-configuration",
-			"pre-linkerd-global-resources no PodSecurityPolicies exist: PodSecurityPolicies found but should not exist: pod-security-policy",
 		}
 		if !reflect.DeepEqual(observer.results, expected) {
 			t.Errorf("Mismatch result.\nExpected: %v\n Actual: %v\n", expected, observer.results)
@@ -2982,11 +2918,8 @@ func TestLinkerdIdentityCheckCertValidity(t *testing.T) {
 
 type fakeCniResourcesOpts struct {
 	hasConfigMap          bool
-	hasPodSecurityPolicy  bool
 	hasClusterRole        bool
 	hasClusterRoleBinding bool
-	hasRole               bool
-	hasRoleBinding        bool
 	hasServiceAccount     bool
 	hasDaemonSet          bool
 	scheduled             int
@@ -3007,32 +2940,6 @@ metadata:
     linkerd.io/cni-resource: "true"
 data:
   dest_cni_net_dir: "/etc/cni/net.d"
----
-`)
-	}
-
-	if opts.hasPodSecurityPolicy {
-		resources = append(resources, `
-apiVersion: policy/v1beta1
-kind: PodSecurityPolicy
-metadata:
-  name: linkerd-test-ns-cni
-  labels:
-    linkerd.io/cni-resource: "true"
-spec:
-  allowPrivilegeEscalation: false
-  fsGroup:
-    rule: RunAsAny
-  hostNetwork: true
-  runAsUser:
-    rule: RunAsAny
-  seLinux:
-    rule: RunAsAny
-  supplementalGroups:
-    rule: RunAsAny
-  volumes:
-  - hostPath
-  - secret
 ---
 `)
 	}
@@ -3064,46 +2971,6 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: linkerd-cni
-subjects:
-- kind: ServiceAccount
-  name: linkerd-cni
-  namespace: test-ns
----
-`)
-	}
-
-	if opts.hasRole {
-		resources = append(resources, `
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: linkerd-cni
-  namespace: test-ns
-  labels:
-    linkerd.io/cni-resource: "true"
-rules:
-- apiGroups: ['extensions', 'policy']
-  resources: ['podsecuritypolicies']
-  resourceNames:
-  - linkerd-test-ns-cni
-  verbs: ['use']
----
-`)
-	}
-
-	if opts.hasRoleBinding {
-		resources = append(resources, `
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: linkerd-cni
-  namespace: test-ns
-  labels:
-    linkerd.io/cni-resource: "true"
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
   name: linkerd-cni
 subjects:
 - kind: ServiceAccount
@@ -3217,87 +3084,48 @@ func TestCniChecks(t *testing.T) {
 			[]string{"linkerd-cni-plugin cni plugin ConfigMap exists: configmaps \"linkerd-cni-config\" not found"},
 		},
 		{
-			"fails when there is no pod security policy",
+			"fails then there is no ClusterRole",
 			fakeCniResourcesOpts{hasConfigMap: true},
 			[]string{
 				"linkerd-cni-plugin cni plugin ConfigMap exists",
-				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists: missing PodSecurityPolicy: linkerd-test-ns-cni"},
-		},
-		{
-			"fails then there is no ClusterRole",
-			fakeCniResourcesOpts{hasConfigMap: true, hasPodSecurityPolicy: true},
-			[]string{
-				"linkerd-cni-plugin cni plugin ConfigMap exists",
-				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists",
 				"linkerd-cni-plugin cni plugin ClusterRole exists: missing ClusterRole: linkerd-cni"},
 		},
 		{
 			"fails then there is no ClusterRoleBinding",
-			fakeCniResourcesOpts{hasConfigMap: true, hasPodSecurityPolicy: true, hasClusterRole: true},
+			fakeCniResourcesOpts{hasConfigMap: true, hasClusterRole: true},
 			[]string{
 				"linkerd-cni-plugin cni plugin ConfigMap exists",
-				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists",
 				"linkerd-cni-plugin cni plugin ClusterRole exists",
 				"linkerd-cni-plugin cni plugin ClusterRoleBinding exists: missing ClusterRoleBinding: linkerd-cni"},
 		},
 		{
-			"fails then there is no Role",
-			fakeCniResourcesOpts{hasConfigMap: true, hasPodSecurityPolicy: true, hasClusterRole: true, hasClusterRoleBinding: true},
-			[]string{
-				"linkerd-cni-plugin cni plugin ConfigMap exists",
-				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists",
-				"linkerd-cni-plugin cni plugin ClusterRole exists",
-				"linkerd-cni-plugin cni plugin ClusterRoleBinding exists",
-				"linkerd-cni-plugin cni plugin Role exists: missing Role: linkerd-cni"},
-		},
-		{
-			"fails then there is no RoleBinding",
-			fakeCniResourcesOpts{hasConfigMap: true, hasPodSecurityPolicy: true, hasClusterRole: true, hasClusterRoleBinding: true, hasRole: true},
-			[]string{
-				"linkerd-cni-plugin cni plugin ConfigMap exists",
-				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists",
-				"linkerd-cni-plugin cni plugin ClusterRole exists",
-				"linkerd-cni-plugin cni plugin ClusterRoleBinding exists",
-				"linkerd-cni-plugin cni plugin Role exists",
-				"linkerd-cni-plugin cni plugin RoleBinding exists: missing RoleBinding: linkerd-cni"},
-		},
-		{
 			"fails then there is no ServiceAccount",
-			fakeCniResourcesOpts{hasConfigMap: true, hasPodSecurityPolicy: true, hasClusterRole: true, hasClusterRoleBinding: true, hasRole: true, hasRoleBinding: true},
+			fakeCniResourcesOpts{hasConfigMap: true, hasClusterRole: true, hasClusterRoleBinding: true},
 			[]string{
 				"linkerd-cni-plugin cni plugin ConfigMap exists",
-				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists",
 				"linkerd-cni-plugin cni plugin ClusterRole exists",
 				"linkerd-cni-plugin cni plugin ClusterRoleBinding exists",
-				"linkerd-cni-plugin cni plugin Role exists",
-				"linkerd-cni-plugin cni plugin RoleBinding exists",
 				"linkerd-cni-plugin cni plugin ServiceAccount exists: missing ServiceAccount: linkerd-cni",
 			},
 		},
 		{
 			"fails then there is no DaemonSet",
-			fakeCniResourcesOpts{hasConfigMap: true, hasPodSecurityPolicy: true, hasClusterRole: true, hasClusterRoleBinding: true, hasRole: true, hasRoleBinding: true, hasServiceAccount: true},
+			fakeCniResourcesOpts{hasConfigMap: true, hasClusterRole: true, hasClusterRoleBinding: true, hasServiceAccount: true},
 			[]string{
 				"linkerd-cni-plugin cni plugin ConfigMap exists",
-				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists",
 				"linkerd-cni-plugin cni plugin ClusterRole exists",
 				"linkerd-cni-plugin cni plugin ClusterRoleBinding exists",
-				"linkerd-cni-plugin cni plugin Role exists",
-				"linkerd-cni-plugin cni plugin RoleBinding exists",
 				"linkerd-cni-plugin cni plugin ServiceAccount exists",
 				"linkerd-cni-plugin cni plugin DaemonSet exists: missing DaemonSet: linkerd-cni",
 			},
 		},
 		{
 			"fails then there is nodes are not ready",
-			fakeCniResourcesOpts{hasConfigMap: true, hasPodSecurityPolicy: true, hasClusterRole: true, hasClusterRoleBinding: true, hasRole: true, hasRoleBinding: true, hasServiceAccount: true, hasDaemonSet: true, scheduled: 5, ready: 4},
+			fakeCniResourcesOpts{hasConfigMap: true, hasClusterRole: true, hasClusterRoleBinding: true, hasServiceAccount: true, hasDaemonSet: true, scheduled: 5, ready: 4},
 			[]string{
 				"linkerd-cni-plugin cni plugin ConfigMap exists",
-				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists",
 				"linkerd-cni-plugin cni plugin ClusterRole exists",
 				"linkerd-cni-plugin cni plugin ClusterRoleBinding exists",
-				"linkerd-cni-plugin cni plugin Role exists",
-				"linkerd-cni-plugin cni plugin RoleBinding exists",
 				"linkerd-cni-plugin cni plugin ServiceAccount exists",
 				"linkerd-cni-plugin cni plugin DaemonSet exists",
 				"linkerd-cni-plugin cni plugin pod is running on all nodes: number ready: 4, number scheduled: 5",
@@ -3305,14 +3133,11 @@ func TestCniChecks(t *testing.T) {
 		},
 		{
 			"fails then there is nodes are not ready",
-			fakeCniResourcesOpts{hasConfigMap: true, hasPodSecurityPolicy: true, hasClusterRole: true, hasClusterRoleBinding: true, hasRole: true, hasRoleBinding: true, hasServiceAccount: true, hasDaemonSet: true, scheduled: 5, ready: 5},
+			fakeCniResourcesOpts{hasConfigMap: true, hasClusterRole: true, hasClusterRoleBinding: true, hasServiceAccount: true, hasDaemonSet: true, scheduled: 5, ready: 5},
 			[]string{
 				"linkerd-cni-plugin cni plugin ConfigMap exists",
-				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists",
 				"linkerd-cni-plugin cni plugin ClusterRole exists",
 				"linkerd-cni-plugin cni plugin ClusterRoleBinding exists",
-				"linkerd-cni-plugin cni plugin Role exists",
-				"linkerd-cni-plugin cni plugin RoleBinding exists",
 				"linkerd-cni-plugin cni plugin ServiceAccount exists",
 				"linkerd-cni-plugin cni plugin DaemonSet exists",
 				"linkerd-cni-plugin cni plugin pod is running on all nodes",

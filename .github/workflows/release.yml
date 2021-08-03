@@ -239,7 +239,7 @@ jobs:
         mv choco/linkerd.*.nupkg target/release/linkerd2-cli-stable-$VERSION.nupkg || true
     - name: Create release
       id: create_release
-      uses: softprops/action-gh-release@91409e712cf565ce9eff10c87a8d1b11b81757ae
+      uses: softprops/action-gh-release@fb0163a75bee697a9cfec2c931801de7c7f10042
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
