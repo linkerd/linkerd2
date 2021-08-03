@@ -348,6 +348,7 @@ status:
 	k8sAPI.Sync(nil)
 
 	return &server{
+		pb.UnimplementedDestinationServer{},
 		endpoints,
 		opaquePorts,
 		profiles,

@@ -33,6 +33,10 @@ useWaitFlag:      false
 # -- Kubernetes priorityClassName for the CNI plugin's Pods
 priorityClassName: ""
 
+# -- Add a PSP resource and bind it to the linkerd-cni ServiceAccounts.
+# Note PSP has been deprecated since k8s v1.21
+enablePSP: false
+
 # -|- Tolerations section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
 # for more information

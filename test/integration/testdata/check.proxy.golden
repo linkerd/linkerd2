@@ -29,7 +29,6 @@ linkerd-config
 √ control plane CustomResourceDefinitions exist
 √ control plane MutatingWebhookConfigurations exist
 √ control plane ValidatingWebhookConfigurations exist
-√ control plane PodSecurityPolicies exist
 
 linkerd-identity
 ----------------

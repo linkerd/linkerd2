@@ -178,6 +178,7 @@ type (
 
 	// Issuer has the Helm variables of the identity issuer
 	Issuer struct {
+		ExternalCA         bool       `json:"externalCA"`
 		Scheme             string     `json:"scheme"`
 		ClockSkewAllowance string     `json:"clockSkewAllowance"`
 		IssuanceLifetime   string     `json:"issuanceLifetime"`
