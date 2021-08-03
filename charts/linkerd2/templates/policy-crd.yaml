@@ -149,13 +149,13 @@ spec:
                           type: array
                           items:
                             type: object
-                            required: [key, operator, value]
+                            required: [key, operator]
                             properties:
                               key:
                                 type: string
                               operator:
                                 type: string
-                                enum: [In, NotIn]
+                                enum: [In, NotIn, Exists, DoesNotExist]
                               values:
                                 type: array
                                 items:
