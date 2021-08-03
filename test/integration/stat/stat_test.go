@@ -118,6 +118,12 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 				prometheusAuthority: "-",
 			},
 		},
+		{
+			args: []string{"viz", "stat", "au", "-n", TestHelper.GetVizNamespace(), "--to", fmt.Sprintf("po/%s", prometheusPod), "--to-namespace", prometheusNamespace},
+			expectedRows: map[string]string{
+				prometheusAuthority: "-",
+			},
+		},
 	}
 
 	if !TestHelper.ExternalPrometheus() {
@@ -177,42 +183,93 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 		)
 	}
 
-	for _, tt := range testCases {
-		tt := tt // pin
-		timeout := 20 * time.Second
-		t.Run("linkerd "+strings.Join(tt.args, " "), func(t *testing.T) {
-			err := TestHelper.RetryFor(timeout, func() error {
-				// Use a short time window so that transient errors at startup
-				// fall out of the window.
-				tt.args = append(tt.args, "-t", "30s")
-				out, err := TestHelper.LinkerdRun(tt.args...)
-				if err != nil {
-					testutil.AnnotatedFatalf(t, "unexpected stat error",
-						"unexpected stat error: %s\n%s", err, out)
-				}
+	// Apply a sample application
+	TestHelper.WithDataPlaneNamespace(ctx, "stat-test", map[string]string{}, t, func(t *testing.T, prefixedNs string) {
+		out, err := TestHelper.LinkerdRun("inject", "--manual", "../trafficsplit/testdata/application.yaml")
+		if err != nil {
+			testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
+		}
 
-				expectedColumnCount := 8
-				if tt.status != "" {
-					expectedColumnCount++
-				}
-				rowStats, err := testutil.ParseRows(out, len(tt.expectedRows), expectedColumnCount)
-				if err != nil {
-					return err
-				}
+		out, err = TestHelper.KubectlApply(out, prefixedNs)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+				"'kubectl apply' command failed\n%s", out)
+		}
 
-				for name, meshed := range tt.expectedRows {
-					if err := validateRowStats(name, meshed, tt.status, rowStats); err != nil {
+		// wait for deployments to start
+		for _, deploy := range []string{"backend", "failing", "slow-cooker"} {
+			if err := TestHelper.CheckPods(ctx, prefixedNs, deploy, 1); err != nil {
+				if rce, ok := err.(*testutil.RestartCountError); ok {
+					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+				} else {
+					testutil.AnnotatedError(t, "CheckPods timed-out", err)
+				}
+			}
+		}
+
+		testCases = append(testCases, []struct {
+			args         []string
+			expectedRows map[string]string
+			status       string
+		}{
+			{
+				args: []string{"viz", "stat", "svc", "-n", prefixedNs},
+				expectedRows: map[string]string{
+					"backend-svc": "-",
+				},
+			},
+			{
+				args: []string{"viz", "stat", "svc/backend-svc", "-n", prefixedNs, "--from", "deploy/slow-cooker"},
+				expectedRows: map[string]string{
+					"backend-svc": "-",
+				},
+			},
+			{
+				args: []string{"viz", "stat", "svc/backend-svc", "-n", prefixedNs, "--from", "deploy/slow-cooker-1"},
+				expectedRows: map[string]string{
+					"backend-svc": "-",
+				},
+			},
+		}...,
+		)
+
+		for _, tt := range testCases {
+			tt := tt // pin
+			timeout := 20 * time.Second
+			t.Run("linkerd "+strings.Join(tt.args, " "), func(t *testing.T) {
+				err := TestHelper.RetryFor(timeout, func() error {
+					// Use a short time window so that transient errors at startup
+					// fall out of the window.
+					tt.args = append(tt.args, "-t", "30s")
+					out, err := TestHelper.LinkerdRun(tt.args...)
+					if err != nil {
+						testutil.AnnotatedFatalf(t, "unexpected stat error",
+							"unexpected stat error: %s\n%s", err, out)
+					}
+
+					expectedColumnCount := 8
+					if tt.status != "" {
+						expectedColumnCount++
+					}
+					rowStats, err := testutil.ParseRows(out, len(tt.expectedRows), expectedColumnCount)
+					if err != nil {
 						return err
 					}
-				}
 
-				return nil
+					for name, meshed := range tt.expectedRows {
+						if err := validateRowStats(name, meshed, tt.status, rowStats); err != nil {
+							return err
+						}
+					}
+
+					return nil
+				})
+				if err != nil {
+					testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out checking stats (%s)", timeout), err)
+				}
 			})
-			if err != nil {
-				testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out checking stats (%s)", timeout), err)
-			}
-		})
-	}
+		}
+	})
 }
 
 func validateRowStats(name, expectedMeshCount, expectedStatus string, rowStats map[string]*testutil.RowStat) error {
