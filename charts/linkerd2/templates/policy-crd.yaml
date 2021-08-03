@@ -260,7 +260,7 @@ spec:
                               namespace:
                                 description: >-
                                   The ServiceAccount's namespace. If unset, the
-                                  authorization's namespace is usd.
+                                  authorization's namespace is used.
                                 type: string
                                 pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
 
