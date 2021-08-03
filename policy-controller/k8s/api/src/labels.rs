@@ -16,13 +16,15 @@ pub type Expressions = Vec<Expression>;
 pub struct Expression {
     key: String,
     operator: Operator,
-    values: BTreeSet<String>,
+    values: Option<BTreeSet<String>>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
 pub enum Operator {
     In,
     NotIn,
+    Exists,
+    DoesNotExist,
 }
 
 /// Selects a set of pods that expose a server.
@@ -132,21 +134,22 @@ impl std::iter::FromIterator<(&'static str, &'static str)> for Labels {
 
 impl Expression {
     fn matches(&self, labels: &Map) -> bool {
-        match self.operator {
-            Operator::In => {
-                if let Some(v) = labels.get(&self.key) {
-                    return self.values.contains(v);
-                }
-            }
-            Operator::NotIn => {
-                return match labels.get(&self.key) {
-                    Some(v) => self.values.contains(v),
-                    None => true,
-                }
+        match (self.operator, &self.key, self.values.as_ref()) {
+            (Operator::In, key, Some(values)) => match labels.get(key) {
+                Some(v) => values.contains(v),
+                None => false,
+            },
+            (Operator::NotIn, key, Some(values)) => match labels.get(key) {
+                Some(v) => values.contains(v),
+                None => true,
+            },
+            (Operator::Exists, key, None) => labels.contains_key(key),
+            (Operator::DoesNotExist, key, None) => !labels.contains_key(key),
+            (operator, key, values) => {
+                tracing::warn!(?operator, %key, ?values, "illegal match expression");
+                false
             }
         }
-
-        false
     }
 }
 
