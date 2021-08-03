@@ -20,14 +20,6 @@ spec:
       served: true
       storage: true
 
-      # additionalPrinterColumns:
-      #   - jsonPath: .spec.port
-      #     name: podSelector
-      #     type: string
-      #   - jsonPath: .spec.podSelector
-      #     name: port
-      #     type: string
-
       schema:
         openAPIV3Schema:
           type: object
@@ -44,6 +36,9 @@ spec:
                   type: object
                   description: >-
                     Selects pods in the same namespace.
+                  oneOf:
+                    - required: [matchExpressions]
+                    - required: [matchLabels]
                   properties:
                     matchLabels:
                       type: object
@@ -52,13 +47,13 @@ spec:
                       type: array
                       items:
                         type: object
-                        required: [key, operator, values]
+                        required: [key, operator]
                         properties:
                           key:
                             type: string
                           operator:
                             type: string
-                            enum: [In, NotIn]
+                            enum: [In, NotIn, Exists, DoesNotExist]
                           values:
                             type: array
                             items:
@@ -83,6 +78,7 @@ spec:
                     - gRPC
                     - opaque
                     - TLS
+
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -106,20 +102,6 @@ spec:
     - name: v1alpha1
       served: true
       storage: true
-
-      # additionalPrinterColumns:
-      #   - jsonPath: .spec.server.name
-      #     name: server
-      #     type: string
-      #   - jsonPath: .spec.client.networks[*]
-      #     name: networks
-      #     type: string
-      #   - jsonPath: .spec.client.identities[*]
-      #     name: identities
-      #     type: string
-      #   - jsonPath: .spec.client.serviceAccounts[*]
-      #     name: service accounts
-      #     type: string
 
       schema:
         openAPIV3Schema:
@@ -263,28 +245,3 @@ spec:
                                   authorization's namespace is used.
                                 type: string
                                 pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
-
-                              #selector:
-                              #  type: object
-                              #  oneOf:
-                              #    - required: [matchLabels]
-                              #    - required: [matchExpressions]
-                              #  properties:
-                              #    matchLabels:
-                              #      type: object
-                              #      x-kubernetes-preserve-unknown-fields: true
-                              #    matchExpressions:
-                              #      type: array
-                              #      items:
-                              #        type: object
-                              #        required: [key, operator, values]
-                              #        properties:
-                              #          key:
-                              #            type: string
-                              #          operator:
-                              #            type: string
-                              #            enum: [In, NotIn]
-                              #          values:
-                              #            type: array
-                              #              type: string
-                              #            items:
