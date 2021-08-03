@@ -148,8 +148,7 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		},
 	}
 
-	fmt.Printf("Response is %+v\n", statTables)
-
+	log.Debugf("Sent response as %+v\n", statTables)
 	return &rsp, nil
 }
 
