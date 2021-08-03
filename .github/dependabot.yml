@@ -6,7 +6,7 @@ updates:
       interval: "daily"
 
   - package-ecosystem: cargo
-    directory: /linkerd-policy-controller
+    directory: /policy-controller
     schedule:
       interval: daily
 
