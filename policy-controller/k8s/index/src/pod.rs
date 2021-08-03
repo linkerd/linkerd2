@@ -192,7 +192,7 @@ impl PodIndex {
                     labels: pod.metadata.labels.into(),
                     ports,
                 };
-                pod.link_servers(&servers);
+                pod.link_servers(servers);
 
                 // The pod has been linked against servers and is registered for subsequent updates,
                 // so make it discoverable to API clients.
@@ -217,7 +217,7 @@ impl PodIndex {
                 let p = entry.get_mut();
                 if p.labels.as_ref() != &pod.metadata.labels {
                     p.labels = pod.metadata.labels.into();
-                    p.link_servers(&servers);
+                    p.link_servers(servers);
                 }
 
                 // Note that the default-allow annotation may not be changed at runtime.
@@ -266,7 +266,7 @@ impl PodIndex {
 
     pub(crate) fn link_servers(&mut self, servers: &SrvIndex) {
         for pod in self.index.values_mut() {
-            pod.link_servers(&servers)
+            pod.link_servers(servers)
         }
     }
 
@@ -306,7 +306,7 @@ impl Pod {
         let matching = servers.iter_matching(self.labels.clone());
         for (name, port_match, rx) in matching {
             // Get all pod ports that match this server.
-            for p in self.ports.collect_port(&port_match).into_iter().flatten() {
+            for p in self.ports.collect_port(port_match).into_iter().flatten() {
                 self.link_server_port(p, name, rx);
                 remaining_ports.remove(&p);
             }
