@@ -17,6 +17,12 @@ nodeSelector: &default_node_selector
 # for more information
 tolerations: &default_tolerations
 
+# -- Create Roles and RoleBindings to associate this extension's
+# ServiceAccounts to the control plane PSP resource. This requires that
+# `enabledPSP` is set to true on the control plane install. Note PSP has been
+# deprecated since k8s v1.21
+enablePSP: false
+
 collector:
   # -- Set to false to exclude collector installation
   enabled: true

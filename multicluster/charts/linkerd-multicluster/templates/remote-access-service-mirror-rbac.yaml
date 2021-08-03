@@ -16,12 +16,15 @@ metadata:
     {{ include "partials.annotations.created-by" $ }}
 rules:
 - apiGroups: [""]
-  resources: ["services"]
+  resources: ["services", "endpoints"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
   resources: ["configmaps"]
   verbs: ["get"]
-  resourceNames: ["linkerd-config"]  
+  resourceNames: ["linkerd-config"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
 ---
 apiVersion: v1
 kind: ServiceAccount

@@ -25,7 +25,7 @@ jobs:
         # TODO: validate bin/protoc-go.sh does not dirty the repo
         gotestsum -- -cover -coverprofile=coverage.out -race -v -mod=readonly ./...
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@29386c70ef20e286228c72b668a06fd0e8399192
+      uses: codecov/codecov-action@51d810878be5422784e86451c0e7c14e5860ec47
       with:
         files: ./coverage.out
         flags: unittests,golang
@@ -47,7 +47,7 @@ jobs:
         bin/web --frozen-lockfile
         bin/web test --reporters="jest-progress-bar-reporter" --reporters="./gh_ann_reporter.js" --coverage
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@29386c70ef20e286228c72b668a06fd0e8399192
+      uses: codecov/codecov-action@51d810878be5422784e86451c0e7c14e5860ec47
       with:
         directory: ./web/app/coverage
         flags: unittests,javascript

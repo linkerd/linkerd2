@@ -2,9 +2,9 @@ package identity
 
 import (
 	"context"
-	"encoding/base64"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/signal"
@@ -30,8 +30,6 @@ import (
 	"k8s.io/client-go/tools/record"
 )
 
-const envTrustAnchors = "LINKERD2_IDENTITY_TRUST_ANCHORS"
-
 // Main executes the identity subcommand
 func Main(args []string) {
 	cmd := flag.NewFlagSet("identity", flag.ExitOnError)
@@ -56,13 +54,11 @@ func Main(args []string) {
 
 	flags.ConfigureAndParse(cmd, args)
 
-	encodedIdentityTrustAnchorPEM := os.Getenv(envTrustAnchors)
-	rawPEM, err := base64.StdEncoding.DecodeString(encodedIdentityTrustAnchorPEM)
+	identityTrustAnchorPEM, err := ioutil.ReadFile(k8s.MountPathTrustRootsPEM)
 	if err != nil {
-		log.Fatalf("could not decode identity trust anchors PEM: %s", err.Error())
+		log.Fatalf("could not read identity trust anchors PEM: %s", err.Error())
 	}
 
-	identityTrustAnchorPEM := string(rawPEM)
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -86,7 +82,7 @@ func Main(args []string) {
 		log.Fatalf("Invalid trust domain: %s", err.Error())
 	}
 
-	trustAnchors, err := tls.DecodePEMCertPool(identityTrustAnchorPEM)
+	trustAnchors, err := tls.DecodePEMCertPool(string(identityTrustAnchorPEM))
 	if err != nil {
 		log.Fatalf("Failed to read trust anchors: %s", err)
 	}

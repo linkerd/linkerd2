@@ -6,7 +6,7 @@
 clusterDomain: cluster.local
 
 # -- The cluster networks for which service discovery is performed. This should
-# include the pod network but need not include the node network.
+# include the pod and service networks, but need not include the node network.
 #
 # By default, all private networks are specified so that resolution works in
 # typical Kubernetes environments.
@@ -151,6 +151,10 @@ imagePullSecrets: []
 # -- Allow proxies to perform transparent HTTP/2 upgrading
 enableH2Upgrade: true
 
+# -- Add a PSP resource and bind it to the control plane ServiceAccounts. Note
+# PSP has been deprecated since k8s v1.21
+enablePSP: false
+
 # -- Omit the `sideEffects` flag in the webhook manifests
 omitWebhookSideEffects: false
 # -- Failure policy for the proxy injector
@@ -187,6 +191,8 @@ debugContainer:
     version: ""
 
 identity:
+  # -- If the linkerd-identity-trust-roots ConfigMap has already been created
+  externalCA: false
   issuer:
     scheme: linkerd.io/tls
 

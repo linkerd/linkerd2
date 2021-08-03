@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"sort"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/labels"
@@ -942,10 +941,21 @@ status:
 				t.Fatalf("api.GetPodsFor() unexpected error, expected [%s] got: [%s]", exp.err, err)
 			}
 
-			sort.Sort(byPod(pods))
-			sort.Sort(byPod(k8sResultPods))
-			if !reflect.DeepEqual(pods, k8sResultPods) {
+			if len(pods) != len(k8sResultPods) {
 				t.Fatalf("Expected: %+v, Got: %+v", k8sResultPods, pods)
+			}
+
+			for _, pod := range pods {
+				found := false
+				for _, resultPod := range k8sResultPods {
+					if reflect.DeepEqual(pod, resultPod) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Fatalf("Expected: %+v, Got: %+v", k8sResultPods, pods)
+				}
 			}
 		}
 	})
@@ -1348,10 +1358,21 @@ spec:
 				t.Fatalf("api.GetServicesFor() unexpected error, expected [%s] got: [%s]", exp.err, err)
 			}
 
-			sort.Sort(byService(k8sResultServices))
-			sort.Sort(byService(services))
-			if !reflect.DeepEqual(services, k8sResultServices) {
+			if len(services) != len(k8sResultServices) {
 				t.Fatalf("Expected: %+v, Got: %+v", k8sResultServices, services)
+			}
+
+			for _, service := range services {
+				found := false
+				for _, resultService := range k8sResultServices {
+					if reflect.DeepEqual(service, resultService) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Fatalf("Expected: %+v, Got: %+v", k8sResultServices, services)
+				}
 			}
 		}
 

@@ -13,9 +13,6 @@ RUN ./bin/install-deps $TARGETARCH
 FROM go-deps as golang
 WORKDIR /linkerd-build
 COPY controller/gen controller/gen
-# TODO: remove when BuildResource is refactored
-# https://github.com/linkerd/linkerd2/issues/5589
-COPY viz/metrics-api/gen/viz viz/metrics-api/gen/viz
 COPY pkg pkg
 COPY controller controller
 COPY charts/patch charts/patch

@@ -41,12 +41,14 @@ const (
 type (
 	// Service implements the gRPC service in terms of a Validator and Issuer.
 	Service struct {
-		validator                                  Validator
-		trustAnchors                               *x509.CertPool
-		issuer                                     *tls.Issuer
-		issuerMutex                                *sync.RWMutex
-		validity                                   *tls.Validity
-		recordEvent                                func(parent runtime.Object, eventType, reason, message string)
+		pb.UnimplementedIdentityServer
+		validator    Validator
+		trustAnchors *x509.CertPool
+		issuer       *tls.Issuer
+		issuerMutex  *sync.RWMutex
+		validity     *tls.Validity
+		recordEvent  func(parent runtime.Object, eventType, reason, message string)
+
 		expectedName, issuerPathCrt, issuerPathKey string
 	}
 
@@ -136,6 +138,7 @@ func (svc *Service) loadCredentials() (tls.Issuer, error) {
 // NewService creates a new identity service.
 func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.Validity, recordEvent func(parent runtime.Object, eventType, reason, message string), expectedName, issuerPathCrt, issuerPathKey string) *Service {
 	return &Service{
+		pb.UnimplementedIdentityServer{},
 		validator,
 		trustAnchors,
 		nil,
