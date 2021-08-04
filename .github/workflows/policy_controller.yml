@@ -64,14 +64,14 @@ jobs:
   test:
     name: test
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     container:
       image: docker://rust:1.54.0-buster
       options: --security-opt seccomp=unconfined
     steps:
       - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
-      - run: cargo install cargo-tarpaulin
-      - run: cargo tarpaulin --verbose --workspace --out Xml
+      - run: cd target && curl -vsL https://github.com/xd009642/tarpaulin/releases/download/0.18.0/cargo-tarpaulin-0.18.0-travis.tar.gz | tar zxvf - && chmod 755 cargo-tarpaulin
+      - run: target/cargo-tarpaulin --verbose --workspace --out Xml
       - uses: codecov/codecov-action@51d810878be5422784e86451c0e7c14e5860ec47
         with:
           flags: unittests,rust
