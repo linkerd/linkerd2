@@ -39,7 +39,7 @@ impl NamespaceIndex {
         })
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&String, &Namespace)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &Namespace)> + ExactSizeIterator {
         self.index.iter()
     }
 }

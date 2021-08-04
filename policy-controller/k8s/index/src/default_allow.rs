@@ -51,7 +51,7 @@ impl std::str::FromStr for DefaultAllow {
             "cluster-authenticated" => Ok(Self::ClusterAuthenticated),
             "cluster-unauthenticated" => Ok(Self::ClusterUnauthenticated),
             "deny" => Ok(Self::Deny),
-            s => Err(anyhow!("invalid mode: {}", s)),
+            s => Err(anyhow!("invalid mode: {:?}", s)),
         }
     }
 }

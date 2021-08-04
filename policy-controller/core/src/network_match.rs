@@ -6,7 +6,7 @@ pub struct NetworkMatch {
     /// A network to match against.
     pub net: IpNet,
 
-    /// Neteworks to exclude from the match.
+    /// Networks to exclude from the match.
     pub except: Vec<IpNet>,
 }
 

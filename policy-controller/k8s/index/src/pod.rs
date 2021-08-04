@@ -328,16 +328,18 @@ impl Pod {
             None => return,
         };
 
-        // Either this port is using a default allow policy, and the server name is unset,
-        // or multiple servers select this pod. If there's a conflict, we panic if the proxy
-        // is running in debug mode. In release mode, we log a warning and ignore the
-        // conflicting server.
+        // Either this port is using a default allow policy, and the server name is unset, or
+        // multiple servers select this pod. If there's a conflict, we panic if the controller is
+        // running in debug mode. In release mode, we log a warning and ignore the conflicting
+        // server.
+        //
+        // TODO these cases should be prevented with a validating admission controller.
         if let Some(sn) = port.server_name.as_ref() {
             if sn != name {
                 debug_assert!(false, "Pod port must not match multiple servers");
                 tracing::warn!("Pod port matches multiple servers: {} and {}", sn, name);
             }
-            // If the name matched there's no use in proceeding with a redundant update. If the
+            // If the name matched there's no use in proceeding with a redundant update
             return;
         }
         port.server_name = Some(name.to_string());

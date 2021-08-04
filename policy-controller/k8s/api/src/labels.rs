@@ -60,7 +60,7 @@ impl Selector {
         }
 
         if let Some(match_labels) = self.match_labels.as_ref() {
-            for (k, v) in match_labels.iter() {
+            for (k, v) in match_labels {
                 if labels.0.get(k) != Some(v) {
                     return false;
                 }
