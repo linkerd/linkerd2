@@ -19,14 +19,14 @@ struct Args {
     #[structopt(short, long, default_value = "0.0.0.0:8090")]
     grpc_addr: SocketAddr,
 
-    #[structopt(long, default_value = "cluster.local")]
-    identity_domain: String,
-
     /// Network CIDRs of pod IPs.
     ///
     /// The default reflects k3d's default node network.
     #[structopt(long, default_value = "10.42.0.0/16")]
     cluster_networks: Vec<IpNet>,
+
+    #[structopt(long, default_value = "cluster.local")]
+    identity_domain: String,
 
     #[structopt(long, default_value = "all-unauthenticated")]
     default_allow: DefaultAllow,

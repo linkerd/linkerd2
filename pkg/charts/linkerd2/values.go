@@ -26,6 +26,7 @@ type (
 	// Values contains the top-level elements in the Helm charts
 	Values struct {
 		ControllerImage              string              `json:"controllerImage"`
+		PolicyControllerImage        string              `json:"policyControllerImage"`
 		ControllerReplicas           uint                `json:"controllerReplicas"`
 		ControllerUID                int64               `json:"controllerUID"`
 		EnableH2Upgrade              bool                `json:"enableH2Upgrade"`
@@ -42,6 +43,7 @@ type (
 		ImagePullPolicy              string              `json:"imagePullPolicy"`
 		CliVersion                   string              `json:"cliVersion"`
 		ControllerImageVersion       string              `json:"controllerImageVersion"`
+		PolicyControllerImageVersion string              `json:"policyControllerImageVersion"`
 		ControllerLogLevel           string              `json:"controllerLogLevel"`
 		ControllerLogFormat          string              `json:"controllerLogFormat"`
 		ProxyContainerName           string              `json:"proxyContainerName"`

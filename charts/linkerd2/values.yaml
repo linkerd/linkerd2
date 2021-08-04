@@ -163,6 +163,8 @@ webhookFailurePolicy: Ignore
 
 # controllerImage -- Docker image for the destination and identity components
 controllerImage: cr.l5d.io/linkerd/controller
+# policyImage -- Docker image for the policy component
+policyControllerImage: cr.l5d.io/linkerd/policy-controller
 # -- Number of replicas for each control plane pod
 controllerReplicas: 1
 # -- User ID for the control plane components

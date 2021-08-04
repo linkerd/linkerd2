@@ -162,6 +162,47 @@ webhooks:
     resources: ["serviceprofiles"]
   sideEffects: None
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: linkerd-policy
+  labels:
+    app.kubernetes.io/part-of: Linkerd
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - policy.linkerd.io
+    resources:
+      - servers
+      - serverauthorizations
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: linkerd-policy
+  labels:
+    app.kubernetes.io/part-of: Linkerd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-policy
+subjects:
+  - kind: ServiceAccount
+    name: linkerd-destination
+    namesapce: linkerd
+---
 # Source: linkerd2/templates/heartbeat-rbac.yaml
 ---
 ###
@@ -1047,6 +1088,8 @@ data:
     podLabels:
       fiz: buz
       foo: bar
+    policyControllerImage: cr.l5d.io/linkerd/policy-controller
+    policyControllerImageVersion: ""
     profileValidator:
       caBundle: test-profile-validator-ca-bundle
       crtPEM: test-profile-validator-crt-pem
@@ -1547,6 +1590,25 @@ spec:
     port: 443
     targetPort: sp-validator
 ---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-policy
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: policy
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+spec:
+  clusterIP: None
+  selector:
+    linkerd.io/control-plane-component: policy
+  ports:
+  - name: grpc
+    port: 8090
+    targetPort: 8090
+---
 kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
 metadata:
@@ -1651,7 +1713,7 @@ spec:
             fieldRef:
               fieldPath: status.podIPs
         - name: LINKERD2_PROXY_INBOUND_PORTS
-          value: "8086,9996"
+          value: "8086,8090,9990,9996"
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -1798,6 +1860,38 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+      - args:
+        - --admin-addr="0.0.0.0:9990"
+        - --grpc-addr="0.0.0.0:8090"
+        - --cluster-networks=10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
+        - --identity-domain=test.trust.domain
+        - --default-allow=all-unauthenticated
+        image: cr.l5d.io/linkerd/policy-controller:linkerd-version
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /live
+            port: 8090
+          initialDelaySeconds: 10
+        name: policy
+        ports:
+        - containerPort: 8090
+          name: grpc
+        - containerPort: 9990
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9990
+        resources:
+          limits:
+            memory: "250Mi"
+          requests:
+            cpu: "100m"
+            memory: "50Mi"
+        securityContext:
+          runAsUser: 2103
       initContainers:
       - args:
         - --incoming-proxy-port
