@@ -1872,8 +1872,8 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /live
-            port: 8090
+            path: /ready
+            port: admin-http
           initialDelaySeconds: 10
         name: policy
         ports:
@@ -1885,7 +1885,7 @@ spec:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: 9990
+            port: admin-http
         resources:
           limits:
             memory: "250Mi"

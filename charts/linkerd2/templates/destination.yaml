@@ -234,8 +234,8 @@ spec:
         imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:
           httpGet:
-            path: /live
-            port: 8090
+            path: /ready
+            port: admin-http
           initialDelaySeconds: 10
         name: policy
         ports:
@@ -247,7 +247,7 @@ spec:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: 9990
+            port: admin-http
         {{- $res := .Values.policyResources | default .Values.destinationResources }}
         {{- if $res }}
         {{- include "partials.resources" $res | nindent 8 }}
