@@ -158,7 +158,7 @@ impl PodIndex {
                 // Lookup the pod's node's kubelet IP or stop processing the update. If the pod does
                 // not yet have a node, it will be ignored. If the node isn't yet in the index, the
                 // pod is saved to be processed later.
-                let (pod, kubelet) = match nodes.get_or_push_pending(pod) {
+                let (pod, kubelet) = match nodes.get_kubelet_ips_or_push_pending(pod) {
                     Some((pod, ips)) => (pod, ips),
                     None => {
                         debug!("Pod cannot yet assigned to a Node");

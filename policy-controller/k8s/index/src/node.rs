@@ -11,6 +11,10 @@ use std::{
 };
 use tracing::{debug, instrument, trace, warn};
 
+/// Stores the Kubelet IP addresses for each node.
+///
+/// If a pod is observed before its node is observed, then the pod is stored instead so that, once
+/// the node IP is observed, the pod index may be back-filled.
 #[derive(Debug, Default)]
 pub(crate) struct NodeIndex {
     index: HashMap<String, State>,
@@ -28,7 +32,14 @@ pub(crate) struct KubeletIps(Arc<[IpAddr]>);
 // === impl NodeIndex ===
 
 impl NodeIndex {
-    pub fn get_or_push_pending(&mut self, pod: k8s::Pod) -> Option<(k8s::Pod, KubeletIps)> {
+    /// Attempts to get a pod's kubelet IP address.
+    ///
+    /// If the node has not yet been observed, `None` is returned and the pod is stored to be
+    /// indexed once the node is observed.
+    pub fn get_kubelet_ips_or_push_pending(
+        &mut self,
+        pod: k8s::Pod,
+    ) -> Option<(k8s::Pod, KubeletIps)> {
         let node_name = pod.spec.as_ref()?.node_name.clone()?;
         match self.index.entry(node_name) {
             HashEntry::Occupied(mut entry) => match entry.get_mut() {
