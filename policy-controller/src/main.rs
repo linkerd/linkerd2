@@ -21,9 +21,12 @@ struct Args {
 
     /// Network CIDRs of pod IPs.
     ///
-    /// The default reflects k3d's default node network.
-    #[structopt(long, default_value = "10.42.0.0/16")]
-    cluster_networks: Vec<IpNet>,
+    /// The default includes all private networks.
+    #[structopt(
+        long,
+        default_value = "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
+    )]
+    cluster_networks: IpNets,
 
     #[structopt(long, default_value = "cluster.local")]
     identity_domain: String,
@@ -40,7 +43,7 @@ async fn main() -> Result<()> {
         admin_addr,
         grpc_addr,
         identity_domain,
-        cluster_networks,
+        cluster_networks: IpNets(cluster_networks),
         default_allow,
     } = Args::from_args();
 
@@ -85,6 +88,19 @@ async fn main() -> Result<()> {
            Err(e) if e.is_cancelled() => Ok(()),
            Err(e) => Err(e).context("admin server panicked"),
        },
+    }
+}
+
+#[derive(Debug)]
+struct IpNets(Vec<IpNet>);
+
+impl std::str::FromStr for IpNets {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> Result<Self> {
+        s.split(',')
+            .map(|n| n.parse().map_err(Into::into))
+            .collect::<Result<Vec<IpNet>>>()
+            .map(Self)
     }
 }
 
