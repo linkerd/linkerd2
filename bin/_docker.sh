@@ -46,7 +46,7 @@ docker_build() {
     file=$1
     shift
 
-    rootdir=$( cd "$bindir"/.. && pwd )
+    rootdir=${ROOTDIR:-$( cd "$bindir"/.. && pwd )}
     cache_params=""
 
     if [ -n "$DOCKER_BUILDKIT_CACHE" ]; then
