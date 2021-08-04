@@ -146,4 +146,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: linkerd-destination
-    namesapce: {{.Values.namespace}}
+    namespace: {{.Values.namespace}}

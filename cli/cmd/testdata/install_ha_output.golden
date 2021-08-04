@@ -195,7 +195,7 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: linkerd-destination
-    namesapce: linkerd
+    namespace: linkerd
 ---
 ###
 ### Heartbeat RBAC

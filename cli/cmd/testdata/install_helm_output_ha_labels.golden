@@ -201,7 +201,7 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: linkerd-destination
-    namesapce: linkerd
+    namespace: linkerd
 ---
 # Source: linkerd2/templates/heartbeat-rbac.yaml
 ---
