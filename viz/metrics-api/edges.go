@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	edgesQuery = "count(%s%s) by (%s, dst_%s, pod, server_id, namespace, dst_namespace, no_tls_reason)"
+	edgesQuery = "sum(%s%s) by (%s, dst_%s, pod, server_id, namespace, dst_namespace, no_tls_reason)"
 )
 
 var formatMsg = map[string]string{
