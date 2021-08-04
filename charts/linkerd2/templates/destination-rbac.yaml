@@ -113,6 +113,8 @@ metadata:
   name: linkerd-policy
   labels:
     app.kubernetes.io/part-of: Linkerd
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 rules:
   - apiGroups:
       - ""
@@ -136,9 +138,11 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: linkerd-policy
+  name: linkerd-destination-policy
   labels:
     app.kubernetes.io/part-of: Linkerd
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
