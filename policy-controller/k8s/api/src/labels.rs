@@ -178,7 +178,7 @@ mod tests {
                 Selector::from_iter(Some(Expression {
                     key: "foo".into(),
                     operator: Operator::In,
-                    values: Some("bar".to_string()).into_iter().collect(),
+                    values: Some(Some("bar".to_string()).into_iter().collect()),
                 })),
                 Labels::from_iter(vec![("foo", "bar"), ("bah", "baz")]),
                 true,
