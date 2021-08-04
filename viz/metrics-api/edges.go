@@ -71,7 +71,8 @@ func (s *grpcServer) Edges(ctx context.Context, req *pb.EdgesRequest) (*pb.Edges
 
 			clientID, err := s.getPodIdentity(string(sample.Metric[model.LabelName("pod")]), key.srcNs)
 			if err != nil {
-				return nil, err
+				log.Warnf("failed to get pod identity for %s: %v", sample.Metric[model.LabelName("pod")], err)
+				continue
 			}
 
 			edgeMap[key] = &pb.Edge{
