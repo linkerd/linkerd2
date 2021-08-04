@@ -70,7 +70,7 @@ jobs:
       options: --security-opt seccomp=unconfined
     steps:
       - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
-      - run: cd target && curl -vsL https://github.com/xd009642/tarpaulin/releases/download/0.18.0/cargo-tarpaulin-0.18.0-travis.tar.gz | tar zxvf - && chmod 755 cargo-tarpaulin
+      - run: mkdir -p target && cd target && curl -vsL https://github.com/xd009642/tarpaulin/releases/download/0.18.0/cargo-tarpaulin-0.18.0-travis.tar.gz | tar zxvf - && chmod 755 cargo-tarpaulin
       - run: target/cargo-tarpaulin --workspace --out Xml
       - uses: codecov/codecov-action@51d810878be5422784e86451c0e7c14e5860ec47
         with:
