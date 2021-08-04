@@ -162,6 +162,7 @@ Kubernetes: `>=1.16.0-0`
 | omitWebhookSideEffects | bool | `false` | Omit the `sideEffects` flag in the webhook manifests |
 | podAnnotations | object | `{}` | Additional annotations to add to all pods |
 | podLabels | object | `{}` | Additional labels to add to all pods |
+| policyControllerImage | string | `"cr.l5d.io/linkerd/policy-controller"` |  |
 | profileValidator.caBundle | string | `""` | Bundle of CA certificates for service profile validator. If not provided then Helm will use the certificate generated  for `profileValidator.crtPEM`. If `profileValidator.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
 | profileValidator.crtPEM | string | `""` | Certificate for the service profile validator. If not provided then Helm will generate one. |
 | profileValidator.externalSecret | bool | `false` | Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `profileValidator.caBundle` must be set (see below). |
