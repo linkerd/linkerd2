@@ -68,18 +68,8 @@ impl NodeIndex {
     }
 
     pub fn clear_pending_pods(&mut self) {
-        let pending_nodes = self
-            .index
-            .iter()
-            .filter_map(|(node, state)| match state {
-                State::Known(_) => None,
-                State::Pending(_) => Some(node.clone()),
-            })
-            .collect::<Vec<_>>();
-
-        for node in pending_nodes {
-            self.index.remove(&node);
-        }
+        self.index
+            .retain(|_, state| matches!(state, State::Known(_)))
     }
 }
 
@@ -92,7 +82,7 @@ impl Index {
     /// from the kubelet.
     #[instrument(
         skip(self, node),
-        fields(name = ?node.metadata.name)
+        fields(name = ?node.name())
     )]
     pub fn apply_node(&mut self, node: k8s::Node) -> Result<()> {
         match self.nodes.index.entry(node.name()) {
