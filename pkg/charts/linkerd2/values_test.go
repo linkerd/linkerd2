@@ -29,6 +29,7 @@ func TestNewValues(t *testing.T) {
 
 	expected := &Values{
 		ControllerImage:              "cr.l5d.io/linkerd/controller",
+		PolicyControllerImage:        "cr.l5d.io/linkerd/policy-controller",
 		ControllerReplicas:           1,
 		ControllerUID:                2103,
 		EnableH2Upgrade:              true,
