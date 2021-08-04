@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 /// Authorizes clients to connect to a Server.
 #[derive(CustomResource, Default, Deserialize, Serialize, Clone, Debug, JsonSchema)]
 #[kube(
-    group = "polixy.linkerd.io",
+    group = "policy.linkerd.io",
     version = "v1alpha1",
     kind = "ServerAuthorization",
     namespaced

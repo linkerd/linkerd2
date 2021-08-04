@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 /// Describes a server interface exposed by a set of pods.
 #[derive(Clone, Debug, CustomResource, Deserialize, Serialize, JsonSchema)]
 #[kube(
-    group = "polixy.linkerd.io",
+    group = "policy.linkerd.io",
     version = "v1alpha1",
     kind = "Server",
     namespaced
