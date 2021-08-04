@@ -62,8 +62,16 @@ jobs:
       - run: cargo check
 
   test:
-    timeout-minutes: 15
+    name: test
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: docker://rust:1.54.0-buster
+      options: --security-opt seccomp=unconfined
     steps:
       - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
-      - run: cargo test
+      - run: cargo install cargo-tarpaulin
+      - run: cargo tarpaulin --verbose --workspace --out Xml
+      - uses: codecov/codecov-action@51d810878be5422784e86451c0e7c14e5860ec47
+        with:
+          flags: unittests,rust
