@@ -28,7 +28,7 @@ pub struct ResourceWatches {
 // === impl ResourceWatches ===
 
 impl ResourceWatches {
-    const DEFAULT_TIMEOUT_SECS: u32 = 5 * 60;
+    const DEFAULT_TIMEOUT_SECS: u32 = 290;
 }
 
 impl From<kube::Client> for ResourceWatches {
