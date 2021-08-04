@@ -227,6 +227,9 @@ spec:
         - --cluster-networks={{.Values.clusterNetworks}}
         - --identity-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
         - --default-allow={{.Values.defaultAllowPolicy | default "all-unauthenticated"}}
+        env:
+        - name: RUST_LOG
+          value: "linkerd=info,warn"
         image: {{.Values.policyControllerImage}}:{{.Values.policyControllerImageVersion | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:
