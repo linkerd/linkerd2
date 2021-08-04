@@ -35,7 +35,7 @@ COPY --from=deps /build/target target
 WORKDIR /build
 COPY . /build
 RUN target=$(rustup show | sed -n 's/^Default host: \(.*\)/\1/p') ; \
-    cargo build --frozen --release --target="$target" --package=linkerd-policy-controller && \
+    cargo build --locked --release --target="$target" --package=linkerd-policy-controller && \
     mv "target/${target}/release/linkerd-policy-controller" /tmp/
 
 # Creates a minimal runtime image with the controller binary.
