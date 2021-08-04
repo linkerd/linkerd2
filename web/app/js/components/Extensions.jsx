@@ -12,17 +12,13 @@ import { Trans } from '@lingui/macro';
 const styles = theme => ({
   extensionCard: {
     padding: theme.spacing(2),
-    width: '1200px',
-  },
-  screenshotContainer: {
-    width: '320px',
-    height: '180px',
+    maxWidth: '1200px',
   },
   screenshot: {
     margin: 'auto',
     display: 'block',
     height: '100%',
-    width: 'auto',
+    width: '100%',
     borderRadius: '8px',
   },
 });
@@ -67,13 +63,13 @@ class Extensions extends React.Component {
 
     return (
       <Grid container direction="column" spacing={3} justifyContent="center" alignItems="center">
-        <Grid item>
+        <Grid item xs={12}>
           <Typography variant="h6">
             <Trans>extensionsPageMsg</Trans>
           </Typography>
         </Grid>
         {extensions.map(ext => (
-          <Grid key={ext.name} item>
+          <Grid key={ext.name} item xs={12}>
             <Paper elevation={3} className={classes.extensionCard}>
               <Grid container spacing={1} direction="row" justifyContent="space-between" alignItems="center">
                 <Grid container spacing={3} item xs={8} direction="column" justifyContent="center">
@@ -88,7 +84,7 @@ class Extensions extends React.Component {
                     </Button>
                   </Grid>
                 </Grid>
-                <Grid item xs={4} className={classes.screenshotContainer}>
+                <Grid item xs={4}>
                   <img className={classes.screenshot} src={ext.screenshotURL} alt={`${ext.name} extension screenshot`} />
                 </Grid>
               </Grid>
