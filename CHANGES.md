@@ -6,7 +6,7 @@ This releases includes initial changes w.r.t addition of Authorization into
 Linkerd. It includes adding the new `policy.linkerd.io` CRDs to the core install.
 This also includes numerous dependency updates both in the web and dashboard.
 
-* Add `service.policy.linkerd.io` and `serviceauthorizations.policy.linkerd.io`
+* Add `servers.policy.linkerd.io` and `serverauthorizations.policy.linkerd.io`
   CRDs into the default Linkerd installation to support configuration and
   discovery of inbound policies.
 * Modified the proxy to support upcoming policy features.
