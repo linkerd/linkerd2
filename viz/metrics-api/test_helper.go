@@ -249,8 +249,8 @@ var linkerdEdgeRows = []*mockEdgeRow{
 		dst:          "linkerd-prometheus",
 		srcNamespace: "linkerd",
 		dstNamespace: "linkerd",
-		clientID:     "linkerd-identity.linkerd.identity.linkerd.cluster.local",
-		serverID:     "linkerd-prometheus.linkerd.identity.linkerd.cluster.local",
+		clientID:     "linkerd-identity.linkerd.serviceaccount.identity.linkerd.cluster.local",
+		serverID:     "linkerd-prometheus.linkerd.serviceaccount.identity.linkerd.cluster.local",
 		msg:          "",
 	},
 }
