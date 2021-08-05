@@ -47,7 +47,7 @@ impl<T> Watch<T> {
                 }
                 Err(error) => {
                     self.ready = false;
-                    info!(%error, "Disconnected");
+                    info!(%error, r#type = %std::any::type_name::<T>(), "Disconnected");
                     time::sleep(time::Duration::from_secs(1)).await;
                 }
             }
