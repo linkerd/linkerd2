@@ -36,6 +36,7 @@ import { faMicroscope } from '@fortawesome/free-solid-svg-icons/faMicroscope';
 import { faRandom } from '@fortawesome/free-solid-svg-icons/faRandom';
 import { faSmile } from '@fortawesome/free-regular-svg-icons/faSmile';
 import { faStream } from '@fortawesome/free-solid-svg-icons/faStream';
+import { faPuzzlePiece } from '@fortawesome/free-solid-svg-icons/faPuzzlePiece';
 import grey from '@material-ui/core/colors/grey';
 import { processSingleResourceRollup } from './util/MetricUtils.jsx';
 import { regexFilterString } from './util/Utils.js';
@@ -373,7 +374,8 @@ class NavigationBase extends React.Component {
 
   handleFilterInputChange = event => {
     this.setState({
-      formattedNamespaceFilter: regexFilterString(event.target.value) });
+      formattedNamespaceFilter: regexFilterString(event.target.value),
+    });
   }
 
   handleAutocompleteClick = event => {
@@ -455,11 +457,11 @@ class NavigationBase extends React.Component {
     const drawer = (
       <div>
         { !mobileSidebarOpen &&
-        <div className={classes.navToolbar}>
-          <div className={classes.linkerdNavLogo}>
-            <Link to="/namespaces">{linkerdWordLogo}</Link>
+          <div className={classes.navToolbar}>
+            <div className={classes.linkerdNavLogo}>
+              <Link to="/namespaces">{linkerdWordLogo}</Link>
+            </div>
           </div>
-        </div>
         }
         <Divider />
         <MenuList>
@@ -562,6 +564,10 @@ class NavigationBase extends React.Component {
               <FontAwesomeIcon icon={faSmile} className={classes.shrinkIcon} />
             </Badge>, this.handleCommunityClick) }
 
+          { this.menuItem('/extensions', <Trans>menuItemExtension</Trans>,
+            <Badge classes={{ badge: classes.badge }}><FontAwesomeIcon icon={faPuzzlePiece} className={classes.shrinkIcon} /></Badge>)
+          }
+
           <MenuItem component="a" href="https://linkerd.io/2/overview/" target="_blank" className={classes.navMenuItem}>
             <ListItemIcon><LibraryBooksIcon className={classes.shrinkIcon} /></ListItemIcon>
             <ListItemText primary={<Trans>menuItemDocumentation</Trans>} />
@@ -624,11 +630,11 @@ class NavigationBase extends React.Component {
                 {linkerdWordLogo}
               </div>
               { !mobileSidebarOpen && // mobile view but no sidebar
-              <React.Fragment>
-                <IconButton onClick={this.handleDrawerClick} className={classes.bars}>
-                  <FontAwesomeIcon icon={faBars} />
-                </IconButton>
-              </React.Fragment>
+                <React.Fragment>
+                  <IconButton onClick={this.handleDrawerClick} className={classes.bars}>
+                    <FontAwesomeIcon icon={faBars} />
+                  </IconButton>
+                </React.Fragment>
               }
             </Toolbar>
           </AppBar>
