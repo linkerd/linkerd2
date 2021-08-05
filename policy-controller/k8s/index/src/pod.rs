@@ -1,5 +1,5 @@
 use crate::{
-    lookup, node::KubeletIps, DefaultAllow, Index, Namespace, NodeIndex, ServerRx, ServerRxTx,
+    lookup, node::KubeletIps, DefaultAllow, Index, Namespace, NodeIndex, PodServerTx, ServerRx,
     SrvIndex,
 };
 use anyhow::{anyhow, Result};
@@ -29,7 +29,7 @@ struct PodPorts {
 #[derive(Debug)]
 struct Port {
     server_name: Option<String>,
-    server_tx: ServerRxTx,
+    server_tx: PodServerTx,
 }
 
 // === impl Index ===

@@ -1,4 +1,4 @@
-use crate::{node::KubeletIps, ServerRxRx};
+use crate::{node::KubeletIps, PodServerRx};
 use anyhow::{anyhow, Result};
 use dashmap::{mapref::entry::Entry, DashMap};
 use linkerd_policy_controller_core::{
@@ -26,10 +26,13 @@ pub(crate) fn pair() -> (Writer, Reader) {
     (w, r)
 }
 
+/// Represents a pod server's configuration.
 #[derive(Clone, Debug)]
 pub struct Rx {
     kubelet: KubeletIps,
-    rx: ServerRxRx,
+
+    /// A watch of server watches.
+    rx: PodServerRx,
 }
 
 // === impl Writer ===
@@ -114,7 +117,7 @@ impl DiscoverInboundServer<(String, String, u16)> for Reader {
 // === impl Rx ===
 
 impl Rx {
-    pub(crate) fn new(kubelet: KubeletIps, rx: ServerRxRx) -> Self {
+    pub(crate) fn new(kubelet: KubeletIps, rx: PodServerRx) -> Self {
         Self { kubelet, rx }
     }
 
@@ -134,37 +137,51 @@ impl Rx {
         Self::mk_server(&*self.kubelet, (*(*self.rx.borrow()).borrow()).clone())
     }
 
+    /// Streams server configuration updates.
     pub(crate) fn into_stream(self) -> InboundServerStream {
+        // The kubelet IPs for a pod cannot change at runtime.
         let kubelet = self.kubelet;
-        let mut outer = self.rx;
-        let mut inner = (*outer.borrow_and_update()).clone();
+
+        // Watches server watches. This watch is updated as `Server` resources are created/deleted
+        // (or modified to select/deselect a pod-port).
+        let mut pod_port_rx = self.rx;
+
+        // Watches an individual server resource. The inner watch is updated as a `Server` resource
+        // is updated or as authorizations are modified.
+        let mut server_rx = (*pod_port_rx.borrow_and_update()).clone();
+
         Box::pin(async_stream::stream! {
-            let mut server = (*inner.borrow_and_update()).clone();
+            // Get the initial server state and publish it.
+            let mut server = (*server_rx.borrow_and_update()).clone();
             yield Self::mk_server(&*kubelet, server.clone());
 
             loop {
                 tokio::select! {
-                    res = inner.changed() => match res {
-                        Ok(()) => {
-                            let s = (*inner.borrow()).clone();
+                    // As the server is updated, publish the new state. Skip publishing updates hen
+                    // the server is unchanged.
+                    res = server_rx.changed() => {
+                        if res.is_ok() {
+                            let s = (*server_rx.borrow()).clone();
                             if s != server {
                                 yield Self::mk_server(&*kubelet, s.clone());
                                 server = s;
                             }
                         }
-                        Err(_) => {},
                     },
 
-                    res = outer.changed() => match res {
-                        Ok(()) => {
-                            inner = (*outer.borrow()).clone();
-                            let s = (*inner.borrow_and_update()).clone();
-                            if s != server {
-                                yield Self::mk_server(&*kubelet, s.clone());
-                                server = s;
-                            }
+                    // As the pod-port is updated with a new server watch, update our state and
+                    // publish the server if it differs from the prior state.
+                    res = pod_port_rx.changed() => {
+                        if res.is_err() {
+                            return;
                         }
-                        Err(_) => return,
+
+                        server_rx = (*pod_port_rx.borrow()).clone();
+                        let s = (*server_rx.borrow_and_update()).clone();
+                        if s != server {
+                            yield Self::mk_server(&*kubelet, s.clone());
+                            server = s;
+                        }
                     },
                 }
             }

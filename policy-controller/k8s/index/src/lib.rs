@@ -37,10 +37,11 @@ type ServerRx = watch::Receiver<InboundServer>;
 /// Publishes updates for a server's configuration for server/authorization changes.
 type ServerTx = watch::Sender<InboundServer>;
 
-type ServerRxRx = watch::Receiver<ServerRx>;
-
 /// Watches a pod port's for a new `ServerRx`.
-type ServerRxTx = watch::Sender<ServerRx>;
+type PodServerRx = watch::Receiver<ServerRx>;
+
+/// Publishes a pod port's for a new `ServerRx`.
+type PodServerTx = watch::Sender<ServerRx>;
 
 pub fn index(
     watches: impl Into<k8s::ResourceWatches>,
