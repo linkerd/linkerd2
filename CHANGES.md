@@ -1,5 +1,18 @@
 # Changes
 
+## edge-21.8.1
+
+This releases includes initial changes w.r.t addition of Authorization into
+Linkerd. It includes adding the new `policy.linkerd.io` CRDs to the core install.
+This also includes numerous dependency updates both in the web and dashboard.
+
+* Added `servers.policy.linkerd.io` and `serverauthorizations.policy.linkerd.io`
+  CRDs into the default Linkerd installation to support configuration and
+  discovery of inbound policies
+* Modified the proxy to support upcoming policy features
+* Updated several dashboard dependencies to latest versions
+* Updated several proxy dependencies to latest versions
+
 ## edge-21.7.5
 
 This release updates Linkerd to store the identity trust root in a ConfigMap to
