@@ -16,6 +16,8 @@ pub use k8s_openapi::api::{
 use kube::api::{Api, ListParams};
 pub use kube::api::{ObjectMeta, ResourceExt};
 use kube_runtime::watcher;
+use tracing::info_span;
+use tracing_futures::Instrument;
 
 /// Resource watches.
 pub struct ResourceWatches {
@@ -35,14 +37,21 @@ impl From<kube::Client> for ResourceWatches {
     fn from(client: kube::Client) -> Self {
         let params = ListParams::default().timeout(Self::DEFAULT_TIMEOUT_SECS);
         Self {
-            nodes_rx: watcher(Api::all(client.clone()), params.clone()).into(),
+            nodes_rx: watcher(Api::all(client.clone()), params.clone())
+                .instrument(info_span!("nodes"))
+                .into(),
             pods_rx: watcher(
                 Api::all(client.clone()),
                 params.clone().labels("linkerd.io/control-plane-ns"),
             )
+            .instrument(info_span!("pods"))
             .into(),
-            servers_rx: watcher(Api::all(client.clone()), params.clone()).into(),
-            authorizations_rx: watcher(Api::all(client), params).into(),
+            servers_rx: watcher(Api::all(client.clone()), params.clone())
+                .instrument(info_span!("servers"))
+                .into(),
+            authorizations_rx: watcher(Api::all(client), params)
+                .instrument(info_span!("serverauthorizations"))
+                .into(),
         }
     }
 }
