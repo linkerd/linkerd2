@@ -8,7 +8,7 @@ pub use self::{identity_match::IdentityMatch, network_match::NetworkMatch};
 use anyhow::Result;
 use futures::prelude::*;
 pub use ipnet::{IpNet, Ipv4Net, Ipv6Net};
-use std::{collections::BTreeMap, pin::Pin, time::Duration};
+use std::{collections::HashMap, pin::Pin, time::Duration};
 
 /// Models inbound server configuration discovery.
 #[async_trait::async_trait]
@@ -24,7 +24,7 @@ pub type InboundServerStream = Pin<Box<dyn Stream<Item = InboundServer> + Send +
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InboundServer {
     pub protocol: ProxyProtocol,
-    pub authorizations: BTreeMap<String, ClientAuthorization>,
+    pub authorizations: HashMap<String, ClientAuthorization>,
 }
 
 /// Describes how a proxy should handle inbound connections.

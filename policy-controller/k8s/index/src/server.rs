@@ -3,7 +3,7 @@ use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{ClientAuthorization, InboundServer, ProxyProtocol};
 use linkerd_policy_controller_k8s_api::{self as k8s, policy, ResourceExt};
 use std::{
-    collections::{hash_map::Entry as HashEntry, BTreeMap, HashMap, HashSet},
+    collections::{hash_map::Entry as HashEntry, HashMap, HashSet},
     sync::Arc,
 };
 use tokio::{sync::watch, time};
@@ -17,7 +17,7 @@ pub(crate) struct SrvIndex {
 #[derive(Debug)]
 struct Server {
     meta: ServerMeta,
-    authorizations: BTreeMap<String, ClientAuthorization>,
+    authorizations: HashMap<String, ClientAuthorization>,
     rx: ServerRx,
     tx: ServerTx,
 }
@@ -82,7 +82,7 @@ impl SrvIndex {
                 let authzs = ns_authzs
                     .filter_selected(entry.key(), labels.clone())
                     .map(|(n, a)| (n, a.clone()))
-                    .collect::<BTreeMap<_, _>>();
+                    .collect::<HashMap<_, _>>();
                 let meta = ServerMeta {
                     labels,
                     port,
@@ -128,7 +128,7 @@ impl SrvIndex {
                         let authzs = ns_authzs
                             .filter_selected(entry.key(), labels.clone())
                             .map(|(n, a)| (n, a.clone()))
-                            .collect::<BTreeMap<_, _>>();
+                            .collect::<HashMap<_, _>>();
                         debug!(authzs = ?authzs.keys());
                         config.authorizations = authzs.clone();
                         entry.get_mut().meta.labels = labels;
