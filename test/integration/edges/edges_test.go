@@ -139,6 +139,13 @@ func TestDirectEdges(t *testing.T) {
 				return err
 			}
 
+			// If Prometheus has not scraped any workloads yet then the
+			// expected Prometheus edges will not be found; we fail so that
+			// the test is retried.
+			if !strings.Contains(out, "prometheus") {
+				return fmt.Errorf("Expected Prometheus edges but found none:\n%s", out)
+			}
+
 			tpl := template.Must(template.ParseFiles(testDataPath + "/direct_edges.golden"))
 			vars := struct {
 				Ns    string
