@@ -1,4 +1,4 @@
-use crate::{Index, ServerSelector, SrvIndex};
+use crate::{Errors, Index, ServerSelector, SrvIndex};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, IdentityMatch, IpNet, NetworkMatch,
@@ -136,14 +136,14 @@ impl Index {
             })
             .collect::<HashMap<_, _>>();
 
-        let mut result = Ok(());
+        let mut errors = vec![];
         for authz in authzs.into_iter() {
             if let Some(ns) = prior.get_mut(authz.namespace().unwrap().as_str()) {
                 ns.remove(authz.name().as_str());
             }
 
             if let Err(e) = self.apply_authz(authz) {
-                result = Err(e);
+                errors.push(e);
             }
         }
 
@@ -156,7 +156,7 @@ impl Index {
             }
         }
 
-        result
+        Errors::ok_if_empty(errors)
     }
 }
 
