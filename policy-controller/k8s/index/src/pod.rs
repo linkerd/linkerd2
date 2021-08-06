@@ -80,29 +80,6 @@ impl Index {
         self.rm_pod(ns_name.as_str(), pod_name.as_str())
     }
 
-    fn rm_pod(&mut self, ns: &str, pod: &str) -> Result<()> {
-        if self.nodes.clear_pending_pod(ns, pod) {
-            // If the pod was pending that it can't be in the main index.
-            debug!("Cleared pending pod");
-            return Ok(());
-        }
-
-        self.namespaces
-            .index
-            .get_mut(ns)
-            .ok_or_else(|| anyhow!("namespace {} doesn't exist", ns))?
-            .pods
-            .index
-            .remove(pod)
-            .ok_or_else(|| anyhow!("pod {} doesn't exist", pod))?;
-
-        self.lookups.unset(&ns, &pod)?;
-
-        debug!("Removed pod");
-
-        Ok(())
-    }
-
     #[instrument(skip(self, pods))]
     pub(crate) fn reset_pods(&mut self, pods: Vec<k8s::Pod>) -> Result<()> {
         self.nodes.clear_pending_pods();
@@ -138,11 +115,57 @@ impl Index {
 
         result
     }
+
+    fn rm_pod(&mut self, ns: &str, pod: &str) -> Result<()> {
+        if self.nodes.clear_pending_pod(ns, pod) {
+            // If the pod was pending that it can't be in the main index.
+            debug!("Cleared pending pod");
+            return Ok(());
+        }
+
+        self.namespaces
+            .index
+            .get_mut(ns)
+            .ok_or_else(|| anyhow!("namespace {} doesn't exist", ns))?
+            .pods
+            .index
+            .remove(pod)
+            .ok_or_else(|| anyhow!("pod {} doesn't exist", pod))?;
+
+        self.lookups.unset(&ns, &pod)?;
+
+        debug!("Removed pod");
+
+        Ok(())
+    }
 }
 
 // === impl PodIndex ===
 
 impl PodIndex {
+    pub(crate) fn link_servers(&mut self, servers: &SrvIndex) {
+        for pod in self.index.values_mut() {
+            pod.link_servers(servers)
+        }
+    }
+
+    pub(crate) fn reset_server(&mut self, name: &str) {
+        for (pod_name, pod) in self.index.iter_mut() {
+            let rx = pod.default_allow_rx.clone();
+            for (p, port) in pod.ports.by_port.iter_mut() {
+                if port.server_name.as_deref() == Some(name) {
+                    debug!(pod = %pod_name, port = %p, "Removing server from pod");
+                    port.server_name = None;
+                    port.server_tx
+                        .send(rx.clone())
+                        .expect("pod config receiver must still be held");
+                } else {
+                    trace!(pod = %pod_name, port = %p, server = ?port.server_name, "Server does not match");
+                }
+            }
+        }
+    }
+    /// Processes a pod update.
     fn apply(
         &mut self,
         pod: k8s::Pod,
@@ -263,34 +286,6 @@ impl PodIndex {
 
         (ports, lookups)
     }
-
-    pub(crate) fn link_servers(&mut self, servers: &SrvIndex) {
-        for pod in self.index.values_mut() {
-            pod.link_servers(servers)
-        }
-    }
-
-    pub(crate) fn reset_server(&mut self, name: &str) {
-        for (pod_name, pod) in self.index.iter_mut() {
-            let rx = pod.default_allow_rx.clone();
-            for (p, port) in pod.ports.by_port.iter_mut() {
-                if port
-                    .server_name
-                    .as_ref()
-                    .map(|n| n == name)
-                    .unwrap_or(false)
-                {
-                    debug!(pod = %pod_name, port = %p, "Removing server from pod");
-                    port.server_name = None;
-                    port.server_tx
-                        .send(rx.clone())
-                        .expect("pod config receiver must still be held");
-                } else {
-                    trace!(pod = %pod_name, port = %p, server = ?port.server_name, "Server does not match");
-                }
-            }
-        }
-    }
 }
 
 // === impl Pod ===
@@ -298,7 +293,7 @@ impl PodIndex {
 impl Pod {
     /// Links this pods to server (by label selector).
     //
-    // XXX This doesn't properly reset a policy when a server is removed or de-selects a pod.
+    // FIXME This doesn't properly reset a policy when a server is removed or de-selects a pod.
     fn link_servers(&mut self, servers: &SrvIndex) {
         let mut remaining_ports = self.ports.by_port.keys().copied().collect::<HashSet<u16>>();
 
