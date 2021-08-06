@@ -10,6 +10,7 @@ use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, DiscoverInboundServer, IdentityMatch, InboundServer,
     InboundServerStream, IpNet, NetworkMatch, ProxyProtocol,
 };
+use std::collections::HashMap;
 use tracing::trace;
 
 #[derive(Clone, Debug)]
@@ -17,6 +18,14 @@ pub struct Server<T> {
     discover: T,
     drain: drain::Watch,
 }
+
+struct Labels {
+    authn: bool,
+    tls: bool,
+    name: String,
+}
+
+// === impl Server ===
 
 impl<T> Server<T>
 where
@@ -216,15 +225,14 @@ fn to_authz(
 
     match authentication {
         ClientAuthentication::Unauthenticated => {
-            let labels = Some(("authn".to_string(), "false".to_string()))
-                .into_iter()
-                .chain(Some(("tls".to_string(), "false".to_string())))
-                .chain(Some(("name".to_string(), name.to_string())))
-                .collect();
-
+            let labels = Labels {
+                authn: false,
+                tls: false,
+                name: name.to_string(),
+            };
             proto::Authz {
-                labels,
                 networks,
+                labels: labels.into(),
                 authentication: Some(proto::Authn {
                     permit: Some(proto::authn::Permit::Unauthenticated(
                         proto::authn::PermitUnauthenticated {},
@@ -234,16 +242,14 @@ fn to_authz(
         }
 
         ClientAuthentication::TlsUnauthenticated => {
-            let labels = Some(("authn".to_string(), "false".to_string()))
-                .into_iter()
-                .chain(Some(("tls".to_string(), "true".to_string())))
-                .chain(Some(("name".to_string(), name.to_string())))
-                .collect();
-
-            // todo
+            let labels = Labels {
+                authn: false,
+                tls: true,
+                name: name.to_string(),
+            };
             proto::Authz {
-                labels,
                 networks,
+                labels: labels.into(),
                 authentication: Some(proto::Authn {
                     permit: Some(proto::authn::Permit::MeshTls(proto::authn::PermitMeshTls {
                         clients: Some(proto::authn::permit_mesh_tls::Clients::Unauthenticated(
@@ -257,11 +263,11 @@ fn to_authz(
         // Authenticated connections must have TLS and apply to all
         // networks.
         ClientAuthentication::TlsAuthenticated(identities) => {
-            let labels = Some(("authn".to_string(), "true".to_string()))
-                .into_iter()
-                .chain(Some(("tls".to_string(), "true".to_string())))
-                .chain(Some(("name".to_string(), name.to_string())))
-                .collect();
+            let labels = Labels {
+                authn: true,
+                tls: true,
+                name: name.to_string(),
+            };
 
             let authn = {
                 let suffixes = identities
@@ -297,10 +303,24 @@ fn to_authz(
             };
 
             proto::Authz {
-                labels,
                 networks,
+                labels: labels.into(),
                 authentication: Some(authn),
             }
         }
+    }
+}
+
+// === impl Labels ===
+
+impl From<Labels> for HashMap<String, String> {
+    fn from(labels: Labels) -> HashMap<String, String> {
+        vec![
+            ("authn".to_string(), labels.authn.to_string()),
+            ("tls".to_string(), labels.tls.to_string()),
+            ("name".to_string(), labels.name),
+        ]
+        .into_iter()
+        .collect()
     }
 }
