@@ -157,7 +157,7 @@ impl Rx {
 
             loop {
                 tokio::select! {
-                    // As the server is updated, publish the new state. Skip publishing updates hen
+                    // As the server is updated, publish the new state. Skip publishing updates when
                     // the server is unchanged.
                     res = server_rx.changed() => {
                         if res.is_ok() {
