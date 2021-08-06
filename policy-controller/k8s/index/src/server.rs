@@ -33,6 +33,7 @@ struct ServerMeta {
 // === impl SrvIndex ===
 
 impl SrvIndex {
+    /// Adds an authorization to servers matching `selector`.
     pub fn add_authz(&mut self, name: &str, selector: &ServerSelector, authz: ClientAuthorization) {
         for (srv_name, srv) in self.index.iter_mut() {
             let matches = match selector {
@@ -49,18 +50,20 @@ impl SrvIndex {
         }
     }
 
+    /// Removes an authorization by `name`.
     pub fn remove_authz(&mut self, name: &str) {
         for srv in self.index.values_mut() {
             srv.remove_authz(name);
         }
     }
 
-    pub fn iter_matching(
+    /// Iterates over servers that select the given `pod_labels`.
+    pub fn iter_matching_pod(
         &self,
-        labels: k8s::Labels,
+        pod_labels: k8s::Labels,
     ) -> impl Iterator<Item = (&str, &policy::server::Port, &ServerRx)> {
         self.index.iter().filter_map(move |(srv_name, server)| {
-            let matches = server.meta.pod_selector.matches(&labels);
+            let matches = server.meta.pod_selector.matches(&pod_labels);
             trace!(server = %srv_name, %matches);
             if matches {
                 Some((srv_name.as_str(), &server.meta.port, &server.rx))
@@ -119,9 +122,9 @@ impl SrvIndex {
 
                 trace!(?new_labels, ?new_protocol);
                 if new_labels.is_some() || new_protocol.is_some() {
-                    // NB: Only a single task applies server updates, so it's
-                    // okay to borrow a version, modify, and send it.  We don't
-                    // need a lock because serialization is guaranteed.
+                    // NB: Only a single task applies index updates, so it's okay to borrow a
+                    // version, modify, and send it. We don't need a lock because serialization is
+                    // guaranteed.
                     let mut config = entry.get().rx.borrow().clone();
 
                     if let Some(labels) = new_labels {
@@ -146,8 +149,7 @@ impl SrvIndex {
                         .expect("server update must succeed");
                 }
 
-                // If the pod/port selector didn't change, we don't need to
-                // refresh the index.
+                // If the pod/port selector didn't change, we don't need to refresh the index.
                 if *entry.get().meta.pod_selector == srv.spec.pod_selector
                     && entry.get().meta.port == port
                 {

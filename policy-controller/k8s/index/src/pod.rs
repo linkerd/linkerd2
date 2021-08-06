@@ -298,7 +298,7 @@ impl Pod {
         let mut remaining_ports = self.ports.by_port.keys().copied().collect::<HashSet<u16>>();
 
         // Get all servers that match this pod.
-        let matching = servers.iter_matching(self.labels.clone());
+        let matching = servers.iter_matching_pod(self.labels.clone());
         for (name, port_match, rx) in matching {
             // Get all pod ports that match this server.
             for p in self.ports.collect_port(port_match).into_iter().flatten() {
