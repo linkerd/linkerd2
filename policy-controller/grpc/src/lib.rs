@@ -50,7 +50,6 @@ where
                 )));
             }
             Some((ns, pod)) if ns.is_empty() || pod.is_empty() => {
-                tracing::warn!(?workload, "Invalid request from client");
                 return Err(tonic::Status::invalid_argument(format!(
                     "Invalid workload: {}",
                     workload
