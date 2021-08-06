@@ -11,7 +11,9 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
@@ -73,48 +75,29 @@ func NewPortForward(
 	host string, localPort, remotePort int,
 	emitLogs bool,
 ) (*PortForward, error) {
+	errStr := fmt.Errorf("no running pods found for %s", deployName)
+
+	deploy, err := k8sAPI.AppsV1().Deployments(namespace).Get(ctx, deployName, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, errStr
+		}
+		return nil, err
+	}
+	templateLabel := deploy.Spec.Template.Labels
 	timeoutSeconds := int64(30)
-	podList, err := k8sAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{TimeoutSeconds: &timeoutSeconds})
+	podList, err := k8sAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+		TimeoutSeconds: &timeoutSeconds,
+		LabelSelector:  labels.Set(templateLabel).AsSelector().String(),
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	podName := ""
-	for _, pod := range podList.Items {
-		if pod.Status.Phase == corev1.PodRunning {
-			grandparent, err := getDeploymentForPod(ctx, k8sAPI, pod)
-			if err != nil {
-				log.Warnf("Failed to get deploy for pod [%s]: %s", pod.Name, err)
-				continue
-			}
-			if grandparent == deployName {
-				podName = pod.Name
-				break
-			}
-		}
+	if podList != nil && len(podList.Items) > 0 {
+		return newPortForward(k8sAPI, namespace, podList.Items[0].Name, host, localPort, remotePort, emitLogs)
 	}
-
-	if podName == "" {
-		return nil, fmt.Errorf("no running pods found for %s", deployName)
-	}
-
-	return newPortForward(k8sAPI, namespace, podName, host, localPort, remotePort, emitLogs)
-}
-
-func getDeploymentForPod(ctx context.Context, k8sAPI *KubernetesAPI, pod corev1.Pod) (string, error) {
-	parents := pod.GetOwnerReferences()
-	if len(parents) != 1 {
-		return "", nil
-	}
-	rs, err := k8sAPI.AppsV1().ReplicaSets(pod.Namespace).Get(ctx, parents[0].Name, metav1.GetOptions{})
-	if err != nil {
-		return "", err
-	}
-	grandparents := rs.GetOwnerReferences()
-	if len(grandparents) != 1 {
-		return "", nil
-	}
-	return grandparents[0].Name, nil
+	return nil, errStr
 }
 
 func newPortForward(
