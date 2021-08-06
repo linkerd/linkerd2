@@ -1,6 +1,6 @@
 //! Node->Kubelet IP
 
-use crate::Index;
+use crate::{Errors, Index};
 use anyhow::{anyhow, Context, Result};
 use linkerd_policy_controller_core::IpNet;
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
@@ -122,15 +122,16 @@ impl Index {
                     State::Known(_) => unreachable!("the node state must have been pending"),
                 };
 
-                let mut result = Ok(());
+                let mut errors = vec![];
                 for (_, by_ns) in pods.into_iter() {
                     for (_, pod) in by_ns.into_iter() {
                         if let Err(e) = self.apply_pod(pod) {
-                            result = Err(e);
+                            errors.push(e)
                         }
                     }
                 }
-                result
+
+                Errors::ok_if_empty(errors)
             }
         }
     }
@@ -158,14 +159,14 @@ impl Index {
             })
             .collect::<HashSet<_>>();
 
-        let mut result = Ok(());
+        let mut errors = vec![];
         for node in nodes.into_iter() {
             let name = node.name();
             if prior.remove(&name) {
                 trace!(%name, "Already existed");
             } else if let Err(error) = self.apply_node(node) {
                 warn!(%name, %error, "Failed to apply node");
-                result = Err(error);
+                errors.push(error);
             }
         }
 
@@ -174,11 +175,12 @@ impl Index {
             let removed = self.nodes.index.remove(&name).is_some();
             debug_assert!(removed, "node must be removable");
             if !removed {
-                result = Err(anyhow!("node {} already removed", name));
+                warn!(%name, "Failed to apply node");
+                errors.push(anyhow!("node {} already removed", name));
             }
         }
 
-        result
+        Errors::ok_if_empty(errors)
     }
 }
 

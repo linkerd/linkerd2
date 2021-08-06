@@ -1,6 +1,6 @@
 use crate::{
-    lookup, node::KubeletIps, DefaultAllow, Index, Namespace, NodeIndex, PodServerTx, ServerRx,
-    SrvIndex,
+    lookup, node::KubeletIps, DefaultAllow, Errors, Index, Namespace, NodeIndex, PodServerTx,
+    ServerRx, SrvIndex,
 };
 use anyhow::{anyhow, Result};
 use linkerd_policy_controller_k8s_api::{self as k8s, policy, ResourceExt};
@@ -93,7 +93,7 @@ impl Index {
             })
             .collect::<HashMap<_, _>>();
 
-        let mut result = Ok(());
+        let mut errors = vec![];
         for pod in pods.into_iter() {
             let ns_name = pod.namespace().unwrap();
             if let Some(ns) = prior_pods.get_mut(ns_name.as_str()) {
@@ -101,19 +101,19 @@ impl Index {
             }
 
             if let Err(error) = self.apply_pod(pod) {
-                result = Err(error);
+                errors.push(error);
             }
         }
 
         for (ns, pods) in prior_pods.into_iter() {
             for pod in pods.into_iter() {
                 if let Err(error) = self.rm_pod(ns.as_str(), pod.as_str()) {
-                    result = Err(error);
+                    errors.push(error);
                 }
             }
         }
 
-        result
+        Errors::ok_if_empty(errors)
     }
 
     fn rm_pod(&mut self, ns: &str, pod: &str) -> Result<()> {

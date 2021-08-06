@@ -1,4 +1,4 @@
-use crate::{authz::AuthzIndex, Index, Namespace, ServerRx, ServerSelector, ServerTx};
+use crate::{authz::AuthzIndex, Errors, Index, Namespace, ServerRx, ServerSelector, ServerTx};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{ClientAuthorization, InboundServer, ProxyProtocol};
 use linkerd_policy_controller_k8s_api::{self as k8s, policy, ResourceExt};
@@ -250,7 +250,7 @@ impl Index {
             })
             .collect::<HashMap<_, _>>();
 
-        let mut result = Ok(());
+        let mut errors = vec![];
         for srv in srvs.into_iter() {
             let ns_name = srv.namespace().expect("namespace must be set");
             if let Some(ns) = prior_servers.get_mut(&ns_name) {
@@ -263,12 +263,12 @@ impl Index {
         for (ns_name, ns_servers) in prior_servers.into_iter() {
             for srv_name in ns_servers.into_iter() {
                 if let Err(e) = self.rm_server(ns_name.as_str(), &srv_name) {
-                    result = Err(e);
+                    errors.push(e);
                 }
             }
         }
 
-        result
+        Errors::ok_if_empty(errors)
     }
 }
 

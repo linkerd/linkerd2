@@ -91,6 +91,9 @@ enum ServerSelector {
     Selector(Arc<k8s::labels::Selector>),
 }
 
+#[derive(Debug)]
+struct Errors(Vec<anyhow::Error>);
+
 // === impl Index ===
 
 impl Index {
@@ -190,6 +193,34 @@ impl Index {
                 ready = ready_now;
                 debug!(%ready);
             }
+        }
+    }
+}
+
+// === impl Errors ===
+
+impl std::fmt::Display for Errors {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0[0])?;
+        for e in &self.0[1..] {
+            write!(f, "; and {}", e)?;
+        }
+        Ok(())
+    }
+}
+
+impl std::error::Error for Errors {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&*self.0[0])
+    }
+}
+
+impl Errors {
+    fn ok_if_empty(errors: Vec<anyhow::Error>) -> anyhow::Result<()> {
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(Self(errors).into())
         }
     }
 }
