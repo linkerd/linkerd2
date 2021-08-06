@@ -30,22 +30,28 @@ pub struct ResourceWatches {
 // === impl ResourceWatches ===
 
 impl ResourceWatches {
+    /// Limits the amount of time a watch can be idle before being reset.
+    ///
+    /// Must be less than 295 or Kubernetes throws an error.
     const DEFAULT_TIMEOUT_SECS: u32 = 290;
 }
 
 impl From<kube::Client> for ResourceWatches {
     fn from(client: kube::Client) -> Self {
         let params = ListParams::default().timeout(Self::DEFAULT_TIMEOUT_SECS);
+
+        // We only need to watch pods that are injected with a Linkerd sidecar because these are the
+        // only pods that can have inbound policy. We avoid indexing information about uninjected
+        // pods.
+        let pod_params = params.clone().labels("linkerd.io/control-plane-ns");
+
         Self {
             nodes_rx: watcher(Api::all(client.clone()), params.clone())
                 .instrument(info_span!("nodes"))
                 .into(),
-            pods_rx: watcher(
-                Api::all(client.clone()),
-                params.clone().labels("linkerd.io/control-plane-ns"),
-            )
-            .instrument(info_span!("pods"))
-            .into(),
+            pods_rx: watcher(Api::all(client.clone()), pod_params)
+                .instrument(info_span!("pods"))
+                .into(),
             servers_rx: watcher(Api::all(client.clone()), params.clone())
                 .instrument(info_span!("servers"))
                 .into(),
