@@ -193,6 +193,12 @@ func (rcsw *RemoteClusterServiceWatcher) originalResourceName(mirroredName strin
 }
 
 func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceLabels() map[string]string {
+	// labels := remoteService.ObjectMeta.Labels
+	// labels[consts.MirroredResourceLabel] = "true"
+	// labels[consts.RemoteClusterNameLabel] = rcsw.link.TargetClusterName
+
+	// return labels
+
 	return map[string]string{
 		consts.MirroredResourceLabel:  "true",
 		consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
@@ -200,10 +206,16 @@ func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceLabels() map[string]s
 }
 
 func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceAnnotations(remoteService *corev1.Service) map[string]string {
-	annotations := map[string]string{
-		consts.RemoteResourceVersionAnnotation: remoteService.ResourceVersion, // needed to detect real changes
-		consts.RemoteServiceFqName:             fmt.Sprintf("%s.%s.svc.%s", remoteService.Name, remoteService.Namespace, rcsw.link.TargetClusterDomain),
-	}
+	annotations := remoteService.ObjectMeta.Annotations
+	annotations[consts.RemoteResourceVersionAnnotation] = remoteService.ResourceVersion // needed to detect real changes
+	annotations[consts.RemoteServiceFqName] = fmt.Sprintf("%s.%s.svc.%s", remoteService.Name, remoteService.Namespace, rcsw.link.TargetClusterDomain)
+
+	// <---old--->
+	// annotations = map[string]string{
+	// 	consts.RemoteResourceVersionAnnotation: remoteService.ResourceVersion, // needed to detect real changes
+	// 	consts.RemoteServiceFqName:             fmt.Sprintf("%s.%s.svc.%s", remoteService.Name, remoteService.Namespace, rcsw.link.TargetClusterDomain),
+	// }
+	// <---old--->
 
 	value, ok := remoteService.GetAnnotations()[consts.ProxyOpaquePortsAnnotation]
 	if ok {
@@ -1235,11 +1247,19 @@ func (rcsw *RemoteClusterServiceWatcher) createEndpointMirrorService(ctx context
 		return nil, err
 	}
 
-	endpointMirrorAnnotations := map[string]string{
-		// needed to detect real changes
-		consts.RemoteResourceVersionAnnotation: resourceVersion,
-		consts.RemoteServiceFqName:             fmt.Sprintf("%s.%s.%s.svc.%s", endpointHostname, exportedService.Name, exportedService.Namespace, rcsw.link.TargetClusterDomain),
-	}
+	endpointMirrorAnnotations := rcsw.getMirroredServiceAnnotations(exportedService)
+
+	// needed to detect real changes
+	endpointMirrorAnnotations[consts.RemoteResourceVersionAnnotation] = resourceVersion
+	endpointMirrorAnnotations[consts.RemoteServiceFqName] = fmt.Sprintf("%s.%s.%s.svc.%s", endpointHostname, exportedService.Name, exportedService.Namespace, rcsw.link.TargetClusterDomain)
+
+	// <---old--->
+	// endpointMirrorAnnotations := map[string]string{
+	// 	// needed to detect real changes
+	// 	consts.RemoteResourceVersionAnnotation: resourceVersion,
+	// 	consts.RemoteServiceFqName:             fmt.Sprintf("%s.%s.%s.svc.%s", endpointHostname, exportedService.Name, exportedService.Namespace, rcsw.link.TargetClusterDomain),
+	// }
+	// <---old--->
 
 	endpointMirrorLabels := rcsw.getMirroredServiceLabels()
 	mirrorServiceName := rcsw.mirroredResourceName(exportedService.Name)
