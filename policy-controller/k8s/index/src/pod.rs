@@ -302,7 +302,7 @@ impl Pod {
         let matching = servers.iter_matching_pod(self.labels.clone());
         for (name, port_match, rx) in matching {
             // Get all pod ports that match this server.
-            for p in self.ports.collect_port(port_match).into_iter().flatten() {
+            for p in self.ports.collect_port(port_match).into_iter() {
                 self.link_server_port(p, name, rx);
                 remaining_ports.remove(&p);
             }
@@ -354,10 +354,12 @@ impl PodPorts {
     ///
     /// Numeric port matches will only return a single server, generally, while named port
     /// references may select an arbitrary number of server ports.
-    fn collect_port(&self, port_match: &policy::server::Port) -> Option<Vec<u16>> {
+    fn collect_port(&self, port_match: &policy::server::Port) -> Vec<u16> {
         match port_match {
-            policy::server::Port::Number(ref port) => Some(vec![*port]),
-            policy::server::Port::Name(ref name) => self.by_name.get(name).cloned(),
+            policy::server::Port::Number(ref port) => vec![*port],
+            policy::server::Port::Name(ref name) => {
+                self.by_name.get(name).cloned().unwrap_or_default()
+            }
         }
     }
 }
