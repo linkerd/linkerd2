@@ -165,6 +165,7 @@ impl PodIndex {
             }
         }
     }
+
     /// Processes a pod update.
     fn apply(
         &mut self,
