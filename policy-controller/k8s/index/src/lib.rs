@@ -66,34 +66,9 @@ type PodServerRx = watch::Receiver<ServerRx>;
 /// Publishes a pod's port for a new `ServerRx`.
 type PodServerTx = watch::Sender<ServerRx>;
 
-/// Constructs an indexing task and a handle that supports by-pod lookups.
-pub fn index(
-    watches: impl Into<k8s::ResourceWatches>,
-    ready: watch::Sender<bool>,
-    cluster_networks: Vec<IpNet>,
-    identity_domain: String,
-    default_mode: DefaultAllow,
-    detect_timeout: time::Duration,
-) -> (lookup::Reader, impl Future<Output = anyhow::Error>) {
-    let (writer, reader) = lookup::pair();
-
-    // Watches Nodes, Pods, Servers, and Authorizations to update the lookup map
-    // with an entry for each linkerd-injected pod.
-    let idx = Index::new(
-        writer,
-        cluster_networks,
-        identity_domain,
-        default_mode,
-        detect_timeout,
-    );
-    let task = idx.index(watches.into(), ready);
-
-    (reader, task)
-}
-
 /// Holds all indexing state. Owned and updated by a single task that processes watch events,
 /// publishing results to the shared lookup map for quick lookups in the API server.
-struct Index {
+pub struct Index {
     /// Holds per-namespace pod/server/authorization indexes.
     namespaces: NamespaceIndex,
 
@@ -128,13 +103,12 @@ struct Errors(Vec<anyhow::Error>);
 // === impl Index ===
 
 impl Index {
-    pub(crate) fn new(
-        lookups: lookup::Writer,
+    pub fn new(
         cluster_networks: Vec<IpNet>,
         identity_domain: String,
         default_allow: DefaultAllow,
         detect_timeout: time::Duration,
-    ) -> Self {
+    ) -> (lookup::Reader, Self) {
         // Create a common set of receivers for all supported default policies.
         let (default_allows, _default_allows_txs) =
             DefaultAllows::new(cluster_networks.clone(), detect_timeout);
@@ -143,15 +117,17 @@ impl Index {
         // used when a workload-level annotation is not set.
         let namespaces = NamespaceIndex::new(default_allow);
 
-        Self {
-            lookups,
+        let (writer, reader) = lookup::pair();
+        let idx = Self {
+            lookups: writer,
             namespaces,
             identity_domain,
             cluster_networks,
             default_allows,
             nodes: NodeIndex::default(),
             _default_allows_txs: Box::pin(_default_allows_txs),
-        }
+        };
+        (reader, idx)
     }
 
     /// Drives indexing for all resource types.
@@ -162,9 +138,9 @@ impl Index {
     /// All updates are atomically published to the shared `lookups` map after indexing occurs; but
     /// the indexing task is solely responsible for mutating it.
     #[instrument(skip(self, resources, ready_tx), fields(result))]
-    pub(crate) async fn index(
+    pub async fn run(
         mut self,
-        resources: k8s::ResourceWatches,
+        resources: impl Into<k8s::ResourceWatches>,
         ready_tx: watch::Sender<bool>,
     ) -> Error {
         let k8s::ResourceWatches {
@@ -172,7 +148,7 @@ impl Index {
             mut pods_rx,
             mut servers_rx,
             mut authorizations_rx,
-        } = resources;
+        } = resources.into();
 
         let mut ready = false;
         loop {

@@ -19,9 +19,7 @@ async fn incrementally_configure_server() {
         (ips.next().unwrap(), ips.next().unwrap())
     };
     let detect_timeout = time::Duration::from_secs(1);
-    let (lookup_tx, lookup_rx) = crate::lookup::pair();
-    let mut idx = Index::new(
-        lookup_tx,
+    let (lookup_rx, mut idx) = Index::new(
         vec![cluster_net],
         "cluster.example.com".into(),
         DefaultAllow::ClusterUnauthenticated,
@@ -146,9 +144,7 @@ async fn server_update_deselects_pod() {
         (ips.next().unwrap(), ips.next().unwrap())
     };
     let detect_timeout = time::Duration::from_secs(1);
-    let (lookup_tx, lookup_rx) = crate::lookup::pair();
-    let mut idx = Index::new(
-        lookup_tx,
+    let (lookup_rx, mut idx) = Index::new(
         vec![cluster_net],
         "cluster.example.com".into(),
         DefaultAllow::ClusterUnauthenticated,
@@ -222,8 +218,7 @@ async fn default_allow_global() {
         DefaultAllow::ClusterAuthenticated,
         DefaultAllow::ClusterUnauthenticated,
     ] {
-        let (lookup_tx, lookup_rx) = crate::lookup::pair();
-        let mut idx = Index::new(
+        let (lookup_rx, mut idx) = Index::new(
             lookup_tx,
             vec![cluster_net],
             "cluster.example.com".into(),

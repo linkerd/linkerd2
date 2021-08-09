@@ -49,46 +49,41 @@ async fn main() -> Result<()> {
 
     let (drain_tx, drain_rx) = drain::channel();
 
+    // Load a Kubernetes client from the environment (check for in-cluster configuration first).
+    //
+    // TODO support --kubeconfig and --context command-line arguments.
     let client = kube::Client::try_default()
         .await
         .context("failed to initialize kubernetes client")?;
 
+    // Spawn an admin server, failing readiness checks until the index is updated.
     let (ready_tx, ready_rx) = watch::channel(false);
-    let admin = tokio::spawn(linkerd_policy_controller::admin::serve(
+    tokio::spawn(linkerd_policy_controller::admin::serve(
         admin_addr, ready_rx,
     ));
 
-    const DETECT_TIMEOUT: time::Duration = time::Duration::from_secs(10);
-    let (handle, index_task) = linkerd_policy_controller::k8s::index(
-        client,
-        ready_tx,
-        cluster_networks.clone(),
-        identity_domain,
-        default_allow,
-        DETECT_TIMEOUT,
-    );
-    let index_task = tokio::spawn(index_task);
+    // Index cluster resources, returning a handle that supports lookups for the gRPC server.
+    let handle = {
+        const DETECT_TIMEOUT: time::Duration = time::Duration::from_secs(10);
+        let (handle, index) = linkerd_policy_controller::k8s::Index::new(
+            cluster_networks.clone(),
+            identity_domain,
+            default_allow,
+            DETECT_TIMEOUT,
+        );
 
-    let grpc = tokio::spawn(grpc(grpc_addr, cluster_networks, handle, drain_rx));
+        tokio::spawn(index.run(client, ready_tx));
+        handle
+    };
 
-    tokio::select! {
-       _ = shutdown(drain_tx) => Ok(()),
-       res = grpc => match res {
-           Ok(res) => res.context("grpc server failed"),
-           Err(e) if e.is_cancelled() => Ok(()),
-           Err(e) => Err(e).context("grpc server panicked"),
-       },
-       res = index_task => match res {
-           Ok(e) => Err(e).context("indexer failed"),
-           Err(e) if e.is_cancelled() => Ok(()),
-           Err(e) => Err(e).context("indexer panicked"),
-       },
-       res = admin => match res {
-           Ok(res) => res.context("admin server failed"),
-           Err(e) if e.is_cancelled() => Ok(()),
-           Err(e) => Err(e).context("admin server panicked"),
-       },
-    }
+    // Run the gRPC server, serving results by looking up against the index handle.
+    tokio::spawn(grpc(grpc_addr, cluster_networks, handle, drain_rx));
+
+    // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
+    // complete before exiting.
+    shutdown(drain_tx).await;
+
+    Ok(())
 }
 
 #[derive(Debug)]
