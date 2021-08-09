@@ -1021,9 +1021,7 @@ data:
     identityTrustDomain: cluster.local
     imagePullPolicy: ImagePullPolicy
     imagePullSecrets: null
-    installNamespace: true
     linkerdVersion: ""
-    namespace: linkerd
     nodeSelector:
       beta.kubernetes.io/os: linux
     omitWebhookSideEffects: false
@@ -1916,6 +1914,7 @@ spec:
         - proxy-injector
         - -log-level=ControllerLogLevel
         - -log-format=ControllerLogFormat
+        - -linkerd-namespace=linkerd
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:

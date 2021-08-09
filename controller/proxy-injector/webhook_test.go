@@ -26,17 +26,18 @@ var (
 
 func confNsEnabled() *inject.ResourceConfig {
 	return inject.
-		NewResourceConfig(values, inject.OriginWebhook).
+		NewResourceConfig(values, inject.OriginWebhook, "linkerd").
 		WithNsAnnotations(map[string]string{pkgK8s.ProxyInjectAnnotation: pkgK8s.ProxyInjectEnabled})
 }
 
 func confNsDisabled() *inject.ResourceConfig {
-	return inject.NewResourceConfig(values, inject.OriginWebhook).WithNsAnnotations(map[string]string{})
+	return inject.NewResourceConfig(values, inject.OriginWebhook, "linkerd").
+		WithNsAnnotations(map[string]string{})
 }
 
 func confNsWithOpaquePorts() *inject.ResourceConfig {
 	return inject.
-		NewResourceConfig(values, inject.OriginWebhook).
+		NewResourceConfig(values, inject.OriginWebhook, "linkerd").
 		WithNsAnnotations(map[string]string{
 			pkgK8s.ProxyInjectAnnotation:      pkgK8s.ProxyInjectEnabled,
 			pkgK8s.ProxyOpaquePortsAnnotation: "3306",
@@ -45,13 +46,13 @@ func confNsWithOpaquePorts() *inject.ResourceConfig {
 
 func confNsWithoutOpaquePorts() *inject.ResourceConfig {
 	return inject.
-		NewResourceConfig(values, inject.OriginWebhook).
+		NewResourceConfig(values, inject.OriginWebhook, "linkerd").
 		WithNsAnnotations(map[string]string{pkgK8s.ProxyInjectAnnotation: pkgK8s.ProxyInjectEnabled})
 }
 
 func confNsWithConfigAnnotations() *inject.ResourceConfig {
 	return inject.
-		NewResourceConfig(values, inject.OriginWebhook).
+		NewResourceConfig(values, inject.OriginWebhook, "linkerd").
 		WithNsAnnotations(map[string]string{
 			pkgK8s.ProxyInjectAnnotation:                pkgK8s.ProxyInjectEnabled,
 			pkgK8s.ProxyIgnoreOutboundPortsAnnotation:   "34567",

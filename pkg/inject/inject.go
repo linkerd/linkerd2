@@ -102,6 +102,9 @@ type ResourceConfig struct {
 	// overridden by the annotations on the resource or the resource's
 	// namespace.
 	values *l5dcharts.Values
+
+	namespace string
+
 	// These annotations from the resources's namespace are used as a base.
 	// The resources's annotations will be applied on top of these, which
 	// allows the nsAnnotations to act as a default.
@@ -149,8 +152,9 @@ type annotationPatch struct {
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
-func NewResourceConfig(values *l5dcharts.Values, origin Origin) *ResourceConfig {
+func NewResourceConfig(values *l5dcharts.Values, origin Origin, ns string) *ResourceConfig {
 	config := &ResourceConfig{
+		namespace:     ns,
 		nsAnnotations: make(map[string]string),
 		values:        values,
 		origin:        origin,
@@ -159,11 +163,6 @@ func NewResourceConfig(values *l5dcharts.Values, origin Origin) *ResourceConfig 
 	config.workload.Meta = &metav1.ObjectMeta{}
 	config.pod.meta = &metav1.ObjectMeta{}
 
-	// Values can be nil for commands like Uninject
-	var ns string
-	if values != nil {
-		ns = values.Namespace
-	}
 	config.pod.labels = map[string]string{k8s.ControllerNSLabel: ns}
 	config.pod.annotations = map[string]string{}
 	return config
@@ -321,7 +320,7 @@ func (conf *ResourceConfig) GetPodPatch(injectProxy bool) ([]byte, error) {
 	chart := &charts.Chart{
 		Name:      "patch",
 		Dir:       "patch",
-		Namespace: conf.values.Namespace,
+		Namespace: conf.namespace,
 		RawValues: rawValues,
 		Files:     files,
 		Fs:        static.Templates,

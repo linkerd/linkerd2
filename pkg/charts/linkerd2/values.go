@@ -34,9 +34,7 @@ type (
 		OmitWebhookSideEffects       bool                `json:"omitWebhookSideEffects"`
 		DisableHeartBeat             bool                `json:"disableHeartBeat"`
 		HeartbeatSchedule            string              `json:"heartbeatSchedule"`
-		InstallNamespace             bool                `json:"installNamespace"`
 		Configs                      ConfigJSONs         `json:"configs"`
-		Namespace                    string              `json:"namespace"`
 		ClusterDomain                string              `json:"clusterDomain"`
 		ClusterNetworks              string              `json:"clusterNetworks"`
 		ImagePullPolicy              string              `json:"imagePullPolicy"`

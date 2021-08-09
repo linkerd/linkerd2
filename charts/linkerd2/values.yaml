@@ -23,8 +23,6 @@ controlPlaneTracing: false
 controlPlaneTracingNamespace: linkerd-jaeger
 # -- control plane version. See Proxy section for proxy version
 linkerdVersion: linkerdVersionValue
-# -- Control plane namespace
-namespace: linkerd
 # -- enables the use of EndpointSlice informers for the destination service;
 # enableEndpointSlices should be set to true only if EndpointSlice K8s feature
 # gate is on; the feature is still experimental.
@@ -293,10 +291,6 @@ profileValidator:
 # - The namespace created by the external tool must match the namespace value above
 # - The external tool needs to create the namespace with the label:
 #     config.linkerd.io/admission-webhooks: disabled
-
-# installNamespace -- Set to false when installing Linkerd in a custom namespace. See the
-# [Linkerd documentation](https://linkerd.io/2/tasks/install-helmcustomizing-the-namespace) for more information.
-installNamespace: true
 
 # -- NodeSelector section, See the [K8S
 # documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector)

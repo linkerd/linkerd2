@@ -37,11 +37,9 @@ func TestRender(t *testing.T) {
 		WebhookFailurePolicy:    "WebhookFailurePolicy",
 		OmitWebhookSideEffects:  false,
 		HeartbeatSchedule:       "1 2 3 4 5",
-		InstallNamespace:        true,
 		Identity:                defaultValues.Identity,
 		NodeSelector:            defaultValues.NodeSelector,
 		Tolerations:             defaultValues.Tolerations,
-		Namespace:               "Namespace",
 		ClusterDomain:           "cluster.local",
 		ClusterNetworks:         "ClusterNetworks",
 		ImagePullPolicy:         "ImagePullPolicy",
@@ -206,7 +204,7 @@ func TestRender(t *testing.T) {
 		{withControlPlaneTracingValues, "install_controlplane_tracing_output.golden", values.Options{}},
 		{withCustomRegistryValues, "install_custom_registry.golden", values.Options{}},
 		{withCustomDestinationGetNetsValues, "install_default_override_dst_get_nets.golden", values.Options{}},
-		{defaultValues, "install_custom_domain.golden", values.Options{Values: []string{"namespace=l5d"}}},
+		{defaultValues, "install_custom_domain.golden", values.Options{}},
 		{defaultValues, "install_values_file.golden", values.Options{ValueFiles: []string{filepath.Join("testdata", "install_config.yaml")}}},
 	}
 

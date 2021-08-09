@@ -161,7 +161,6 @@ func ToValues(configs *pb.All) *l5dcharts.Values {
 	// convert install flags into values
 	values := &l5dcharts.Values{
 		CNIEnabled:              configs.GetGlobal().GetCniEnabled(),
-		Namespace:               configs.GetGlobal().GetLinkerdNamespace(),
 		IdentityTrustAnchorsPEM: configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem(),
 		IdentityTrustDomain:     configs.GetGlobal().GetIdentityContext().GetTrustDomain(),
 		ClusterDomain:           configs.GetGlobal().GetClusterDomain(),

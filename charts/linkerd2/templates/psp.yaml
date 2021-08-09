@@ -6,9 +6,9 @@
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
-  name: linkerd-{{.Values.namespace}}-control-plane
+  name: linkerd-{{.Release.Namespace}}-control-plane
   labels:
-    linkerd.io/control-plane-ns: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
 spec:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
@@ -62,23 +62,23 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-psp
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
-    linkerd.io/control-plane-ns: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
 rules:
 - apiGroups: ['policy', 'extensions']
   resources: ['podsecuritypolicies']
   verbs: ['use']
   resourceNames:
-  - linkerd-{{.Values.namespace}}-control-plane
+  - linkerd-{{.Release.Namespace}}-control-plane
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: linkerd-psp
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
-    linkerd.io/control-plane-ns: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
 roleRef:
   kind: Role
   name: linkerd-psp
@@ -86,19 +86,19 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-destination
-  namespace: {{.Values.namespace}}
+  namespace: {{.Release.Namespace}}
 {{ if not .Values.disableHeartBeat -}}
 - kind: ServiceAccount
   name: linkerd-heartbeat
-  namespace: {{.Values.namespace}}
+  namespace: {{.Release.Namespace}}
 {{ end -}}
 - kind: ServiceAccount
   name: linkerd-identity
-  namespace: {{.Values.namespace}}
+  namespace: {{.Release.Namespace}}
 - kind: ServiceAccount
   name: linkerd-proxy-injector
-  namespace: {{.Values.namespace}}
+  namespace: {{.Release.Namespace}}
 - kind: ServiceAccount
   name: linkerd-sp-validator
-  namespace: {{.Values.namespace}}
+  namespace: {{.Release.Namespace}}
 {{ end -}}

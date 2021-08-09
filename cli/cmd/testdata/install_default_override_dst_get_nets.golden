@@ -1021,9 +1021,7 @@ data:
     identityTrustDomain: cluster.local
     imagePullPolicy: IfNotPresent
     imagePullSecrets: []
-    installNamespace: true
     linkerdVersion: dev-undefined
-    namespace: linkerd
     nodeSelector:
       beta.kubernetes.io/os: linux
     omitWebhookSideEffects: false
@@ -1910,6 +1908,7 @@ spec:
         - proxy-injector
         - -log-level=info
         - -log-format=plain
+        - -linkerd-namespace=linkerd
         image: cr.l5d.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

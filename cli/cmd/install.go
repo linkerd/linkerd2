@@ -309,8 +309,6 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 
 func render(w io.Writer, values *l5dcharts.Values, stage string, options valuespkg.Options) error {
 
-	// Set any global flags if present, common with install and upgrade
-	values.Namespace = controlPlaneNamespace
 	values.Stage = stage
 
 	files := []*loader.BufferedFile{
@@ -373,8 +371,16 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 		return err
 	}
 
+	fullValues := map[string]interface{}{
+		"Values": vals,
+		"Release": map[string]interface{}{
+			"Namespace": controlPlaneNamespace,
+			"Service":   "CLI",
+		},
+	}
+
 	// Attach the final values into the `Values` field for rendering to work
-	renderedTemplates, err := engine.Render(chart, map[string]interface{}{"Values": vals})
+	renderedTemplates, err := engine.Render(chart, fullValues)
 	if err != nil {
 		return fmt.Errorf("Failed to render the template: %s", err)
 	}
@@ -422,16 +428,6 @@ func renderOverrides(values chartutil.Values, stringData bool) ([]byte, error) {
 	delete(values, "partials")
 	delete(values, "stage")
 
-	// Get Namespace from values
-	valuesTree, err := tree.MarshalToTree(values)
-	if err != nil {
-		return nil, err
-	}
-	namespace, err := valuesTree.GetString("namespace")
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve global.namespace from values: %v", err)
-	}
-
 	overrides, err := tree.Diff(defaults, values)
 	if err != nil {
 		return nil, err
@@ -446,9 +442,9 @@ func renderOverrides(values chartutil.Values, stringData bool) ([]byte, error) {
 		TypeMeta: metav1.TypeMeta{Kind: "Secret", APIVersion: "v1"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "linkerd-config-overrides",
-			Namespace: namespace,
+			Namespace: controlPlaneNamespace,
 			Labels: map[string]string{
-				k8s.ControllerNSLabel: namespace,
+				k8s.ControllerNSLabel: controlPlaneNamespace,
 			},
 		},
 	}

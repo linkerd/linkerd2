@@ -1,4 +1,4 @@
-{{- if (.Values.installNamespace) -}}
+{{- if eq .Release.Service "CLI" -}}
 ---
 ###
 ### Linkerd Namespace
@@ -6,11 +6,11 @@
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: {{ .Values.namespace }}
+  name: {{ .Release.Namespace }}
   annotations:
     linkerd.io/inject: disabled
   labels:
     linkerd.io/is-control-plane: "true"
     config.linkerd.io/admission-webhooks: disabled
-    linkerd.io/control-plane-ns: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
 {{ end -}}

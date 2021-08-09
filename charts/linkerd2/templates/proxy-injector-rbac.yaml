@@ -5,10 +5,10 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.namespace}}-proxy-injector
+  name: linkerd-{{.Release.Namespace}}-proxy-injector
   labels:
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
 rules:
 - apiGroups: [""]
   resources: ["events"]
@@ -29,41 +29,41 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.namespace}}-proxy-injector
+  name: linkerd-{{.Release.Namespace}}-proxy-injector
   labels:
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
 subjects:
 - kind: ServiceAccount
   name: linkerd-proxy-injector
-  namespace: {{.Values.namespace}}
+  namespace: {{.Release.Namespace}}
   apiGroup: ""
 roleRef:
   kind: ClusterRole
-  name: linkerd-{{.Values.namespace}}-proxy-injector
+  name: linkerd-{{.Release.Namespace}}-proxy-injector
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 ---
-{{- $host := printf "linkerd-proxy-injector.%s.svc" .Values.namespace }}
+{{- $host := printf "linkerd-proxy-injector.%s.svc" .Release.Namespace }}
 {{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
 {{- if (not .Values.proxyInjector.externalSecret) }}
 kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector-k8s-tls
-  namespace: {{ .Values.namespace }}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 type: kubernetes.io/tls
@@ -78,7 +78,7 @@ metadata:
   name: linkerd-proxy-injector-webhook-config
   labels:
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:
@@ -86,7 +86,7 @@ webhooks:
   clientConfig:
     service:
       name: linkerd-proxy-injector
-      namespace: {{ .Values.namespace }}
+      namespace: {{ .Release.Namespace }}
       path: "/"
 {{- if and (.Values.proxyInjector.externalSecret) (empty .Values.proxyInjector.caBundle) }}
   {{- fail "If proxyInjector.externalSecret is true then you need to provide proxyInjector.caBundle" }}

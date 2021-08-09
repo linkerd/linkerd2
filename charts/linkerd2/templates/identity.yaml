@@ -9,10 +9,10 @@ kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-identity-issuer
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
     linkerd.io/identity-issuer-expiry: {{required "Please provide the identity issuer certificate expiry date" .Values.identity.issuer.crtExpiry}}
@@ -26,10 +26,10 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-identity-trust-roots
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 data:
@@ -40,10 +40,10 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-identity
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -59,10 +59,10 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-identity-headless
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -79,10 +79,10 @@ kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
 metadata:
   name: linkerd-identity
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -106,15 +106,15 @@ metadata:
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: {{.Values.namespace}}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
   name: linkerd-identity
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
 spec:
   replicas: {{.Values.controllerReplicas}}
   selector:
     matchLabels:
       linkerd.io/control-plane-component: identity
-      linkerd.io/control-plane-ns: {{.Values.namespace}}
+      linkerd.io/control-plane-ns: {{.Release.Namespace}}
       {{- include "partials.proxy.labels" $tree.Values.proxy | nindent 6}}
   {{- if .Values.enablePodAntiAffinity }}
   strategy:
@@ -129,8 +129,8 @@ spec:
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
         linkerd.io/control-plane-component: identity
-        linkerd.io/control-plane-ns: {{.Values.namespace}}
-        linkerd.io/workload-ns: {{.Values.namespace}}
+        linkerd.io/control-plane-ns: {{.Release.Namespace}}
+        linkerd.io/workload-ns: {{.Release.Namespace}}
         {{- include "partials.proxy.labels" $tree.Values.proxy | nindent 8}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
@@ -147,7 +147,7 @@ spec:
         - identity
         - -log-level={{.Values.controllerLogLevel}}
         - -log-format={{.Values.controllerLogFormat}}
-        - -controller-namespace={{.Values.namespace}}
+        - -controller-namespace={{.Release.Namespace}}
         - -identity-trust-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
         - -identity-issuance-lifetime={{.Values.identity.issuer.issuanceLifetime}}
         - -identity-clock-skew-allowance={{.Values.identity.issuer.clockSkewAllowance}}

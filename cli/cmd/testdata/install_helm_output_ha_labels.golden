@@ -1,20 +1,6 @@
 ---
 # Source: linkerd2/templates/namespace.yaml
 ---
-###
-### Linkerd Namespace
-###
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: linkerd
-  annotations:
-    linkerd.io/inject: disabled
-  labels:
-    linkerd.io/is-control-plane: "true"
-    config.linkerd.io/admission-webhooks: disabled
-    linkerd.io/control-plane-ns: linkerd
----
 # Source: linkerd2/templates/identity-rbac.yaml
 ---
 ###
@@ -23,10 +9,10 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-linkerd-identity
+  name: linkerd-linkerd-dev-identity
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 rules:
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
@@ -41,27 +27,27 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-linkerd-identity
+  name: linkerd-linkerd-dev-identity
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: linkerd-linkerd-identity
+  name: linkerd-linkerd-dev-identity
 subjects:
 - kind: ServiceAccount
   name: linkerd-identity
-  namespace: linkerd
+  namespace: linkerd-dev
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-identity
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 ---
 # Source: linkerd2/templates/destination-rbac.yaml
 ---
@@ -71,10 +57,10 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-linkerd-destination
+  name: linkerd-linkerd-dev-destination
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 rules:
 - apiGroups: ["apps"]
   resources: ["replicasets"]
@@ -95,36 +81,36 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-linkerd-destination
+  name: linkerd-linkerd-dev-destination
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: linkerd-linkerd-destination
+  name: linkerd-linkerd-dev-destination
 subjects:
 - kind: ServiceAccount
   name: linkerd-destination
-  namespace: linkerd
+  namespace: linkerd-dev
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-destination
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 ---
 kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-sp-validator-k8s-tls
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 type: kubernetes.io/tls
@@ -138,7 +124,7 @@ metadata:
   name: linkerd-sp-validator-webhook-config
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
   namespaceSelector:
@@ -150,7 +136,7 @@ webhooks:
   clientConfig:
     service:
       name: linkerd-sp-validator
-      namespace: linkerd
+      namespace: linkerd-dev
       path: "/"
     caBundle: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1jYS1idW5kbGU=
   failurePolicy: Fail
@@ -171,9 +157,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-heartbeat
-  namespace: linkerd
+  
   labels:
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 rules:
 - apiGroups: [""]
   resources: ["configmaps"]
@@ -184,9 +170,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: linkerd-heartbeat
-  namespace: linkerd
+  
   labels:
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 roleRef:
   kind: Role
   name: linkerd-heartbeat
@@ -194,14 +180,14 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-heartbeat
-  namespace: linkerd
+  namespace: linkerd-dev
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: linkerd-heartbeat
   labels:
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -215,7 +201,7 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-heartbeat
   labels:
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 roleRef:
   kind: ClusterRole
   name: linkerd-heartbeat
@@ -223,16 +209,16 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-heartbeat
-  namespace: linkerd
+  namespace: linkerd-dev
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-heartbeat
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: heartbeat
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 ---
 # Source: linkerd2/templates/policy-crd.yaml
 ---
@@ -243,7 +229,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
   labels:
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 spec:
   group: policy.linkerd.io
   names:
@@ -324,7 +310,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
   labels:
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 spec:
   group: policy.linkerd.io
   scope: Namespaced
@@ -495,7 +481,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
   labels:
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 spec:
   group: linkerd.io
   versions:
@@ -775,7 +761,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
   labels:
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 spec:
   group: split.smi-spec.io
   scope: Namespaced
@@ -867,10 +853,10 @@ spec:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-linkerd-proxy-injector
+  name: linkerd-linkerd-dev-proxy-injector
   labels:
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 rules:
 - apiGroups: [""]
   resources: ["events"]
@@ -891,37 +877,37 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-linkerd-proxy-injector
+  name: linkerd-linkerd-dev-proxy-injector
   labels:
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 subjects:
 - kind: ServiceAccount
   name: linkerd-proxy-injector
-  namespace: linkerd
+  namespace: linkerd-dev
   apiGroup: ""
 roleRef:
   kind: ClusterRole
-  name: linkerd-linkerd-proxy-injector
+  name: linkerd-linkerd-dev-proxy-injector
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 ---
 kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector-k8s-tls
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 type: kubernetes.io/tls
@@ -935,7 +921,7 @@ metadata:
   name: linkerd-proxy-injector-webhook-config
   labels:
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:
@@ -947,7 +933,7 @@ webhooks:
   clientConfig:
     service:
       name: linkerd-proxy-injector
-      namespace: linkerd
+      namespace: linkerd-dev
       path: "/"
     caBundle: dGVzdC1wcm94eS1pbmplY3Rvci1jYS1idW5kbGU=
   failurePolicy: Fail
@@ -967,10 +953,10 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-config
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: controller
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 data:
@@ -1035,9 +1021,7 @@ data:
     identityTrustDomain: test.trust.domain
     imagePullPolicy: IfNotPresent
     imagePullSecrets: null
-    installNamespace: true
     linkerdVersion: linkerd-version
-    namespace: linkerd
     nodeSelector:
       beta.kubernetes.io/os: linux
     omitWebhookSideEffects: false
@@ -1148,10 +1132,10 @@ kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-identity-issuer
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
     linkerd.io/identity-issuer-expiry: Jul 30 17:21:14 2020
@@ -1163,10 +1147,10 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-identity-trust-roots
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 data:
@@ -1177,10 +1161,10 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-identity
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
@@ -1196,10 +1180,10 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-identity-headless
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
@@ -1215,10 +1199,10 @@ kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
 metadata:
   name: linkerd-identity
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
@@ -1237,15 +1221,15 @@ metadata:
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: linkerd-version
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   name: linkerd-identity
-  namespace: linkerd
+  
 spec:
   replicas: 3
   selector:
     matchLabels:
       linkerd.io/control-plane-component: identity
-      linkerd.io/control-plane-ns: linkerd
+      linkerd.io/control-plane-ns: linkerd-dev
       linkerd.io/proxy-deployment: linkerd-identity
   strategy:
     rollingUpdate:
@@ -1260,8 +1244,8 @@ spec:
         bingo: bongo
       labels:
         linkerd.io/control-plane-component: identity
-        linkerd.io/control-plane-ns: linkerd
-        linkerd.io/workload-ns: linkerd
+        linkerd.io/control-plane-ns: linkerd-dev
+        linkerd.io/workload-ns: linkerd-dev
         linkerd.io/proxy-deployment: linkerd-identity
         fiz: buz
         foo: bar
@@ -1293,7 +1277,7 @@ spec:
         - identity
         - -log-level=info
         - -log-format=plain
-        - -controller-namespace=linkerd
+        - -controller-namespace=linkerd-dev
         - -identity-trust-domain=test.trust.domain
         - -identity-issuance-lifetime=24h0m0s
         - -identity-clock-skew-allowance=20s
@@ -1338,7 +1322,7 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst-headless.linkerd.svc.cluster.local.:8086
+          value: linkerd-dst-headless.linkerd-dev.svc.cluster.local.:8086
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -1394,7 +1378,7 @@ spec:
             fieldRef:
               fieldPath: spec.serviceAccountName
         - name: _l5d_ns
-          value: linkerd
+          value: linkerd-dev
         - name: _l5d_trustdomain
           value: test.trust.domain
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
@@ -1494,10 +1478,10 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-dst
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
@@ -1513,10 +1497,10 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-dst-headless
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
@@ -1532,10 +1516,10 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-sp-validator
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
@@ -1551,10 +1535,10 @@ kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
 metadata:
   name: linkerd-dst
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
@@ -1573,15 +1557,15 @@ metadata:
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: linkerd-version
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   name: linkerd-destination
-  namespace: linkerd
+  
 spec:
   replicas: 3
   selector:
     matchLabels:
       linkerd.io/control-plane-component: destination
-      linkerd.io/control-plane-ns: linkerd
+      linkerd.io/control-plane-ns: linkerd-dev
       linkerd.io/proxy-deployment: linkerd-destination
   strategy:
     rollingUpdate:
@@ -1596,8 +1580,8 @@ spec:
         bingo: bongo
       labels:
         linkerd.io/control-plane-component: destination
-        linkerd.io/control-plane-ns: linkerd
-        linkerd.io/workload-ns: linkerd
+        linkerd.io/control-plane-ns: linkerd-dev
+        linkerd.io/workload-ns: linkerd-dev
         linkerd.io/proxy-deployment: linkerd-destination
         fiz: buz
         foo: bar
@@ -1681,13 +1665,13 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity-headless.linkerd.svc.cluster.local.:8080
+          value: linkerd-identity-headless.linkerd-dev.svc.cluster.local.:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
               fieldPath: spec.serviceAccountName
         - name: _l5d_ns
-          value: linkerd
+          value: linkerd-dev
         - name: _l5d_trustdomain
           value: test.trust.domain
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
@@ -1736,7 +1720,7 @@ spec:
       - args:
         - destination
         - -addr=:8086
-        - -controller-namespace=linkerd
+        - -controller-namespace=linkerd-dev
         - -enable-h2-upgrade=true
         - -log-level=info
         - -log-format=plain
@@ -1854,13 +1838,13 @@ apiVersion: batch/v1beta1
 kind: CronJob
 metadata:
   name: linkerd-heartbeat
-  namespace: linkerd
+  
   labels:
     app.kubernetes.io/name: heartbeat
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: linkerd-version
     linkerd.io/control-plane-component: heartbeat
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
@@ -1873,7 +1857,7 @@ spec:
         metadata:
           labels:
             linkerd.io/control-plane-component: heartbeat
-            linkerd.io/workload-ns: linkerd
+            linkerd.io/workload-ns: linkerd-dev
             fiz: buz
             foo: bar
           annotations:
@@ -1894,7 +1878,7 @@ spec:
               value: "the heartbeat controller does not use the proxy"
             args:
             - "heartbeat"
-            - "-controller-namespace=linkerd"
+            - "-controller-namespace=linkerd-dev"
             - "-log-level=info"
             - "-log-format=plain"
             - "-prometheus-url=http://prometheus.linkerd-viz.svc.cluster.local:9090"
@@ -1922,9 +1906,9 @@ metadata:
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: linkerd-version
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   name: linkerd-proxy-injector
-  namespace: linkerd
+  
 spec:
   replicas: 3
   selector:
@@ -1936,7 +1920,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: cf6b4520e0ad2b0010db5a18443bd632c87ac0216f8f118e723e0f33f5842d7e
+        checksum/config: 8f1c60ff35b8fc160c3a601b98846be97c315925f7bcdf51949aef024b6dee01
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
@@ -1944,8 +1928,8 @@ spec:
         bingo: bongo
       labels:
         linkerd.io/control-plane-component: proxy-injector
-        linkerd.io/control-plane-ns: linkerd
-        linkerd.io/workload-ns: linkerd
+        linkerd.io/control-plane-ns: linkerd-dev
+        linkerd.io/workload-ns: linkerd-dev
         linkerd.io/proxy-deployment: linkerd-proxy-injector
         fiz: buz
         foo: bar
@@ -1979,7 +1963,7 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst-headless.linkerd.svc.cluster.local.:8086
+          value: linkerd-dst-headless.linkerd-dev.svc.cluster.local.:8086
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -2029,13 +2013,13 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity-headless.linkerd.svc.cluster.local.:8080
+          value: linkerd-identity-headless.linkerd-dev.svc.cluster.local.:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
               fieldPath: spec.serviceAccountName
         - name: _l5d_ns
-          value: linkerd
+          value: linkerd-dev
         - name: _l5d_trustdomain
           value: test.trust.domain
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
@@ -2085,6 +2069,7 @@ spec:
         - proxy-injector
         - -log-level=info
         - -log-format=plain
+        - -linkerd-namespace=linkerd-dev
         image: cr.l5d.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2176,10 +2161,10 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
@@ -2195,10 +2180,10 @@ kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
 metadata:
   name: linkerd-proxy-injector
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
