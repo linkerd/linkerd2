@@ -9,25 +9,35 @@ use std::{
 use tokio::{sync::watch, time};
 use tracing::{debug, instrument, trace};
 
+/// Holds the state of all `Server`s in a namespace.
 #[derive(Debug, Default)]
 pub(crate) struct SrvIndex {
     index: HashMap<String, Server>,
 }
 
+/// The state of a `Server` instance and its authorizations.
 #[derive(Debug)]
 struct Server {
-    meta: ServerMeta,
-    authorizations: HashMap<String, ClientAuthorization>,
-    rx: ServerRx,
-    tx: ServerTx,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct ServerMeta {
+    /// Labels a `Server`.
     labels: k8s::Labels,
+
+    /// Selects a port on matching pods.
     port: policy::server::Port,
+
+    /// Selects pods by label.
     pod_selector: Arc<k8s::labels::Selector>,
+
+    /// Indicates the server's protocol configuration.
     protocol: ProxyProtocol,
+
+    /// Holds a copy of all authorization policies matching this server.
+    authorizations: HashMap<String, ClientAuthorization>,
+
+    /// Shares the server's state with pod-ports.
+    rx: ServerRx,
+
+    /// Broadcasts server updates to pod-port lookups.
+    tx: ServerTx,
 }
 
 /// Selects servers for an authorization.
@@ -133,7 +143,7 @@ impl SrvIndex {
     /// Adds an authorization to servers matching `selector`.
     pub fn add_authz(&mut self, name: &str, selector: &ServerSelector, authz: ClientAuthorization) {
         for (srv_name, srv) in self.index.iter_mut() {
-            if selector.selects(srv_name, &srv.meta.labels) {
+            if selector.selects(srv_name, &srv.labels) {
                 debug!(server = %srv_name, authz = %name, "Adding authz to server");
                 srv.insert_authz(name.to_string(), authz.clone());
             } else {
@@ -156,10 +166,10 @@ impl SrvIndex {
         pod_labels: k8s::Labels,
     ) -> impl Iterator<Item = (&str, &policy::server::Port, &ServerRx)> {
         self.index.iter().filter_map(move |(srv_name, server)| {
-            let matches = server.meta.pod_selector.matches(&pod_labels);
+            let matches = server.pod_selector.matches(&pod_labels);
             trace!(server = %srv_name, %matches);
             if matches {
-                Some((srv_name.as_str(), &server.meta.port, &server.rx))
+                Some((srv_name.as_str(), &server.port, &server.rx))
             } else {
                 None
             }
@@ -179,19 +189,18 @@ impl SrvIndex {
                     .filter_for_server(entry.key(), labels.clone())
                     .map(|(n, a)| (n, a.clone()))
                     .collect::<HashMap<_, _>>();
-                let meta = ServerMeta {
-                    labels,
-                    port,
-                    pod_selector: srv.spec.pod_selector.into(),
-                    protocol: protocol.clone(),
-                };
                 debug!(authzs = ?authzs.keys());
                 let (tx, rx) = watch::channel(InboundServer {
-                    protocol,
+                    protocol: protocol.clone(),
                     authorizations: authzs.clone(),
                 });
                 entry.insert(Server {
-                    meta,
+                    //meta,
+                    labels,
+                    port,
+                    pod_selector: srv.spec.pod_selector.into(),
+                    protocol,
+
                     rx,
                     tx,
                     authorizations: authzs,
@@ -201,13 +210,13 @@ impl SrvIndex {
             HashEntry::Occupied(mut entry) => {
                 // If something about the server changed, we need to update the config to reflect
                 // the change.
-                let new_labels = if entry.get().meta.labels.as_ref() != &srv.metadata.labels {
+                let new_labels = if entry.get().labels.as_ref() != &srv.metadata.labels {
                     Some(k8s::Labels::from(srv.metadata.labels))
                 } else {
                     None
                 };
 
-                let new_protocol = if entry.get().meta.protocol == protocol {
+                let new_protocol = if entry.get().protocol == protocol {
                     Some(protocol)
                 } else {
                     None
@@ -227,13 +236,13 @@ impl SrvIndex {
                             .collect::<HashMap<_, _>>();
                         debug!(authzs = ?authzs.keys());
                         config.authorizations = authzs.clone();
-                        entry.get_mut().meta.labels = labels;
+                        entry.get_mut().labels = labels;
                         entry.get_mut().authorizations = authzs;
                     }
 
                     if let Some(protocol) = new_protocol {
                         config.protocol = protocol.clone();
-                        entry.get_mut().meta.protocol = protocol;
+                        entry.get_mut().protocol = protocol;
                     }
                     entry
                         .get()
@@ -243,14 +252,12 @@ impl SrvIndex {
                 }
 
                 // If the pod/port selector didn't change, we don't need to refresh the index.
-                if *entry.get().meta.pod_selector == srv.spec.pod_selector
-                    && entry.get().meta.port == port
-                {
+                if *entry.get().pod_selector == srv.spec.pod_selector && entry.get().port == port {
                     return;
                 }
 
-                entry.get_mut().meta.pod_selector = srv.spec.pod_selector.into();
-                entry.get_mut().meta.port = port;
+                entry.get_mut().pod_selector = srv.spec.pod_selector.into();
+                entry.get_mut().port = port;
             }
         }
     }
