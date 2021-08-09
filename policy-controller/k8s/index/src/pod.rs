@@ -8,15 +8,22 @@ use std::collections::{hash_map::Entry as HashEntry, HashMap, HashSet};
 use tokio::sync::watch;
 use tracing::{debug, instrument, trace, warn};
 
+/// Indexes pod state (within a namespace).
 #[derive(Debug, Default)]
 pub(crate) struct PodIndex {
     index: HashMap<String, Pod>,
 }
 
+///
 #[derive(Debug)]
 struct Pod {
+    /// An index of all ports in the pod spec.
     ports: PodPorts,
+
+    /// The pod's labels.
     labels: k8s::Labels,
+
+    /// The workload's default allow behavior (to apply when no `Server` references a port).
     default_allow_rx: ServerRx,
 }
 
@@ -42,14 +49,14 @@ struct Port {
     /// When this is `None`, a default policy currently applies.
     server_name: Option<String>,
 
-    /// Updated with a server update receiver as servers select/delelect this port.
+    /// Updated with a server update receiver as servers select/deselect this port.
     server_tx: PodServerTx,
 }
 
 // === impl Index ===
 
 impl Index {
-    /// Builds a `Pod`, linking it with servers and nodes.
+    /// Creates or updates a `Pod`, linking it with servers and nodes.
     #[instrument(
         skip(self, pod),
         fields(

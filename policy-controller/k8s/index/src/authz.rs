@@ -11,6 +11,7 @@ use linkerd_policy_controller_k8s_api::{
 use std::collections::{hash_map::Entry as HashEntry, HashMap, HashSet};
 use tracing::{debug, instrument, trace};
 
+/// Indexes `ServerAuthorization` resources within a namespace.
 #[derive(Debug, Default)]
 pub(crate) struct AuthzIndex {
     index: HashMap<String, Authz>,
@@ -18,77 +19,17 @@ pub(crate) struct AuthzIndex {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Authz {
+    /// Selects `Server` instances in the same namespace.
     servers: ServerSelector,
+
+    /// The current authorization policy to apply.
     clients: ClientAuthorization,
-}
-
-// === impl AuthzIndex ===
-
-impl AuthzIndex {
-    /// Updates the authorization and server indexes with a new or updated authorization instance.
-    fn apply(
-        &mut self,
-        authz: policy::ServerAuthorization,
-        servers: &mut SrvIndex,
-        domain: &str,
-    ) -> Result<()> {
-        let name = authz.name();
-        let authz = mk_authz(authz, domain)?;
-
-        match self.index.entry(name) {
-            HashEntry::Vacant(entry) => {
-                servers.add_authz(entry.key(), &authz.servers, authz.clients.clone());
-                entry.insert(authz);
-            }
-
-            HashEntry::Occupied(mut entry) => {
-                // If the authorization changed materially, then update it in all servers.
-                if entry.get() != &authz {
-                    servers.add_authz(entry.key(), &authz.servers, authz.clients.clone());
-                    entry.insert(authz);
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    fn delete(&mut self, name: &str) {
-        self.index.remove(name);
-        debug!("Removed authz");
-    }
-
-    pub fn filter_selected(
-        &self,
-        name: impl Into<String>,
-        labels: k8s::Labels,
-    ) -> impl Iterator<Item = (String, &ClientAuthorization)> {
-        let name = name.into();
-        self.index.iter().filter_map(move |(authz_name, a)| {
-            let matches = match a.servers {
-                ServerSelector::Name(ref n) => {
-                    trace!(r#ref = %n, %name);
-                    n == &name
-                }
-                ServerSelector::Selector(ref s) => {
-                    trace!(selector = ?s, ?labels);
-                    s.matches(&labels)
-                }
-            };
-            debug!(authz = %authz_name, %matches);
-            if matches {
-                Some((authz_name.clone(), &a.clients))
-            } else {
-                None
-            }
-        })
-    }
 }
 
 // === impl Index ===
 
 impl Index {
-    /// Constructs an `Authz` and adds it to `Servers` it selects.
+    /// Obtains or constructs an `Authz` and links it to the appropriate `Servers`.
     #[instrument(
         skip(self, authz),
         fields(
@@ -157,6 +98,71 @@ impl Index {
         }
 
         Errors::ok_if_empty(errors)
+    }
+}
+
+// === impl AuthzIndex ===
+
+impl AuthzIndex {
+    /// Enumerates authorizations in this namespace matching either the given server name or its
+    /// labels.
+    pub(crate) fn filter_for_server(
+        &self,
+        server_name: impl Into<String>,
+        server_labels: k8s::Labels,
+    ) -> impl Iterator<Item = (String, &ClientAuthorization)> {
+        let server_name = server_name.into();
+        self.index.iter().filter_map(move |(authz_name, a)| {
+            let matches = match a.servers {
+                ServerSelector::Name(ref n) => {
+                    trace!(selector.name = %n, server.name = %server_name);
+                    n == &server_name
+                }
+                ServerSelector::Selector(ref s) => {
+                    trace!(selector = ?s, ?server_labels);
+                    s.matches(&server_labels)
+                }
+            };
+            debug!(authz = %authz_name, %matches);
+            if matches {
+                Some((authz_name.clone(), &a.clients))
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Updates the authorization and server indexes with a new or updated authorization instance.
+    fn apply(
+        &mut self,
+        authz: policy::ServerAuthorization,
+        servers: &mut SrvIndex,
+        domain: &str,
+    ) -> Result<()> {
+        let name = authz.name();
+        let authz = mk_authz(authz, domain)?;
+
+        match self.index.entry(name) {
+            HashEntry::Vacant(entry) => {
+                servers.add_authz(entry.key(), &authz.servers, authz.clients.clone());
+                entry.insert(authz);
+            }
+
+            HashEntry::Occupied(mut entry) => {
+                // If the authorization changed materially, then update it in all servers.
+                if entry.get() != &authz {
+                    servers.add_authz(entry.key(), &authz.servers, authz.clients.clone());
+                    entry.insert(authz);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn delete(&mut self, name: &str) {
+        self.index.remove(name);
+        debug!("Removed authz");
     }
 }
 

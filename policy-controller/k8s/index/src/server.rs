@@ -30,160 +30,6 @@ struct ServerMeta {
     protocol: ProxyProtocol,
 }
 
-// === impl SrvIndex ===
-
-impl SrvIndex {
-    /// Adds an authorization to servers matching `selector`.
-    pub fn add_authz(&mut self, name: &str, selector: &ServerSelector, authz: ClientAuthorization) {
-        for (srv_name, srv) in self.index.iter_mut() {
-            let matches = match selector {
-                ServerSelector::Name(ref n) => n == srv_name,
-                ServerSelector::Selector(ref s) => s.matches(&srv.meta.labels),
-            };
-            if matches {
-                debug!(server = %srv_name, authz = %name, "Adding authz to server");
-                srv.add_authz(name.to_string(), authz.clone());
-            } else {
-                debug!(server = %srv_name, authz = %name, "Removing authz from server");
-                srv.remove_authz(name);
-            }
-        }
-    }
-
-    /// Removes an authorization by `name`.
-    pub fn remove_authz(&mut self, name: &str) {
-        for srv in self.index.values_mut() {
-            srv.remove_authz(name);
-        }
-    }
-
-    /// Iterates over servers that select the given `pod_labels`.
-    pub fn iter_matching_pod(
-        &self,
-        pod_labels: k8s::Labels,
-    ) -> impl Iterator<Item = (&str, &policy::server::Port, &ServerRx)> {
-        self.index.iter().filter_map(move |(srv_name, server)| {
-            let matches = server.meta.pod_selector.matches(&pod_labels);
-            trace!(server = %srv_name, %matches);
-            if matches {
-                Some((srv_name.as_str(), &server.meta.port, &server.rx))
-            } else {
-                None
-            }
-        })
-    }
-
-    /// Update the index with a server instance.
-    fn apply(&mut self, srv: policy::Server, ns_authzs: &AuthzIndex) {
-        let srv_name = srv.name();
-        let port = srv.spec.port;
-        let protocol = mk_protocol(srv.spec.proxy_protocol.as_ref());
-
-        match self.index.entry(srv_name) {
-            HashEntry::Vacant(entry) => {
-                let labels = k8s::Labels::from(srv.metadata.labels);
-                let authzs = ns_authzs
-                    .filter_selected(entry.key(), labels.clone())
-                    .map(|(n, a)| (n, a.clone()))
-                    .collect::<HashMap<_, _>>();
-                let meta = ServerMeta {
-                    labels,
-                    port,
-                    pod_selector: srv.spec.pod_selector.into(),
-                    protocol: protocol.clone(),
-                };
-                debug!(authzs = ?authzs.keys());
-                let (tx, rx) = watch::channel(InboundServer {
-                    protocol,
-                    authorizations: authzs.clone(),
-                });
-                entry.insert(Server {
-                    meta,
-                    rx,
-                    tx,
-                    authorizations: authzs,
-                });
-            }
-
-            HashEntry::Occupied(mut entry) => {
-                // If something about the server changed, we need to update the config to reflect
-                // the change.
-                let new_labels = if entry.get().meta.labels.as_ref() != &srv.metadata.labels {
-                    Some(k8s::Labels::from(srv.metadata.labels))
-                } else {
-                    None
-                };
-
-                let new_protocol = if entry.get().meta.protocol == protocol {
-                    Some(protocol)
-                } else {
-                    None
-                };
-
-                trace!(?new_labels, ?new_protocol);
-                if new_labels.is_some() || new_protocol.is_some() {
-                    // NB: Only a single task applies index updates, so it's okay to borrow a
-                    // version, modify, and send it. We don't need a lock because serialization is
-                    // guaranteed.
-                    let mut config = entry.get().rx.borrow().clone();
-
-                    if let Some(labels) = new_labels {
-                        let authzs = ns_authzs
-                            .filter_selected(entry.key(), labels.clone())
-                            .map(|(n, a)| (n, a.clone()))
-                            .collect::<HashMap<_, _>>();
-                        debug!(authzs = ?authzs.keys());
-                        config.authorizations = authzs.clone();
-                        entry.get_mut().meta.labels = labels;
-                        entry.get_mut().authorizations = authzs;
-                    }
-
-                    if let Some(protocol) = new_protocol {
-                        config.protocol = protocol.clone();
-                        entry.get_mut().meta.protocol = protocol;
-                    }
-                    entry
-                        .get()
-                        .tx
-                        .send(config)
-                        .expect("server update must succeed");
-                }
-
-                // If the pod/port selector didn't change, we don't need to refresh the index.
-                if *entry.get().meta.pod_selector == srv.spec.pod_selector
-                    && entry.get().meta.port == port
-                {
-                    return;
-                }
-
-                entry.get_mut().meta.pod_selector = srv.spec.pod_selector.into();
-                entry.get_mut().meta.port = port;
-            }
-        }
-    }
-}
-
-// === impl Server ===
-
-impl Server {
-    fn add_authz(&mut self, name: impl Into<String>, authz: ClientAuthorization) {
-        debug!("Adding authorization to server");
-        self.authorizations.insert(name.into(), authz);
-        let mut config = self.rx.borrow().clone();
-        config.authorizations = self.authorizations.clone();
-        self.tx.send(config).expect("config must send")
-    }
-
-    fn remove_authz(&mut self, name: &str) {
-        if self.authorizations.remove(name).is_some() {
-            debug!("Removing authorization from server");
-            let mut config = self.rx.borrow().clone();
-            config.authorizations = self.authorizations.clone();
-            self.tx.send(config).expect("config must send")
-        }
-    }
-}
-
 // === impl Index ===
 
 impl Index {
@@ -274,15 +120,177 @@ impl Index {
     }
 }
 
-fn mk_protocol(p: Option<&policy::server::ProxyProtocol>) -> ProxyProtocol {
-    match p {
-        Some(policy::server::ProxyProtocol::Unknown) | None => ProxyProtocol::Detect {
-            timeout: time::Duration::from_secs(10),
-        },
-        Some(policy::server::ProxyProtocol::Http1) => ProxyProtocol::Http1,
-        Some(policy::server::ProxyProtocol::Http2) => ProxyProtocol::Http2,
-        Some(policy::server::ProxyProtocol::Grpc) => ProxyProtocol::Grpc,
-        Some(policy::server::ProxyProtocol::Opaque) => ProxyProtocol::Opaque,
-        Some(policy::server::ProxyProtocol::Tls) => ProxyProtocol::Tls,
+// === impl SrvIndex ===
+
+impl SrvIndex {
+    /// Adds an authorization to servers matching `selector`.
+    pub fn add_authz(&mut self, name: &str, selector: &ServerSelector, authz: ClientAuthorization) {
+        for (srv_name, srv) in self.index.iter_mut() {
+            if selector.selects(srv_name, &srv.meta.labels) {
+                debug!(server = %srv_name, authz = %name, "Adding authz to server");
+                srv.insert_authz(name.to_string(), authz.clone());
+            } else {
+                debug!(server = %srv_name, authz = %name, "Removing authz from server");
+                srv.remove_authz(name);
+            }
+        }
+    }
+
+    /// Removes an authorization by `name`.
+    pub fn remove_authz(&mut self, name: &str) {
+        for srv in self.index.values_mut() {
+            srv.remove_authz(name);
+        }
+    }
+
+    /// Iterates over servers that select the given `pod_labels`.
+    pub fn iter_matching_pod(
+        &self,
+        pod_labels: k8s::Labels,
+    ) -> impl Iterator<Item = (&str, &policy::server::Port, &ServerRx)> {
+        self.index.iter().filter_map(move |(srv_name, server)| {
+            let matches = server.meta.pod_selector.matches(&pod_labels);
+            trace!(server = %srv_name, %matches);
+            if matches {
+                Some((srv_name.as_str(), &server.meta.port, &server.rx))
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Update the index with a server instance.
+    fn apply(&mut self, srv: policy::Server, ns_authzs: &AuthzIndex) {
+        let srv_name = srv.name();
+        let port = srv.spec.port;
+        let protocol = Self::mk_protocol(srv.spec.proxy_protocol.as_ref());
+
+        match self.index.entry(srv_name) {
+            HashEntry::Vacant(entry) => {
+                let labels = k8s::Labels::from(srv.metadata.labels);
+                let authzs = ns_authzs
+                    .filter_for_server(entry.key(), labels.clone())
+                    .map(|(n, a)| (n, a.clone()))
+                    .collect::<HashMap<_, _>>();
+                let meta = ServerMeta {
+                    labels,
+                    port,
+                    pod_selector: srv.spec.pod_selector.into(),
+                    protocol: protocol.clone(),
+                };
+                debug!(authzs = ?authzs.keys());
+                let (tx, rx) = watch::channel(InboundServer {
+                    protocol,
+                    authorizations: authzs.clone(),
+                });
+                entry.insert(Server {
+                    meta,
+                    rx,
+                    tx,
+                    authorizations: authzs,
+                });
+            }
+
+            HashEntry::Occupied(mut entry) => {
+                // If something about the server changed, we need to update the config to reflect
+                // the change.
+                let new_labels = if entry.get().meta.labels.as_ref() != &srv.metadata.labels {
+                    Some(k8s::Labels::from(srv.metadata.labels))
+                } else {
+                    None
+                };
+
+                let new_protocol = if entry.get().meta.protocol == protocol {
+                    Some(protocol)
+                } else {
+                    None
+                };
+
+                trace!(?new_labels, ?new_protocol);
+                if new_labels.is_some() || new_protocol.is_some() {
+                    // NB: Only a single task applies index updates, so it's okay to borrow a
+                    // version, modify, and send it. We don't need a lock because serialization is
+                    // guaranteed.
+                    let mut config = entry.get().rx.borrow().clone();
+
+                    if let Some(labels) = new_labels {
+                        let authzs = ns_authzs
+                            .filter_for_server(entry.key(), labels.clone())
+                            .map(|(n, a)| (n, a.clone()))
+                            .collect::<HashMap<_, _>>();
+                        debug!(authzs = ?authzs.keys());
+                        config.authorizations = authzs.clone();
+                        entry.get_mut().meta.labels = labels;
+                        entry.get_mut().authorizations = authzs;
+                    }
+
+                    if let Some(protocol) = new_protocol {
+                        config.protocol = protocol.clone();
+                        entry.get_mut().meta.protocol = protocol;
+                    }
+                    entry
+                        .get()
+                        .tx
+                        .send(config)
+                        .expect("server update must succeed");
+                }
+
+                // If the pod/port selector didn't change, we don't need to refresh the index.
+                if *entry.get().meta.pod_selector == srv.spec.pod_selector
+                    && entry.get().meta.port == port
+                {
+                    return;
+                }
+
+                entry.get_mut().meta.pod_selector = srv.spec.pod_selector.into();
+                entry.get_mut().meta.port = port;
+            }
+        }
+    }
+
+    fn mk_protocol(p: Option<&policy::server::ProxyProtocol>) -> ProxyProtocol {
+        match p {
+            Some(policy::server::ProxyProtocol::Unknown) | None => ProxyProtocol::Detect {
+                timeout: time::Duration::from_secs(10),
+            },
+            Some(policy::server::ProxyProtocol::Http1) => ProxyProtocol::Http1,
+            Some(policy::server::ProxyProtocol::Http2) => ProxyProtocol::Http2,
+            Some(policy::server::ProxyProtocol::Grpc) => ProxyProtocol::Grpc,
+            Some(policy::server::ProxyProtocol::Opaque) => ProxyProtocol::Opaque,
+            Some(policy::server::ProxyProtocol::Tls) => ProxyProtocol::Tls,
+        }
+    }
+}
+
+// === impl ServerSelector ===
+
+impl ServerSelector {
+    #[inline]
+    fn selects(&self, srv_name: &str, srv_labels: &k8s::Labels) -> bool {
+        match self {
+            ServerSelector::Name(n) => n == srv_name,
+            ServerSelector::Selector(s) => s.matches(srv_labels),
+        }
+    }
+}
+
+// === impl Server ===
+
+impl Server {
+    fn insert_authz(&mut self, name: impl Into<String>, authz: ClientAuthorization) {
+        debug!("Adding authorization to server");
+        self.authorizations.insert(name.into(), authz);
+        let mut config = self.rx.borrow().clone();
+        config.authorizations = self.authorizations.clone();
+        self.tx.send(config).expect("config must send")
+    }
+
+    fn remove_authz(&mut self, name: &str) {
+        if self.authorizations.remove(name).is_some() {
+            debug!("Removing authorization from server");
+            let mut config = self.rx.borrow().clone();
+            config.authorizations = self.authorizations.clone();
+            self.tx.send(config).expect("config must send")
+        }
     }
 }

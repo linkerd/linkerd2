@@ -1,8 +1,31 @@
 //! Linkerd Policy Controller
 //!
 //! The policy controller serves discovery requests from inbound proxies, indicating how the proxy
-//! should admit connections into a Pod. It watches cluster resources (Namespaces, Nodes, Pods,
-//! Servers, and ServerAuthorizations).
+//! should admit connections into a Pod. It watches the following cluster resources:
+//!
+//! - A `Node`'s `podCIDRs` field can be used to determine the IP of the node's Kubelet instance.
+//!   Traffic is always permitted to a pod from its Kubelet's IP.
+//! - A `Namespace` may be annotated with a default-allow policy that applies to all pods in the
+//!   namespace (unless they are annotated with a default policy).
+//! - Each `Pod` enumerate its ports. We maintain an index of each pod's ports, linked to `Server`
+//!   objects.
+//! - Each `Server` selects over pods in the same namespace.
+//! - Each `ServerAuthorization` selects over `Server` instances in the same namespace.  When a
+//!   `ServerAuthorization` is updated, we find all of the `Server` instances it selects and update
+//!   their authorizations and publishes these updates on the server's broadcast channel.
+//!
+//! ```ignore
+//! [Node] <- [ Pod ]
+//!           |-> [ Port ] <- [ Server ] <- [ ServerAuthorization ]
+//! ```
+//!
+//! Lookups against this index are are initiated for a single pod & port. The pod-port's state is
+//! modeled as a nested watch -- the outer watch is updated as a `Server` selects/deselects a
+//! pod-port; and the inner watch is updated as a `Server`'s authorizations are updated.
+//!
+//! The Pod, Server, and ServerAuthorization indices are all scoped within a namespace index, as
+//! these resources cannot reference resources in other namespaces. This scoping helps to narrow the
+//! search space when processing updates and linking resources.
 
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
@@ -43,6 +66,7 @@ type PodServerRx = watch::Receiver<ServerRx>;
 /// Publishes a pod port's for a new `ServerRx`.
 type PodServerTx = watch::Sender<ServerRx>;
 
+/// Constructs an indexing task and a handle that supports by-pod lookups.
 pub fn index(
     watches: impl Into<k8s::ResourceWatches>,
     ready: watch::Sender<bool>,
