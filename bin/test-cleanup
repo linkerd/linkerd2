@@ -34,7 +34,7 @@ if [[ "${releases[*]}" =~ 'l5d-viz' ]]; then
   "$bindir/helm" --kube-context="$k8s_context" delete l5d-viz
 fi
 if [[ "${releases[*]}" =~ 'helm-test' ]]; then
-  "$bindir/helm" --kube-context="$k8s_context" delete helm-test
+  "$bindir/helm" --kube-context="$k8s_context" --namespace linkerd delete helm-test
 fi
 if [[ "${releases[*]}" =~ 'multicluster-test' ]]; then
   "$bindir/helm" --kube-context="$k8s_context" delete multicluster-test

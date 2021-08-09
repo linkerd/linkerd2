@@ -485,7 +485,7 @@ func (h *TestHelper) HelmUpgrade(chart string, arg ...string) (string, string, e
 		"upgrade",
 		h.helm.releaseName,
 		"--kube-context", h.k8sContext,
-		"--set", "namespace=" + h.namespace,
+		"--namespace", h.namespace,
 		"--timeout", "60m",
 		"--wait",
 		chart,
@@ -500,7 +500,8 @@ func (h *TestHelper) HelmInstall(chart string, arg ...string) (string, string, e
 		h.helm.releaseName,
 		chart,
 		"--kube-context", h.k8sContext,
-		"--set", "namespace=" + h.namespace,
+		"--namespace", h.namespace,
+		"--create-namespace",
 		"--timeout", "60m",
 		"--wait",
 	}, arg...)

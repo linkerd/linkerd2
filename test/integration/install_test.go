@@ -489,7 +489,6 @@ func helmOverridesStable(root *tls.CA) ([]string, []string) {
 	}
 	vizArgs := []string{
 		"--set", "linkerdVersion=" + TestHelper.UpgradeHelmFromVersion(),
-		"--set", "namespace=" + TestHelper.GetVizNamespace(),
 	}
 	return coreArgs, vizArgs
 }
@@ -509,7 +508,6 @@ func helmOverridesEdge(root *tls.CA) ([]string, []string) {
 	}
 	vizArgs := []string{
 		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
-		"--set", "namespace=" + TestHelper.GetVizNamespace(),
 	}
 	return coreArgs, vizArgs
 }
