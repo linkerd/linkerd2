@@ -50,7 +50,6 @@ use self::{
 use anyhow::{Context, Error};
 use linkerd_policy_controller_core::{InboundServer, IpNet};
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
-use std::sync::Arc;
 use tokio::{sync::watch, time};
 use tracing::{debug, instrument, warn};
 
@@ -60,10 +59,10 @@ type ServerRx = watch::Receiver<InboundServer>;
 /// Publishes updates for a server's configuration for server/authorization changes.
 type ServerTx = watch::Sender<InboundServer>;
 
-/// Watches a pod port's for a new `ServerRx`.
+/// Watches a pod's port for a new `ServerRx`.
 type PodServerRx = watch::Receiver<ServerRx>;
 
-/// Publishes a pod port's for a new `ServerRx`.
+/// Publishes a pod's port for a new `ServerRx`.
 type PodServerTx = watch::Sender<ServerRx>;
 
 /// Constructs an indexing task and a handle that supports by-pod lookups.
@@ -94,6 +93,8 @@ pub fn index(
     (reader, task)
 }
 
+/// Holds all indexing state. Owned and updated by a single task that processes watch events,
+/// publishing results to the shared lookup map for quick lookups in the API server.
 struct Index {
     /// Holds per-namespace pod/server/authorization indexes.
     namespaces: NamespaceIndex,
@@ -101,18 +102,16 @@ struct Index {
     /// Cached Node IPs.
     nodes: NodeIndex,
 
+    /// The cluster's mesh identity trust domain.
     identity_domain: String,
 
+    /// Holds watches for the cluster's default-allow policies. These watches are never updated but
+    /// this state is held so we can used shared references when updating a pod-port's server watch
+    /// with a default policy.
     default_allows: DefaultAllows,
 
+    /// A handle that supports updates to the lookup index.
     lookups: lookup::Writer,
-}
-
-/// Selects servers for an authorization.
-#[derive(Clone, Debug, PartialEq, Eq)]
-enum ServerSelector {
-    Name(String),
-    Selector(Arc<k8s::labels::Selector>),
 }
 
 #[derive(Debug)]

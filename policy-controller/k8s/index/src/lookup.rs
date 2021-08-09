@@ -10,6 +10,7 @@ use std::{collections::HashMap, net::IpAddr, sync::Arc};
 #[derive(Debug, Default)]
 pub(crate) struct Writer(ByNs);
 
+// Supports lookups in a shared map of pod-ports.
 #[derive(Clone, Debug)]
 pub struct Reader(ByNs);
 
@@ -121,18 +122,6 @@ impl Rx {
         Self { kubelet, rx }
     }
 
-    #[inline]
-    fn mk_server(kubelet: &[IpAddr], mut inner: InboundServer) -> InboundServer {
-        let networks = kubelet.iter().copied().map(NetworkMatch::from).collect();
-        let authz = ClientAuthorization {
-            networks,
-            authentication: ClientAuthentication::Unauthenticated,
-        };
-
-        inner.authorizations.insert("_health_check".into(), authz);
-        inner
-    }
-
     pub(crate) fn get(&self) -> InboundServer {
         Self::mk_server(&*self.kubelet, (*(*self.rx.borrow()).borrow()).clone())
     }
@@ -186,5 +175,17 @@ impl Rx {
                 }
             }
         })
+    }
+
+    #[inline]
+    fn mk_server(kubelet: &[IpAddr], mut inner: InboundServer) -> InboundServer {
+        let networks = kubelet.iter().copied().map(NetworkMatch::from).collect();
+        let authz = ClientAuthorization {
+            networks,
+            authentication: ClientAuthentication::Unauthenticated,
+        };
+
+        inner.authorizations.insert("_health_check".into(), authz);
+        inner
     }
 }

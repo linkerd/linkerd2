@@ -1,4 +1,4 @@
-use crate::{authz::AuthzIndex, Errors, Index, Namespace, ServerRx, ServerSelector, ServerTx};
+use crate::{authz::AuthzIndex, Errors, Index, Namespace, ServerRx, ServerTx};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{ClientAuthorization, InboundServer, ProxyProtocol};
 use linkerd_policy_controller_k8s_api::{self as k8s, policy, ResourceExt};
@@ -28,6 +28,13 @@ struct ServerMeta {
     port: policy::server::Port,
     pod_selector: Arc<k8s::labels::Selector>,
     protocol: ProxyProtocol,
+}
+
+/// Selects servers for an authorization.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum ServerSelector {
+    Name(String),
+    Selector(Arc<k8s::labels::Selector>),
 }
 
 // === impl Index ===

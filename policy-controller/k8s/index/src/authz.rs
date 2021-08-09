@@ -1,4 +1,4 @@
-use crate::{Errors, Index, ServerSelector, SrvIndex};
+use crate::{server::ServerSelector, Errors, Index, SrvIndex};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, IdentityMatch, IpNet, NetworkMatch,
