@@ -206,7 +206,10 @@ func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceLabels() map[string]s
 }
 
 func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceAnnotations(remoteService *corev1.Service) map[string]string {
-	annotations := remoteService.ObjectMeta.Annotations
+	annotations := make(map[string]string)
+	for i, v := range remoteService.ObjectMeta.Annotations {
+		annotations[i] = v
+	}
 	annotations[consts.RemoteResourceVersionAnnotation] = remoteService.ResourceVersion // needed to detect real changes
 	annotations[consts.RemoteServiceFqName] = fmt.Sprintf("%s.%s.svc.%s", remoteService.Name, remoteService.Namespace, rcsw.link.TargetClusterDomain)
 
