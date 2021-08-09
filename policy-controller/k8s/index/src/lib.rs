@@ -50,6 +50,7 @@ use self::{
 use anyhow::{Context, Error};
 use linkerd_policy_controller_core::{InboundServer, IpNet};
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
+use std::{future::Future, pin::Pin};
 use tokio::{sync::watch, time};
 use tracing::{debug, instrument, warn};
 
@@ -73,10 +74,7 @@ pub fn index(
     identity_domain: String,
     default_mode: DefaultAllow,
     detect_timeout: time::Duration,
-) -> (
-    lookup::Reader,
-    impl std::future::Future<Output = anyhow::Error>,
-) {
+) -> (lookup::Reader, impl Future<Output = anyhow::Error>) {
     let (writer, reader) = lookup::pair();
 
     // Watches Nodes, Pods, Servers, and Authorizations to update the lookup map
@@ -112,6 +110,10 @@ struct Index {
 
     /// A handle that supports updates to the lookup index.
     lookups: lookup::Writer,
+
+    /// Holds the `DefaultAllows` senders so that the receivers never signal an ending. This doesn't
+    /// actually need to be polled.
+    _default_allows_txs: Pin<Box<dyn Future<Output = ()> + Send + 'static>>,
 }
 
 #[derive(Debug)]
@@ -128,11 +130,8 @@ impl Index {
         detect_timeout: time::Duration,
     ) -> Self {
         // Create a common set of receivers for all supported default policies.
-        //
-        // XXX We shouldn't spawn in the constructor if we can avoid it. Instead, it seems best if
-        // we can avoid having to wire this into the pods at all and lazily bind the default policy
-        // at discovery time?
-        let default_allows = DefaultAllows::spawn(cluster_nets, detect_timeout);
+        let (default_allows, _default_allows_txs) =
+            DefaultAllows::new(cluster_nets, detect_timeout);
 
         // Provide the cluster-wide default-allow policy to the namespace index so that it may be
         // used when a workload-level annotation is not set.
@@ -144,6 +143,7 @@ impl Index {
             identity_domain,
             default_allows,
             nodes: NodeIndex::default(),
+            _default_allows_txs: Box::pin(_default_allows_txs),
         }
     }
 

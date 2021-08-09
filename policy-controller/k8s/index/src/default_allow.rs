@@ -5,6 +5,7 @@ use linkerd_policy_controller_core::{
     ProxyProtocol,
 };
 use linkerd_policy_controller_k8s_api as k8s;
+use std::future::Future;
 use tokio::{sync::watch, time};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -73,10 +74,13 @@ impl std::fmt::Display for DefaultAllow {
 impl DefaultAllows {
     /// Create default allow policy receivers.
     ///
-    /// These receivers are never updated. The senders are spawned onto a background task so that
-    /// the receivers continue to be live. The background task completes once all receivers are
-    /// dropped.
-    pub fn spawn(cluster_nets: Vec<IpNet>, detect_timeout: time::Duration) -> Self {
+    /// These receivers are never updated. The senders are moved into a background task so that
+    /// the receivers continue to be live. The returned background task completes once all receivers
+    /// are dropped.
+    pub(crate) fn new(
+        cluster_nets: Vec<IpNet>,
+        detect_timeout: time::Duration,
+    ) -> (Self, impl Future<Output = ()> + Send) {
         let any_authenticated =
             ClientAuthentication::TlsAuthenticated(vec![IdentityMatch::Suffix(vec![])]);
 
@@ -118,7 +122,7 @@ impl DefaultAllows {
         });
 
         // Ensure the senders are not dropped until all receivers are dropped.
-        tokio::spawn(async move {
+        let task = async move {
             tokio::join!(
                 all_authed_tx.closed(),
                 all_unauthed_tx.closed(),
@@ -126,15 +130,17 @@ impl DefaultAllows {
                 cluster_unauthed_tx.closed(),
                 deny_tx.closed(),
             );
-        });
+        };
 
-        Self {
+        let rxs = Self {
             all_authed_rx,
             all_unauthed_rx,
             cluster_authed_rx,
             cluster_unauthed_rx,
             deny_rx,
-        }
+        };
+
+        (rxs, task)
     }
 
     pub fn get(&self, mode: DefaultAllow) -> ServerRx {
