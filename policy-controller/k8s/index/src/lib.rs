@@ -42,7 +42,7 @@ mod tests;
 
 pub use self::{default_allow::DefaultAllow, lookup::Reader};
 use self::{
-    default_allow::DefaultAllows,
+    default_allow::DefaultAllowRxs,
     namespace::{Namespace, NamespaceIndex},
     node::NodeIndex,
     server::SrvIndex,
@@ -87,12 +87,12 @@ pub struct Index {
     /// Holds watches for the cluster's default-allow policies. These watches are never updated but
     /// this state is held so we can used shared references when updating a pod-port's server watch
     /// with a default policy.
-    default_allows: DefaultAllows,
+    default_allows: DefaultAllowRxs,
 
     /// A handle that supports updates to the lookup index.
     lookups: lookup::Writer,
 
-    /// Holds the `DefaultAllows` senders so that the receivers never signal an ending. This doesn't
+    /// Holds the `DefaultAllowRxs` senders so that the receivers never signal an ending. This doesn't
     /// actually need to be polled.
     _default_allows_txs: Pin<Box<dyn Future<Output = ()> + Send + 'static>>,
 }
@@ -111,7 +111,7 @@ impl Index {
     ) -> (lookup::Reader, Self) {
         // Create a common set of receivers for all supported default policies.
         let (default_allows, _default_allows_txs) =
-            DefaultAllows::new(cluster_networks.clone(), detect_timeout);
+            DefaultAllowRxs::new(cluster_networks.clone(), detect_timeout);
 
         // Provide the cluster-wide default-allow policy to the namespace index so that it may be
         // used when a workload-level annotation is not set.

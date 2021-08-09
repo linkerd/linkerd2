@@ -19,7 +19,7 @@ pub enum DefaultAllow {
 
 /// Default server configs to use when no server matches.
 #[derive(Clone, Debug)]
-pub(crate) struct DefaultAllows {
+pub(crate) struct DefaultAllowRxs {
     all_authed_rx: ServerRx,
     all_unauthed_rx: ServerRx,
     cluster_authed_rx: ServerRx,
@@ -69,9 +69,9 @@ impl std::fmt::Display for DefaultAllow {
     }
 }
 
-// === impl DefaultAllows ===
+// === impl DefaultAllowRxs ===
 
-impl DefaultAllows {
+impl DefaultAllowRxs {
     /// Create default allow policy receivers.
     ///
     /// These receivers are never updated. The senders are moved into a background task so that
