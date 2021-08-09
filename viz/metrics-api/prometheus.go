@@ -39,6 +39,7 @@ const (
 	gatewayNameLabel       = model.LabelName("gateway_name")
 	gatewayNamespaceLabel  = model.LabelName("gateway_namespace")
 	remoteClusterNameLabel = model.LabelName("target_cluster_name")
+	authorityLabel         = model.LabelName("authority")
 )
 
 var (
@@ -163,7 +164,7 @@ func generateLabelStringWithRegex(l model.LabelSet, labelName string, stringToMa
 	for l, v := range l {
 		lstrs = append(lstrs, fmt.Sprintf("%s=%q", l, v))
 	}
-	lstrs = append(lstrs, fmt.Sprintf(`%s=~"^%s.+"`, labelName, stringToMatch))
+	lstrs = append(lstrs, fmt.Sprintf(`%s=~"^%s.*"`, labelName, stringToMatch))
 
 	sort.Strings(lstrs)
 	return fmt.Sprintf("{%s}", strings.Join(lstrs, ", "))
