@@ -10,13 +10,14 @@ use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, DiscoverInboundServer, IdentityMatch, InboundServer,
     InboundServerStream, IpNet, NetworkMatch, ProxyProtocol,
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 use tracing::trace;
 
 #[derive(Clone, Debug)]
 pub struct Server<T> {
     discover: T,
     drain: drain::Watch,
+    cluster_networks: Arc<[IpNet]>,
 }
 
 struct Labels {
@@ -31,8 +32,12 @@ impl<T> Server<T>
 where
     T: DiscoverInboundServer<(String, String, u16)> + Send + Sync + 'static,
 {
-    pub fn new(discover: T, drain: drain::Watch) -> Self {
-        Self { discover, drain }
+    pub fn new(discover: T, cluster_networks: Vec<IpNet>, drain: drain::Watch) -> Self {
+        Self {
+            discover,
+            drain,
+            cluster_networks: cluster_networks.into(),
+        }
     }
 
     pub async fn serve(
@@ -102,7 +107,7 @@ where
             .map_err(|e| tonic::Status::internal(format!("lookup failed: {}", e)))?
             .ok_or_else(|| tonic::Status::not_found("unknown server"))?;
 
-        Ok(tonic::Response::new(to_server(&s)))
+        Ok(tonic::Response::new(to_server(&s, &*self.cluster_networks)))
     }
 
     type WatchPortStream = BoxWatchStream;
@@ -119,14 +124,22 @@ where
             .await
             .map_err(|e| tonic::Status::internal(format!("lookup failed: {}", e)))?
             .ok_or_else(|| tonic::Status::not_found("unknown server"))?;
-        Ok(tonic::Response::new(response_stream(drain, rx)))
+        Ok(tonic::Response::new(response_stream(
+            drain,
+            rx,
+            self.cluster_networks.clone(),
+        )))
     }
 }
 
 type BoxWatchStream =
     std::pin::Pin<Box<dyn Stream<Item = Result<proto::Server, tonic::Status>> + Send + Sync>>;
 
-fn response_stream(drain: drain::Watch, mut rx: InboundServerStream) -> BoxWatchStream {
+fn response_stream(
+    drain: drain::Watch,
+    mut rx: InboundServerStream,
+    cluster_networks: Arc<[IpNet]>,
+) -> BoxWatchStream {
     Box::pin(async_stream::try_stream! {
         tokio::pin! {
             let shutdown = drain.signaled();
@@ -137,7 +150,7 @@ fn response_stream(drain: drain::Watch, mut rx: InboundServerStream) -> BoxWatch
                 // When the port is updated with a new server, update the server watch.
                 res = rx.next() => match res {
                     Some(s) => {
-                        yield to_server(&s);
+                        yield to_server(&s, &*cluster_networks);
                     }
                     None => return,
                 },
@@ -152,7 +165,7 @@ fn response_stream(drain: drain::Watch, mut rx: InboundServerStream) -> BoxWatch
     })
 }
 
-fn to_server(srv: &InboundServer) -> proto::Server {
+fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
     // Convert the protocol object into a protobuf response.
     let protocol = proto::ProxyProtocol {
         kind: match srv.protocol {
@@ -183,7 +196,7 @@ fn to_server(srv: &InboundServer) -> proto::Server {
     let authorizations = srv
         .authorizations
         .iter()
-        .map(|(n, c)| to_authz(n, c))
+        .map(|(n, c)| to_authz(n, c, cluster_networks))
         .collect();
     trace!(?authorizations);
 
@@ -200,19 +213,16 @@ fn to_authz(
         networks,
         authentication,
     }: &ClientAuthorization,
+    cluster_networks: &[IpNet],
 ) -> proto::Authz {
     let networks = if networks.is_empty() {
-        // TODO use cluster networks (from config).
-        vec![
-            proto::Network {
-                net: Some(IpNet::V4(Default::default()).into()),
+        cluster_networks
+            .iter()
+            .map(|n| proto::Network {
+                net: Some((*n).into()),
                 except: vec![],
-            },
-            proto::Network {
-                net: Some(IpNet::V6(Default::default()).into()),
-                except: vec![],
-            },
-        ]
+            })
+            .collect::<Vec<_>>()
     } else {
         networks
             .iter()

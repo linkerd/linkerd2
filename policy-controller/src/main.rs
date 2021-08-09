@@ -62,14 +62,14 @@ async fn main() -> Result<()> {
     let (handle, index_task) = linkerd_policy_controller::k8s::index(
         client,
         ready_tx,
-        cluster_networks,
+        cluster_networks.clone(),
         identity_domain,
         default_allow,
         DETECT_TIMEOUT,
     );
     let index_task = tokio::spawn(index_task);
 
-    let grpc = tokio::spawn(grpc(grpc_addr, handle, drain_rx));
+    let grpc = tokio::spawn(grpc(grpc_addr, cluster_networks, handle, drain_rx));
 
     tokio::select! {
        _ = shutdown(drain_tx) => Ok(()),
@@ -107,10 +107,12 @@ impl std::str::FromStr for IpNets {
 #[instrument(skip(handle, drain))]
 async fn grpc(
     addr: SocketAddr,
+    cluster_networks: Vec<IpNet>,
     handle: linkerd_policy_controller_k8s_index::Reader,
     drain: drain::Watch,
 ) -> Result<()> {
-    let server = linkerd_policy_controller_grpc::Server::new(handle, drain.clone());
+    let server =
+        linkerd_policy_controller_grpc::Server::new(handle, cluster_networks, drain.clone());
     let (close_tx, close_rx) = tokio::sync::oneshot::channel();
     tokio::pin! {
         let srv = server.serve(addr, close_rx.map(|_| {}));

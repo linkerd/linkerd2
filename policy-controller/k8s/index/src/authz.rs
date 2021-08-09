@@ -42,8 +42,12 @@ impl Index {
             .namespaces
             .get_or_default(authz.namespace().expect("namespace required"));
 
-        ns.authzs
-            .apply(authz, &mut ns.servers, &*self.identity_domain)
+        ns.authzs.apply(
+            authz,
+            &mut ns.servers,
+            &*self.identity_domain,
+            &*self.cluster_networks,
+        )
     }
 
     #[instrument(
@@ -138,9 +142,10 @@ impl AuthzIndex {
         authz: policy::ServerAuthorization,
         servers: &mut SrvIndex,
         domain: &str,
+        cluster_networks: &[IpNet],
     ) -> Result<()> {
         let name = authz.name();
-        let authz = mk_authz(authz, domain)?;
+        let authz = mk_authz(authz, domain, cluster_networks)?;
 
         match self.index.entry(name) {
             HashEntry::Vacant(entry) => {
@@ -166,7 +171,11 @@ impl AuthzIndex {
     }
 }
 
-fn mk_authz(srv: policy::authz::ServerAuthorization, domain: &str) -> Result<Authz> {
+fn mk_authz(
+    srv: policy::authz::ServerAuthorization,
+    domain: &str,
+    cluster_networks: &[IpNet],
+) -> Result<Authz> {
     let policy::authz::ServerAuthorization { metadata, spec, .. } = srv;
 
     let servers = {
@@ -192,11 +201,11 @@ fn mk_authz(srv: policy::authz::ServerAuthorization, domain: &str) -> Result<Aut
             })
             .collect::<Result<Vec<NetworkMatch>>>()?
     } else {
-        // TODO this should only be cluster-local IPs.
-        vec![
-            IpNet::V4(Default::default()).into(),
-            IpNet::V6(Default::default()).into(),
-        ]
+        cluster_networks
+            .iter()
+            .copied()
+            .map(NetworkMatch::from)
+            .collect()
     };
 
     let authentication = if spec.client.unauthenticated {

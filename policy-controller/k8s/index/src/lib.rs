@@ -103,6 +103,12 @@ struct Index {
     /// The cluster's mesh identity trust domain.
     identity_domain: String,
 
+    /// Networks including PodIPs in this cluster.
+    ///
+    /// TODO this can be discovered dynamically by the node index, but this would complicate
+    /// notifications.
+    cluster_networks: Vec<IpNet>,
+
     /// Holds watches for the cluster's default-allow policies. These watches are never updated but
     /// this state is held so we can used shared references when updating a pod-port's server watch
     /// with a default policy.
@@ -124,14 +130,14 @@ struct Errors(Vec<anyhow::Error>);
 impl Index {
     pub(crate) fn new(
         lookups: lookup::Writer,
-        cluster_nets: Vec<IpNet>,
+        cluster_networks: Vec<IpNet>,
         identity_domain: String,
         default_allow: DefaultAllow,
         detect_timeout: time::Duration,
     ) -> Self {
         // Create a common set of receivers for all supported default policies.
         let (default_allows, _default_allows_txs) =
-            DefaultAllows::new(cluster_nets, detect_timeout);
+            DefaultAllows::new(cluster_networks.clone(), detect_timeout);
 
         // Provide the cluster-wide default-allow policy to the namespace index so that it may be
         // used when a workload-level annotation is not set.
@@ -141,6 +147,7 @@ impl Index {
             lookups,
             namespaces,
             identity_domain,
+            cluster_networks,
             default_allows,
             nodes: NodeIndex::default(),
             _default_allows_txs: Box::pin(_default_allows_txs),
