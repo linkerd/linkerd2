@@ -80,17 +80,18 @@ async fn incrementally_configure_server() {
     assert_eq!(port9999.get(), default_config);
 
     // Add an authorization policy that selects the server by name.
-    let authz = {
-        let mut az = mk_authz("ns-0", "authz-0", "srv-0");
-        az.spec.client = k8s::policy::authz::Client {
+    let authz = mk_authz(
+        "ns-0",
+        "authz-0",
+        "srv-0",
+        k8s::policy::authz::Client {
             mesh_tls: Some(k8s::policy::authz::MeshTls {
                 unauthenticated_tls: true,
                 ..Default::default()
             }),
             ..Default::default()
-        };
-        az
-    };
+        },
+    );
     idx.apply_authz(authz.clone()).unwrap();
 
     // Check that the watch now has authorized traffic as described above.
@@ -553,6 +554,7 @@ fn mk_authz(
     ns: impl Into<String>,
     name: impl Into<String>,
     server: impl Into<String>,
+    client: k8s::policy::authz::Client,
 ) -> k8s::policy::ServerAuthorization {
     k8s::policy::ServerAuthorization {
         api_version: "v1alpha1".to_string(),
@@ -567,10 +569,7 @@ fn mk_authz(
                 name: Some(server.into()),
                 selector: None,
             },
-            client: k8s::policy::authz::Client {
-                // TODO
-                ..Default::default()
-            },
+            client,
         },
     }
 }
