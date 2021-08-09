@@ -184,7 +184,7 @@ mod test {
 
     #[test]
     fn test_parse_displayed() {
-        for default in &[
+        for default in [
             DefaultAllow::Deny,
             DefaultAllow::AllAuthenticated,
             DefaultAllow::AllUnauthenticated,
