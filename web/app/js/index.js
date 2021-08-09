@@ -3,12 +3,13 @@ import '../img/favicon.png'; // needs to be referenced somewhere so webpack bund
 
 import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom';
 import { DETECTORS, LocaleResolver, TRANSFORMERS } from 'locales-detector';
-import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
+import { MuiThemeProvider, createTheme } from '@material-ui/core/styles';
 
 import ApiHelpers from './components/util/ApiHelpers.jsx';
 import AppContext from './components/util/AppContext.jsx';
 import Community from './components/Community.jsx';
 import CssBaseline from '@material-ui/core/CssBaseline';
+import Extensions from './components/Extensions.jsx';
 import Gateway from './components/Gateway.jsx';
 import { I18nProvider } from '@lingui/react';
 import { i18n } from '@lingui/core';
@@ -113,7 +114,7 @@ class App extends React.Component {
 }
 
 function AppHTML() {
-  const theme = createMuiTheme(dashboardTheme);
+  const theme = createTheme(dashboardTheme);
 
   return (
     <React.Fragment>
@@ -211,6 +212,9 @@ function AppHTML() {
               <Route
                 path={`${pathPrefix}/community`}
                 render={props => <Navigation {...props} ChildComponent={Community} />} />
+              <Route
+                path={`${pathPrefix}/extensions`}
+                render={props => <Navigation {...props} ChildComponent={Extensions} />} />
               <Route component={NoMatch} />
             </Switch>
           </QueryParamProvider>

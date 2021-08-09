@@ -285,13 +285,3 @@ func GetProxyVersion(pod corev1.Pod) string {
 	}
 	return ""
 }
-
-// GetAddOnsConfigMap returns the data in the add-ons configmap
-func GetAddOnsConfigMap(ctx context.Context, kubeAPI kubernetes.Interface, namespace string) (map[string]string, error) {
-	cm, err := kubeAPI.CoreV1().ConfigMaps(namespace).Get(ctx, AddOnsConfigMapName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	return cm.Data, nil
-}

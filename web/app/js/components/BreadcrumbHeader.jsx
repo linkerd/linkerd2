@@ -15,6 +15,7 @@ const routeToCrumbTitle = {
   routes: <Trans>menuItemRoutes</Trans>,
   community: <Trans>menuItemCommunity</Trans>,
   gateways: <Trans>menuItemGateway</Trans>,
+  extensions: <Trans>menuItemExtension</Trans>,
 };
 
 class BreadcrumbHeader extends React.Component {

@@ -39,6 +39,7 @@ const (
 	gatewayNameLabel       = model.LabelName("gateway_name")
 	gatewayNamespaceLabel  = model.LabelName("gateway_namespace")
 	remoteClusterNameLabel = model.LabelName("target_cluster_name")
+	authorityLabel         = model.LabelName("authority")
 )
 
 var (
@@ -143,12 +144,14 @@ func promDstQueryLabels(resource *pb.Resource) model.LabelSet {
 // insert a not-nil check into a LabelSet to verify that data for a specified
 // label name exists. due to the `!=` this must be inserted as a string. the
 // structure of this code is taken from the Prometheus labelset.go library.
-func generateLabelStringWithExclusion(l model.LabelSet, labelName string) string {
+func generateLabelStringWithExclusion(l model.LabelSet, labelNames ...string) string {
 	lstrs := make([]string, 0, len(l))
 	for l, v := range l {
 		lstrs = append(lstrs, fmt.Sprintf("%s=%q", l, v))
 	}
-	lstrs = append(lstrs, fmt.Sprintf(`%s!=""`, labelName))
+	for _, labelName := range labelNames {
+		lstrs = append(lstrs, fmt.Sprintf(`%s!=""`, labelName))
+	}
 
 	sort.Strings(lstrs)
 	return fmt.Sprintf("{%s}", strings.Join(lstrs, ", "))
@@ -161,7 +164,7 @@ func generateLabelStringWithRegex(l model.LabelSet, labelName string, stringToMa
 	for l, v := range l {
 		lstrs = append(lstrs, fmt.Sprintf("%s=%q", l, v))
 	}
-	lstrs = append(lstrs, fmt.Sprintf(`%s=~"^%s.+"`, labelName, stringToMatch))
+	lstrs = append(lstrs, fmt.Sprintf(`%s=~"^%s.*"`, labelName, stringToMatch))
 
 	sort.Strings(lstrs)
 	return fmt.Sprintf("{%s}", strings.Join(lstrs, ", "))

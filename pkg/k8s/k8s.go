@@ -3,6 +3,7 @@ package k8s
 import (
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -192,4 +193,31 @@ func KindToL5DLabel(k8sKind string) string {
 		return l5dJob
 	}
 	return k8sKind
+}
+
+// PodIdentity returns the mesh TLS identity name of this pod, as constructed
+// from the pod's service account name and other metadata.
+func PodIdentity(pod *corev1.Pod) (string, error) {
+	if pod.Status.Phase != corev1.PodRunning {
+		return "", fmt.Errorf("pod not running: %s", pod.GetName())
+	}
+
+	podsa := pod.Spec.ServiceAccountName
+	podns := pod.ObjectMeta.Namespace
+	for _, c := range pod.Spec.Containers {
+		if c.Name == ProxyContainerName {
+			var l5dns string
+			var l5dtrustdomain string
+			for _, env := range c.Env {
+				if env.Name == "_l5d_ns" {
+					l5dns = env.Value
+				}
+				if env.Name == "_l5d_trustdomain" {
+					l5dtrustdomain = env.Value
+				}
+			}
+			return fmt.Sprintf("%s.%s.serviceaccount.identity.%s.%s", podsa, podns, l5dns, l5dtrustdomain), nil
+		}
+	}
+	return "", nil
 }
