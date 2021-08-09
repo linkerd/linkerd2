@@ -192,7 +192,7 @@ impl Index {
         skip(self, srv),
         fields(
             ns = ?srv.metadata.namespace,
-            name = ?srv.metadata.name,
+            name = %srv.name(),
         )
     )]
     pub(crate) fn apply_server(&mut self, srv: policy::Server) {
@@ -215,7 +215,7 @@ impl Index {
         skip(self, srv),
         fields(
             ns = ?srv.metadata.namespace,
-            name = ?srv.metadata.name,
+            name = %srv.name(),
         )
     )]
     pub(crate) fn delete_server(&mut self, srv: policy::Server) -> Result<()> {

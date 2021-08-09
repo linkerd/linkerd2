@@ -20,15 +20,29 @@ struct Pod {
     default_allow_rx: ServerRx,
 }
 
+/// An index of all ports in a pod spec to the
 #[derive(Debug, Default)]
 struct PodPorts {
+    /// All ports in the pod spec, by number.
     by_port: HashMap<u16, Port>,
+
+    /// Enumerates named ports to their numeric equivalents to support by-name lookups.
+    ///
+    /// A name _usually_ maps to a single container port, however Kubernetes permits multiple
+    /// container ports to use the same name. This may be useful to have multiple ports named, e.g.
+    /// "admin-http", that have uniform policy requirements.
     by_name: HashMap<String, Vec<u16>>,
 }
 
+/// A single pod-port's state.
 #[derive(Debug)]
 struct Port {
+    /// Set with the name of the `Server` resource that currently selects this port, if one exists.
+    ///
+    /// When this is `None`, a default policy currently applies.
     server_name: Option<String>,
+
+    /// Updated with a server update receiver as servers select/delelect this port.
     server_tx: PodServerTx,
 }
 
@@ -40,7 +54,7 @@ impl Index {
         skip(self, pod),
         fields(
             ns = ?pod.metadata.namespace,
-            name = ?pod.metadata.name,
+            name = %pod.name(),
         )
     )]
     pub(crate) fn apply_pod(&mut self, pod: k8s::Pod) -> Result<()> {
@@ -71,7 +85,7 @@ impl Index {
         skip(self, pod),
         fields(
             ns = ?pod.metadata.namespace,
-            name = ?pod.metadata.name,
+            name = %pod.name(),
         )
     )]
     pub(crate) fn delete_pod(&mut self, pod: k8s::Pod) -> Result<()> {
@@ -292,9 +306,9 @@ impl PodIndex {
 // === impl Pod ===
 
 impl Pod {
-    /// Links this pods to server (by label selector).
-    //
-    // FIXME This doesn't properly reset a policy when a server is removed or de-selects a pod.
+    /// Links this pod to servers (by label selector).
+    ///
+    ///
     fn link_servers(&mut self, servers: &SrvIndex) {
         let mut remaining_ports = self.ports.by_port.keys().copied().collect::<HashSet<u16>>();
 

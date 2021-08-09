@@ -93,7 +93,7 @@ impl Index {
         skip(self, authz),
         fields(
             ns = ?authz.metadata.namespace,
-            name = ?authz.metadata.name,
+            name = %authz.name(),
         )
     )]
     pub(crate) fn apply_authz(&mut self, authz: policy::ServerAuthorization) -> Result<()> {
@@ -109,7 +109,7 @@ impl Index {
         skip(self, authz),
         fields(
             ns = ?authz.metadata.namespace,
-            name = ?authz.metadata.name,
+            name = %authz.name(),
         )
     )]
     pub(crate) fn delete_authz(&mut self, authz: policy::ServerAuthorization) {

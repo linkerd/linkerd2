@@ -93,7 +93,7 @@ impl Index {
     /// from the kubelet.
     #[instrument(
         skip(self, node),
-        fields(name = ?node.name())
+        fields(name = %node.name())
     )]
     pub fn apply_node(&mut self, node: k8s::Node) -> Result<()> {
         match self.nodes.index.entry(node.name()) {
