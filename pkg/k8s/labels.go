@@ -21,10 +21,6 @@ const (
 	// Prefix is the prefix common to all labels and annotations injected by Linkerd
 	Prefix = "linkerd.io"
 
-	// LinkerdNamespaceLabel is a label that helps identifying the namespaces
-	// that contain a Linkerd control plane
-	LinkerdNamespaceLabel = Prefix + "/is-control-plane"
-
 	// LinkerdExtensionLabel is a label that helps identifying the namespace
 	// that contain a Linkerd Extension
 	LinkerdExtensionLabel = Prefix + "/extension"
@@ -94,10 +90,6 @@ const (
 	// CreatedByAnnotation indicates the source of the injected data plane
 	// (e.g. linkerd/cli v2.0.0).
 	CreatedByAnnotation = Prefix + "/created-by"
-
-	// IdentityIssuerExpiryAnnotation indicates the time at which this set of identity
-	// issuer credentials will cease to be valid.
-	IdentityIssuerExpiryAnnotation = Prefix + "/identity-issuer-expiry"
 
 	// ProxyVersionAnnotation indicates the version of the injected data plane
 	// (e.g. v0.1.3).
@@ -270,9 +262,6 @@ const (
 	// AddOnsConfigMapName is the name of the ConfigMap containing the linkerd add-ons configuration.
 	AddOnsConfigMapName = "linkerd-config-addons"
 
-	// DebugSidecarName is the name of the default linkerd debug container
-	DebugSidecarName = "linkerd-debug"
-
 	// DebugSidecarImage is the image name of the default linkerd debug container
 	DebugSidecarImage = "cr.l5d.io/linkerd/debug"
 
@@ -326,12 +315,6 @@ const (
 	// SPValidatorWebhookConfigName is the name of the validating webhook configuration
 	SPValidatorWebhookConfigName = SPValidatorWebhookServiceName + "-webhook-config"
 
-	// TapServiceName is the name of the tap APIService
-	TapServiceName = "linkerd-tap"
-
-	// TapAPIRegistrationServiceName is the name of the tap APIService registration resource
-	TapAPIRegistrationServiceName = "v1alpha1.tap.linkerd.io"
-
 	// AdmissionWebhookLabel indicates whether admission webhooks are enabled for a namespace
 	AdmissionWebhookLabel = ProxyConfigAnnotationsPrefix + "/admission-webhooks"
 
@@ -352,21 +335,8 @@ const (
 	// the service account token
 	MountPathServiceAccount = "/var/run/secrets/kubernetes.io/serviceaccount"
 
-	// MountPathGlobalConfig is the path at which the global config file is mounted.
-	MountPathGlobalConfig = MountPathBase + "/config/global"
-
-	// MountPathProxyConfig is the path at which the global config file is mounted.
-	MountPathProxyConfig = MountPathBase + "/config/proxy"
-
-	// MountPathInstallConfig is the path at which the install config file is mounted.
-	MountPathInstallConfig = MountPathBase + "/config/install"
-
 	// MountPathValuesConfig is the path at which the values config file is mounted.
 	MountPathValuesConfig = MountPathBase + "/config/values"
-
-	// MountPathEndEntity is the path at which a tmpfs directory is mounted to
-	// store identity credentials.
-	MountPathEndEntity = MountPathBase + "/identity/end-entity"
 
 	// MountPathTLSBase is the path at which the TLS cert and key PEM files are mounted
 	MountPathTLSBase = MountPathBase + "/tls"
@@ -376,16 +346,6 @@ const (
 
 	// MountPathTLSCrtPEM is the path at which the TLS cert PEM file is mounted.
 	MountPathTLSCrtPEM = MountPathTLSBase + "/tls.crt"
-
-	// MountPathXtablesLock is the path at which the proxy init container mounts xtables
-	// This is necessary for xtables-legacy support
-	MountPathXtablesLock = "/run"
-
-	// IdentityServiceAccountTokenPath is the path to the kubernetes service
-	// account token used by proxies to provision identity.
-	//
-	// In the future, this should be changed to a time- and audience-scoped secret.
-	IdentityServiceAccountTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
 	/*
 	 * Service mirror constants
@@ -426,11 +386,6 @@ const (
 	// on the remote cluster
 	RemoteServiceFqName = SvcMirrorPrefix + "/remote-svc-fq-name"
 
-	// RemoteGatewayResourceVersionAnnotation is the last observed remote resource
-	// version of the gateway for a particular mirrored service. It is used
-	// in cases we detect a change in a remote gateway
-	RemoteGatewayResourceVersionAnnotation = SvcMirrorPrefix + "/remote-gateway-resource-version"
-
 	// RemoteGatewayIdentity follows the same kind of logic as RemoteGatewayNameLabel
 	RemoteGatewayIdentity = SvcMirrorPrefix + "/remote-gateway-identity"
 
@@ -452,9 +407,6 @@ const (
 
 	// ProbePortName is the name of the probe port of the gateway
 	ProbePortName = "mc-probe"
-
-	// ServiceMirrorLabel is the value used in the controller component label
-	ServiceMirrorLabel = "servicemirror"
 )
 
 // CreatedByAnnotationValue returns the value associated with
