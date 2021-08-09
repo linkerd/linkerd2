@@ -224,12 +224,6 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 					"backend-svc": "-",
 				},
 			},
-			{
-				args: []string{"viz", "stat", "svc/backend-svc", "-n", prefixedNs, "--from", "deploy/slow-cooker-1"},
-				expectedRows: map[string]string{
-					"backend-svc": "-",
-				},
-			},
 		}...,
 		)
 
