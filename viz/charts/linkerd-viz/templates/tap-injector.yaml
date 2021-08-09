@@ -6,12 +6,13 @@ kind: Service
 apiVersion: v1
 metadata:
   name: tap-injector
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/extension: viz
     component: tap-injector
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    linkerd.io/inject: enabled
 spec:
   type: ClusterIP
   selector:
@@ -33,7 +34,7 @@ metadata:
     app.kubernetes.io/part-of: Linkerd
     component: tap-injector
   name: tap-injector
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
 spec:
   replicas: {{.Values.tapInjector.replicas}}
   selector:
@@ -55,6 +56,7 @@ spec:
         {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        linkerd.io/inject: enabled
       labels:
         linkerd.io/extension: viz
         component: tap-injector
@@ -71,7 +73,7 @@ spec:
       containers:
       - args:
         - injector
-        - -tap-service-name=tap.{{.Values.namespace}}.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+        - -tap-service-name=tap.{{.Release.Namespace}}.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - -log-level={{.Values.tapInjector.logLevel | default .Values.defaultLogLevel}}
         image: {{.Values.tapInjector.image.registry | default .Values.defaultRegistry}}/{{.Values.tapInjector.image.name}}:{{.Values.tapInjector.image.tag | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.tapInjector.image.pullPolicy | default .Values.defaultImagePullPolicy}}
