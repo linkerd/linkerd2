@@ -134,16 +134,14 @@ func TestDirectEdges(t *testing.T) {
 			testDataPath += "/external_prometheus"
 		}
 		err = TestHelper.RetryFor(timeout, func() error {
+			// Start by sleeping each try to give Prometheus time to scrape
+			// slow-cooker. This fixes some flakiness when 50 seconds is not
+			// long enough for this to be the case and the test fails.
+			time.Sleep(10 * time.Second)
+
 			out, err = TestHelper.LinkerdRun("-n", testNamespace, "-o", "json", "viz", "edges", "deploy")
 			if err != nil {
 				return err
-			}
-
-			// If Prometheus has not scraped any workloads yet then the
-			// expected Prometheus edges will not be found; we fail so that
-			// the test is retried.
-			if !strings.Contains(out, "prometheus") {
-				return fmt.Errorf("Expected Prometheus edges but found none:\n%s", out)
 			}
 
 			tpl := template.Must(template.ParseFiles(testDataPath + "/direct_edges.golden"))
