@@ -67,5 +67,4 @@ pub struct Network {
 pub struct ServiceAccountRef {
     pub namespace: Option<String>,
     pub name: String,
-    // TODO pub selector: labels::Selector,
 }
