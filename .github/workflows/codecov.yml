@@ -1,10 +1,13 @@
 name: Coverage
+
+# Run weekly on Sunday at midnight (UTC).
 on:
   schedule:
-  # Run weekly on Sunday at midnight (UTC).
-  - cron: '0 0 * * 7'
+    - cron: '0 0 * * 7'
+
 permissions:
   contents: read
+
 jobs:
   go:
     name: Go
@@ -13,13 +16,14 @@ jobs:
     container:
       image: golang:1.16.4
     steps:
-    - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
-    - run: go get gotest.tools/gotestsum@v0.4.2
-    - run: gotestsum -- -cover -coverprofile=coverage.out -v -mod=readonly ./...
-    - uses: codecov/codecov-action@51d810878be5422784e86451c0e7c14e5860ec47
-      with:
-        files: ./coverage.out
-        flags: unittests,golang
+      - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+      - run: go get gotest.tools/gotestsum@v0.4.2
+      - run: gotestsum -- -cover -coverprofile=coverage.out -v -mod=readonly ./...
+      - uses: codecov/codecov-action@51d810878be5422784e86451c0e7c14e5860ec47
+        with:
+          files: ./coverage.out
+          flags: unittests,golang
+
   js:
     name: JS
     timeout-minutes: 30
@@ -27,16 +31,16 @@ jobs:
     container:
       image: node:14-stretch
     steps:
-    - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
-    - name: Yarn setup
-      run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
-    - name: Unit tests
-      run: |
-        export PATH="$HOME/.yarn/bin:$PATH"
-        export NODE_ENV=test
-        bin/web --frozen-lockfile
-        bin/web test --reporters="jest-progress-bar-reporter" --reporters="./gh_ann_reporter.js" --coverage
-    - uses: codecov/codecov-action@51d810878be5422784e86451c0e7c14e5860ec47
-      with:
-        directory: ./web/app/coverage
-        flags: unittests,javascript
+      - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+      - name: Yarn setup
+        run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
+      - name: Unit tests
+        run: |
+          export PATH="$HOME/.yarn/bin:$PATH"
+          export NODE_ENV=test
+          bin/web --frozen-lockfile
+          bin/web test --reporters="jest-progress-bar-reporter" --reporters="./gh_ann_reporter.js" --coverage
+      - uses: codecov/codecov-action@51d810878be5422784e86451c0e7c14e5860ec47
+        with:
+          directory: ./web/app/coverage
+          flags: unittests,javascript
