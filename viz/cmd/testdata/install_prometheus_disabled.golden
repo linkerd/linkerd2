@@ -214,7 +214,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: web
-  namespace: linkerd-viz
+  namespace: linkerd
   labels:
     linkerd.io/extension: viz
     component: web
@@ -238,7 +238,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: web
-  namespace: linkerd-viz
+  namespace: linkerd
   labels:
     linkerd.io/extension: viz
     component: web
