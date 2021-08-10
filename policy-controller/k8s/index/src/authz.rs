@@ -257,7 +257,7 @@ fn mk_mtls_authn(
         }
     }
 
-    for sa in mtls.service_accounts.unwrap_or_else(Vec::new).into_iter() {
+    for sa in mtls.service_accounts.into_iter().flatten() {
         let name = sa.name;
         let ns = sa
             .namespace
