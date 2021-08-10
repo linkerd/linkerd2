@@ -239,7 +239,7 @@ fn mk_mtls_authn(
 
     let mut identities = Vec::new();
 
-    for id in mtls.identities.unwrap_or_else(Vec::new).into_iter() {
+    for id in mtls.identities.into_iter().flatten() {
         if id == "*" {
             debug!(suffix = %id, "Authenticated");
             identities.push(IdentityMatch::Suffix(vec![]));
