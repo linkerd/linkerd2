@@ -134,11 +134,6 @@ func TestDirectEdges(t *testing.T) {
 			testDataPath += "/external_prometheus"
 		}
 		err = TestHelper.RetryFor(timeout, func() error {
-			// Start by sleeping each try to give Prometheus time to scrape
-			// slow-cooker. This fixes some flakiness when 50 seconds is not
-			// long enough for this to be the case and the test fails.
-			time.Sleep(10 * time.Second)
-
 			out, err = TestHelper.LinkerdRun("-n", testNamespace, "-o", "json", "viz", "edges", "deploy")
 			if err != nil {
 				return err
@@ -157,9 +152,14 @@ func TestDirectEdges(t *testing.T) {
 				return fmt.Errorf("failed to parse direct_edges.golden template: %s", err)
 			}
 
+			pods, err := TestHelper.Kubectl("", []string{"get", "pods", "-A"}...)
+			if err != nil {
+				return err
+			}
+
 			r := regexp.MustCompile(buf.String())
 			if !r.MatchString(out) {
-				return fmt.Errorf("Expected output:\n%s\nactual:\n%s", buf.String(), out)
+				return fmt.Errorf("Expected output:\n%s\nactual:\n%s\nAll pods: %s", buf.String(), out, pods)
 			}
 			return nil
 		})
