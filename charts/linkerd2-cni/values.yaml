@@ -1,7 +1,3 @@
-# -- CNI plugin plane namespace
-namespace: linkerd-cni
-# -- Whether to create the CNI plugin plane namespace or not
-installNamespace: true
 # -- Inbound port for the proxy container
 inboundProxyPort: 4143
 # -- Outbound port for the proxy container

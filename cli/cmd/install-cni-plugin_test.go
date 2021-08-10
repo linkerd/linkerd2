@@ -7,7 +7,6 @@ import (
 )
 
 func TestRenderCNIPlugin(t *testing.T) {
-	defaultCniNamespace := cniNamespace
 	defaultOptions, err := newCNIInstallOptionsWithDefaults()
 	if err != nil {
 		t.Fatalf("Unexpected error from newCNIInstallOptionsWithDefaults(): %v", err)
@@ -28,10 +27,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 		destCNINetDir:       "/etc/kubernetes/cni/net.d",
 		destCNIBinDir:       "/opt/my-cni/bin",
 		priorityClassName:   "system-node-critical",
-		installNamespace:    true,
 	}
-
-	otherNamespace := "other"
 
 	fullyConfiguredOptionsEqualDsts := &cniPluginOptions{
 		linkerdVersion:      "awesome-linkerd-version.1",
@@ -48,7 +44,6 @@ func TestRenderCNIPlugin(t *testing.T) {
 		destCNINetDir:       "/etc/kubernetes/cni/net.d",
 		destCNIBinDir:       "/etc/kubernetes/cni/net.d",
 		priorityClassName:   "system-node-critical",
-		installNamespace:    true,
 	}
 
 	fullyConfiguredOptionsNoNamespace := &cniPluginOptions{
@@ -66,7 +61,6 @@ func TestRenderCNIPlugin(t *testing.T) {
 		destCNINetDir:       "/etc/kubernetes/cni/net.d",
 		destCNIBinDir:       "/opt/my-cni/bin",
 		priorityClassName:   "system-node-critical",
-		installNamespace:    false,
 	}
 
 	defaultOptionsWithSkipPorts, err := newCNIInstallOptionsWithDefaults()
@@ -79,22 +73,18 @@ func TestRenderCNIPlugin(t *testing.T) {
 
 	testCases := []struct {
 		*cniPluginOptions
-		namespace      string
 		goldenFileName string
 	}{
-		{defaultOptions, defaultCniNamespace, "install-cni-plugin_default.golden"},
-		{fullyConfiguredOptions, otherNamespace, "install-cni-plugin_fully_configured.golden"},
-		{fullyConfiguredOptionsEqualDsts, otherNamespace, "install-cni-plugin_fully_configured_equal_dsts.golden"},
-		{fullyConfiguredOptionsNoNamespace, otherNamespace, "install-cni-plugin_fully_configured_no_namespace.golden"},
-		{defaultOptionsWithSkipPorts, defaultCniNamespace, "install-cni-plugin_skip_ports.golden"},
+		{defaultOptions, "install-cni-plugin_default.golden"},
+		{fullyConfiguredOptions, "install-cni-plugin_fully_configured.golden"},
+		{fullyConfiguredOptionsEqualDsts, "install-cni-plugin_fully_configured_equal_dsts.golden"},
+		{fullyConfiguredOptionsNoNamespace, "install-cni-plugin_fully_configured_no_namespace.golden"},
+		{defaultOptionsWithSkipPorts, "install-cni-plugin_skip_ports.golden"},
 	}
 
 	for i, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, tc.goldenFileName), func(t *testing.T) {
-			defer teardown(defaultCniNamespace)
-			cniNamespace = tc.namespace
-
 			var buf bytes.Buffer
 			err := renderCNIPlugin(&buf, tc.cniPluginOptions)
 			if err != nil {
@@ -103,10 +93,4 @@ func TestRenderCNIPlugin(t *testing.T) {
 			testDataDiffer.DiffTestdata(t, tc.goldenFileName, buf.String())
 		})
 	}
-
-	cniNamespace = defaultCniNamespace
-}
-
-func teardown(originalNamespace string) {
-	cniNamespace = originalNamespace
 }
