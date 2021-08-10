@@ -134,7 +134,7 @@ type (
 		Image              *Image     `json:"image"`
 		Resources          *Resources `json:"resources"`
 		LogLevel           string     `json:"logLevel"`
-		DefaultAllowPolicy string     `json:"defaultAllowPolicy`
+		DefaultAllowPolicy string     `json:"defaultAllowPolicy"`
 	}
 
 	// Image contains the details to define a container image

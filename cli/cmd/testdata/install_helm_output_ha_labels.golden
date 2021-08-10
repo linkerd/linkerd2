@@ -1070,7 +1070,7 @@ data:
       fiz: buz
       foo: bar
     policyController:
-      DefaultAllowPolicy: all-unauthenticated
+      defaultAllowPolicy: all-unauthenticated
       image:
         name: cr.l5d.io/linkerd/policy-controller
         pullPolicy: ""
@@ -1858,7 +1858,7 @@ spec:
         - --grpc-addr=0.0.0.0:8090
         - --cluster-networks=10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         - --identity-domain=test.trust.domain
-        - --default-allow=
+        - --default-allow=all-unauthenticated
         env:
         - name: RUST_LOG
           value: "linkerd=info,warn"

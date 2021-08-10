@@ -56,10 +56,9 @@ func TestNewValues(t *testing.T) {
 		PodLabels:                    map[string]string{},
 		PolicyController: &PolicyController{
 			Image: &Image{
-				Name: "cr.l5d.io/linkerd/policy-controller"
-				Version: "dev-undefined",
+				Name: "cr.l5d.io/linkerd/policy-controller",
 			},
-			LogLevel:  "warn,linkerd=info",
+			LogLevel:           "linkerd=info,warn",
 			DefaultAllowPolicy: "all-unauthenticated",
 			Resources: &Resources{
 				CPU: Constraints{
