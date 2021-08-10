@@ -120,7 +120,7 @@ class ServiceMesh extends React.Component {
 
   getInstalledExtensions() {
     const { extensions } = this.state;
-    const extensionList = !_isEmpty(extensions.extensions) ? JSON.parse(extensions.extensions) : [];
+    const extensionList = !_isEmpty(extensions.extensions) ? extensions.extensions : [];
     return extensionList;
   }
 

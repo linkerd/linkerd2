@@ -438,51 +438,50 @@ func (h *handler) handleGetExtensions(w http.ResponseWriter, req *http.Request, 
 	ctx := req.Context()
 	extensionName := req.FormValue("extension_name")
 
+	type Extension struct {
+		Name      string `json:"name"`
+		UID       string `json:"uid"`
+		Namespace string `json:"namespace"`
+	}
+
 	resp := map[string]interface{}{}
-	if extensionName == "" {
-		extensions, err := h.k8sAPI.GetAllNamespacesWithExtensionLabel(ctx)
-		if err != nil {
+	if extensionName != "" {
+		ns, err := h.k8sAPI.GetNamespaceWithExtensionLabel(ctx, extensionName)
+		if err != nil && strings.HasPrefix(err.Error(), "could not find") {
+			renderJSON(w, resp)
+			return
+		} else if err != nil {
 			renderJSONError(w, err, http.StatusInternalServerError)
 			return
 		}
 
-		type Extension struct {
-			Name string `json:"name"`
-			UID  string `json:"uid"`
+		resp["data"] = Extension{
+			UID:       string(ns.UID),
+			Name:      ns.GetLabels()[k8s.LinkerdExtensionLabel],
+			Namespace: ns.Name,
 		}
 
-		extensionObject := Extension{}
-		extensionList := make([]Extension, 0, len(extensions))
-		if len(extensions) > 0 {
-			for _, extension := range extensions {
-				extensionObject.Name = extension.ObjectMeta.Name
-				extensionObject.UID = string(extension.ObjectMeta.UID)
-				extensionList = append(extensionList, extensionObject)
-			}
-		}
-
-		data, err := json.Marshal(extensionList)
-		if err != nil {
-			renderJSONError(w, err, http.StatusInternalServerError)
-			return
-		}
-
-		resp["extensions"] = string(data)
 		renderJSON(w, resp)
 		return
 	}
 
-	ns, err := h.k8sAPI.GetNamespaceWithExtensionLabel(ctx, extensionName)
-	if err != nil && strings.HasPrefix(err.Error(), "could not find") {
-		renderJSON(w, resp)
-		return
-	} else if err != nil {
+	installedExtensions, err := h.k8sAPI.GetAllNamespacesWithExtensionLabel(ctx)
+	if err != nil {
 		renderJSONError(w, err, http.StatusInternalServerError)
 		return
 	}
-	resp["extensionName"] = ns.GetLabels()[k8s.LinkerdExtensionLabel]
-	resp["namespace"] = ns.Name
 
+	extensionList := make([]Extension, len(installedExtensions))
+
+	for i, installedExtension := range installedExtensions {
+		extensionList[i] = Extension{
+			UID:       string(installedExtension.GetObjectMeta().GetUID()),
+			Name:      installedExtension.GetLabels()[k8s.LinkerdExtensionLabel],
+			Namespace: installedExtension.GetName(),
+		}
+	}
+
+	resp["extensions"] = extensionList
 	renderJSON(w, resp)
 }
 
