@@ -130,7 +130,7 @@ type (
 		Image *Image `json:"image"`
 	}
 
-	// PolicyCOntroller contains the fields to configure the policy controller container
+	// PolicyController contains the fields to configure the policy controller container
 	PolicyController struct {
 		Image              *Image     `json:"image"`
 		Resources          *Resources `json:"resources"`
