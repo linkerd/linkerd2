@@ -3,7 +3,7 @@ name: Coverage
 # Run weekly on Sunday at midnight (UTC).
 on:
   schedule:
-    - cron: '0 0 * * 7'
+    - cron: '0 0 * * 0'
 
 permissions:
   contents: read
