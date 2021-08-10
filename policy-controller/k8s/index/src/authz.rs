@@ -238,7 +238,7 @@ fn mk_mtls_authn(
 
     let mut identities = Vec::new();
 
-    for id in mtls.identities.into_iter() {
+    for id in mtls.identities.unwrap_or_else(Vec::new).into_iter() {
         if id == "*" {
             debug!(suffix = %id, "Authenticated");
             identities.push(IdentityMatch::Suffix(vec![]));
@@ -256,7 +256,7 @@ fn mk_mtls_authn(
         }
     }
 
-    for sa in mtls.service_accounts.into_iter() {
+    for sa in mtls.service_accounts.unwrap_or_else(Vec::new).into_iter() {
         let name = sa.name;
         let ns = sa
             .namespace
