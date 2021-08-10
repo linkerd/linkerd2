@@ -5,7 +5,7 @@ use linkerd_policy_controller_core::{
     NetworkMatch, ProxyProtocol,
 };
 use linkerd_policy_controller_k8s_api::policy::server::Port;
-use std::{collections::BTreeMap, net::IpAddr, str::FromStr};
+use std::{collections::HashMap, net::IpAddr, str::FromStr};
 use tokio::time;
 
 /// Creates a pod, then a server, then an authorization--then deletes these resources in the reverse
@@ -103,7 +103,7 @@ async fn incrementally_configure_server() {
                     "authz-0".into(),
                     ClientAuthorization {
                         authentication: ClientAuthentication::TlsUnauthenticated,
-                        networks: vec![Ipv4Net::default().into(), Ipv6Net::default().into(),]
+                        networks: vec!["192.0.2.0/24".parse::<IpNet>().unwrap().into()]
                     }
                 ),
                 healthcheck_authz(kubelet_ip),
@@ -219,7 +219,6 @@ async fn default_allow_global() {
         DefaultAllow::ClusterUnauthenticated,
     ] {
         let (lookup_rx, mut idx) = Index::new(
-            lookup_tx,
             vec![cluster_net],
             "cluster.example.com".into(),
             *default,
@@ -273,9 +272,7 @@ async fn default_allow_annotated() {
         DefaultAllow::ClusterAuthenticated,
         DefaultAllow::ClusterUnauthenticated,
     ] {
-        let (lookup_tx, lookup_rx) = crate::lookup::pair();
-        let mut idx = Index::new(
-            lookup_tx,
+        let (lookup_rx, mut idx) = Index::new(
             vec![cluster_net],
             "cluster.example.com".into(),
             match *default {
@@ -323,9 +320,7 @@ async fn default_allow_annotated_invalid() {
     };
     let detect_timeout = time::Duration::from_secs(1);
 
-    let (lookup_tx, lookup_rx) = crate::lookup::pair();
-    let mut idx = Index::new(
-        lookup_tx,
+    let (lookup_rx, mut idx) = Index::new(
         vec![cluster_net],
         "cluster.example.com".into(),
         DefaultAllow::AllUnauthenticated,
@@ -375,9 +370,7 @@ async fn pod_before_node_reset() {
     };
     let detect_timeout = time::Duration::from_secs(1);
 
-    let (lookup_tx, lookup_rx) = crate::lookup::pair();
-    let mut idx = Index::new(
-        lookup_tx,
+    let (lookup_rx, mut idx) = Index::new(
         vec![cluster_net],
         "cluster.example.com".into(),
         DefaultAllow::Deny,
@@ -430,9 +423,7 @@ async fn pod_before_node_remove() {
     };
     let detect_timeout = time::Duration::from_secs(1);
 
-    let (lookup_tx, lookup_rx) = crate::lookup::pair();
-    let mut idx = Index::new(
-        lookup_tx,
+    let (lookup_rx, mut idx) = Index::new(
         vec![cluster_net],
         "cluster.example.com".into(),
         DefaultAllow::Deny,
@@ -573,7 +564,7 @@ fn mk_default_allow(
     da: DefaultAllow,
     cluster_net: IpNet,
     kubelet_ip: IpAddr,
-) -> BTreeMap<String, ClientAuthorization> {
+) -> HashMap<String, ClientAuthorization> {
     let all_nets = vec![Ipv4Net::default().into(), Ipv6Net::default().into()];
 
     let cluster_nets = vec![NetworkMatch::from(cluster_net)];

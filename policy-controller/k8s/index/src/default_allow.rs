@@ -193,9 +193,9 @@ mod test {
         ] {
             assert_eq!(
                 default.to_string().parse::<DefaultAllow>().unwrap(),
-                *default,
+                default,
                 "failed to parse displayed {:?}",
-                *default
+                default
             );
         }
     }
