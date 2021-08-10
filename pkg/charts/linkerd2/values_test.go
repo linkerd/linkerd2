@@ -70,7 +70,7 @@ func TestNewValues(t *testing.T) {
 					Limit:   "",
 					Request: "",
 				},
-			}
+			},
 		},
 		Proxy: &Proxy{
 			EnableExternalProfiles: false,
