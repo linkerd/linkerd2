@@ -177,30 +177,16 @@ func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace s
 		if err != nil {
 			return nil, err
 		}
-		matchLabels = deployment.Spec.Selector.MatchLabels
-		ownerUID = deployment.GetUID()
+		templateLabels := deployment.Spec.Template.Labels
+		var podList *corev1.PodList
 
-		replicaSets, err := clientset.AppsV1().ReplicaSets(namespace).List(
-			ctx,
-			metav1.ListOptions{
-				LabelSelector: labels.Set(matchLabels).AsSelector().String(),
-			},
-		)
+		podList, err = clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+			LabelSelector: labels.Set(templateLabels).AsSelector().String(),
+		})
 		if err != nil {
 			return nil, err
 		}
-
-		var pods []corev1.Pod
-		for _, rs := range replicaSets.Items {
-			if isOwner(ownerUID, rs.GetOwnerReferences()) {
-				podsRS, err := getPodsFor(ctx, clientset, namespace, fmt.Sprintf("%s/%s", k8s.ReplicaSet, rs.GetName()))
-				if err != nil {
-					return nil, err
-				}
-				pods = append(pods, podsRS...)
-			}
-		}
-		return pods, nil
+		return podList.Items, nil
 
 	case k8s.Job:
 		job, err := clientset.BatchV1().Jobs(namespace).Get(ctx, name, metav1.GetOptions{})
