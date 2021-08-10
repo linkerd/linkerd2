@@ -25,7 +25,6 @@ func NewDeletingProfileListener() *DeletingProfileListener {
 func (dpl *DeletingProfileListener) Update(profile *sp.ServiceProfile) {
 	if profile == nil {
 		dpl.NumDeletes = dpl.NumDeletes + 1
-
 	}
 }
 

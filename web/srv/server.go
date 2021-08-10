@@ -176,6 +176,7 @@ func NewServer(
 	server.router.GET("/top", handler.handleIndex)
 	server.router.GET("/community", handler.handleIndex)
 	server.router.GET("/routes", handler.handleIndex)
+	server.router.GET("/extensions", handler.handleIndex)
 	server.router.GET("/profiles/new", handler.handleProfileDownload)
 
 	// add catch-all parameter to match all files in dir

@@ -191,7 +191,7 @@ func getContainerCertificate(k8sAPI *k8s.KubernetesAPI, pod corev1.Pod, containe
 }
 
 func getCertResponse(url string, pod corev1.Pod) ([]*x509.Certificate, error) {
-	serverName, err := getServerName(pod, k8s.ProxyContainerName)
+	serverName, err := k8s.PodIdentity(&pod)
 	if err != nil {
 		return nil, err
 	}
@@ -207,32 +207,6 @@ func getCertResponse(url string, pod corev1.Pod) ([]*x509.Certificate, error) {
 
 	cert := conn.ConnectionState().PeerCertificates
 	return cert, nil
-}
-
-func getServerName(pod corev1.Pod, containerName string) (string, error) {
-	if pod.Status.Phase != corev1.PodRunning {
-		return "", fmt.Errorf("pod not running: %s", pod.GetName())
-	}
-
-	var l5dns string
-	var l5dtrustdomain string
-	podsa := pod.Spec.ServiceAccountName
-	podns := pod.ObjectMeta.Namespace
-	for _, c := range pod.Spec.Containers {
-		if c.Name == containerName {
-			for _, env := range c.Env {
-				if env.Name == "_l5d_ns" {
-					l5dns = env.Value
-				}
-				if env.Name == "_l5d_trustdomain" {
-					l5dtrustdomain = env.Value
-				}
-			}
-		}
-	}
-
-	serverName := fmt.Sprintf("%s.%s.serviceaccount.identity.%s.%s", podsa, podns, l5dns, l5dtrustdomain)
-	return serverName, nil
 }
 
 func getPods(ctx context.Context, clientset kubernetes.Interface, namespace string, selector string, args []string) ([]corev1.Pod, error) {
