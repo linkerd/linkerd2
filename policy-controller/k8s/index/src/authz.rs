@@ -195,6 +195,7 @@ fn mk_authz(
                 debug!(%net, "Unauthenticated");
                 let except = except
                     .into_iter()
+                    .flatten()
                     .map(|cidr| cidr.parse().map_err(Into::into))
                     .collect::<Result<Vec<IpNet>>>()?;
                 Ok(NetworkMatch { net, except })

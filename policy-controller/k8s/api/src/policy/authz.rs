@@ -57,7 +57,7 @@ pub struct MeshTls {
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
 pub struct Network {
     pub cidr: String,
-    pub except: Vec<String>,
+    pub except: Option<Vec<String>>,
 }
 
 /// References a Kubernetes `ServiceAccount` instance.
