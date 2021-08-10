@@ -32,30 +32,41 @@ func TestEdges(t *testing.T) {
 	if TestHelper.ExternalPrometheus() {
 		promNs = "external-prometheus"
 	}
+	vars := struct {
+		Ns     string
+		PromNs string
+	}{ns, promNs}
+
+	var b bytes.Buffer
+	tpl := template.Must(template.ParseFiles("testdata/linkerd_edges.golden"))
+	if err := tpl.Execute(&b, vars); err != nil {
+		t.Fatalf("failed to parse linkerd_edges.golden template: %s", err)
+	}
+
+	timeout := 50 * time.Second
 	cmd := []string{
 		"edges",
 		"-n", ns,
 		"deploy",
 		"-ojson",
 	}
-	out, err := TestHelper.LinkerdRun(cmd...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tpl := template.Must(template.ParseFiles("testdata/linkerd_edges.golden"))
-	vars := struct {
-		Ns     string
-		PromNs string
-	}{ns, promNs}
-	var b bytes.Buffer
-	if err := tpl.Execute(&b, vars); err != nil {
-		t.Fatalf("failed to parse linkerd_edges.golden template: %s", err)
-	}
-
 	r := regexp.MustCompile(b.String())
-	if !r.MatchString(out) {
-		t.Errorf("Expected output:\n%s\nactual:\n%s", b.String(), out)
+	err := TestHelper.RetryFor(timeout, func() error {
+		out, err := TestHelper.LinkerdRun(cmd...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pods, err := TestHelper.Kubectl("", []string{"get", "pods", "-A"}...)
+		if err != nil {
+			return err
+		}
+		if !r.MatchString(out) {
+			t.Errorf("Expected output:\n%s\nactual:\n%s\nAll pods: %s", b.String(), out, pods)
+		}
+		return nil
+	})
+	if err != nil {
+		testutil.AnnotatedError(t, fmt.Sprintf("timed-out checking edges (%s)", timeout), err)
 	}
 }
 
