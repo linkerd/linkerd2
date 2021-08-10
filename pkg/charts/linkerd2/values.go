@@ -26,7 +26,6 @@ type (
 	// Values contains the top-level elements in the Helm charts
 	Values struct {
 		ControllerImage              string              `json:"controllerImage"`
-		PolicyControllerImage        string              `json:"policyControllerImage"`
 		ControllerReplicas           uint                `json:"controllerReplicas"`
 		ControllerUID                int64               `json:"controllerUID"`
 		EnableH2Upgrade              bool                `json:"enableH2Upgrade"`
@@ -43,7 +42,6 @@ type (
 		ImagePullPolicy              string              `json:"imagePullPolicy"`
 		CliVersion                   string              `json:"cliVersion"`
 		ControllerImageVersion       string              `json:"controllerImageVersion"`
-		PolicyControllerImageVersion string              `json:"policyControllerImageVersion"`
 		ControllerLogLevel           string              `json:"controllerLogLevel"`
 		ControllerLogFormat          string              `json:"controllerLogFormat"`
 		ProxyContainerName           string              `json:"proxyContainerName"`
@@ -62,6 +60,7 @@ type (
 		PodAnnotations map[string]string `json:"podAnnotations"`
 		PodLabels      map[string]string `json:"podLabels"`
 
+		PolicyController *PolicyController `json:"policyController"`
 		Proxy            *Proxy            `json:"proxy"`
 		ProxyInit        *ProxyInit        `json:"proxyInit"`
 		Identity         *Identity         `json:"identity"`
@@ -129,6 +128,13 @@ type (
 	// DebugContainer contains the fields to set the debugging sidecar
 	DebugContainer struct {
 		Image *Image `json:"image"`
+	}
+
+	PolicyController struct {
+		Image              *Image     `json:"image"`
+		Resources          *Resources `json:"resources"`
+		LogLevel           string     `json:"logLevel"`
+		DefaultAllowPolicy string     `json:"defaultAllowPolicy`
 	}
 
 	// Image contains the details to define a container image

@@ -1047,8 +1047,20 @@ data:
     omitWebhookSideEffects: false
     podAnnotations: {}
     podLabels: {}
-    policyControllerImage: cr.l5d.io/linkerd/policy-controller
-    policyControllerImageVersion: ""
+    policyController:
+      DefaultAllowPolicy: all-unauthenticated
+      image:
+        name: cr.l5d.io/linkerd/policy-controller
+        pullPolicy: ""
+        version: ""
+      logLevel: linkerd=info,warn
+      resources:
+        cpu:
+          limit: ""
+          request: ""
+        memory:
+          limit: ""
+          request: ""
     profileValidator:
       caBundle: test-profile-validator-ca-bundle
       crtPEM: test-profile-validator-crt-pem
@@ -1710,7 +1722,7 @@ spec:
         - --grpc-addr=0.0.0.0:8090
         - --cluster-networks=10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         - --identity-domain=test.trust.domain
-        - --default-allow=all-unauthenticated
+        - --default-allow=
         env:
         - name: RUST_LOG
           value: "linkerd=info,warn"
@@ -1732,6 +1744,7 @@ spec:
           httpGet:
             path: /ready
             port: admin-http
+        resources:
         securityContext:
           runAsUser: 2103
       initContainers:

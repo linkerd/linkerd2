@@ -226,12 +226,12 @@ spec:
         - --grpc-addr=0.0.0.0:8090
         - --cluster-networks={{.Values.clusterNetworks}}
         - --identity-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
-        - --default-allow={{.Values.defaultAllowPolicy | default "all-unauthenticated"}}
+        - --default-allow={{.Values.policyController.defaultAllowPolicy}}
         env:
         - name: RUST_LOG
-          value: "linkerd=info,warn"
-        image: {{.Values.policyControllerImage}}:{{.Values.policyControllerImageVersion | default .Values.linkerdVersion}}
-        imagePullPolicy: {{.Values.imagePullPolicy}}
+          value: {{.Values.policyController.logLevel | default "linkerd=info,warn" | quote}}
+        image: {{.Values.policyController.image.name}}:{{.Values.policyController.image.version | default .Values.linkerdVersion}}
+        imagePullPolicy: {{.Values.policyController.image.pullPolicy | default .Values.imagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /ready
@@ -248,7 +248,7 @@ spec:
           httpGet:
             path: /ready
             port: admin-http
-        {{- $res := .Values.policyResources | default .Values.destinationResources }}
+        {{- $res := .Values.policyController.resources | default .Values.destinationResources }}
         {{- if $res }}
         {{- include "partials.resources" $res | nindent 8 }}
         {{- end }}

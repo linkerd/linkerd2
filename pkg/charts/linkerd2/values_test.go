@@ -29,7 +29,6 @@ func TestNewValues(t *testing.T) {
 
 	expected := &Values{
 		ControllerImage:              "cr.l5d.io/linkerd/controller",
-		PolicyControllerImage:        "cr.l5d.io/linkerd/policy-controller",
 		ControllerReplicas:           1,
 		ControllerUID:                2103,
 		EnableH2Upgrade:              true,
@@ -55,6 +54,24 @@ func TestNewValues(t *testing.T) {
 		HighAvailability:             false,
 		PodAnnotations:               map[string]string{},
 		PodLabels:                    map[string]string{},
+		PolicyController: &PolicyController{
+			Image: &Image{
+				Name: "cr.l5d.io/linkerd/policy-controller"
+				Version: "dev-undefined",
+			},
+			LogLevel:  "warn,linkerd=info",
+			DefaultAllowPolicy: "all-unauthenticated",
+			Resources: &Resources{
+				CPU: Constraints{
+					Limit:   "",
+					Request: "",
+				},
+				Memory: Constraints{
+					Limit:   "",
+					Request: "",
+				},
+			}
+		},
 		Proxy: &Proxy{
 			EnableExternalProfiles: false,
 			Image: &Image{

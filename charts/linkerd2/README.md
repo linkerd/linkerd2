@@ -162,7 +162,16 @@ Kubernetes: `>=1.16.0-0`
 | omitWebhookSideEffects | bool | `false` | Omit the `sideEffects` flag in the webhook manifests |
 | podAnnotations | object | `{}` | Additional annotations to add to all pods |
 | podLabels | object | `{}` | Additional labels to add to all pods |
-| policyControllerImage | string | `"cr.l5d.io/linkerd/policy-controller"` |  |
+| policyController.defaultAllowPolicy | string | "all-unauthenticated" | The default allow policy to use when no `Server` selects a pod.  One of: "all-authenticated", "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny" |
+| policyController.image.name | string | `"cr.l5d.io/linkerd/policy-controller"` | Docker image for the proxy |
+| policyController.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy container Docker image |
+| policyController.image.version | string | linkerdVersion | Tag for the proxy container Docker image |
+| policyController.logLevel | string | `"linkerd=info,warn"` | Log level for the policy controller |
+| policyController.resources | object | destinationResources | policy controller resource requests & limits |
+| policyController.resources.cpu.limit | string | `""` | Maximum amount of CPU units that the policy controller can use |
+| policyController.resources.cpu.request | string | `""` | Amount of CPU units that the policy controller requests |
+| policyController.resources.memory.limit | string | `""` | Maximum amount of memory that the policy controller can use |
+| policyController.resources.memory.request | string | `""` | Maximum amount of memory that the policy controller requests |
 | profileValidator.caBundle | string | `""` | Bundle of CA certificates for service profile validator. If not provided then Helm will use the certificate generated  for `profileValidator.crtPEM`. If `profileValidator.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
 | profileValidator.crtPEM | string | `""` | Certificate for the service profile validator. If not provided then Helm will generate one. |
 | profileValidator.externalSecret | bool | `false` | Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `profileValidator.caBundle` must be set (see below). |
