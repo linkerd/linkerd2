@@ -195,6 +195,7 @@ fn mk_authz(
                 debug!(%net, "Unauthenticated");
                 let except = except
                     .into_iter()
+                    .flatten()
                     .map(|cidr| cidr.parse().map_err(Into::into))
                     .collect::<Result<Vec<IpNet>>>()?;
                 Ok(NetworkMatch { net, except })
@@ -238,7 +239,7 @@ fn mk_mtls_authn(
 
     let mut identities = Vec::new();
 
-    for id in mtls.identities.into_iter() {
+    for id in mtls.identities.into_iter().flatten() {
         if id == "*" {
             debug!(suffix = %id, "Authenticated");
             identities.push(IdentityMatch::Suffix(vec![]));
@@ -256,7 +257,7 @@ fn mk_mtls_authn(
         }
     }
 
-    for sa in mtls.service_accounts.into_iter() {
+    for sa in mtls.service_accounts.into_iter().flatten() {
         let name = sa.name;
         let ns = sa
             .namespace

@@ -48,16 +48,16 @@ pub struct MeshTls {
     pub unauthenticated_tls: bool,
 
     /// Indicates a Linkerd identity that is authorized to access a server.
-    pub identities: Vec<String>,
+    pub identities: Option<Vec<String>>,
 
     /// Identifies a `ServiceAccount` authorized to access a server.
-    pub service_accounts: Vec<ServiceAccountRef>,
+    pub service_accounts: Option<Vec<ServiceAccountRef>>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
 pub struct Network {
     pub cidr: String,
-    pub except: Vec<String>,
+    pub except: Option<Vec<String>>,
 }
 
 /// References a Kubernetes `ServiceAccount` instance.
