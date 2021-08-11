@@ -10,7 +10,7 @@ anyhow = "1"
 drain = "0.1"
 futures = "0.3"
 hyper = { version = "0.14", features = ["http1", "http2", "runtime", "server"] }
-kube = { version = "0.58", default-features = false, features = ["client", "derive", "native-tls"] }
+kube = { version = "0.59", default-features = false, features = ["client", "derive", "native-tls"] }
 linkerd-policy-controller-core = { path = "./core" }
 linkerd-policy-controller-grpc = { path = "./grpc" }
 linkerd-policy-controller-k8s-index = { path = "./k8s/index" }
