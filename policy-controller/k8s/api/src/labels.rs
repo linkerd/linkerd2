@@ -5,7 +5,7 @@ use std::{
     sync::Arc,
 };
 
-#[derive(Clone, Debug, Eq, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Labels(Arc<Map>);
 
 pub type Map = BTreeMap<String, String>;
@@ -95,6 +95,13 @@ impl std::iter::FromIterator<Expression> for Selector {
 
 // === Labels ===
 
+impl From<Option<Map>> for Labels {
+    #[inline]
+    fn from(labels: Option<Map>) -> Self {
+        labels.unwrap_or_default().into()
+    }
+}
+
 impl From<Map> for Labels {
     #[inline]
     fn from(labels: Map) -> Self {
@@ -109,10 +116,20 @@ impl AsRef<Map> for Labels {
     }
 }
 
-impl<T: AsRef<Map>> std::cmp::PartialEq<T> for Labels {
+impl std::cmp::PartialEq<Self> for Labels {
     #[inline]
-    fn eq(&self, t: &T) -> bool {
+    fn eq(&self, t: &Self) -> bool {
         self.0.as_ref().eq(t.as_ref())
+    }
+}
+
+impl std::cmp::PartialEq<Option<Map>> for Labels {
+    #[inline]
+    fn eq(&self, t: &Option<Map>) -> bool {
+        match t {
+            None => self.0.is_empty(),
+            Some(t) => t.eq(self.0.as_ref()),
+        }
     }
 }
 

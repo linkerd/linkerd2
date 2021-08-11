@@ -260,7 +260,7 @@ impl PodIndex {
                 // labels have changed, then we relink servers to pods in case label selections have
                 // changed.
                 let p = entry.get_mut();
-                if p.labels.as_ref() != &pod.metadata.labels {
+                if p.labels != pod.metadata.labels {
                     p.labels = pod.metadata.labels.into();
                     p.link_servers(servers);
                 }
@@ -281,7 +281,7 @@ impl PodIndex {
         let mut lookups = HashMap::new();
 
         for container in spec.containers.into_iter() {
-            for p in container.ports.into_iter() {
+            for p in container.ports.into_iter().flatten() {
                 if p.protocol.map(|p| p == "TCP").unwrap_or(true) {
                     let port = p.container_port as u16;
                     if ports.by_port.contains_key(&port) {

@@ -33,12 +33,14 @@ impl DefaultAllow {
     pub const ANNOTATION: &'static str = "policy.linkerd.io/default-allow";
 
     pub fn from_annotation(meta: &k8s::ObjectMeta) -> Result<Option<Self>> {
-        if let Some(v) = meta.annotations.get(Self::ANNOTATION) {
-            let mode = v.parse()?;
-            Ok(Some(mode))
-        } else {
-            Ok(None)
+        if let Some(ann) = meta.annotations.as_ref() {
+            if let Some(v) = ann.get(Self::ANNOTATION) {
+                let mode = v.parse()?;
+                return Ok(Some(mode));
+            }
         }
+
+        Ok(None)
     }
 }
 
