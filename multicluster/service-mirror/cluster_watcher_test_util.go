@@ -777,7 +777,6 @@ func mirrorService(name, namespace, resourceVersion string, ports []corev1.Servi
 			Labels: map[string]string{
 				consts.RemoteClusterNameLabel: clusterName,
 				consts.MirroredResourceLabel:  "true",
-				// consts.DefaultExportedServiceSelector: "true",
 			},
 			Annotations: annotations,
 		},

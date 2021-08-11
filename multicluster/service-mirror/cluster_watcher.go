@@ -192,11 +192,14 @@ func (rcsw *RemoteClusterServiceWatcher) originalResourceName(mirroredName strin
 	return strings.TrimSuffix(mirroredName, fmt.Sprintf("-%s", rcsw.link.TargetClusterName))
 }
 
-func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceLabels(remoteService ...*corev1.Service) map[string]string {
+func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceLabels(remoteService *corev1.Service) map[string]string {
 	labels := make(map[string]string)
 
-	if len(remoteService) == 1 {
-		for key, value := range remoteService[0].ObjectMeta.Labels {
+	if remoteService != nil {
+		for key, value := range remoteService.ObjectMeta.Labels {
+			if strings.HasPrefix(key, consts.SvcMirrorPrefix) {
+				continue
+			}
 			labels[key] = value
 		}
 	}
@@ -312,7 +315,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices(ctx context.Con
 // created. This piece of code is responsible for doing just that. It takes care of
 // services, endpoints and namespaces (if needed)
 func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Context) error {
-	matchLabels := rcsw.getMirroredServiceLabels()
+	matchLabels := rcsw.getMirroredServiceLabels(nil)
 
 	services, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
 	if err != nil {
