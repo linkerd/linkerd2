@@ -2483,29 +2483,12 @@ func validateControlPlanePods(pods []corev1.Pod) error {
 		if !found {
 			return fmt.Errorf("No running pods for \"linkerd-%s\"", name)
 		}
-		var err error
-		var ready bool
 		for pod, containers := range pods {
-			containersReady := true
 			for _, container := range containers {
 				if !container.Ready {
-					// TODO: Save this as a warning, allow check to pass but let the user
-					// know there is at least one pod not ready. This might imply
-					// restructuring health checks to allow individual checks to return
-					// either fatal or warning, rather than setting this property at
-					// compile time.
-					err = fmt.Errorf("pod/%s container %s is not ready", pod, container.Name)
-					containersReady = false
+					log.Warnf("pod/%s container %s is not ready", pod, container.Name)
 				}
 			}
-			if containersReady {
-				// at least one pod has all containers ready
-				ready = true
-				break
-			}
-		}
-		if !ready {
-			return err
 		}
 	}
 
