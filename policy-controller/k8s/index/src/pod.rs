@@ -14,7 +14,7 @@ pub(crate) struct PodIndex {
     index: HashMap<String, Pod>,
 }
 
-///
+/// Holds the state of an individual pod.
 #[derive(Debug)]
 struct Pod {
     /// An index of all ports in the pod spec.

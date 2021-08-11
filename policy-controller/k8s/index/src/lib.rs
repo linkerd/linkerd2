@@ -160,12 +160,14 @@ impl Index {
                     k8s::Event::Restarted(nodes) => self.reset_nodes(nodes).context("resetting nodes"),
                 },
 
+                // Track pods against the appropriate server.
                 up = pods_rx.recv() => match up {
                     k8s::Event::Applied(pod) => self.apply_pod(pod).context("applying a pod"),
                     k8s::Event::Deleted(pod) => self.delete_pod(pod).context("deleting a pod"),
                     k8s::Event::Restarted(pods) => self.reset_pods(pods).context("resetting pods"),
                 },
 
+                // Track servers and link them with pods.
                 up = servers_rx.recv() => match up {
                     k8s::Event::Applied(srv) => {
                         self.apply_server(srv);
@@ -175,6 +177,7 @@ impl Index {
                     k8s::Event::Restarted(srvs) => self.reset_servers(srvs).context("resetting servers"),
                 },
 
+                // Track authorizations and update relevant servers.
                 up = authorizations_rx.recv() => match up {
                     k8s::Event::Applied(authz) => self.apply_authz(authz).context("applying an authorization"),
                     k8s::Event::Deleted(authz) => {
