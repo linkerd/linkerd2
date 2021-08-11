@@ -54,6 +54,23 @@ func TestNewValues(t *testing.T) {
 		HighAvailability:             false,
 		PodAnnotations:               map[string]string{},
 		PodLabels:                    map[string]string{},
+		PolicyController: &PolicyController{
+			Image: &Image{
+				Name: "cr.l5d.io/linkerd/policy-controller",
+			},
+			LogLevel:           "linkerd=info,warn",
+			DefaultAllowPolicy: "all-unauthenticated",
+			Resources: &Resources{
+				CPU: Constraints{
+					Limit:   "",
+					Request: "",
+				},
+				Memory: Constraints{
+					Limit:   "",
+					Request: "",
+				},
+			},
+		},
 		Proxy: &Proxy{
 			EnableExternalProfiles: false,
 			Image: &Image{

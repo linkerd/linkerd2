@@ -156,6 +156,51 @@ webhooks:
     resources: ["serviceprofiles"]
   sideEffects: None
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: linkerd-policy
+  labels:
+    app.kubernetes.io/part-of: Linkerd
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - policy.linkerd.io
+    resources:
+      - servers
+      - serverauthorizations
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: linkerd-destination-policy
+  labels:
+    app.kubernetes.io/part-of: Linkerd
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-policy
+subjects:
+  - kind: ServiceAccount
+    name: linkerd-destination
+    namespace: linkerd
+---
 ###
 ### Heartbeat RBAC
 ###
@@ -246,7 +291,6 @@ spec:
     - name: v1alpha1
       served: true
       storage: true
-
       schema:
         openAPIV3Schema:
           type: object
@@ -258,7 +302,6 @@ spec:
                 - podSelector
                 - port
               properties:
-
                 podSelector:
                   type: object
                   description: >-
@@ -285,12 +328,10 @@ spec:
                             type: array
                             items:
                               type: string
-
                 port:
                   description: >-
                     A port name or number. Must exist in a pod spec.
                   x-kubernetes-int-or-string: true
-
                 proxyProtocol:
                   description: >-
                     Configures protocol discovery for inbound connections.
@@ -305,7 +346,6 @@ spec:
                     - gRPC
                     - opaque
                     - TLS
-
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -318,18 +358,15 @@ metadata:
 spec:
   group: policy.linkerd.io
   scope: Namespaced
-
   names:
     kind: ServerAuthorization
     plural: serverauthorizations
     singular: serverauthorization
     shortNames: [saz]
-
   versions:
     - name: v1alpha1
       served: true
       storage: true
-
       schema:
         openAPIV3Schema:
           type: object
@@ -338,18 +375,15 @@ spec:
             spec:
               description: >-
                 Authorizes clients to communicate with Linkerd-proxied servers.
-
               type: object
               required: [server, client]
               properties:
-
                 server:
                   description: >-
                     Identifies servers in the same namespace for which this
                     authorization applies.
 
                     Only one of `name` or `selector` may be specified.
-
                   type: object
                   oneOf:
                     - required: [name]
@@ -359,11 +393,9 @@ spec:
                       description: References a `Server` instance by name
                       type: string
                       pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
-
                     selector:
                       description: >-
                         A label query over servers on which this authorization applies.
-
                       type: object
                       oneOf:
                         - required: [matchLabels]
@@ -387,7 +419,6 @@ spec:
                                 type: array
                                 items:
                                   type: string
-
                 client:
                   description:  Describes clients authorized to access a server.
                   type: object
@@ -395,7 +426,6 @@ spec:
                     - required: [meshTLS]
                     - required: [unauthenticated]
                   properties:
-
                     networks:
                       description: >-
                         Limits the client IP addresses to which this
@@ -413,19 +443,16 @@ spec:
                             type: array
                             items:
                               type: string
-
                     unauthenticated:
                       description: >-
                         Authorizes unauthenticated clients to access a server.
                       type: boolean
-
                     meshTLS:
                       type: object
                       oneOf:
                         - required: [unauthenticatedTLS]
                         - required: [identities]
                         - required: [serviceAccounts]
-
                       properties:
                         unauthenticatedTLS:
                           type: boolean
@@ -436,7 +463,6 @@ spec:
                             This is mostly important for the identity
                             controller, which must terminate TLS connections
                             from clients that do not yet have a certificate.
-
                         identities:
                           description: >-
                             Authorizes clients with the provided proxy identity
@@ -445,17 +471,14 @@ spec:
                             The `*` prefix can be used to match all identities in
                             a domain. An identity string of `*` indicates that
                             all authentication clients are authorized.
-
                           type: array
                           items:
                             type: string
                             pattern: '^(\*|[a-z0-9]([-a-z0-9]*[a-z0-9])?)(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$'
-
                         serviceAccounts:
                           description: >-
                             Authorizes clients with the provided proxy identity
                             service accounts (as provided via MTLS)
-
                           type: array
                           items:
                             type: object
@@ -465,7 +488,6 @@ spec:
                                 description: The ServiceAccount's name.
                                 type: string
                                 pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
-
                               namespace:
                                 description: >-
                                   The ServiceAccount's namespace. If unset, the
@@ -1029,6 +1051,20 @@ data:
     omitWebhookSideEffects: false
     podAnnotations: {}
     podLabels: {}
+    policyController:
+      defaultAllowPolicy: default-allow-policy
+      image:
+        name: PolicyControllerImageName
+        pullPolicy: ImagePullPolicy
+        version: PolicyControllerVersion
+      logLevel: log-level
+      resources:
+        cpu:
+          limit: cpu-limit
+          request: cpu-request
+        memory:
+          limit: memory-limit
+          request: memory-request
     profileValidator:
       caBundle: profile validator CA bundle
       crtPEM: profile validator crt
@@ -1474,6 +1510,25 @@ spec:
     port: 443
     targetPort: sp-validator
 ---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-policy
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: policy
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: CliVersion
+spec:
+  clusterIP: None
+  selector:
+    linkerd.io/control-plane-component: policy
+  ports:
+  - name: grpc
+    port: 8090
+    targetPort: 8090
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1531,7 +1586,7 @@ spec:
             fieldRef:
               fieldPath: status.podIPs
         - name: LINKERD2_PROXY_INBOUND_PORTS
-          value: "8086,9996"
+          value: "8086,8090,9990,9996"
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -1673,6 +1728,42 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+      - args:
+        - --admin-addr=0.0.0.0:9990
+        - --grpc-addr=0.0.0.0:8090
+        - --cluster-networks=ClusterNetworks
+        - --identity-domain=cluster.local
+        - --default-allow=default-allow-policy
+        env:
+        - name: RUST_LOG
+          value: "log-level"
+        image: PolicyControllerImageName:PolicyControllerVersion
+        imagePullPolicy: ImagePullPolicy
+        livenessProbe:
+          httpGet:
+            path: /ready
+            port: admin-http
+          initialDelaySeconds: 10
+        name: policy
+        ports:
+        - containerPort: 8090
+          name: grpc
+        - containerPort: 9990
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: admin-http
+        resources:
+          limits:
+            cpu: "cpu-limit"
+            memory: "memory-limit"
+          requests:
+            cpu: "cpu-request"
+            memory: "memory-request"
+        securityContext:
+          runAsUser: 2103
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -2018,7 +2109,7 @@ spec:
 ---
 apiVersion: v1
 data:
-  linkerd-config-overrides: Y2xpVmVyc2lvbjogQ2xpVmVyc2lvbgpjbHVzdGVyTmV0d29ya3M6IENsdXN0ZXJOZXR3b3Jrcwpjb250cm9sUGxhbmVUcmFjaW5nTmFtZXNwYWNlOiAiIgpjb250cm9sbGVySW1hZ2U6IENvbnRyb2xsZXJJbWFnZQpjb250cm9sbGVySW1hZ2VWZXJzaW9uOiBDb250cm9sbGVySW1hZ2VWZXJzaW9uCmNvbnRyb2xsZXJMb2dGb3JtYXQ6IENvbnRyb2xsZXJMb2dGb3JtYXQKY29udHJvbGxlckxvZ0xldmVsOiBDb250cm9sbGVyTG9nTGV2ZWwKZGVidWdDb250YWluZXI6CiAgaW1hZ2U6CiAgICBuYW1lOiBEZWJ1Z0ltYWdlTmFtZQogICAgcHVsbFBvbGljeTogRGVidWdJbWFnZVB1bGxQb2xpY3kKICAgIHZlcnNpb246IERlYnVnVmVyc2lvbgpoZWFydGJlYXRTY2hlZHVsZTogMSAyIDMgNCA1CmlkZW50aXR5OgogIGlzc3VlcjoKICAgIGNydEV4cGlyeTogIjIwMzAtMDgtMjZUMDc6MTM6NDdaIgogICAgdGxzOgogICAgICBjcnRQRU06IHwKICAgICAgICAtLS0tLUJFR0lOIENFUlRJRklDQVRFLS0tLS0KICAgICAgICBNSUlCd0RDQ0FXZWdBd0lCQWdJUkFKUklnWjhSdE84RXdnMVhlcGY4VDQ0d0NnWUlLb1pJemowRUF3SXdLVEVuCiAgICAgICAgTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01CNFhEVEl3TURneQogICAgICAgIE9EQTNNVE0wTjFvWERUTXdNRGd5TmpBM01UTTBOMW93S1RFbk1DVUdBMVVFQXhNZWFXUmxiblJwZEhrdWJHbHUKICAgICAgICBhMlZ5WkM1amJIVnpkR1Z5TG14dlkyRnNNRmt3RXdZSEtvWkl6ajBDQVFZSUtvWkl6ajBEQVFjRFFnQUUxL0ZwCiAgICAgICAgZmNSbkRjZWRMNkFqVWFYWVB2NERJTUJhSnVmT0k1Tld0eStYU1g3SmpYZ1p0TTcyZFF2UmFZYW51eEQzNkR0MQogICAgICAgIDIvSnh5aVNneEtXUmRvYXkrYU53TUc0d0RnWURWUjBQQVFIL0JBUURBZ0VHTUJJR0ExVWRFd0VCL3dRSU1BWUIKICAgICAgICBBZjhDQVFBd0hRWURWUjBPQkJZRUZJMVducnFNWUthSEhPbyt6cHlpaURxMnBPMEtNQ2tHQTFVZEVRUWlNQ0NDCiAgICAgICAgSG1sa1pXNTBhWFI1TG14cGJtdGxjbVF1WTJ4MWMzUmxjaTVzYjJOaGJEQUtCZ2dxaGtqT1BRUURBZ05IQURCRQogICAgICAgIEFpQXR1b0k1WHVDdHJHVlJ6U21SVGwycmEyOGFWOU15VFU3ZDVxblRBRkhLU2dJZ1JLQ3ZsdU9TZ0E1TzIxcDUKICAgICAgICA1MXRkcm1rSEVaUnIwcWxMU0pkSFlnRWZNems9CiAgICAgICAgLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQogICAgICBrZXlQRU06IHwKICAgICAgICAtLS0tLUJFR0lOIEVDIFBSSVZBVEUgS0VZLS0tLS0KICAgICAgICBNSGNDQVFFRUlBQWU4bmZielp1OWMvT0IyKzh4Sk0wRno3TlV3VFFhenVsa0ZOczRUSTUrb0FvR0NDcUdTTTQ5CiAgICAgICAgQXdFSG9VUURRZ0FFMS9GcGZjUm5EY2VkTDZBalVhWFlQdjRESU1CYUp1Zk9JNU5XdHkrWFNYN0pqWGdadE03MgogICAgICAgIGRRdlJhWWFudXhEMzZEdDEyL0p4eWlTZ3hLV1Jkb2F5K1E9PQogICAgICAgIC0tLS0tRU5EIEVDIFBSSVZBVEUgS0VZLS0tLS0KaWRlbnRpdHlUcnVzdEFuY2hvcnNQRU06IHwKICAtLS0tLUJFR0lOIENFUlRJRklDQVRFLS0tLS0KICBNSUlCd1RDQ0FXYWdBd0lCQWdJUWVEWnA1bERhSXlnUTVVZk1LWnJGQVRBS0JnZ3Foa2pPUFFRREFqQXBNU2N3CiAgSlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d0hoY05NakF3T0RJNAogIE1EY3hNalEzV2hjTk16QXdPREkyTURjeE1qUTNXakFwTVNjd0pRWURWUVFERXg1cFpHVnVkR2wwZVM1c2FXNXIKICBaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBUnFjNzBaCiAgbDF2Z3c3OXJqQjV1U0lUSUNVQTZHeWZ2U0ZmY3VJaXM3Qi9YRlNra3dBSFU1Uy9zMUFBUCtSMFRYN0hCV1VDNAogIHVhRzRXV3Npd0pLTm43bWdvM0F3YmpBT0JnTlZIUThCQWY4RUJBTUNBUVl3RWdZRFZSMFRBUUgvQkFnd0JnRUIKICAvd0lCQVRBZEJnTlZIUTRFRmdRVTVZdGpWVlBmZDdJN05MSHNuMkMyNkVCeUdWMHdLUVlEVlIwUkJDSXdJSUllCiAgYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Bb0dDQ3FHU000OUJBTUNBMGtBTUVZQwogIElRQ043bEJGTEREdmp4NlYwK1hranBLRVJSc0pZZjVhZE12bmxvRmw0OGlsSmdJaEFOdHhobmRjcitRSlB1QzgKICB2Z1VDMGQyLzlGTXVlSVZNYis0NldUQ09qc3FyCiAgLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQppbWFnZVB1bGxQb2xpY3k6IEltYWdlUHVsbFBvbGljeQppbWFnZVB1bGxTZWNyZXRzOiBudWxsCmxpbmtlcmRWZXJzaW9uOiAiIgpwcm9maWxlVmFsaWRhdG9yOgogIGNhQnVuZGxlOiBwcm9maWxlIHZhbGlkYXRvciBDQSBidW5kbGUKICBjcnRQRU06IHByb2ZpbGUgdmFsaWRhdG9yIGNydAogIGtleVBFTTogcHJvZmlsZSB2YWxpZGF0b3Iga2V5CnByb3h5OgogIGF3YWl0OiBmYWxzZQogIGltYWdlOgogICAgbmFtZTogUHJveHlJbWFnZU5hbWUKICAgIHB1bGxQb2xpY3k6IEltYWdlUHVsbFBvbGljeQogICAgdmVyc2lvbjogUHJveHlWZXJzaW9uCiAgaW5ib3VuZENvbm5lY3RUaW1lb3V0OiAiIgogIG9wYXF1ZVBvcnRzOiAyNSw0NDMsNTg3LDMzMDYsNTQzMiwxMTIxMQogIG91dGJvdW5kQ29ubmVjdFRpbWVvdXQ6ICIiCiAgcmVzb3VyY2VzOgogICAgY3B1OgogICAgICBsaW1pdDogY3B1LWxpbWl0CiAgICAgIHJlcXVlc3Q6IGNwdS1yZXF1ZXN0CiAgICBtZW1vcnk6CiAgICAgIGxpbWl0OiBtZW1vcnktbGltaXQKICAgICAgcmVxdWVzdDogbWVtb3J5LXJlcXVlc3QKcHJveHlDb250YWluZXJOYW1lOiBQcm94eUNvbnRhaW5lck5hbWUKcHJveHlJbml0OgogIGlnbm9yZUluYm91bmRQb3J0czogIiIKICBpZ25vcmVPdXRib3VuZFBvcnRzOiAiNDQzIgogIGltYWdlOgogICAgbmFtZTogUHJveHlJbml0SW1hZ2VOYW1lCiAgICBwdWxsUG9saWN5OiBJbWFnZVB1bGxQb2xpY3kKICAgIHZlcnNpb246IFByb3h5SW5pdFZlcnNpb24KcHJveHlJbmplY3RvcjoKICBjYUJ1bmRsZTogcHJveHkgaW5qZWN0b3IgQ0EgYnVuZGxlCiAgY3J0UEVNOiBwcm94eSBpbmplY3RvciBjcnQKICBrZXlQRU06IHByb3h5IGluamVjdG9yIGtleQp3ZWJob29rRmFpbHVyZVBvbGljeTogV2ViaG9va0ZhaWx1cmVQb2xpY3kK
+  linkerd-config-overrides: Y2xpVmVyc2lvbjogQ2xpVmVyc2lvbgpjbHVzdGVyTmV0d29ya3M6IENsdXN0ZXJOZXR3b3Jrcwpjb250cm9sUGxhbmVUcmFjaW5nTmFtZXNwYWNlOiAiIgpjb250cm9sbGVySW1hZ2U6IENvbnRyb2xsZXJJbWFnZQpjb250cm9sbGVySW1hZ2VWZXJzaW9uOiBDb250cm9sbGVySW1hZ2VWZXJzaW9uCmNvbnRyb2xsZXJMb2dGb3JtYXQ6IENvbnRyb2xsZXJMb2dGb3JtYXQKY29udHJvbGxlckxvZ0xldmVsOiBDb250cm9sbGVyTG9nTGV2ZWwKZGVidWdDb250YWluZXI6CiAgaW1hZ2U6CiAgICBuYW1lOiBEZWJ1Z0ltYWdlTmFtZQogICAgcHVsbFBvbGljeTogRGVidWdJbWFnZVB1bGxQb2xpY3kKICAgIHZlcnNpb246IERlYnVnVmVyc2lvbgpoZWFydGJlYXRTY2hlZHVsZTogMSAyIDMgNCA1CmlkZW50aXR5OgogIGlzc3VlcjoKICAgIGNydEV4cGlyeTogIjIwMzAtMDgtMjZUMDc6MTM6NDdaIgogICAgdGxzOgogICAgICBjcnRQRU06IHwKICAgICAgICAtLS0tLUJFR0lOIENFUlRJRklDQVRFLS0tLS0KICAgICAgICBNSUlCd0RDQ0FXZWdBd0lCQWdJUkFKUklnWjhSdE84RXdnMVhlcGY4VDQ0d0NnWUlLb1pJemowRUF3SXdLVEVuCiAgICAgICAgTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01CNFhEVEl3TURneQogICAgICAgIE9EQTNNVE0wTjFvWERUTXdNRGd5TmpBM01UTTBOMW93S1RFbk1DVUdBMVVFQXhNZWFXUmxiblJwZEhrdWJHbHUKICAgICAgICBhMlZ5WkM1amJIVnpkR1Z5TG14dlkyRnNNRmt3RXdZSEtvWkl6ajBDQVFZSUtvWkl6ajBEQVFjRFFnQUUxL0ZwCiAgICAgICAgZmNSbkRjZWRMNkFqVWFYWVB2NERJTUJhSnVmT0k1Tld0eStYU1g3SmpYZ1p0TTcyZFF2UmFZYW51eEQzNkR0MQogICAgICAgIDIvSnh5aVNneEtXUmRvYXkrYU53TUc0d0RnWURWUjBQQVFIL0JBUURBZ0VHTUJJR0ExVWRFd0VCL3dRSU1BWUIKICAgICAgICBBZjhDQVFBd0hRWURWUjBPQkJZRUZJMVducnFNWUthSEhPbyt6cHlpaURxMnBPMEtNQ2tHQTFVZEVRUWlNQ0NDCiAgICAgICAgSG1sa1pXNTBhWFI1TG14cGJtdGxjbVF1WTJ4MWMzUmxjaTVzYjJOaGJEQUtCZ2dxaGtqT1BRUURBZ05IQURCRQogICAgICAgIEFpQXR1b0k1WHVDdHJHVlJ6U21SVGwycmEyOGFWOU15VFU3ZDVxblRBRkhLU2dJZ1JLQ3ZsdU9TZ0E1TzIxcDUKICAgICAgICA1MXRkcm1rSEVaUnIwcWxMU0pkSFlnRWZNems9CiAgICAgICAgLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQogICAgICBrZXlQRU06IHwKICAgICAgICAtLS0tLUJFR0lOIEVDIFBSSVZBVEUgS0VZLS0tLS0KICAgICAgICBNSGNDQVFFRUlBQWU4bmZielp1OWMvT0IyKzh4Sk0wRno3TlV3VFFhenVsa0ZOczRUSTUrb0FvR0NDcUdTTTQ5CiAgICAgICAgQXdFSG9VUURRZ0FFMS9GcGZjUm5EY2VkTDZBalVhWFlQdjRESU1CYUp1Zk9JNU5XdHkrWFNYN0pqWGdadE03MgogICAgICAgIGRRdlJhWWFudXhEMzZEdDEyL0p4eWlTZ3hLV1Jkb2F5K1E9PQogICAgICAgIC0tLS0tRU5EIEVDIFBSSVZBVEUgS0VZLS0tLS0KaWRlbnRpdHlUcnVzdEFuY2hvcnNQRU06IHwKICAtLS0tLUJFR0lOIENFUlRJRklDQVRFLS0tLS0KICBNSUlCd1RDQ0FXYWdBd0lCQWdJUWVEWnA1bERhSXlnUTVVZk1LWnJGQVRBS0JnZ3Foa2pPUFFRREFqQXBNU2N3CiAgSlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d0hoY05NakF3T0RJNAogIE1EY3hNalEzV2hjTk16QXdPREkyTURjeE1qUTNXakFwTVNjd0pRWURWUVFERXg1cFpHVnVkR2wwZVM1c2FXNXIKICBaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBUnFjNzBaCiAgbDF2Z3c3OXJqQjV1U0lUSUNVQTZHeWZ2U0ZmY3VJaXM3Qi9YRlNra3dBSFU1Uy9zMUFBUCtSMFRYN0hCV1VDNAogIHVhRzRXV3Npd0pLTm43bWdvM0F3YmpBT0JnTlZIUThCQWY4RUJBTUNBUVl3RWdZRFZSMFRBUUgvQkFnd0JnRUIKICAvd0lCQVRBZEJnTlZIUTRFRmdRVTVZdGpWVlBmZDdJN05MSHNuMkMyNkVCeUdWMHdLUVlEVlIwUkJDSXdJSUllCiAgYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Bb0dDQ3FHU000OUJBTUNBMGtBTUVZQwogIElRQ043bEJGTEREdmp4NlYwK1hranBLRVJSc0pZZjVhZE12bmxvRmw0OGlsSmdJaEFOdHhobmRjcitRSlB1QzgKICB2Z1VDMGQyLzlGTXVlSVZNYis0NldUQ09qc3FyCiAgLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQppbWFnZVB1bGxQb2xpY3k6IEltYWdlUHVsbFBvbGljeQppbWFnZVB1bGxTZWNyZXRzOiBudWxsCmxpbmtlcmRWZXJzaW9uOiAiIgpwb2xpY3lDb250cm9sbGVyOgogIGRlZmF1bHRBbGxvd1BvbGljeTogZGVmYXVsdC1hbGxvdy1wb2xpY3kKICBpbWFnZToKICAgIG5hbWU6IFBvbGljeUNvbnRyb2xsZXJJbWFnZU5hbWUKICAgIHB1bGxQb2xpY3k6IEltYWdlUHVsbFBvbGljeQogICAgdmVyc2lvbjogUG9saWN5Q29udHJvbGxlclZlcnNpb24KICBsb2dMZXZlbDogbG9nLWxldmVsCiAgcmVzb3VyY2VzOgogICAgY3B1OgogICAgICBsaW1pdDogY3B1LWxpbWl0CiAgICAgIHJlcXVlc3Q6IGNwdS1yZXF1ZXN0CiAgICBtZW1vcnk6CiAgICAgIGxpbWl0OiBtZW1vcnktbGltaXQKICAgICAgcmVxdWVzdDogbWVtb3J5LXJlcXVlc3QKcHJvZmlsZVZhbGlkYXRvcjoKICBjYUJ1bmRsZTogcHJvZmlsZSB2YWxpZGF0b3IgQ0EgYnVuZGxlCiAgY3J0UEVNOiBwcm9maWxlIHZhbGlkYXRvciBjcnQKICBrZXlQRU06IHByb2ZpbGUgdmFsaWRhdG9yIGtleQpwcm94eToKICBhd2FpdDogZmFsc2UKICBpbWFnZToKICAgIG5hbWU6IFByb3h5SW1hZ2VOYW1lCiAgICBwdWxsUG9saWN5OiBJbWFnZVB1bGxQb2xpY3kKICAgIHZlcnNpb246IFByb3h5VmVyc2lvbgogIGluYm91bmRDb25uZWN0VGltZW91dDogIiIKICBvcGFxdWVQb3J0czogMjUsNDQzLDU4NywzMzA2LDU0MzIsMTEyMTEKICBvdXRib3VuZENvbm5lY3RUaW1lb3V0OiAiIgogIHJlc291cmNlczoKICAgIGNwdToKICAgICAgbGltaXQ6IGNwdS1saW1pdAogICAgICByZXF1ZXN0OiBjcHUtcmVxdWVzdAogICAgbWVtb3J5OgogICAgICBsaW1pdDogbWVtb3J5LWxpbWl0CiAgICAgIHJlcXVlc3Q6IG1lbW9yeS1yZXF1ZXN0CnByb3h5Q29udGFpbmVyTmFtZTogUHJveHlDb250YWluZXJOYW1lCnByb3h5SW5pdDoKICBpZ25vcmVJbmJvdW5kUG9ydHM6ICIiCiAgaWdub3JlT3V0Ym91bmRQb3J0czogIjQ0MyIKICBpbWFnZToKICAgIG5hbWU6IFByb3h5SW5pdEltYWdlTmFtZQogICAgcHVsbFBvbGljeTogSW1hZ2VQdWxsUG9saWN5CiAgICB2ZXJzaW9uOiBQcm94eUluaXRWZXJzaW9uCnByb3h5SW5qZWN0b3I6CiAgY2FCdW5kbGU6IHByb3h5IGluamVjdG9yIENBIGJ1bmRsZQogIGNydFBFTTogcHJveHkgaW5qZWN0b3IgY3J0CiAga2V5UEVNOiBwcm94eSBpbmplY3RvciBrZXkKd2ViaG9va0ZhaWx1cmVQb2xpY3k6IFdlYmhvb2tGYWlsdXJlUG9saWN5Cg==
 kind: Secret
 metadata:
   creationTimestamp: null

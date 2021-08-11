@@ -9,7 +9,7 @@ set +e
 export default_test_names=(deep external-issuer external-prometheus-deep helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
 export external_resource_test_names=(external-resources)
 export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}" "${external_resource_test_names[*]}")
-images_load_default=(proxy controller web metrics-api grafana tap)
+images_load_default=(proxy controller policy-controller web metrics-api grafana tap)
 
 tests_usage() {
   progname="${0##*/}"

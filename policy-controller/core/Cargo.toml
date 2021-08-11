@@ -1,0 +1,12 @@
+[package]
+name = "linkerd-policy-controller-core"
+version = "0.1.0"
+edition = "2018"
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+futures = { version = "0.3", default-features = false, features = ["std"] }
+ipnet = "2"
