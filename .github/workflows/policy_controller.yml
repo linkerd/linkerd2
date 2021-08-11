@@ -67,7 +67,6 @@ jobs:
     timeout-minutes: 15
     container:
       image: docker://rust:1.54.0-buster
-      options: --security-opt seccomp=unconfined
     steps:
       - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
       - run: cargo test --all
