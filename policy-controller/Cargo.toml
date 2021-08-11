@@ -15,7 +15,7 @@ anyhow = "1"
 drain = "0.1"
 futures = "0.3"
 hyper = { version = "0.14", features = ["http1", "http2", "runtime", "server"] }
-kube = { version = "0.59", default-features = false, features = ["client"] }
+kube = { version = "0.59", default-features = false, features = ["admission", "client"] }
 linkerd-policy-controller-core = { path = "./core" }
 linkerd-policy-controller-grpc = { path = "./grpc" }
 linkerd-policy-controller-k8s-index = { path = "./k8s/index" }
@@ -23,6 +23,7 @@ structopt = "0.3"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "parking_lot", "signal", "sync"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.2", default-features = false, features = ["env-filter", "fmt", "tracing-log"] }
+warp = { version = "0.3", features = ["tls"] }
 
 [workspace]
 resolver = "2"

@@ -9,15 +9,19 @@ use std::net::SocketAddr;
 use structopt::StructOpt;
 use tokio::{sync::watch, time};
 use tracing::{debug, info, instrument};
+use warp::Filter;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "policy", about = "A policy resource prototype")]
 struct Args {
-    #[structopt(short, long, default_value = "0.0.0.0:8080")]
+    #[structopt(long, default_value = "0.0.0.0:8080")]
     admin_addr: SocketAddr,
 
-    #[structopt(short, long, default_value = "0.0.0.0:8090")]
+    #[structopt(long, default_value = "0.0.0.0:8090")]
     grpc_addr: SocketAddr,
+
+    #[structopt(long, default_value = "0.0.0.0:8443")]
+    admission_addr: SocketAddr,
 
     /// Network CIDRs of pod IPs.
     ///
@@ -42,6 +46,7 @@ async fn main() -> Result<()> {
     let Args {
         admin_addr,
         grpc_addr,
+        admission_addr,
         identity_domain,
         cluster_networks: IpNets(cluster_networks),
         default_allow,
@@ -78,6 +83,17 @@ async fn main() -> Result<()> {
 
     // Run the gRPC server, serving results by looking up against the index handle.
     tokio::spawn(grpc(grpc_addr, cluster_networks, handle, drain_rx));
+
+    // Run the admission controller
+    let routes = warp::path::end()
+        .and(warp::body::json())
+        .and_then(linkerd_policy_controller::admission::mutate_handler)
+        .with(warp::trace::request());
+    tokio::spawn(warp::serve(warp::post().and(routes))
+        .tls()
+        .cert_path("/var/run/linkerd/tls/tls.crt")
+        .key_path("/var/run/linkerd/tls/tls.key")
+        .run(admission_addr));
 
     // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
     // complete before exiting.

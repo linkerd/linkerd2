@@ -77,6 +77,9 @@ spec:
   - name: grpc
     port: 8090
     targetPort: 8090
+  - name: validator
+    port: 443
+    targetPort: 9443
 {{- if .Values.enablePodAntiAffinity }}
 ---
 kind: PodDisruptionBudget
@@ -219,11 +222,12 @@ spec:
           runAsUser: {{.Values.controllerUID}}
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
-          name: tls
+          name: sp-tls
           readOnly: true
       - args:
         - --admin-addr=0.0.0.0:9990
         - --grpc-addr=0.0.0.0:8090
+        - --admission-addr=0.0.0.0:9443
         - --cluster-networks={{.Values.clusterNetworks}}
         - --identity-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
         - --default-allow={{.Values.policyController.defaultAllowPolicy}}
@@ -243,6 +247,8 @@ spec:
           name: grpc
         - containerPort: 9990
           name: admin-http
+        - containerPort: 9443
+          name: validator
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -254,6 +260,10 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.controllerUID}}
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: policy-tls
+          readOnly: true
       {{ if not .Values.cniEnabled -}}
       initContainers:
       {{- if not (contains "443" ( .Values.proxyInit.ignoreOutboundPorts | toString ))}}
@@ -263,9 +273,12 @@ spec:
       {{ end -}}
       serviceAccountName: linkerd-destination
       volumes:
-      - name: tls
+      - name: sp-tls
         secret:
           secretName: linkerd-sp-validator-k8s-tls
+      - name: policy-tls
+        secret:
+          secretName: linkerd-policy-validator-k8s-tls
       {{ if not .Values.cniEnabled -}}
       - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
