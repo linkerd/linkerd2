@@ -286,9 +286,36 @@ profileValidator:
   # as no certificate will be generated.
   caBundle: |
 
-# -|- CPU and Memory resources required by the SP validator (see
+# policy validator configuration
+policyValidator:
+  # -- Do not create a secret resource for the policyValidator webhook. If this is set to `true`, the value `policyValidator.caBundle` must be set (see below).
+  externalSecret: false
+
+  # -- Namespace selector used by admission webhook
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
+
+  # -- Certificate for the policy validator. If not provided then Helm
+  # will generate one.
+  crtPEM: |
+
+  # -- Certificate key for the policy validator. If not provided then
+  # Helm will generate one.
+  keyPEM: |
+
+  # -- Bundle of CA certificates for policy validator. If not provided
+  # then Helm will use the certificate generated  for `policyValidator.crtPEM`.
+  # If `policyValidator.externalSecret` is set to true, this value must be set,
+  # as no certificate will be generated.
+  caBundle: |
+
+# -|- CPU and Memory resources required by the policy validator (see
 #`proxy.resources` for sub-fields)
-#spValidatorResources:
+#policyValidatorResources:
 
 # If the namespace is controlled by an external tool or can't be installed with Helm
 # you can disable its installation. In this case:
