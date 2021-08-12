@@ -39,7 +39,7 @@ jobs:
       uses: docker/setup-qemu-action@27d0a4f181a40b142cce983c5393082c365d1480
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@abe5d8f79a1606a2d3e218847032f3f2b1726ab0
-    - name: Set up a small filesystem for Docker
+    - name: Set up a Docker filesystem
       if: matrix.target == 'policy-controller'
       # See crazy-max/ghaction-docker-buildx#172
       run: |
