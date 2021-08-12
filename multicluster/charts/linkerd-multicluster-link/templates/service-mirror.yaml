@@ -101,6 +101,9 @@ spec:
         - -log-level={{.Values.logLevel}}
         - -event-requeue-limit={{.Values.serviceMirrorRetryLimit}}
         - -namespace={{.Values.namespace}}
+        {{- if .Values.enableHeadlessServices }}
+        - -enable-headless-services
+        {{- end }}
         - {{.Values.targetClusterName}}
         image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion}}
         name: service-mirror
