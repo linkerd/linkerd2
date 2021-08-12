@@ -81,6 +81,10 @@ jaeger:
     version: 1.19.2
     pullPolicy: Always
 
+  # -- CLI arguments for Jaeger, See [Jaeger AIO Memory CLI reference](https://www.jaegertracing.io/docs/1.24/cli/#jaeger-all-in-one-memory)
+  args:
+    - --query.base-path=/jaeger
+
   # -- NodeSelector section, See the
   # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
   nodeSelector: *default_node_selector
