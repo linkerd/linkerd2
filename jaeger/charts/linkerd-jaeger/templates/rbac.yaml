@@ -7,7 +7,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: collector
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
 {{ end -}}
 ---
 ###
@@ -33,7 +33,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: jaeger-injector
-  namespace: {{.Values.namespace}}
+  namespace: {{.Release.Namespace}}
   apiGroup: ""
 roleRef:
   kind: ClusterRole
@@ -44,16 +44,16 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: jaeger-injector
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
 ---
-{{- $host := printf "jaeger-injector.%s.svc" .Values.namespace }}
+{{- $host := printf "jaeger-injector.%s.svc" .Release.Namespace }}
 {{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
 {{- if (not .Values.webhook.externalSecret) }}
 kind: Secret
 apiVersion: v1
 metadata:
   name: jaeger-injector-k8s-tls
-  namespace: {{ .Values.namespace }}
+  {{ include "partials.namespace" . }}
 type: kubernetes.io/tls
 data:
   tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.webhook.crtPEM)) (empty .Values.webhook.crtPEM) }}
@@ -79,7 +79,7 @@ webhooks:
   clientConfig:
     service:
       name: jaeger-injector
-      namespace: {{ .Values.namespace }}
+      namespace: {{ .Release.Namespace }}
       path: "/"
 {{- if and (.Values.webhook.externalSecret) (empty .Values.webhook.caBundle) }}
   {{- fail "If webhook.externalSecret is true then you need to provide webhook.caBundle" }}
@@ -103,5 +103,5 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: jaeger
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
 {{ end -}}
