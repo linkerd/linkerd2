@@ -69,57 +69,177 @@ spec:
 }
 
 func TestNewPortForward(t *testing.T) {
-	// TODO: test successful cases by mocking out `clientset.CoreV1().RESTClient()`
 	tests := []struct {
-		ns         string
-		deployName string
-		k8sConfigs []string
-		err        error
+		description string
+		ns          string
+		deployName  string
+		k8sConfigs  []string
+		err         error
 	}{
 		{
-			"pod-ns",
-			"deploy-name",
+			"Pod is owned by the specified deployment",
+			"ns",
+			"deploy",
 			[]string{`apiVersion: v1
 kind: Pod
 metadata:
-  name: bad-name
-  namespace: pod-ns
+  name: pod
+  namespace: ns
+  uid: pod
+  labels:
+    app: foo
+  ownerReferences:
+  - apiVersion: apps/v1
+    controller: true
+    kind: Deployment
+    name: rs
+    uid: rs
 status:
   phase: Running`,
-			},
-			errors.New("no running pods found for deploy-name"),
+				`apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: rs
+  namespace: ns
+  uid: rs
+  labels:
+    app: foo
+  ownerReferences:
+  - apiVersion: apps/v1
+    controller: true
+    kind: Deployment
+    name: deploy
+    uid: deploy
+  spec:
+    selector:
+      matchLabels:
+        app: foo
+`,
+				`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy
+  namespace: ns
+  uid: deploy
+spec:
+  selector:
+    matchLabels:
+      app: foo
+`},
+			nil,
 		},
+		// In the case of overlapping deployments, a pod may match the label
+		// selector of more than one deployment but will still be owned by
+		// exactly one.
 		{
-			"pod-ns",
-			"deploy-name",
+			"Pod's labels match, but is not owned by the deployment",
+			"ns",
+			"deploy",
 			[]string{`apiVersion: v1
 kind: Pod
 metadata:
-  name: deploy-name-foo-bar
-  namespace: bad-ns
-status:
-  phase: Running`,
-			},
-			errors.New("no running pods found for deploy-name"),
+  name: pod
+  namespace: ns
+  uid: pod
+  labels:
+    app: foo
+  ownerReferences:
+  - apiVersion: apps/v1
+    controller: true
+    kind: ReplicaSet
+    name: rs
+    uid: SOME-OTHER-UID
+  status:
+    phase: Running`,
+				`apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: rs
+  namespace: ns
+  uid: rs
+  labels:
+    app: foo
+  ownerReferences:
+  - apiVersion: apps/v1
+    controller: true
+    kind: Deployment
+    name: deploy
+    uid: deploy
+  spec:
+    selector:
+      matchLabels:
+        app: foo
+`,
+				`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy
+  namespace: ns
+  uid: deploy
+spec:
+  selector:
+    matchLabels:
+      app: foo
+`},
+			errors.New("no running pods found for deploy"),
 		},
 		{
-			"pod-ns",
-			"deploy-name",
+			"Pod is owned by the specified deployment but is not running",
+			"ns",
+			"deploy",
 			[]string{`apiVersion: v1
 kind: Pod
 metadata:
-  name: deploy-name-foo-bar
-  namespace: pod-ns
-status:
-  phase: Stopped`,
-			},
-			errors.New("no running pods found for deploy-name"),
+  name: pod
+  namespace: ns
+  uid: pod
+  labels:
+    app: foo
+  ownerReferences:
+  - apiVersion: apps/v1
+    controller: true
+    kind: ReplicaSet
+    name: rs
+    uid: rs
+  status:
+    phase: Stopped`,
+				`apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: rs
+  namespace: ns
+  uid: rs
+  labels:
+    app: foo
+  ownerReferences:
+  - apiVersion: apps/v1
+    controller: true
+    kind: Deployment
+    name: deploy
+    uid: deploy
+spec:
+  selector:
+    matchLabels:
+      app: foo
+`,
+				`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy
+  namespace: ns
+  uid: deploy
+spec:
+  selector:
+    matchLabels:
+      app: foo
+`},
+			errors.New("no running pods found for deploy"),
 		},
 	}
 
-	for i, test := range tests {
+	for _, test := range tests {
 		test := test // pin
-		t.Run(fmt.Sprintf("%d: NewPortForward returns expected result", i), func(t *testing.T) {
+		t.Run(test.description, func(t *testing.T) {
 			k8sClient, err := NewFakeAPI(test.k8sConfigs...)
 			if err != nil {
 				t.Fatalf("Unexpected error %s", err)

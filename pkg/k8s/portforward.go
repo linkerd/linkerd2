@@ -124,7 +124,14 @@ func newPortForward(
 	emitLogs bool,
 ) (*PortForward, error) {
 
-	req := k8sAPI.CoreV1().RESTClient().Post().
+	restClient := k8sAPI.CoreV1().RESTClient()
+	if fakeRest, ok := restClient.(*rest.RESTClient); ok {
+		if fakeRest == nil {
+			return nil, nil
+		}
+	}
+
+	req := restClient.Post().
 		Resource("pods").
 		Namespace(namespace).
 		Name(podName).
