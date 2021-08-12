@@ -43,11 +43,10 @@ spec:
             ops="$ops{\"op\": \"add\", \"path\": \"/metadata/annotations\", \"value\": {}},"
           fi
 
-          ops="$ops{\"op\": \"add\", \"path\": \"/metadata/labels/linkerd.io~1extension\", \"value\": \"viz\"},"
           {{- if .Values.prometheusUrl }}
           ops="$ops{\"op\": \"add\", \"path\": \"/metadata/annotations/viz.linkerd.io~1external-prometheus\", \"value\": \"{{.Values.prometheusUrl}}\"},"
           {{- end }}
-          ops="$ops{\"op\": \"add\", \"path\": \"/metadata/annotations/config.linkerd.io~1proxy-await\", \"value\": \"enabled\"}"
+          ops="$ops{\"op\": \"add\", \"path\": \"/metadata/labels/linkerd.io~1extension\", \"value\": \"viz\"}"
 
           curl -kfv -XPATCH -H "Content-Type: application/json-patch+json" -H "Authorization: Bearer $token" \
             -d "[$ops]" \

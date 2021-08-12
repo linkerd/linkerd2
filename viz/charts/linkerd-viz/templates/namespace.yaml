@@ -13,6 +13,4 @@ metadata:
     {{- if .Values.prometheusUrl }}
     viz.linkerd.io/external-prometheus: {{.Values.prometheusUrl}}
     {{- end }}
-    linkerd.io/inject: enabled
-    config.linkerd.io/proxy-await: "enabled"
 {{ end -}}

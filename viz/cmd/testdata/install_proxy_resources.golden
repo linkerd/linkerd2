@@ -9,8 +9,6 @@ metadata:
   labels:
     linkerd.io/extension: viz
   annotations:
-    linkerd.io/inject: enabled
-    config.linkerd.io/proxy-await: "enabled"
 ---
 ###
 ### Metrics API RBAC
@@ -418,6 +416,8 @@ kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: metrics-api
@@ -557,6 +557,8 @@ kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: grafana
@@ -811,6 +813,8 @@ kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: prometheus
@@ -922,6 +926,8 @@ apiVersion: apps/v1
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: tap
@@ -1096,6 +1102,8 @@ apiVersion: apps/v1
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: tap-injector
@@ -1189,6 +1197,8 @@ kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: web
