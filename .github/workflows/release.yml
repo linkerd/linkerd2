@@ -3,6 +3,8 @@ on:
   push:
     tags:
     - "*"
+    branches:
+    - 'ver/dockerfs'
 permissions:
   contents: read
 env:
@@ -37,6 +39,21 @@ jobs:
       uses: docker/setup-qemu-action@27d0a4f181a40b142cce983c5393082c365d1480
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@abe5d8f79a1606a2d3e218847032f3f2b1726ab0
+    - name: Set up a small filesystem for Docker
+      # See crazy-max/ghaction-docker-buildx#172
+      run: |
+        df -h
+        sudo swapon --show
+        sudo dd if=/dev/zero of=/dockerfs bs=1M count=6K
+        sudo chmod 600 /dockerfs
+        sudo mkswap /dockerfs
+        sudo swapon /dockerfs
+        sudo swapon --show
+        sudo free -h
+        sudo systemctl stop docker
+        sudo mount -t tmpfs -o size=9G tmpfs /var/lib/docker
+        df -h
+        sudo systemctl start docker
     - name: Build & Push Multi Arch Images
       env:
         DOCKER_MULTIARCH: 1
