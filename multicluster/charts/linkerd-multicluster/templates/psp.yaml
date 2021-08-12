@@ -4,7 +4,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: psp
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/extension: multicluster
 rules:
@@ -18,10 +18,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: multicluster-psp
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/extension: multicluster
-    namespace: {{.Values.namespace}}
+    namespace: {{.Release.Namespace}}
 roleRef:
   kind: Role
   name: psp
@@ -29,5 +29,5 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: {{.Values.gateway.name}}
-  namespace: {{.Values.namespace}}
+  namespace: {{.Release.Namespace}}
 {{ end -}}

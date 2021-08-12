@@ -82,6 +82,8 @@ func (c *Chart) render(partialsFiles []*loader.BufferedFile) (bytes.Buffer, erro
 	if err != nil {
 		return bytes.Buffer{}, err
 	}
+	release, _ := valuesToRender["Release"].(map[string]interface{})
+	release["Service"] = "CLI"
 
 	renderedTemplates, err := engine.Render(chart, valuesToRender)
 	if err != nil {
@@ -122,11 +124,6 @@ func (c *Chart) RenderCNI() (bytes.Buffer, error) {
 		{Name: "charts/partials/templates/_pull-secrets.tpl"},
 	}
 	return c.render(cniPartials)
-}
-
-// RenderNoPartials returns a bytes buffer with the result of rendering a Helm chart with no partials
-func (c *Chart) RenderNoPartials() (bytes.Buffer, error) {
-	return c.render([]*loader.BufferedFile{})
 }
 
 // ReadFile updates the buffered file with the data read from disk
