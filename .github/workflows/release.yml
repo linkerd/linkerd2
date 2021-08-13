@@ -3,8 +3,6 @@ on:
   push:
     tags:
     - "*"
-    branches:
-    - 'ver/dockerfs'
 permissions:
   contents: read
 env:
