@@ -206,17 +206,17 @@ impl KubeletIps {
     fn try_from_node(node: k8s::Node) -> Result<Self> {
         let spec = node.spec.ok_or_else(|| anyhow!("node missing spec"))?;
 
-        let addrs = if spec.pod_cidrs.is_empty() {
+        let addrs = if let Some(cidrs) = spec.pod_cidrs {
+            cidrs
+                .into_iter()
+                .map(Self::try_from_cidr)
+                .collect::<Result<Vec<_>>>()?
+        } else {
             let cidr = spec
                 .pod_cidr
                 .ok_or_else(|| anyhow!("node missing pod_cidr"))?;
             let ip = Self::try_from_cidr(cidr)?;
             vec![ip]
-        } else {
-            spec.pod_cidrs
-                .into_iter()
-                .map(Self::try_from_cidr)
-                .collect::<Result<Vec<_>>>()?
         };
 
         Ok(Self(addrs.into()))
