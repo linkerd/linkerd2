@@ -97,7 +97,7 @@ func repair(ctx context.Context, forced bool) error {
 	}
 
 	// Load the stored config
-	config, err := k8sAPI.CoreV1().ConfigMaps(controlPlaneNamespace).Get(ctx, "linkerd-config", metav1.GetOptions{})
+	config, err := k8sAPI.CoreV1().ConfigMaps(controlPlaneNamespace).Get(ctx, k8s.ConfigConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("Failed to load linkerd-config: %s", err)
 	}
