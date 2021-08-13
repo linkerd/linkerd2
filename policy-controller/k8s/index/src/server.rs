@@ -210,7 +210,7 @@ impl SrvIndex {
             HashEntry::Occupied(mut entry) => {
                 // If something about the server changed, we need to update the config to reflect
                 // the change.
-                let new_labels = if entry.get().labels.as_ref() != &srv.metadata.labels {
+                let new_labels = if entry.get().labels != srv.metadata.labels {
                     Some(k8s::Labels::from(srv.metadata.labels))
                 } else {
                     None

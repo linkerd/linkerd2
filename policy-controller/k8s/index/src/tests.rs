@@ -462,7 +462,7 @@ fn mk_node(name: impl Into<String>, pod_net: IpNet) -> k8s::Node {
         },
         spec: Some(k8s::api::core::v1::NodeSpec {
             pod_cidr: Some(pod_net.to_string()),
-            pod_cidrs: vec![pod_net.to_string()],
+            pod_cidrs: Some(vec![pod_net.to_string()]),
             ..Default::default()
         }),
         status: Some(k8s::api::core::v1::NodeStatus::default()),
@@ -488,22 +488,24 @@ fn mk_pod(
                 .into_iter()
                 .map(|(name, ports)| k8s::api::core::v1::Container {
                     name: name.into(),
-                    ports: ports
-                        .into_iter()
-                        .map(|p| k8s::api::core::v1::ContainerPort {
-                            container_port: p as i32,
-                            ..Default::default()
-                        })
-                        .collect(),
+                    ports: Some(
+                        ports
+                            .into_iter()
+                            .map(|p| k8s::api::core::v1::ContainerPort {
+                                container_port: p as i32,
+                                ..Default::default()
+                            })
+                            .collect(),
+                    ),
                     ..Default::default()
                 })
                 .collect(),
             ..Default::default()
         }),
         status: Some(k8s::api::core::v1::PodStatus {
-            pod_ips: vec![k8s::api::core::v1::PodIP {
+            pod_ips: Some(vec![k8s::api::core::v1::PodIP {
                 ip: Some(pod_ip.to_string()),
-            }],
+            }]),
             ..Default::default()
         }),
     }
@@ -522,10 +524,12 @@ fn mk_server(
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.into()),
             name: Some(name.into()),
-            labels: srv_labels
-                .into_iter()
-                .map(|(k, v)| (k.to_string(), v.to_string()))
-                .collect(),
+            labels: Some(
+                srv_labels
+                    .into_iter()
+                    .map(|(k, v)| (k.to_string(), v.to_string()))
+                    .collect(),
+            ),
             ..Default::default()
         },
         spec: k8s::policy::ServerSpec {
