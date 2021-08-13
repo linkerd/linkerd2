@@ -17,7 +17,7 @@ jobs:
         # Keep in sync with integration_tests.yaml matrix build
         target: [proxy, controller, policy-controller, metrics-api, web, cni-plugin, debug, cli-bin, grafana, jaeger-webhook, tap]
     name: Docker build (${{ matrix.target }})
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
     - name: Checkout code
       uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
