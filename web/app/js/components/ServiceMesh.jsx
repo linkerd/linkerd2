@@ -39,6 +39,10 @@ const installedExtensionsColumn = [
     title: <Trans>columnTitleName</Trans>,
     dataIndex: 'name',
   },
+  {
+    title: <Trans>columnTitleNamespace</Trans>,
+    dataIndex: 'namespace',
+  },
 ];
 
 const serviceMeshDetailsColumns = [
