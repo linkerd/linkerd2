@@ -3,7 +3,7 @@
 controllerImage: cr.l5d.io/linkerd/controller
 # -- Tag for the Service Mirror container Docker image
 controllerImageVersion: linkerdVersionValue
-# -- Toogle support for mirroring headless services
+# -- Toggle support for mirroring headless services
 enableHeadlessServices: false
 gateway:
   probe:
