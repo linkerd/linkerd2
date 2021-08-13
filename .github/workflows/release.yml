@@ -77,7 +77,7 @@ jobs:
     strategy:
       matrix:
         arch: [amd64, arm64, arm]
-    name: Policy controller build (${{ matrix.target }})
+    name: Policy controller build (${{ matrix.arch }})
     steps:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@abe5d8f79a1606a2d3e218847032f3f2b1726ab0
@@ -104,12 +104,14 @@ jobs:
     - run: |
         . bin/_tag.sh
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
-    - name: Setup multiarch manifest
+    - name: Create multiarch manifest
       run: |
         docker manifest create ghcr.io/linkerd/policy-controller:${TAG}-amd64 \
             ghcr.io/linkerd/policy-controller:${TAG}-amd64 \
             ghcr.io/linkerd/policy-controller:${TAG}-arm64 \
             ghcr.io/linkerd/policy-controller:${TAG}-arm
+    - name: Annotate multiarch manifest
+      run: |
         docker manifest annotate ghcr.io/linkerd/policy-controller:$TAG \
             ghcr.io/linkerd/policy-controller:${TAG}-amd64 --os=linux --arch=amd64
         docker manifest annotate ghcr.io/linkerd/policy-controller:$TAG \
