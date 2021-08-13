@@ -106,7 +106,7 @@ jobs:
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
     - name: Create multiarch manifest
       run: |
-        docker manifest create ghcr.io/linkerd/policy-controller:${TAG}-amd64 \
+        docker manifest create ghcr.io/linkerd/policy-controller:${TAG} \
             ghcr.io/linkerd/policy-controller:${TAG}-amd64 \
             ghcr.io/linkerd/policy-controller:${TAG}-arm64 \
             ghcr.io/linkerd/policy-controller:${TAG}-arm
