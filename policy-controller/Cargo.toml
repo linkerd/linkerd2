@@ -5,12 +5,17 @@ edition = "2018"
 license = "Apache-2.0"
 publish = false
 
+[features]
+default = ["rustls"]
+native-tls = ["kube/native-tls"]
+rustls = ["kube/rustls"]
+
 [dependencies]
 anyhow = "1"
 drain = "0.1"
 futures = "0.3"
 hyper = { version = "0.14", features = ["http1", "http2", "runtime", "server"] }
-kube = { version = "0.58", default-features = false, features = ["client", "derive", "native-tls"] }
+kube = { version = "0.58", default-features = false, features = ["client", "derive"] }
 linkerd-policy-controller-core = { path = "./core" }
 linkerd-policy-controller-grpc = { path = "./grpc" }
 linkerd-policy-controller-k8s-index = { path = "./k8s/index" }

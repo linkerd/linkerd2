@@ -6,9 +6,10 @@ FROM $RUST_IMAGE as build
 ARG TARGETARCH
 WORKDIR /build
 COPY . /build
-RUN target=$(rustup show | sed -n 's/^Default host: \(.*\)/\1/p') ; \
-    cargo build --locked --release --target="$target" --package=linkerd-policy-controller && \
-    mv "target/${target}/release/linkerd-policy-controller" /tmp/
+RUN --mount=type=cache,target=target \
+    --mount=type=cache,from=rust:1.54.0-buster,source=/usr/local/cargo,target=/usr/local/cargo \
+    cargo build --locked --target=x86_64-unknown-linux-gnu --release --package=linkerd-policy-controller && \
+    mv target/x86_64-unknown-linux-gnu/release/linkerd-policy-controller /tmp/
 
 # Creates a minimal runtime image with the controller binary.
 FROM $RUNTIME_IMAGE
