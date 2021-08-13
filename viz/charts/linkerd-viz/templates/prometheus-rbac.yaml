@@ -6,7 +6,7 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.namespace}}-prometheus
+  name: linkerd-{{.Release.Namespace}}-prometheus
   labels:
     linkerd.io/extension: viz
     component: prometheus
@@ -18,27 +18,27 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.namespace}}-prometheus
+  name: linkerd-{{.Release.Namespace}}-prometheus
   labels:
     linkerd.io/extension: viz
     component: prometheus
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: linkerd-{{.Values.namespace}}-prometheus
+  name: linkerd-{{.Release.Namespace}}-prometheus
 subjects:
 - kind: ServiceAccount
   name: prometheus
-  namespace: {{.Values.namespace}}
+  namespace: {{.Release.Namespace}}
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: prometheus
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/extension: viz
     component: prometheus
-    namespace: {{.Values.namespace}}
+    namespace: {{.Release.Namespace}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 {{ end -}}

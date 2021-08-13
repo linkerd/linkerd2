@@ -20,6 +20,7 @@ const (
 	LegacyExtensionName = "linkerd-viz"
 
 	vizChartName            = "linkerd-viz"
+	defaultNamespace        = "linkerd-viz"
 	defaultLinkerdNamespace = "linkerd"
 	maxRps                  = 100.0
 
