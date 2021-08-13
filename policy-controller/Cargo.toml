@@ -8,7 +8,7 @@ publish = false
 [features]
 default = ["rustls"]
 native-tls = ["kube/native-tls"]
-rustls = ["kube/rustls"]
+rustls = ["kube/rustls-tls"]
 
 [dependencies]
 anyhow = "1"
