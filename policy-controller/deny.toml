@@ -15,13 +15,23 @@ ignore = []
 
 [licenses]
 unlicensed = "deny"
-allow = ["Apache-2.0", "BSD-3-Clause", "MIT"]
+allow = ["Apache-2.0", "BSD-3-Clause", "ISC", "MIT"]
 deny = []
 copyleft = "deny"
 allow-osi-fsf-free = "neither"
 default = "deny"
 confidence-threshold = 0.8
-exceptions = []
+exceptions = [
+    { allow = ["ISC", "MIT", "OpenSSL"], name = "ring", version = "*" },
+]
+
+[[licenses.clarify]]
+name = "ring"
+version = "*"
+expression = "MIT AND ISC AND OpenSSL"
+license-files = [
+    { path = "LICENSE", hash = 0xbd0eed23 }
+]
 
 [bans]
 multiple-versions = "deny"
@@ -46,6 +56,3 @@ unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 allow-git = []
-
-[sources.allow-org]
-github = ["linkerd"]
