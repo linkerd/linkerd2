@@ -60,6 +60,7 @@ type (
 		PodAnnotations map[string]string `json:"podAnnotations"`
 		PodLabels      map[string]string `json:"podLabels"`
 
+		PolicyController *PolicyController `json:"policyController"`
 		Proxy            *Proxy            `json:"proxy"`
 		ProxyInit        *ProxyInit        `json:"proxyInit"`
 		Identity         *Identity         `json:"identity"`
@@ -127,6 +128,14 @@ type (
 	// DebugContainer contains the fields to set the debugging sidecar
 	DebugContainer struct {
 		Image *Image `json:"image"`
+	}
+
+	// PolicyController contains the fields to configure the policy controller container
+	PolicyController struct {
+		Image              *Image     `json:"image"`
+		Resources          *Resources `json:"resources"`
+		LogLevel           string     `json:"logLevel"`
+		DefaultAllowPolicy string     `json:"defaultAllowPolicy"`
 	}
 
 	// Image contains the details to define a container image

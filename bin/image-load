@@ -7,7 +7,7 @@ k3d=""
 cluster=""
 archive=""
 preload=""
-images_default=(proxy controller web metrics-api grafana debug cni-plugin jaeger-webhook tap)
+images_default=(proxy controller policy-controller web metrics-api grafana debug cni-plugin jaeger-webhook tap)
 images=()
 
 usage() {

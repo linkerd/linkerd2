@@ -156,6 +156,51 @@ webhooks:
     resources: ["serviceprofiles"]
   sideEffects: None
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: linkerd-policy
+  labels:
+    app.kubernetes.io/part-of: Linkerd
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - policy.linkerd.io
+    resources:
+      - servers
+      - serverauthorizations
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: linkerd-destination-policy
+  labels:
+    app.kubernetes.io/part-of: Linkerd
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-policy
+subjects:
+  - kind: ServiceAccount
+    name: linkerd-destination
+    namespace: linkerd
+---
 ###
 ### Heartbeat RBAC
 ###
@@ -246,7 +291,6 @@ spec:
     - name: v1alpha1
       served: true
       storage: true
-
       schema:
         openAPIV3Schema:
           type: object
@@ -258,7 +302,6 @@ spec:
                 - podSelector
                 - port
               properties:
-
                 podSelector:
                   type: object
                   description: >-
@@ -285,12 +328,10 @@ spec:
                             type: array
                             items:
                               type: string
-
                 port:
                   description: >-
                     A port name or number. Must exist in a pod spec.
                   x-kubernetes-int-or-string: true
-
                 proxyProtocol:
                   description: >-
                     Configures protocol discovery for inbound connections.
@@ -305,7 +346,6 @@ spec:
                     - gRPC
                     - opaque
                     - TLS
-
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -318,18 +358,15 @@ metadata:
 spec:
   group: policy.linkerd.io
   scope: Namespaced
-
   names:
     kind: ServerAuthorization
     plural: serverauthorizations
     singular: serverauthorization
     shortNames: [saz]
-
   versions:
     - name: v1alpha1
       served: true
       storage: true
-
       schema:
         openAPIV3Schema:
           type: object
@@ -338,18 +375,15 @@ spec:
             spec:
               description: >-
                 Authorizes clients to communicate with Linkerd-proxied servers.
-
               type: object
               required: [server, client]
               properties:
-
                 server:
                   description: >-
                     Identifies servers in the same namespace for which this
                     authorization applies.
 
                     Only one of `name` or `selector` may be specified.
-
                   type: object
                   oneOf:
                     - required: [name]
@@ -359,11 +393,9 @@ spec:
                       description: References a `Server` instance by name
                       type: string
                       pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
-
                     selector:
                       description: >-
                         A label query over servers on which this authorization applies.
-
                       type: object
                       oneOf:
                         - required: [matchLabels]
@@ -387,7 +419,6 @@ spec:
                                 type: array
                                 items:
                                   type: string
-
                 client:
                   description:  Describes clients authorized to access a server.
                   type: object
@@ -395,7 +426,6 @@ spec:
                     - required: [meshTLS]
                     - required: [unauthenticated]
                   properties:
-
                     networks:
                       description: >-
                         Limits the client IP addresses to which this
@@ -413,19 +443,16 @@ spec:
                             type: array
                             items:
                               type: string
-
                     unauthenticated:
                       description: >-
                         Authorizes unauthenticated clients to access a server.
                       type: boolean
-
                     meshTLS:
                       type: object
                       oneOf:
                         - required: [unauthenticatedTLS]
                         - required: [identities]
                         - required: [serviceAccounts]
-
                       properties:
                         unauthenticatedTLS:
                           type: boolean
@@ -436,7 +463,6 @@ spec:
                             This is mostly important for the identity
                             controller, which must terminate TLS connections
                             from clients that do not yet have a certificate.
-
                         identities:
                           description: >-
                             Authorizes clients with the provided proxy identity
@@ -445,17 +471,14 @@ spec:
                             The `*` prefix can be used to match all identities in
                             a domain. An identity string of `*` indicates that
                             all authentication clients are authorized.
-
                           type: array
                           items:
                             type: string
                             pattern: '^(\*|[a-z0-9]([-a-z0-9]*[a-z0-9])?)(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$'
-
                         serviceAccounts:
                           description: >-
                             Authorizes clients with the provided proxy identity
                             service accounts (as provided via MTLS)
-
                           type: array
                           items:
                             type: object
@@ -465,7 +488,6 @@ spec:
                                 description: The ServiceAccount's name.
                                 type: string
                                 pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
-
                               namespace:
                                 description: >-
                                   The ServiceAccount's namespace. If unset, the
@@ -1029,6 +1051,20 @@ data:
     omitWebhookSideEffects: false
     podAnnotations: {}
     podLabels: {}
+    policyController:
+      defaultAllowPolicy: all-unauthenticated
+      image:
+        name: cr.l5d.io/linkerd/policy-controller
+        pullPolicy: ""
+        version: ""
+      logLevel: linkerd=info,warn
+      resources:
+        cpu:
+          limit: ""
+          request: ""
+        memory:
+          limit: ""
+          request: ""
     profileValidator:
       caBundle: profile validator CA bundle
       crtPEM: profile validator crt
@@ -1472,6 +1508,25 @@ spec:
     port: 443
     targetPort: sp-validator
 ---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-policy
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: policy
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+spec:
+  clusterIP: None
+  selector:
+    linkerd.io/control-plane-component: policy
+  ports:
+  - name: grpc
+    port: 8090
+    targetPort: 8090
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1533,7 +1588,7 @@ spec:
             fieldRef:
               fieldPath: status.podIPs
         - name: LINKERD2_PROXY_INBOUND_PORTS
-          value: "8086,9996"
+          value: "8086,8090,9990,9996"
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -1669,6 +1724,36 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+      - args:
+        - --admin-addr=0.0.0.0:9990
+        - --grpc-addr=0.0.0.0:8090
+        - --cluster-networks=10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
+        - --identity-domain=cluster.local
+        - --default-allow=all-unauthenticated
+        env:
+        - name: RUST_LOG
+          value: "linkerd=info,warn"
+        image: cr.l5d.io/linkerd/policy-controller:dev-undefined
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /ready
+            port: admin-http
+          initialDelaySeconds: 10
+        name: policy
+        ports:
+        - containerPort: 8090
+          name: grpc
+        - containerPort: 9990
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: admin-http
+        resources:
+        securityContext:
+          runAsUser: 2103
       initContainers:
       - args:
         - --incoming-proxy-port
