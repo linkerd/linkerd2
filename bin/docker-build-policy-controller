@@ -7,17 +7,17 @@ if [ $# -ne 0 ]; then
     exit 64
 fi
 
-if [ -n "$DOCKER_MULTIARCH" ]; then
-    echo "DOCKER_MULTIARCH may not be set with $0" >&2
-    exit 1
-fi
-
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
 # shellcheck source=_docker.sh
 . "$bindir"/_docker.sh
 # shellcheck source=_tag.sh
 . "$bindir"/_tag.sh
+
+if [ -n "$DOCKER_MULTIARCH" ]; then
+    echo "DOCKER_MULTIARCH may not be set with $0" >&2
+    exit 1
+fi
 
 tag=$(head_root_tag)
 ROOTDIR=$( cd "$bindir"/../policy-controller && pwd )
