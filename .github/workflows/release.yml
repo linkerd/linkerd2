@@ -22,11 +22,14 @@ jobs:
     - run: |
         . bin/_tag.sh
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
-    - run: |
-        echo "${{ secrets.DOCKER_GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.DOCKER_GHCR_USERNAME }}" --password-stdin
+    - name: Build ${{ matrix.arch }}
+      run: |
         docker build ./policy-controller/ \
           -f ./policy-controller/${{ matrix.arch }}.dockerfile \
           -t ghcr.io/linkerd/policy-controller:$TAG-${{ matrix.arch }}
+    - name: Push ${{ matrix.arch }}
+      run: |
+        echo "${{ secrets.DOCKER_GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.DOCKER_GHCR_USERNAME }}" --password-stdin
         docker push ghcr.io/linkerd/policy-controller:$TAG-${{ matrix.arch }}
 
   policy_controller_manifest:
@@ -42,8 +45,8 @@ jobs:
     - run: |
         . bin/_tag.sh
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
-    - run: |
-        echo "${{ secrets.DOCKER_GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.DOCKER_GHCR_USERNAME }}" --password-stdin
+    - name: Setup multiarch manifest
+      run: |
         docker manifest create ghcr.io/linkerd/policy-controller:${TAG}-amd64 \
             ghcr.io/linkerd/policy-controller:${TAG}-amd64 \
             ghcr.io/linkerd/policy-controller:${TAG}-arm64 \
@@ -54,6 +57,9 @@ jobs:
             ghcr.io/linkerd/policy-controller:${TAG}-arm64 --os=linux --arch=arm64
         docker manifest annotate ghcr.io/linkerd/policy-controller:$TAG \
             ghcr.io/linkerd/policy-controller:${TAG}-arm --os=linux --arch=arm
+    - name: Push multiarch manifest
+      run: |
+        echo "${{ secrets.DOCKER_GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.DOCKER_GHCR_USERNAME }}" --password-stdin
         docker manifest push ghcr.io/linkerd/policy-controller:$TAG
 
   docker_build:
