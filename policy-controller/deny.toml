@@ -1,0 +1,58 @@
+targets = [
+    { triple = "x86_64-unknown-linux-gnu" },
+    { triple = "aarch64-unknown-linux-gnu" },
+    { triple = "armv7-unknown-linux-gnu" },
+]
+
+[advisories]
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+vulnerability = "deny"
+unmaintained = "warn"
+yanked = "deny"
+notice = "warn"
+ignore = []
+
+[licenses]
+unlicensed = "deny"
+allow = ["Apache-2.0", "BSD-3-Clause", "ISC", "MIT"]
+deny = []
+copyleft = "deny"
+allow-osi-fsf-free = "neither"
+default = "deny"
+confidence-threshold = 0.8
+exceptions = [
+    { allow = ["ISC", "MIT", "OpenSSL"], name = "ring", version = "*" },
+]
+
+[[licenses.clarify]]
+name = "ring"
+version = "*"
+expression = "MIT AND ISC AND OpenSSL"
+license-files = [
+    { path = "LICENSE", hash = 0xbd0eed23 }
+]
+
+[bans]
+multiple-versions = "deny"
+# Wildcard dependencies are used for all workspace-local crates.
+wildcards = "allow"
+highlight = "all"
+deny = []
+skip-tree = []
+# Kube seems to pull in a bunch of old dependencies transitively.
+skip = [
+    # structopt pulls in clap, which pulls in an older version of ansi_term
+    { name = "ansi_term", version = "0.11.0" },
+    # kube-runtime pulls in snafu v0.6, which pulls in an older version of pin-project
+    { name = "pin-project", version = "0.4.28" },
+    { name = "pin-project-internal", version = "0.4.28" },
+    # structopt pulls in clap, which pulls in an older version of strsim
+    { name = "strsim", version = "0.8.0" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

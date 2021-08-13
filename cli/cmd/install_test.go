@@ -53,6 +53,25 @@ func TestRender(t *testing.T) {
 		IdentityTrustAnchorsPEM: defaultValues.IdentityTrustAnchorsPEM,
 		PodAnnotations:          map[string]string{},
 		PodLabels:               map[string]string{},
+		PolicyController: &charts.PolicyController{
+			Image: &charts.Image{
+				Name:       "PolicyControllerImageName",
+				PullPolicy: "ImagePullPolicy",
+				Version:    "PolicyControllerVersion",
+			},
+			LogLevel:           "log-level",
+			DefaultAllowPolicy: "default-allow-policy",
+			Resources: &charts.Resources{
+				CPU: charts.Constraints{
+					Limit:   "cpu-limit",
+					Request: "cpu-request",
+				},
+				Memory: charts.Constraints{
+					Limit:   "memory-limit",
+					Request: "memory-request",
+				},
+			},
+		},
 		Proxy: &charts.Proxy{
 			Image: &charts.Image{
 				Name:       "ProxyImageName",

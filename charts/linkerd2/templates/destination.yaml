@@ -58,6 +58,25 @@ spec:
   - name: sp-validator
     port: 443
     targetPort: sp-validator
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-policy
+  namespace: {{.Values.namespace}}
+  labels:
+    linkerd.io/control-plane-component: policy
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  clusterIP: None
+  selector:
+    linkerd.io/control-plane-component: policy
+  ports:
+  - name: grpc
+    port: 8090
+    targetPort: 8090
 {{- if .Values.enablePodAntiAffinity }}
 ---
 kind: PodDisruptionBudget
@@ -134,7 +153,7 @@ spec:
       {{- end }}
       {{- $_ := set $tree.Values.proxy "await" true }}
       {{- $_ := set $tree.Values.proxy "loadTrustBundleFromConfigMap" true }}
-      {{- $_ := set $tree.Values.proxy "podInboundPorts" "8086,9996" }}
+      {{- $_ := set $tree.Values.proxy "podInboundPorts" "8086,8090,9990,9996" }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       - args:
         - destination
@@ -175,7 +194,7 @@ spec:
         - sp-validator
         - -log-level={{.Values.controllerLogLevel}}
         - -log-format={{.Values.controllerLogFormat}}
-        image: {{.Values.controllerImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
+        image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:
           httpGet:
@@ -202,6 +221,39 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+      - args:
+        - --admin-addr=0.0.0.0:9990
+        - --grpc-addr=0.0.0.0:8090
+        - --cluster-networks={{.Values.clusterNetworks}}
+        - --identity-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
+        - --default-allow={{.Values.policyController.defaultAllowPolicy}}
+        env:
+        - name: RUST_LOG
+          value: {{.Values.policyController.logLevel | default "linkerd=info,warn" | quote}}
+        image: {{.Values.policyController.image.name}}:{{.Values.policyController.image.version | default .Values.linkerdVersion}}
+        imagePullPolicy: {{.Values.policyController.image.pullPolicy | default .Values.imagePullPolicy}}
+        livenessProbe:
+          httpGet:
+            path: /ready
+            port: admin-http
+          initialDelaySeconds: 10
+        name: policy
+        ports:
+        - containerPort: 8090
+          name: grpc
+        - containerPort: 9990
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: admin-http
+        {{- $res := .Values.policyController.resources | default .Values.destinationResources }}
+        {{- if $res }}
+        {{- include "partials.resources" $res | nindent 8 }}
+        {{- end }}
+        securityContext:
+          runAsUser: {{.Values.controllerUID}}
       {{ if not .Values.cniEnabled -}}
       initContainers:
       {{- if not (contains "443" ( .Values.proxyInit.ignoreOutboundPorts | toString ))}}

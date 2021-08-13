@@ -1,5 +1,33 @@
 # Changes
 
+## edge-21.8.2
+
+This edge release continues the policy work by adding a new controller, written
+in Rust, to expose a discovery API for inbound server policies. Apart from
+that, this release includes a number of changes from external contributors; the
+`linkerd-jaeger` helm chart now supports passing arguments to the Jaeger
+container through the chart's values file. A number of unused functions and
+variables have been also removed to improve the quality of the codebase.
+Finally, this release also comes with changes to the proxy's outbound behavior,
+a new extensions page on the dashboard, and support for querying service
+metrics using the `authority` label in `linkerd viz stat`.
+
+* Introduced new `linkerd-policy-controller`; the new controller is written in
+  Rust and implements discovery APIs for inbound server policies, the container
+  has been added to the `linkerd-destination` pod
+* Updated `linkerd-jaeger` helm chart to support passing arguments to the
+  Jaeger container (thanks @bsord!)
+* Added support for querying service metrics using the `authority` label in
+  `linkerd viz stat`
+* Improved code hygiene by removing unused constants and functions throughout
+  the codebase (thanks @xichengliudui!)
+* Added a new extensions page to the dashboard to list all known built-in and
+  third party extensions that can be used with Linkerd
+* Changed outbound behavior in the proxy to tear down server-side connections
+  when the remote proxy returns responses that indicate proxy errors; the
+  connection in this case will be reset to allow clients to connect to a new
+  endpoint
+
 ## edge-21.8.1
 
 This releases includes initial changes w.r.t addition of Authorization into

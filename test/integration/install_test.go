@@ -442,7 +442,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	if TestHelper.ExternalPrometheus() {
 
 		// Install external prometheus
-		out, err := TestHelper.LinkerdRun("inject", "testdata/external_prometheus.yaml")
+		out, err := TestHelper.LinkerdRun("inject", "testdata/external_prometheus.yaml", "--manual")
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "'linkerd inject' command failed: %s", err)
 		}
