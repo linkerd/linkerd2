@@ -155,7 +155,7 @@ metadata:
   labels:
     app.kubernetes.io/part-of: Linkerd
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 rules:
   - apiGroups:
       - ""
@@ -183,7 +183,7 @@ metadata:
   labels:
     app.kubernetes.io/part-of: Linkerd
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -191,7 +191,7 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: linkerd-destination
-    namespace: linkerd
+    namespace: linkerd-dev
 ---
 # Source: linkerd2/templates/heartbeat-rbac.yaml
 ---
@@ -1571,10 +1571,10 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-policy
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: policy
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
