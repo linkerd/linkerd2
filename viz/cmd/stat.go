@@ -154,11 +154,11 @@ If no resource name is specified, displays stats about all resources of the spec
   # of clients, and thus will not include unmeshed client request metrics.
   linkerd viz stat svc/web
 
-  # Get the web services, and metrics for any traffic coming to the service from the hello1 deployment
+  # Get the web services and metrics for any traffic coming to the service from the hello1 deployment
   # in the test namespace.
   linkerd viz stat svc/web --from deploy/hello1 --from-namespace test
 
-  # Get the web services, and metrics for all the traffic that reaches the web-pod1 pod
+  # Get the web services and metrics for all the traffic that reaches the web-pod1 pod
   # in the test namespace exclusively.
   linkerd viz stat svc/web --to pod/web-pod1 --to-namespace test
 
