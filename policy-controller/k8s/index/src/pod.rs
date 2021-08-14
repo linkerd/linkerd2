@@ -2,7 +2,7 @@ use crate::{
     lookup, node::KubeletIps, DefaultAllow, Errors, Index, Namespace, NodeIndex, PodServerTx,
     ServerRx, SrvIndex,
 };
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use linkerd_policy_controller_k8s_api::{self as k8s, policy, ResourceExt};
 use std::collections::{hash_map::Entry as HashEntry, HashMap, HashSet};
 use tokio::sync::watch;
@@ -41,9 +41,18 @@ struct PodPorts {
     by_name: HashMap<String, Vec<u16>>,
 }
 
+#[derive(Debug, Default)]
+struct PodAnnotations {
+    require_id: HashSet<u16>,
+    opaque: HashSet<u16>,
+}
+
 /// A single pod-port's state.
 #[derive(Debug)]
 struct Port {
+    is_opaque: bool,
+    requires_id: bool,
+
     /// Set with the name of the `Server` resource that currently selects this port, if one exists.
     ///
     /// When this is `None`, a default policy currently applies.
@@ -224,11 +233,13 @@ impl PodIndex {
                     }
                 };
 
+                let pod_annotations = PodAnnotations::from_annotations(&pod.metadata);
+
                 // Read the pod's ports and extract:
                 // - `ServerTx`s to be linkerd against the server index; and
                 // - lookup receivers to be returned to API clients.
                 let (ports, pod_lookups) =
-                    Self::extract_ports(spec, default_allow_rx.clone(), kubelet);
+                    Self::extract_ports(spec, &pod_annotations, default_allow_rx.clone(), kubelet);
 
                 // Start tracking the pod's metadata so it can be linked against servers as they are
                 // created. Immediately link the pod against the server index.
@@ -274,6 +285,7 @@ impl PodIndex {
     /// Extracts port information from a pod spec.
     fn extract_ports(
         spec: k8s::PodSpec,
+        annotations: &PodAnnotations,
         server_rx: ServerRx,
         kubelet: KubeletIps,
     ) -> (PodPorts, HashMap<u16, lookup::Rx>) {
@@ -291,6 +303,8 @@ impl PodIndex {
 
                     let (server_tx, rx) = watch::channel(server_rx.clone());
                     let pod_port = Port {
+                        is_opaque: annotations.opaque.contains(&port),
+                        requires_id: annotations.require_id.contains(&port),
                         server_name: None,
                         server_tx,
                     };
@@ -365,6 +379,46 @@ impl Pod {
             .send(rx.clone())
             .expect("pod config receiver must be set");
         debug!(server = %name, "Pod server updated");
+    }
+}
+
+// === impl PodAnnotations ===
+
+impl PodAnnotations {
+    fn from_annotations(meta: &k8s::ObjectMeta) -> Self {
+        let anns = match meta.annotations.as_ref() {
+            None => return Self::default(),
+            Some(anns) => anns,
+        };
+
+        let opaque = Self::ports_annotation(anns, "config.linkerd.io/opaque-ports");
+
+        let require_id = Self::ports_annotation(
+            anns,
+            "config.linkerd.io/proxy-require-identity-inbound-ports",
+        );
+
+        Self { opaque, require_id }
+    }
+
+    fn ports_annotation(
+        anns: &std::collections::BTreeMap<String, String>,
+        annotation: &str,
+    ) -> HashSet<u16> {
+        anns.get(annotation)
+            .map(|spec| {
+                Self::parse_ports(spec).unwrap_or_else(|error| {
+                    tracing::info!(%spec, %error, %annotation, "Invalid ports list");
+                    Default::default()
+                })
+            })
+            .unwrap_or_default()
+    }
+
+    fn parse_ports(s: &str) -> Result<HashSet<u16>> {
+        s.split(',')
+            .map(|p| p.trim().parse().context("parsing port"))
+            .collect()
     }
 }
 
