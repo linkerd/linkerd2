@@ -12,9 +12,6 @@ import (
 )
 
 const enabled = "true"
-const proxyContainerName = "linkerd-proxy"
-const initContainerName = "linkerd-init"
-const debugContainerName = "linkerd-debug"
 
 // InjectValidator is used as a helper to generate
 // correct injector flags and annotations and verify
@@ -91,18 +88,18 @@ func (iv *InjectValidator) validatePort(container *v1.Container, portName string
 
 func (iv *InjectValidator) validateDebugContainer(pod *v1.PodSpec) error {
 	if iv.EnableDebug {
-		proxyContainer := iv.getContainer(pod, debugContainerName, false)
+		proxyContainer := iv.getContainer(pod, k8s.DebugContainerName, false)
 		if proxyContainer == nil {
-			return fmt.Errorf("container %s missing", debugContainerName)
+			return fmt.Errorf("container %s missing", k8s.DebugContainerName)
 		}
 	}
 	return nil
 }
 
 func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
-	proxyContainer := iv.getContainer(pod, proxyContainerName, false)
+	proxyContainer := iv.getContainer(pod, k8s.ProxyContainerName, false)
 	if proxyContainer == nil {
-		return fmt.Errorf("container %s missing", proxyContainerName)
+		return fmt.Errorf("container %s missing", k8s.ProxyContainerName)
 	}
 
 	if iv.AdminPort != 0 {
@@ -116,7 +113,7 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 			return fmt.Errorf("readinessProbe: expected: %d, actual %d", iv.AdminPort, proxyContainer.LivenessProbe.HTTPGet.Port.IntVal)
 		}
 
-		if err := iv.validatePort(proxyContainer, "linkerd-admin", iv.AdminPort); err != nil {
+		if err := iv.validatePort(proxyContainer, k8s.ProxyAdminPortName, iv.AdminPort); err != nil {
 			return err
 		}
 	}
@@ -149,7 +146,7 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 		if proxyContainer.ReadinessProbe.HTTPGet.Port.IntVal != int32(iv.AdminPort) {
 			return fmt.Errorf("readinessProbe: expected: %d, actual %d", iv.AdminPort, proxyContainer.LivenessProbe.HTTPGet.Port.IntVal)
 		}
-		if err := iv.validatePort(proxyContainer, "linkerd-proxy", iv.InboundPort); err != nil {
+		if err := iv.validatePort(proxyContainer, k8s.ProxyPortName, iv.InboundPort); err != nil {
 			return err
 		}
 	}
@@ -285,9 +282,9 @@ func (iv *InjectValidator) validateInitContainer(pod *v1.PodSpec) error {
 	if iv.NoInitContainer {
 		return nil
 	}
-	initContainer := iv.getContainer(pod, initContainerName, true)
+	initContainer := iv.getContainer(pod, k8s.InitContainerName, true)
 	if initContainer == nil {
-		return fmt.Errorf("container %s missing", initContainerName)
+		return fmt.Errorf("container %s missing", k8s.InitContainerName)
 	}
 
 	if iv.InitImage != "" || iv.InitImageVersion != "" {
