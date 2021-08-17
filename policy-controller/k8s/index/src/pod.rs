@@ -1,6 +1,6 @@
 use crate::{
-    lookup, node::KubeletIps, DefaultAllow, Errors, Index, Namespace, NodeIndex, PodServerTx,
-    ServerRx, SrvIndex,
+    lookup, node::KubeletIps, DefaultAllow, DefaultAllowCache, Errors, Index, Namespace, NodeIndex,
+    PodServerTx, ServerRx, SrvIndex,
 };
 use anyhow::{anyhow, Context, Result};
 use linkerd_policy_controller_k8s_api::{self as k8s, policy, ResourceExt};
@@ -83,17 +83,13 @@ impl Index {
             .namespaces
             .get_or_default(pod.namespace().expect("namespace must be set"));
 
-        let default_allow = *default_allow;
-        let allows = self.default_allows.clone();
-        let mk_default_allow =
-            move |da: Option<DefaultAllow>| allows.get(da.unwrap_or(default_allow));
-
         pods.apply(
             pod,
             &mut self.nodes,
             servers,
             &mut self.lookups,
-            mk_default_allow,
+            *default_allow,
+            &mut self.default_allows,
         )
     }
 
@@ -203,7 +199,8 @@ impl PodIndex {
         nodes: &mut NodeIndex,
         servers: &SrvIndex,
         lookups: &mut lookup::Writer,
-        get_default_allow_rx: impl Fn(Option<DefaultAllow>) -> ServerRx,
+        default_allow: DefaultAllow,
+        default_allows: &mut DefaultAllowCache,
     ) -> Result<()> {
         let ns_name = pod.namespace().expect("pod must have a namespace");
         let pod_name = pod.name();

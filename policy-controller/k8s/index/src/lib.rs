@@ -42,7 +42,7 @@ mod tests;
 
 pub use self::{default_allow::DefaultAllow, lookup::Reader};
 use self::{
-    default_allow::DefaultAllowRxs,
+    default_allow::DefaultAllowCache,
     namespace::{Namespace, NamespaceIndex},
     node::NodeIndex,
     server::SrvIndex,
@@ -50,7 +50,6 @@ use self::{
 use anyhow::Context;
 use linkerd_policy_controller_core::{InboundServer, IpNet};
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
-use std::{future::Future, pin::Pin};
 use tokio::{sync::watch, time};
 use tracing::{debug, warn};
 
@@ -87,14 +86,10 @@ pub struct Index {
     /// Holds watches for the cluster's default-allow policies. These watches are never updated but
     /// this state is held so we can used shared references when updating a pod-port's server watch
     /// with a default policy.
-    default_allows: DefaultAllowRxs,
+    default_allows: DefaultAllowCache,
 
     /// A handle that supports updates to the lookup index.
     lookups: lookup::Writer,
-
-    /// Holds the `DefaultAllowRxs` senders so that the receivers never signal an ending. This doesn't
-    /// actually need to be polled.
-    _default_allows_txs: Pin<Box<dyn Future<Output = ()> + Send + 'static>>,
 }
 
 #[derive(Debug)]
@@ -110,8 +105,7 @@ impl Index {
         detect_timeout: time::Duration,
     ) -> (lookup::Reader, Self) {
         // Create a common set of receivers for all supported default policies.
-        let (default_allows, _default_allows_txs) =
-            DefaultAllowRxs::new(cluster_networks.clone(), detect_timeout);
+        let default_allows = DefaultAllowCache::new(cluster_networks.clone(), detect_timeout);
 
         // Provide the cluster-wide default-allow policy to the namespace index so that it may be
         // used when a workload-level annotation is not set.
@@ -125,7 +119,6 @@ impl Index {
             cluster_networks,
             default_allows,
             nodes: NodeIndex::default(),
-            _default_allows_txs: Box::pin(_default_allows_txs),
         };
         (reader, idx)
     }
