@@ -527,7 +527,8 @@ func (h *TestHelper) HelmInstallMulticluster(chart string, arg ...string) (strin
 		h.helm.multiclusterReleaseName,
 		chart,
 		"--kube-context", h.k8sContext,
-		"--set", "namespace=" + h.GetMulticlusterNamespace(),
+		"--namespace", h.GetMulticlusterNamespace(),
+		"--create-namespace",
 		"--set", "linkerdNamespace=" + h.GetLinkerdNamespace(),
 	}, arg...)
 	return combinedOutput("", h.helm.path, withParams...)

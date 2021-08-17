@@ -39,6 +39,7 @@ if [[ "${releases[*]}" =~ 'helm-test' ]]; then
   kubectl delete ns linkerd
 fi
 if [[ "${releases[*]}" =~ 'multicluster-test' ]]; then
-  "$bindir/helm" --kube-context="$k8s_context" delete multicluster-test
+  "$bindir/helm" --kube-context="$k8s_context" --namespace linkerd-multicluster delete multicluster-test
+  kubectl delete ns linkerd-multicluster
 fi
 
