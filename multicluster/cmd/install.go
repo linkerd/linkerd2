@@ -31,7 +31,6 @@ import (
 type (
 	multiclusterInstallOptions struct {
 		gateway                 multicluster.Gateway
-		namespace               string
 		remoteMirrorCredentials bool
 	}
 )
@@ -130,8 +129,16 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				return err
 			}
 
+			fullValues := map[string]interface{}{
+				"Values": vals,
+				"Release": map[string]interface{}{
+					"Namespace": defaultMulticlusterNamespace,
+					"Service":   "CLI",
+				},
+			}
+
 			// Attach the final values into the `Values` field for rendering to work
-			renderedTemplates, err := engine.Render(chart, map[string]interface{}{"Values": vals})
+			renderedTemplates, err := engine.Render(chart, fullValues)
 			if err != nil {
 				return err
 			}
@@ -152,7 +159,6 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	}
 
 	flags.AddValueOptionsFlags(cmd.Flags(), &valuesOptions)
-	cmd.Flags().StringVar(&options.namespace, "namespace", options.namespace, "The namespace in which the multicluster add-on is to be installed. Must not be the control plane namespace. ")
 	cmd.Flags().BoolVar(&options.gateway.Enabled, "gateway", options.gateway.Enabled, "If the gateway component should be installed")
 	cmd.Flags().Uint32Var(&options.gateway.Port, "gateway-port", options.gateway.Port, "The port on the gateway used for all incoming traffic")
 	cmd.Flags().Uint32Var(&options.gateway.Probe.Seconds, "gateway-probe-seconds", options.gateway.Probe.Seconds, "The interval at which the gateway will be checked for being alive in seconds")
@@ -183,7 +189,6 @@ func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, er
 
 	return &multiclusterInstallOptions{
 		gateway:                 *defaults.Gateway,
-		namespace:               defaults.Namespace,
 		remoteMirrorCredentials: true,
 	}, nil
 }
@@ -198,20 +203,11 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 		return nil, err
 	}
 
-	if opts.namespace == "" {
-		return nil, errors.New("you need to specify a namespace")
-	}
-
-	if opts.namespace == controlPlaneNamespace {
-		return nil, errors.New("you need to setup the multicluster addons in a namespace different than the Linkerd one")
-	}
-
 	defaults, err := multicluster.NewInstallValues()
 	if err != nil {
 		return nil, err
 	}
 
-	defaults.Namespace = opts.namespace
 	defaults.Gateway.Enabled = opts.gateway.Enabled
 	defaults.Gateway.Port = opts.gateway.Port
 	defaults.Gateway.Probe.Seconds = opts.gateway.Probe.Seconds

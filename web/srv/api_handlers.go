@@ -434,23 +434,54 @@ func (h *handler) handleAPIResourceDefinition(w http.ResponseWriter, req *http.R
 	w.Write(resourceDefinition)
 }
 
-func (h *handler) handleGetExtension(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+func (h *handler) handleGetExtensions(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	ctx := req.Context()
 	extensionName := req.FormValue("extension_name")
 
+	type Extension struct {
+		Name      string `json:"name"`
+		UID       string `json:"uid"`
+		Namespace string `json:"namespace"`
+	}
+
 	resp := map[string]interface{}{}
-	ns, err := h.k8sAPI.GetNamespaceWithExtensionLabel(ctx, extensionName)
-	if err != nil && strings.HasPrefix(err.Error(), "could not find") {
+	if extensionName != "" {
+		ns, err := h.k8sAPI.GetNamespaceWithExtensionLabel(ctx, extensionName)
+		if err != nil && strings.HasPrefix(err.Error(), "could not find") {
+			renderJSON(w, resp)
+			return
+		} else if err != nil {
+			renderJSONError(w, err, http.StatusInternalServerError)
+			return
+		}
+
+		resp["data"] = Extension{
+			UID:       string(ns.UID),
+			Name:      ns.GetLabels()[k8s.LinkerdExtensionLabel],
+			Namespace: ns.Name,
+		}
+
 		renderJSON(w, resp)
 		return
-	} else if err != nil {
+	}
+
+	installedExtensions, err := h.k8sAPI.GetAllNamespacesWithExtensionLabel(ctx)
+	if err != nil {
 		renderJSONError(w, err, http.StatusInternalServerError)
 		return
 	}
 
-	resp["extensionName"] = ns.GetLabels()[k8s.LinkerdExtensionLabel]
-	resp["namespace"] = ns.Name
+	extensionList := make([]Extension, len(installedExtensions))
 
+	for i, installedExtension := range installedExtensions {
+		extensionList[i] = Extension{
+			UID:       string(installedExtension.GetObjectMeta().GetUID()),
+			Name:      installedExtension.GetLabels()[k8s.LinkerdExtensionLabel],
+			Namespace: installedExtension.GetName(),
+		}
+	}
+
+	resp["extensions"] = extensionList
 	renderJSON(w, resp)
 }
 

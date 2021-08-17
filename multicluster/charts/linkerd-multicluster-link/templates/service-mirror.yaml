@@ -28,13 +28,13 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-service-mirror-{{.Values.targetClusterName}}
-  namespace: {{.Values.namespace}}
+  namespace: {{.Release.Namespace}}
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-service-mirror-read-remote-creds-{{.Values.targetClusterName}}
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
       linkerd.io/control-plane-component: service-mirror
       mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
@@ -51,7 +51,7 @@ kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-service-mirror-read-remote-creds-{{.Values.targetClusterName}}
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
       linkerd.io/control-plane-component: service-mirror
       mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
@@ -62,13 +62,13 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: linkerd-service-mirror-{{.Values.targetClusterName}}
-    namespace: {{.Values.namespace}}
+    namespace: {{.Release.Namespace}}
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-service-mirror-{{.Values.targetClusterName}}
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: service-mirror
     mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
@@ -80,7 +80,7 @@ metadata:
     linkerd.io/control-plane-component: service-mirror
     mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
   name: linkerd-service-mirror-{{.Values.targetClusterName}}
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
 spec:
   replicas: 1
   selector:
@@ -100,7 +100,10 @@ spec:
         - service-mirror
         - -log-level={{.Values.logLevel}}
         - -event-requeue-limit={{.Values.serviceMirrorRetryLimit}}
-        - -namespace={{.Values.namespace}}
+        - -namespace={{.Release.Namespace}}
+        {{- if .Values.enableHeadlessServices }}
+        - -enable-headless-services
+        {{- end }}
         - {{.Values.targetClusterName}}
         image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion}}
         name: service-mirror

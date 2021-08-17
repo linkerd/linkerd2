@@ -585,7 +585,6 @@ func TestInstallMulticluster(t *testing.T) {
 	} else if TestHelper.Multicluster() {
 		exec := append([]string{"multicluster"}, []string{
 			"install",
-			"--namespace", TestHelper.GetMulticlusterNamespace(),
 		}...)
 		out, err := TestHelper.LinkerdRun(exec...)
 		if err != nil {

@@ -126,11 +126,6 @@ func (c *Chart) RenderCNI() (bytes.Buffer, error) {
 	return c.render(cniPartials)
 }
 
-// RenderNoPartials returns a bytes buffer with the result of rendering a Helm chart with no partials
-func (c *Chart) RenderNoPartials() (bytes.Buffer, error) {
-	return c.render([]*loader.BufferedFile{})
-}
-
 // ReadFile updates the buffered file with the data read from disk
 func ReadFile(fs http.FileSystem, dir string, f *loader.BufferedFile) error {
 	filename := dir + f.Name

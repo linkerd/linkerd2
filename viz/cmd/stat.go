@@ -150,6 +150,18 @@ If no resource name is specified, displays stats about all resources of the spec
   # Get all pods in all namespaces that call the hello1 service in the test namespace.
   linkerd viz stat pods --to svc/hello1 --to-namespace test --all-namespaces
 
+  # Get the web service. With Services, metrics are generated from the outbound metrics
+  # of clients, and thus will not include unmeshed client request metrics.
+  linkerd viz stat svc/web
+
+  # Get the web services and metrics for any traffic coming to the service from the hello1 deployment
+  # in the test namespace.
+  linkerd viz stat svc/web --from deploy/hello1 --from-namespace test
+
+  # Get the web services and metrics for all the traffic that reaches the web-pod1 pod
+  # in the test namespace exclusively.
+  linkerd viz stat svc/web --to pod/web-pod1 --to-namespace test
+
   # Get all services in all namespaces that receive calls from hello1 deployment in the test namespace.
   linkerd viz stat services --from deploy/hello1 --from-namespace test --all-namespaces
 

@@ -3,12 +3,12 @@
 controllerImage: cr.l5d.io/linkerd/controller
 # -- Tag for the Service Mirror container Docker image
 controllerImageVersion: linkerdVersionValue
+# -- Toggle support for mirroring headless services
+enableHeadlessServices: false
 gateway:
   probe:
     # -- The port used for liveliness probing
     port: 4191
-# -- Service Mirror component namespace
-namespace: linkerd-multicluster
 # -- Log level for the Multicluster components
 logLevel: info
 # -- Number of times update from the remote cluster is allowed to be requeued
