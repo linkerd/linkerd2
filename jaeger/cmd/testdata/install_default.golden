@@ -5,9 +5,6 @@ metadata:
   name: linkerd-jaeger
   labels:
     linkerd.io/extension: jaeger
-  annotations:
-    linkerd.io/inject: enabled
-    config.linkerd.io/proxy-await: "enabled"
 ---
 ###
 ### Jaeger Injector
@@ -33,6 +30,8 @@ spec:
     metadata:
       annotations:
         checksum/config: 1388bf30cdbc3236d7a52e0a115ee8ae1095140cb5b89c7b97fd30fdffad07f9
+        linkerd.io/inject: enabled
+        config.linkerd.io/proxy-await: "enabled"
       labels:
         linkerd.io/extension: jaeger
         component: jaeger-injector
@@ -271,6 +270,8 @@ spec:
   template:
     metadata:
       annotations:
+        linkerd.io/inject: enabled
+        config.linkerd.io/proxy-await: "enabled"
         prometheus.io/path: /metrics
         prometheus.io/port: "8888"
         prometheus.io/scrape: "true"
@@ -360,6 +361,7 @@ spec:
   template:
     metadata:
       annotations:
+        linkerd.io/inject: enabled
         config.linkerd.io/proxy-await: "enabled"
         prometheus.io/path: /metrics
         prometheus.io/port: "14269"

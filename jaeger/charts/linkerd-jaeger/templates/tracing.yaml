@@ -7,7 +7,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: collector-config
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     component: collector
 data:
@@ -18,7 +18,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: collector
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     component: collector
 spec:
@@ -55,7 +55,7 @@ metadata:
     app.kubernetes.io/part-of: Linkerd
     component: collector
   name: collector
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
 spec:
   replicas: 1
   selector:
@@ -66,6 +66,8 @@ spec:
   template:
     metadata:
       annotations:
+        linkerd.io/inject: enabled
+        config.linkerd.io/proxy-await: "enabled"
         prometheus.io/path: /metrics
         prometheus.io/port: "8888"
         prometheus.io/scrape: "true"
@@ -130,7 +132,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: jaeger
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     component: jaeger
 spec:
@@ -153,7 +155,7 @@ metadata:
     app.kubernetes.io/part-of: Linkerd
     component: jaeger
   name: jaeger
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
 spec:
   replicas: 1
   selector:
@@ -162,6 +164,7 @@ spec:
   template:
     metadata:
       annotations:
+        linkerd.io/inject: enabled
         config.linkerd.io/proxy-await: "enabled"
         prometheus.io/path: /metrics
         prometheus.io/port: "14269"

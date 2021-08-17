@@ -1,9 +1,3 @@
-# -- Set to false when installing in a custom namespace.
-installNamespace: true
-# Default values for tracing.
-
-namespace: linkerd-jaeger
-
 # -- Namespace of the Linkerd core control-plane install
 linkerdNamespace: linkerd
 
