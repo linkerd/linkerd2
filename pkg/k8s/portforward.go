@@ -124,7 +124,17 @@ func newPortForward(
 	emitLogs bool,
 ) (*PortForward, error) {
 
-	req := k8sAPI.CoreV1().RESTClient().Post().
+	restClient := k8sAPI.CoreV1().RESTClient()
+	// This early return is for testing purposes. If the k8sAPI is a fake
+	// client, attempting to create a request will result in a nil-pointer
+	// panic. Instead, we return with no port-forward and no error.
+	if fakeRest, ok := restClient.(*rest.RESTClient); ok {
+		if fakeRest == nil {
+			return nil, nil
+		}
+	}
+
+	req := restClient.Post().
 		Resource("pods").
 		Namespace(namespace).
 		Name(podName).

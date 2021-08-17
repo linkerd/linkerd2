@@ -27,6 +27,7 @@ Kubernetes: `>=1.16.0-0`
 |-----|------|---------|-------------|
 | controllerImage | string | `"cr.l5d.io/linkerd/controller"` | Docker image for the Service mirror component (uses the Linkerd controller image) |
 | controllerImageVersion | string | `"linkerdVersionValue"` | Tag for the Service Mirror container Docker image |
+| enableHeadlessServices | bool | `false` | Toggle support for mirroring headless services |
 | gateway.probe.port | int | `4191` | The port used for liveliness probing |
 | logLevel | string | `"info"` | Log level for the Multicluster components |
 | serviceMirrorRetryLimit | int | `3` | Number of times update from the remote cluster is allowed to be requeued (retried) |

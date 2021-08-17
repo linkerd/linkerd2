@@ -259,8 +259,8 @@ const (
 	// ConfigConfigMapName is the name of the ConfigMap containing the linkerd controller configuration.
 	ConfigConfigMapName = "linkerd-config"
 
-	// AddOnsConfigMapName is the name of the ConfigMap containing the linkerd add-ons configuration.
-	AddOnsConfigMapName = "linkerd-config-addons"
+	// DebugContainerName is the name of the default linkerd debug container
+	DebugContainerName = "linkerd-debug"
 
 	// DebugSidecarImage is the image name of the default linkerd debug container
 	DebugSidecarImage = "cr.l5d.io/linkerd/debug"
@@ -293,9 +293,6 @@ const (
 
 	// IdentityIssuerTrustAnchorsNameExternal is the issuer's certificate file (when using cert-manager).
 	IdentityIssuerTrustAnchorsNameExternal = "ca.crt"
-
-	// IdentityIssuerTrustAnchorsName is the trust anchors name.
-	IdentityIssuerTrustAnchorsName = "ca-bundle.crt"
 
 	// ProxyPortName is the name of the Linkerd Proxy's proxy port.
 	ProxyPortName = "linkerd-proxy"
