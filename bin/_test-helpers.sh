@@ -457,7 +457,8 @@ run_upgrade-stable_test() {
 
 setup_helm() {
   export helm_path="$bindir"/helm
-  export helm_charts="$( cd "$bindir"/.. && pwd )"/charts
+  helm_charts="$( cd "$bindir"/.. && pwd )"/charts
+  export helm_charts
   export helm_release_name='helm-test'
   export helm_multicluster_release_name="multicluster-test"
   "$bindir"/helm-build

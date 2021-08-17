@@ -131,7 +131,7 @@ Kubernetes: `>=1.16.0-0`
 | enableEndpointSlices | bool | `false` | enables the use of EndpointSlice informers for the destination service; enableEndpointSlices should be set to true only if EndpointSlice K8s feature gate is on; the feature is still experimental. |
 | enablePSP | bool | `false` | Add a PSP resource and bind it to the control plane ServiceAccounts. Note PSP has been deprecated since k8s v1.21 |
 | imagePullSecrets | list | `[]` |  |
-| linkerdVersion | string | `"dev-c9cf3892-alpeb"` | control plane version. See Proxy section for proxy version |
+| linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
 | omitWebhookSideEffects | bool | `false` | Omit the `sideEffects` flag in the webhook manifests |
 | profileValidator.caBundle | string | `""` | Bundle of CA certificates for service profile validator. If not provided then Helm will use the certificate generated  for `profileValidator.crtPEM`. If `profileValidator.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
 | profileValidator.crtPEM | string | `""` | Certificate for the service profile validator. If not provided then Helm will generate one. |
