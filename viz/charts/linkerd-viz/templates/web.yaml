@@ -6,13 +6,14 @@ kind: Service
 apiVersion: v1
 metadata:
   name: web
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/extension: viz
     component: web
-    namespace: {{.Values.namespace}}
+    namespace: {{.Release.Namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    linkerd.io/inject: enabled
 spec:
   type: ClusterIP
   selector:
@@ -31,22 +32,24 @@ kind: Deployment
 metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: web
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
     component: web
-    namespace: {{.Values.namespace}}
+    namespace: {{.Release.Namespace}}
   name: web
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
 spec:
   replicas: {{.Values.dashboard.replicas}}
   selector:
     matchLabels:
       linkerd.io/extension: viz
       component: web
-      namespace: {{.Values.namespace}}
+      namespace: {{.Release.Namespace}}
   template:
     metadata:
       annotations:
@@ -55,10 +58,11 @@ spec:
         {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        linkerd.io/inject: enabled
       labels:
         linkerd.io/extension: viz
         component: web
-        namespace: {{.Values.namespace}}
+        namespace: {{.Release.Namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.tolerations -}}
@@ -67,24 +71,24 @@ spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
       containers:
       - args:
-        - -linkerd-metrics-api-addr=metrics-api.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:8085
+        - -linkerd-metrics-api-addr=metrics-api.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}:8085
         - -cluster-domain={{.Values.clusterDomain}}
         {{- if .Values.grafanaUrl }}
         - -grafana-addr={{.Values.grafanaUrl}}
         {{- else if .Values.grafana.enabled }}
-        - -grafana-addr=grafana.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:3000
+        - -grafana-addr=grafana.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}:3000
         {{- end}}
         {{- if .Values.jaegerUrl }}
         - -jaeger-addr={{.Values.jaegerUrl}}
         {{- end}}
         - -controller-namespace={{.Values.linkerdNamespace}}
-        - -viz-namespace={{.Values.namespace}}
+        - -viz-namespace={{.Release.Namespace}}
         - -log-level={{.Values.dashboard.logLevel | default .Values.defaultLogLevel}}
         {{- if .Values.dashboard.enforcedHostRegexp }}
         - -enforced-host={{.Values.dashboard.enforcedHostRegexp}}
         {{- else -}}
-        {{- $hostFull := replace "." "\\." (printf "web.%s.svc.%s" .Values.namespace .Values.clusterDomain) }}
-        {{- $hostAbbrev := replace "." "\\." (printf "web.%s.svc" .Values.namespace) }}
+        {{- $hostFull := replace "." "\\." (printf "web.%s.svc.%s" .Release.Namespace .Values.clusterDomain) }}
+        {{- $hostAbbrev := replace "." "\\." (printf "web.%s.svc" .Release.Namespace) }}
         - -enforced-host=^(localhost|127\.0\.0\.1|{{ $hostFull }}|{{ $hostAbbrev }}|\[::1\])(:\d+)?$
         {{- end}}
         image: {{.Values.dashboard.image.registry | default .Values.defaultRegistry}}/{{.Values.dashboard.image.name}}:{{.Values.dashboard.image.tag | default .Values.linkerdVersion}}

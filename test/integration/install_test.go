@@ -442,7 +442,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	if TestHelper.ExternalPrometheus() {
 
 		// Install external prometheus
-		out, err := TestHelper.LinkerdRun("inject", "testdata/external_prometheus.yaml")
+		out, err := TestHelper.LinkerdRun("inject", "testdata/external_prometheus.yaml", "--manual")
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "'linkerd inject' command failed: %s", err)
 		}
@@ -507,6 +507,8 @@ func helmOverridesEdge(root *tls.CA) ([]string, []string) {
 		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
 	}
 	vizArgs := []string{
+		"--namespace", TestHelper.GetVizNamespace(),
+		"--create-namespace",
 		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
 	}
 	return coreArgs, vizArgs

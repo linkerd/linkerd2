@@ -22,7 +22,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: tap-injector
-  namespace: {{.Values.namespace}}
+  namespace: {{.Release.Namespace}}
 roleRef:
   kind: ClusterRole
   name: linkerd-tap-injector
@@ -32,17 +32,17 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: tap-injector
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 ---
-{{- $host := printf "tap-injector.%s.svc" .Values.namespace }}
+{{- $host := printf "tap-injector.%s.svc" .Release.Namespace }}
 {{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
 {{- if (not .Values.tapInjector.externalSecret) }}
 kind: Secret
 apiVersion: v1
 metadata:
   name: tap-injector-k8s-tls
-  namespace: {{ .Values.namespace }}
+  {{ include "partials.namespace" . }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
   labels:
@@ -72,7 +72,7 @@ webhooks:
   clientConfig:
     service:
       name: tap-injector
-      namespace: {{ .Values.namespace }}
+      namespace: {{ .Release.Namespace }}
       path: "/"
 {{- if and (.Values.tapInjector.externalSecret) (empty .Values.tapInjector.caBundle) }}
   {{- fail "If tapInjector.externalSecret is true then you need to provide tapInjector.caBundle" }}

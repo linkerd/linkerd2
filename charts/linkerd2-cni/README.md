@@ -32,9 +32,7 @@ Kubernetes: `>=1.16.0-0`
 | ignoreOutboundPorts | string | `""` | Default set of outbound ports to skip via iptables |
 | imagePullSecrets | string | `nil` |  |
 | inboundProxyPort | int | `4143` | Inbound port for the proxy container |
-| installNamespace | bool | `true` | Whether to create the CNI plugin plane namespace or not |
 | logLevel | string | `"info"` | Log level for the CNI plugin |
-| namespace | string | `"linkerd-cni"` | CNI plugin plane namespace |
 | outboundProxyPort | int | `4140` | Outbound port for the proxy container |
 | portsToRedirect | string | `""` | Ports to redirect to proxy |
 | priorityClassName | string | `""` | Kubernetes priorityClassName for the CNI plugin's Pods |

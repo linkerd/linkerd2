@@ -40,6 +40,42 @@ identityTrustDomain: ""
 podAnnotations: {}
 # -- Additional labels to add to all pods
 podLabels: {}
+
+# policy controller configuration
+policyController:
+  # image -- Docker image for the policy controller
+  image:
+    # -- Docker image for the proxy
+    name: cr.l5d.io/linkerd/policy-controller
+    # -- Pull policy for the proxy container Docker image
+    # @default -- imagePullPolicy
+    pullPolicy: ""
+    # -- Tag for the proxy container Docker image
+    # @default -- linkerdVersion
+    version: ""
+
+  # -- The default allow policy to use when no `Server` selects a pod.  One of: "all-authenticated",
+  # "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny"
+  # @default -- "all-unauthenticated"
+  defaultAllowPolicy: "all-unauthenticated"
+
+  # -- Log level for the policy controller
+  logLevel: linkerd=info,warn
+
+  # -- policy controller resource requests & limits
+  # @default -- destinationResources
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the policy controller can use
+      limit: ""
+      # -- Amount of CPU units that the policy controller requests
+      request: ""
+    memory:
+      # -- Maximum amount of memory that the policy controller can use
+      limit: ""
+      # -- Maximum amount of memory that the policy controller requests
+      request: ""
+
 # proxy configuration
 proxy:
   # -- Enable service profiles for non-Kubernetes services

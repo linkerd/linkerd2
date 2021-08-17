@@ -21,6 +21,7 @@ import (
 )
 
 var (
+	// this doesn't include the namespace-metadata.* templates, which are Helm-only
 	templatesViz = []string{
 		"templates/namespace.yaml",
 		"templates/metrics-api-rbac.yaml",
@@ -156,8 +157,16 @@ func render(w io.Writer, valuesOverrides map[string]interface{}) error {
 		return err
 	}
 
+	fullValues := map[string]interface{}{
+		"Values": vals,
+		"Release": map[string]interface{}{
+			"Namespace": defaultNamespace,
+			"Service":   "CLI",
+		},
+	}
+
 	// Attach the final values into the `Values` field for rendering to work
-	renderedTemplates, err := engine.Render(chart, map[string]interface{}{"Values": vals})
+	renderedTemplates, err := engine.Render(chart, fullValues)
 	if err != nil {
 		return err
 	}
