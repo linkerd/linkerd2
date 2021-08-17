@@ -82,6 +82,8 @@ func (c *Chart) render(partialsFiles []*loader.BufferedFile) (bytes.Buffer, erro
 	if err != nil {
 		return bytes.Buffer{}, err
 	}
+	release, _ := valuesToRender["Release"].(map[string]interface{})
+	release["Service"] = "CLI"
 
 	renderedTemplates, err := engine.Render(chart, valuesToRender)
 	if err != nil {
