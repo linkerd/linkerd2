@@ -185,6 +185,22 @@ func (kubeAPI *KubernetesAPI) GetAllNamespacesWithExtensionLabel(ctx context.Con
 	return namespaces.Items, nil
 }
 
+// CheckIfExtensionExists checks if an extension is installed in the cluster
+func (kubeAPI *KubernetesAPI) CheckIfExtensionExists(ctx context.Context, extensionName string) bool {
+	namespaces, err := kubeAPI.GetAllNamespacesWithExtensionLabel(ctx)
+	if err != nil {
+		return false
+	}
+
+	for _, namespace := range namespaces {
+		if namespace.Labels[LinkerdExtensionLabel] == extensionName {
+			return true
+		}
+	}
+
+	return false
+}
+
 // GetNamespaceWithExtensionLabel gets the namespace with the LinkerdExtensionLabel label value of `value`
 func (kubeAPI *KubernetesAPI) GetNamespaceWithExtensionLabel(ctx context.Context, value string) (*corev1.Namespace, error) {
 	namespaces, err := kubeAPI.GetAllNamespacesWithExtensionLabel(ctx)
