@@ -193,7 +193,9 @@ func (rcsw *RemoteClusterServiceWatcher) originalResourceName(mirroredName strin
 }
 
 // Provides labels for mirrored service.
-// "remoteService" is an optional parameter. If provided, copies all labels from the remote service to mirrored service (except labels with the "SvcMirrorPrefix").
+// "remoteService" is an optional parameter. If provided, copies all labels
+// from the remote service to mirrored service (except labels with the
+// "SvcMirrorPrefix").
 func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceLabels(remoteService *corev1.Service) map[string]string {
 	labels := map[string]string{
 		consts.MirroredResourceLabel:  "true",
