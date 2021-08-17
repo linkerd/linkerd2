@@ -34,8 +34,8 @@ const (
 	configStage       = "config"
 	controlPlaneStage = "control-plane"
 
-	helmDefaultChartName = "linkerd2"
-	helmDefaultChartDir  = "linkerd2"
+	helmDefaultChartNameBase = "linkerd-base"
+	helmDefaultChartNameCP   = "linkerd-control-plane"
 
 	errMsgCannotInitializeClient = `Unable to install the Linkerd control plane. Cannot connect to the Kubernetes cluster:
 
@@ -311,23 +311,31 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 
 	values.Stage = stage
 
-	files := []*loader.BufferedFile{
+	baseFiles := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
 
 	if stage == "" || stage == configStage {
 		for _, template := range templatesConfigStage {
-			files = append(files,
+			baseFiles = append(baseFiles,
 				&loader.BufferedFile{Name: template},
 			)
 		}
+		if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirBase+"/", baseFiles); err != nil {
+			return err
+		}
+
 	}
 
+	var cpFiles []*loader.BufferedFile
 	if stage == "" || stage == controlPlaneStage {
 		for _, template := range templatesControlPlaneStage {
-			files = append(files,
+			cpFiles = append(cpFiles,
 				&loader.BufferedFile{Name: template},
 			)
+		}
+		if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirCP+"/", cpFiles); err != nil {
+			return err
 		}
 	}
 
@@ -338,18 +346,15 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 		)
 	}
 
-	// Load all chart files into buffer
-	if err := charts.FilesReader(static.Templates, helmDefaultChartDir+"/", files); err != nil {
-		return err
-	}
-
 	// Load all partial chart files into buffer
 	if err := charts.FilesReader(static.Templates, "", partialFiles); err != nil {
 		return err
 	}
 
 	// Create a Chart obj from the files
-	chart, err := loader.LoadFiles(append(files, partialFiles...))
+	files := append(baseFiles, cpFiles...)
+	files = append(files, partialFiles...)
+	chart, err := loader.LoadFiles(files)
 	if err != nil {
 		return err
 	}

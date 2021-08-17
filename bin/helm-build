@@ -3,7 +3,8 @@
 set -e
 
 setValues() {
-    sed -i "s/$1/$2/" charts/linkerd2/values.yaml
+    sed -i "s/$1/$2/" charts/linkerd-base/values.yaml
+    sed -i "s/$1/$2/" charts/linkerd-control-plane/values.yaml
     sed -i "s/$1/$2/" charts/linkerd2-cni/values.yaml
     sed -i "s/$1/$2/" multicluster/charts/linkerd-multicluster/values.yaml
     sed -i "s/$1/$2/" jaeger/charts/linkerd-jaeger/values.yaml
@@ -22,7 +23,8 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
 
 # cleanup dependencies
-rm -f charts/linkerd2/charts/*
+rm -f charts/linkerd-base/charts/*
+rm -f charts/linkerd-control-plane/charts/*
 rm -f charts/linkerd2-cni/charts/*
 rm -f charts/patch/charts/*
 rm -f jaeger/charts/linkerd-jaeger/charts/*
@@ -35,9 +37,11 @@ rm -f viz/charts/linkerd-viz/charts/*
 "$bindir"/helm lint "$rootdir"/charts/partials
 "$bindir"/helm dep up "$rootdir"/charts/linkerd2-cni
 "$bindir"/helm lint "$rootdir"/charts/linkerd2-cni
-"$bindir"/helm dep up "$rootdir"/charts/linkerd2
+"$bindir"/helm dep up "$rootdir"/charts/linkerd-base
+"$bindir"/helm dep up "$rootdir"/charts/linkerd-control-plane
 "$bindir"/helm dep up "$rootdir"/charts/patch
-"$bindir"/helm lint --set identityTrustAnchorsPEM="fake-trust" --set identity.issuer.tls.crtPEM="fake-cert" --set identity.issuer.tls.keyPEM="fake-key" --set identity.issuer.crtExpiry="fake-expiry-date" "$rootdir"/charts/linkerd2
+"$bindir"/helm lint "$rootdir"/charts/linkerd-base
+"$bindir"/helm lint --set identityTrustAnchorsPEM="fake-trust" --set identity.issuer.tls.crtPEM="fake-cert" --set identity.issuer.tls.keyPEM="fake-key" --set identity.issuer.crtExpiry="fake-expiry-date" "$rootdir"/charts/linkerd-control-plane
 "$bindir"/helm lint "$rootdir"/charts/linkerd2-cni
 "$bindir"/helm dep up "$rootdir"/jaeger/charts/linkerd-jaeger
 "$bindir"/helm lint "$rootdir"/jaeger/charts/linkerd-jaeger

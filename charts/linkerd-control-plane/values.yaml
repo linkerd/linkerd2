@@ -185,16 +185,6 @@ imagePullSecrets: []
 # -- Allow proxies to perform transparent HTTP/2 upgrading
 enableH2Upgrade: true
 
-# -- Add a PSP resource and bind it to the control plane ServiceAccounts. Note
-# PSP has been deprecated since k8s v1.21
-enablePSP: false
-
-# -- Omit the `sideEffects` flag in the webhook manifests
-omitWebhookSideEffects: false
-# -- Failure policy for the proxy injector
-webhookFailurePolicy: Ignore
-
-
 # controllerImage -- Docker image for the destination and identity components
 controllerImage: cr.l5d.io/linkerd/controller
 # -- Number of replicas for each control plane pod
@@ -262,28 +252,6 @@ disableHeartBeat: false
 
 # proxy injector configuration
 proxyInjector:
-  # -- Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `proxyInjector.caBundle` must be set (see below)
-  externalSecret: false
-
-  # -- Namespace selector used by admission webhook. If not set defaults to all
-  # namespaces without the annotation
-  # config.linkerd.io/admission-webhooks=disabled
-  namespaceSelector:
-    matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
-
-  # -- Certificate for the proxy injector. If not provided then Helm will generate one.
-  crtPEM: |
-
-  # -- Certificate key for the proxy injector. If not provided then Helm will generate one.
-  keyPEM: |
-
-  # -- Bundle of CA certificates for proxy injector. If not provided then Helm will use the certificate generated  for `proxyInjector.crtPEM`. If `proxyInjector.externalSecret` is set to true, this value must be set, as no certificate will be generated.
-  caBundle: |
-
 # -|- CPU and Memory resources required by the proxy injector (see
 #`proxy.resources` for sub-fields)
 #proxyInjectorResources:
@@ -293,40 +261,9 @@ proxyInjector:
 
 # service profile validator configuration
 profileValidator:
-  # -- Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `profileValidator.caBundle` must be set (see below).
-  externalSecret: false
-
-  # -- Namespace selector used by admission webhook
-  namespaceSelector:
-    matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
-
-  # -- Certificate for the service profile validator. If not provided then Helm
-  # will generate one.
-  crtPEM: |
-
-  # -- Certificate key for the service profile validator. If not provided then
-  # Helm will generate one.
-  keyPEM: |
-
-  # -- Bundle of CA certificates for service profile validator. If not provided
-  # then Helm will use the certificate generated  for `profileValidator.crtPEM`.
-  # If `profileValidator.externalSecret` is set to true, this value must be set,
-  # as no certificate will be generated.
-  caBundle: |
-
 # -|- CPU and Memory resources required by the SP validator (see
 #`proxy.resources` for sub-fields)
 #spValidatorResources:
-
-# If the namespace is controlled by an external tool or can't be installed with Helm
-# you can disable its installation. In this case:
-# - The namespace created by the external tool must match the namespace value above
-# - The external tool needs to create the namespace with the label:
-#     config.linkerd.io/admission-webhooks: disabled
 
 # -- NodeSelector section, See the [K8S
 # documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector)

@@ -457,8 +457,7 @@ run_upgrade-stable_test() {
 
 setup_helm() {
   export helm_path="$bindir"/helm
-  helm_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2
-  export helm_chart
+  export helm_charts="$( cd "$bindir"/.. && pwd )"/charts
   export helm_release_name='helm-test'
   export helm_multicluster_release_name="multicluster-test"
   "$bindir"/helm-build
@@ -469,9 +468,11 @@ setup_helm() {
 helm_cleanup() {
   (
     set -e
-    "$helm_path" --kube-context="$context" delete "$helm_release_name" || true
-    "$helm_path" --kube-context="$context" delete "$helm_multicluster_release_name" || true
-    # `helm delete` doesn't wait for resources to be deleted, so we wait explicitly.
+    "$helm_path" --kube-context="$context" --namespace linkerd delete "$helm_release_name-base" || true
+    "$helm_path" --kube-context="$context" --namespace linkerd delete "$helm_release_name-control-plane" || true
+    kubectl delete ns/linkerd
+    "$helm_path" --kube-context="$context" --namespace linkerd-multicluster delete "$helm_multicluster_release_name" || true
+    kubectl delete ns/linkerd-multicluster
     # We wait for the namespace to be gone so the following call to `cleanup` doesn't fail when it attempts to delete
     # the same namespace that is already being deleted here (error thrown by the NamespaceLifecycle controller).
     # We don't have that problem with global resources, so no need to wait for them to be gone.
@@ -492,7 +493,7 @@ run_helm-upgrade_test() {
 
   setup_helm
   helm_viz_chart="$( cd "$bindir"/.. && pwd )"/viz/charts/linkerd-viz
-  run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
+  run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-charts="$helm_charts" \
   --viz-helm-chart="$helm_viz_chart" --helm-stable-chart='linkerd/linkerd2' --viz-helm-stable-chart="linkerd/linkerd-viz" --helm-release="$helm_release_name" --upgrade-helm-from-version="$stable_version"
   helm_cleanup
 }
@@ -544,7 +545,7 @@ run_helm-deep_test() {
   setup_helm
   helm_multicluster_chart="$( cd "$bindir"/.. && pwd )"/multicluster/charts/linkerd-multicluster
   helm_viz_chart="$( cd "$bindir"/.. && pwd )"/viz/charts/linkerd-viz
-  run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
+  run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-charts="$helm_charts" \
   --helm-release="$helm_release_name" --multicluster-helm-chart="$helm_multicluster_chart" \
   --viz-helm-chart="$helm_viz_chart" --multicluster-helm-release="$helm_multicluster_release_name"
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"

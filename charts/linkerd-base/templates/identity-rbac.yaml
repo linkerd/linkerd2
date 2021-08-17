@@ -1,4 +1,3 @@
-{{if .Values.identity -}}
 ---
 ###
 ### Identity Controller Service RBAC
@@ -46,4 +45,3 @@ metadata:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
-{{ end -}}
