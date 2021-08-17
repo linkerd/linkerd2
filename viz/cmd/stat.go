@@ -804,11 +804,16 @@ func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.S
 		}
 	}
 
+	var usingTs bool
 	requests := make([]*pb.StatSummaryRequest, 0)
 	for _, target := range targets {
 		err = options.validate(target.Type)
 		if err != nil {
 			return nil, err
+		}
+
+		if target.Type == k8s.TrafficSplit {
+			usingTs = true
 		}
 
 		requestParams := util.StatsSummaryRequestParams{
@@ -839,6 +844,11 @@ func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.S
 		}
 		requests = append(requests, req)
 	}
+
+	if usingTs {
+		fmt.Printf("Native support for SMI resources is deprecated and will be removed in 2.12. Please follow the SMI extension getting started guide from https://linkerd.io/2.10/tasks/linkerd-smi/\n")
+	}
+
 	return requests, nil
 }
 
