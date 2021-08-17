@@ -17,8 +17,11 @@ import (
 )
 
 const (
+	// HelmChartDirBase is the directory name for the linkerd-base chart
 	HelmChartDirBase = "linkerd-base"
-	HelmChartDirCP   = "linkerd-control-plane"
+
+	// HelmChartDirCP is the directory name for the linkerd-base chart
+	HelmChartDirCP = "linkerd-control-plane"
 )
 
 type (
@@ -232,6 +235,9 @@ func NewValues() (*Values, error) {
 		return nil, err
 	}
 	*v, err = v.Merge(*vCP)
+	if err != nil {
+		return nil, err
+	}
 
 	v.ControllerImageVersion = version.Version
 	v.Proxy.Image.Version = version.Version

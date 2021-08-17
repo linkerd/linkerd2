@@ -292,7 +292,7 @@ func (h *TestHelper) GetMulticlusterHelmReleaseName() string {
 	return h.helm.multiclusterReleaseName
 }
 
-// GetHelmChart returns the path to the Linkerd Helm chart
+// GetHelmCharts returns the path to the Linkerd Helm chart
 func (h *TestHelper) GetHelmCharts() string {
 	return h.helm.charts
 }
