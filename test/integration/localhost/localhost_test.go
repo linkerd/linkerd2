@@ -82,7 +82,7 @@ func TestLocalhostServer(t *testing.T) {
 				return fmt.Errorf("expected 1 row of stat output, got: %s", out)
 			}
 
-			if *stats[0].Rps == 0.0 {
+			if stats[0].Rps == nil || *stats[0].Rps == 0.0 {
 				return fmt.Errorf("expected non-zero RPS from slowcooker to nginx: %s", out)
 			}
 
