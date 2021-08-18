@@ -51,10 +51,7 @@ impl<T> Watch<T> {
                 .next()
                 .instrument(self.span.clone())
                 .await
-                .expect(&*format!(
-                    "{} stream must not terminate",
-                    std::any::type_name::<T>()
-                ));
+                .expect("stream must not terminate");
 
             match ev {
                 Ok(ev) => {
