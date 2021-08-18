@@ -65,7 +65,7 @@ async fn main() -> Result<()> {
 
     const DETECT_TIMEOUT: time::Duration = time::Duration::from_secs(10);
     let (handle, index_task) = linkerd_policy_controller::k8s::index(
-        client,
+        client.clone(),
         ready_tx,
         cluster_networks,
         identity_domain,
@@ -76,8 +76,10 @@ async fn main() -> Result<()> {
 
     let grpc = tokio::spawn(grpc(grpc_addr, handle, drain_rx));
 
+    let admission_handler = linkerd_policy_controller::admission::Admission(client);
     let routes = warp::path::end()
         .and(warp::body::json())
+        .and(warp::any().map(move || admission_handler.clone()))
         .and_then(linkerd_policy_controller::admission::mutate_handler)
         .with(warp::trace::request());
 
