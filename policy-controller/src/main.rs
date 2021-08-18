@@ -92,11 +92,13 @@ async fn main() -> Result<()> {
         .and(warp::any().map(move || admission.clone()))
         .and_then(linkerd_policy_controller::admission::mutate_handler)
         .with(warp::trace::request());
-    tokio::spawn(warp::serve(warp::post().and(routes))
-        .tls()
-        .cert_path("/var/run/linkerd/tls/tls.crt")
-        .key_path("/var/run/linkerd/tls/tls.key")
-        .run(admission_addr));
+    tokio::spawn(
+        warp::serve(warp::post().and(routes))
+            .tls()
+            .cert_path("/var/run/linkerd/tls/tls.crt")
+            .key_path("/var/run/linkerd/tls/tls.key")
+            .run(admission_addr),
+    );
 
     // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
     // complete before exiting.
