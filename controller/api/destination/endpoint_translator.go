@@ -28,7 +28,7 @@ type endpointTranslator struct {
 	controllerNS        string
 	identityTrustDomain string
 	enableH2Upgrade     bool
-	nodeTopologyLabels  map[string]string
+	nodeTopologyZone    string
 	defaultOpaquePorts  map[uint32]struct{}
 
 	availableEndpoints watcher.AddressSet
@@ -53,9 +53,9 @@ func newEndpointTranslator(
 		"service":   service,
 	})
 
-	nodeTopologyLabels, err := getK8sNodeTopology(nodes, srcNodeName)
+	nodeTopologyZone, err := getNodeTopologyZone(nodes, srcNodeName)
 	if err != nil {
-		log.Errorf("Failed to get node topology for node %s: %s", srcNodeName, err)
+		log.Errorf("Failed to get node topology zone for node %s: %s", srcNodeName, err)
 	}
 	availableEndpoints := newEmptyAddressSet()
 
@@ -65,7 +65,7 @@ func newEndpointTranslator(
 		controllerNS,
 		identityTrustDomain,
 		enableH2Upgrade,
-		nodeTopologyLabels,
+		nodeTopologyZone,
 		defaultOpaquePorts,
 		availableEndpoints,
 		filteredSnapshot,
@@ -92,9 +92,8 @@ func (et *endpointTranslator) Remove(set watcher.AddressSet) {
 
 func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
 	et.availableEndpoints = watcher.AddressSet{
-		Addresses:       et.availableEndpoints.Addresses,
-		Labels:          set.Labels,
-		TopologicalPref: set.TopologicalPref,
+		Addresses: et.availableEndpoints.Addresses,
+		Labels:    set.Labels,
 	}
 
 	filtered := et.filterAddresses()
@@ -110,58 +109,56 @@ func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
 	et.filteredSnapshot = filtered
 }
 
-// filterAddresses is responsible for filtering endpoints based on service topology preference.
-// The client will receive only endpoints with the same topology label value as the source node,
-// the order of labels is based on the topological preference elicited from the K8s service.
+// filterAddresses is responsible for filtering endpoints based on the node's
+// topology zone. The client will only receive endpoints with the same
+// consumption zone as the node. An endpoints consumption zone is set
+// by its Hints field and can be different than its actual Topology zone.
 func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
-	if len(et.availableEndpoints.TopologicalPref) == 0 {
-		allAvailEndpoints := make(map[watcher.ID]watcher.Address)
-		for k, v := range et.availableEndpoints.Addresses {
-			allAvailEndpoints[k] = v
-		}
-		return watcher.AddressSet{
-			Addresses: allAvailEndpoints,
-			Labels:    et.availableEndpoints.Labels,
-		}
+	allAvailEndpoints := make(map[watcher.ID]watcher.Address)
+	for k, v := range et.availableEndpoints.Addresses {
+		allAvailEndpoints[k] = v
 	}
 
-	et.log.Debugf("Filtering through address set with preference %v", et.availableEndpoints.TopologicalPref)
-	filtered := make(map[watcher.ID]watcher.Address)
-	for _, pref := range et.availableEndpoints.TopologicalPref {
-		// '*' as a topology preference means all endpoints
-		if pref == "*" {
-			return et.availableEndpoints
-		}
-
-		srcLocality, ok := et.nodeTopologyLabels[pref]
-		if !ok {
-			continue
-		}
-
-		for id, address := range et.availableEndpoints.Addresses {
-			addrLocality := address.TopologyLabels[pref]
-			if addrLocality == srcLocality {
-				filtered[id] = address
-			}
-		}
-
-		// if we filtered at least one endpoint, it means that preference has been satisfied
-		if len(filtered) > 0 {
-			et.log.Debugf("Filtered %d from a total of %d", len(filtered), len(et.availableEndpoints.Addresses))
+	// If any address does not have a hint, then all hints are ignored and all
+	// available addresses are returned. This replicates kube-proxy behavior
+	// documented in the KEP: https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/2433-topology-aware-hints/README.md#kube-proxy
+	for _, address := range et.availableEndpoints.Addresses {
+		if len(address.ForZones) == 0 {
 			return watcher.AddressSet{
-				Addresses: filtered,
+				Addresses: allAvailEndpoints,
 				Labels:    et.availableEndpoints.Labels,
 			}
 		}
 	}
 
-	// if we have no filtered endpoints or the '*' preference then no topology pref is satisfied
+	// Each address that has a hint matching the node's zone should be added
+	// to the set of addresses that will be returned.
+	et.log.Debugf("Filtering through addresses that should be consumed by zone %s", et.nodeTopologyZone)
+	filtered := make(map[watcher.ID]watcher.Address)
+	for id, address := range et.availableEndpoints.Addresses {
+		for _, zone := range address.ForZones {
+			if zone.Name == et.nodeTopologyZone {
+				filtered[id] = address
+			}
+		}
+	}
+	if len(filtered) > 0 {
+		et.log.Debugf("Filtered from %d to %d addresses", len(et.availableEndpoints.Addresses), len(filtered))
+		return watcher.AddressSet{
+			Addresses: filtered,
+			Labels:    et.availableEndpoints.Labels,
+		}
+	}
+
+	// If there were no filtered addresses then the empty set is returned.
 	return newEmptyAddressSet()
 }
 
-// diffEndpoints calculates the difference between the filtered set of endpoints in the current (Add/Remove) operation
-// and the snapshot of previously filtered endpoints. This diff allows the client to receive only the endpoints that
-// satisfy the topological preference, by adding new endpoints and removing stale ones.
+// diffEndpoints calculates the difference between the filtered set of
+// endpoints in the current (Add/Remove) operation and the snapshot of
+// previously filtered endpoints. This diff allows the client to receive only
+// the endpoints that match the topological zone, by adding new endpoints and
+// removing stale ones.
 func (et *endpointTranslator) diffEndpoints(filtered watcher.AddressSet) (watcher.AddressSet, watcher.AddressSet) {
 	add := make(map[watcher.ID]watcher.Address)
 	remove := make(map[watcher.ID]watcher.Address)
@@ -383,29 +380,23 @@ func toWeightedAddr(address watcher.Address, opaquePorts, skippedInboundPorts ma
 	}, nil
 }
 
-func getK8sNodeTopology(nodes coreinformers.NodeInformer, srcNode string) (map[string]string, error) {
-	nodeTopology := make(map[string]string)
+func getNodeTopologyZone(nodes coreinformers.NodeInformer, srcNode string) (string, error) {
 	node, err := nodes.Lister().Get(srcNode)
 	if err != nil {
-		return nodeTopology, err
+		return "", err
 	}
-
 	for k, v := range node.Labels {
-		if k == corev1.LabelHostname ||
-			k == corev1.LabelZoneFailureDomainStable ||
-			k == corev1.LabelZoneRegionStable {
-			nodeTopology[k] = v
+		if k == corev1.LabelTopologyZone {
+			return v, nil
 		}
 	}
-
-	return nodeTopology, nil
+	return "", nil
 }
 
 func newEmptyAddressSet() watcher.AddressSet {
 	return watcher.AddressSet{
-		Addresses:       make(map[watcher.ID]watcher.Address),
-		Labels:          make(map[string]string),
-		TopologicalPref: []string{},
+		Addresses: make(map[watcher.ID]watcher.Address),
+		Labels:    make(map[string]string),
 	}
 }
 

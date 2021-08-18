@@ -392,9 +392,8 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 func mkAddressSetForServices(gatewayAddresses ...watcher.Address) watcher.AddressSet {
 	set := watcher.AddressSet{
-		Addresses:       make(map[watcher.ServiceID]watcher.Address),
-		Labels:          map[string]string{"service": "service-name", "namespace": "service-ns"},
-		TopologicalPref: []string{},
+		Addresses: make(map[watcher.ServiceID]watcher.Address),
+		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
 	}
 	for _, a := range gatewayAddresses {
 		a := a // pin
@@ -412,9 +411,8 @@ func mkAddressSetForServices(gatewayAddresses ...watcher.Address) watcher.Addres
 
 func mkAddressSetForPods(podAddresses ...watcher.Address) watcher.AddressSet {
 	set := watcher.AddressSet{
-		Addresses:       make(map[watcher.PodID]watcher.Address),
-		Labels:          map[string]string{"service": "service-name", "namespace": "service-ns"},
-		TopologicalPref: []string{},
+		Addresses: make(map[watcher.PodID]watcher.Address),
+		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
 	}
 	for _, p := range podAddresses {
 		id := watcher.PodID{Name: p.Pod.Name, Namespace: p.Pod.Namespace}
