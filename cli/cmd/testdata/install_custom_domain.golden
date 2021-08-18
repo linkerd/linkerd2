@@ -1514,14 +1514,14 @@ metadata:
   name: linkerd-policy
   namespace: l5d
   labels:
-    linkerd.io/control-plane-component: policy
+    linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: l5d
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   clusterIP: None
   selector:
-    linkerd.io/control-plane-component: policy
+    linkerd.io/control-plane-component: destination
   ports:
   - name: grpc
     port: 8090
