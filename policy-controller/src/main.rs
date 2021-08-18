@@ -77,7 +77,7 @@ async fn main() -> Result<()> {
             DETECT_TIMEOUT,
         );
 
-        tokio::spawn(index.run(client, ready_tx));
+        tokio::spawn(index.run(client.clone(), ready_tx));
         handle
     };
 
@@ -87,6 +87,7 @@ async fn main() -> Result<()> {
     // Run the admission controller
     let routes = warp::path::end()
         .and(warp::body::json())
+        .and(warp::any().map(move || admission_handler.clone()))
         .and_then(linkerd_policy_controller::admission::mutate_handler)
         .with(warp::trace::request());
     tokio::spawn(warp::serve(warp::post().and(routes))
