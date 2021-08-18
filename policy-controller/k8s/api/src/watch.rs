@@ -60,6 +60,11 @@ impl<T> Watch<T> {
                 }
                 Err(error) => {
                     info!(parent: &self.span, %error, "Failed");
+
+                    // TODO(ver) this backoff may not be fully honored if this call to `recv` is
+                    // canceled. Instead, we should track the backoff on the `Watch` and poll it
+                    // before the inner stream. We probably need to use pin-project-lite for this,
+                    // though.
                     time::sleep(time::Duration::from_secs(1)).await;
                     info!(parent: &self.span, "Restarting");
                 }
