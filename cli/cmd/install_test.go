@@ -138,6 +138,7 @@ func TestRender(t *testing.T) {
 		ControllerReplicas: 1,
 		ProxyInjector:      defaultValues.ProxyInjector,
 		ProfileValidator:   defaultValues.ProfileValidator,
+		PolicyValidator:    defaultValues.PolicyValidator,
 	}
 
 	haValues, err := testInstallOptionsHA(true)
@@ -236,6 +237,10 @@ func TestRender(t *testing.T) {
 			if err := render(&buf, tc.values, "", tc.options); err != nil {
 				t.Fatalf("Failed to render templates: %v", err)
 			}
+			fmt.Println("---GOT---")
+			fmt.Println(buf.String())
+			fmt.Println("---EXPECTED---")
+			fmt.Println(tc.goldenFileName)
 			testDataDiffer.DiffTestdata(t, tc.goldenFileName, buf.String())
 		})
 	}
@@ -554,4 +559,7 @@ func addFakeTLSSecrets(values *charts.Values) {
 	values.ProfileValidator.CrtPEM = "profile validator crt"
 	values.ProfileValidator.KeyPEM = "profile validator key"
 	values.ProfileValidator.CaBundle = "profile validator CA bundle"
+	values.PolicyValidator.CrtPEM = "policy validator crt"
+	values.PolicyValidator.KeyPEM = "policy validator key"
+	values.PolicyValidator.CaBundle = "policy validator CA bundle"
 }
