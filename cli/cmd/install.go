@@ -328,6 +328,10 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 	}
 
 	var cpFiles []*loader.BufferedFile
+	if stage == controlPlaneStage {
+		cpFiles = append(cpFiles, &loader.BufferedFile{Name: chartutil.ChartfileName})
+	}
+
 	if stage == "" || stage == controlPlaneStage {
 		for _, template := range templatesControlPlaneStage {
 			cpFiles = append(cpFiles,
