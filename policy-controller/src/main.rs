@@ -85,9 +85,11 @@ async fn main() -> Result<()> {
     tokio::spawn(grpc(grpc_addr, cluster_networks, handle, drain_rx));
 
     // Run the admission controller
+    let admission = linkerd_policy_controller::admission::Admission(client);
+
     let routes = warp::path::end()
         .and(warp::body::json())
-        .and(warp::any().map(move || admission_handler.clone()))
+        .and(warp::any().map(move || admission.clone()))
         .and_then(linkerd_policy_controller::admission::mutate_handler)
         .with(warp::trace::request());
     tokio::spawn(warp::serve(warp::post().and(routes))
