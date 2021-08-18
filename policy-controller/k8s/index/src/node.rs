@@ -42,16 +42,20 @@ impl NodeIndex {
     ) -> Option<(k8s::Pod, KubeletIps)> {
         let node_name = pod.spec.as_ref()?.node_name.clone()?;
         match self.index.entry(node_name) {
-            HashEntry::Occupied(mut entry) => match entry.get_mut() {
-                State::Known(ips) => Some((pod, ips.clone())),
-                State::Pending(pods) => {
-                    pods.entry(pod.namespace()?)
-                        .or_default()
-                        .insert(pod.name(), pod);
-                    None
+            HashEntry::Occupied(mut entry) => {
+                debug!(node = %entry.key(), state = ?entry.get(), "Found");
+                match entry.get_mut() {
+                    State::Known(ips) => Some((pod, ips.clone())),
+                    State::Pending(pods) => {
+                        pods.entry(pod.namespace()?)
+                            .or_default()
+                            .insert(pod.name(), pod);
+                        None
+                    }
                 }
-            },
+            }
             HashEntry::Vacant(entry) => {
+                debug!(node = %entry.key(), "Missing");
                 let ns = pod.namespace()?;
                 let name = pod.name();
                 entry.insert(State::Pending(

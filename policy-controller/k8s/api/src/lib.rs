@@ -17,7 +17,6 @@ use kube::api::{Api, ListParams};
 pub use kube::api::{ObjectMeta, ResourceExt};
 use kube_runtime::watcher;
 use tracing::info_span;
-use tracing_futures::Instrument;
 
 /// Resource watches.
 pub struct ResourceWatches {
@@ -46,18 +45,14 @@ impl From<kube::Client> for ResourceWatches {
         let pod_params = params.clone().labels("linkerd.io/control-plane-ns");
 
         Self {
-            nodes_rx: watcher(Api::all(client.clone()), params.clone())
-                .instrument(info_span!("nodes"))
-                .into(),
-            pods_rx: watcher(Api::all(client.clone()), pod_params)
-                .instrument(info_span!("pods"))
-                .into(),
-            servers_rx: watcher(Api::all(client.clone()), params.clone())
-                .instrument(info_span!("servers"))
-                .into(),
-            authorizations_rx: watcher(Api::all(client), params)
-                .instrument(info_span!("serverauthorizations"))
-                .into(),
+            nodes_rx: Watch::from(watcher(Api::all(client.clone()), params.clone()))
+                .instrument(info_span!("nodes")),
+            pods_rx: Watch::from(watcher(Api::all(client.clone()), pod_params))
+                .instrument(info_span!("pods")),
+            servers_rx: Watch::from(watcher(Api::all(client.clone()), params.clone()))
+                .instrument(info_span!("servers")),
+            authorizations_rx: Watch::from(watcher(Api::all(client), params))
+                .instrument(info_span!("serverauthorizations")),
         }
     }
 }
