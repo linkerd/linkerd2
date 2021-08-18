@@ -20,8 +20,8 @@ struct Args {
     #[structopt(long, default_value = "0.0.0.0:8090")]
     grpc_addr: SocketAddr,
 
-    #[structopt(long, default_value = "0.0.0.0:8443")]
-    admission_addr: SocketAddr,
+    #[structopt(long)]
+    admission_addr: Option<SocketAddr>,
 
     /// Network CIDRs of pod IPs.
     ///
@@ -87,18 +87,20 @@ async fn main() -> Result<()> {
     // Run the admission controller
     let admission = linkerd_policy_controller::admission::Admission(client);
 
-    let routes = warp::path::end()
-        .and(warp::body::json())
-        .and(warp::any().map(move || admission.clone()))
-        .and_then(linkerd_policy_controller::admission::mutate_handler)
-        .with(warp::trace::request());
-    tokio::spawn(
-        warp::serve(warp::post().and(routes))
-            .tls()
-            .cert_path("/var/run/linkerd/tls/tls.crt")
-            .key_path("/var/run/linkerd/tls/tls.key")
-            .run(admission_addr),
-    );
+    if let Some(admission_addr) = admission_addr {
+        let routes = warp::path::end()
+            .and(warp::body::json())
+            .and(warp::any().map(move || admission.clone()))
+            .and_then(linkerd_policy_controller::admission::mutate_handler)
+            .with(warp::trace::request());
+        tokio::spawn(
+            warp::serve(warp::post().and(routes))
+                .tls()
+                .cert_path("/var/run/linkerd/tls/tls.crt")
+                .key_path("/var/run/linkerd/tls/tls.key")
+                .run(admission_addr),
+        );
+    }
 
     // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
     // complete before exiting.
