@@ -45,7 +45,7 @@ pub async fn mutate_handler(
 
     let conflict = req
         .object
-        .and_then(|obj| obj.data.clone().get_mut("spec").cloned())
+        .and_then(|mut obj| obj.data.get_mut("spec").cloned())
         .and_then(|spec| {
             serde_json::from_value::<ServerSpec>(spec)
                 .map_err(|err| {
