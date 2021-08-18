@@ -15,6 +15,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/api/discovery/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -112,6 +113,21 @@ var (
 		Port:              2,
 		Identity:          "some-identity",
 		AuthorityOverride: "some-auth.com:2",
+	}
+
+	west1aAddress = watcher.Address{
+		IP:   "1.1.1.1",
+		Port: 1,
+		ForZones: []v1beta1.ForZone{
+			{Name: "west-1a"},
+		},
+	}
+	west1bAddress = watcher.Address{
+		IP:   "1.1.1.1",
+		Port: 2,
+		ForZones: []v1beta1.ForZone{
+			{Name: "west-1b"},
+		},
 	}
 )
 
@@ -386,6 +402,24 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 		if addrs[0].TlsIdentity != nil {
 			t.Fatalf("Expected no TlsIdentity to be sent, but got [%v]", addrs[0].TlsIdentity)
+		}
+	})
+}
+
+func TestEndpointTranslatorForZonedAddresses(t *testing.T) {
+	t.Run("Sends one update for add and none for remove", func(t *testing.T) {
+		mockGetServer, translator := makeEndpointTranslator(t)
+
+		translator.Add(mkAddressSetForServices(west1aAddress, west1bAddress))
+		translator.Remove(mkAddressSetForServices(west1bAddress))
+
+		// Only the address meant for west-1a should be added, which means
+		// that when we try to remove the address meant for west-1b there
+		// should be no remove update.
+		expectedNumUpdates := 1
+		actualNumUpdates := len(mockGetServer.updatesReceived)
+		if actualNumUpdates != expectedNumUpdates {
+			t.Fatalf("Expecting [%d] updates, got [%d]. Updates: %v", expectedNumUpdates, actualNumUpdates, mockGetServer.updatesReceived)
 		}
 	})
 }
