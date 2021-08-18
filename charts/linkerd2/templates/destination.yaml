@@ -65,14 +65,14 @@ metadata:
   name: linkerd-policy
   namespace: {{.Values.namespace}}
   labels:
-    linkerd.io/control-plane-component: policy
+    linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
   clusterIP: None
   selector:
-    linkerd.io/control-plane-component: policy
+    linkerd.io/control-plane-component: destination
   ports:
   - name: grpc
     port: 8090
