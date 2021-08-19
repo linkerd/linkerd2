@@ -1,12 +1,12 @@
 use crate::{
-    lookup, node::KubeletIps, DefaultAllow, DefaultAllowCache, Errors, Index, Namespace, NodeIndex,
-    PodServerTx, ServerRx, SrvIndex,
+    default_allow::PortConfig, lookup, node::KubeletIps, DefaultAllow, DefaultAllowCache, Errors,
+    Index, Namespace, NodeIndex, PodServerTx, ServerRx, SrvIndex,
 };
 use anyhow::{anyhow, Context, Result};
 use linkerd_policy_controller_k8s_api::{self as k8s, policy, ResourceExt};
 use std::collections::{hash_map::Entry as HashEntry, HashMap, HashSet};
 use tokio::sync::watch;
-use tracing::{debug, instrument, trace, warn};
+use tracing::{debug, instrument, trace};
 
 /// Indexes pod state (within a namespace).
 #[derive(Debug, Default)]
@@ -50,8 +50,7 @@ struct PodAnnotations {
 /// A single pod-port's state.
 #[derive(Debug)]
 struct Port {
-    is_opaque: bool,
-    requires_id: bool,
+    config: PortConfig,
 
     /// Set with the name of the `Server` resource that currently selects this port, if one exists.
     ///
@@ -222,11 +221,11 @@ impl PodIndex {
                 // Check the pod for a default-allow annotation. If it's set, use it; otherwise use
                 // the default policy from the namespace or cluster. We retain this value (and not
                 // only the policy) so that we can more conveniently de-duplicate changes
-                let default_allow_rx = match DefaultAllow::from_annotation(&pod.metadata) {
-                    Ok(allow) => get_default_allow_rx(allow),
+                let default_allow = match DefaultAllow::from_annotation(&pod.metadata) {
+                    Ok(allow) => allow.unwrap_or(default_allow),
                     Err(error) => {
-                        warn!(%error, "Ignoring invalid default-allow annotation");
-                        get_default_allow_rx(None)
+                        tracing::info!(%error, "failed to parse default-allow annotation");
+                        default_allow
                     }
                 };
 
@@ -235,13 +234,18 @@ impl PodIndex {
                 // Read the pod's ports and extract:
                 // - `ServerTx`s to be linkerd against the server index; and
                 // - lookup receivers to be returned to API clients.
-                let (ports, pod_lookups) =
-                    Self::extract_ports(spec, &pod_annotations, default_allow_rx.clone(), kubelet);
+                let (ports, pod_lookups) = Self::extract_ports(
+                    spec,
+                    &pod_annotations,
+                    default_allow,
+                    default_allows,
+                    kubelet,
+                );
 
                 // Start tracking the pod's metadata so it can be linked against servers as they are
                 // created. Immediately link the pod against the server index.
                 let mut pod = Pod {
-                    default_allow_rx,
+                    default_allow_rx: default_allows.get(default_allow, PortConfig::default()),
                     labels: pod.metadata.labels.into(),
                     ports,
                 };
@@ -283,7 +287,8 @@ impl PodIndex {
     fn extract_ports(
         spec: k8s::PodSpec,
         annotations: &PodAnnotations,
-        server_rx: ServerRx,
+        default_allow: DefaultAllow,
+        default_allows: &mut DefaultAllowCache,
         kubelet: KubeletIps,
     ) -> (PodPorts, HashMap<u16, lookup::Rx>) {
         let mut ports = PodPorts::default();
@@ -298,10 +303,11 @@ impl PodIndex {
                         continue;
                     }
 
+                    let config = annotations.get_config(port);
+                    let server_rx = default_allows.get(default_allow, config);
                     let (server_tx, rx) = watch::channel(server_rx.clone());
                     let pod_port = Port {
-                        is_opaque: annotations.opaque.contains(&port),
-                        requires_id: annotations.require_id.contains(&port),
+                        config,
                         server_name: None,
                         server_tx,
                     };
@@ -416,6 +422,13 @@ impl PodAnnotations {
         s.split(',')
             .map(|p| p.trim().parse().context("parsing port"))
             .collect()
+    }
+
+    fn get_config(&self, port: u16) -> PortConfig {
+        PortConfig {
+            requires_id: self.require_id.contains(&port),
+            opaque: self.opaque.contains(&port),
+        }
     }
 }
 

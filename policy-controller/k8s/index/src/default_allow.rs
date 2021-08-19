@@ -192,7 +192,7 @@ fn mk_protocol(timeout: time::Duration, opaque: bool) -> ProxyProtocol {
 }
 
 fn mk_policy(
-    name: &'static str,
+    name: &str,
     protocol: ProxyProtocol,
     nets: impl IntoIterator<Item = IpNet>,
     authentication: ClientAuthentication,
