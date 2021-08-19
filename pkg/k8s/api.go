@@ -12,6 +12,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	"k8s.io/apimachinery/pkg/api/errors"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/version"
@@ -185,22 +186,6 @@ func (kubeAPI *KubernetesAPI) GetAllNamespacesWithExtensionLabel(ctx context.Con
 	return namespaces.Items, nil
 }
 
-// CheckIfExtensionExists checks if an extension is installed in the cluster
-func (kubeAPI *KubernetesAPI) CheckIfExtensionExists(ctx context.Context, extensionName string) bool {
-	namespaces, err := kubeAPI.GetAllNamespacesWithExtensionLabel(ctx)
-	if err != nil {
-		return false
-	}
-
-	for _, namespace := range namespaces {
-		if namespace.Labels[LinkerdExtensionLabel] == extensionName {
-			return true
-		}
-	}
-
-	return false
-}
-
 // GetNamespaceWithExtensionLabel gets the namespace with the LinkerdExtensionLabel label value of `value`
 func (kubeAPI *KubernetesAPI) GetNamespaceWithExtensionLabel(ctx context.Context, value string) (*corev1.Namespace, error) {
 	namespaces, err := kubeAPI.GetAllNamespacesWithExtensionLabel(ctx)
@@ -213,7 +198,7 @@ func (kubeAPI *KubernetesAPI) GetNamespaceWithExtensionLabel(ctx context.Context
 			return &ns, err
 		}
 	}
-	return nil, fmt.Errorf("could not find the %s extension", value)
+	return nil, errors.NewNotFound(corev1.Resource("namespace"), value)
 }
 
 // GetPodStatus receives a pod and returns the pod status, based on `kubectl` logic.

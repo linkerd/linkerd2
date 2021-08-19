@@ -1373,8 +1373,15 @@ func (hc *HealthChecker) allCategories() []*Category {
 							return err
 						}
 
-						if len(ts.Items) != 0 && !hc.kubeAPI.CheckIfExtensionExists(ctx, "smi") {
-							return fmt.Errorf("SMI resources in Linkerd will be removed in 2.12. please use them along with the new linkerd-smi extension")
+						// error if there are SMI resources without the SMI Extension
+						_, err = hc.kubeAPI.GetNamespaceWithExtensionLabel(ctx, "smi")
+						if err != nil {
+							// return err if it is not a notFound error
+							if !kerrors.IsNotFound(err) {
+								return err
+							} else if len(ts.Items) != 0 {
+								return fmt.Errorf("SMI resources in Linkerd will be removed in 2.12. please use them along with the new linkerd-smi extension")
+							}
 						}
 
 						return &SkipError{Reason: "no SMI resources found"}
