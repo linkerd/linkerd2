@@ -12,9 +12,8 @@ use warp::{reply, Reply};
 #[derive(Clone)]
 pub struct Admission(pub kube::Client);
 
-// A general /mutate handler, handling errors from the underlying business logic
 #[instrument]
-pub async fn mutate_handler(
+pub async fn handler(
     body: AdmissionReview<DynamicObject>,
     admission: Admission,
 ) -> Result<impl Reply, Infallible> {
@@ -30,6 +29,10 @@ pub async fn mutate_handler(
     };
     info!(?req);
 
+    // Then construct a AdmissionResponse
+    let mut res = AdmissionResponse::from(&req);
+
+    // List existing servers.
     let api: Api<Server> = Api::all(admission.0.clone());
     let params = ListParams::default();
     let servers = api.list(&params).await.unwrap_or_else(|err| {
@@ -40,9 +43,7 @@ pub async fn mutate_handler(
         }
     });
 
-    // Then construct a AdmissionResponse
-    let mut res = AdmissionResponse::from(&req);
-
+    // Find any conflicting servers.
     let conflict = req
         .object
         .and_then(|mut obj| obj.data.get_mut("spec").cloned())
