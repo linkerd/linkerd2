@@ -1,5 +1,31 @@
 # Changes
 
+## edge-21.8.3
+
+This release adds support for dynamic inbound policies. The proxy now discovers
+policies from the policy-controller API for all application ports documented in a
+pod spec. Rejected connections are logged. Policies are not yet reflected in the
+proxy's metrics.
+
+These policies also allow the proxy to skip protocol detection when a server is
+explicitly annotated as HTTP/2 or when the server is documented to be opaque or
+application-terminated TLS.
+
+* Added a new section to linkerd-viz's dashboard that lists installed extensions
+  (thanks @sannimichaelse!)
+* Added the `enableHeadlessServices` Helm flag to the `linkerd multicluster
+  link` command for enabling headless service mirroring (thanks @knutgoetz!)
+* Removed some unused and duplicate constants in the codebase (thanks
+  @xichengliudui!)
+* Added support for exposing service metadata from exported to mirrored services
+  in multicluster installations (thanks @importhuman!)
+* Fixed an issue where the policy controller's liveness checks would fail after
+  the controller was disconnected but had successfully resumed its watches
+* Fixed the `linkerd-policy` service selector to properly select `destination`
+  control plane components
+* Added additional environment variables to the proxy container to allow support
+  for dynamic policy configuration
+
 ## edge-21.8.2
 
 This edge release continues the policy work by adding a new controller, written
