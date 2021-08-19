@@ -1331,6 +1331,10 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
           value: "25,443,587,3306,5432,11211"
+        - name: _pod_name
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1573,6 +1577,10 @@ spec:
           value: localhost.:8086
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "ClusterNetworks"
+        - name: LINKERD2_PROXY_POLICY_SVC_ADDR
+          value: localhost.:8090
+        - name: LINKERD2_PROXY_POLICY_WORKLOAD
+          value: "$(_pod_ns):$(_pod_name)"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1595,6 +1603,10 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
           value: "25,443,587,3306,5432,11211"
+        - name: _pod_name
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1630,6 +1642,8 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
           value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
+          value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+        - name: LINKERD2_PROXY_POLICY_SVC_NAME
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: ProxyImageName:ProxyVersion
         imagePullPolicy: ImagePullPolicy
@@ -1907,6 +1921,10 @@ spec:
           value: linkerd-dst-headless.linkerd.svc.cluster.local.:8086
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "ClusterNetworks"
+        - name: LINKERD2_PROXY_POLICY_SVC_ADDR
+          value: linkerd-policy.linkerd.svc.cluster.local.:8090
+        - name: LINKERD2_PROXY_POLICY_WORKLOAD
+          value: "$(_pod_ns):$(_pod_name)"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1929,6 +1947,10 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
           value: "25,443,587,3306,5432,11211"
+        - name: _pod_name
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1964,6 +1986,8 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
           value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
+          value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+        - name: LINKERD2_PROXY_POLICY_SVC_NAME
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: ProxyImageName:ProxyVersion
         imagePullPolicy: ImagePullPolicy
