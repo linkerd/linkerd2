@@ -21,7 +21,7 @@ get_multiarch_argument() {
     fi
 }
 
-dockerfile=$rootdir/cli/Dockerfile-bin
+dockerfile=$rootdir/cli/Dockerfile
 tag=$(head_root_tag)
 
 # shellcheck disable=SC2046
