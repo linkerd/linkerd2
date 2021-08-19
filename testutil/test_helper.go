@@ -684,8 +684,8 @@ func CheckRowCount(out string, expectedRowCount int) ([]string, error) {
 			strings.Join(rows, "\n"),
 		)
 	}
-	rows = rows[2:] // strip header
-	if len(rows) != expectedRowCount+1 {
+	rows = rows[1:] // strip header
+	if len(rows) != expectedRowCount {
 		return nil, fmt.Errorf(
 			"Expected [%d] rows in stat output, got [%d]; full output:\n%s",
 			expectedRowCount, len(rows), strings.Join(rows, "\n"))
