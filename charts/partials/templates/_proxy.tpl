@@ -16,6 +16,18 @@ env:
   value: {{ternary "localhost.:8086" (printf "linkerd-dst-headless.%s.svc.%s.:8086" .Values.namespace .Values.clusterDomain) (eq (toString .Values.proxy.component) "linkerd-destination")}}
 - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
   value: {{.Values.clusterNetworks | quote}}
+- name: _pod_name
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.name
+- name: _pod_ns
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.namespace
+- name: _pod_nodeName
+  valueFrom:
+    fieldRef:
+      fieldPath: spec.nodeName
 {{ if (ne (toString .Values.proxy.component) "linkerd-identity") -}}
 - name: LINKERD2_PROXY_POLICY_SVC_ADDR
   value: {{ternary "localhost.:8090" (printf "linkerd-policy.%s.svc.%s.:8090" .Values.namespace .Values.clusterDomain) (eq (toString .Values.proxy.component) "linkerd-destination")}}
@@ -65,18 +77,6 @@ env:
 - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
   value: {{.Values.proxy.opaquePorts | quote}}
 {{ end -}}
-- name: _pod_name
-  valueFrom:
-    fieldRef:
-      fieldPath: metadata.name
-- name: _pod_ns
-  valueFrom:
-    fieldRef:
-      fieldPath: metadata.namespace
-- name: _pod_nodeName
-  valueFrom:
-    fieldRef:
-      fieldPath: spec.nodeName
 - name: LINKERD2_PROXY_DESTINATION_CONTEXT
   value: |
     {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
