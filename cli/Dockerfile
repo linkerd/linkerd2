@@ -1,5 +1,4 @@
 ARG BUILDPLATFORM=linux/amd64
-ARG BUILD_STAGE=single-arch
 
 # Precompile key slow-to-build dependencies
 FROM --platform=$BUILDPLATFORM golang:1.16.4-alpine as go-deps
@@ -10,7 +9,7 @@ RUN go mod download
 RUN ./bin/install-deps
 
 ## compile binaries
-FROM go-deps as golang-single-arch
+FROM go-deps as go-gen
 WORKDIR /linkerd-build
 COPY cli cli
 COPY charts charts
@@ -22,7 +21,6 @@ COPY controller/k8s controller/k8s
 COPY controller/api controller/api
 COPY controller/gen controller/gen
 COPY pkg pkg
-RUN mkdir -p /out
 
 # Generate static templates
 # TODO: `go generate` does not honor -mod=readonly
@@ -31,35 +29,56 @@ RUN go generate -mod=readonly ./jaeger/static
 RUN go generate -mod=readonly ./multicluster/static
 RUN go generate -mod=readonly ./viz/static
 
-# Cache builds without version info
-RUN CGO_ENABLED=0 GOOS=darwin go build -o /out/linkerd-darwin -tags prod -mod=readonly -ldflags "-s -w" ./cli
-RUN CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o /out/linkerd-darwin-arm64 -tags prod -mod=readonly -ldflags "-s -w" ./cli
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/linkerd-linux-amd64 -tags prod -mod=readonly -ldflags "-s -w" ./cli
-RUN CGO_ENABLED=0 GOOS=windows go build -o /out/linkerd-windows -tags prod -mod=readonly -ldflags "-s -w" ./cli
+RUN mkdir -p /out
 
+FROM go-gen as linux-amd64
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/linkerd -tags prod -mod=readonly -ldflags "-s -w" ./cli
 ARG LINKERD_VERSION
 ENV GO_LDFLAGS="-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=${LINKERD_VERSION}"
-RUN CGO_ENABLED=0 GOOS=darwin go build -o /out/linkerd-darwin -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
-RUN CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o /out/linkerd-darwin-arm64 -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/linkerd-linux-amd64 -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
-RUN CGO_ENABLED=0 GOOS=windows go build -o /out/linkerd-windows -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/linkerd -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
 
-FROM golang-single-arch as golang-multi-arch
+FROM go-gen as linux-arm64
 RUN ./bin/install-deps arm64
-RUN ./bin/install-deps arm
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o /out/linkerd-linux-arm64 -tags prod -mod=readonly -ldflags "-s -w" ./cli
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm go build -o /out/linkerd-linux-arm -tags prod -mod=readonly -ldflags "-s -w" ./cli
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o /out/linkerd -tags prod -mod=readonly -ldflags "-s -w" ./cli
 ARG LINKERD_VERSION
 ENV GO_LDFLAGS="-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=${LINKERD_VERSION}"
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o /out/linkerd-linux-arm64 -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm go build -o /out/linkerd-linux-arm -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o /out/linkerd -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
 
-FROM golang-${BUILD_STAGE} as golang
+FROM go-gen as linux-arm
+RUN ./bin/install-deps arm
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm go build -o /out/linkerd -tags prod -mod=readonly -ldflags "-s -w" ./cli
+ARG LINKERD_VERSION
+ENV GO_LDFLAGS="-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=${LINKERD_VERSION}"
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm go build -o /out/linkerd -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
 
-## export without sources & dependencies
-FROM scratch
+FROM go-gen as darwin
+RUN CGO_ENABLED=0 GOOS=darwin go build -o /out/linkerd -tags prod -mod=readonly -ldflags "-s -w" ./cli
+ARG LINKERD_VERSION
+ENV GO_LDFLAGS="-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=${LINKERD_VERSION}"
+RUN CGO_ENABLED=0 GOOS=darwin go build -o /out/linkerd -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
+
+FROM go-gen as darwin-arm64
+RUN CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o /out/linkerd -tags prod -mod=readonly -ldflags "-s -w" ./cli
+ARG LINKERD_VERSION
+ENV GO_LDFLAGS="-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=${LINKERD_VERSION}"
+RUN CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o /out/linkerd -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
+
+FROM go-gen as windows
+RUN CGO_ENABLED=0 GOOS=windows go build -o /out/linkerd -tags prod -mod=readonly -ldflags "-s -w" ./cli
+ARG LINKERD_VERSION
+ENV GO_LDFLAGS="-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=${LINKERD_VERSION}"
+RUN CGO_ENABLED=0 GOOS=windows go build -o /out/linkerd -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
+
+FROM scratch as basic
 COPY LICENSE /linkerd/LICENSE
-COPY --from=golang /out /out
+COPY --from=linux-amd64 /out/linkerd /out/linkerd-linux-amd64
+COPY --from=darwin /out/linkerd /out/linkerd-darwin
+COPY --from=darwin-arm64 /out/linkerd /out/linkerd-darwin-arm64
+COPY --from=windows /out/linkerd /out/linkerd-windows
 # `ENTRYPOINT` prevents `docker build` from otherwise failing with "Error
 # response from daemon: No command specified."
 ENTRYPOINT ["/out/linkerd-linux-amd64"]
+
+FROM basic as multi-arch
+COPY --from=linux-arm64 /out/linkerd /out/linkerd-linux-arm64
+COPY --from=linux-arm /out/linkerd /out/linkerd-linux-arm
