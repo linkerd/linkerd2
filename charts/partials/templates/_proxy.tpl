@@ -16,6 +16,12 @@ env:
   value: {{ternary "localhost.:8086" (printf "linkerd-dst-headless.%s.svc.%s.:8086" .Values.namespace .Values.clusterDomain) (eq (toString .Values.proxy.component) "linkerd-destination")}}
 - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
   value: {{.Values.clusterNetworks | quote}}
+{{ if (ne (toString .Values.proxy.component) "linkerd-identity") -}}
+- name: LINKERD2_PROXY_POLICY_SVC_ADDR
+  value: {{ternary "localhost.:8090" (printf "linkerd-policy.%s.svc.%s.:8090" .Values.namespace .Values.clusterDomain) (eq (toString .Values.proxy.component) "linkerd-destination")}}
+- name: LINKERD2_PROXY_POLICY_WORKLOAD
+  value: "$(_pod_ns):$(_pod_name)"
+{{ end -}}
 {{ if .Values.proxy.inboundConnectTimeout -}}
 - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
   value: {{.Values.proxy.inboundConnectTimeout | quote}}
@@ -114,12 +120,8 @@ be used in other contexts.
 - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
   value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
 {{ if (ne (toString .Values.proxy.component) "linkerd-identity") -}}
-- name: LINKERD2_PROXY_POLICY_SVC_ADDR
-  value: {{ternary "localhost.:8090" (printf "linkerd-policy.%s.svc.%s.:8090" .Values.namespace .Values.clusterDomain) (eq (toString .Values.proxy.component) "linkerd-destination")}}
 - name: LINKERD2_PROXY_POLICY_SVC_NAME
   value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-- name: LINKERD2_PROXY_POLICY_WORKLOAD
-  value: "$(_pod_ns):$(_pod_name)"
 {{ end -}}
 {{ end -}}
 image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version | default .Values.linkerdVersion}}
