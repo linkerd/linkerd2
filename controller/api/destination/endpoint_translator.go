@@ -385,10 +385,8 @@ func getNodeTopologyZone(nodes coreinformers.NodeInformer, srcNode string) (stri
 	if err != nil {
 		return "", err
 	}
-	for k, v := range node.Labels {
-		if k == corev1.LabelTopologyZone {
-			return v, nil
-		}
+	if zone, ok := node.Labels[corev1.LabelTopologyZone]; ok {
+		return zone, nil
 	}
 	return "", nil
 }
