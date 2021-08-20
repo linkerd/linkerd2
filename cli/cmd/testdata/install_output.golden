@@ -1254,6 +1254,7 @@ spec:
         linkerd.io/created-by: CliVersion
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: ProxyVersion
+        config.linkerd.io/opaque-ports: 25,443,587,3306,5432,11211
       labels:
         linkerd.io/control-plane-component: identity
         linkerd.io/control-plane-ns: linkerd
@@ -1559,6 +1560,7 @@ spec:
         linkerd.io/created-by: CliVersion
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: ProxyVersion
+        config.linkerd.io/opaque-ports: 25,443,587,3306,5432,11211
       labels:
         linkerd.io/control-plane-component: destination
         linkerd.io/control-plane-ns: linkerd
@@ -1903,6 +1905,7 @@ spec:
         linkerd.io/created-by: CliVersion
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: ProxyVersion
+        config.linkerd.io/opaque-ports: 25,443,587,3306,5432,11211
       labels:
         linkerd.io/control-plane-component: proxy-injector
         linkerd.io/control-plane-ns: linkerd
