@@ -24,7 +24,7 @@ struct Pod {
     labels: k8s::Labels,
 
     /// The workload's default allow behavior (to apply when no `Server` references a port).
-    default_policy_rx: ServerRx,
+    default_policy: DefaultPolicy,
 }
 
 /// An index of all ports in a pod spec to the
@@ -50,7 +50,7 @@ struct PodAnnotations {
 /// A single pod-port's state.
 #[derive(Debug)]
 struct Port {
-    config: PortDefaults,
+    default_policy_rx: ServerRx,
 
     /// Set with the name of the `Server` resource that currently selects this port, if one exists.
     ///
@@ -176,13 +176,12 @@ impl PodIndex {
 
     pub(crate) fn reset_server(&mut self, name: &str) {
         for (pod_name, pod) in self.index.iter_mut() {
-            let rx = pod.default_policy_rx.clone();
             for (p, port) in pod.ports.by_port.iter_mut() {
                 if port.server_name.as_deref() == Some(name) {
                     debug!(pod = %pod_name, port = %p, "Removing server from pod");
                     port.server_name = None;
                     port.server_tx
-                        .send(rx.clone())
+                        .send(port.default_policy_rx.clone())
                         .expect("pod config receiver must still be held");
                 } else {
                     trace!(pod = %pod_name, port = %p, server = ?port.server_name, "Server does not match");
@@ -243,10 +242,9 @@ impl PodIndex {
                 );
 
                 // Start tracking the pod's metadata so it can be linked against servers as they are
-                // created. Immediately link the pod against the server index.
+                // created. Immediately link the pod's ports to the server index.
                 let mut pod = Pod {
-                    default_policy_rx: default_policy_watches
-                        .get(default_policy, PortDefaults::default()),
+                    default_policy,
                     labels: pod.metadata.labels.into(),
                     ports,
                 };
@@ -305,10 +303,10 @@ impl PodIndex {
                     }
 
                     let config = annotations.get_config(port);
-                    let server_rx = default_policy_watches.get(default_policy, config);
-                    let (server_tx, rx) = watch::channel(server_rx.clone());
+                    let default_policy_rx = default_policy_watches.watch(default_policy, config);
+                    let (server_tx, rx) = watch::channel(default_policy_rx.clone());
                     let pod_port = Port {
-                        config,
+                        default_policy_rx,
                         server_name: None,
                         server_tx,
                     };
@@ -352,7 +350,7 @@ impl Pod {
             let port = self.ports.by_port.get_mut(&p).unwrap();
             port.server_name = None;
             port.server_tx
-                .send(self.default_policy_rx.clone())
+                .send(port.default_policy_rx.clone())
                 .expect("pod config receiver must still be held");
         }
     }

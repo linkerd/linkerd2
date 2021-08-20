@@ -14,7 +14,7 @@
 //!   `ServerAuthorization` is updated, we find all of the `Server` instances it selects and update
 //!   their authorizations and publishes these updates on the server's broadcast channel.
 //!
-//! ```ignore
+//! ```text
 //! [Node] <- [ Pod ]
 //!           |-> [ Port ] <- [ Server ] <- [ ServerAuthorization ]
 //! ```

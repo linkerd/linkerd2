@@ -23,14 +23,6 @@ pub enum DefaultPolicy {
     Deny,
 }
 
-/// Describes the default behavior for an individual pod to apply when no Server is found for a
-/// port.
-#[derive(Debug, PartialEq, Eq)]
-pub(crate) struct PodDefaults {
-    default: DefaultPolicy,
-    ports: HashMap<u16, PortDefaults>,
-}
-
 /// Describes the default behavior for a pod-port to apply when no Server is found for a port.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub(crate) struct PortDefaults {
@@ -38,35 +30,15 @@ pub(crate) struct PortDefaults {
     pub opaque: bool,
 }
 
-/// Holds the watches for all
+/// Holds the watches for all default policies. These watches are initiated lazily and are never
+/// updated. `DefaultPolicyWatches` creates instantiating a watch as needed and holding its sender
+/// so that the receiver never observes the sender closing (or updating at all).
 #[derive(Debug)]
 pub(crate) struct DefaultPolicyWatches {
     cluster_nets: Vec<IpNet>,
     detect_timeout: time::Duration,
 
     watches: HashMap<(DefaultPolicy, PortDefaults), (ServerTx, ServerRx)>,
-}
-
-// === impl PodDefaults ===
-
-impl PodDefaults {
-    pub fn new(
-        default: DefaultPolicy,
-        ports: impl IntoIterator<Item = (u16, PortDefaults)>,
-    ) -> Self {
-        Self {
-            default,
-            ports: ports.into_iter().collect(),
-        }
-    }
-}
-
-// === impl PortDefaults ===
-
-impl From<DefaultPolicy> for PodDefaults {
-    fn from(default: DefaultPolicy) -> Self {
-        Self::new(default, None)
-    }
 }
 
 // === impl DefaultPolicy ===
@@ -153,7 +125,10 @@ impl DefaultPolicyWatches {
         }
     }
 
-    pub fn get(&mut self, default: DefaultPolicy, config: PortDefaults) -> ServerRx {
+    /// Obtains a watch for a default policy. This watch never updates.
+    ///
+    /// If a watch for this policy does not already exist, one is created.
+    pub fn watch(&mut self, default: DefaultPolicy, config: PortDefaults) -> ServerRx {
         use std::collections::hash_map::Entry;
         match self.watches.entry((default, config)) {
             Entry::Occupied(entry) => entry.get().1.clone(),
