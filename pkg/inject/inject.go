@@ -248,6 +248,11 @@ func (conf *ResourceConfig) ParseMetaAndYAML(bytes []byte) (*Report, error) {
 	return newReport(conf), nil
 }
 
+// GetValues returns the values used for rendering patches.
+func (conf *ResourceConfig) GetValues() *linkerd2.Values {
+	return conf.values
+}
+
 // GetOverriddenValues returns the final Values struct which is created
 // by overriding annotated configuration on top of default Values
 func (conf *ResourceConfig) GetOverriddenValues() (*linkerd2.Values, error) {
@@ -358,6 +363,16 @@ func (conf *ResourceConfig) GetConfigAnnotation(annotationKey string) (string, b
 		return annotation, true
 	}
 	return "", false
+}
+
+// HasPodAnnotation returns true if the pod has the annotation set by the
+// resource config or its metadata.
+func (conf *ResourceConfig) HasPodAnnotation(annotation string) bool {
+	if _, ok := conf.pod.meta.Annotations[annotation]; ok {
+		return true
+	}
+	_, ok := conf.pod.annotations[annotation]
+	return ok
 }
 
 // CreateAnnotationPatch returns a json patch which adds the opaque ports
