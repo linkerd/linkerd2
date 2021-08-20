@@ -40,9 +40,9 @@ mod server;
 #[cfg(test)]
 mod tests;
 
-pub use self::{default_allow::DefaultAllow, lookup::Reader};
+pub use self::{default_allow::DefaultPolicy, lookup::Reader};
 use self::{
-    default_allow::DefaultAllowCache,
+    default_allow::DefaultPolicyWatches,
     namespace::{Namespace, NamespaceIndex},
     node::NodeIndex,
     server::SrvIndex,
@@ -86,7 +86,7 @@ pub struct Index {
     /// Holds watches for the cluster's default-allow policies. These watches are never updated but
     /// this state is held so we can used shared references when updating a pod-port's server watch
     /// with a default policy.
-    default_allows: DefaultAllowCache,
+    default_policy_watches: DefaultPolicyWatches,
 
     /// A handle that supports updates to the lookup index.
     lookups: lookup::Writer,
@@ -101,15 +101,16 @@ impl Index {
     pub fn new(
         cluster_networks: Vec<IpNet>,
         identity_domain: String,
-        default_allow: DefaultAllow,
+        default_policy: DefaultPolicy,
         detect_timeout: time::Duration,
     ) -> (lookup::Reader, Self) {
         // Create a common set of receivers for all supported default policies.
-        let default_allows = DefaultAllowCache::new(cluster_networks.clone(), detect_timeout);
+        let default_policy_watches =
+            DefaultPolicyWatches::new(cluster_networks.clone(), detect_timeout);
 
         // Provide the cluster-wide default-allow policy to the namespace index so that it may be
         // used when a workload-level annotation is not set.
-        let namespaces = NamespaceIndex::new(default_allow);
+        let namespaces = NamespaceIndex::new(default_policy);
 
         let (writer, reader) = lookup::pair();
         let idx = Self {
@@ -117,7 +118,7 @@ impl Index {
             namespaces,
             identity_domain,
             cluster_networks,
-            default_allows,
+            default_policy_watches,
             nodes: NodeIndex::default(),
         };
         (reader, idx)

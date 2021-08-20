@@ -8,41 +8,52 @@ use linkerd_policy_controller_k8s_api as k8s;
 use std::{collections::HashMap, hash::Hash};
 use tokio::{sync::watch, time};
 
+/// Indicates the default behavior to apply when no Server is found for a port.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum DefaultAllow {
+pub enum DefaultPolicy {
     Allow {
+        /// Indicates that, by default, all traffic must be authenticated.
         authenticated_only: bool,
+
+        /// Indicates that all traffic must, by default, be from an IP address within the cluster.
         cluster_only: bool,
     },
+
+    /// Indicates that all traffic is denied unless explicitly permitted by an authorization policy.
     Deny,
 }
 
+/// Describes the default behavior for an individual pod to apply when no Server is found for a
+/// port.
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct PodConfig {
-    default: DefaultAllow,
-    ports: HashMap<u16, PortConfig>,
+pub(crate) struct PodDefaults {
+    default: DefaultPolicy,
+    ports: HashMap<u16, PortDefaults>,
 }
 
+/// Describes the default behavior for a pod-port to apply when no Server is found for a port.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub(crate) struct PortConfig {
+pub(crate) struct PortDefaults {
     pub authenticated: bool,
     pub opaque: bool,
 }
 
-/// Default server configs to use when no server matches.
+/// Holds the watches for all
 #[derive(Debug)]
-pub(crate) struct DefaultAllowCache {
+pub(crate) struct DefaultPolicyWatches {
     cluster_nets: Vec<IpNet>,
     detect_timeout: time::Duration,
 
-    rxs: HashMap<(DefaultAllow, PortConfig), ServerRx>,
-    txs: Vec<ServerTx>,
+    watches: HashMap<(DefaultPolicy, PortDefaults), (ServerTx, ServerRx)>,
 }
 
-// === impl PodConfig ===
+// === impl PodDefaults ===
 
-impl PodConfig {
-    pub fn new(default: DefaultAllow, ports: impl IntoIterator<Item = (u16, PortConfig)>) -> Self {
+impl PodDefaults {
+    pub fn new(
+        default: DefaultPolicy,
+        ports: impl IntoIterator<Item = (u16, PortDefaults)>,
+    ) -> Self {
         Self {
             default,
             ports: ports.into_iter().collect(),
@@ -50,17 +61,17 @@ impl PodConfig {
     }
 }
 
-// === impl PortConfig ===
+// === impl PortDefaults ===
 
-impl From<DefaultAllow> for PodConfig {
-    fn from(default: DefaultAllow) -> Self {
+impl From<DefaultPolicy> for PodDefaults {
+    fn from(default: DefaultPolicy) -> Self {
         Self::new(default, None)
     }
 }
 
-// === impl DefaultAllow ===
+// === impl DefaultPolicy ===
 
-impl DefaultAllow {
+impl DefaultPolicy {
     pub const ANNOTATION: &'static str = "config.linkerd.io/default-inbound-policy";
 
     pub fn from_annotation(meta: &k8s::ObjectMeta) -> Result<Option<Self>> {
@@ -75,7 +86,7 @@ impl DefaultAllow {
     }
 }
 
-impl std::str::FromStr for DefaultAllow {
+impl std::str::FromStr for DefaultPolicy {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
@@ -102,7 +113,7 @@ impl std::str::FromStr for DefaultAllow {
     }
 }
 
-impl std::fmt::Display for DefaultAllow {
+impl std::fmt::Display for DefaultPolicy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Allow {
@@ -126,9 +137,9 @@ impl std::fmt::Display for DefaultAllow {
     }
 }
 
-// === impl DefaultAllowCache ===
+// === impl DefaultPolicyWatches ===
 
-impl DefaultAllowCache {
+impl DefaultPolicyWatches {
     /// Create default allow policy receivers.
     ///
     /// These receivers are never updated. The senders are moved into a background task so that
@@ -138,36 +149,34 @@ impl DefaultAllowCache {
         Self {
             cluster_nets,
             detect_timeout,
-            rxs: HashMap::default(),
-            txs: Vec::default(),
+            watches: HashMap::default(),
         }
     }
 
-    pub fn get(&mut self, default: DefaultAllow, config: PortConfig) -> ServerRx {
+    pub fn get(&mut self, default: DefaultPolicy, config: PortDefaults) -> ServerRx {
         use std::collections::hash_map::Entry;
-        match self.rxs.entry((default, config)) {
-            Entry::Occupied(entry) => entry.get().clone(),
+        match self.watches.entry((default, config)) {
+            Entry::Occupied(entry) => entry.get().1.clone(),
             Entry::Vacant(entry) => {
                 let server =
                     Self::mk_server(default, config, &self.cluster_nets, self.detect_timeout);
                 let (tx, rx) = watch::channel(server);
-                entry.insert(rx.clone());
-                self.txs.push(tx);
+                entry.insert((tx, rx.clone()));
                 rx
             }
         }
     }
 
     fn mk_server(
-        default: DefaultAllow,
-        config: PortConfig,
+        default: DefaultPolicy,
+        config: PortDefaults,
         cluster_nets: &[IpNet],
         detect_timeout: time::Duration,
     ) -> InboundServer {
         let protocol = Self::mk_protocol(detect_timeout, &config);
 
         match default {
-            DefaultAllow::Allow {
+            DefaultPolicy::Allow {
                 cluster_only,
                 authenticated_only,
             } => {
@@ -186,14 +195,14 @@ impl DefaultAllowCache {
                 Self::mk_policy(name, protocol, nets, authn)
             }
 
-            DefaultAllow::Deny => InboundServer {
+            DefaultPolicy::Deny => InboundServer {
                 protocol,
                 authorizations: Default::default(),
             },
         }
     }
 
-    fn mk_protocol(timeout: time::Duration, config: &PortConfig) -> ProxyProtocol {
+    fn mk_protocol(timeout: time::Duration, config: &PortDefaults) -> ProxyProtocol {
         if config.opaque {
             return ProxyProtocol::Opaque;
         }
@@ -232,26 +241,26 @@ mod test {
     #[test]
     fn test_parse_displayed() {
         for default in [
-            DefaultAllow::Deny,
-            DefaultAllow::Allow {
+            DefaultPolicy::Deny,
+            DefaultPolicy::Allow {
                 authenticated_only: true,
                 cluster_only: false,
             },
-            DefaultAllow::Allow {
+            DefaultPolicy::Allow {
                 authenticated_only: false,
                 cluster_only: false,
             },
-            DefaultAllow::Allow {
+            DefaultPolicy::Allow {
                 authenticated_only: false,
                 cluster_only: true,
             },
-            DefaultAllow::Allow {
+            DefaultPolicy::Allow {
                 authenticated_only: false,
                 cluster_only: true,
             },
         ] {
             assert_eq!(
-                default.to_string().parse::<DefaultAllow>().unwrap(),
+                default.to_string().parse::<DefaultPolicy>().unwrap(),
                 default,
                 "failed to parse displayed {:?}",
                 default

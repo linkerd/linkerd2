@@ -226,7 +226,7 @@ spec:
         - --grpc-addr=0.0.0.0:8090
         - --cluster-networks={{.Values.clusterNetworks}}
         - --identity-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
-        - --default-allow={{.Values.policyController.defaultAllowPolicy}}
+        - --default-policy={{.Values.policyController.defaultAllowPolicy}}
         env:
         - name: RUST_LOG
           value: {{.Values.policyController.logLevel | default "linkerd=info,warn" | quote}}

@@ -1,6 +1,6 @@
 use crate::{
-    default_allow::PortConfig, lookup, node::KubeletIps, DefaultAllow, DefaultAllowCache, Errors,
-    Index, Namespace, NodeIndex, PodServerTx, ServerRx, SrvIndex,
+    default_allow::PortDefaults, lookup, node::KubeletIps, DefaultPolicy, DefaultPolicyWatches,
+    Errors, Index, Namespace, NodeIndex, PodServerTx, ServerRx, SrvIndex,
 };
 use anyhow::{anyhow, bail, Context, Result};
 use linkerd_policy_controller_k8s_api::{self as k8s, policy, ResourceExt};
@@ -24,7 +24,7 @@ struct Pod {
     labels: k8s::Labels,
 
     /// The workload's default allow behavior (to apply when no `Server` references a port).
-    default_allow_rx: ServerRx,
+    default_policy_rx: ServerRx,
 }
 
 /// An index of all ports in a pod spec to the
@@ -50,7 +50,7 @@ struct PodAnnotations {
 /// A single pod-port's state.
 #[derive(Debug)]
 struct Port {
-    config: PortConfig,
+    config: PortDefaults,
 
     /// Set with the name of the `Server` resource that currently selects this port, if one exists.
     ///
@@ -74,7 +74,7 @@ impl Index {
     )]
     pub(crate) fn apply_pod(&mut self, pod: k8s::Pod) -> Result<()> {
         let Namespace {
-            default_allow,
+            default_policy,
             ref mut pods,
             ref mut servers,
             ..
@@ -87,8 +87,8 @@ impl Index {
             &mut self.nodes,
             servers,
             &mut self.lookups,
-            *default_allow,
-            &mut self.default_allows,
+            *default_policy,
+            &mut self.default_policy_watches,
         )
     }
 
@@ -176,7 +176,7 @@ impl PodIndex {
 
     pub(crate) fn reset_server(&mut self, name: &str) {
         for (pod_name, pod) in self.index.iter_mut() {
-            let rx = pod.default_allow_rx.clone();
+            let rx = pod.default_policy_rx.clone();
             for (p, port) in pod.ports.by_port.iter_mut() {
                 if port.server_name.as_deref() == Some(name) {
                     debug!(pod = %pod_name, port = %p, "Removing server from pod");
@@ -198,8 +198,8 @@ impl PodIndex {
         nodes: &mut NodeIndex,
         servers: &SrvIndex,
         lookups: &mut lookup::Writer,
-        default_allow: DefaultAllow,
-        default_allows: &mut DefaultAllowCache,
+        default_policy: DefaultPolicy,
+        default_policy_watches: &mut DefaultPolicyWatches,
     ) -> Result<()> {
         let ns_name = pod.namespace().expect("pod must have a namespace");
         let pod_name = pod.name();
@@ -221,11 +221,11 @@ impl PodIndex {
                 // Check the pod for a default-allow annotation. If it's set, use it; otherwise use
                 // the default policy from the namespace or cluster. We retain this value (and not
                 // only the policy) so that we can more conveniently de-duplicate changes
-                let default_allow = match DefaultAllow::from_annotation(&pod.metadata) {
-                    Ok(allow) => allow.unwrap_or(default_allow),
+                let default_policy = match DefaultPolicy::from_annotation(&pod.metadata) {
+                    Ok(allow) => allow.unwrap_or(default_policy),
                     Err(error) => {
                         tracing::info!(%error, "failed to parse default-allow annotation");
-                        default_allow
+                        default_policy
                     }
                 };
 
@@ -237,15 +237,16 @@ impl PodIndex {
                 let (ports, pod_lookups) = Self::extract_ports(
                     spec,
                     &pod_annotations,
-                    default_allow,
-                    default_allows,
+                    default_policy,
+                    default_policy_watches,
                     kubelet,
                 );
 
                 // Start tracking the pod's metadata so it can be linked against servers as they are
                 // created. Immediately link the pod against the server index.
                 let mut pod = Pod {
-                    default_allow_rx: default_allows.get(default_allow, PortConfig::default()),
+                    default_policy_rx: default_policy_watches
+                        .get(default_policy, PortDefaults::default()),
                     labels: pod.metadata.labels.into(),
                     ports,
                 };
@@ -287,8 +288,8 @@ impl PodIndex {
     fn extract_ports(
         spec: k8s::PodSpec,
         annotations: &PodAnnotations,
-        default_allow: DefaultAllow,
-        default_allows: &mut DefaultAllowCache,
+        default_policy: DefaultPolicy,
+        default_policy_watches: &mut DefaultPolicyWatches,
         kubelet: KubeletIps,
     ) -> (PodPorts, HashMap<u16, lookup::Rx>) {
         let mut ports = PodPorts::default();
@@ -304,7 +305,7 @@ impl PodIndex {
                     }
 
                     let config = annotations.get_config(port);
-                    let server_rx = default_allows.get(default_allow, config);
+                    let server_rx = default_policy_watches.get(default_policy, config);
                     let (server_tx, rx) = watch::channel(server_rx.clone());
                     let pod_port = Port {
                         config,
@@ -351,7 +352,7 @@ impl Pod {
             let port = self.ports.by_port.get_mut(&p).unwrap();
             port.server_name = None;
             port.server_tx
-                .send(self.default_allow_rx.clone())
+                .send(self.default_policy_rx.clone())
                 .expect("pod config receiver must still be held");
         }
     }
@@ -449,8 +450,8 @@ impl PodAnnotations {
         Ok(ports)
     }
 
-    fn get_config(&self, port: u16) -> PortConfig {
-        PortConfig {
+    fn get_config(&self, port: u16) -> PortDefaults {
+        PortDefaults {
             authenticated: self.require_id.contains(&port),
             opaque: self.opaque.contains(&port),
         }

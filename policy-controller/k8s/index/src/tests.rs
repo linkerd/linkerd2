@@ -22,7 +22,7 @@ async fn incrementally_configure_server() {
     let (lookup_rx, mut idx) = Index::new(
         vec![cluster_net],
         "cluster.example.com".into(),
-        DefaultAllow::Allow {
+        DefaultPolicy::Allow {
             authenticated_only: false,
             cluster_only: true,
         },
@@ -41,8 +41,8 @@ async fn incrementally_configure_server() {
     idx.apply_pod(pod.clone()).unwrap();
 
     let default_config = InboundServer {
-        authorizations: mk_default_allow(
-            DefaultAllow::Allow {
+        authorizations: mk_default_policy(
+            DefaultPolicy::Allow {
                 authenticated_only: false,
                 cluster_only: true,
             },
@@ -153,7 +153,7 @@ async fn server_update_deselects_pod() {
     let (lookup_rx, mut idx) = Index::new(
         vec![cluster_net],
         "cluster.example.com".into(),
-        DefaultAllow::Allow {
+        DefaultPolicy::Allow {
             authenticated_only: false,
             cluster_only: true,
         },
@@ -195,8 +195,8 @@ async fn server_update_deselects_pod() {
     assert_eq!(
         port2222.get(),
         InboundServer {
-            authorizations: mk_default_allow(
-                DefaultAllow::Allow {
+            authorizations: mk_default_policy(
+                DefaultPolicy::Allow {
                     authenticated_only: false,
                     cluster_only: true,
                 },
@@ -210,31 +210,31 @@ async fn server_update_deselects_pod() {
     );
 }
 
-const DEFAULTS: [DefaultAllow; 5] = [
-    DefaultAllow::Deny,
-    DefaultAllow::Allow {
+const DEFAULTS: [DefaultPolicy; 5] = [
+    DefaultPolicy::Deny,
+    DefaultPolicy::Allow {
         authenticated_only: true,
         cluster_only: false,
     },
-    DefaultAllow::Allow {
+    DefaultPolicy::Allow {
         authenticated_only: false,
         cluster_only: false,
     },
-    DefaultAllow::Allow {
+    DefaultPolicy::Allow {
         authenticated_only: true,
         cluster_only: true,
     },
-    DefaultAllow::Allow {
+    DefaultPolicy::Allow {
         authenticated_only: false,
         cluster_only: true,
     },
 ];
 
-/// Tests that pod servers are configured with defaults based on the global `DefaultAllow` policy.
+/// Tests that pod servers are configured with defaults based on the global `DefaultPolicy` policy.
 ///
 /// Iterates through each default policy and validates that it produces expected configurations.
 #[tokio::test]
-async fn default_allow_global() {
+async fn default_policy_global() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
     let (kubelet_ip, pod_ip) = {
@@ -263,7 +263,7 @@ async fn default_allow_global() {
         idx.reset_pods(vec![p]).unwrap();
 
         let config = InboundServer {
-            authorizations: mk_default_allow(*default, cluster_net, kubelet_ip),
+            authorizations: mk_default_policy(*default, cluster_net, kubelet_ip),
             protocol: ProxyProtocol::Detect {
                 timeout: detect_timeout,
             },
@@ -277,12 +277,12 @@ async fn default_allow_global() {
     }
 }
 
-/// Tests that pod servers are configured with defaults based on the workload-defined `DefaultAllow`
+/// Tests that pod servers are configured with defaults based on the workload-defined `DefaultPolicy`
 /// policy.
 ///
 /// Iterates through each default policy and validates that it produces expected configurations.
 #[tokio::test]
-async fn default_allow_annotated() {
+async fn default_policy_annotated() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
     let (kubelet_ip, pod_ip) = {
@@ -296,11 +296,11 @@ async fn default_allow_annotated() {
             vec![cluster_net],
             "cluster.example.com".into(),
             match *default {
-                DefaultAllow::Deny => DefaultAllow::Allow {
+                DefaultPolicy::Deny => DefaultPolicy::Allow {
                     authenticated_only: false,
                     cluster_only: false,
                 },
-                _ => DefaultAllow::Deny,
+                _ => DefaultPolicy::Deny,
             },
             detect_timeout,
         );
@@ -315,11 +315,11 @@ async fn default_allow_annotated() {
             Some(("container-0", vec![2222])),
         );
         p.annotations_mut()
-            .insert(DefaultAllow::ANNOTATION.into(), default.to_string());
+            .insert(DefaultPolicy::ANNOTATION.into(), default.to_string());
         idx.reset_pods(vec![p]).unwrap();
 
         let config = InboundServer {
-            authorizations: mk_default_allow(*default, cluster_net, kubelet_ip),
+            authorizations: mk_default_policy(*default, cluster_net, kubelet_ip),
             protocol: ProxyProtocol::Detect {
                 timeout: detect_timeout,
             },
@@ -334,7 +334,7 @@ async fn default_allow_annotated() {
 
 /// Tests that an invalid workload annotation is ignored in favor of the global default.
 #[tokio::test]
-async fn default_allow_annotated_invalid() {
+async fn default_policy_annotated_invalid() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
     let (kubelet_ip, pod_ip) = {
@@ -346,7 +346,7 @@ async fn default_allow_annotated_invalid() {
     let (lookup_rx, mut idx) = Index::new(
         vec![cluster_net],
         "cluster.example.com".into(),
-        DefaultAllow::Allow {
+        DefaultPolicy::Allow {
             authenticated_only: false,
             cluster_only: false,
         },
@@ -363,7 +363,7 @@ async fn default_allow_annotated_invalid() {
         Some(("container-0", vec![2222])),
     );
     p.annotations_mut()
-        .insert(DefaultAllow::ANNOTATION.into(), "bogus".into());
+        .insert(DefaultPolicy::ANNOTATION.into(), "bogus".into());
     idx.reset_pods(vec![p]).unwrap();
 
     // Lookup port 2222 -> default config.
@@ -373,8 +373,8 @@ async fn default_allow_annotated_invalid() {
     assert_eq!(
         port2222.get(),
         InboundServer {
-            authorizations: mk_default_allow(
-                DefaultAllow::Allow {
+            authorizations: mk_default_policy(
+                DefaultPolicy::Allow {
                     authenticated_only: false,
                     cluster_only: false,
                 },
@@ -402,7 +402,7 @@ async fn pod_before_node_reset() {
     let (lookup_rx, mut idx) = Index::new(
         vec![cluster_net],
         "cluster.example.com".into(),
-        DefaultAllow::Deny,
+        DefaultPolicy::Deny,
         detect_timeout,
     );
 
@@ -455,7 +455,7 @@ async fn pod_before_node_remove() {
     let (lookup_rx, mut idx) = Index::new(
         vec![cluster_net],
         "cluster.example.com".into(),
-        DefaultAllow::Deny,
+        DefaultPolicy::Deny,
         detect_timeout,
     );
 
@@ -593,8 +593,8 @@ fn mk_authz(
     }
 }
 
-fn mk_default_allow(
-    da: DefaultAllow,
+fn mk_default_policy(
+    da: DefaultPolicy,
     cluster_net: IpNet,
     kubelet_ip: IpAddr,
 ) -> HashMap<String, ClientAuthorization> {
@@ -605,8 +605,8 @@ fn mk_default_allow(
     let authed = ClientAuthentication::TlsAuthenticated(vec![IdentityMatch::Suffix(vec![])]);
 
     match da {
-        DefaultAllow::Deny => None,
-        DefaultAllow::Allow {
+        DefaultPolicy::Deny => None,
+        DefaultPolicy::Allow {
             authenticated_only: true,
             cluster_only: false,
         } => Some((
@@ -616,7 +616,7 @@ fn mk_default_allow(
                 networks: all_nets,
             },
         )),
-        DefaultAllow::Allow {
+        DefaultPolicy::Allow {
             authenticated_only: false,
             cluster_only: false,
         } => Some((
@@ -626,7 +626,7 @@ fn mk_default_allow(
                 networks: all_nets,
             },
         )),
-        DefaultAllow::Allow {
+        DefaultPolicy::Allow {
             authenticated_only: true,
             cluster_only: true,
         } => Some((
@@ -636,7 +636,7 @@ fn mk_default_allow(
                 networks: cluster_nets,
             },
         )),
-        DefaultAllow::Allow {
+        DefaultPolicy::Allow {
             authenticated_only: false,
             cluster_only: true,
         } => Some((
