@@ -122,29 +122,11 @@ func Inject(
 		}, nil
 	}
 
-	// If the resource is not injectable but does need the opaque ports
-	// annotation added, then admit it after creating a patch that adds the
-	// annotation.
-	// 1. Check if the annotation should be copied down from the namespace.
-	//    If opaquePortsOk is true, then we know the namespace has the
-	//    annotation and the workload does not.
-	// 2. If opaquePortsOk is false, we know either the workload has the
-	//    annotation or both the workload and the namespace does not have
-	//    annotation. In the case of the latter, we must add a default value
-	//    to the pod.
-	var patchJSON []byte
-	opaquePorts, opaquePortsOk := resourceConfig.GetConfigAnnotation(pkgK8s.ProxyOpaquePortsAnnotation)
-	if opaquePortsOk {
-		patchJSON, err = resourceConfig.CreateAnnotationPatch(opaquePorts)
-		if err != nil {
-			return nil, err
-		}
-	} else if !resourceConfig.HasPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation) && resourceConfig.IsPod() {
-		opaquePorts := resourceConfig.GetValues().Proxy.OpaquePorts
-		patchJSON, err = resourceConfig.CreateAnnotationPatch(opaquePorts)
-		if err != nil {
-			return nil, err
-		}
+	// Create an annotation patch that would set the list of default opaque
+	// ports if is needed.
+	patchJSON, err := resourceConfig.CreateDefaultOpaquePortsPatch()
+	if err != nil {
+		return nil, err
 	}
 
 	// If patchJSON holds a patch after checking 1 and 2 above, then a patch

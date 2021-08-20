@@ -365,6 +365,33 @@ func (conf *ResourceConfig) GetConfigAnnotation(annotationKey string) (string, b
 	return "", false
 }
 
+// CreateDefaultOpaquePortsPatch creates a patch that will add the default
+// list of opaque ports.
+// 1. Check if the annotation should be copied down from the namespace.
+//    If ok is true, then we know the namespace has the annotation and the
+//    workload does not.
+// 2. If ok is false, we know either the workload has the annotation or both
+//    the workload and the namespace does not have annotation. In the case of
+//    the latter, we must add a default value to the pod.
+func (conf *ResourceConfig) CreateDefaultOpaquePortsPatch() ([]byte, error) {
+	var patch []byte
+	var err error
+	opaquePorts, ok := conf.GetConfigAnnotation(k8s.ProxyOpaquePortsAnnotation)
+	if ok {
+		patch, err = conf.CreateAnnotationPatch(opaquePorts)
+		if err != nil {
+			return nil, err
+		}
+	} else if !conf.HasPodAnnotation(k8s.ProxyOpaquePortsAnnotation) && conf.IsPod() {
+		opaquePorts := conf.GetValues().Proxy.OpaquePorts
+		patch, err = conf.CreateAnnotationPatch(opaquePorts)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return patch, nil
+}
+
 // HasPodAnnotation returns true if the pod has the annotation set by the
 // resource config or its metadata.
 func (conf *ResourceConfig) HasPodAnnotation(annotation string) bool {

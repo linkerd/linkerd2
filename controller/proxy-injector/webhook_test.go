@@ -353,19 +353,9 @@ func TestGetAnnotationPatch(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				var patchJSON []byte
-				opaquePorts, ok := fullConf.GetConfigAnnotation(pkgK8s.ProxyOpaquePortsAnnotation)
-				if ok {
-					patchJSON, err = fullConf.CreateAnnotationPatch(opaquePorts)
-					if err != nil {
-						t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
-					}
-				} else if !fullConf.HasPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation) && fullConf.IsPod() {
-					opaquePorts := fullConf.GetValues().Proxy.OpaquePorts
-					patchJSON, err = fullConf.CreateAnnotationPatch(opaquePorts)
-					if err != nil {
-						t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
-					}
+				patchJSON, err := fullConf.CreateDefaultOpaquePortsPatch()
+				if err != nil {
+					t.Fatalf("Unexpected error creating default opaque ports patch: %s", err)
 				}
 				if len(testCase.expectedPatchBytes) != 0 && len(patchJSON) == 0 {
 					t.Fatalf("There was no patch, but one was expected: %s", testCase.expectedPatchBytes)
