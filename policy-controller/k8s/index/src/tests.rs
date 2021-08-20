@@ -22,7 +22,10 @@ async fn incrementally_configure_server() {
     let (lookup_rx, mut idx) = Index::new(
         vec![cluster_net],
         "cluster.example.com".into(),
-        DefaultAllow::ClusterUnauthenticated,
+        DefaultAllow::Allow {
+            authenticated_only: false,
+            cluster_only: true,
+        },
         detect_timeout,
     );
 
@@ -39,7 +42,10 @@ async fn incrementally_configure_server() {
 
     let default_config = InboundServer {
         authorizations: mk_default_allow(
-            DefaultAllow::ClusterUnauthenticated,
+            DefaultAllow::Allow {
+                authenticated_only: false,
+                cluster_only: true,
+            },
             cluster_net,
             kubelet_ip,
         ),
@@ -147,7 +153,10 @@ async fn server_update_deselects_pod() {
     let (lookup_rx, mut idx) = Index::new(
         vec![cluster_net],
         "cluster.example.com".into(),
-        DefaultAllow::ClusterUnauthenticated,
+        DefaultAllow::Allow {
+            authenticated_only: false,
+            cluster_only: true,
+        },
         detect_timeout,
     );
 
@@ -187,7 +196,10 @@ async fn server_update_deselects_pod() {
         port2222.get(),
         InboundServer {
             authorizations: mk_default_allow(
-                DefaultAllow::ClusterUnauthenticated,
+                DefaultAllow::Allow {
+                    authenticated_only: false,
+                    cluster_only: true,
+                },
                 cluster_net,
                 kubelet_ip
             ),
@@ -197,6 +209,26 @@ async fn server_update_deselects_pod() {
         }
     );
 }
+
+const DEFAULTS: [DefaultAllow; 5] = [
+    DefaultAllow::Deny,
+    DefaultAllow::Allow {
+        authenticated_only: true,
+        cluster_only: false,
+    },
+    DefaultAllow::Allow {
+        authenticated_only: false,
+        cluster_only: false,
+    },
+    DefaultAllow::Allow {
+        authenticated_only: true,
+        cluster_only: true,
+    },
+    DefaultAllow::Allow {
+        authenticated_only: false,
+        cluster_only: true,
+    },
+];
 
 /// Tests that pod servers are configured with defaults based on the global `DefaultAllow` policy.
 ///
@@ -211,13 +243,7 @@ async fn default_allow_global() {
     };
     let detect_timeout = time::Duration::from_secs(1);
 
-    for default in &[
-        DefaultAllow::Deny,
-        DefaultAllow::AllAuthenticated,
-        DefaultAllow::AllUnauthenticated,
-        DefaultAllow::ClusterAuthenticated,
-        DefaultAllow::ClusterUnauthenticated,
-    ] {
+    for default in &DEFAULTS {
         let (lookup_rx, mut idx) = Index::new(
             vec![cluster_net],
             "cluster.example.com".into(),
@@ -265,18 +291,15 @@ async fn default_allow_annotated() {
     };
     let detect_timeout = time::Duration::from_secs(1);
 
-    for default in &[
-        DefaultAllow::Deny,
-        DefaultAllow::AllAuthenticated,
-        DefaultAllow::AllUnauthenticated,
-        DefaultAllow::ClusterAuthenticated,
-        DefaultAllow::ClusterUnauthenticated,
-    ] {
+    for default in &DEFAULTS {
         let (lookup_rx, mut idx) = Index::new(
             vec![cluster_net],
             "cluster.example.com".into(),
             match *default {
-                DefaultAllow::Deny => DefaultAllow::AllUnauthenticated,
+                DefaultAllow::Deny => DefaultAllow::Allow {
+                    authenticated_only: false,
+                    cluster_only: false,
+                },
                 _ => DefaultAllow::Deny,
             },
             detect_timeout,
@@ -323,7 +346,10 @@ async fn default_allow_annotated_invalid() {
     let (lookup_rx, mut idx) = Index::new(
         vec![cluster_net],
         "cluster.example.com".into(),
-        DefaultAllow::AllUnauthenticated,
+        DefaultAllow::Allow {
+            authenticated_only: false,
+            cluster_only: false,
+        },
         detect_timeout,
     );
 
@@ -348,7 +374,10 @@ async fn default_allow_annotated_invalid() {
         port2222.get(),
         InboundServer {
             authorizations: mk_default_allow(
-                DefaultAllow::AllUnauthenticated,
+                DefaultAllow::Allow {
+                    authenticated_only: false,
+                    cluster_only: false,
+                },
                 cluster_net,
                 kubelet_ip
             ),
@@ -577,28 +606,40 @@ fn mk_default_allow(
 
     match da {
         DefaultAllow::Deny => None,
-        DefaultAllow::AllAuthenticated => Some((
+        DefaultAllow::Allow {
+            authenticated_only: true,
+            cluster_only: false,
+        } => Some((
             "_all_authed".into(),
             ClientAuthorization {
                 authentication: authed,
                 networks: all_nets,
             },
         )),
-        DefaultAllow::AllUnauthenticated => Some((
+        DefaultAllow::Allow {
+            authenticated_only: false,
+            cluster_only: false,
+        } => Some((
             "_all_unauthed".into(),
             ClientAuthorization {
                 authentication: ClientAuthentication::Unauthenticated,
                 networks: all_nets,
             },
         )),
-        DefaultAllow::ClusterAuthenticated => Some((
+        DefaultAllow::Allow {
+            authenticated_only: true,
+            cluster_only: true,
+        } => Some((
             "_cluster_authed".into(),
             ClientAuthorization {
                 authentication: authed,
                 networks: cluster_nets,
             },
         )),
-        DefaultAllow::ClusterUnauthenticated => Some((
+        DefaultAllow::Allow {
+            authenticated_only: false,
+            cluster_only: true,
+        } => Some((
             "_cluster_unauthed".into(),
             ClientAuthorization {
                 authentication: ClientAuthentication::Unauthenticated,

@@ -11,8 +11,8 @@ use tokio::{sync::watch, time};
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum DefaultAllow {
     Allow {
-        cluster_nets: bool,
-        requires_id: bool,
+        authenticated_only: bool,
+        cluster_only: bool,
     },
     Deny,
 }
@@ -25,7 +25,7 @@ pub(crate) struct PodConfig {
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub(crate) struct PortConfig {
-    pub requires_id: bool,
+    pub authenticated: bool,
     pub opaque: bool,
 }
 
@@ -61,7 +61,7 @@ impl From<DefaultAllow> for PodConfig {
 // === impl DefaultAllow ===
 
 impl DefaultAllow {
-    pub const ANNOTATION: &'static str = "policy.linkerd.io/default-allow";
+    pub const ANNOTATION: &'static str = "config.linkerd.io/default-inbound-policy";
 
     pub fn from_annotation(meta: &k8s::ObjectMeta) -> Result<Option<Self>> {
         if let Some(ann) = meta.annotations.as_ref() {
@@ -81,20 +81,20 @@ impl std::str::FromStr for DefaultAllow {
     fn from_str(s: &str) -> Result<Self> {
         match s {
             "all-authenticated" => Ok(Self::Allow {
-                cluster_nets: false,
-                requires_id: true,
+                authenticated_only: true,
+                cluster_only: false,
             }),
             "all-unauthenticated" => Ok(Self::Allow {
-                cluster_nets: false,
-                requires_id: false,
+                authenticated_only: false,
+                cluster_only: false,
             }),
             "cluster-authenticated" => Ok(Self::Allow {
-                cluster_nets: true,
-                requires_id: true,
+                authenticated_only: true,
+                cluster_only: true,
             }),
             "cluster-unauthenticated" => Ok(Self::Allow {
-                cluster_nets: true,
-                requires_id: false,
+                authenticated_only: false,
+                cluster_only: true,
             }),
             "deny" => Ok(Self::Deny),
             s => Err(anyhow!("invalid mode: {:?}", s)),
@@ -106,20 +106,20 @@ impl std::fmt::Display for DefaultAllow {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Allow {
-                cluster_nets: false,
-                requires_id: true,
+                authenticated_only: true,
+                cluster_only: false,
             } => "all-authenticated".fmt(f),
             Self::Allow {
-                cluster_nets: false,
-                requires_id: false,
+                authenticated_only: false,
+                cluster_only: false,
             } => "all-unauthenticated".fmt(f),
             Self::Allow {
-                cluster_nets: true,
-                requires_id: true,
+                authenticated_only: true,
+                cluster_only: true,
             } => "cluster-authenticated".fmt(f),
             Self::Allow {
-                cluster_nets: true,
-                requires_id: false,
+                authenticated_only: false,
+                cluster_only: true,
             } => "cluster-unauthenticated".fmt(f),
             Self::Deny => "deny".fmt(f),
         }
@@ -143,75 +143,81 @@ impl DefaultAllowCache {
         }
     }
 
-    pub fn get(&mut self, mode: DefaultAllow, config: PortConfig) -> ServerRx {
+    pub fn get(&mut self, default: DefaultAllow, config: PortConfig) -> ServerRx {
         use std::collections::hash_map::Entry;
-        match self.rxs.entry((mode, config)) {
+        match self.rxs.entry((default, config)) {
             Entry::Occupied(entry) => entry.get().clone(),
             Entry::Vacant(entry) => {
-                let protocol = mk_protocol(self.detect_timeout, config.opaque);
-
-                let policy = match mode {
-                    DefaultAllow::Allow { cluster_nets, .. } => {
-                        let nets = if cluster_nets {
-                            self.cluster_nets.clone()
-                        } else {
-                            vec![IpNet::V4(Default::default()), IpNet::V6(Default::default())]
-                        };
-
-                        let authn = if config.requires_id {
-                            ClientAuthentication::TlsAuthenticated(vec![IdentityMatch::Suffix(
-                                vec![],
-                            )])
-                        } else {
-                            ClientAuthentication::Unauthenticated
-                        };
-
-                        mk_policy(&*mode.to_string(), protocol, nets, authn)
-                    }
-
-                    DefaultAllow::Deny => InboundServer {
-                        protocol,
-                        authorizations: Default::default(),
-                    },
-                };
-
-                let (tx, rx) = watch::channel(policy);
+                let server =
+                    Self::mk_server(default, config, &self.cluster_nets, self.detect_timeout);
+                let (tx, rx) = watch::channel(server);
                 entry.insert(rx.clone());
                 self.txs.push(tx);
                 rx
             }
         }
     }
-}
 
-fn mk_protocol(timeout: time::Duration, opaque: bool) -> ProxyProtocol {
-    if opaque {
-        return ProxyProtocol::Opaque;
+    fn mk_server(
+        default: DefaultAllow,
+        config: PortConfig,
+        cluster_nets: &[IpNet],
+        detect_timeout: time::Duration,
+    ) -> InboundServer {
+        let protocol = Self::mk_protocol(detect_timeout, &config);
+
+        match default {
+            DefaultAllow::Allow { cluster_only, .. } => {
+                let nets = if cluster_only {
+                    cluster_nets.to_vec()
+                } else {
+                    vec![IpNet::V4(Default::default()), IpNet::V6(Default::default())]
+                };
+                let authn = if config.authenticated {
+                    let all_authed = IdentityMatch::Suffix(vec![]);
+                    ClientAuthentication::TlsAuthenticated(vec![all_authed])
+                } else {
+                    ClientAuthentication::Unauthenticated
+                };
+                Self::mk_policy(&*default.to_string(), protocol, nets, authn)
+            }
+
+            DefaultAllow::Deny => InboundServer {
+                protocol,
+                authorizations: Default::default(),
+            },
+        }
     }
-    ProxyProtocol::Detect { timeout }
-}
 
-fn mk_policy(
-    name: &str,
-    protocol: ProxyProtocol,
-    nets: impl IntoIterator<Item = IpNet>,
-    authentication: ClientAuthentication,
-) -> InboundServer {
-    let networks = nets
-        .into_iter()
-        .map(|net| NetworkMatch {
-            net,
-            except: vec![],
-        })
-        .collect::<Vec<_>>();
-    let authz = ClientAuthorization {
-        networks,
-        authentication,
-    };
+    fn mk_protocol(timeout: time::Duration, config: &PortConfig) -> ProxyProtocol {
+        if config.opaque {
+            return ProxyProtocol::Opaque;
+        }
+        ProxyProtocol::Detect { timeout }
+    }
 
-    InboundServer {
-        protocol,
-        authorizations: Some((name.to_string(), authz)).into_iter().collect(),
+    fn mk_policy(
+        name: &str,
+        protocol: ProxyProtocol,
+        nets: impl IntoIterator<Item = IpNet>,
+        authentication: ClientAuthentication,
+    ) -> InboundServer {
+        let networks = nets
+            .into_iter()
+            .map(|net| NetworkMatch {
+                net,
+                except: vec![],
+            })
+            .collect::<Vec<_>>();
+        let authz = ClientAuthorization {
+            networks,
+            authentication,
+        };
+
+        InboundServer {
+            protocol,
+            authorizations: Some((name.to_string(), authz)).into_iter().collect(),
+        }
     }
 }
 
@@ -224,24 +230,24 @@ mod test {
         for default in [
             DefaultAllow::Deny,
             DefaultAllow::Allow {
-                cluster_nets: false,
-                requires_id: true,
+                authenticated_only: true,
+                cluster_only: false,
             },
             DefaultAllow::Allow {
-                cluster_nets: false,
-                requires_id: false,
+                authenticated_only: false,
+                cluster_only: false,
             },
             DefaultAllow::Allow {
-                cluster_nets: true,
-                requires_id: false,
+                authenticated_only: false,
+                cluster_only: true,
             },
             DefaultAllow::Allow {
-                cluster_nets: true,
-                requires_id: false,
+                authenticated_only: false,
+                cluster_only: true,
             },
         ] {
             assert_eq!(
-                default.to_string().parse().unwrap(),
+                default.to_string().parse::<DefaultAllow>().unwrap(),
                 default,
                 "failed to parse displayed {:?}",
                 default

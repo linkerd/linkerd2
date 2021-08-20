@@ -2,7 +2,7 @@ use crate::{
     default_allow::PortConfig, lookup, node::KubeletIps, DefaultAllow, DefaultAllowCache, Errors,
     Index, Namespace, NodeIndex, PodServerTx, ServerRx, SrvIndex,
 };
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use linkerd_policy_controller_k8s_api::{self as k8s, policy, ResourceExt};
 use std::collections::{hash_map::Entry as HashEntry, HashMap, HashSet};
 use tokio::sync::watch;
@@ -388,29 +388,30 @@ impl Pod {
 // === impl PodAnnotations ===
 
 impl PodAnnotations {
+    const OPAQUE_PORTS_ANNOTATION: &'static str = "config.linkerd.io/opaque-ports";
+    const REQUIRE_IDENTITY_PORTS_ANNOTATION: &'static str =
+        "config.linkerd.io/proxy-require-identity-inbound-ports";
+
     fn from_annotations(meta: &k8s::ObjectMeta) -> Self {
         let anns = match meta.annotations.as_ref() {
             None => return Self::default(),
             Some(anns) => anns,
         };
 
-        let opaque = Self::ports_annotation(anns, "config.linkerd.io/opaque-ports");
-
-        let require_id = Self::ports_annotation(
-            anns,
-            "config.linkerd.io/proxy-require-identity-inbound-ports",
-        );
+        let opaque = Self::ports_annotation(anns, Self::OPAQUE_PORTS_ANNOTATION);
+        let require_id = Self::ports_annotation(anns, Self::REQUIRE_IDENTITY_PORTS_ANNOTATION);
 
         Self { opaque, require_id }
     }
 
+    ///
     fn ports_annotation(
         anns: &std::collections::BTreeMap<String, String>,
         annotation: &str,
     ) -> HashSet<u16> {
         anns.get(annotation)
             .map(|spec| {
-                Self::parse_ports(spec).unwrap_or_else(|error| {
+                Self::parse_portset(spec).unwrap_or_else(|error| {
                     tracing::info!(%spec, %error, %annotation, "Invalid ports list");
                     Default::default()
                 })
@@ -418,15 +419,39 @@ impl PodAnnotations {
             .unwrap_or_default()
     }
 
-    fn parse_ports(s: &str) -> Result<HashSet<u16>> {
-        s.split(',')
-            .map(|p| p.trim().parse().context("parsing port"))
-            .collect()
+    /// Read a comma-separated of ports or port ranges from the given string.
+    fn parse_portset(s: &str) -> Result<HashSet<u16>> {
+        let mut ports = HashSet::new();
+        for spec in s.split(',') {
+            match spec.split_once('-') {
+                None => {
+                    if !spec.trim().is_empty() {
+                        let port = spec.trim().parse().context("parsing port")?;
+                        if port == 0 {
+                            bail!("port must not be 0")
+                        }
+                        ports.insert(port);
+                    }
+                }
+                Some((floor, ceil)) => {
+                    let floor = floor.trim().parse::<u16>().context("parsing port")?;
+                    let ceil = ceil.trim().parse::<u16>().context("parsing port")?;
+                    if floor == 0 {
+                        bail!("port must not be 0")
+                    }
+                    if floor > ceil {
+                        bail!("Port range must be increasing");
+                    }
+                    ports.extend(floor..=ceil);
+                }
+            }
+        }
+        Ok(ports)
     }
 
     fn get_config(&self, port: u16) -> PortConfig {
         PortConfig {
-            requires_id: self.require_id.contains(&port),
+            authenticated: self.require_id.contains(&port),
             opaque: self.opaque.contains(&port),
         }
     }
@@ -446,5 +471,37 @@ impl PodPorts {
                 self.by_name.get(name).cloned().unwrap_or_default()
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PodAnnotations;
+
+    #[test]
+    fn parse_portset() {
+        assert!(
+            PodAnnotations::parse_portset("").unwrap().is_empty(),
+            "empty"
+        );
+        assert!(PodAnnotations::parse_portset("0").is_err(), "0");
+        assert_eq!(
+            PodAnnotations::parse_portset("1").unwrap(),
+            vec![1].into_iter().collect(),
+            "1"
+        );
+        assert_eq!(
+            PodAnnotations::parse_portset("1-2").unwrap(),
+            vec![1, 2].into_iter().collect(),
+            "1-2"
+        );
+        assert_eq!(
+            PodAnnotations::parse_portset("4,1-2").unwrap(),
+            vec![1, 2, 4].into_iter().collect(),
+            "4,1-2"
+        );
+        assert!(PodAnnotations::parse_portset("2-1").is_err(), "2-1");
+        assert!(PodAnnotations::parse_portset("2-").is_err(), "2-");
+        assert!(PodAnnotations::parse_portset("65537").is_err(), "65537");
     }
 }
