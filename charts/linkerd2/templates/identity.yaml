@@ -127,6 +127,7 @@ spec:
         {{ include "partials.annotations.created-by" . }}
         {{- include "partials.proxy.annotations" . | nindent 8}}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        config.linkerd.io/opaque-ports: {{.Values.proxy.opaquePorts}}
       labels:
         linkerd.io/control-plane-component: identity
         linkerd.io/control-plane-ns: {{.Values.namespace}}
