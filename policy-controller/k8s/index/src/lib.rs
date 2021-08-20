@@ -31,7 +31,7 @@
 #![forbid(unsafe_code)]
 
 mod authz;
-mod default_allow;
+mod defaults;
 mod lookup;
 mod namespace;
 mod node;
@@ -40,9 +40,9 @@ mod server;
 #[cfg(test)]
 mod tests;
 
-pub use self::{default_allow::DefaultPolicy, lookup::Reader};
+pub use self::{defaults::DefaultPolicy, lookup::Reader};
 use self::{
-    default_allow::DefaultPolicyWatches,
+    defaults::DefaultPolicyWatches,
     namespace::{Namespace, NamespaceIndex},
     node::NodeIndex,
     server::SrvIndex,

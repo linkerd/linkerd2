@@ -1,6 +1,6 @@
 use crate::{
-    default_allow::PortDefaults, lookup, node::KubeletIps, DefaultPolicy, DefaultPolicyWatches,
-    Errors, Index, Namespace, NodeIndex, PodServerTx, ServerRx, SrvIndex,
+    defaults::PortDefaults, lookup, node::KubeletIps, DefaultPolicy, DefaultPolicyWatches, Errors,
+    Index, Namespace, NodeIndex, PodServerTx, ServerRx, SrvIndex,
 };
 use anyhow::{anyhow, bail, Context, Result};
 use linkerd_policy_controller_k8s_api::{self as k8s, policy, ResourceExt};
