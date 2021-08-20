@@ -144,24 +144,24 @@ impl DefaultPolicyWatches {
 
     fn mk_server(
         default: DefaultPolicy,
-        config: PortDefaults,
+        port: PortDefaults,
         cluster_nets: &[IpNet],
         detect_timeout: time::Duration,
     ) -> InboundServer {
-        let protocol = Self::mk_protocol(detect_timeout, &config);
+        let protocol = Self::mk_protocol(detect_timeout, port);
 
         match default {
             DefaultPolicy::Allow {
                 cluster_only,
                 authenticated_only,
             } => {
-                let name = format!("default:{}", default);
+                let name = Self::name(default, port);
                 let nets = if cluster_only {
                     cluster_nets.to_vec()
                 } else {
                     vec![IpNet::V4(Default::default()), IpNet::V6(Default::default())]
                 };
-                let authn = if authenticated_only || config.authenticated {
+                let authn = if authenticated_only || port.authenticated {
                     let all_authed = IdentityMatch::Suffix(vec![]);
                     ClientAuthentication::TlsAuthenticated(vec![all_authed])
                 } else {
@@ -177,8 +177,23 @@ impl DefaultPolicyWatches {
         }
     }
 
-    fn mk_protocol(timeout: time::Duration, config: &PortDefaults) -> ProxyProtocol {
-        if config.opaque {
+    fn name(default: DefaultPolicy, port: PortDefaults) -> String {
+        // Update the default to account for whether the port requires authentication:
+        let default = match default {
+            DefaultPolicy::Deny => DefaultPolicy::Deny,
+            DefaultPolicy::Allow {
+                cluster_only,
+                authenticated_only,
+            } => DefaultPolicy::Allow {
+                cluster_only,
+                authenticated_only: authenticated_only || port.authenticated,
+            },
+        };
+        format!("default:{}", default)
+    }
+
+    fn mk_protocol(timeout: time::Duration, port: PortDefaults) -> ProxyProtocol {
+        if port.opaque {
             return ProxyProtocol::Opaque;
         }
         ProxyProtocol::Detect { timeout }

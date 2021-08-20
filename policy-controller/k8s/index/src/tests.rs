@@ -141,8 +141,8 @@ async fn incrementally_configure_server() {
     );
 }
 
-#[tokio::test]
-async fn server_update_deselects_pod() {
+#[test]
+fn server_update_deselects_pod() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
     let (kubelet_ip, pod_ip) = {
@@ -210,31 +210,11 @@ async fn server_update_deselects_pod() {
     );
 }
 
-const DEFAULTS: [DefaultPolicy; 5] = [
-    DefaultPolicy::Deny,
-    DefaultPolicy::Allow {
-        authenticated_only: true,
-        cluster_only: false,
-    },
-    DefaultPolicy::Allow {
-        authenticated_only: false,
-        cluster_only: false,
-    },
-    DefaultPolicy::Allow {
-        authenticated_only: true,
-        cluster_only: true,
-    },
-    DefaultPolicy::Allow {
-        authenticated_only: false,
-        cluster_only: true,
-    },
-];
-
 /// Tests that pod servers are configured with defaults based on the global `DefaultPolicy` policy.
 ///
 /// Iterates through each default policy and validates that it produces expected configurations.
-#[tokio::test]
-async fn default_policy_global() {
+#[test]
+fn default_policy_global() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
     let (kubelet_ip, pod_ip) = {
@@ -281,8 +261,8 @@ async fn default_policy_global() {
 /// policy.
 ///
 /// Iterates through each default policy and validates that it produces expected configurations.
-#[tokio::test]
-async fn default_policy_annotated() {
+#[test]
+fn default_policy_annotated() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
     let (kubelet_ip, pod_ip) = {
@@ -295,6 +275,7 @@ async fn default_policy_annotated() {
         let (lookup_rx, mut idx) = Index::new(
             vec![cluster_net],
             "cluster.example.com".into(),
+            // Invert default to ensure override applies.
             match *default {
                 DefaultPolicy::Deny => DefaultPolicy::Allow {
                     authenticated_only: false,
@@ -331,10 +312,9 @@ async fn default_policy_annotated() {
         assert_eq!(port2222.get(), config);
     }
 }
-
 /// Tests that an invalid workload annotation is ignored in favor of the global default.
-#[tokio::test]
-async fn default_policy_annotated_invalid() {
+#[test]
+fn default_policy_annotated_invalid() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
     let (kubelet_ip, pod_ip) = {
@@ -388,9 +368,110 @@ async fn default_policy_annotated_invalid() {
     );
 }
 
+#[test]
+fn opaque_annotated() {
+    let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
+    let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
+    let (kubelet_ip, pod_ip) = {
+        let mut ips = pod_net.hosts();
+        (ips.next().unwrap(), ips.next().unwrap())
+    };
+    let detect_timeout = time::Duration::from_secs(1);
+
+    for default in &DEFAULTS {
+        let (lookup_rx, mut idx) = Index::new(
+            vec![cluster_net],
+            "cluster.example.com".into(),
+            *default,
+            detect_timeout,
+        );
+
+        idx.reset_nodes(vec![mk_node("node-0", pod_net)]).unwrap();
+
+        let mut p = mk_pod(
+            "ns-0",
+            "pod-0",
+            "node-0",
+            pod_ip,
+            Some(("container-0", vec![2222])),
+        );
+        p.annotations_mut()
+            .insert("config.linkerd.io/opaque-ports".into(), "2222".into());
+        idx.reset_pods(vec![p]).unwrap();
+
+        let config = InboundServer {
+            authorizations: mk_default_policy(*default, cluster_net, kubelet_ip),
+            protocol: ProxyProtocol::Opaque,
+        };
+
+        let port2222 = lookup_rx
+            .lookup("ns-0", "pod-0", 2222)
+            .expect("pod must exist in lookups");
+        assert_eq!(port2222.get(), config);
+    }
+}
+
+#[test]
+fn authenticated_annotated() {
+    let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
+    let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
+    let (kubelet_ip, pod_ip) = {
+        let mut ips = pod_net.hosts();
+        (ips.next().unwrap(), ips.next().unwrap())
+    };
+    let detect_timeout = time::Duration::from_secs(1);
+
+    for default in &DEFAULTS {
+        let (lookup_rx, mut idx) = Index::new(
+            vec![cluster_net],
+            "cluster.example.com".into(),
+            *default,
+            detect_timeout,
+        );
+
+        idx.reset_nodes(vec![mk_node("node-0", pod_net)]).unwrap();
+
+        let mut p = mk_pod(
+            "ns-0",
+            "pod-0",
+            "node-0",
+            pod_ip,
+            Some(("container-0", vec![2222])),
+        );
+        p.annotations_mut().insert(
+            "config.linkerd.io/proxy-require-identity-inbound-ports".into(),
+            "2222".into(),
+        );
+        idx.reset_pods(vec![p]).unwrap();
+
+        let config = InboundServer {
+            authorizations: mk_default_policy(
+                match *default {
+                    DefaultPolicy::Allow { cluster_only, .. } => DefaultPolicy::Allow {
+                        cluster_only,
+                        authenticated_only: true,
+                    },
+                    DefaultPolicy::Deny => DefaultPolicy::Deny,
+                },
+                cluster_net,
+                kubelet_ip,
+            ),
+            protocol: ProxyProtocol::Detect {
+                timeout: detect_timeout,
+            },
+        };
+
+        let port2222 = lookup_rx
+            .lookup("ns-0", "pod-0", 2222)
+            .expect("pod must exist in lookups");
+        assert_eq!(port2222.get().protocol, config.protocol);
+        assert_eq!(port2222.get().authorizations, config.authorizations);
+    }
+}
+
 /// Tests observing a pod before its node has been observed amid resets.
-#[tokio::test]
-async fn pod_before_node_reset() {
+#[test]
+fn pod_before_node_reset() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
     let (_kubelet_ip, pod_ip) = {
@@ -442,8 +523,8 @@ async fn pod_before_node_reset() {
 }
 
 /// Tests observing a pod before its node has been observed amid resets.
-#[tokio::test]
-async fn pod_before_node_remove() {
+#[test]
+fn pod_before_node_remove() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
     let (_kubelet_ip, pod_ip) = {
@@ -482,6 +563,26 @@ async fn pod_before_node_remove() {
 }
 
 // === Helpers ===
+
+const DEFAULTS: [DefaultPolicy; 5] = [
+    DefaultPolicy::Deny,
+    DefaultPolicy::Allow {
+        authenticated_only: true,
+        cluster_only: false,
+    },
+    DefaultPolicy::Allow {
+        authenticated_only: false,
+        cluster_only: false,
+    },
+    DefaultPolicy::Allow {
+        authenticated_only: true,
+        cluster_only: true,
+    },
+    DefaultPolicy::Allow {
+        authenticated_only: false,
+        cluster_only: true,
+    },
+];
 
 fn mk_node(name: impl Into<String>, pod_net: IpNet) -> k8s::Node {
     k8s::Node {
@@ -654,7 +755,7 @@ fn mk_default_policy(
 
 fn healthcheck_authz(ip: IpAddr) -> (String, ClientAuthorization) {
     (
-        "_health_check".into(),
+        "default:kubelet".into(),
         ClientAuthorization {
             networks: vec![NetworkMatch::from(IpNet::from(ip))],
             authentication: ClientAuthentication::Unauthenticated,
