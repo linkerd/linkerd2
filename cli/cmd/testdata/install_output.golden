@@ -1747,7 +1747,7 @@ spec:
         - --grpc-addr=0.0.0.0:8090
         - --cluster-networks=ClusterNetworks
         - --identity-domain=cluster.local
-        - --default-allow=default-allow-policy
+        - --default-policy=default-allow-policy
         env:
         - name: RUST_LOG
           value: "log-level"
