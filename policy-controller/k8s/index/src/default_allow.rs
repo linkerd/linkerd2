@@ -171,6 +171,7 @@ impl DefaultAllowCache {
                 cluster_only,
                 authenticated_only,
             } => {
+                let name = format!("default:{}", default);
                 let nets = if cluster_only {
                     cluster_nets.to_vec()
                 } else {
@@ -182,7 +183,7 @@ impl DefaultAllowCache {
                 } else {
                     ClientAuthentication::Unauthenticated
                 };
-                Self::mk_policy(&*format!("_{}", default), protocol, nets, authn)
+                Self::mk_policy(name, protocol, nets, authn)
             }
 
             DefaultAllow::Deny => InboundServer {
@@ -200,7 +201,7 @@ impl DefaultAllowCache {
     }
 
     fn mk_policy(
-        name: &str,
+        name: String,
         protocol: ProxyProtocol,
         nets: impl IntoIterator<Item = IpNet>,
         authentication: ClientAuthentication,
@@ -219,7 +220,7 @@ impl DefaultAllowCache {
 
         InboundServer {
             protocol,
-            authorizations: Some((name.to_string(), authz)).into_iter().collect(),
+            authorizations: Some((name, authz)).into_iter().collect(),
         }
     }
 }
