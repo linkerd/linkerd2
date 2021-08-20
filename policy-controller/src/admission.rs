@@ -21,7 +21,7 @@ pub async fn handler(
     let req: AdmissionRequest<DynamicObject> = match body.try_into() {
         Ok(req) => req,
         Err(err) => {
-            error!(error = ?err.to_string(), "invalid request");
+            error!(error = %err, "invalid request");
             return Ok(reply::json(
                 &AdmissionResponse::invalid(err.to_string()).into_review(),
             ));
@@ -33,10 +33,10 @@ pub async fn handler(
     let mut res = AdmissionResponse::from(&req);
 
     // List existing servers.
-    let api: Api<Server> = Api::all(admission.0.clone());
+    let api: Api<Server> = Api::all(admission.0);
     let params = ListParams::default();
     let servers = api.list(&params).await.unwrap_or_else(|err| {
-        error!(error = ?err.to_string(), "failed to list servers");
+        error!(error = %err, "failed to list servers");
         ObjectList {
             metadata: Default::default(),
             items: Default::default(),
@@ -50,7 +50,7 @@ pub async fn handler(
         .and_then(|spec| {
             serde_json::from_value::<ServerSpec>(spec)
                 .map_err(|err| {
-                    error!(error = ?err.to_string(), "failed to deserialize");
+                    error!(error = %err, "failed to deserialize");
                     err
                 })
                 .ok()
