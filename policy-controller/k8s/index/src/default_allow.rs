@@ -167,19 +167,22 @@ impl DefaultAllowCache {
         let protocol = Self::mk_protocol(detect_timeout, &config);
 
         match default {
-            DefaultAllow::Allow { cluster_only, .. } => {
+            DefaultAllow::Allow {
+                cluster_only,
+                authenticated_only,
+            } => {
                 let nets = if cluster_only {
                     cluster_nets.to_vec()
                 } else {
                     vec![IpNet::V4(Default::default()), IpNet::V6(Default::default())]
                 };
-                let authn = if config.authenticated {
+                let authn = if authenticated_only || config.authenticated {
                     let all_authed = IdentityMatch::Suffix(vec![]);
                     ClientAuthentication::TlsAuthenticated(vec![all_authed])
                 } else {
                     ClientAuthentication::Unauthenticated
                 };
-                Self::mk_policy(&*default.to_string(), protocol, nets, authn)
+                Self::mk_policy(&*format!("_{}", default), protocol, nets, authn)
             }
 
             DefaultAllow::Deny => InboundServer {

@@ -610,7 +610,7 @@ fn mk_default_allow(
             authenticated_only: true,
             cluster_only: false,
         } => Some((
-            "_all_authed".into(),
+            "_all-authenticated".into(),
             ClientAuthorization {
                 authentication: authed,
                 networks: all_nets,
@@ -620,7 +620,7 @@ fn mk_default_allow(
             authenticated_only: false,
             cluster_only: false,
         } => Some((
-            "_all_unauthed".into(),
+            "_all-unauthenticated".into(),
             ClientAuthorization {
                 authentication: ClientAuthentication::Unauthenticated,
                 networks: all_nets,
@@ -630,7 +630,7 @@ fn mk_default_allow(
             authenticated_only: true,
             cluster_only: true,
         } => Some((
-            "_cluster_authed".into(),
+            "_cluster-authenticated".into(),
             ClientAuthorization {
                 authentication: authed,
                 networks: cluster_nets,
@@ -640,7 +640,7 @@ fn mk_default_allow(
             authenticated_only: false,
             cluster_only: true,
         } => Some((
-            "_cluster_unauthed".into(),
+            "_cluster-unauthenticated".into(),
             ClientAuthorization {
                 authentication: ClientAuthentication::Unauthenticated,
                 networks: cluster_nets,
