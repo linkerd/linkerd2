@@ -809,7 +809,6 @@ dependencies = [
  "serde_yaml",
  "tokio",
  "tracing",
- "tracing-futures",
 ]
 
 [[package]]
@@ -1508,9 +1507,9 @@ dependencies = [
 
 [[package]]
 name = "serde_yaml"
-version = "0.8.17"
+version = "0.8.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15654ed4ab61726bf918a39cb8d98a2e2995b002387807fa6ba58fdf7f59bb23"
+checksum = "039ba818c784248423789eec090aab9fb566c7b94d6ebbfa1814a9fd52c8afb2"
 dependencies = [
  "dtoa",
  "linked-hash-map",
@@ -1917,8 +1916,6 @@ version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97d095ae15e245a057c8e8451bab9b3ee1e1f68e9ba2b4fbc18d0ac5237835f2"
 dependencies = [
- "futures",
- "futures-task",
  "pin-project 1.0.8",
  "tracing",
 ]
@@ -1936,9 +1933,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-subscriber"
-version = "0.2.19"
+version = "0.2.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab69019741fca4d98be3c62d2b75254528b5432233fd8a4d2739fec20278de48"
+checksum = "b9cbe87a2fa7e35900ce5de20220a582a9483a7063811defce79d7cbd59d4cfe"
 dependencies = [
  "lazy_static",
  "matchers",

@@ -47,12 +47,12 @@ use self::{
     node::NodeIndex,
     server::SrvIndex,
 };
-use anyhow::{Context, Error};
+use anyhow::Context;
 use linkerd_policy_controller_core::{InboundServer, IpNet};
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
 use std::{future::Future, pin::Pin};
 use tokio::{sync::watch, time};
-use tracing::{debug, instrument, warn};
+use tracing::{debug, warn};
 
 /// Watches a server's configuration for server/authorization changes.
 type ServerRx = watch::Receiver<InboundServer>;
@@ -80,7 +80,7 @@ pub struct Index {
 
     /// Networks including PodIPs in this cluster.
     ///
-    /// TODO this can be discovered dynamically by the node index, but this would complicate
+    /// TODO(ver) this can be discovered dynamically by the node index, but this would complicate
     /// notifications.
     cluster_networks: Vec<IpNet>,
 
@@ -137,12 +137,11 @@ impl Index {
     ///
     /// All updates are atomically published to the shared `lookups` map after indexing occurs; but
     /// the indexing task is solely responsible for mutating it.
-    #[instrument(skip(self, resources, ready_tx), fields(result))]
     pub async fn run(
         mut self,
         resources: impl Into<k8s::ResourceWatches>,
         ready_tx: watch::Sender<bool>,
-    ) -> Error {
+    ) {
         let k8s::ResourceWatches {
             mut nodes_rx,
             mut pods_rx,
@@ -150,7 +149,7 @@ impl Index {
             mut authorizations_rx,
         } = resources.into();
 
-        let mut ready = false;
+        let mut initialized = false;
         loop {
             let res = tokio::select! {
                 // Track the kubelet IPs for all nodes.
@@ -192,15 +191,16 @@ impl Index {
                 warn!(?error);
             }
 
-            // Notify the readiness watch if readiness changes.
-            let ready_now = nodes_rx.ready()
-                && pods_rx.ready()
-                && servers_rx.ready()
-                && authorizations_rx.ready();
-            if ready != ready_now {
-                let _ = ready_tx.send(ready_now);
-                ready = ready_now;
-                debug!(%ready);
+            // Notify the readiness watch once all watches have updated.
+            if !initialized
+                && nodes_rx.is_initialized()
+                && pods_rx.is_initialized()
+                && servers_rx.is_initialized()
+                && authorizations_rx.is_initialized()
+            {
+                let _ = ready_tx.send(true);
+                initialized = true;
+                debug!("Ready");
             }
         }
     }

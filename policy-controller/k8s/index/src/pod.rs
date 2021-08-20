@@ -206,7 +206,7 @@ impl PodIndex {
                 let (pod, kubelet) = match nodes.get_kubelet_ips_or_push_pending(pod) {
                     Some((pod, ips)) => (pod, ips),
                     None => {
-                        debug!("Pod cannot yet assigned to a Node");
+                        debug!("Pod cannot yet be assigned to a Node");
                         return Ok(());
                     }
                 };
