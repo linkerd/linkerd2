@@ -23,6 +23,7 @@ pub type InboundServerStream = Pin<Box<dyn Stream<Item = InboundServer> + Send +
 /// Inbound server configuration.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InboundServer {
+    pub name: String,
     pub protocol: ProxyProtocol,
     pub authorizations: HashMap<String, ClientAuthorization>,
 }
