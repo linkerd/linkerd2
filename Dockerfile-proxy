@@ -37,6 +37,7 @@ COPY --from=fetch /build/proxy-version /usr/lib/linkerd/linkerd2-proxy-version.t
 COPY --from=fetch /build/linkerd2-proxy /usr/lib/linkerd/linkerd2-proxy
 COPY --from=fetch /build/linkerd-await /usr/lib/linkerd/linkerd-await
 COPY --from=golang /out/proxy-identity /usr/lib/linkerd/linkerd2-proxy-identity
+COPY --from=golang /bin/sleep /usr/lib/linkerd/sleep
 ARG LINKERD_VERSION
 ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}
 ENV LINKERD2_PROXY_LOG=warn,linkerd=info

@@ -165,9 +165,8 @@ lifecycle:
   preStop:
     exec:
       command:
-        - /bin/bash
-        - -c
-        - sleep {{.Values.proxy.waitBeforeExitSeconds}}
+        - /usr/lib/linkerd/sleep
+        - {{.Values.proxy.waitBeforeExitSeconds | quote}}
 {{- end }}
 {{- end }}
 {{- if or (not .Values.proxy.disableIdentity) (.Values.proxy.saMountPath) }}
