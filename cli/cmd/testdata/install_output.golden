@@ -1200,6 +1200,7 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: CliVersion
+    config.linkerd.io/opaque-ports: 25,443,587,3306,5432,11211
 spec:
   type: ClusterIP
   selector:
@@ -1219,6 +1220,7 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: CliVersion
+    config.linkerd.io/opaque-ports: 25,443,587,3306,5432,11211
 spec:
   clusterIP: None
   selector:
@@ -1468,6 +1470,7 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: CliVersion
+    config.linkerd.io/opaque-ports: 25,443,587,3306,5432,11211
 spec:
   type: ClusterIP
   selector:
@@ -1487,6 +1490,7 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: CliVersion
+    config.linkerd.io/opaque-ports: 25,443,587,3306,5432,11211
 spec:
   clusterIP: None
   selector:
@@ -2125,6 +2129,7 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: CliVersion
+    config.linkerd.io/opaque-ports: 25,443,587,3306,5432,11211
 spec:
   type: ClusterIP
   selector:

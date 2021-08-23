@@ -12,6 +12,7 @@ metadata:
     linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    config.linkerd.io/opaque-ports: {{.Values.proxy.opaquePorts}}
 spec:
   type: ClusterIP
   selector:
@@ -31,6 +32,7 @@ metadata:
     linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    config.linkerd.io/opaque-ports: {{.Values.proxy.opaquePorts}}
 spec:
   clusterIP: None
   selector:
@@ -50,6 +52,7 @@ metadata:
     linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    config.linkerd.io/opaque-ports: {{.Values.proxy.opaquePorts}}
 spec:
   type: ClusterIP
   selector:
@@ -69,6 +72,7 @@ metadata:
     linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    config.linkerd.io/opaque-ports: {{.Values.proxy.opaquePorts}}
 spec:
   clusterIP: None
   selector:

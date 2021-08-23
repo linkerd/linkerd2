@@ -382,7 +382,7 @@ func (conf *ResourceConfig) CreateDefaultOpaquePortsPatch() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-	} else if !conf.HasPodAnnotation(k8s.ProxyOpaquePortsAnnotation) && conf.IsPod() {
+	} else if !conf.HasWorkloadAnnotation(k8s.ProxyOpaquePortsAnnotation) {
 		opaquePorts := conf.GetValues().Proxy.OpaquePorts
 		patch, err = conf.CreateAnnotationPatch(opaquePorts)
 		if err != nil {
@@ -392,10 +392,13 @@ func (conf *ResourceConfig) CreateDefaultOpaquePortsPatch() ([]byte, error) {
 	return patch, nil
 }
 
-// HasPodAnnotation returns true if the pod has the annotation set by the
-// resource config or its metadata.
-func (conf *ResourceConfig) HasPodAnnotation(annotation string) bool {
+// HasWorkloadAnnotation returns true if the workload has the annotation set
+// by the resource config or its metadata.
+func (conf *ResourceConfig) HasWorkloadAnnotation(annotation string) bool {
 	if _, ok := conf.pod.meta.Annotations[annotation]; ok {
+		return true
+	}
+	if _, ok := conf.workload.Meta.Annotations[annotation]; ok {
 		return true
 	}
 	_, ok := conf.pod.annotations[annotation]

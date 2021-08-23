@@ -98,7 +98,7 @@ func Inject(
 		// namespace, then add the default value from the config values. This
 		// ensures that the generated patch always sets the opaue ports
 		// annotation.
-		if !resourceConfig.HasPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation) {
+		if !resourceConfig.HasWorkloadAnnotation(pkgK8s.ProxyOpaquePortsAnnotation) {
 			opaquePorts := resourceConfig.GetValues().Proxy.OpaquePorts
 			resourceConfig.AppendPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation, opaquePorts)
 		}
@@ -129,8 +129,8 @@ func Inject(
 		return nil, err
 	}
 
-	// If patchJSON holds a patch after checking 1 and 2 above, then a patch
-	// was generated and we admit the request.
+	// If patchJSON holds a patch after checking the workload annotations,
+	// then we admit the request.
 	if len(patchJSON) != 0 {
 		log.Infof("annotation patch generated for: %s", report.ResName())
 		log.Debugf("annotation patch: %s", patchJSON)
