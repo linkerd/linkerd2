@@ -403,12 +403,14 @@ impl PodAnnotations {
         Self { opaque, require_id }
     }
 
-    ///
+    /// Reads `annotation` from the provided set of annotations, parsing it as a port set.  If the
+    /// annotation is not set or is invalid, the empty set is returned.
     fn ports_annotation(
-        anns: &std::collections::BTreeMap<String, String>,
+        annotations: &std::collections::BTreeMap<String, String>,
         annotation: &str,
     ) -> HashSet<u16> {
-        anns.get(annotation)
+        annotations
+            .get(annotation)
             .map(|spec| {
                 Self::parse_portset(spec).unwrap_or_else(|error| {
                     tracing::info!(%spec, %error, %annotation, "Invalid ports list");
