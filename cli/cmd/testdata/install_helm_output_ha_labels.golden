@@ -1583,6 +1583,7 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
+    config.linkerd.io/opaque-ports: 25,443,587,3306,4444,5432,6379,9300,11211
 spec:
   type: ClusterIP
   selector:
@@ -1602,6 +1603,7 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
+    config.linkerd.io/opaque-ports: 25,443,587,3306,4444,5432,6379,9300,11211
 spec:
   clusterIP: None
   selector:

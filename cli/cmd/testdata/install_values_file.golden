@@ -1494,6 +1494,7 @@ metadata:
     linkerd.io/control-plane-ns: l5d
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
+    config.linkerd.io/opaque-ports: 25,443,587,3306,4444,5432,6379,9300,11211
 spec:
   type: ClusterIP
   selector:
@@ -1513,6 +1514,7 @@ metadata:
     linkerd.io/control-plane-ns: l5d
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
+    config.linkerd.io/opaque-ports: 25,443,587,3306,4444,5432,6379,9300,11211
 spec:
   clusterIP: None
   selector:
