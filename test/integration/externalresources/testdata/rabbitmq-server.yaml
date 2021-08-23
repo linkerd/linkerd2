@@ -19,24 +19,20 @@ spec:
           name: rabbitmq
           livenessProbe:
             exec:
-              command:
-                - rabbitmqctl
-                - status
-            failureThreshold: 6
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            successThreshold: 1
-            timeoutSeconds: 5
+              command: ["rabbitmq-diagnostics", "status"]
+            initialDelaySeconds: 60
+            periodSeconds: 60
+            timeoutSeconds: 15
           readinessProbe:
             exec:
-              command:
-                - rabbitmqctl
-                - status
-            failureThreshold: 6
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            successThreshold: 1
-            timeoutSeconds: 5
+              command: ["rabbitmq-diagnostics", "ping"]
+            initialDelaySeconds: 20
+            periodSeconds: 60
+            timeoutSeconds: 10
+          ports:
+            - containerPort: 15672
+            - containerPort: 5672
+
 ---
 apiVersion: v1
 kind: Service
