@@ -8,7 +8,7 @@ pub use self::{identity_match::IdentityMatch, network_match::NetworkMatch};
 use anyhow::Result;
 use futures::prelude::*;
 pub use ipnet::{IpNet, Ipv4Net, Ipv6Net};
-use std::{collections::HashMap, pin::Pin, time::Duration};
+use std::{collections::HashMap, hash::Hash, pin::Pin, time::Duration};
 
 /// Models inbound server configuration discovery.
 #[async_trait::async_trait]
@@ -28,7 +28,7 @@ pub struct InboundServer {
 }
 
 /// Describes how a proxy should handle inbound connections.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ProxyProtocol {
     /// Indicates that the protocol should be discovered dynamically.
     Detect {

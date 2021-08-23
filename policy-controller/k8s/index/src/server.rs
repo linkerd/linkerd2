@@ -64,7 +64,7 @@ impl Index {
             ref mut pods,
             ref mut authzs,
             ref mut servers,
-            default_allow: _,
+            default_policy: _,
         } = self.namespaces.get_or_default(ns_name);
 
         servers.apply(srv, authzs);

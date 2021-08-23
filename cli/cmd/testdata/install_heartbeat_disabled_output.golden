@@ -1674,7 +1674,7 @@ spec:
         - --grpc-addr=0.0.0.0:8090
         - --cluster-networks=10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         - --identity-domain=cluster.local
-        - --default-allow=all-unauthenticated
+        - --default-policy=all-unauthenticated
         env:
         - name: RUST_LOG
           value: "linkerd=info,warn"

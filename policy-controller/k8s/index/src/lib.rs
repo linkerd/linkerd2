@@ -14,7 +14,7 @@
 //!   `ServerAuthorization` is updated, we find all of the `Server` instances it selects and update
 //!   their authorizations and publishes these updates on the server's broadcast channel.
 //!
-//! ```ignore
+//! ```text
 //! [Node] <- [ Pod ]
 //!           |-> [ Port ] <- [ Server ] <- [ ServerAuthorization ]
 //! ```
@@ -31,7 +31,7 @@
 #![forbid(unsafe_code)]
 
 mod authz;
-mod default_allow;
+mod defaults;
 mod lookup;
 mod namespace;
 mod node;
@@ -40,9 +40,9 @@ mod server;
 #[cfg(test)]
 mod tests;
 
-pub use self::{default_allow::DefaultAllow, lookup::Reader};
+pub use self::{defaults::DefaultPolicy, lookup::Reader};
 use self::{
-    default_allow::DefaultAllowRxs,
+    defaults::DefaultPolicyWatches,
     namespace::{Namespace, NamespaceIndex},
     node::NodeIndex,
     server::SrvIndex,
@@ -50,7 +50,6 @@ use self::{
 use anyhow::Context;
 use linkerd_policy_controller_core::{InboundServer, IpNet};
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
-use std::{future::Future, pin::Pin};
 use tokio::{sync::watch, time};
 use tracing::{debug, warn};
 
@@ -87,14 +86,10 @@ pub struct Index {
     /// Holds watches for the cluster's default-allow policies. These watches are never updated but
     /// this state is held so we can used shared references when updating a pod-port's server watch
     /// with a default policy.
-    default_allows: DefaultAllowRxs,
+    default_policy_watches: DefaultPolicyWatches,
 
     /// A handle that supports updates to the lookup index.
     lookups: lookup::Writer,
-
-    /// Holds the `DefaultAllowRxs` senders so that the receivers never signal an ending. This doesn't
-    /// actually need to be polled.
-    _default_allows_txs: Pin<Box<dyn Future<Output = ()> + Send + 'static>>,
 }
 
 #[derive(Debug)]
@@ -106,16 +101,16 @@ impl Index {
     pub fn new(
         cluster_networks: Vec<IpNet>,
         identity_domain: String,
-        default_allow: DefaultAllow,
+        default_policy: DefaultPolicy,
         detect_timeout: time::Duration,
     ) -> (lookup::Reader, Self) {
         // Create a common set of receivers for all supported default policies.
-        let (default_allows, _default_allows_txs) =
-            DefaultAllowRxs::new(cluster_networks.clone(), detect_timeout);
+        let default_policy_watches =
+            DefaultPolicyWatches::new(cluster_networks.clone(), detect_timeout);
 
         // Provide the cluster-wide default-allow policy to the namespace index so that it may be
         // used when a workload-level annotation is not set.
-        let namespaces = NamespaceIndex::new(default_allow);
+        let namespaces = NamespaceIndex::new(default_policy);
 
         let (writer, reader) = lookup::pair();
         let idx = Self {
@@ -123,9 +118,8 @@ impl Index {
             namespaces,
             identity_domain,
             cluster_networks,
-            default_allows,
+            default_policy_watches,
             nodes: NodeIndex::default(),
-            _default_allows_txs: Box::pin(_default_allows_txs),
         };
         (reader, idx)
     }

@@ -1,7 +1,7 @@
 use ipnet::{IpNet, Ipv4Net, Ipv6Net};
 use std::net::IpAddr;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NetworkMatch {
     /// A network to match against.
     pub net: IpNet,
