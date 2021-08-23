@@ -304,10 +304,12 @@ func TestGetAnnotationPatch(t *testing.T) {
 				conf:     confNsWithoutOpaquePorts(),
 			},
 			{
-				name:     "service without opaque ports and namespace without",
-				filename: "service-without-opaque-ports.yaml",
-				ns:       nsWithoutOpaquePorts,
-				conf:     confNsWithoutOpaquePorts(),
+				name:               "service without opaque ports and namespace without",
+				filename:           "service-without-opaque-ports.yaml",
+				ns:                 nsWithoutOpaquePorts,
+				conf:               confNsWithoutOpaquePorts(),
+				expectedPatchBytes: defaultOPBytes,
+				expectedPatch:      defaultOPPatch,
 			},
 			{
 				name:               "pod without opaque ports and namespace with",
