@@ -31,8 +31,8 @@ pub(crate) struct PortDefaults {
 }
 
 /// Holds the watches for all default policies. These watches are initiated lazily and are never
-/// updated. `DefaultPolicyWatches` creates instantiating a watch as needed and holding its sender
-/// so that the receiver never observes the sender closing (or updating at all).
+/// updated. `DefaultPolicyWatches` creates a watch as needed and holding its sender so that the
+/// receiver never observes the sender closing (or updating at all).
 #[derive(Debug)]
 pub(crate) struct DefaultPolicyWatches {
     cluster_nets: Vec<IpNet>,
