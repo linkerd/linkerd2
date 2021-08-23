@@ -191,6 +191,7 @@ impl SrvIndex {
                     .collect::<HashMap<_, _>>();
                 debug!(authzs = ?authzs.keys());
                 let (tx, rx) = watch::channel(InboundServer {
+                    name: entry.key().clone(),
                     protocol: protocol.clone(),
                     authorizations: authzs.clone(),
                 });

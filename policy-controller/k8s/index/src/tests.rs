@@ -40,15 +40,13 @@ async fn incrementally_configure_server() {
     );
     idx.apply_pod(pod.clone()).unwrap();
 
+    let default = DefaultPolicy::Allow {
+        authenticated_only: false,
+        cluster_only: true,
+    };
     let default_config = InboundServer {
-        authorizations: mk_default_policy(
-            DefaultPolicy::Allow {
-                authenticated_only: false,
-                cluster_only: true,
-            },
-            cluster_net,
-            kubelet_ip,
-        ),
+        name: format!("default:{}", default),
+        authorizations: mk_default_policy(default, cluster_net, kubelet_ip),
         protocol: ProxyProtocol::Detect {
             timeout: detect_timeout,
         },
@@ -77,6 +75,7 @@ async fn incrementally_configure_server() {
     // Check that the watch has been updated to reflect the above change and that this change _only_
     // applies to the correct port.
     let basic_config = InboundServer {
+        name: "srv-0".into(),
         protocol: ProxyProtocol::Http1,
         authorizations: vec![healthcheck_authz(kubelet_ip)].into_iter().collect(),
     };
@@ -103,6 +102,7 @@ async fn incrementally_configure_server() {
     assert_eq!(
         time::timeout(time::Duration::from_secs(1), rx.next()).await,
         Ok(Some(InboundServer {
+            name: "srv-0".into(),
             protocol: ProxyProtocol::Http1,
             authorizations: vec![
                 (
@@ -150,13 +150,14 @@ fn server_update_deselects_pod() {
         (ips.next().unwrap(), ips.next().unwrap())
     };
     let detect_timeout = time::Duration::from_secs(1);
+    let default = DefaultPolicy::Allow {
+        authenticated_only: false,
+        cluster_only: true,
+    };
     let (lookup_rx, mut idx) = Index::new(
         vec![cluster_net],
         "cluster.example.com".into(),
-        DefaultPolicy::Allow {
-            authenticated_only: false,
-            cluster_only: true,
-        },
+        default,
         detect_timeout,
     );
 
@@ -182,6 +183,7 @@ fn server_update_deselects_pod() {
     assert_eq!(
         port2222.get(),
         InboundServer {
+            name: "srv-0".into(),
             protocol: ProxyProtocol::Http2,
             authorizations: vec![healthcheck_authz(kubelet_ip)].into_iter().collect(),
         }
@@ -195,14 +197,8 @@ fn server_update_deselects_pod() {
     assert_eq!(
         port2222.get(),
         InboundServer {
-            authorizations: mk_default_policy(
-                DefaultPolicy::Allow {
-                    authenticated_only: false,
-                    cluster_only: true,
-                },
-                cluster_net,
-                kubelet_ip
-            ),
+            name: format!("default:{}", default),
+            authorizations: mk_default_policy(default, cluster_net, kubelet_ip),
             protocol: ProxyProtocol::Detect {
                 timeout: detect_timeout,
             },
@@ -243,6 +239,7 @@ fn default_policy_global() {
         idx.reset_pods(vec![p]).unwrap();
 
         let config = InboundServer {
+            name: format!("default:{}", default),
             authorizations: mk_default_policy(*default, cluster_net, kubelet_ip),
             protocol: ProxyProtocol::Detect {
                 timeout: detect_timeout,
@@ -300,6 +297,7 @@ fn default_policy_annotated() {
         idx.reset_pods(vec![p]).unwrap();
 
         let config = InboundServer {
+            name: format!("default:{}", default),
             authorizations: mk_default_policy(*default, cluster_net, kubelet_ip),
             protocol: ProxyProtocol::Detect {
                 timeout: detect_timeout,
@@ -323,13 +321,14 @@ fn default_policy_annotated_invalid() {
     };
     let detect_timeout = time::Duration::from_secs(1);
 
+    let default = DefaultPolicy::Allow {
+        authenticated_only: false,
+        cluster_only: false,
+    };
     let (lookup_rx, mut idx) = Index::new(
         vec![cluster_net],
         "cluster.example.com".into(),
-        DefaultPolicy::Allow {
-            authenticated_only: false,
-            cluster_only: false,
-        },
+        default,
         detect_timeout,
     );
 
@@ -353,6 +352,7 @@ fn default_policy_annotated_invalid() {
     assert_eq!(
         port2222.get(),
         InboundServer {
+            name: format!("default:{}", default),
             authorizations: mk_default_policy(
                 DefaultPolicy::Allow {
                     authenticated_only: false,
@@ -400,6 +400,7 @@ fn opaque_annotated() {
         idx.reset_pods(vec![p]).unwrap();
 
         let config = InboundServer {
+            name: format!("default:{}", default),
             authorizations: mk_default_policy(*default, cluster_net, kubelet_ip),
             protocol: ProxyProtocol::Opaque,
         };
@@ -444,21 +445,21 @@ fn authenticated_annotated() {
         );
         idx.reset_pods(vec![p]).unwrap();
 
-        let config = InboundServer {
-            authorizations: mk_default_policy(
-                match *default {
-                    DefaultPolicy::Allow { cluster_only, .. } => DefaultPolicy::Allow {
-                        cluster_only,
-                        authenticated_only: true,
-                    },
-                    DefaultPolicy::Deny => DefaultPolicy::Deny,
+        let config = {
+            let policy = match *default {
+                DefaultPolicy::Allow { cluster_only, .. } => DefaultPolicy::Allow {
+                    cluster_only,
+                    authenticated_only: true,
                 },
-                cluster_net,
-                kubelet_ip,
-            ),
-            protocol: ProxyProtocol::Detect {
-                timeout: detect_timeout,
-            },
+                DefaultPolicy::Deny => DefaultPolicy::Deny,
+            };
+            InboundServer {
+                name: format!("default:{}", policy),
+                authorizations: mk_default_policy(policy, cluster_net, kubelet_ip),
+                protocol: ProxyProtocol::Detect {
+                    timeout: detect_timeout,
+                },
+            }
         };
 
         let port2222 = lookup_rx

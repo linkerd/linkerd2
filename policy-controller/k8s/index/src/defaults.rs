@@ -171,6 +171,7 @@ impl DefaultPolicyWatches {
             }
 
             DefaultPolicy::Deny => InboundServer {
+                name: "default:deny".to_string(),
                 protocol,
                 authorizations: Default::default(),
             },
@@ -218,6 +219,7 @@ impl DefaultPolicyWatches {
         };
 
         InboundServer {
+            name: name.clone(),
             protocol,
             authorizations: Some((name, authz)).into_iter().collect(),
         }
