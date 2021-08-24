@@ -349,7 +349,7 @@ policyValidator:
 
 # -|- CPU and Memory resources required by the policy validator (see
 #`proxy.resources` for sub-fields)
-#policyValidatorResources:
+#spValidatorResources:
 
 # If the namespace is controlled by an external tool or can't be installed with Helm
 # you can disable its installation. In this case:

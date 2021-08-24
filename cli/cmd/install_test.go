@@ -237,10 +237,6 @@ func TestRender(t *testing.T) {
 			if err := render(&buf, tc.values, "", tc.options); err != nil {
 				t.Fatalf("Failed to render templates: %v", err)
 			}
-			fmt.Println("---GOT---")
-			fmt.Println(buf.String())
-			fmt.Println("---EXPECTED---")
-			fmt.Println(tc.goldenFileName)
 			testDataDiffer.DiffTestdata(t, tc.goldenFileName, buf.String())
 		})
 	}
