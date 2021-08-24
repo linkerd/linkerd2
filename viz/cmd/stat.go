@@ -846,7 +846,7 @@ func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.S
 	}
 
 	if usingTs {
-		fmt.Printf("Native support for SMI resources is deprecated and will be removed in 2.12. Please follow the SMI extension getting started guide from https://linkerd.io/2.10/tasks/linkerd-smi/\n\n")
+		fmt.Printf("Starting in 2.12, the SMI extension will be required for traffic splitting. Please follow the SMI extension getting started guide from https://linkerd.io/2.10/tasks/linkerd-smi\n\n")
 	}
 
 	return requests, nil
