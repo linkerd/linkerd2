@@ -1,4 +1,5 @@
 {{ define "partials.proxy" -}}
+{{- $trustDomain := (.Values.identityTrustDomain | default .Values.clusterDomain) -}}
 env:
 - name: _pod_name
   valueFrom:
@@ -91,7 +92,7 @@ env:
 - name: _l5d_ns
   value: {{.Values.namespace}}
 - name: _l5d_trustdomain
-  value: {{.Values.identityTrustDomain | default .Values.clusterDomain}}
+  value: {{$trustDomain}}
 - name: LINKERD2_PROXY_IDENTITY_DIR
   value: /var/run/linkerd/identity/end-entity
 - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -114,14 +115,14 @@ be used in other contexts.
 - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
   value: {{ternary "localhost.:8080" (printf "linkerd-identity-headless.%s.svc.%s.:8080" .Values.namespace .Values.clusterDomain) (eq (toString .Values.proxy.component) "linkerd-identity")}}
 - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
-  value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.{{.Values.namespace}}.{{.Values.identityTrustDomain | default .Values.clusterDomain}}
+  value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.{{.Values.namespace}}.{{$trustDomain}}
 - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
-  value: linkerd-identity.{{.Values.namespace}}.serviceaccount.identity.{{.Values.namespace}}.{{.Values.identityTrustDomain | default .Values.clusterDomain}}
+  value: linkerd-identity.{{.Values.namespace}}.serviceaccount.identity.{{.Values.namespace}}.{{$trustDomain}}
 - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
-  value: linkerd-destination.{{.Values.namespace}}.serviceaccount.identity.{{.Values.namespace}}.{{.Values.identityTrustDomain | default .Values.clusterDomain}}
+  value: linkerd-destination.{{.Values.namespace}}.serviceaccount.identity.{{.Values.namespace}}.{{$trustDomain}}
 {{ if (ne (toString .Values.proxy.component) "linkerd-identity") -}}
 - name: LINKERD2_PROXY_POLICY_SVC_NAME
-  value: linkerd-destination.{{.Values.namespace}}.serviceaccount.identity.{{.Values.namespace}}.{{.Values.identityTrustDomain | default .Values.clusterDomain}}
+  value: linkerd-destination.{{.Values.namespace}}.serviceaccount.identity.{{.Values.namespace}}.{{$trustDomain}}
 {{ end -}}
 {{ end -}}
 image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version | default .Values.linkerdVersion}}
