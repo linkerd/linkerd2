@@ -12,7 +12,6 @@ metadata:
     linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
-    config.linkerd.io/opaque-ports: {{.Values.proxy.opaquePorts}}
 spec:
   type: ClusterIP
   selector:
@@ -32,7 +31,6 @@ metadata:
     linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
-    config.linkerd.io/opaque-ports: {{.Values.proxy.opaquePorts}}
 spec:
   clusterIP: None
   selector:
@@ -52,7 +50,7 @@ metadata:
     linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
-    config.linkerd.io/opaque-ports: {{.Values.proxy.opaquePorts}}
+    config.linkerd.io/opaque-ports: "443"
 spec:
   type: ClusterIP
   selector:
@@ -72,7 +70,6 @@ metadata:
     linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
-    config.linkerd.io/opaque-ports: {{.Values.proxy.opaquePorts}}
 spec:
   clusterIP: None
   selector:
@@ -135,7 +132,7 @@ spec:
         {{ include "partials.annotations.created-by" . }}
         {{- include "partials.proxy.annotations" . | nindent 8}}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
-        config.linkerd.io/opaque-ports: {{.Values.proxy.opaquePorts}}
+        config.linkerd.io/opaque-ports: "8443"
       labels:
         linkerd.io/control-plane-component: destination
         linkerd.io/control-plane-ns: {{.Values.namespace}}
