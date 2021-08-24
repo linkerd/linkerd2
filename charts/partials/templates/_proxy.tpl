@@ -165,7 +165,7 @@ lifecycle:
   preStop:
     exec:
       command:
-        - /usr/lib/linkerd/sleep
+        - /bin/sleep
         - {{.Values.proxy.waitBeforeExitSeconds | quote}}
 {{- end }}
 {{- end }}
