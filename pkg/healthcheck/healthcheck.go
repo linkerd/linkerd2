@@ -1380,7 +1380,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 							if !kerrors.IsNotFound(err) {
 								return err
 							} else if len(ts.Items) != 0 {
-								return fmt.Errorf("SMI resources in Linkerd will be removed in 2.12. please use them along with the new linkerd-smi extension")
+								return fmt.Errorf("SMI resources in Linkerd will be removed in 2.12. Please use them along with the new linkerd-smi extension")
 							}
 						}
 
