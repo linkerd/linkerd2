@@ -88,6 +88,10 @@ env:
   valueFrom:
     fieldRef:
       fieldPath: spec.serviceAccountName
+- name: _l5d_ns
+  value: {{.Values.namespace}}
+- name: _l5d_trustdomain
+  value: {{.Values.identityTrustDomain | default .Values.clusterDomain}}
 - name: LINKERD2_PROXY_IDENTITY_DIR
   value: /var/run/linkerd/identity/end-entity
 - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
