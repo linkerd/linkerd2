@@ -17,12 +17,6 @@ spec:
       containers:
         - image: rabbitmq:3.8.12-rc.3-management
           name: rabbitmq
-          livenessProbe:
-            exec:
-              command: ["rabbitmq-diagnostics", "status"]
-            initialDelaySeconds: 60
-            periodSeconds: 60
-            timeoutSeconds: 15
           readinessProbe:
             exec:
               command: ["rabbitmq-diagnostics", "ping"]
