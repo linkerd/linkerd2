@@ -128,10 +128,6 @@ const (
 	// is correct. These checks are no ops if linkerd is not in HA mode
 	LinkerdHAChecks CategoryID = "linkerd-ha-checks"
 
-	// LinkerdDeprecationChecks adds checks to warn users about things that
-	// are deprecated and will be removed in a future release.
-	LinkerdDeprecationChecks CategoryID = "linkerd-deprecation-checks"
-
 	// LinkerdCNIPluginChecks adds checks to validate that the CNI
 	/// plugin is installed and ready
 	LinkerdCNIPluginChecks CategoryID = "linkerd-cni-plugin"
@@ -1354,37 +1350,6 @@ func (hc *HealthChecker) allCategories() []*Category {
 							return hc.checkMinReplicasAvailable(ctx)
 						}
 						return &SkipError{Reason: "not run for non HA installs"}
-					},
-				},
-			},
-			false,
-		),
-		NewCategory(
-			LinkerdDeprecationChecks,
-			[]Checker{
-				{
-					description: "Native support for SMI resources is deprecated",
-					hintAnchor:  "l5d-smi-deprecated",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						// check if there are any TrafficSplit resources
-						ts, err := hc.kubeAPI.TsClient.SplitV1alpha2().TrafficSplits("").List(ctx, metav1.ListOptions{})
-						if err != nil {
-							return err
-						}
-
-						// error if there are SMI resources without the SMI Extension
-						_, err = hc.kubeAPI.GetNamespaceWithExtensionLabel(ctx, "smi")
-						if err != nil {
-							// return err if it is not a notFound error
-							if !kerrors.IsNotFound(err) {
-								return err
-							} else if len(ts.Items) != 0 {
-								return fmt.Errorf("SMI resources in Linkerd will be removed in 2.12. Please use them along with the new linkerd-smi extension")
-							}
-						}
-
-						return &SkipError{Reason: "no SMI resources found"}
 					},
 				},
 			},

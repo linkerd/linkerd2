@@ -191,7 +191,6 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 			}
 			checks = append(checks, healthcheck.LinkerdCNIPluginChecks)
 			checks = append(checks, healthcheck.LinkerdHAChecks)
-			checks = append(checks, healthcheck.LinkerdDeprecationChecks)
 		}
 	}
 
