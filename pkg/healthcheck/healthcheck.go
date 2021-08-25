@@ -149,16 +149,15 @@ const (
 
 	podCIDRUnavailableSkipReason = "skipping check because the nodes aren't exposing podCIDR"
 
-	proxyInjectorOldTLSSecretName   = "linkerd-proxy-injector-tls"
-	proxyInjectorTLSSecretName      = "linkerd-proxy-injector-k8s-tls"
-	spValidatorOldTLSSecretName     = "linkerd-sp-validator-tls"
-	spValidatorTLSSecretName        = "linkerd-sp-validator-k8s-tls"
-	policyValidatorOldTLSSecretName = "linkerd-policy-validator-tls"
-	policyValidatorTLSSecretName    = "linkerd-policy-validator-k8s-tls"
-	certOldKeyName                  = "crt.pem"
-	certKeyName                     = "tls.crt"
-	keyOldKeyName                   = "key.pem"
-	keyKeyName                      = "tls.key"
+	proxyInjectorOldTLSSecretName = "linkerd-proxy-injector-tls"
+	proxyInjectorTLSSecretName    = "linkerd-proxy-injector-k8s-tls"
+	spValidatorOldTLSSecretName   = "linkerd-sp-validator-tls"
+	spValidatorTLSSecretName      = "linkerd-sp-validator-k8s-tls"
+	policyValidatorTLSSecretName  = "linkerd-policy-validator-k8s-tls"
+	certOldKeyName                = "crt.pem"
+	certKeyName                   = "tls.crt"
+	keyOldKeyName                 = "key.pem"
+	keyKeyName                    = "tls.key"
 )
 
 // AllowedClockSkew sets the allowed skew in clock synchronization
@@ -1101,12 +1100,15 @@ func (hc *HealthChecker) allCategories() []*Category {
 					fatal:       true,
 					check: func(ctx context.Context) (err error) {
 						anchors, err := hc.fetchWebhookCaBundle(ctx, k8s.PolicyValidatorWebhookConfigName)
+						if kerrors.IsNotFound(err) {
+							return &SkipError{Reason: "policy-validator not installed"}
+						}
 						if err != nil {
 							return err
 						}
 						cert, err := hc.FetchCredsFromSecret(ctx, hc.ControlPlaneNamespace, policyValidatorTLSSecretName)
 						if kerrors.IsNotFound(err) {
-							cert, err = hc.FetchCredsFromOldSecret(ctx, hc.ControlPlaneNamespace, policyValidatorOldTLSSecretName)
+							return &SkipError{Reason: "policy-validator not installed"}
 						}
 						if err != nil {
 							return err
@@ -1122,7 +1124,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					check: func(ctx context.Context) error {
 						cert, err := hc.FetchCredsFromSecret(ctx, hc.ControlPlaneNamespace, policyValidatorTLSSecretName)
 						if kerrors.IsNotFound(err) {
-							cert, err = hc.FetchCredsFromOldSecret(ctx, hc.ControlPlaneNamespace, policyValidatorOldTLSSecretName)
+							return &SkipError{Reason: "policy-validator not installed"}
 						}
 						if err != nil {
 							return err
