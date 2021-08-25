@@ -268,7 +268,7 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 	}
 
 	if iv.WaitBeforeExitSeconds != 0 {
-		expectedCmd := fmt.Sprintf("/bin/bash,-c,sleep %d", iv.WaitBeforeExitSeconds)
+		expectedCmd := fmt.Sprintf("/bin/sleep,%d", iv.WaitBeforeExitSeconds)
 		actual := strings.Join(proxyContainer.Lifecycle.PreStop.Exec.Command, ",")
 		if expectedCmd != strings.Join(proxyContainer.Lifecycle.PreStop.Exec.Command, ",") {
 			return fmt.Errorf("preStopHook: expected %s, actual %s", expectedCmd, actual)

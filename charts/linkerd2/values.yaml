@@ -358,7 +358,7 @@ policyValidator:
 #     config.linkerd.io/admission-webhooks: disabled
 
 # installNamespace -- Set to false when installing Linkerd in a custom namespace. See the
-# [Linkerd documentation](https://linkerd.io/2/tasks/install-helmcustomizing-the-namespace) for more information.
+# [Linkerd documentation](https://linkerd.io/2/tasks/install-helm#customizing-the-namespace) for more information.
 installNamespace: true
 
 # -- NodeSelector section, See the [K8S

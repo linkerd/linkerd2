@@ -185,7 +185,7 @@ impl Rx {
             authentication: ClientAuthentication::Unauthenticated,
         };
 
-        inner.authorizations.insert("_health_check".into(), authz);
+        inner.authorizations.insert("default:kubelet".into(), authz);
         inner
     }
 }
