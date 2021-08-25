@@ -3,7 +3,7 @@
 
 use anyhow::{Context, Result};
 use futures::{future, prelude::*};
-use linkerd_policy_controller::k8s::DefaultAllow;
+use linkerd_policy_controller::k8s::DefaultPolicy;
 use linkerd_policy_controller_core::IpNet;
 use std::net::SocketAddr;
 use structopt::StructOpt;
@@ -36,7 +36,7 @@ struct Args {
     identity_domain: String,
 
     #[structopt(long, default_value = "all-unauthenticated")]
-    default_allow: DefaultAllow,
+    default_policy: DefaultPolicy,
 }
 
 #[tokio::main]
@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
         admission_addr,
         identity_domain,
         cluster_networks: IpNets(cluster_networks),
-        default_allow,
+        default_policy,
     } = Args::from_args();
 
     let (drain_tx, drain_rx) = drain::channel();
@@ -73,7 +73,7 @@ async fn main() -> Result<()> {
         let (handle, index) = linkerd_policy_controller::k8s::Index::new(
             cluster_networks.clone(),
             identity_domain,
-            default_allow,
+            default_policy,
             DETECT_TIMEOUT,
         );
 
