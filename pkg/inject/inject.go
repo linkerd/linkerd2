@@ -969,7 +969,7 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 	if override, ok := annotations[k8s.ProxyDefaultInboundPolicy]; ok {
 		if override != k8s.AllUnauthenticated && override != k8s.AllAuthenticated && override != k8s.ClusterUnauthenticated && override != k8s.ClusterAuthenticated && override != k8s.Deny {
 			// todo
-			log.Warnf("unrecognized value used for the %s annotation", k8s.ProxyDefaultInboundPolicy)
+			log.Warnf("unrecognized value used for the %s annotation, valid values are: [%s, %s, %s, %s, %s]", k8s.ProxyDefaultInboundPolicy, k8s.AllUnauthenticated, k8s.AllAuthenticated, k8s.ClusterUnauthenticated, k8s.ClusterAuthenticated, k8s.Deny)
 		} else {
 			values.Proxy.DefaultInboundPolicy = override
 		}

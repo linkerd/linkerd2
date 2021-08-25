@@ -256,19 +256,21 @@ const (
 	// disable the proxy from participating in automatic identity.
 	IdentityModeDisabled = Disabled
 
-	// AllUnauthenticated todo
+	// AllUnauthenticated allows all unathenticated connections.
 	AllUnauthenticated = "all-unauthenticated"
 
-	// AllAuthenticated todo
+	// AllAuthenticated allows all authenticated connections.
 	AllAuthenticated = "all-authenticated"
 
-	// ClusterUnauthenticated todo
+	// ClusterUnauthenticated allows all unauthenticated connections from
+	// within the cluster.
 	ClusterUnauthenticated = "cluster-unauthenticated"
 
-	// ClusterAuthenticated todo
+	// ClusterAuthenticated allows all authenticated connections from within
+	// the cluster.
 	ClusterAuthenticated = "cluster-authenticated"
 
-	// Deny todo
+	// Deny denies all connections.
 	Deny = "deny"
 
 	/*
