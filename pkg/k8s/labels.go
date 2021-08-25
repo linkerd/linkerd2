@@ -244,6 +244,10 @@ const (
 	// to be ready.
 	ProxyAwait = ProxyConfigAnnotationsPrefix + "/proxy-await"
 
+	// ProxyDefaultInboundPolicy is used to configure the default inbound
+	// policy of the proxy
+	ProxyDefaultInboundPolicy = ProxyConfigAnnotationsPrefix + "/default-inbound-policy"
+
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.
 	IdentityModeDefault = "default"
@@ -251,6 +255,21 @@ const (
 	// IdentityModeDisabled is assigned to IdentityModeAnnotation to
 	// disable the proxy from participating in automatic identity.
 	IdentityModeDisabled = Disabled
+
+	// AllUnauthenticated todo
+	AllUnauthenticated = "all-unauthenticated"
+
+	// AllAuthenticated todo
+	AllAuthenticated = "all-authenticated"
+
+	// ClusterUnauthenticated todo
+	ClusterUnauthenticated = "cluster-unauthenticated"
+
+	// ClusterAuthenticated todo
+	ClusterAuthenticated = "cluster-authenticated"
+
+	// Deny todo
+	Deny = "deny"
 
 	/*
 	 * Component Names
