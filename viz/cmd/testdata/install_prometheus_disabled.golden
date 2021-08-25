@@ -814,7 +814,7 @@ spec:
       containers:
       - args:
         - injector
-        - -tap-service-name=tap.linkerd-viz.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+        - -tap-service-name=tap.linkerd-viz.serviceaccount.identity.linkerd.cluster.local
         - -log-level=info
         image: cr.l5d.io/linkerd/tap:dev-undefined
         imagePullPolicy: IfNotPresent
