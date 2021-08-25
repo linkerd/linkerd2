@@ -1079,6 +1079,7 @@ data:
     proxy:
       await: false
       capabilities: null
+      defaultInboundPolicy: ""
       disableIdentity: false
       enableExternalProfiles: false
       image:
@@ -1593,6 +1594,10 @@ spec:
           value: localhost.:8090
         - name: LINKERD2_PROXY_POLICY_WORKLOAD
           value: "$(_pod_ns):$(_pod_name)"
+        - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
+          value: default-allow-policy
+        - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
+          value: "ClusterNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1937,6 +1942,10 @@ spec:
           value: linkerd-policy.linkerd.svc.cluster.local.:8090
         - name: LINKERD2_PROXY_POLICY_WORKLOAD
           value: "$(_pod_ns):$(_pod_name)"
+        - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
+          value: default-allow-policy
+        - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
+          value: "ClusterNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
