@@ -230,9 +230,8 @@
         "preStop": {
           "exec": {
             "command": [
-              "/bin/bash",
-              "-c",
-              "sleep 300"
+              "/bin/sleep",
+              "300"
             ]
           }
         }
