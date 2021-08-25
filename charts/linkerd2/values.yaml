@@ -347,7 +347,7 @@ policyValidator:
   # as no certificate will be generated.
   caBundle: |
 
-# -|- CPU and Memory resources required by the policy validator (see
+# -|- CPU and Memory resources required by the SP validator (see
 #`proxy.resources` for sub-fields)
 #spValidatorResources:
 

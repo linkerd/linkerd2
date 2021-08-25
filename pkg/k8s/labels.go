@@ -312,6 +312,9 @@ const (
 	// SPValidatorWebhookConfigName is the name of the validating webhook configuration
 	SPValidatorWebhookConfigName = SPValidatorWebhookServiceName + "-webhook-config"
 
+	// PolicyValidatorWebhookConfigName is the name of the validating webhook configuration
+	PolicyValidatorWebhookConfigName = "linkerd-policy-validator-webhook-config"
+
 	// AdmissionWebhookLabel indicates whether admission webhooks are enabled for a namespace
 	AdmissionWebhookLabel = ProxyConfigAnnotationsPrefix + "/admission-webhooks"
 
