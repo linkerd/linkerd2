@@ -56,6 +56,8 @@ linkerd-webhooks-and-apisvc-tls
 √ proxy-injector cert is valid for at least 60 days
 √ sp-validator webhook has valid cert
 √ sp-validator cert is valid for at least 60 days
+√ policy-validator webhook has valid cert
+√ policy-validator cert is valid for at least 60 days
 
 linkerd-version
 ---------------
