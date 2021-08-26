@@ -1434,6 +1434,7 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
+    config.linkerd.io/opaque-ports: "443"
 spec:
   type: ClusterIP
   selector:
@@ -1488,6 +1489,7 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
+        config.linkerd.io/opaque-ports: "8443"
       labels:
         linkerd.io/control-plane-component: destination
         linkerd.io/control-plane-ns: linkerd
@@ -1775,6 +1777,7 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
+        config.linkerd.io/opaque-ports: "8443"
       labels:
         linkerd.io/control-plane-component: proxy-injector
         linkerd.io/control-plane-ns: linkerd
@@ -1992,6 +1995,7 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
+    config.linkerd.io/opaque-ports: "443"
 spec:
   type: ClusterIP
   selector:

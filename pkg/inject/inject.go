@@ -248,6 +248,11 @@ func (conf *ResourceConfig) ParseMetaAndYAML(bytes []byte) (*Report, error) {
 	return newReport(conf), nil
 }
 
+// GetValues returns the values used for rendering patches.
+func (conf *ResourceConfig) GetValues() *linkerd2.Values {
+	return conf.values
+}
+
 // GetOverriddenValues returns the final Values struct which is created
 // by overriding annotated configuration on top of default Values
 func (conf *ResourceConfig) GetOverriddenValues() (*linkerd2.Values, error) {
@@ -358,6 +363,46 @@ func (conf *ResourceConfig) GetConfigAnnotation(annotationKey string) (string, b
 		return annotation, true
 	}
 	return "", false
+}
+
+// CreateDefaultOpaquePortsPatch creates a patch that will add the default
+// list of opaque ports.
+// 1. Check if the annotation should be copied down from the namespace.
+//    If ok is true, then we know the namespace has the annotation and the
+//    workload does not.
+// 2. If ok is false, we know either the workload has the annotation or both
+//    the workload and the namespace does not have annotation. In the case of
+//    the latter, we must add a default value to the pod.
+func (conf *ResourceConfig) CreateDefaultOpaquePortsPatch() ([]byte, error) {
+	var patch []byte
+	var err error
+	opaquePorts, ok := conf.GetConfigAnnotation(k8s.ProxyOpaquePortsAnnotation)
+	if ok {
+		patch, err = conf.CreateAnnotationPatch(opaquePorts)
+		if err != nil {
+			return nil, err
+		}
+	} else if !conf.HasWorkloadAnnotation(k8s.ProxyOpaquePortsAnnotation) {
+		opaquePorts := conf.GetValues().Proxy.OpaquePorts
+		patch, err = conf.CreateAnnotationPatch(opaquePorts)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return patch, nil
+}
+
+// HasWorkloadAnnotation returns true if the workload has the annotation set
+// by the resource config or its metadata.
+func (conf *ResourceConfig) HasWorkloadAnnotation(annotation string) bool {
+	if _, ok := conf.pod.meta.Annotations[annotation]; ok {
+		return true
+	}
+	if _, ok := conf.workload.Meta.Annotations[annotation]; ok {
+		return true
+	}
+	_, ok := conf.pod.annotations[annotation]
+	return ok
 }
 
 // CreateAnnotationPatch returns a json patch which adds the opaque ports
