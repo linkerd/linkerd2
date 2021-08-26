@@ -66,6 +66,7 @@ var (
 		k8s.ProxyOutboundConnectTimeout,
 		k8s.ProxyInboundConnectTimeout,
 		k8s.ProxyAwait,
+		k8s.ProxyDefaultInboundPolicyAnnotation,
 	}
 	// ProxyAlphaConfigAnnotations is the list of all alpha configuration
 	// (config.alpha prefix) that can be applied to a pod or namespace.
@@ -1007,6 +1008,14 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 			values.Proxy.Await = override == k8s.Enabled
 		} else {
 			log.Warnf("unrecognized value used for the %s annotation, valid values are: [%s, %s]", k8s.ProxyAwait, k8s.Enabled, k8s.Disabled)
+		}
+	}
+
+	if override, ok := annotations[k8s.ProxyDefaultInboundPolicyAnnotation]; ok {
+		if override != k8s.AllUnauthenticated && override != k8s.AllAuthenticated && override != k8s.ClusterUnauthenticated && override != k8s.ClusterAuthenticated && override != k8s.Deny {
+			log.Warnf("unrecognized value used for the %s annotation, valid values are: [%s, %s, %s, %s, %s]", k8s.ProxyDefaultInboundPolicyAnnotation, k8s.AllUnauthenticated, k8s.AllAuthenticated, k8s.ClusterUnauthenticated, k8s.ClusterAuthenticated, k8s.Deny)
+		} else {
+			values.Proxy.DefaultInboundPolicy = override
 		}
 	}
 }

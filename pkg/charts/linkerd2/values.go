@@ -111,6 +111,7 @@ type (
 		PodInboundPorts               string           `json:"podInboundPorts"`
 		OpaquePorts                   string           `json:"opaquePorts"`
 		Await                         bool             `json:"await"`
+		DefaultInboundPolicy          string           `json:"defaultInboundPolicy"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container
