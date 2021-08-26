@@ -1,5 +1,29 @@
 # Changes
 
+## edge-21.8.4
+
+This edge release continues to build on the policy feature by adding support for
+cluster-scoped default policies and exposing policy labels on various prometheus
+metrics. The proxy has been updated to return HTTP-level authorization errors
+at the time that the request is processed, instead of when the connection is
+established.
+
+In addition, the proxy-injector has been updated to set the `opaque-ports`
+annotation on a workload to make sure that controllers can discover how the
+workload was configured. Also, the `sleep` binary has been added to the proxy
+image in order to restore the functionality required for `waitBeforeExitSeconds`
+to work.
+
+* Added `default-inbound-policy` annotation to the proxy-injector
+* Updated the proxy-injector to always add the `opaque-ports` annotation
+* Added `sleep` binary to proxy image
+* Updated the policy response metric labels
+* Updated the policy-controller to honor pod level port annotations when a
+`Server` resource definition does not match the ports defined for the workload
+* Updated the point at which the proxy returns HTTP-level authorization errors
+* Exposed permit and policy labels on HTTP metrics
+* Added support for cluster-scoped default policies
+
 ## edge-21.8.3
 
 This release adds support for dynamic inbound policies. The proxy now discovers
