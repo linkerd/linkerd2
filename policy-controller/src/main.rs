@@ -4,12 +4,12 @@
 use anyhow::{Context, Result};
 use futures::{future, prelude::*};
 use linkerd_policy_controller::k8s::DefaultPolicy;
+use linkerd_policy_controller::{admin, admission};
 use linkerd_policy_controller_core::IpNet;
 use std::net::SocketAddr;
 use structopt::StructOpt;
 use tokio::{sync::watch, time};
-use tracing::{debug, info, instrument};
-use warp::Filter;
+use tracing::{debug, info, info_span, instrument, Instrument};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "policy", about = "A policy resource prototype")]
@@ -63,9 +63,7 @@ async fn main() -> Result<()> {
 
     // Spawn an admin server, failing readiness checks until the index is updated.
     let (ready_tx, ready_rx) = watch::channel(false);
-    tokio::spawn(linkerd_policy_controller::admin::serve(
-        admin_addr, ready_rx,
-    ));
+    tokio::spawn(admin::serve(admin_addr, ready_rx));
 
     // Index cluster resources, returning a handle that supports lookups for the gRPC server.
     let handle = {
@@ -82,25 +80,19 @@ async fn main() -> Result<()> {
     };
 
     // Run the gRPC server, serving results by looking up against the index handle.
-    tokio::spawn(grpc(grpc_addr, cluster_networks, handle, drain_rx));
+    tokio::spawn(grpc(grpc_addr, cluster_networks, handle, drain_rx.clone()));
 
     // Run the admission controller
-    if let Some(admission_addr) = admission_addr {
-        let admission = linkerd_policy_controller::admission::Admission(client);
-
-        let routes = warp::path::end()
-            .and(warp::body::json())
-            .and(warp::any().map(move || admission.clone()))
-            .and_then(linkerd_policy_controller::admission::handler)
-            .with(warp::trace::request());
-
-        tokio::spawn(
-            warp::serve(warp::post().and(routes))
-                .tls()
-                .cert_path("/var/run/linkerd/tls/tls.crt")
-                .key_path("/var/run/linkerd/tls/tls.key")
-                .run(admission_addr),
-        );
+    if let Some(bind_addr) = admission_addr {
+        let (listen_addr, serve) = warp::serve(admission::routes(client))
+            .tls()
+            .cert_path("/var/run/linkerd/tls/tls.crt")
+            .key_path("/var/run/linkerd/tls/tls.key")
+            .bind_with_graceful_shutdown(bind_addr, async move {
+                let _ = drain_rx.signaled().await;
+            });
+        info!(addr = %listen_addr, "Admission controller server listening");
+        tokio::spawn(serve.instrument(info_span!("admission")));
     }
 
     // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to

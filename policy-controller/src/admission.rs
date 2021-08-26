@@ -1,81 +1,102 @@
-use super::api::policy::{Server, ServerSpec};
-use kube::api::{Api, ListParams};
-use kube::core::{
-    admission::{AdmissionRequest, AdmissionResponse, AdmissionReview},
-    DynamicObject, ObjectList,
-};
+use crate::api;
+use anyhow::{anyhow, bail, Result};
+use kube::{api::Api, core::DynamicObject, ResourceExt};
 use std::convert::{Infallible, TryInto};
-use std::fmt;
-use tracing::{error, info, instrument};
-use warp::{reply, Reply};
+use tracing::{debug, info, warn};
+use warp::{filters::BoxedFilter, http, reply, Filter};
 
-#[derive(Clone)]
-pub struct Admission(pub kube::Client);
-
-#[instrument]
-pub async fn handler(
-    body: AdmissionReview<DynamicObject>,
-    admission: Admission,
-) -> Result<impl Reply, Infallible> {
-    // Parse incoming webhook AdmissionRequest first
-    let req: AdmissionRequest<DynamicObject> = match body.try_into() {
-        Ok(req) => req,
-        Err(err) => {
-            error!(error = %err, "invalid request");
-            return Ok(reply::json(
-                &AdmissionResponse::invalid(err.to_string()).into_review(),
-            ));
-        }
-    };
-    info!(?req);
-
-    // Then construct a AdmissionResponse
-    let mut res = AdmissionResponse::from(&req);
-
-    // List existing servers.
-    let api: Api<Server> = Api::all(admission.0);
-    let params = ListParams::default();
-    let servers = api.list(&params).await.unwrap_or_else(|err| {
-        error!(error = %err, "failed to list servers");
-        ObjectList {
-            metadata: Default::default(),
-            items: Default::default(),
-        }
-    });
-
-    // Find any conflicting servers.
-    let conflict = req
-        .object
-        .and_then(|mut obj| obj.data.get_mut("spec").cloned())
-        .and_then(|spec| {
-            serde_json::from_value::<ServerSpec>(spec)
-                .map_err(|err| {
-                    error!(error = %err, "failed to deserialize");
-                    err
-                })
-                .ok()
-        })
-        .and_then(|spec| {
-            for s in servers {
-                if s.spec == spec {
-                    return Some("identical server spec already exists");
+/// Builds an API handler for a validating admission webhook that examines `Server` resources.
+pub fn routes(client: kube::Client) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::post()
+        .and(warp::path::end())
+        // 64KB should be more than enough for any `Server` instance we can expect.
+        .and(warp::body::content_length_limit(64 * 1024).and(warp::body::json()))
+        .and(warp::any().map(move || client.clone()))
+        .and_then(|review: Review, client| async move {
+            let req: Request = match review.try_into() {
+                Ok(req) => req,
+                Err(error) => {
+                    warn!(%error, "Invalid admission request");
+                    return ok(reply::json(&Response::invalid(error).into_review()));
                 }
-            }
-            None
-        });
+            };
+            debug!(?req);
 
-    // Wrap the AdmissionResponse wrapped in an AdmissionReview
-    match conflict {
-        Some(err) => {
-            res = res.deny(err);
-            Ok(reply::json(&res.into_review()))
-        }
-        None => Ok(reply::json(&res.into_review())),
-    }
+            let rsp = Response::from(&req);
+
+            // Parse the server instance under review before doing anything with the API--i.e., if
+            // this fails we don't have to waste the API calls.
+            let (ns, review_server) = match parse_server(req) {
+                Ok(s) => s,
+                Err(error) => {
+                    warn!(%error, "Failed to deserialize server from admission request");
+                    return ok(reply::json(&Response::invalid(error).into_review()));
+                }
+            };
+
+            // Fetch a list of servers so that we can detect conflicts.
+            //
+            // TODO(ver) We already have a watch on these resources, so we could simply lookup
+            // against an index to avoid unnecessary work on the API server.
+            let api = Api::<api::policy::Server>::namespaced(client, &*ns);
+            let servers = match api.list(&Default::default()).await {
+                Ok(servers) => servers,
+                Err(error) => {
+                    warn!(%error, "Failed to list servers");
+                    return ok(http::StatusCode::INTERNAL_SERVER_ERROR);
+                }
+            };
+
+            // If validation fails, deny admission.
+            let rsp = match validate(&review_server, &*servers.items) {
+                Ok(()) => rsp,
+                Err(error) => {
+                    info!(%error, %ns, name = %review_server.name(), "Denying server");
+                    rsp.deny(error)
+                }
+            };
+            debug!(?rsp);
+            ok(reply::json(&rsp.into_review()))
+        })
+        .with(warp::trace::request())
+        .boxed()
 }
 
-impl fmt::Debug for Admission {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Admission").finish()
+type Review = kube::core::admission::AdmissionReview<DynamicObject>;
+type Request = kube::core::admission::AdmissionRequest<DynamicObject>;
+type Response = kube::core::admission::AdmissionResponse;
+
+#[inline]
+fn ok(reply: impl warp::Reply + 'static) -> Result<Box<dyn warp::Reply>, Infallible> {
+    Ok(Box::new(reply))
+}
+
+/// Parses a `Server` instance and it's namespace from the admission request.
+fn parse_server(req: Request) -> Result<(String, api::policy::Server)> {
+    let obj = req.object.ok_or_else(|| anyhow!("missing server"))?;
+    let server = serde_json::from_value::<api::policy::Server>(obj.data)?;
+    let ns = server
+        .namespace()
+        .ok_or_else(|| anyhow!("no 'namespace' field set on server"))?;
+    Ok((ns, server))
+}
+
+/// Validates a new server (`review`) against existing `servers`.
+fn validate(review: &api::policy::Server, servers: &[api::policy::Server]) -> Result<()> {
+    for s in servers {
+        // If the port and pod selectors select the same resources, fail the admission of the
+        // server. Ignore existing instances of this Server (e.g., if the server's metadata is
+        // changing).
+        if s.name() != review.name()
+            // TODO(ver) this isn't rigorous about detecting servers that select the same port if one port
+            // specifies a numeric port and the other specifies the port's name.
+            && s.spec.port == review.spec.port
+            // TODO(ver) We can probably detect overlapping selectors more effectively.
+            && s.spec.pod_selector == review.spec.pod_selector
+        {
+            bail!("identical server spec already exists");
+        }
     }
+
+    Ok(())
 }
