@@ -903,6 +903,12 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 
 	expected := getCheckOutput(t, golden, TestHelper.GetLinkerdNamespace())
 
+	// When performing the check before upgrading, the policy-validator will not be installed yet.
+	if TestHelper.UpgradeFromVersion() != "" && expectedVersion == TestHelper.UpgradeFromVersion() {
+		expected = strings.ReplaceAll(expected, "√ policy-validator webhook has valid cert\n", "")
+		expected = strings.ReplaceAll(expected, "√ policy-validator cert is valid for at least 60 days\n", "")
+	}
+
 	timeout := time.Minute * 5
 	err := TestHelper.RetryFor(timeout, func() error {
 		if cliVersionOverride != "" {
