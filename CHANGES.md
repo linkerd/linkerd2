@@ -17,12 +17,14 @@ to work.
 * Added `default-inbound-policy` annotation to the proxy-injector
 * Updated the proxy-injector to always add the `opaque-ports` annotation
 * Added `sleep` binary to proxy image
-* Updated the policy response metric labels
+* Updated inbound traffic metrics to include server and authorization labels
 * Updated the policy-controller to honor pod level port annotations when a
-`Server` resource definition does not match the ports defined for the workload
+  `Server` resource definition does not match the ports defined for the workload
 * Updated the point at which the proxy returns HTTP-level authorization errors
 * Exposed permit and policy labels on HTTP metrics
 * Added support for cluster-scoped default policies
+* Dropped `nonroot` variant from the policy-controller's distroless base image
+  to avoid erroring in some environments.
 
 ## edge-21.8.3
 
