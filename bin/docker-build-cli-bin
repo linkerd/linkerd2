@@ -18,37 +18,22 @@ rootdir=$( cd "$bindir"/.. && pwd )
 dockerfile=$rootdir/cli/Dockerfile
 tag=$(head_root_tag)
 
-get_multiarch_argument() {
-    if [ -n "$DOCKER_MULTIARCH" ]; then
-        echo "--target=multi-arch"
-    else
-        echo "--target=basic"
-    fi
-}
-
 # shellcheck disable=SC2046
 docker_build cli-bin "$tag" "$dockerfile" \
     --build-arg LINKERD_VERSION="$tag" \
-    $(get_multiarch_argument)
+    --target="$DOCKER_TARGET"
 
 IMG=$(docker_repo cli-bin):$tag
 ID=$(docker create "$IMG")
-OS="darwin windows linux-amd64 darwin-arm64"
-if [ -n "$DOCKER_MULTIARCH" ]; then
-    OS+=" linux-arm64 linux-arm"
-fi
 
 # copy the newly built linkerd cli binaries to the local system
+OS="linux-amd64 linux-arm64 linux-arm darwin darwin-arm64 windows"
 for OS in $OS; do
-    DIR=$rootdir/target/cli/$OS
-    mkdir -p "$DIR"
+  DIR=$rootdir/target/cli/$OS
+  mkdir -p "$DIR"
 
-    if docker cp "$ID:/out/linkerd-${OS}" "$DIR/linkerd" ; then
-        echo "$DIR/linkerd"
-    else
-        docker rm "$ID" >/dev/null
-        exit 1
-    fi
+  # only copy if available
+  (docker cp "$ID:/out/linkerd-${OS}" "$DIR/linkerd" 2> /dev/null) && echo "$DIR/linkerd"
 done
 
 docker rm "$ID" >/dev/null
