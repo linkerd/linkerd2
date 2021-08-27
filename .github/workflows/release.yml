@@ -39,7 +39,7 @@ jobs:
       uses: docker/setup-buildx-action@abe5d8f79a1606a2d3e218847032f3f2b1726ab0
     - name: Build & Push Multi Arch Images
       env:
-        DOCKER_MULTIARCH: 1
+        DOCKER_TARGET: multi-arch
         DOCKER_PUSH: 1
       run: |
         echo "${{ secrets.DOCKER_GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.DOCKER_GHCR_USERNAME }}" --password-stdin
@@ -54,6 +54,7 @@ jobs:
       if: matrix.target == 'cli-bin'
       env:
         ARCHIVES: /home/runner/archives
+        DOCKER_TARGET: windows
       run: |
         bin/docker-pull-binaries $TAG
         mkdir -p $ARCHIVES
@@ -192,10 +193,8 @@ jobs:
     needs: [docker_build, policy_controller_manifest]
     steps:
     - name: Checkout code
-      #if: startsWith(github.ref, 'refs/tags/stable')
       uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - name: Try to load cached Go modules
-      #if: startsWith(github.ref, 'refs/tags/stable')
       uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
       with:
         path: ~/go/pkg/mod
@@ -203,7 +202,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
     - name: Install linkerd CLI
-      #if: startsWith(github.ref, 'refs/tags/stable')
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-amd64"
@@ -214,19 +212,16 @@ jobs:
         echo "Installed Linkerd CLI version: $TAG"
         echo "CMD=$CMD" >> $GITHUB_ENV
     - name: Set KUBECONFIG environment variables
-      #if: startsWith(github.ref, 'refs/tags/stable')
       run: |
         mkdir -p $HOME/.kube
         echo "${{ secrets.ARM64_KUBECONFIG }}" > $HOME/.kube/config
         echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
         kubectl cluster-info
     - name: Run integration tests
-      #if: startsWith(github.ref, 'refs/tags/stable')
       env:
         RUN_ARM_TEST: 1
       run: bin/tests --name deep --images preload --skip-cluster-create "$CMD"
     - name: CNI tests
-      #if: startsWith(github.ref, 'refs/tags/stable')
       run: |
         export TAG="$($CMD version --client --short)"
         go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
@@ -288,7 +283,7 @@ jobs:
         path: choco
     - name: Pull CLI binaries
       env:
-        DOCKER_MULTIARCH: 1
+        DOCKER_TARGET: multi-arch
       run : |
         bin/docker-pull-binaries $TAG
         VERSION=${TAG#"stable-"}
