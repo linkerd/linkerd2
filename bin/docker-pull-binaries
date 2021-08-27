@@ -26,7 +26,7 @@ id=$(docker create "$(docker_repo cli-bin):$tag")
 
 OS=$DOCKER_TARGET
 if [ "$DOCKER_TARGET" = 'multi-arch' ]; then
-  OS=$os_arch_all
+  OS=$OS_ARCH_ALL
 fi
 
 for os in $OS; do

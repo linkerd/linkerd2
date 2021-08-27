@@ -28,8 +28,8 @@ ID=$(docker create "$IMG")
 
 # copy the newly built linkerd cli binaries to the local system
 OS=$DOCKER_TARGET
-if [ "$DOCKER_TARGET" = 'multi-arch' ]
-  OS=$os_arch_all
+if [ "$DOCKER_TARGET" = 'multi-arch' ]; then
+  OS=$OS_ARCH_ALL
 fi
 for OS in $OS; do
   DIR=$rootdir/target/cli/$OS
