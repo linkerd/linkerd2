@@ -1669,9 +1669,9 @@ spec:
   selector:
     linkerd.io/control-plane-component: destination
   ports:
-  - name: p-validator
+  - name: policy-https
     port: 443
-    targetPort: p-validator
+    targetPort: policy-https
 ---
 kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
@@ -1954,7 +1954,7 @@ spec:
         - containerPort: 9990
           name: admin-http
         - containerPort: 9443
-          name: p-validator
+          name: policy-https
         readinessProbe:
           failureThreshold: 7
           httpGet:

@@ -1588,9 +1588,9 @@ spec:
   selector:
     linkerd.io/control-plane-component: destination
   ports:
-  - name: p-validator
+  - name: policy-https
     port: 443
-    targetPort: p-validator
+    targetPort: policy-https
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -1823,7 +1823,7 @@ spec:
         - containerPort: 9990
           name: admin-http
         - containerPort: 9443
-          name: p-validator
+          name: policy-https
         readinessProbe:
           failureThreshold: 7
           httpGet:
