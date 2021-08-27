@@ -12,6 +12,9 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 )
@@ -124,9 +127,12 @@ func generateAndStoreKey(p string) (key *ecdsa.PrivateKey, err error) {
 }
 
 func generateAndStoreCSR(p, id string, key *ecdsa.PrivateKey) ([]byte, error) {
-	// TODO do proper DNS name validation.
 	if id == "" {
 		return nil, errors.New("a non-empty identity is required")
+	}
+
+	if err := validation.IsFullyQualifiedDomainName(field.NewPath(""), id).ToAggregate(); err != nil {
+		return nil, fmt.Errorf("%s a fully qualified DNS name is required", id)
 	}
 
 	csr := x509.CertificateRequest{
