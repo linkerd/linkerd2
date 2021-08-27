@@ -172,6 +172,11 @@ Kubernetes: `>=1.16.0-0`
 | policyController.resources.cpu.request | string | `""` | Amount of CPU units that the policy controller requests |
 | policyController.resources.memory.limit | string | `""` | Maximum amount of memory that the policy controller can use |
 | policyController.resources.memory.request | string | `""` | Maximum amount of memory that the policy controller requests |
+| policyValidator.caBundle | string | `""` | Bundle of CA certificates for policy validator. If not provided then Helm will use the certificate generated  for `policyValidator.crtPEM`. If `policyValidator.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
+| policyValidator.crtPEM | string | `""` | Certificate for the policy validator. If not provided then Helm will generate one. |
+| policyValidator.externalSecret | bool | `false` | Do not create a secret resource for the policyValidator webhook. If this is set to `true`, the value `policyValidator.caBundle` must be set (see below). |
+| policyValidator.keyPEM | string | `""` | Certificate key for the policy validator. If not provided then Helm will generate one. |
+| policyValidator.namespaceSelector | object | `{"matchExpressions":[{"key":"config.linkerd.io/admission-webhooks","operator":"NotIn","values":["disabled"]}]}` | Namespace selector used by admission webhook |
 | profileValidator.caBundle | string | `""` | Bundle of CA certificates for service profile validator. If not provided then Helm will use the certificate generated  for `profileValidator.crtPEM`. If `profileValidator.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
 | profileValidator.crtPEM | string | `""` | Certificate for the service profile validator. If not provided then Helm will generate one. |
 | profileValidator.externalSecret | bool | `false` | Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `profileValidator.caBundle` must be set (see below). |

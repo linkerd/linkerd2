@@ -156,6 +156,51 @@ webhooks:
     resources: ["serviceprofiles"]
   sideEffects: None
 ---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-policy-validator-k8s-tls
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+type: kubernetes.io/tls
+data:
+  tls.crt: cG9saWN5IHZhbGlkYXRvciBjcnQ=
+  tls.key: cG9saWN5IHZhbGlkYXRvciBrZXk=
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: linkerd-policy-validator-webhook-config
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
+webhooks:
+- name: linkerd-policy-validator.linkerd.io
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
+  clientConfig:
+    service:
+      name: linkerd-policy-validator
+      namespace: linkerd
+      path: "/"
+    caBundle: cG9saWN5IHZhbGlkYXRvciBDQSBidW5kbGU=
+  failurePolicy: Ignore
+  admissionReviewVersions: ["v1", "v1beta1"]
+  rules:
+  - operations: [ "CREATE" , "UPDATE" ]
+    apiGroups: ["policy.linkerd.io"]
+    apiVersions: ["v1alpha1"]
+    resources: ["serverauthorizations", "servers"]
+  sideEffects: None
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -1065,6 +1110,17 @@ data:
         memory:
           limit: ""
           request: ""
+    policyValidator:
+      caBundle: policy validator CA bundle
+      crtPEM: policy validator crt
+      externalSecret: false
+      keyPEM: policy validator key
+      namespaceSelector:
+        matchExpressions:
+        - key: config.linkerd.io/admission-webhooks
+          operator: NotIn
+          values:
+          - disabled
     profileValidator:
       caBundle: profile validator CA bundle
       crtPEM: profile validator crt
@@ -1533,6 +1589,25 @@ spec:
     port: 8090
     targetPort: 8090
 ---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-policy-validator
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/control-plane-component: destination
+  ports:
+  - name: policy-https
+    port: 443
+    targetPort: policy-https
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1743,11 +1818,12 @@ spec:
           runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
-          name: tls
+          name: sp-tls
           readOnly: true
       - args:
         - --admin-addr=0.0.0.0:9990
         - --grpc-addr=0.0.0.0:8090
+        - --admission-addr=0.0.0.0:9443
         - --cluster-networks=10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         - --identity-domain=cluster.local
         - --default-policy=all-unauthenticated
@@ -1767,6 +1843,8 @@ spec:
           name: grpc
         - containerPort: 9990
           name: admin-http
+        - containerPort: 9443
+          name: policy-https
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -1775,6 +1853,10 @@ spec:
         resources:
         securityContext:
           runAsUser: 2103
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: policy-tls
+          readOnly: true
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -1813,9 +1895,12 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-destination
       volumes:
-      - name: tls
+      - name: sp-tls
         secret:
           secretName: linkerd-sp-validator-k8s-tls
+      - name: policy-tls
+        secret:
+          secretName: linkerd-policy-validator-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -2134,7 +2219,7 @@ spec:
 ---
 apiVersion: v1
 data:
-  linkerd-config-overrides: Y29udHJvbGxlckltYWdlVmVyc2lvbjogaW5zdGFsbC1jb250cm9sLXBsYW5lLXZlcnNpb24KZGVidWdDb250YWluZXI6CiAgaW1hZ2U6CiAgICB2ZXJzaW9uOiBpbnN0YWxsLWRlYnVnLXZlcnNpb24KaGVhcnRiZWF0U2NoZWR1bGU6IDEgMiAzIDQgNQppZGVudGl0eToKICBpc3N1ZXI6CiAgICBjcnRFeHBpcnk6ICIyMDMwLTA4LTI2VDA3OjEzOjQ3WiIKICAgIHRsczoKICAgICAgY3J0UEVNOiB8CiAgICAgICAgLS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCiAgICAgICAgTUlJQndEQ0NBV2VnQXdJQkFnSVJBSlJJZ1o4UnRPOEV3ZzFYZXBmOFQ0NHdDZ1lJS29aSXpqMEVBd0l3S1RFbgogICAgICAgIE1DVUdBMVVFQXhNZWFXUmxiblJwZEhrdWJHbHVhMlZ5WkM1amJIVnpkR1Z5TG14dlkyRnNNQjRYRFRJd01EZ3kKICAgICAgICBPREEzTVRNME4xb1hEVE13TURneU5qQTNNVE0wTjFvd0tURW5NQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1CiAgICAgICAgYTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFMS9GcAogICAgICAgIGZjUm5EY2VkTDZBalVhWFlQdjRESU1CYUp1Zk9JNU5XdHkrWFNYN0pqWGdadE03MmRRdlJhWWFudXhEMzZEdDEKICAgICAgICAyL0p4eWlTZ3hLV1Jkb2F5K2FOd01HNHdEZ1lEVlIwUEFRSC9CQVFEQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCCiAgICAgICAgQWY4Q0FRQXdIUVlEVlIwT0JCWUVGSTFXbnJxTVlLYUhIT28renB5aWlEcTJwTzBLTUNrR0ExVWRFUVFpTUNDQwogICAgICAgIEhtbGtaVzUwYVhSNUxteHBibXRsY21RdVkyeDFjM1JsY2k1c2IyTmhiREFLQmdncWhrak9QUVFEQWdOSEFEQkUKICAgICAgICBBaUF0dW9JNVh1Q3RyR1ZSelNtUlRsMnJhMjhhVjlNeVRVN2Q1cW5UQUZIS1NnSWdSS0N2bHVPU2dBNU8yMXA1CiAgICAgICAgNTF0ZHJta0hFWlJyMHFsTFNKZEhZZ0VmTXprPQogICAgICAgIC0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KICAgICAga2V5UEVNOiB8CiAgICAgICAgLS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCiAgICAgICAgTUhjQ0FRRUVJQUFlOG5mYnpadTljL09CMis4eEpNMEZ6N05Vd1RRYXp1bGtGTnM0VEk1K29Bb0dDQ3FHU000OQogICAgICAgIEF3RUhvVVFEUWdBRTEvRnBmY1JuRGNlZEw2QWpVYVhZUHY0RElNQmFKdWZPSTVOV3R5K1hTWDdKalhnWnRNNzIKICAgICAgICBkUXZSYVlhbnV4RDM2RHQxMi9KeHlpU2d4S1dSZG9heStRPT0KICAgICAgICAtLS0tLUVORCBFQyBQUklWQVRFIEtFWS0tLS0tCmlkZW50aXR5VHJ1c3RBbmNob3JzUEVNOiB8CiAgLS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCiAgTUlJQndUQ0NBV2FnQXdJQkFnSVFlRFpwNWxEYUl5Z1E1VWZNS1pyRkFUQUtCZ2dxaGtqT1BRUURBakFwTVNjdwogIEpRWURWUVFERXg1cFpHVnVkR2wwZVM1c2FXNXJaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dIaGNOTWpBd09ESTQKICBNRGN4TWpRM1doY05NekF3T0RJMk1EY3hNalEzV2pBcE1TY3dKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyCiAgWlhKa0xtTnNkWE4wWlhJdWJHOWpZV3d3V1RBVEJnY3Foa2pPUFFJQkJnZ3Foa2pPUFFNQkJ3TkNBQVJxYzcwWgogIGwxdmd3NzlyakI1dVNJVElDVUE2R3lmdlNGZmN1SWlzN0IvWEZTa2t3QUhVNVMvczFBQVArUjBUWDdIQldVQzQKICB1YUc0V1dzaXdKS05uN21nbzNBd2JqQU9CZ05WSFE4QkFmOEVCQU1DQVFZd0VnWURWUjBUQVFIL0JBZ3dCZ0VCCiAgL3dJQkFUQWRCZ05WSFE0RUZnUVU1WXRqVlZQZmQ3STdOTEhzbjJDMjZFQnlHVjB3S1FZRFZSMFJCQ0l3SUlJZQogIGFXUmxiblJwZEhrdWJHbHVhMlZ5WkM1amJIVnpkR1Z5TG14dlkyRnNNQW9HQ0NxR1NNNDlCQU1DQTBrQU1FWUMKICBJUUNON2xCRkxERHZqeDZWMCtYa2pwS0VSUnNKWWY1YWRNdm5sb0ZsNDhpbEpnSWhBTnR4aG5kY3IrUUpQdUM4CiAgdmdVQzBkMi85Rk11ZUlWTWIrNDZXVENPanNxcgogIC0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KcHJvZmlsZVZhbGlkYXRvcjoKICBjYUJ1bmRsZTogcHJvZmlsZSB2YWxpZGF0b3IgQ0EgYnVuZGxlCiAgY3J0UEVNOiBwcm9maWxlIHZhbGlkYXRvciBjcnQKICBrZXlQRU06IHByb2ZpbGUgdmFsaWRhdG9yIGtleQpwcm94eToKICBpbWFnZToKICAgIHZlcnNpb246IGluc3RhbGwtcHJveHktdmVyc2lvbgpwcm94eUluaXQ6CiAgaWdub3JlSW5ib3VuZFBvcnRzOiAyMiw4MTAwLTgxMDIKICBpZ25vcmVPdXRib3VuZFBvcnRzOiAiNTQzMiIKcHJveHlJbmplY3RvcjoKICBjYUJ1bmRsZTogcHJveHkgaW5qZWN0b3IgQ0EgYnVuZGxlCiAgY3J0UEVNOiBwcm94eSBpbmplY3RvciBjcnQKICBrZXlQRU06IHByb3h5IGluamVjdG9yIGtleQo=
+  linkerd-config-overrides: Y29udHJvbGxlckltYWdlVmVyc2lvbjogaW5zdGFsbC1jb250cm9sLXBsYW5lLXZlcnNpb24KZGVidWdDb250YWluZXI6CiAgaW1hZ2U6CiAgICB2ZXJzaW9uOiBpbnN0YWxsLWRlYnVnLXZlcnNpb24KaGVhcnRiZWF0U2NoZWR1bGU6IDEgMiAzIDQgNQppZGVudGl0eToKICBpc3N1ZXI6CiAgICBjcnRFeHBpcnk6ICIyMDMwLTA4LTI2VDA3OjEzOjQ3WiIKICAgIHRsczoKICAgICAgY3J0UEVNOiB8CiAgICAgICAgLS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCiAgICAgICAgTUlJQndEQ0NBV2VnQXdJQkFnSVJBSlJJZ1o4UnRPOEV3ZzFYZXBmOFQ0NHdDZ1lJS29aSXpqMEVBd0l3S1RFbgogICAgICAgIE1DVUdBMVVFQXhNZWFXUmxiblJwZEhrdWJHbHVhMlZ5WkM1amJIVnpkR1Z5TG14dlkyRnNNQjRYRFRJd01EZ3kKICAgICAgICBPREEzTVRNME4xb1hEVE13TURneU5qQTNNVE0wTjFvd0tURW5NQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1CiAgICAgICAgYTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFMS9GcAogICAgICAgIGZjUm5EY2VkTDZBalVhWFlQdjRESU1CYUp1Zk9JNU5XdHkrWFNYN0pqWGdadE03MmRRdlJhWWFudXhEMzZEdDEKICAgICAgICAyL0p4eWlTZ3hLV1Jkb2F5K2FOd01HNHdEZ1lEVlIwUEFRSC9CQVFEQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCCiAgICAgICAgQWY4Q0FRQXdIUVlEVlIwT0JCWUVGSTFXbnJxTVlLYUhIT28renB5aWlEcTJwTzBLTUNrR0ExVWRFUVFpTUNDQwogICAgICAgIEhtbGtaVzUwYVhSNUxteHBibXRsY21RdVkyeDFjM1JsY2k1c2IyTmhiREFLQmdncWhrak9QUVFEQWdOSEFEQkUKICAgICAgICBBaUF0dW9JNVh1Q3RyR1ZSelNtUlRsMnJhMjhhVjlNeVRVN2Q1cW5UQUZIS1NnSWdSS0N2bHVPU2dBNU8yMXA1CiAgICAgICAgNTF0ZHJta0hFWlJyMHFsTFNKZEhZZ0VmTXprPQogICAgICAgIC0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KICAgICAga2V5UEVNOiB8CiAgICAgICAgLS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCiAgICAgICAgTUhjQ0FRRUVJQUFlOG5mYnpadTljL09CMis4eEpNMEZ6N05Vd1RRYXp1bGtGTnM0VEk1K29Bb0dDQ3FHU000OQogICAgICAgIEF3RUhvVVFEUWdBRTEvRnBmY1JuRGNlZEw2QWpVYVhZUHY0RElNQmFKdWZPSTVOV3R5K1hTWDdKalhnWnRNNzIKICAgICAgICBkUXZSYVlhbnV4RDM2RHQxMi9KeHlpU2d4S1dSZG9heStRPT0KICAgICAgICAtLS0tLUVORCBFQyBQUklWQVRFIEtFWS0tLS0tCmlkZW50aXR5VHJ1c3RBbmNob3JzUEVNOiB8CiAgLS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCiAgTUlJQndUQ0NBV2FnQXdJQkFnSVFlRFpwNWxEYUl5Z1E1VWZNS1pyRkFUQUtCZ2dxaGtqT1BRUURBakFwTVNjdwogIEpRWURWUVFERXg1cFpHVnVkR2wwZVM1c2FXNXJaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dIaGNOTWpBd09ESTQKICBNRGN4TWpRM1doY05NekF3T0RJMk1EY3hNalEzV2pBcE1TY3dKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyCiAgWlhKa0xtTnNkWE4wWlhJdWJHOWpZV3d3V1RBVEJnY3Foa2pPUFFJQkJnZ3Foa2pPUFFNQkJ3TkNBQVJxYzcwWgogIGwxdmd3NzlyakI1dVNJVElDVUE2R3lmdlNGZmN1SWlzN0IvWEZTa2t3QUhVNVMvczFBQVArUjBUWDdIQldVQzQKICB1YUc0V1dzaXdKS05uN21nbzNBd2JqQU9CZ05WSFE4QkFmOEVCQU1DQVFZd0VnWURWUjBUQVFIL0JBZ3dCZ0VCCiAgL3dJQkFUQWRCZ05WSFE0RUZnUVU1WXRqVlZQZmQ3STdOTEhzbjJDMjZFQnlHVjB3S1FZRFZSMFJCQ0l3SUlJZQogIGFXUmxiblJwZEhrdWJHbHVhMlZ5WkM1amJIVnpkR1Z5TG14dlkyRnNNQW9HQ0NxR1NNNDlCQU1DQTBrQU1FWUMKICBJUUNON2xCRkxERHZqeDZWMCtYa2pwS0VSUnNKWWY1YWRNdm5sb0ZsNDhpbEpnSWhBTnR4aG5kY3IrUUpQdUM4CiAgdmdVQzBkMi85Rk11ZUlWTWIrNDZXVENPanNxcgogIC0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KcG9saWN5VmFsaWRhdG9yOgogIGNhQnVuZGxlOiBwb2xpY3kgdmFsaWRhdG9yIENBIGJ1bmRsZQogIGNydFBFTTogcG9saWN5IHZhbGlkYXRvciBjcnQKICBrZXlQRU06IHBvbGljeSB2YWxpZGF0b3Iga2V5CnByb2ZpbGVWYWxpZGF0b3I6CiAgY2FCdW5kbGU6IHByb2ZpbGUgdmFsaWRhdG9yIENBIGJ1bmRsZQogIGNydFBFTTogcHJvZmlsZSB2YWxpZGF0b3IgY3J0CiAga2V5UEVNOiBwcm9maWxlIHZhbGlkYXRvciBrZXkKcHJveHk6CiAgaW1hZ2U6CiAgICB2ZXJzaW9uOiBpbnN0YWxsLXByb3h5LXZlcnNpb24KcHJveHlJbml0OgogIGlnbm9yZUluYm91bmRQb3J0czogMjIsODEwMC04MTAyCiAgaWdub3JlT3V0Ym91bmRQb3J0czogIjU0MzIiCnByb3h5SW5qZWN0b3I6CiAgY2FCdW5kbGU6IHByb3h5IGluamVjdG9yIENBIGJ1bmRsZQogIGNydFBFTTogcHJveHkgaW5qZWN0b3IgY3J0CiAga2V5UEVNOiBwcm94eSBpbmplY3RvciBrZXkK
 kind: Secret
 metadata:
   creationTimestamp: null

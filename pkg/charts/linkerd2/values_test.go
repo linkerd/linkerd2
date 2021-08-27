@@ -142,8 +142,9 @@ func TestNewValues(t *testing.T) {
 			},
 		},
 
-		ProxyInjector:    &ProxyInjector{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
-		ProfileValidator: &ProfileValidator{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
+		ProxyInjector:    &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
+		ProfileValidator: &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
+		PolicyValidator:  &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
 	}
 
 	// pin the versions to ensure consistent test result.

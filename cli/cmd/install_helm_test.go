@@ -117,6 +117,11 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
     "crtPEM":"test-profile-validator-crt-pem",
 	"caBundle":"test-profile-validator-ca-bundle"
   },
+  "policyValidator":{
+    "keyPEM":"test-profile-validator-key-pem",
+    "crtPEM":"test-profile-validator-crt-pem",
+	  "caBundle":"test-profile-validator-ca-bundle"
+  },
   "tap":{
     "keyPEM":"test-tap-key-pem",
     "crtPEM":"test-tap-crt-pem",

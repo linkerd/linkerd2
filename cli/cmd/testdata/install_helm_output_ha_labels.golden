@@ -162,6 +162,51 @@ webhooks:
     resources: ["serviceprofiles"]
   sideEffects: None
 ---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-policy-validator-k8s-tls
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+type: kubernetes.io/tls
+data:
+  tls.crt: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1jcnQtcGVt
+  tls.key: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1rZXktcGVt
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: linkerd-policy-validator-webhook-config
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
+webhooks:
+- name: linkerd-policy-validator.linkerd.io
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
+  clientConfig:
+    service:
+      name: linkerd-policy-validator
+      namespace: linkerd
+      path: "/"
+    caBundle: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1jYS1idW5kbGU=
+  failurePolicy: Fail
+  admissionReviewVersions: ["v1", "v1beta1"]
+  rules:
+  - operations: [ "CREATE" , "UPDATE" ]
+    apiGroups: ["policy.linkerd.io"]
+    apiVersions: ["v1alpha1"]
+    resources: ["serverauthorizations", "servers"]
+  sideEffects: None
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -1083,6 +1128,17 @@ data:
         memory:
           limit: ""
           request: ""
+    policyValidator:
+      caBundle: test-profile-validator-ca-bundle
+      crtPEM: test-profile-validator-crt-pem
+      externalSecret: false
+      keyPEM: test-profile-validator-key-pem
+      namespaceSelector:
+        matchExpressions:
+        - key: config.linkerd.io/admission-webhooks
+          operator: NotIn
+          values:
+          - disabled
     profileValidator:
       caBundle: test-profile-validator-ca-bundle
       crtPEM: test-profile-validator-crt-pem
@@ -1608,6 +1664,25 @@ spec:
     port: 8090
     targetPort: 8090
 ---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-policy-validator
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/control-plane-component: destination
+  ports:
+  - name: policy-https
+    port: 443
+    targetPort: policy-https
+---
 kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
 metadata:
@@ -1872,11 +1947,12 @@ spec:
           runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
-          name: tls
+          name: sp-tls
           readOnly: true
       - args:
         - --admin-addr=0.0.0.0:9990
         - --grpc-addr=0.0.0.0:8090
+        - --admission-addr=0.0.0.0:9443
         - --cluster-networks=10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         - --identity-domain=test.trust.domain
         - --default-policy=all-unauthenticated
@@ -1896,6 +1972,8 @@ spec:
           name: grpc
         - containerPort: 9990
           name: admin-http
+        - containerPort: 9443
+          name: policy-https
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -1904,6 +1982,10 @@ spec:
         resources:
         securityContext:
           runAsUser: 2103
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: policy-tls
+          readOnly: true
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -1942,9 +2024,12 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-destination
       volumes:
-      - name: tls
+      - name: sp-tls
         secret:
           secretName: linkerd-sp-validator-k8s-tls
+      - name: policy-tls
+        secret:
+          secretName: linkerd-policy-validator-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
