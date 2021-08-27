@@ -18,7 +18,6 @@ export DOCKER_REGISTRY=${DOCKER_REGISTRY:-cr.l5d.io/linkerd}
 # buildx cache directory
 export DOCKER_BUILDKIT_CACHE=${DOCKER_BUILDKIT_CACHE:-}
 
-# build the multi-arch images. Currently DOCKER_PUSH is also required
 export DOCKER_TARGET=${DOCKER_TARGET:-$(os)}
 
 # When set together with DOCKER_TARGET=multi-arch, it will push the multi-arch images to the registry

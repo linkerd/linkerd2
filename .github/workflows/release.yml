@@ -54,6 +54,7 @@ jobs:
       if: matrix.target == 'cli-bin'
       env:
         ARCHIVES: /home/runner/archives
+        DOCKER_TARGET: windows
       run: |
         bin/docker-pull-binaries $TAG
         mkdir -p $ARCHIVES
@@ -281,6 +282,8 @@ jobs:
         name: choco
         path: choco
     - name: Pull CLI binaries
+      env:
+        DOCKER_TARGET: multi-arch
       run : |
         bin/docker-pull-binaries $TAG
         VERSION=${TAG#"stable-"}

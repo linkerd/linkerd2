@@ -27,7 +27,10 @@ IMG=$(docker_repo cli-bin):$tag
 ID=$(docker create "$IMG")
 
 # copy the newly built linkerd cli binaries to the local system
-OS="linux-amd64 linux-arm64 linux-arm darwin darwin-arm64 windows"
+OS=$DOCKER_TARGET
+if [ "$DOCKER_TARGET" = 'multi-arch' ]
+  OS=$os_arch_all
+fi
 for OS in $OS; do
   DIR=$rootdir/target/cli/$OS
   mkdir -p "$DIR"
