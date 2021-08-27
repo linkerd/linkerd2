@@ -33,6 +33,7 @@
 - [LeadIQ](https://leadiq.com)
 - [Lendico](https://www.lendico.de/)
 - [M1 Finance](https://www.m1finance.com/)
+- [manager.cl](https://www.manager.cl/)
 - [MattePaint](https://www.mattepaint.com/)
 - [Mentum](https://mentumqr.com/)
 - [MercedesBenz.io](https://www.mercedes-benz.io/)
