@@ -13,6 +13,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -755,34 +756,38 @@ func TestOverridesSecret(t *testing.T) {
 
 	t.Run("Check if any unknown fields sneaked in", func(t *testing.T) {
 		knownKeys := tree.Tree{
-			"controllerImage":    "ghcr.io/linkerd/controller",
 			"controllerLogLevel": "debug",
-			"debugContainer": map[string]interface{}{
-				"image": map[string]interface{}{
-					"name": "ghcr.io/linkerd/debug",
-				},
-			},
-			"heartbeatSchedule": "1 2 3 4 5",
-			"identity": map[string]interface{}{
-				"issuer": map[string]interface{}{},
+			"heartbeatSchedule":  "1 2 3 4 5",
+			"identity": tree.Tree{
+				"issuer": tree.Tree{},
 			},
 			"identityTrustAnchorsPEM": extractValue(t, "identityTrustAnchorsPEM"),
-			"policyController": map[string]interface{}{
-				"image": map[string]interface{}{
-					"name": "ghcr.io/linkerd/policy-controller",
-				},
-			},
-			"proxy": map[string]interface{}{
-				"image": map[string]interface{}{
-					"name": "ghcr.io/linkerd/proxy",
-				},
-			},
-			"proxyInit": map[string]interface{}{
+			"proxyInit": tree.Tree{
 				"ignoreInboundPorts": skippedInboundPorts,
-				"image": map[string]interface{}{
-					"name": "ghcr.io/linkerd/proxy-init",
-				},
 			},
+		}
+
+		if reg := os.Getenv(flags.EnvOverrideDockerRegistry); reg != "" {
+			knownKeys["controllerImage"] = reg + "/controller"
+			knownKeys["debugContainer"] = tree.Tree{
+				"image": tree.Tree{
+					"name": reg + "/debug",
+				},
+			}
+			knownKeys["policyController"] = tree.Tree{
+				"image": tree.Tree{
+					"name": reg + "/policy-controller",
+				},
+			}
+			knownKeys["proxy"] = tree.Tree{
+				"image": tree.Tree{
+					"name": reg + "/proxy",
+				},
+			}
+			proxyInit, _ := knownKeys["proxyInit"].(tree.Tree)
+			proxyInit["image"] = tree.Tree{
+				"name": reg + "/proxy-init",
+			}
 		}
 
 		// Check for fields that were added during upgrade

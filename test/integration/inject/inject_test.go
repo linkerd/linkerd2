@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
+	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
@@ -52,12 +53,16 @@ func parseDeployment(yamlString string) (*appsv1.Deployment, error) {
 }
 
 func TestInjectManualParams(t *testing.T) {
+	reg := "cr.l5d.io/linkerd"
+	if override := os.Getenv(flags.EnvOverrideDockerRegistry); reg != "" {
+		reg = override
+	}
 
 	injectionValidator := testutil.InjectValidator{
 		DisableIdentity:        true,
 		Version:                "proxy-version",
-		Image:                  "ghcr.io/linkerd/proxy-image",
-		InitImage:              "ghcr.io/linkerd/init-image",
+		Image:                  reg + "/proxy-image",
+		InitImage:              reg + "/init-image",
 		ImagePullPolicy:        "Never",
 		ControlPort:            123,
 		SkipInboundPorts:       "234,345",
@@ -380,9 +385,13 @@ func TestInjectAutoPod(t *testing.T) {
 	truthy := true
 	falsy := false
 	zero := int64(0)
+	reg := "cr.l5d.io/linkerd"
+	if override := os.Getenv(flags.EnvOverrideDockerRegistry); reg != "" {
+		reg = override
+	}
 	expectedInitContainer := v1.Container{
 		Name:  k8s.InitContainerName,
-		Image: "ghcr.io/linkerd/proxy-init:" + version.ProxyInitVersion,
+		Image: reg + "/proxy-init:" + version.ProxyInitVersion,
 		Args: []string{
 			"--incoming-proxy-port", "4143",
 			"--outgoing-proxy-port", "4140",
