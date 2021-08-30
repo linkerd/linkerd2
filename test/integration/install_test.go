@@ -784,15 +784,14 @@ func TestOverridesSecret(t *testing.T) {
 					"name": reg + "/proxy",
 				},
 			}
-			proxyInit, _ := knownKeys["proxyInit"].(tree.Tree)
-			proxyInit["image"] = tree.Tree{
+			knownKeys["proxyInit"].(tree.Tree)["image"] = tree.Tree{
 				"name": reg + "/proxy-init",
 			}
 		}
 
 		// Check for fields that were added during upgrade
 		if TestHelper.UpgradeFromVersion() != "" {
-			knownKeys["proxyInit"].(map[string]interface{})["ignoreOutboundPorts"] = skippedOutboundPorts
+			knownKeys["proxyInit"].(tree.Tree)["ignoreOutboundPorts"] = skippedOutboundPorts
 		}
 
 		if TestHelper.GetClusterDomain() != "cluster.local" {
@@ -800,13 +799,13 @@ func TestOverridesSecret(t *testing.T) {
 		}
 
 		if TestHelper.ExternalIssuer() {
-			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["issuanceLifetime"] = "15s"
-			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["scheme"] = "kubernetes.io/tls"
+			knownKeys["identity"].(tree.Tree)["issuer"].(tree.Tree)["issuanceLifetime"] = "15s"
+			knownKeys["identity"].(tree.Tree)["issuer"].(tree.Tree)["scheme"] = "kubernetes.io/tls"
 		} else {
 			if !TestHelper.Multicluster() {
-				knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["crtExpiry"] = extractValue(t, "identity", "issuer", "crtExpiry")
+				knownKeys["identity"].(tree.Tree)["issuer"].(tree.Tree)["crtExpiry"] = extractValue(t, "identity", "issuer", "crtExpiry")
 			}
-			knownKeys["identity"].(map[string]interface{})["issuer"].(map[string]interface{})["tls"] = map[string]interface{}{
+			knownKeys["identity"].(tree.Tree)["issuer"].(tree.Tree)["tls"] = tree.Tree{
 				"crtPEM": extractValue(t, "identity", "issuer", "tls", "crtPEM"),
 				"keyPEM": extractValue(t, "identity", "issuer", "tls", "keyPEM"),
 			}
