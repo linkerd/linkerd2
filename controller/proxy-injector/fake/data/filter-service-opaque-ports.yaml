@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: kube-public
+spec:
+  selector:
+    app: test
+  ports:
+  - name: foo
+    port: 9090
+    targetPort: 3306
+  - name: bar
+    port: 5432
+    targetPort: 9091
+  - name: baz
+    port: 9092
+    targetPort: not-an-int

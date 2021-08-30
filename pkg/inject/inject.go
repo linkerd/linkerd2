@@ -373,7 +373,7 @@ func (conf *ResourceConfig) GetConfigAnnotation(annotationKey string) (string, b
 //    workload does not.
 // 2. If ok is false, we know either the workload has the annotation or both
 //    the workload and the namespace does not have annotation. In the case of
-//    the latter, we must add a default value to the pod.
+//    the latter, we must add a default value to the workload.
 func (conf *ResourceConfig) CreateDefaultOpaquePortsPatch() ([]byte, error) {
 	var patch []byte
 	var err error
@@ -384,8 +384,39 @@ func (conf *ResourceConfig) CreateDefaultOpaquePortsPatch() ([]byte, error) {
 			return nil, err
 		}
 	} else if !conf.HasWorkloadAnnotation(k8s.ProxyOpaquePortsAnnotation) {
-		opaquePorts := conf.GetValues().Proxy.OpaquePorts
-		patch, err = conf.CreateAnnotationPatch(opaquePorts)
+		defaultPorts := strings.Split(conf.GetValues().Proxy.OpaquePorts, ",")
+		var filteredPorts []string
+		// If the workload is a pod, then only add the default opaque ports
+		// that it exposes as container ports.
+		//
+		// If the workload is a service, then only add the default opaque
+		// ports that are exposed as a service port, or targeted as a
+		// targetPort.
+		if conf.IsPod() {
+			for _, c := range conf.pod.spec.Containers {
+				for _, p := range c.Ports {
+					if util.ContainsString(strconv.Itoa(int(p.ContainerPort)), defaultPorts) {
+						filteredPorts = append(filteredPorts, strconv.Itoa(int(p.ContainerPort)))
+					}
+				}
+			}
+		} else if conf.IsService() {
+			service := conf.workload.obj.(*corev1.Service)
+			for _, p := range service.Spec.Ports {
+				if util.ContainsString(strconv.Itoa(int(p.Port)), defaultPorts) {
+					filteredPorts = append(filteredPorts, strconv.Itoa(int(p.Port)))
+				} else if util.ContainsString(strconv.Itoa(int(p.TargetPort.IntVal)), defaultPorts) {
+					filteredPorts = append(filteredPorts, strconv.Itoa(int(p.Port)))
+				}
+			}
+		}
+		// If there are no default opaque ports to add, then do not create a
+		// patch.
+		if len(filteredPorts) == 0 {
+			return nil, nil
+		}
+		ports := strings.Join(filteredPorts, ",")
+		patch, err = conf.CreateAnnotationPatch(ports)
 		if err != nil {
 			return nil, err
 		}
