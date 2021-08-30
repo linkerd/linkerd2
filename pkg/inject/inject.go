@@ -395,18 +395,20 @@ func (conf *ResourceConfig) CreateDefaultOpaquePortsPatch() ([]byte, error) {
 		if conf.IsPod() {
 			for _, c := range conf.pod.spec.Containers {
 				for _, p := range c.Ports {
-					if util.ContainsString(strconv.Itoa(int(p.ContainerPort)), defaultPorts) {
-						filteredPorts = append(filteredPorts, strconv.Itoa(int(p.ContainerPort)))
+					port := strconv.Itoa(int(p.ContainerPort))
+					if util.ContainsString(port, defaultPorts) {
+						filteredPorts = append(filteredPorts, port)
 					}
 				}
 			}
 		} else if conf.IsService() {
 			service := conf.workload.obj.(*corev1.Service)
 			for _, p := range service.Spec.Ports {
-				if util.ContainsString(strconv.Itoa(int(p.Port)), defaultPorts) {
-					filteredPorts = append(filteredPorts, strconv.Itoa(int(p.Port)))
+				port := strconv.Itoa(int(p.Port))
+				if util.ContainsString(port, defaultPorts) {
+					filteredPorts = append(filteredPorts, port)
 				} else if util.ContainsString(strconv.Itoa(int(p.TargetPort.IntVal)), defaultPorts) {
-					filteredPorts = append(filteredPorts, strconv.Itoa(int(p.Port)))
+					filteredPorts = append(filteredPorts, port)
 				}
 			}
 		}
