@@ -393,14 +393,7 @@ func (conf *ResourceConfig) CreateDefaultOpaquePortsPatch() ([]byte, error) {
 		// ports that are exposed as a service port, or targeted as a
 		// targetPort.
 		if conf.IsPod() {
-			for _, c := range conf.pod.spec.Containers {
-				for _, p := range c.Ports {
-					port := strconv.Itoa(int(p.ContainerPort))
-					if util.ContainsString(port, defaultPorts) {
-						filteredPorts = append(filteredPorts, port)
-					}
-				}
-			}
+			filteredPorts = conf.FilterPodOpaquePorts(defaultPorts)
 		} else if conf.IsService() {
 			service := conf.workload.obj.(*corev1.Service)
 			for _, p := range service.Spec.Ports {
@@ -424,6 +417,21 @@ func (conf *ResourceConfig) CreateDefaultOpaquePortsPatch() ([]byte, error) {
 		}
 	}
 	return patch, nil
+}
+
+// FilterPodOpaquePorts returns a list of opaque ports that a pod exposes that
+// are also in the given default opaque ports list.
+func (conf *ResourceConfig) FilterPodOpaquePorts(defaultPorts []string) []string {
+	var filteredPorts []string
+	for _, c := range conf.pod.spec.Containers {
+		for _, p := range c.Ports {
+			port := strconv.Itoa(int(p.ContainerPort))
+			if util.ContainsString(port, defaultPorts) {
+				filteredPorts = append(filteredPorts, port)
+			}
+		}
+	}
+	return filteredPorts
 }
 
 // HasWorkloadAnnotation returns true if the workload has the annotation set
