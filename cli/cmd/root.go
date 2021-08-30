@@ -11,6 +11,7 @@ import (
 	jaeger "github.com/linkerd/linkerd2/jaeger/cmd"
 	multicluster "github.com/linkerd/linkerd2/multicluster/cmd"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
+	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	viz "github.com/linkerd/linkerd2/viz/cmd"
 	log "github.com/sirupsen/logrus"
@@ -79,7 +80,7 @@ var RootCmd = &cobra.Command{
 			log.SetLevel(log.PanicLevel)
 		}
 
-		controlPlaneNamespaceFromEnv := os.Getenv("LINKERD_NAMESPACE")
+		controlPlaneNamespaceFromEnv := os.Getenv(flags.EnvOverrideNamespace)
 		if controlPlaneNamespace == defaultLinkerdNamespace && controlPlaneNamespaceFromEnv != "" {
 			controlPlaneNamespace = controlPlaneNamespaceFromEnv
 		}
@@ -93,7 +94,9 @@ var RootCmd = &cobra.Command{
 }
 
 func init() {
-	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed ($LINKERD_NAMESPACE)")
+	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L",
+		defaultLinkerdNamespace,
+		fmt.Sprintf("Namespace in which Linkerd is installed ($%s)", flags.EnvOverrideNamespace))
 	RootCmd.PersistentFlags().StringVarP(&cniNamespace, "cni-namespace", "", defaultCNINamespace, "Namespace in which the Linkerd CNI plugin is installed")
 	RootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
 	RootCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")

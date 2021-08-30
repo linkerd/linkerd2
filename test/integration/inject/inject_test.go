@@ -56,8 +56,8 @@ func TestInjectManualParams(t *testing.T) {
 	injectionValidator := testutil.InjectValidator{
 		DisableIdentity:        true,
 		Version:                "proxy-version",
-		Image:                  "proxy-image",
-		InitImage:              "init-image",
+		Image:                  "ghcr.io/linkerd/proxy-image",
+		InitImage:              "ghcr.io/linkerd/init-image",
 		ImagePullPolicy:        "Never",
 		ControlPort:            123,
 		SkipInboundPorts:       "234,345",
@@ -382,7 +382,7 @@ func TestInjectAutoPod(t *testing.T) {
 	zero := int64(0)
 	expectedInitContainer := v1.Container{
 		Name:  k8s.InitContainerName,
-		Image: "cr.l5d.io/linkerd/proxy-init:" + version.ProxyInitVersion,
+		Image: "ghcr.io/linkerd/proxy-init:" + version.ProxyInitVersion,
 		Args: []string{
 			"--incoming-proxy-port", "4143",
 			"--outgoing-proxy-port", "4140",

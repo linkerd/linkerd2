@@ -755,14 +755,33 @@ func TestOverridesSecret(t *testing.T) {
 
 	t.Run("Check if any unknown fields sneaked in", func(t *testing.T) {
 		knownKeys := tree.Tree{
+			"controllerImage":    "ghcr.io/linkerd/controller",
 			"controllerLogLevel": "debug",
-			"heartbeatSchedule":  "1 2 3 4 5",
+			"debugContainer": map[string]interface{}{
+				"image": map[string]interface{}{
+					"name": "ghcr.io/linkerd/debug",
+				},
+			},
+			"heartbeatSchedule": "1 2 3 4 5",
 			"identity": map[string]interface{}{
 				"issuer": map[string]interface{}{},
 			},
 			"identityTrustAnchorsPEM": extractValue(t, "identityTrustAnchorsPEM"),
+			"policyController": map[string]interface{}{
+				"image": map[string]interface{}{
+					"name": "ghcr.io/linkerd/policy-controller",
+				},
+			},
+			"proxy": map[string]interface{}{
+				"image": map[string]interface{}{
+					"name": "ghcr.io/linkerd/proxy",
+				},
+			},
 			"proxyInit": map[string]interface{}{
 				"ignoreInboundPorts": skippedInboundPorts,
+				"image": map[string]interface{}{
+					"name": "ghcr.io/linkerd/proxy-init",
+				},
 			},
 		}
 
