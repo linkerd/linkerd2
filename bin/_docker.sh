@@ -26,6 +26,20 @@ export DOCKER_PUSH=${DOCKER_PUSH:-}
 # Default supported docker image architectures
 export SUPPORTED_ARCHS=${SUPPORTED_ARCHS:-linux/amd64,linux/arm64,linux/arm/v7}
 
+export DOCKER_IMAGES=(${DOCKER_IMAGES[@]:-
+    cli-bin
+    cni-plugin
+    controller
+    policy-controller
+    metrics-api
+    debug
+    grafana
+    proxy
+    web
+    jaeger-webhook
+    tap
+})
+
 docker_repo() {
     repo=$1
 
