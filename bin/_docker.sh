@@ -26,7 +26,9 @@ export DOCKER_PUSH=${DOCKER_PUSH:-}
 # Default supported docker image architectures
 export SUPPORTED_ARCHS=${SUPPORTED_ARCHS:-linux/amd64,linux/arm64,linux/arm/v7}
 
-export DOCKER_IMAGES=(${DOCKER_IMAGES[@]:-
+# Splitting of DOCKER_IMAGES variable is desired.
+# shellcheck disable=SC2206
+export DOCKER_IMAGES=(${DOCKER_IMAGES:-
     cli-bin
     cni-plugin
     controller
