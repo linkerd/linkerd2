@@ -13,6 +13,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -512,6 +513,24 @@ func helmOverridesEdge(root *tls.CA) ([]string, []string) {
 		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
 		"--set", "namespace=" + TestHelper.GetVizNamespace(),
 	}
+
+	if override := os.Getenv(flags.EnvOverrideDockerRegistry); override != "" {
+		coreArgs = append(coreArgs,
+			"--set", "policyController.image.name="+cmd.RegistryOverride("cr.l5d.io/linkerd/policy-controller", override),
+			"--set", "proxy.image.name="+cmd.RegistryOverride("cr.l5d.io/linkerd/proxy", override),
+			"--set", "proxyInit.image.name="+cmd.RegistryOverride("cr.l5d.io/linkerd/proxy-init", override),
+			"--set", "controllerImage="+cmd.RegistryOverride("cr.l5d.io/linkerd/controller", override),
+			"--set", "debugContainer.image.name="+cmd.RegistryOverride("cr.l5d.io/linkerd/debug", override),
+		)
+		vizArgs = append(vizArgs,
+			"--set", "metricsAPI.image.registry="+override,
+			"--set", "tap.image.registry="+override,
+			"--set", "tapInjector.image.registry="+override,
+			"--set", "dashboard.image.registry="+override,
+			"--set", "grafana.image.registry="+override,
+		)
+	}
+
 	return coreArgs, vizArgs
 }
 
