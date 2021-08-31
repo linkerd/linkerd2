@@ -41,7 +41,7 @@ const (
 	remoteClusterNameLabel   = model.LabelName("target_cluster_name")
 	authorityLabel           = model.LabelName("authority")
 	serverLabel              = model.LabelName("srv_name")
-	ServerAuthorizationLabel = model.LabelName("saz_name")
+	serverAuthorizationLabel = model.LabelName("saz_name")
 )
 
 var (

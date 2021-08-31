@@ -817,7 +817,7 @@ func (s *grpcServer) getPolicyMetrics(ctx context.Context, req *pb.StatSummaryRe
 
 	} else if req.GetSelector().GetResource().GetType() == k8s.ServerAuthorization {
 		labels = labels.Merge(model.LabelSet{
-			ServerAuthorizationLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
+			serverAuthorizationLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
 		})
 	}
 
