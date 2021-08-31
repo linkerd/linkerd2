@@ -1406,6 +1406,50 @@ status:
 											Rows: []*pb.StatTable_PodGroup_Row{
 												{
 													Resource: &pb.Resource{
+														Type:      pkgK8s.Server,
+														Namespace: "emojivoto",
+													},
+													TimeWindow: "1m",
+													Stats: &pb.BasicStats{
+														SuccessCount: 123,
+														FailureCount: 0,
+														LatencyMsP50: 123,
+														LatencyMsP95: 123,
+														LatencyMsP99: 123,
+													},
+												},
+											},
+										},
+									},
+								},
+								{
+									Table: &pb.StatTable_PodGroup_{
+										PodGroup: &pb.StatTable_PodGroup{
+											Rows: []*pb.StatTable_PodGroup_Row{
+												{
+													Resource: &pb.Resource{
+														Type:      pkgK8s.ServerAuthorization,
+														Namespace: "emojivoto",
+													},
+													TimeWindow: "1m",
+													Stats: &pb.BasicStats{
+														SuccessCount: 123,
+														FailureCount: 0,
+														LatencyMsP50: 123,
+														LatencyMsP95: 123,
+														LatencyMsP99: 123,
+													},
+												},
+											},
+										},
+									},
+								},
+								{
+									Table: &pb.StatTable_PodGroup_{
+										PodGroup: &pb.StatTable_PodGroup{
+											Rows: []*pb.StatTable_PodGroup_Row{
+												{
+													Resource: &pb.Resource{
 														Type: pkgK8s.Service,
 													},
 													TimeWindow: "1m",
