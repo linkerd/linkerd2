@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
       - run: go get gotest.tools/gotestsum@v0.4.2
       - run: gotestsum -- -cover -coverprofile=coverage.out -v -mod=readonly ./...
-      - uses: codecov/codecov-action@51d810878be5422784e86451c0e7c14e5860ec47
+      - uses: codecov/codecov-action@5a8bb4701eca7ba3673f21664b887f652c58d0a3
         with:
           files: ./coverage.out
           flags: unittests,golang
@@ -40,7 +40,7 @@ jobs:
           export NODE_ENV=test
           bin/web --frozen-lockfile
           bin/web test --reporters="jest-progress-bar-reporter" --reporters="./gh_ann_reporter.js" --coverage
-      - uses: codecov/codecov-action@51d810878be5422784e86451c0e7c14e5860ec47
+      - uses: codecov/codecov-action@5a8bb4701eca7ba3673f21664b887f652c58d0a3
         with:
           directory: ./web/app/coverage
           flags: unittests,javascript
@@ -56,6 +56,6 @@ jobs:
       - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
       - run: mkdir -p target && cd target && curl -vsL https://github.com/xd009642/tarpaulin/releases/download/0.18.0/cargo-tarpaulin-0.18.0-travis.tar.gz | tar zxvf - && chmod 755 cargo-tarpaulin
       - run: target/cargo-tarpaulin tarpaulin --workspace --out Xml
-      - uses: codecov/codecov-action@51d810878be5422784e86451c0e7c14e5860ec47
+      - uses: codecov/codecov-action@5a8bb4701eca7ba3673f21664b887f652c58d0a3
         with:
           flags: unittests,rust

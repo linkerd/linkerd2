@@ -65,8 +65,9 @@ type (
 		ProxyInit        *ProxyInit        `json:"proxyInit"`
 		Identity         *Identity         `json:"identity"`
 		DebugContainer   *DebugContainer   `json:"debugContainer"`
-		ProxyInjector    *ProxyInjector    `json:"proxyInjector"`
-		ProfileValidator *ProfileValidator `json:"profileValidator"`
+		ProxyInjector    *Webhook          `json:"proxyInjector"`
+		ProfileValidator *Webhook          `json:"profileValidator"`
+		PolicyValidator  *Webhook          `json:"policyValidator"`
 		NodeSelector     map[string]string `json:"nodeSelector"`
 		Tolerations      []interface{}     `json:"tolerations"`
 		Stage            string            `json:"stage"`
@@ -111,6 +112,7 @@ type (
 		PodInboundPorts               string           `json:"podInboundPorts"`
 		OpaquePorts                   string           `json:"opaquePorts"`
 		Await                         bool             `json:"await"`
+		DefaultInboundPolicy          string           `json:"defaultInboundPolicy"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container
@@ -195,14 +197,8 @@ type (
 		TLS                *IssuerTLS `json:"tls"`
 	}
 
-	// ProxyInjector has all the proxy injector's Helm variables
-	ProxyInjector struct {
-		*TLS
-		NamespaceSelector *metav1.LabelSelector `json:"namespaceSelector"`
-	}
-
-	// ProfileValidator has all the profile validator's Helm variables
-	ProfileValidator struct {
+	// Webhook Helm variables for a webhook
+	Webhook struct {
 		*TLS
 		NamespaceSelector *metav1.LabelSelector `json:"namespaceSelector"`
 	}

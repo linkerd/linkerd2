@@ -3,21 +3,25 @@
 
 use anyhow::{Context, Result};
 use futures::{future, prelude::*};
-use linkerd_policy_controller::k8s::DefaultAllow;
+use linkerd_policy_controller::k8s::DefaultPolicy;
+use linkerd_policy_controller::{admin, admission};
 use linkerd_policy_controller_core::IpNet;
 use std::net::SocketAddr;
 use structopt::StructOpt;
 use tokio::{sync::watch, time};
-use tracing::{debug, info, instrument};
+use tracing::{debug, info, info_span, instrument, Instrument};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "policy", about = "A policy resource prototype")]
 struct Args {
-    #[structopt(short, long, default_value = "0.0.0.0:8080")]
+    #[structopt(long, default_value = "0.0.0.0:8080")]
     admin_addr: SocketAddr,
 
-    #[structopt(short, long, default_value = "0.0.0.0:8090")]
+    #[structopt(long, default_value = "0.0.0.0:8090")]
     grpc_addr: SocketAddr,
+
+    #[structopt(long)]
+    admission_addr: Option<SocketAddr>,
 
     /// Network CIDRs of pod IPs.
     ///
@@ -32,7 +36,7 @@ struct Args {
     identity_domain: String,
 
     #[structopt(long, default_value = "all-unauthenticated")]
-    default_allow: DefaultAllow,
+    default_policy: DefaultPolicy,
 }
 
 #[tokio::main]
@@ -42,9 +46,10 @@ async fn main() -> Result<()> {
     let Args {
         admin_addr,
         grpc_addr,
+        admission_addr,
         identity_domain,
         cluster_networks: IpNets(cluster_networks),
-        default_allow,
+        default_policy,
     } = Args::from_args();
 
     let (drain_tx, drain_rx) = drain::channel();
@@ -58,9 +63,7 @@ async fn main() -> Result<()> {
 
     // Spawn an admin server, failing readiness checks until the index is updated.
     let (ready_tx, ready_rx) = watch::channel(false);
-    tokio::spawn(linkerd_policy_controller::admin::serve(
-        admin_addr, ready_rx,
-    ));
+    tokio::spawn(admin::serve(admin_addr, ready_rx));
 
     // Index cluster resources, returning a handle that supports lookups for the gRPC server.
     let handle = {
@@ -68,16 +71,29 @@ async fn main() -> Result<()> {
         let (handle, index) = linkerd_policy_controller::k8s::Index::new(
             cluster_networks.clone(),
             identity_domain,
-            default_allow,
+            default_policy,
             DETECT_TIMEOUT,
         );
 
-        tokio::spawn(index.run(client, ready_tx));
+        tokio::spawn(index.run(client.clone(), ready_tx));
         handle
     };
 
     // Run the gRPC server, serving results by looking up against the index handle.
-    tokio::spawn(grpc(grpc_addr, cluster_networks, handle, drain_rx));
+    tokio::spawn(grpc(grpc_addr, cluster_networks, handle, drain_rx.clone()));
+
+    // Run the admission controller
+    if let Some(bind_addr) = admission_addr {
+        let (listen_addr, serve) = warp::serve(admission::routes(client))
+            .tls()
+            .cert_path("/var/run/linkerd/tls/tls.crt")
+            .key_path("/var/run/linkerd/tls/tls.key")
+            .bind_with_graceful_shutdown(bind_addr, async move {
+                let _ = drain_rx.signaled().await;
+            });
+        info!(addr = %listen_addr, "Admission controller server listening");
+        tokio::spawn(serve.instrument(info_span!("admission")));
+    }
 
     // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
     // complete before exiting.

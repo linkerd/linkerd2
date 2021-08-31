@@ -156,6 +156,51 @@ webhooks:
     resources: ["serviceprofiles"]
   sideEffects: None
 ---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-policy-validator-k8s-tls
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+type: kubernetes.io/tls
+data:
+  tls.crt: cG9saWN5IHZhbGlkYXRvciBjcnQ=
+  tls.key: cG9saWN5IHZhbGlkYXRvciBrZXk=
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: linkerd-policy-validator-webhook-config
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
+webhooks:
+- name: linkerd-policy-validator.linkerd.io
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
+  clientConfig:
+    service:
+      name: linkerd-policy-validator
+      namespace: linkerd
+      path: "/"
+    caBundle: cG9saWN5IHZhbGlkYXRvciBDQSBidW5kbGU=
+  failurePolicy: Fail
+  admissionReviewVersions: ["v1", "v1beta1"]
+  rules:
+  - operations: [ "CREATE" , "UPDATE" ]
+    apiGroups: ["policy.linkerd.io"]
+    apiVersions: ["v1alpha1"]
+    resources: ["serverauthorizations", "servers"]
+  sideEffects: None
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -1083,6 +1128,17 @@ data:
         memory:
           limit: ""
           request: ""
+    policyValidator:
+      caBundle: policy validator CA bundle
+      crtPEM: policy validator crt
+      externalSecret: false
+      keyPEM: policy validator key
+      namespaceSelector:
+        matchExpressions:
+        - key: config.linkerd.io/admission-webhooks
+          operator: NotIn
+          values:
+          - disabled
     profileValidator:
       caBundle: profile validator CA bundle
       crtPEM: profile validator crt
@@ -1097,6 +1153,7 @@ data:
     proxy:
       await: true
       capabilities: null
+      defaultInboundPolicy: ""
       disableIdentity: false
       enableExternalProfiles: false
       image:
@@ -1370,14 +1427,6 @@ spec:
         - mountPath: /var/run/linkerd/identity/trust-roots/
           name: trust-roots
       - env:
-        - name: LINKERD2_PROXY_LOG
-          value: "warn,linkerd=info"
-        - name: LINKERD2_PROXY_LOG_FORMAT
-          value: "plain"
-        - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst-headless.linkerd.svc.cluster.local.:8086
-        - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: _pod_name
           valueFrom:
             fieldRef:
@@ -1390,6 +1439,16 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_TLS
+          value: "8080"
+        - name: LINKERD2_PROXY_LOG
+          value: "warn,linkerd=info"
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: "plain"
+        - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
+          value: linkerd-dst-headless.linkerd.svc.cluster.local.:8086
+        - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
+          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
           value: "100ms"
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_TIMEOUT
@@ -1419,6 +1478,14 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
             {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
+        - name: _pod_sa
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.serviceAccountName
+        - name: _l5d_ns
+          value: linkerd
+        - name: _l5d_trustdomain
+          value: cluster.local
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -1430,20 +1497,12 @@ spec:
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
           value: localhost.:8080
-        - name: _pod_sa
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.serviceAccountName
-        - name: _l5d_ns
-          value: linkerd
-        - name: _l5d_trustdomain
-          value: cluster.local
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
-          value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+          value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.linkerd.cluster.local
         - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
-          value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+          value: linkerd-identity.linkerd.serviceaccount.identity.linkerd.cluster.local
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
-          value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+          value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.cluster.local
         image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1577,6 +1636,7 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
+    config.linkerd.io/opaque-ports: "443"
 spec:
   type: ClusterIP
   selector:
@@ -1604,6 +1664,25 @@ spec:
   - name: grpc
     port: 8090
     targetPort: 8090
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-policy-validator
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/control-plane-component: destination
+  ports:
+  - name: policy-https
+    port: 443
+    targetPort: policy-https
 ---
 kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
@@ -1650,6 +1729,7 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
+        config.linkerd.io/opaque-ports: "8443"
       labels:
         linkerd.io/control-plane-component: destination
         linkerd.io/control-plane-ns: linkerd
@@ -1680,14 +1760,6 @@ spec:
             topologyKey: kubernetes.io/hostname
       containers:
       - env:
-        - name: LINKERD2_PROXY_LOG
-          value: "warn,linkerd=info"
-        - name: LINKERD2_PROXY_LOG_FORMAT
-          value: "plain"
-        - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: localhost.:8086
-        - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: _pod_name
           valueFrom:
             fieldRef:
@@ -1700,10 +1772,22 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: LINKERD2_PROXY_LOG
+          value: "warn,linkerd=info"
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: "plain"
+        - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
+          value: localhost.:8086
+        - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
+          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_POLICY_SVC_ADDR
           value: localhost.:8090
         - name: LINKERD2_PROXY_POLICY_WORKLOAD
           value: "$(_pod_ns):$(_pod_name)"
+        - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
+          value: all-unauthenticated
+        - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
+          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
           value: "100ms"
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_TIMEOUT
@@ -1733,6 +1817,14 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
             {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
+        - name: _pod_sa
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.serviceAccountName
+        - name: _l5d_ns
+          value: linkerd
+        - name: _l5d_trustdomain
+          value: cluster.local
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -1744,22 +1836,14 @@ spec:
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
           value: linkerd-identity-headless.linkerd.svc.cluster.local.:8080
-        - name: _pod_sa
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.serviceAccountName
-        - name: _l5d_ns
-          value: linkerd
-        - name: _l5d_trustdomain
-          value: cluster.local
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
-          value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+          value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.linkerd.cluster.local
         - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
-          value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+          value: linkerd-identity.linkerd.serviceaccount.identity.linkerd.cluster.local
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
-          value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+          value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.cluster.local
         - name: LINKERD2_PROXY_POLICY_SVC_NAME
-          value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+          value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.cluster.local
         image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1860,14 +1944,15 @@ spec:
           runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
-          name: tls
+          name: sp-tls
           readOnly: true
       - args:
         - --admin-addr=0.0.0.0:9990
         - --grpc-addr=0.0.0.0:8090
+        - --admission-addr=0.0.0.0:9443
         - --cluster-networks=10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         - --identity-domain=cluster.local
-        - --default-allow=all-unauthenticated
+        - --default-policy=all-unauthenticated
         env:
         - name: RUST_LOG
           value: "linkerd=info,warn"
@@ -1884,6 +1969,8 @@ spec:
           name: grpc
         - containerPort: 9990
           name: admin-http
+        - containerPort: 9443
+          name: policy-https
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -1892,6 +1979,10 @@ spec:
         resources:
         securityContext:
           runAsUser: 2103
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: policy-tls
+          readOnly: true
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -1930,9 +2021,12 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-destination
       volumes:
-      - name: tls
+      - name: sp-tls
         secret:
           secretName: linkerd-sp-validator-k8s-tls
+      - name: policy-tls
+        secret:
+          secretName: linkerd-policy-validator-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -2026,6 +2120,7 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
+        config.linkerd.io/opaque-ports: "8443"
       labels:
         linkerd.io/control-plane-component: proxy-injector
         linkerd.io/control-plane-ns: linkerd
@@ -2056,14 +2151,6 @@ spec:
             topologyKey: kubernetes.io/hostname
       containers:
       - env:
-        - name: LINKERD2_PROXY_LOG
-          value: "warn,linkerd=info"
-        - name: LINKERD2_PROXY_LOG_FORMAT
-          value: "plain"
-        - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst-headless.linkerd.svc.cluster.local.:8086
-        - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: _pod_name
           valueFrom:
             fieldRef:
@@ -2076,10 +2163,22 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: LINKERD2_PROXY_LOG
+          value: "warn,linkerd=info"
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: "plain"
+        - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
+          value: linkerd-dst-headless.linkerd.svc.cluster.local.:8086
+        - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
+          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_POLICY_SVC_ADDR
           value: linkerd-policy.linkerd.svc.cluster.local.:8090
         - name: LINKERD2_PROXY_POLICY_WORKLOAD
           value: "$(_pod_ns):$(_pod_name)"
+        - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
+          value: all-unauthenticated
+        - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
+          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
           value: "100ms"
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_TIMEOUT
@@ -2109,6 +2208,14 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
             {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
+        - name: _pod_sa
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.serviceAccountName
+        - name: _l5d_ns
+          value: linkerd
+        - name: _l5d_trustdomain
+          value: cluster.local
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -2120,22 +2227,14 @@ spec:
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
           value: linkerd-identity-headless.linkerd.svc.cluster.local.:8080
-        - name: _pod_sa
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.serviceAccountName
-        - name: _l5d_ns
-          value: linkerd
-        - name: _l5d_trustdomain
-          value: cluster.local
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
-          value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+          value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.linkerd.cluster.local
         - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
-          value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+          value: linkerd-identity.linkerd.serviceaccount.identity.linkerd.cluster.local
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
-          value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+          value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.cluster.local
         - name: LINKERD2_PROXY_POLICY_SVC_NAME
-          value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+          value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.cluster.local
         image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2274,6 +2373,7 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
+    config.linkerd.io/opaque-ports: "443"
 spec:
   type: ClusterIP
   selector:
@@ -2301,7 +2401,7 @@ spec:
 ---
 apiVersion: v1
 data:
-  linkerd-config-overrides: Y29udHJvbGxlckltYWdlVmVyc2lvbjogaW5zdGFsbC1jb250cm9sLXBsYW5lLXZlcnNpb24KY29udHJvbGxlclJlcGxpY2FzOiAyCmRlYnVnQ29udGFpbmVyOgogIGltYWdlOgogICAgdmVyc2lvbjogaW5zdGFsbC1kZWJ1Zy12ZXJzaW9uCmRlc3RpbmF0aW9uUmVzb3VyY2VzOgogIGNwdToKICAgIGxpbWl0OiAiIgogICAgcmVxdWVzdDogMTAwbQogIG1lbW9yeToKICAgIGxpbWl0OiAyNTBNaQogICAgcmVxdWVzdDogNTBNaQplbmFibGVQb2RBbnRpQWZmaW5pdHk6IHRydWUKaGVhcnRiZWF0UmVzb3VyY2VzOgogIGNwdToKICAgIGxpbWl0OiAiIgogICAgcmVxdWVzdDogMTAwbQogIG1lbW9yeToKICAgIGxpbWl0OiAyNTBNaQogICAgcmVxdWVzdDogNTBNaQpoZWFydGJlYXRTY2hlZHVsZTogMSAyIDMgNCA1CmhpZ2hBdmFpbGFiaWxpdHk6IHRydWUKaWRlbnRpdHk6CiAgaXNzdWVyOgogICAgY3J0RXhwaXJ5OiAiMjAzMC0wOC0yNlQwNzoxMzo0N1oiCiAgICB0bHM6CiAgICAgIGNydFBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQogICAgICAgIE1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUpSSWdaOFJ0TzhFd2cxWGVwZjhUNDR3Q2dZSUtvWkl6ajBFQXdJd0tURW4KICAgICAgICBNQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1YTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUI0WERUSXdNRGd5CiAgICAgICAgT0RBM01UTTBOMW9YRFRNd01EZ3lOakEzTVRNME4xb3dLVEVuTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdQogICAgICAgIGEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRTEvRnAKICAgICAgICBmY1JuRGNlZEw2QWpVYVhZUHY0RElNQmFKdWZPSTVOV3R5K1hTWDdKalhnWnRNNzJkUXZSYVlhbnV4RDM2RHQxCiAgICAgICAgMi9KeHlpU2d4S1dSZG9heSthTndNRzR3RGdZRFZSMFBBUUgvQkFRREFnRUdNQklHQTFVZEV3RUIvd1FJTUFZQgogICAgICAgIEFmOENBUUF3SFFZRFZSME9CQllFRkkxV25ycU1ZS2FISE9vK3pweWlpRHEycE8wS01Da0dBMVVkRVFRaU1DQ0MKICAgICAgICBIbWxrWlc1MGFYUjVMbXhwYm10bGNtUXVZMngxYzNSbGNpNXNiMk5oYkRBS0JnZ3Foa2pPUFFRREFnTkhBREJFCiAgICAgICAgQWlBdHVvSTVYdUN0ckdWUnpTbVJUbDJyYTI4YVY5TXlUVTdkNXFuVEFGSEtTZ0lnUktDdmx1T1NnQTVPMjFwNQogICAgICAgIDUxdGRybWtIRVpScjBxbExTSmRIWWdFZk16az0KICAgICAgICAtLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCiAgICAgIGtleVBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gRUMgUFJJVkFURSBLRVktLS0tLQogICAgICAgIE1IY0NBUUVFSUFBZThuZmJ6WnU5Yy9PQjIrOHhKTTBGejdOVXdUUWF6dWxrRk5zNFRJNStvQW9HQ0NxR1NNNDkKICAgICAgICBBd0VIb1VRRFFnQUUxL0ZwZmNSbkRjZWRMNkFqVWFYWVB2NERJTUJhSnVmT0k1Tld0eStYU1g3SmpYZ1p0TTcyCiAgICAgICAgZFF2UmFZYW51eEQzNkR0MTIvSnh5aVNneEtXUmRvYXkrUT09CiAgICAgICAgLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQppZGVudGl0eVJlc291cmNlczoKICBjcHU6CiAgICBsaW1pdDogIiIKICAgIHJlcXVlc3Q6IDEwMG0KICBtZW1vcnk6CiAgICBsaW1pdDogMjUwTWkKICAgIHJlcXVlc3Q6IDEwTWkKaWRlbnRpdHlUcnVzdEFuY2hvcnNQRU06IHwKICAtLS0tLUJFR0lOIENFUlRJRklDQVRFLS0tLS0KICBNSUlCd1RDQ0FXYWdBd0lCQWdJUWVEWnA1bERhSXlnUTVVZk1LWnJGQVRBS0JnZ3Foa2pPUFFRREFqQXBNU2N3CiAgSlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d0hoY05NakF3T0RJNAogIE1EY3hNalEzV2hjTk16QXdPREkyTURjeE1qUTNXakFwTVNjd0pRWURWUVFERXg1cFpHVnVkR2wwZVM1c2FXNXIKICBaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBUnFjNzBaCiAgbDF2Z3c3OXJqQjV1U0lUSUNVQTZHeWZ2U0ZmY3VJaXM3Qi9YRlNra3dBSFU1Uy9zMUFBUCtSMFRYN0hCV1VDNAogIHVhRzRXV3Npd0pLTm43bWdvM0F3YmpBT0JnTlZIUThCQWY4RUJBTUNBUVl3RWdZRFZSMFRBUUgvQkFnd0JnRUIKICAvd0lCQVRBZEJnTlZIUTRFRmdRVTVZdGpWVlBmZDdJN05MSHNuMkMyNkVCeUdWMHdLUVlEVlIwUkJDSXdJSUllCiAgYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Bb0dDQ3FHU000OUJBTUNBMGtBTUVZQwogIElRQ043bEJGTEREdmp4NlYwK1hranBLRVJSc0pZZjVhZE12bmxvRmw0OGlsSmdJaEFOdHhobmRjcitRSlB1QzgKICB2Z1VDMGQyLzlGTXVlSVZNYis0NldUQ09qc3FyCiAgLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQppbWFnZVB1bGxTZWNyZXRzOiBudWxsCnByb2ZpbGVWYWxpZGF0b3I6CiAgY2FCdW5kbGU6IHByb2ZpbGUgdmFsaWRhdG9yIENBIGJ1bmRsZQogIGNydFBFTTogcHJvZmlsZSB2YWxpZGF0b3IgY3J0CiAga2V5UEVNOiBwcm9maWxlIHZhbGlkYXRvciBrZXkKcHJveHk6CiAgaW1hZ2U6CiAgICB2ZXJzaW9uOiBpbnN0YWxsLXByb3h5LXZlcnNpb24KICByZXNvdXJjZXM6CiAgICBjcHU6CiAgICAgIHJlcXVlc3Q6IDQwMG0KICAgIG1lbW9yeToKICAgICAgbGltaXQ6IDI1ME1pCiAgICAgIHJlcXVlc3Q6IDMwME1pCnByb3h5SW5qZWN0b3I6CiAgY2FCdW5kbGU6IHByb3h5IGluamVjdG9yIENBIGJ1bmRsZQogIGNydFBFTTogcHJveHkgaW5qZWN0b3IgY3J0CiAga2V5UEVNOiBwcm94eSBpbmplY3RvciBrZXkKcHJveHlJbmplY3RvclJlc291cmNlczoKICBjcHU6CiAgICBsaW1pdDogIiIKICAgIHJlcXVlc3Q6IDEwMG0KICBtZW1vcnk6CiAgICBsaW1pdDogMjUwTWkKICAgIHJlcXVlc3Q6IDUwTWkKd2ViaG9va0ZhaWx1cmVQb2xpY3k6IEZhaWwK
+  linkerd-config-overrides: Y29udHJvbGxlckltYWdlVmVyc2lvbjogaW5zdGFsbC1jb250cm9sLXBsYW5lLXZlcnNpb24KY29udHJvbGxlclJlcGxpY2FzOiAyCmRlYnVnQ29udGFpbmVyOgogIGltYWdlOgogICAgdmVyc2lvbjogaW5zdGFsbC1kZWJ1Zy12ZXJzaW9uCmRlc3RpbmF0aW9uUmVzb3VyY2VzOgogIGNwdToKICAgIGxpbWl0OiAiIgogICAgcmVxdWVzdDogMTAwbQogIG1lbW9yeToKICAgIGxpbWl0OiAyNTBNaQogICAgcmVxdWVzdDogNTBNaQplbmFibGVQb2RBbnRpQWZmaW5pdHk6IHRydWUKaGVhcnRiZWF0UmVzb3VyY2VzOgogIGNwdToKICAgIGxpbWl0OiAiIgogICAgcmVxdWVzdDogMTAwbQogIG1lbW9yeToKICAgIGxpbWl0OiAyNTBNaQogICAgcmVxdWVzdDogNTBNaQpoZWFydGJlYXRTY2hlZHVsZTogMSAyIDMgNCA1CmhpZ2hBdmFpbGFiaWxpdHk6IHRydWUKaWRlbnRpdHk6CiAgaXNzdWVyOgogICAgY3J0RXhwaXJ5OiAiMjAzMC0wOC0yNlQwNzoxMzo0N1oiCiAgICB0bHM6CiAgICAgIGNydFBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQogICAgICAgIE1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUpSSWdaOFJ0TzhFd2cxWGVwZjhUNDR3Q2dZSUtvWkl6ajBFQXdJd0tURW4KICAgICAgICBNQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1YTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUI0WERUSXdNRGd5CiAgICAgICAgT0RBM01UTTBOMW9YRFRNd01EZ3lOakEzTVRNME4xb3dLVEVuTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdQogICAgICAgIGEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRTEvRnAKICAgICAgICBmY1JuRGNlZEw2QWpVYVhZUHY0RElNQmFKdWZPSTVOV3R5K1hTWDdKalhnWnRNNzJkUXZSYVlhbnV4RDM2RHQxCiAgICAgICAgMi9KeHlpU2d4S1dSZG9heSthTndNRzR3RGdZRFZSMFBBUUgvQkFRREFnRUdNQklHQTFVZEV3RUIvd1FJTUFZQgogICAgICAgIEFmOENBUUF3SFFZRFZSME9CQllFRkkxV25ycU1ZS2FISE9vK3pweWlpRHEycE8wS01Da0dBMVVkRVFRaU1DQ0MKICAgICAgICBIbWxrWlc1MGFYUjVMbXhwYm10bGNtUXVZMngxYzNSbGNpNXNiMk5oYkRBS0JnZ3Foa2pPUFFRREFnTkhBREJFCiAgICAgICAgQWlBdHVvSTVYdUN0ckdWUnpTbVJUbDJyYTI4YVY5TXlUVTdkNXFuVEFGSEtTZ0lnUktDdmx1T1NnQTVPMjFwNQogICAgICAgIDUxdGRybWtIRVpScjBxbExTSmRIWWdFZk16az0KICAgICAgICAtLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCiAgICAgIGtleVBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gRUMgUFJJVkFURSBLRVktLS0tLQogICAgICAgIE1IY0NBUUVFSUFBZThuZmJ6WnU5Yy9PQjIrOHhKTTBGejdOVXdUUWF6dWxrRk5zNFRJNStvQW9HQ0NxR1NNNDkKICAgICAgICBBd0VIb1VRRFFnQUUxL0ZwZmNSbkRjZWRMNkFqVWFYWVB2NERJTUJhSnVmT0k1Tld0eStYU1g3SmpYZ1p0TTcyCiAgICAgICAgZFF2UmFZYW51eEQzNkR0MTIvSnh5aVNneEtXUmRvYXkrUT09CiAgICAgICAgLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQppZGVudGl0eVJlc291cmNlczoKICBjcHU6CiAgICBsaW1pdDogIiIKICAgIHJlcXVlc3Q6IDEwMG0KICBtZW1vcnk6CiAgICBsaW1pdDogMjUwTWkKICAgIHJlcXVlc3Q6IDEwTWkKaWRlbnRpdHlUcnVzdEFuY2hvcnNQRU06IHwKICAtLS0tLUJFR0lOIENFUlRJRklDQVRFLS0tLS0KICBNSUlCd1RDQ0FXYWdBd0lCQWdJUWVEWnA1bERhSXlnUTVVZk1LWnJGQVRBS0JnZ3Foa2pPUFFRREFqQXBNU2N3CiAgSlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d0hoY05NakF3T0RJNAogIE1EY3hNalEzV2hjTk16QXdPREkyTURjeE1qUTNXakFwTVNjd0pRWURWUVFERXg1cFpHVnVkR2wwZVM1c2FXNXIKICBaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBUnFjNzBaCiAgbDF2Z3c3OXJqQjV1U0lUSUNVQTZHeWZ2U0ZmY3VJaXM3Qi9YRlNra3dBSFU1Uy9zMUFBUCtSMFRYN0hCV1VDNAogIHVhRzRXV3Npd0pLTm43bWdvM0F3YmpBT0JnTlZIUThCQWY4RUJBTUNBUVl3RWdZRFZSMFRBUUgvQkFnd0JnRUIKICAvd0lCQVRBZEJnTlZIUTRFRmdRVTVZdGpWVlBmZDdJN05MSHNuMkMyNkVCeUdWMHdLUVlEVlIwUkJDSXdJSUllCiAgYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Bb0dDQ3FHU000OUJBTUNBMGtBTUVZQwogIElRQ043bEJGTEREdmp4NlYwK1hranBLRVJSc0pZZjVhZE12bmxvRmw0OGlsSmdJaEFOdHhobmRjcitRSlB1QzgKICB2Z1VDMGQyLzlGTXVlSVZNYis0NldUQ09qc3FyCiAgLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQppbWFnZVB1bGxTZWNyZXRzOiBudWxsCnBvbGljeVZhbGlkYXRvcjoKICBjYUJ1bmRsZTogcG9saWN5IHZhbGlkYXRvciBDQSBidW5kbGUKICBjcnRQRU06IHBvbGljeSB2YWxpZGF0b3IgY3J0CiAga2V5UEVNOiBwb2xpY3kgdmFsaWRhdG9yIGtleQpwcm9maWxlVmFsaWRhdG9yOgogIGNhQnVuZGxlOiBwcm9maWxlIHZhbGlkYXRvciBDQSBidW5kbGUKICBjcnRQRU06IHByb2ZpbGUgdmFsaWRhdG9yIGNydAogIGtleVBFTTogcHJvZmlsZSB2YWxpZGF0b3Iga2V5CnByb3h5OgogIGltYWdlOgogICAgdmVyc2lvbjogaW5zdGFsbC1wcm94eS12ZXJzaW9uCiAgcmVzb3VyY2VzOgogICAgY3B1OgogICAgICByZXF1ZXN0OiA0MDBtCiAgICBtZW1vcnk6CiAgICAgIGxpbWl0OiAyNTBNaQogICAgICByZXF1ZXN0OiAzMDBNaQpwcm94eUluamVjdG9yOgogIGNhQnVuZGxlOiBwcm94eSBpbmplY3RvciBDQSBidW5kbGUKICBjcnRQRU06IHByb3h5IGluamVjdG9yIGNydAogIGtleVBFTTogcHJveHkgaW5qZWN0b3Iga2V5CnByb3h5SW5qZWN0b3JSZXNvdXJjZXM6CiAgY3B1OgogICAgbGltaXQ6ICIiCiAgICByZXF1ZXN0OiAxMDBtCiAgbWVtb3J5OgogICAgbGltaXQ6IDI1ME1pCiAgICByZXF1ZXN0OiA1ME1pCndlYmhvb2tGYWlsdXJlUG9saWN5OiBGYWlsCg==
 kind: Secret
 metadata:
   creationTimestamp: null

@@ -107,6 +107,56 @@ webhooks:
   sideEffects: None
   {{- end }}
 ---
+{{- $host := printf "linkerd-policy-validator.%s.svc" .Values.namespace }}
+{{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
+{{- if (not .Values.policyValidator.externalSecret) }}
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-policy-validator-k8s-tls
+  namespace: {{ .Values.namespace }}
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+type: kubernetes.io/tls
+data:
+  tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.policyValidator.crtPEM)) (empty .Values.policyValidator.crtPEM) }}
+  tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.policyValidator.keyPEM)) (empty .Values.policyValidator.keyPEM) }}
+---
+{{- end }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: linkerd-policy-validator-webhook-config
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: {{.Values.namespace}}
+webhooks:
+- name: linkerd-policy-validator.linkerd.io
+  namespaceSelector:
+    {{- toYaml .Values.profileValidator.namespaceSelector | trim | nindent 4 }}
+  clientConfig:
+    service:
+      name: linkerd-policy-validator
+      namespace: {{ .Values.namespace }}
+      path: "/"
+{{- if and (.Values.policyValidator.externalSecret) (empty .Values.policyValidator.caBundle) }}
+  {{- fail "If policyValidator.externalSecret is true then you need to provide policyValidator.caBundle" }}
+{{- end }}
+    caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.policyValidator.caBundle)) (empty .Values.policyValidator.caBundle) }}
+  failurePolicy: {{.Values.webhookFailurePolicy}}
+  admissionReviewVersions: ["v1", "v1beta1"]
+  rules:
+  - operations: [ "CREATE" , "UPDATE" ]
+    apiGroups: ["policy.linkerd.io"]
+    apiVersions: ["v1alpha1"]
+    resources: ["serverauthorizations", "servers"]
+  {{- if not .Values.omitWebhookSideEffects }}
+  sideEffects: None
+  {{- end }}
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:

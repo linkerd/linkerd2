@@ -8,6 +8,8 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
 # shellcheck source=_log.sh
 . "$bindir"/_log.sh
+# shellcheck source=_os.sh
+. "$bindir"/_os.sh
 
 # TODO this should be set to the canonical public docker registry; we can override this
 # docker registry in, for instance, CI.
@@ -16,10 +18,9 @@ export DOCKER_REGISTRY=${DOCKER_REGISTRY:-cr.l5d.io/linkerd}
 # buildx cache directory
 export DOCKER_BUILDKIT_CACHE=${DOCKER_BUILDKIT_CACHE:-}
 
-# build the multi-arch images. Currently DOCKER_PUSH is also required
-export DOCKER_MULTIARCH=${DOCKER_MULTIARCH:-}
+export DOCKER_TARGET=${DOCKER_TARGET:-$(os)}
 
-# When set together with DOCKER_MULTIARCH, it will push the multi-arch images to the registry
+# When set together with DOCKER_TARGET=multi-arch, it will push the multi-arch images to the registry
 export DOCKER_PUSH=${DOCKER_PUSH:-}
 
 # Default supported docker image architectures
@@ -54,7 +55,7 @@ docker_build() {
     fi
 
     output_params="--load"
-    if [ -n "$DOCKER_MULTIARCH" ]; then
+    if [ "$DOCKER_TARGET" = 'multi-arch' ]; then
       output_params="--platform $SUPPORTED_ARCHS"
       if [ -n "$DOCKER_PUSH" ]; then
         output_params+=" --push"

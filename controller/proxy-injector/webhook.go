@@ -93,6 +93,16 @@ func Inject(
 		// If namespace has annotations that do not exist on pod then copy them
 		// over to pod's template.
 		resourceConfig.AppendNamespaceAnnotations()
+
+		// If the pod did not inherit the opaque ports annotation from the
+		// namespace, then add the default value from the config values. This
+		// ensures that the generated patch always sets the opaue ports
+		// annotation.
+		if !resourceConfig.HasWorkloadAnnotation(pkgK8s.ProxyOpaquePortsAnnotation) {
+			opaquePorts := resourceConfig.GetValues().Proxy.OpaquePorts
+			resourceConfig.AppendPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation, opaquePorts)
+		}
+
 		patchJSON, err := resourceConfig.GetPodPatch(true)
 		if err != nil {
 			return nil, err
@@ -112,14 +122,16 @@ func Inject(
 		}, nil
 	}
 
-	// If the resource is not injectable but does need the opaque ports
-	// annotation added, then admit it after creating a patch that adds the
-	// annotation.
-	if opaquePorts, opaquePortsOk := resourceConfig.GetConfigAnnotation(pkgK8s.ProxyOpaquePortsAnnotation); opaquePortsOk {
-		patchJSON, err := resourceConfig.CreateAnnotationPatch(opaquePorts)
-		if err != nil {
-			return nil, err
-		}
+	// Create an annotation patch that would set the list of default opaque
+	// ports if is needed.
+	patchJSON, err := resourceConfig.CreateDefaultOpaquePortsPatch()
+	if err != nil {
+		return nil, err
+	}
+
+	// If patchJSON holds a patch after checking the workload annotations,
+	// then we admit the request.
+	if len(patchJSON) != 0 {
 		log.Infof("annotation patch generated for: %s", report.ResName())
 		log.Debugf("annotation patch: %s", patchJSON)
 		proxyInjectionAdmissionResponses.With(admissionResponseLabels(ownerKind, request.Namespace, "false", "", report.InjectAnnotationAt, configLabels)).Inc()
