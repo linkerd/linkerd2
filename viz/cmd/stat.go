@@ -182,6 +182,9 @@ If no resource name is specified, displays stats about all resources of the spec
 
   # Get all inbound stats to the emoji-grpc server
   linkerd viz stat server/emoji-grpc
+
+  # Get all inbound stats to the web-public server authorization resource
+  linkerd viz stat serverauthorization/web-public
   `,
 		Args: cobra.MinimumNArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -353,7 +356,7 @@ func statHasRequestData(stat *pb.BasicStats) bool {
 }
 
 func isPodOwnerResource(typ string) bool {
-	return typ != k8s.TrafficSplit && typ != k8s.Authority && typ != k8s.Service && typ != k8s.Server
+	return typ != k8s.TrafficSplit && typ != k8s.Authority && typ != k8s.Service && typ != k8s.Server && typ != k8s.ServerAuthorization
 }
 
 func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) {
@@ -414,7 +417,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 		}
 
 		meshedCount := fmt.Sprintf("%d/%d", r.MeshedPodCount, r.RunningPodCount)
-		if resourceKey == k8s.Authority || resourceKey == k8s.Service || resourceKey == k8s.Server {
+		if resourceKey == k8s.Authority || resourceKey == k8s.Service || resourceKey == k8s.Server || resourceKey == k8s.ServerAuthorization {
 			meshedCount = "-"
 		}
 		statTables[resourceKey][key] = &row{

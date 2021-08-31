@@ -34,13 +34,14 @@ const (
 	promLatencyP95     = promType("0.95")
 	promLatencyP99     = promType("0.99")
 
-	namespaceLabel         = model.LabelName("namespace")
-	dstNamespaceLabel      = model.LabelName("dst_namespace")
-	gatewayNameLabel       = model.LabelName("gateway_name")
-	gatewayNamespaceLabel  = model.LabelName("gateway_namespace")
-	remoteClusterNameLabel = model.LabelName("target_cluster_name")
-	authorityLabel         = model.LabelName("authority")
-	serverLabel            = model.LabelName("srv_name")
+	namespaceLabel           = model.LabelName("namespace")
+	dstNamespaceLabel        = model.LabelName("dst_namespace")
+	gatewayNameLabel         = model.LabelName("gateway_name")
+	gatewayNamespaceLabel    = model.LabelName("gateway_namespace")
+	remoteClusterNameLabel   = model.LabelName("target_cluster_name")
+	authorityLabel           = model.LabelName("authority")
+	serverLabel              = model.LabelName("srv_name")
+	ServerAuthorizationLabel = model.LabelName("saz_name")
 )
 
 var (

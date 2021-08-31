@@ -126,8 +126,8 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 				resultChan <- s.serviceResourceQuery(ctx, statReq)
 			} else if isTrafficSplitQuery(statReq.GetSelector().GetResource().GetType()) {
 				resultChan <- s.trafficSplitResourceQuery(ctx, statReq)
-			} else if statReq.GetSelector().GetResource().GetType() == k8s.Server {
-				resultChan <- s.serverResourceQuery(ctx, statReq)
+			} else if statReq.GetSelector().GetResource().GetType() == k8s.Server || statReq.GetSelector().GetResource().GetType() == k8s.ServerAuthorization {
+				resultChan <- s.policyResourceQuery(ctx, statReq)
 			} else {
 				resultChan <- s.k8sResourceQuery(ctx, statReq)
 			}
@@ -368,7 +368,7 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 	return resourceResult{res: &rsp, err: nil}
 }
 
-func (s *grpcServer) serverResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
+func (s *grpcServer) policyResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
 
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
 	requestMetrics := make(map[rKey]*pb.BasicStats)
@@ -376,7 +376,7 @@ func (s *grpcServer) serverResourceQuery(ctx context.Context, req *pb.StatSummar
 
 	if !req.SkipStats {
 		var err error
-		requestMetrics, tcpMetrics, err = s.getServerMetrics(ctx, req, req.TimeWindow)
+		requestMetrics, tcpMetrics, err = s.getPolicyMetrics(ctx, req, req.TimeWindow)
 		if err != nil {
 			return resourceResult{res: nil, err: err}
 		}
@@ -793,26 +793,35 @@ func (s *grpcServer) getServiceMetrics(ctx context.Context, req *pb.StatSummaryR
 	return dstBasicStats, dstTCPStats, nil
 }
 
-func (s *grpcServer) getServerMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats, error) {
+func (s *grpcServer) getPolicyMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats, error) {
 	labels, groupBy := buildServerRequestLabels(req)
 
 	labels = labels.Merge(model.LabelSet{
 		namespaceLabel: model.LabelValue(req.GetSelector().GetResource().GetNamespace()),
-		serverLabel:    model.LabelValue(req.GetSelector().GetResource().GetName()),
 	})
 
-	promQueries := map[promType]string{
-		promRequests: fmt.Sprintf(reqQuery, labels, timeWindow, groupBy.String()),
+	promQueries := make(map[promType]string)
+	if req.GetSelector().GetResource().GetType() == k8s.Server {
+		labels = labels.Merge(model.LabelSet{
+			serverLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
+		})
+
+		// TCP metrics are only supported with servers
+		if req.TcpStats {
+			// peer is always `src` as these are inbound metrics
+			tcpLabels := labels.Merge(promPeerLabel("src"))
+			promQueries[promTCPConnections] = fmt.Sprintf(tcpConnectionsQuery, tcpLabels.String(), groupBy.String())
+			promQueries[promTCPReadBytes] = fmt.Sprintf(tcpReadBytesQuery, tcpLabels.String(), timeWindow, groupBy.String())
+			promQueries[promTCPWriteBytes] = fmt.Sprintf(tcpWriteBytesQuery, tcpLabels.String(), timeWindow, groupBy.String())
+		}
+
+	} else if req.GetSelector().GetResource().GetType() == k8s.ServerAuthorization {
+		labels = labels.Merge(model.LabelSet{
+			ServerAuthorizationLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
+		})
 	}
 
-	if req.TcpStats {
-		// peer is always `src` as these are inbound metrics
-		tcpLabels := labels.Merge(promPeerLabel("src"))
-		promQueries[promTCPConnections] = fmt.Sprintf(tcpConnectionsQuery, tcpLabels.String(), groupBy.String())
-		promQueries[promTCPReadBytes] = fmt.Sprintf(tcpReadBytesQuery, tcpLabels.String(), timeWindow, groupBy.String())
-		promQueries[promTCPWriteBytes] = fmt.Sprintf(tcpWriteBytesQuery, tcpLabels.String(), timeWindow, groupBy.String())
-	}
-
+	promQueries[promRequests] = fmt.Sprintf(reqQuery, labels, timeWindow, groupBy.String())
 	quantileQueries := generateQuantileQueries(latencyQuantileQuery, labels.String(), timeWindow, groupBy.String())
 	results, err := s.getPrometheusMetrics(ctx, promQueries, quantileQueries)
 	if err != nil {

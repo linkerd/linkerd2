@@ -74,6 +74,8 @@ var StatAllResourceTypes = []string{
 	ReplicationController,
 	Pod,
 	Service,
+	Server,
+	ServerAuthorization,
 	TrafficSplit,
 	Authority,
 	CronJob,
