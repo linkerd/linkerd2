@@ -397,9 +397,18 @@ func (conf *ResourceConfig) CreateDefaultOpaquePortsPatch() ([]byte, error) {
 		} else if conf.IsService() {
 			service := conf.workload.obj.(*corev1.Service)
 			for _, p := range service.Spec.Ports {
+				// Only check the service port if targetPort is not set. This
+				// avoids the following situation:
+				//   port:3306 and targetPort:80. We don't want to add 3306 in
+				//   this case because its targetPort is not opaque
+				//
+				// If targetPort is set but the service port is not opaque,
+				// then we check if targetPort is opaque.
 				port := strconv.Itoa(int(p.Port))
-				if util.ContainsString(port, defaultPorts) {
-					filteredPorts = append(filteredPorts, port)
+				if p.TargetPort.Type == 0 && p.TargetPort.IntVal == 0 {
+					if util.ContainsString(port, defaultPorts) {
+						filteredPorts = append(filteredPorts, port)
+					}
 				} else if util.ContainsString(strconv.Itoa(int(p.TargetPort.IntVal)), defaultPorts) {
 					filteredPorts = append(filteredPorts, port)
 				}

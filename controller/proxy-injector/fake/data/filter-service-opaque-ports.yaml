@@ -7,12 +7,19 @@ spec:
   selector:
     app: test
   ports:
-  - name: foo
+    # 9090 should be set since it targets an opaque port.
+  - name: a
     port: 9090
     targetPort: 3306
-  - name: bar
+    # 5432 should not be set since it does not target an opaque port.
+  - name: b
     port: 5432
     targetPort: 9091
-  - name: baz
-    port: 9092
+    # 3306 should be set since it does not have a target port and is opaque.
+  - name: c
+    port: 3306
+    # 9093 should not be set since it targets a named port and we don't know
+    # what port number it is exposed on.
+  - name: d
+    port: 9093
     targetPort: not-an-int
