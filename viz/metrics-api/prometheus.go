@@ -40,6 +40,7 @@ const (
 	gatewayNamespaceLabel  = model.LabelName("gateway_namespace")
 	remoteClusterNameLabel = model.LabelName("target_cluster_name")
 	authorityLabel         = model.LabelName("authority")
+	serverLabel            = model.LabelName("srv_name")
 )
 
 var (

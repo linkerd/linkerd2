@@ -178,7 +178,11 @@ If no resource name is specified, displays stats about all resources of the spec
   linkerd viz stat namespaces --from ns/default
 
   # Get all inbound stats to the test namespace.
-  linkerd viz stat ns/test`,
+  linkerd viz stat ns/test
+
+  # Get all inbound stats to the emoji-grpc server
+  linkerd viz stat server/emoji-grpc
+  `,
 		Args: cobra.MinimumNArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 
@@ -349,7 +353,7 @@ func statHasRequestData(stat *pb.BasicStats) bool {
 }
 
 func isPodOwnerResource(typ string) bool {
-	return typ != k8s.TrafficSplit && typ != k8s.Authority && typ != k8s.Service
+	return typ != k8s.TrafficSplit && typ != k8s.Authority && typ != k8s.Service && typ != k8s.Server
 }
 
 func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) {
@@ -410,7 +414,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 		}
 
 		meshedCount := fmt.Sprintf("%d/%d", r.MeshedPodCount, r.RunningPodCount)
-		if resourceKey == k8s.Authority || resourceKey == k8s.Service {
+		if resourceKey == k8s.Authority || resourceKey == k8s.Service || resourceKey == k8s.Server {
 			meshedCount = "-"
 		}
 		statTables[resourceKey][key] = &row{

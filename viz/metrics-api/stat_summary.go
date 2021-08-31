@@ -126,6 +126,8 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 				resultChan <- s.serviceResourceQuery(ctx, statReq)
 			} else if isTrafficSplitQuery(statReq.GetSelector().GetResource().GetType()) {
 				resultChan <- s.trafficSplitResourceQuery(ctx, statReq)
+			} else if statReq.GetSelector().GetResource().GetType() == k8s.Server {
+				resultChan <- s.serverResourceQuery(ctx, statReq)
 			} else {
 				resultChan <- s.k8sResourceQuery(ctx, statReq)
 			}
@@ -366,6 +368,52 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 	return resourceResult{res: &rsp, err: nil}
 }
 
+func (s *grpcServer) serverResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
+
+	rows := make([]*pb.StatTable_PodGroup_Row, 0)
+	requestMetrics := make(map[rKey]*pb.BasicStats)
+	tcpMetrics := make(map[rKey]*pb.TcpStats)
+
+	if !req.SkipStats {
+		var err error
+		requestMetrics, tcpMetrics, err = s.getServerMetrics(ctx, req, req.TimeWindow)
+		if err != nil {
+			return resourceResult{res: nil, err: err}
+		}
+	}
+
+	keys := make([]rKey, 0)
+	for k := range requestMetrics {
+		keys = append(keys, k)
+	}
+	for k := range tcpMetrics {
+		keys = append(keys, k)
+	}
+
+	for _, rkey := range keys {
+		row := pb.StatTable_PodGroup_Row{
+			Resource: &pb.Resource{
+				Type:      rkey.Type,
+				Namespace: rkey.Namespace,
+				Name:      rkey.Name,
+			},
+			TimeWindow: req.TimeWindow,
+			Stats:      requestMetrics[rkey],
+			TcpStats:   tcpMetrics[rkey],
+		}
+		rows = append(rows, &row)
+	}
+
+	rsp := pb.StatTable{
+		Table: &pb.StatTable_PodGroup_{
+			PodGroup: &pb.StatTable_PodGroup{
+				Rows: rows,
+			},
+		},
+	}
+	return resourceResult{res: &rsp, err: nil}
+}
+
 func (s *grpcServer) serviceResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
 
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
@@ -576,6 +624,35 @@ func buildServiceRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSe
 	return labels, groupBy
 }
 
+func buildServerRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labelNames model.LabelNames) {
+
+	// TODO: This method seems a bit redundant as only the group by labels and the direction are different
+
+	// Server metrics are always inbound
+	labels = model.LabelSet{
+		"direction": model.LabelValue("inbound"),
+	}
+
+	switch out := req.Outbound.(type) {
+	case *pb.StatSummaryRequest_ToResource:
+		// if --to flag is passed, Calculate traffic sent to the service
+		// with additional filtering narrowing down to the workload
+		// it is sent to.
+		labels = labels.Merge(promDstQueryLabels(out.ToResource))
+
+	case *pb.StatSummaryRequest_FromResource:
+		// if --from flag is passed, FromResource is never a server here
+		labels = labels.Merge(promQueryLabels(out.FromResource))
+
+	default:
+		// no extra labels needed
+	}
+
+	groupBy := model.LabelNames{namespaceLabel, serverLabel}
+
+	return labels, groupBy
+}
+
 func buildTCPStatsRequestLabels(req *pb.StatSummaryRequest, reqLabels model.LabelSet) string {
 	switch req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource, *pb.StatSummaryRequest_FromResource:
@@ -714,6 +791,36 @@ func (s *grpcServer) getServiceMetrics(ctx context.Context, req *pb.StatSummaryR
 	}
 
 	return dstBasicStats, dstTCPStats, nil
+}
+
+func (s *grpcServer) getServerMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats, error) {
+	labels, groupBy := buildServerRequestLabels(req)
+
+	labels = labels.Merge(model.LabelSet{
+		namespaceLabel: model.LabelValue(req.GetSelector().GetResource().GetNamespace()),
+		serverLabel:    model.LabelValue(req.GetSelector().GetResource().GetName()),
+	})
+
+	promQueries := map[promType]string{
+		promRequests: fmt.Sprintf(reqQuery, labels, timeWindow, groupBy.String()),
+	}
+
+	if req.TcpStats {
+		// peer is always `src` as these are inbound metrics
+		tcpLabels := labels.Merge(promPeerLabel("src"))
+		promQueries[promTCPConnections] = fmt.Sprintf(tcpConnectionsQuery, tcpLabels.String(), groupBy.String())
+		promQueries[promTCPReadBytes] = fmt.Sprintf(tcpReadBytesQuery, tcpLabels.String(), timeWindow, groupBy.String())
+		promQueries[promTCPWriteBytes] = fmt.Sprintf(tcpWriteBytesQuery, tcpLabels.String(), timeWindow, groupBy.String())
+	}
+
+	quantileQueries := generateQuantileQueries(latencyQuantileQuery, labels.String(), timeWindow, groupBy.String())
+	results, err := s.getPrometheusMetrics(ctx, promQueries, quantileQueries)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	basicStats, tcpStats := processPrometheusMetrics(req, results, groupBy)
+	return basicStats, tcpStats, nil
 }
 
 func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, groupBy model.LabelNames) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats) {
