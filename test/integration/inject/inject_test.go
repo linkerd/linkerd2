@@ -386,7 +386,7 @@ func TestInjectAutoPod(t *testing.T) {
 	falsy := false
 	zero := int64(0)
 	reg := "cr.l5d.io/linkerd"
-	if override := os.Getenv(flags.EnvOverrideDockerRegistry); reg != "" {
+	if override := os.Getenv(flags.EnvOverrideDockerRegistry); override != "" {
 		reg = override
 	}
 	expectedInitContainer := v1.Container{

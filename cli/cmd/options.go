@@ -13,6 +13,7 @@ import (
 
 	"github.com/linkerd/linkerd2/cli/flag"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/cmd"
 	flagspkg "github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
@@ -420,11 +421,11 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 	registryFlag := flag.NewStringFlag(proxyFlags, "registry", defaultDockerRegistry,
 		fmt.Sprintf("Docker registry to pull images from ($%s)", flagspkg.EnvOverrideDockerRegistry),
 		func(values *l5dcharts.Values, value string) error {
-			values.ControllerImage = registryOverride(values.ControllerImage, value)
-			values.PolicyController.Image.Name = registryOverride(values.PolicyController.Image.Name, value)
-			values.DebugContainer.Image.Name = registryOverride(values.DebugContainer.Image.Name, value)
-			values.Proxy.Image.Name = registryOverride(values.Proxy.Image.Name, value)
-			values.ProxyInit.Image.Name = registryOverride(values.ProxyInit.Image.Name, value)
+			values.ControllerImage = cmd.RegistryOverride(values.ControllerImage, value)
+			values.PolicyController.Image.Name = cmd.RegistryOverride(values.PolicyController.Image.Name, value)
+			values.DebugContainer.Image.Name = cmd.RegistryOverride(values.DebugContainer.Image.Name, value)
+			values.Proxy.Image.Name = cmd.RegistryOverride(values.Proxy.Image.Name, value)
+			values.ProxyInit.Image.Name = cmd.RegistryOverride(values.ProxyInit.Image.Name, value)
 			return nil
 		})
 	if reg := os.Getenv(flagspkg.EnvOverrideDockerRegistry); reg != "" {

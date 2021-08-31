@@ -9,6 +9,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/charts"
 	cnicharts "github.com/linkerd/linkerd2/pkg/charts/cni"
 	"github.com/linkerd/linkerd2/pkg/charts/static"
+	"github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -67,7 +68,7 @@ func (options *cniPluginOptions) validate() error {
 
 func (options *cniPluginOptions) pluginImage() string {
 	if options.dockerRegistry != defaultDockerRegistry {
-		return registryOverride(options.cniPluginImage, options.dockerRegistry)
+		return cmd.RegistryOverride(options.cniPluginImage, options.dockerRegistry)
 	}
 	return options.cniPluginImage
 }

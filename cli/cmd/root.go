@@ -146,22 +146,6 @@ func deprecateCmd(cmd *cobra.Command) *cobra.Command {
 	return cmd
 }
 
-// registryOverride replaces the registry-portion of the provided image with the provided registry.
-func registryOverride(image, newRegistry string) string {
-	if image == "" {
-		return image
-	}
-	registry := newRegistry
-	if registry != "" && !strings.HasSuffix(registry, slash) {
-		registry += slash
-	}
-	imageName := image
-	if strings.Contains(image, slash) {
-		imageName = image[strings.LastIndex(image, slash)+1:]
-	}
-	return registry + imageName
-}
-
 func flattenFlags(flags ...[]flag.Flag) []flag.Flag {
 	out := []flag.Flag{}
 	for _, f := range flags {
