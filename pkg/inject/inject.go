@@ -366,66 +366,59 @@ func (conf *ResourceConfig) GetConfigAnnotation(annotationKey string) (string, b
 	return "", false
 }
 
-// CreateDefaultOpaquePortsPatch creates a patch that will add the default
+// CreateOpaquePortsPatch creates a patch that will add the default
 // list of opaque ports.
-// 1. Check if the annotation should be copied down from the namespace.
-//    If ok is true, then we know the namespace has the annotation and the
-//    workload does not.
-// 2. If ok is false, we know either the workload has the annotation or both
-//    the workload and the namespace does not have annotation. In the case of
-//    the latter, we must add a default value to the workload.
-func (conf *ResourceConfig) CreateDefaultOpaquePortsPatch() ([]byte, error) {
-	var patch []byte
-	var err error
+func (conf *ResourceConfig) CreateOpaquePortsPatch() ([]byte, error) {
+	if conf.HasWorkloadAnnotation(k8s.ProxyOpaquePortsAnnotation) {
+		// The workload already has the opaque ports annotation so a patch
+		// does not need to be created.
+		return nil, nil
+	}
 	opaquePorts, ok := conf.GetConfigAnnotation(k8s.ProxyOpaquePortsAnnotation)
 	if ok {
-		patch, err = conf.CreateAnnotationPatch(opaquePorts)
-		if err != nil {
-			return nil, err
-		}
-	} else if !conf.HasWorkloadAnnotation(k8s.ProxyOpaquePortsAnnotation) {
-		defaultPorts := strings.Split(conf.GetValues().Proxy.OpaquePorts, ",")
-		var filteredPorts []string
-		// If the workload is a pod, then only add the default opaque ports
-		// that it exposes as container ports.
-		//
-		// If the workload is a service, then only add the default opaque
-		// ports that are exposed as a service port, or targeted as a
-		// targetPort.
-		if conf.IsPod() {
-			filteredPorts = conf.FilterPodOpaquePorts(defaultPorts)
-		} else if conf.IsService() {
-			service := conf.workload.obj.(*corev1.Service)
-			for _, p := range service.Spec.Ports {
-				// Only check the service port if targetPort is not set. This
-				// avoids the following situation:
-				//   port:3306 and targetPort:80. We don't want to add 3306 in
-				//   this case because its targetPort is not opaque
-				//
-				// If targetPort is set but the service port is not opaque,
-				// then we check if targetPort is opaque.
-				port := strconv.Itoa(int(p.Port))
-				if p.TargetPort.Type == 0 && p.TargetPort.IntVal == 0 {
-					if util.ContainsString(port, defaultPorts) {
-						filteredPorts = append(filteredPorts, port)
-					}
-				} else if util.ContainsString(strconv.Itoa(int(p.TargetPort.IntVal)), defaultPorts) {
+		// The workload's namespace has the opaque ports annotation, so it
+		// should inherit that value. A patch is created which adds that
+		// list.
+		return conf.CreateAnnotationPatch(opaquePorts)
+	}
+
+	// Both the workload and the namespace do not have the annotation so a
+	// patch is created which adds the default list.
+	defaultPorts := strings.Split(conf.GetValues().Proxy.OpaquePorts, ",")
+	var filteredPorts []string
+	if conf.IsPod() {
+		// The workload is a pod so only add the default opaque ports that it
+		// exposes as container ports.
+		filteredPorts = conf.FilterPodOpaquePorts(defaultPorts)
+	} else if conf.IsService() {
+		// The workload is a service so only add the default opaque ports that
+		// are exposed as a service port, or targeted as a targetPort.
+		service := conf.workload.obj.(*corev1.Service)
+		for _, p := range service.Spec.Ports {
+			port := strconv.Itoa(int(p.Port))
+			if p.TargetPort.Type == 0 && p.TargetPort.IntVal == 0 {
+				// The port's targetPort is not set, so add the port if is
+				// opaque by default. Checking that targetPort is not set
+				// avoids marking a port as opaque if it targets a port that
+				// not opaque (e.g. port=3306 and targetPort=80; 3306 should
+				// not be opaque)
+				if util.ContainsString(port, defaultPorts) {
 					filteredPorts = append(filteredPorts, port)
 				}
+			} else if util.ContainsString(strconv.Itoa(int(p.TargetPort.IntVal)), defaultPorts) {
+				// The port's targetPort is set; if it is opaque then port
+				// should also be opaque.
+				filteredPorts = append(filteredPorts, port)
 			}
 		}
-		// If there are no default opaque ports to add, then do not create a
-		// patch.
-		if len(filteredPorts) == 0 {
-			return nil, nil
-		}
-		ports := strings.Join(filteredPorts, ",")
-		patch, err = conf.CreateAnnotationPatch(ports)
-		if err != nil {
-			return nil, err
-		}
 	}
-	return patch, nil
+	if len(filteredPorts) == 0 {
+		// There are no default opaque ports to add so a patch does not need
+		// to be created.
+		return nil, nil
+	}
+	ports := strings.Join(filteredPorts, ",")
+	return conf.CreateAnnotationPatch(ports)
 }
 
 // FilterPodOpaquePorts returns a list of opaque ports that a pod exposes that

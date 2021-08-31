@@ -128,9 +128,9 @@ func Inject(
 		}, nil
 	}
 
-	// Create an annotation patch that would set the list of default opaque
-	// ports if is needed.
-	patchJSON, err := resourceConfig.CreateDefaultOpaquePortsPatch()
+	// Create a patch which adds the opaque ports annotation if the workload
+	// does already have it set.
+	patchJSON, err := resourceConfig.CreateOpaquePortsPatch()
 	if err != nil {
 		return nil, err
 	}

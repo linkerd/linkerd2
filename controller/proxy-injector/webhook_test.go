@@ -375,7 +375,7 @@ func TestGetAnnotationPatch(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				patchJSON, err := fullConf.CreateDefaultOpaquePortsPatch()
+				patchJSON, err := fullConf.CreateOpaquePortsPatch()
 				if err != nil {
 					t.Fatalf("Unexpected error creating default opaque ports patch: %s", err)
 				}
