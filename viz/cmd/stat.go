@@ -577,7 +577,7 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		"LATENCY_P99",
 	}...)
 
-	if resourceType != k8s.TrafficSplit && resourceType != k8s.ServerAuthorization {
+	if showTCPConns(resourceType) {
 		headers = append(headers, "TCP_CONN")
 	}
 
@@ -611,12 +611,7 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			templateStringEmpty = "%s\t%s\t%s\t-\t-\t-\t-\t-\t"
 		}
 
-		if !showTCPConns(resourceType) {
-			if resourceType == k8s.Authority {
-				// always show TCP Connections as - for Authorities
-				templateString = templateString + "-\t"
-			}
-		} else {
+		if showTCPConns(resourceType) {
 			templateString = templateString + "%d\t"
 		}
 
