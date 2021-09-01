@@ -7,6 +7,7 @@ permissions:
   contents: read
 env:
   GH_ANNOTATION: true
+  DOCKER_REGISTRY: cr.l5d.io/linkerd
 jobs:
   docker_build:
     runs-on: ubuntu-20.04
@@ -23,9 +24,6 @@ jobs:
       run: |
         . bin/_tag.sh
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
-
-        . bin/_docker.sh
-        echo "DOCKER_REGISTRY=ghcr.io/linkerd" >> $GITHUB_ENV
         echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
     - name: Cache docker layers
       uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
@@ -90,7 +88,7 @@ jobs:
         echo "${{ secrets.DOCKER_GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.DOCKER_GHCR_USERNAME }}" --password-stdin
         docker buildx build --push ./policy-controller/ \
           -f ./policy-controller/${{ matrix.arch }}.dockerfile \
-          -t ghcr.io/linkerd/policy-controller:$TAG-${{ matrix.arch }}
+          -t $DOCKER_REGISTRY/policy-controller:$TAG-${{ matrix.arch }}
 
   policy_controller_manifest:
     runs-on: ubuntu-20.04
@@ -105,22 +103,22 @@ jobs:
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
     - name: Create multiarch manifest
       run: |
-        docker manifest create ghcr.io/linkerd/policy-controller:${TAG} \
-            ghcr.io/linkerd/policy-controller:${TAG}-amd64 \
-            ghcr.io/linkerd/policy-controller:${TAG}-arm64 \
-            ghcr.io/linkerd/policy-controller:${TAG}-arm
+        docker manifest create $DOCKER_REGISTRY/policy-controller:$TAG \
+            $DOCKER_REGISTRY/policy-controller:$TAG-amd64 \
+            $DOCKER_REGISTRY/policy-controller:$TAG-arm64 \
+            $DOCKER_REGISTRY/policy-controller:$TAG-arm
     - name: Annotate multiarch manifest
       run: |
-        docker manifest annotate ghcr.io/linkerd/policy-controller:$TAG \
-            ghcr.io/linkerd/policy-controller:${TAG}-amd64 --os=linux --arch=amd64
-        docker manifest annotate ghcr.io/linkerd/policy-controller:$TAG \
-            ghcr.io/linkerd/policy-controller:${TAG}-arm64 --os=linux --arch=arm64
-        docker manifest annotate ghcr.io/linkerd/policy-controller:$TAG \
-            ghcr.io/linkerd/policy-controller:${TAG}-arm --os=linux --arch=arm
+        docker manifest annotate $DOCKER_REGISTRY/policy-controller:$TAG \
+            $DOCKER_REGISTRY/policy-controller:${TAG}-amd64 --os=linux --arch=amd64
+        docker manifest annotate $DOCKER_REGISTRY/policy-controller:$TAG \
+            $DOCKER_REGISTRY/policy-controller:${TAG}-arm64 --os=linux --arch=arm64
+        docker manifest annotate $DOCKER_REGISTRY/policy-controller:$TAG \
+            $DOCKER_REGISTRY/policy-controller:${TAG}-arm --os=linux --arch=arm
     - name: Push multiarch manifest
       run: |
         echo "${{ secrets.DOCKER_GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.DOCKER_GHCR_USERNAME }}" --password-stdin
-        docker manifest push ghcr.io/linkerd/policy-controller:$TAG
+        docker manifest push $DOCKER_REGISTRY/policy-controller:$TAG
 
   # todo: Keep in sync with `integration_tests.yml`
   windows_static_cli_tests:
@@ -180,6 +178,8 @@ jobs:
         echo "CMD=$CMD" >> $GITHUB_ENV
         echo "TAG=$TAG" >> $GITHUB_ENV
     - name: Run integration tests
+      env:
+        LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
       run: |
         bin/docker-pull-binaries $TAG
         # Validate the CLI version matches the current build tag.
@@ -220,6 +220,7 @@ jobs:
     - name: Run integration tests
       env:
         RUN_ARM_TEST: 1
+        LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
       run: bin/tests --name deep --images preload --skip-cluster-create "$CMD"
     - name: CNI tests
       run: |

@@ -12,6 +12,7 @@ permissions:
   contents: read
 env:
   GH_ANNOTATION: true
+  DOCKER_REGISTRY: ghcr.io/linkerd
 jobs:
   docker_build:
     runs-on: ubuntu-20.04
@@ -28,9 +29,6 @@ jobs:
       run: |
         . bin/_tag.sh
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
-
-        . bin/_docker.sh
-        echo "DOCKER_REGISTRY=cr.l5d.io/linkerd" >> $GITHUB_ENV
         echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
     - name: Cache docker layers
       uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
@@ -54,7 +52,7 @@ jobs:
         ARCHIVES: /home/runner/archives
       run: |
         mkdir -p $ARCHIVES
-        docker save "cr.l5d.io/linkerd/${{ matrix.target }}:$TAG" > $ARCHIVES/${{ matrix.target }}.tar
+        docker save "$DOCKER_REGISTRY/${{ matrix.target }}:$TAG" > $ARCHIVES/${{ matrix.target }}.tar
     # `with.path` values do not support environment variables yet, so an
     # absolute path is used here.
     #
@@ -99,9 +97,6 @@ jobs:
       run: |
         . bin/_tag.sh
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
-
-        . bin/_docker.sh
-        echo "DOCKER_REGISTRY=cr.l5d.io/linkerd" >> $GITHUB_ENV
     - name: Download image archives
       uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
       with:
@@ -112,11 +107,13 @@ jobs:
     - name: Install CLI
       run: |
         # Copy the CLI out of the local cli-bin container.
-        container_id=$(docker create "cr.l5d.io/linkerd/cli-bin:$TAG")
+        container_id=$(docker create "$DOCKER_REGISTRY/cli-bin:$TAG")
         docker cp $container_id:/out/linkerd-linux-amd64 "$HOME/.linkerd"
 
         # Validate the CLI version matches the current build tag.
         [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
     - name: Run integration tests
+      env:
+        LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
       run: |
         bin/tests --images archive --cleanup-docker --name ${{ matrix.integration_test }} "$HOME/.linkerd"

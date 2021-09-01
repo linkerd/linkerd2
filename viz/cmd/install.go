@@ -92,10 +92,12 @@ func install(w io.Writer, options values.Options, ha bool) error {
 		return err
 	}
 
-	// if using -L to specify a non-standard CP namespace, make sure
-	// the linkerdNamespace Helm value is synced
+	// sync values overrides with Helm values
 	if controlPlaneNamespace != defaultLinkerdNamespace {
 		valuesOverrides["linkerdNamespace"] = controlPlaneNamespace
+	}
+	if reg := os.Getenv(flags.EnvOverrideDockerRegistry); reg != "" {
+		valuesOverrides["defaultRegistry"] = reg
 	}
 
 	if ha {
