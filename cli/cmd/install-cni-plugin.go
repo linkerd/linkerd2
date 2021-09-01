@@ -10,6 +10,7 @@ import (
 	cnicharts "github.com/linkerd/linkerd2/pkg/charts/cni"
 	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/cmd"
+	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -67,6 +68,10 @@ func (options *cniPluginOptions) validate() error {
 }
 
 func (options *cniPluginOptions) pluginImage() string {
+	// env var overrides CLI flag
+	if override := os.Getenv(flags.EnvOverrideDockerRegistry); override != "" {
+		return cmd.RegistryOverride(options.cniPluginImage, override)
+	}
 	if options.dockerRegistry != defaultDockerRegistry {
 		return cmd.RegistryOverride(options.cniPluginImage, options.dockerRegistry)
 	}
@@ -96,7 +101,8 @@ assumes that the 'linkerd install' command will be executed with the
 	}
 
 	cmd.PersistentFlags().StringVarP(&options.linkerdVersion, "linkerd-version", "v", options.linkerdVersion, "Tag to be used for Linkerd images")
-	cmd.PersistentFlags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
+	cmd.PersistentFlags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry,
+		fmt.Sprintf("Docker registry to pull images from ($%s)", flags.EnvOverrideDockerRegistry))
 	cmd.PersistentFlags().Int64Var(&options.proxyUID, "proxy-uid", options.proxyUID, "Run the proxy under this user ID")
 	cmd.PersistentFlags().UintVar(&options.inboundPort, "inbound-port", options.inboundPort, "Proxy port to use for inbound traffic")
 	cmd.PersistentFlags().UintVar(&options.outboundPort, "outbound-port", options.outboundPort, "Proxy port to use for outbound traffic")
