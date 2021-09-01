@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/pkg/util"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	admissionRegistration "k8s.io/api/admissionregistration/v1"
@@ -2239,21 +2241,18 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 		pods := make([]*corev1.Pod, 0)
 		for _, subset := range endpoint.Subsets {
 			for _, addr := range subset.Addresses {
-				if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
-					pod, err := kubeAPI.Pod().Lister().Pods(service.Namespace).Get(addr.TargetRef.Name)
-					if err != nil {
-						return err
-					}
-					pods = append(pods, pod)
+				pods, err = addEndpointAddressPods(pods, addr, kubeAPI, service)
+				if err != nil {
+					return err
 				}
 			}
 		}
 
-		if mismatch := misconfiguredOpaquePortAnnotationsInService(service, pods); mismatch != nil {
-			errStrings = append(
-				errStrings,
-				fmt.Sprintf("\t* %s", mismatch.Error()),
-			)
+		for _, pod := range pods {
+			err := misconfiguredOpaqueAnnotation(service, pod)
+			if err != nil {
+				errStrings = append(errStrings, fmt.Sprintf("\t* %s", err.Error()))
+			}
 		}
 	}
 
@@ -2264,34 +2263,110 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 	return nil
 }
 
-func misconfiguredOpaquePortAnnotationsInService(service *corev1.Service, pods []*corev1.Pod) error {
-	for _, pod := range pods {
-		if err := misconfiguredOpaqueAnnotation(service, pod); err != nil {
+// addEndpointAddressPods primarily takes an endpoint address, and if it's
+// target is a pod that is not already in pods, then it adds it.
+func addEndpointAddressPods(pods []*corev1.Pod, addr corev1.EndpointAddress, kubeAPI *controllerK8s.API, service *corev1.Service) ([]*corev1.Pod, error) {
+	if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
+		pod, err := kubeAPI.Pod().Lister().Pods(service.Namespace).Get(addr.TargetRef.Name)
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range pods {
+			if p.Name == pod.Name && p.Namespace == pod.Namespace {
+				return pods, nil
+			}
+		}
+		pods = append(pods, pod)
+	}
+	return pods, nil
+}
+
+func misconfiguredOpaqueAnnotation(service *corev1.Service, pod *corev1.Pod) error {
+	var svcPorts, podPorts []string
+	if v, ok := service.Annotations[k8s.ProxyOpaquePortsAnnotation]; ok {
+		svcPorts = strings.Split(v, ",")
+	}
+	if v, ok := pod.Annotations[k8s.ProxyOpaquePortsAnnotation]; ok {
+		podPorts = strings.Split(v, ",")
+	}
+	for _, p := range podPorts {
+		if util.ContainsString(p, svcPorts) {
+			// The service exposes p and is marked as opaque.
+			continue
+		}
+		port, err := strconv.Atoi(p)
+		if err != nil {
+			return fmt.Errorf("failed to convert %s to port number for pod %s", p, pod.Name)
+		}
+
+		// p is marked as opaque on the pod, but the service that selects it
+		// does not have it marked as opaque. We first check if the service
+		// exposes it as a service or integer targetPort.
+		ok, err := checkServiceIntPorts(service, svcPorts, port)
+		if err != nil {
+			return err
+		}
+		if ok {
+			// The service targets the port as an integer and is marked as
+			// opaque so continue checking other pod ports.
+			continue
+		}
+
+		// The service does not expose p as a service or integer targetPort.
+		// We now check if it targets it as a named port, and if so, that the
+		// service port is marked as opaque.
+		err = checkServiceNamePorts(service, pod, port, svcPorts)
+		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func misconfiguredOpaqueAnnotation(service *corev1.Service, pod *corev1.Pod) error {
-	svcAnnotation, svcAnnotationOk := service.Annotations[k8s.ProxyOpaquePortsAnnotation]
-	podAnnotation, podAnnotationOk := pod.Annotations[k8s.ProxyOpaquePortsAnnotation]
-
-	if svcAnnotationOk && podAnnotationOk {
-		if svcAnnotation != podAnnotation {
-			return fmt.Errorf("pod/%s and service/%s have the annotation %s but values don't match", pod.Name, service.Name, k8s.ProxyOpaquePortsAnnotation)
+func checkServiceIntPorts(service *corev1.Service, svcPorts []string, port int) (bool, error) {
+	for _, p := range service.Spec.Ports {
+		if p.TargetPort.Type == 0 && p.TargetPort.IntVal == 0 {
+			if p.Port == int32(port) {
+				// The service does not have a target port, so its service
+				// port should be marked as opaque.
+				return false, fmt.Errorf("service %s which targets the opaque port %d should have its service port %d marked as opaque", service.Name, port, p.Port)
+			}
 		}
-
-		return nil
+		if p.TargetPort.IntVal == int32(port) {
+			svcPort := strconv.Itoa(int(p.Port))
+			if util.ContainsString(svcPort, svcPorts) {
+				// The service exposes svcPort which targets p and svcPort
+				// is properly as opaque.
+				return true, nil
+			} else {
+				return false, fmt.Errorf("service %s which targets the opaque port %d should have its service port %d marked as opaque", service.Name, port, p.Port)
+			}
+		}
 	}
+	return false, nil
+}
 
-	if svcAnnotationOk {
-		return fmt.Errorf("service/%s has the annotation %s but pod/%s doesn't", service.Name, k8s.ProxyOpaquePortsAnnotation, pod.Name)
+func checkServiceNamePorts(service *corev1.Service, pod *corev1.Pod, port int, svcPorts []string) error {
+	for _, p := range service.Spec.Ports {
+		for _, c := range pod.Spec.Containers {
+			for _, cp := range c.Ports {
+				if cp.ContainerPort == int32(port) {
+					// This is the containerPort that maps to the opaque port
+					// we are currently checking.
+					if cp.Name == p.TargetPort.StrVal {
+						svcPort := strconv.Itoa(int(p.Port))
+						if util.ContainsString(svcPort, svcPorts) {
+							// The service targets the container port by name
+							// and is marked as opaque.
+							return nil
+						} else {
+							return fmt.Errorf("service %s which targets the opaque port %s should have its service port %d marked as opaque", service.Name, cp.Name, p.Port)
+						}
+					}
+				}
+			}
+		}
 	}
-	if podAnnotationOk {
-		return fmt.Errorf("pod/%s has the annotation %s but service/%s doesn't", pod.Name, k8s.ProxyOpaquePortsAnnotation, service.Name)
-	}
-
 	return nil
 }
 

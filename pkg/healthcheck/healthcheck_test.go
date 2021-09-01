@@ -3370,7 +3370,7 @@ subsets:
   ports:
   - name: http-port
     port: 8080
-    protocol: TCP			
+    protocol: TCP
 `,
 			},
 			expected: nil,
@@ -3434,7 +3434,7 @@ subsets:
     protocol: TCP
 `,
 			},
-			expected: fmt.Errorf("\t* pod/my-service-deployment has the annotation %s but service/test-service-1 doesn't", k8s.ProxyOpaquePortsAnnotation),
+			expected: fmt.Errorf("\t* service test-service-1 which targets the opaque port 9200 should have its service port 9200 marked as opaque"),
 		},
 		{
 			resources: []string{`
@@ -3492,10 +3492,10 @@ subsets:
   ports:
   - name: http-port
     port: 8080
-    protocol: TCP		
+    protocol: TCP
 `,
 			},
-			expected: fmt.Errorf("\t* service/test-service-1 has the annotation %s but pod/my-service-deployment doesn't", k8s.ProxyOpaquePortsAnnotation),
+			expected: fmt.Errorf("\t* service test-service-1 has the annotation config.linkerd.io/opaque-ports but pod my-service-deployment does not"),
 		},
 		{
 			resources: []string{`
@@ -3560,6 +3560,167 @@ subsets:
 			},
 			expected: fmt.Errorf("\t* pod/my-service-deployment and service/test-service-1 have the annotation %s but values don't match", k8s.ProxyOpaquePortsAnnotation),
 		},
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+spec:
+  selector:
+    app: test
+  ports:
+  - name: svc-1
+    port: 2001
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-1
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "2001"
+  labels:
+    app: test
+spec:
+  containers:
+  - name: test
+    image: nginx
+    ports:
+    - name: pod-1
+      containerPort: 2001
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: svc
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.42.0.110
+    nodeName: node
+    targetRef:
+      kind: Pod
+      name: pod-1
+  ports:
+  - name: svc-1
+    port: 2001
+    protocol: TCP
+`,
+			},
+			expected: fmt.Errorf("\t* service svc which targets the opaque port 2001 should have its service port 2001 marked as opaque"),
+		},
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+spec:
+  selector:
+    app: test
+  ports:
+  - name: svc-2
+    port: 1002
+    targetPort: 2002
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-2
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "2002"
+  labels:
+    app: test
+spec:
+  containers:
+  - name: test
+    image: nginx
+    ports:
+    - name: pod-2
+      containerPort: 2002
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: svc
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.42.0.111
+    nodeName: node
+    targetRef:
+      kind: Pod
+      name: pod-2
+  ports:
+  - name: svc-2
+    port: 2002
+    protocol: TCP
+`,
+			},
+			expected: fmt.Errorf("\t* service svc which targets the opaque port 2002 should have its service port 1002 marked as opaque"),
+		},
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+spec:
+  selector:
+    app: test
+  ports:
+  - name: svc-3
+    port: 1003
+    targetPort: pod-3
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-3
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "2003"
+  labels:
+    app: test
+spec:
+  containers:
+  - name: test
+    image: nginx
+    ports:
+    - name: pod-3
+      containerPort: 2003
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: svc
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.42.0.112
+    nodeName: node
+    targetRef:
+      kind: Pod
+      name: pod-3
+  ports:
+  - name: svc-3
+    port: 2003
+    protocol: TCP
+`,
+			},
+			expected: fmt.Errorf("\t* service svc which targets the opaque port pod-3 should have its service port 1003 marked as opaque"),
+		},
 	}
 
 	for i, tc := range testCases {
@@ -3577,6 +3738,9 @@ subsets:
 				if err.Error() != tc.expected.Error() {
 					t.Fatalf("Expected error: %s, received: %s", tc.expected, err)
 				}
+			}
+			if err != nil && tc.expected == nil {
+				t.Fatalf("Did not expect error but got: %s", err.Error())
 			}
 		})
 	}
