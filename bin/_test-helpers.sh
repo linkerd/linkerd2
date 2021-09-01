@@ -523,7 +523,6 @@ run_multicluster_test() {
   export context="k3d-target"
   run_test "$test_directory/install_test.go" --multicluster --certs-path "$tmp"
   run_test "$test_directory/multicluster/target3" --multicluster
-  link=$(multicluster_link target)
 }
 
 run_deep_test() {
