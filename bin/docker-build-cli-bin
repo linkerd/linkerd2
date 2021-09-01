@@ -16,14 +16,13 @@ rootdir=$( cd "$bindir"/.. && pwd )
 . "$bindir"/_tag.sh
 
 dockerfile=$rootdir/cli/Dockerfile
-tag=$(head_root_tag)
 
 # shellcheck disable=SC2046
-docker_build cli-bin "$tag" "$dockerfile" \
-    --build-arg LINKERD_VERSION="$tag" \
+docker_build cli-bin "${TAG:-$(head_root_tag)}" "$dockerfile" \
+    --build-arg LINKERD_VERSION="${TAG:-$(head_root_tag)}" \
     --target="$DOCKER_TARGET"
 
-IMG=$(docker_repo cli-bin):$tag
+IMG=$(docker_repo cli-bin):${TAG:-$(head_root_tag)}
 ID=$(docker create "$IMG")
 
 # copy the newly built linkerd cli binaries to the local system

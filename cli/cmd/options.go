@@ -168,6 +168,7 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 			"Tag to be used for the control plane component images",
 			func(values *l5dcharts.Values, value string) error {
 				values.ControllerImageVersion = value
+				values.PolicyController.Image.Version = value
 				return nil
 			}),
 	}

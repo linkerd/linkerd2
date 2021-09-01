@@ -13,7 +13,6 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
 # shellcheck source=_docker.sh
 . "$bindir"/_docker.sh
-
-for img in cli-bin cni-plugin controller debug grafana proxy web ; do
-    docker_retag $img "$from" "$to"
+for img in "${DOCKER_IMAGES[@]}" ; do
+    docker_retag "$img" "$from" "$to"
 done
