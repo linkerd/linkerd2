@@ -121,7 +121,9 @@ func NewCmdStat() *cobra.Command {
   * statefulsets
   * trafficsplits
   * authorities (not supported in --from)
-  * services (only supported if a --from is also specified, or as a --to)
+  * services (not supported in --from)
+  * servers (not supported in --from)
+  * serverauthorizations (not supported in --from)
   * all (all resource types, not supported in --from or --to)
 
 This command will hide resources that have completed, such as pods that are in the Succeeded or Failed phases.
