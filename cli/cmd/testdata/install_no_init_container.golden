@@ -1175,7 +1175,7 @@ data:
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v1.3.13
+        version: v1.4.0
       resources:
         cpu:
           limit: 100m
