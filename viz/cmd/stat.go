@@ -839,7 +839,21 @@ func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.S
 		}
 		requests = append(requests, req)
 	}
+
+	if containsTS(targets) {
+		fmt.Printf("Starting in 2.12, the SMI extension will be required for traffic splitting. Please follow the SMI extension getting started guide from https://linkerd.io/2.10/tasks/linkerd-smi\n\n")
+	}
+
 	return requests, nil
+}
+
+func containsTS(resources []*pb.Resource) bool {
+	for _, resource := range resources {
+		if resource.Type == k8s.TrafficSplit {
+			return true
+		}
+	}
+	return false
 }
 
 func sortStatsKeys(stats map[string]*row) []string {

@@ -16,5 +16,4 @@ rootdir=$( cd "$bindir"/.. && pwd )
 . "$bindir"/_tag.sh
 
 dockerfile=$rootdir/web/Dockerfile
-tag=$(head_root_tag)
-docker_build web "$tag" "$dockerfile" --build-arg LINKERD_VERSION="$tag"
+docker_build web "${TAG:-$(head_root_tag)}" "$dockerfile" --build-arg LINKERD_VERSION="${TAG:-$(head_root_tag)}"

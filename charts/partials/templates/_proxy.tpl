@@ -21,6 +21,10 @@ env:
 - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_IDENTITY
   value: {{.Values.proxy.requireIdentityOnInboundPorts | quote}}
 {{ end -}}
+{{ if .Values.proxy.requireTLSOnInboundPorts -}}
+- name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_TLS
+  value: {{.Values.proxy.requireTLSOnInboundPorts | quote}}
+{{ end -}}
 - name: LINKERD2_PROXY_LOG
   value: {{.Values.proxy.logLevel | quote}}
 - name: LINKERD2_PROXY_LOG_FORMAT
