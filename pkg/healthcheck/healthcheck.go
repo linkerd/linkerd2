@@ -2289,6 +2289,36 @@ func misconfiguredOpaqueAnnotation(service *corev1.Service, pod *corev1.Pod) err
 	if v, ok := pod.Annotations[k8s.ProxyOpaquePortsAnnotation]; ok {
 		podPorts = strings.Split(v, ",")
 	}
+OUTER:
+	for _, p := range svcPorts {
+		port, err := strconv.Atoi(p)
+		if err != nil {
+			return fmt.Errorf("failed to convert %s to port number for pod %s", p, pod.Name)
+		}
+		for _, sp := range service.Spec.Ports {
+			if sp.Port == int32(port) {
+				for _, c := range pod.Spec.Containers {
+					for _, cp := range c.Ports {
+						if cp.ContainerPort == sp.TargetPort.IntVal || cp.Name == sp.TargetPort.StrVal {
+							// The pod exposes a container port that would be
+							// targeted by this service port
+							var strPort string
+							if sp.TargetPort.Type == 0 {
+								strPort = strconv.Itoa(int(sp.TargetPort.IntVal))
+							} else {
+								strPort = strconv.Itoa(int(cp.ContainerPort))
+							}
+							if util.ContainsString(strPort, podPorts) {
+								continue OUTER
+							} else {
+								return fmt.Errorf("service %s expects %d to be opaque, but pod %s does not have it marked", service.Name, port, pod.Name)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 	for _, p := range podPorts {
 		if util.ContainsString(p, svcPorts) {
 			// The service exposes p and is marked as opaque.

@@ -3259,306 +3259,56 @@ func TestCheckOpaquePortAnnotations(t *testing.T) {
 apiVersion: v1
 kind: Service
 metadata:
-  name: test-service-1
+  name: svc
   namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
 spec:
-  ports:
-    - name: elasticsearch
-      port: 9200
-      protocol: TCP
-      targetPort: 9200
   selector:
-    service: service-1
+    app: test
+  ports:
+  - name: test
+    port: 9200
+    targetPort: 9200
 `,
 				`
 apiVersion: v1
 kind: Pod
 metadata:
-  name: my-service-deployment
+  name: pod
   namespace: test-ns
   labels:
-    service: service-1
+    app: test
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
 spec:
   containers:
+  - name: test
+    image: test
+    ports:
     - name: test
-      image: "test-service"
+      containerPort: 9200
 `,
 				`
 apiVersion: v1
 kind: Endpoints
 metadata:
-  annotations:
-    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
-  creationTimestamp: "2021-06-08T08:38:03Z"
-  labels:
-    service: test-service-1
-  name: test-service-1
+  name: svc
   namespace: test-ns
 subsets:
 - addresses:
   - ip: 10.244.3.12
-    nodeName: nodename-1
+    nodeName: nod
     targetRef:
       kind: Pod
-      name: my-service-deployment
+      name: pod
       namespace: test-ns
-      resourceVersion: "20661"
-      uid: b37782aa-1458-4153-8399-dabc2b29aaae
   ports:
-  - name: http-port
-    port: 8080
+  - name: test
+    port: 9200
     protocol: TCP
 `,
 			},
-			expected: nil,
-		},
-		{
-			resources: []string{`
-apiVersion: v1
-kind: Service
-metadata:
-  name: test-service-1
-  namespace: test-ns
-  annotations:
-    config.linkerd.io/opaque-ports: "9200"
-spec:
-  ports:
-    - name: elasticsearch
-      port: 9200
-      protocol: TCP
-      targetPort: 9200
-  selector:
-    service: service-1
-`,
-				`
-apiVersion: v1
-kind: Pod
-metadata:
-  name: my-service-deployment
-  namespace: test-ns
-  service: service-1
-  labels:
-    service: service-1
-  annotations:
-    config.linkerd.io/opaque-ports: "9200"
-spec:
-  containers:
-    - name: test
-      image: "test-service"
-`,
-				`
-apiVersion: v1
-kind: Endpoints
-metadata:
-  annotations:
-    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
-  creationTimestamp: "2021-06-08T08:38:03Z"
-  labels:
-    service: test-service-1
-  name: test-service-1
-  namespace: test-ns
-subsets:
-- addresses:
-  - ip: 10.244.3.12
-    nodeName: nodename-1
-    targetRef:
-      kind: Pod
-      name: my-service-deployment
-      namespace: test-ns
-      resourceVersion: "20661"
-      uid: b37782aa-1458-4153-8399-dabc2b29aaae
-  ports:
-  - name: http-port
-    port: 8080
-    protocol: TCP
-`,
-			},
-			expected: nil,
-		},
-		{
-			resources: []string{`
-apiVersion: v1
-kind: Service
-metadata:
-  name: test-service-1
-  namespace: test-ns
-spec:
-  ports:
-    - name: http
-      port: 9200
-      protocol: TCP
-      targetPort: 9200
-  selector:
-    service: service-1
-`,
-				`
-apiVersion: v1
-kind: Pod
-metadata:
-  name: my-service-deployment
-  namespace: test-ns
-  service: service-1
-  labels:
-    service: service-1
-  annotations:
-    config.linkerd.io/opaque-ports: "9200"
-spec:
-  containers:
-    - name: test
-      image: "test-service"
-`,
-				`
-apiVersion: v1
-kind: Endpoints
-metadata:
-  annotations:
-    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
-  creationTimestamp: "2021-06-08T08:38:03Z"
-  labels:
-    service: test-service-1
-  name: test-service-1
-  namespace: test-ns
-subsets:
-- addresses:
-  - ip: 10.244.3.12
-    nodeName: nodename-1
-    targetRef:
-      kind: Pod
-      name: my-service-deployment
-      namespace: test-ns
-      resourceVersion: "20661"
-      uid: b37782aa-1458-4153-8399-dabc2b29aaae
-  ports:
-  - name: http-port
-    port: 8080
-    protocol: TCP
-`,
-			},
-			expected: fmt.Errorf("\t* service test-service-1 which targets the opaque port 9200 should have its service port 9200 marked as opaque"),
-		},
-		{
-			resources: []string{`
-apiVersion: v1
-kind: Service
-metadata:
-  name: test-service-1
-  namespace: test-ns
-  annotations:
-    config.linkerd.io/opaque-ports: "9200"
-spec:
-  ports:
-    - name: http
-      port: 9200
-      protocol: TCP
-      targetPort: 9200
-  selector:
-    service: service-1
-`,
-				`
-apiVersion: v1
-kind: Pod
-metadata:
-  name: my-service-deployment
-  namespace: test-ns
-  service: service-1
-  labels:
-    service: service-1
-spec:
-  containers:
-    - name: test
-      image: "test-service"
-`,
-				`
-apiVersion: v1
-kind: Endpoints
-metadata:
-  annotations:
-    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
-  creationTimestamp: "2021-06-08T08:38:03Z"
-  labels:
-    service: test-service-1
-  name: test-service-1
-  namespace: test-ns
-subsets:
-- addresses:
-  - ip: 10.244.3.12
-    nodeName: nodename-1
-    targetRef:
-      kind: Pod
-      name: my-service-deployment
-      namespace: test-ns
-      resourceVersion: "20661"
-      uid: b37782aa-1458-4153-8399-dabc2b29aaae
-  ports:
-  - name: http-port
-    port: 8080
-    protocol: TCP
-`,
-			},
-			expected: fmt.Errorf("\t* service test-service-1 has the annotation config.linkerd.io/opaque-ports but pod my-service-deployment does not"),
-		},
-		{
-			resources: []string{`
-apiVersion: v1
-kind: Service
-metadata:
-  name: test-service-1
-  namespace: test-ns
-  annotations:
-    config.linkerd.io/opaque-ports: "9200"
-spec:
-  ports:
-    - name: elasticsearch
-      port: 9200
-      protocol: TCP
-      targetPort: 9200
-  selector:
-    service: service-1
-`,
-				`
-apiVersion: v1
-kind: Pod
-metadata:
-  name: my-service-deployment
-  namespace: test-ns
-  service: service-1
-  labels:
-    service: service-1
-  annotations:
-    config.linkerd.io/opaque-ports: "9300"
-spec:
-  containers:
-    - name: test
-      image: "test-service"
-`,
-				`
-apiVersion: v1
-kind: Endpoints
-metadata:
-  annotations:
-    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
-  creationTimestamp: "2021-06-08T08:38:03Z"
-  labels:
-    service: test-service-1
-  name: test-service-1
-  namespace: test-ns
-subsets:
-- addresses:
-  - ip: 10.244.3.12
-    nodeName: nodename-1
-    targetRef:
-      kind: Pod
-      name: my-service-deployment
-      namespace: test-ns
-      resourceVersion: "20661"
-      uid: b37782aa-1458-4153-8399-dabc2b29aaae
-  ports:
-  - name: http-port
-    port: 8080
-    protocol: TCP
-`,
-			},
-			expected: fmt.Errorf("\t* pod/my-service-deployment and service/test-service-1 have the annotation %s but values don't match", k8s.ProxyOpaquePortsAnnotation),
 		},
 		{
 			resources: []string{`
@@ -3571,26 +3321,82 @@ spec:
   selector:
     app: test
   ports:
-  - name: svc-1
-    port: 2001
+  - name: http
+    port: 9200
+    targetPort: 9200
 `,
 				`
 apiVersion: v1
 kind: Pod
 metadata:
-  name: pod-1
+  name: pod
+  namespace: test-ns
+  labels:
+    app: test
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
+spec:
+  containers:
+  - name: test
+    image: test
+    ports:
+    - name: test
+      containerPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: svc
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.244.3.12
+    nodeName: nod
+    targetRef:
+      kind: Pod
+      name: pod
+      namespace: test-ns
+  ports:
+  - name: test
+    port: 9200
+    protocol: TCP
+`,
+			},
+			expected: fmt.Errorf("\t* service svc which targets the opaque port 9200 should have its service port 9200 marked as opaque"),
+		},
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
   namespace: test-ns
   annotations:
-    config.linkerd.io/opaque-ports: "2001"
+    config.linkerd.io/opaque-ports: "9200"
+spec:
+  selector:
+    app: test
+  ports:
+  - name: test
+    port: 9200
+    targetPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: test-ns
   labels:
     app: test
 spec:
   containers:
   - name: test
-    image: nginx
+    image: test
     ports:
-    - name: pod-1
-      containerPort: 2001
+    - name: test
+      containerPort: 9200
 `,
 				`
 apiVersion: v1
@@ -3600,18 +3406,75 @@ metadata:
   namespace: test-ns
 subsets:
 - addresses:
-  - ip: 10.42.0.110
-    nodeName: node
+  - ip: 10.244.3.12
+    nodeName: nod
     targetRef:
       kind: Pod
-      name: pod-1
+      name: pod
+      namespace: test-ns
   ports:
-  - name: svc-1
-    port: 2001
+  - name: test
+    port: 9200
     protocol: TCP
 `,
 			},
-			expected: fmt.Errorf("\t* service svc which targets the opaque port 2001 should have its service port 2001 marked as opaque"),
+			expected: fmt.Errorf("\t* service svc expects 9200 to be opaque, but pod pod does not have it marked"),
+		},
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
+spec:
+  selector:
+    app: test
+  ports:
+    - name: test
+      port: 9200
+      targetPort: 9200
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: test-ns
+  labels:
+    app: test
+  annotations:
+    config.linkerd.io/opaque-ports: "9300"
+spec:
+  containers:
+  - name: test
+    image: test
+    ports:
+    - name: test
+      containerPort: 9300
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: svc
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.244.3.12
+    nodeName: node
+    targetRef:
+      kind: Pod
+      name: pod
+      namespace: test-ns
+  ports:
+  - name: test
+    port: 9200
+    protocol: TCP
+`,
+			},
 		},
 		{
 			resources: []string{`
@@ -3624,7 +3487,7 @@ spec:
   selector:
     app: test
   ports:
-  - name: svc-2
+  - name: test
     port: 1002
     targetPort: 2002
 `,
@@ -3632,7 +3495,7 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: pod-2
+  name: pod
   namespace: test-ns
   annotations:
     config.linkerd.io/opaque-ports: "2002"
@@ -3641,9 +3504,9 @@ metadata:
 spec:
   containers:
   - name: test
-    image: nginx
+    image: test
     ports:
-    - name: pod-2
+    - name: test
       containerPort: 2002
 `,
 				`
@@ -3658,9 +3521,9 @@ subsets:
     nodeName: node
     targetRef:
       kind: Pod
-      name: pod-2
+      name: pod
   ports:
-  - name: svc-2
+  - name: test
     port: 2002
     protocol: TCP
 `,
@@ -3678,15 +3541,15 @@ spec:
   selector:
     app: test
   ports:
-  - name: svc-3
+  - name: test
     port: 1003
-    targetPort: pod-3
+    targetPort: pod-test
 `,
 				`
 apiVersion: v1
 kind: Pod
 metadata:
-  name: pod-3
+  name: pod
   namespace: test-ns
   annotations:
     config.linkerd.io/opaque-ports: "2003"
@@ -3695,9 +3558,9 @@ metadata:
 spec:
   containers:
   - name: test
-    image: nginx
+    image: test
     ports:
-    - name: pod-3
+    - name: pod-test
       containerPort: 2003
 `,
 				`
@@ -3712,14 +3575,14 @@ subsets:
     nodeName: node
     targetRef:
       kind: Pod
-      name: pod-3
+      name: pod
   ports:
-  - name: svc-3
+  - name: test
     port: 2003
     protocol: TCP
 `,
 			},
-			expected: fmt.Errorf("\t* service svc which targets the opaque port pod-3 should have its service port 1003 marked as opaque"),
+			expected: fmt.Errorf("\t* service svc which targets the opaque port pod-test should have its service port 1003 marked as opaque"),
 		},
 	}
 
