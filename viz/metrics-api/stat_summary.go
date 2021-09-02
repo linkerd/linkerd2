@@ -18,8 +18,18 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+)
+
+var (
+	serverGroupVersionResource = schema.GroupVersionResource{
+		Group:    "policy.linkerd.io",
+		Version:  "v1alpha1",
+		Resource: "servers",
+	}
 )
 
 type resourceResult struct {
@@ -368,39 +378,68 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 	return resourceResult{res: &rsp, err: nil}
 }
 
+func (s *grpcServer) getUnstructuredResources(req *pb.StatSummaryRequest, gvr schema.GroupVersionResource) ([]rKey, error) {
+	var err error
+	var unstructuredResources *unstructured.UnstructuredList
+
+	res := req.GetSelector().GetResource()
+	labelSelector, err := getLabelSelector(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.GetNamespace() == "" {
+		unstructuredResources, err = s.k8sAPI.DynamicClient.Resource(gvr).Namespace("").List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
+	} else if res.GetName() == "" {
+		unstructuredResources, err = s.k8sAPI.DynamicClient.Resource(gvr).Namespace(res.GetNamespace()).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
+	} else {
+		var ts *unstructured.Unstructured
+		ts, err = s.k8sAPI.DynamicClient.Resource(gvr).Namespace(res.GetNamespace()).Get(context.TODO(), res.GetName(), metav1.GetOptions{})
+		unstructuredResources = &unstructured.UnstructuredList{Items: []unstructured.Unstructured{*ts}}
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var servers []rKey
+	for _, server := range unstructuredResources.Items {
+		servers = append(servers, rKey{Namespace: server.GetNamespace(), Type: "server", Name: server.GetName()})
+	}
+	return servers, nil
+}
+
 func (s *grpcServer) policyResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
 
-	rows := make([]*pb.StatTable_PodGroup_Row, 0)
-	requestMetrics := make(map[rKey]*pb.BasicStats)
-	tcpMetrics := make(map[rKey]*pb.TcpStats)
+	policyResources, err := s.getUnstructuredResources(req, serverGroupVersionResource)
+	if err != nil {
+		return resourceResult{res: nil, err: err}
+	}
 
+	var requestMetrics map[rKey]*pb.BasicStats
+	var tcpMetrics map[rKey]*pb.TcpStats
 	if !req.SkipStats {
-		var err error
 		requestMetrics, tcpMetrics, err = s.getPolicyMetrics(ctx, req, req.TimeWindow)
 		if err != nil {
 			return resourceResult{res: nil, err: err}
 		}
 	}
 
-	keys := make([]rKey, 0)
-	for k := range requestMetrics {
-		keys = append(keys, k)
-	}
-	for k := range tcpMetrics {
-		keys = append(keys, k)
-	}
+	fmt.Printf("RequestMetrics :%+v\n", requestMetrics)
 
-	for _, rkey := range keys {
+	rows := make([]*pb.StatTable_PodGroup_Row, 0)
+
+	for _, key := range policyResources {
 		row := pb.StatTable_PodGroup_Row{
 			Resource: &pb.Resource{
-				Type:      rkey.Type,
-				Namespace: rkey.Namespace,
-				Name:      rkey.Name,
+				Name:      key.Name,
+				Namespace: key.Namespace,
+				Type:      k8s.Server,
 			},
 			TimeWindow: req.TimeWindow,
-			Stats:      requestMetrics[rkey],
-			TcpStats:   tcpMetrics[rkey],
+			Stats:      requestMetrics[key],
+			TcpStats:   tcpMetrics[key],
 		}
+
 		rows = append(rows, &row)
 	}
 
@@ -624,7 +663,7 @@ func buildServiceRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSe
 	return labels, groupBy
 }
 
-func buildServerRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labelNames model.LabelNames) {
+func buildServerRequestLabels(req *pb.StatSummaryRequest, resourceLabel model.LabelName) (labels model.LabelSet, labelNames model.LabelNames) {
 
 	// TODO: This method seems a bit redundant as only the group by labels and the direction are different
 
@@ -648,7 +687,7 @@ func buildServerRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet
 		// no extra labels needed
 	}
 
-	groupBy := model.LabelNames{namespaceLabel, serverLabel}
+	groupBy := model.LabelNames{namespaceLabel, resourceLabel}
 
 	return labels, groupBy
 }
@@ -794,18 +833,27 @@ func (s *grpcServer) getServiceMetrics(ctx context.Context, req *pb.StatSummaryR
 }
 
 func (s *grpcServer) getPolicyMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats, error) {
-	labels, groupBy := buildServerRequestLabels(req)
 
+	var resourceLabel model.LabelName
+	if req.GetSelector().GetResource().GetType() == k8s.Server {
+		resourceLabel = serverLabel
+	} else if req.GetSelector().GetResource().GetType() == k8s.ServerAuthorization {
+		resourceLabel = serverAuthorizationLabel
+	}
+
+	labels, groupBy := buildServerRequestLabels(req, resourceLabel)
 	labels = labels.Merge(model.LabelSet{
 		namespaceLabel: model.LabelValue(req.GetSelector().GetResource().GetNamespace()),
 	})
 
+	if req.GetSelector().GetResource().GetName() != "" {
+		labels = labels.Merge(model.LabelSet{
+			resourceLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
+		})
+	}
+
 	promQueries := make(map[promType]string)
 	if req.GetSelector().GetResource().GetType() == k8s.Server {
-		labels = labels.Merge(model.LabelSet{
-			serverLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
-		})
-
 		// TCP metrics are only supported with servers
 		if req.TcpStats {
 			// peer is always `src` as these are inbound metrics
@@ -814,11 +862,6 @@ func (s *grpcServer) getPolicyMetrics(ctx context.Context, req *pb.StatSummaryRe
 			promQueries[promTCPReadBytes] = fmt.Sprintf(tcpReadBytesQuery, tcpLabels.String(), timeWindow, groupBy.String())
 			promQueries[promTCPWriteBytes] = fmt.Sprintf(tcpWriteBytesQuery, tcpLabels.String(), timeWindow, groupBy.String())
 		}
-
-	} else if req.GetSelector().GetResource().GetType() == k8s.ServerAuthorization {
-		labels = labels.Merge(model.LabelSet{
-			serverAuthorizationLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
-		})
 	}
 
 	promQueries[promRequests] = fmt.Sprintf(reqQuery, labels, timeWindow, groupBy.String())
