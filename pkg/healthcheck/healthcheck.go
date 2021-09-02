@@ -2289,36 +2289,24 @@ func misconfiguredOpaqueAnnotation(service *corev1.Service, pod *corev1.Pod) err
 	if v, ok := pod.Annotations[k8s.ProxyOpaquePortsAnnotation]; ok {
 		podPorts = strings.Split(v, ",")
 	}
-OUTER:
+
+	// First loop through the services opaque ports and assert that if the pod
+	// exposes a port that is targeted by one of these ports, then it is
+	// marked as opaque on the pod.
 	for _, p := range svcPorts {
 		port, err := strconv.Atoi(p)
 		if err != nil {
 			return fmt.Errorf("failed to convert %s to port number for pod %s", p, pod.Name)
 		}
-		for _, sp := range service.Spec.Ports {
-			if sp.Port == int32(port) {
-				for _, c := range pod.Spec.Containers {
-					for _, cp := range c.Ports {
-						if cp.ContainerPort == sp.TargetPort.IntVal || cp.Name == sp.TargetPort.StrVal {
-							// The pod exposes a container port that would be
-							// targeted by this service port
-							var strPort string
-							if sp.TargetPort.Type == 0 {
-								strPort = strconv.Itoa(int(sp.TargetPort.IntVal))
-							} else {
-								strPort = strconv.Itoa(int(cp.ContainerPort))
-							}
-							if util.ContainsString(strPort, podPorts) {
-								continue OUTER
-							} else {
-								return fmt.Errorf("service %s expects %d to be opaque, but pod %s does not have it marked", service.Name, port, pod.Name)
-							}
-						}
-					}
-				}
-			}
+		err = checkPodPorts(service, pod, podPorts, port)
+		if err != nil {
+			return err
 		}
 	}
+
+	// Next loop through the pod's opaque ports and assert that if one of
+	// the ports is targeted by a service port, then it is marked as opaque
+	// on the service.
 	for _, p := range podPorts {
 		if util.ContainsString(p, svcPorts) {
 			// The service exposes p and is marked as opaque.
@@ -2353,13 +2341,40 @@ OUTER:
 	return nil
 }
 
+func checkPodPorts(service *corev1.Service, pod *corev1.Pod, podPorts []string, port int) error {
+	for _, sp := range service.Spec.Ports {
+		if sp.Port == int32(port) {
+			for _, c := range pod.Spec.Containers {
+				for _, cp := range c.Ports {
+					if cp.ContainerPort == sp.TargetPort.IntVal || cp.Name == sp.TargetPort.StrVal {
+						// The pod exposes a container port that would be
+						// targeted by this service port
+						var strPort string
+						if sp.TargetPort.Type == 0 {
+							strPort = strconv.Itoa(int(sp.TargetPort.IntVal))
+						} else {
+							strPort = strconv.Itoa(int(cp.ContainerPort))
+						}
+						if util.ContainsString(strPort, podPorts) {
+							return nil
+						} else {
+							return fmt.Errorf("service %s expects %d to be opaque; add it to pod %s's %s annotation", service.Name, port, pod.Name, k8s.ProxyOpaquePortsAnnotation)
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func checkServiceIntPorts(service *corev1.Service, svcPorts []string, port int) (bool, error) {
 	for _, p := range service.Spec.Ports {
 		if p.TargetPort.Type == 0 && p.TargetPort.IntVal == 0 {
 			if p.Port == int32(port) {
 				// The service does not have a target port, so its service
 				// port should be marked as opaque.
-				return false, fmt.Errorf("service %s which targets the opaque port %d should have its service port %d marked as opaque", service.Name, port, p.Port)
+				return false, fmt.Errorf("service %s targets the opaque port %d; add it to its %s annotation", service.Name, port, k8s.ProxyOpaquePortsAnnotation)
 			}
 		}
 		if p.TargetPort.IntVal == int32(port) {
@@ -2369,7 +2384,7 @@ func checkServiceIntPorts(service *corev1.Service, svcPorts []string, port int) 
 				// is properly as opaque.
 				return true, nil
 			} else {
-				return false, fmt.Errorf("service %s which targets the opaque port %d should have its service port %d marked as opaque", service.Name, port, p.Port)
+				return false, fmt.Errorf("service %s targets the opaque port %d through %d; add %d to its %s annotation", service.Name, port, p.Port, p.Port, k8s.ProxyOpaquePortsAnnotation)
 			}
 		}
 	}
@@ -2390,7 +2405,7 @@ func checkServiceNamePorts(service *corev1.Service, pod *corev1.Pod, port int, s
 							// and is marked as opaque.
 							return nil
 						} else {
-							return fmt.Errorf("service %s which targets the opaque port %s should have its service port %d marked as opaque", service.Name, cp.Name, p.Port)
+							return fmt.Errorf("service %s targets the opaque port %s through %d; add %d to its %s annotation", service.Name, cp.Name, p.Port, p.Port, k8s.ProxyOpaquePortsAnnotation)
 						}
 					}
 				}

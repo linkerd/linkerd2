@@ -3363,7 +3363,7 @@ subsets:
     protocol: TCP
 `,
 			},
-			expected: fmt.Errorf("\t* service svc which targets the opaque port 9200 should have its service port 9200 marked as opaque"),
+			expected: fmt.Errorf("\t* service svc targets the opaque port 9200 through 9200; add 9200 to its config.linkerd.io/opaque-ports annotation"),
 		},
 		{
 			resources: []string{`
@@ -3418,7 +3418,7 @@ subsets:
     protocol: TCP
 `,
 			},
-			expected: fmt.Errorf("\t* service svc expects 9200 to be opaque, but pod pod does not have it marked"),
+			expected: fmt.Errorf("\t* service svc expects 9200 to be opaque; add it to pod pod's config.linkerd.io/opaque-ports annotation"),
 		},
 		{
 			resources: []string{`
@@ -3528,7 +3528,7 @@ subsets:
     protocol: TCP
 `,
 			},
-			expected: fmt.Errorf("\t* service svc which targets the opaque port 2002 should have its service port 1002 marked as opaque"),
+			expected: fmt.Errorf("\t* service svc targets the opaque port 2002 through 1002; add 1002 to its config.linkerd.io/opaque-ports annotation"),
 		},
 		{
 			resources: []string{`
@@ -3582,7 +3582,7 @@ subsets:
     protocol: TCP
 `,
 			},
-			expected: fmt.Errorf("\t* service svc which targets the opaque port pod-test should have its service port 1003 marked as opaque"),
+			expected: fmt.Errorf("\t* service svc targets the opaque port pod-test through 1003; add 1003 to its config.linkerd.io/opaque-ports annotation"),
 		},
 	}
 
