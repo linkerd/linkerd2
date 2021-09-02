@@ -720,12 +720,44 @@ dependencies = [
  "http",
  "http-body",
  "hyper",
+ "hyper-timeout",
+ "jsonpath_lib",
+ "k8s-openapi",
+ "kube-core 0.59.0",
+ "pem",
+ "pin-project 1.0.8",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "thiserror",
+ "tokio",
+ "tokio-util",
+ "tower",
+ "tower-http",
+ "tracing",
+]
+
+[[package]]
+name = "kube"
+version = "0.60.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0ae4dcb1a65182551922303a2d292b463513a6727db5ad980afbd32df7f3c16"
+dependencies = [
+ "base64",
+ "bytes",
+ "chrono",
+ "dirs-next",
+ "either",
+ "futures",
+ "http",
+ "http-body",
+ "hyper",
  "hyper-rustls",
  "hyper-timeout",
  "hyper-tls",
  "jsonpath_lib",
  "k8s-openapi",
- "kube-core",
+ "kube-core 0.60.0",
  "kube-derive",
  "openssl",
  "pem",
@@ -762,10 +794,26 @@ dependencies = [
 ]
 
 [[package]]
-name = "kube-derive"
-version = "0.59.0"
+name = "kube-core"
+version = "0.60.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53dc9fa719dd21d1a4c155cf8936f618a687f3590885e09d9261727cd5dc56a5"
+checksum = "04ccd59635e9b21353da8d4a394bb5d3473b5965ed44496c8f857281b0625ffe"
+dependencies = [
+ "form_urlencoded",
+ "http",
+ "json-patch",
+ "k8s-openapi",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "kube-derive"
+version = "0.60.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4191660b8e26f6e6cb06f21b5372bdbc2c76b54f7c3d65e7a8c8708f9c36ed5"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -785,7 +833,7 @@ dependencies = [
  "futures",
  "json-patch",
  "k8s-openapi",
- "kube",
+ "kube 0.59.0",
  "pin-project 1.0.8",
  "serde",
  "serde_json",
@@ -822,7 +870,7 @@ dependencies = [
  "drain",
  "futures",
  "hyper",
- "kube",
+ "kube 0.60.0",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-grpc",
  "linkerd-policy-controller-k8s-api",
@@ -866,7 +914,7 @@ version = "0.1.0"
 dependencies = [
  "futures",
  "k8s-openapi",
- "kube",
+ "kube 0.60.0",
  "kube-runtime",
  "schemars",
  "serde",
