@@ -17,7 +17,8 @@ to set the right `opaque-ports` annotation on services with default opaque ports
 * Updated inbound TCP metrics to only include a `srv_name` label
 * Updated the proxy to export route-oriented metrics only when a ServiceProfile
   is enabled
-* Updated the proxy's release build configuration to improve CPU and memory utilization 
+* Updated the proxy's release build configuration to improve CPU and memory
+  utilization
 * Added DNS name validation to the `proxy-identity` binary which creates the
   read-only private key required by the proxy (thanks @yorkijr!)
 * Updated the identity controller's default policy to be `cluster-unauthenticated`
