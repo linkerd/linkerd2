@@ -19,8 +19,7 @@ to set the right `opaque-ports` annotation on services with default opaque ports
 * Updated inbound TCP metrics to only include a `srv_name` label
 * Updated the proxy to export route-oriented metrics only when a ServiceProfile
   is enabled.
-* Updated tokio to include performance improvements and to enable link-time
-  optimizations in the release builds
+* Updated the tokio dependency in the proxy to include performance improvements
 * Added DNS name validation to the `proxy-identity` binary which creates the
   read-only private key required by the proxy (thanks @yorkijr!)
 * Updated the identity controller's default policy to be `cluster-unauthenticated`
