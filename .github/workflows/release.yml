@@ -7,7 +7,7 @@ permissions:
   contents: read
 env:
   GH_ANNOTATION: true
-  DOCKER_REGISTRY: cr.l5d.io/linkerd
+  DOCKER_REGISTRY: ghcr.io/linkerd
 jobs:
   docker_build:
     runs-on: ubuntu-20.04
