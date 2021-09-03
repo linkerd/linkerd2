@@ -8,7 +8,7 @@ in the proxy i.e, terminating TCP connections when a authorization is revoked, i
 in the proxy authorization metrics. In addition, proxy injector has also been updated
 to set the right `opaque-ports` annotation on services with default opaque ports.
 
-* Added a new validating admission controller to validate the proxy resources
+* Added a new validating admission controller to validate the policy resources
 * Updated the proxy-init to remove a rule which caused the packets from the proxy
   with destination != 127.0.0.1 on localhost to be sent to the inbound proxy
 * Added new `LINKERD_DOCKER_REGISTRY` env variable to configure the docker
@@ -22,7 +22,7 @@ to set the right `opaque-ports` annotation on services with default opaque ports
 * Updated tokio to include performance improvements and to enable link-time
   optimizations in the release builds
 * Added DNS name validation to the `proxy-identity` binary which creates the
-  read-only private key required the proxy (thanks @yorkijr!)
+  read-only private key required by the proxy (thanks @yorkijr!)
 * Updated the identity controller's default policy to be `cluster-unauthenticated`
 * Updated the proxy injector to include the correct default ports as opaque with
   services
