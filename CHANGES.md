@@ -11,15 +11,13 @@ to set the right `opaque-ports` annotation on services with default opaque ports
 * Added a new validating admission controller to validate the policy resources
 * Updated the proxy-init to remove a rule which caused the packets from the proxy
   with destination != 127.0.0.1 on localhost to be sent to the inbound proxy
-* Added new `LINKERD_DOCKER_REGISTRY` env variable to configure the docker
-  registry in the CLI
 * Updated inbound policy enforcement to interrupt TCP forwarding if a previously
   established authorization is revoked
-* Added new proxy metrics w.r.t Authorization along with traffic target labels
+* Added new proxy metrics to expose authorization decisions
 * Updated inbound TCP metrics to only include a `srv_name` label
 * Updated the proxy to export route-oriented metrics only when a ServiceProfile
-  is enabled.
-* Updated the tokio dependency in the proxy to include performance improvements
+  is enabled
+* Updated the proxy's release build configuration to improve CPU and memory utilization 
 * Added DNS name validation to the `proxy-identity` binary which creates the
   read-only private key required by the proxy (thanks @yorkijr!)
 * Updated the identity controller's default policy to be `cluster-unauthenticated`
