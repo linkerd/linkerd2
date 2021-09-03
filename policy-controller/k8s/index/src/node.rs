@@ -23,7 +23,7 @@ pub(crate) struct NodeIndex {
 #[derive(Debug)]
 enum State {
     Pending(HashMap<String, HashMap<String, k8s::Pod>>),
-    Known(KubeletIps),
+    Known(Option<KubeletIps>),
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
@@ -39,7 +39,7 @@ impl NodeIndex {
     pub fn get_kubelet_ips_or_push_pending(
         &mut self,
         pod: k8s::Pod,
-    ) -> Option<(k8s::Pod, KubeletIps)> {
+    ) -> Option<(k8s::Pod, Option<KubeletIps>)> {
         let node_name = pod.spec.as_ref()?.node_name.clone()?;
         match self.index.entry(node_name) {
             HashEntry::Occupied(mut entry) => {
@@ -207,7 +207,7 @@ impl KubeletIps {
             .ok_or_else(|| anyhow!("pod CIDR network is empty"))
     }
 
-    fn try_from_node(node: k8s::Node) -> Result<Self> {
+    fn try_from_node(node: k8s::Node) -> Result<Option<Self>> {
         let spec = node.spec.ok_or_else(|| anyhow!("node missing spec"))?;
 
         let addrs = if let Some(cidrs) = spec.pod_cidrs {
@@ -215,14 +215,13 @@ impl KubeletIps {
                 .into_iter()
                 .map(Self::try_from_cidr)
                 .collect::<Result<Vec<_>>>()?
-        } else {
-            let cidr = spec
-                .pod_cidr
-                .ok_or_else(|| anyhow!("node missing pod_cidr"))?;
+        } else if let Some(cidr) = spec.pod_cidr {
             let ip = Self::try_from_cidr(cidr)?;
             vec![ip]
+        } else {
+            return Ok(None);
         };
 
-        Ok(Self(addrs.into()))
+        Ok(Some(Self(addrs.into())))
     }
 }

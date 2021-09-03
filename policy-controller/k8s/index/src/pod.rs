@@ -288,7 +288,7 @@ impl PodIndex {
         annotations: &PodAnnotations,
         default_policy: DefaultPolicy,
         default_policy_watches: &mut DefaultPolicyWatches,
-        kubelet: KubeletIps,
+        kubelet: Option<KubeletIps>,
     ) -> (PodPorts, HashMap<u16, lookup::Rx>) {
         let mut ports = PodPorts::default();
         let mut lookups = HashMap::new();
