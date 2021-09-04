@@ -63,8 +63,16 @@ func Main(args []string) {
 	}
 	k8sAPI.Sync(nil)
 	go apiServer.Start(ctx)
-	go admin.StartServer(*metricsAddr)
+
+	adminServer := admin.NewServer(*metricsAddr)
+
+	go func() {
+		log.Infof("starting admin server on %s", *metricsAddr)
+		adminServer.ListenAndServe()
+	}()
+
 	<-stop
 	log.Infof("shutting down APIServer on %s", *apiServerAddr)
 	apiServer.Shutdown(ctx)
+	adminServer.Shutdown(ctx)
 }
