@@ -3,7 +3,6 @@ package cmd
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -120,19 +119,18 @@ func newCmdMetrics() *cobra.Command {
 func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace string, resource string) ([]corev1.Pod, error) {
 	elems := strings.Split(resource, "/")
 
-	if len(elems) == 1 {
-		return nil, errors.New("no resource name provided")
-	}
-
-	if len(elems) != 2 {
-		return nil, fmt.Errorf("invalid resource string: %s", resource)
-	}
-
 	typ, err := k8s.CanonicalResourceNameFromFriendlyName(elems[0])
 	if err != nil {
 		return nil, err
 	}
-	name := elems[1]
+
+	name := ""
+	if len(elems) == 2 {
+		name = elems[1]
+	}
+	if len(elems) > 2 {
+		return nil, fmt.Errorf("invalid resource string: %s", resource)
+	}
 
 	// special case if a single pod was specified
 	if typ == k8s.Pod {

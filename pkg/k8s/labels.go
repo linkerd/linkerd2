@@ -244,6 +244,10 @@ const (
 	// to be ready.
 	ProxyAwait = ProxyConfigAnnotationsPrefix + "/proxy-await"
 
+	// ProxyDefaultInboundPolicyAnnotation is used to configure the default
+	// inbound policy of the proxy
+	ProxyDefaultInboundPolicyAnnotation = ProxyConfigAnnotationsPrefix + "/default-inbound-policy"
+
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.
 	IdentityModeDefault = "default"
@@ -251,6 +255,23 @@ const (
 	// IdentityModeDisabled is assigned to IdentityModeAnnotation to
 	// disable the proxy from participating in automatic identity.
 	IdentityModeDisabled = Disabled
+
+	// AllUnauthenticated allows all unathenticated connections.
+	AllUnauthenticated = "all-unauthenticated"
+
+	// AllAuthenticated allows all authenticated connections.
+	AllAuthenticated = "all-authenticated"
+
+	// ClusterUnauthenticated allows all unauthenticated connections from
+	// within the cluster.
+	ClusterUnauthenticated = "cluster-unauthenticated"
+
+	// ClusterAuthenticated allows all authenticated connections from within
+	// the cluster.
+	ClusterAuthenticated = "cluster-authenticated"
+
+	// Deny denies all connections.
+	Deny = "deny"
 
 	/*
 	 * Component Names
@@ -311,6 +332,9 @@ const (
 
 	// SPValidatorWebhookConfigName is the name of the validating webhook configuration
 	SPValidatorWebhookConfigName = SPValidatorWebhookServiceName + "-webhook-config"
+
+	// PolicyValidatorWebhookConfigName is the name of the validating webhook configuration
+	PolicyValidatorWebhookConfigName = "linkerd-policy-validator-webhook-config"
 
 	// AdmissionWebhookLabel indicates whether admission webhooks are enabled for a namespace
 	AdmissionWebhookLabel = ProxyConfigAnnotationsPrefix + "/admission-webhooks"
