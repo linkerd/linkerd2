@@ -13,7 +13,6 @@ func NewFakeAPI(configs ...string) (*API, error) {
 
 	return NewAPI(
 		clientSet,
-		nil,
 		spClientSet,
 		tsClientSet,
 		CJ,

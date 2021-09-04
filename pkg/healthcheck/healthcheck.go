@@ -153,7 +153,6 @@ const (
 	proxyInjectorTLSSecretName    = "linkerd-proxy-injector-k8s-tls"
 	spValidatorOldTLSSecretName   = "linkerd-sp-validator-tls"
 	spValidatorTLSSecretName      = "linkerd-sp-validator-k8s-tls"
-	policyValidatorTLSSecretName  = "linkerd-policy-validator-k8s-tls"
 	certOldKeyName                = "crt.pem"
 	certKeyName                   = "tls.crt"
 	keyOldKeyName                 = "key.pem"
@@ -1063,7 +1062,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					hintAnchor:  "l5d-sp-validator-webhook-cert-valid",
 					fatal:       true,
 					check: func(ctx context.Context) (err error) {
-						anchors, err := hc.fetchWebhookCaBundle(ctx, k8s.SPValidatorWebhookConfigName)
+						anchors, err := hc.fetchSpValidatorCaBundle(ctx)
 						if err != nil {
 							return err
 						}
@@ -1086,45 +1085,6 @@ func (hc *HealthChecker) allCategories() []*Category {
 						cert, err := hc.FetchCredsFromSecret(ctx, hc.ControlPlaneNamespace, spValidatorTLSSecretName)
 						if kerrors.IsNotFound(err) {
 							cert, err = hc.FetchCredsFromOldSecret(ctx, hc.ControlPlaneNamespace, spValidatorOldTLSSecretName)
-						}
-						if err != nil {
-							return err
-						}
-						return hc.CheckCertAndAnchorsExpiringSoon(cert)
-
-					},
-				},
-				{
-					description: "policy-validator webhook has valid cert",
-					hintAnchor:  "l5d-policy-validator-webhook-cert-valid",
-					fatal:       true,
-					check: func(ctx context.Context) (err error) {
-						anchors, err := hc.fetchWebhookCaBundle(ctx, k8s.PolicyValidatorWebhookConfigName)
-						if kerrors.IsNotFound(err) {
-							return &SkipError{Reason: "policy-validator not installed"}
-						}
-						if err != nil {
-							return err
-						}
-						cert, err := hc.FetchCredsFromSecret(ctx, hc.ControlPlaneNamespace, policyValidatorTLSSecretName)
-						if kerrors.IsNotFound(err) {
-							return &SkipError{Reason: "policy-validator not installed"}
-						}
-						if err != nil {
-							return err
-						}
-						identityName := fmt.Sprintf("linkerd-policy-validator.%s.svc", hc.ControlPlaneNamespace)
-						return hc.CheckCertAndAnchors(cert, anchors, identityName)
-					},
-				},
-				{
-					description: "policy-validator cert is valid for at least 60 days",
-					warning:     true,
-					hintAnchor:  "l5d-policy-validator-webhook-cert-not-expiring-soon",
-					check: func(ctx context.Context) error {
-						cert, err := hc.FetchCredsFromSecret(ctx, hc.ControlPlaneNamespace, policyValidatorTLSSecretName)
-						if kerrors.IsNotFound(err) {
-							return &SkipError{Reason: "policy-validator not installed"}
 						}
 						if err != nil {
 							return err
@@ -1729,8 +1689,9 @@ func (hc *HealthChecker) fetchProxyInjectorCaBundle(ctx context.Context) ([]*x50
 	return caBundle, nil
 }
 
-func (hc *HealthChecker) fetchWebhookCaBundle(ctx context.Context, webhook string) ([]*x509.Certificate, error) {
-	vwc, err := hc.kubeAPI.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, webhook, metav1.GetOptions{})
+func (hc *HealthChecker) fetchSpValidatorCaBundle(ctx context.Context) ([]*x509.Certificate, error) {
+
+	vwc, err := hc.kubeAPI.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, k8s.SPValidatorWebhookConfigName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -2216,7 +2177,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 	// This is used instead of `hc.kubeAPI` to limit multiple k8s API requests
 	// and use the caching logic in the shared informers
 	// TODO: move the shared informer code out of `controller/`, and into `pkg` to simplify the dependency tree.
-	kubeAPI := controllerK8s.NewAPI(hc.kubeAPI, nil, nil, nil, controllerK8s.Endpoint, controllerK8s.Pod, controllerK8s.Svc)
+	kubeAPI := controllerK8s.NewAPI(hc.kubeAPI, nil, nil, controllerK8s.Endpoint, controllerK8s.Pod, controllerK8s.Svc)
 	kubeAPI.Sync(ctx.Done())
 
 	services, err := kubeAPI.Svc().Lister().Services(hc.DataPlaneNamespace).List(labels.Everything())

@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 
 	spv1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
@@ -69,8 +68,7 @@ const (
 
 // API provides shared informers for all Kubernetes objects
 type API struct {
-	Client        kubernetes.Interface
-	DynamicClient dynamic.Interface
+	Client kubernetes.Interface
 
 	cj       batchv1beta1informers.CronJobInformer
 	cm       coreinformers.ConfigMapInformer
@@ -106,17 +104,12 @@ func InitializeAPI(ctx context.Context, kubeConfig string, ensureClusterWideAcce
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
 	}
 
-	dynamicClient, err := dynamic.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
 	k8sClient, err := k8s.NewAPIForConfig(config, "", []string{}, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	return initAPI(ctx, k8sClient, dynamicClient, config, ensureClusterWideAccess, resources...)
+	return initAPI(ctx, k8sClient, config, ensureClusterWideAccess, resources...)
 }
 
 // InitializeAPIForConfig creates Kubernetes clients and returns an initialized API wrapper.
@@ -126,10 +119,10 @@ func InitializeAPIForConfig(ctx context.Context, kubeConfig *rest.Config, ensure
 		return nil, err
 	}
 
-	return initAPI(ctx, k8sClient, nil, kubeConfig, ensureClusterWideAccess, resources...)
+	return initAPI(ctx, k8sClient, kubeConfig, ensureClusterWideAccess, resources...)
 }
 
-func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, dynamicClient dynamic.Interface, kubeConfig *rest.Config, ensureClusterWideAccess bool, resources ...APIResource) (*API, error) {
+func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, kubeConfig *rest.Config, ensureClusterWideAccess bool, resources ...APIResource) (*API, error) {
 	// check for cluster-wide access
 	var err error
 
@@ -171,7 +164,7 @@ func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, dynamicClient dy
 		}
 	}
 
-	api := NewAPI(k8sClient, dynamicClient, spClient, tsClient, resources...)
+	api := NewAPI(k8sClient, spClient, tsClient, resources...)
 	for _, gauge := range api.gauges {
 		prometheus.Register(gauge)
 	}
@@ -181,7 +174,6 @@ func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, dynamicClient dy
 // NewAPI takes a Kubernetes client and returns an initialized API.
 func NewAPI(
 	k8sClient kubernetes.Interface,
-	dynamicClient dynamic.Interface,
 	spClient spclient.Interface,
 	tsClient tsclient.Interface,
 	resources ...APIResource,
@@ -200,7 +192,6 @@ func NewAPI(
 
 	api := &API{
 		Client:            k8sClient,
-		DynamicClient:     dynamicClient,
 		syncChecks:        make([]cache.InformerSynced, 0),
 		sharedInformers:   sharedInformers,
 		spSharedInformers: spSharedInformers,
