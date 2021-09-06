@@ -78,7 +78,7 @@
     "sinon-stub-promise": "4.0.0",
     "style-loader": "^3.2.1",
     "url-loader": "^4.1.1",
-    "webpack": "^5.51.2",
+    "webpack": "^5.52.0",
     "webpack-bundle-analyzer": "4.4.2",
     "webpack-cli": "4.8.0",
     "webpack-dev-server": "4.1.0"
