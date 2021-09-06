@@ -30,6 +30,12 @@ var (
 		Version:  "v1alpha1",
 		Resource: "servers",
 	}
+
+	serverAuthorizationGroupVersionResource = schema.GroupVersionResource{
+		Group:    "policy.linkerd.io",
+		Version:  "v1alpha1",
+		Resource: "serverauthorizations",
+	}
 )
 
 type resourceResult struct {
@@ -392,9 +398,16 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 	return resourceResult{res: &rsp, err: nil}
 }
 
-func (s *grpcServer) getUnstructuredResources(req *pb.StatSummaryRequest, gvr schema.GroupVersionResource) ([]rKey, error) {
+func (s *grpcServer) getUnstructuredResources(req *pb.StatSummaryRequest) ([]rKey, error) {
 	var err error
 	var unstructuredResources *unstructured.UnstructuredList
+
+	var gvr schema.GroupVersionResource
+	if req.GetSelector().Resource.GetType() == k8s.Server {
+		gvr = serverGroupVersionResource
+	} else if req.GetSelector().Resource.GetType() == k8s.ServerAuthorization {
+		gvr = serverAuthorizationGroupVersionResource
+	}
 
 	res := req.GetSelector().GetResource()
 	labelSelector, err := getLabelSelector(req)
@@ -409,22 +422,26 @@ func (s *grpcServer) getUnstructuredResources(req *pb.StatSummaryRequest, gvr sc
 	} else {
 		var ts *unstructured.Unstructured
 		ts, err = s.k8sAPI.DynamicClient.Resource(gvr).Namespace(res.GetNamespace()).Get(context.TODO(), res.GetName(), metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
 		unstructuredResources = &unstructured.UnstructuredList{Items: []unstructured.Unstructured{*ts}}
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	var servers []rKey
-	for _, server := range unstructuredResources.Items {
-		servers = append(servers, rKey{Namespace: server.GetNamespace(), Type: "server", Name: server.GetName()})
+	var resourceKeys []rKey
+	for _, resource := range unstructuredResources.Items {
+		// Resource Key's type should be singular and lowercased while the kind isn't
+		resourceKeys = append(resourceKeys, rKey{Namespace: resource.GetNamespace(), Type: strings.ToLower(resource.GetKind()[0:len(resource.GetKind())]), Name: resource.GetName()})
 	}
-	return servers, nil
+	return resourceKeys, nil
 }
 
 func (s *grpcServer) policyResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
 
-	policyResources, err := s.getUnstructuredResources(req, serverGroupVersionResource)
+	policyResources, err := s.getUnstructuredResources(req)
 	if err != nil {
 		return resourceResult{res: nil, err: err}
 	}
@@ -438,8 +455,6 @@ func (s *grpcServer) policyResourceQuery(ctx context.Context, req *pb.StatSummar
 		}
 	}
 
-	fmt.Printf("RequestMetrics :%+v\n", requestMetrics)
-
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
 
 	for _, key := range policyResources {
@@ -447,7 +462,7 @@ func (s *grpcServer) policyResourceQuery(ctx context.Context, req *pb.StatSummar
 			Resource: &pb.Resource{
 				Name:      key.Name,
 				Namespace: key.Namespace,
-				Type:      k8s.Server,
+				Type:      req.GetSelector().GetResource().GetType(),
 			},
 			TimeWindow: req.TimeWindow,
 			Stats:      requestMetrics[key],
