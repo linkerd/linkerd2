@@ -102,6 +102,11 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		return statSummaryError(req, "service is not supported as a target on 'from' queries, or as a target with 'to' queries"), nil
 	}
 
+	// err if --from is added with policy resources
+	if req.GetFromResource() != nil && isPolicyResource(req.GetSelector().GetResource()) {
+		return statSummaryError(req, "'from' queries are not supported with policy resources, as they have inbound metrics only"), nil
+	}
+
 	switch req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
 		if req.Outbound.(*pb.StatSummaryRequest_ToResource).ToResource.Type == k8s.All {
@@ -136,7 +141,7 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 				resultChan <- s.serviceResourceQuery(ctx, statReq)
 			} else if isTrafficSplitQuery(statReq.GetSelector().GetResource().GetType()) {
 				resultChan <- s.trafficSplitResourceQuery(ctx, statReq)
-			} else if statReq.GetSelector().GetResource().GetType() == k8s.Server || statReq.GetSelector().GetResource().GetType() == k8s.ServerAuthorization {
+			} else if isPolicyResource(statReq.GetSelector().GetResource()) {
 				resultChan <- s.policyResourceQuery(ctx, statReq)
 			} else {
 				resultChan <- s.k8sResourceQuery(ctx, statReq)
@@ -162,6 +167,15 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 
 	log.Debugf("Sent response as %+v\n", statTables)
 	return &rsp, nil
+}
+
+func isPolicyResource(resource *pb.Resource) bool {
+	if resource != nil {
+		if resource.GetType() == k8s.Server || resource.GetType() == k8s.ServerAuthorization {
+			return true
+		}
+	}
+	return false
 }
 
 func statSummaryError(req *pb.StatSummaryRequest, message string) *pb.StatSummaryResponse {
@@ -674,15 +688,12 @@ func buildServerRequestLabels(req *pb.StatSummaryRequest, resourceLabel model.La
 
 	switch out := req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
-		// if --to flag is passed, Calculate traffic sent to the service
+		// if --to flag is passed, Calculate traffic sent to the policy resource
 		// with additional filtering narrowing down to the workload
 		// it is sent to.
-		labels = labels.Merge(promDstQueryLabels(out.ToResource))
+		labels = labels.Merge(promQueryLabels(out.ToResource))
 
-	case *pb.StatSummaryRequest_FromResource:
-		// if --from flag is passed, FromResource is never a server here
-		labels = labels.Merge(promQueryLabels(out.FromResource))
-
+	// No FromResource case as policy metrics are all inbound
 	default:
 		// no extra labels needed
 	}
