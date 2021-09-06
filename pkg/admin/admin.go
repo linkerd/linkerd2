@@ -20,8 +20,8 @@ func NewServer(addr string) *http.Server {
 	}
 
 	return &http.Server{
-		Addr:              addr,
-		Handler:           h,
+		Addr:    addr,
+		Handler: h,
 	}
 }
 
