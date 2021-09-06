@@ -1599,6 +1599,7 @@ spec:
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
         config.linkerd.io/opaque-ports: "8443"
+        config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: destination
         linkerd.io/control-plane-ns: linkerd
@@ -1912,6 +1913,7 @@ spec:
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
         config.linkerd.io/opaque-ports: "8443"
+        config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: proxy-injector
         linkerd.io/control-plane-ns: linkerd
