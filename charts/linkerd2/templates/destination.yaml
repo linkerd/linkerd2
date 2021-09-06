@@ -175,7 +175,7 @@ spec:
       {{- end }}
       {{- $_ := set $tree.Values.proxy "await" true }}
       {{- $_ := set $tree.Values.proxy "loadTrustBundleFromConfigMap" true }}
-      {{- $_ := set $tree.Values.proxy "podInboundPorts" "8086,8090,9990,9996" }}
+      {{- $_ := set $tree.Values.proxy "podInboundPorts" "8086,8090,8443,9443,9990,9996,9997" }}
       {{- /*
         The pod needs to accept webhook traffic, and we can't rely on that originating in the
         cluster network.
