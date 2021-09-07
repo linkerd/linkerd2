@@ -80,3 +80,13 @@ func isNamed(pr string, containers []corev1.Container) (int32, bool) {
 	}
 	return 0, false
 }
+
+// ContainsString checks if a string collections contains the given string.
+func ContainsString(str string, collection []string) bool {
+	for _, e := range collection {
+		if str == e {
+			return true
+		}
+	}
+	return false
+}

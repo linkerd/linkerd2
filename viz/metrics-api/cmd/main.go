@@ -79,10 +79,16 @@ func main() {
 		server.ListenAndServe()
 	}()
 
-	go admin.StartServer(*metricsAddr)
+	adminServer := admin.NewServer(*metricsAddr)
+
+	go func() {
+		log.Infof("starting admin server on %s", *metricsAddr)
+		adminServer.ListenAndServe()
+	}()
 
 	<-stop
 
 	log.Infof("shutting down HTTP server on %+v", *addr)
 	server.Shutdown(ctx)
+	adminServer.Shutdown(ctx)
 }

@@ -1,5 +1,33 @@
 # Changes
 
+## edge-21.9.1
+
+This release includes various improvements and feature additions across the policy
+feature i.e, New validating webhook for policy resources. This also includes changes
+in the proxy i.e, terminating TCP connections when a authorization is revoked, improvements
+in the proxy authorization metrics. In addition, proxy injector has also been updated
+to set the right `opaque-ports` annotation on services with default opaque ports.
+
+* Added a new validating admission controller to validate the policy resources
+* Updated the proxy-init to remove a rule which caused the packets from the proxy
+  with destination != 127.0.0.1 on localhost to be sent to the inbound proxy
+* Updated inbound policy enforcement to interrupt TCP forwarding if a previously
+  established authorization is revoked
+* Added new proxy metrics to expose authorization decisions
+* Updated inbound TCP metrics to only include a `srv_name` label
+* Updated the proxy to export route-oriented metrics only when a ServiceProfile
+  is enabled
+* Updated the proxy's release build configuration to improve CPU and memory
+  utilization
+* Added DNS name validation to the `proxy-identity` binary which creates the
+  read-only private key required by the proxy (thanks @yorkijr!)
+* Updated the identity controller's default policy to be `cluster-unauthenticated`
+* Updated the proxy injector to include the correct default ports as opaque with
+  services
+* Deprecated the usage of `vis stat ts` and print a warning about the SMI extension
+* Updated various dependencies across the dashboard, policy-controller
+  (thanks @dependabot!)
+
 ## edge-21.8.4
 
 This edge release continues to build on the policy feature by adding support for

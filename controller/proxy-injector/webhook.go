@@ -99,8 +99,14 @@ func Inject(
 		// ensures that the generated patch always sets the opaue ports
 		// annotation.
 		if !resourceConfig.HasWorkloadAnnotation(pkgK8s.ProxyOpaquePortsAnnotation) {
-			opaquePorts := resourceConfig.GetValues().Proxy.OpaquePorts
-			resourceConfig.AppendPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation, opaquePorts)
+			defaultPorts := strings.Split(resourceConfig.GetValues().Proxy.OpaquePorts, ",")
+			filteredPorts := resourceConfig.FilterPodOpaquePorts(defaultPorts)
+			// Only add the annotation if there are ports that the pod exposes
+			// that are in the default opaque ports list.
+			if len(filteredPorts) != 0 {
+				ports := strings.Join(filteredPorts, ",")
+				resourceConfig.AppendPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation, ports)
+			}
 		}
 
 		patchJSON, err := resourceConfig.GetPodPatch(true)
@@ -122,9 +128,9 @@ func Inject(
 		}, nil
 	}
 
-	// Create an annotation patch that would set the list of default opaque
-	// ports if is needed.
-	patchJSON, err := resourceConfig.CreateDefaultOpaquePortsPatch()
+	// Create a patch which adds the opaque ports annotation if the workload
+	// does already have it set.
+	patchJSON, err := resourceConfig.CreateOpaquePortsPatch()
 	if err != nil {
 		return nil, err
 	}

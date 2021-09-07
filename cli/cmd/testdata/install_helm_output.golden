@@ -1630,6 +1630,7 @@ spec:
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
         config.linkerd.io/opaque-ports: "8443"
+        config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: destination
         linkerd.io/control-plane-ns: linkerd
@@ -1685,7 +1686,7 @@ spec:
             fieldRef:
               fieldPath: status.podIPs
         - name: LINKERD2_PROXY_INBOUND_PORTS
-          value: "8086,8090,9990,9996"
+          value: "8086,8090,8443,9443,9990,9996,9997"
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -1985,6 +1986,7 @@ spec:
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
         config.linkerd.io/opaque-ports: "8443"
+        config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: proxy-injector
         linkerd.io/control-plane-ns: linkerd

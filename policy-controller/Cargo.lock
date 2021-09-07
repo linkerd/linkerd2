@@ -707,9 +707,9 @@ dependencies = [
 
 [[package]]
 name = "kube"
-version = "0.59.0"
+version = "0.60.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2bfa22c305a6d817b57a7afcd2e6ee23c80c6c93933edb02f210fdf73f837cc"
+checksum = "a0ae4dcb1a65182551922303a2d292b463513a6727db5ad980afbd32df7f3c16"
 dependencies = [
  "base64",
  "bytes",
@@ -747,9 +747,9 @@ dependencies = [
 
 [[package]]
 name = "kube-core"
-version = "0.59.0"
+version = "0.60.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c33d2272d8e530938bafc6cf4ac76f2a6f6c9ca684defcfab6c357913a43bcc"
+checksum = "04ccd59635e9b21353da8d4a394bb5d3473b5965ed44496c8f857281b0625ffe"
 dependencies = [
  "form_urlencoded",
  "http",
@@ -763,9 +763,9 @@ dependencies = [
 
 [[package]]
 name = "kube-derive"
-version = "0.59.0"
+version = "0.60.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53dc9fa719dd21d1a4c155cf8936f618a687f3590885e09d9261727cd5dc56a5"
+checksum = "e4191660b8e26f6e6cb06f21b5372bdbc2c76b54f7c3d65e7a8c8708f9c36ed5"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -776,9 +776,9 @@ dependencies = [
 
 [[package]]
 name = "kube-runtime"
-version = "0.59.0"
+version = "0.60.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb40d5730a3ac47b7153c7ad0494a66881bbdf0c17ead478b714dd82c9dba259"
+checksum = "eec378b03890f9f2bfa9448a51aa0f6a4299f6bb2ed0d180330e628c7a395918"
 dependencies = [
  "dashmap",
  "derivative",
@@ -1718,9 +1718,9 @@ checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
 name = "structopt"
-version = "0.3.22"
+version = "0.3.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69b041cdcb67226aca307e6e7be44c8806423d83e018bd662360a93dabce4d71"
+checksum = "bf9d950ef167e25e0bdb073cf1d68e9ad2795ac826f2f3f59647817cf23c0bfa"
 dependencies = [
  "clap",
  "lazy_static",
@@ -1729,9 +1729,9 @@ dependencies = [
 
 [[package]]
 name = "structopt-derive"
-version = "0.4.15"
+version = "0.4.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7813934aecf5f51a54775e00068c237de98489463968231a51746bbbc03f9c10"
+checksum = "134d838a2c9943ac3125cf6df165eda53493451b719f3255b2a26b85f772d0ba"
 dependencies = [
  "heck",
  "proc-macro-error",
@@ -1816,9 +1816,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.10.1"
+version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92036be488bb6594459f2e03b60e42df6f937fe6ca5c5ffdcb539c6b84dc40f5"
+checksum = "b4efe6fc2395938c8155973d7be49fe8d03a843726e285e100a8a383cc0154ce"
 dependencies = [
  "autocfg",
  "bytes",
