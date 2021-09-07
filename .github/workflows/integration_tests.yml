@@ -86,6 +86,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+    - uses: actions/setup-go@v2
+      with:
+        go-version: '1.16'
     - name: Try to load cached Go modules
       uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
       with:
