@@ -36,3 +36,6 @@ members = [
     "./k8s/api",
     "./k8s/index"
 ]
+
+[profile.release]
+lto = true
