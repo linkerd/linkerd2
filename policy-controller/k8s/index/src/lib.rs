@@ -3,8 +3,6 @@
 //! The policy controller serves discovery requests from inbound proxies, indicating how the proxy
 //! should admit connections into a Pod. It watches the following cluster resources:
 //!
-//! - A `Node`'s `podCIDRs` field can be used to determine the IP of the node's Kubelet instance.
-//!   Traffic is always permitted to a pod from its Kubelet's IP.
 //! - A `Namespace` may be annotated with a default-allow policy that applies to all pods in the
 //!   namespace (unless they are annotated with a default policy).
 //! - Each `Pod` enumerate its ports. We maintain an index of each pod's ports, linked to `Server`
@@ -15,8 +13,7 @@
 //!   their authorizations and publishes these updates on the server's broadcast channel.
 //!
 //! ```text
-//! [Node] <- [ Pod ]
-//!           |-> [ Port ] <- [ Server ] <- [ ServerAuthorization ]
+//! [ Pod ] -> [ Port ] <- [ Server ] <- [ ServerAuthorization ]
 //! ```
 //!
 //! Lookups against this index are are initiated for a single pod & port. The pod-port's state is
@@ -34,7 +31,6 @@ mod authz;
 mod defaults;
 mod lookup;
 mod namespace;
-mod node;
 mod pod;
 mod server;
 #[cfg(test)]
@@ -44,12 +40,11 @@ pub use self::{defaults::DefaultPolicy, lookup::Reader};
 use self::{
     defaults::DefaultPolicyWatches,
     namespace::{Namespace, NamespaceIndex},
-    node::NodeIndex,
     server::SrvIndex,
 };
 use anyhow::Context;
 use linkerd_policy_controller_core::{InboundServer, IpNet};
-use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
+use linkerd_policy_controller_k8s_api::{self as k8s};
 use tokio::{sync::watch, time};
 use tracing::{debug, warn};
 
@@ -70,9 +65,6 @@ type PodServerTx = watch::Sender<ServerRx>;
 pub struct Index {
     /// Holds per-namespace pod/server/authorization indexes.
     namespaces: NamespaceIndex,
-
-    /// Cached Node IPs.
-    nodes: NodeIndex,
 
     /// The cluster's mesh identity trust domain.
     identity_domain: String,
@@ -119,7 +111,6 @@ impl Index {
             identity_domain,
             cluster_networks,
             default_policy_watches,
-            nodes: NodeIndex::default(),
         };
         (reader, idx)
     }
@@ -137,7 +128,6 @@ impl Index {
         ready_tx: watch::Sender<bool>,
     ) {
         let k8s::ResourceWatches {
-            mut nodes_rx,
             mut pods_rx,
             mut servers_rx,
             mut authorizations_rx,
@@ -146,13 +136,6 @@ impl Index {
         let mut initialized = false;
         loop {
             let res = tokio::select! {
-                // Track the kubelet IPs for all nodes.
-                up = nodes_rx.recv() => match up {
-                    k8s::Event::Applied(node) => self.apply_node(node).context("applying a node"),
-                    k8s::Event::Deleted(node) => self.delete_node(&node.name()).context("deleting a node"),
-                    k8s::Event::Restarted(nodes) => self.reset_nodes(nodes).context("resetting nodes"),
-                },
-
                 // Track pods against the appropriate server.
                 up = pods_rx.recv() => match up {
                     k8s::Event::Applied(pod) => self.apply_pod(pod).context("applying a pod"),
@@ -187,7 +170,6 @@ impl Index {
 
             // Notify the readiness watch once all watches have updated.
             if !initialized
-                && nodes_rx.is_initialized()
                 && pods_rx.is_initialized()
                 && servers_rx.is_initialized()
                 && authorizations_rx.is_initialized()

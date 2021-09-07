@@ -1,6 +1,6 @@
 use crate::{
-    defaults::PortDefaults, lookup, node::KubeletIps, DefaultPolicy, DefaultPolicyWatches, Errors,
-    Index, Namespace, NodeIndex, PodServerTx, ServerRx, SrvIndex,
+    defaults::PortDefaults, lookup, DefaultPolicy, DefaultPolicyWatches, Errors, Index, Namespace,
+    PodServerTx, ServerRx, SrvIndex,
 };
 use anyhow::{anyhow, bail, Context, Result};
 use linkerd_policy_controller_k8s_api::{self as k8s, policy, ResourceExt};
@@ -64,7 +64,7 @@ struct Port {
 // === impl Index ===
 
 impl Index {
-    /// Creates or updates a `Pod`, linking it with servers and nodes.
+    /// Creates or updates a `Pod`, linking it with servers.
     #[instrument(
         skip(self, pod),
         fields(
@@ -84,7 +84,6 @@ impl Index {
 
         pods.apply(
             pod,
-            &mut self.nodes,
             servers,
             &mut self.lookups,
             *default_policy,
@@ -107,8 +106,6 @@ impl Index {
 
     #[instrument(skip(self, pods))]
     pub(crate) fn reset_pods(&mut self, pods: Vec<k8s::Pod>) -> Result<()> {
-        self.nodes.clear_pending_pods();
-
         let mut prior_pods = self
             .namespaces
             .iter()
@@ -142,12 +139,6 @@ impl Index {
     }
 
     fn rm_pod(&mut self, ns: &str, pod: &str) -> Result<()> {
-        if self.nodes.clear_pending_pod(ns, pod) {
-            // If the pod was pending that it can't be in the main index.
-            debug!("Cleared pending pod");
-            return Ok(());
-        }
-
         self.namespaces
             .index
             .get_mut(ns)
@@ -194,7 +185,6 @@ impl PodIndex {
     fn apply(
         &mut self,
         pod: k8s::Pod,
-        nodes: &mut NodeIndex,
         servers: &SrvIndex,
         lookups: &mut lookup::Writer,
         default_policy: DefaultPolicy,
@@ -204,17 +194,6 @@ impl PodIndex {
         let pod_name = pod.name();
         match self.index.entry(pod_name) {
             HashEntry::Vacant(pod_entry) => {
-                // Lookup the pod's node's kubelet IP or stop processing the update. If the pod does
-                // not yet have a node, it will be ignored. If the node isn't yet in the index, the
-                // pod is saved to be processed later.
-                let (pod, kubelet) = match nodes.get_kubelet_ips_or_push_pending(pod) {
-                    Some((pod, ips)) => (pod, ips),
-                    None => {
-                        debug!("Pod cannot yet be assigned to a Node");
-                        return Ok(());
-                    }
-                };
-
                 let spec = pod.spec.ok_or_else(|| anyhow!("pod missing spec"))?;
 
                 // Check the pod for a default-allow annotation. If it's set, use it; otherwise use
@@ -238,7 +217,6 @@ impl PodIndex {
                     &pod_annotations,
                     default_policy,
                     default_policy_watches,
-                    kubelet,
                 );
 
                 // Start tracking the pod's metadata so it can be linked against servers as they are
@@ -288,7 +266,6 @@ impl PodIndex {
         annotations: &PodAnnotations,
         default_policy: DefaultPolicy,
         default_policy_watches: &mut DefaultPolicyWatches,
-        kubelet: KubeletIps,
     ) -> (PodPorts, HashMap<u16, lookup::Rx>) {
         let mut ports = PodPorts::default();
         let mut lookups = HashMap::new();
@@ -317,7 +294,7 @@ impl PodIndex {
                     }
 
                     ports.by_port.insert(port, pod_port);
-                    lookups.insert(port, lookup::Rx::new(kubelet.clone(), rx));
+                    lookups.insert(port, lookup::Rx::new(rx));
                 }
             }
         }
