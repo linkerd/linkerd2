@@ -202,6 +202,7 @@ fn mk_authz(
             })
             .collect::<Result<Vec<NetworkMatch>>>()?
     } else {
+        // If no networks are specified, the cluster networks are used as the default.
         cluster_networks
             .iter()
             .copied()
