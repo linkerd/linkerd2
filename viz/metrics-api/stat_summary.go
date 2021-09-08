@@ -461,10 +461,6 @@ func (s *grpcServer) policyResourceQuery(ctx context.Context, req *pb.StatSummar
 	}
 
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
-
-	fmt.Printf("Request Metrics: %+v\n\n", requestMetrics)
-	fmt.Printf("TCP Metrics: %+v\n\n", tcpMetrics)
-
 	for _, key := range policyResources {
 		row := pb.StatTable_PodGroup_Row{
 			Resource: &pb.Resource{
