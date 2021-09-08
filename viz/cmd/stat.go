@@ -429,13 +429,16 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 			maxNamespaceLength = len(namespace)
 		}
 
-		meshedCount := fmt.Sprintf("%d/%d", r.MeshedPodCount, r.RunningPodCount)
-		if resourceKey == k8s.Authority || resourceKey == k8s.Service || resourceKey == k8s.Server || resourceKey == k8s.ServerAuthorization {
-			meshedCount = "-"
-		}
-		statTables[resourceKey][key] = &row{
-			meshed: meshedCount,
-			status: r.Status,
+		statTables[resourceKey][key] = &row{}
+		if resourceKey != k8s.Server && resourceKey != k8s.ServerAuthorization {
+			meshedCount := fmt.Sprintf("%d/%d", r.MeshedPodCount, r.RunningPodCount)
+			if resourceKey == k8s.Authority || resourceKey == k8s.Service {
+				meshedCount = "-"
+			}
+			statTables[resourceKey][key] = &row{
+				meshed: meshedCount,
+				status: r.Status,
+			}
 		}
 
 		if r.Stats != nil && statHasRequestData(r.Stats) {
@@ -586,11 +589,6 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		headers = append(headers, "STATUS")
 	}
 
-	if resourceType == k8s.ServerAuthorization {
-		headers = append(headers,
-			fmt.Sprintf(serverAuthorization, authorizationHeader))
-	}
-
 	if hasDstStats {
 		headers = append(headers,
 			fmt.Sprintf(dstTemplate, dstHeader),
@@ -600,7 +598,10 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			fmt.Sprintf(apexTemplate, apexHeader),
 			fmt.Sprintf(leafTemplate, leafHeader),
 			fmt.Sprintf(weightTemplate, weightHeader))
-	} else {
+	} else if resourceType == k8s.ServerAuthorization {
+		headers = append(headers,
+			fmt.Sprintf(serverAuthorization, authorizationHeader))
+	} else if resourceType != k8s.Server {
 		headers = append(headers, "MESHED")
 	}
 
@@ -645,8 +646,11 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			templateString = "%s\t%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
 			templateStringEmpty = "%s\t%s\t%s\t-\t-\t-\t-\t-\t"
 		} else if resourceType == k8s.ServerAuthorization {
-			templateString = "%s\t%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
-			templateStringEmpty = "%s\t%s\t%s\t-\t-\t-\t-\t-\t"
+			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
+			templateStringEmpty = "%s\t%s\t-\t-\t-\t-\t-\t"
+		} else if resourceType == k8s.Server {
+			templateString = "%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
+			templateStringEmpty = "%s\t-\t-\t-\t-\t-\t"
 		}
 
 		if showTCPConns(resourceType) {
@@ -718,7 +722,7 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 				stats[key].dstStats.dst+strings.Repeat(" ", dstPadding),
 				stats[key].dstStats.weight,
 			)
-		} else {
+		} else if resourceType != k8s.ServerAuthorization && resourceType != k8s.Server {
 			values = append(values, []interface{}{
 				stats[key].meshed,
 			}...)
