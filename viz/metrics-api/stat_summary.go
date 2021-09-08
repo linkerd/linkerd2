@@ -66,8 +66,6 @@ const (
 	failure = "failure"
 
 	reqQuery             = "sum(increase(response_total%s[%s])) by (%s, classification, tls)"
-	httpAuthzDenyQuery   = "sum(increase(inbound_http_authz_deny_total%s[%s]))"
-	httpAuthzAllowQuery  = "sum(increase(inbound_http_authz_allow_total%s[%s]))"
 	latencyQuantileQuery = "histogram_quantile(%s, sum(irate(response_latency_ms_bucket%s[%s])) by (le, %s))"
 	tcpConnectionsQuery  = "sum(tcp_open_connections%s) by (%s)"
 	tcpReadBytesQuery    = "sum(increase(tcp_read_bytes_total%s[%s])) by (%s)"
@@ -489,32 +487,6 @@ func (s *grpcServer) policyResourceQuery(ctx context.Context, req *pb.StatSummar
 		rows = append(rows, &row)
 	}
 
-	// add unauthorized when all serverAuthorizations are requested
-	if req.GetSelector().Resource.GetType() == k8s.ServerAuthorization && req.GetSelector().Resource.GetName() == "" {
-		serverMap := make(map[string]bool)
-		for _, policyResource := range policyResources {
-			// Add a new row for the server
-			stat, err := s.getUnAuthorizedMetricForServer(ctx, policyResource.Namespace, policyResource.Server, req.TimeWindow)
-			if err != nil {
-				return resourceResult{res: nil, err: err}
-			}
-
-			rows = append(rows, &pb.StatTable_PodGroup_Row{
-				Resource: &pb.Resource{
-					Name:      policyResource.Server,
-					Namespace: policyResource.Namespace,
-					Type:      req.GetSelector().GetResource().GetType(),
-				},
-				TimeWindow: req.TimeWindow,
-				Stats:      stat,
-				SazStats: &pb.ServerAuthorizationStats{
-					ServerAuthorization: "[UNAUTHORIZED]",
-				},
-			})
-			serverMap[policyResource.Server] = true
-		}
-	}
-
 	rsp := pb.StatTable{
 		Table: &pb.StatTable_PodGroup_{
 			PodGroup: &pb.StatTable_PodGroup{
@@ -523,35 +495,6 @@ func (s *grpcServer) policyResourceQuery(ctx context.Context, req *pb.StatSummar
 		},
 	}
 	return resourceResult{res: &rsp, err: nil}
-}
-
-func (s *grpcServer) getUnAuthorizedMetricForServer(ctx context.Context, namespace, name, timeWindow string) (*pb.BasicStats, error) {
-	labels := model.LabelSet{
-		namespaceLabel: model.LabelValue(namespace),
-		serverLabel:    model.LabelValue(name),
-	}
-
-	allowPromQuery := fmt.Sprintf(httpAuthzAllowQuery, labels, timeWindow)
-	denyPromQuery := fmt.Sprintf(httpAuthzDenyQuery, labels, timeWindow)
-	allowResultVector, err := s.queryProm(ctx, allowPromQuery)
-	if err != nil {
-		return nil, err
-	}
-	denyResultVector, err := s.queryProm(ctx, denyPromQuery)
-	if err != nil {
-		return nil, err
-	}
-
-	requestStats := pb.BasicStats{}
-	if len(allowResultVector) == 1 {
-		requestStats.SuccessCount = uint64(allowResultVector[0].Value)
-	}
-
-	if len(denyResultVector) == 1 {
-		requestStats.FailureCount = uint64(denyResultVector[0].Value)
-	}
-
-	return &requestStats, nil
 }
 
 func (s *grpcServer) serviceResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {

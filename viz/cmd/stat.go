@@ -499,14 +499,6 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 			statTables[resourceKey][key].sazStats = &sazStats{
 				serverAuthorization: r.SazStats.ServerAuthorization,
 			}
-
-			// Empty other fields except for RPS with [UNAUTHORIZED]
-			if r.SazStats.ServerAuthorization == "[UNAUTHORIZED]" {
-				statTables[resourceKey][key].rowStats = nil
-				statTables[resourceKey][key].rowStats = &rowStats{
-					requestRate: getRequestRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount(), r.TimeWindow),
-				}
-			}
 		}
 	}
 
