@@ -1,7 +1,7 @@
 package target3
 
 import (
-	// "context"
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -18,4 +18,19 @@ func TestMain(m *testing.M) {
 		os.Exit(0)
 	}
 	os.Exit(m.Run())
+}
+
+func TestSetupTargetClusterResources(t *testing.T) {
+	if err := TestHelper.CreateDataPlaneNamespaceIfNotExists(context.Background(), "default", nil); err != nil {
+		testutil.AnnotatedFatalf(t, "failed to create default namespace",
+			"failed to create default namespace: %s", err)
+	}
+	yaml, err := testutil.ReadFile("testdata/nginx-statefulset.yml")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to read 'nginx-statefulset.yml'", "failed to read 'nginx-statefulset.yml': %s", err)
+	}
+	out, err := TestHelper.KubectlApply(yaml, "default")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to set up target cluster resources", "failed to set up target cluster resources: %s\n%s", err, out)
+	}
 }
