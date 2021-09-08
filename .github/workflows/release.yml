@@ -7,7 +7,7 @@ permissions:
   contents: read
 env:
   GH_ANNOTATION: true
-  DOCKER_REGISTRY: cr.l5d.io/linkerd
+  DOCKER_REGISTRY: ghcr.io/linkerd
 jobs:
 
   docker_build:
@@ -58,7 +58,7 @@ jobs:
     name: Policy controller build (${{ matrix.arch }})
     steps:
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@abe5d8f79a1606a2d3e218847032f3f2b1726ab0
+      uses: docker/setup-buildx-action@94ab11c41e45d028884a99163086648e898eed25
     - name: Checkout code
       uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
     - run: |
@@ -210,7 +210,7 @@ jobs:
         (Get-Content bin\win\linkerd.nuspec).replace('LINKERD_VERSION', $LINKERD_VERSION) | Set-Content bin\win\linkerd.nuspec
     - name: Chocolatey - pack
       if: startsWith(github.ref, 'refs/tags/stable')
-      uses: crazy-max/ghaction-chocolatey@d025252287b66c3fb7d795cc8932dec97630cd53
+      uses: crazy-max/ghaction-chocolatey@87d06bbbd2cfb1835f1820042d356aef4875fb5f
       with:
         args: pack bin/win/linkerd.nuspec
     - name: Chocolatey - upload package

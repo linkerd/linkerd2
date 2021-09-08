@@ -100,7 +100,12 @@ func main() {
 		server.ListenAndServe()
 	}()
 
-	go admin.StartServer(*metricsAddr)
+	adminServer := admin.NewServer(*metricsAddr)
+
+	go func() {
+		log.Infof("starting admin server on %s", *metricsAddr)
+		adminServer.ListenAndServe()
+	}()
 
 	<-stop
 
@@ -108,6 +113,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	server.Shutdown(ctx)
+	adminServer.Shutdown(ctx)
 }
 
 func getUUIDAndVersion(ctx context.Context, k8sAPI *k8s.KubernetesAPI, controllerNamespace string) (string, string) {

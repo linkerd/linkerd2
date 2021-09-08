@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/dynamic"
@@ -138,7 +137,7 @@ func (kubeAPI *KubernetesAPI) CheckVersion(versionInfo *version.Info) error {
 // NamespaceExists validates whether a given namespace exists.
 func (kubeAPI *KubernetesAPI) NamespaceExists(ctx context.Context, namespace string) (bool, error) {
 	ns, err := kubeAPI.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
-	if kerrors.IsNotFound(err) {
+	if errors.IsNotFound(err) {
 		return false, nil
 	}
 	if err != nil {

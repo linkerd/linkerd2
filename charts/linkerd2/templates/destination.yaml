@@ -152,6 +152,7 @@ spec:
         {{- include "partials.proxy.annotations" . | nindent 8}}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
         config.linkerd.io/opaque-ports: "8443"
+        config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: destination
         linkerd.io/control-plane-ns: {{.Values.namespace}}
@@ -174,7 +175,12 @@ spec:
       {{- end }}
       {{- $_ := set $tree.Values.proxy "await" true }}
       {{- $_ := set $tree.Values.proxy "loadTrustBundleFromConfigMap" true }}
-      {{- $_ := set $tree.Values.proxy "podInboundPorts" "8086,8090,9990,9996" }}
+      {{- $_ := set $tree.Values.proxy "podInboundPorts" "8086,8090,8443,9443,9990,9996,9997" }}
+      {{- /*
+        The pod needs to accept webhook traffic, and we can't rely on that originating in the
+        cluster network.
+      */}}
+      {{- $_ := set $tree.Values.proxy "defaultInboundPolicy" "all-unauthenticated" }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       - args:
         - destination

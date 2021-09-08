@@ -131,11 +131,17 @@ func Main(args []string) {
 		server.Serve(lis)
 	}()
 
-	go admin.StartServer(*metricsAddr)
+	adminServer := admin.NewServer(*metricsAddr)
+
+	go func() {
+		log.Infof("starting admin server on %s", *metricsAddr)
+		adminServer.ListenAndServe()
+	}()
 
 	<-stop
 
 	log.Infof("shutting down gRPC server on %s", *addr)
 	close(done)
 	server.GracefulStop()
+	adminServer.Shutdown(ctx)
 }
