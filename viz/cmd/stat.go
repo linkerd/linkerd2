@@ -411,6 +411,10 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 		if r.Resource.Type == k8s.TrafficSplit || (r.Resource.Type == k8s.Service && r.TsStats != nil) {
 			key = fmt.Sprintf("%s/%s/%s", namespace, name, r.TsStats.Leaf)
 		}
+		if r.Resource.Type == k8s.ServerAuthorization {
+			key = fmt.Sprintf("%s/%s/%s", namespace, name, r.SazStats.ServerAuthorization)
+		}
+
 		resourceKey := r.Resource.Type
 
 		if _, ok := statTables[resourceKey]; !ok {
@@ -491,6 +495,14 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 
 			statTables[resourceKey][key].sazStats = &sazStats{
 				serverAuthorization: r.SazStats.ServerAuthorization,
+			}
+
+			// Empty other fields except for RPS with [UNAUTHORIZED]
+			if r.SazStats.ServerAuthorization == "[UNAUTHORIZED]" {
+				statTables[resourceKey][key].rowStats = nil
+				statTables[resourceKey][key].rowStats = &rowStats{
+					requestRate: getRequestRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount(), r.TimeWindow),
+				}
 			}
 		}
 	}
