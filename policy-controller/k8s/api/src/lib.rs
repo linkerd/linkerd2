@@ -20,7 +20,6 @@ use tracing::info_span;
 
 /// Resource watches.
 pub struct ResourceWatches {
-    pub nodes_rx: Watch<Node>,
     pub pods_rx: Watch<Pod>,
     pub servers_rx: Watch<policy::Server>,
     pub authorizations_rx: Watch<policy::ServerAuthorization>,
@@ -45,8 +44,6 @@ impl From<kube::Client> for ResourceWatches {
         let pod_params = params.clone().labels("linkerd.io/control-plane-ns");
 
         Self {
-            nodes_rx: Watch::from(watcher(Api::all(client.clone()), params.clone()))
-                .instrument(info_span!("nodes")),
             pods_rx: Watch::from(watcher(Api::all(client.clone()), pod_params))
                 .instrument(info_span!("pods")),
             servers_rx: Watch::from(watcher(Api::all(client.clone()), params.clone()))

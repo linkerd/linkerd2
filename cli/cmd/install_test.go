@@ -319,6 +319,7 @@ func testInstallOptionsNoCerts(ha bool) (*charts.Values, error) {
 	values.Proxy.Image.Version = installProxyVersion
 	values.DebugContainer.Image.Version = installDebugVersion
 	values.ControllerImageVersion = installControlPlaneVersion
+	values.PolicyController.Image.Version = installControlPlaneVersion
 	values.HeartbeatSchedule = fakeHeartbeatSchedule()
 
 	return values, nil
@@ -334,6 +335,7 @@ func testInstallValues() (*charts.Values, error) {
 	values.DebugContainer.Image.Version = installDebugVersion
 	values.LinkerdVersion = installControlPlaneVersion
 	values.ControllerImageVersion = installControlPlaneVersion
+	values.PolicyController.Image.Version = installControlPlaneVersion
 	values.HeartbeatSchedule = fakeHeartbeatSchedule()
 
 	identityCert, err := ioutil.ReadFile(filepath.Join("testdata", "valid-crt.pem"))

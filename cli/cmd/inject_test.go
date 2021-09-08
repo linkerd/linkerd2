@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/testutil"
 )
@@ -760,7 +761,7 @@ func TestOverwriteRegistry(t *testing.T) {
 	for i, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			actual := registryOverride(tc.image, tc.registry)
+			actual := cmd.RegistryOverride(tc.image, tc.registry)
 			if actual != tc.expected {
 				t.Fatalf("expected %q, but got %q", tc.expected, actual)
 			}

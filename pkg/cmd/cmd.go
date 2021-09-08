@@ -146,3 +146,19 @@ func GetLabelSelector(labelKey string, labelValues ...string) (string, error) {
 	selector := labels.NewSelector().Add(*labelRequirement)
 	return selector.String(), nil
 }
+
+// RegistryOverride replaces the registry-portion of the provided image with the provided registry.
+func RegistryOverride(image, newRegistry string) string {
+	if image == "" {
+		return image
+	}
+	registry := newRegistry
+	if registry != "" && !strings.HasSuffix(registry, "/") {
+		registry += "/"
+	}
+	imageName := image
+	if strings.Contains(image, "/") {
+		imageName = image[strings.LastIndex(image, "/")+1:]
+	}
+	return registry + imageName
+}
