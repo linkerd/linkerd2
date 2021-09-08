@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -39,6 +40,20 @@ const (
 	// special case k8s job label, to not conflict with Prometheus' job label
 	l5dJob = "k8s_job"
 )
+
+// ServerGroupVersionResource is the GVR type for a Server.
+var ServerGroupVersionResource = schema.GroupVersionResource{
+	Group:    "policy.linkerd.io",
+	Version:  "v1alpha1",
+	Resource: "servers",
+}
+
+// ServerAuthorizationGroupVersionResource is the GVR type for a ServerAuthorization.
+var ServerAuthorizationGroupVersionResource = schema.GroupVersionResource{
+	Group:    "policy.linkerd.io",
+	Version:  "v1alpha1",
+	Resource: "serverauthorizations",
+}
 
 type resourceName struct {
 	short  string

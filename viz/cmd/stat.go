@@ -332,6 +332,7 @@ type row struct {
 	*rowStats
 	*tsStats
 	*dstStats
+	*sazStats
 }
 
 type tsStats struct {
@@ -345,12 +346,17 @@ type dstStats struct {
 	weight string
 }
 
+type sazStats struct {
+	serverAuthorization string
+}
+
 var (
-	nameHeader      = "NAME"
-	namespaceHeader = "NAMESPACE"
-	apexHeader      = "APEX"
-	leafHeader      = "LEAF"
-	weightHeader    = "WEIGHT"
+	nameHeader          = "NAME"
+	namespaceHeader     = "NAMESPACE"
+	apexHeader          = "APEX"
+	leafHeader          = "LEAF"
+	weightHeader        = "WEIGHT"
+	authorizationHeader = "AUTHORIZATION"
 )
 
 func statHasRequestData(stat *pb.BasicStats) bool {
@@ -368,6 +374,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 	maxLeafLength := len(leafHeader)
 	maxDstLength := len(dstHeader)
 	maxWeightLength := len(weightHeader)
+	maxServerAuthorizationLength := len(authorizationHeader)
 
 	statTables := make(map[string]map[string]*row)
 
@@ -476,6 +483,16 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 				}
 			}
 		}
+
+		if r.SazStats != nil {
+			if len(r.SazStats.ServerAuthorization) > maxServerAuthorizationLength {
+				maxServerAuthorizationLength = len(r.SazStats.ServerAuthorization)
+			}
+
+			statTables[resourceKey][key].sazStats = &sazStats{
+				serverAuthorization: r.SazStats.ServerAuthorization,
+			}
+		}
 	}
 
 	switch options.outputFormat {
@@ -484,13 +501,13 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 			fmt.Fprintln(os.Stderr, "No traffic found.")
 			return
 		}
-		printStatTables(statTables, w, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxDstLength, maxWeightLength, options)
+		printStatTables(statTables, w, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxDstLength, maxWeightLength, maxServerAuthorizationLength, options)
 	case jsonOutput:
 		printStatJSON(statTables, w)
 	}
 }
 
-func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxDstLength, maxWeightLength int, options *statOptions) {
+func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxDstLength, maxWeightLength, maxServerAuthorizationLength int, options *statOptions) {
 	usePrefix := false
 	if len(statTables) > 1 {
 		usePrefix = true
@@ -507,7 +524,7 @@ func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer,
 			if !usePrefix {
 				resourceTypeLabel = ""
 			}
-			printSingleStatTable(stats, resourceTypeLabel, resourceType, w, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxDstLength, maxWeightLength, options)
+			printSingleStatTable(stats, resourceTypeLabel, resourceType, w, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxDstLength, maxWeightLength, maxServerAuthorizationLength, options)
 		}
 	}
 }
@@ -521,11 +538,12 @@ func showTCPConns(resourceType string) bool {
 	return resourceType != k8s.Authority && resourceType != k8s.TrafficSplit && resourceType != k8s.ServerAuthorization
 }
 
-func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType string, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxDstLength, maxWeightLength int, options *statOptions) {
+func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType string, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxDstLength, maxWeightLength, maxServerAuthorizationLength int, options *statOptions) {
 	headers := make([]string, 0)
 	nameTemplate := fmt.Sprintf("%%-%ds", maxNameLength)
 	namespaceTemplate := fmt.Sprintf("%%-%ds", maxNamespaceLength)
 	apexTemplate := fmt.Sprintf("%%-%ds", maxApexLength)
+	serverAuthorization := fmt.Sprintf("%%-%ds", maxServerAuthorizationLength)
 	leafTemplate := fmt.Sprintf("%%-%ds", maxLeafLength)
 	dstTemplate := fmt.Sprintf("%%-%ds", maxDstLength)
 	weightTemplate := fmt.Sprintf("%%-%ds", maxWeightLength)
@@ -554,6 +572,11 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 
 	if resourceType == k8s.Pod {
 		headers = append(headers, "STATUS")
+	}
+
+	if resourceType == k8s.ServerAuthorization {
+		headers = append(headers,
+			fmt.Sprintf(serverAuthorization, authorizationHeader))
 	}
 
 	if hasDstStats {
@@ -609,6 +632,9 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		} else if hasDstStats {
 			templateString = "%s\t%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
 			templateStringEmpty = "%s\t%s\t%s\t-\t-\t-\t-\t-\t"
+		} else if resourceType == k8s.ServerAuthorization {
+			templateString = "%s\t%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
+			templateStringEmpty = "%s\t%s\t%s\t-\t-\t-\t-\t-\t"
 		}
 
 		if showTCPConns(resourceType) {
@@ -656,6 +682,17 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		values = append(values, name+strings.Repeat(" ", padding))
 		if resourceType == k8s.Pod {
 			values = append(values, stats[key].status)
+		}
+
+		serverAuthorizationPadding := 0
+		if stats[key].sazStats != nil {
+			if maxServerAuthorizationLength > len(stats[key].sazStats.serverAuthorization) {
+				serverAuthorizationPadding = maxServerAuthorizationLength - len(stats[key].sazStats.serverAuthorization)
+			}
+
+			values = append(values,
+				stats[key].sazStats.serverAuthorization+strings.Repeat(" ", serverAuthorizationPadding),
+			)
 		}
 
 		if hasTsStats {

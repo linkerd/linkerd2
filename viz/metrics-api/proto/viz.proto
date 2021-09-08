@@ -229,6 +229,10 @@ message TrafficSplitStats {
   string weight = 4;
 }
 
+message ServerAuthorizationStats {
+  string server_authorization = 1;
+}
+
 message StatTable {
   oneof table {
     PodGroup pod_group = 1;
@@ -253,6 +257,7 @@ message StatTable {
       BasicStats stats = 5;
       TcpStats tcp_stats = 8;
       TrafficSplitStats ts_stats = 10;
+      ServerAuthorizationStats saz_stats = 11;
 
       // Stores a set of errors for each pod name. If a pod has no errors, it may be omitted.
       map<string, PodErrors> errors_by_pod = 7;
