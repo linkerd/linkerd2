@@ -2233,22 +2233,17 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 			continue
 		}
 
-		endpoint, err := kubeAPI.Endpoint().Lister().Endpoints(service.Namespace).Get(service.Name)
+		endpoints, err := kubeAPI.Endpoint().Lister().Endpoints(service.Namespace).Get(service.Name)
 		if err != nil {
 			return err
 		}
 
-		pods := make([]*corev1.Pod, 0)
-		for _, subset := range endpoint.Subsets {
-			for _, addr := range subset.Addresses {
-				pods, err = addEndpointAddressPods(pods, addr, kubeAPI, service)
-				if err != nil {
-					return err
-				}
-			}
+		pods, err := getEndpointsPods(endpoints, kubeAPI, service.Namespace)
+		if err != nil {
+			return err
 		}
 
-		for _, pod := range pods {
+		for pod := range pods {
 			err := misconfiguredOpaqueAnnotation(service, pod)
 			if err != nil {
 				errStrings = append(errStrings, fmt.Sprintf("\t* %s", err.Error()))
@@ -2263,20 +2258,22 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 	return nil
 }
 
-// addEndpointAddressPods primarily takes an endpoint address, and if it's
-// target is a pod that is not already in pods, then it adds it.
-func addEndpointAddressPods(pods []*corev1.Pod, addr corev1.EndpointAddress, kubeAPI *controllerK8s.API, service *corev1.Service) ([]*corev1.Pod, error) {
-	if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
-		pod, err := kubeAPI.Pod().Lister().Pods(service.Namespace).Get(addr.TargetRef.Name)
-		if err != nil {
-			return nil, err
-		}
-		for _, p := range pods {
-			if p.Name == pod.Name && p.Namespace == pod.Namespace {
-				return pods, nil
+// getEndpointsPods takes a collection of endpoints and returns a map of all
+// the pods that they target.
+func getEndpointsPods(endpoints *corev1.Endpoints, kubeAPI *controllerK8s.API, namespace string) (map[*corev1.Pod]struct{}, error) {
+	pods := make(map[*corev1.Pod]struct{})
+	for _, subset := range endpoints.Subsets {
+		for _, addr := range subset.Addresses {
+			if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
+				pod, err := kubeAPI.Pod().Lister().Pods(namespace).Get(addr.TargetRef.Name)
+				if err != nil {
+					return nil, err
+				}
+				if _, ok := pods[pod]; !ok {
+					pods[pod] = struct{}{}
+				}
 			}
 		}
-		pods = append(pods, pod)
 	}
 	return pods, nil
 }
