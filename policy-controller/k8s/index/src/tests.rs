@@ -4,7 +4,7 @@ use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, IdentityMatch, IpNet, Ipv4Net, Ipv6Net,
     NetworkMatch, ProxyProtocol,
 };
-use linkerd_policy_controller_k8s_api::policy::server::Port;
+use linkerd_policy_controller_k8s_api::{policy::server::Port, ResourceExt};
 use std::{collections::HashMap, net::IpAddr, str::FromStr};
 use tokio::time;
 
@@ -14,10 +14,6 @@ use tokio::time;
 async fn incrementally_configure_server() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
-    let (kubelet_ip, pod_ip) = {
-        let mut ips = pod_net.hosts();
-        (ips.next().unwrap(), ips.next().unwrap())
-    };
     let detect_timeout = time::Duration::from_secs(1);
     let (lookup_rx, mut idx) = Index::new(
         vec![cluster_net],
@@ -29,13 +25,11 @@ async fn incrementally_configure_server() {
         detect_timeout,
     );
 
-    idx.apply_node(mk_node("node-0", pod_net)).unwrap();
-
     let pod = mk_pod(
         "ns-0",
         "pod-0",
         "node-0",
-        pod_ip,
+        pod_net.hosts().next().unwrap(),
         Some(("container-0", vec![2222, 9999])),
     );
     idx.apply_pod(pod.clone()).unwrap();
@@ -46,7 +40,7 @@ async fn incrementally_configure_server() {
     };
     let default_config = InboundServer {
         name: format!("default:{}", default),
-        authorizations: mk_default_policy(default, cluster_net, kubelet_ip),
+        authorizations: mk_default_policy(default, cluster_net),
         protocol: ProxyProtocol::Detect {
             timeout: detect_timeout,
         },
@@ -77,7 +71,7 @@ async fn incrementally_configure_server() {
     let basic_config = InboundServer {
         name: "srv-0".into(),
         protocol: ProxyProtocol::Http1,
-        authorizations: vec![healthcheck_authz(kubelet_ip)].into_iter().collect(),
+        authorizations: Default::default(),
     };
     assert_eq!(port2222.get(), basic_config);
     assert_eq!(port9999.get(), default_config);
@@ -104,16 +98,13 @@ async fn incrementally_configure_server() {
         Ok(Some(InboundServer {
             name: "srv-0".into(),
             protocol: ProxyProtocol::Http1,
-            authorizations: vec![
-                (
-                    "authz-0".into(),
-                    ClientAuthorization {
-                        authentication: ClientAuthentication::TlsUnauthenticated,
-                        networks: vec!["192.0.2.0/24".parse::<IpNet>().unwrap().into()]
-                    }
-                ),
-                healthcheck_authz(kubelet_ip),
-            ]
+            authorizations: vec![(
+                "authz-0".into(),
+                ClientAuthorization {
+                    authentication: ClientAuthentication::TlsUnauthenticated,
+                    networks: vec!["192.0.2.0/24".parse::<IpNet>().unwrap().into()]
+                }
+            ),]
             .into_iter()
             .collect(),
         }))
@@ -145,10 +136,6 @@ async fn incrementally_configure_server() {
 fn server_update_deselects_pod() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
-    let (kubelet_ip, pod_ip) = {
-        let mut ips = pod_net.hosts();
-        (ips.next().unwrap(), ips.next().unwrap())
-    };
     let detect_timeout = time::Duration::from_secs(1);
     let default = DefaultPolicy::Allow {
         authenticated_only: false,
@@ -161,12 +148,11 @@ fn server_update_deselects_pod() {
         detect_timeout,
     );
 
-    idx.apply_node(mk_node("node-0", pod_net)).unwrap();
     let p = mk_pod(
         "ns-0",
         "pod-0",
         "node-0",
-        pod_ip,
+        pod_net.hosts().next().unwrap(),
         Some(("container-0", vec![2222])),
     );
     idx.apply_pod(p).unwrap();
@@ -185,7 +171,7 @@ fn server_update_deselects_pod() {
         InboundServer {
             name: "srv-0".into(),
             protocol: ProxyProtocol::Http2,
-            authorizations: vec![healthcheck_authz(kubelet_ip)].into_iter().collect(),
+            authorizations: Default::default(),
         }
     );
 
@@ -198,7 +184,7 @@ fn server_update_deselects_pod() {
         port2222.get(),
         InboundServer {
             name: format!("default:{}", default),
-            authorizations: mk_default_policy(default, cluster_net, kubelet_ip),
+            authorizations: mk_default_policy(default, cluster_net),
             protocol: ProxyProtocol::Detect {
                 timeout: detect_timeout,
             },
@@ -213,10 +199,6 @@ fn server_update_deselects_pod() {
 fn default_policy_global() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
-    let (kubelet_ip, pod_ip) = {
-        let mut ips = pod_net.hosts();
-        (ips.next().unwrap(), ips.next().unwrap())
-    };
     let detect_timeout = time::Duration::from_secs(1);
 
     for default in &DEFAULTS {
@@ -227,20 +209,18 @@ fn default_policy_global() {
             detect_timeout,
         );
 
-        idx.reset_nodes(vec![mk_node("node-0", pod_net)]).unwrap();
-
         let p = mk_pod(
             "ns-0",
             "pod-0",
             "node-0",
-            pod_ip,
+            pod_net.hosts().next().unwrap(),
             Some(("container-0", vec![2222])),
         );
         idx.reset_pods(vec![p]).unwrap();
 
         let config = InboundServer {
             name: format!("default:{}", default),
-            authorizations: mk_default_policy(*default, cluster_net, kubelet_ip),
+            authorizations: mk_default_policy(*default, cluster_net),
             protocol: ProxyProtocol::Detect {
                 timeout: detect_timeout,
             },
@@ -262,10 +242,6 @@ fn default_policy_global() {
 fn default_policy_annotated() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
-    let (kubelet_ip, pod_ip) = {
-        let mut ips = pod_net.hosts();
-        (ips.next().unwrap(), ips.next().unwrap())
-    };
     let detect_timeout = time::Duration::from_secs(1);
 
     for default in &DEFAULTS {
@@ -283,13 +259,11 @@ fn default_policy_annotated() {
             detect_timeout,
         );
 
-        idx.reset_nodes(vec![mk_node("node-0", pod_net)]).unwrap();
-
         let mut p = mk_pod(
             "ns-0",
             "pod-0",
             "node-0",
-            pod_ip,
+            pod_net.hosts().next().unwrap(),
             Some(("container-0", vec![2222])),
         );
         p.annotations_mut()
@@ -298,7 +272,7 @@ fn default_policy_annotated() {
 
         let config = InboundServer {
             name: format!("default:{}", default),
-            authorizations: mk_default_policy(*default, cluster_net, kubelet_ip),
+            authorizations: mk_default_policy(*default, cluster_net),
             protocol: ProxyProtocol::Detect {
                 timeout: detect_timeout,
             },
@@ -315,10 +289,6 @@ fn default_policy_annotated() {
 fn default_policy_annotated_invalid() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
-    let (kubelet_ip, pod_ip) = {
-        let mut ips = pod_net.hosts();
-        (ips.next().unwrap(), ips.next().unwrap())
-    };
     let detect_timeout = time::Duration::from_secs(1);
 
     let default = DefaultPolicy::Allow {
@@ -332,13 +302,11 @@ fn default_policy_annotated_invalid() {
         detect_timeout,
     );
 
-    idx.reset_nodes(vec![mk_node("node-0", pod_net)]).unwrap();
-
     let mut p = mk_pod(
         "ns-0",
         "pod-0",
         "node-0",
-        pod_ip,
+        pod_net.hosts().next().unwrap(),
         Some(("container-0", vec![2222])),
     );
     p.annotations_mut()
@@ -359,7 +327,6 @@ fn default_policy_annotated_invalid() {
                     cluster_only: false,
                 },
                 cluster_net,
-                kubelet_ip
             ),
             protocol: ProxyProtocol::Detect {
                 timeout: detect_timeout,
@@ -372,10 +339,6 @@ fn default_policy_annotated_invalid() {
 fn opaque_annotated() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
-    let (kubelet_ip, pod_ip) = {
-        let mut ips = pod_net.hosts();
-        (ips.next().unwrap(), ips.next().unwrap())
-    };
     let detect_timeout = time::Duration::from_secs(1);
 
     for default in &DEFAULTS {
@@ -386,13 +349,11 @@ fn opaque_annotated() {
             detect_timeout,
         );
 
-        idx.reset_nodes(vec![mk_node("node-0", pod_net)]).unwrap();
-
         let mut p = mk_pod(
             "ns-0",
             "pod-0",
             "node-0",
-            pod_ip,
+            pod_net.hosts().next().unwrap(),
             Some(("container-0", vec![2222])),
         );
         p.annotations_mut()
@@ -401,7 +362,7 @@ fn opaque_annotated() {
 
         let config = InboundServer {
             name: format!("default:{}", default),
-            authorizations: mk_default_policy(*default, cluster_net, kubelet_ip),
+            authorizations: mk_default_policy(*default, cluster_net),
             protocol: ProxyProtocol::Opaque,
         };
 
@@ -416,10 +377,6 @@ fn opaque_annotated() {
 fn authenticated_annotated() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
-    let (kubelet_ip, pod_ip) = {
-        let mut ips = pod_net.hosts();
-        (ips.next().unwrap(), ips.next().unwrap())
-    };
     let detect_timeout = time::Duration::from_secs(1);
 
     for default in &DEFAULTS {
@@ -430,13 +387,11 @@ fn authenticated_annotated() {
             detect_timeout,
         );
 
-        idx.reset_nodes(vec![mk_node("node-0", pod_net)]).unwrap();
-
         let mut p = mk_pod(
             "ns-0",
             "pod-0",
             "node-0",
-            pod_ip,
+            pod_net.hosts().next().unwrap(),
             Some(("container-0", vec![2222])),
         );
         p.annotations_mut().insert(
@@ -455,7 +410,7 @@ fn authenticated_annotated() {
             };
             InboundServer {
                 name: format!("default:{}", policy),
-                authorizations: mk_default_policy(policy, cluster_net, kubelet_ip),
+                authorizations: mk_default_policy(policy, cluster_net),
                 protocol: ProxyProtocol::Detect {
                     timeout: detect_timeout,
                 },
@@ -468,99 +423,6 @@ fn authenticated_annotated() {
         assert_eq!(port2222.get().protocol, config.protocol);
         assert_eq!(port2222.get().authorizations, config.authorizations);
     }
-}
-
-/// Tests observing a pod before its node has been observed amid resets.
-#[test]
-fn pod_before_node_reset() {
-    let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
-    let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
-    let (_kubelet_ip, pod_ip) = {
-        let mut ips = pod_net.hosts();
-        (ips.next().unwrap(), ips.next().unwrap())
-    };
-    let detect_timeout = time::Duration::from_secs(1);
-
-    let (lookup_rx, mut idx) = Index::new(
-        vec![cluster_net],
-        "cluster.example.com".into(),
-        DefaultPolicy::Deny,
-        detect_timeout,
-    );
-
-    // First we create a pod for which the node has not yet been observed so that it's marked as
-    // pending.
-    let p = mk_pod(
-        "ns-0",
-        "pod-0",
-        "node-0",
-        pod_ip,
-        Some(("container-0", vec![2222])),
-    );
-    idx.reset_pods(vec![p]).unwrap();
-    assert!(lookup_rx.lookup("ns-0", "pod-0", 2222).is_none());
-
-    // Then we reset with a new pod which will be pending on the same node.
-    let p = mk_pod(
-        "ns-0",
-        "pod-1",
-        "node-0",
-        pod_ip,
-        Some(("container-0", vec![3333])),
-    );
-    idx.reset_pods(vec![p]).unwrap();
-
-    // Then we reset the nodes so that the node is added.
-    idx.reset_nodes(vec![mk_node("node-0", pod_net)]).unwrap();
-
-    // Once the node is created, the first pod should not be discoverable but the second pod should be.
-    assert!(
-        lookup_rx.lookup("ns-0", "pod-0", 2222).is_none(),
-        "first pod must not exist"
-    );
-    lookup_rx
-        .lookup("ns-0", "pod-1", 3333)
-        .expect("second pod must exist");
-}
-
-/// Tests observing a pod before its node has been observed amid resets.
-#[test]
-fn pod_before_node_remove() {
-    let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
-    let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
-    let (_kubelet_ip, pod_ip) = {
-        let mut ips = pod_net.hosts();
-        (ips.next().unwrap(), ips.next().unwrap())
-    };
-    let detect_timeout = time::Duration::from_secs(1);
-
-    let (lookup_rx, mut idx) = Index::new(
-        vec![cluster_net],
-        "cluster.example.com".into(),
-        DefaultPolicy::Deny,
-        detect_timeout,
-    );
-
-    // First we create a pod for which the node has not yet been observed so that it's marked as
-    // pending.
-    let pod = mk_pod(
-        "ns-0",
-        "pod-0",
-        "node-0",
-        pod_ip,
-        Some(("container-0", vec![2222])),
-    );
-    idx.reset_pods(vec![pod.clone()]).unwrap();
-    assert!(lookup_rx.lookup("ns-0", "pod-0", 2222).is_none());
-
-    // Then we delete that pod without updating the nodes.
-    idx.delete_pod(pod).unwrap();
-
-    // Then we reset the nodes so that the node is added.
-    idx.reset_nodes(vec![mk_node("node-0", pod_net)]).unwrap();
-
-    // Once the node is created, the pod must not be discoverable.
-    assert!(lookup_rx.lookup("ns-0", "pod-0", 2222).is_none());
 }
 
 // === Helpers ===
@@ -584,21 +446,6 @@ const DEFAULTS: [DefaultPolicy; 5] = [
         cluster_only: true,
     },
 ];
-
-fn mk_node(name: impl Into<String>, pod_net: IpNet) -> k8s::Node {
-    k8s::Node {
-        metadata: k8s::ObjectMeta {
-            name: Some(name.into()),
-            ..Default::default()
-        },
-        spec: Some(k8s::api::core::v1::NodeSpec {
-            pod_cidr: Some(pod_net.to_string()),
-            pod_cidrs: Some(vec![pod_net.to_string()]),
-            ..Default::default()
-        }),
-        status: Some(k8s::api::core::v1::NodeStatus::default()),
-    }
-}
 
 fn mk_pod(
     ns: impl Into<String>,
@@ -698,7 +545,6 @@ fn mk_authz(
 fn mk_default_policy(
     da: DefaultPolicy,
     cluster_net: IpNet,
-    kubelet_ip: IpAddr,
 ) -> HashMap<String, ClientAuthorization> {
     let all_nets = vec![Ipv4Net::default().into(), Ipv6Net::default().into()];
 
@@ -750,16 +596,5 @@ fn mk_default_policy(
         )),
     }
     .into_iter()
-    .chain(Some(healthcheck_authz(kubelet_ip)))
     .collect()
-}
-
-fn healthcheck_authz(ip: IpAddr) -> (String, ClientAuthorization) {
-    (
-        "default:kubelet".into(),
-        ClientAuthorization {
-            networks: vec![NetworkMatch::from(IpNet::from(ip))],
-            authentication: ClientAuthentication::Unauthenticated,
-        },
-    )
 }
