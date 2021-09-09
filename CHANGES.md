@@ -1,5 +1,28 @@
 # Changes
 
+## edge-21.9.2
+
+This edge release gets us closer to 2.11 by further polishing the policy
+feature. Also the proxy received a noticeable resource consumption improvement.
+
+* Stopped creating the default authorizations for the kubelet
+* Added missing ports to the destination controller's default list of ports, to
+  allow the sp-validator to start properly when using a default-deny policy
+* Set the destination and proxy-injector pods default policy to
+  `all-unauthenticated` to allow the webhooks to be called from the kube-api
+  when using a default-deny policy
+* Extended inbound policies to cover the proxy's admin server
+* Improved the proxy's error handling so that HTTP metrics include 5XX responses
+  for common errors
+* The proxy's outbound tap has been fixed to include route labels when service
+  profiles are configured
+* Enabled link-time optimizations in the Rust components (proxy and policy
+  controller), resulting in noticeable RSS and CPU consumption improvements
+* Made the admin servers in the control plane components properly shut down
+  (thanks @EpicStep!)
+* Updated linkerd-await, suppressing the error emitted when linkerd-await was
+  disabled
+
 ## edge-21.9.1
 
 This release includes various improvements and feature additions across the policy
