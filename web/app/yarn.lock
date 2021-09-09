@@ -1444,28 +1444,28 @@
     "@types/yargs" "^16.0.0"
     chalk "^4.0.0"
 
-"@lingui/babel-plugin-extract-messages@^3.10.2":
-  version "3.10.2"
-  resolved "https://registry.yarnpkg.com/@lingui/babel-plugin-extract-messages/-/babel-plugin-extract-messages-3.10.2.tgz#496a3ffd2547fe9a514e60ad279ec15d63f57bf8"
-  integrity sha512-RBAw8mE/l6VtpunmgRllX2kotjvWhlo5skyySipQDmYRU7QWQV7z3F67UtaIyG4yHMqcdF3T/q9x45qcgtdDMw==
+"@lingui/babel-plugin-extract-messages@^3.11.1":
+  version "3.11.1"
+  resolved "https://registry.yarnpkg.com/@lingui/babel-plugin-extract-messages/-/babel-plugin-extract-messages-3.11.1.tgz#ac4f0f2d9a7aeae9378e6d76e084f76583ba7950"
+  integrity sha512-MAsZ0BYIsHh08dptT7bA6Jsh1ixO1sBU8eNDtobkZaZ78SXIUMUYCy9e3T9D/RYpecgDGaFUf2djctTqguMgmQ==
   dependencies:
     "@babel/generator" "^7.11.6"
     "@babel/runtime" "^7.11.2"
-    "@lingui/conf" "^3.10.2"
+    "@lingui/conf" "^3.11.1"
     mkdirp "^1.0.4"
 
-"@lingui/cli@3.10.2":
-  version "3.10.2"
-  resolved "https://registry.yarnpkg.com/@lingui/cli/-/cli-3.10.2.tgz#b7dae9fa18426f7b709f99ad3c90d76ca4bef543"
-  integrity sha512-kuKMSeWyRYh3aw1zZZkqOzt2wjy1TdObji+PDg1OyoOgWkvap1SlpcFQ76Fgn2u1e6MOyDpfwg+I7fGEmOA+gQ==
+"@lingui/cli@3.11.1":
+  version "3.11.1"
+  resolved "https://registry.yarnpkg.com/@lingui/cli/-/cli-3.11.1.tgz#c3f273f80da8da85b781d988a6e0abbaa22b2d5c"
+  integrity sha512-piKjrGjiornzX18Lt6EhyICAHEGH9wio0KaOXKyCjHqPw8sQnC4AZv0iyZqTACVYL+0ROsrtNd/xgDMYNSQgeA==
   dependencies:
     "@babel/generator" "^7.11.6"
     "@babel/parser" "^7.11.5"
     "@babel/plugin-syntax-jsx" "^7.10.4"
     "@babel/runtime" "^7.11.2"
     "@babel/types" "^7.11.5"
-    "@lingui/babel-plugin-extract-messages" "^3.10.2"
-    "@lingui/conf" "^3.10.2"
+    "@lingui/babel-plugin-extract-messages" "^3.11.1"
+    "@lingui/conf" "^3.11.1"
     babel-plugin-macros "^3.0.1"
     bcp-47 "^1.0.7"
     chalk "^4.1.0"
@@ -1491,7 +1491,7 @@
     pseudolocale "^1.1.0"
     ramda "^0.27.1"
 
-"@lingui/conf@^3.10.2", "@lingui/conf@^3.11.1":
+"@lingui/conf@^3.11.1":
   version "3.11.1"
   resolved "https://registry.yarnpkg.com/@lingui/conf/-/conf-3.11.1.tgz#ef81600891212d05c656d2f38f098d114983561b"
   integrity sha512-WoEdtDAiI+TR7Gz2F7VMZQyIGZFP2b4qT3JO3gLuGzHY6a6DCqOMojqUuo6KHFQrUoUtebI/1Yn7gAxVH1xcWQ==
