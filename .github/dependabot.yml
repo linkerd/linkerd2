@@ -6,7 +6,7 @@ updates:
       interval: "daily"
 
   - package-ecosystem: cargo
-    directory: /policy-controller
+    directory: "/"
     schedule:
       interval: daily
 
