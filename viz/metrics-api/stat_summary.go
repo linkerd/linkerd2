@@ -24,6 +24,20 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+var (
+	serverGroupVersionResource = schema.GroupVersionResource{
+		Group:    "policy.linkerd.io",
+		Version:  "v1alpha1",
+		Resource: "servers",
+	}
+
+	serverAuthorizationGroupVersionResource = schema.GroupVersionResource{
+		Group:    "policy.linkerd.io",
+		Version:  "v1alpha1",
+		Resource: "serverauthorizations",
+	}
+)
+
 type resourceResult struct {
 	res *pb.StatTable
 	err error
@@ -53,12 +67,6 @@ type dstKey struct {
 	Service   string
 	Dst       string
 	Weight    string
-}
-
-type sazKey struct {
-	Server              string
-	Namespace           string
-	ServerAuthorization string
 }
 
 const (
@@ -390,15 +398,15 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 	return resourceResult{res: &rsp, err: nil}
 }
 
-func (s *grpcServer) getUnstructuredResources(req *pb.StatSummaryRequest) ([]sazKey, error) {
+func (s *grpcServer) getUnstructuredResources(req *pb.StatSummaryRequest) ([]rKey, error) {
 	var err error
 	var unstructuredResources *unstructured.UnstructuredList
 
 	var gvr schema.GroupVersionResource
 	if req.GetSelector().Resource.GetType() == k8s.Server {
-		gvr = k8s.ServerGroupVersionResource
+		gvr = serverGroupVersionResource
 	} else if req.GetSelector().Resource.GetType() == k8s.ServerAuthorization {
-		gvr = k8s.ServerAuthorizationGroupVersionResource
+		gvr = serverAuthorizationGroupVersionResource
 	}
 
 	res := req.GetSelector().GetResource()
@@ -423,24 +431,11 @@ func (s *grpcServer) getUnstructuredResources(req *pb.StatSummaryRequest) ([]saz
 		return nil, err
 	}
 
-	var resourceKeys []sazKey
-	// Create sazKey for each server resource if it is a ServerAuthorization query
-	if gvr == k8s.ServerAuthorizationGroupVersionResource {
-		for _, resource := range unstructuredResources.Items {
-			servers := s.k8sAPI.GetServersForServerAuthorization(context.Background(), resource.GetNamespace(), resource.GetName())
-			for _, server := range servers {
-				key := sazKey{Namespace: resource.GetNamespace(), Server: server, ServerAuthorization: resource.GetName()}
-				resourceKeys = append(resourceKeys, key)
-			}
-		}
-
-	} else {
-		for _, resource := range unstructuredResources.Items {
-			key := sazKey{Namespace: resource.GetNamespace(), Server: resource.GetName()}
-			resourceKeys = append(resourceKeys, key)
-		}
+	var resourceKeys []rKey
+	for _, resource := range unstructuredResources.Items {
+		// Resource Key's type should be singular and lowercased while the kind isn't
+		resourceKeys = append(resourceKeys, rKey{Namespace: resource.GetNamespace(), Type: strings.ToLower(resource.GetKind()[0:len(resource.GetKind())]), Name: resource.GetName()})
 	}
-
 	return resourceKeys, nil
 }
 
@@ -451,8 +446,8 @@ func (s *grpcServer) policyResourceQuery(ctx context.Context, req *pb.StatSummar
 		return resourceResult{res: nil, err: err}
 	}
 
-	var requestMetrics map[sazKey]*pb.BasicStats
-	var tcpMetrics map[sazKey]*pb.TcpStats
+	var requestMetrics map[rKey]*pb.BasicStats
+	var tcpMetrics map[rKey]*pb.TcpStats
 	if !req.SkipStats {
 		requestMetrics, tcpMetrics, err = s.getPolicyMetrics(ctx, req, req.TimeWindow)
 		if err != nil {
@@ -464,20 +459,13 @@ func (s *grpcServer) policyResourceQuery(ctx context.Context, req *pb.StatSummar
 	for _, key := range policyResources {
 		row := pb.StatTable_PodGroup_Row{
 			Resource: &pb.Resource{
-				Name:      key.Server,
+				Name:      key.Name,
 				Namespace: key.Namespace,
 				Type:      req.GetSelector().GetResource().GetType(),
 			},
 			TimeWindow: req.TimeWindow,
 			Stats:      requestMetrics[key],
 			TcpStats:   tcpMetrics[key],
-		}
-
-		// Attach `ServerAuthorizationStats` if the query has that field set
-		if key.ServerAuthorization != "" {
-			row.SazStats = &pb.ServerAuthorizationStats{
-				ServerAuthorization: key.ServerAuthorization,
-			}
 		}
 
 		rows = append(rows, &row)
@@ -724,10 +712,7 @@ func buildServerRequestLabels(req *pb.StatSummaryRequest, resourceLabel model.La
 		// no extra labels needed
 	}
 
-	groupBy := model.LabelNames{namespaceLabel, serverLabel}
-	if resourceLabel == serverAuthorizationLabel {
-		groupBy = append(groupBy, serverAuthorizationLabel)
-	}
+	groupBy := model.LabelNames{namespaceLabel, resourceLabel}
 
 	return labels, groupBy
 }
@@ -872,7 +857,7 @@ func (s *grpcServer) getServiceMetrics(ctx context.Context, req *pb.StatSummaryR
 	return dstBasicStats, dstTCPStats, nil
 }
 
-func (s *grpcServer) getPolicyMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[sazKey]*pb.BasicStats, map[sazKey]*pb.TcpStats, error) {
+func (s *grpcServer) getPolicyMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats, error) {
 
 	var resourceLabel model.LabelName
 	if req.GetSelector().GetResource().GetType() == k8s.Server {
@@ -911,78 +896,8 @@ func (s *grpcServer) getPolicyMetrics(ctx context.Context, req *pb.StatSummaryRe
 		return nil, nil, err
 	}
 
-	basicStats, tcpStats := processPolicyPrometheusMetrics(results, groupBy)
+	basicStats, tcpStats := processPrometheusMetrics(req, results, groupBy)
 	return basicStats, tcpStats, nil
-}
-
-func processPolicyPrometheusMetrics(results []promResult, groupBy model.LabelNames) (map[sazKey]*pb.BasicStats, map[sazKey]*pb.TcpStats) {
-	basicStats := make(map[sazKey]*pb.BasicStats)
-	tcpStats := make(map[sazKey]*pb.TcpStats)
-
-	for _, result := range results {
-		for _, sample := range result.vec {
-			resource := policyMetricToKey(sample.Metric, groupBy)
-
-			addBasicStats := func() {
-				if basicStats[resource] == nil {
-					basicStats[resource] = &pb.BasicStats{}
-				}
-			}
-			addTCPStats := func() {
-				if tcpStats[resource] == nil {
-					tcpStats[resource] = &pb.TcpStats{}
-				}
-			}
-
-			value := extractSampleValue(sample)
-
-			switch result.prom {
-			case promRequests:
-				addBasicStats()
-				switch string(sample.Metric[model.LabelName("classification")]) {
-				case success:
-					basicStats[resource].SuccessCount += value
-				case failure:
-					basicStats[resource].FailureCount += value
-				}
-			case promLatencyP50:
-				addBasicStats()
-				basicStats[resource].LatencyMsP50 = value
-			case promLatencyP95:
-				addBasicStats()
-				basicStats[resource].LatencyMsP95 = value
-			case promLatencyP99:
-				addBasicStats()
-				basicStats[resource].LatencyMsP99 = value
-			case promTCPConnections:
-				addTCPStats()
-				tcpStats[resource].OpenConnections = value
-			case promTCPReadBytes:
-				addTCPStats()
-				tcpStats[resource].ReadBytesTotal = value
-			case promTCPWriteBytes:
-				addTCPStats()
-				tcpStats[resource].WriteBytesTotal = value
-			}
-
-		}
-	}
-
-	return basicStats, tcpStats
-}
-
-func policyMetricToKey(metric model.Metric, groupBy model.LabelNames) sazKey {
-	// ASSUMPTION: this code assumes that groupBy is always ordered (namespace, srv_name, saz_name)
-	key := sazKey{
-		Server:    string(metric[serverLabel]),
-		Namespace: string(metric[namespaceLabel]),
-	}
-
-	if len(groupBy) == 3 {
-		key.ServerAuthorization = string(metric[serverAuthorizationLabel])
-	}
-
-	return key
 }
 
 func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, groupBy model.LabelNames) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats) {

@@ -3,7 +3,6 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -28,7 +27,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -1009,68 +1007,6 @@ func (api *API) GetServices(namespace, name string) ([]*corev1.Service, error) {
 	}
 
 	return services, err
-}
-
-// GetServersForServerAuthorization returns a list of Servers for a ServerAuthorization resource
-func (api *API) GetServersForServerAuthorization(ctx context.Context, namespace, name string) []string {
-	saz, err := api.DynamicClient.Resource(k8s.ServerAuthorizationGroupVersionResource).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to get server resources: %s\n", err)
-		os.Exit(1)
-	}
-
-	var servers []string
-	if name, found, _ := unstructured.NestedString(saz.UnstructuredContent(), "spec", "server", "name"); found {
-		server, err := api.DynamicClient.Resource(k8s.ServerGroupVersionResource).Namespace(saz.GetNamespace()).Get(ctx, name, metav1.GetOptions{})
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to get server %s: %s\n", name, err)
-			os.Exit(1)
-		}
-		servers = []string{server.GetName()}
-	} else if sel, found, _ := unstructured.NestedMap(saz.UnstructuredContent(), "spec", "server", "selector"); found {
-		selector := selector(sel)
-		serverList, err := api.DynamicClient.Resource(k8s.ServerGroupVersionResource).Namespace(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: metav1.FormatLabelSelector(&selector)})
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to get servers: %s\n", err)
-			os.Exit(1)
-		}
-		for _, server := range serverList.Items {
-			servers = append(servers, server.GetName())
-		}
-	}
-
-	return servers
-}
-
-func selector(selector map[string]interface{}) metav1.LabelSelector {
-	if labels, found, err := unstructured.NestedStringMap(selector, "matchLabels"); found && err == nil {
-		return metav1.LabelSelector{MatchLabels: labels}
-	}
-	if expressions, found, err := unstructured.NestedSlice(selector, "matchExpressions"); found && err == nil {
-		exprs := make([]metav1.LabelSelectorRequirement, len(expressions))
-		for i, expr := range expressions {
-			exprs[i] = matchExpression(expr)
-		}
-		return metav1.LabelSelector{MatchExpressions: exprs}
-	}
-	return metav1.LabelSelector{}
-}
-
-func matchExpression(expr interface{}) metav1.LabelSelectorRequirement {
-	if exprMap, ok := expr.(map[string]interface{}); ok {
-		if key, found, err := unstructured.NestedString(exprMap, "key"); found && err == nil {
-			if op, found, err := unstructured.NestedString(exprMap, "operator"); found && err == nil {
-				if values, found, err := unstructured.NestedStringSlice(exprMap, "values"); found && err == nil {
-					return metav1.LabelSelectorRequirement{
-						Key:      key,
-						Operator: metav1.LabelSelectorOperator(op),
-						Values:   values,
-					}
-				}
-			}
-		}
-	}
-	return metav1.LabelSelectorRequirement{}
 }
 
 // GetServicesFor returns all Service resources which include a pod of the given

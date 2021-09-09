@@ -146,7 +146,7 @@ func newClient(apiURL *url.URL, httpClientToUse *http.Client, namespace string) 
 // NewInternalClient creates a new Viz API client intended to run inside a
 // Kubernetes cluster.
 func NewInternalClient(namespace string, kubeAPIHost string) (pb.ApiClient, error) {
-	apiURL, err := url.Parse(fmt.Sprintf("http://%s/", kubeAPIHost))
+	apiURL, err := url.Parse("http://localhost:8085")
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +171,7 @@ func NewExternalClient(ctx context.Context, namespace string, kubeAPI *k8s.Kuber
 		return nil, err
 	}
 
-	apiURL, err := url.Parse(portforward.URLFor(""))
+	apiURL, err := url.Parse("http://localhost:8085")
 	if err != nil {
 		return nil, err
 	}
