@@ -32,6 +32,8 @@ helm repo add linkerd https://helm.linkerd.io/stable
 helm repo add linkerd-edge https://helm.linkerd.io/edge
 ```
 
+Use the same CA certficate generated when installing Linkerd2.
+
 The following instructions use the `linkerd` repo. For installing an edge
 release, just replace with `linkerd-edge`.
 
@@ -40,13 +42,13 @@ release, just replace with `linkerd-edge`.
 ### Helm v3
 
 ```bash
-helm install linkerd-viz linkerd/linkerd-viz
+helm install linkerd-viz --set-file identityTrustAnchorsPEM=ca.crt linkerd/linkerd-viz
 ```
 
 ### Helm v2
 
 ```bash
-helm install --name linkerd-viz linkerd/linkerd-viz
+helm install --name linkerd-viz --set-file identityTrustAnchorsPEM=ca.crt linkerd/linkerd-viz
 ```
 
 ## Get involved
