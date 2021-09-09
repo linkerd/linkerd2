@@ -39,7 +39,6 @@ jobs:
       with:
         command: check bans licenses sources
 
-
   clippy:
     timeout-minutes: 5
     runs-on: ubuntu-latest
