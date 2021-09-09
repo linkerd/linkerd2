@@ -127,6 +127,9 @@ case $(uname) in
     ;;
 esac
 
+# Images created based off PRs use the ghcr.io registry, so override the
+# default here when pulling the binary.
+export DOCKER_REGISTRY=ghcr.io/linkerd
 linkerd=$("$bindir"/docker-pull-binaries "$tag" | awk -v platform=$platform '$0 ~ platform')
 
 echo ""
