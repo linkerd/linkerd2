@@ -5,7 +5,7 @@ ARG RUNTIME_IMAGE=gcr.io/distroless/cc
 FROM $RUST_IMAGE as build
 ARG TARGETARCH
 WORKDIR /build
-COPY . /build
+COPY Cargo.toml Cargo.lock policy-controller/ /build/
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.54.0-buster,source=/usr/local/cargo,target=/usr/local/cargo \
     cargo build --locked --target=x86_64-unknown-linux-gnu --release --package=linkerd-policy-controller && \

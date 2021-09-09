@@ -67,7 +67,7 @@ jobs:
     - name: Build ${{ matrix.arch }}
       run: |
         echo "${{ secrets.DOCKER_GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.DOCKER_GHCR_USERNAME }}" --password-stdin
-        docker buildx build --push ./policy-controller/ \
+        docker buildx build --push . \
           -f ./policy-controller/${{ matrix.arch }}.dockerfile \
           -t $DOCKER_REGISTRY/policy-controller:$TAG-${{ matrix.arch }}
 
