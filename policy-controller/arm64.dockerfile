@@ -8,7 +8,7 @@ RUN apt-get update && \
     rustup target add aarch64-unknown-linux-gnu
 ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
 WORKDIR /build
-COPY . /build
+COPY Cargo.toml Cargo.lock policy-controller/ /build/
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.54.0-buster,source=/usr/local/cargo,target=/usr/local/cargo \
     cargo build --locked --release --target=aarch64-unknown-linux-gnu --package=linkerd-policy-controller && \

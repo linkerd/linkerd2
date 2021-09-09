@@ -12,7 +12,7 @@ rustfmt = ["linkerd2-proxy-api/rustfmt"]
 async-stream = "0.3"
 async-trait = "0.1"
 drain = "0.1"
-futures = "0.3"
+futures = { version = "0.3", default-features = false }
 linkerd2-proxy-api = { version = "0.2", features = ["inbound", "server"] }
 linkerd-policy-controller-core = { path = "../core" }
 tokio = { version = "1", features = ["macros"] }

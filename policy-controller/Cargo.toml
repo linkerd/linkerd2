@@ -13,7 +13,7 @@ rustls = ["kube/rustls-tls"]
 [dependencies]
 anyhow = "1"
 drain = "0.1"
-futures = "0.3"
+futures = { version = "0.3", default-features = false }
 hyper = { version = "0.14", features = ["http1", "http2", "runtime", "server"] }
 kube = { version = "0.60", default-features = false, features = ["admission", "client"] }
 linkerd-policy-controller-core = { path = "./core" }
@@ -26,16 +26,3 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "parking
 tracing = "0.1"
 tracing-subscriber = { version = "0.2", default-features = false, features = ["env-filter", "fmt", "tracing-log"] }
 warp = { version = "0.3", default-features = false, features = ["tls"] }
-
-[workspace]
-resolver = "2"
-members = [
-    ".",
-    "./core",
-    "./grpc",
-    "./k8s/api",
-    "./k8s/index"
-]
-
-[profile.release]
-lto = true
