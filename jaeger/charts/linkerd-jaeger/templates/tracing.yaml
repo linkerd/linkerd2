@@ -96,6 +96,7 @@ spec:
             port: 13133
         name: ot-collector
         ports:
+        - containerPort: 13133
         - containerPort: 4317
         - containerPort: 55678
         - containerPort: 9411

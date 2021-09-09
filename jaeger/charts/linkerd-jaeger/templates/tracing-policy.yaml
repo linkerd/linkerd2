@@ -1,0 +1,194 @@
+{{ if .Values.collector.enabled -}}
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  namespace: {{.Values.namespace}}
+  name: collector-otlp
+  labels:
+    linkerd.io/extension: jaeger
+    component: collector
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  podSelector:
+    matchLabels:
+      component: collector
+  port: 4317
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  namespace: {{.Values.namespace}}
+  name: collector-opencensus
+  labels:
+    linkerd.io/extension: jaeger
+    component: collector
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  podSelector:
+    matchLabels:
+      component: collector
+  port: 55678
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  namespace: {{.Values.namespace}}
+  name: collector-zipkin
+  labels:
+    linkerd.io/extension: jaeger
+    component: collector
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  podSelector:
+    matchLabels:
+      component: collector
+  port: 9411
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  namespace: {{.Values.namespace}}
+  name: collector-jaeger-thrift
+  labels:
+    linkerd.io/extension: jaeger
+    component: collector
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  podSelector:
+    matchLabels:
+      component: collector
+  port: 14268
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  namespace: {{.Values.namespace}}
+  name: collector-jaeger-grpc
+  labels:
+    linkerd.io/extension: jaeger
+    component: collector
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  podSelector:
+    matchLabels:
+      component: collector
+  port: 14250
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  namespace: {{.Values.namespace}}
+  name: collector-admin
+  labels:
+    linkerd.io/extension: jaeger
+    component: collector
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  podSelector:
+    matchLabels:
+      component: collector
+  port: 13133
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: ServerAuthorization
+metadata:
+  namespace: {{.Values.namespace}}
+  name: collector
+  labels:
+    linkerd.io/extension: jaeger
+    component: collector
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  server:
+    selector:
+      matchLabels:
+        linkerd.io/extension: jaeger
+        component: collector
+  client:
+    unauthenticated: true
+{{ end -}}
+{{ if .Values.jaeger.enabled -}}
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  namespace: {{.Values.namespace}}
+  name: jaeger-grpc
+  labels:
+    linkerd.io/extension: jaeger
+    component: jaeger
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  podSelector:
+    matchLabels:
+      component: jaeger
+  port: grpc
+  proxyProtocol: gRPC
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: ServerAuthorization
+metadata:
+  namespace: {{.Values.namespace}}
+  name: jaeger-grpc
+  labels:
+    linkerd.io/extension: jaeger
+    component: jaeger
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  server:
+    name: jaeger-grpc
+  client:
+    meshTLS:
+      identities:
+      - collector.{{.Values.namespace}}.serviceaccount.identity.linkerd.cluster.local
+      # if not using linkerd-viz' prometheus, replace its identity here
+      - prometheus.linkerd-viz.serviceaccount.identity.linkerd.linkerd.cluster.local
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  namespace: {{.Values.namespace}}
+  name: jaeger-ui
+  labels:
+    linkerd.io/extension: jaeger
+    component: jaeger
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  podSelector:
+    matchLabels:
+      component: jaeger
+  port: ui
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: ServerAuthorization
+metadata:
+  namespace: {{.Values.namespace}}
+  name: jaeger-ui
+  labels:
+    linkerd.io/extension: jaeger
+    component: jaeger
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  server:
+    name: jaeger-ui
+  client:
+    meshTLS:
+      identities:
+      # for the optional dashboard integration
+      - web.linkerd-viz.serviceaccount.identity.linkerd.cluster.local
+{{ end -}}

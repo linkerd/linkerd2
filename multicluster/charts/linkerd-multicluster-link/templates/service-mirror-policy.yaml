@@ -1,0 +1,31 @@
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  namespace: {{.Values.namespace}}
+  name: service-mirror
+  labels:
+    linkerd.io/control-plane-component: linkerd-service-mirror
+    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+spec:
+  podSelector:
+    matchLabels:
+      linkerd.io/control-plane-component: linkerd-service-mirror
+      mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+  port: admin-http
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: ServerAuthorization
+metadata:
+  namespace: {{.Values.namespace}}
+  name: service-mirror
+  labels:
+    linkerd.io/control-plane-component: linkerd-service-mirror
+    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+spec:
+  server:
+    name: service-mirror
+  client:
+    # Allow prometheus scraping
+    unauthenticated: true

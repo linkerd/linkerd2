@@ -32,6 +32,31 @@ spec:
     port: 9090
     targetPort: 9090
 ---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  name: smoke-test-terminus
+spec:
+  podSelector:
+    matchLabels:
+      app: smoke-test-terminus
+  port: 9090
+  proxyProtocol: gRPC
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: ServerAuthorization
+metadata:
+  name: smoke-test-terminus
+spec:
+  server:
+    name: smoke-test-terminus
+  client:
+    meshTLS:
+      identities:
+      - default.linkerd-smoke-test.serviceaccount.identity.linkerd.cluster.local
+      - default.linkerd-smoke-test-manual.serviceaccount.identity.linkerd.cluster.local
+      - default.linkerd-smoke-test-ann.serviceaccount.identity.linkerd.cluster.local
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:

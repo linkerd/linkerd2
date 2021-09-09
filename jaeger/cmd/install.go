@@ -26,9 +26,11 @@ var (
 	templatesJaeger = []string{
 		"templates/namespace.yaml",
 		"templates/jaeger-injector.yaml",
+		"templates/jaeger-injector-policy.yaml",
 		"templates/rbac.yaml",
 		"templates/psp.yaml",
 		"templates/tracing.yaml",
+		"templates/tracing-policy.yaml",
 	}
 )
 

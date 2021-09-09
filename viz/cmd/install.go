@@ -30,12 +30,18 @@ var (
 		"templates/web-rbac.yaml",
 		"templates/psp.yaml",
 		"templates/metrics-api.yaml",
+		"templates/metrics-api-policy.yaml",
 		"templates/grafana.yaml",
+		"templates/grafana-policy.yaml",
 		"templates/prometheus.yaml",
+		"templates/prometheus-policy.yaml",
 		"templates/tap.yaml",
+		"templates/tap-policy.yaml",
 		"templates/tap-injector-rbac.yaml",
 		"templates/tap-injector.yaml",
+		"templates/tap-injector-policy.yaml",
 		"templates/web.yaml",
+		"templates/web-policy.yaml",
 		"templates/service-profiles.yaml",
 	}
 )
