@@ -89,11 +89,11 @@ func TestLocalhostServer(t *testing.T) {
 			// TODO: Update this test to expect these requests to fail once
 			// https://github.com/linkerd/linkerd2/issues/6495 is fixed.  Requests
 			// sent to a port which is only bound to localhost should fail.
-			if *stats[0].Success != 1.0 {
-				return fmt.Errorf("expected perfect success-rate from slowcooker to nginx: %s", out)
+			if *stats[0].Success >= 1.0 {
+				return fmt.Errorf("expected zero success-rate from slowcooker to nginx: %s", out)
 			}
-			if *stats[0].TCPOpenConnections == 0 {
-				return fmt.Errorf("expected tcp connection from slowcooker to nginx: %s", out)
+			if *stats[0].TCPOpenConnections > 0 {
+				return fmt.Errorf("expected no tcp connection from slowcooker to nginx: %s", out)
 			}
 
 			return nil
