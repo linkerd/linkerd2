@@ -204,6 +204,14 @@ func getPodsForResourceOrKind(ctx context.Context, k8sAPI kubernetes.Interface, 
 		return nil, fmt.Errorf("invalid resource: %s", resource)
 	}
 	switch typ {
+	case k8s.Pod:
+		ps, err := k8sAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to get pods: %s", err)
+			os.Exit(1)
+		}
+		pods = append(pods, ps.Items...)
+
 	case k8s.CronJob:
 		jobs, err := k8sAPI.BatchV1().CronJobs(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
