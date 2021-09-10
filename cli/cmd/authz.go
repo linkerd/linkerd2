@@ -39,7 +39,27 @@ func newCmdAuthz() *cobra.Command {
 		Use:   "authz [flags] resource",
 		Short: "List server authorizations for a resource",
 		Long:  "List server authorizations for a resource.",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.RangeArgs(1, 2),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+
+			if namespace == "" {
+				namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
+			}
+
+			cc := k8s.NewCommandCompletion(k8sAPI, namespace)
+
+			results, err := cc.Complete(args, toComplete)
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+
+			return results, cobra.ShellCompDirectiveDefault
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if namespace == "" {
@@ -51,7 +71,14 @@ func newCmdAuthz() *cobra.Command {
 				return err
 			}
 
-			pods, err := getPodsForResourceOrKind(cmd.Context(), k8sAPI, namespace, args[0])
+			var resource string
+			if len(args) == 1 {
+				resource = args[0]
+			} else if len(args) == 2 {
+				resource = args[0] + "/" + args[1]
+			}
+
+			pods, err := getPodsForResourceOrKind(cmd.Context(), k8sAPI, namespace, resource)
 			if err != nil {
 				return err
 			}
@@ -64,7 +91,7 @@ func newCmdAuthz() *cobra.Command {
 
 			sazs, err := k8sAPI.DynamicClient.Resource(sazGVR).Namespace(namespace).List(cmd.Context(), metav1.ListOptions{})
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to get server resources: %s\n", err)
+				fmt.Fprintf(os.Stderr, "Failed to get serverauthorization resources: %s\n", err)
 				os.Exit(1)
 			}
 
