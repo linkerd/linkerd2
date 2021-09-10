@@ -178,6 +178,7 @@ impl SrvIndex {
 
     /// Update the index with a server instance.
     fn apply(&mut self, srv: policy::Server, ns_authzs: &AuthzIndex) {
+        trace!(?srv, "Applying server");
         let srv_name = srv.name();
         let port = srv.spec.port;
         let protocol = Self::mk_protocol(srv.spec.proxy_protocol.as_ref());
@@ -209,6 +210,8 @@ impl SrvIndex {
             }
 
             HashEntry::Occupied(mut entry) => {
+                trace!(srv = ?entry.get(), "Updating existing server");
+
                 // If something about the server changed, we need to update the config to reflect
                 // the change.
                 let new_labels = if entry.get().labels != srv.metadata.labels {
@@ -217,7 +220,7 @@ impl SrvIndex {
                     None
                 };
 
-                let new_protocol = if entry.get().protocol == protocol {
+                let new_protocol = if entry.get().protocol != protocol {
                     Some(protocol)
                 } else {
                     None
