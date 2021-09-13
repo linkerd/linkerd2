@@ -2258,7 +2258,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 	return nil
 }
 
-// getEndpointsPods takes a collection of endpoints and returns a map of all
+// getEndpointsPods takes a collection of endpoints and returns the set of all
 // the pods that they target.
 func getEndpointsPods(endpoints *corev1.Endpoints, kubeAPI *controllerK8s.API, namespace string) (map[*corev1.Pod]struct{}, error) {
 	pods := make(map[*corev1.Pod]struct{})
