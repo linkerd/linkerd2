@@ -32,9 +32,9 @@ spec:
     name: metrics-api
   client:
     meshTLS:
-      identities:
-      - web.{{.Values.namespace}}.serviceaccount.identity.linkerd.{{.Values.clusterDomain}}
-      - prometheus.{{.Values.namespace}}.serviceaccount.identity.linkerd.{{.Values.clusterDomain}}
+      serviceAccounts:
+      - name: web
+      - name: prometheus
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: Server

@@ -52,10 +52,13 @@ spec:
     name: smoke-test-terminus
   client:
     meshTLS:
-      identities:
-      - default.linkerd-smoke-test.serviceaccount.identity.linkerd.cluster.local
-      - default.linkerd-smoke-test-manual.serviceaccount.identity.linkerd.cluster.local
-      - default.linkerd-smoke-test-ann.serviceaccount.identity.linkerd.cluster.local
+      serviceAccounts:
+      - name: default
+        namespace: linkerd-smoke-test
+      - name: default
+        namespace: linkerd-smoke-test-manual
+      - name: default
+        namespace: linkerd-smoke-test-ann
 ---
 apiVersion: apps/v1
 kind: Deployment

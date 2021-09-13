@@ -151,10 +151,11 @@ spec:
     name: jaeger-grpc
   client:
     meshTLS:
-      identities:
-      - collector.{{.Values.namespace}}.serviceaccount.identity.linkerd.cluster.local
-      # if not using linkerd-viz' prometheus, replace its identity here
-      - prometheus.linkerd-viz.serviceaccount.identity.linkerd.linkerd.cluster.local
+      serviceAccounts:
+      - name: collector
+      # if not using linkerd-viz' prometheus, replace its SA here
+      - name: prometheus
+        namespace: linkerd-viz
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: Server
@@ -188,7 +189,8 @@ spec:
     name: jaeger-ui
   client:
     meshTLS:
-      identities:
+      serviceAccounts:
       # for the optional dashboard integration
-      - web.linkerd-viz.serviceaccount.identity.linkerd.cluster.local
+      - name: web
+        namespace: linkerd-viz
 {{ end -}}
