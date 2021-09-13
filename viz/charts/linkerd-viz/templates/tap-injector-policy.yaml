@@ -54,4 +54,7 @@ spec:
   client:
     # traffic coming from the kubelet and from kube-api
     unauthenticated: true
-
+{{- $tree := deepCopy . }}
+{{ $_ := set $tree.Values "component" "tap-injector" -}}
+{{ $_ := set $tree.Values "labels" (dict "linkerd.io/extension" "viz" "component" "tap-injector") -}}
+{{ include "partials.ext-proxy-admin-policy" $tree }}

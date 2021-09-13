@@ -27,6 +27,7 @@ var (
 		"charts/partials/templates/_volumes.tpl",
 		"charts/partials/templates/_resources.tpl",
 		"charts/partials/templates/_metadata.tpl",
+		"charts/partials/templates/_ext-proxy-admin-policy.tpl",
 		"charts/partials/templates/_helpers.tpl",
 		"charts/partials/templates/_debug.tpl",
 		"charts/partials/templates/_capabilities.tpl",

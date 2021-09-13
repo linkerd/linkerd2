@@ -504,9 +504,9 @@ spec:
     name: metrics-api
   client:
     meshTLS:
-      identities:
-      - web.linkerd-viz.serviceaccount.identity.linkerd.cluster.local
-      - prometheus.linkerd-viz.serviceaccount.identity.linkerd.cluster.local
+      serviceAccounts:
+      - name: web
+      - name: prometheus
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: Server
@@ -539,6 +539,40 @@ metadata:
 spec:
   server:
     name: metrics-api-admin
+  client:
+    unauthenticated: true
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  namespace: linkerd-viz
+  name: metrics-api-proxy-admin
+  labels:
+    component: metrics-api
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  podSelector:
+    matchLabels:
+      component: metrics-api
+      linkerd.io/extension: viz
+  port: linkerd-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: ServerAuthorization
+metadata:
+  namespace: linkerd-viz
+  name: metrics-api-proxy-admin
+  labels:
+    component: metrics-api
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  server:
+    name: metrics-api-proxy-admin
   client:
     unauthenticated: true
 ---
@@ -736,6 +770,40 @@ spec:
     name: grafana
   client:
     # web, prometheus and the kubelet probes
+    unauthenticated: true
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  namespace: linkerd-viz
+  name: grafana-proxy-admin
+  labels:
+    component: grafana
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  podSelector:
+    matchLabels:
+      component: grafana
+      linkerd.io/extension: viz
+  port: linkerd-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: ServerAuthorization
+metadata:
+  namespace: linkerd-viz
+  name: grafana-proxy-admin
+  labels:
+    component: grafana
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  server:
+    name: grafana-proxy-admin
+  client:
     unauthenticated: true
 ---
 ###
@@ -1023,6 +1091,40 @@ spec:
   client:
     unauthenticated: true
 ---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  namespace: linkerd-viz
+  name: prometheus-proxy-admin
+  labels:
+    component: prometheus
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  podSelector:
+    matchLabels:
+      component: prometheus
+      linkerd.io/extension: viz
+  port: linkerd-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: ServerAuthorization
+metadata:
+  namespace: linkerd-viz
+  name: prometheus-proxy-admin
+  labels:
+    component: prometheus
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  server:
+    name: prometheus-proxy-admin
+  client:
+    unauthenticated: true
+---
 ###
 ### Tap
 ###
@@ -1160,7 +1262,7 @@ spec:
       linkerd.io/extension: viz
       component: tap
   port: apiserver
-  proxyProtocol: HTTP/1
+  proxyProtocol: TLS
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: ServerAuthorization
@@ -1180,6 +1282,40 @@ spec:
         component: tap
   client:
     # traffic coming from the kubelet and from kube-api
+    unauthenticated: true
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  namespace: linkerd-viz
+  name: tap-proxy-admin
+  labels:
+    component: tap
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  podSelector:
+    matchLabels:
+      component: tap
+      linkerd.io/extension: viz
+  port: linkerd-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: ServerAuthorization
+metadata:
+  namespace: linkerd-viz
+  name: tap-proxy-admin
+  labels:
+    component: tap
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  server:
+    name: tap-proxy-admin
+  client:
     unauthenticated: true
 ---
 ###
@@ -1397,7 +1533,40 @@ spec:
   client:
     # traffic coming from the kubelet and from kube-api
     unauthenticated: true
-
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  namespace: linkerd-viz
+  name: tap-injector-proxy-admin
+  labels:
+    component: tap-injector
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  podSelector:
+    matchLabels:
+      component: tap-injector
+      linkerd.io/extension: viz
+  port: linkerd-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: ServerAuthorization
+metadata:
+  namespace: linkerd-viz
+  name: tap-injector-proxy-admin
+  labels:
+    component: tap-injector
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  server:
+    name: tap-injector-proxy-admin
+  client:
+    unauthenticated: true
 ---
 ###
 ### Web
@@ -1527,7 +1696,40 @@ spec:
     name: web
   client:
     unauthenticated: true
-
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  namespace: linkerd-viz
+  name: web-proxy-admin
+  labels:
+    component: web
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  podSelector:
+    matchLabels:
+      component: web
+      linkerd.io/extension: viz
+  port: linkerd-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: ServerAuthorization
+metadata:
+  namespace: linkerd-viz
+  name: web-proxy-admin
+  labels:
+    component: web
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  server:
+    name: web-proxy-admin
+  client:
+    unauthenticated: true
 ---
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile

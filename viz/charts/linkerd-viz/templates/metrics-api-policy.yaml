@@ -69,3 +69,7 @@ spec:
     name: metrics-api-admin
   client:
     unauthenticated: true
+{{- $tree := deepCopy . }}
+{{ $_ := set $tree.Values "component" "metrics-api" -}}
+{{ $_ := set $tree.Values "labels" (dict "linkerd.io/extension" "viz" "component" "metrics-api") -}}
+{{ include "partials.ext-proxy-admin-policy" $tree }}

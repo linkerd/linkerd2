@@ -146,6 +146,40 @@ spec:
     # traffic coming from the kubelet and from kube-api
     unauthenticated: true
 ---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  namespace: linkerd-jaeger
+  name: jaeger-injector-proxy-admin
+  labels:
+    component: jaeger-injector
+    linkerd.io/extension: jaeger
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  podSelector:
+    matchLabels:
+      component: jaeger-injector
+      linkerd.io/extension: jaeger
+  port: linkerd-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: ServerAuthorization
+metadata:
+  namespace: linkerd-jaeger
+  name: jaeger-injector-proxy-admin
+  labels:
+    component: jaeger-injector
+    linkerd.io/extension: jaeger
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  server:
+    name: jaeger-injector-proxy-admin
+  client:
+    unauthenticated: true
+---
 ###
 ### collector RBAC
 ###
@@ -234,6 +268,7 @@ metadata:
   name: collector-config
   namespace: linkerd-jaeger
   labels:
+    linkerd.io/extension: jaeger
     component: collector
 data:
   collector-config: |
@@ -272,6 +307,7 @@ metadata:
   name: collector
   namespace: linkerd-jaeger
   labels:
+    linkerd.io/extension: jaeger
     component: collector
 spec:
   type: ClusterIP
@@ -303,6 +339,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
+    linkerd.io/extension: jaeger
     app.kubernetes.io/name: collector
     app.kubernetes.io/part-of: Linkerd
     component: collector
@@ -322,6 +359,7 @@ spec:
         prometheus.io/port: "8888"
         prometheus.io/scrape: "true"
       labels:
+        linkerd.io/extension: jaeger
         component: collector
     spec:
       nodeSelector:
@@ -483,5 +521,39 @@ spec:
       matchLabels:
         linkerd.io/extension: jaeger
         component: collector
+  client:
+    unauthenticated: true
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  namespace: linkerd-jaeger
+  name: collector-proxy-admin
+  labels:
+    component: collector
+    linkerd.io/extension: jaeger
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  podSelector:
+    matchLabels:
+      component: collector
+      linkerd.io/extension: jaeger
+  port: linkerd-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: ServerAuthorization
+metadata:
+  namespace: linkerd-jaeger
+  name: collector-proxy-admin
+  labels:
+    component: collector
+    linkerd.io/extension: jaeger
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  server:
+    name: collector-proxy-admin
   client:
     unauthenticated: true

@@ -116,6 +116,10 @@ spec:
         component: collector
   client:
     unauthenticated: true
+{{- $tree := deepCopy . }}
+{{ $_ := set $tree.Values "component" "collector" -}}
+{{ $_ := set $tree.Values "labels" (dict "linkerd.io/extension" "jaeger" "component" "collector") -}}
+{{ include "partials.ext-proxy-admin-policy" $tree }}
 {{ end -}}
 {{ if .Values.jaeger.enabled -}}
 ---
@@ -193,4 +197,8 @@ spec:
       # for the optional dashboard integration
       - name: web
         namespace: linkerd-viz
+{{- $tree := deepCopy . }}
+{{ $_ := set $tree.Values "component" "jaeger" -}}
+{{ $_ := set $tree.Values "labels" (dict "linkerd.io/extension" "jaeger" "component" "jaeger") -}}
+{{ include "partials.ext-proxy-admin-policy" $tree }}
 {{ end -}}

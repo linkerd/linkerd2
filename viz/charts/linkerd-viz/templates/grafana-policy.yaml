@@ -34,4 +34,8 @@ spec:
   client:
     # web, prometheus and the kubelet probes
     unauthenticated: true
+{{- $tree := deepCopy . }}
+{{ $_ := set $tree.Values "component" "grafana" -}}
+{{ $_ := set $tree.Values "labels" (dict "linkerd.io/extension" "viz" "component" "grafana") -}}
+{{ include "partials.ext-proxy-admin-policy" $tree }}
 {{ end -}}

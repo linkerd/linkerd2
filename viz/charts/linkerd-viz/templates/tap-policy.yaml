@@ -33,7 +33,7 @@ spec:
       linkerd.io/extension: viz
       component: tap
   port: apiserver
-  proxyProtocol: HTTP/1
+  proxyProtocol: TLS
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: ServerAuthorization
@@ -54,3 +54,7 @@ spec:
   client:
     # traffic coming from the kubelet and from kube-api
     unauthenticated: true
+{{- $tree := deepCopy . }}
+{{ $_ := set $tree.Values "component" "tap" -}}
+{{ $_ := set $tree.Values "labels" (dict "linkerd.io/extension" "viz" "component" "tap") -}}
+{{ include "partials.ext-proxy-admin-policy" $tree }}

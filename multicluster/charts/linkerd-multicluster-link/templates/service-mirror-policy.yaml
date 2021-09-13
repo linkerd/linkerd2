@@ -29,3 +29,8 @@ spec:
   client:
     # Allow prometheus scraping
     unauthenticated: true
+{{- $tree := deepCopy . }}
+{{ $_ := set $tree.Values "component" "linkerd-service-mirror" -}}
+{{ $val := .Values.targetClusterName }}
+{{ $_ := set $tree.Values "labels" (dict "linkerd.io/control-plane-component" "linkerd-service-mirror" "mirror.linkerd.io/cluster-name" $val) -}}
+{{ include "partials.ext-proxy-admin-policy" $tree }}

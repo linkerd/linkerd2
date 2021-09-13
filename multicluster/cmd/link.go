@@ -11,6 +11,7 @@ import (
 	"github.com/linkerd/linkerd2/multicluster/static"
 	multicluster "github.com/linkerd/linkerd2/multicluster/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
+	partials "github.com/linkerd/linkerd2/pkg/charts/static"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -264,13 +265,25 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				{Name: "templates/gateway-mirror.yaml"},
 			}
 
+			var partialFiles []*chartloader.BufferedFile
+			for _, template := range charts.L5dPartials {
+				partialFiles = append(partialFiles,
+					&chartloader.BufferedFile{Name: template},
+				)
+			}
+
 			// Load all multicluster link chart files into buffer
 			if err := charts.FilesReader(static.Templates, helmMulticlusterLinkDefaultChartName+"/", files); err != nil {
 				return err
 			}
 
+			// Load all partial chart files into buffer
+			if err := charts.FilesReader(partials.Templates, "", partialFiles); err != nil {
+				return err
+			}
+
 			// Create a Chart obj from the files
-			chart, err := chartloader.LoadFiles(files)
+			chart, err := chartloader.LoadFiles(append(files, partialFiles...))
 			if err != nil {
 				return err
 			}
