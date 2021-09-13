@@ -3,11 +3,6 @@ on:
   pull_request:
     paths-ignore:
     - 'web/app/package.json'
-  push:
-    paths-ignore:
-    - 'web/app/package.json'
-    branches:
-    - main
 permissions: 
   contents: read
 jobs:
