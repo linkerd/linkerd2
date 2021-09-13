@@ -569,7 +569,7 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			fmt.Sprintf(apexTemplate, apexHeader),
 			fmt.Sprintf(leafTemplate, leafHeader),
 			fmt.Sprintf(weightTemplate, weightHeader))
-	} else if resourceType != k8s.Server {
+	} else if resourceType != k8s.Server && resourceType != k8s.ServerAuthorization {
 		headers = append(headers, "MESHED")
 	}
 
