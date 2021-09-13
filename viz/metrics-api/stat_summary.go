@@ -867,9 +867,11 @@ func (s *grpcServer) getPolicyMetrics(ctx context.Context, req *pb.StatSummaryRe
 	}
 
 	labels, groupBy := buildServerRequestLabels(req, resourceLabel)
-	labels = labels.Merge(model.LabelSet{
-		namespaceLabel: model.LabelValue(req.GetSelector().GetResource().GetNamespace()),
-	})
+	if req.GetSelector().GetResource().GetNamespace() != "" {
+		labels = labels.Merge(model.LabelSet{
+			namespaceLabel: model.LabelValue(req.GetSelector().GetResource().GetNamespace()),
+		})
+	}
 
 	if req.GetSelector().GetResource().GetName() != "" {
 		labels = labels.Merge(model.LabelSet{
