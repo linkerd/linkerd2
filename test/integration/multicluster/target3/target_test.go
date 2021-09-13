@@ -20,6 +20,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+// TestSetupTargetClusterResources applies the nginx-statefulset manifest in the target cluster in the "default" namespace.
 func TestSetupTargetClusterResources(t *testing.T) {
 	if err := TestHelper.CreateDataPlaneNamespaceIfNotExists(context.Background(), "default", nil); err != nil {
 		testutil.AnnotatedFatalf(t, "failed to create default namespace",
