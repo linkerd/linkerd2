@@ -398,7 +398,7 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 	return resourceResult{res: &rsp, err: nil}
 }
 
-func (s *grpcServer) getUnstructuredResources(req *pb.StatSummaryRequest) ([]rKey, error) {
+func (s *grpcServer) getPolicyResourceKeys(req *pb.StatSummaryRequest) ([]rKey, error) {
 	var err error
 	var unstructuredResources *unstructured.UnstructuredList
 
@@ -441,7 +441,7 @@ func (s *grpcServer) getUnstructuredResources(req *pb.StatSummaryRequest) ([]rKe
 
 func (s *grpcServer) policyResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
 
-	policyResources, err := s.getUnstructuredResources(req)
+	policyResources, err := s.getPolicyResourceKeys(req)
 	if err != nil {
 		return resourceResult{res: nil, err: err}
 	}
