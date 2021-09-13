@@ -326,12 +326,17 @@ type rowStats struct {
 	tcpWriteBytes      float64
 }
 
+type srvStats struct {
+	unauthorizedRate float64
+}
+
 type row struct {
 	meshed string
 	status string
 	*rowStats
 	*tsStats
 	*dstStats
+	*srvStats
 }
 
 type tsStats struct {
@@ -480,6 +485,12 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 				}
 			}
 		}
+
+		if r.SrvStats != nil {
+			statTables[resourceKey][key].srvStats = &srvStats{
+				unauthorizedRate: getSuccessRate(r.SrvStats.GetDeniedCount(), r.SrvStats.GetAllowedCount()),
+			}
+		}
 	}
 
 	switch options.outputFormat {
@@ -573,6 +584,10 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		headers = append(headers, "MESHED")
 	}
 
+	if resourceType == k8s.Server {
+		headers = append(headers, "UNAUTHORIZED")
+	}
+
 	headers = append(headers, []string{
 		"SUCCESS",
 		"RPS",
@@ -613,9 +628,12 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		} else if hasDstStats {
 			templateString = "%s\t%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
 			templateStringEmpty = "%s\t%s\t%s\t-\t-\t-\t-\t-\t"
-		} else if resourceType == k8s.Server || resourceType == k8s.ServerAuthorization {
+		} else if resourceType == k8s.ServerAuthorization {
 			templateString = "%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
 			templateStringEmpty = "%s\t-\t-\t-\t-\t-\t"
+		} else if resourceType == k8s.Server {
+			templateString = "%s\t%.1frps\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
+			templateStringEmpty = "%s\t%.1frps\t-\t-\t-\t-\t-\t"
 		}
 
 		if showTCPConns(resourceType) {
@@ -679,6 +697,16 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		} else if resourceType != k8s.ServerAuthorization && resourceType != k8s.Server {
 			values = append(values, []interface{}{
 				stats[key].meshed,
+			}...)
+		}
+
+		if resourceType == k8s.Server {
+			var unauthorizedRate float64
+			if stats[key].srvStats != nil {
+				unauthorizedRate = stats[key].srvStats.unauthorizedRate
+			}
+			values = append(values, []interface{}{
+				unauthorizedRate,
 			}...)
 		}
 

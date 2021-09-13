@@ -75,6 +75,8 @@ const (
 
 	reqQuery             = "sum(increase(response_total%s[%s])) by (%s, classification, tls)"
 	latencyQuantileQuery = "histogram_quantile(%s, sum(irate(response_latency_ms_bucket%s[%s])) by (le, %s))"
+	httpAuthzDenyQuery   = "sum(increase(inbound_http_authz_deny_total%s[%s])) by (%s)"
+	httpAuthzAllowQuery  = "sum(increase(inbound_http_authz_allow_total%s[%s])) by (%s)"
 	tcpConnectionsQuery  = "sum(tcp_open_connections%s) by (%s)"
 	tcpReadBytesQuery    = "sum(increase(tcp_read_bytes_total%s[%s])) by (%s)"
 	tcpWriteBytesQuery   = "sum(increase(tcp_write_bytes_total%s[%s])) by (%s)"
@@ -448,8 +450,9 @@ func (s *grpcServer) policyResourceQuery(ctx context.Context, req *pb.StatSummar
 
 	var requestMetrics map[rKey]*pb.BasicStats
 	var tcpMetrics map[rKey]*pb.TcpStats
+	var authzMetrics map[rKey]*pb.ServerStats
 	if !req.SkipStats {
-		requestMetrics, tcpMetrics, err = s.getPolicyMetrics(ctx, req, req.TimeWindow)
+		requestMetrics, tcpMetrics, authzMetrics, err = s.getPolicyMetrics(ctx, req, req.TimeWindow)
 		if err != nil {
 			return resourceResult{res: nil, err: err}
 		}
@@ -466,6 +469,7 @@ func (s *grpcServer) policyResourceQuery(ctx context.Context, req *pb.StatSummar
 			TimeWindow: req.TimeWindow,
 			Stats:      requestMetrics[key],
 			TcpStats:   tcpMetrics[key],
+			SrvStats:   authzMetrics[key],
 		}
 
 		rows = append(rows, &row)
@@ -691,13 +695,23 @@ func buildServiceRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSe
 	return labels, groupBy
 }
 
-func buildServerRequestLabels(req *pb.StatSummaryRequest, resourceLabel model.LabelName) (labels model.LabelSet, labelNames model.LabelNames) {
+func buildServerRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labelNames model.LabelNames) {
+	if req.GetSelector().GetResource().GetNamespace() != "" {
+		labels = labels.Merge(model.LabelSet{
+			namespaceLabel: model.LabelValue(req.GetSelector().GetResource().GetNamespace()),
+		})
+	}
+	var resourceLabel model.LabelName
+	if req.GetSelector().GetResource().GetType() == k8s.Server {
+		resourceLabel = serverLabel
+	} else if req.GetSelector().GetResource().GetType() == k8s.ServerAuthorization {
+		resourceLabel = serverAuthorizationLabel
+	}
 
-	// TODO: This method seems a bit redundant as only the group by labels and the direction are different
-
-	// Server metrics are always inbound
-	labels = model.LabelSet{
-		"direction": model.LabelValue("inbound"),
+	if req.GetSelector().GetResource().GetName() != "" {
+		labels = labels.Merge(model.LabelSet{
+			resourceLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
+		})
 	}
 
 	switch out := req.Outbound.(type) {
@@ -751,7 +765,7 @@ func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequ
 		return nil, nil, err
 	}
 
-	basicStats, tcpStats := processPrometheusMetrics(req, results, groupBy)
+	basicStats, tcpStats, _ := processPrometheusMetrics(req, results, groupBy)
 	return basicStats, tcpStats, nil
 }
 
@@ -774,7 +788,7 @@ func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSum
 	if err != nil {
 		return nil, err
 	}
-	basicStats, _ := processPrometheusMetrics(req, results, groupBy) // we don't need tcpStat info for traffic split
+	basicStats, _, _ := processPrometheusMetrics(req, results, groupBy) // we don't need tcpStat info for traffic split
 
 	for rKey, basicStatsVal := range basicStats {
 		tsBasicStats[tsKey{
@@ -822,7 +836,7 @@ func (s *grpcServer) getServiceMetrics(ctx context.Context, req *pb.StatSummaryR
 		return nil, nil, err
 	}
 
-	basicStats, tcpStats := processPrometheusMetrics(req, results, groupBy)
+	basicStats, tcpStats, _ := processPrometheusMetrics(req, results, groupBy)
 
 	for rKey, basicStatsVal := range basicStats {
 
@@ -857,54 +871,43 @@ func (s *grpcServer) getServiceMetrics(ctx context.Context, req *pb.StatSummaryR
 	return dstBasicStats, dstTCPStats, nil
 }
 
-func (s *grpcServer) getPolicyMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats, error) {
-
-	var resourceLabel model.LabelName
-	if req.GetSelector().GetResource().GetType() == k8s.Server {
-		resourceLabel = serverLabel
-	} else if req.GetSelector().GetResource().GetType() == k8s.ServerAuthorization {
-		resourceLabel = serverAuthorizationLabel
-	}
-
-	labels, groupBy := buildServerRequestLabels(req, resourceLabel)
-	if req.GetSelector().GetResource().GetNamespace() != "" {
-		labels = labels.Merge(model.LabelSet{
-			namespaceLabel: model.LabelValue(req.GetSelector().GetResource().GetNamespace()),
-		})
-	}
-
-	if req.GetSelector().GetResource().GetName() != "" {
-		labels = labels.Merge(model.LabelSet{
-			resourceLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
-		})
-	}
+func (s *grpcServer) getPolicyMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats, map[rKey]*pb.ServerStats, error) {
+	labels, groupBy := buildServerRequestLabels(req)
+	// Server metrics are always inbound
+	reqLabels := labels.Merge(model.LabelSet{
+		"direction": model.LabelValue("inbound"),
+	})
 
 	promQueries := make(map[promType]string)
 	if req.GetSelector().GetResource().GetType() == k8s.Server {
 		// TCP metrics are only supported with servers
 		if req.TcpStats {
 			// peer is always `src` as these are inbound metrics
-			tcpLabels := labels.Merge(promPeerLabel("src"))
+			tcpLabels := reqLabels.Merge(promPeerLabel("src"))
 			promQueries[promTCPConnections] = fmt.Sprintf(tcpConnectionsQuery, tcpLabels.String(), groupBy.String())
 			promQueries[promTCPReadBytes] = fmt.Sprintf(tcpReadBytesQuery, tcpLabels.String(), timeWindow, groupBy.String())
 			promQueries[promTCPWriteBytes] = fmt.Sprintf(tcpWriteBytesQuery, tcpLabels.String(), timeWindow, groupBy.String())
 		}
 	}
 
-	promQueries[promRequests] = fmt.Sprintf(reqQuery, labels, timeWindow, groupBy.String())
-	quantileQueries := generateQuantileQueries(latencyQuantileQuery, labels.String(), timeWindow, groupBy.String())
+	promQueries[promRequests] = fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupBy.String())
+	// Use `labels` as direction isn't present with authorization metrics
+	promQueries[promAllowedRequests] = fmt.Sprintf(httpAuthzAllowQuery, labels, timeWindow, groupBy.String())
+	promQueries[promDeniedRequests] = fmt.Sprintf(httpAuthzDenyQuery, labels, timeWindow, groupBy.String())
+	quantileQueries := generateQuantileQueries(latencyQuantileQuery, reqLabels.String(), timeWindow, groupBy.String())
 	results, err := s.getPrometheusMetrics(ctx, promQueries, quantileQueries)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	basicStats, tcpStats := processPrometheusMetrics(req, results, groupBy)
-	return basicStats, tcpStats, nil
+	basicStats, tcpStats, authzStats := processPrometheusMetrics(req, results, groupBy)
+	return basicStats, tcpStats, authzStats, nil
 }
 
-func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, groupBy model.LabelNames) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats) {
+func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, groupBy model.LabelNames) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats, map[rKey]*pb.ServerStats) {
 	basicStats := make(map[rKey]*pb.BasicStats)
 	tcpStats := make(map[rKey]*pb.TcpStats)
+	authzStats := make(map[rKey]*pb.ServerStats)
 
 	for _, result := range results {
 		for _, sample := range result.vec {
@@ -918,6 +921,12 @@ func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, 
 			addTCPStats := func() {
 				if tcpStats[resource] == nil {
 					tcpStats[resource] = &pb.TcpStats{}
+				}
+			}
+
+			addAuthzStats := func() {
+				if authzStats[resource] == nil {
+					authzStats[resource] = &pb.ServerStats{}
 				}
 			}
 
@@ -950,12 +959,17 @@ func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, 
 			case promTCPWriteBytes:
 				addTCPStats()
 				tcpStats[resource].WriteBytesTotal = value
+			case promAllowedRequests:
+				addAuthzStats()
+				authzStats[resource].AllowedCount = value
+			case promDeniedRequests:
+				addAuthzStats()
+				authzStats[resource].DeniedCount = value
 			}
-
 		}
 	}
 
-	return basicStats, tcpStats
+	return basicStats, tcpStats, authzStats
 }
 
 func metricToKey(req *pb.StatSummaryRequest, metric model.Metric, groupBy model.LabelNames) rKey {

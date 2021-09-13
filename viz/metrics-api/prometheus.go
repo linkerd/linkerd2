@@ -24,15 +24,17 @@ type promResult struct {
 }
 
 const (
-	promGatewayAlive   = promType("QUERY_GATEWAY_ALIVE")
-	promRequests       = promType("QUERY_REQUESTS")
-	promActualRequests = promType("QUERY_ACTUAL_REQUESTS")
-	promTCPConnections = promType("QUERY_TCP_CONNECTIONS")
-	promTCPReadBytes   = promType("QUERY_TCP_READ_BYTES")
-	promTCPWriteBytes  = promType("QUERY_TCP_WRITE_BYTES")
-	promLatencyP50     = promType("0.5")
-	promLatencyP95     = promType("0.95")
-	promLatencyP99     = promType("0.99")
+	promGatewayAlive    = promType("QUERY_GATEWAY_ALIVE")
+	promRequests        = promType("QUERY_REQUESTS")
+	promAllowedRequests = promType("QUERY_ALLOWED_REQUESTS")
+	promDeniedRequests  = promType("QUERY_DENIED_REQUESTS")
+	promActualRequests  = promType("QUERY_ACTUAL_REQUESTS")
+	promTCPConnections  = promType("QUERY_TCP_CONNECTIONS")
+	promTCPReadBytes    = promType("QUERY_TCP_READ_BYTES")
+	promTCPWriteBytes   = promType("QUERY_TCP_WRITE_BYTES")
+	promLatencyP50      = promType("0.5")
+	promLatencyP95      = promType("0.95")
+	promLatencyP99      = promType("0.99")
 
 	namespaceLabel           = model.LabelName("namespace")
 	dstNamespaceLabel        = model.LabelName("dst_namespace")
