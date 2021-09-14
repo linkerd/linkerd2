@@ -1439,6 +1439,14 @@ spec:
           value: linkerd-dst-headless.linkerd.svc.cluster.local.:8086
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_POLICY_SVC_ADDR
+          value: linkerd-policy.linkerd.svc.cluster.local.:8090
+        - name: LINKERD2_PROXY_POLICY_WORKLOAD
+          value: "$(_pod_ns):$(_pod_name)"
+        - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
+          value: cluster-unauthenticated
+        - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
+          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
           value: "100ms"
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_TIMEOUT
@@ -1492,6 +1500,8 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
           value: linkerd-identity.linkerd.serviceaccount.identity.linkerd.test.trust.domain
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
+          value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.test.trust.domain
+        - name: LINKERD2_PROXY_POLICY_SVC_NAME
           value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.test.trust.domain
         image: cr.l5d.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
