@@ -32,7 +32,3 @@ spec:
     name: web
   client:
     unauthenticated: true
-{{- $tree := deepCopy . }}
-{{ $_ := set $tree.Values "component" "web" -}}
-{{ $_ := set $tree.Values "labels" (dict "linkerd.io/extension" "viz" "component" "web") -}}
-{{ include "partials.ext-proxy-admin-policy" $tree }}

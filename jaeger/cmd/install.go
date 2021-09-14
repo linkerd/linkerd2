@@ -25,6 +25,7 @@ import (
 var (
 	templatesJaeger = []string{
 		"templates/namespace.yaml",
+		"templates/proxy-admin-policy.yaml",
 		"templates/jaeger-injector.yaml",
 		"templates/jaeger-injector-policy.yaml",
 		"templates/rbac.yaml",

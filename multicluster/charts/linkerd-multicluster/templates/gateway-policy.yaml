@@ -34,9 +34,37 @@ spec:
     meshTLS:
       identities:
       - '*'
-{{- $tree := deepCopy . }}
-{{ $_ := set $tree.Values "component" "linkerd-gateway" -}}
-{{ $val := .Values.gateway.name }}
-{{ $_ := set $tree.Values "labels" (dict "app" $val) -}}
-{{ include "partials.ext-proxy-admin-policy" $tree }}
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  namespace: {{.Values.namespace}}
+  name: proxy-admin
+  labels:
+    linkerd.io/extension: multicluster
+    app: {{.Values.gateway.name}}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{.Values.gateway.name}}
+  port: linkerd-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: ServerAuthorization
+metadata:
+  namespace: {{.Values.namespace}}
+  name: proxy-admin
+  labels:
+    linkerd.io/extension: multicluster
+    app: {{.Values.gateway.name}}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  server:
+    name: proxy-admin
+  client:
+    unauthenticated: true
 {{end -}}

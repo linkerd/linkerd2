@@ -60,27 +60,6 @@ spec:
       - name: default
         namespace: linkerd-smoke-test-ann
 ---
-apiVersion: policy.linkerd.io/v1alpha1
-kind: Server
-metadata:
-  name: smoke-test-terminus-proxy-admin
-spec:
-  podSelector:
-    matchLabels:
-      app: smoke-test-terminus
-  port: linkerd-admin
-  proxyProtocol: HTTP/1
----
-apiVersion: policy.linkerd.io/v1alpha1
-kind: ServerAuthorization
-metadata:
-  name: smoke-test-terminus-proxy-admin
-spec:
-  server:
-    name: smoke-test-terminus-proxy-admin
-  client:
-    unauthenticated: true
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -117,20 +96,24 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: Server
 metadata:
-  name: smoke-test-gateway-proxy-admin
+  name: smoke-test-proxy-admin
 spec:
   podSelector:
-    matchLabels:
-      app: smoke-test-gateway
+    matchExpressions:
+    - key: app
+      operator: In
+      values:
+      - smoke-test-terminus
+      - smoke-test-gateway
   port: linkerd-admin
   proxyProtocol: HTTP/1
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: ServerAuthorization
 metadata:
-  name: smoke-test-gateway-proxy-admin
+  name: smoke-test-proxy-admin
 spec:
   server:
-    name: smoke-test-gateway-proxy-admin
+    name: smoke-test-proxy-admin
   client:
     unauthenticated: true

@@ -33,8 +33,4 @@ spec:
     name: prometheus
   client:
     unauthenticated: true
-{{- $tree := deepCopy . }}
-{{ $_ := set $tree.Values "component" "prometheus" -}}
-{{ $_ := set $tree.Values "labels" (dict "linkerd.io/extension" "viz" "component" "prometheus") -}}
-{{ include "partials.ext-proxy-admin-policy" $tree }}
 {{ end -}}

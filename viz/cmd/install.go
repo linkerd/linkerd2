@@ -29,6 +29,7 @@ var (
 		"templates/tap-rbac.yaml",
 		"templates/web-rbac.yaml",
 		"templates/psp.yaml",
+		"templates/proxy-admin-policy.yaml",
 		"templates/metrics-api.yaml",
 		"templates/metrics-api-policy.yaml",
 		"templates/grafana.yaml",
