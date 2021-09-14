@@ -372,7 +372,7 @@ mod tests {
     }
 
     #[test]
-    fn update_protocol() {
+    fn server_update_protocol() {
         let mut idx = SrvIndex::default();
         let mut srv = mk_server("ns-0", "srv-0", Port::Number(9999))
             .with_proxy_protocol(ProxyProtocol::Opaque);
@@ -389,7 +389,7 @@ mod tests {
     }
 
     #[test]
-    fn update_labels() {
+    fn server_update_labels() {
         let mut idx = SrvIndex::default();
         let srv = {
             let mut labels = HashMap::new();
@@ -404,8 +404,7 @@ mod tests {
         idx.apply(srv.clone(), &AuthzIndex::default());
 
         let Server { labels, .. } = idx.index.get("srv-0").unwrap();
-        let srv_labels: &k8s::Labels = &srv.metadata.labels.into();
-        assert_eq!(srv_labels, labels);
+        assert_eq!(&k8s::Labels::from(srv.metadata.labels), labels);
     }
 
     #[test]
