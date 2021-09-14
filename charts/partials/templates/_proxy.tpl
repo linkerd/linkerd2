@@ -126,10 +126,8 @@ be used in other contexts.
   value: linkerd-identity.{{.Values.namespace}}.serviceaccount.identity.{{.Values.namespace}}.{{$trustDomain}}
 - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
   value: linkerd-destination.{{.Values.namespace}}.serviceaccount.identity.{{.Values.namespace}}.{{$trustDomain}}
-{{ if (ne (toString .Values.proxy.component) "linkerd-identity") -}}
 - name: LINKERD2_PROXY_POLICY_SVC_NAME
   value: linkerd-destination.{{.Values.namespace}}.serviceaccount.identity.{{.Values.namespace}}.{{$trustDomain}}
-{{ end -}}
 {{ end -}}
 image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version | default .Values.linkerdVersion}}
 imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPolicy}}
