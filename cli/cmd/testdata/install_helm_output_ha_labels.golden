@@ -1350,6 +1350,7 @@ spec:
         linkerd.io/proxy-version: test-proxy-version
         asda: fasda
         bingo: bongo
+        config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: identity
         linkerd.io/control-plane-ns: linkerd
