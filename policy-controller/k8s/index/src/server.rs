@@ -312,3 +312,108 @@ impl Server {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use linkerd_policy_controller_k8s_api::policy::server::{Port, ProxyProtocol};
+
+    use crate::authz::AuthzIndex;
+
+    use super::*;
+
+    fn mk_server(
+        ns: impl Into<String>,
+        name: impl Into<String>,
+        port: Port,
+    ) -> k8s::policy::Server {
+        k8s::policy::Server {
+            api_version: "v1alpha1".to_string(),
+            kind: "Server".to_string(),
+            metadata: k8s::ObjectMeta {
+                namespace: Some(ns.into()),
+                name: Some(name.into()),
+                labels: None,
+                ..Default::default()
+            },
+            spec: k8s::policy::ServerSpec {
+                port,
+                pod_selector: Default::default(),
+                proxy_protocol: None,
+            },
+        }
+    }
+    trait MkServer {
+        fn with_proxy_protocol(self, p: ProxyProtocol) -> Self;
+        fn with_srv_labels(
+            self,
+            labels: impl IntoIterator<Item = (&'static str, &'static str)>,
+        ) -> Self;
+    }
+
+    impl MkServer for k8s::policy::Server {
+        fn with_proxy_protocol(mut self, p: ProxyProtocol) -> Self {
+            self.spec.proxy_protocol = Some(p);
+            self
+        }
+
+        fn with_srv_labels(
+            mut self,
+            labels: impl IntoIterator<Item = (&'static str, &'static str)>,
+        ) -> Self {
+            self.metadata.labels = Some(
+                labels
+                    .into_iter()
+                    .map(|(k, v)| (k.to_string(), v.to_string()))
+                    .collect(),
+            );
+            self
+        }
+    }
+
+    #[test]
+    fn update_protocol() {
+        let mut idx = SrvIndex::default();
+        let mut srv = mk_server("ns-0", "srv-0", Port::Number(9999))
+            .with_proxy_protocol(ProxyProtocol::Opaque);
+        idx.apply(srv.clone(), &AuthzIndex::default());
+
+        srv.spec.proxy_protocol = Some(ProxyProtocol::Tls);
+        idx.apply(srv.clone(), &AuthzIndex::default());
+
+        let Server { protocol, .. } = idx.index.get("srv-0").unwrap();
+        assert_eq!(
+            SrvIndex::mk_protocol(srv.spec.proxy_protocol.as_ref()),
+            protocol.to_owned()
+        );
+    }
+
+    #[test]
+    fn update_labels() {
+        let mut idx = SrvIndex::default();
+        let srv = {
+            let mut labels = HashMap::new();
+            labels.insert("foo", "bar");
+            mk_server("ns-0", "srv-0", Port::Number(9999)).with_srv_labels(labels)
+        };
+        idx.apply(srv.clone(), &AuthzIndex::default());
+
+        let mut new_labels = HashMap::new();
+        new_labels.insert("not-foo", "not-bar");
+        let srv = srv.with_srv_labels(new_labels);
+        idx.apply(srv.clone(), &AuthzIndex::default());
+
+        let Server { labels, .. } = idx.index.get("srv-0").unwrap();
+        let srv_labels: &k8s::Labels = &srv.metadata.labels.into();
+        assert_eq!(srv_labels, labels);
+    }
+
+    #[test]
+    fn add_authz_to_idx() {}
+
+    #[test]
+    fn remove_authz_from_idx() {}
+
+    #[test]
+    fn get_server_pod() {}
+}
