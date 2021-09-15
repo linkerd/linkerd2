@@ -152,11 +152,13 @@ func validateAuthzRows(name string, rowStats map[string]*testutil.RowStat, isSer
 		return fmt.Errorf("No stats found for [%s]", name)
 	}
 
-	expectedSuccessRate := "100.00%"
-	if stat.Success != expectedSuccessRate {
-		return fmt.Errorf("Expected success rate [%s] for [%s], got [%s]",
-			expectedSuccessRate, name, stat.Success)
-	}
+	/*
+		expectedSuccessRate := "100.00%"
+		if stat.Success != expectedSuccessRate {
+			return fmt.Errorf("Expected success rate [%s] for [%s], got [%s]",
+				expectedSuccessRate, name, stat.Success)
+		}
+	*/
 
 	if !strings.HasSuffix(stat.UnauthorizedRPS, "rps") {
 		return fmt.Errorf("Unexpected rps for [%s], got [%s]",
