@@ -191,7 +191,7 @@ fn log_init(LogLevel(level): LogLevel, format: LogFormat) -> Result<()> {
             let event_fmt = tracing_subscriber::fmt::format()
                 // Configure the formatter to output JSON logs.
                 .json()
-                // Output the current span conPlain as a JSON list.
+                // Output the current span context as a JSON list.
                 .with_span_list(true)
                 // Don't output a field for the current span, since this
                 // would duplicate information already in the span list.
