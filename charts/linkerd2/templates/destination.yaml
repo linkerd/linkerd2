@@ -255,9 +255,8 @@ spec:
         - --cluster-networks={{.Values.clusterNetworks}}
         - --identity-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
         - --default-policy={{.Values.policyController.defaultAllowPolicy}}
-        env:
-        - name: RUST_LOG
-          value: {{.Values.policyController.logLevel | default "linkerd=info,warn" | quote}}
+        - --log-level={{.Values.policyController.logLevel | default "linkerd=info,warn"}}
+        - --log-format={{.Values.controllerLogFormat}}
         image: {{.Values.policyController.image.name}}:{{.Values.policyController.image.version | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.policyController.image.pullPolicy | default .Values.imagePullPolicy}}
         livenessProbe:
