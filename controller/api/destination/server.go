@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	policyPb "github.com/linkerd/linkerd2-proxy-api/go/inbound"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -40,9 +41,10 @@ type (
 		clusterDomain       string
 		defaultOpaquePorts  map[uint32]struct{}
 
-		k8sAPI   *k8s.API
-		log      *logging.Entry
-		shutdown <-chan struct{}
+		k8sAPI       *k8s.API
+		policyClient policyPb.InboundServerPoliciesClient
+		log          *logging.Entry
+		shutdown     <-chan struct{}
 	}
 )
 
@@ -65,6 +67,7 @@ func NewServer(
 	enableH2Upgrade bool,
 	enableEndpointSlices bool,
 	k8sAPI *k8s.API,
+	policyClient policyPb.InboundServerPoliciesClient,
 	clusterDomain string,
 	defaultOpaquePorts map[uint32]struct{},
 	shutdown <-chan struct{},
@@ -98,6 +101,7 @@ func NewServer(
 		clusterDomain,
 		defaultOpaquePorts,
 		k8sAPI,
+		policyClient,
 		log,
 		shutdown,
 	}
@@ -347,6 +351,7 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 	log := s.log
 	var endpoint *pb.WeightedAddr
 	opaquePorts := make(map[uint32]struct{})
+	var portSpec *policyPb.PortSpec
 	var err error
 	if pod != nil {
 		podSet := podToAddressSet(s.k8sAPI, pod).WithPort(port)
@@ -378,23 +383,90 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 		// `Get` doesn't include the namespace in the per-endpoint
 		// metadata, so it needs to be special-cased.
 		endpoint.MetricLabels["namespace"] = pod.Namespace
+
+		portSpec = &policyPb.PortSpec{
+			Workload: fmt.Sprintf("%s:%s", pod.Namespace, pod.Name),
+			Port:     port,
+		}
 	}
 
-	// Send the default profile without subscribing for future updates. The
-	// profile response will also include an endpoint if the IP (or hostname)
-	// sent in the profile request maps to a pod.
+	// Send the default profile. If this is the profile for a pod, subscribe
+	// for updates from the policy server which can influence whether or not
+	// the destination is treated as opaque.
 	translator := newProfileTranslator(stream, log, "", port, endpoint)
 
-	// If there are opaque ports then update the profile translator
-	// with a service profile that has those values
-	if len(opaquePorts) != 0 {
-		sp := sp.ServiceProfile{}
-		sp.Spec.OpaquePorts = opaquePorts
-		translator.Update(&sp)
-	} else {
-		translator.Update(nil)
-	}
+	if portSpec != nil {
+		// Create a client which watches for changes to the inbound policy for
+		// portSpec.
+		client, err := s.policyClient.WatchPort(stream.Context(), portSpec)
+		if err != nil {
+			return err
+		}
 
+		// Receive policy server updates for portSpec.
+		//
+		// Running this in the background allows it to handle Recv errors when
+		// the stream context is canceled. When canceled, this routine will
+		// complete.
+		updates := make(chan *policyPb.Server)
+		go func() {
+			for {
+				update, err := client.Recv()
+				if err != nil {
+					log.Infof("client shutting down: %s", err)
+					break
+				}
+				updates <- update
+			}
+		}()
+
+		// Wait for destination server shutdown, stream cancellation, or
+		// policy server updates.
+		//
+		// When an update is available, a new service profile may be created
+		// which results in a new destination profile being sent on the
+		// stream.
+		var overridden bool
+		for {
+			select {
+			case <-s.shutdown:
+				return nil
+			case <-stream.Context().Done():
+				log.Debugf("GetProfile %s:%s:%s cancelled", pod.Namespace, pod.Name, port)
+				return nil
+			case update := <-updates:
+				if update.Protocol.GetOpaque() != nil {
+					if _, ok := opaquePorts[port]; !ok {
+						opaquePorts[port] = struct{}{}
+						overridden = true
+					}
+				} else if overridden {
+					// A previous iteration added port to the opaque ports
+					// set. Now that it is no longer set as opaque on the
+					// policy server it should be removed from the set.
+					delete(opaquePorts, port)
+					overridden = false
+				}
+				if len(opaquePorts) != 0 {
+					sp := sp.ServiceProfile{}
+					sp.Spec.OpaquePorts = opaquePorts
+					translator.Update(&sp)
+				} else {
+					translator.Update(nil)
+				}
+			}
+		}
+	} else {
+		if len(opaquePorts) != 0 {
+			// Send a destination profile update that includes the opaque
+			// ports.
+			sp := sp.ServiceProfile{}
+			sp.Spec.OpaquePorts = opaquePorts
+			translator.Update(&sp)
+		} else {
+			translator.Update(nil)
+		}
+	}
 	return nil
 }
 

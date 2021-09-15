@@ -4,6 +4,7 @@ import (
 	"context"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	policyPb "github.com/linkerd/linkerd2-proxy-api/go/inbound"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"go.opencensus.io/plugin/ocgrpc"
 	"google.golang.org/grpc"
@@ -48,4 +49,12 @@ func NewExternalClient(ctx context.Context, controlPlaneNamespace string, kubeAP
 	}
 
 	return NewClient(destinationAddress)
+}
+
+func NewPolicyClient(addr string) (policyPb.InboundServerPoliciesClient, *grpc.ClientConn, error) {
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithStatsHandler(&ocgrpc.ClientHandler{}))
+	if err != nil {
+		return nil, nil, err
+	}
+	return policyPb.NewInboundServerPoliciesClient(conn), conn, nil
 }

@@ -24,6 +24,7 @@ func Main(args []string) {
 
 	addr := cmd.String("addr", ":8086", "address to serve on")
 	metricsAddr := cmd.String("metrics-addr", ":9996", "address to serve scrapable metrics on")
+	policyAddr := cmd.String("policy-addr", ":8090", "address to connect to the policy server")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 	enableH2Upgrade := cmd.Bool("enable-h2-upgrade", true, "Enable transparently upgraded HTTP2 connections among pods in the service mesh")
 	disableIdentity := cmd.Bool("disable-identity", false, "Disable identity configuration")
@@ -81,6 +82,12 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize K8s API Client: %s", err)
 	}
 
+	policyClient, conn, err := destination.NewPolicyClient(*policyAddr)
+	if err != nil {
+		log.Fatalf("Failed to initialize policy client: %s", err)
+	}
+	defer conn.Close()
+
 	ctx := context.Background()
 
 	err = pkgK8s.EndpointSliceAccess(ctx, k8Client)
@@ -115,6 +122,7 @@ func Main(args []string) {
 		*enableH2Upgrade,
 		*enableEndpointSlices,
 		k8sAPI,
+		policyClient,
 		*clusterDomain,
 		opaquePorts,
 		done,

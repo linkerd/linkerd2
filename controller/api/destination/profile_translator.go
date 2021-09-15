@@ -37,9 +37,25 @@ func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.E
 
 func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
 	if profile == nil {
+		// A previous update could have indicated this profile supports
+		// opaque traffic. Now that there is no profile it should no longer be
+		// advertised.
+		pt.endpoint.ProtocolHint.OpaqueTransport = nil
+
 		pt.stream.Send(pt.defaultServiceProfile())
 		return
 	}
+
+	// If the update has a service profile with an opaque port that matches
+	// the profile's port, update the endpoint so that it hints it supports
+	// opaque traffic.
+	if _, ok := profile.Spec.OpaquePorts[pt.port]; ok {
+		pt.log.Infof("profile supports opaque traffic")
+		pt.endpoint.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
+			InboundPort: pt.port,
+		}
+	}
+
 	destinationProfile, err := pt.toServiceProfile(profile)
 	if err != nil {
 		pt.log.Error(err)
