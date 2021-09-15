@@ -116,7 +116,7 @@ spec:
 	// However, only pod-1 is owned by deploy-1 according to the owner references.
 	// Owner references should be considered authoritative to resolve ambiguity
 	// when deployments have overlapping seletors.
-	pods, err := getPodsFor(context.Background(), k8sClient, "ns", "deploy/deploy-1")
+	pods, err := k8s.GetPodsFor(context.Background(), k8sClient, "ns", "deploy/deploy-1")
 	if err != nil {
 		t.Fatalf("Unexpected error %s", err)
 	}
