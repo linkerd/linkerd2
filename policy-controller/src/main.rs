@@ -74,7 +74,7 @@ async fn main() -> Result<()> {
 
     // Load a Kubernetes client from the environment (check for in-cluster configuration first).
     //
-    // TODO support --kubeconfig and --conPlain command-line arguments.
+    // TODO support --kubeconfig and --context command-line arguments.
     let client = kube::Client::try_default()
         .await
         .context("failed to initialize kubernetes client")?;
