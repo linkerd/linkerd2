@@ -1,17 +1,20 @@
 package destination
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	policyPb "github.com/linkerd/linkerd2-proxy-api/go/inbound"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	logging "github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
 )
 
 const fullyQualifiedName = "name1.ns.svc.mycluster.local"
@@ -48,6 +51,28 @@ type mockDestinationGetProfileServer struct {
 func (m *mockDestinationGetProfileServer) Send(profile *pb.DestinationProfile) error {
 	m.profilesReceived = append(m.profilesReceived, profile)
 	return nil
+}
+
+type mockPolicyClient struct{}
+
+func (m *mockPolicyClient) GetPort(ctx context.Context, portSpec *policyPb.PortSpec, opts ...grpc.CallOption) (*policyPb.Server, error) {
+	return nil, nil
+}
+
+func (m *mockPolicyClient) WatchPort(ctx context.Context, portSpec *policyPb.PortSpec, opts ...grpc.CallOption) (policyPb.InboundServerPolicies_WatchPortClient, error) {
+	return mockInboundServerPoliciesClient{}, nil
+}
+
+type mockInboundServerPoliciesClient struct {
+	util.MockClientStream
+}
+
+func (m mockInboundServerPoliciesClient) Recv() (*policyPb.Server, error) {
+	return &policyPb.Server{
+		Protocol: &policyPb.ProxyProtocol{
+			Kind: &policyPb.ProxyProtocol_Http1_{},
+		},
+	}, nil
 }
 
 func makeServer(t *testing.T) *server {
@@ -323,6 +348,7 @@ status:
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}
+	policyClient := &mockPolicyClient{}
 	log := logging.WithField("test", t.Name())
 	defaultOpaquePorts := map[uint32]struct{}{
 		25:    {},
@@ -360,6 +386,7 @@ status:
 		"mycluster.local",
 		defaultOpaquePorts,
 		k8sAPI,
+		policyClient,
 		log,
 		make(<-chan struct{}),
 	}
@@ -917,8 +944,8 @@ func TestGetProfiles(t *testing.T) {
 		if first.Endpoint.ProtocolHint == nil {
 			t.Fatalf("Expected protocol hint but found none")
 		}
-		if first.Endpoint.ProtocolHint.GetOpaqueTransport().InboundPort != 4143 {
-			t.Fatalf("Expected pod to support opaque traffic on port 4143")
+		if first.Endpoint.ProtocolHint.GetOpaqueTransport().InboundPort != opaquePort {
+			t.Fatalf("Expected pod to support opaque traffic on port %d", opaquePort)
 		}
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP port to be %d, but it was %d", epAddr.Port, first.Endpoint.Addr.Port)

@@ -35,3 +35,15 @@ func (mss MockServerStream) SetTrailer(metadata.MD) {}
 func NewMockServerStream() MockServerStream {
 	return MockServerStream{newMockStream()}
 }
+
+// MockClientStream satisfies the grpc.ClientStream interface
+type MockClientStream struct{ mockStream }
+
+// Header satisfies the grpc.ClientStream interface
+func (mcs MockClientStream) Header() (metadata.MD, error) { return nil, nil }
+
+// Trailer satisfies the grpc.ClientStream interface
+func (mcs MockClientStream) Trailer() metadata.MD { return nil }
+
+// CloseSend satisfies the grpc.ClientStream interface
+func (mcs MockClientStream) CloseSend() error { return nil }

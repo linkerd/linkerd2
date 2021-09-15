@@ -395,6 +395,20 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 	// the destination is treated as opaque.
 	translator := newProfileTranslator(stream, log, "", port, endpoint)
 
+	// Send the initial destination profile so that the translator does not
+	// get blocked waiting for policy server updates. After this initial
+	// profile is sent, it will be subscribed for updates if the destination
+	// is for a pod.
+	if len(opaquePorts) != 0 {
+		// Send a destination profile update that includes the opaque
+		// ports.
+		sp := sp.ServiceProfile{}
+		sp.Spec.OpaquePorts = opaquePorts
+		translator.Update(&sp)
+	} else {
+		translator.Update(nil)
+	}
+
 	if portSpec != nil {
 		// Create a client which watches for changes to the inbound policy for
 		// portSpec.
@@ -413,7 +427,7 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 			for {
 				update, err := client.Recv()
 				if err != nil {
-					log.Infof("client shutting down: %s", err)
+					log.Debugf("Shutting down policy server updates for %s:%d", portSpec.Workload, portSpec.Port)
 					break
 				}
 				updates <- update
@@ -432,10 +446,10 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 			case <-s.shutdown:
 				return nil
 			case <-stream.Context().Done():
-				log.Debugf("GetProfile %s:%s:%s cancelled", pod.Namespace, pod.Name, port)
+				log.Debugf("GetProfile %s:%s:%d cancelled", pod.Namespace, pod.Name, port)
 				return nil
 			case update := <-updates:
-				if update.Protocol.GetOpaque() != nil {
+				if update.GetProtocol().GetOpaque() != nil {
 					if _, ok := opaquePorts[port]; !ok {
 						opaquePorts[port] = struct{}{}
 						overridden = true
@@ -455,16 +469,6 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 					translator.Update(nil)
 				}
 			}
-		}
-	} else {
-		if len(opaquePorts) != 0 {
-			// Send a destination profile update that includes the opaque
-			// ports.
-			sp := sp.ServiceProfile{}
-			sp.Spec.OpaquePorts = opaquePorts
-			translator.Update(&sp)
-		} else {
-			translator.Update(nil)
 		}
 	}
 	return nil
