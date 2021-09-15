@@ -104,7 +104,7 @@ func TestPolicy(t *testing.T) {
 
 		for _, tt := range testCases {
 			tt := tt // pin
-			timeout := 50 * time.Second
+			timeout := 100 * time.Second
 			t.Run("linkerd "+strings.Join(tt.args, " "), func(t *testing.T) {
 				err := TestHelper.RetryFor(timeout, func() error {
 					// Use a short time window so that transient errors at startup
