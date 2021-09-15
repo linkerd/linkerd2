@@ -316,6 +316,7 @@ impl Server {
 #[cfg(test)]
 mod tests {
 
+    use linkerd_policy_controller_core::ClientAuthentication;
     use linkerd_policy_controller_k8s_api::policy::server::{Port, ProxyProtocol};
 
     use crate::authz::AuthzIndex;
@@ -372,7 +373,7 @@ mod tests {
     }
 
     #[test]
-    fn server_update_protocol() {
+    fn server_apply_update_protocol() {
         let mut idx = SrvIndex::default();
         let mut srv = mk_server("ns-0", "srv-0", Port::Number(9999))
             .with_proxy_protocol(ProxyProtocol::Opaque);
@@ -389,7 +390,7 @@ mod tests {
     }
 
     #[test]
-    fn server_update_labels() {
+    fn server_apply_update_labels() {
         let mut idx = SrvIndex::default();
         let srv = {
             let mut labels = HashMap::new();
@@ -408,11 +409,44 @@ mod tests {
     }
 
     #[test]
-    fn add_authz_to_idx() {}
+    fn server_add_authz_to_idx() {
+        let mut idx = {
+            let mut idx = SrvIndex::default();
+            let srv = mk_server("ns-0", "srv-0", Port::Number(9999));
+            idx.apply(srv, &AuthzIndex::default());
+            idx
+        };
+        idx.add_authz(
+            "authz-test",
+            &ServerSelector::Name("srv-0".to_string()),
+            ClientAuthorization {
+                networks: vec![],
+                authentication: ClientAuthentication::Unauthenticated,
+            },
+        );
+
+        let srv = idx.index.get("srv-0").unwrap();
+        assert!(srv.authorizations.get("authz-test").is_some());
+    }
 
     #[test]
-    fn remove_authz_from_idx() {}
-
-    #[test]
-    fn get_server_pod() {}
+    fn server_rm_authz_from_idx() {
+        let mut idx = {
+            let mut idx = SrvIndex::default();
+            let srv = mk_server("ns-0", "srv-0", Port::Number(9999));
+            idx.apply(srv, &AuthzIndex::default());
+            idx
+        };
+        idx.add_authz(
+            "authz-test",
+            &ServerSelector::Name("srv-0".to_string()),
+            ClientAuthorization {
+                networks: vec![],
+                authentication: ClientAuthentication::Unauthenticated,
+            },
+        );
+        idx.remove_authz("authz-test");
+        let srv = idx.index.get("srv-0").unwrap();
+        assert!(srv.authorizations.get("authz-test").is_none());
+    }
 }
