@@ -54,7 +54,7 @@ func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
 	if pt.endpoint != nil {
 		if _, ok := profile.Spec.OpaquePorts[pt.port]; ok {
 			pt.endpoint.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
-				InboundPort: pt.port,
+				InboundPort: 4143,
 			}
 		}
 	}
