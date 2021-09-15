@@ -291,8 +291,7 @@ spec:
       initContainers:
       {{- /*
         The destination controller needs to connect to the Kubernetes API before the proxy is able
-        to proxy requests, so we always skip these connections. The identity controller makes no
-        other outbound connections (so it's not important to persist any other skip ports here)
+        to proxy requests, so we always skip these connections.
       */}}
       {{- $_ := set $tree.Values.proxyInit "ignoreOutboundPorts" "443" }}
       - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
