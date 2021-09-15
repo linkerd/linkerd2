@@ -22,10 +22,17 @@ type profileTranslator struct {
 	log                *logging.Entry
 	fullyQualifiedName string
 	port               uint32
-	endpoint           *pb.WeightedAddr
+	endpoint           *Endpoint
 }
 
-func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endpoint *pb.WeightedAddr) *profileTranslator {
+// Endpoint wraps an addr with the proxy's inbound port so that protocol hints
+// can be set without needing the pod spec.
+type Endpoint struct {
+	addr      *pb.WeightedAddr
+	proxyPort uint32
+}
+
+func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endpoint *Endpoint) *profileTranslator {
 	return &profileTranslator{
 		stream:             stream,
 		log:                log.WithField("component", "profile-translator"),
@@ -40,21 +47,21 @@ func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
 		// A previous update could have indicated this profile supports
 		// opaque traffic. Now that there is no profile it should no longer be
 		// advertised.
-		if pt.endpoint != nil && pt.endpoint.ProtocolHint != nil {
-			pt.endpoint.ProtocolHint.OpaqueTransport = nil
+		if pt.endpoint != nil && pt.GetAddr().ProtocolHint != nil {
+			pt.GetAddr().GetProtocolHint().OpaqueTransport = nil
 		}
 
 		pt.stream.Send(pt.defaultServiceProfile())
 		return
 	}
 
-	// If the update has a service profile with an opaque port that matches
-	// the profile's port, update the endpoint so that it hints it supports
-	// opaque traffic.
-	if pt.endpoint != nil {
+	if pt.endpoint != nil && pt.endpoint.proxyPort != 0 {
+		// The profile has an endpoint with a non-zero proxy port which means
+		// it can hint that opaque traffic should be sent to this port,
+		// instead of the application port.
 		if _, ok := profile.Spec.OpaquePorts[pt.port]; ok {
-			pt.endpoint.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
-				InboundPort: 4143,
+			pt.GetAddr().GetProtocolHint().OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
+				InboundPort: pt.endpoint.proxyPort,
 			}
 		}
 	}
@@ -73,8 +80,15 @@ func (pt *profileTranslator) defaultServiceProfile() *pb.DestinationProfile {
 		Routes:             []*pb.Route{},
 		RetryBudget:        defaultRetryBudget(),
 		FullyQualifiedName: pt.fullyQualifiedName,
-		Endpoint:           pt.endpoint,
+		Endpoint:           pt.GetAddr(),
 	}
+}
+
+func (pt *profileTranslator) GetAddr() *pb.WeightedAddr {
+	if pt.endpoint != nil {
+		return pt.endpoint.addr
+	}
+	return nil
 }
 
 func defaultRetryBudget() *pb.RetryBudget {
@@ -127,7 +141,7 @@ func (pt *profileTranslator) toServiceProfile(profile *sp.ServiceProfile) (*pb.D
 		RetryBudget:        budget,
 		DstOverrides:       toDstOverrides(profile.Spec.DstOverrides, pt.port),
 		FullyQualifiedName: pt.fullyQualifiedName,
-		Endpoint:           pt.endpoint,
+		Endpoint:           pt.GetAddr(),
 		OpaqueProtocol:     opaqueProtocol,
 	}, nil
 }

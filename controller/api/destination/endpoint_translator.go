@@ -428,5 +428,5 @@ func getInboundPort(podSpec *corev1.PodSpec) (uint32, error) {
 			return uint32(port), nil
 		}
 	}
-	return 0, fmt.Errorf("failed to find %s environment variable in any container for given pod spec", envInboundListenAddr)
+	return 0, nil
 }

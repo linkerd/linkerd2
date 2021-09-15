@@ -349,7 +349,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 // include an endpoint. Otherwise, the default profile is sent.
 func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod *corev1.Pod, port uint32) error {
 	log := s.log
-	var endpoint *pb.WeightedAddr
+	var endpoint *Endpoint
 	opaquePorts := make(map[uint32]struct{})
 	var portSpec *policyPb.PortSpec
 	var err error
@@ -376,13 +376,26 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 			log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
 		}
 
-		endpoint, err = toWeightedAddr(podSet.Addresses[podID], opaquePorts, skippedInboundPorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
+		addr, err := toWeightedAddr(podSet.Addresses[podID], opaquePorts, skippedInboundPorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
 		if err != nil {
 			return err
 		}
+
 		// `Get` doesn't include the namespace in the per-endpoint
 		// metadata, so it needs to be special-cased.
-		endpoint.MetricLabels["namespace"] = pod.Namespace
+		addr.MetricLabels["namespace"] = pod.Namespace
+
+		// Wrap the addr with the proxy port so that when a protocol hint is
+		// set for opaque traffic, it can properly target the proxy port
+		// instead of the application port.
+		proxyPort, err := getInboundPort(&pod.Spec)
+		if err != nil {
+			return err
+		}
+		endpoint = &Endpoint{
+			addr:      addr,
+			proxyPort: proxyPort,
+		}
 
 		portSpec = &policyPb.PortSpec{
 			Workload: fmt.Sprintf("%s:%s", pod.Namespace, pod.Name),
