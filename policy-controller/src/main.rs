@@ -15,7 +15,7 @@ use tracing_subscriber::{fmt::format, prelude::*, reload, EnvFilter};
 #[derive(Debug, StructOpt)]
 #[structopt(name = "policy", about = "A policy resource prototype")]
 struct Args {
-    #[structopt(parse(from_str = LogLevel::new), long, default_value = "policy=info,warn")]
+    #[structopt(parse(from_str = LogLevel::new), long, default_value = "linkerd=info,warn")]
     log_level: LogLevel,
 
     #[structopt(long, default_value = "plain")]
