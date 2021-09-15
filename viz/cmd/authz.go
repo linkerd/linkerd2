@@ -131,7 +131,7 @@ func NewCmdAuthz() *cobra.Command {
 							rows = append(rows, table.Row{
 								server,
 								saz,
-								fmt.Sprintf("%.2f%%", getSuccessRate(row.Stats.GetSuccessCount(), row.Stats.GetFailureCount())),
+								fmt.Sprintf("%.2f%%", getSuccessRate(row.Stats.GetSuccessCount(), row.Stats.GetFailureCount())*100),
 								fmt.Sprintf("%.1frps", getRequestRate(row.Stats.GetSuccessCount(), row.Stats.GetFailureCount(), row.TimeWindow)),
 								fmt.Sprintf("%dms", row.Stats.LatencyMsP50),
 								fmt.Sprintf("%dms", row.Stats.LatencyMsP95),
