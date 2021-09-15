@@ -831,7 +831,6 @@ dependencies = [
  "structopt",
  "tokio",
  "tracing",
- "tracing-log",
  "tracing-subscriber",
  "warp",
 ]
