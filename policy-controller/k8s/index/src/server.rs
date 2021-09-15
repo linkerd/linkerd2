@@ -426,7 +426,11 @@ mod tests {
         );
 
         let srv = idx.index.get("srv-0").unwrap();
-        assert!(srv.authorizations.get("authz-test").is_some());
+        assert!(
+            srv.authorizations.get("authz-test").is_some(),
+            "expected {} to be Some(...) got None",
+            "authz-test"
+        );
     }
 
     #[test]
@@ -447,6 +451,11 @@ mod tests {
         );
         idx.remove_authz("authz-test");
         let srv = idx.index.get("srv-0").unwrap();
-        assert!(srv.authorizations.get("authz-test").is_none());
+        assert!(
+            srv.authorizations.get("authz-test").is_none(),
+            "expected {} to be None, got: {:?}",
+            "authz-test",
+            srv.authorizations.get("authz-test"),
+        );
     }
 }
