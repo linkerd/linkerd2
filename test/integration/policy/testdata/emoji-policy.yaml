@@ -31,7 +31,7 @@ spec:
   client:
     meshTLS:
       identities:
-        - "*.emojivoto.serviceaccount.identity.linkerd.cluster.local"
+        - "*.linkerd-stat-authz-test.serviceaccount.identity.linkerd.cluster.local"
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: Server
