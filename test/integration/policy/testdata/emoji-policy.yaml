@@ -36,36 +36,6 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: Server
 metadata:
-  name: prom
-  labels:
-    app.kubernetes.io/part-of: emojivoto
-    app.kubernetes.io/version: v11
-spec:
-  port: prom
-  podSelector:
-    matchExpressions:
-      - {key: app, operator: In, values: [emoji-svc, web-svc, voting-svc]}
-  proxyProtocol: HTTP/1
----
-apiVersion: policy.linkerd.io/v1alpha1
-kind: ServerAuthorization
-metadata:
-  name: prom-prometheus
-  labels:
-    app.kubernetes.io/part-of: emojivoto
-    app.kubernetes.io/version: v11
-spec:
-  server:
-    name: prom
-  client:
-    meshTLS:
-      serviceAccounts:
-        - namespace: linkerd-viz
-          name: prometheus
----
-apiVersion: policy.linkerd.io/v1alpha1
-kind: Server
-metadata:
   name: voting-grpc
   labels:
     app: voting-svc

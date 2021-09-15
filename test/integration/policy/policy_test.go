@@ -72,7 +72,6 @@ func TestPolicy(t *testing.T) {
 				args: []string{"viz", "stat", "srv", "-n", prefixedNs},
 				expectedRows: []string{
 					"emoji-grpc",
-					"prom",
 					"voting-grpc",
 					"web-http",
 				},
@@ -89,7 +88,6 @@ func TestPolicy(t *testing.T) {
 				args: []string{"viz", "stat", "saz", "-n", prefixedNs},
 				expectedRows: []string{
 					"emoji-grpc",
-					"prom-prometheus",
 					"voting-grpc",
 					"web-public",
 				},
@@ -106,7 +104,7 @@ func TestPolicy(t *testing.T) {
 
 		for _, tt := range testCases {
 			tt := tt // pin
-			timeout := 20 * time.Second
+			timeout := 50 * time.Second
 			t.Run("linkerd "+strings.Join(tt.args, " "), func(t *testing.T) {
 				err := TestHelper.RetryFor(timeout, func() error {
 					// Use a short time window so that transient errors at startup
