@@ -4279,18 +4279,6 @@ func file_viz_proto_init() {
 				return nil
 			}
 		}
-		file_viz_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StatTable); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
 		file_viz_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*EdgesRequest); i {
 			case 0:
