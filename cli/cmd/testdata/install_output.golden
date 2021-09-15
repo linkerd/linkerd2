@@ -1648,7 +1648,6 @@ spec:
         linkerd.io/created-by: CliVersion
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: ProxyVersion
-        config.linkerd.io/opaque-ports: "8443"
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: destination

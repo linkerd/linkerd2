@@ -151,7 +151,6 @@ spec:
         {{ include "partials.annotations.created-by" . }}
         {{- include "partials.proxy.annotations" . | nindent 8}}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
-        config.linkerd.io/opaque-ports: "8443"
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: destination
@@ -290,9 +289,12 @@ spec:
           readOnly: true
       {{ if not .Values.cniEnabled -}}
       initContainers:
-      {{- if not (contains "443" ( .Values.proxyInit.ignoreOutboundPorts | toString ))}}
-      {{- $_ := set $tree.Values.proxyInit "ignoreOutboundPorts" ( ternary "443" (printf "%s,443" (.Values.proxyInit.ignoreOutboundPorts | toString )) (empty .Values.proxyInit.ignoreOutboundPorts)) -}}
-      {{- end}}
+      {{- /*
+        The destination controller needs to connect to the Kubernetes API before the proxy is able
+        to proxy requests, so we always skip these connections. The identity controller makes no
+        other outbound connections (so it's not important to persist any other skip ports here)
+      */}}
+      {{- $_ := set $tree.Values.proxyInit "ignoreOutboundPorts" "443" }}
       - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       serviceAccountName: linkerd-destination
