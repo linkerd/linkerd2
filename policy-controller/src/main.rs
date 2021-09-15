@@ -1,7 +1,7 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Error, Result};
 use futures::{future, prelude::*};
 use linkerd_policy_controller::k8s::DefaultPolicy;
 use linkerd_policy_controller::{admin, admission};
@@ -10,10 +10,17 @@ use std::net::SocketAddr;
 use structopt::StructOpt;
 use tokio::{sync::watch, time};
 use tracing::{debug, info, info_span, instrument, Instrument};
+use tracing_subscriber::{fmt::format, prelude::*, reload, EnvFilter};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "policy", about = "A policy resource prototype")]
 struct Args {
+    #[structopt(parse(from_str = LogLevel::new), long, default_value = "policy=info,warn")]
+    log_level: LogLevel,
+
+    #[structopt(long, default_value = "plain")]
+    log_format: LogFormat,
+
     #[structopt(long, default_value = "0.0.0.0:8080")]
     admin_addr: SocketAddr,
 
@@ -39,10 +46,17 @@ struct Args {
     default_policy: DefaultPolicy,
 }
 
+#[derive(Clone, Debug)]
+struct LogLevel(String);
+
+#[derive(Clone, Debug)]
+enum LogFormat {
+    Json,
+    Plain,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
-
     let Args {
         admin_addr,
         grpc_addr,
@@ -50,13 +64,17 @@ async fn main() -> Result<()> {
         identity_domain,
         cluster_networks: IpNets(cluster_networks),
         default_policy,
+        log_level,
+        log_format,
     } = Args::from_args();
+
+    log_init(log_level, log_format)?;
 
     let (drain_tx, drain_rx) = drain::channel();
 
     // Load a Kubernetes client from the environment (check for in-cluster configuration first).
     //
-    // TODO support --kubeconfig and --context command-line arguments.
+    // TODO support --kubeconfig and --conPlain command-line arguments.
     let client = kube::Client::try_default()
         .await
         .context("failed to initialize kubernetes client")?;
@@ -158,4 +176,68 @@ async fn sigterm() {
         Ok(mut term) => term.recv().await,
         _ => future::pending().await,
     };
+}
+
+fn log_init(LogLevel(level): LogLevel, format: LogFormat) -> Result<()> {
+    let (filter, _level) = reload::Layer::new(EnvFilter::new(level));
+    let registry = tracing_subscriber::registry().with(filter);
+
+    let dispatch = match format {
+        LogFormat::Plain => registry
+            .with(tracing_subscriber::fmt::layer().event_format(tracing_subscriber::fmt::format()))
+            .into(),
+
+        LogFormat::Json => {
+            let event_fmt = tracing_subscriber::fmt::format()
+                // Configure the formatter to output JSON logs.
+                .json()
+                // Output the current span conPlain as a JSON list.
+                .with_span_list(true)
+                // Don't output a field for the current span, since this
+                // would duplicate information already in the span list.
+                .with_current_span(false);
+
+            // Use the JSON event formatter and the JSON field formatter.
+            let fmt = tracing_subscriber::fmt::layer()
+                .event_format(event_fmt)
+                .fmt_fields(format::JsonFields::default());
+
+            registry.with(fmt).into()
+        }
+    };
+
+    tracing::dispatcher::set_global_default(dispatch)?;
+
+    // Setup compatibility with the `log` crate (for dependencies) and ensure it honors our
+    // configured log level.
+    tracing_log::LogTracer::init()?;
+    tracing_log::log::set_max_level(tracing_log::AsLog::as_log(
+        &tracing::level_filters::LevelFilter::current(),
+    ));
+
+    Ok(())
+}
+
+// === impl LogLevel ===
+
+impl LogLevel {
+    fn new(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+
+// === impl LogFormat ===
+
+impl std::str::FromStr for LogFormat {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        if s == "json" {
+            Ok(Self::Json)
+        } else if s == "plain" {
+            Ok(Self::Plain)
+        } else {
+            bail!("invalid log format: {}", s)
+        }
+    }
 }
