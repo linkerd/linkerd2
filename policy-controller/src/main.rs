@@ -10,13 +10,18 @@ use std::net::SocketAddr;
 use structopt::StructOpt;
 use tokio::{sync::watch, time};
 use tracing::{debug, info, info_span, instrument, Instrument};
-use tracing_subscriber::{fmt::format, prelude::*, reload, EnvFilter};
+use tracing_subscriber::{fmt::format, prelude::*, EnvFilter};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "policy", about = "A policy resource prototype")]
 struct Args {
-    #[structopt(parse(from_str = LogLevel::new), long, default_value = "linkerd=info,warn")]
-    log_level: LogLevel,
+    #[structopt(
+        parse(try_from_str),
+        long,
+        default_value = "linkerd=info,warn",
+        env = "LINKERD_POLICY_CONTROLLER_LOG"
+    )]
+    log_level: EnvFilter,
 
     #[structopt(long, default_value = "plain")]
     log_format: LogFormat,
@@ -45,9 +50,6 @@ struct Args {
     #[structopt(long, default_value = "all-unauthenticated")]
     default_policy: DefaultPolicy,
 }
-
-#[derive(Clone, Debug)]
-struct LogLevel(String);
 
 #[derive(Clone, Debug)]
 enum LogFormat {
@@ -178,14 +180,11 @@ async fn sigterm() {
     };
 }
 
-fn log_init(LogLevel(level): LogLevel, format: LogFormat) -> Result<()> {
-    let (filter, _level) = reload::Layer::new(EnvFilter::new(level));
+fn log_init(filter: EnvFilter, format: LogFormat) -> Result<()> {
     let registry = tracing_subscriber::registry().with(filter);
 
     let dispatch = match format {
-        LogFormat::Plain => registry
-            .with(tracing_subscriber::fmt::layer().event_format(tracing_subscriber::fmt::format()))
-            .into(),
+        LogFormat::Plain => registry.with(tracing_subscriber::fmt::layer()).into(),
 
         LogFormat::Json => {
             let event_fmt = tracing_subscriber::fmt::format()
@@ -216,14 +215,6 @@ fn log_init(LogLevel(level): LogLevel, format: LogFormat) -> Result<()> {
     ));
 
     Ok(())
-}
-
-// === impl LogLevel ===
-
-impl LogLevel {
-    fn new(s: &str) -> Self {
-        Self(s.to_string())
-    }
 }
 
 // === impl LogFormat ===
