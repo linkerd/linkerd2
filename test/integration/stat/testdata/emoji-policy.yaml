@@ -1,0 +1,129 @@
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  name: emoji-grpc
+  labels:
+    app.kubernetes.io/part-of: emojivoto
+    app.kubernetes.io/name: emoji
+    app.kubernetes.io/version: v11
+spec:
+  podSelector:
+    matchLabels:
+      app: emoji-svc
+  port: grpc
+  proxyProtocol: gRPC
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: ServerAuthorization
+metadata:
+  name: emoji-grpc
+  labels:
+    app.kubernetes.io/part-of: emojivoto
+    app.kubernetes.io/name: emoji
+    app.kubernetes.io/version: v11
+spec:
+  # Allow all authenticated clients to access the (read-only) emoji service.
+  server:
+    selector:
+      matchLabels:
+        app.kubernetes.io/part-of: emojivoto
+  client:
+    meshTLS:
+      identities:
+        - "*.emojivoto.serviceaccount.identity.linkerd.cluster.local"
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  name: prom
+  labels:
+    app.kubernetes.io/part-of: emojivoto
+    app.kubernetes.io/version: v11
+spec:
+  port: prom
+  podSelector:
+    matchExpressions:
+      - {key: app, operator: In, values: [emoji-svc, web-svc, voting-svc]}
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: ServerAuthorization
+metadata:
+  name: prom-prometheus
+  labels:
+    app.kubernetes.io/part-of: emojivoto
+    app.kubernetes.io/version: v11
+spec:
+  server:
+    name: prom
+  client:
+    meshTLS:
+      serviceAccounts:
+        - namespace: linkerd-viz
+          name: prometheus
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  name: voting-grpc
+  labels:
+    app: voting-svc
+spec:
+  podSelector:
+    matchLabels:
+      app: voting-svc
+  port: grpc
+  proxyProtocol: gRPC
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: ServerAuthorization
+metadata:
+  name: voting-grpc
+  labels:
+    app.kubernetes.io/part-of: emojivoto
+    app.kubernetes.io/name: voting
+    app.kubernetes.io/version: v11
+spec:
+  server:
+    name: voting-grpc
+  # The voting service only allows requests from the web service.
+  client:
+    meshTLS:
+      serviceAccounts:
+        - name: web
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: Server
+metadata:
+  name: web-http
+  labels:
+    app.kubernetes.io/part-of: emojivoto
+    app.kubernetes.io/name: web
+    app.kubernetes.io/version: v11
+spec:
+  podSelector:
+    matchLabels:
+      app: web-svc
+  port: http
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: ServerAuthorization
+metadata:
+  name: web-public
+  labels:
+    app.kubernetes.io/part-of: emojivoto
+    app.kubernetes.io/name: web
+    app.kubernetes.io/version: v11
+spec:
+  server:
+    name: web-http
+  # Allow all clients to access the web HTTP port without regard for
+  # authentication. If unauthenticated connections are permitted, there is no
+  # need to describe authenticated clients.
+  client:
+    unauthenticated: true
+    networks:
+      - cidr: 0.0.0.0/0
+      - cidr: ::/0
