@@ -183,8 +183,8 @@ async fn sigterm() {
 fn log_init(filter: EnvFilter, format: LogFormat) -> Result<()> {
     let registry = tracing_subscriber::registry().with(filter);
 
-    let dispatch = match format {
-        LogFormat::Plain => registry.with(tracing_subscriber::fmt::layer()).into(),
+    match format {
+        LogFormat::Plain => registry.with(tracing_subscriber::fmt::layer()).try_init()?,
 
         LogFormat::Json => {
             let event_fmt = tracing_subscriber::fmt::format()
@@ -201,18 +201,9 @@ fn log_init(filter: EnvFilter, format: LogFormat) -> Result<()> {
                 .event_format(event_fmt)
                 .fmt_fields(format::JsonFields::default());
 
-            registry.with(fmt).into()
+            registry.with(fmt).try_init()?
         }
     };
-
-    tracing::dispatcher::set_global_default(dispatch)?;
-
-    // Setup compatibility with the `log` crate (for dependencies) and ensure it honors our
-    // configured log level.
-    tracing_log::LogTracer::init()?;
-    tracing_log::log::set_max_level(tracing_log::AsLog::as_log(
-        &tracing::level_filters::LevelFilter::current(),
-    ));
 
     Ok(())
 }
