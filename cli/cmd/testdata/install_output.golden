@@ -1844,9 +1844,8 @@ spec:
         - --cluster-networks=ClusterNetworks
         - --identity-domain=cluster.local
         - --default-policy=default-allow-policy
-        env:
-        - name: RUST_LOG
-          value: "log-level"
+        - --log-level=log-level
+        - --log-format=ControllerLogFormat
         image: PolicyControllerImageName:PolicyControllerVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
