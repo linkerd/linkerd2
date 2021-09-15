@@ -159,8 +159,8 @@ func validateAuthzRows(name string, rowStats map[string]*testutil.RowStat, isSer
 	*/
 
 	if !strings.HasSuffix(stat.UnauthorizedRPS, "rps") {
-		return fmt.Errorf("Unexpected rps for [%s], got [%s]",
-			name, stat.Rps)
+		return fmt.Errorf("Unexpected UnauthorizedRPS for [%s], got [%s]",
+			name, stat.UnauthorizedRPS)
 	}
 
 	if !strings.HasSuffix(stat.Rps, "rps") {
