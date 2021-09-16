@@ -58,7 +58,7 @@
         "--outbound-ports-to-ignore",
         "4567,4568"
       ],
-      "image": "cr.l5d.io/linkerd/proxy-init:v1.3.13",
+      "image": "cr.l5d.io/linkerd/proxy-init:v1.4.0",
       "imagePullPolicy": "IfNotPresent",
       "name": "linkerd-init",
       "resources": {
@@ -204,7 +204,7 @@
         },
         {
           "name": "LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION",
-          "value": "25,443,587,3306,4444,5432,6379,9300,11211"
+          "value": "25,587,3306,4444,5432,6379,9300,11211"
         },
         {
           "name": "LINKERD2_PROXY_DESTINATION_CONTEXT",

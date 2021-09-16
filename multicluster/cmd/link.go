@@ -327,7 +327,8 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().StringVar(&opts.gatewayNamespace, "gateway-namespace", defaultMulticlusterNamespace, "The namespace of the gateway service")
 	cmd.Flags().Uint32Var(&opts.serviceMirrorRetryLimit, "service-mirror-retry-limit", opts.serviceMirrorRetryLimit, "The number of times a failed update from the target cluster is allowed to be retried")
 	cmd.Flags().StringVar(&opts.logLevel, "log-level", opts.logLevel, "Log level for the Multicluster components")
-	cmd.Flags().StringVar(&opts.dockerRegistry, "registry", opts.dockerRegistry, "Docker registry to pull service mirror controller image from")
+	cmd.Flags().StringVar(&opts.dockerRegistry, "registry", opts.dockerRegistry,
+		fmt.Sprintf("Docker registry to pull service mirror controller image from ($%s)", flags.EnvOverrideDockerRegistry))
 	cmd.Flags().StringVarP(&opts.selector, "selector", "l", opts.selector, "Selector (label query) to filter which services in the target cluster to mirror")
 	cmd.Flags().StringVar(&opts.gatewayAddresses, "gateway-addresses", opts.gatewayAddresses, "If specified, overwrites gateway addresses when gateway service is not type LoadBalancer (comma separated list)")
 	cmd.Flags().Uint32Var(&opts.gatewayPort, "gateway-port", opts.gatewayPort, "If specified, overwrites gateway port when gateway service is not type LoadBalancer")
@@ -377,6 +378,10 @@ func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
 	defaults, err := multicluster.NewLinkValues()
 	if err != nil {
 		return nil, err
+	}
+
+	if reg := os.Getenv(flags.EnvOverrideDockerRegistry); reg != "" {
+		opts.dockerRegistry = reg
 	}
 
 	defaults.TargetClusterName = opts.clusterName

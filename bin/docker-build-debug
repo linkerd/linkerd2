@@ -17,4 +17,4 @@ rootdir=$( cd "$bindir"/.. && pwd )
 
 dockerfile=$rootdir/Dockerfile-debug
 
-docker_build debug "$(head_root_tag)" "$dockerfile"
+docker_build debug "${TAG:-$(head_root_tag)}" "$dockerfile"

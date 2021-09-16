@@ -104,7 +104,7 @@ then
   fi
   "$bindir"/image-load --"$distro" --archive --cluster "$cluster"
 else
-  for image in cni-plugin controller debug grafana proxy web
+  for image in "${DOCKER_IMAGES[@]}"
   do
     image=$(docker load -i "image-archives/$image.tar" | sed 's/Loaded image: //')
     docker push "$image"
@@ -127,6 +127,9 @@ case $(uname) in
     ;;
 esac
 
+# Images created based off PRs use the ghcr.io registry, so override the
+# default here when pulling the binary.
+export DOCKER_REGISTRY=ghcr.io/linkerd
 linkerd=$("$bindir"/docker-pull-binaries "$tag" | awk -v platform=$platform '$0 ~ platform')
 
 echo ""

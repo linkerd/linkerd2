@@ -19,6 +19,5 @@ if [ "$DOCKER_TARGET" = 'multi-arch' ]; then
     exit 1
 fi
 
-tag=$(head_root_tag)
-ROOTDIR=$( cd "$bindir"/../policy-controller && pwd )
-docker_build policy-controller "$tag" "$ROOTDIR/amd64.dockerfile"
+dir=$( cd "$bindir"/../policy-controller && pwd )
+docker_build policy-controller "${TAG:-$(head_root_tag)}" "$dir/amd64.dockerfile"

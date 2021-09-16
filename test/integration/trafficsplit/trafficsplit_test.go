@@ -33,6 +33,9 @@ type statTsRow struct {
 }
 
 func parseStatTsRow(out string, expectedRowCount, expectedColumnCount int) (map[string]*statTsRow, error) {
+	// remove extra warning when parsing stat ts output
+	out = strings.TrimSuffix(out, "\n")
+	out = strings.Join(strings.Split(out, "\n")[2:], "\n")
 	rows, err := testutil.CheckRowCount(out, expectedRowCount)
 	if err != nil {
 		return nil, err

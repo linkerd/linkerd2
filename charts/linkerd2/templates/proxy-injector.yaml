@@ -39,6 +39,7 @@ spec:
         {{- include "partials.proxy.annotations" . | nindent 8}}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
         config.linkerd.io/opaque-ports: "8443"
+        config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: proxy-injector
         linkerd.io/control-plane-ns: {{.Values.namespace}}
@@ -62,6 +63,11 @@ spec:
       {{- $_ := set $tree.Values.proxy "await" true }}
       {{- $_ := set $tree.Values.proxy "loadTrustBundleFromConfigMap" true }}
       {{- $_ := set $tree.Values.proxy "podInboundPorts" "8443,9995" }}
+      {{- /*
+        The pod needs to accept webhook traffic, and we can't rely on that originating in the
+        cluster network.
+      */}}
+      {{- $_ := set $tree.Values.proxy "defaultInboundPolicy" "all-unauthenticated" }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       - args:
         - proxy-injector
@@ -100,9 +106,6 @@ spec:
           readOnly: true
       {{ if not .Values.cniEnabled -}}
       initContainers:
-      {{- if not (contains "443" ( .Values.proxyInit.ignoreOutboundPorts | toString ))}}
-      {{- $_ := set $tree.Values.proxyInit "ignoreOutboundPorts" ( ternary "443" (printf "%s,443" (.Values.proxyInit.ignoreOutboundPorts | toString )) (empty .Values.proxyInit.ignoreOutboundPorts)) -}}
-      {{- end}}
       - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       serviceAccountName: linkerd-proxy-injector

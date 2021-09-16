@@ -75,7 +75,13 @@ func Main(args []string) {
 	linkClient := k8sAPI.DynamicClient.Resource(multicluster.LinkGVR).Namespace(*namespace)
 
 	metrics := servicemirror.NewProbeMetricVecs()
-	go admin.StartServer(*metricsAddr)
+
+	adminServer := admin.NewServer(*metricsAddr)
+
+	go func() {
+		log.Infof("starting admin server on %s", *metricsAddr)
+		adminServer.ListenAndServe()
+	}()
 
 	controllerK8sAPI.Sync(nil)
 
