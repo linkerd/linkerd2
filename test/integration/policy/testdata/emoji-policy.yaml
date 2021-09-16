@@ -25,9 +25,7 @@ metadata:
 spec:
   # Allow all authenticated clients to access the (read-only) emoji service.
   server:
-    selector:
-      matchLabels:
-        app.kubernetes.io/part-of: emojivoto
+    name: emoji-grpc
   client:
     meshTLS:
       identities:
