@@ -2228,11 +2228,6 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 
 	var errStrings []string
 	for _, service := range services {
-		if service.Spec.ClusterIP == "None" {
-			// skip headless services; they're handled differently
-			continue
-		}
-
 		endpoints, err := kubeAPI.Endpoint().Lister().Endpoints(service.Namespace).Get(service.Name)
 		if err != nil {
 			return err
