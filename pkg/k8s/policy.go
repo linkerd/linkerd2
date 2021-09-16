@@ -21,13 +21,15 @@ type ServerAndAuthorization struct {
 
 type id struct{ name, namespace string }
 
-var sazGVR = schema.GroupVersionResource{
+// SazGVR is the GroupVersionResource for the ServerAuthorization resource.
+var SazGVR = schema.GroupVersionResource{
 	Group:    "policy.linkerd.io",
 	Version:  "v1alpha1",
 	Resource: "serverauthorizations",
 }
 
-var serverGVR = schema.GroupVersionResource{
+// ServerGVR is the GroupVersionResource for the Server resource.
+var ServerGVR = schema.GroupVersionResource{
 	Group:    "policy.linkerd.io",
 	Version:  "v1alpha1",
 	Resource: "servers",
@@ -47,7 +49,7 @@ func ServerAuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI,
 
 	results := make([]ServerAndAuthorization, 0)
 
-	sazs, err := k8sAPI.DynamicClient.Resource(sazGVR).Namespace(namespace).List(ctx, metav1.ListOptions{})
+	sazs, err := k8sAPI.DynamicClient.Resource(SazGVR).Namespace(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get serverauthorization resources: %s\n", err)
 		os.Exit(1)
@@ -57,7 +59,7 @@ func ServerAuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI,
 		var servers []unstructured.Unstructured
 
 		if name, found, _ := unstructured.NestedString(saz.UnstructuredContent(), "spec", "server", "name"); found {
-			server, err := k8sAPI.DynamicClient.Resource(serverGVR).Namespace(saz.GetNamespace()).Get(ctx, name, metav1.GetOptions{})
+			server, err := k8sAPI.DynamicClient.Resource(ServerGVR).Namespace(saz.GetNamespace()).Get(ctx, name, metav1.GetOptions{})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get server %s: %s\n", name, err)
 				os.Exit(1)
@@ -65,7 +67,7 @@ func ServerAuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI,
 			servers = []unstructured.Unstructured{*server}
 		} else if sel, found, _ := unstructured.NestedMap(saz.UnstructuredContent(), "spec", "server", "selector"); found {
 			selector := selector(sel)
-			serverList, err := k8sAPI.DynamicClient.Resource(serverGVR).Namespace(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: metav1.FormatLabelSelector(&selector)})
+			serverList, err := k8sAPI.DynamicClient.Resource(ServerGVR).Namespace(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: metav1.FormatLabelSelector(&selector)})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get servers: %s\n", err)
 				os.Exit(1)
@@ -105,7 +107,7 @@ func ServersForResource(ctx context.Context, k8sAPI *KubernetesAPI, namespace st
 
 	results := make([]string, 0)
 
-	servers, err := k8sAPI.DynamicClient.Resource(serverGVR).Namespace(namespace).List(ctx, metav1.ListOptions{})
+	servers, err := k8sAPI.DynamicClient.Resource(ServerGVR).Namespace(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get serverauthorization resources: %s\n", err)
 		os.Exit(1)
@@ -133,7 +135,7 @@ func ServersForResource(ctx context.Context, k8sAPI *KubernetesAPI, namespace st
 func ServerAuthorizationsForServer(ctx context.Context, k8sAPI *KubernetesAPI, namespace string, server string) ([]string, error) {
 	results := make([]string, 0)
 
-	sazs, err := k8sAPI.DynamicClient.Resource(sazGVR).Namespace(namespace).List(ctx, metav1.ListOptions{})
+	sazs, err := k8sAPI.DynamicClient.Resource(SazGVR).Namespace(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get serverauthorization resources: %s\n", err)
 		os.Exit(1)
@@ -141,7 +143,7 @@ func ServerAuthorizationsForServer(ctx context.Context, k8sAPI *KubernetesAPI, n
 
 	for _, saz := range sazs.Items {
 		if name, found, _ := unstructured.NestedString(saz.UnstructuredContent(), "spec", "server", "name"); found {
-			s, err := k8sAPI.DynamicClient.Resource(serverGVR).Namespace(saz.GetNamespace()).Get(ctx, name, metav1.GetOptions{})
+			s, err := k8sAPI.DynamicClient.Resource(ServerGVR).Namespace(saz.GetNamespace()).Get(ctx, name, metav1.GetOptions{})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get server %s: %s\n", name, err)
 				os.Exit(1)
@@ -151,7 +153,7 @@ func ServerAuthorizationsForServer(ctx context.Context, k8sAPI *KubernetesAPI, n
 			}
 		} else if sel, found, _ := unstructured.NestedMap(saz.UnstructuredContent(), "spec", "server", "selector"); found {
 			selector := selector(sel)
-			serverList, err := k8sAPI.DynamicClient.Resource(serverGVR).Namespace(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: metav1.FormatLabelSelector(&selector)})
+			serverList, err := k8sAPI.DynamicClient.Resource(ServerGVR).Namespace(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: metav1.FormatLabelSelector(&selector)})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get servers: %s\n", err)
 				os.Exit(1)
