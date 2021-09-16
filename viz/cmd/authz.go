@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"strings"
 
 	"github.com/linkerd/linkerd2/cli/table"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
@@ -179,7 +182,15 @@ func NewCmdAuthz() *cobra.Command {
 			}
 
 			data := table.NewTable(cols, rows)
-			data.Render(os.Stdout)
+			if options.outputFormat == "json" {
+				err = renderJSON(data, os.Stdout)
+				if err != nil {
+					fmt.Fprint(os.Stderr, err.Error())
+					os.Exit(1)
+				}
+			} else {
+				data.Render(os.Stdout)
+			}
 
 			return nil
 		},
@@ -194,4 +205,50 @@ func NewCmdAuthz() *cobra.Command {
 		cmd, []string{"namespace"},
 		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
 	return cmd
+}
+
+func renderJSON(t table.Table, w io.Writer) error {
+	rows := make([]map[string]interface{}, len(t.Data))
+	for i, data := range t.Data {
+		rows[i] = make(map[string]interface{})
+		for j, col := range t.Columns {
+			if data[j] == "-" {
+				continue
+			}
+			field := strings.ToLower(col.Header)
+			var percentile string
+
+			if n, _ := fmt.Sscanf(field, "latency_%s", &percentile); n == 1 {
+				var latency int
+				n, _ := fmt.Sscanf(data[j], "%dms", &latency)
+				if n == 1 {
+					rows[i]["latency_ms_"+percentile] = latency
+				} else {
+					rows[i]["latency_ms_"+percentile] = data[j]
+				}
+			} else if field == "rps" {
+				var rps float32
+				if n, _ := fmt.Sscanf(data[j], "%frps", &rps); n == 1 {
+					rows[i][field] = rps
+				} else {
+					rows[i][field] = data[j]
+				}
+			} else if field == "success" {
+				var success float32
+				if n, _ := fmt.Sscanf(data[j], "%f%%", &success); n == 1 {
+					rows[i][field] = success / 100.0
+				} else {
+					rows[i][field] = data[j]
+				}
+			} else {
+				rows[i][field] = data[j]
+			}
+		}
+	}
+	out, err := json.MarshalIndent(rows, "", "  ")
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(out)
+	return err
 }
