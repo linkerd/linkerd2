@@ -3,7 +3,7 @@ apiVersion: policy.linkerd.io/v1alpha1
 kind: Server
 metadata:
   namespace: {{.Values.namespace}}
-  name: web
+  name: web-admin
   labels:
     linkerd.io/extension: viz
     component: web
@@ -21,7 +21,7 @@ apiVersion: policy.linkerd.io/v1alpha1
 kind: ServerAuthorization
 metadata:
   namespace: {{.Values.namespace}}
-  name: web
+  name: web-admin
   labels:
     linkerd.io/extension: viz
     component: web
@@ -29,6 +29,7 @@ metadata:
     {{ include "partials.annotations.created-by" . }}
 spec:
   server:
-    name: web
+    name: web-admin
   client:
+    # for kubelet probes and prometheus scraping
     unauthenticated: true

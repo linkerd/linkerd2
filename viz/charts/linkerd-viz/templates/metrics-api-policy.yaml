@@ -15,7 +15,7 @@ spec:
       linkerd.io/extension: viz
       component: metrics-api
   port: http
-  proxyProtocol: gRPC
+  proxyProtocol: HTTP/1
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: ServerAuthorization
@@ -68,4 +68,5 @@ spec:
   server:
     name: metrics-api-admin
   client:
+    # for kubelet probes and prometheus scraping
     unauthenticated: true

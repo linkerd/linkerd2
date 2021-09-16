@@ -418,6 +418,7 @@ spec:
   server:
     name: proxy-admin
   client:
+    # for kubelet probes
     unauthenticated: true
 
 ---
@@ -519,7 +520,7 @@ spec:
       linkerd.io/extension: viz
       component: metrics-api
   port: http
-  proxyProtocol: gRPC
+  proxyProtocol: HTTP/1
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: ServerAuthorization
@@ -572,6 +573,7 @@ spec:
   server:
     name: metrics-api-admin
   client:
+    # for kubelet probes and prometheus scraping
     unauthenticated: true
 ---
 ###
@@ -1045,6 +1047,7 @@ spec:
   server:
     name: prometheus
   client:
+    # for kubelet probes
     unauthenticated: true
 ---
 ###
@@ -1513,7 +1516,7 @@ apiVersion: policy.linkerd.io/v1alpha1
 kind: Server
 metadata:
   namespace: linkerd-viz
-  name: web
+  name: web-admin
   labels:
     linkerd.io/extension: viz
     component: web
@@ -1531,7 +1534,7 @@ apiVersion: policy.linkerd.io/v1alpha1
 kind: ServerAuthorization
 metadata:
   namespace: linkerd-viz
-  name: web
+  name: web-admin
   labels:
     linkerd.io/extension: viz
     component: web
@@ -1539,8 +1542,9 @@ metadata:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
   server:
-    name: web
+    name: web-admin
   client:
+    # for kubelet probes and prometheus scraping
     unauthenticated: true
 ---
 apiVersion: linkerd.io/v1alpha2

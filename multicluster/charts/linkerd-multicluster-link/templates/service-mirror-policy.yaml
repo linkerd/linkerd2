@@ -6,12 +6,10 @@ metadata:
   name: service-mirror
   labels:
     linkerd.io/control-plane-component: linkerd-service-mirror
-    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 spec:
   podSelector:
     matchLabels:
       linkerd.io/control-plane-component: linkerd-service-mirror
-      mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
   port: admin-http
   proxyProtocol: HTTP/1
 ---
@@ -22,44 +20,15 @@ metadata:
   name: service-mirror
   labels:
     linkerd.io/control-plane-component: linkerd-service-mirror
-    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 spec:
   server:
     name: service-mirror
   client:
-    # Allow prometheus scraping
-    unauthenticated: true
----
-apiVersion: policy.linkerd.io/v1alpha1
-kind: Server
-metadata:
-  namespace: {{.Values.namespace}}
-  name: proxy-admin
-  labels:
-    linkerd.io/control-plane-component: linkerd-service-mirror
-    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
-  annotations:
-    {{ include "partials.annotations.created-by" . }}
-spec:
-  podSelector:
-    matchLabels:
-      linkerd.io/control-plane-component: linkerd-service-mirror
-      mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
-  port: linkerd-admin
-  proxyProtocol: HTTP/1
----
-apiVersion: policy.linkerd.io/v1alpha1
-kind: ServerAuthorization
-metadata:
-  namespace: {{.Values.namespace}}
-  name: proxy-admin
-  labels:
-    linkerd.io/control-plane-component: linkerd-service-mirror
-    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
-  annotations:
-    {{ include "partials.annotations.created-by" . }}
-spec:
-  server:
-    name: proxy-admin
-  client:
-    unauthenticated: true
+    # In order to use `linkerd mc gateways` you need viz' Prometheus instance
+    # to be able to reach the service-mirror. In order to also have a separate
+    # Prometheus scrape the service-mirror an additional ServerAuthorization
+    # resource should be created.
+    meshTLS:
+      serviceAccounts:
+      - name: prometheus
+        namespace: linkerd-viz

@@ -116,4 +116,5 @@ spec:
   server:
     name: smoke-test-proxy-admin
   client:
+    # for kubelet probes
     unauthenticated: true

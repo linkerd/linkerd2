@@ -38,6 +38,7 @@ spec:
   server:
     name: proxy-admin
   client:
+    # for kubelet probes
     unauthenticated: true
 
 ---
@@ -436,7 +437,7 @@ spec:
     matchLabels:
       component: collector
   port: 55678
-  proxyProtocol: HTTP/1
+  proxyProtocol: gRPC
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: Server
@@ -520,4 +521,5 @@ spec:
         linkerd.io/extension: jaeger
         component: collector
   client:
+    # allow connections from any pod (meshed or not) sending trace data
     unauthenticated: true
