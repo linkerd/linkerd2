@@ -1639,7 +1639,6 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
-    config.linkerd.io/opaque-ports: "443"
 spec:
   type: ClusterIP
   selector:
