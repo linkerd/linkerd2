@@ -3,24 +3,6 @@ apiVersion: policy.linkerd.io/v1alpha1
 kind: Server
 metadata:
   namespace: {{.Values.namespace}}
-  name: tap-admin
-  labels:
-    linkerd.io/extension: viz
-    component: tap
-  annotations:
-    {{ include "partials.annotations.created-by" . }}
-spec:
-  podSelector:
-    matchLabels:
-      linkerd.io/extension: viz
-      component: tap
-  port: admin-http
-  proxyProtocol: HTTP/1
----
-apiVersion: policy.linkerd.io/v1alpha1
-kind: Server
-metadata:
-  namespace: {{.Values.namespace}}
   name: tap-api
   labels:
     linkerd.io/extension: viz
@@ -47,10 +29,7 @@ metadata:
     {{ include "partials.annotations.created-by" . }}
 spec:
   server:
-    selector:
-      matchLabels:
-        linkerd.io/extension: viz
-        component: tap
+    name: tap-api
   client:
-    # traffic coming from the kubelet and from kube-api
+    # traffic coming from kube-api
     unauthenticated: true

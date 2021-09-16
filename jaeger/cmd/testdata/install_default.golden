@@ -499,6 +499,7 @@ spec:
     matchLabels:
       component: collector
   port: 4317
+  proxyProtocol: gRPC
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: Server
