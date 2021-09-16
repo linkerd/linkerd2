@@ -79,8 +79,13 @@ fn parse_server(req: Request) -> Result<(String, String, api::policy::ServerSpec
         .namespace()
         .ok_or_else(|| anyhow!("no 'namespace' field set on server"))?;
     let name = obj.name();
-    let data = serde_json::from_value::<RequestData>(obj.data)?;
-    Ok((ns, name, data.spec))
+    let data = obj
+        .data
+        .get("spec")
+        .cloned()
+        .ok_or_else(|| anyhow!("no 'spec' field set on server"))?;
+    let spec = serde_json::from_value::<ServerSpec>(data)?;
+    Ok((ns, name, spec))
 }
 
 /// Validates a new server (`review`) against existing `servers`.
@@ -105,13 +110,4 @@ fn validate(
     }
 
     Ok(())
-}
-
-/// RequestData is a wrapper around the `data` field of the AdmissionRequest.
-/// The data field contains a `serde_json::value::Value::Object` type that wraps
-/// the spec of the resource, deserializing directly to a ServiceSpec won't work
-/// in this case.
-#[derive(serde::Deserialize, Debug)]
-struct RequestData {
-    spec: ServerSpec,
 }

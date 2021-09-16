@@ -827,7 +827,6 @@ dependencies = [
  "linkerd-policy-controller-grpc",
  "linkerd-policy-controller-k8s-api",
  "linkerd-policy-controller-k8s-index",
- "serde",
  "serde_json",
  "structopt",
  "tokio",
