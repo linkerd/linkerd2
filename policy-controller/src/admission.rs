@@ -111,7 +111,7 @@ fn validate(
 /// The data field contains a `serde_json::value::Value::Object` type that wraps
 /// the spec of the resource, deserializing directly to a ServiceSpec won't work
 /// in this case.
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, Debug)]
 struct RequestData {
     spec: ServerSpec,
 }
