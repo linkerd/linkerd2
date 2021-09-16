@@ -410,7 +410,8 @@ func newEmptyAddressSet() watcher.AddressSet {
 }
 
 // getInboundPort gets the inbound port from the proxy container's environment
-// variable.
+// variable. If the pod is not injected with a proxy, no port or error is
+// returned.
 func getInboundPort(podSpec *corev1.PodSpec) (uint32, error) {
 	for _, containerSpec := range podSpec.Containers {
 		if containerSpec.Name != k8s.ProxyContainerName {
