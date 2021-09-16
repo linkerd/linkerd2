@@ -28,28 +28,34 @@ func TestPolicy(t *testing.T) {
 
 	// Test authorization stats
 	TestHelper.WithDataPlaneNamespace(ctx, "stat-authz-test", map[string]string{}, t, func(t *testing.T, prefixedNs string) {
-		out, err := TestHelper.LinkerdRun("inject", "--manual", "../tracing/testdata/emojivoto.yaml")
+		emojivotoYaml, err := testutil.ReadFile("testdata/emojivoto.yaml")
 		if err != nil {
-			testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
+			testutil.AnnotatedFatalf(t, "failed to read emojivoto yaml",
+				"failed to read emojivoto yaml\n%s\n", err)
+		}
+		emojivotoYaml = strings.ReplaceAll(emojivotoYaml, "___NS___", prefixedNs)
+		out, stderr, err := TestHelper.PipeToLinkerdRun(emojivotoYaml, "inject", "-")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'linkerd inject' command failed",
+				"'linkerd inject' command failed\n%s\n%s", out, stderr)
 		}
 
 		out, err = TestHelper.KubectlApply(out, prefixedNs)
 		if err != nil {
-			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-				"'kubectl apply' command failed\n%s", out)
-		}
-
-		policyFile := "testdata/emoji-policy.yaml"
-		policyResources, err := testutil.ReadFile(policyFile)
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "cannot read updated traffic split resource",
-				"cannot read updated traffic split resource: %s, %s", policyResources, err)
-		}
-
-		out, err = TestHelper.KubectlApply(policyResources, prefixedNs)
-		if err != nil {
 			testutil.AnnotatedFatalf(t, "failed to update traffic split resource",
 				"failed to update traffic split resource: %s\n %s", err, out)
+		}
+
+		emojivotoPolicy, err := testutil.ReadFile("testdata/emoji-policy.yaml")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "failed to read emoji-policy yaml",
+				"failed to read emoji-policy yaml\n%s\n", err)
+		}
+
+		out, err = TestHelper.KubectlApply(emojivotoPolicy, prefixedNs)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "failed to apply emojivoto policy resources",
+				"failed to apply emojivoto policy resources: %s\n %s", err, out)
 		}
 
 		// wait for deployments to start
@@ -158,9 +164,11 @@ func validateAuthzRows(name string, rowStats map[string]*testutil.RowStat, isSer
 		}
 	*/
 
-	if !strings.HasSuffix(stat.UnauthorizedRPS, "rps") {
-		return fmt.Errorf("Unexpected UnauthorizedRPS for [%s], got [%s]",
-			name, stat.UnauthorizedRPS)
+	if isServer {
+		if !strings.HasSuffix(stat.UnauthorizedRPS, "rps") {
+			return fmt.Errorf("Unexpected UnauthorizedRPS for [%s], got [%s]",
+				name, stat.UnauthorizedRPS)
+		}
 	}
 
 	if !strings.HasSuffix(stat.Rps, "rps") {
