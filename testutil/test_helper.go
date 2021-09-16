@@ -729,7 +729,10 @@ func ParseRows(out string, expectedRowCount, expectedColumnCount int) (map[strin
 		rowStats[fields[0]].P50Latency = fields[4+i]
 		rowStats[fields[0]].P95Latency = fields[5+i]
 		rowStats[fields[0]].P99Latency = fields[6+i]
-		rowStats[fields[0]].TCPOpenConnections = fields[7+i]
+
+		if 7+i < len(fields) {
+			rowStats[fields[0]].TCPOpenConnections = fields[7+i]
+		}
 	}
 
 	return rowStats, nil

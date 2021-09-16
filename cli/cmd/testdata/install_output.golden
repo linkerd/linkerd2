@@ -1310,6 +1310,7 @@ spec:
         linkerd.io/created-by: CliVersion
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: ProxyVersion
+        config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: identity
         linkerd.io/control-plane-ns: linkerd
@@ -1379,6 +1380,14 @@ spec:
           value: linkerd-dst-headless.linkerd.svc.cluster.local.:8086
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "ClusterNetworks"
+        - name: LINKERD2_PROXY_POLICY_SVC_ADDR
+          value: linkerd-policy.linkerd.svc.cluster.local.:8090
+        - name: LINKERD2_PROXY_POLICY_WORKLOAD
+          value: "$(_pod_ns):$(_pod_name)"
+        - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
+          value: cluster-unauthenticated
+        - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
+          value: "ClusterNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1428,6 +1437,8 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
           value: linkerd-identity.linkerd.serviceaccount.identity.linkerd.cluster.local
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
+          value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.cluster.local
+        - name: LINKERD2_PROXY_POLICY_SVC_NAME
           value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.cluster.local
         image: ProxyImageName:ProxyVersion
         imagePullPolicy: ImagePullPolicy
@@ -1637,7 +1648,6 @@ spec:
         linkerd.io/created-by: CliVersion
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: ProxyVersion
-        config.linkerd.io/opaque-ports: "8443"
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: destination
@@ -1833,9 +1843,8 @@ spec:
         - --cluster-networks=ClusterNetworks
         - --identity-domain=cluster.local
         - --default-policy=default-allow-policy
-        env:
-        - name: RUST_LOG
-          value: "log-level"
+        - --log-level=log-level
+        - --log-format=ControllerLogFormat
         image: PolicyControllerImageName:PolicyControllerVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
