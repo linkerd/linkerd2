@@ -11,6 +11,7 @@ adds support for JSON log formatting, enables TLS detection on port 443
 * Removed port 443 from the default list of opaque ports, this will allow the
   proxy to report metadata (such as the connection's SNI value) on TLS
   connections to port 443
+* Added default policies for core Linkerd extensions
 * Added support for JSON log formatting to the policy controller
 * Added support for new policy resources to `viz stat` command
 * Added default policy annotation to `linkerd-identity`
