@@ -315,13 +315,10 @@ impl Server {
 
 #[cfg(test)]
 mod tests {
-
+    use super::*;
+    use crate::authz::AuthzIndex;
     use linkerd_policy_controller_core::ClientAuthentication;
     use linkerd_policy_controller_k8s_api::policy::server::{Port, ProxyProtocol};
-
-    use crate::authz::AuthzIndex;
-
-    use super::*;
 
     fn mk_server(
         ns: impl Into<String>,
