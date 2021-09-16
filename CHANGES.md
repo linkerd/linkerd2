@@ -15,10 +15,16 @@ adds support for JSON log formatting, enables TLS detection on port 443
 * Added support for new policy resources to `viz stat` command
 * Added default policy annotation to `linkerd-identity`
 * Added a new `linkerd authz` command to the CLI to list all server and
-  authorization resources that apply to a specific resource.
+  authorization resources that apply to a specific resource
+* Added TLS labels (including client identity) to authorization metrics in the
+  proxy
 * Changed the opaque ports CLI check to consider service and pod ports when
   checking annotation values; previously, the check would naively issue warnings
   when the service annotation values were different from the pod it selected
+* Changed how the proxy forwards inbound connections to a pod locally; the proxy
+  now targets the original address instead of a port bound on localhost to
+  protect services that are only bound on loopback from being exposed to other
+  pods
 * Improved memory utilization in the proxy, especially for TCP forwarding, where
   the memory allocated was reduced from 128KB to 16KB
 * Updated the inbound policy system for the proxies to always allow connections
