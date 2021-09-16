@@ -1120,21 +1120,16 @@ func TestDashboard(t *testing.T) {
 			"dashboard command failed. Expected url [%s] not present", dashboardURL)
 	}
 
-	timeout := 5 * time.Minute
-	err = TestHelper.RetryFor(timeout, func() error {
-		resp, err := TestHelper.HTTPGetURL(dashboardURL + "/api/version")
-		if err != nil {
-			return fmt.Errorf("unexpected error: %v", err)
-		}
-
-		if !strings.Contains(resp, TestHelper.GetVersion()) {
-			return fmt.Errorf("dashboard command failed. Expected response [%s] to contain version [%s]", resp, TestHelper.GetVersion())
-		}
-
-		return nil
-	})
+	resp, err := TestHelper.HTTPGetURL(dashboardURL + "/api/version")
 	if err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("version check through dashboard timed-out (%s)", timeout), err)
+		testutil.AnnotatedFatalf(t, "unexpected error",
+			"unexpected error: %v", err)
+	}
+
+	if !strings.Contains(resp, TestHelper.GetVersion()) {
+		testutil.AnnotatedFatalf(t, "dashboard command failed; response doesn't contain expected version",
+			"dashboard command failed. Expected response [%s] to contain version [%s]",
+			resp, TestHelper.GetVersion())
 	}
 
 }
