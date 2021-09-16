@@ -344,39 +344,32 @@ mod tests {
             },
         }
     }
-    trait MkServer {
-        fn with_proxy_protocol(self, p: ProxyProtocol) -> Self;
-        fn with_srv_labels(
-            self,
-            labels: impl IntoIterator<Item = (&'static str, &'static str)>,
-        ) -> Self;
+
+    fn with_proxy_protocol(mut srv: k8s::policy::Server, p: ProxyProtocol) -> k8s::policy::Server {
+        srv.spec.proxy_protocol = Some(p);
+        srv
     }
 
-    impl MkServer for k8s::policy::Server {
-        fn with_proxy_protocol(mut self, p: ProxyProtocol) -> Self {
-            self.spec.proxy_protocol = Some(p);
-            self
-        }
-
-        fn with_srv_labels(
-            mut self,
-            labels: impl IntoIterator<Item = (&'static str, &'static str)>,
-        ) -> Self {
-            self.metadata.labels = Some(
-                labels
-                    .into_iter()
-                    .map(|(k, v)| (k.to_string(), v.to_string()))
-                    .collect(),
-            );
-            self
-        }
+    fn with_srv_labels(
+        mut srv: k8s::policy::Server,
+        labels: impl IntoIterator<Item = (&'static str, &'static str)>,
+    ) -> k8s::policy::Server {
+        srv.metadata.labels = Some(
+            labels
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
+        );
+        srv
     }
 
     #[test]
     fn server_apply_update_protocol() {
         let mut idx = SrvIndex::default();
-        let mut srv = mk_server("ns-0", "srv-0", Port::Number(9999))
-            .with_proxy_protocol(ProxyProtocol::Opaque);
+        let mut srv = {
+            let srv = mk_server("ns-0", "srv-0", Port::Number(9999));
+            with_proxy_protocol(srv, ProxyProtocol::Opaque)
+        };
         idx.apply(srv.clone(), &AuthzIndex::default());
 
         srv.spec.proxy_protocol = Some(ProxyProtocol::Tls);
@@ -395,13 +388,14 @@ mod tests {
         let srv = {
             let mut labels = HashMap::new();
             labels.insert("foo", "bar");
-            mk_server("ns-0", "srv-0", Port::Number(9999)).with_srv_labels(labels)
+            let srv = mk_server("ns-0", "srv-0", Port::Number(9999));
+            with_srv_labels(srv, labels)
         };
         idx.apply(srv.clone(), &AuthzIndex::default());
 
         let mut new_labels = HashMap::new();
         new_labels.insert("not-foo", "not-bar");
-        let srv = srv.with_srv_labels(new_labels);
+        let srv = with_srv_labels(srv, new_labels);
         idx.apply(srv.clone(), &AuthzIndex::default());
 
         let Server { labels, .. } = idx.index.get("srv-0").unwrap();
