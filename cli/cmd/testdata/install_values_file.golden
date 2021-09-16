@@ -1558,7 +1558,6 @@ metadata:
     linkerd.io/control-plane-ns: l5d
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
-    config.linkerd.io/opaque-ports: "443"
 spec:
   type: ClusterIP
   selector:
