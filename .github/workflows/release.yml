@@ -131,10 +131,7 @@ jobs:
         - uninstall
         - upgrade-edge
         - upgrade-stable
-          # temporarily disabled; 
-          # image used in manifests for calico-operator
-          # does not exist in image repository yet
-          #- cni-calico-deep
+        - cni-calico-deep
     needs: [docker_build, policy_controller_manifest]
     name: Integration tests (${{ matrix.integration_test }})
     timeout-minutes: 60
