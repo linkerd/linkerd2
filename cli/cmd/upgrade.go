@@ -161,8 +161,14 @@ The upgrade can be configured by using the --set, --values, --set-string and --s
 A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md
 `,
 
-		Example: `  # Default upgrade.
-  linkerd upgrade | kubectl apply --prune -l linkerd.io/control-plane-ns=linkerd -f -
+		Example: `  # Default upgrade - also removes linkerd resources that no longer exist in the current version
+  linkerd upgrade control-plane | kubectl apply -f -
+
+  # Then run this again to make sure that certain cluster-scoped resources are correctly pruned
+  linkerd upgrade | kubectl apply --prune -l linkerd.io/control-plane-ns=linkerd \
+  --prune-whitelist=rbac.authorization.k8s.io/v1/clusterrole \
+  --prune-whitelist=rbac.authorization.k8s.io/v1/clusterrolebinding \
+  --prune-whitelist=apiregistration.k8s.io/v1/apiservice -f -
 
   # Similar to install, upgrade may also be broken up into two stages, by user
   # privilege.`,
