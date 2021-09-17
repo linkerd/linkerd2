@@ -156,13 +156,12 @@ func validateAuthzRows(name string, rowStats map[string]*testutil.RowStat, isSer
 		return fmt.Errorf("No stats found for [%s]", name)
 	}
 
-	/*
-		expectedSuccessRate := "100.00%"
-		if stat.Success != expectedSuccessRate {
-			return fmt.Errorf("Expected success rate [%s] for [%s], got [%s]",
-				expectedSuccessRate, name, stat.Success)
-		}
-	*/
+	// Check for suffix only, as the value will not be 100% always with
+	// the normal emojivoto sample
+	if !strings.HasSuffix(stat.Success, "%") {
+		return fmt.Errorf("Unexpected success rate for [%s], got [%s]",
+			name, stat.Success)
+	}
 
 	if isServer {
 		if !strings.HasSuffix(stat.UnauthorizedRPS, "rps") {
