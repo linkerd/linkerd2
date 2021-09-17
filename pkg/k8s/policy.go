@@ -38,7 +38,7 @@ var ServerGVR = schema.GroupVersionResource{
 // ServerAuthorizationsForResource returns a list of Server-ServerAuthorization
 // pairs which select pods belonging to the given resource.
 func ServerAuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI, namespace string, resource string) ([]ServerAndAuthorization, error) {
-	pods, err := getPodsForResourceOrKind(ctx, k8sAPI, namespace, resource)
+	pods, err := getPodsForResourceOrKind(ctx, k8sAPI, namespace, resource, "")
 	if err != nil {
 		return nil, err
 	}
@@ -95,8 +95,8 @@ func ServerAuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI,
 
 // ServersForResource returns a list of Server names of Servers which select pods
 // belonging to the given resource.
-func ServersForResource(ctx context.Context, k8sAPI *KubernetesAPI, namespace string, resource string) ([]string, error) {
-	pods, err := getPodsForResourceOrKind(ctx, k8sAPI, namespace, resource)
+func ServersForResource(ctx context.Context, k8sAPI *KubernetesAPI, namespace string, resource string, labelSelector string) ([]string, error) {
+	pods, err := getPodsForResourceOrKind(ctx, k8sAPI, namespace, resource, labelSelector)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +228,7 @@ func serverIncludesPod(server unstructured.Unstructured, serverPods []corev1.Pod
 
 // getPodsForResourceOrKind is similar to getPodsForResource, but also supports
 // querying for all resources of a given kind (i.e. when resource name is unspecified).
-func getPodsForResourceOrKind(ctx context.Context, k8sAPI kubernetes.Interface, namespace string, resource string) ([]corev1.Pod, error) {
+func getPodsForResourceOrKind(ctx context.Context, k8sAPI kubernetes.Interface, namespace string, resource string, labelSelector string) ([]corev1.Pod, error) {
 
 	elems := strings.Split(resource, "/")
 	if len(elems) > 2 {
@@ -248,9 +248,14 @@ func getPodsForResourceOrKind(ctx context.Context, k8sAPI kubernetes.Interface, 
 	if err != nil {
 		return nil, fmt.Errorf("invalid resource: %s", resource)
 	}
+
+	selector := metav1.ListOptions{
+		LabelSelector: labelSelector,
+	}
+
 	switch typ {
 	case Pod:
-		ps, err := k8sAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+		ps, err := k8sAPI.CoreV1().Pods(namespace).List(ctx, selector)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to get pods: %s", err)
 			os.Exit(1)
@@ -258,7 +263,7 @@ func getPodsForResourceOrKind(ctx context.Context, k8sAPI kubernetes.Interface, 
 		pods = append(pods, ps.Items...)
 
 	case CronJob:
-		jobs, err := k8sAPI.BatchV1().CronJobs(namespace).List(ctx, metav1.ListOptions{})
+		jobs, err := k8sAPI.BatchV1().CronJobs(namespace).List(ctx, selector)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to get cronjobs: %s", err)
 			os.Exit(1)
@@ -273,7 +278,7 @@ func getPodsForResourceOrKind(ctx context.Context, k8sAPI kubernetes.Interface, 
 		}
 
 	case DaemonSet:
-		dss, err := k8sAPI.AppsV1().DaemonSets(namespace).List(ctx, metav1.ListOptions{})
+		dss, err := k8sAPI.AppsV1().DaemonSets(namespace).List(ctx, selector)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to get demonsets: %s", err)
 			os.Exit(1)
@@ -288,7 +293,7 @@ func getPodsForResourceOrKind(ctx context.Context, k8sAPI kubernetes.Interface, 
 		}
 
 	case Deployment:
-		deploys, err := k8sAPI.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
+		deploys, err := k8sAPI.AppsV1().Deployments(namespace).List(ctx, selector)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to get deployments: %s", err)
 			os.Exit(1)
@@ -303,7 +308,7 @@ func getPodsForResourceOrKind(ctx context.Context, k8sAPI kubernetes.Interface, 
 		}
 
 	case Job:
-		jobs, err := k8sAPI.BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{})
+		jobs, err := k8sAPI.BatchV1().Jobs(namespace).List(ctx, selector)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to get jobs: %s", err)
 			os.Exit(1)
@@ -318,7 +323,7 @@ func getPodsForResourceOrKind(ctx context.Context, k8sAPI kubernetes.Interface, 
 		}
 
 	case ReplicaSet:
-		rss, err := k8sAPI.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{})
+		rss, err := k8sAPI.AppsV1().ReplicaSets(namespace).List(ctx, selector)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to get replicasets: %s", err)
 			os.Exit(1)
@@ -333,7 +338,7 @@ func getPodsForResourceOrKind(ctx context.Context, k8sAPI kubernetes.Interface, 
 		}
 
 	case ReplicationController:
-		rcs, err := k8sAPI.CoreV1().ReplicationControllers(namespace).List(ctx, metav1.ListOptions{})
+		rcs, err := k8sAPI.CoreV1().ReplicationControllers(namespace).List(ctx, selector)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to get replicationcontrollers: %s", err)
 			os.Exit(1)
@@ -348,7 +353,7 @@ func getPodsForResourceOrKind(ctx context.Context, k8sAPI kubernetes.Interface, 
 		}
 
 	case StatefulSet:
-		sss, err := k8sAPI.AppsV1().StatefulSets(namespace).List(ctx, metav1.ListOptions{})
+		sss, err := k8sAPI.AppsV1().StatefulSets(namespace).List(ctx, selector)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to get statefulsets: %s", err)
 			os.Exit(1)

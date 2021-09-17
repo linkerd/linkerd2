@@ -80,7 +80,7 @@ func NewCmdAuthz() *cobra.Command {
 			}
 			rows := []table.Row{}
 
-			servers, err := k8s.ServersForResource(cmd.Context(), k8sAPI, options.namespace, resource)
+			servers, err := k8s.ServersForResource(cmd.Context(), k8sAPI, options.namespace, resource, options.labelSelector)
 			if err != nil {
 				fmt.Fprint(os.Stderr, err.Error())
 				os.Exit(1)
@@ -100,8 +100,7 @@ func NewCmdAuthz() *cobra.Command {
 							Namespace:     options.namespace,
 							AllNamespaces: false,
 						},
-						ToNamespace:   options.namespace,
-						LabelSelector: options.labelSelector,
+						ToNamespace: options.namespace,
 					}
 					requestParams.ToName = server
 					requestParams.ToType = k8s.Server
