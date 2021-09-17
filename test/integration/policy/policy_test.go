@@ -42,8 +42,8 @@ func TestPolicy(t *testing.T) {
 
 		out, err = TestHelper.KubectlApply(out, prefixedNs)
 		if err != nil {
-			testutil.AnnotatedFatalf(t, "failed to update traffic split resource",
-				"failed to update traffic split resource: %s\n %s", err, out)
+			testutil.AnnotatedFatalf(t, "failed to apply emojivoto resources",
+				"failed to apply emojivoto resources: %s\n %s", err, out)
 		}
 
 		emojivotoPolicy, err := testutil.ReadFile("testdata/emoji-policy.yaml")
@@ -165,7 +165,7 @@ func validateAuthzRows(name string, rowStats map[string]*testutil.RowStat, isSer
 
 	if isServer {
 		if !strings.HasSuffix(stat.UnauthorizedRPS, "rps") {
-			return fmt.Errorf("Unexpected UnauthorizedRPS for [%s], got [%s]",
+			return fmt.Errorf("Unexpected Unauthorized RPS for [%s], got [%s]",
 				name, stat.UnauthorizedRPS)
 		}
 	}

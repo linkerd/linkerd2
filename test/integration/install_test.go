@@ -1131,7 +1131,6 @@ func TestDashboard(t *testing.T) {
 			"dashboard command failed. Expected response [%s] to contain version [%s]",
 			resp, TestHelper.GetVersion())
 	}
-
 }
 
 func TestInject(t *testing.T) {
