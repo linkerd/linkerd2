@@ -22,17 +22,10 @@ type profileTranslator struct {
 	log                *logging.Entry
 	fullyQualifiedName string
 	port               uint32
-	endpoint           *Endpoint
+	endpoint           *pb.WeightedAddr
 }
 
-// Endpoint wraps an addr with the proxy's inbound port so that protocol hints
-// can be set without needing the pod spec.
-type Endpoint struct {
-	addr      *pb.WeightedAddr
-	proxyPort uint32
-}
-
-func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endpoint *Endpoint) *profileTranslator {
+func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endpoint *pb.WeightedAddr) *profileTranslator {
 	return &profileTranslator{
 		stream:             stream,
 		log:                log.WithField("component", "profile-translator"),
@@ -44,28 +37,9 @@ func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.E
 
 func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
 	if profile == nil {
-		// A previous update could have indicated this profile supports
-		// opaque traffic. Now that there is no profile it should no longer be
-		// advertised.
-		if pt.endpoint != nil && pt.GetAddr().ProtocolHint != nil {
-			pt.GetAddr().GetProtocolHint().OpaqueTransport = nil
-		}
-
 		pt.stream.Send(pt.defaultServiceProfile())
 		return
 	}
-
-	if pt.endpoint != nil && pt.endpoint.proxyPort != 0 {
-		// The profile has an endpoint with a non-zero proxy port which means
-		// it can hint that opaque traffic should be sent to this port,
-		// instead of the application port.
-		if _, ok := profile.Spec.OpaquePorts[pt.port]; ok {
-			pt.GetAddr().GetProtocolHint().OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
-				InboundPort: pt.endpoint.proxyPort,
-			}
-		}
-	}
-
 	destinationProfile, err := pt.toServiceProfile(profile)
 	if err != nil {
 		pt.log.Error(err)
@@ -80,15 +54,8 @@ func (pt *profileTranslator) defaultServiceProfile() *pb.DestinationProfile {
 		Routes:             []*pb.Route{},
 		RetryBudget:        defaultRetryBudget(),
 		FullyQualifiedName: pt.fullyQualifiedName,
-		Endpoint:           pt.GetAddr(),
+		Endpoint:           pt.endpoint,
 	}
-}
-
-func (pt *profileTranslator) GetAddr() *pb.WeightedAddr {
-	if pt.endpoint != nil {
-		return pt.endpoint.addr
-	}
-	return nil
 }
 
 func defaultRetryBudget() *pb.RetryBudget {
@@ -141,7 +108,7 @@ func (pt *profileTranslator) toServiceProfile(profile *sp.ServiceProfile) (*pb.D
 		RetryBudget:        budget,
 		DstOverrides:       toDstOverrides(profile.Spec.DstOverrides, pt.port),
 		FullyQualifiedName: pt.fullyQualifiedName,
-		Endpoint:           pt.GetAddr(),
+		Endpoint:           pt.endpoint,
 		OpaqueProtocol:     opaqueProtocol,
 	}, nil
 }

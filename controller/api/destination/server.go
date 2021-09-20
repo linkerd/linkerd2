@@ -369,33 +369,19 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 	if err != nil {
 		s.log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
 	}
-
 	podSet := podToAddressSet(s.k8sAPI, pod).WithPort(port)
 	podID := watcher.PodID{
 		Namespace: pod.Namespace,
 		Name:      pod.Name,
 	}
-
-	addr, err := toWeightedAddr(podSet.Addresses[podID], opaquePorts, skippedInboundPorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
+	endpoint, err := toWeightedAddr(podSet.Addresses[podID], opaquePorts, skippedInboundPorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
 	if err != nil {
 		return err
 	}
 
 	// `Get` doesn't include the namespace in the per-endpoint metadata, so it
 	// needs to be special-cased.
-	addr.MetricLabels["namespace"] = pod.Namespace
-
-	// Wrap the addr with the proxy port so that when a protocol hint is set
-	// for opaque traffic, it can properly target the proxy port
-	// instead of the application port.
-	proxyPort, err := getInboundPort(&pod.Spec)
-	if err != nil {
-		return err
-	}
-	endpoint := &Endpoint{
-		addr:      addr,
-		proxyPort: proxyPort,
-	}
+	endpoint.MetricLabels["namespace"] = pod.Namespace
 
 	// Send the default destination profile for the endpoint which only
 	// considers the pod's opaque ports annotation. This ensures the
@@ -460,9 +446,19 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 			if update.GetProtocol().GetOpaque() != nil {
 				opaquePortsWithServerProtocol[port] = struct{}{}
 			}
-			if len(opaquePorts) != 0 {
+			newEndpoint, err := toWeightedAddr(podSet.Addresses[podID], opaquePortsWithServerProtocol, skippedInboundPorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
+			if err != nil {
+				return err
+			}
+
+			// `Get` doesn't include the namespace in the per-endpoint
+			// metadata, so it needs to be special-cased.
+			newEndpoint.MetricLabels["namespace"] = pod.Namespace
+
+			translator.endpoint = newEndpoint
+			if len(opaquePortsWithServerProtocol) != 0 {
 				sp := sp.ServiceProfile{}
-				sp.Spec.OpaquePorts = opaquePorts
+				sp.Spec.OpaquePorts = opaquePortsWithServerProtocol
 				translator.Update(&sp)
 			} else {
 				translator.Update(nil)
