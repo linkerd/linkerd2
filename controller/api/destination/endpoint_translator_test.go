@@ -10,6 +10,7 @@ import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
+	"github.com/linkerd/linkerd2/controller/api/util"
 	pkgk8s "github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -139,7 +140,10 @@ metadata:
 	}
 	k8sAPI.Sync(nil)
 
-	mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
+	mockGetServer := &mockDestinationGetServer{
+		updatesReceived:  []*pb.Update{},
+		MockServerStream: util.NewMockServerStream(),
+	}
 	mockPolicyClient := &mockPolicyClient{}
 	translator := newEndpointTranslator(
 		"linkerd",
