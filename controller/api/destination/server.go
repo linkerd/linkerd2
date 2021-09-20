@@ -348,70 +348,59 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 // If the pod argument is provided, the profile sent to the client will
 // include an endpoint. Otherwise, the default profile is sent.
 func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod *corev1.Pod, port uint32) error {
-	log := s.log
-	var endpoint *Endpoint
-	opaquePorts := make(map[uint32]struct{})
-	var portSpec *policyPb.PortSpec
-	var err error
-	if pod != nil {
-		podSet := podToAddressSet(s.k8sAPI, pod).WithPort(port)
-		podID := watcher.PodID{
-			Namespace: pod.Namespace,
-			Name:      pod.Name,
-		}
-		var ok bool
-		opaquePorts, ok, err = getPodOpaquePortsAnnotations(pod)
-		if err != nil {
-			log.Errorf("failed to get opaque ports annotation for pod: %s", err)
-		}
-
-		// If the opaque ports annotation was not set, then set the
-		// endpoint's opaque ports to the default value.
-		if !ok {
-			opaquePorts = s.defaultOpaquePorts
-		}
-
-		skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(pod)
-		if err != nil {
-			log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
-		}
-
-		addr, err := toWeightedAddr(podSet.Addresses[podID], opaquePorts, skippedInboundPorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
-		if err != nil {
-			return err
-		}
-
-		// `Get` doesn't include the namespace in the per-endpoint
-		// metadata, so it needs to be special-cased.
-		addr.MetricLabels["namespace"] = pod.Namespace
-
-		// Wrap the addr with the proxy port so that when a protocol hint is
-		// set for opaque traffic, it can properly target the proxy port
-		// instead of the application port.
-		proxyPort, err := getInboundPort(&pod.Spec)
-		if err != nil {
-			return err
-		}
-		endpoint = &Endpoint{
-			addr:      addr,
-			proxyPort: proxyPort,
-		}
-
-		portSpec = &policyPb.PortSpec{
-			Workload: fmt.Sprintf("%s:%s", pod.Namespace, pod.Name),
-			Port:     port,
-		}
+	if pod == nil {
+		translator := newProfileTranslator(stream, s.log, "", port, nil)
+		translator.Update(nil)
+		return nil
 	}
 
-	// Send the default profile. If this is the profile for a pod, subscribe
-	// for updates from the policy server which can influence whether or not
-	// the destination is treated as opaque.
-	translator := newProfileTranslator(stream, log, "", port, endpoint)
+	opaquePorts, ok, err := getPodOpaquePortsAnnotations(pod)
+	if err != nil {
+		s.log.Errorf("failed to get opaque ports annotation for pod: %s", err)
+	}
 
-	// Send the initial destination profile so that the translator does not
-	// get blocked waiting for policy server updates. After this initial
-	// profile is sent, it will be subscribed for updates if the destination
-	// is for a pod.
+	// If the opaque ports annotation was not set, then use the destination
+	// server's default value.
+	if !ok {
+		opaquePorts = s.defaultOpaquePorts
+	}
+
+	skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(pod)
+	if err != nil {
+		s.log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
+	}
+
+	podSet := podToAddressSet(s.k8sAPI, pod).WithPort(port)
+	podID := watcher.PodID{
+		Namespace: pod.Namespace,
+		Name:      pod.Name,
+	}
+
+	addr, err := toWeightedAddr(podSet.Addresses[podID], opaquePorts, skippedInboundPorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
+	if err != nil {
+		return err
+	}
+
+	// `Get` doesn't include the namespace in the per-endpoint metadata, so it
+	// needs to be special-cased.
+	addr.MetricLabels["namespace"] = pod.Namespace
+
+	// Wrap the addr with the proxy port so that when a protocol hint is set
+	// for opaque traffic, it can properly target the proxy port
+	// instead of the application port.
+	proxyPort, err := getInboundPort(&pod.Spec)
+	if err != nil {
+		return err
+	}
+	endpoint := &Endpoint{
+		addr:      addr,
+		proxyPort: proxyPort,
+	}
+
+	// Send the default destination profile for the endpoint which only
+	// considers the pod's opaque ports annotation. This ensures the
+	/// translator does not get blocked waiting for policy server updates.
+	translator := newProfileTranslator(stream, s.log, "", port, endpoint)
 	if len(opaquePorts) != 0 {
 		// Send a destination profile update that includes the opaque
 		// ports.
@@ -422,69 +411,64 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 		translator.Update(nil)
 	}
 
-	if portSpec != nil {
-		// Create a client which watches for changes to the inbound policy for
-		// portSpec.
-		client, err := s.policyClient.WatchPort(stream.Context(), portSpec)
-		if err != nil {
-			return err
-		}
+	// Create a client which watches for changes to the inbound policy for
+	// portSpec.
+	portSpec := &policyPb.PortSpec{
+		Workload: fmt.Sprintf("%s:%s", pod.Namespace, pod.Name),
+		Port:     port,
+	}
+	client, err := s.policyClient.WatchPort(stream.Context(), portSpec)
+	if err != nil {
+		return err
+	}
 
-		// Receive policy server updates for portSpec.
-		//
-		// Running this in the background allows it to handle Recv errors when
-		// the stream context is canceled. When canceled, this routine will
-		// complete.
-		updates := make(chan *policyPb.Server)
-		go func() {
-			for {
-				update, err := client.Recv()
-				if err != nil {
-					log.Debugf("Shutting down policy server updates for %s:%d", portSpec.Workload, portSpec.Port)
-					break
-				}
-				updates <- update
-			}
-		}()
-
-		// Wait for destination server shutdown, stream cancellation, or
-		// policy server updates.
-		//
-		// When an update is available, a new service profile may be created
-		// which results in a new destination profile being sent on the
-		// stream.
-		var overridden bool
+	// Receive policy server updates for portSpec.
+	//
+	// Running this in the background allows it to handle Recv errors when
+	// the stream context is canceled. When canceled, this routine will
+	// complete.
+	updates := make(chan *policyPb.Server)
+	go func() {
 		for {
-			select {
-			case <-s.shutdown:
-				return nil
-			case <-stream.Context().Done():
-				log.Debugf("GetProfile %s:%s:%d cancelled", pod.Namespace, pod.Name, port)
-				return nil
-			case update := <-updates:
-				if update.GetProtocol().GetOpaque() != nil {
-					if _, ok := opaquePorts[port]; !ok {
-						opaquePorts[port] = struct{}{}
-						overridden = true
-					}
-				} else if overridden {
-					// A previous iteration added port to the opaque ports
-					// set. Now that it is no longer set as opaque on the
-					// policy server it should be removed from the set.
-					delete(opaquePorts, port)
-					overridden = false
-				}
-				if len(opaquePorts) != 0 {
-					sp := sp.ServiceProfile{}
-					sp.Spec.OpaquePorts = opaquePorts
-					translator.Update(&sp)
-				} else {
-					translator.Update(nil)
-				}
+			update, err := client.Recv()
+			if err != nil {
+				s.log.Debugf("Shutting down policy server updates for %s:%d", portSpec.Workload, portSpec.Port)
+				break
+			}
+			updates <- update
+		}
+	}()
+
+	// Wait for destination server shutdown, stream cancellation, or
+	// policy server updates.
+	//
+	// When an update is available, a new service profile may be created
+	// which results in a new destination profile being sent on the
+	// stream.
+	for {
+		select {
+		case <-s.shutdown:
+			return nil
+		case <-stream.Context().Done():
+			s.log.Debugf("GetProfile %s:%s:%d cancelled", pod.Namespace, pod.Name, port)
+			return nil
+		case update := <-updates:
+			opaquePortsWithServerProtocol := make(map[uint32]struct{})
+			for k, v := range opaquePorts {
+				opaquePortsWithServerProtocol[k] = v
+			}
+			if update.GetProtocol().GetOpaque() != nil {
+				opaquePortsWithServerProtocol[port] = struct{}{}
+			}
+			if len(opaquePorts) != 0 {
+				sp := sp.ServiceProfile{}
+				sp.Spec.OpaquePorts = opaquePorts
+				translator.Update(&sp)
+			} else {
+				translator.Update(nil)
 			}
 		}
 	}
-	return nil
 }
 
 // getSvcID returns the service that corresponds to a Cluster IP address if one
