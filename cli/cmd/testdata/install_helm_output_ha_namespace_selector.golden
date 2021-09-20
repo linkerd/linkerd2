@@ -189,9 +189,9 @@ webhooks:
   namespaceSelector:
     matchExpressions:
     - key: config.linkerd.io/admission-webhooks
-      operator: In
+      operator: NotIn
       values:
-      - enabled
+      - disabled
   clientConfig:
     service:
       name: linkerd-policy-validator
