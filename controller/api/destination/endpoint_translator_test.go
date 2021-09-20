@@ -140,6 +140,7 @@ metadata:
 	k8sAPI.Sync(nil)
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
+	mockPolicyClient := &mockPolicyClient{}
 	translator := newEndpointTranslator(
 		"linkerd",
 		"trust.domain",
@@ -149,6 +150,7 @@ metadata:
 		map[uint32]struct{}{},
 		k8sAPI.Node(),
 		mockGetServer,
+		mockPolicyClient,
 		logging.WithField("test", t.Name()),
 	)
 	return mockGetServer, translator

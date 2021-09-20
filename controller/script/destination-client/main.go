@@ -68,6 +68,9 @@ func get(client pb.DestinationClient, req *pb.GetDestination) {
 				default:
 					log.Printf("  - protocol hint: UNKNOWN")
 				}
+				if ot := addr.GetProtocolHint().GetOpaqueTransport(); ot != nil {
+					log.Printf("  - opaque transport port: %d", ot.GetInboundPort())
+				}
 				log.Printf("  - identity: %s", addr.GetTlsIdentity())
 			}
 			log.Println()

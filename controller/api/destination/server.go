@@ -135,6 +135,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		s.defaultOpaquePorts,
 		s.nodes,
 		stream,
+		s.policyClient,
 		log,
 	)
 

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	policyPb "github.com/linkerd/linkerd2-proxy-api/go/inbound"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/pkg/addr"
@@ -30,11 +31,21 @@ type endpointTranslator struct {
 	enableH2Upgrade     bool
 	nodeTopologyLabels  map[string]string
 	defaultOpaquePorts  map[uint32]struct{}
+	policyWatches       map[portSpec]policyPb.InboundServerPolicies_WatchPortClient
 
 	availableEndpoints watcher.AddressSet
 	filteredSnapshot   watcher.AddressSet
 	stream             pb.Destination_GetServer
+	policyClient       policyPb.InboundServerPoliciesClient
 	log                *logging.Entry
+}
+
+// portSpec is used as the key in endpointTranslator.policyWatches.
+// policyPb.PortSpec has incomparable fields, so this is an equivalent struct
+// that can be used as a map key.
+type portSpec struct {
+	workload string
+	port     uint32
 }
 
 func newEndpointTranslator(
@@ -46,6 +57,7 @@ func newEndpointTranslator(
 	defaultOpaquePorts map[uint32]struct{},
 	nodes coreinformers.NodeInformer,
 	stream pb.Destination_GetServer,
+	policyClient policyPb.InboundServerPoliciesClient,
 	log *logging.Entry,
 ) *endpointTranslator {
 	log = log.WithFields(logging.Fields{
@@ -58,8 +70,8 @@ func newEndpointTranslator(
 		log.Errorf("Failed to get node topology for node %s: %s", srcNodeName, err)
 	}
 	availableEndpoints := newEmptyAddressSet()
-
 	filteredSnapshot := newEmptyAddressSet()
+	policyWatches := make(map[portSpec]policyPb.InboundServerPolicies_WatchPortClient)
 
 	return &endpointTranslator{
 		controllerNS,
@@ -67,9 +79,11 @@ func newEndpointTranslator(
 		enableH2Upgrade,
 		nodeTopologyLabels,
 		defaultOpaquePorts,
+		policyWatches,
 		availableEndpoints,
 		filteredSnapshot,
 		stream,
+		policyClient,
 		log,
 	}
 }
@@ -102,9 +116,11 @@ func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
 
 	if len(diffAdd.Addresses) > 0 {
 		et.sendClientAdd(diffAdd)
+		et.watchEndpointPolicy(diffAdd)
 	}
 	if len(diffRemove.Addresses) > 0 {
 		et.sendClientRemove(diffRemove)
+		et.closeEndpointPolicy(diffRemove)
 	}
 
 	et.filteredSnapshot = filtered
@@ -287,6 +303,120 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 	}
 }
 
+// watchEndpointPolicy establishes a watch on the the policy server for each
+// pod address.
+//
+// The policy server client will error if the stream is closed or the pod
+// address is removed. When the pod address is removed, closeEndpointPolicy
+// will close the client.
+//
+// The policy server client handles Recv errors and signals the updates
+// routine to shutdown.
+func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
+	for _, addr := range set.Addresses {
+		// If the address is not backed by a pod then there will be no policy
+		// server to watch.
+		if addr.Pod == nil {
+			continue
+		}
+
+		opaquePorts, ok, err := getPodOpaquePortsAnnotations(addr.Pod)
+		if err != nil {
+			et.log.Errorf("failed to get opaque ports annotation for pod: %s", err)
+		}
+
+		// If the opaque ports annotation was not set, then use the
+		// endpoint translator's default value.
+		if !ok {
+			opaquePorts = et.defaultOpaquePorts
+		}
+
+		skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(addr.Pod)
+		if err != nil {
+			et.log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
+		}
+
+		// Create a client which watches for changes to the inbound policy for
+		// portSpec.
+		policyPortSpec := &policyPb.PortSpec{
+			Workload: fmt.Sprintf("%s:%s", addr.Pod.Namespace, addr.Pod.Name),
+			Port:     addr.Port,
+		}
+		client, err := et.policyClient.WatchPort(et.stream.Context(), policyPortSpec)
+		if err != nil {
+			et.log.Errorf("failed to create policy server watch for %s:%d: %s", policyPortSpec.Workload, policyPortSpec.Port, err)
+		}
+		et.log.Infof("Establishing watch on policy server %s:%d", policyPortSpec.Workload, policyPortSpec.Port)
+
+		// policyPb.PortSpec cannot be used as a map key, so we create an
+		// equivalent port spec with comparable keys.
+		portSpec := &portSpec{
+			workload: policyPortSpec.Workload,
+			port:     policyPortSpec.Port,
+		}
+		et.policyWatches[*portSpec] = client
+
+		// Receive policy server updates for portSpec.
+		//
+		// Running this in the background allows it to handle Recv errors when
+		// the stream context is canceled. When canceled, this routine will
+		// complete.
+		updates := make(chan *policyPb.Server)
+		done := make(chan struct{})
+		go func() {
+			for {
+				update, err := client.Recv()
+				if err != nil {
+					et.log.Debugf("Shutting down policy server updates for %s:%d", portSpec.workload, portSpec.port)
+					close(done)
+					break
+				}
+				updates <- update
+			}
+		}()
+
+		// Wait for stream cancellation or policy server updates.
+		//
+		// When an update is available, create a new weighted addr that may
+		// include an opaque transport port as specified by a policy server.
+		addr := addr
+		go func() {
+			for {
+				select {
+				case <-done:
+					et.log.Infof("Stopping policy server watch for %s:%d", portSpec.workload, portSpec.port)
+					return
+				case <-et.stream.Context().Done():
+					et.log.Infof("Stopping policy server watch for %s:%d", portSpec.workload, portSpec.port)
+					return
+				case update := <-updates:
+					opaquePortsWithServerProtocol := make(map[uint32]struct{})
+					for k, v := range opaquePorts {
+						opaquePortsWithServerProtocol[k] = v
+					}
+					if update.GetProtocol().GetOpaque() != nil {
+						opaquePortsWithServerProtocol[portSpec.port] = struct{}{}
+					}
+					wa, err := toWeightedAddr(addr, opaquePortsWithServerProtocol, skippedInboundPorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
+					if err != nil {
+						et.log.Errorf("Failed to translate endpoint to weighted addr: %s", err)
+					}
+					add := &pb.Update{Update: &pb.Update_Add{
+						Add: &pb.WeightedAddrSet{
+							Addrs:        []*pb.WeightedAddr{wa},
+							MetricLabels: set.Labels,
+						},
+					}}
+					et.log.Debugf("Sending destination add: %+v", add)
+					if err := et.stream.Send(add); err != nil {
+						et.log.Errorf("Failed to send address update: %s", err)
+					}
+				}
+			}
+		}()
+	}
+}
+
 func (et *endpointTranslator) sendClientRemove(set watcher.AddressSet) {
 	addrs := []*net.TcpAddress{}
 	for _, address := range set.Addresses {
@@ -307,6 +437,30 @@ func (et *endpointTranslator) sendClientRemove(set watcher.AddressSet) {
 	et.log.Debugf("Sending destination remove: %+v", remove)
 	if err := et.stream.Send(remove); err != nil {
 		et.log.Errorf("Failed to send address update: %s", err)
+	}
+}
+
+// closeEndpointPolicy closes policy server watches for pod addresses that
+// have been removed. If there is a policy server client for an address in the
+// set, it is closed and then removed from the policyWatches map.
+func (et *endpointTranslator) closeEndpointPolicy(set watcher.AddressSet) {
+	for _, addr := range set.Addresses {
+		// If the address is not backed by a pod then there will be no policy
+		// server watch to close.
+		if addr.Pod == nil {
+			continue
+		}
+		portSpec := portSpec{
+			workload: fmt.Sprintf("%s:%s", addr.Pod.Namespace, addr.Pod.Name),
+			port:     addr.Port,
+		}
+		if client, ok := et.policyWatches[portSpec]; ok {
+			err := client.CloseSend()
+			if err != nil {
+				et.log.Errorf("Failed to close policy server watch for %s:%d: %s", portSpec.workload, portSpec.port, err)
+			}
+		}
+		delete(et.policyWatches, portSpec)
 	}
 }
 
