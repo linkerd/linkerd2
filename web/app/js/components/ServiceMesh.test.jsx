@@ -1,5 +1,6 @@
 import _cloneDeep from 'lodash/cloneDeep';
 import _each from 'lodash/each';
+import { expect } from 'chai';
 import nsFixtures from '../../test/fixtures/namespaces.json';
 import podFixtures from '../../test/fixtures/podRollup.json';
 import { i18nAndRouterWrap } from '../../test/testHelpers.jsx';
@@ -44,16 +45,16 @@ describe('ServiceMesh', () => {
     component = mount(i18nAndRouterWrap(ServiceMesh));
 
     return withPromise(() => {
-      expect(component).toIncludeText(errorMsg);
+      expect(component.html()).to.include(errorMsg);
     });
   });
 
   it("renders the spinner before metrics are loaded", () => {
     component = mount(i18nAndRouterWrap(ServiceMesh));
 
-    expect(component.find(Spinner)).toHaveLength(1);
-    expect(component.find("ServiceMesh")).toHaveLength(1);
-    expect(component.find("CallToAction")).toHaveLength(0);
+    expect(component.find(Spinner)).to.have.length(1);
+    expect(component.find("ServiceMesh")).to.have.length(1);
+    expect(component.find("CallToAction")).to.have.length(0);
   });
 
   it("renders a call to action if no metrics are received", () => {
@@ -66,9 +67,9 @@ describe('ServiceMesh', () => {
     return withPromise(() => {
       component.update();
 
-      expect(component.find("ServiceMesh")).toHaveLength(1);
-      expect(component.find(Spinner)).toHaveLength(0);
-      expect(component.find("CallToAction")).toHaveLength(1);
+      expect(component.find("ServiceMesh")).to.have.length(1);
+      expect(component.find(Spinner)).to.have.length(0);
+      expect(component.find("CallToAction")).to.have.length(1);
     });
   });
 
@@ -81,8 +82,8 @@ describe('ServiceMesh', () => {
 
     return withPromise(() => {
       component.update();
-      expect(component.find("ServiceMesh")).toHaveLength(1);
-      expect(component.find(Spinner)).toHaveLength(0);
+      expect(component.find("ServiceMesh")).to.have.length(1);
+      expect(component.find(Spinner)).to.have.length(0);
     });
   });
 
@@ -95,10 +96,10 @@ describe('ServiceMesh', () => {
 
     return withPromise(() => {
       component.update();
-      expect(component.find("ServiceMesh")).toHaveLength(1);
-      expect(component.find(Spinner)).toHaveLength(0);
-      expect(component).toIncludeText("Service mesh details");
-      expect(component).toIncludeText("ShinyProductName version");
+      expect(component.find("ServiceMesh")).to.have.length(1);
+      expect(component.find(Spinner)).to.have.length(0);
+      expect(component.html()).to.include("Service mesh details");
+      expect(component.html()).to.include("ShinyProductName version");
     });
   });
 
@@ -111,9 +112,9 @@ describe('ServiceMesh', () => {
 
     return withPromise(() => {
       component.update();
-      expect(component.find("ServiceMesh")).toHaveLength(1);
-      expect(component.find(Spinner)).toHaveLength(0);
-      expect(component).toIncludeText("Control plane");
+      expect(component.find("ServiceMesh")).to.have.length(1);
+      expect(component.find(Spinner)).to.have.length(0);
+      expect(component.html()).to.include("Control plane");
     });
   });
 
@@ -126,9 +127,9 @@ describe('ServiceMesh', () => {
 
     return withPromise(() => {
       component.update();
-      expect(component.find("ServiceMesh")).toHaveLength(1);
-      expect(component.find(Spinner)).toHaveLength(0);
-      expect(component).toIncludeText("Data plane");
+      expect(component.find("ServiceMesh")).to.have.length(1);
+      expect(component.find(Spinner)).to.have.length(0);
+      expect(component.html()).to.include("Data plane");
     });
   });
 
@@ -141,7 +142,7 @@ describe('ServiceMesh', () => {
       component = mount(i18nAndRouterWrap(ServiceMesh));
 
       return withPromise(() => {
-        expect(component).toIncludeText("No namespaces detected");
+        expect(component.html()).to.include("No namespaces detected");
       });
     });
 
@@ -166,7 +167,7 @@ describe('ServiceMesh', () => {
       component = mount(i18nAndRouterWrap(ServiceMesh));
 
       return withPromise(() => {
-        expect(component).toIncludeText("4 namespaces have no meshed resources.");
+        expect(component.html()).to.include("4 namespaces have no meshed resources.");
       });
     });
 
@@ -186,7 +187,7 @@ describe('ServiceMesh', () => {
       component = mount(i18nAndRouterWrap(ServiceMesh));
 
       return withPromise(() => {
-        expect(component).toIncludeText("1 namespace has no meshed resources.");
+        expect(component.html()).to.include("1 namespace has no meshed resources.");
       });
     });
 
@@ -203,7 +204,7 @@ describe('ServiceMesh', () => {
       component = mount(i18nAndRouterWrap(ServiceMesh));
 
       return withPromise(() => {
-        expect(component).toIncludeText("All namespaces have a ShinyProductName install.");
+        expect(component.html()).to.include("All namespaces have a ShinyProductName install.");
       });
     });
   });
