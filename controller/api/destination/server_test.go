@@ -393,12 +393,15 @@ status:
 }
 
 type bufferingGetStream struct {
-	updates []*pb.Update
+	updates chan (*pb.Update)
 	util.MockServerStream
 }
 
 func (bgs *bufferingGetStream) Send(update *pb.Update) error {
-	bgs.updates = append(bgs.updates, update)
+	select {
+	case bgs.updates <- update:
+	default:
+	}
 	return nil
 }
 
@@ -417,7 +420,7 @@ func TestGet(t *testing.T) {
 		server := makeServer(t)
 
 		stream := &bufferingGetStream{
-			updates:          []*pb.Update{},
+			updates:          make(chan (*pb.Update)),
 			MockServerStream: util.NewMockServerStream(),
 		}
 
@@ -431,7 +434,7 @@ func TestGet(t *testing.T) {
 		server := makeServer(t)
 
 		stream := &bufferingGetStream{
-			updates:          []*pb.Update{},
+			updates:          make(chan (*pb.Update)),
 			MockServerStream: util.NewMockServerStream(),
 		}
 
@@ -447,12 +450,12 @@ func TestGet(t *testing.T) {
 			t.Fatalf("Got error: %s", err)
 		}
 
-		if len(stream.updates) != 1 {
-			t.Fatalf("Expected 1 update but got %d: %v", len(stream.updates), stream.updates)
-		}
+		// We can receive multiple updates but we only care about checking the
+		// first one for this test
+		update := <-stream.updates
 
-		if updateAddAddress(t, stream.updates[0])[0] != fmt.Sprintf("%s:%d", podIP1, port) {
-			t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP1, port), updateAddAddress(t, stream.updates[0])[0])
+		if updateAddAddress(t, update)[0] != fmt.Sprintf("%s:%d", podIP1, port) {
+			t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP1, port), updateAddAddress(t, update)[0])
 		}
 
 	})
@@ -460,7 +463,7 @@ func TestGet(t *testing.T) {
 	t.Run("Return endpoint with unknown protocol hint and identity when service name contains skipped inbound port", func(t *testing.T) {
 		server := makeServer(t)
 		stream := &bufferingGetStream{
-			updates:          []*pb.Update{},
+			updates:          make(chan (*pb.Update)),
 			MockServerStream: util.NewMockServerStream(),
 		}
 
@@ -475,13 +478,11 @@ func TestGet(t *testing.T) {
 			t.Fatalf("Got error: %s", err)
 		}
 
-		if len(stream.updates) == 0 || len(stream.updates) > 3 {
-			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
-		}
+		// We can receive multiple updates but we only care about checking the
+		// first one for this test
+		update := <-stream.updates
 
-		last := stream.updates[len(stream.updates)-1]
-
-		addrs := last.GetAdd().Addrs
+		addrs := update.GetAdd().Addrs
 		if len(addrs) == 0 {
 			t.Fatalf("Expected len(addrs) to be > 0")
 		}
