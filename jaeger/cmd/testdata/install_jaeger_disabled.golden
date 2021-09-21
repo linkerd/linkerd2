@@ -9,7 +9,7 @@ metadata:
     linkerd.io/inject: enabled
     config.linkerd.io/proxy-await: "enabled"
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -25,7 +25,7 @@ spec:
   port: linkerd-admin
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: linkerd-jaeger
@@ -123,7 +123,7 @@ spec:
     port: 443
     targetPort: jaeger-injector
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -141,7 +141,7 @@ spec:
   port: jaeger-injector
   proxyProtocol: TLS
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -159,7 +159,7 @@ spec:
   port: admin-http
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: linkerd-jaeger
@@ -406,7 +406,7 @@ spec:
           name: collector-config
         name: collector-config-val
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -423,7 +423,7 @@ spec:
   port: 4317
   proxyProtocol: gRPC
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -440,7 +440,7 @@ spec:
   port: 55678
   proxyProtocol: gRPC
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -456,7 +456,7 @@ spec:
       component: collector
   port: 9411
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -472,7 +472,7 @@ spec:
       component: collector
   port: 14268
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -488,7 +488,7 @@ spec:
       component: collector
   port: 14250
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -505,7 +505,7 @@ spec:
   port: 13133
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: linkerd-jaeger

@@ -19,13 +19,13 @@ import (
 
 var sazGVR = schema.GroupVersionResource{
 	Group:    "policy.linkerd.io",
-	Version:  "v1alpha1",
+	Version:  "v1beta1",
 	Resource: "serverauthorizations",
 }
 
 var serverGVR = schema.GroupVersionResource{
 	Group:    "policy.linkerd.io",
-	Version:  "v1alpha1",
+	Version:  "v1beta1",
 	Resource: "servers",
 }
 
