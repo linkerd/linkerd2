@@ -365,6 +365,13 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 			client: client,
 			cancel: cancel,
 		}
+
+		// Before adding the new port client, ensure any previous client for
+		// the port spec has been closed.
+		if pc, ok := et.policyWatches[*portSpec]; ok {
+			pc.cancel()
+		}
+
 		et.policyWatches[*portSpec] = portClient
 
 		// Receive policy server updates for portSpec.
