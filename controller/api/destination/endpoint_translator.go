@@ -373,13 +373,12 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 		// the stream context is canceled. When canceled, this routine will
 		// complete.
 		updates := make(chan *policyPb.Server)
-		done := make(chan struct{})
 		go func() {
 			for {
 				update, err := portClient.client.Recv()
 				if err != nil {
-					et.log.Debugf("Shutting down policy server updates for %s:%d", portSpec.workload, portSpec.port)
-					close(done)
+					et.log.Infof("Stopping policy server updates for %s:%d", portSpec.workload, portSpec.port)
+					close(updates)
 					break
 				}
 				updates <- update
@@ -394,13 +393,14 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 		go func() {
 			for {
 				select {
-				case <-done:
-					et.log.Infof("Stopping policy server watch for %s:%d", portSpec.workload, portSpec.port)
-					return
 				case <-et.stream.Context().Done():
 					et.log.Infof("Stopping policy server watch for %s:%d", portSpec.workload, portSpec.port)
 					return
-				case update := <-updates:
+				case update, ok := <-updates:
+					if !ok {
+						et.log.Infof("Stopping policy server watch for %s:%d", portSpec.workload, portSpec.port)
+						return
+					}
 					opaquePortsWithServerProtocol := make(map[uint32]struct{})
 					for k, v := range opaquePorts {
 						opaquePortsWithServerProtocol[k] = v
