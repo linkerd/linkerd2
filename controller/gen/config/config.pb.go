@@ -96,8 +96,9 @@ type Global struct {
 	// If present, configures identity.
 	IdentityContext *IdentityContext `protobuf:"bytes,4,opt,name=identity_context,json=identityContext,proto3" json:"identity_context,omitempty"`
 	// Deprecated: Do not use.
-	AutoInjectContext      *AutoInjectContext `protobuf:"bytes,6,opt,name=auto_inject_context,json=autoInjectContext,proto3" json:"auto_inject_context,omitempty"`
-	OmitWebhookSideEffects bool               `protobuf:"varint,7,opt,name=omitWebhookSideEffects,proto3" json:"omitWebhookSideEffects,omitempty"`
+	AutoInjectContext *AutoInjectContext `protobuf:"bytes,6,opt,name=auto_inject_context,json=autoInjectContext,proto3" json:"auto_inject_context,omitempty"`
+	// Deprecated: Do not use.
+	OmitWebhookSideEffects bool `protobuf:"varint,7,opt,name=omitWebhookSideEffects,proto3" json:"omitWebhookSideEffects,omitempty"`
 	// Override default `cluster.local`
 	ClusterDomain string `protobuf:"bytes,8,opt,name=cluster_domain,json=clusterDomain,proto3" json:"cluster_domain,omitempty"`
 }

@@ -35,7 +35,6 @@ func TestRender(t *testing.T) {
 		ControllerUID:           2103,
 		EnableH2Upgrade:         true,
 		WebhookFailurePolicy:    "WebhookFailurePolicy",
-		OmitWebhookSideEffects:  false,
 		HeartbeatSchedule:       "1 2 3 4 5",
 		InstallNamespace:        true,
 		Identity:                defaultValues.Identity,

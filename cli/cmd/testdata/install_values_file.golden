@@ -1078,7 +1078,6 @@ data:
     namespace: l5d
     nodeSelector:
       beta.kubernetes.io/os: linux
-    omitWebhookSideEffects: false
     podAnnotations: {}
     podLabels: {}
     policyController:

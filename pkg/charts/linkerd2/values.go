@@ -31,7 +31,6 @@ type (
 		EnableH2Upgrade              bool                `json:"enableH2Upgrade"`
 		EnablePodAntiAffinity        bool                `json:"enablePodAntiAffinity"`
 		WebhookFailurePolicy         string              `json:"webhookFailurePolicy"`
-		OmitWebhookSideEffects       bool                `json:"omitWebhookSideEffects"`
 		DisableHeartBeat             bool                `json:"disableHeartBeat"`
 		HeartbeatSchedule            string              `json:"heartbeatSchedule"`
 		InstallNamespace             bool                `json:"installNamespace"`
