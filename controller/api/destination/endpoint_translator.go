@@ -1,6 +1,7 @@
 package destination
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -31,13 +32,18 @@ type endpointTranslator struct {
 	enableH2Upgrade     bool
 	nodeTopologyLabels  map[string]string
 	defaultOpaquePorts  map[uint32]struct{}
-	policyWatches       map[portSpec]policyPb.InboundServerPolicies_WatchPortClient
+	policyWatches       map[portSpec]watchPortClient
 
 	availableEndpoints watcher.AddressSet
 	filteredSnapshot   watcher.AddressSet
 	stream             pb.Destination_GetServer
 	policyClient       policyPb.InboundServerPoliciesClient
 	log                *logging.Entry
+}
+
+type watchPortClient struct {
+	client policyPb.InboundServerPolicies_WatchPortClient
+	cancel context.CancelFunc
 }
 
 // portSpec is used as the key in endpointTranslator.policyWatches.
@@ -71,7 +77,7 @@ func newEndpointTranslator(
 	}
 	availableEndpoints := newEmptyAddressSet()
 	filteredSnapshot := newEmptyAddressSet()
-	policyWatches := make(map[portSpec]policyPb.InboundServerPolicies_WatchPortClient)
+	policyWatches := make(map[portSpec]watchPortClient)
 
 	return &endpointTranslator{
 		controllerNS,
@@ -338,11 +344,12 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 
 		// Create a client which watches for changes to the inbound policy for
 		// portSpec.
+		ctx, cancel := context.WithCancel(et.stream.Context())
 		policyPortSpec := &policyPb.PortSpec{
 			Workload: fmt.Sprintf("%s:%s", addr.Pod.Namespace, addr.Pod.Name),
 			Port:     addr.Port,
 		}
-		client, err := et.policyClient.WatchPort(et.stream.Context(), policyPortSpec)
+		client, err := et.policyClient.WatchPort(ctx, policyPortSpec)
 		if err != nil {
 			et.log.Errorf("failed to create policy server watch for %s:%d: %s", policyPortSpec.Workload, policyPortSpec.Port, err)
 		}
@@ -354,7 +361,11 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 			workload: policyPortSpec.Workload,
 			port:     policyPortSpec.Port,
 		}
-		et.policyWatches[*portSpec] = client
+		portClient := watchPortClient{
+			client: client,
+			cancel: cancel,
+		}
+		et.policyWatches[*portSpec] = portClient
 
 		// Receive policy server updates for portSpec.
 		//
@@ -365,7 +376,7 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 		done := make(chan struct{})
 		go func() {
 			for {
-				update, err := client.Recv()
+				update, err := portClient.client.Recv()
 				if err != nil {
 					et.log.Debugf("Shutting down policy server updates for %s:%d", portSpec.workload, portSpec.port)
 					close(done)
@@ -454,11 +465,8 @@ func (et *endpointTranslator) closeEndpointPolicy(set watcher.AddressSet) {
 			workload: fmt.Sprintf("%s:%s", addr.Pod.Namespace, addr.Pod.Name),
 			port:     addr.Port,
 		}
-		if client, ok := et.policyWatches[portSpec]; ok {
-			err := client.CloseSend()
-			if err != nil {
-				et.log.Errorf("Failed to close policy server watch for %s:%d: %s", portSpec.workload, portSpec.port, err)
-			}
+		if portClient, ok := et.policyWatches[portSpec]; ok {
+			portClient.cancel()
 		}
 		delete(et.policyWatches, portSpec)
 	}
