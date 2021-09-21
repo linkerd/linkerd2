@@ -392,36 +392,31 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 		addr := addr
 		go func() {
 			for {
-				select {
-				case <-et.stream.Context().Done():
+				update, ok := <-updates
+				if !ok {
 					et.log.Infof("Stopping policy server watch for %s:%d", portSpec.workload, portSpec.port)
 					return
-				case update, ok := <-updates:
-					if !ok {
-						et.log.Infof("Stopping policy server watch for %s:%d", portSpec.workload, portSpec.port)
-						return
-					}
-					opaquePortsWithServerProtocol := make(map[uint32]struct{})
-					for k, v := range opaquePorts {
-						opaquePortsWithServerProtocol[k] = v
-					}
-					if update.GetProtocol().GetOpaque() != nil {
-						opaquePortsWithServerProtocol[portSpec.port] = struct{}{}
-					}
-					wa, err := toWeightedAddr(addr, opaquePortsWithServerProtocol, skippedInboundPorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
-					if err != nil {
-						et.log.Errorf("Failed to translate endpoint to weighted addr: %s", err)
-					}
-					add := &pb.Update{Update: &pb.Update_Add{
-						Add: &pb.WeightedAddrSet{
-							Addrs:        []*pb.WeightedAddr{wa},
-							MetricLabels: set.Labels,
-						},
-					}}
-					et.log.Debugf("Sending destination add: %+v", add)
-					if err := et.stream.Send(add); err != nil {
-						et.log.Errorf("Failed to send address update: %s", err)
-					}
+				}
+				opaquePortsWithServerProtocol := make(map[uint32]struct{})
+				for k, v := range opaquePorts {
+					opaquePortsWithServerProtocol[k] = v
+				}
+				if update.GetProtocol().GetOpaque() != nil {
+					opaquePortsWithServerProtocol[portSpec.port] = struct{}{}
+				}
+				wa, err := toWeightedAddr(addr, opaquePortsWithServerProtocol, skippedInboundPorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
+				if err != nil {
+					et.log.Errorf("Failed to translate endpoint to weighted addr: %s", err)
+				}
+				add := &pb.Update{Update: &pb.Update_Add{
+					Add: &pb.WeightedAddrSet{
+						Addrs:        []*pb.WeightedAddr{wa},
+						MetricLabels: set.Labels,
+					},
+				}}
+				et.log.Debugf("Sending destination add: %+v", add)
+				if err := et.stream.Send(add); err != nil {
+					et.log.Errorf("Failed to send address update: %s", err)
 				}
 			}
 		}()
