@@ -150,7 +150,7 @@ webhooks:
   failurePolicy: Ignore
   admissionReviewVersions: ["v1", "v1beta1"]
   rules:
-  - operations: [ "CREATE" , "UPDATE" ]
+  - operations: ["CREATE" , "UPDATE"]
     apiGroups: ["linkerd.io"]
     apiVersions: ["v1alpha1", "v1alpha2"]
     resources: ["serviceprofiles"]
@@ -195,10 +195,10 @@ webhooks:
   failurePolicy: Ignore
   admissionReviewVersions: ["v1", "v1beta1"]
   rules:
-  - operations: [ "CREATE" , "UPDATE" ]
+  - operations: ["CREATE" , "UPDATE"]
     apiGroups: ["policy.linkerd.io"]
     apiVersions: ["v1alpha1"]
-    resources: ["serverauthorizations", "servers"]
+    resources: ["servers"]
   sideEffects: None
 ---
 apiVersion: rbac.authorization.k8s.io/v1

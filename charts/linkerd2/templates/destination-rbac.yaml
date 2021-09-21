@@ -99,7 +99,7 @@ webhooks:
   failurePolicy: {{.Values.webhookFailurePolicy}}
   admissionReviewVersions: ["v1", "v1beta1"]
   rules:
-  - operations: [ "CREATE" , "UPDATE" ]
+  - operations: ["CREATE" , "UPDATE"]
     apiGroups: ["linkerd.io"]
     apiVersions: ["v1alpha1", "v1alpha2"]
     resources: ["serviceprofiles"]
@@ -149,10 +149,10 @@ webhooks:
   failurePolicy: {{.Values.webhookFailurePolicy}}
   admissionReviewVersions: ["v1", "v1beta1"]
   rules:
-  - operations: [ "CREATE" , "UPDATE" ]
+  - operations: ["CREATE" , "UPDATE"]
     apiGroups: ["policy.linkerd.io"]
     apiVersions: ["v1alpha1"]
-    resources: ["serverauthorizations", "servers"]
+    resources: ["servers"]
   {{- if not .Values.omitWebhookSideEffects }}
   sideEffects: None
   {{- end }}
