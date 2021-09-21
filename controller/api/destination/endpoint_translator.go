@@ -413,12 +413,7 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 		// include an opaque transport port as specified by a policy server.
 		addr := addr
 		go func() {
-			for {
-				update, ok := <-updates
-				if !ok {
-					et.log.Infof("Stopping policy server watch for %s:%d", portSpec.workload, portSpec.port)
-					return
-				}
+			for update := range updates {
 				opaquePortsWithServerProtocol := make(map[uint32]struct{})
 				for k, v := range opaquePorts {
 					opaquePortsWithServerProtocol[k] = v
@@ -441,6 +436,7 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 					et.log.Errorf("Failed to send address update: %s", err)
 				}
 			}
+			et.log.Infof("Stopping policy server watch for %s:%d", portSpec.workload, portSpec.port)
 		}()
 	}
 }
