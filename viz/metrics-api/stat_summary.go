@@ -24,20 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-var (
-	serverGroupVersionResource = schema.GroupVersionResource{
-		Group:    "policy.linkerd.io",
-		Version:  "v1alpha1",
-		Resource: "servers",
-	}
-
-	serverAuthorizationGroupVersionResource = schema.GroupVersionResource{
-		Group:    "policy.linkerd.io",
-		Version:  "v1alpha1",
-		Resource: "serverauthorizations",
-	}
-)
-
 type resourceResult struct {
 	res *pb.StatTable
 	err error
@@ -406,9 +392,9 @@ func (s *grpcServer) getPolicyResourceKeys(req *pb.StatSummaryRequest) ([]rKey, 
 
 	var gvr schema.GroupVersionResource
 	if req.GetSelector().Resource.GetType() == k8s.Server {
-		gvr = serverGroupVersionResource
+		gvr = k8s.ServerGVR
 	} else if req.GetSelector().Resource.GetType() == k8s.ServerAuthorization {
-		gvr = serverAuthorizationGroupVersionResource
+		gvr = k8s.SazGVR
 	}
 
 	res := req.GetSelector().GetResource()
