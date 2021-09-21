@@ -398,15 +398,12 @@ type bufferingGetStream struct {
 }
 
 func (bgs *bufferingGetStream) Send(update *pb.Update) error {
-	select {
-	case bgs.updates <- update:
-	default:
-	}
+	bgs.updates <- update
 	return nil
 }
 
 type bufferingGetProfileStream struct {
-	updates []*pb.DestinationProfile
+	updates chan (*pb.DestinationProfile)
 	util.MockServerStream
 }
 
@@ -434,7 +431,7 @@ func TestGet(t *testing.T) {
 		server := makeServer(t)
 
 		stream := &bufferingGetStream{
-			updates:          make(chan (*pb.Update)),
+			updates:          make(chan (*pb.Update), 1),
 			MockServerStream: util.NewMockServerStream(),
 		}
 
@@ -463,7 +460,7 @@ func TestGet(t *testing.T) {
 	t.Run("Return endpoint with unknown protocol hint and identity when service name contains skipped inbound port", func(t *testing.T) {
 		server := makeServer(t)
 		stream := &bufferingGetStream{
-			updates:          make(chan (*pb.Update)),
+			updates:          make(chan (*pb.Update), 1),
 			MockServerStream: util.NewMockServerStream(),
 		}
 
