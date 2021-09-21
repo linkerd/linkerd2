@@ -329,6 +329,11 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 // The policy server client handles Recv errors and signals the updates
 // routine to shutdown.
 func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
+	// When adding a new client to the policy watches map, ensure clients are
+	// not also being deleted by closeEndpointPolicy
+	et.policyWatches.mutex.Lock()
+	defer et.policyWatches.mutex.Unlock()
+
 	for _, addr := range set.Addresses {
 		// If the address is not backed by a pod then there will be no policy
 		// server to watch.
@@ -375,11 +380,6 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 			client: client,
 			cancel: cancel,
 		}
-
-		// When adding a new client to the policy watches map, ensure clients
-		// are not also being deleted by closeEndpointPolicy
-		et.policyWatches.mutex.Lock()
-		defer et.policyWatches.mutex.Unlock()
 
 		// Before adding the new port client, ensure any previous client for
 		// the port spec has been closed.
