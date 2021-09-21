@@ -33,7 +33,7 @@ type endpointTranslator struct {
 	enableH2Upgrade     bool
 	nodeTopologyLabels  map[string]string
 	defaultOpaquePorts  map[uint32]struct{}
-	policyWatches       policyWatches
+	policyWatches       *policyWatches
 
 	availableEndpoints watcher.AddressSet
 	filteredSnapshot   watcher.AddressSet
@@ -43,7 +43,7 @@ type endpointTranslator struct {
 }
 
 type policyWatches struct {
-	watches map[portSpec]watchPortClient
+	watches map[portSpec]*watchPortClient
 	mutex   sync.Mutex
 }
 
@@ -83,8 +83,8 @@ func newEndpointTranslator(
 	}
 	availableEndpoints := newEmptyAddressSet()
 	filteredSnapshot := newEmptyAddressSet()
-	watches := make(map[portSpec]watchPortClient)
-	policyWatches := policyWatches{
+	watches := make(map[portSpec]*watchPortClient)
+	policyWatches := &policyWatches{
 		watches: watches,
 		mutex:   sync.Mutex{},
 	}
@@ -387,7 +387,7 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 			pc.cancel()
 		}
 
-		et.policyWatches.watches[*portSpec] = portClient
+		et.policyWatches.watches[*portSpec] = &portClient
 
 		// Receive policy server updates for portSpec.
 		//
