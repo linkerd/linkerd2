@@ -162,7 +162,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 `,
 
 		Example: `  # Default upgrade - also removes linkerd resources that no longer exist in the current version
-  linkerd upgrade control-plane | kubectl apply -f -
+  linkerd upgrade | kubectl apply --prune -l linkerd.io/control-plane-ns=linkerd -f -
 
   # Then run this again to make sure that certain cluster-scoped resources are correctly pruned
   linkerd upgrade | kubectl apply --prune -l linkerd.io/control-plane-ns=linkerd \
