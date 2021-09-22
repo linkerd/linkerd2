@@ -53,26 +53,22 @@ func (m *mockDestinationGetProfileServer) Send(profile *pb.DestinationProfile) e
 	return nil
 }
 
-type mockPolicyClient struct{}
+type mockPolicyClient struct {
+	util.MockClientStream
+	updates chan (*policyPb.Server)
+}
 
 func (m *mockPolicyClient) GetPort(ctx context.Context, portSpec *policyPb.PortSpec, opts ...grpc.CallOption) (*policyPb.Server, error) {
 	return nil, nil
 }
 
 func (m *mockPolicyClient) WatchPort(ctx context.Context, portSpec *policyPb.PortSpec, opts ...grpc.CallOption) (policyPb.InboundServerPolicies_WatchPortClient, error) {
-	return mockInboundServerPoliciesClient{}, nil
+	return m, nil
 }
 
-type mockInboundServerPoliciesClient struct {
-	util.MockClientStream
-}
-
-func (m mockInboundServerPoliciesClient) Recv() (*policyPb.Server, error) {
-	return &policyPb.Server{
-		Protocol: &policyPb.ProxyProtocol{
-			Kind: &policyPb.ProxyProtocol_Http1_{},
-		},
-	}, nil
+func (m mockPolicyClient) Recv() (*policyPb.Server, error) {
+	update := <-m.updates
+	return update, nil
 }
 
 func makeServer(t *testing.T) *server {
@@ -348,7 +344,17 @@ status:
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}
-	policyClient := &mockPolicyClient{}
+
+	policyServers := make(chan (*policyPb.Server), 1)
+	update := &policyPb.Server{
+		Protocol: &policyPb.ProxyProtocol{
+			Kind: &policyPb.ProxyProtocol_Http1_{},
+		}}
+	policyServers <- update
+	policyClient := &mockPolicyClient{
+		updates: policyServers,
+	}
+
 	log := logging.WithField("test", t.Name())
 	defaultOpaquePorts := map[uint32]struct{}{
 		25:    {},
@@ -793,7 +799,7 @@ func TestGetProfiles(t *testing.T) {
 	t.Run("Return profile with endpoint when using pod IP", func(t *testing.T) {
 		server := makeServer(t)
 		stream := &bufferingGetProfileStream{
-			updates:          make(chan (*pb.DestinationProfile), 1),
+			updates:          make(chan (*pb.DestinationProfile), 10),
 			MockServerStream: util.NewMockServerStream(),
 		}
 		stream.Cancel()
