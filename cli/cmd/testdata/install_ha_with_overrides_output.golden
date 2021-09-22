@@ -1110,7 +1110,6 @@ data:
     namespace: linkerd
     nodeSelector:
       beta.kubernetes.io/os: linux
-    omitWebhookSideEffects: false
     podAnnotations: {}
     podLabels: {}
     policyController:

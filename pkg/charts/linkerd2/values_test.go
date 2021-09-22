@@ -34,7 +34,6 @@ func TestNewValues(t *testing.T) {
 		EnableH2Upgrade:              true,
 		EnablePodAntiAffinity:        false,
 		WebhookFailurePolicy:         "Ignore",
-		OmitWebhookSideEffects:       false,
 		DisableHeartBeat:             false,
 		HeartbeatSchedule:            "",
 		InstallNamespace:             true,
