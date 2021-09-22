@@ -141,7 +141,7 @@ metadata:
 	k8sAPI.Sync(nil)
 
 	mockGetServer := &mockDestinationGetServer{
-		updatesReceived:  []*pb.Update{},
+		updates:          make(chan (*pb.Update), 2),
 		MockServerStream: util.NewMockServerStream(),
 	}
 	mockPolicyClient := &mockPolicyClient{}
@@ -168,9 +168,9 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 		translator.Remove(mkAddressSetForServices(remoteGatewayWithTLS))
 
 		expectedNumUpdates := 2
-		actualNumUpdates := len(mockGetServer.updatesReceived)
+		actualNumUpdates := len(mockGetServer.updates)
 		if actualNumUpdates != expectedNumUpdates {
-			t.Fatalf("Expecting [%d] updates, got [%d]. Updates: %v", expectedNumUpdates, actualNumUpdates, mockGetServer.updatesReceived)
+			t.Fatalf("Expecting [%d] updates, got [%d]. Updates: %v", expectedNumUpdates, actualNumUpdates, mockGetServer.updates)
 		}
 	})
 
@@ -189,7 +189,8 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 
 		translator.Add(mkAddressSetForServices(remoteGatewayWithTLS))
 
-		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
+		update := <-mockGetServer.updates
+		addrs := update.GetAdd().GetAddrs()
 		if len(addrs) != 1 {
 			t.Fatalf("Expected [1] address returned, got %v", addrs)
 		}
@@ -224,7 +225,8 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 
 		translator.Add(mkAddressSetForServices(remoteGatewayWithTLSAndAuthOverride))
 
-		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
+		update := <-mockGetServer.updates
+		addrs := update.GetAdd().GetAddrs()
 		if len(addrs) != 1 {
 			t.Fatalf("Expected [1] address returned, got %v", addrs)
 		}
@@ -250,7 +252,8 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 
 		translator.Add(mkAddressSetForServices(remoteGatewayWithNoTLS))
 
-		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
+		update := <-mockGetServer.updates
+		addrs := update.GetAdd().GetAddrs()
 		if len(addrs) != 1 {
 			t.Fatalf("Expected [1] address returned, got %v", addrs)
 		}

@@ -35,11 +35,11 @@ const skippedPort uint32 = 24224
 
 type mockDestinationGetServer struct {
 	util.MockServerStream
-	updatesReceived []*pb.Update
+	updates chan (*pb.Update)
 }
 
 func (m *mockDestinationGetServer) Send(update *pb.Update) error {
-	m.updatesReceived = append(m.updatesReceived, update)
+	m.updates <- update
 	return nil
 }
 
