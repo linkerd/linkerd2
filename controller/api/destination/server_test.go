@@ -345,6 +345,7 @@ status:
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}
 
+	// Create a policy server client that sends only 1 update.
 	policyServers := make(chan (*policyPb.Server), 1)
 	update := &policyPb.Server{
 		Protocol: &policyPb.ProxyProtocol{
@@ -398,6 +399,24 @@ status:
 	}
 }
 
+func makeGetServer(t *testing.T) (*bufferingGetStream, *server) {
+	stream := &bufferingGetStream{
+		updates:          make(chan (*pb.Update), 10),
+		MockServerStream: util.NewMockServerStream(),
+	}
+	server := makeServer(t)
+	return stream, server
+}
+
+func makeGetProfileServer(t *testing.T) (*bufferingGetProfileStream, *server) {
+	stream := &bufferingGetProfileStream{
+		updates:          make(chan (*pb.DestinationProfile), 10),
+		MockServerStream: util.NewMockServerStream(),
+	}
+	server := makeServer(t)
+	return stream, server
+}
+
 type bufferingGetStream struct {
 	updates chan (*pb.Update)
 	util.MockServerStream
@@ -420,13 +439,7 @@ func (bgps *bufferingGetProfileStream) Send(profile *pb.DestinationProfile) erro
 
 func TestGet(t *testing.T) {
 	t.Run("Returns error if not valid service name", func(t *testing.T) {
-		server := makeServer(t)
-
-		stream := &bufferingGetStream{
-			updates:          make(chan (*pb.Update)),
-			MockServerStream: util.NewMockServerStream(),
-		}
-
+		stream, server := makeGetServer(t)
 		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: "linkerd.io"}, stream)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
@@ -434,12 +447,7 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("Returns endpoints", func(t *testing.T) {
-		server := makeServer(t)
-
-		stream := &bufferingGetStream{
-			updates:          make(chan (*pb.Update), 1),
-			MockServerStream: util.NewMockServerStream(),
-		}
+		stream, server := makeGetServer(t)
 
 		// We cancel the stream before even sending the request so that we don't
 		// need to call server.Get in a separate goroutine.  By preemptively
@@ -464,12 +472,7 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("Return endpoint with unknown protocol hint and identity when service name contains skipped inbound port", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetStream{
-			updates:          make(chan (*pb.Update), 1),
-			MockServerStream: util.NewMockServerStream(),
-		}
-
+		stream, server := makeGetServer(t)
 		stream.Cancel()
 
 		path := fmt.Sprintf("%s:%d", fullyQualifiedNameSkipped, skippedPort)
@@ -502,13 +505,7 @@ func TestGet(t *testing.T) {
 
 func TestGetProfiles(t *testing.T) {
 	t.Run("Returns error if not valid service name", func(t *testing.T) {
-		server := makeServer(t)
-
-		stream := &bufferingGetProfileStream{
-			updates:          make(chan (*pb.DestinationProfile)),
-			MockServerStream: util.NewMockServerStream(),
-		}
-
+		stream, server := makeGetProfileServer(t)
 		err := server.GetProfile(&pb.GetDestination{Scheme: "k8s", Path: "linkerd.io"}, stream)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
@@ -516,14 +513,9 @@ func TestGetProfiles(t *testing.T) {
 	})
 
 	t.Run("Returns server profile", func(t *testing.T) {
-		server := makeServer(t)
+		stream, server := makeGetProfileServer(t)
+		stream.Cancel()
 
-		stream := &bufferingGetProfileStream{
-			updates:          make(chan (*pb.DestinationProfile), 3),
-			MockServerStream: util.NewMockServerStream(),
-		}
-
-		stream.Cancel() // See note above on pre-emptive cancellation.
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme:       "k8s",
 			Path:         fmt.Sprintf("%s:%d", fullyQualifiedName, port),
@@ -572,14 +564,9 @@ func TestGetProfiles(t *testing.T) {
 	})
 
 	t.Run("Return service profile when using json token", func(t *testing.T) {
-		server := makeServer(t)
+		stream, server := makeGetProfileServer(t)
+		stream.Cancel()
 
-		stream := &bufferingGetProfileStream{
-			updates:          make(chan (*pb.DestinationProfile), 3),
-			MockServerStream: util.NewMockServerStream(),
-		}
-
-		stream.Cancel() // see note above on pre-emptive cancelling
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme:       "k8s",
 			Path:         fmt.Sprintf("%s:%d", fullyQualifiedName, port),
@@ -625,15 +612,9 @@ func TestGetProfiles(t *testing.T) {
 	})
 
 	t.Run("Returns client profile", func(t *testing.T) {
-		server := makeServer(t)
-
-		stream := &bufferingGetProfileStream{
-			updates:          make(chan (*pb.DestinationProfile), 2),
-			MockServerStream: util.NewMockServerStream(),
-		}
-
-		// See note about pre-emptive cancellation
+		stream, server := makeGetProfileServer(t)
 		stream.Cancel()
+
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme:       "k8s",
 			Path:         fmt.Sprintf("%s:%d", fullyQualifiedName, port),
@@ -667,15 +648,9 @@ func TestGetProfiles(t *testing.T) {
 		}
 	})
 	t.Run("Returns client profile", func(t *testing.T) {
-		server := makeServer(t)
-
-		stream := &bufferingGetProfileStream{
-			updates:          make(chan (*pb.DestinationProfile), 2),
-			MockServerStream: util.NewMockServerStream(),
-		}
-
-		// See note above on pre-emptive cancellation.
+		stream, server := makeGetProfileServer(t)
 		stream.Cancel()
+
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme:       "k8s",
 			Path:         fmt.Sprintf("%s:%d", fullyQualifiedName, port),
@@ -710,12 +685,9 @@ func TestGetProfiles(t *testing.T) {
 	})
 
 	t.Run("Return profile when using cluster IP", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          make(chan (*pb.DestinationProfile), 2),
-			MockServerStream: util.NewMockServerStream(),
-		}
+		stream, server := makeGetProfileServer(t)
 		stream.Cancel()
+
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme: "k8s",
 			Path:   fmt.Sprintf("%s:%d", clusterIP, port),
@@ -749,11 +721,7 @@ func TestGetProfiles(t *testing.T) {
 	})
 
 	t.Run("Return profile with endpoint when using pod DNS", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          make(chan (*pb.DestinationProfile), 1),
-			MockServerStream: util.NewMockServerStream(),
-		}
+		stream, server := makeGetProfileServer(t)
 		stream.Cancel()
 
 		epAddr, err := toAddress(podIPStatefulSet, port)
@@ -797,11 +765,7 @@ func TestGetProfiles(t *testing.T) {
 	})
 
 	t.Run("Return profile with endpoint when using pod IP", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          make(chan (*pb.DestinationProfile), 10),
-			MockServerStream: util.NewMockServerStream(),
-		}
+		stream, server := makeGetProfileServer(t)
 		stream.Cancel()
 
 		epAddr, err := toAddress(podIP1, port)
@@ -844,12 +808,9 @@ func TestGetProfiles(t *testing.T) {
 	})
 
 	t.Run("Return default profile when IP does not map to service or pod", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          make(chan (*pb.DestinationProfile), 1),
-			MockServerStream: util.NewMockServerStream(),
-		}
+		stream, server := makeGetProfileServer(t)
 		stream.Cancel()
+
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme: "k8s",
 			Path:   "172.0.0.0:1234",
@@ -869,12 +830,9 @@ func TestGetProfiles(t *testing.T) {
 	})
 
 	t.Run("Return profile with no protocol hint when pod does not have label", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          make(chan (*pb.DestinationProfile), 1),
-			MockServerStream: util.NewMockServerStream(),
-		}
+		stream, server := makeGetProfileServer(t)
 		stream.Cancel()
+
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme: "k8s",
 			Path:   podIP2,
@@ -897,12 +855,9 @@ func TestGetProfiles(t *testing.T) {
 	})
 
 	t.Run("Return non-opaque protocol profile when using cluster IP and opaque protocol port", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          make(chan (*pb.DestinationProfile), 2),
-			MockServerStream: util.NewMockServerStream(),
-		}
+		stream, server := makeGetProfileServer(t)
 		stream.Cancel()
+
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme: "k8s",
 			Path:   fmt.Sprintf("%s:%d", clusterIPOpaque, opaquePort),
@@ -932,11 +887,7 @@ func TestGetProfiles(t *testing.T) {
 	})
 
 	t.Run("Return opaque protocol profile with endpoint when using pod IP and opaque protocol port", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          make(chan (*pb.DestinationProfile), 1),
-			MockServerStream: util.NewMockServerStream(),
-		}
+		stream, server := makeGetProfileServer(t)
 		stream.Cancel()
 
 		epAddr, err := toAddress(podIPOpaque, opaquePort)
@@ -979,12 +930,9 @@ func TestGetProfiles(t *testing.T) {
 	})
 
 	t.Run("Return opaque protocol profile when using service name with opaque port annotation", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          make(chan (*pb.DestinationProfile), 2),
-			MockServerStream: util.NewMockServerStream(),
-		}
+		stream, server := makeGetProfileServer(t)
 		stream.Cancel()
+
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme: "k8s",
 			Path:   fmt.Sprintf("%s:%d", fullyQualifiedNameOpaqueService, opaquePort),
@@ -1010,12 +958,7 @@ func TestGetProfiles(t *testing.T) {
 	})
 
 	t.Run("Return profile with unknown protocol hint and identity when pod contains skipped inbound port", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          make(chan (*pb.DestinationProfile), 1),
-			MockServerStream: util.NewMockServerStream(),
-		}
-
+		stream, server := makeGetProfileServer(t)
 		stream.Cancel()
 
 		path := fmt.Sprintf("%s:%d", podIPSkipped, skippedPort)
