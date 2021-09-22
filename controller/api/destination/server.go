@@ -384,19 +384,7 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 	// needs to be special-cased.
 	endpoint.MetricLabels["namespace"] = pod.Namespace
 
-	// Send the default destination profile for the endpoint which only
-	// considers the pod's opaque ports annotation. This ensures the
-	/// translator does not get blocked waiting for policy server updates.
 	translator := newProfileTranslator(stream, s.log, "", port, endpoint)
-	if len(opaquePorts) != 0 {
-		// Send a destination profile update that includes the opaque
-		// ports.
-		sp := sp.ServiceProfile{}
-		sp.Spec.OpaquePorts = opaquePorts
-		translator.Update(&sp)
-	} else {
-		translator.Update(nil)
-	}
 
 	// Create a client which watches for changes to the inbound policy for
 	// portSpec.
@@ -427,21 +415,14 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 		}
 	}()
 
-	// Wait for destination server shutdown, stream cancellation, or
-	// policy server updates.
+	// For each policy server update, create a new destination profile for the
+	// endpoint. If the server update does not indicate that the protocol is
+	// opaque, fall back to the opaque ports annotation on the pod.
 	//
-	// When an update is available, a new service profile may be created
-	// which results in a new destination profile being sent on the
-	// stream.
-	for {
-		select {
-		case <-s.shutdown:
-			return nil
-		case update, ok := <-updates:
-			if !ok {
-				s.log.Debugf("Stopping policy server watch for %s:%d", portSpec.Workload, portSpec.Port)
-				return nil
-			}
+	// Shutdown is handled by destination server shutdown or the stream being
+	// closed.
+	go func() {
+		for update := range updates {
 			opaquePortsWithServerProtocol := make(map[uint32]struct{})
 			for k, v := range opaquePorts {
 				opaquePortsWithServerProtocol[k] = v
@@ -451,7 +432,7 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 			}
 			newEndpoint, err := toWeightedAddr(podSet.Addresses[podID], opaquePortsWithServerProtocol, skippedInboundPorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
 			if err != nil {
-				return err
+				s.log.Errorf("Failed to translate endpoint to weighted addr: %s", err)
 			}
 
 			// `Get` doesn't include the namespace in the per-endpoint
@@ -467,7 +448,10 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 				translator.Update(nil)
 			}
 		}
-	}
+		s.log.Debugf("Stopping policy server watch for %s:%d", portSpec.Workload, portSpec.Port)
+	}()
+
+	return nil
 }
 
 // getSvcID returns the service that corresponds to a Cluster IP address if one
