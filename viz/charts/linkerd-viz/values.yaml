@@ -371,6 +371,10 @@ prometheus:
 
   # -- Alerting/recording rule ConfigMap mounts (sub-path names must end in
   # ´_rules.yml´ or ´_rules.yaml´)
+  serviceAccount:
+    annotations: 
+      # Ex:
+      # eks.amazonaws.com/role-arn: arn:aws:iam::<accountID>:role/<roleName>
   ruleConfigMapMounts:
   # Ex:
   # - name: alerting-rules
