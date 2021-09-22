@@ -345,7 +345,9 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 	})
 
 	t.Run("Sends TlsIdentity when enabled", func(t *testing.T) {
-		expectedTLSIdentity := "serviceaccount-name.ns.serviceaccount.identity.linkerd.trust.domain"
+		expectedTLSIdentity := &pb.TlsIdentity_DnsLikeIdentity{
+			Name: "serviceaccount-name.ns.serviceaccount.identity.linkerd.trust.domain",
+		}
 
 		mockGetServer, translator := makeEndpointTranslator(t)
 
@@ -357,8 +359,8 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 			t.Fatalf("Expected [1] address returned, got %v", addrs)
 		}
 
-		actualTLSIdentity := addrs[0].GetTlsIdentity().GetDnsLikeIdentity().Name
-		if actualTLSIdentity != expectedTLSIdentity {
+		actualTLSIdentity := addrs[0].GetTlsIdentity().GetDnsLikeIdentity()
+		if !reflect.DeepEqual(actualTLSIdentity, expectedTLSIdentity) {
 			t.Fatalf("Expected TlsIdentity to be [%s] but was [%s]", expectedTLSIdentity, actualTLSIdentity)
 		}
 	})
