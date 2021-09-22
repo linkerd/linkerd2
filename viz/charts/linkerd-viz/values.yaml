@@ -18,6 +18,8 @@ defaultRegistry: cr.l5d.io/linkerd
 defaultImagePullPolicy: IfNotPresent
 # -- Log level for all the viz components
 defaultLogLevel: info
+# -- Log format (`plain` or `json`) for all the viz components.
+defaultLogFormat: plain
 # -- UID for all the viz components
 defaultUID: 2103
 
@@ -71,6 +73,9 @@ metricsAPI:
   # -- log level of the metrics-api component
   # @default -- defaultLogLevel
   logLevel: ""
+  # -- log format of the metrics-api component
+  # @default -- defaultLogFormat
+  logFormat: ""
   image:
     # -- Docker registry for the metrics-api component
     # @default -- defaultRegistry
@@ -119,6 +124,9 @@ tap:
   # -- log level of the tap component
   # @default -- defaultLogLevel
   logLevel: ""
+  # -- log format of the tap component
+  # @default -- defaultLogFormat
+  logFormat: ""
   image:
     # -- Docker registry for the tap instance
     # @default -- defaultRegistry
@@ -175,6 +183,9 @@ tapInjector:
   # -- log level of the tapInjector
   # @default -- defaultLogLevel
   logLevel: ""
+  # -- log format of the tapInjector component
+  # @default -- defaultLogFormat
+  logFormat: ""
   image:
     # -- Docker registry for the tapInjector instance
     # @default -- defaultRegistry
@@ -239,6 +250,9 @@ dashboard:
   # -- log level of the dashboard component
   # @default -- defaultLogLevel
   logLevel: ""
+  # -- log format of the dashboard component
+  # @default -- defaultLogFormat
+  logFormat: ""
   image:
     # -- Docker registry for the web instance
     # @default -- defaultRegistry
