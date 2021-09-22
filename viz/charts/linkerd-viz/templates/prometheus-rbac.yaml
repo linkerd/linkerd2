@@ -40,5 +40,9 @@ metadata:
     linkerd.io/extension: viz
     component: prometheus
     namespace: {{.Values.namespace}}
+{{- if .Values.prometheus.serviceAccount.annotations }}
+  annotations: | 
+    {{ .Values.prometheus.serviceAccount.annotations | nindent 4 }}
+{{ end -}} 
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 {{ end -}}
