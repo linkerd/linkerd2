@@ -2355,7 +2355,7 @@ func checkPodPorts(service *corev1.Service, pod *corev1.Pod, podPorts []string, 
 						if util.ContainsString(strPort, podPorts) {
 							return nil
 						}
-						return fmt.Errorf("service %s expects %d to be opaque; add it to pod %s's %s annotation", service.Name, port, pod.Name, k8s.ProxyOpaquePortsAnnotation)
+						return fmt.Errorf("service %s expects target port %s to be opaque; add it to pod %s %s annotation", service.Name, strPort, pod.Name, k8s.ProxyOpaquePortsAnnotation)
 					}
 				}
 			}

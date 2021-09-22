@@ -18,6 +18,7 @@ spec:
   replicas: 1
   selector:
     matchLabels:
+      linkerd.io/extension: multicluster
       app: {{.Values.gateway.name}}
   template:
     metadata:
@@ -27,6 +28,7 @@ spec:
         config.linkerd.io/proxy-require-identity-inbound-ports: "{{.Values.gateway.port}}"
         config.linkerd.io/enable-gateway: "true"
       labels:
+        linkerd.io/extension: multicluster
         app: {{.Values.gateway.name}}
     spec:
       containers:

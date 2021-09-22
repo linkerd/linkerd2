@@ -3418,7 +3418,7 @@ subsets:
     protocol: TCP
 `,
 			},
-			expected: fmt.Errorf("\t* service svc expects 9200 to be opaque; add it to pod pod's config.linkerd.io/opaque-ports annotation"),
+			expected: fmt.Errorf("\t* service svc expects target port 9200 to be opaque; add it to pod pod config.linkerd.io/opaque-ports annotation"),
 		},
 		{
 			resources: []string{`

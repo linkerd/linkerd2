@@ -1,5 +1,40 @@
 # Changes
 
+## edge-21.9.3
+
+This edge is a release candidate for `stable-2.11.0`! It features a new `linkerd
+authz` CLI command to list servers and authorizations for a workload, as well as
+policy resources support for `linkerd viz stat`. Furthermore, this edge release
+adds support for JSON log formatting, enables TLS detection on port 443
+(previously marked as opaque), and further improves policy features.
+
+* Removed port 443 from the default list of opaque ports, this will allow the
+  proxy to report metadata (such as the connection's SNI value) on TLS
+  connections to port 443
+* Added default policies for core Linkerd extensions
+* Added support for JSON log formatting to the policy controller
+* Added support for new policy resources to `viz stat` command
+* Added default policy annotation to `linkerd-identity`
+* Added a new `linkerd authz` command to the CLI to list all server and
+  authorization resources that apply to a specific resource
+* Added TLS labels (including client identity) to authorization metrics in the
+  proxy
+* Changed the opaque ports CLI check to consider service and pod ports when
+  checking annotation values; previously, the check would naively issue warnings
+  when the service annotation values were different from the pod it selected
+* Changed how the proxy forwards inbound connections to a pod locally; the proxy
+  now targets the original address instead of a port bound on localhost to
+  protect services that are only bound on loopback from being exposed to other
+  pods
+* Improved memory utilization in the proxy, especially for TCP forwarding, where
+  the memory allocated was reduced from 128KB to 16KB
+* Updated the inbound policy system for the proxies to always allow connections
+  from localhost
+* Fixed an issue where the policy controller would not detect changes to the
+  `proxyProtocol` field of `Server` resources
+* Fixed an issue where the policy admission controller would log a `WARN`
+  message when deserializing `Server` structs
+
 ## edge-21.9.2
 
 This edge release gets us closer to 2.11 by further polishing the policy

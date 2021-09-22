@@ -672,6 +672,7 @@ type RowStat struct {
 	P95Latency         string
 	P99Latency         string
 	TCPOpenConnections string
+	UnauthorizedRPS    string
 }
 
 // CheckRowCount checks that expectedRowCount rows have been returned
