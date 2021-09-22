@@ -420,6 +420,7 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 			update, err := client.Recv()
 			if err != nil {
 				s.log.Debugf("Shutting down policy server updates for %s:%d", portSpec.Workload, portSpec.Port)
+				close(updates)
 				break
 			}
 			updates <- update
@@ -436,10 +437,11 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 		select {
 		case <-s.shutdown:
 			return nil
-		case <-stream.Context().Done():
-			s.log.Debugf("GetProfile %s:%s:%d cancelled", pod.Namespace, pod.Name, port)
-			return nil
-		case update := <-updates:
+		case update, ok := <-updates:
+			if !ok {
+				s.log.Debugf("Stopping policy server watch for %s:%d", portSpec.Workload, portSpec.Port)
+				return nil
+			}
 			opaquePortsWithServerProtocol := make(map[uint32]struct{})
 			for k, v := range opaquePorts {
 				opaquePortsWithServerProtocol[k] = v

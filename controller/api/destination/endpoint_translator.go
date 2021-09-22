@@ -368,7 +368,7 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 		if err != nil {
 			et.log.Errorf("failed to create policy server watch for %s:%d: %s", policyPortSpec.Workload, policyPortSpec.Port, err)
 		}
-		et.log.Infof("Establishing watch on policy server %s:%d", policyPortSpec.Workload, policyPortSpec.Port)
+		et.log.Debugf("Establishing watch on policy server %s:%d", policyPortSpec.Workload, policyPortSpec.Port)
 
 		// policyPb.PortSpec cannot be used as a map key, so we create an
 		// equivalent port spec with comparable keys.
@@ -399,7 +399,7 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 			for {
 				update, err := portClient.client.Recv()
 				if err != nil {
-					et.log.Infof("Stopping policy server updates for %s:%d", portSpec.workload, portSpec.port)
+					et.log.Debugf("Stopping policy server updates for %s:%d", portSpec.workload, portSpec.port)
 					close(updates)
 					break
 				}
@@ -436,7 +436,7 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 					et.log.Errorf("Failed to send address update: %s", err)
 				}
 			}
-			et.log.Infof("Stopping policy server watch for %s:%d", portSpec.workload, portSpec.port)
+			et.log.Debugf("Stopping policy server watch for %s:%d", portSpec.workload, portSpec.port)
 		}()
 	}
 }
