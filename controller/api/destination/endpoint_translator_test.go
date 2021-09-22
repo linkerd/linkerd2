@@ -141,7 +141,7 @@ metadata:
 	k8sAPI.Sync(nil)
 
 	mockGetServer := &mockDestinationGetServer{
-		updates:          make(chan (*pb.Update), 2),
+		updates:          make(chan (*pb.Update), 20),
 		MockServerStream: util.NewMockServerStream(),
 	}
 	mockPolicyClient := &mockPolicyClient{}
@@ -275,10 +275,12 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		translator.Add(mkAddressSetForPods(normalPod, tlsOptionalPod))
 		translator.Remove(mkAddressSetForPods(tlsOptionalPod))
 
+		// Supporting policy server watches means we should receive at least
+		// two updates.
 		expectedNumUpdates := 2
-		actualNumUpdates := len(mockGetServer.updatesReceived)
-		if actualNumUpdates != expectedNumUpdates {
-			t.Fatalf("Expecting [%d] updates, got [%d]. Updates: %v", expectedNumUpdates, actualNumUpdates, mockGetServer.updatesReceived)
+		actualNumUpdates := len(mockGetServer.updates)
+		if actualNumUpdates < expectedNumUpdates {
+			t.Fatalf("Expecting at least [%d] updates, got [%d]. Updates: %v", expectedNumUpdates, actualNumUpdates, mockGetServer.updates)
 		}
 	})
 
@@ -288,14 +290,22 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		translator.Add(mkAddressSetForPods(normalPod, tlsOptionalPod, tlsDisabledPod))
 		translator.Remove(mkAddressSetForPods(tlsDisabledPod))
 
-		addressesAdded := mockGetServer.updatesReceived[0].GetAdd().Addrs
+		addUpdate := <-mockGetServer.updates
+		addressesAdded := addUpdate.GetAdd().Addrs
 		actualNumberOfAdded := len(addressesAdded)
 		expectedNumberOfAdded := 3
 		if actualNumberOfAdded != expectedNumberOfAdded {
 			t.Fatalf("Expecting [%d] addresses to be added, got [%d]: %v", expectedNumberOfAdded, actualNumberOfAdded, addressesAdded)
 		}
 
-		addressesRemoved := mockGetServer.updatesReceived[1].GetRemove().Addrs
+		var removeUpdate *pb.Update
+		for update := range mockGetServer.updates {
+			if update.GetRemove() != nil {
+				removeUpdate = update
+				break
+			}
+		}
+		addressesRemoved := removeUpdate.GetRemove().Addrs
 		actualNumberOfRemoved := len(addressesRemoved)
 		expectedNumberOfRemoved := 1
 		if actualNumberOfRemoved != expectedNumberOfRemoved {
@@ -315,13 +325,14 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 		translator.Add(mkAddressSetForPods(normalPod))
 
-		actualGlobalMetricLabels := mockGetServer.updatesReceived[0].GetAdd().MetricLabels
+		update := <-mockGetServer.updates
+		actualGlobalMetricLabels := update.GetAdd().MetricLabels
 		expectedGlobalMetricLabels := map[string]string{"namespace": "service-ns", "service": "service-name"}
 		if !reflect.DeepEqual(actualGlobalMetricLabels, expectedGlobalMetricLabels) {
 			t.Fatalf("Expected global metric labels sent to be [%v] but was [%v]", expectedGlobalMetricLabels, actualGlobalMetricLabels)
 		}
 
-		actualAddedAddress1MetricLabels := mockGetServer.updatesReceived[0].GetAdd().Addrs[0].MetricLabels
+		actualAddedAddress1MetricLabels := update.GetAdd().Addrs[0].MetricLabels
 		expectedAddedAddress1MetricLabels := map[string]string{
 			"pod":                   "pod1",
 			"replicationcontroller": "rc-name",
@@ -334,22 +345,21 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 	})
 
 	t.Run("Sends TlsIdentity when enabled", func(t *testing.T) {
-		expectedTLSIdentity := &pb.TlsIdentity_DnsLikeIdentity{
-			Name: "serviceaccount-name.ns.serviceaccount.identity.linkerd.trust.domain",
-		}
+		expectedTLSIdentity := "serviceaccount-name.ns.serviceaccount.identity.linkerd.trust.domain"
 
 		mockGetServer, translator := makeEndpointTranslator(t)
 
 		translator.Add(mkAddressSetForPods(normalPod))
 
-		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
+		update := <-mockGetServer.updates
+		addrs := update.GetAdd().GetAddrs()
 		if len(addrs) != 1 {
 			t.Fatalf("Expected [1] address returned, got %v", addrs)
 		}
 
-		actualTLSIdentity := addrs[0].GetTlsIdentity().GetDnsLikeIdentity()
-		if !reflect.DeepEqual(actualTLSIdentity, expectedTLSIdentity) {
-			t.Fatalf("Expected TlsIdentity to be [%v] but was [%v]", expectedTLSIdentity, actualTLSIdentity)
+		actualTLSIdentity := addrs[0].GetTlsIdentity().GetDnsLikeIdentity().Name
+		if actualTLSIdentity != expectedTLSIdentity {
+			t.Fatalf("Expected TlsIdentity to be [%s] but was [%s]", expectedTLSIdentity, actualTLSIdentity)
 		}
 	})
 
@@ -358,7 +368,8 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 		translator.Add(mkAddressSetForPods(tlsOptionalPod))
 
-		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
+		update := <-mockGetServer.updates
+		addrs := update.GetAdd().GetAddrs()
 		if len(addrs) != 1 {
 			t.Fatalf("Expected [1] address returned, got %v", addrs)
 		}
@@ -373,7 +384,8 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 		translator.Add(mkAddressSetForPods(otherMeshPod))
 
-		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
+		update := <-mockGetServer.updates
+		addrs := update.GetAdd().GetAddrs()
 		if len(addrs) != 1 {
 			t.Fatalf("Expected [1] address returned, got %v", addrs)
 		}
@@ -388,7 +400,8 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 		translator.Add(mkAddressSetForPods(tlsDisabledPod))
 
-		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
+		update := <-mockGetServer.updates
+		addrs := update.GetAdd().GetAddrs()
 		if len(addrs) != 1 {
 			t.Fatalf("Expected [1] address returned, got %v", addrs)
 		}
