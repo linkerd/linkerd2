@@ -54,6 +54,7 @@
 - [PriceKinetics (GVC Australia)](https://www.pricekinetics.com.au/)
 - [Projector](https://projector.com)
 - [Purdue University Global](https://www.purdueglobal.edu/)
+- [Salt Security](https://salt.security/)
 - [SCA](https://sca.com.au)
 - [Search365](https://search365.ai/)
 - [StackPulse](https://stackpulse.com)
