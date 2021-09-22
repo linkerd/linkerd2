@@ -203,7 +203,7 @@ webhooks:
   rules:
   - operations: ["CREATE", "UPDATE"]
     apiGroups: ["policy.linkerd.io"]
-    apiVersions: ["v1beta1"]
+    apiVersions: ["v1alpha1", "v1beta1"]
     resources: ["servers"]
   sideEffects: None
 ---
