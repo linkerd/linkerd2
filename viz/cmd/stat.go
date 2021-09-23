@@ -763,6 +763,7 @@ type jsonStats struct {
 	Leaf           string   `json:"leaf,omitempty"`
 	Dst            string   `json:"dst,omitempty"`
 	Weight         string   `json:"weight,omitempty"`
+	Unauthorized   *float64 `json:"unauthorized,omitempty"`
 }
 
 func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
@@ -802,6 +803,12 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 				} else if stats[key].dstStats != nil {
 					entry.Dst = stats[key].dstStats.dst
 					entry.Weight = stats[key].dstStats.weight
+				}
+
+				if resourceType == k8s.Server {
+					if stats[key].srvStats != nil {
+						entry.Unauthorized = &stats[key].srvStats.unauthorizedRate
+					}
 				}
 				entries = append(entries, entry)
 			}
