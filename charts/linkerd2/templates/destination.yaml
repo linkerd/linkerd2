@@ -147,6 +147,9 @@ spec:
   template:
     metadata:
       annotations:
+        {{- if (or (empty .Values.cliVersion) (not (eq (.Values.stage | toString) "control-plane"))) }}
+        checksum/config: {{ include (print $.Template.BasePath "/destination-rbac.yaml") . | sha256sum }}
+        {{- end }}
         {{ include "partials.annotations.created-by" . }}
         {{- include "partials.proxy.annotations" . | nindent 8}}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}

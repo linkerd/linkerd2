@@ -1641,6 +1641,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/config: b89a4eb8ca4d469047bd79c59eca2822ee472467613f938c7853d24e63e6fe63
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
