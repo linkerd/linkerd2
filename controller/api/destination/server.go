@@ -361,16 +361,6 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 
 	translator := newProfileTranslator(stream, s.log, "", port, endpoint)
 
-	if len(opaquePorts) != 0 {
-		// Send a destination profile update that includes the opaque
-		// ports.
-		sp := sp.ServiceProfile{}
-		sp.Spec.OpaquePorts = opaquePorts
-		translator.Update(&sp)
-	} else {
-		translator.Update(nil)
-	}
-
 	// Create a client which watches for changes to the inbound policy for
 	// portSpec.
 	portSpec := &policyPb.PortSpec{
