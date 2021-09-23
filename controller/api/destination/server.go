@@ -219,19 +219,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			// pod is not nil we will return a single endpoint in the
 			// DestinationProfile response, otherwise we return a default
 			// profile response.
-			err = s.sendEndpointProfile(stream, pod, port)
-			if err != nil {
-				log.Debugf("Failed to send profile response for endpoint %s:%d: %v", ip.String(), port, err)
-				return err
-			}
-
-			select {
-			case <-s.shutdown:
-			case <-stream.Context().Done():
-				log.Debugf("GetProfile(%+v) cancelled", dest)
-			}
-
-			return nil
+			return s.sendEndpointProfile(stream, pod, port)
 		}
 	} else {
 		var hostname string
@@ -249,20 +237,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			if err != nil {
 				log.Errorf("Failed to get pod for hostname %s: %v", hostname, err)
 			}
-
-			err = s.sendEndpointProfile(stream, pod, port)
-			if err != nil {
-				log.Debugf("Failed to send profile response for host %s: %v", hostname, err)
-				return err
-			}
-
-			select {
-			case <-s.shutdown:
-			case <-stream.Context().Done():
-				log.Debugf("GetProfile(%+v) cancelled", dest)
-			}
-
-			return nil
+			return s.sendEndpointProfile(stream, pod, port)
 		}
 
 		fqn = host
@@ -421,8 +396,15 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 	//
 	// Shutdown is handled by destination server shutdown or the stream being
 	// closed.
-	go func() {
-		for update := range updates {
+	for {
+		select {
+		case <-s.shutdown:
+			return nil
+		case update, ok := <-updates:
+			if !ok {
+				s.log.Debugf("Stopping policy server watch for %s:%d", portSpec.Workload, portSpec.Port)
+				return nil
+			}
 			opaquePortsWithServerProtocol := make(map[uint32]struct{})
 			for k, v := range opaquePorts {
 				opaquePortsWithServerProtocol[k] = v
@@ -448,10 +430,7 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 				translator.Update(nil)
 			}
 		}
-		s.log.Debugf("Stopping policy server watch for %s:%d", portSpec.Workload, portSpec.Port)
-	}()
-
-	return nil
+	}
 }
 
 // getSvcID returns the service that corresponds to a Cluster IP address if one
