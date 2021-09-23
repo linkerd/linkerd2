@@ -52,7 +52,7 @@ require (
 	k8s.io/klog/v2 v2.20.0
 	k8s.io/kube-aggregator v0.21.3
 	rsc.io/letsencrypt v0.0.3 // indirect
-	sigs.k8s.io/yaml v1.2.0
+	sigs.k8s.io/yaml v1.3.0
 )
 
 // to avoid the `github.com/golang/protobuf/protoc-gen-go/generator` deprecation warning
