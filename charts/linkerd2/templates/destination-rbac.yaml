@@ -134,7 +134,7 @@ metadata:
 webhooks:
 - name: linkerd-policy-validator.linkerd.io
   namespaceSelector:
-    {{- toYaml .Values.profileValidator.namespaceSelector | trim | nindent 4 }}
+    {{- toYaml .Values.policyValidator.namespaceSelector | trim | nindent 4 }}
   clientConfig:
     service:
       name: linkerd-policy-validator
