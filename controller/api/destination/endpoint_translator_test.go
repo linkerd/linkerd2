@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	policyPb "github.com/linkerd/linkerd2-proxy-api/go/inbound"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/api/util"
@@ -144,7 +145,17 @@ metadata:
 		updates:          make(chan (*pb.Update), 20),
 		MockServerStream: util.NewMockServerStream(),
 	}
-	mockPolicyClient := &mockPolicyClient{}
+
+	// Create a policy server client that sends only 1 update.
+	update := &policyPb.Server{
+		Protocol: &policyPb.ProxyProtocol{
+			Kind: &policyPb.ProxyProtocol_Http1_{},
+		},
+	}
+	policyClient := &mockPolicyClient{
+		updatesToSend: []*policyPb.Server{update},
+	}
+
 	translator := newEndpointTranslator(
 		"linkerd",
 		"trust.domain",
@@ -154,7 +165,7 @@ metadata:
 		map[uint32]struct{}{},
 		k8sAPI.Node(),
 		mockGetServer,
-		mockPolicyClient,
+		policyClient,
 		logging.WithField("test", t.Name()),
 	)
 	return mockGetServer, translator

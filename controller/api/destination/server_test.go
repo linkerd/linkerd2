@@ -54,20 +54,33 @@ func (m *mockDestinationGetProfileServer) Send(profile *pb.DestinationProfile) e
 }
 
 type mockPolicyClient struct {
+	updatesToSend []*policyPb.Server
+}
+
+func (pc *mockPolicyClient) GetPort(ctx context.Context, portSpec *policyPb.PortSpec, opts ...grpc.CallOption) (*policyPb.Server, error) {
+	return nil, nil
+}
+
+// WatchPort creates a separate mockPolicyClientStream that will send an
+// update for each updateToSend in mockPolicyClient.
+func (pc *mockPolicyClient) WatchPort(ctx context.Context, portSpec *policyPb.PortSpec, opts ...grpc.CallOption) (policyPb.InboundServerPolicies_WatchPortClient, error) {
+	updates := make(chan (*policyPb.Server), len(pc.updatesToSend))
+	for _, update := range pc.updatesToSend {
+		updates <- update
+	}
+	pcs := mockPolicyClientStream{
+		updates: updates,
+	}
+	return pcs, nil
+}
+
+type mockPolicyClientStream struct {
 	util.MockClientStream
 	updates chan (*policyPb.Server)
 }
 
-func (m *mockPolicyClient) GetPort(ctx context.Context, portSpec *policyPb.PortSpec, opts ...grpc.CallOption) (*policyPb.Server, error) {
-	return nil, nil
-}
-
-func (m *mockPolicyClient) WatchPort(ctx context.Context, portSpec *policyPb.PortSpec, opts ...grpc.CallOption) (policyPb.InboundServerPolicies_WatchPortClient, error) {
-	return m, nil
-}
-
-func (m mockPolicyClient) Recv() (*policyPb.Server, error) {
-	update := <-m.updates
+func (pcs mockPolicyClientStream) Recv() (*policyPb.Server, error) {
+	update := <-pcs.updates
 	return update, nil
 }
 
@@ -346,14 +359,13 @@ status:
 	}
 
 	// Create a policy server client that sends only 1 update.
-	policyServers := make(chan (*policyPb.Server), 1)
 	update := &policyPb.Server{
 		Protocol: &policyPb.ProxyProtocol{
 			Kind: &policyPb.ProxyProtocol_Http1_{},
-		}}
-	policyServers <- update
+		},
+	}
 	policyClient := &mockPolicyClient{
-		updates: policyServers,
+		updatesToSend: []*policyPb.Server{update},
 	}
 
 	log := logging.WithField("test", t.Name())
