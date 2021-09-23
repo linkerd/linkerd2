@@ -1,5 +1,5 @@
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   name: emoji-grpc
@@ -14,7 +14,7 @@ spec:
   port: grpc
   proxyProtocol: gRPC
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   name: emoji-grpc
@@ -31,7 +31,7 @@ spec:
       identities:
         - "*.linkerd-stat-authz-test.serviceaccount.identity.linkerd.cluster.local"
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   name: voting-grpc
@@ -44,7 +44,7 @@ spec:
   port: grpc
   proxyProtocol: gRPC
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   name: voting-grpc
@@ -61,7 +61,7 @@ spec:
       serviceAccounts:
         - name: web
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   name: web-http
@@ -76,7 +76,7 @@ spec:
   port: http
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   name: web-public

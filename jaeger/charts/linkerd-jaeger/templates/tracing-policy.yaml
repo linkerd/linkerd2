@@ -1,6 +1,6 @@
 {{ if .Values.collector.enabled -}}
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: {{.Values.namespace}}
@@ -17,7 +17,7 @@ spec:
   port: 4317
   proxyProtocol: gRPC
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: {{.Values.namespace}}
@@ -34,7 +34,7 @@ spec:
   port: 55678
   proxyProtocol: gRPC
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: {{.Values.namespace}}
@@ -50,7 +50,7 @@ spec:
       component: collector
   port: 9411
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: {{.Values.namespace}}
@@ -66,7 +66,7 @@ spec:
       component: collector
   port: 14268
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: {{.Values.namespace}}
@@ -82,7 +82,7 @@ spec:
       component: collector
   port: 14250
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: {{.Values.namespace}}
@@ -99,7 +99,7 @@ spec:
   port: 13133
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: {{.Values.namespace}}
@@ -121,7 +121,7 @@ spec:
 {{ end -}}
 {{ if .Values.jaeger.enabled -}}
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: {{.Values.namespace}}
@@ -138,7 +138,7 @@ spec:
   port: grpc
   proxyProtocol: gRPC
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: {{.Values.namespace}}
@@ -156,7 +156,7 @@ spec:
       serviceAccounts:
       - name: collector
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: {{.Values.namespace}}
@@ -173,7 +173,7 @@ spec:
   port: admin
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: {{.Values.namespace}}
@@ -193,7 +193,7 @@ spec:
       - name: prometheus
         namespace: linkerd-viz
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: {{.Values.namespace}}
@@ -210,7 +210,7 @@ spec:
   port: ui
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: {{.Values.namespace}}

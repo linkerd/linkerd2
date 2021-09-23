@@ -32,7 +32,7 @@ spec:
     port: 9090
     targetPort: 9090
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   name: smoke-test-terminus
@@ -43,7 +43,7 @@ spec:
   port: 9090
   proxyProtocol: gRPC
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   name: smoke-test-terminus
@@ -93,7 +93,7 @@ spec:
     port: 8080
     targetPort: 8080
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   name: smoke-test-proxy-admin
@@ -108,7 +108,7 @@ spec:
   port: linkerd-admin
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   name: smoke-test-proxy-admin
