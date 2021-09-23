@@ -26,6 +26,7 @@
 - [HP Inc](https://www8.hp.com/us/en/home.html)
 - [In Loco](https://inloco.com.br/en/)
 - [Ingrid](https://ingrid.com/)
+- [Jimdo](https://www.jimdo.com/)
 - [Just Football](https://justfootball.io)
 - [K3 Business Technologies](https://www.k3btg.com)
 - [Kairos](https://kairos.com)
