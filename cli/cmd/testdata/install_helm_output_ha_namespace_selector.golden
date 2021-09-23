@@ -1727,7 +1727,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 0dc9c5f091c857267a414fc5917819c51dcf2f8707fd9c607289db1fcc998362
+        checksum/config: fc859f60e32a6a3df7efead92920983eaac2545d381334610cf9ecf4b9839f48
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
