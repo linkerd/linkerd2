@@ -243,67 +243,53 @@ func (et *endpointTranslator) NoEndpoints(exists bool) {
 func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 	addrs := []*pb.WeightedAddr{}
 	for _, address := range set.Addresses {
-		var (
-			wa  *pb.WeightedAddr
-			err error
-		)
+		// If the address is backed by a pod then updates will be send by the
+		// policy server watch.
 		if address.Pod != nil {
-			opaquePorts, ok, getErr := getPodOpaquePortsAnnotations(address.Pod)
-			if getErr != nil {
-				et.log.Errorf("failed getting opaque ports annotation for pod: %s", getErr)
-			}
-			// If the opaque ports annotation was not set, then set the
-			// endpoint's opaque ports to the default value.
-			if !ok {
-				opaquePorts = et.defaultOpaquePorts
-			}
+			continue
+		}
 
-			skippedInboundPorts, skippedErr := getPodSkippedInboundPortsAnnotations(address.Pod)
-			if skippedErr != nil {
-				et.log.Errorf("failed getting ignored inbound ports annotation for pod: %s", err)
-			}
-
-			wa, err = toWeightedAddr(address, opaquePorts, skippedInboundPorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
-		} else {
-			var authOverride *pb.AuthorityOverride
-			if address.AuthorityOverride != "" {
-				authOverride = &pb.AuthorityOverride{
-					AuthorityOverride: address.AuthorityOverride,
-				}
-			}
-
-			// handling address with no associated pod
-			var addr *net.TcpAddress
-			addr, err = toAddr(address)
-			wa = &pb.WeightedAddr{
-				Addr:              addr,
-				Weight:            defaultWeight,
-				AuthorityOverride: authOverride,
-			}
-
-			if address.Identity != "" {
-				wa.TlsIdentity = &pb.TlsIdentity{
-					Strategy: &pb.TlsIdentity_DnsLikeIdentity_{
-						DnsLikeIdentity: &pb.TlsIdentity_DnsLikeIdentity{
-							Name: address.Identity,
-						},
-					},
-				}
-				// in this case we most likely have a proxy on the other side, so set protocol hint as well.
-				if et.enableH2Upgrade {
-					wa.ProtocolHint = &pb.ProtocolHint{
-						Protocol: &pb.ProtocolHint_H2_{
-							H2: &pb.ProtocolHint_H2{},
-						},
-					}
-				}
+		var authOverride *pb.AuthorityOverride
+		if address.AuthorityOverride != "" {
+			authOverride = &pb.AuthorityOverride{
+				AuthorityOverride: address.AuthorityOverride,
 			}
 		}
+		var addr *net.TcpAddress
+		addr, err := toAddr(address)
 		if err != nil {
 			et.log.Errorf("Failed to translate endpoints to weighted addr: %s", err)
 			continue
 		}
+		wa := &pb.WeightedAddr{
+			Addr:              addr,
+			Weight:            defaultWeight,
+			AuthorityOverride: authOverride,
+		}
+
+		if address.Identity != "" {
+			wa.TlsIdentity = &pb.TlsIdentity{
+				Strategy: &pb.TlsIdentity_DnsLikeIdentity_{
+					DnsLikeIdentity: &pb.TlsIdentity_DnsLikeIdentity{
+						Name: address.Identity,
+					},
+				},
+			}
+			// in this case we most likely have a proxy on the other side, so set protocol hint as well.
+			if et.enableH2Upgrade {
+				wa.ProtocolHint = &pb.ProtocolHint{
+					Protocol: &pb.ProtocolHint_H2_{
+						H2: &pb.ProtocolHint_H2{},
+					},
+				}
+			}
+		}
 		addrs = append(addrs, wa)
+	}
+
+	// If there are no addresses to add then don't send an update.
+	if len(addrs) == 0 {
+		return
 	}
 
 	add := &pb.Update{Update: &pb.Update_Add{
