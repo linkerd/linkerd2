@@ -280,18 +280,22 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 }
 
 func TestEndpointTranslatorForPods(t *testing.T) {
-	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
+	t.Run("Sends two updates for add and another for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
 		translator.Add(mkAddressSetForPods(normalPod, tlsOptionalPod))
 		translator.Remove(mkAddressSetForPods(tlsOptionalPod))
 
-		// Supporting policy server watches means we should receive at least
-		// two updates.
-		expectedNumUpdates := 2
-		actualNumUpdates := len(mockGetServer.updates)
-		if actualNumUpdates < expectedNumUpdates {
-			t.Fatalf("Expecting at least [%d] updates, got [%d]. Updates: %v", expectedNumUpdates, actualNumUpdates, mockGetServer.updates)
+		// Each pod has an individual policy server add update. Then, there is
+		// one remove update.
+		expectedNumUpdates := 3
+		for i := 0; i < expectedNumUpdates; i++ {
+			<-mockGetServer.updates
+		}
+
+		remainingUpdates := len(mockGetServer.updates)
+		if remainingUpdates > 0 {
+			t.Fatalf("Expected [%d] updates, got [%d]", expectedNumUpdates, expectedNumUpdates+remainingUpdates)
 		}
 	})
 
@@ -301,16 +305,29 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		translator.Add(mkAddressSetForPods(normalPod, tlsOptionalPod, tlsDisabledPod))
 		translator.Remove(mkAddressSetForPods(tlsDisabledPod))
 
-		addUpdate := <-mockGetServer.updates
-		addressesAdded := addUpdate.GetAdd().Addrs
-		actualNumberOfAdded := len(addressesAdded)
+		// Each pod has an individual policy server add update. Then, there is
+		// one remove update.
+		expectedNumberOfUpdates := 4
+		var updates []*pb.Update
+		for i := 0; i < expectedNumberOfUpdates; i++ {
+			update := <-mockGetServer.updates
+			updates = append(updates, update)
+		}
+
+		var addressesAdded []*pb.WeightedAddr
+		for _, update := range updates {
+			if add := update.GetAdd(); add != nil {
+				addressesAdded = append(addressesAdded, add.Addrs...)
+			}
+		}
+
 		expectedNumberOfAdded := 3
-		if actualNumberOfAdded != expectedNumberOfAdded {
-			t.Fatalf("Expecting [%d] addresses to be added, got [%d]: %v", expectedNumberOfAdded, actualNumberOfAdded, addressesAdded)
+		if len(addressesAdded) != expectedNumberOfAdded {
+			t.Fatalf("Expecting [%d] addresses to be added, got [%d]", expectedNumberOfAdded, len(addressesAdded))
 		}
 
 		var removeUpdate *pb.Update
-		for update := range mockGetServer.updates {
+		for _, update := range updates {
 			if update.GetRemove() != nil {
 				removeUpdate = update
 				break
