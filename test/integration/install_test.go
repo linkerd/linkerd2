@@ -283,6 +283,10 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		args = append(args, "--linkerd-cni-enabled")
 	}
 
+	if policy := TestHelper.DefaultAllowPolicy(); policy != "" {
+		args = append(args, "--set", "policyController.defaultAllowPolicy="+policy)
+	}
+
 	if TestHelper.ExternalIssuer() {
 
 		// short cert lifetime to put some pressure on the CSR request, response code path
@@ -832,6 +836,12 @@ func TestOverridesSecret(t *testing.T) {
 
 		if TestHelper.CNI() {
 			knownKeys["cniEnabled"] = true
+		}
+
+		if policy := TestHelper.DefaultAllowPolicy(); policy != "" {
+			knownKeys["policyController"] = tree.Tree{
+				"defaultAllowPolicy": policy,
+			}
 		}
 
 		// Check if the keys in overridesTree match with knownKeys
