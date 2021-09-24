@@ -34,7 +34,6 @@ func TestNewValues(t *testing.T) {
 		EnableH2Upgrade:              true,
 		EnablePodAntiAffinity:        false,
 		WebhookFailurePolicy:         "Ignore",
-		OmitWebhookSideEffects:       false,
 		DisableHeartBeat:             false,
 		HeartbeatSchedule:            "",
 		InstallNamespace:             true,
@@ -99,7 +98,7 @@ func TestNewValues(t *testing.T) {
 			WaitBeforeExitSeconds:  0,
 			OutboundConnectTimeout: "1000ms",
 			InboundConnectTimeout:  "100ms",
-			OpaquePorts:            "25,443,587,3306,4444,5432,6379,9300,11211",
+			OpaquePorts:            "25,587,3306,4444,5432,6379,9300,11211",
 			Await:                  true,
 		},
 		ProxyInit: &ProxyInit{

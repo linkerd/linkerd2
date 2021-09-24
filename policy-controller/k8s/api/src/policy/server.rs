@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, Eq, CustomResource, Deserialize, Serialize, JsonSchema)]
 #[kube(
     group = "policy.linkerd.io",
-    version = "v1alpha1",
+    version = "v1beta1",
     kind = "Server",
     namespaced
 )]

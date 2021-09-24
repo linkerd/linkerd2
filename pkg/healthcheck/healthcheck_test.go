@@ -2392,7 +2392,6 @@ data:
     installNamespace: true
     nodeSelector:
       beta.kubernetes.io/os: linux
-    omitWebhookSideEffects: false
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     stage: ""
@@ -2405,7 +2404,6 @@ data:
 				ControllerUID:          2103,
 				EnableH2Upgrade:        true,
 				WebhookFailurePolicy:   "WebhookFailurePolicy",
-				OmitWebhookSideEffects: false,
 				InstallNamespace:       true,
 				NodeSelector:           defaultValues.NodeSelector,
 				Tolerations:            defaultValues.Tolerations,
@@ -2555,7 +2553,6 @@ data:
     installNamespace: true
     nodeSelector:
       beta.kubernetes.io/os: linux
-    omitWebhookSideEffects: false
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     stage: ""
@@ -2568,7 +2565,6 @@ data:
 				ControllerUID:          2103,
 				EnableH2Upgrade:        true,
 				WebhookFailurePolicy:   "WebhookFailurePolicy",
-				OmitWebhookSideEffects: false,
 				InstallNamespace:       true,
 				NodeSelector:           defaultValues.NodeSelector,
 				Tolerations:            defaultValues.Tolerations,
@@ -3418,7 +3414,7 @@ subsets:
     protocol: TCP
 `,
 			},
-			expected: fmt.Errorf("\t* service svc expects 9200 to be opaque; add it to pod pod's config.linkerd.io/opaque-ports annotation"),
+			expected: fmt.Errorf("\t* service svc expects target port 9200 to be opaque; add it to pod pod config.linkerd.io/opaque-ports annotation"),
 		},
 		{
 			resources: []string{`

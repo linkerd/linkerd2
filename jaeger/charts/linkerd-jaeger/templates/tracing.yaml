@@ -9,6 +9,7 @@ metadata:
   name: collector-config
   namespace: {{.Values.namespace}}
   labels:
+    linkerd.io/extension: jaeger
     component: collector
 data:
   collector-config: |
@@ -20,6 +21,7 @@ metadata:
   name: collector
   namespace: {{.Values.namespace}}
   labels:
+    linkerd.io/extension: jaeger
     component: collector
 spec:
   type: ClusterIP
@@ -51,6 +53,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
+    linkerd.io/extension: jaeger
     app.kubernetes.io/name: collector
     app.kubernetes.io/part-of: Linkerd
     component: collector
@@ -70,6 +73,7 @@ spec:
         prometheus.io/port: "8888"
         prometheus.io/scrape: "true"
       labels:
+        linkerd.io/extension: jaeger
         component: collector
     spec:
       {{- if .Values.collector.tolerations -}}
@@ -96,6 +100,7 @@ spec:
             port: 13133
         name: ot-collector
         ports:
+        - containerPort: 13133
         - containerPort: 4317
         - containerPort: 55678
         - containerPort: 9411
@@ -132,6 +137,7 @@ metadata:
   name: jaeger
   namespace: {{.Values.namespace}}
   labels:
+    linkerd.io/extension: jaeger
     component: jaeger
 spec:
   type: ClusterIP
@@ -149,6 +155,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
+    linkerd.io/extension: jaeger
     app.kubernetes.io/name: jaeger
     app.kubernetes.io/part-of: Linkerd
     component: jaeger
@@ -167,6 +174,7 @@ spec:
         prometheus.io/port: "14269"
         prometheus.io/scrape: "true"
       labels:
+        linkerd.io/extension: jaeger
         component: jaeger
     spec:
       {{- if .Values.jaeger.tolerations -}}

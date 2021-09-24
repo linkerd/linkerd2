@@ -43,6 +43,21 @@ func NewTable(cols []Column, data []Row) Table {
 	}
 }
 
+// NewColumn creates a new flexible column with the given name.
+func NewColumn(header string) Column {
+	return Column{
+		Header:   header,
+		Flexible: true,
+		Width:    len(header),
+	}
+}
+
+// WithLeftAlign turns on the left align of this column and returns it.
+func (c Column) WithLeftAlign() Column {
+	c.LeftAlign = true
+	return c
+}
+
 // Render writes the full table to the given Writer.
 func (t *Table) Render(w io.Writer) {
 	columnWidths := t.columnWidths()
