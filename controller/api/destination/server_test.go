@@ -467,21 +467,12 @@ func TestGet(t *testing.T) {
 	t.Run("Returns endpoints", func(t *testing.T) {
 		stream, server := makeGetServer(t)
 
-		// We cancel the stream before even sending the request so that we don't
-		// need to call server.Get in a separate goroutine.  By preemptively
-		// cancelling, the behavior of Get becomes effectively synchronous and
-		// we will get only the initial update, which is what we want for this
-		// test.
-		stream.Cancel()
-
-		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: fmt.Sprintf("%s:%d", fullyQualifiedName, port)}, stream)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
-		// We can receive multiple updates but we only care about checking the
-		// first one for this test
+		go server.Get(&pb.GetDestination{
+			Scheme: "k8s",
+			Path:   fmt.Sprintf("%s:%d", fullyQualifiedName, port),
+		}, stream)
 		update := <-stream.updates
+		stream.Cancel()
 
 		if updateAddAddress(t, update)[0] != fmt.Sprintf("%s:%d", podIP1, port) {
 			t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP1, port), updateAddAddress(t, update)[0])
@@ -491,20 +482,14 @@ func TestGet(t *testing.T) {
 
 	t.Run("Return endpoint with unknown protocol hint and identity when service name contains skipped inbound port", func(t *testing.T) {
 		stream, server := makeGetServer(t)
-		stream.Cancel()
 
 		path := fmt.Sprintf("%s:%d", fullyQualifiedNameSkipped, skippedPort)
-		err := server.Get(&pb.GetDestination{
+		go server.Get(&pb.GetDestination{
 			Scheme: "k8s",
 			Path:   path,
 		}, stream)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
-		// We can receive multiple updates but we only care about checking the
-		// first one for this test
 		update := <-stream.updates
+		stream.Cancel()
 
 		addrs := update.GetAdd().Addrs
 		if len(addrs) == 0 {
@@ -665,6 +650,7 @@ func TestGetProfiles(t *testing.T) {
 			t.Fatalf("Expected route to be retryable, but it was not")
 		}
 	})
+
 	t.Run("Returns client profile", func(t *testing.T) {
 		stream, server := makeGetProfileServer(t)
 		stream.Cancel()
