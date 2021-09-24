@@ -1,5 +1,43 @@
 # Changes
 
+## edge-21.9.4
+
+This edge is a release candidate for `stable-2.11.0`! It introduces a new
+`linkerd viz auth` command which shows metrics for server authorizations broken
+down by server for a given resource. It also shows the rate of unauthorized
+requests to each server.  This is helpful for seeing a breakdown of which
+authorizations are being used and what proportion of traffic is being rejected.
+
+It also fixes an issue in the proxy where  HTTP load balancers could continue
+trying to establish connections to endpoints that were removed from service
+discovery. In addition it improves the proxy's error handling so that it can
+signal to an inbound proxy when its peers outbound connections should be torn
+down.
+
+* Changed destination watch updates from `info` to `debug` to reduce the amount
+  of logs (thanks @bartpeeters!)
+* Added the `linkerd viz auth` command which shows metrics for server
+  authorizations broken down by server for a given resource
+* Fixed an issue where the policy controller's validating admission webhook
+  attempted to validate ServerAuthorizations when it should only be validating
+  Servers
+* Removed the dependency on `jest-enzyme` which is no longer maintained or used
+  by Linkerd
+* Removed `omitWebhookSideEffects` setting now that we no longer support
+  Kubernetes 1.12
+* Improved proxy error handling so that it can signal to its peers that their
+  outbound connections should be torn down
+* Fixed an issue where after upgrades there would be a mismatch in certs used by
+  the policy controller validator; the destination pod is now restarted similar
+  to the injector
+* Fixed a field reference in the Helm template to properly refer to
+  `profileValidator.namespaceSelector`
+* Updated policy CRD versions to `v1beta1`
+* Added support for `stat`'s `-o json` option to Server resources
+* Fixed an issue in the proxy where HTTP load balancers could continue trying to
+  establish connections to endpoints that were removed from service discovery
+* Added JSON output format to `linkerd viz authz` command
+
 ## edge-21.9.3
 
 This edge is a release candidate for `stable-2.11.0`! It features a new `linkerd
