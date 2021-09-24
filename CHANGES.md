@@ -21,8 +21,6 @@ down.
 * Fixed an issue where the policy controller's validating admission webhook
   attempted to validate ServerAuthorizations when it should only be validating
   Servers
-* Removed the dependency on `jest-enzyme` which is no longer maintained or used
-  by Linkerd
 * Removed `omitWebhookSideEffects` setting now that we no longer support
   Kubernetes 1.12
 * Improved proxy error handling so that it can signal to its peers that their
