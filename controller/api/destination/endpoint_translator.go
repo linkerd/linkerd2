@@ -385,7 +385,7 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 			for {
 				update, err := portClient.client.Recv()
 				if err != nil {
-					et.log.Debugf("Stopping policy server updates for %s:%d", portSpec.workload, portSpec.port)
+					et.log.Debugf("Stopping policy server updates for %s:%d: %s", portSpec.workload, portSpec.port, err)
 					close(updates)
 					break
 				}
