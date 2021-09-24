@@ -30,6 +30,11 @@ data:
     check_for_updates = false
     [panels]
     disable_sanitize_html = true
+    [log]
+    mode = console
+    [log.console]
+    format = {{ .Values.grafana.logFormat | default "text" }}
+    level = {{ .Values.grafana.logLevel | default "info" }}
   datasources.yaml: |-
     apiVersion: 1
     datasources:

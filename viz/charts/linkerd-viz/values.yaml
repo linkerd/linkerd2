@@ -296,6 +296,12 @@ dashboard:
 grafana:
   # -- toggle field to enable or disable grafana
   enabled: true
+  # -- log level of the grafana instance
+  # @default -- info
+  logLevel: ""
+  # -- log format (text, json) of the grafana instance
+  # @default -- text
+  logFormat: ""  
   image:
     # -- Docker registry for the grafana instance
     # @default -- defaultRegistry
@@ -351,6 +357,9 @@ prometheus:
   # -- log level of the prometheus instance
   # @default -- defaultLogLevel
   logLevel: ""
+  # -- log format (logfmt, json) of the prometheus instance
+  # @default -- logfmt
+  logFormat: ""
   # -- Command line options for Prometheus binary
   args:
     storage.tsdb.path: /data
