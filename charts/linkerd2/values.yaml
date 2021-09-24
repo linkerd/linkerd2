@@ -155,6 +155,12 @@ proxyInit:
   # -- Default set of outbound ports to skip via iptables
   # - Galera (4567,4568)
   ignoreOutboundPorts: "4567,4568"
+  # -- Log level for the proxy-init
+  # @default -- info
+  logLevel: ""
+  # -- Log format (`plain` or `json`) for the proxy-init
+  # @default -- plain
+  logFormat: ""
   image:
     # -- Docker image for the proxy-init container
     name: cr.l5d.io/linkerd/proxy-init

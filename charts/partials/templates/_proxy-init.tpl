@@ -16,6 +16,14 @@ args:
 - --timeout-close-wait-secs
 - {{ .Values.proxyInit.closeWaitTimeoutSecs | quote}}
 {{- end }}
+{{- if .Values.proxyInit.logFormat }}
+- --log-format
+- {{ .Values.proxyInit.logFormat }}
+{{- end }}
+{{- if .Values.proxyInit.logLevel }}
+- --log-level
+- {{ .Values.proxyInit.logLevel }}
+{{- end }}
 image: {{.Values.proxyInit.image.name}}:{{.Values.proxyInit.image.version}}
 imagePullPolicy: {{.Values.proxyInit.image.pullPolicy | default .Values.imagePullPolicy}}
 name: linkerd-init
