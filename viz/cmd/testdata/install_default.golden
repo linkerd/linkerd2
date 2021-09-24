@@ -608,6 +608,11 @@ data:
     check_for_updates = false
     [panels]
     disable_sanitize_html = true
+    [log]
+    mode = console
+    [log.console]
+    format = text
+    level = info
   datasources.yaml: |-
     apiVersion: 1
     datasources:
@@ -976,6 +981,7 @@ spec:
       containers:
       - args:
         - --log.level=info
+        - --log.format=logfmt
         - --config.file=/etc/prometheus/prometheus.yml
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h

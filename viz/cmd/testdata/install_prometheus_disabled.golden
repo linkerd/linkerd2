@@ -568,6 +568,11 @@ data:
     check_for_updates = false
     [panels]
     disable_sanitize_html = true
+    [log]
+    mode = console
+    [log.console]
+    format = text
+    level = info
   datasources.yaml: |-
     apiVersion: 1
     datasources:
