@@ -455,6 +455,10 @@ func (bgps *bufferingGetProfileStream) Send(profile *pb.DestinationProfile) erro
 	return nil
 }
 
+// When testing GetProfile for endpoints that map to a pod, we must spawn
+// GetProfile as a goroutine so that we can wait for the updates that we
+// expect. This means that we cannot cancel the stream immediately; we must
+// wait to cancel the stream until we've received the expected updates.
 func TestGet(t *testing.T) {
 	t.Run("Returns error if not valid service name", func(t *testing.T) {
 		stream, server := makeGetServer(t)
@@ -732,10 +736,6 @@ func TestGetProfiles(t *testing.T) {
 			t.Fatalf("Got error: %s", err)
 		}
 
-		// GetProfile will not complete until the stream closes, but we don't
-		// want the stream to close until we have received an update from the
-		// policy server. Therefore, we make it a goroutine and cancel the
-		// stream only after we have received an update.
 		go server.GetProfile(&pb.GetDestination{
 			Scheme:       "k8s",
 			Path:         fmt.Sprintf("%s:%d", fullyQualifiedPodDNS, port),
@@ -777,10 +777,6 @@ func TestGetProfiles(t *testing.T) {
 			t.Fatalf("Got error: %s", err)
 		}
 
-		// GetProfile will not complete until the stream closes, but we don't
-		// want the stream to close until we have received an update from the
-		// policy server. Therefore, we make it a goroutine and cancel the
-		// stream only after we have received an update.
 		go server.GetProfile(&pb.GetDestination{
 			Scheme: "k8s",
 			Path:   fmt.Sprintf("%s:%d", podIP1, port),
@@ -816,10 +812,6 @@ func TestGetProfiles(t *testing.T) {
 	t.Run("Return default profile when IP does not map to service or pod", func(t *testing.T) {
 		stream, server := makeGetProfileServer(t)
 
-		// GetProfile will not complete until the stream closes, but we don't
-		// want the stream to close until we have received an update from the
-		// policy server. Therefore, we make it a goroutine and cancel the
-		// stream only after we have received an update.
 		go server.GetProfile(&pb.GetDestination{
 			Scheme: "k8s",
 			Path:   "172.0.0.0:1234",
@@ -839,10 +831,6 @@ func TestGetProfiles(t *testing.T) {
 	t.Run("Return profile with no protocol hint when pod does not have label", func(t *testing.T) {
 		stream, server := makeGetProfileServer(t)
 
-		// GetProfile will not complete until the stream closes, but we don't
-		// want the stream to close until we have received an update from the
-		// policy server. Therefore, we make it a goroutine and cancel the
-		// stream only after we have received an update.
 		go server.GetProfile(&pb.GetDestination{
 			Scheme: "k8s",
 			Path:   podIP2,
@@ -902,10 +890,6 @@ func TestGetProfiles(t *testing.T) {
 			t.Fatalf("Got error: %s", err)
 		}
 
-		// GetProfile will not complete until the stream closes, but we don't
-		// want the stream to close until we have received an update from the
-		// policy server. Therefore, we make it a goroutine and cancel the
-		// stream only after we have received an update.
 		go server.GetProfile(&pb.GetDestination{
 			Scheme: "k8s",
 			Path:   fmt.Sprintf("%s:%d", podIPOpaque, opaquePort),
@@ -968,18 +952,15 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with unknown protocol hint and identity when pod contains skipped inbound port", func(t *testing.T) {
 		stream, server := makeGetProfileServer(t)
-		stream.Cancel()
 
 		path := fmt.Sprintf("%s:%d", podIPSkipped, skippedPort)
-		err := server.GetProfile(&pb.GetDestination{
+		go server.GetProfile(&pb.GetDestination{
 			Scheme: "k8s",
 			Path:   path,
 		}, stream)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
 		update := <-stream.updates
+		stream.Cancel()
+
 		if len(stream.updates) > 0 {
 			t.Fatalf("Expected 1 update but got %d", len(stream.updates))
 		}
