@@ -283,16 +283,21 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 	t.Run("Sends two updates for add and another for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
+		// First check that we receive the number of add updates that we
+		// expect. It's important to do this before translator.Remove, because
+		// when we remove an address it cancels the context which can prevent
+		// the second add from occurring.
 		translator.Add(mkAddressSetForPods(normalPod, tlsOptionalPod))
-		translator.Remove(mkAddressSetForPods(tlsOptionalPod))
-
-		// Each pod has an individual policy server add update. Then, there is
-		// one remove update.
-		expectedNumUpdates := 3
-		for i := 0; i < expectedNumUpdates; i++ {
+		expectedNumAddUpdates := 2
+		for i := 0; i < expectedNumAddUpdates; i++ {
 			<-mockGetServer.updates
 		}
 
+		// We expect one update from removing the address.
+		translator.Remove(mkAddressSetForPods(tlsOptionalPod))
+		<-mockGetServer.updates
+
+		expectedNumUpdates := expectedNumAddUpdates + 1
 		remainingUpdates := len(mockGetServer.updates)
 		if remainingUpdates > 0 {
 			t.Fatalf("Expected [%d] updates, got [%d]", expectedNumUpdates, expectedNumUpdates+remainingUpdates)
@@ -301,18 +306,23 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 	t.Run("Sends addresses as removed or added", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
-
-		translator.Add(mkAddressSetForPods(normalPod, tlsOptionalPod, tlsDisabledPod))
-		translator.Remove(mkAddressSetForPods(tlsDisabledPod))
-
-		// Each pod has an individual policy server add update. Then, there is
-		// one remove update.
-		expectedNumberOfUpdates := 4
 		var updates []*pb.Update
-		for i := 0; i < expectedNumberOfUpdates; i++ {
+
+		// First check that we receive the number of add updates that we
+		// expect. It's important to do this before translator.Remove, because
+		// when we remove an address it cancels the context which can prevent
+		// the second add from occurring.
+		translator.Add(mkAddressSetForPods(normalPod, tlsOptionalPod, tlsDisabledPod))
+		expectedNumAddUpdates := 3
+		for i := 0; i < expectedNumAddUpdates; i++ {
 			update := <-mockGetServer.updates
 			updates = append(updates, update)
 		}
+
+		// We expect one update from removing the address.
+		translator.Remove(mkAddressSetForPods(tlsDisabledPod))
+		update := <-mockGetServer.updates
+		updates = append(updates, update)
 
 		var addressesAdded []*pb.WeightedAddr
 		for _, update := range updates {
