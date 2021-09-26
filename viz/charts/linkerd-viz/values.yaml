@@ -297,10 +297,10 @@ grafana:
   # -- toggle field to enable or disable grafana
   enabled: true
   # -- log level of the grafana instance
-  # @default -- info
+  # @default -- defaultLogLevel
   logLevel: ""
-  # -- log format (text, json) of the grafana instance
-  # @default -- text
+  # -- log format (plain, json) of the grafana instance
+  # @default -- defaultLogFormat
   logFormat: ""  
   image:
     # -- Docker registry for the grafana instance
@@ -357,8 +357,8 @@ prometheus:
   # -- log level of the prometheus instance
   # @default -- defaultLogLevel
   logLevel: ""
-  # -- log format (logfmt, json) of the prometheus instance
-  # @default -- logfmt
+  # -- log format (plain, json) of the prometheus instance
+  # @default -- defaultLogLevel
   logFormat: ""
   # -- Command line options for Prometheus binary
   args:

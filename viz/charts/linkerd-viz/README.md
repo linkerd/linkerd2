@@ -107,8 +107,8 @@ Kubernetes: `>=1.16.0-0`
 | grafana.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the grafana instance |
 | grafana.image.registry | string | defaultRegistry | Docker registry for the grafana instance |
 | grafana.image.tag | string | linkerdVersion | Docker image tag for the grafana instance |
-| grafana.logFormat | string | text | log format (text, json) of the grafana instance |
-| grafana.logLevel | string | info | log level of the grafana instance |
+| grafana.logFormat | string | defaultLogFormat | log format (plain, json) of the grafana instance |
+| grafana.logLevel | string | defaultLogLevel | log level of the grafana instance |
 | grafana.nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | grafana.proxy | string | `nil` |  |
 | grafana.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the grafana container can use |
@@ -149,7 +149,7 @@ Kubernetes: `>=1.16.0-0`
 | prometheus.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the prometheus instance |
 | prometheus.image.registry | string | `"prom"` | Docker registry for the prometheus instance |
 | prometheus.image.tag | string | `"v2.19.3"` | Docker image tag for the prometheus instance |
-| prometheus.logFormat | string | logfmt | log format (logfmt, json) of the prometheus instance |
+| prometheus.logFormat | string | defaultLogLevel | log format (plain, json) of the prometheus instance |
 | prometheus.logLevel | string | defaultLogLevel | log level of the prometheus instance |
 | prometheus.nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | prometheus.proxy | string | `nil` |  |

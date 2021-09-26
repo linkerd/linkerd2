@@ -612,7 +612,7 @@ data:
     mode = console
     [log.console]
     format = text
-    level = info
+    level = debug
   datasources.yaml: |-
     apiVersion: 1
     datasources:
