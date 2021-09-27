@@ -132,6 +132,7 @@ jobs:
         - upgrade-edge
         - upgrade-stable
         - cni-calico-deep
+        - default-policy-deny
     needs: [docker_build, policy_controller_manifest]
     name: Integration tests (${{ matrix.integration_test }})
     timeout-minutes: 60
