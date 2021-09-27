@@ -371,6 +371,7 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 	if err != nil {
 		return err
 	}
+	s.log.Debugf("Establishing watch on policy server %s:%d", portSpec.Workload, portSpec.Port)
 
 	// Receive policy server updates for portSpec.
 	//
@@ -382,7 +383,7 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 		for {
 			update, err := client.Recv()
 			if err != nil {
-				s.log.Debugf("Shutting down policy server updates for %s:%d", portSpec.Workload, portSpec.Port)
+				s.log.Debugf("Shutting down policy server updates for %s:%d: %s", portSpec.Workload, portSpec.Port, err)
 				close(updates)
 				break
 			}
@@ -405,6 +406,7 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 				s.log.Debugf("Stopping policy server watch for %s:%d", portSpec.Workload, portSpec.Port)
 				return nil
 			}
+			s.log.Debugf("Received policy server update for %s:%d: %v", portSpec.Workload, portSpec.Port, update)
 			opaquePortsWithServerProtocol := make(map[uint32]struct{})
 			for k, v := range opaquePorts {
 				opaquePortsWithServerProtocol[k] = v

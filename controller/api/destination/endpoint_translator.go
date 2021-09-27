@@ -400,6 +400,7 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 		addr := addr
 		go func() {
 			for update := range updates {
+				et.log.Debugf("Received policy server update for %s:%d: %v", portSpec.workload, portSpec.port, update)
 				opaquePortsWithServerProtocol := make(map[uint32]struct{})
 				for k, v := range opaquePorts {
 					opaquePortsWithServerProtocol[k] = v
@@ -470,6 +471,7 @@ func (et *endpointTranslator) closeEndpointPolicy(set watcher.AddressSet) {
 			port:     addr.Port,
 		}
 		if portClient, ok := et.policyWatches.watches[portSpec]; ok {
+			et.log.Debugf("Closing policy server client for %s:%d", portSpec.workload, portSpec.port)
 			portClient.cancel()
 		}
 		delete(et.policyWatches.watches, portSpec)

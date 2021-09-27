@@ -46,7 +46,10 @@ func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
 		return
 	}
 	pt.log.Debugf("Sending profile update: %+v", destinationProfile)
-	pt.stream.Send(destinationProfile)
+	err = pt.stream.Send(destinationProfile)
+	if err != nil {
+		pt.log.Error(err)
+	}
 }
 
 func (pt *profileTranslator) defaultServiceProfile() *pb.DestinationProfile {
