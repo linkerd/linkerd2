@@ -14,6 +14,8 @@ import (
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 )
@@ -385,9 +387,20 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 			for {
 				update, err := portClient.client.Recv()
 				if err != nil {
-					et.log.Debugf("Stopping policy server updates for %s:%d: %s", portSpec.workload, portSpec.port, err)
-					close(updates)
-					break
+					errStatus, _ := status.FromError(err)
+					if errStatus.Code() == codes.NotFound {
+						// If the policy server has not indexed the pod, we
+						// don't want to close the stream, but we also don't
+						// want to keep calling Recv since it will keep
+						// sending nil updates. Instead, send one update and
+						// stop.
+						updates <- nil
+						break
+					} else {
+						et.log.Debugf("Stopping policy server updates for %s:%d: %s", portSpec.workload, portSpec.port, err)
+						close(updates)
+						break
+					}
 				}
 				updates <- update
 			}
@@ -399,31 +412,45 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 		// include an opaque transport port as specified by a policy server.
 		addr := addr
 		go func() {
-			for update := range updates {
-				et.log.Debugf("Received policy server update for %s:%d: %v", portSpec.workload, portSpec.port, update)
-				opaquePortsWithServerProtocol := make(map[uint32]struct{})
-				for k, v := range opaquePorts {
-					opaquePortsWithServerProtocol[k] = v
-				}
-				if update.GetProtocol().GetOpaque() != nil {
-					opaquePortsWithServerProtocol[portSpec.port] = struct{}{}
-				}
-				wa, err := toWeightedAddr(addr, opaquePortsWithServerProtocol, skippedInboundPorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
-				if err != nil {
-					et.log.Errorf("Failed to translate endpoint to weighted addr: %s", err)
-				}
-				add := &pb.Update{Update: &pb.Update_Add{
-					Add: &pb.WeightedAddrSet{
-						Addrs:        []*pb.WeightedAddr{wa},
-						MetricLabels: set.Labels,
-					},
-				}}
-				et.log.Debugf("Sending destination add: %+v", add)
-				if err := et.stream.Send(add); err != nil {
-					et.log.Errorf("Failed to send address update: %s", err)
+			for {
+				select {
+				case <-et.stream.Context().Done():
+					// This case handles shutdown when updates will never be
+					// closed. This occurs when the policy server is unable to
+					// find a server for a pod. After one sending one update,
+					// it stops checking for updates, so it will never try to
+					// close updates.
+					et.log.Debugf("Stopping policy server watch for %s:%d", portSpec.workload, portSpec.port)
+					return
+				case update, ok := <-updates:
+					et.log.Debugf("Received policy server update for %s:%d: %v", portSpec.workload, portSpec.port, update)
+					if !ok {
+						et.log.Debugf("Stopping policy server watch for %s:%d", portSpec.workload, portSpec.port)
+						return
+					}
+					opaquePortsWithServerProtocol := make(map[uint32]struct{})
+					for k, v := range opaquePorts {
+						opaquePortsWithServerProtocol[k] = v
+					}
+					if update.GetProtocol().GetOpaque() != nil {
+						opaquePortsWithServerProtocol[portSpec.port] = struct{}{}
+					}
+					wa, err := toWeightedAddr(addr, opaquePortsWithServerProtocol, skippedInboundPorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
+					if err != nil {
+						et.log.Errorf("Failed to translate endpoint to weighted addr: %s", err)
+					}
+					add := &pb.Update{Update: &pb.Update_Add{
+						Add: &pb.WeightedAddrSet{
+							Addrs:        []*pb.WeightedAddr{wa},
+							MetricLabels: set.Labels,
+						},
+					}}
+					et.log.Debugf("Sending destination add: %+v", add)
+					if err := et.stream.Send(add); err != nil {
+						et.log.Errorf("Failed to send address update: %s", err)
+					}
 				}
 			}
-			et.log.Debugf("Stopping policy server watch for %s:%d", portSpec.workload, portSpec.port)
 		}()
 	}
 }
