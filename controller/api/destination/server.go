@@ -383,9 +383,19 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 		for {
 			update, err := client.Recv()
 			if err != nil {
-				s.log.Debugf("Shutting down policy server updates for %s:%d: %s", portSpec.Workload, portSpec.Port, err)
-				close(updates)
-				break
+				errStatus, _ := status.FromError(err)
+				if errStatus.Code() == codes.NotFound {
+					// If the policy server has not indexed the pod, we don't
+					// want to close the stream, but we also don't want to
+					// keep calling Recv since it will keep sending nil
+					// updates. Instead, send one update and stop.
+					updates <- nil
+					break
+				} else {
+					s.log.Debugf("Shutting down policy server updates for %s:%d: %s", portSpec.Workload, portSpec.Port, err)
+					close(updates)
+					break
+				}
 			}
 			updates <- update
 		}
@@ -400,6 +410,13 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 	for {
 		select {
 		case <-s.shutdown:
+			return nil
+		case <-stream.Context().Done():
+			// This case handles shutdown when updates will never be closed.
+			// This occurs when the policy server is unable to find a server
+			// for a pod. After one sending one update, it stops checking for
+			// updates, so it will never try to close updates.
+			s.log.Debugf("Stopping policy server watch for %s:%d", portSpec.Workload, portSpec.Port)
 			return nil
 		case update, ok := <-updates:
 			if !ok {
