@@ -2676,9 +2676,9 @@ func validateDataPlanePods(pods []corev1.Pod, targetNamespace string) error {
 
 	for _, pod := range pods {
 		status := k8s.GetPodStatus(pod)
-		// Skip validating meshed pods that are in the `Completed` state
+		// Skip validating meshed pods that are in the `Completed` or `Shutdown` state
 		// as they do not have a running proxy
-		if status == "Completed" {
+		if status == "Completed" || status == "Shutdown" {
 			continue
 		}
 
