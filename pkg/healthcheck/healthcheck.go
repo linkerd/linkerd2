@@ -1357,6 +1357,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 				{
 					description: "opaque ports are properly annotated",
 					hintAnchor:  "linkerd-opaque-ports-definition",
+					warning:     true,
 					check: func(ctx context.Context) error {
 						return hc.checkMisconfiguredOpaquePortAnnotations(ctx)
 					},
