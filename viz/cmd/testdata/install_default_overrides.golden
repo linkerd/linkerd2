@@ -515,6 +515,7 @@ spec:
       - args:
         - -controller-namespace=linkerd
         - -log-level=debug
+        - -log-format=plain
         - -cluster-domain=cluster.local
         - -prometheus-url=http://prometheus.linkerd-viz.svc.cluster.local:9090
         image: gcr.io/linkerd/metrics-api:dev-undefined
@@ -607,6 +608,11 @@ data:
     check_for_updates = false
     [panels]
     disable_sanitize_html = true
+    [log]
+    mode = console
+    [log.console]
+    format = text
+    level = debug
   datasources.yaml: |-
     apiVersion: 1
     datasources:
@@ -975,6 +981,7 @@ spec:
       containers:
       - args:
         - --log.level=debug
+        - --log.format=logfmt
         - --config.file=/etc/prometheus/prometheus.yml
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
@@ -1081,6 +1088,7 @@ spec:
         - api
         - -api-namespace=linkerd
         - -log-level=info
+        - -log-format=plain
         - -identity-trust-domain=cluster.local
         image: cr.l5d.io/linkerd/tap:stable-9.2
         imagePullPolicy: IfNotPresent
@@ -1279,6 +1287,7 @@ spec:
         - injector
         - -tap-service-name=tap.linkerd-viz.serviceaccount.identity.linkerd.cluster.local
         - -log-level=debug
+        - -log-format=plain
         image: gcr.io/linkerd/tap:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1412,6 +1421,7 @@ spec:
         - -controller-namespace=linkerd
         - -viz-namespace=linkerd-viz
         - -log-level=debug
+        - -log-format=plain
         - -enforced-host=^(localhost|127\.0\.0\.1|web\.linkerd-viz\.svc\.cluster\.local|web\.linkerd-viz\.svc|\[::1\])(:\d+)?$
         image: gcr.io/linkerd/web:dev-undefined
         imagePullPolicy: IfNotPresent
