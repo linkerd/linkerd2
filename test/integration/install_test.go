@@ -839,9 +839,10 @@ func TestOverridesSecret(t *testing.T) {
 		}
 
 		if policy := TestHelper.DefaultAllowPolicy(); policy != "" {
-			knownKeys["policyController"] = tree.Tree{
-				"defaultAllowPolicy": policy,
+			if _, ok := knownKeys["policyController"]; !ok {
+				knownKeys["policyController"] = tree.Tree{}
 			}
+			knownKeys["policyController"].(tree.Tree)["defaultAllowPolicy"] = policy
 		}
 
 		// Check if the keys in overridesTree match with knownKeys
