@@ -1,5 +1,4 @@
 {{ if .Values.grafana.enabled -}}
-{{$rand := randAlpha 8 | lower -}}
 ---
 ###
 ### Grafana
@@ -7,7 +6,7 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: grafana-config-{{ $rand }}
+  name: grafana-config
   namespace: {{.Values.namespace}}
   labels:
     linkerd.io/extension: viz
@@ -15,7 +14,6 @@ metadata:
     namespace: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
-immutable: true
 data:
   grafana.ini: |-
     instance_name = grafana
@@ -174,6 +172,6 @@ spec:
             path: provisioning/datasources/datasources.yaml
           - key: dashboards.yaml
             path: provisioning/dashboards/dashboards.yaml
-          name: grafana-config-{{ $rand }}
+          name: grafana-config
         name: grafana-config
 {{ end -}}
