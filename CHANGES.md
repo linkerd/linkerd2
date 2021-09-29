@@ -1,5 +1,20 @@
 # Changes
 
+## edge-21.9.5
+
+This edge is a release candidate for `stable-2.11.0`, containing a couple of
+improvements to `linkerd check`, some final tweaks before the stable release,
+and a couple of contributions from the community.
+
+* Had `linkerd check --proxy` stop failing on pods that are in Shutdown status
+  (thanks @olegy2008!)
+* Lowered from error to warning a failed check on misconfigured opaque ports
+  annotations, given that doesn't imply the installation is broken
+* Added log level and format settings to all the viz components (thanks
+  @gusfcarvalho!)
+* Removed label from the multicluster gateway and service-mirror pods to allow
+  them to be properly rolled out when upgrading
+
 ## edge-21.9.4
 
 This edge is a release candidate for `stable-2.11.0`! It introduces a new
