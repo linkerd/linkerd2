@@ -53,7 +53,8 @@ for requests with bodies. This unlocks retry behavior for gRPC services.
     kubectl context
   * Added an `authz` subcommand to display the authorization policies that
     impact a workload
-  * Added a _short_ output mode for `linkerd check` that only prints failed checks
+  * Added a _short_ output mode for `linkerd check` that only prints failed
+    checks
   * Added support for `ReplicaSets` to `linkerd stat` so that pods created by
     Argo `Rollout` resources can be inspected
 
@@ -62,21 +63,19 @@ for requests with bodies. This unlocks retry behavior for gRPC services.
 * Extensions:
   * Introduced a new (optional) SMI extension responsible for reading
     `specs.smi-spec.io` resources and converting them to Linkerd resources
-    * In `stable-2.12`, this extension will be required to use `TrafficSplit`
-      resources with Linkerd
+  * In `stable-2.12`, this extension will be required to use `TrafficSplit`
+    resources with Linkerd
+  * Added an extensions page to the Linkerd Web UI
 
   * Viz
     * Added `Server` and `ServerAuthorization` resources for all ports
     * Added JSON log formatting
-    * Added an extensions page to the Linkerd Web UI
 
   * Jaeger
     * Added OpenTelemetry collector instead of OpenCensus
-    * Added an extensions page to the Linkerd Web UI
     
   * Multicluster
     * Added experimental support for `StatefulSet` workloads
-    * Added an extensions page to the Linkerd Web UI
 
 This release includes changes from a massive list of contributors. A special
 thank-you to everyone who helped make this release possible:
