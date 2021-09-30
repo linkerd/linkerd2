@@ -12,7 +12,7 @@ future features that configure inbound proxy behavior.
 Furthermore, `ServiceProfile` retry configurations can now instrument retries
 for requests with bodies. This unlocks retry behavior for gRPC services.
 
-**Upgrade notes**: Please see the [upgrade instructions][ugprade-2110].
+**Upgrade notes**: Please see the [upgrade instructions][upgrade-2110].
 
 * Proxy
   * Reduced CPU & Memory usage by up to 30% in some load tests
@@ -57,11 +57,11 @@ for requests with bodies. This unlocks retry behavior for gRPC services.
   * Added support for `ReplicaSets` to `linkerd stat` so that pods created by
     Argo `Rollout` resources can be inspected
 
-* Helm: please see the [upgrade instructions][ugprade-2110].
+* Helm: please see the [upgrade instructions][upgrade-2110].
 
 * Extensions:
-  * Introduced a new (optional) `linkerd-smi` extension responsible for reading
-    `specs.smi-spec.io` resources and converting them to Linkerd resources.
+  * Introduced a new (optional) SMI extension responsible for reading
+    `specs.smi-spec.io` resources and converting them to Linkerd resources
     * In `stable-2.12`, this extension will be required to use `TrafficSplit`
       resources with Linkerd
 
