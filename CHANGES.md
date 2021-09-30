@@ -73,7 +73,7 @@ for requests with bodies. This unlocks retry behavior for gRPC services.
 
   * Jaeger
     * Added OpenTelemetry collector instead of OpenCensus
-    
+
   * Multicluster
     * Added experimental support for `StatefulSet` workloads
 
