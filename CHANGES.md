@@ -4,7 +4,7 @@
 
 This release introduces access control policies. Default policies may be
 configured at the cluster- and workspace-levels; and fine grained policies may
-be instrumented via via the new `policy.linkerd.io/v1beta1` CRDs: `Server` and
+be instrumented via the new `policy.linkerd.io/v1beta1` CRDs: `Server` and
 `ServerAuthorization`. These resources may be created to define how individual
 ports accept connections; and the `Server` resource will be a building block for
 future features that configure inbound proxy behavior.
@@ -77,7 +77,34 @@ for requests with bodies. This unlocks retry behavior for gRPC services.
 This release includes changes from a massive list of contributors. A special
 thank-you to everyone who helped make this release possible:
 
-* TODO: list contributors
+Gustavo Fernandes de Carvalho @gusfcarvalho
+Oleg Vorobev @olegy2008
+Bart Peeters @bartpeeters
+Stepan Rabotkin @EpicStep
+LiuDui @xichengliudui
+Andrew Hemming @drewhemm
+Ujjwal Goyal @importhuman
+Knut Götz @knutgoetz
+Sanni Michael @sannimichaelse
+Brandon Sorgdrager @bsord
+Gerald Pape @ubergesundheit
+Alexey Kostin @rumanzo
+rdileep13 @rdileep13
+Takumi Sue @mikutas
+Akshit Grover @akshitgrover
+Sanskar Jaiswal @aryan9600
+Aleksandr Tarasov @aatarasoff
+Taylor @skinn
+Miguel Ángel Pastor Olivar @migue
+wangchenglong01 @wangchenglong01
+Josh Soref @jsoref
+Carol Chen @kipply
+Peter Smit @psmit
+Tarvi Pillessaar @tarvip
+James Roper @jroper
+Dominik Münch @muenchdo
+Szymon Gibała @Szymongib
+Mitch Hulscher @mhulscher
 
 [upgrade-2110]: https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2110
 
