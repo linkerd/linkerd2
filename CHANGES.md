@@ -70,6 +70,10 @@ for requests with bodies. This unlocks retry behavior for gRPC services.
     * Added JSON log formatting
     * Added an extensions page to the Linkerd Web UI
 
+  * Jaeger
+    * Added OpenTelemetry collector instead of OpenCensus
+    * Added an extensions page to the Linkerd Web UI
+    
   * Multicluster
     * Added experimental support for `StatefulSet` workloads
     * Added an extensions page to the Linkerd Web UI
