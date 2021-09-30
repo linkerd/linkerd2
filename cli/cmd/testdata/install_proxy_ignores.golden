@@ -1321,6 +1321,7 @@ data:
           operator: NotIn
           values:
           - disabled
+    priorityClassName: ""
     profileValidator:
       caBundle: profile validator CA bundle
       crtPEM: profile validator crt
@@ -1708,6 +1709,7 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
+      
       serviceAccountName: linkerd-identity
       volumes:
       - name: identity-issuer
@@ -2105,6 +2107,7 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
+      
       serviceAccountName: linkerd-destination
       volumes:
       - name: sp-tls
@@ -2393,6 +2396,7 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
+      
       serviceAccountName: linkerd-proxy-injector
       volumes:
       - configMap:
