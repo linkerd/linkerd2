@@ -2389,6 +2389,11 @@ func checkServiceIntPorts(service *corev1.Service, svcPorts []string, port int) 
 
 func checkServiceNamePorts(service *corev1.Service, pod *corev1.Pod, port int, svcPorts []string) error {
 	for _, p := range service.Spec.Ports {
+		if p.TargetPort.StrVal == "" {
+			// The target port is not named so there is no named container
+			// port to check.
+			continue
+		}
 		for _, c := range pod.Spec.Containers {
 			for _, cp := range c.Ports {
 				if cp.ContainerPort == int32(port) {
