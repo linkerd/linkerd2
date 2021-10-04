@@ -1291,28 +1291,28 @@
   resolved "https://registry.yarnpkg.com/@leichtgewicht/ip-codec/-/ip-codec-2.0.3.tgz#0300943770e04231041a51bd39f0439b5c7ab4f0"
   integrity sha512-nkalE/f1RvRGChwBnEIoBfSEYOXnCRdleKuv6+lePbMDrMZXeDQnqak5XDOeBgrPPyPfAdcCu/B5z+v3VhplGg==
 
-"@lingui/babel-plugin-extract-messages@^3.11.1":
-  version "3.11.1"
-  resolved "https://registry.yarnpkg.com/@lingui/babel-plugin-extract-messages/-/babel-plugin-extract-messages-3.11.1.tgz#ac4f0f2d9a7aeae9378e6d76e084f76583ba7950"
-  integrity sha512-MAsZ0BYIsHh08dptT7bA6Jsh1ixO1sBU8eNDtobkZaZ78SXIUMUYCy9e3T9D/RYpecgDGaFUf2djctTqguMgmQ==
+"@lingui/babel-plugin-extract-messages@^3.12.1":
+  version "3.12.1"
+  resolved "https://registry.yarnpkg.com/@lingui/babel-plugin-extract-messages/-/babel-plugin-extract-messages-3.12.1.tgz#fb1bedde143023b549cd04afcf518ab760820160"
+  integrity sha512-5x119XBpWe3gYUDTgwkoTFqeI60beFRdEL1HnArFkrWfhaGqUK8SjzpqO7NtN335IIBU3SPtGXKsI4NPkJQ8TA==
   dependencies:
     "@babel/generator" "^7.11.6"
     "@babel/runtime" "^7.11.2"
-    "@lingui/conf" "^3.11.1"
+    "@lingui/conf" "^3.12.1"
     mkdirp "^1.0.4"
 
-"@lingui/cli@3.11.1":
-  version "3.11.1"
-  resolved "https://registry.yarnpkg.com/@lingui/cli/-/cli-3.11.1.tgz#c3f273f80da8da85b781d988a6e0abbaa22b2d5c"
-  integrity sha512-piKjrGjiornzX18Lt6EhyICAHEGH9wio0KaOXKyCjHqPw8sQnC4AZv0iyZqTACVYL+0ROsrtNd/xgDMYNSQgeA==
+"@lingui/cli@3.12.1":
+  version "3.12.1"
+  resolved "https://registry.yarnpkg.com/@lingui/cli/-/cli-3.12.1.tgz#2bfe371eaa2dd0e95bd361b776fd68f1c43a82f6"
+  integrity sha512-Z3klth+zD3+oqkDEhm1cTuI1Z9K/lyZD615cUQXPxLZRn9dokZ+9enoJNiese412VMNvcp/dtYC+wfyMpYX2PQ==
   dependencies:
     "@babel/generator" "^7.11.6"
     "@babel/parser" "^7.11.5"
     "@babel/plugin-syntax-jsx" "^7.10.4"
     "@babel/runtime" "^7.11.2"
     "@babel/types" "^7.11.5"
-    "@lingui/babel-plugin-extract-messages" "^3.11.1"
-    "@lingui/conf" "^3.11.1"
+    "@lingui/babel-plugin-extract-messages" "^3.12.1"
+    "@lingui/conf" "^3.12.1"
     babel-plugin-macros "^3.0.1"
     bcp-47 "^1.0.7"
     chalk "^4.1.0"
@@ -1338,10 +1338,10 @@
     pseudolocale "^1.1.0"
     ramda "^0.27.1"
 
-"@lingui/conf@^3.11.1":
-  version "3.11.1"
-  resolved "https://registry.yarnpkg.com/@lingui/conf/-/conf-3.11.1.tgz#ef81600891212d05c656d2f38f098d114983561b"
-  integrity sha512-WoEdtDAiI+TR7Gz2F7VMZQyIGZFP2b4qT3JO3gLuGzHY6a6DCqOMojqUuo6KHFQrUoUtebI/1Yn7gAxVH1xcWQ==
+"@lingui/conf@^3.11.1", "@lingui/conf@^3.12.1":
+  version "3.12.1"
+  resolved "https://registry.yarnpkg.com/@lingui/conf/-/conf-3.12.1.tgz#2ece99f4fe6e433fdca25c63b9f54d35667879f4"
+  integrity sha512-asTFAUTf8zxYU+fI1MxggJD/o4BenT/rE4IJ/+ngaf1cbzBo71lXmhSYkIa8/vTZrdHDSuXGzIL43f1D9BF6YA==
   dependencies:
     "@babel/runtime" "^7.11.2"
     "@endemolshinegroup/cosmiconfig-typescript-loader" "^3.0.2"
