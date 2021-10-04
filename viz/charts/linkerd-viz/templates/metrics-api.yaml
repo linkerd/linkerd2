@@ -69,6 +69,7 @@ spec:
       - args:
         - -controller-namespace={{.Values.linkerdNamespace}}
         - -log-level={{.Values.metricsAPI.logLevel | default .Values.defaultLogLevel}}
+        - -log-format={{.Values.metricsAPI.logFormat | default .Values.defaultLogFormat}}
         - -cluster-domain={{.Values.clusterDomain}}
         {{- if .Values.prometheusUrl }}
         - -prometheus-url={{.Values.prometheusUrl}}

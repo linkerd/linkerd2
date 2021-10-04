@@ -16,7 +16,7 @@
     "@material-ui/icons": "4.11.2",
     "@material-ui/lab": "^4.0.0-alpha.60",
     "classnames": "2.3.1",
-    "core-js": "^3.18.0",
+    "core-js": "^3.18.1",
     "css-mediaquery": "^0.1.2",
     "d3-drag": "3.0.0",
     "d3-force": "3.0.0",
@@ -80,7 +80,7 @@
     "webpack": "^5.53.0",
     "webpack-bundle-analyzer": "4.4.2",
     "webpack-cli": "4.8.0",
-    "webpack-dev-server": "4.2.1"
+    "webpack-dev-server": "4.3.0"
   },
   "resolutions": {
     "@lingui/**/**/minimist": ">=1.2.5",

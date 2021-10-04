@@ -91,7 +91,6 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      linkerd.io/extension: multicluster
       linkerd.io/control-plane-component: linkerd-service-mirror
       mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
   template:
@@ -99,7 +98,6 @@ spec:
       annotations:
         linkerd.io/inject: enabled
       labels:
-        linkerd.io/extension: multicluster
         linkerd.io/control-plane-component: linkerd-service-mirror
         mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
     spec:
