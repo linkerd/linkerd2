@@ -3597,6 +3597,63 @@ subsets:
 			},
 			expected: fmt.Errorf("\t* service svc targets the opaque port pod-test through 1003; add 1003 to its config.linkerd.io/opaque-ports annotation"),
 		},
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+spec:
+  selector:
+    app: test
+  ports:
+  - port: 80
+    targetPort: 6502
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "5432"
+  labels:
+    app: test
+spec:
+  containers:
+  - name: c1
+    image: test
+    ports:
+    - containerPort: 6502
+  - name: c2
+    image: test
+    ports:
+    - containerPort: 5432
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: svc
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.42.0.112
+    nodeName: node
+    targetRef:
+      kind: Pod
+      name: pod
+  ports:
+  - port: 6502
+    protocol: TCP
+  - port: 5432
+    protocol: TCP
+`,
+			},
+			expected: nil,
+		},
 	}
 
 	for i, tc := range testCases {
