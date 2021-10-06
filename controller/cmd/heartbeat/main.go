@@ -49,7 +49,7 @@ func Main(args []string) {
 
 	prometheusClient, err := promApi.NewClient(promApi.Config{Address: *prometheusURL})
 	if err != nil {
-		log.Errorf("Failed to initialize Prometheus client: %s", err)
+		log.Warnf("Failed to initialize Prometheus client: %s", err)
 	} else {
 		promAPI := promv1.NewAPI(prometheusClient)
 		promV := heartbeat.PromValues(promAPI, *controllerNamespace)
