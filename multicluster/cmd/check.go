@@ -93,7 +93,7 @@ non-zero exit code.`,
 			// Get the multicluster extension namespace
 			kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "failed to run multicluster check: %v", err)
+				fmt.Fprintf(os.Stderr, "failed to run multicluster check: %v\n", err)
 				os.Exit(1)
 			}
 
