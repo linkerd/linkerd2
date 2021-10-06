@@ -2702,17 +2702,12 @@ func validateDataPlanePods(pods []corev1.Pod, targetNamespace string) error {
 }
 
 func checkUnschedulablePods(pods []corev1.Pod) error {
-	var errors []string
 	for _, pod := range pods {
 		for _, condition := range pod.Status.Conditions {
 			if condition.Reason == corev1.PodReasonUnschedulable {
-				errors = append(errors, fmt.Sprintf("%s: %s", pod.Name, condition.Message))
+				return fmt.Errorf("%s: %s", pod.Name, condition.Message)
 			}
 		}
-	}
-
-	if len(errors) > 0 {
-		return fmt.Errorf("%s", strings.Join(errors, "\n    "))
 	}
 
 	return nil
