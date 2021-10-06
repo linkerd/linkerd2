@@ -572,6 +572,8 @@ github.com/linkerd/linkerd2-proxy-api v0.2.0 h1:bbtx/tSPrajcUvhd8KtwylVKIaUWTvfG
 github.com/linkerd/linkerd2-proxy-api v0.2.0/go.mod h1:EIFzeyjPwmXTq+EgfX4prgVf7GuUKATCIVKeoHA/tKg=
 github.com/linkerd/linkerd2-proxy-init v1.4.0 h1:gIzUGPW1FKSF/J1PONc6yc8b0aOkIm0fig6gigBQdkc=
 github.com/linkerd/linkerd2-proxy-init v1.4.0/go.mod h1:re7j9P7dBpV+/k23NoFGk8JHC0AbKH6Ww1zRaudaW+w=
+github.com/linkerd/linkerd2-proxy-init v1.4.1 h1:SMzGss09bisWOb67Qh6x9U0UkDmPde4eXf17rVOx/PM=
+github.com/linkerd/linkerd2-proxy-init v1.4.1/go.mod h1:pbWWdLASP+FKBZ61rvCMx6nvHAP2nc1bhGUhhh8gY/k=
 github.com/lithammer/dedent v1.1.0/go.mod h1:jrXYCQtgg0nJiN+StA2KgR7w6CiQNv9Fd/Z9BP0jIOc=
 github.com/lyft/protoc-gen-validate v0.0.13/go.mod h1:XbGvPuh87YZc5TdIa2/I4pLk0QoUACkjt2znoq26NVQ=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
