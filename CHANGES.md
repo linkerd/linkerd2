@@ -14,7 +14,7 @@ to support HTTP/2 messages with larger header values.
 * Bumped proxy-init to `1.4.1` which adds support for `--log-level`
   and `--log-format` flags (thanks @gusfcarvalho)
 * Removed the use of `TLSv1.2` in the proxy
-* Updated the `h2` create in the proxy to support HTTP/2 messages with
+* Updated the `h2` crate in the proxy to support HTTP/2 messages with
   larger header values.
 * Updated various dependencies across the dashboard, policy-controller, etc
   (thanks @dependabot!)
