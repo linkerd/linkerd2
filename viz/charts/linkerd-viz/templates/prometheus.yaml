@@ -245,6 +245,9 @@ spec:
         {{- if not (hasKey .Values.prometheus.args "log.level") }}
         - --log.level={{.Values.prometheus.logLevel | default .Values.defaultLogLevel}}
         {{- end }}
+        {{- if not (hasKey .Values.prometheus.args "log.format") }}
+        - --log.format={{.Values.prometheus.logFormat | default .Values.defaultLogFormat | replace "plain" "logfmt" }}
+        {{- end }}
         {{- range $key, $value := .Values.prometheus.args}}
         - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}
         {{- end }}

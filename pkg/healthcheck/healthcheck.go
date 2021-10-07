@@ -1357,6 +1357,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 				{
 					description: "opaque ports are properly annotated",
 					hintAnchor:  "linkerd-opaque-ports-definition",
+					warning:     true,
 					check: func(ctx context.Context) error {
 						return hc.checkMisconfiguredOpaquePortAnnotations(ctx)
 					},
@@ -2388,6 +2389,11 @@ func checkServiceIntPorts(service *corev1.Service, svcPorts []string, port int) 
 
 func checkServiceNamePorts(service *corev1.Service, pod *corev1.Pod, port int, svcPorts []string) error {
 	for _, p := range service.Spec.Ports {
+		if p.TargetPort.StrVal == "" {
+			// The target port is not named so there is no named container
+			// port to check.
+			continue
+		}
 		for _, c := range pod.Spec.Containers {
 			for _, cp := range c.Ports {
 				if cp.ContainerPort == int32(port) {
@@ -2676,9 +2682,9 @@ func validateDataPlanePods(pods []corev1.Pod, targetNamespace string) error {
 
 	for _, pod := range pods {
 		status := k8s.GetPodStatus(pod)
-		// Skip validating meshed pods that are in the `Completed` state
+		// Skip validating meshed pods that are in the `Completed` or `Shutdown` state
 		// as they do not have a running proxy
-		if status == "Completed" {
+		if status == "Completed" || status == "Shutdown" {
 			continue
 		}
 
@@ -2696,17 +2702,12 @@ func validateDataPlanePods(pods []corev1.Pod, targetNamespace string) error {
 }
 
 func checkUnschedulablePods(pods []corev1.Pod) error {
-	var errors []string
 	for _, pod := range pods {
 		for _, condition := range pod.Status.Conditions {
 			if condition.Reason == corev1.PodReasonUnschedulable {
-				errors = append(errors, fmt.Sprintf("%s: %s", pod.Name, condition.Message))
+				return fmt.Errorf("%s: %s", pod.Name, condition.Message)
 			}
 		}
-	}
-
-	if len(errors) > 0 {
-		return fmt.Errorf("%s", strings.Join(errors, "\n    "))
 	}
 
 	return nil

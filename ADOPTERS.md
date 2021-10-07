@@ -33,6 +33,7 @@
 - [Kurio](https://kurio.id)
 - [LeadIQ](https://leadiq.com)
 - [Lendico](https://www.lendico.de/)
+- [Lumoa](https://www.lumoa.me/)
 - [M1 Finance](https://www.m1finance.com/)
 - [manager.cl](https://www.manager.cl/)
 - [MattePaint](https://www.mattepaint.com/)
@@ -46,6 +47,7 @@
 - [Nexxiot](https://www.nexxiot.com)
 - [Nordstrom](https://nordstrom.com/)
 - [Novolabs](https://novolabs.com)
+- [OLX Brasil](https://www.olx.com.br)
 - [p3r](https://www.p3r.one/)
 - [Parklab](https://parklab.app/)
 - [Paybase](https://paybase.io/)
@@ -55,6 +57,7 @@
 - [PriceKinetics (GVC Australia)](https://www.pricekinetics.com.au/)
 - [Projector](https://projector.com)
 - [Purdue University Global](https://www.purdueglobal.edu/)
+- [ReliMail](https://relimail.com/)
 - [Salt Security](https://salt.security/)
 - [SCA](https://sca.com.au)
 - [Search365](https://search365.ai/)
@@ -67,7 +70,6 @@
 - [Vernacular.ai](https://vernacular.ai/)
 - [xCloud](https://www.xbox.com/en-US/xbox-game-streaming/project-xcloud)
 - [YouMail](https://www.youmail.com)
-- [OLX Brasil](https://www.olx.com.br)
 - [Zimpler](https://www.zimpler.com/)
 
 If you're using Linkerd 2.x and aren't on this list, please [submit a pull
