@@ -259,7 +259,6 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 			files := []*chartloader.BufferedFile{
 				{Name: chartutil.ChartfileName},
 				{Name: "templates/service-mirror.yaml"},
-				{Name: "templates/service-mirror-policy.yaml"},
 				{Name: "templates/psp.yaml"},
 				{Name: "templates/gateway-mirror.yaml"},
 				{Name: "templates/proxy-admin-policy.yaml"},
