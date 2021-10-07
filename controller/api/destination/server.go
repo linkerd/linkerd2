@@ -214,6 +214,9 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			if err != nil {
 				return err
 			}
+			if pod == nil {
+				log.Debugf("no pod found with podIP %s; returning default destination profile", ip.String())
+			}
 
 			// The IP may or may not map to a pod (pod argument can be nil). If
 			// pod is not nil we will return a single endpoint in the
@@ -236,6 +239,9 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			pod, err := getPodByHostname(s.k8sAPI, hostname, service)
 			if err != nil {
 				log.Errorf("Failed to get pod for hostname %s: %v", hostname, err)
+			}
+			if pod == nil {
+				log.Debugf("no pod found that maps to hostname %s; returning default destination profile", hostname)
 			}
 			return s.sendEndpointProfile(stream, pod, port)
 		}

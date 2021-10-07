@@ -35,7 +35,7 @@ type endpointTranslator struct {
 	enableH2Upgrade     bool
 	nodeTopologyLabels  map[string]string
 	defaultOpaquePorts  map[uint32]struct{}
-	policyWatches       *policyWatches
+	policyWatcher       *policyWatcher
 
 	availableEndpoints watcher.AddressSet
 	filteredSnapshot   watcher.AddressSet
@@ -44,7 +44,7 @@ type endpointTranslator struct {
 	log                *logging.Entry
 }
 
-type policyWatches struct {
+type policyWatcher struct {
 	watches map[portSpec]*watchPortClient
 	mutex   sync.Mutex
 }
@@ -86,7 +86,7 @@ func newEndpointTranslator(
 	availableEndpoints := newEmptyAddressSet()
 	filteredSnapshot := newEmptyAddressSet()
 	watches := make(map[portSpec]*watchPortClient)
-	policyWatches := &policyWatches{
+	policyWatcher := &policyWatcher{
 		watches: watches,
 		mutex:   sync.Mutex{},
 	}
@@ -97,7 +97,7 @@ func newEndpointTranslator(
 		enableH2Upgrade,
 		nodeTopologyLabels,
 		defaultOpaquePorts,
-		policyWatches,
+		policyWatcher,
 		availableEndpoints,
 		filteredSnapshot,
 		stream,
@@ -319,8 +319,8 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 	// When adding a new client to the policy watches map, ensure clients are
 	// not also being deleted by closeEndpointPolicy
-	et.policyWatches.mutex.Lock()
-	defer et.policyWatches.mutex.Unlock()
+	et.policyWatcher.mutex.Lock()
+	defer et.policyWatcher.mutex.Unlock()
 
 	for _, addr := range set.Addresses {
 		// If the address is not backed by a pod then there will be no policy
@@ -371,11 +371,11 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 
 		// Before adding the new port client, ensure any previous client for
 		// the port spec has been closed.
-		if pc, ok := et.policyWatches.watches[*portSpec]; ok {
+		if pc, ok := et.policyWatcher.watches[*portSpec]; ok {
 			pc.cancel()
 		}
 
-		et.policyWatches.watches[*portSpec] = &portClient
+		et.policyWatcher.watches[*portSpec] = &portClient
 
 		// Receive policy server updates for portSpec.
 		//
@@ -484,8 +484,8 @@ func (et *endpointTranslator) sendClientRemove(set watcher.AddressSet) {
 func (et *endpointTranslator) closeEndpointPolicy(set watcher.AddressSet) {
 	// When deleting from the the policy watches map, ensure clients are not
 	// also being added by watchEndpointPolicy
-	et.policyWatches.mutex.Lock()
-	defer et.policyWatches.mutex.Unlock()
+	et.policyWatcher.mutex.Lock()
+	defer et.policyWatcher.mutex.Unlock()
 
 	for _, addr := range set.Addresses {
 		// If the address is not backed by a pod then there will be no policy
@@ -497,11 +497,11 @@ func (et *endpointTranslator) closeEndpointPolicy(set watcher.AddressSet) {
 			workload: fmt.Sprintf("%s:%s", addr.Pod.Namespace, addr.Pod.Name),
 			port:     addr.Port,
 		}
-		if portClient, ok := et.policyWatches.watches[portSpec]; ok {
+		if portClient, ok := et.policyWatcher.watches[portSpec]; ok {
 			et.log.Debugf("Closing policy server client for %s:%d", portSpec.workload, portSpec.port)
 			portClient.cancel()
 		}
-		delete(et.policyWatches.watches, portSpec)
+		delete(et.policyWatcher.watches, portSpec)
 	}
 }
 
