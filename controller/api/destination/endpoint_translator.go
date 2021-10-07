@@ -133,8 +133,9 @@ func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
 	diffAdd, diffRemove := et.diffEndpoints(filtered)
 
 	if len(diffAdd.Addresses) > 0 {
-		et.sendClientAdd(diffAdd)
-		et.watchEndpointPolicy(diffAdd)
+		nonPodSet, podSet := splitAddresses(diffAdd)
+		et.sendClientAdd(nonPodSet)
+		et.watchEndpointPolicy(podSet)
 	}
 	if len(diffRemove.Addresses) > 0 {
 		et.sendClientRemove(diffRemove)
@@ -245,12 +246,6 @@ func (et *endpointTranslator) NoEndpoints(exists bool) {
 func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 	addrs := []*pb.WeightedAddr{}
 	for _, address := range set.Addresses {
-		// If the address is backed by a pod then updates will be sent by the
-		// policy server watch.
-		if address.Pod != nil {
-			continue
-		}
-
 		var authOverride *pb.AuthorityOverride
 		if address.AuthorityOverride != "" {
 			authOverride = &pb.AuthorityOverride{
@@ -323,12 +318,6 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 	defer et.policyWatcher.mutex.Unlock()
 
 	for _, addr := range set.Addresses {
-		// If the address is not backed by a pod then there will be no policy
-		// server to watch.
-		if addr.Pod == nil {
-			continue
-		}
-
 		opaquePorts, ok, err := getPodOpaquePortsAnnotations(addr.Pod)
 		if err != nil {
 			et.log.Errorf("failed to get opaque ports annotation for pod: %s", err)
@@ -631,4 +620,22 @@ func getInboundPort(podSpec *corev1.PodSpec) (uint32, error) {
 		}
 	}
 	return 0, fmt.Errorf("failed to find %s environment variable in any container for given pod spec", envInboundListenAddr)
+}
+
+// splitAddresses takes an address set and returns two sets that have their
+// addresses split between those that map to a pod and those that do not.
+func splitAddresses(set watcher.AddressSet) (watcher.AddressSet, watcher.AddressSet) {
+	nonPodAddrs := make(map[watcher.ID]watcher.Address)
+	podAddrs := make(map[watcher.ID]watcher.Address)
+	for id, addr := range set.Addresses {
+		if addr.Pod == nil {
+			nonPodAddrs[id] = addr
+		} else {
+			podAddrs[id] = addr
+		}
+	}
+	nonPodSet, podSet := set, set
+	nonPodSet.Addresses = nonPodAddrs
+	podSet.Addresses = podAddrs
+	return nonPodSet, podSet
 }
