@@ -1,5 +1,19 @@
 # Changes
 
+## edge-21.10.1
+
+This release includes some fixes in the `linkerd check`, along with a
+bunch of dependency updates across the dashboard, Go components, and
+others.
+
+* Updated `linkerd check` to avoid multiline errors with retryable checks
+* Fixed incorrect opaque ports warning in `linkerd check --proxy` with
+  un-named ports
+* Bumped proxy-init to `1.4.1` which adds support for `--log-level`
+  and `--log-format` flags (thanks @gusfcarvalho)
+* Updated various dependencies across the dashboard, policy-controller, etc
+  (thanks @dependabot!)
+
 ## stable-2.11.0
 
 This release introduces access control policies. Default policies may be
