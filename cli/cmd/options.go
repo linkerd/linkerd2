@@ -677,7 +677,6 @@ func initializeIssuerCredentials(ctx context.Context, k *k8s.KubernetesAPI, valu
 		if err != nil {
 			return fmt.Errorf("failed to generate root certificate for identity: %s", err)
 		}
-		values.Identity.Issuer.CrtExpiry = root.Cred.Crt.Certificate.NotAfter
 		values.Identity.Issuer.TLS.KeyPEM = root.Cred.EncodePrivateKeyPEM()
 		values.Identity.Issuer.TLS.CrtPEM = root.Cred.Crt.EncodeCertificatePEM()
 		values.IdentityTrustAnchorsPEM = root.Cred.Crt.EncodeCertificatePEM()

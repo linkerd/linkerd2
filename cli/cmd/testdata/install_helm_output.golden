@@ -1273,7 +1273,6 @@ data:
     identity:
       issuer:
         clockSkewAllowance: 20s
-        crtExpiry: Jul 30 17:21:14 2020
         externalCA: false
         issuanceLifetime: 24h0m0s
         scheme: linkerd.io/tls
@@ -1419,7 +1418,6 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
-    linkerd.io/identity-issuer-expiry: Jul 30 17:21:14 2020
 data:
   crt.pem: dGVzdC1jcnQtcGVt
   key.pem: dGVzdC1rZXktcGVt
