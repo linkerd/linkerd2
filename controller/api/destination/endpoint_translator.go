@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	policyPb "github.com/linkerd/linkerd2-proxy-api/go/inbound"
@@ -35,7 +34,7 @@ type endpointTranslator struct {
 	enableH2Upgrade     bool
 	nodeTopologyLabels  map[string]string
 	defaultOpaquePorts  map[uint32]struct{}
-	policyWatches       *policyWatches
+	portClient          *watchPortClient
 
 	availableEndpoints watcher.AddressSet
 	filteredSnapshot   watcher.AddressSet
@@ -44,22 +43,9 @@ type endpointTranslator struct {
 	log                *logging.Entry
 }
 
-type policyWatches struct {
-	watches map[portSpec]*watchPortClient
-	mutex   sync.Mutex
-}
-
 type watchPortClient struct {
 	client policyPb.InboundServerPolicies_WatchPortClient
 	cancel context.CancelFunc
-}
-
-// portSpec is used as the key in endpointTranslator.policyWatches.
-// policyPb.PortSpec has incomparable fields, so this is an equivalent struct
-// that can be used as a map key.
-type portSpec struct {
-	workload string
-	port     uint32
 }
 
 func newEndpointTranslator(
@@ -85,11 +71,6 @@ func newEndpointTranslator(
 	}
 	availableEndpoints := newEmptyAddressSet()
 	filteredSnapshot := newEmptyAddressSet()
-	watches := make(map[portSpec]*watchPortClient)
-	policyWatches := &policyWatches{
-		watches: watches,
-		mutex:   sync.Mutex{},
-	}
 
 	return &endpointTranslator{
 		controllerNS,
@@ -97,7 +78,7 @@ func newEndpointTranslator(
 		enableH2Upgrade,
 		nodeTopologyLabels,
 		defaultOpaquePorts,
-		policyWatches,
+		nil,
 		availableEndpoints,
 		filteredSnapshot,
 		stream,
@@ -317,11 +298,6 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 // The policy server client handles Recv errors and signals the updates
 // routine to shutdown.
 func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
-	// When adding a new client to the policy watches map, ensure clients are
-	// not also being deleted by closeEndpointPolicy
-	et.policyWatches.mutex.Lock()
-	defer et.policyWatches.mutex.Unlock()
-
 	for _, addr := range set.Addresses {
 		// If the address is not backed by a pod then there will be no policy
 		// server to watch.
@@ -348,34 +324,20 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 		// Create a client which watches for changes to the inbound policy for
 		// portSpec.
 		ctx, cancel := context.WithCancel(et.stream.Context())
-		policyPortSpec := &policyPb.PortSpec{
+		portSpec := &policyPb.PortSpec{
 			Workload: fmt.Sprintf("%s:%s", addr.Pod.Namespace, addr.Pod.Name),
 			Port:     addr.Port,
 		}
-		client, err := et.policyClient.WatchPort(ctx, policyPortSpec)
+		client, err := et.policyClient.WatchPort(ctx, portSpec)
 		if err != nil {
-			et.log.Errorf("failed to create policy server watch for %s:%d: %s", policyPortSpec.Workload, policyPortSpec.Port, err)
-		}
-		et.log.Debugf("Establishing watch on policy server %s:%d", policyPortSpec.Workload, policyPortSpec.Port)
-
-		// policyPb.PortSpec cannot be used as a map key, so we create an
-		// equivalent port spec with comparable keys.
-		portSpec := &portSpec{
-			workload: policyPortSpec.Workload,
-			port:     policyPortSpec.Port,
+			et.log.Errorf("failed to create policy server watch for %s:%d: %s", portSpec.Workload, portSpec.Port, err)
 		}
 		portClient := watchPortClient{
 			client: client,
 			cancel: cancel,
 		}
-
-		// Before adding the new port client, ensure any previous client for
-		// the port spec has been closed.
-		if pc, ok := et.policyWatches.watches[*portSpec]; ok {
-			pc.cancel()
-		}
-
-		et.policyWatches.watches[*portSpec] = &portClient
+		et.portClient = &portClient
+		et.log.Debugf("Establishing watch on policy server %s:%d", portSpec.Workload, portSpec.Port)
 
 		// Receive policy server updates for portSpec.
 		//
@@ -385,7 +347,7 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 		updates := make(chan *policyPb.Server)
 		go func() {
 			for {
-				update, err := portClient.client.Recv()
+				update, err := et.portClient.client.Recv()
 				if err != nil {
 					errStatus, _ := status.FromError(err)
 					if errStatus.Code() == codes.NotFound {
@@ -397,7 +359,7 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 						updates <- nil
 						break
 					} else {
-						et.log.Debugf("Stopping policy server updates for %s:%d: %s", portSpec.workload, portSpec.port, err)
+						et.log.Debugf("Stopping policy server updates for %s:%d: %s", portSpec.Workload, portSpec.Port, err)
 						close(updates)
 						break
 					}
@@ -420,12 +382,12 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 					// find a server for a pod. After one sending one update,
 					// it stops checking for updates, so it will never try to
 					// close updates.
-					et.log.Debugf("Stopping policy server watch for %s:%d", portSpec.workload, portSpec.port)
+					et.log.Debugf("Stopping policy server watch for %s:%d", portSpec.Workload, portSpec.Port)
 					return
 				case update, ok := <-updates:
-					et.log.Debugf("Received policy server update for %s:%d: %v", portSpec.workload, portSpec.port, update)
+					et.log.Debugf("Received policy server update for %s:%d: %v", portSpec.Workload, portSpec.Port, update)
 					if !ok {
-						et.log.Debugf("Stopping policy server watch for %s:%d", portSpec.workload, portSpec.port)
+						et.log.Debugf("Stopping policy server watch for %s:%d", portSpec.Workload, portSpec.Port)
 						return
 					}
 					opaquePortsWithServerProtocol := make(map[uint32]struct{})
@@ -433,7 +395,7 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 						opaquePortsWithServerProtocol[k] = v
 					}
 					if update.GetProtocol().GetOpaque() != nil {
-						opaquePortsWithServerProtocol[portSpec.port] = struct{}{}
+						opaquePortsWithServerProtocol[portSpec.Port] = struct{}{}
 					}
 					wa, err := toWeightedAddr(addr, opaquePortsWithServerProtocol, skippedInboundPorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 					if err != nil {
@@ -482,26 +444,17 @@ func (et *endpointTranslator) sendClientRemove(set watcher.AddressSet) {
 // have been removed. If there is a policy server client for an address in the
 // set, it is closed and then removed from the policyWatches map.
 func (et *endpointTranslator) closeEndpointPolicy(set watcher.AddressSet) {
-	// When deleting from the the policy watches map, ensure clients are not
-	// also being added by watchEndpointPolicy
-	et.policyWatches.mutex.Lock()
-	defer et.policyWatches.mutex.Unlock()
-
 	for _, addr := range set.Addresses {
 		// If the address is not backed by a pod then there will be no policy
 		// server watch to close.
 		if addr.Pod == nil {
 			continue
 		}
-		portSpec := portSpec{
-			workload: fmt.Sprintf("%s:%s", addr.Pod.Namespace, addr.Pod.Name),
-			port:     addr.Port,
+		if et.portClient != nil {
+			workload := fmt.Sprintf("%s:%s", addr.Pod.Namespace, addr.Pod.Name)
+			et.log.Debugf("Closing policy server client for %s:%d", workload, addr.Port)
+			et.portClient.cancel()
 		}
-		if portClient, ok := et.policyWatches.watches[portSpec]; ok {
-			et.log.Debugf("Closing policy server client for %s:%d", portSpec.workload, portSpec.port)
-			portClient.cancel()
-		}
-		delete(et.policyWatches.watches, portSpec)
 	}
 }
 
