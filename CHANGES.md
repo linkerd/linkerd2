@@ -1,5 +1,24 @@
 # Changes
 
+## edge-21.10.1
+
+This release includes some fixes in the `linkerd check`, along with a
+bunch of dependency updates across the dashboard, Go components, and
+others. On the proxy side, Support for `TLSv1.2` has been dropped
+(Only `TLSv1.3` cipher suite will be used), `h2` crate has been updated
+to support HTTP/2 messages with larger header values.
+
+* Updated `linkerd check` to avoid multiline errors with retryable checks
+* Fixed incorrect opaque ports warning in `linkerd check --proxy` with
+  un-named ports
+* Bumped proxy-init to `1.4.1` which adds support for `--log-level`
+  and `--log-format` flags (thanks @gusfcarvalho)
+* Removed the use of `TLSv1.2` in the proxy
+* Updated the `h2` crate in the proxy to support HTTP/2 messages with
+  larger header values.
+* Updated various dependencies across the dashboard, policy-controller, etc
+  (thanks @dependabot!)
+
 ## stable-2.11.0
 
 This release introduces access control policies. Default policies may be
