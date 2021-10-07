@@ -491,6 +491,7 @@ func helmOverridesStable(root *tls.CA) ([]string, []string) {
 		"--set", "identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
+		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
 	}
 	vizArgs := []string{
 		"--set", "linkerdVersion=" + TestHelper.UpgradeHelmFromVersion(),
