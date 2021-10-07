@@ -38,7 +38,7 @@ spec:
         spec:
           {{- if .Values.priorityClassName }}
           priorityClassName: {{ .Values.priorityClassName }}
-          {{- end }}
+          {{ end -}}
           {{- if .Values.tolerations -}}
           {{- include "linkerd.tolerations" . | nindent 10 }}
           {{- end -}}

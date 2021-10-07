@@ -299,7 +299,7 @@ spec:
       {{ end -}}
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName }}
-      {{- end }}
+      {{ end -}}
       serviceAccountName: linkerd-destination
       volumes:
       - name: sp-tls

@@ -1673,7 +1673,6 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
-      
       serviceAccountName: linkerd-identity
       volumes:
       - name: identity-issuer
@@ -2033,7 +2032,6 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: policy-tls
           readOnly: true
-      
       serviceAccountName: linkerd-destination
       volumes:
       - name: sp-tls
@@ -2284,7 +2282,6 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
-      
       serviceAccountName: linkerd-proxy-injector
       volumes:
       - configMap:
