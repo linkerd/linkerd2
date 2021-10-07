@@ -92,6 +92,11 @@ non-zero exit code.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get the multicluster extension namespace
 			kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "failed to run multicluster check: %v\n", err)
+				os.Exit(1)
+			}
+
 			_, err = kubeAPI.GetNamespaceWithExtensionLabel(context.Background(), MulticlusterExtensionName)
 			if err != nil {
 				err = fmt.Errorf("%w; install by running `linkerd multicluster install | kubectl apply -f -`", err)
