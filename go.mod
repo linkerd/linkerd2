@@ -58,3 +58,7 @@ require (
 // to avoid the `github.com/golang/protobuf/protoc-gen-go/generator` deprecation warning
 // (see https://github.com/golang/protobuf/issues/1104)
 replace github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.14.8
+
+// avoids scanners hitting the alert described in https://github.com/helm/helm/issues/7846
+// this should be removed when helm upgrades that dependency on runc
+replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.2
