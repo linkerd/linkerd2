@@ -371,7 +371,14 @@ func (et *endpointTranslator) watchEndpointPolicy(set watcher.AddressSet) {
 
 		// Before adding the new port client, ensure any previous client for
 		// the port spec has been closed.
+		//
+		// This is more of a precaution; there should never be a portSpec
+		// that already exists in the policy watcher. This is because in order
+		// for a pod to be re-added to the watch, it first have been removed.
+		// If the pod was removed, then its entry should already have been
+		// deleted by closeEndpointPolicy.
 		if pc, ok := et.policyWatcher.watches[*portSpec]; ok {
+			et.log.Debugf("found existing policy watch for %s:%d", policyPortSpec.Workload, policyPortSpec.Port)
 			pc.cancel()
 		}
 
