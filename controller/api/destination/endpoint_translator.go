@@ -245,7 +245,7 @@ func (et *endpointTranslator) NoEndpoints(exists bool) {
 func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 	addrs := []*pb.WeightedAddr{}
 	for _, address := range set.Addresses {
-		// If the address is backed by a pod then updates will be send by the
+		// If the address is backed by a pod then updates will be sent by the
 		// policy server watch.
 		if address.Pod != nil {
 			continue
