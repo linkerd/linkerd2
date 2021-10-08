@@ -3,7 +3,6 @@ package linkerd2
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/imdario/mergo"
 	"github.com/linkerd/linkerd2/pkg/charts"
@@ -193,7 +192,6 @@ type (
 		Scheme             string     `json:"scheme"`
 		ClockSkewAllowance string     `json:"clockSkewAllowance"`
 		IssuanceLifetime   string     `json:"issuanceLifetime"`
-		CrtExpiry          time.Time  `json:"crtExpiry"`
 		TLS                *IssuerTLS `json:"tls"`
 	}
 

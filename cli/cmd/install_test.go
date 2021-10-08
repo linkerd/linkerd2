@@ -288,7 +288,6 @@ func testInstallOptionsHA(ha bool) (*charts.Values, error) {
 		return nil, err
 	}
 	values.Identity.Issuer.TLS.CrtPEM = crt.EncodeCertificatePEM()
-	values.Identity.Issuer.CrtExpiry = crt.Certificate.NotAfter
 
 	key, err := loadKeyPEM(filepath.Join("testdata", "valid-key.pem"))
 	if err != nil {
