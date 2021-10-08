@@ -54,6 +54,7 @@ func TestRender(t *testing.T) {
 		IdentityTrustAnchorsPEM: defaultValues.IdentityTrustAnchorsPEM,
 		PodAnnotations:          map[string]string{},
 		PodLabels:               map[string]string{},
+		PriorityClassName:       "PriorityClassName",
 		PolicyController: &charts.PolicyController{
 			Image: &charts.Image{
 				Name:       "PolicyControllerImageName",

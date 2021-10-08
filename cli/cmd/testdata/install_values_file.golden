@@ -1306,6 +1306,7 @@ data:
           operator: NotIn
           values:
           - disabled
+    priorityClassName: ""
     profileValidator:
       caBundle: profile validator CA bundle
       crtPEM: profile validator crt

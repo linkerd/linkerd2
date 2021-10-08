@@ -55,8 +55,9 @@ type (
 		ImagePullSecrets             []map[string]string `json:"imagePullSecrets"`
 		LinkerdVersion               string              `json:"linkerdVersion"`
 
-		PodAnnotations map[string]string `json:"podAnnotations"`
-		PodLabels      map[string]string `json:"podLabels"`
+		PodAnnotations    map[string]string `json:"podAnnotations"`
+		PodLabels         map[string]string `json:"podLabels"`
+		PriorityClassName string            `json:"priorityClassName"`
 
 		PolicyController *PolicyController `json:"policyController"`
 		Proxy            *Proxy            `json:"proxy"`

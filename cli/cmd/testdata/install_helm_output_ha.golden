@@ -1334,6 +1334,7 @@ data:
           operator: NotIn
           values:
           - disabled
+    priorityClassName: ""
     profileValidator:
       caBundle: test-profile-validator-ca-bundle
       crtPEM: test-profile-validator-crt-pem

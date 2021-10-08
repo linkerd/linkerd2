@@ -16,13 +16,13 @@
     "@material-ui/icons": "4.11.2",
     "@material-ui/lab": "^4.0.0-alpha.60",
     "classnames": "2.3.1",
-    "core-js": "^3.18.1",
+    "core-js": "^3.18.2",
     "css-mediaquery": "^0.1.2",
     "d3-drag": "3.0.0",
     "d3-force": "3.0.0",
     "d3-format": "3.0.1",
     "d3-selection": "3.0.0",
-    "date-fns": "2.24.0",
+    "date-fns": "2.25.0",
     "jest-progress-bar-reporter": "^1.0.21",
     "locales-detector": "3.0.2",
     "lodash": "4.17.21",
@@ -41,10 +41,10 @@
     "whatwg-fetch": "3.6.2"
   },
   "devDependencies": {
-    "@babel/core": "^7.15.5",
-    "@babel/eslint-parser": "^7.15.7",
+    "@babel/core": "^7.15.8",
+    "@babel/eslint-parser": "^7.15.8",
     "@babel/plugin-proposal-class-properties": "^7.13.0",
-    "@babel/preset-env": "^7.15.6",
+    "@babel/preset-env": "^7.15.8",
     "@babel/preset-react": "^7.14.5",
     "@babel/runtime": "^7.15.4",
     "@lingui/cli": "3.12.1",
@@ -77,10 +77,10 @@
     "sinon-stub-promise": "4.0.0",
     "style-loader": "^3.2.1",
     "url-loader": "^4.1.1",
-    "webpack": "^5.56.1",
+    "webpack": "^5.58.0",
     "webpack-bundle-analyzer": "4.4.2",
-    "webpack-cli": "4.8.0",
-    "webpack-dev-server": "4.3.0"
+    "webpack-cli": "4.9.0",
+    "webpack-dev-server": "4.3.1"
   },
   "resolutions": {
     "@lingui/**/**/minimist": ">=1.2.5",

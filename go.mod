@@ -39,7 +39,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	go.opencensus.io v0.23.0
 	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d
-	golang.org/x/tools v0.1.6
+	golang.org/x/tools v0.1.7
 	google.golang.org/grpc v1.41.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.27.1
@@ -58,3 +58,7 @@ require (
 // to avoid the `github.com/golang/protobuf/protoc-gen-go/generator` deprecation warning
 // (see https://github.com/golang/protobuf/issues/1104)
 replace github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.14.8
+
+// avoids scanners hitting the alert described in https://github.com/helm/helm/issues/7846
+// this should be removed when helm upgrades that dependency on runc
+replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.2
