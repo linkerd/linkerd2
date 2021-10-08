@@ -42,6 +42,8 @@ identityTrustDomain: ""
 podAnnotations: {}
 # -- Additional labels to add to all pods
 podLabels: {}
+# -- Kubernetes priorityClassName for the Linkerd Pods
+priorityClassName: ""
 
 # policy controller configuration
 policyController:
