@@ -42,8 +42,7 @@ release, just replace with `linkerd-edge`.
 
 ## Installing the chart
 
-You must provide the certificates and keys described in the preceding section,
-and the same expiration date you used to generate the Issuer certificate.
+You must provide the certificates and keys described in the preceding section.
 
 In this example we set the expiration date to one year ahead:
 
@@ -52,7 +51,6 @@ helm install \
   --set-file identityTrustAnchorsPEM=ca.crt \
   --set-file identity.issuer.tls.crtPEM=issuer.crt \
   --set-file identity.issuer.tls.keyPEM=issuer.key \
-  --set identity.issuer.crtExpiry=$(date -d '+8760 hour' +"%Y-%m-%dT%H:%M:%SZ") \
   linkerd/linkerd2
 ```
 
@@ -77,7 +75,6 @@ helm install \
   --set-file identityTrustAnchorsPEM=ca.crt \
   --set-file identity.issuer.tls.crtPEM=issuer.crt \
   --set-file identity.issuer.tls.keyPEM=issuer.key \
-  --set identity.issuer.crtExpiry=$(date -d '+8760 hour' +"%Y-%m-%dT%H:%M:%SZ") \
   -f linkerd2/values-ha.yaml
   linkerd/linkerd2
 ```
@@ -145,7 +142,6 @@ Kubernetes: `>=1.16.0-0`
 | enablePSP | bool | `false` | Add a PSP resource and bind it to the control plane ServiceAccounts. Note PSP has been deprecated since k8s v1.21 |
 | identity.externalCA | bool | `false` | If the linkerd-identity-trust-roots ConfigMap has already been created |
 | identity.issuer.clockSkewAllowance | string | `"20s"` | Amount of time to allow for clock skew within a Linkerd cluster |
-| identity.issuer.crtExpiry | string | `nil` | Expiration timestamp for the issuer certificate. It must be provided during install. Must match the expiry date in crtPEM |
 | identity.issuer.issuanceLifetime | string | `"24h0m0s"` | Amount of time for which the Identity issuer should certify identity |
 | identity.issuer.scheme | string | `"linkerd.io/tls"` |  |
 | identity.issuer.tls | object | `{"crtPEM":"","keyPEM":""}` | Which scheme is used for the identity issuer secret format |

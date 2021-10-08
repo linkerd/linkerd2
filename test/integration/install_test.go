@@ -511,7 +511,6 @@ func helmOverridesEdge(root *tls.CA) ([]string, []string) {
 		"--set", "identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
-		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
 	}
 	vizArgs := []string{
 		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
@@ -825,9 +824,6 @@ func TestOverridesSecret(t *testing.T) {
 			knownKeys["identity"].(tree.Tree)["issuer"].(tree.Tree)["issuanceLifetime"] = "15s"
 			knownKeys["identity"].(tree.Tree)["issuer"].(tree.Tree)["scheme"] = "kubernetes.io/tls"
 		} else {
-			if !TestHelper.Multicluster() {
-				knownKeys["identity"].(tree.Tree)["issuer"].(tree.Tree)["crtExpiry"] = extractValue(t, "identity", "issuer", "crtExpiry")
-			}
 			knownKeys["identity"].(tree.Tree)["issuer"].(tree.Tree)["tls"] = tree.Tree{
 				"crtPEM": extractValue(t, "identity", "issuer", "tls", "crtPEM"),
 				"keyPEM": extractValue(t, "identity", "issuer", "tls", "keyPEM"),

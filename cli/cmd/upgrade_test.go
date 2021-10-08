@@ -205,8 +205,6 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 						diff.a = issuerCerts.key
 						t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 					}
-				} else if pathMatch(diff.path, []string{"metadata", "annotations", "linkerd.io/identity-issuer-expiry"}) {
-					// Differences in expiry are expected; do nothing.
 				} else {
 					t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 				}

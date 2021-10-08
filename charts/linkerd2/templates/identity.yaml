@@ -15,7 +15,6 @@ metadata:
     linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
-    linkerd.io/identity-issuer-expiry: {{required "Please provide the identity issuer certificate expiry date" .Values.identity.issuer.crtExpiry}}
 data:
   crt.pem: {{b64enc (required "Please provide the identity issuer certificate" .Values.identity.issuer.tls.crtPEM | trim)}}
   key.pem: {{b64enc (required "Please provide the identity issue private key" .Values.identity.issuer.tls.keyPEM | trim)}}
