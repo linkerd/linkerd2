@@ -2163,7 +2163,6 @@ spec:
             linkerd.io/created-by: CliVersion
         spec:
           priorityClassName: PriorityClassName
-          
           nodeSelector:
             beta.kubernetes.io/os: linux
           serviceAccountName: linkerd-heartbeat
