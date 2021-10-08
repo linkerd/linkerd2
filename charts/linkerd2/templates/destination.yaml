@@ -297,7 +297,7 @@ spec:
       {{- $_ := set $tree.Values.proxyInit "ignoreOutboundPorts" "443" }}
       - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
-      {{- if .Values.priorityClassName }}
+      {{- if .Values.priorityClassName -}}
       priorityClassName: {{ .Values.priorityClassName }}
       {{ end -}}
       serviceAccountName: linkerd-destination

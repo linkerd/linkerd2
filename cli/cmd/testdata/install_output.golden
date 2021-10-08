@@ -2117,7 +2117,6 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-      
       priorityClassName: PriorityClassName
       serviceAccountName: linkerd-destination
       volumes:
@@ -2411,8 +2410,7 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-      
-      priorityClassName: "PriorityClassName"
+      priorityClassName: PriorityClassName
       serviceAccountName: linkerd-proxy-injector
       volumes:
       - configMap:
