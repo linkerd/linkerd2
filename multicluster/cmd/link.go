@@ -261,7 +261,6 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				{Name: "templates/service-mirror.yaml"},
 				{Name: "templates/psp.yaml"},
 				{Name: "templates/gateway-mirror.yaml"},
-				{Name: "templates/proxy-admin-policy.yaml"},
 			}
 
 			// Load all multicluster link chart files into buffer
