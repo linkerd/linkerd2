@@ -7,6 +7,7 @@ k3d=""
 cluster=""
 archive=""
 preload=""
+tag=""
 images=()
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
@@ -61,6 +62,10 @@ do
     --archive)
       archive=1
       ;;
+    --tag)
+      tag=$2
+      shift
+      ;;
     *)
       if [ -z "${1:-}" ]; then
         break
@@ -106,12 +111,13 @@ else
   fi
 fi
 
-if [ -z "$archive" ]; then
+if [ -z "$archive" ] && [ -z "$tag" ]
+then
   # shellcheck source=_tag.sh
   . "$bindir"/_tag.sh
   # shellcheck source=_docker.sh
   . "$bindir"/_docker.sh
-  TAG=${TAG:-$(head_root_tag)}
+  tag=${TAG:-$(head_root_tag)}
 fi
 
 # This is really to load the binary synchronously, before
@@ -123,7 +129,7 @@ for i in "${!images[@]}"; do
   if [ $archive ]; then
     param="image-archives/${images[$i]}.tar"
   else
-    param="$DOCKER_REGISTRY/${images[$i]}:$TAG"
+    param="$DOCKER_REGISTRY/${images[$i]}:$tag"
     if [ $preload ]; then
       "$bindir"/docker pull -q "$param" || (echo "Error pulling image $param"; touch load_fail) &
     fi

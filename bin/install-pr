@@ -11,6 +11,10 @@
 
 set -eo pipefail
 
+cluster=""
+is_kind=false
+is_k3d=false
+
 # Read script flags and arguments
 while :
 do
@@ -39,10 +43,10 @@ do
       shift
       ;;
     --kind)
-      is_kind=1
+      is_kind=true
       ;;
     --k3d)
-      is_k3d=1
+      is_k3d=true
       ;;
     -?*)
       echo "Error: Unknown option: $1" >&2
@@ -83,6 +87,9 @@ archive=$(curl -sL -H "$auth" "$artifacts" | jq -r '.artifacts[0].archive_downlo
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 dir=$(mktemp -d -t "linkerd-pr-$pr.XXXXXXXXXX")
 
+# shellcheck source=_docker.sh
+. "$bindir"/_docker.sh
+
 cd "$dir" || exit
 
 echo "### Downloading images ###"
@@ -95,20 +102,25 @@ echo "### Loading images into Docker ###"
 image=$(docker load -i image-archives/cli-bin.tar | sed 's/Loaded image: //')
 tag=$(echo "$image" | cut -f 2 -d ":")
 
-if [ $is_kind ] || [ $is_k3d ]
+# Load the images from the archive. If importing into k3d or kind, they must
+# be renamed to use the proper registry so that users don't have to pass in
+# multiple flags at install time.
+for image in "${DOCKER_IMAGES[@]}"
+do
+  docker load -i "image-archives/$image.tar"
+done
+
+if [ "$is_kind" = true ] || [ "$is_k3d" = true ]
 then
+  docker_rename_all "$tag" "$DOCKER_REGISTRY" "cr.l5d.io/linkerd"
   distro="k3d"
-  if [ $is_kind ]
+  if [ "$is_kind" = true ]
   then
     distro="kind"
   fi
-  "$bindir"/image-load --"$distro" --archive --cluster "$cluster"
+  "$bindir"/image-load --"$distro" --cluster "$cluster" --tag "$tag"
 else
-  for image in "${DOCKER_IMAGES[@]}"
-  do
-    image=$(docker load -i "image-archives/$image.tar" | sed 's/Loaded image: //')
-    docker push "$image"
-  done
+  docker push "$image"
 fi
 
 cd -

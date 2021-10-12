@@ -116,3 +116,12 @@ docker_retag() {
     docker tag "$repo:$from" "$repo:$to"
     echo "$repo:$to"
 }
+
+docker_rename_all() {
+  tag=$1
+  from=$2
+  to=$3
+  for img in "${DOCKER_IMAGES[@]}" ; do
+    docker tag "$from/$img:$tag" "$to/$img:$tag"
+  done
+}
