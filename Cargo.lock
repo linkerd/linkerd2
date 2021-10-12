@@ -516,9 +516,9 @@ dependencies = [
 
 [[package]]
 name = "http"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "527e8c9ac747e28542699a951517aa9a6945af506cd1f2e1b53a576c17b6cc11"
+checksum = "1323096b05d41827dadeaee54c9981958c0f94e670bc94ed80037d1a7b8b186b"
 dependencies = [
  "bytes",
  "fnv",
@@ -725,7 +725,7 @@ dependencies = [
  "hyper-tls",
  "jsonpath_lib",
  "k8s-openapi",
- "kube-core",
+ "kube-core 0.60.0",
  "kube-derive",
  "openssl",
  "pem",
@@ -746,11 +746,60 @@ dependencies = [
 ]
 
 [[package]]
+name = "kube"
+version = "0.61.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dbaea4edf25bd83d77eebacd353bacd35d659678d57238aae07a8d739b26f1cd"
+dependencies = [
+ "base64",
+ "bytes",
+ "chrono",
+ "dirs-next",
+ "either",
+ "futures",
+ "http",
+ "http-body",
+ "hyper",
+ "hyper-timeout",
+ "jsonpath_lib",
+ "k8s-openapi",
+ "kube-core 0.61.0",
+ "pem",
+ "pin-project 1.0.8",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "thiserror",
+ "tokio",
+ "tokio-util",
+ "tower",
+ "tower-http",
+ "tracing",
+]
+
+[[package]]
 name = "kube-core"
 version = "0.60.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04ccd59635e9b21353da8d4a394bb5d3473b5965ed44496c8f857281b0625ffe"
 dependencies = [
+ "form_urlencoded",
+ "http",
+ "json-patch",
+ "k8s-openapi",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "kube-core"
+version = "0.61.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa3021021480d7034e2cbe50bff9e8176e5ce33ddd6ba0c26ea9cfe310304c63"
+dependencies = [
+ "chrono",
  "form_urlencoded",
  "http",
  "json-patch",
@@ -776,16 +825,16 @@ dependencies = [
 
 [[package]]
 name = "kube-runtime"
-version = "0.60.0"
+version = "0.61.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eec378b03890f9f2bfa9448a51aa0f6a4299f6bb2ed0d180330e628c7a395918"
+checksum = "b10dde88f05e8dc156d72736639476b62ae1bedf99680dc32556ac4de274a9ea"
 dependencies = [
  "dashmap",
  "derivative",
  "futures",
  "json-patch",
  "k8s-openapi",
- "kube",
+ "kube 0.61.0",
  "pin-project 1.0.8",
  "serde",
  "serde_json",
@@ -822,7 +871,7 @@ dependencies = [
  "drain",
  "futures",
  "hyper",
- "kube",
+ "kube 0.60.0",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-grpc",
  "linkerd-policy-controller-k8s-api",
@@ -866,7 +915,7 @@ version = "0.1.0"
 dependencies = [
  "futures",
  "k8s-openapi",
- "kube",
+ "kube 0.60.0",
  "kube-runtime",
  "schemars",
  "serde",
@@ -1661,9 +1710,9 @@ checksum = "c307a32c1c5c437f38c7fd45d753050587732ba8628319fbdf12a7e289ccc590"
 
 [[package]]
 name = "smallvec"
-version = "1.6.1"
+version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
+checksum = "1ecab6c735a6bb4139c0caafd0cc3635748bbb3acf4550e8138122099251f309"
 
 [[package]]
 name = "snafu"
