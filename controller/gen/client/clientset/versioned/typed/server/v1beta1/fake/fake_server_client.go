@@ -19,22 +19,22 @@ limitations under the License.
 package fake
 
 import (
-	v1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha2"
+	v1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/server/v1beta1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )
 
-type FakeServiceprofileV1alpha2 struct {
+type FakeServerV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeServiceprofileV1alpha2) ServiceProfiles(namespace string) v1alpha2.ServiceProfileInterface {
-	return &FakeServiceProfiles{c, namespace}
+func (c *FakeServerV1beta1) Servers(namespace string) v1beta1.ServerInterface {
+	return &FakeServers{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *FakeServiceprofileV1alpha2) RESTClient() rest.Interface {
+func (c *FakeServerV1beta1) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }

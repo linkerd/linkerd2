@@ -20,8 +20,10 @@ package fake
 
 import (
 	clientset "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
-	linkerdv1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha2"
-	fakelinkerdv1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha2/fake"
+	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/server/v1beta1"
+	fakeserverv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/server/v1beta1/fake"
+	serviceprofilev1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha2"
+	fakeserviceprofilev1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha2/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -76,7 +78,12 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 
 var _ clientset.Interface = &Clientset{}
 
-// LinkerdV1alpha2 retrieves the LinkerdV1alpha2Client
-func (c *Clientset) LinkerdV1alpha2() linkerdv1alpha2.LinkerdV1alpha2Interface {
-	return &fakelinkerdv1alpha2.FakeLinkerdV1alpha2{Fake: &c.Fake}
+// ServerV1beta1 retrieves the ServerV1beta1Client
+func (c *Clientset) ServerV1beta1() serverv1beta1.ServerV1beta1Interface {
+	return &fakeserverv1beta1.FakeServerV1beta1{Fake: &c.Fake}
+}
+
+// ServiceprofileV1alpha2 retrieves the ServiceprofileV1alpha2Client
+func (c *Clientset) ServiceprofileV1alpha2() serviceprofilev1alpha2.ServiceprofileV1alpha2Interface {
+	return &fakeserviceprofilev1alpha2.FakeServiceprofileV1alpha2{Fake: &c.Fake}
 }

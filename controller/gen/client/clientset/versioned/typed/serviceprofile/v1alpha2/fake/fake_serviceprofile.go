@@ -32,7 +32,7 @@ import (
 
 // FakeServiceProfiles implements ServiceProfileInterface
 type FakeServiceProfiles struct {
-	Fake *FakeLinkerdV1alpha2
+	Fake *FakeServiceprofileV1alpha2
 	ns   string
 }
 

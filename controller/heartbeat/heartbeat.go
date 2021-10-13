@@ -66,7 +66,7 @@ func K8sValues(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneName
 		return v
 	}
 
-	spList, err := spClient.LinkerdV1alpha2().ServiceProfiles("").List(ctx, v1.ListOptions{})
+	spList, err := spClient.ServiceprofileV1alpha2().ServiceProfiles("").List(ctx, v1.ListOptions{})
 	if err != nil {
 		log.Errorf("Failed to get service profiles: %s", err)
 		return v

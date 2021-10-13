@@ -21,6 +21,7 @@ package externalversions
 import (
 	"fmt"
 
+	v1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	v1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
@@ -54,7 +55,11 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	switch resource {
 	// Group=linkerd.io, Version=v1alpha2
 	case v1alpha2.SchemeGroupVersion.WithResource("serviceprofiles"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Linkerd().V1alpha2().ServiceProfiles().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Serviceprofile().V1alpha2().ServiceProfiles().Informer()}, nil
+
+		// Group=linkerd.io, Version=v1beta1
+	case v1beta1.SchemeGroupVersion.WithResource("servers"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Server().V1beta1().Servers().Informer()}, nil
 
 	}
 

@@ -9,12 +9,18 @@ codegen_pkg=${GOPATH}/pkg/mod/k8s.io/code-generator@${gen_ver}
 
 # ROOT_PACKAGE :: the package that is the target for code generation
 ROOT_PACKAGE=github.com/linkerd/linkerd2
-# CUSTOM_RESOURCE_NAME :: the name of the custom resource that we're generating client code for
-CUSTOM_RESOURCE_NAME=serviceprofile
-# CUSTOM_RESOURCE_VERSION :: the version of the resource
-CUSTOM_RESOURCE_VERSION=v1alpha2
 
-rm -f "${rootdir}/controller/gen/apis/${CUSTOM_RESOURCE_NAME}/${CUSTOM_RESOURCE_VERSION}/zz_generated.deepcopy.go"
+# The name and version of the service profile CRD that we generate client code
+# for.
+service_profile_name=serviceprofile
+service_profile_versions=v1alpha2
+
+# The name and version of the server CRD that we generate client code for.
+server_name=server
+server_version=v1beta1
+
+rm -f "${rootdir}/controller/gen/apis/$service_profile_name/$service_profile_versions/zz_generated.deepcopy.go"
+rm -f "${rootdir}/controller/gen/apis/$server_name/$server_version/zz_generated.deepcopy.go"
 rm -rf "${rootdir}/controller/gen/client"
 rm -rf "${GOPATH}/src/${ROOT_PACKAGE}/controller/gen"
 
@@ -25,7 +31,7 @@ GO111MODULE='on' "${codegen_pkg}/generate-groups.sh" \
   'deepcopy,client,informer,lister' \
   "${ROOT_PACKAGE}/controller/gen/client" \
   "${ROOT_PACKAGE}/controller/gen/apis" \
-  "${CUSTOM_RESOURCE_NAME}:${CUSTOM_RESOURCE_VERSION}" \
+  "$service_profile_name:$service_profile_versions $server_name:$server_version" \
   --go-header-file "${codegen_pkg}"/hack/boilerplate.go.txt
 
 # copy generated code out of GOPATH

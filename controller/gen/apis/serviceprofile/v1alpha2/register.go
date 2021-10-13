@@ -5,13 +5,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile"
+	"github.com/linkerd/linkerd2/controller/gen/apis"
 )
 
 // SchemeGroupVersion is the identifier for the API which includes
 // the name of the group and the version of the API
 var SchemeGroupVersion = schema.GroupVersion{
-	Group:   sp.GroupName,
+	Group:   apis.GroupName,
 	Version: "v1alpha2",
 }
 

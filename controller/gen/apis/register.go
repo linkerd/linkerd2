@@ -1,4 +1,4 @@
-package serviceprofile
+package apis
 
 // GroupName identifies the API Group Name for a ServiceProfile.
 const GroupName = "linkerd.io"
