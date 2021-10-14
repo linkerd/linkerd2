@@ -56,7 +56,7 @@ type serviceProfiles struct {
 }
 
 // newServiceProfiles returns a ServiceProfiles
-func newServiceProfiles(c *ServiceprofileV1alpha2Client, namespace string) *serviceProfiles {
+func newServiceProfiles(c *LinkerdV1alpha2Client, namespace string) *serviceProfiles {
 	return &serviceProfiles{
 		client: c.RESTClient(),
 		ns:     namespace,

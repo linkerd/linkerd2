@@ -32,13 +32,13 @@ import (
 
 // FakeServiceProfiles implements ServiceProfileInterface
 type FakeServiceProfiles struct {
-	Fake *FakeServiceprofileV1alpha2
+	Fake *FakeLinkerdV1alpha2
 	ns   string
 }
 
-var serviceprofilesResource = schema.GroupVersionResource{Group: "serviceprofile.linkerd.io", Version: "v1alpha2", Resource: "serviceprofiles"}
+var serviceprofilesResource = schema.GroupVersionResource{Group: "linkerd.io", Version: "v1alpha2", Resource: "serviceprofiles"}
 
-var serviceprofilesKind = schema.GroupVersionKind{Group: "serviceprofile.linkerd.io", Version: "v1alpha2", Kind: "ServiceProfile"}
+var serviceprofilesKind = schema.GroupVersionKind{Group: "linkerd.io", Version: "v1alpha2", Kind: "ServiceProfile"}
 
 // Get takes name of the serviceProfile, and returns the corresponding serviceProfile object, and an error if there is any.
 func (c *FakeServiceProfiles) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha2.ServiceProfile, err error) {

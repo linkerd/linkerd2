@@ -24,22 +24,22 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
-type ServiceprofileV1alpha2Interface interface {
+type LinkerdV1alpha2Interface interface {
 	RESTClient() rest.Interface
 	ServiceProfilesGetter
 }
 
-// ServiceprofileV1alpha2Client is used to interact with features provided by the serviceprofile.linkerd.io group.
-type ServiceprofileV1alpha2Client struct {
+// LinkerdV1alpha2Client is used to interact with features provided by the linkerd.io group.
+type LinkerdV1alpha2Client struct {
 	restClient rest.Interface
 }
 
-func (c *ServiceprofileV1alpha2Client) ServiceProfiles(namespace string) ServiceProfileInterface {
+func (c *LinkerdV1alpha2Client) ServiceProfiles(namespace string) ServiceProfileInterface {
 	return newServiceProfiles(c, namespace)
 }
 
-// NewForConfig creates a new ServiceprofileV1alpha2Client for the given config.
-func NewForConfig(c *rest.Config) (*ServiceprofileV1alpha2Client, error) {
+// NewForConfig creates a new LinkerdV1alpha2Client for the given config.
+func NewForConfig(c *rest.Config) (*LinkerdV1alpha2Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -48,12 +48,12 @@ func NewForConfig(c *rest.Config) (*ServiceprofileV1alpha2Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ServiceprofileV1alpha2Client{client}, nil
+	return &LinkerdV1alpha2Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new ServiceprofileV1alpha2Client for the given config and
+// NewForConfigOrDie creates a new LinkerdV1alpha2Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *ServiceprofileV1alpha2Client {
+func NewForConfigOrDie(c *rest.Config) *LinkerdV1alpha2Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -61,9 +61,9 @@ func NewForConfigOrDie(c *rest.Config) *ServiceprofileV1alpha2Client {
 	return client
 }
 
-// New creates a new ServiceprofileV1alpha2Client for the given RESTClient.
-func New(c rest.Interface) *ServiceprofileV1alpha2Client {
-	return &ServiceprofileV1alpha2Client{c}
+// New creates a new LinkerdV1alpha2Client for the given RESTClient.
+func New(c rest.Interface) *LinkerdV1alpha2Client {
+	return &LinkerdV1alpha2Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -81,7 +81,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *ServiceprofileV1alpha2Client) RESTClient() rest.Interface {
+func (c *LinkerdV1alpha2Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

@@ -62,13 +62,13 @@ func NewFilteredServiceProfileInformer(client versioned.Interface, namespace str
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ServiceprofileV1alpha2().ServiceProfiles(namespace).List(context.TODO(), options)
+				return client.LinkerdV1alpha2().ServiceProfiles(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ServiceprofileV1alpha2().ServiceProfiles(namespace).Watch(context.TODO(), options)
+				return client.LinkerdV1alpha2().ServiceProfiles(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&serviceprofilev1alpha2.ServiceProfile{},

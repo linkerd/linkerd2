@@ -176,7 +176,7 @@ type SharedInformerFactory interface {
 
 	Server() server.Interface
 	Serverauthorization() serverauthorization.Interface
-	Serviceprofile() serviceprofile.Interface
+	Linkerd() serviceprofile.Interface
 }
 
 func (f *sharedInformerFactory) Server() server.Interface {
@@ -187,6 +187,6 @@ func (f *sharedInformerFactory) Serverauthorization() serverauthorization.Interf
 	return serverauthorization.New(f, f.namespace, f.tweakListOptions)
 }
 
-func (f *sharedInformerFactory) Serviceprofile() serviceprofile.Interface {
+func (f *sharedInformerFactory) Linkerd() serviceprofile.Interface {
 	return serviceprofile.New(f, f.namespace, f.tweakListOptions)
 }

@@ -54,17 +54,17 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=server.linkerd.io, Version=v1beta1
+	// Group=linkerd.io, Version=v1alpha2
+	case v1alpha2.SchemeGroupVersion.WithResource("serviceprofiles"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Linkerd().V1alpha2().ServiceProfiles().Informer()}, nil
+
+		// Group=server.linkerd.io, Version=v1beta1
 	case v1beta1.SchemeGroupVersion.WithResource("servers"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Server().V1beta1().Servers().Informer()}, nil
 
 		// Group=serverauthorization.linkerd.io, Version=v1beta1
 	case serverauthorizationv1beta1.SchemeGroupVersion.WithResource("serverauthorizations"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Serverauthorization().V1beta1().ServerAuthorizations().Informer()}, nil
-
-		// Group=serviceprofile.linkerd.io, Version=v1alpha2
-	case v1alpha2.SchemeGroupVersion.WithResource("serviceprofiles"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Serviceprofile().V1alpha2().ServiceProfiles().Informer()}, nil
 
 	}
 

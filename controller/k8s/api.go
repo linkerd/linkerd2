@@ -261,7 +261,7 @@ func NewAPI(
 			if spSharedInformers == nil {
 				panic("SP shared informer not configured")
 			}
-			api.sp = spSharedInformers.Serviceprofile().V1alpha2().ServiceProfiles()
+			api.sp = spSharedInformers.Linkerd().V1alpha2().ServiceProfiles()
 			api.syncChecks = append(api.syncChecks, api.sp.Informer().HasSynced)
 			api.addInformerSizeGauge("service_profile", api.sp.Informer())
 		case SS:

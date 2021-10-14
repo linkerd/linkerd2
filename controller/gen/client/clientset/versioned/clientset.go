@@ -23,7 +23,7 @@ import (
 
 	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/server/v1beta1"
 	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serverauthorization/v1beta1"
-	serviceprofilev1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha2"
+	linkerdv1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha2"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -33,7 +33,7 @@ type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	ServerV1beta1() serverv1beta1.ServerV1beta1Interface
 	ServerauthorizationV1beta1() serverauthorizationv1beta1.ServerauthorizationV1beta1Interface
-	ServiceprofileV1alpha2() serviceprofilev1alpha2.ServiceprofileV1alpha2Interface
+	LinkerdV1alpha2() linkerdv1alpha2.LinkerdV1alpha2Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
@@ -42,7 +42,7 @@ type Clientset struct {
 	*discovery.DiscoveryClient
 	serverV1beta1              *serverv1beta1.ServerV1beta1Client
 	serverauthorizationV1beta1 *serverauthorizationv1beta1.ServerauthorizationV1beta1Client
-	serviceprofileV1alpha2     *serviceprofilev1alpha2.ServiceprofileV1alpha2Client
+	linkerdV1alpha2            *linkerdv1alpha2.LinkerdV1alpha2Client
 }
 
 // ServerV1beta1 retrieves the ServerV1beta1Client
@@ -55,9 +55,9 @@ func (c *Clientset) ServerauthorizationV1beta1() serverauthorizationv1beta1.Serv
 	return c.serverauthorizationV1beta1
 }
 
-// ServiceprofileV1alpha2 retrieves the ServiceprofileV1alpha2Client
-func (c *Clientset) ServiceprofileV1alpha2() serviceprofilev1alpha2.ServiceprofileV1alpha2Interface {
-	return c.serviceprofileV1alpha2
+// LinkerdV1alpha2 retrieves the LinkerdV1alpha2Client
+func (c *Clientset) LinkerdV1alpha2() linkerdv1alpha2.LinkerdV1alpha2Interface {
+	return c.linkerdV1alpha2
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -89,7 +89,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
-	cs.serviceprofileV1alpha2, err = serviceprofilev1alpha2.NewForConfig(&configShallowCopy)
+	cs.linkerdV1alpha2, err = linkerdv1alpha2.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
 	cs.serverV1beta1 = serverv1beta1.NewForConfigOrDie(c)
 	cs.serverauthorizationV1beta1 = serverauthorizationv1beta1.NewForConfigOrDie(c)
-	cs.serviceprofileV1alpha2 = serviceprofilev1alpha2.NewForConfigOrDie(c)
+	cs.linkerdV1alpha2 = linkerdv1alpha2.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -118,7 +118,7 @@ func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.serverV1beta1 = serverv1beta1.New(c)
 	cs.serverauthorizationV1beta1 = serverauthorizationv1beta1.New(c)
-	cs.serviceprofileV1alpha2 = serviceprofilev1alpha2.New(c)
+	cs.linkerdV1alpha2 = linkerdv1alpha2.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs
