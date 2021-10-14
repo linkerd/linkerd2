@@ -19,27 +19,27 @@ limitations under the License.
 package v1beta1
 
 import (
-	v1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
+	v1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	"github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
-type ServerV1beta1Interface interface {
+type ServerauthorizationV1beta1Interface interface {
 	RESTClient() rest.Interface
-	ServersGetter
+	ServerAuthorizationsGetter
 }
 
-// ServerV1beta1Client is used to interact with features provided by the server.linkerd.io group.
-type ServerV1beta1Client struct {
+// ServerauthorizationV1beta1Client is used to interact with features provided by the serverauthorization.linkerd.io group.
+type ServerauthorizationV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *ServerV1beta1Client) Servers(namespace string) ServerInterface {
-	return newServers(c, namespace)
+func (c *ServerauthorizationV1beta1Client) ServerAuthorizations(namespace string) ServerAuthorizationInterface {
+	return newServerAuthorizations(c, namespace)
 }
 
-// NewForConfig creates a new ServerV1beta1Client for the given config.
-func NewForConfig(c *rest.Config) (*ServerV1beta1Client, error) {
+// NewForConfig creates a new ServerauthorizationV1beta1Client for the given config.
+func NewForConfig(c *rest.Config) (*ServerauthorizationV1beta1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -48,12 +48,12 @@ func NewForConfig(c *rest.Config) (*ServerV1beta1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ServerV1beta1Client{client}, nil
+	return &ServerauthorizationV1beta1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new ServerV1beta1Client for the given config and
+// NewForConfigOrDie creates a new ServerauthorizationV1beta1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *ServerV1beta1Client {
+func NewForConfigOrDie(c *rest.Config) *ServerauthorizationV1beta1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -61,9 +61,9 @@ func NewForConfigOrDie(c *rest.Config) *ServerV1beta1Client {
 	return client
 }
 
-// New creates a new ServerV1beta1Client for the given RESTClient.
-func New(c rest.Interface) *ServerV1beta1Client {
-	return &ServerV1beta1Client{c}
+// New creates a new ServerauthorizationV1beta1Client for the given RESTClient.
+func New(c rest.Interface) *ServerauthorizationV1beta1Client {
+	return &ServerauthorizationV1beta1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -81,7 +81,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *ServerV1beta1Client) RESTClient() rest.Interface {
+func (c *ServerauthorizationV1beta1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

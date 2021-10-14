@@ -1,5 +1,5 @@
 // +k8s:deepcopy-gen=package
-// +groupName=linkerd.io
+// +groupName=serviceprofile.linkerd.io
 // +groupGoName=serviceprofile
 
 package v1alpha2

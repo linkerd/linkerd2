@@ -29,7 +29,7 @@ type ServiceprofileV1alpha2Interface interface {
 	ServiceProfilesGetter
 }
 
-// ServiceprofileV1alpha2Client is used to interact with features provided by the linkerd.io group.
+// ServiceprofileV1alpha2Client is used to interact with features provided by the serviceprofile.linkerd.io group.
 type ServiceprofileV1alpha2Client struct {
 	restClient rest.Interface
 }

@@ -5,14 +5,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/linkerd/linkerd2/controller/gen/apis/server"
+	"github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization"
 )
 
 var (
 	// SchemeGroupVersion is the identifier for the API which includes the name
 	// of the group and the version of the API.
 	SchemeGroupVersion = schema.GroupVersion{
-		Group:   server.GroupName,
+		Group:   serverauthorization.GroupName,
 		Version: "v1beta1",
 	}
 
@@ -41,8 +41,8 @@ func Resource(resource string) schema.GroupResource {
 // Adds the list of known types to Scheme.
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&Server{},
-		&ServerList{},
+		&ServerAuthorization{},
+		&ServerAuthorizationList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
