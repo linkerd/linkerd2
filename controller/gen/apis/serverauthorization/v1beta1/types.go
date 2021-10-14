@@ -26,7 +26,95 @@ type ServerAuthorization struct {
 }
 
 // ServerAuthorizationSpec specifies a ServerAuthorization resource.
-type ServerAuthorizationSpec struct{}
+type ServerAuthorizationSpec struct {
+	Server Server `json:"server,omitempty"`
+	Client Client `json:"client,omitempty"`
+}
+
+// Server is the Server that a ServerAuthorization uses.
+type Server struct {
+	Name     *Name     `json:"name,omitempty"`
+	Selector *Selector `json:"selector,omitempty"`
+}
+
+// Name is the name of a Server that a ServerAuthorization selects.
+type Name struct {
+	Name string `json:"name,omitempty"`
+}
+
+// Selector defines how a ServerAuthorization selects its pods.
+type Selector struct {
+	MatchExpressions *MatchExpressions `json:"matchExpressions,omitempty"`
+	MatchLabels      *MatchLabels      `json:"matchLabels,omitempty"`
+}
+
+// MatchExpressions is the list of match expressions for a pod selector.
+
+type MatchExpressions struct {
+	MatchExpressions []*MatchExpression `json:"matchExpressions,omitempty"`
+}
+
+// MatchExpression describes how a pod selector selects a pod based off
+// certain properties.
+type MatchExpression struct {
+	Key      string   `json:"key,omitempty"`
+	Operator string   `json:"operator,omitempty"`
+	Values   []string `json:"values,omitempty"`
+}
+
+// MatchLabels describes how a pod selector selects a pod based off
+// pod labels.
+type MatchLabels struct {
+	MatchLabels map[string]string `json:"matchLabels,omitempty"`
+}
+
+// Client describes which clients a ServerAuthorization authorizes.
+type Client struct {
+	Networks        []*Cidr          `json:"networks,omitempty"`
+	MeshTLS         *MeshTLS         `json:"meshTls,omitempty"`
+	Unauthenticated *Unauthenticated `json:"unauthenticated,omitempty"`
+}
+
+// Cidr describes which client CIDRs a ServerAuthorization authorizes.
+type Cidr struct {
+	Cidr   string   `json:"cidr,omitempty"`
+	Except []string `json:"except,omitempty"`
+}
+
+// MeshTLS describes which meshed clients are authorized.
+type MeshTLS struct {
+	UnauthenticatedTLS *UnauthenticatedTLS `json:"unauthenticated,omitempty"`
+	Identities         *Identities         `json:"identities,omitempty"`
+	ServiceAccounts    *ServiceAccounts    `json:"serviceAccounts,omitempty"`
+}
+
+// UnauthenticatedTLS is when unauthenticated TLS clients are authorized.
+type UnauthenticatedTLS struct {
+	UnauthenticatedTLS bool `json:"unauthenticated,omitempty"`
+}
+
+// Identities describes which client identities are authorized.
+type Identities struct {
+	Identities []string `json:"identities,omitempty"`
+}
+
+// ServiceAccounts describes which client service accounts are authorized.
+
+type ServiceAccounts struct {
+	ServiceAccounts []*ServiceAccountName `json:"serviceAccounts,omitempty"`
+}
+
+// ServiceAccountName is the structure of a service account name.
+
+type ServiceAccountName struct {
+	Name      string `json:"name,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
+}
+
+// Unauthenticated is when unauthenticated clients are authorized.
+type Unauthenticated struct {
+	Unauthenticated bool `json:"unauthenticated,omitempty"`
+}
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

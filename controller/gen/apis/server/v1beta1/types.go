@@ -28,33 +28,34 @@ type Server struct {
 
 // ServerSpec specifies a Server resource.
 type ServerSpec struct {
-	PodSelector   PodSelector
-	Port          intstr.IntOrString
-	ProxyProtocol string
+	PodSelector   PodSelector        `json:"podSelector,omitempty"`
+	Port          intstr.IntOrString `json:"port,omitempty"`
+	ProxyProtocol string             `json:"proxyProtocol,omitempty"`
 }
 
 // PodSelector defines how a Server selects its pods.
 type PodSelector struct {
-	MatchExpressions *MatchExpressions
-	MatchLabels      *MatchLabels
+	MatchExpressions *MatchExpressions `json:"matchExpressions,omitempty"`
+	MatchLabels      *MatchLabels      `json:"matchLabels,omitempty"`
 }
 
+// MatchExpressions is the list of match expressions for a pod selector.
 type MatchExpressions struct {
-	MatchExpressions []*MatchExpression
+	MatchExpressions []*MatchExpression `json:"matchExpressions,omitempty"`
 }
 
 // MatchExpression describes how a pod selector selects a pod based off
 // certain properties.
 type MatchExpression struct {
-	Key      string
-	Operator string
-	Values   []string
+	Key      string   `json:"key,omitempty"`
+	Operator string   `json:"operator,omitempty"`
+	Values   []string `json:"values,omitempty"`
 }
 
 // MatchLabels describes how a pod selector selects a pod based off
 // pod labels.
 type MatchLabels struct {
-	MatchLabels map[string]string
+	MatchLabels map[string]string `json:"matchLabels,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
