@@ -30,4 +30,31 @@ spec:
   client:
     # for kubelet probes
     unauthenticated: true
-
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  namespace: {{.Values.namespace}}
+  name: service-mirror-proxy-admin
+  labels:
+    linkerd.io/extension: multicluster
+spec:
+  podSelector:
+    matchLabels:
+      linkerd.io/control-plane-component: linkerd-service-mirror
+  port: linkerd-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: ServerAuthorization
+metadata:
+  namespace: {{.Values.namespace}}
+  name: service-mirror-proxy-admin
+  labels:
+    linkerd.io/extension: multicluster
+spec:
+  server:
+    name: service-mirror-proxy-admin
+  client:
+    # for kubelet probes
+    unauthenticated: true
