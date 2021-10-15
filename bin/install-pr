@@ -102,9 +102,6 @@ echo "### Loading images into Docker ###"
 image=$(docker load -i image-archives/cli-bin.tar | sed 's/Loaded image: //')
 tag=$(echo "$image" | cut -f 2 -d ":")
 
-# Load the images from the archive. If importing into k3d or kind, they must
-# be renamed to use the proper registry so that users don't have to pass in
-# multiple flags at install time.
 for image in "${DOCKER_IMAGES[@]}"
 do
   docker load -i "image-archives/$image.tar"
@@ -112,15 +109,24 @@ done
 
 if [ "$is_kind" = true ] || [ "$is_k3d" = true ]
 then
-  docker_rename_all "$tag" "$DOCKER_REGISTRY" "cr.l5d.io/linkerd"
+  # When importing into k3d or kind, the images must be renamed to use the
+  # proper registry so that users don't have to change the default install
+  # output.
+  docker_rename_registry "$tag" "ghcr.io/linkerd" "cr.l5d.io/linkerd"
   distro="k3d"
   if [ "$is_kind" = true ]
   then
     distro="kind"
   fi
-  "$bindir"/image-load --"$distro" --cluster "$cluster" --tag "$tag"
+  export TAG="$tag"
+  "$bindir"/image-load --"$distro" --cluster "$cluster"
 else
-  docker push "$image"
+  # The images were built with the ghcr.io registry so when pushing to a
+  # remote cluster for testing, no renaming needs to occur.
+  for image in "${DOCKER_IMAGES[@]}"
+  do
+    docker push "$image"
+  done
 fi
 
 cd -
