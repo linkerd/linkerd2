@@ -8,6 +8,8 @@ import (
 // +genclient
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +groupName=policy.linkerd.io
+// +groupGoName=server
 
 type Server struct {
 	// TypeMeta is the metadata for the resource, like kind and apiversion

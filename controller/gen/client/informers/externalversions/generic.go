@@ -58,11 +58,11 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	case v1alpha2.SchemeGroupVersion.WithResource("serviceprofiles"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Linkerd().V1alpha2().ServiceProfiles().Informer()}, nil
 
-		// Group=server.linkerd.io, Version=v1beta1
+		// Group=server, Version=v1beta1
 	case v1beta1.SchemeGroupVersion.WithResource("servers"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Server().V1beta1().Servers().Informer()}, nil
 
-		// Group=serverauthorization.linkerd.io, Version=v1beta1
+		// Group=serverauthorization, Version=v1beta1
 	case serverauthorizationv1beta1.SchemeGroupVersion.WithResource("serverauthorizations"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Serverauthorization().V1beta1().ServerAuthorizations().Informer()}, nil
 
