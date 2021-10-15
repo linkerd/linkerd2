@@ -117,7 +117,7 @@ docker_retag() {
     echo "$repo:$to"
 }
 
-docker_rename_all() {
+docker_rename_registry() {
   tag=$1
   from=$2
   to=$3
