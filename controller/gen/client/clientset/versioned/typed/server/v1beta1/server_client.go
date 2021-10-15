@@ -29,7 +29,7 @@ type ServerV1beta1Interface interface {
 	ServersGetter
 }
 
-// ServerV1beta1Client is used to interact with features provided by the server.linkerd.io group.
+// ServerV1beta1Client is used to interact with features provided by the server group.
 type ServerV1beta1Client struct {
 	restClient rest.Interface
 }

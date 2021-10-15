@@ -29,7 +29,7 @@ type ServerauthorizationV1beta1Interface interface {
 	ServerAuthorizationsGetter
 }
 
-// ServerauthorizationV1beta1Client is used to interact with features provided by the serverauthorization.linkerd.io group.
+// ServerauthorizationV1beta1Client is used to interact with features provided by the serverauthorization group.
 type ServerauthorizationV1beta1Client struct {
 	restClient rest.Interface
 }

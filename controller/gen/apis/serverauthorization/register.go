@@ -1,4 +1,4 @@
 package serverauthorization
 
 // GroupName identifies the API Group Name for a ServerAuthorization.
-const GroupName = "serverauthorization.linkerd.io"
+const GroupName = "policy.linkerd.io"
