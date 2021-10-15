@@ -1,5 +1,24 @@
 # Changes
 
+## edge-21.10.2
+
+This edge release fixes linkerd check and the helm charts to explicitly
+indicate that the minimum Kubernetes version is 1.17.0. Prior to this change,
+there was no validation or enforcement from linkerd check or helm to meet this
+minimum requirement.
+
+This edge also improves `check` functionality for extensions by adding the
+`-oshort` flag, and prevents duplicate policy resources from being created for
+linked multicluster services.
+
+* Moved service mirror policy into multicluster base chart
+* Added `-oshort` flag for extension `check` commands
+* Updated minimum kubernetes version to 1.17.0
+* Removed unused `crtExpiry` template parameter from helm charts
+* Fixed multicluster gateway name for ServerAuthorization
+* Added `priorityClassName` to the helm charts to configure control plane
+  components
+
 ## edge-21.10.1
 
 This release includes some fixes in the `linkerd check`, along with a
