@@ -15,7 +15,7 @@ crds=(serviceprofile:v1alpha2 server:v1beta1 serverauthorization:v1beta1)
 # remove previously generated code
 rm -rf "${rootdir}/controller/gen/client"
 rm -rf "${GOPATH}/src/${ROOT_PACKAGE}/controller/gen"
-for crd in ${crds[@]}
+for crd in "${crds[@]}"
 do
   crd_path=$(tr : / <<< "$crd")
   rm -f "${rootdir}/controller/gen/apis/${crd_path}/zz_generated.deepcopy.go"
