@@ -35,28 +35,17 @@ type ServerAuthorizationSpec struct {
 
 // Server is the Server that a ServerAuthorization uses.
 type Server struct {
-	Name     *Name     `json:"name,omitempty"`
+	Name     string    `json:"name,omitempty"`
 	Selector *Selector `json:"selector,omitempty"`
 }
 
-// Name is the name of a Server that a ServerAuthorization selects.
-type Name struct {
-	Name string `json:"name,omitempty"`
-}
-
-// Selector defines how a ServerAuthorization selects its pods.
+// Selector defines how a ServerAuthorization selects its servers.
 type Selector struct {
-	MatchExpressions *MatchExpressions `json:"matchExpressions,omitempty"`
-	MatchLabels      *MatchLabels      `json:"matchLabels,omitempty"`
-}
-
-// MatchExpressions is the list of match expressions for a pod selector.
-
-type MatchExpressions struct {
 	MatchExpressions []*MatchExpression `json:"matchExpressions,omitempty"`
+	MatchLabels      map[string]string  `json:"matchLabels,omitempty"`
 }
 
-// MatchExpression describes how a pod selector selects a pod based off
+// MatchExpression describes how a server selector selects a server based off
 // certain properties.
 type MatchExpression struct {
 	Key      string   `json:"key,omitempty"`
@@ -64,17 +53,11 @@ type MatchExpression struct {
 	Values   []string `json:"values,omitempty"`
 }
 
-// MatchLabels describes how a pod selector selects a pod based off
-// pod labels.
-type MatchLabels struct {
-	MatchLabels map[string]string `json:"matchLabels,omitempty"`
-}
-
 // Client describes which clients a ServerAuthorization authorizes.
 type Client struct {
-	Networks        []*Cidr          `json:"networks,omitempty"`
-	MeshTLS         *MeshTLS         `json:"meshTls,omitempty"`
-	Unauthenticated *Unauthenticated `json:"unauthenticated,omitempty"`
+	Networks        []*Cidr  `json:"networks,omitempty"`
+	MeshTLS         *MeshTLS `json:"meshTLS,omitempty"`
+	Unauthenticated bool     `json:"unauthenticated,omitempty"`
 }
 
 // Cidr describes which client CIDRs a ServerAuthorization authorizes.
@@ -85,25 +68,9 @@ type Cidr struct {
 
 // MeshTLS describes which meshed clients are authorized.
 type MeshTLS struct {
-	UnauthenticatedTLS *UnauthenticatedTLS `json:"unauthenticated,omitempty"`
-	Identities         *Identities         `json:"identities,omitempty"`
-	ServiceAccounts    *ServiceAccounts    `json:"serviceAccounts,omitempty"`
-}
-
-// UnauthenticatedTLS is when unauthenticated TLS clients are authorized.
-type UnauthenticatedTLS struct {
-	UnauthenticatedTLS bool `json:"unauthenticated,omitempty"`
-}
-
-// Identities describes which client identities are authorized.
-type Identities struct {
-	Identities []string `json:"identities,omitempty"`
-}
-
-// ServiceAccounts describes which client service accounts are authorized.
-
-type ServiceAccounts struct {
-	ServiceAccounts []*ServiceAccountName `json:"serviceAccounts,omitempty"`
+	UnauthenticatedTLS bool                  `json:"unauthenticatedTLS,omitempty"`
+	Identities         []string              `json:"identities,omitempty"`
+	ServiceAccounts    []*ServiceAccountName `json:"serviceAccounts,omitempty"`
 }
 
 // ServiceAccountName is the structure of a service account name.
