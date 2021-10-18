@@ -263,21 +263,25 @@ spec:
         livenessProbe:
           httpGet:
             path: /ready
-            port: admin-http
+            port: admin
           initialDelaySeconds: 10
         name: policy
         ports:
         - containerPort: 8090
           name: grpc
         - containerPort: 9990
-          name: admin-http
+          {{- /*
+              Rename the port to `admin-http` once `/metrics` endpoint is supported
+              to include this in the prometheus scrapes.
+          */}}
+          name: admin
         - containerPort: 9443
           name: policy-https
         readinessProbe:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: admin-http
+            port: admin
         {{- $res := .Values.policyController.resources | default .Values.destinationResources }}
         {{- if $res }}
         {{- include "partials.resources" $res | nindent 8 }}

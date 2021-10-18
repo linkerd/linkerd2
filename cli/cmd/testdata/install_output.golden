@@ -2051,21 +2051,21 @@ spec:
         livenessProbe:
           httpGet:
             path: /ready
-            port: admin-http
+            port: admin
           initialDelaySeconds: 10
         name: policy
         ports:
         - containerPort: 8090
           name: grpc
         - containerPort: 9990
-          name: admin-http
+          name: admin
         - containerPort: 9443
           name: policy-https
         readinessProbe:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: admin-http
+            port: admin
         resources:
           limits:
             cpu: "cpu-limit"
