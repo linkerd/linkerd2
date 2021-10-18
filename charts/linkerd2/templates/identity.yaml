@@ -195,7 +195,7 @@ spec:
         The identity controller cannot discover policies, so we configure it with defaults that
         enforce TLS on the identity service.
       */}}
-      {{- $_ := set $tree.Values.proxy "defaultInboundPolicy" "cluster-unauthenticated" }}
+      {{- $_ := set $tree.Values.proxy "defaultInboundPolicy" "all-unauthenticated" }}
       {{- $_ := set $tree.Values.proxy "requireTLSOnInboundPorts" "8080" }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.cniEnabled -}}
