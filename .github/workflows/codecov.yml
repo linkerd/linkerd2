@@ -16,7 +16,7 @@ jobs:
     container:
       image: golang:1.16.4
     steps:
-      - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+      - uses: actions/checkout@1e204e9a9253d643386038d443f96446fa156a97
       - run: go get gotest.tools/gotestsum@v0.4.2
       - run: gotestsum -- -cover -coverprofile=coverage.out -v -mod=readonly ./...
       - uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b
@@ -31,7 +31,7 @@ jobs:
     container:
       image: node:14-stretch
     steps:
-      - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+      - uses: actions/checkout@1e204e9a9253d643386038d443f96446fa156a97
       - name: Yarn setup
         run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
       - name: Unit tests
@@ -53,7 +53,7 @@ jobs:
       image: docker://rust:1.55.0
       options: --security-opt seccomp=unconfined
     steps:
-      - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+      - uses: actions/checkout@1e204e9a9253d643386038d443f96446fa156a97
       - run: mkdir -p target && cd target && curl -vsL https://github.com/xd009642/tarpaulin/releases/download/0.18.0/cargo-tarpaulin-0.18.0-travis.tar.gz | tar zxvf - && chmod 755 cargo-tarpaulin
       - run: target/cargo-tarpaulin tarpaulin --workspace --out Xml
       - uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b
