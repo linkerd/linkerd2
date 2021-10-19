@@ -524,6 +524,8 @@ class NavigationBase extends React.Component {
 
           { this.menuItem(`/namespaces/${selectedNamespace}/deployments`, <Trans>menuItemDeployments</Trans>, deploymentIcon) }
 
+          { this.menuItem(`/namespaces/${selectedNamespace}/services`, <Trans>menuItemServices</Trans>, deploymentIcon) }
+
           { this.menuItem(`/namespaces/${selectedNamespace}/jobs`, <Trans>menuItemJobs</Trans>, jobIcon) }
 
           { this.menuItem(`/namespaces/${selectedNamespace}/pods`, <Trans>menuItemPods</Trans>, podIcon) }

@@ -160,6 +160,7 @@ const gatewayColumns = [
 const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, PrefixedLink, isTcpTable, grafana, jaeger) => {
   const isAuthorityTable = resource === 'authority';
   const isTrafficSplitTable = resource === 'trafficsplit';
+  const isServicesTable = resource === 'service';
   const isMultiResourceTable = resource === 'multi_resource';
   const isGatewayTable = resource === 'gateway';
   const getResourceDisplayName = isMultiResourceTable ? displayName : d => d.name;
@@ -230,7 +231,7 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
       let nameContents;
       if (resource === 'namespace') {
         nameContents = <PrefixedLink to={`/namespaces/${d.name}`}>{d.name}</PrefixedLink>;
-      } else if (!d.added && (!isTrafficSplitTable || isAuthorityTable)) {
+      } else if (!d.added && (!isTrafficSplitTable || isAuthorityTable) && !isServicesTable) {
         nameContents = getResourceDisplayName(d);
       } else {
         nameContents = (
@@ -265,7 +266,7 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
     columns = columns.concat(httpStatColumns);
   }
 
-  if (!isAuthorityTable && !isTrafficSplitTable && !isGatewayTable) {
+  if (!isAuthorityTable && !isTrafficSplitTable && !isGatewayTable && !isServicesTable) {
     columns.splice(1, 0, meshedColumn);
   }
 
