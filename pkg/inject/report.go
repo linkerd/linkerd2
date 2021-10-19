@@ -11,49 +11,46 @@ import (
 )
 
 const (
-	hostNetworkEnabled                   = "host_network_enabled"
-	sidecarExists                        = "sidecar_already_exists"
-	unsupportedResource                  = "unsupported_resource"
-	injectEnableAnnotationAbsent         = "injection_enable_annotation_absent"
-	injectDisableAnnotationPresent       = "injection_disable_annotation_present"
-	annotationAtNamespace                = "namespace"
-	annotationAtWorkload                 = "workload"
-	invalidInjectAnnotationWorkload      = "invalid_inject_annotation_at_workload"
-	invalidInjectAnnotationNamespace     = "invalid_inject_annotation_at_ns"
-	disabledAutomountServiceAccountToken = "disabled_automount_service_account_token_account"
-	udpPortsEnabled                      = "udp_ports_enabled"
+	hostNetworkEnabled               = "host_network_enabled"
+	sidecarExists                    = "sidecar_already_exists"
+	unsupportedResource              = "unsupported_resource"
+	injectEnableAnnotationAbsent     = "injection_enable_annotation_absent"
+	injectDisableAnnotationPresent   = "injection_disable_annotation_present"
+	annotationAtNamespace            = "namespace"
+	annotationAtWorkload             = "workload"
+	invalidInjectAnnotationWorkload  = "invalid_inject_annotation_at_workload"
+	invalidInjectAnnotationNamespace = "invalid_inject_annotation_at_ns"
+	udpPortsEnabled                  = "udp_ports_enabled"
 )
 
 var (
 	// Reasons is a map of inject skip reasons with human readable sentences
 	Reasons = map[string]string{
-		hostNetworkEnabled:                   "hostNetwork is enabled",
-		sidecarExists:                        "pod has a sidecar injected already",
-		unsupportedResource:                  "this resource kind is unsupported",
-		injectEnableAnnotationAbsent:         fmt.Sprintf("neither the namespace nor the pod have the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled),
-		injectDisableAnnotationPresent:       fmt.Sprintf("pod has the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectDisabled),
-		invalidInjectAnnotationWorkload:      fmt.Sprintf("invalid value for annotation \"%s\" at workload", k8s.ProxyInjectAnnotation),
-		invalidInjectAnnotationNamespace:     fmt.Sprintf("invalid value for annotation \"%s\" at namespace", k8s.ProxyInjectAnnotation),
-		disabledAutomountServiceAccountToken: "automountServiceAccountToken set to \"false\"",
-		udpPortsEnabled:                      "UDP port(s) configured on pod spec",
+		hostNetworkEnabled:               "hostNetwork is enabled",
+		sidecarExists:                    "pod has a sidecar injected already",
+		unsupportedResource:              "this resource kind is unsupported",
+		injectEnableAnnotationAbsent:     fmt.Sprintf("neither the namespace nor the pod have the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled),
+		injectDisableAnnotationPresent:   fmt.Sprintf("pod has the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectDisabled),
+		invalidInjectAnnotationWorkload:  fmt.Sprintf("invalid value for annotation \"%s\" at workload", k8s.ProxyInjectAnnotation),
+		invalidInjectAnnotationNamespace: fmt.Sprintf("invalid value for annotation \"%s\" at namespace", k8s.ProxyInjectAnnotation),
+		udpPortsEnabled:                  "UDP port(s) configured on pod spec",
 	}
 )
 
 // Report contains the Kind and Name for a given workload along with booleans
 // describing the result of the injection transformation
 type Report struct {
-	Kind                         string
-	Name                         string
-	HostNetwork                  bool
-	Sidecar                      bool
-	UDP                          bool // true if any port in any container has `protocol: UDP`
-	UnsupportedResource          bool
-	InjectDisabled               bool
-	InjectDisabledReason         string
-	InjectAnnotationAt           string
-	Annotatable                  bool
-	Annotated                    bool
-	AutomountServiceAccountToken bool
+	Kind                 string
+	Name                 string
+	HostNetwork          bool
+	Sidecar              bool
+	UDP                  bool // true if any port in any container has `protocol: UDP`
+	UnsupportedResource  bool
+	InjectDisabled       bool
+	InjectDisabledReason string
+	InjectAnnotationAt   string
+	Annotatable          bool
+	Annotated            bool
 
 	// Uninjected consists of two boolean flags to indicate if a proxy and
 	// proxy-init containers have been uninjected in this report
@@ -80,9 +77,8 @@ func newReport(conf *ResourceConfig) *Report {
 	}
 
 	report := &Report{
-		Kind:                         strings.ToLower(conf.workload.metaType.Kind),
-		Name:                         name,
-		AutomountServiceAccountToken: true,
+		Kind: strings.ToLower(conf.workload.metaType.Kind),
+		Name: name,
 	}
 
 	if conf.HasPodTemplate() {
@@ -90,14 +86,6 @@ func newReport(conf *ResourceConfig) *Report {
 		report.HostNetwork = conf.pod.spec.HostNetwork
 		report.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
 		report.UDP = checkUDPPorts(conf.pod.spec)
-		if conf.pod.spec.AutomountServiceAccountToken != nil {
-			report.AutomountServiceAccountToken = *conf.pod.spec.AutomountServiceAccountToken
-		}
-		if conf.origin == OriginWebhook {
-			if vm := conf.serviceAccountVolumeMount(); vm == nil {
-				report.AutomountServiceAccountToken = false
-			}
-		}
 	} else {
 		report.UnsupportedResource = true
 	}
@@ -130,10 +118,6 @@ func (r *Report) Injectable() (bool, []string) {
 	}
 	if r.InjectDisabled {
 		reasons = append(reasons, r.InjectDisabledReason)
-	}
-
-	if !r.AutomountServiceAccountToken {
-		reasons = append(reasons, disabledAutomountServiceAccountToken)
 	}
 
 	if len(reasons) > 0 {
@@ -217,16 +201,12 @@ func isInjectAnnotationValid(annotation string) bool {
 }
 
 // ThrowInjectError errors out `inject` when the report contains errors
-// related to automountServiceAccountToken, hostNetwork, existing sidecar,
+// related to hostNetwork, existing sidecar,
 // or udp ports
 // See - https://github.com/linkerd/linkerd2/issues/4214
 func (r *Report) ThrowInjectError() []error {
 
 	errs := []error{}
-
-	if !r.AutomountServiceAccountToken {
-		errs = append(errs, errors.New(Reasons[disabledAutomountServiceAccountToken]))
-	}
 
 	if r.HostNetwork {
 		errs = append(errs, errors.New(Reasons[hostNetworkEnabled]))
