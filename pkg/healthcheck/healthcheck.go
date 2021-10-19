@@ -2341,7 +2341,7 @@ func misconfiguredOpaqueAnnotation(service *corev1.Service, pod *corev1.Pod) err
 
 func checkPodPorts(service *corev1.Service, pod *corev1.Pod, podPorts []string, port int) error {
 	for _, sp := range service.Spec.Ports {
-		if sp.Port == int32(port) {
+		if int(sp.Port) == port {
 			for _, c := range pod.Spec.Containers {
 				for _, cp := range c.Ports {
 					if cp.ContainerPort == sp.TargetPort.IntVal || cp.Name == sp.TargetPort.StrVal {
@@ -2368,13 +2368,13 @@ func checkPodPorts(service *corev1.Service, pod *corev1.Pod, podPorts []string, 
 func checkServiceIntPorts(service *corev1.Service, svcPorts []string, port int) (bool, error) {
 	for _, p := range service.Spec.Ports {
 		if p.TargetPort.Type == 0 && p.TargetPort.IntVal == 0 {
-			if p.Port == int32(port) {
+			if int(p.Port) == port {
 				// The service does not have a target port, so its service
 				// port should be marked as opaque.
 				return false, fmt.Errorf("service %s targets the opaque port %d; add it to its %s annotation", service.Name, port, k8s.ProxyOpaquePortsAnnotation)
 			}
 		}
-		if p.TargetPort.IntVal == int32(port) {
+		if int(p.TargetPort.IntVal) == port {
 			svcPort := strconv.Itoa(int(p.Port))
 			if util.ContainsString(svcPort, svcPorts) {
 				// The service exposes svcPort which targets p and svcPort
@@ -2396,7 +2396,7 @@ func checkServiceNamePorts(service *corev1.Service, pod *corev1.Pod, port int, s
 		}
 		for _, c := range pod.Spec.Containers {
 			for _, cp := range c.Ports {
-				if cp.ContainerPort == int32(port) {
+				if int(cp.ContainerPort) == port {
 					// This is the containerPort that maps to the opaque port
 					// we are currently checking.
 					if cp.Name == p.TargetPort.StrVal {
