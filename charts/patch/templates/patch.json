@@ -87,6 +87,12 @@
       }
     }
   },
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/volumes/-",
+    "value":
+      {{- include "partials.proxy.volumes.service-account-token" . | fromYaml | toPrettyJson | nindent 6 }}
+  },
   {{- end }}
   {
     "op": "add",

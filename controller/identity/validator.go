@@ -42,8 +42,7 @@ func NewK8sTokenValidator(
 
 // Validate accepts kubernetes bearer tokens and returns a DNS-form linkerd ID.
 func (k *K8sTokenValidator) Validate(ctx context.Context, tok []byte) (string, error) {
-	// TODO: Set/check `audience`
-	tr := kauthnApi.TokenReview{Spec: kauthnApi.TokenReviewSpec{Token: string(tok)}}
+	tr := kauthnApi.TokenReview{Spec: kauthnApi.TokenReviewSpec{Token: string(tok), Audiences: []string{"linkerd.io"}}}
 	rvw, err := k.authn.TokenReviews().Create(ctx, &tr, metav1.CreateOptions{})
 	if err != nil {
 		return "", err
