@@ -80,11 +80,6 @@ type ServiceAccountName struct {
 	Namespace string `json:"namespace,omitempty"`
 }
 
-// Unauthenticated is when unauthenticated clients are authorized.
-type Unauthenticated struct {
-	Unauthenticated bool `json:"unauthenticated,omitempty"`
-}
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ServerAuthorizationList is a list of Server resources.
