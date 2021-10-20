@@ -25,8 +25,10 @@ const (
 	StatefulSet           = "statefulset"
 	TrafficSplit          = "trafficsplit"
 	Node                  = "node"
-	Server                = "server"
 	ServerAuthorization   = "serverauthorization"
+
+	Server           = "server"
+	ServerAPIVersion = "linkerd.io/v1beta1"
 
 	ServiceProfileAPIVersion = "linkerd.io/v1alpha2"
 	ServiceProfileKind       = "ServiceProfile"

@@ -110,6 +110,23 @@ func ServiceProfilesAccess(ctx context.Context, k8sClient kubernetes.Interface) 
 	return errors.New("ServiceProfile CRD not found")
 }
 
+// ServersAccess checks whether the Server CRD is installed on the cluster
+// and the client is authorized to access Servers.
+func ServersAccess(ctx context.Context, k8sClient kubernetes.Interface) error {
+	res, err := k8sClient.Discovery().ServerResourcesForGroupVersion(ServerAPIVersion)
+	if err != nil {
+		return err
+	}
+	if res.GroupVersion == ServerAPIVersion {
+		for _, apiRes := range res.APIResources {
+			if apiRes.Kind == Server {
+				return ResourceAuthz(ctx, k8sClient, "", "list", "linkerd.io", "", "servers", "")
+			}
+		}
+	}
+	return errors.New("Server CRD not found")
+}
+
 // EndpointSliceAccess verifies whether the K8s cluster has
 // access to EndpointSlice resources.
 func EndpointSliceAccess(ctx context.Context, k8sClient kubernetes.Interface) error {
