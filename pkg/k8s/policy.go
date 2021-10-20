@@ -66,8 +66,12 @@ func ServerAuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI,
 			}
 			servers = []unstructured.Unstructured{*server}
 		} else if sel, found, _ := unstructured.NestedMap(saz.UnstructuredContent(), "spec", "server", "selector"); found {
-			selector := selector(sel)
-			serverList, err := k8sAPI.DynamicClient.Resource(ServerGVR).Namespace(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: metav1.FormatLabelSelector(&selector)})
+			selector, err := selector(sel)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to get servers: %s\n", err)
+				os.Exit(1)
+			}
+			serverList, err := k8sAPI.DynamicClient.Resource(ServerGVR).Namespace(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get servers: %s\n", err)
 				os.Exit(1)
@@ -77,8 +81,12 @@ func ServerAuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI,
 
 		for _, server := range servers {
 			if sel, found, _ := unstructured.NestedMap(server.UnstructuredContent(), "spec", "podSelector"); found {
-				selector := selector(sel)
-				selectedPods, err := k8sAPI.CoreV1().Pods(server.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: metav1.FormatLabelSelector(&selector)})
+				selector, err := selector(sel)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
+					os.Exit(1)
+				}
+				selectedPods, err := k8sAPI.CoreV1().Pods(server.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector})
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
 					os.Exit(1)
@@ -115,8 +123,12 @@ func ServersForResource(ctx context.Context, k8sAPI *KubernetesAPI, namespace st
 
 	for _, server := range servers.Items {
 		if sel, found, _ := unstructured.NestedMap(server.UnstructuredContent(), "spec", "podSelector"); found {
-			selector := selector(sel)
-			selectedPods, err := k8sAPI.CoreV1().Pods(server.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: metav1.FormatLabelSelector(&selector)})
+			selector, err := selector(sel)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
+				os.Exit(1)
+			}
+			selectedPods, err := k8sAPI.CoreV1().Pods(server.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
 				os.Exit(1)
@@ -152,8 +164,12 @@ func ServerAuthorizationsForServer(ctx context.Context, k8sAPI *KubernetesAPI, n
 				results = append(results, saz.GetName())
 			}
 		} else if sel, found, _ := unstructured.NestedMap(saz.UnstructuredContent(), "spec", "server", "selector"); found {
-			selector := selector(sel)
-			serverList, err := k8sAPI.DynamicClient.Resource(ServerGVR).Namespace(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: metav1.FormatLabelSelector(&selector)})
+			selector, err := selector(sel)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to get servers: %s\n", err)
+				os.Exit(1)
+			}
+			serverList, err := k8sAPI.DynamicClient.Resource(ServerGVR).Namespace(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get servers: %s\n", err)
 				os.Exit(1)
@@ -169,18 +185,23 @@ func ServerAuthorizationsForServer(ctx context.Context, k8sAPI *KubernetesAPI, n
 	return results, nil
 }
 
-func selector(selector map[string]interface{}) metav1.LabelSelector {
+func selector(selector map[string]interface{}) (string, error) {
+	var labelSelector metav1.LabelSelector
 	if labels, found, err := unstructured.NestedStringMap(selector, "matchLabels"); found && err == nil {
-		return metav1.LabelSelector{MatchLabels: labels}
+		labelSelector = metav1.LabelSelector{MatchLabels: labels}
 	}
 	if expressions, found, err := unstructured.NestedSlice(selector, "matchExpressions"); found && err == nil {
 		exprs := make([]metav1.LabelSelectorRequirement, len(expressions))
 		for i, expr := range expressions {
 			exprs[i] = matchExpression(expr)
 		}
-		return metav1.LabelSelector{MatchExpressions: exprs}
+		labelSelector = metav1.LabelSelector{MatchExpressions: exprs}
 	}
-	return metav1.LabelSelector{}
+	labelsSelector, err := metav1.LabelSelectorAsSelector(&labelSelector)
+	if err != nil {
+		return "", fmt.Errorf("failed to create selector: %s", err)
+	}
+	return labelsSelector.String(), nil
 }
 
 func matchExpression(expr interface{}) metav1.LabelSelectorRequirement {
