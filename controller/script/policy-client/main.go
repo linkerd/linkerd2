@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/ghodss/yaml"
@@ -12,11 +11,9 @@ import (
 	"github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/watch"
 )
 
 func main() {
-	resource := flag.String("resource", "server", "kind of policy resource to get")
 	namespace := flag.String("namespace", "", "namespace of resource to get")
 	flag.Parse()
 
@@ -27,23 +24,27 @@ func main() {
 	}
 	client := versioned.NewForConfigOrDie(config)
 
-	var watch watch.Interface
-	switch *resource {
-	case "server", "srv":
-		watch, err = client.ServerV1beta1().Servers(*namespace).Watch(context.Background(), metav1.ListOptions{})
-	case "serverauthorization", "saz":
-		watch, err = client.ServerauthorizationV1beta1().ServerAuthorizations(*namespace).Watch(context.Background(), metav1.ListOptions{})
-	default:
-		log.Fatalf("Unknown policy resource: %s; supported resources: server, srv, serverauthorization, saz", *resource)
-	}
+	srvWatch, err := client.ServerV1beta1().Servers(*namespace).Watch(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to watch resource %s: %s", *resource, err)
+		fmt.Fprintf(os.Stderr, "failed to watch Servers: %s", err)
 		os.Exit(1)
 	}
+	sazWatch, err := client.ServerauthorizationV1beta1().ServerAuthorizations(*namespace).Watch(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to watch ServerAuthorizations: %s", err)
+		os.Exit(1)
+	}
+	srvUpdates := srvWatch.ResultChan()
+	sazUpdates := sazWatch.ResultChan()
 
-	updates := watch.ResultChan()
 	for {
-		update := <-updates
+		var update interface{}
+		select {
+		case u := <-srvUpdates:
+			update = u
+		case u := <-sazUpdates:
+			update = u
+		}
 		b, _ := yaml.Marshal(update)
 		fmt.Println(string(b))
 	}
