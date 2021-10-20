@@ -148,7 +148,7 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 		}
 		// add a new line to space out each check output
 		fmt.Fprintln(wout)
-		extensionSuccess := RunChecks(wout, werr, results, fmt.Sprintf("extension-%s", output))
+		extensionSuccess := RunChecks(wout, werr, results, output)
 		if !extensionSuccess {
 			success = false
 		}
