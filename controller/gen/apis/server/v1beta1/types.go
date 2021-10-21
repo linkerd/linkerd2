@@ -37,16 +37,8 @@ type ServerSpec struct {
 
 // PodSelector defines how a Server selects its pods.
 type PodSelector struct {
-	MatchExpressions []*MatchExpression `json:"matchExpressions,omitempty"`
-	MatchLabels      map[string]string  `json:"matchLabels,omitempty"`
-}
-
-// MatchExpression describes how a pod selector selects a pod based off
-// certain properties.
-type MatchExpression struct {
-	Key      string   `json:"key,omitempty"`
-	Operator string   `json:"operator,omitempty"`
-	Values   []string `json:"values,omitempty"`
+	MatchExpressions []*metav1.LabelSelectorRequirement `json:"matchExpressions,omitempty"`
+	MatchLabels      map[string]string                  `json:"matchLabels,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

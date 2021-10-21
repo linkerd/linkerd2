@@ -41,16 +41,8 @@ type Server struct {
 
 // Selector defines how a ServerAuthorization selects its servers.
 type Selector struct {
-	MatchExpressions []*MatchExpression `json:"matchExpressions,omitempty"`
-	MatchLabels      map[string]string  `json:"matchLabels,omitempty"`
-}
-
-// MatchExpression describes how a server selector selects a server based off
-// certain properties.
-type MatchExpression struct {
-	Key      string   `json:"key,omitempty"`
-	Operator string   `json:"operator,omitempty"`
-	Values   []string `json:"values,omitempty"`
+	MatchExpressions []*metav1.LabelSelectorRequirement `json:"matchExpressions,omitempty"`
+	MatchLabels      map[string]string                  `json:"matchLabels,omitempty"`
 }
 
 // Client describes which clients a ServerAuthorization authorizes.
