@@ -11,8 +11,7 @@ outside of the pod network.
   incorrectly appears as "DOWN" in the Prometheus UI
 * Updated the identity controller to use the 'all-unauthenticated' policy so
   that it can accept health checks from the node IPs
-* Fixed an infinite loop in the proxy when downgrading HTTP/2 errors that could
-  cause the proxy to be killed
+* Fixed an infinite loop in the proxy that could cause it to be killed
 * Added tests for the multicluster install command (thanks @crevil!)
 * Fixed a bug where `authz` CLI commands would fail when policy resources had
   an empty selector
