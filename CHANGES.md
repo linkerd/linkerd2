@@ -1,5 +1,22 @@
 # Changes
 
+## edge-21.10.3
+
+This edge release fixes a bug in the proxy that could cause it to be killed in
+certain situations. It also uses a more relaxed policy for the identity
+controller that allows it to work in environments where health checks come from
+outside of the pod network.
+
+* Skipped Prometheus scrapes on policy's `admin` server so that it no longer
+  incorrectly appears as "DOWN" in the Prometheus UI
+* Updated the identity controller to use the 'all-unauthenticated' policy so
+  that it can accept health checks from the node IPs
+* Fixed an infinite loop in the proxy when downgrading HTTP/2 errors that could
+  cause the proxy to be killed
+* Added tests for the multicluster install command (thanks @crevil!)
+* Fixed a bug where `authz` CLI commands would fail when policy resources had
+  an empty selector
+
 ## edge-21.10.2
 
 This edge release fixes linkerd check and the helm charts to explicitly
