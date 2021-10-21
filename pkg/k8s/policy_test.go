@@ -57,6 +57,8 @@ func TestSelector(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		// pin
+		test := test
 		t.Run(test.name, func(t *testing.T) {
 			labelSelector := selector(test.selector)
 			selector, err := metav1.LabelSelectorAsSelector(&labelSelector)
