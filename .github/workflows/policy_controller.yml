@@ -8,6 +8,7 @@ on:
       - 'deny.toml'
       - 'rust-toolchain'
       - 'policy-controller/**'
+      - '.github/workflows/policy_controller.yml'
 
 permissions:
   contents: read
