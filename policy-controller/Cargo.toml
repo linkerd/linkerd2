@@ -26,3 +26,6 @@ tokio = { version = "1", features = ["macros", "parking_lot", "rt", "rt-multi-th
 tracing = "0.1"
 tracing-subscriber = { version = "0.2", default-features = false, features = ["env-filter", "fmt", "json", "smallvec", "tracing-log"] }
 warp = { version = "0.3", default-features = false, features = ["tls"] }
+
+[target.x86_64-unknown-linux-gnu.dependencies]
+jemallocator = "0.3"
