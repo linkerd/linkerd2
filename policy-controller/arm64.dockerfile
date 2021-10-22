@@ -1,4 +1,4 @@
-ARG RUST_IMAGE=docker.io/library/rust:1.55.0
+ARG RUST_IMAGE=docker.io/library/rust:1.56.0
 ARG RUNTIME_IMAGE=gcr.io/distroless/cc
 
 FROM $RUST_IMAGE as build
@@ -10,7 +10,7 @@ ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
 WORKDIR /build
 COPY Cargo.toml Cargo.lock policy-controller/ /build/
 RUN --mount=type=cache,target=target \
-    --mount=type=cache,from=rust:1.55.0,source=/usr/local/cargo,target=/usr/local/cargo \
+    --mount=type=cache,from=rust:1.56.0,source=/usr/local/cargo,target=/usr/local/cargo \
     cargo build --locked --release --target=aarch64-unknown-linux-gnu --package=linkerd-policy-controller && \
     mv target/aarch64-unknown-linux-gnu/release/linkerd-policy-controller /tmp/
 
