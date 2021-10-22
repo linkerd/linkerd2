@@ -35,14 +35,8 @@ type ServerAuthorizationSpec struct {
 
 // Server is the Server that a ServerAuthorization uses.
 type Server struct {
-	Name     string    `json:"name,omitempty"`
-	Selector *Selector `json:"selector,omitempty"`
-}
-
-// Selector defines how a ServerAuthorization selects its servers.
-type Selector struct {
-	MatchExpressions []*metav1.LabelSelectorRequirement `json:"matchExpressions,omitempty"`
-	MatchLabels      map[string]string                  `json:"matchLabels,omitempty"`
+	Name     string                `json:"name,omitempty"`
+	Selector *metav1.LabelSelector `json:"selector,omitempty"`
 }
 
 // Client describes which clients a ServerAuthorization authorizes.
