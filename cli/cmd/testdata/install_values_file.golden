@@ -2121,7 +2121,6 @@ spec:
               path: linkerd-token
               expirationSeconds: 86400
               audience: linkerd.io
-
 ---
 ###
 ### Heartbeat

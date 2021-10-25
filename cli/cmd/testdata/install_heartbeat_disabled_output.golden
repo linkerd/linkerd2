@@ -2067,7 +2067,6 @@ spec:
               expirationSeconds: 86400
               audience: linkerd.io
 
-
 ---
 ###
 ### Proxy Injector
