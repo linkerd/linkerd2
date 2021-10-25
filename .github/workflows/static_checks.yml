@@ -66,7 +66,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@1e204e9a9253d643386038d443f96446fa156a97
     - name: Chocolatey - lint
-      uses: devblackops/github-action-psscriptanalyzer@47643b05d29d2e63ab8ec3fcbac4f409df6c98e2
+      uses: devblackops/github-action-psscriptanalyzer@854038567344559afaaa8ccb7a014452b99d86ee
       env:
         # https://github.com/devblackops/github-action-psscriptanalyzer/pull/3/files
         INPUT_FAILONWARNING: 1
