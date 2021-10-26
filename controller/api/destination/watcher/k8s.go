@@ -3,6 +3,7 @@ package watcher
 import (
 	"fmt"
 
+	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -14,6 +15,8 @@ const (
 	PodIPIndex = "ip"
 	// HostIPIndex is the key for the index based on Host IP of pods with host network enabled
 	HostIPIndex = "hostIP"
+	// ServerIndex is the key for the index based on Servers
+	ServerIndex = "server"
 )
 
 type (
@@ -106,6 +109,16 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 
 	if err != nil {
 		return fmt.Errorf("could not create an indexer for pods: %s", err)
+	}
+
+	err = k8sAPI.Srv().Informer().AddIndexers(cache.Indexers{ServerIndex: func(obj interface{}) ([]string, error) {
+		if server, ok := obj.(*v1beta1.Server); ok {
+			return []string{server.Name}, nil
+		}
+		return nil, fmt.Errorf("object is not a server")
+	}})
+	if err != nil {
+		return fmt.Errorf("could not create an indexer for servers: %s", err)
 	}
 
 	return nil
