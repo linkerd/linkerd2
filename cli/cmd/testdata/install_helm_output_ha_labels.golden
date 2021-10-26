@@ -1265,6 +1265,9 @@ data:
       cpu:
         limit: ""
         request: 100m
+      ephemeral-storage:
+        limit: ""
+        request: ""
       memory:
         limit: 250Mi
         request: 50Mi
@@ -1277,6 +1280,9 @@ data:
       cpu:
         limit: ""
         request: 100m
+      ephemeral-storage:
+        limit: ""
+        request: ""
       memory:
         limit: 250Mi
         request: 50Mi
@@ -1296,6 +1302,9 @@ data:
       cpu:
         limit: ""
         request: 100m
+      ephemeral-storage:
+        limit: ""
+        request: ""
       memory:
         limit: 250Mi
         request: 10Mi
@@ -1323,6 +1332,9 @@ data:
       logLevel: linkerd=info,warn
       resources:
         cpu:
+          limit: ""
+          request: ""
+        ephemeral-storage:
           limit: ""
           request: ""
         memory:
@@ -1379,6 +1391,9 @@ data:
         cpu:
           limit: ""
           request: 100m
+        ephemeral-storage:
+          limit: ""
+          request: ""
         memory:
           limit: 250Mi
           request: 20Mi
@@ -1399,6 +1414,9 @@ data:
         cpu:
           limit: 100m
           request: 10m
+        ephemeral-storage:
+          limit: ""
+          request: ""
         memory:
           limit: 50Mi
           request: 10Mi
@@ -1422,6 +1440,9 @@ data:
       cpu:
         limit: ""
         request: 100m
+      ephemeral-storage:
+        limit: ""
+        request: ""
       memory:
         limit: 250Mi
         request: 50Mi

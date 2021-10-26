@@ -176,8 +176,9 @@ type (
 
 	// Resources represents the computational resources setup for a given container
 	Resources struct {
-		CPU    Constraints `json:"cpu"`
-		Memory Constraints `json:"memory"`
+		CPU              Constraints `json:"cpu"`
+		Memory           Constraints `json:"memory"`
+		EphemeralStorage Constraints `json:"ephemeral-storage"`
 	}
 
 	// Identity contains the fields to set the identity variables in the proxy
