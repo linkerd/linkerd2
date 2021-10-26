@@ -431,6 +431,10 @@ func (ew *EndpointsWatcher) getServicePublisher(id ServiceID) (sp *servicePublis
 
 func (ew *EndpointsWatcher) addServer(obj interface{}) {
 	server := obj.(*v1beta1.Server)
+
+	// Get the set of pods that the server selects so that we can check if a
+	// port publisher exists for that endpoint, and if so it's new set of
+	// opaque pod ports is received.
 	labelMap, err := metav1.LabelSelectorAsMap(server.Spec.PodSelector)
 	if err != nil {
 		ew.log.Errorf("failed to turn Server's podSelector into label selector map: %v", err)
@@ -439,25 +443,19 @@ func (ew *EndpointsWatcher) addServer(obj interface{}) {
 	options := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labelMap).String(),
 	}
-	podList, err := ew.k8sAPI.Client.CoreV1().Pods("").List(context.Background(), options)
+	pods, err := ew.k8sAPI.Client.CoreV1().Pods("").List(context.Background(), options)
 	if err != nil {
 		ew.log.Errorf("failed to list pods: %v", err)
 		return
 	}
-	ppToUpdate := make(map[*portPublisher]struct{})
-	for _, pod := range podList.Items {
-		var port Port
-		if server.Spec.Port.StrVal != "" {
-			for _, c := range pod.Spec.Containers {
-				for _, cp := range c.Ports {
-					if cp.Name == server.Spec.Port.StrVal {
-						port = uint32(cp.ContainerPort)
-					}
-				}
-			}
-		} else {
-			port = uint32(server.Spec.Port.IntVal)
-		}
+
+	// publishersToUpdate tracks the port publishers that should send new
+	// address sets once the new set of opaque pod ports is created for each
+	// one.
+	publishersToUpdate := make(map[*portPublisher]struct{})
+
+	for _, pod := range pods.Items {
+		port := getPortIntFromPod(pod, server.Spec.Port)
 		for _, sp := range ew.publishers {
 			for _, pp := range sp.ports {
 				for _, addr := range pp.addresses.Addresses {
@@ -467,6 +465,9 @@ func (ew *EndpointsWatcher) addServer(obj interface{}) {
 							Namespace: addr.Pod.Namespace,
 						}
 						if server.Spec.ProxyProtocol == "opaque" {
+							// The server's protocol is opaque, so we make
+							// sure the pod's matching port is set as opaque
+							// on the address set.
 							if ports, ok := pp.addresses.OpaquePodPorts[id]; ok {
 								ports[port] = struct{}{}
 							} else {
@@ -474,15 +475,18 @@ func (ew *EndpointsWatcher) addServer(obj interface{}) {
 								pp.addresses.OpaquePodPorts = podPorts{id: ports}
 							}
 						} else {
+							// The server's protocol is not opaque, so we make
+							// sure that if the pod's matching port was
+							// previously marked as opaque then it is cleared.
 							delete(pp.addresses.OpaquePodPorts[id], port)
 						}
-						ppToUpdate[pp] = struct{}{}
+						publishersToUpdate[pp] = struct{}{}
 					}
 				}
 			}
 		}
 	}
-	for pp := range ppToUpdate {
+	for pp := range publishersToUpdate {
 		for _, listener := range pp.listeners {
 			listener.AddServer(pp.addresses)
 		}
@@ -857,7 +861,8 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 	for _, object := range objects {
 		server := object.(*v1beta1.Server)
 
-		// todo: Ignore servers that don't have opaque protocol
+		// If the server's protocol is not opaque, the pods that it selects
+		// do not need to be tracked.
 		if server.Spec.ProxyProtocol != "opaque" {
 			continue
 		}
@@ -876,29 +881,17 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 			continue
 		}
 		for _, pod := range pods.Items {
-			var port Port
-			if server.Spec.Port.StrVal != "" {
-				for _, c := range pod.Spec.Containers {
-					for _, cp := range c.Ports {
-						if cp.Name == server.Spec.Port.StrVal {
-							port = uint32(cp.ContainerPort)
-						}
-					}
-				}
-			} else {
-				port = uint32(server.Spec.Port.IntVal)
-			}
-			podPort := podPortID{
+			id := podPortID{
 				name:      pod.Name,
 				namespace: pod.Namespace,
-				port:      port,
+				port:      getPortIntFromPod(pod, server.Spec.Port),
 			}
-			serverOpaquePodPorts[podPort] = struct{}{}
+			serverOpaquePodPorts[id] = struct{}{}
 		}
 	}
 
-	opaquePodPorts := make(podPorts)
 	addresses := make(map[ID]Address)
+	opaquePodPorts := make(podPorts)
 	for _, subset := range endpoints.Subsets {
 		resolvedPort := pp.resolveTargetPort(subset)
 		if resolvedPort == undefinedEndpointPort {
@@ -929,12 +922,12 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
-				podPort := podPortID{
+				ppID := podPortID{
 					name:      endpoint.TargetRef.Name,
 					namespace: endpoint.TargetRef.Namespace,
 					port:      resolvedPort,
 				}
-				if _, ok := serverOpaquePodPorts[podPort]; ok {
+				if _, ok := serverOpaquePodPorts[ppID]; ok {
 					id := PodID{
 						Name:      endpoint.TargetRef.Name,
 						Namespace: endpoint.TargetRef.Namespace,
@@ -1243,4 +1236,17 @@ func isValidSlice(es *discovery.EndpointSlice) bool {
 	}
 
 	return true
+}
+
+func getPortIntFromPod(pod corev1.Pod, serverPort intstr.IntOrString) Port {
+	if serverPort.StrVal != "" {
+		for _, c := range pod.Spec.Containers {
+			for _, cp := range c.Ports {
+				if cp.Name == serverPort.StrVal {
+					return uint32(cp.ContainerPort)
+				}
+			}
+		}
+	}
+	return uint32(serverPort.IntVal)
 }
