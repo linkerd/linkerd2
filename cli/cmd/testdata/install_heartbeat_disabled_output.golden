@@ -1201,6 +1201,7 @@ data:
             AiAtuoI5XuCtrGVRzSmRTl2ra28aV9MyTU7d5qnTAFHKSgIgRKCvluOSgA5O21p5
             51tdrmkHEZRr0qlLSJdHYgEfMzk=
             -----END CERTIFICATE-----
+      serviceAccountTokens: true
     identityProxyResources: null
     identityResources: null
     identityTrustAnchorsPEM: |
@@ -1460,6 +1461,7 @@ spec:
         - -identity-issuance-lifetime=24h0m0s
         - -identity-clock-skew-allowance=20s
         - -identity-scheme=linkerd.io/tls
+        - -service-account-tokens=true
         env:
         - name: LINKERD_DISABLED
           value: "linkerd-await cannot block the identity controller"
@@ -1650,9 +1652,6 @@ spec:
         name: trust-roots
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - name: linkerd-token
         projected:
           sources:
@@ -1660,6 +1659,9 @@ spec:
               path: linkerd-token
               expirationSeconds: 86400
               audience: linkerd.io
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 ---
 ###
 ### Destination Controller Service
@@ -2056,9 +2058,6 @@ spec:
           secretName: linkerd-policy-validator-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - name: linkerd-token
         projected:
           sources:
@@ -2066,6 +2065,9 @@ spec:
               path: linkerd-token
               expirationSeconds: 86400
               audience: linkerd.io
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 
 ---
 ###
@@ -2307,9 +2309,6 @@ spec:
           secretName: linkerd-proxy-injector-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - name: linkerd-token
         projected:
           sources:
@@ -2317,6 +2316,9 @@ spec:
               path: linkerd-token
               expirationSeconds: 86400
               audience: linkerd.io
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 ---
 kind: Service
 apiVersion: v1

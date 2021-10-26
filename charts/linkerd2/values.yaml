@@ -228,6 +228,9 @@ debugContainer:
 identity:
   # -- If the linkerd-identity-trust-roots ConfigMap has already been created
   externalCA: false
+
+  # -- Use serivceAccountToken Volume projection for verification instead of the default
+  serviceAccountTokens: true
   issuer:
     scheme: linkerd.io/tls
 

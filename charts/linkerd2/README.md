@@ -147,6 +147,7 @@ Kubernetes: `>=1.17.0-0`
 | identity.issuer.tls | object | `{"crtPEM":"","keyPEM":""}` | Which scheme is used for the identity issuer secret format |
 | identity.issuer.tls.crtPEM | string | `""` | Issuer certificate (ECDSA). It must be provided during install. |
 | identity.issuer.tls.keyPEM | string | `""` | Key for the issuer certificate (ECDSA). It must be provided during install |
+| identity.serviceAccountTokens | bool | `true` | Use serivceAccountToken Volume projection for verification instead of the default |
 | identityTrustAnchorsPEM | string | `""` | Trust root certificate (ECDSA). It must be provided during install. |
 | identityTrustDomain | string | clusterDomain | Trust domain used for identity |
 | imagePullPolicy | string | `"IfNotPresent"` | Docker image pull policy |

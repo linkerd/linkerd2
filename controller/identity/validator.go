@@ -17,8 +17,9 @@ import (
 
 // K8sTokenValidator implements Validator for Kubernetes bearer tokens.
 type K8sTokenValidator struct {
-	authn  kauthn.AuthenticationV1Interface
-	domain *TrustDomain
+	authn                   kauthn.AuthenticationV1Interface
+	domain                  *TrustDomain
+	useServiceAccountTokens bool
 }
 
 // NewK8sTokenValidator takes a kubernetes client and trust domain to create a
@@ -31,18 +32,26 @@ func NewK8sTokenValidator(
 	ctx context.Context,
 	k8s k8s.Interface,
 	domain *TrustDomain,
+	useServiceAccountTokens bool,
 ) (identity.Validator, error) {
 	if err := checkAccess(ctx, k8s.AuthorizationV1()); err != nil {
 		return nil, err
 	}
 
 	authn := k8s.AuthenticationV1()
-	return &K8sTokenValidator{authn, domain}, nil
+	return &K8sTokenValidator{authn, domain, useServiceAccountTokens}, nil
 }
 
 // Validate accepts kubernetes bearer tokens and returns a DNS-form linkerd ID.
 func (k *K8sTokenValidator) Validate(ctx context.Context, tok []byte) (string, error) {
-	tr := kauthnApi.TokenReview{Spec: kauthnApi.TokenReviewSpec{Token: string(tok), Audiences: []string{"linkerd.io"}}}
+
+	// include the audience key only if we are using linkerd service account tokens
+	var audiences []string
+	if k.useServiceAccountTokens {
+		audiences = []string{"linkerd.io"}
+	}
+
+	tr := kauthnApi.TokenReview{Spec: kauthnApi.TokenReviewSpec{Token: string(tok), Audiences: audiences}}
 	rvw, err := k.authn.TokenReviews().Create(ctx, &tr, metav1.CreateOptions{})
 	if err != nil {
 		return "", err

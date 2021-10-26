@@ -39,6 +39,7 @@ func Main(args []string) {
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 	controllerNS := cmd.String("controller-namespace", "", "namespace in which Linkerd is installed")
 	identityScheme := cmd.String("identity-scheme", "", "scheme used for the identity issuer secret format")
+	useServiceAccountTokens := cmd.Bool("service-account-tokens", true, "whether to use service account tokens through volume projection")
 	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
 	identityIssuanceLifeTime := cmd.String("identity-issuance-lifetime", "", "the amount of time for which the Identity issuer should certify identity")
 	identityClockSkewAllowance := cmd.String("identity-clock-skew-allowance", "", "the amount of time to allow for clock skew within a Linkerd cluster")
@@ -129,7 +130,7 @@ func Main(args []string) {
 	if err != nil {
 		log.Fatalf("Failed to load kubeconfig: %s: %s", *kubeConfigPath, err)
 	}
-	v, err := idctl.NewK8sTokenValidator(ctx, k8sAPI, dom)
+	v, err := idctl.NewK8sTokenValidator(ctx, k8sAPI, dom, *useServiceAccountTokens)
 	if err != nil {
 		log.Fatalf("Failed to initialize identity service: %s", err)
 	}

@@ -124,6 +124,7 @@ func TestNewValues(t *testing.T) {
 			},
 		},
 		Identity: &Identity{
+			ServiceAccountTokens: true,
 			Issuer: &Issuer{
 				ClockSkewAllowance: "20s",
 				IssuanceLifetime:   "24h0m0s",
