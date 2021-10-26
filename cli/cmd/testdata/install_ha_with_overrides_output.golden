@@ -1593,7 +1593,6 @@ spec:
         - -identity-issuance-lifetime=24h0m0s
         - -identity-clock-skew-allowance=20s
         - -identity-scheme=linkerd.io/tls
-        - -service-account-tokens=true
         env:
         - name: LINKERD_DISABLED
           value: "linkerd-await cannot block the identity controller"

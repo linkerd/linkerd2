@@ -1530,7 +1530,6 @@ spec:
         - -identity-issuance-lifetime=24h0m0s
         - -identity-clock-skew-allowance=20s
         - -identity-scheme=linkerd.io/tls
-        - -service-account-tokens=true
         - -trace-collector=collector.linkerd-jaeger.svc.cluster.local:55678
         env:
         - name: LINKERD_DISABLED

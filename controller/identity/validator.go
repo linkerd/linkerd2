@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/identity"
+	log "github.com/sirupsen/logrus"
 	kauthnApi "k8s.io/api/authentication/v1"
 	kauthzApi "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,9 +18,8 @@ import (
 
 // K8sTokenValidator implements Validator for Kubernetes bearer tokens.
 type K8sTokenValidator struct {
-	authn                   kauthn.AuthenticationV1Interface
-	domain                  *TrustDomain
-	useServiceAccountTokens bool
+	authn  kauthn.AuthenticationV1Interface
+	domain *TrustDomain
 }
 
 // NewK8sTokenValidator takes a kubernetes client and trust domain to create a
@@ -32,34 +32,39 @@ func NewK8sTokenValidator(
 	ctx context.Context,
 	k8s k8s.Interface,
 	domain *TrustDomain,
-	useServiceAccountTokens bool,
 ) (identity.Validator, error) {
 	if err := checkAccess(ctx, k8s.AuthorizationV1()); err != nil {
 		return nil, err
 	}
 
 	authn := k8s.AuthenticationV1()
-	return &K8sTokenValidator{authn, domain, useServiceAccountTokens}, nil
+	return &K8sTokenValidator{authn, domain}, nil
 }
 
 // Validate accepts kubernetes bearer tokens and returns a DNS-form linkerd ID.
 func (k *K8sTokenValidator) Validate(ctx context.Context, tok []byte) (string, error) {
-
-	// include the audience key only if we are using linkerd service account tokens
-	var audiences []string
-	if k.useServiceAccountTokens {
-		audiences = []string{"linkerd.io"}
-	}
-
-	tr := kauthnApi.TokenReview{Spec: kauthnApi.TokenReviewSpec{Token: string(tok), Audiences: audiences}}
+	tr := kauthnApi.TokenReview{Spec: kauthnApi.TokenReviewSpec{Token: string(tok), Audiences: []string{"linkerd.io"}}}
 	rvw, err := k.authn.TokenReviews().Create(ctx, &tr, metav1.CreateOptions{})
 	if err != nil {
 		return "", err
 	}
 
 	if rvw.Status.Error != "" {
-		return "", identity.InvalidToken{Reason: rvw.Status.Error}
+		if strings.Contains(rvw.Status.Error, "token audiences") {
+			// Fallback to the default service account token validation if the error is realted to audiences
+			log.Debugf("TokenReview with audiences Failed. Falling back to the default")
+			tr = kauthnApi.TokenReview{Spec: kauthnApi.TokenReviewSpec{Token: string(tok), Audiences: []string{}}}
+			rvw, err = k.authn.TokenReviews().Create(ctx, &tr, metav1.CreateOptions{})
+			if err != nil {
+				return "", err
+			}
+		}
+
+		if rvw.Status.Error != "" {
+			return "", identity.InvalidToken{Reason: rvw.Status.Error}
+		}
 	}
+
 	if !rvw.Status.Authenticated {
 		return "", identity.NotAuthenticated{}
 	}
