@@ -1,5 +1,28 @@
 # Changes
 
+## stable-2.11.1
+
+This release relaxes the policy on the identity controller, allowing it to work
+in more environments. It updates the CLI and Helm charts to indicate that the
+minimum supported Kubernetes version is 1.17.0.  It also fixes a number of bugs
+in the CLI, multicluster extension, and proxy.
+
+* Fixed incorrect opaque ports warning in linkerd check --proxy with un-named ports
+* Updated `linkerd check` to avoid multiline errors with retryable checks
+* Fixed multicluster gateway name for ServerAuthorization
+* Removed unused crtExpiry template parameter from helm charts
+* Updated minimum kubernetes version to 1.17.0
+* Moved service mirror policy into multicluster base chart
+* Added -oshort flag for extension check commands
+* Skipped Prometheus scrapes on policy's admin server so that it no longer incorrectly appears as "DOWN" in the Prometheus UI
+* Updated the identity controller to use the 'all-unauthenticated' policy so that it can accept health checks from the node IPs
+  an empty selector
+* Fixed a bug where `authz` CLI commands would fail when policy resources had an empty selector
+* Fixed an infinite loop in the proxy that could cause it to be killed
+* Fixed a bug where extension checks were rendered in the wrong format
+gnu/linux to reduce memory usage
+* Changed the policy-controller to use jemalloc on x86_64
+
 ## stable-2.11.0
 
 This release introduces access control policies. Default policies may be
