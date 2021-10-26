@@ -82,6 +82,45 @@ func (et *endpointTranslator) Add(set watcher.AddressSet) {
 	et.sendFilteredUpdate(set)
 }
 
+func (et *endpointTranslator) AddServer(set watcher.AddressSet) {
+	addrs := []*pb.WeightedAddr{}
+	for _, address := range set.Addresses {
+		if address.Pod == nil {
+			continue
+		}
+		opaquePorts := make(map[uint32]struct{})
+		id := watcher.PodID{
+			Name:      address.Pod.Name,
+			Namespace: address.Pod.Namespace,
+		}
+		if ports, ok := set.OpaquePodPorts[id]; ok {
+			for port := range ports {
+				opaquePorts[port] = struct{}{}
+			}
+		}
+		skippedInboundPorts, skippedErr := getPodSkippedInboundPortsAnnotations(address.Pod)
+		if skippedErr != nil {
+			et.log.Errorf("failed getting ignored inbound ports annotation for pod: %s", skippedErr)
+		}
+		wa, err := toWeightedAddr(address, opaquePorts, skippedInboundPorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
+		if err != nil {
+			et.log.Errorf("failed to translate endpoints to weighted addr: %s", err)
+			continue
+		}
+		addrs = append(addrs, wa)
+	}
+	add := &pb.Update{Update: &pb.Update_Add{
+		Add: &pb.WeightedAddrSet{
+			Addrs:        addrs,
+			MetricLabels: set.Labels,
+		},
+	}}
+	et.log.Debugf("Sending server add: %+v", add)
+	if err := et.stream.Send(add); err != nil {
+		et.log.Errorf("Failed to send address update: %s", err)
+	}
+}
+
 func (et *endpointTranslator) Remove(set watcher.AddressSet) {
 	for id := range set.Addresses {
 		delete(et.availableEndpoints.Addresses, id)
@@ -95,6 +134,7 @@ func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
 		Addresses:       et.availableEndpoints.Addresses,
 		Labels:          set.Labels,
 		TopologicalPref: set.TopologicalPref,
+		OpaquePodPorts:  set.OpaquePodPorts,
 	}
 
 	filtered := et.filterAddresses()
@@ -120,8 +160,9 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 			allAvailEndpoints[k] = v
 		}
 		return watcher.AddressSet{
-			Addresses: allAvailEndpoints,
-			Labels:    et.availableEndpoints.Labels,
+			Addresses:      allAvailEndpoints,
+			Labels:         et.availableEndpoints.Labels,
+			OpaquePodPorts: et.availableEndpoints.OpaquePodPorts,
 		}
 	}
 
@@ -149,8 +190,9 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 		if len(filtered) > 0 {
 			et.log.Debugf("Filtered %d from a total of %d", len(filtered), len(et.availableEndpoints.Addresses))
 			return watcher.AddressSet{
-				Addresses: filtered,
-				Labels:    et.availableEndpoints.Labels,
+				Addresses:      filtered,
+				Labels:         et.availableEndpoints.Labels,
+				OpaquePodPorts: et.availableEndpoints.OpaquePodPorts,
 			}
 		}
 	}
@@ -179,8 +221,9 @@ func (et *endpointTranslator) diffEndpoints(filtered watcher.AddressSet) (watche
 	}
 
 	return watcher.AddressSet{
-			Addresses: add,
-			Labels:    filtered.Labels,
+			Addresses:      add,
+			Labels:         filtered.Labels,
+			OpaquePodPorts: filtered.OpaquePodPorts,
 		},
 		watcher.AddressSet{
 			Addresses: remove,
@@ -216,14 +259,26 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			err error
 		)
 		if address.Pod != nil {
-			opaquePorts, ok, getErr := getPodOpaquePortsAnnotations(address.Pod)
-			if getErr != nil {
-				et.log.Errorf("failed getting opaque ports annotation for pod: %s", getErr)
+			opaquePorts := make(map[uint32]struct{})
+			id := watcher.PodID{
+				Name:      address.Pod.Name,
+				Namespace: address.Pod.Namespace,
 			}
-			// If the opaque ports annotation was not set, then set the
-			// endpoint's opaque ports to the default value.
-			if !ok {
-				opaquePorts = et.defaultOpaquePorts
+			if ports, ok := set.OpaquePodPorts[id]; ok {
+				for port := range ports {
+					opaquePorts[port] = struct{}{}
+				}
+			} else {
+				var getErr error
+				opaquePorts, ok, getErr = getPodOpaquePortsAnnotations(address.Pod)
+				if getErr != nil {
+					et.log.Errorf("failed getting opaque ports annotation for pod: %s", getErr)
+				}
+				// If the opaque ports annotation was not set, then set the
+				// endpoint's opaque ports to the default value.
+				if !ok {
+					opaquePorts = et.defaultOpaquePorts
+				}
 			}
 
 			skippedInboundPorts, skippedErr := getPodSkippedInboundPortsAnnotations(address.Pod)
