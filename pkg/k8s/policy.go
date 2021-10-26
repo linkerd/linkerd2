@@ -66,8 +66,13 @@ func ServerAuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI,
 			}
 			servers = []unstructured.Unstructured{*server}
 		} else if sel, found, _ := unstructured.NestedMap(saz.UnstructuredContent(), "spec", "server", "selector"); found {
-			selector := selector(sel)
-			serverList, err := k8sAPI.DynamicClient.Resource(ServerGVR).Namespace(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: metav1.FormatLabelSelector(&selector)})
+			labelSelector := selector(sel)
+			selector, err := metav1.LabelSelectorAsSelector(&labelSelector)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to get servers: %s\n", err)
+				os.Exit(1)
+			}
+			serverList, err := k8sAPI.DynamicClient.Resource(ServerGVR).Namespace(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get servers: %s\n", err)
 				os.Exit(1)
@@ -77,8 +82,13 @@ func ServerAuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI,
 
 		for _, server := range servers {
 			if sel, found, _ := unstructured.NestedMap(server.UnstructuredContent(), "spec", "podSelector"); found {
-				selector := selector(sel)
-				selectedPods, err := k8sAPI.CoreV1().Pods(server.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: metav1.FormatLabelSelector(&selector)})
+				labelSelector := selector(sel)
+				selector, err := metav1.LabelSelectorAsSelector(&labelSelector)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
+					os.Exit(1)
+				}
+				selectedPods, err := k8sAPI.CoreV1().Pods(server.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
 					os.Exit(1)
@@ -115,8 +125,13 @@ func ServersForResource(ctx context.Context, k8sAPI *KubernetesAPI, namespace st
 
 	for _, server := range servers.Items {
 		if sel, found, _ := unstructured.NestedMap(server.UnstructuredContent(), "spec", "podSelector"); found {
-			selector := selector(sel)
-			selectedPods, err := k8sAPI.CoreV1().Pods(server.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: metav1.FormatLabelSelector(&selector)})
+			labelSelector := selector(sel)
+			selector, err := metav1.LabelSelectorAsSelector(&labelSelector)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
+				os.Exit(1)
+			}
+			selectedPods, err := k8sAPI.CoreV1().Pods(server.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
 				os.Exit(1)
@@ -152,8 +167,13 @@ func ServerAuthorizationsForServer(ctx context.Context, k8sAPI *KubernetesAPI, n
 				results = append(results, saz.GetName())
 			}
 		} else if sel, found, _ := unstructured.NestedMap(saz.UnstructuredContent(), "spec", "server", "selector"); found {
-			selector := selector(sel)
-			serverList, err := k8sAPI.DynamicClient.Resource(ServerGVR).Namespace(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: metav1.FormatLabelSelector(&selector)})
+			labelSelector := selector(sel)
+			selector, err := metav1.LabelSelectorAsSelector(&labelSelector)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to get servers: %s\n", err)
+				os.Exit(1)
+			}
+			serverList, err := k8sAPI.DynamicClient.Resource(ServerGVR).Namespace(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get servers: %s\n", err)
 				os.Exit(1)
