@@ -82,7 +82,7 @@ func (et *endpointTranslator) Add(set watcher.AddressSet) {
 	et.sendFilteredUpdate(set)
 }
 
-func (et *endpointTranslator) AddServer(set watcher.AddressSet) {
+func (et *endpointTranslator) UpdateServer(set watcher.AddressSet) {
 	addrs := []*pb.WeightedAddr{}
 	for _, address := range set.Addresses {
 		if address.Pod == nil {

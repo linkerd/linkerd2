@@ -135,7 +135,7 @@ type (
 	// EndpointUpdateListener is the interface that subscribers must implement.
 	EndpointUpdateListener interface {
 		Add(set AddressSet)
-		AddServer(set AddressSet)
+		UpdateServer(set AddressSet)
 		Remove(set AddressSet)
 		NoEndpoints(exists bool)
 	}
@@ -488,12 +488,59 @@ func (ew *EndpointsWatcher) addServer(obj interface{}) {
 	}
 	for pp := range publishersToUpdate {
 		for _, listener := range pp.listeners {
-			listener.AddServer(pp.addresses)
+			listener.UpdateServer(pp.addresses)
 		}
 	}
 }
 
-func (ew *EndpointsWatcher) deleteServer(obj interface{}) {}
+func (ew *EndpointsWatcher) deleteServer(obj interface{}) {
+	server := obj.(*v1beta1.Server)
+
+	// Get the set of pods that the server selects so that we can check if a
+	// port publisher exists for that endpoint, and if so it's set of opaque
+	// pod ports can be deleted.
+	labelMap, err := metav1.LabelSelectorAsMap(server.Spec.PodSelector)
+	if err != nil {
+		ew.log.Errorf("failed to turn Server's podSelector into label selector map: %v", err)
+		return
+	}
+	options := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labelMap).String(),
+	}
+	pods, err := ew.k8sAPI.Client.CoreV1().Pods("").List(context.Background(), options)
+	if err != nil {
+		ew.log.Errorf("failed to list pods: %v", err)
+		return
+	}
+
+	// publishersToUpdate tracks the port publishers that should send new
+	// address sets once the existing opaque pod ports have been deleted from
+	// the address set.
+	publishersToUpdate := make(map[*portPublisher]struct{})
+
+	for _, pod := range pods.Items {
+		port := getPortIntFromPod(pod, server.Spec.Port)
+		for _, sp := range ew.publishers {
+			for _, pp := range sp.ports {
+				for _, addr := range pp.addresses.Addresses {
+					if addr.Pod.Name == pod.Name && addr.Pod.Namespace == pod.Namespace {
+						id := PodID{
+							Name:      addr.Pod.Name,
+							Namespace: addr.Pod.Namespace,
+						}
+						delete(pp.addresses.OpaquePodPorts[id], port)
+						publishersToUpdate[pp] = struct{}{}
+					}
+				}
+			}
+		}
+	}
+	for pp := range publishersToUpdate {
+		for _, listener := range pp.listeners {
+			listener.UpdateServer(pp.addresses)
+		}
+	}
+}
 
 ////////////////////////
 /// servicePublisher ///
