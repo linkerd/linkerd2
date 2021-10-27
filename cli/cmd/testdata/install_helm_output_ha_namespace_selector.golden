@@ -1789,9 +1789,8 @@ spec:
             - NET_ADMIN
             - NET_RAW
           privileged: false
+          runAsNonRoot: true
           readOnlyRootFilesystem: true
-          runAsNonRoot: false
-          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /run
@@ -2247,9 +2246,8 @@ spec:
             - NET_ADMIN
             - NET_RAW
           privileged: false
+          runAsNonRoot: true
           readOnlyRootFilesystem: true
-          runAsNonRoot: false
-          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /run
@@ -2588,9 +2586,8 @@ spec:
             - NET_ADMIN
             - NET_RAW
           privileged: false
+          runAsNonRoot: true
           readOnlyRootFilesystem: true
-          runAsNonRoot: false
-          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /run
