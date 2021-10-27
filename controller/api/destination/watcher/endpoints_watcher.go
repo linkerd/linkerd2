@@ -135,9 +135,9 @@ type (
 	// EndpointUpdateListener is the interface that subscribers must implement.
 	EndpointUpdateListener interface {
 		Add(set AddressSet)
-		UpdateServer(set AddressSet)
 		Remove(set AddressSet)
 		NoEndpoints(exists bool)
+		UpdateWithServer(set AddressSet)
 	}
 )
 
@@ -435,13 +435,10 @@ func (ew *EndpointsWatcher) addServer(obj interface{}) {
 	// Get the set of pods that the server selects so that we can check if a
 	// port publisher exists for that endpoint, and if so it's new set of
 	// opaque pod ports is received.
-	labelMap, err := metav1.LabelSelectorAsMap(server.Spec.PodSelector)
+	options, err := createListOptions(server.Spec.PodSelector)
 	if err != nil {
-		ew.log.Errorf("failed to turn Server's podSelector into label selector map: %v", err)
+		ew.log.Errorf("failed to create Server ListOptions: %s", err)
 		return
-	}
-	options := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labelMap).String(),
 	}
 	pods, err := ew.k8sAPI.Client.CoreV1().Pods("").List(context.Background(), options)
 	if err != nil {
@@ -488,7 +485,7 @@ func (ew *EndpointsWatcher) addServer(obj interface{}) {
 	}
 	for pp := range publishersToUpdate {
 		for _, listener := range pp.listeners {
-			listener.UpdateServer(pp.addresses)
+			listener.UpdateWithServer(pp.addresses)
 		}
 	}
 }
@@ -499,13 +496,10 @@ func (ew *EndpointsWatcher) deleteServer(obj interface{}) {
 	// Get the set of pods that the server selects so that we can check if a
 	// port publisher exists for that endpoint, and if so it's set of opaque
 	// pod ports can be deleted.
-	labelMap, err := metav1.LabelSelectorAsMap(server.Spec.PodSelector)
+	options, err := createListOptions(server.Spec.PodSelector)
 	if err != nil {
-		ew.log.Errorf("failed to turn Server's podSelector into label selector map: %v", err)
+		ew.log.Errorf("failed to create Server ListOptions: %s", err)
 		return
-	}
-	options := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labelMap).String(),
 	}
 	pods, err := ew.k8sAPI.Client.CoreV1().Pods("").List(context.Background(), options)
 	if err != nil {
@@ -537,7 +531,7 @@ func (ew *EndpointsWatcher) deleteServer(obj interface{}) {
 	}
 	for pp := range publishersToUpdate {
 		for _, listener := range pp.listeners {
-			listener.UpdateServer(pp.addresses)
+			listener.UpdateWithServer(pp.addresses)
 		}
 	}
 }
@@ -833,16 +827,49 @@ func metricLabels(resource interface{}) map[string]string {
 }
 
 func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) AddressSet {
-	addressSet := AddressSet{
-		TopologicalPref: pp.TopologyPref,
-		Labels:          metricLabels(es),
-		Addresses:       make(map[ID]Address),
-		OpaquePodPorts:  pp.addresses.OpaquePodPorts,
-	}
-
 	resolvedPort := pp.resolveESTargetPort(es.Ports)
 	if resolvedPort == undefinedEndpointPort {
-		return addressSet
+		return AddressSet{
+			TopologicalPref: pp.TopologyPref,
+			Labels:          metricLabels(es),
+			Addresses:       make(map[ID]Address),
+			OpaquePodPorts:  pp.addresses.OpaquePodPorts,
+		}
+	}
+
+	// When new endpoints are added we have to check if there are any existing
+	// Servers that select any of the new endpoints that are backed by pods.
+	// If there are, we add those those pod-port mappings to a set which is
+	// checked later when creating the new address set.
+	serverOpaquePodPorts := make(map[podPortID]struct{})
+	objects := pp.k8sAPI.Srv().Informer().GetIndexer().List()
+	for _, object := range objects {
+		server := object.(*v1beta1.Server)
+
+		// If the server's protocol is not opaque, the pods that it selects
+		// do not need to be tracked.
+		if server.Spec.ProxyProtocol != "opaque" {
+			continue
+		}
+
+		options, err := createListOptions(server.Spec.PodSelector)
+		if err != nil {
+			pp.log.Errorf("failed to create Server ListOptions: %s", err)
+			continue
+		}
+		pods, err := pp.k8sAPI.Client.CoreV1().Pods("").List(context.Background(), options)
+		if err != nil {
+			pp.log.Errorf("failed to list pods: %v", err)
+			continue
+		}
+		for _, pod := range pods.Items {
+			id := podPortID{
+				name:      pod.Name,
+				namespace: pod.Namespace,
+				port:      getPortIntFromPod(pod, server.Spec.Port),
+			}
+			serverOpaquePodPorts[id] = struct{}{}
+		}
 	}
 
 	serviceID, err := getEndpointSliceServiceID(es)
@@ -850,6 +877,8 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 		pp.log.Errorf("Could not fetch resource service name:%v", err)
 	}
 
+	addresses := make(map[ID]Address)
+	opaquePodPorts := make(podPorts)
 	for _, endpoint := range es.Endpoints {
 		if endpoint.Hostname != nil {
 			if pp.hostname != "" && pp.hostname != *endpoint.Hostname {
@@ -874,10 +903,8 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 				for k, v := range endpoint.Topology {
 					address.TopologyLabels[k] = v
 				}
-
-				addressSet.Addresses[id] = address
+				addresses[id] = address
 			}
-
 			continue
 		}
 
@@ -888,21 +915,44 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
-
+				ppID := podPortID{
+					name:      endpoint.TargetRef.Name,
+					namespace: endpoint.TargetRef.Namespace,
+					port:      resolvedPort,
+				}
+				if _, ok := serverOpaquePodPorts[ppID]; ok {
+					id := PodID{
+						Name:      endpoint.TargetRef.Name,
+						Namespace: endpoint.TargetRef.Namespace,
+					}
+					if ports, ok := opaquePodPorts[id]; ok {
+						ports[resolvedPort] = struct{}{}
+					} else {
+						ports := map[Port]struct{}{resolvedPort: {}}
+						opaquePodPorts[id] = ports
+					}
+				}
 				for k, v := range endpoint.Topology {
 					address.TopologyLabels[k] = v
 				}
-
-				addressSet.Addresses[id] = address
+				addresses[id] = address
 			}
 		}
 
 	}
-
-	return addressSet
+	return AddressSet{
+		Addresses:       addresses,
+		Labels:          metricLabels(es),
+		TopologicalPref: pp.TopologyPref,
+		OpaquePodPorts:  opaquePodPorts,
+	}
 }
 
 func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) AddressSet {
+	// When new endpoints are added we have to check if there are any existing
+	// Servers that select any of the new endpoints that are backed by pods.
+	// If there are, we add those those pod-port mappings to a set which is
+	// checked later when creating the new address set.
 	serverOpaquePodPorts := make(map[podPortID]struct{})
 	objects := pp.k8sAPI.Srv().Informer().GetIndexer().List()
 	for _, object := range objects {
@@ -914,13 +964,10 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 			continue
 		}
 
-		labelMap, err := metav1.LabelSelectorAsMap(server.Spec.PodSelector)
+		options, err := createListOptions(server.Spec.PodSelector)
 		if err != nil {
-			pp.log.Errorf("failed to turn Server's podSelector into label selector map: %v", err)
+			pp.log.Errorf("failed to create Server ListOptions: %s", err)
 			continue
-		}
-		options := metav1.ListOptions{
-			LabelSelector: labels.SelectorFromSet(labelMap).String(),
 		}
 		pods, err := pp.k8sAPI.Client.CoreV1().Pods("").List(context.Background(), options)
 		if err != nil {
@@ -1283,6 +1330,16 @@ func isValidSlice(es *discovery.EndpointSlice) bool {
 	}
 
 	return true
+}
+
+func createListOptions(selector *metav1.LabelSelector) (metav1.ListOptions, error) {
+	labelMap, err := metav1.LabelSelectorAsMap(selector)
+	if err != nil {
+		return metav1.ListOptions{}, fmt.Errorf("failed to turn Server's podSelector into label selector map: %v", err)
+	}
+	return metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labelMap).String(),
+	}, nil
 }
 
 func getPortIntFromPod(pod corev1.Pod, serverPort intstr.IntOrString) Port {

@@ -82,45 +82,6 @@ func (et *endpointTranslator) Add(set watcher.AddressSet) {
 	et.sendFilteredUpdate(set)
 }
 
-func (et *endpointTranslator) UpdateServer(set watcher.AddressSet) {
-	addrs := []*pb.WeightedAddr{}
-	for _, address := range set.Addresses {
-		if address.Pod == nil {
-			continue
-		}
-		opaquePorts := make(map[uint32]struct{})
-		id := watcher.PodID{
-			Name:      address.Pod.Name,
-			Namespace: address.Pod.Namespace,
-		}
-		if ports, ok := set.OpaquePodPorts[id]; ok {
-			for port := range ports {
-				opaquePorts[port] = struct{}{}
-			}
-		}
-		skippedInboundPorts, skippedErr := getPodSkippedInboundPortsAnnotations(address.Pod)
-		if skippedErr != nil {
-			et.log.Errorf("failed getting ignored inbound ports annotation for pod: %s", skippedErr)
-		}
-		wa, err := toWeightedAddr(address, opaquePorts, skippedInboundPorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
-		if err != nil {
-			et.log.Errorf("failed to translate endpoints to weighted addr: %s", err)
-			continue
-		}
-		addrs = append(addrs, wa)
-	}
-	add := &pb.Update{Update: &pb.Update_Add{
-		Add: &pb.WeightedAddrSet{
-			Addrs:        addrs,
-			MetricLabels: set.Labels,
-		},
-	}}
-	et.log.Debugf("Sending server add: %+v", add)
-	if err := et.stream.Send(add); err != nil {
-		et.log.Errorf("Failed to send address update: %s", err)
-	}
-}
-
 func (et *endpointTranslator) Remove(set watcher.AddressSet) {
 	for id := range set.Addresses {
 		delete(et.availableEndpoints.Addresses, id)
@@ -248,6 +209,52 @@ func (et *endpointTranslator) NoEndpoints(exists bool) {
 	et.log.Debugf("Sending destination no endpoints: %+v", u)
 	if err := et.stream.Send(u); err != nil {
 		et.log.Errorf("Failed to send address update: %s", err)
+	}
+}
+
+func (et *endpointTranslator) UpdateWithServer(set watcher.AddressSet) {
+	addrs := []*pb.WeightedAddr{}
+
+	// For each address in the address set that is backed by a pod, check
+	// which ports are set as opaque by a Server and create a new weighted
+	// addr based off that.
+	for _, address := range set.Addresses {
+		// Addresses that are not backed by pods will not be selected by a
+		// Server, so ignore creating a new weighted addr for these.
+		if address.Pod == nil {
+			continue
+		}
+
+		opaquePorts := make(map[uint32]struct{})
+		id := watcher.PodID{
+			Name:      address.Pod.Name,
+			Namespace: address.Pod.Namespace,
+		}
+		if ports, ok := set.OpaquePodPorts[id]; ok {
+			for port := range ports {
+				opaquePorts[port] = struct{}{}
+			}
+		}
+		skippedInboundPorts, skippedErr := getPodSkippedInboundPortsAnnotations(address.Pod)
+		if skippedErr != nil {
+			et.log.Errorf("failed getting ignored inbound ports annotation for pod: %s", skippedErr)
+		}
+		wa, err := toWeightedAddr(address, opaquePorts, skippedInboundPorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
+		if err != nil {
+			et.log.Errorf("failed to translate endpoints to weighted addr: %s", err)
+			continue
+		}
+		addrs = append(addrs, wa)
+	}
+	add := &pb.Update{Update: &pb.Update_Add{
+		Add: &pb.WeightedAddrSet{
+			Addrs:        addrs,
+			MetricLabels: set.Labels,
+		},
+	}}
+	et.log.Debugf("Sending server update: %+v", add)
+	if err := et.stream.Send(add); err != nil {
+		et.log.Errorf("Failed to send server update: %s", err)
 	}
 }
 
