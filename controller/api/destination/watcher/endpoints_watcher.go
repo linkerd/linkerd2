@@ -475,7 +475,14 @@ func (ew *EndpointsWatcher) addServer(obj interface{}) {
 							// The server's protocol is not opaque, so we make
 							// sure that if the pod's matching port was
 							// previously marked as opaque then it is cleared.
-							delete(pp.addresses.OpaquePodPorts[id], port)
+							if ports, ok := pp.addresses.OpaquePodPorts[id]; ok {
+								delete(ports, port)
+								if len(ports) == 0 {
+									// There are no more opaque ports for pod
+									// id so delete it from the set.
+									delete(pp.addresses.OpaquePodPorts, id)
+								}
+							}
 						}
 						publishersToUpdate[pp] = struct{}{}
 					}
@@ -522,7 +529,14 @@ func (ew *EndpointsWatcher) deleteServer(obj interface{}) {
 							Name:      addr.Pod.Name,
 							Namespace: addr.Pod.Namespace,
 						}
-						delete(pp.addresses.OpaquePodPorts[id], port)
+						if ports, ok := pp.addresses.OpaquePodPorts[id]; ok {
+							delete(ports, port)
+							if len(ports) == 0 {
+								// There are no more opaque ports for pod id
+								// so delete it from the set.
+								delete(pp.addresses.OpaquePodPorts, id)
+							}
+						}
 						publishersToUpdate[pp] = struct{}{}
 					}
 				}
