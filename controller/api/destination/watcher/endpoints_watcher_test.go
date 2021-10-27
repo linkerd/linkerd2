@@ -90,6 +90,8 @@ func (bel *bufferingEndpointListener) NoEndpoints(exists bool) {
 	bel.noEndpointsExist = exists
 }
 
+func (bel *bufferingEndpointListener) UpdateWithServer(set AddressSet) {}
+
 type bufferingEndpointListenerWithResVersion struct {
 	added   []string
 	removed []string
@@ -139,6 +141,8 @@ func (bel *bufferingEndpointListenerWithResVersion) Remove(set AddressSet) {
 }
 
 func (bel *bufferingEndpointListenerWithResVersion) NoEndpoints(exists bool) {}
+
+func (bel *bufferingEndpointListenerWithResVersion) UpdateWithServer(set AddressSet) {}
 
 func TestEndpointsWatcher(t *testing.T) {
 	for _, tt := range []struct {
