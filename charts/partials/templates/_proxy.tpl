@@ -117,7 +117,7 @@ be used in other contexts.
     {{- required "Please provide the identity trust anchors" .Values.identityTrustAnchorsPEM | trim | nindent 4 }}
 {{ end -}}
 - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
-{{- if .Values.identity.serviceAccountTokens }}
+{{- if .Values.identity.serviceAccountTokenProjection }}
   value: /var/run/secrets/tokens/linkerd-token
 {{ else }}
   value: /var/run/secrets/kubernetes.io/serviceaccount/token
@@ -183,7 +183,7 @@ volumeMounts:
 {{- if not .Values.proxy.disableIdentity }}
 - mountPath: /var/run/linkerd/identity/end-entity
   name: linkerd-identity-end-entity
-{{- if .Values.identity.serviceAccountTokens }}
+{{- if .Values.identity.serviceAccountTokenProjection }}
 - mountPath: /var/run/secrets/tokens
   name: linkerd-token
 {{- end }}

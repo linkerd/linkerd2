@@ -1290,7 +1290,7 @@ data:
         scheme: linkerd.io/tls
         tls:
           crtPEM: test-crt-pem
-      serviceAccountTokens: true
+      serviceAccountTokenProjection: true
     identityProxyResources: null
     identityResources:
       cpu:

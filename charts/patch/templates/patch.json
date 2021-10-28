@@ -87,7 +87,7 @@
       }
     }
   },
-  {{- if .Values.identity.serviceAccountTokens}}
+  {{- if .Values.identity.serviceAccountTokenProjection}}
   {
     "op": "add",
     "path": "{{$prefix}}/spec/volumes/-",

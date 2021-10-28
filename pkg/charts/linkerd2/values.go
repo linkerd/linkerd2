@@ -183,8 +183,8 @@ type (
 	// Identity contains the fields to set the identity variables in the proxy
 	// sidecar container
 	Identity struct {
-		ServiceAccountTokens bool    `json:"serviceAccountTokens"`
-		Issuer               *Issuer `json:"issuer"`
+		ServiceAccountTokenProjection bool    `json:"serviceAccountTokenProjection"`
+		Issuer                        *Issuer `json:"issuer"`
 	}
 
 	// Issuer has the Helm variables of the identity issuer
