@@ -7,7 +7,7 @@ description: |
 home: https://linkerd.io
 keywords:
 - service-mesh
-kubeVersion: ">=1.17.0-0"
+kubeVersion: ">=1.20.0-0"
 name: "linkerd2"
 sources:
 - https://github.com/linkerd/linkerd2/
