@@ -36,9 +36,9 @@ type FakeServerAuthorizations struct {
 	ns   string
 }
 
-var serverauthorizationsResource = schema.GroupVersionResource{Group: "serverauthorization", Version: "v1beta1", Resource: "serverauthorizations"}
+var serverauthorizationsResource = schema.GroupVersionResource{Group: "policy.linkerd.io", Version: "v1beta1", Resource: "serverauthorizations"}
 
-var serverauthorizationsKind = schema.GroupVersionKind{Group: "serverauthorization", Version: "v1beta1", Kind: "ServerAuthorization"}
+var serverauthorizationsKind = schema.GroupVersionKind{Group: "policy.linkerd.io", Version: "v1beta1", Kind: "ServerAuthorization"}
 
 // Get takes name of the serverAuthorization, and returns the corresponding serverAuthorization object, and an error if there is any.
 func (c *FakeServerAuthorizations) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.ServerAuthorization, err error) {

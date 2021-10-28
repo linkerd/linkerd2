@@ -34,3 +34,7 @@ GO111MODULE='on' "${codegen_pkg}/generate-groups.sh" \
 
 # copy generated code out of GOPATH
 cp -R "${GOPATH}/src/${ROOT_PACKAGE}/controller/gen" 'controller/'
+
+# Temporary fix for https://github.com/kubernetes/code-generator/issues/135
+sed -i 's/Group: \"server\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/server/v1beta1/fake/fake_server.go"
+sed -i 's/Group: \"serverauthorization\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/serverauthorization/v1beta1/fake/fake_serverauthorization.go"
