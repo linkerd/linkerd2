@@ -952,13 +952,6 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 
 	expected := getCheckOutput(t, golden, TestHelper.GetLinkerdNamespace())
 
-	// When performing the check before upgrading, the policy-validator will not be installed yet.
-	if (TestHelper.UpgradeFromVersion() != "" && expectedVersion == TestHelper.UpgradeFromVersion()) ||
-		(TestHelper.UpgradeHelmFromVersion() != "" && expectedVersion == TestHelper.UpgradeHelmFromVersion()) {
-		expected = strings.ReplaceAll(expected, "√ policy-validator webhook has valid cert\n", "")
-		expected = strings.ReplaceAll(expected, "√ policy-validator cert is valid for at least 60 days\n", "")
-	}
-
 	timeout := time.Minute * 5
 	err := TestHelper.RetryFor(timeout, func() error {
 		if cliVersionOverride != "" {
@@ -1032,7 +1025,7 @@ func getCheckOutput(t *testing.T, goldenFile string, namespace string) string {
 
 	var expected bytes.Buffer
 	if err := tpl.Execute(&expected, vars); err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to parse check.viz.golden template: %s", err), err)
+		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to parse %s template: %s", goldenFile, err), err)
 	}
 
 	return expected.String()
