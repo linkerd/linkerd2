@@ -851,46 +851,12 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 		}
 	}
 
-	// When new endpoints are added we have to check if there are any existing
-	// Servers that select any of the new endpoints that are backed by pods.
-	// If there are, we add those those pod-port mappings to a set which is
-	// checked later when creating the new address set.
-	serverOpaquePodPorts := make(map[podPortID]struct{})
-	objects := pp.k8sAPI.Srv().Informer().GetIndexer().List()
-	for _, object := range objects {
-		server := object.(*v1beta1.Server)
-
-		// If the server's protocol is not opaque, the pods that it selects
-		// do not need to be tracked.
-		if server.Spec.ProxyProtocol != "opaque" {
-			continue
-		}
-
-		options, err := createListOptions(server.Spec.PodSelector)
-		if err != nil {
-			pp.log.Errorf("failed to create Server ListOptions: %s", err)
-			continue
-		}
-		pods, err := pp.k8sAPI.Client.CoreV1().Pods("").List(context.Background(), options)
-		if err != nil {
-			pp.log.Errorf("failed to list pods: %v", err)
-			continue
-		}
-		for _, pod := range pods.Items {
-			id := podPortID{
-				name:      pod.Name,
-				namespace: pod.Namespace,
-				port:      getPortIntFromPod(pod, server.Spec.Port),
-			}
-			serverOpaquePodPorts[id] = struct{}{}
-		}
-	}
-
 	serviceID, err := getEndpointSliceServiceID(es)
 	if err != nil {
 		pp.log.Errorf("Could not fetch resource service name:%v", err)
 	}
 
+	serverOpaquePodPorts := pp.getServerOpaquePodPorts()
 	addresses := make(map[ID]Address)
 	opaquePodPorts := make(podPorts)
 	for _, endpoint := range es.Endpoints {
@@ -963,41 +929,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 }
 
 func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) AddressSet {
-	// When new endpoints are added we have to check if there are any existing
-	// Servers that select any of the new endpoints that are backed by pods.
-	// If there are, we add those those pod-port mappings to a set which is
-	// checked later when creating the new address set.
-	serverOpaquePodPorts := make(map[podPortID]struct{})
-	objects := pp.k8sAPI.Srv().Informer().GetIndexer().List()
-	for _, object := range objects {
-		server := object.(*v1beta1.Server)
-
-		// If the server's protocol is not opaque, the pods that it selects
-		// do not need to be tracked.
-		if server.Spec.ProxyProtocol != "opaque" {
-			continue
-		}
-
-		options, err := createListOptions(server.Spec.PodSelector)
-		if err != nil {
-			pp.log.Errorf("failed to create Server ListOptions: %s", err)
-			continue
-		}
-		pods, err := pp.k8sAPI.Client.CoreV1().Pods("").List(context.Background(), options)
-		if err != nil {
-			pp.log.Errorf("failed to list pods: %v", err)
-			continue
-		}
-		for _, pod := range pods.Items {
-			id := podPortID{
-				name:      pod.Name,
-				namespace: pod.Namespace,
-				port:      getPortIntFromPod(pod, server.Spec.Port),
-			}
-			serverOpaquePodPorts[id] = struct{}{}
-		}
-	}
-
+	serverOpaquePodPorts := pp.getServerOpaquePodPorts()
 	addresses := make(map[ID]Address)
 	opaquePodPorts := make(podPorts)
 	for _, subset := range endpoints.Subsets {
@@ -1222,6 +1154,44 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
 	}
 
 	pp.metrics.setSubscribers(len(pp.listeners))
+}
+
+// getServerOpaquePodPorts gets all pods that are selected by Servers with an
+// opaque protocol. This is called when when new Endpoints or EndpointSlices
+// are added and is used to check if any of the new endpoints are selected by
+// a Server that would change the protocol that the backing pod expects.
+func (pp *portPublisher) getServerOpaquePodPorts() map[podPortID]struct{} {
+	podPorts := make(map[podPortID]struct{})
+	objects := pp.k8sAPI.Srv().Informer().GetIndexer().List()
+	for _, object := range objects {
+		server := object.(*v1beta1.Server)
+
+		// If the server's protocol is not opaque, the pods that it selects
+		// do not need to be tracked.
+		if server.Spec.ProxyProtocol != "opaque" {
+			continue
+		}
+
+		options, err := createListOptions(server.Spec.PodSelector)
+		if err != nil {
+			pp.log.Errorf("failed to create Server ListOptions: %s", err)
+			continue
+		}
+		pods, err := pp.k8sAPI.Client.CoreV1().Pods("").List(context.Background(), options)
+		if err != nil {
+			pp.log.Errorf("failed to list pods: %v", err)
+			continue
+		}
+		for _, pod := range pods.Items {
+			id := podPortID{
+				name:      pod.Name,
+				namespace: pod.Namespace,
+				port:      getPortIntFromPod(pod, server.Spec.Port),
+			}
+			podPorts[id] = struct{}{}
+		}
+	}
+	return podPorts
 }
 
 ////////////
