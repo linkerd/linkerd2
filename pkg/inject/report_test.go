@@ -243,6 +243,16 @@ func TestInjectable(t *testing.T) {
 			injectable: false,
 			reasons:    []string{hostNetworkEnabled, sidecarExists, injectEnableAnnotationAbsent},
 		},
+		{
+			podSpec: &corev1.PodSpec{},
+			podMeta: &metav1.ObjectMeta{
+				Annotations: map[string]string{
+					k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+				},
+			},
+			injectable: false,
+			reasons:    []string{disabledAutomountServiceAccountToken},
+		},
 	}
 
 	for i, testCase := range testCases {
