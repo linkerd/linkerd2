@@ -16,6 +16,12 @@ import (
 	kauthz "k8s.io/client-go/kubernetes/typed/authorization/v1"
 )
 
+const (
+	// LinkerdAudienceKey is the audience key used for the Linkerd token creation
+	// and  review requests.
+	LinkerdAudienceKey = "linkerd.io"
+)
+
 // K8sTokenValidator implements Validator for Kubernetes bearer tokens.
 type K8sTokenValidator struct {
 	authn  kauthn.AuthenticationV1Interface
@@ -43,7 +49,7 @@ func NewK8sTokenValidator(
 
 // Validate accepts kubernetes bearer tokens and returns a DNS-form linkerd ID.
 func (k *K8sTokenValidator) Validate(ctx context.Context, tok []byte) (string, error) {
-	tr := kauthnApi.TokenReview{Spec: kauthnApi.TokenReviewSpec{Token: string(tok), Audiences: []string{"linkerd.io"}}}
+	tr := kauthnApi.TokenReview{Spec: kauthnApi.TokenReviewSpec{Token: string(tok), Audiences: []string{LinkerdAudienceKey}}}
 	rvw, err := k.authn.TokenReviews().Create(ctx, &tr, metav1.CreateOptions{})
 	if err != nil {
 		return "", err
