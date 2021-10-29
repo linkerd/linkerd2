@@ -4,7 +4,7 @@
 √ pods are not annotated to disable injection
 √ at least one resource can be injected or annotated
 √ pod specs do not include UDP ports
-√ pods do not have automountServiceAccountToken set to "false"
+√ pods do not have automountServiceAccountToken set to "false", while having identity.serviceAccountTokenProjection disabled
 
 deployment "contour" injected
 

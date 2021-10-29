@@ -99,6 +99,9 @@ func TestUninjectAndInject(t *testing.T) {
 	ingressConfig := defaultConfig()
 	ingressConfig.Proxy.IsIngress = true
 
+	serviceAccountTokenVolumeDisabledConfig := defaultConfig()
+	serviceAccountTokenVolumeDisabledConfig.Identity.ServiceAccountTokenProjection = false
+
 	proxyIgnorePortsConfig := defaultConfig()
 	proxyIgnorePortsConfig.ProxyInit.IgnoreInboundPorts = "22,8100-8102"
 	proxyIgnorePortsConfig.ProxyInit.IgnoreOutboundPorts = "5432"
@@ -310,6 +313,13 @@ func TestUninjectAndInject(t *testing.T) {
 			injectProxy:      true,
 			testInjectConfig: ingressConfig,
 		},
+		{
+			inputFileName:    "inject_emojivoto_deployment_automountServiceAccountToken_false.input.yml",
+			goldenFileName:   "inject_emojivoto_deployment_automountServiceAccountToken_false_volumeProjection_disabled.golden.yml",
+			reportFileName:   "inject_emojivoto_deployment_automountServiceAccountToken_false_volumeProjection_disabled.report",
+			injectProxy:      false,
+			testInjectConfig: serviceAccountTokenVolumeDisabledConfig,
+		},
 	}
 
 	for i, tc := range testCases {
@@ -391,8 +401,8 @@ func TestRunInjectCmd(t *testing.T) {
 			inputFileName:        "inject_emojivoto_deployment_automountServiceAccountToken_false.input.yml",
 			stdOutGoldenFileName: "inject_emojivoto_deployment_automountServiceAccountToken_false.golden.yml",
 			stdErrGoldenFileName: "inject_emojivoto_deployment_automountServiceAccountToken_false.golden.stderr",
-			exitCode:             1,
-			injectProxy:          false,
+			exitCode:             0,
+			injectProxy:          true,
 		},
 		{
 			inputFileName:        "inject_emojivoto_istio.input.yml",
