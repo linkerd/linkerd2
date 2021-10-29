@@ -36,9 +36,9 @@ type FakeServers struct {
 	ns   string
 }
 
-var serversResource = schema.GroupVersionResource{Group: "server", Version: "v1beta1", Resource: "servers"}
+var serversResource = schema.GroupVersionResource{Group: "policy.linkerd.io", Version: "v1beta1", Resource: "servers"}
 
-var serversKind = schema.GroupVersionKind{Group: "server", Version: "v1beta1", Kind: "Server"}
+var serversKind = schema.GroupVersionKind{Group: "policy.linkerd.io", Version: "v1beta1", Kind: "Server"}
 
 // Get takes name of the server, and returns the corresponding server object, and an error if there is any.
 func (c *FakeServers) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.Server, err error) {
