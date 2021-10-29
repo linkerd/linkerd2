@@ -349,7 +349,7 @@ prometheus:
     # -- Docker image name for the prometheus instance
     name: prometheus
     # -- Docker image tag for the prometheus instance
-    tag: v2.19.3
+    tag: v2.30.3
     # -- Pull policy for the prometheus instance
     # @default -- defaultImagePullPolicy
     pullPolicy: ""
