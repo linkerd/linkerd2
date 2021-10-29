@@ -6,10 +6,11 @@ import (
 	"os"
 	"strings"
 
+	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
+	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -22,18 +23,10 @@ type ServerAndAuthorization struct {
 type id struct{ name, namespace string }
 
 // SazGVR is the GroupVersionResource for the ServerAuthorization resource.
-var SazGVR = schema.GroupVersionResource{
-	Group:    "policy.linkerd.io",
-	Version:  "v1alpha1",
-	Resource: "serverauthorizations",
-}
+var SazGVR = serverauthorizationv1beta1.SchemeGroupVersion.WithResource("serverauthorizations")
 
 // ServerGVR is the GroupVersionResource for the Server resource.
-var ServerGVR = schema.GroupVersionResource{
-	Group:    "policy.linkerd.io",
-	Version:  "v1alpha1",
-	Resource: "servers",
-}
+var ServerGVR = serverv1beta1.SchemeGroupVersion.WithResource("servers")
 
 // ServerAuthorizationsForResource returns a list of Server-ServerAuthorization
 // pairs which select pods belonging to the given resource.
