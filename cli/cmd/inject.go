@@ -31,7 +31,7 @@ const (
 	injectDisabledDesc               = "pods are not annotated to disable injection"
 	unsupportedDesc                  = "at least one resource can be injected or annotated"
 	udpDesc                          = "pod specs do not include UDP ports"
-	automountServiceAccountTokenDesc = "pods do not have automountServiceAccountToken set to \"false\", while having identity.serviceAccountTokenProjection disabled"
+	automountServiceAccountTokenDesc = "pods do not have automountServiceAccountToken set to \"false\" or service account token projection is enabled"
 	slash                            = "/"
 )
 
