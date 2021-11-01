@@ -19,7 +19,7 @@ import (
 const (
 	// LinkerdAudienceKey is the audience key used for the Linkerd token creation
 	// and  review requests.
-	LinkerdAudienceKey = "linkerd.io"
+	LinkerdAudienceKey = "identity.l5d.io"
 )
 
 // K8sTokenValidator implements Validator for Kubernetes bearer tokens.

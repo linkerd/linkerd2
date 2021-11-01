@@ -118,7 +118,7 @@ be used in other contexts.
 {{ end -}}
 - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
 {{- if .Values.identity.serviceAccountTokenProjection }}
-  value: /var/run/secrets/tokens/linkerd-token
+  value: /var/run/secrets/tokens/linkerd-identity-token
 {{ else }}
   value: /var/run/secrets/kubernetes.io/serviceaccount/token
 {{ end -}}
@@ -185,7 +185,7 @@ volumeMounts:
   name: linkerd-identity-end-entity
 {{- if .Values.identity.serviceAccountTokenProjection }}
 - mountPath: /var/run/secrets/tokens
-  name: linkerd-token
+  name: linkerd-identity-token
 {{- end }}
 {{- end -}}
 {{- if .Values.proxy.saMountPath }}
