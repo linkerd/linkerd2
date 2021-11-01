@@ -1175,6 +1175,8 @@ data:
         name: my.custom.registry/linkerd-io/proxy-init
         pullPolicy: ""
         version: v1.4.0
+      logFormat: ""
+      logLevel: ""
       resources:
         cpu:
           limit: 100m

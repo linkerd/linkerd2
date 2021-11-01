@@ -1175,6 +1175,8 @@ data:
         name: ProxyInitImageName
         pullPolicy: ImagePullPolicy
         version: ProxyInitVersion
+      logFormat: ""
+      logLevel: ""
       resources:
         cpu:
           limit: 100m
