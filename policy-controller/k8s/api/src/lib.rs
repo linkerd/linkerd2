@@ -13,14 +13,15 @@ pub use k8s_openapi::api::{
     self,
     core::v1::{Namespace, Node, NodeSpec, Pod, PodSpec, PodStatus},
 };
-use kube::api::{Api, ListParams};
 pub use kube::api::{ObjectMeta, ResourceExt};
-use kube_runtime::watcher;
+use kube::{
+    api::{Api, ListParams},
+    runtime::watcher,
+};
 use tracing::info_span;
 
 /// Resource watches.
 pub struct ResourceWatches {
-    pub nodes_rx: Watch<Node>,
     pub pods_rx: Watch<Pod>,
     pub servers_rx: Watch<policy::Server>,
     pub authorizations_rx: Watch<policy::ServerAuthorization>,
@@ -45,8 +46,6 @@ impl From<kube::Client> for ResourceWatches {
         let pod_params = params.clone().labels("linkerd.io/control-plane-ns");
 
         Self {
-            nodes_rx: Watch::from(watcher(Api::all(client.clone()), params.clone()))
-                .instrument(info_span!("nodes")),
             pods_rx: Watch::from(watcher(Api::all(client.clone()), pod_params))
                 .instrument(info_span!("pods")),
             servers_rx: Watch::from(watcher(Api::all(client.clone()), params.clone()))

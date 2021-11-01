@@ -11,7 +11,7 @@ for your microservices — with no code change required.
 
 ## Quickstart and documentation
 
-You can run Linkerd on any Kubernetes 1.16+ cluster in a matter of seconds. See
+You can run Linkerd on any Kubernetes 1.20+ cluster in a matter of seconds. See
 the [Linkerd Getting Started Guide][getting-started] for how.
 
 For more comprehensive documentation, start with the [Linkerd
@@ -42,8 +42,7 @@ release, just replace with `linkerd-edge`.
 
 ## Installing the chart
 
-You must provide the certificates and keys described in the preceding section,
-and the same expiration date you used to generate the Issuer certificate.
+You must provide the certificates and keys described in the preceding section.
 
 In this example we set the expiration date to one year ahead:
 
@@ -52,7 +51,6 @@ helm install \
   --set-file identityTrustAnchorsPEM=ca.crt \
   --set-file identity.issuer.tls.crtPEM=issuer.crt \
   --set-file identity.issuer.tls.keyPEM=issuer.key \
-  --set identity.issuer.crtExpiry=$(date -d '+8760 hour' +"%Y-%m-%dT%H:%M:%SZ") \
   linkerd/linkerd2
 ```
 
@@ -77,7 +75,6 @@ helm install \
   --set-file identityTrustAnchorsPEM=ca.crt \
   --set-file identity.issuer.tls.crtPEM=issuer.crt \
   --set-file identity.issuer.tls.keyPEM=issuer.key \
-  --set identity.issuer.crtExpiry=$(date -d '+8760 hour' +"%Y-%m-%dT%H:%M:%SZ") \
   -f linkerd2/values-ha.yaml
   linkerd/linkerd2
 ```
@@ -116,7 +113,7 @@ extensions:
 
 ## Requirements
 
-Kubernetes: `>=1.16.0-0`
+Kubernetes: `>=1.20.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
@@ -145,7 +142,6 @@ Kubernetes: `>=1.16.0-0`
 | enablePSP | bool | `false` | Add a PSP resource and bind it to the control plane ServiceAccounts. Note PSP has been deprecated since k8s v1.21 |
 | identity.externalCA | bool | `false` | If the linkerd-identity-trust-roots ConfigMap has already been created |
 | identity.issuer.clockSkewAllowance | string | `"20s"` | Amount of time to allow for clock skew within a Linkerd cluster |
-| identity.issuer.crtExpiry | string | `nil` | Expiration timestamp for the issuer certificate. It must be provided during install. Must match the expiry date in crtPEM |
 | identity.issuer.issuanceLifetime | string | `"24h0m0s"` | Amount of time for which the Identity issuer should certify identity |
 | identity.issuer.scheme | string | `"linkerd.io/tls"` |  |
 | identity.issuer.tls | object | `{"crtPEM":"","keyPEM":""}` | Which scheme is used for the identity issuer secret format |
@@ -159,7 +155,6 @@ Kubernetes: `>=1.16.0-0`
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
 | namespace | string | `"linkerd"` | Control plane namespace |
 | nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
-| omitWebhookSideEffects | bool | `false` | Omit the `sideEffects` flag in the webhook manifests |
 | podAnnotations | object | `{}` | Additional annotations to add to all pods |
 | podLabels | object | `{}` | Additional labels to add to all pods |
 | policyController.defaultAllowPolicy | string | "all-unauthenticated" | The default allow policy to use when no `Server` selects a pod.  One of: "all-authenticated", "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny" |
@@ -177,6 +172,7 @@ Kubernetes: `>=1.16.0-0`
 | policyValidator.externalSecret | bool | `false` | Do not create a secret resource for the policyValidator webhook. If this is set to `true`, the value `policyValidator.caBundle` must be set (see below). |
 | policyValidator.keyPEM | string | `""` | Certificate key for the policy validator. If not provided then Helm will generate one. |
 | policyValidator.namespaceSelector | object | `{"matchExpressions":[{"key":"config.linkerd.io/admission-webhooks","operator":"NotIn","values":["disabled"]}]}` | Namespace selector used by admission webhook |
+| priorityClassName | string | `""` | Kubernetes priorityClassName for the Linkerd Pods |
 | profileValidator.caBundle | string | `""` | Bundle of CA certificates for service profile validator. If not provided then Helm will use the certificate generated  for `profileValidator.crtPEM`. If `profileValidator.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
 | profileValidator.crtPEM | string | `""` | Certificate for the service profile validator. If not provided then Helm will generate one. |
 | profileValidator.externalSecret | bool | `false` | Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `profileValidator.caBundle` must be set (see below). |
@@ -191,7 +187,7 @@ Kubernetes: `>=1.16.0-0`
 | proxy.inboundConnectTimeout | string | `"100ms"` | Maximum time allowed for the proxy to establish an inbound TCP connection |
 | proxy.logFormat | string | `"plain"` | Log format (`plain` or `json`) for the proxy |
 | proxy.logLevel | string | `"warn,linkerd=info"` | Log level for the proxy |
-| proxy.opaquePorts | string | `"25,443,587,3306,4444,5432,6379,9300,11211"` | Default set of opaque ports - SMTP (25,587) server-first - HTTPS (443) opaque TLS - MYSQL (3306) server-first - Galera (4444) server-first - PostgreSQL (5432) server-first - Redis (6379) server-first - ElasticSearch (9300) server-first - Memcached (11211) clients do not issue any preamble, which breaks detection |
+| proxy.opaquePorts | string | `"25,587,3306,4444,5432,6379,9300,11211"` | Default set of opaque ports - SMTP (25,587) server-first - MYSQL (3306) server-first - Galera (4444) server-first - PostgreSQL (5432) server-first - Redis (6379) server-first - ElasticSearch (9300) server-first - Memcached (11211) clients do not issue any preamble, which breaks detection |
 | proxy.outboundConnectTimeout | string | `"1000ms"` | Maximum time allowed for the proxy to establish an outbound TCP connection |
 | proxy.ports.admin | int | `4191` | Admin port for the proxy container |
 | proxy.ports.control | int | `4190` | Control port for the proxy container |
@@ -209,7 +205,7 @@ Kubernetes: `>=1.16.0-0`
 | proxyInit.ignoreOutboundPorts | string | `"4567,4568"` | Default set of outbound ports to skip via iptables - Galera (4567,4568) |
 | proxyInit.image.name | string | `"cr.l5d.io/linkerd/proxy-init"` | Docker image for the proxy-init container |
 | proxyInit.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy-init container Docker image |
-| proxyInit.image.version | string | `"v1.4.0"` | Tag for the proxy-init container Docker image |
+| proxyInit.image.version | string | `"v1.4.1"` | Tag for the proxy-init container Docker image |
 | proxyInit.resources.cpu.limit | string | `"100m"` | Maximum amount of CPU units that the proxy-init container can use |
 | proxyInit.resources.cpu.request | string | `"10m"` | Amount of CPU units that the proxy-init container requests |
 | proxyInit.resources.memory.limit | string | `"50Mi"` | Maximum amount of memory that the proxy-init container can use |

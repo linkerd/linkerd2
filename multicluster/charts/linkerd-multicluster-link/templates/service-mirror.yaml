@@ -4,6 +4,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-service-mirror-access-local-resources-{{.Values.targetClusterName}}
   labels:
+    linkerd.io/extension: multicluster
     linkerd.io/control-plane-component: service-mirror
     mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 rules:
@@ -19,6 +20,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-service-mirror-access-local-resources-{{.Values.targetClusterName}}
   labels:
+    linkerd.io/extension: multicluster
     linkerd.io/control-plane-component: service-mirror
     mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 roleRef:
@@ -36,6 +38,7 @@ metadata:
   name: linkerd-service-mirror-read-remote-creds-{{.Values.targetClusterName}}
   namespace: {{.Values.namespace}}
   labels:
+      linkerd.io/extension: multicluster
       linkerd.io/control-plane-component: service-mirror
       mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 rules:
@@ -53,6 +56,7 @@ metadata:
   name: linkerd-service-mirror-read-remote-creds-{{.Values.targetClusterName}}
   namespace: {{.Values.namespace}}
   labels:
+      linkerd.io/extension: multicluster
       linkerd.io/control-plane-component: service-mirror
       mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 roleRef:
@@ -70,6 +74,7 @@ metadata:
   name: linkerd-service-mirror-{{.Values.targetClusterName}}
   namespace: {{.Values.namespace}}
   labels:
+    linkerd.io/extension: multicluster
     linkerd.io/control-plane-component: service-mirror
     mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 ---
@@ -77,6 +82,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
+    linkerd.io/extension: multicluster
     linkerd.io/control-plane-component: service-mirror
     mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
   name: linkerd-service-mirror-{{.Values.targetClusterName}}

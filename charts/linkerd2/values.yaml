@@ -42,6 +42,8 @@ identityTrustDomain: ""
 podAnnotations: {}
 # -- Additional labels to add to all pods
 podLabels: {}
+# -- Kubernetes priorityClassName for the Linkerd Pods
+priorityClassName: ""
 
 # policy controller configuration
 policyController:
@@ -139,14 +141,13 @@ proxy:
   requireIdentityOnInboundPorts: ""
   # -- Default set of opaque ports
   # - SMTP (25,587) server-first
-  # - HTTPS (443) opaque TLS
   # - MYSQL (3306) server-first
   # - Galera (4444) server-first
   # - PostgreSQL (5432) server-first
   # - Redis (6379) server-first
   # - ElasticSearch (9300) server-first
   # - Memcached (11211) clients do not issue any preamble, which breaks detection
-  opaquePorts: "25,443,587,3306,4444,5432,6379,9300,11211"
+  opaquePorts: "25,587,3306,4444,5432,6379,9300,11211"
 
 # proxy-init configuration
 proxyInit:
@@ -163,7 +164,7 @@ proxyInit:
     # @default -- imagePullPolicy
     pullPolicy: ""
     # -- Tag for the proxy-init container Docker image
-    version: v1.4.0
+    version: v1.4.1
   resources:
     cpu:
       # -- Maximum amount of CPU units that the proxy-init container can use
@@ -191,8 +192,6 @@ enableH2Upgrade: true
 # PSP has been deprecated since k8s v1.21
 enablePSP: false
 
-# -- Omit the `sideEffects` flag in the webhook manifests
-omitWebhookSideEffects: false
 # -- Failure policy for the proxy injector
 webhookFailurePolicy: Ignore
 
@@ -234,9 +233,6 @@ identity:
 
     # -- Amount of time to allow for clock skew within a Linkerd cluster
     clockSkewAllowance: 20s
-
-    # -- Expiration timestamp for the issuer certificate. It must be provided during install. Must match the expiry date in crtPEM
-    crtExpiry:
 
     # -- Amount of time for which the Identity issuer should certify identity
     issuanceLifetime: 24h0m0s

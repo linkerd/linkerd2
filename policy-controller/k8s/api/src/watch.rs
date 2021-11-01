@@ -1,9 +1,8 @@
 use futures::prelude::*;
+pub use kube::runtime::watcher::{Event, Result};
 use std::pin::Pin;
 use tokio::time;
 use tracing::{info, Instrument};
-
-pub use kube_runtime::watcher::{Event, Result};
 
 /// Wraps an event stream that never terminates.
 pub struct Watch<T> {

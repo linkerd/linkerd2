@@ -15,7 +15,7 @@ shouldn't be used as-is unless you really know what you're doing ;-)
 
 ## Requirements
 
-Kubernetes: `>=1.16.0-0`
+Kubernetes: `>=1.20.0-0`
 
 ## Values
 

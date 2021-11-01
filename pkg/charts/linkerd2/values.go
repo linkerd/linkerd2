@@ -3,7 +3,6 @@ package linkerd2
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/imdario/mergo"
 	"github.com/linkerd/linkerd2/pkg/charts"
@@ -31,7 +30,6 @@ type (
 		EnableH2Upgrade              bool                `json:"enableH2Upgrade"`
 		EnablePodAntiAffinity        bool                `json:"enablePodAntiAffinity"`
 		WebhookFailurePolicy         string              `json:"webhookFailurePolicy"`
-		OmitWebhookSideEffects       bool                `json:"omitWebhookSideEffects"`
 		DisableHeartBeat             bool                `json:"disableHeartBeat"`
 		HeartbeatSchedule            string              `json:"heartbeatSchedule"`
 		InstallNamespace             bool                `json:"installNamespace"`
@@ -57,8 +55,9 @@ type (
 		ImagePullSecrets             []map[string]string `json:"imagePullSecrets"`
 		LinkerdVersion               string              `json:"linkerdVersion"`
 
-		PodAnnotations map[string]string `json:"podAnnotations"`
-		PodLabels      map[string]string `json:"podLabels"`
+		PodAnnotations    map[string]string `json:"podAnnotations"`
+		PodLabels         map[string]string `json:"podLabels"`
+		PriorityClassName string            `json:"priorityClassName"`
 
 		PolicyController *PolicyController `json:"policyController"`
 		Proxy            *Proxy            `json:"proxy"`
@@ -193,7 +192,6 @@ type (
 		Scheme             string     `json:"scheme"`
 		ClockSkewAllowance string     `json:"clockSkewAllowance"`
 		IssuanceLifetime   string     `json:"issuanceLifetime"`
-		CrtExpiry          time.Time  `json:"crtExpiry"`
 		TLS                *IssuerTLS `json:"tls"`
 	}
 

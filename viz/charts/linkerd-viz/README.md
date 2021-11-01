@@ -11,7 +11,7 @@ components for Linkerd.
 
 ## Quickstart and documentation
 
-You can run Linkerd on any Kubernetes 1.16+ cluster in a matter of seconds. See
+You can run Linkerd on any Kubernetes 1.20+ cluster in a matter of seconds. See
 the [Linkerd Getting Started Guide][getting-started] for how.
 
 For more comprehensive documentation, start with the [Linkerd
@@ -69,7 +69,7 @@ helm install --name linkerd-viz linkerd/linkerd-viz
 
 ## Requirements
 
-Kubernetes: `>=1.16.0-0`
+Kubernetes: `>=1.20.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
@@ -86,6 +86,7 @@ Kubernetes: `>=1.16.0-0`
 | dashboard.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the  web component |
 | dashboard.image.registry | string | defaultRegistry | Docker registry for the web instance |
 | dashboard.image.tag | string | linkerdVersion | Docker image tag for the web instance |
+| dashboard.logFormat | string | defaultLogFormat | log format of the dashboard component |
 | dashboard.logLevel | string | defaultLogLevel | log level of the dashboard component |
 | dashboard.proxy | string | `nil` |  |
 | dashboard.replicas | int | `1` | Number of replicas of dashboard |
@@ -95,6 +96,7 @@ Kubernetes: `>=1.16.0-0`
 | dashboard.resources.memory.request | string | `nil` | Amount of memory that the web container requests |
 | dashboard.restrictPrivileges | bool | `false` | Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check |
 | defaultImagePullPolicy | string | `"IfNotPresent"` | Docker imagePullPolicy for all viz components |
+| defaultLogFormat | string | `"plain"` | Log format (`plain` or `json`) for all the viz components. |
 | defaultLogLevel | string | `"info"` | Log level for all the viz components |
 | defaultRegistry | string | `"cr.l5d.io/linkerd"` | Docker registry for all viz components |
 | defaultUID | int | `2103` | UID for all the viz components |
@@ -105,6 +107,8 @@ Kubernetes: `>=1.16.0-0`
 | grafana.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the grafana instance |
 | grafana.image.registry | string | defaultRegistry | Docker registry for the grafana instance |
 | grafana.image.tag | string | linkerdVersion | Docker image tag for the grafana instance |
+| grafana.logFormat | string | defaultLogFormat | log format (plain, json) of the grafana instance |
+| grafana.logLevel | string | defaultLogLevel | log level of the grafana instance |
 | grafana.nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | grafana.proxy | string | `nil` |  |
 | grafana.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the grafana container can use |
@@ -124,6 +128,7 @@ Kubernetes: `>=1.16.0-0`
 | metricsAPI.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the metrics-api component |
 | metricsAPI.image.registry | string | defaultRegistry | Docker registry for the metrics-api component |
 | metricsAPI.image.tag | string | linkerdVersion | Docker image tag for the metrics-api component |
+| metricsAPI.logFormat | string | defaultLogFormat | log format of the metrics-api component |
 | metricsAPI.logLevel | string | defaultLogLevel | log level of the metrics-api component |
 | metricsAPI.nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | metricsAPI.proxy | string | `nil` |  |
@@ -143,7 +148,8 @@ Kubernetes: `>=1.16.0-0`
 | prometheus.image.name | string | `"prometheus"` | Docker image name for the prometheus instance |
 | prometheus.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the prometheus instance |
 | prometheus.image.registry | string | `"prom"` | Docker registry for the prometheus instance |
-| prometheus.image.tag | string | `"v2.19.3"` | Docker image tag for the prometheus instance |
+| prometheus.image.tag | string | `"v2.30.3"` | Docker image tag for the prometheus instance |
+| prometheus.logFormat | string | defaultLogLevel | log format (plain, json) of the prometheus instance |
 | prometheus.logLevel | string | defaultLogLevel | log level of the prometheus instance |
 | prometheus.nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | prometheus.proxy | string | `nil` |  |
@@ -166,6 +172,7 @@ Kubernetes: `>=1.16.0-0`
 | tap.image.registry | string | defaultRegistry | Docker registry for the tap instance |
 | tap.image.tag | string | linkerdVersion | Docker image tag for the tap instance |
 | tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided then Helm will generate one. |
+| tap.logFormat | string | defaultLogFormat | log format of the tap component |
 | tap.logLevel | string | defaultLogLevel | log level of the tap component |
 | tap.proxy | string | `nil` |  |
 | tap.replicas | int | `1` | Number of tap component replicas |
@@ -183,6 +190,7 @@ Kubernetes: `>=1.16.0-0`
 | tapInjector.image.registry | string | defaultRegistry | Docker registry for the tapInjector instance |
 | tapInjector.image.tag | string | linkerdVersion | Docker image tag for the tapInjector instance |
 | tapInjector.keyPEM | string | `""` | Certificate key for the tapInjector. If not provided then Helm will generate one. |
+| tapInjector.logFormat | string | defaultLogFormat | log format of the tapInjector component |
 | tapInjector.logLevel | string | defaultLogLevel | log level of the tapInjector |
 | tapInjector.namespaceSelector | string | `nil` |  |
 | tapInjector.objectSelector | string | `nil` |  |

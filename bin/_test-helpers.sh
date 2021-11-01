@@ -6,7 +6,7 @@ set +e
 
 ##### Test setup helpers #####
 
-export default_test_names=(deep external-issuer external-prometheus-deep helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
+export default_test_names=(deep external-issuer external-prometheus-deep helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable default-policy-deny)
 export external_resource_test_names=(external-resources)
 export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}" "${external_resource_test_names[*]}")
 images_load_default=(proxy controller policy-controller web metrics-api grafana tap)
@@ -364,7 +364,7 @@ run_test(){
 
   printf 'Test script: [%s] Params: [%s]\n' "${filename##*/}" "$*"
   # Exit on failure here
-  GO111MODULE=on go test -test.timeout=60m --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --helm-path="$helm_path" --k8s-context="$context" --integration-tests "$@" || exit 1
+  GO111MODULE=on go test -test.timeout=60m --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --helm-path="$helm_path" --default-allow-policy="$default_allow_policy" --k8s-context="$context" --integration-tests "$@" || exit 1
 }
 
 # Returns the latest version for the release channel
@@ -528,6 +528,12 @@ run_deep_test() {
   for test in "${tests[@]}"; do
     run_test "$test"
   done
+}
+
+run_default-policy-deny_test() {
+  local tests=()
+  export default_allow_policy='deny'
+  run_test "$test_directory/install_test.go"
 }
 
 run_cni-calico-deep_test() {

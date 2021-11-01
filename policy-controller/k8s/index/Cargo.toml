@@ -1,7 +1,7 @@
 [package]
 name = "linkerd-policy-controller-k8s-index"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 license = "Apache-2.0"
 publish = false
 
@@ -10,7 +10,7 @@ anyhow = "1"
 async-stream = "0.3"
 async-trait = "0.1"
 dashmap = "4"
-futures = "0.3"
+futures = { version = "0.3", default-features = false }
 linkerd-policy-controller-core = { path = "../../core" }
 linkerd-policy-controller-k8s-api = { path = "../api" }
 tokio = { version = "1", features = ["macros", "rt", "sync"] }

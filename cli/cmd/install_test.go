@@ -35,7 +35,6 @@ func TestRender(t *testing.T) {
 		ControllerUID:           2103,
 		EnableH2Upgrade:         true,
 		WebhookFailurePolicy:    "WebhookFailurePolicy",
-		OmitWebhookSideEffects:  false,
 		HeartbeatSchedule:       "1 2 3 4 5",
 		InstallNamespace:        true,
 		Identity:                defaultValues.Identity,
@@ -55,6 +54,7 @@ func TestRender(t *testing.T) {
 		IdentityTrustAnchorsPEM: defaultValues.IdentityTrustAnchorsPEM,
 		PodAnnotations:          map[string]string{},
 		PodLabels:               map[string]string{},
+		PriorityClassName:       "PriorityClassName",
 		PolicyController: &charts.PolicyController{
 			Image: &charts.Image{
 				Name:       "PolicyControllerImageName",
@@ -288,7 +288,6 @@ func testInstallOptionsHA(ha bool) (*charts.Values, error) {
 		return nil, err
 	}
 	values.Identity.Issuer.TLS.CrtPEM = crt.EncodeCertificatePEM()
-	values.Identity.Issuer.CrtExpiry = crt.Certificate.NotAfter
 
 	key, err := loadKeyPEM(filepath.Join("testdata", "valid-key.pem"))
 	if err != nil {

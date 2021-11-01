@@ -1,7 +1,7 @@
 [package]
 name = "linkerd-policy-controller-grpc"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 license = "Apache-2.0"
 publish = false
 
@@ -12,9 +12,9 @@ rustfmt = ["linkerd2-proxy-api/rustfmt"]
 async-stream = "0.3"
 async-trait = "0.1"
 drain = "0.1"
-futures = "0.3"
-linkerd2-proxy-api = { version = "0.2", features = ["inbound", "server"] }
+futures = { version = "0.3", default-features = false }
+linkerd2-proxy-api = { version = "0.3", features = ["inbound", "server"] }
 linkerd-policy-controller-core = { path = "../core" }
 tokio = { version = "1", features = ["macros"] }
-tonic = { version = "0.5", default-features = false, features = ["transport"] }
+tonic = { version = "0.6", default-features = false, features = ["transport"] }
 tracing =  "0.1"

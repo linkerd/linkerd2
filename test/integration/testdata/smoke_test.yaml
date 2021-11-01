@@ -32,6 +32,34 @@ spec:
     port: 9090
     targetPort: 9090
 ---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: smoke-test-terminus
+spec:
+  podSelector:
+    matchLabels:
+      app: smoke-test-terminus
+  port: 9090
+  proxyProtocol: gRPC
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: ServerAuthorization
+metadata:
+  name: smoke-test-terminus
+spec:
+  server:
+    name: smoke-test-terminus
+  client:
+    meshTLS:
+      serviceAccounts:
+      - name: default
+        namespace: linkerd-smoke-test
+      - name: default
+        namespace: linkerd-smoke-test-manual
+      - name: default
+        namespace: linkerd-smoke-test-ann
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -64,3 +92,29 @@ spec:
   - name: http
     port: 8080
     targetPort: 8080
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: smoke-test-proxy-admin
+spec:
+  podSelector:
+    matchExpressions:
+    - key: app
+      operator: In
+      values:
+      - smoke-test-terminus
+      - smoke-test-gateway
+  port: linkerd-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: ServerAuthorization
+metadata:
+  name: smoke-test-proxy-admin
+spec:
+  server:
+    name: smoke-test-proxy-admin
+  client:
+    # for kubelet probes
+    unauthenticated: true

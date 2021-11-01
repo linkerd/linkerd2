@@ -175,8 +175,8 @@ func newCheckOptions() *checkOptions {
 }
 
 func (options *checkOptions) validate() error {
-	if options.output != healthcheck.TableOutput && options.output != healthcheck.JSONOutput {
-		return fmt.Errorf("Invalid output type '%s'. Supported output types are: %s, %s", options.output, healthcheck.JSONOutput, healthcheck.TableOutput)
+	if options.output != healthcheck.TableOutput && options.output != healthcheck.JSONOutput && options.output != healthcheck.ShortOutput {
+		return fmt.Errorf("Invalid output type '%s'. Supported output types are: %s, %s, %s", options.output, healthcheck.JSONOutput, healthcheck.TableOutput, healthcheck.ShortOutput)
 	}
 	return nil
 }

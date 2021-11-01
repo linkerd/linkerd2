@@ -99,6 +99,4 @@ webhooks:
     apiGroups: [""]
     apiVersions: ["v1"]
     resources: ["pods", "services"]
-  {{- if not .Values.omitWebhookSideEffects }}
   sideEffects: None
-  {{- end }}

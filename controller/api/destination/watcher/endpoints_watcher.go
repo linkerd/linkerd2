@@ -178,9 +178,9 @@ func (ew *EndpointsWatcher) Subscribe(id ServiceID, port Port, hostname string, 
 	}
 
 	if hostname == "" {
-		ew.log.Infof("Establishing watch on endpoint [%s:%d]", id, port)
+		ew.log.Debugf("Establishing watch on endpoint [%s:%d]", id, port)
 	} else {
-		ew.log.Infof("Establishing watch on endpoint [%s.%s:%d]", hostname, id, port)
+		ew.log.Debugf("Establishing watch on endpoint [%s.%s:%d]", hostname, id, port)
 	}
 
 	sp := ew.getOrNewServicePublisher(id)
@@ -192,9 +192,9 @@ func (ew *EndpointsWatcher) Subscribe(id ServiceID, port Port, hostname string, 
 // Unsubscribe removes a listener from the subscribers list for this authority.
 func (ew *EndpointsWatcher) Unsubscribe(id ServiceID, port Port, hostname string, listener EndpointUpdateListener) {
 	if hostname == "" {
-		ew.log.Infof("Stopping watch on endpoint [%s:%d]", id, port)
+		ew.log.Debugf("Stopping watch on endpoint [%s:%d]", id, port)
 	} else {
-		ew.log.Infof("Stopping watch on endpoint [%s.%s:%d]", hostname, id, port)
+		ew.log.Debugf("Stopping watch on endpoint [%s.%s:%d]", hostname, id, port)
 	}
 
 	sp, ok := ew.getServicePublisher(id)
