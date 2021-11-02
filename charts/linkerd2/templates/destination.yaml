@@ -315,4 +315,7 @@ spec:
       {{ if not .Values.cniEnabled -}}
       - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
+      {{if .Values.identity.serviceAccountTokenProjection -}}
+      - {{- include "partials.proxy.volumes.service-account-token" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}

@@ -1270,6 +1270,7 @@ data:
             AiAtuoI5XuCtrGVRzSmRTl2ra28aV9MyTU7d5qnTAFHKSgIgRKCvluOSgA5O21p5
             51tdrmkHEZRr0qlLSJdHYgEfMzk=
             -----END CERTIFICATE-----
+      serviceAccountTokenProjection: true
     identityProxyResources: null
     identityResources: null
     identityTrustAnchorsPEM: |
@@ -1633,7 +1634,7 @@ spec:
               name: linkerd-identity-trust-roots
               key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
-          value: /var/run/secrets/kubernetes.io/serviceaccount/token
+          value: /var/run/secrets/tokens/linkerd-identity-token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
           value: localhost.:8080
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
@@ -1671,6 +1672,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+        - mountPath: /var/run/secrets/tokens
+          name: linkerd-identity-token
       serviceAccountName: linkerd-identity
       volumes:
       - name: identity-issuer
@@ -1679,6 +1682,13 @@ spec:
       - configMap:
           name: linkerd-identity-trust-roots
         name: trust-roots
+      - name: linkerd-identity-token
+        projected:
+          sources:
+          - serviceAccountToken:
+              path: linkerd-identity-token
+              expirationSeconds: 86400
+              audience: identity.l5d.io
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -1892,7 +1902,7 @@ spec:
               name: linkerd-identity-trust-roots
               key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
-          value: /var/run/secrets/kubernetes.io/serviceaccount/token
+          value: /var/run/secrets/tokens/linkerd-identity-token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
           value: linkerd-identity-headless.linkerd.svc.cluster.local.:8080
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
@@ -1935,6 +1945,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+        - mountPath: /var/run/secrets/tokens
+          name: linkerd-identity-token
       - args:
         - destination
         - -addr=:8086
@@ -2038,6 +2050,13 @@ spec:
       - name: policy-tls
         secret:
           secretName: linkerd-policy-validator-k8s-tls
+      - name: linkerd-identity-token
+        projected:
+          sources:
+          - serviceAccountToken:
+              path: linkerd-identity-token
+              expirationSeconds: 86400
+              audience: identity.l5d.io
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -2205,7 +2224,7 @@ spec:
               name: linkerd-identity-trust-roots
               key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
-          value: /var/run/secrets/kubernetes.io/serviceaccount/token
+          value: /var/run/secrets/tokens/linkerd-identity-token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
           value: linkerd-identity-headless.linkerd.svc.cluster.local.:8080
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
@@ -2248,6 +2267,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+        - mountPath: /var/run/secrets/tokens
+          name: linkerd-identity-token
       - args:
         - proxy-injector
         - -log-level=info
@@ -2291,6 +2312,13 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-proxy-injector-k8s-tls
+      - name: linkerd-identity-token
+        projected:
+          sources:
+          - serviceAccountToken:
+              path: linkerd-identity-token
+              expirationSeconds: 86400
+              audience: identity.l5d.io
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity

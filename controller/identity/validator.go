@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/identity"
+	log "github.com/sirupsen/logrus"
 	kauthnApi "k8s.io/api/authentication/v1"
 	kauthzApi "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,6 +14,12 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 	kauthn "k8s.io/client-go/kubernetes/typed/authentication/v1"
 	kauthz "k8s.io/client-go/kubernetes/typed/authorization/v1"
+)
+
+const (
+	// LinkerdAudienceKey is the audience key used for the Linkerd token creation
+	// and  review requests.
+	LinkerdAudienceKey = "identity.l5d.io"
 )
 
 // K8sTokenValidator implements Validator for Kubernetes bearer tokens.
@@ -42,16 +49,28 @@ func NewK8sTokenValidator(
 
 // Validate accepts kubernetes bearer tokens and returns a DNS-form linkerd ID.
 func (k *K8sTokenValidator) Validate(ctx context.Context, tok []byte) (string, error) {
-	// TODO: Set/check `audience`
-	tr := kauthnApi.TokenReview{Spec: kauthnApi.TokenReviewSpec{Token: string(tok)}}
+	tr := kauthnApi.TokenReview{Spec: kauthnApi.TokenReviewSpec{Token: string(tok), Audiences: []string{LinkerdAudienceKey}}}
 	rvw, err := k.authn.TokenReviews().Create(ctx, &tr, metav1.CreateOptions{})
 	if err != nil {
 		return "", err
 	}
 
 	if rvw.Status.Error != "" {
-		return "", identity.InvalidToken{Reason: rvw.Status.Error}
+		if strings.Contains(rvw.Status.Error, "token audiences") {
+			// Fallback to the default service account token validation if the error is realted to audiences
+			log.Debugf("TokenReview with audiences Failed. Falling back to the default")
+			tr = kauthnApi.TokenReview{Spec: kauthnApi.TokenReviewSpec{Token: string(tok), Audiences: []string{}}}
+			rvw, err = k.authn.TokenReviews().Create(ctx, &tr, metav1.CreateOptions{})
+			if err != nil {
+				return "", err
+			}
+		}
+
+		if rvw.Status.Error != "" {
+			return "", identity.InvalidToken{Reason: rvw.Status.Error}
+		}
 	}
+
 	if !rvw.Status.Authenticated {
 		return "", identity.NotAuthenticated{}
 	}
