@@ -9,7 +9,7 @@ require (
 	github.com/containernetworking/cni v0.6.1-0.20180218032124-142cde0c766c
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/emicklei/proto v1.9.1
-	github.com/evanphx/json-patch v4.9.0+incompatible
+	github.com/evanphx/json-patch v4.11.0+incompatible
 	github.com/fatih/color v1.13.0
 	github.com/fsnotify/fsnotify v1.5.1
 	github.com/ghodss/yaml v1.0.0
@@ -45,7 +45,7 @@ require (
 	helm.sh/helm/v3 v3.6.3
 	k8s.io/api v0.21.3
 	k8s.io/apiextensions-apiserver v0.21.3
-	k8s.io/apimachinery v0.21.3
+	k8s.io/apimachinery v0.22.3
 	k8s.io/client-go v0.21.3
 	k8s.io/code-generator v0.22.3
 	k8s.io/klog/v2 v2.30.0
