@@ -293,6 +293,10 @@ const (
 	// to handle iptables-legacy
 	InitXtablesLockVolumeMountName = "linkerd-proxy-init-xtables-lock"
 
+	// LinkerdTokenVolumeMountName is the name of the volumeMount used for
+	// the serviceAccount token
+	LinkerdTokenVolumeMountName = "linkerd-identity-token"
+
 	// ProxyContainerName is the name assigned to the injected proxy container.
 	ProxyContainerName = "linkerd-proxy"
 

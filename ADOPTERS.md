@@ -57,6 +57,7 @@
 - [PriceKinetics (GVC Australia)](https://www.pricekinetics.com.au/)
 - [Projector](https://projector.com)
 - [Purdue University Global](https://www.purdueglobal.edu/)
+- [reDock](https://www.redock.com/)
 - [ReliMail](https://relimail.com/)
 - [Salt Security](https://salt.security/)
 - [SCA](https://sca.com.au)

@@ -21,7 +21,7 @@ require (
 	github.com/imdario/mergo v0.3.12
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/linkerd/linkerd2-proxy-api v0.3.0
-	github.com/linkerd/linkerd2-proxy-init v1.4.1
+	github.com/linkerd/linkerd2-proxy-init v1.5.0
 	github.com/mattn/go-isatty v0.0.14
 	github.com/mattn/go-runewidth v0.0.13
 	github.com/nsf/termbox-go v0.0.0-20180613055208-5c94acc5e6eb
@@ -39,7 +39,7 @@ require (
 	go.opencensus.io v0.23.0
 	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d
 	golang.org/x/tools v0.1.7
-	google.golang.org/grpc v1.41.0
+	google.golang.org/grpc v1.42.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.27.1
 	helm.sh/helm/v3 v3.6.3

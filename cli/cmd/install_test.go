@@ -228,6 +228,7 @@ func TestRender(t *testing.T) {
 		{withCustomDestinationGetNetsValues, "install_default_override_dst_get_nets.golden", values.Options{}},
 		{defaultValues, "install_custom_domain.golden", values.Options{Values: []string{"namespace=l5d"}}},
 		{defaultValues, "install_values_file.golden", values.Options{ValueFiles: []string{filepath.Join("testdata", "install_config.yaml")}}},
+		{defaultValues, "install_default_token.golden", values.Options{Values: []string{"identity.serviceAccountTokenProjection=false"}}},
 	}
 
 	for i, tc := range testCases {
