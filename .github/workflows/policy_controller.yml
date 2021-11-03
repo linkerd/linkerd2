@@ -26,7 +26,7 @@ jobs:
     container:
       image: docker://rust:1.56.0
     steps:
-      - uses: actions/checkout@1e204e9a9253d643386038d443f96446fa156a97
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       - run: rustup component add rustfmt
       - run: cargo fmt --all -- --check
 
@@ -41,7 +41,7 @@ jobs:
     # Prevent sudden announcement of a new advisory from failing Ci.
     continue-on-error: ${{ matrix.checks == 'advisories' }}
     steps:
-    - uses: actions/checkout@1e204e9a9253d643386038d443f96446fa156a97
+    - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
     - uses: EmbarkStudios/cargo-deny-action@0ca727bbae7b7b578b9a5f98186caac35aa2a00d
       with:
         command: check bans licenses sources
@@ -52,7 +52,7 @@ jobs:
     container:
       image: docker://rust:1.56.0
     steps:
-      - uses: actions/checkout@1e204e9a9253d643386038d443f96446fa156a97
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       - run: rustup component add clippy
       - run: cargo clippy --workspace --all-targets
 
@@ -62,7 +62,7 @@ jobs:
     container:
       image: docker://rust:1.56.0
     steps:
-      - uses: actions/checkout@1e204e9a9253d643386038d443f96446fa156a97
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       # Check each crate independently to ensure its Cargo.toml is sufficient.
       - run: |
           for d in $(for toml in $(find . -mindepth 2 -name Cargo.toml) ; do echo ${toml%/*} ; done | sort -r )
@@ -78,5 +78,5 @@ jobs:
     container:
       image: docker://rust:1.56.0
     steps:
-      - uses: actions/checkout@1e204e9a9253d643386038d443f96446fa156a97
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       - run: cargo test --workspace
