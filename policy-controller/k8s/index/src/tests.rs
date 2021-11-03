@@ -23,6 +23,7 @@ async fn incrementally_configure_server() {
             cluster_only: true,
         },
         detect_timeout,
+        "linkerd".to_string(),
     );
 
     let pod = mk_pod(
@@ -146,6 +147,7 @@ fn server_update_deselects_pod() {
         "cluster.example.com".into(),
         default,
         detect_timeout,
+        "linkerd".to_string(),
     );
 
     let p = mk_pod(
@@ -207,6 +209,7 @@ fn default_policy_global() {
             "cluster.example.com".into(),
             *default,
             detect_timeout,
+            "linkerd".to_string(),
         );
 
         let p = mk_pod(
@@ -257,6 +260,7 @@ fn default_policy_annotated() {
                 _ => DefaultPolicy::Deny,
             },
             detect_timeout,
+            "linkerd".to_string(),
         );
 
         let mut p = mk_pod(
@@ -300,6 +304,7 @@ fn default_policy_annotated_invalid() {
         "cluster.example.com".into(),
         default,
         detect_timeout,
+        "linkerd".to_string(),
     );
 
     let mut p = mk_pod(
@@ -347,6 +352,7 @@ fn opaque_annotated() {
             "cluster.example.com".into(),
             *default,
             detect_timeout,
+            "linkerd".to_string(),
         );
 
         let mut p = mk_pod(
@@ -385,6 +391,7 @@ fn authenticated_annotated() {
             "cluster.example.com".into(),
             *default,
             detect_timeout,
+            "linkerd".to_string(),
         );
 
         let mut p = mk_pod(
