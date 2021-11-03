@@ -2060,6 +2060,7 @@ spec:
           readOnly: true
       - args:
         - --admin-addr=0.0.0.0:9990
+        - --control-plane-ns=linkerd
         - --grpc-addr=0.0.0.0:8090
         - --admission-addr=0.0.0.0:9443
         - --cluster-networks=ClusterNetworks
