@@ -456,7 +456,7 @@ func (ew *EndpointsWatcher) addServer(obj interface{}) {
 		for _, sp := range ew.publishers {
 			for _, pp := range sp.ports {
 				for _, addr := range pp.addresses.Addresses {
-					if addr.Pod.Name == pod.Name && addr.Pod.Namespace == pod.Namespace {
+					if addr.Pod != nil && addr.Pod.Name == pod.Name && addr.Pod.Namespace == pod.Namespace {
 						id := PodID{
 							Name:      addr.Pod.Name,
 							Namespace: addr.Pod.Namespace,
