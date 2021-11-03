@@ -79,6 +79,11 @@ policyController:
       limit: ""
       # -- Maximum amount of memory that the policy controller requests
       request: ""
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the policy controller can use
+      limit: ""
+      # -- Amount of ephemeral storage that the policy controller requests
+      request: ""
 
 # proxy configuration
 proxy:
@@ -126,6 +131,11 @@ proxy:
       # -- Maximum amount of memory that the proxy can use
       limit: ""
       # -- Maximum amount of memory that the proxy requests
+      request: ""
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the proxy can use
+      limit: ""
+      # -- Amount of ephemeral storage that the proxy requests
       request: ""
   # -- User id under which the proxy runs
   uid: 2102
@@ -176,6 +186,11 @@ proxyInit:
       limit: 50Mi
       # -- Amount of memory that the proxy-init container requests
       request: 10Mi
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the proxy-init container can use
+      limit: ""
+      # -- Amount of ephemeral storage that the proxy-init container requests
+      request: ""
   closeWaitTimeoutSecs: 0
   xtMountPath:
     mountPath: /run
@@ -207,9 +222,9 @@ controllerUID: 2103
 # destination configuration
 # set resources for the sp-validator and its linkerd proxy respectively
 # see proxy.resources for details.
-# destinationResources -- CPU and Memory resources required by destination (see `proxy.resources` for sub-fields)
+# destinationResources -- CPU, Memory and Ephemeral Storage resources required by destination (see `proxy.resources` for sub-fields)
 #destinationResources:
-#destinationProxyResources -- CPU and Memory resources required by proxy
+#destinationProxyResources -- CPU, Memory and Ephemeral Storage resources required by proxy
 # injected into destination pod (see `proxy.resources` for sub-fields)
 #destinationProxyResources:
 
@@ -250,9 +265,9 @@ identity:
       keyPEM: |
 
 
-# -|- CPU and Memory resources required by the identity controller (see `proxy.resources` for sub-fields)
+# -|- CPU, Memory and Ephemeral Storage resources required by the identity controller (see `proxy.resources` for sub-fields)
 #identityResources:
-# -|- CPU and Memory resources required by proxy injected into identity pod (see `proxy.resources` for sub-fields)
+# -|- CPU, Memory and Ephemeral Storage resources required by proxy injected into identity pod (see `proxy.resources` for sub-fields)
 #identityProxyResources:
 
 # heartbeat configuration
@@ -285,10 +300,10 @@ proxyInjector:
   # -- Bundle of CA certificates for proxy injector. If not provided then Helm will use the certificate generated  for `proxyInjector.crtPEM`. If `proxyInjector.externalSecret` is set to true, this value must be set, as no certificate will be generated.
   caBundle: |
 
-# -|- CPU and Memory resources required by the proxy injector (see
+# -|- CPU, Memory and Ephemeral Storage resources required by the proxy injector (see
 #`proxy.resources` for sub-fields)
 #proxyInjectorResources:
-#-|- CPU and Memory resources required by proxy injected into the proxy injector
+#-|- CPU, Memory and Ephemeral Storage resources required by proxy injected into the proxy injector
 #pod (see `proxy.resources` for sub-fields)
 #proxyInjectorProxyResources:
 
@@ -346,7 +361,7 @@ policyValidator:
   # as no certificate will be generated.
   caBundle: |
 
-# -|- CPU and Memory resources required by the SP validator (see
+# -|- CPU, Memory and Ephemeral Storage resources required by the SP validator (see
 #`proxy.resources` for sub-fields)
 #spValidatorResources:
 

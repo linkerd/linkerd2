@@ -92,6 +92,8 @@ Kubernetes: `>=1.20.0-0`
 | dashboard.replicas | int | `1` | Number of replicas of dashboard |
 | dashboard.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the web container can use |
 | dashboard.resources.cpu.request | string | `nil` | Amount of CPU units that the web container requests |
+| dashboard.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the web container can use |
+| dashboard.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the web container requests |
 | dashboard.resources.memory.limit | string | `nil` | Maximum amount of memory that web container can use |
 | dashboard.resources.memory.request | string | `nil` | Amount of memory that the web container requests |
 | dashboard.restrictPrivileges | bool | `false` | Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check |
@@ -113,6 +115,8 @@ Kubernetes: `>=1.20.0-0`
 | grafana.proxy | string | `nil` |  |
 | grafana.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the grafana container can use |
 | grafana.resources.cpu.request | string | `nil` | Amount of CPU units that the grafana container requests |
+| grafana.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the grafana container can use |
+| grafana.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the grafana container requests |
 | grafana.resources.memory.limit | string | `nil` | Maximum amount of memory that grafana container can use |
 | grafana.resources.memory.request | string | `nil` | Amount of memory that the grafana container requests |
 | grafana.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
@@ -135,6 +139,8 @@ Kubernetes: `>=1.20.0-0`
 | metricsAPI.replicas | int | `1` | number of replicas of the metrics-api component |
 | metricsAPI.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the metrics-api container can use |
 | metricsAPI.resources.cpu.request | string | `nil` | Amount of CPU units that the metrics-api container requests |
+| metricsAPI.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the metrics-api container can use |
+| metricsAPI.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the metrics-api container requests |
 | metricsAPI.resources.memory.limit | string | `nil` | Maximum amount of memory that metrics-api container can use |
 | metricsAPI.resources.memory.request | string | `nil` | Amount of memory that the metrics-api container requests |
 | metricsAPI.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
@@ -156,6 +162,8 @@ Kubernetes: `>=1.20.0-0`
 | prometheus.remoteWrite | string | `nil` | Allows transparently sending samples to an endpoint. Mostly used for long term storage. |
 | prometheus.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the prometheus container can use |
 | prometheus.resources.cpu.request | string | `nil` | Amount of CPU units that the prometheus container requests |
+| prometheus.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the prometheus container can use |
+| prometheus.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the prometheus container requests |
 | prometheus.resources.memory.limit | string | `nil` | Maximum amount of memory that prometheus container can use |
 | prometheus.resources.memory.request | string | `nil` | Amount of memory that the prometheus container requests |
 | prometheus.ruleConfigMapMounts | string | `nil` | Alerting/recording rule ConfigMap mounts (sub-path names must end in ´_rules.yml´ or ´_rules.yaml´) |
@@ -178,6 +186,8 @@ Kubernetes: `>=1.20.0-0`
 | tap.replicas | int | `1` | Number of tap component replicas |
 | tap.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the tap container can use |
 | tap.resources.cpu.request | string | `nil` | Amount of CPU units that the tap container requests |
+| tap.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the tap container can use |
+| tap.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the tap container requests |
 | tap.resources.memory.limit | string | `nil` | Maximum amount of memory that tap container can use |
 | tap.resources.memory.request | string | `nil` | Amount of memory that the tap container requests |
 | tapInjector.UID | string | `nil` |  |
@@ -198,6 +208,8 @@ Kubernetes: `>=1.20.0-0`
 | tapInjector.replicas | int | `1` | Number of replicas of tapInjector |
 | tapInjector.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the tapInjector container can use |
 | tapInjector.resources.cpu.request | string | `nil` | Amount of CPU units that the tapInjector container requests |
+| tapInjector.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the tapInjector container can use |
+| tapInjector.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the tapInjector container requests |
 | tapInjector.resources.memory.limit | string | `nil` | Maximum amount of memory that tapInjector container can use |
 | tapInjector.resources.memory.request | string | `nil` | Amount of memory that the tapInjector container requests |
 | tolerations | string | `nil` | Default tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |

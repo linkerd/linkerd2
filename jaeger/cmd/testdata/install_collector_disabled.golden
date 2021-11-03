@@ -324,6 +324,7 @@ spec:
           name: grpc
         - containerPort: 16686
           name: ui
+        resources:
       dnsPolicy: ClusterFirst
       serviceAccountName: jaeger
 ---
