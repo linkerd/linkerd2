@@ -268,7 +268,10 @@ fn mk_mtls_authn(
             .namespace
             .unwrap_or_else(|| metadata.namespace.clone().unwrap());
         debug!(ns = %ns, serviceaccount = %name, "Authenticated");
-        let n = format!("{}.{}.serviceaccount.identity.{}.{}", name, ns, control_plane_ns, domain);
+        let n = format!(
+            "{}.{}.serviceaccount.identity.{}.{}",
+            name, ns, control_plane_ns, domain
+        );
         identities.push(IdentityMatch::Name(n));
     }
 
