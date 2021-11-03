@@ -124,10 +124,7 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 	// documented in the KEP: https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/2433-topology-aware-hints/README.md#kube-proxy
 	for _, address := range et.availableEndpoints.Addresses {
 		if len(address.ForZones) == 0 {
-			return watcher.AddressSet{
-				Addresses: allAvailEndpoints,
-				Labels:    et.availableEndpoints.Labels,
-			}
+			return et.availableEndpoints
 		}
 	}
 
@@ -150,8 +147,9 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 		}
 	}
 
-	// If there were no filtered addresses then the empty set is returned.
-	return newEmptyAddressSet()
+	// If there were no filtered addresses, then fall to using endpoints from
+	// all zones.
+	return et.availableEndpoints
 }
 
 // diffEndpoints calculates the difference between the filtered set of
