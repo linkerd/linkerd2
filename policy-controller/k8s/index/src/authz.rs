@@ -47,6 +47,7 @@ impl Index {
             &mut ns.servers,
             &*self.identity_domain,
             &*self.cluster_networks,
+            &*self.control_plane_ns,
         )
     }
 
@@ -143,9 +144,10 @@ impl AuthzIndex {
         servers: &mut SrvIndex,
         domain: &str,
         cluster_networks: &[IpNet],
+        control_plane_ns: &str,
     ) -> Result<()> {
         let name = authz.name();
-        let authz = mk_authz(authz, domain, cluster_networks)?;
+        let authz = mk_authz(authz, domain, cluster_networks, control_plane_ns)?;
 
         match self.index.entry(name) {
             HashEntry::Vacant(entry) => {
@@ -175,6 +177,7 @@ fn mk_authz(
     srv: policy::authz::ServerAuthorization,
     domain: &str,
     cluster_networks: &[IpNet],
+    control_plane_ns: &str,
 ) -> Result<Authz> {
     let policy::authz::ServerAuthorization { metadata, spec, .. } = srv;
 
@@ -217,7 +220,7 @@ fn mk_authz(
             .client
             .mesh_tls
             .ok_or_else(|| anyhow!("client mtls missing"))?;
-        mk_mtls_authn(&metadata, mtls, domain)?
+        mk_mtls_authn(&metadata, mtls, domain, control_plane_ns)?
     };
 
     Ok(Authz {
@@ -233,6 +236,7 @@ fn mk_mtls_authn(
     metadata: &k8s::ObjectMeta,
     mtls: MeshTls,
     domain: &str,
+    control_plane_ns: &str,
 ) -> Result<ClientAuthentication> {
     if mtls.unauthenticated_tls {
         return Ok(ClientAuthentication::TlsUnauthenticated);
@@ -264,7 +268,7 @@ fn mk_mtls_authn(
             .namespace
             .unwrap_or_else(|| metadata.namespace.clone().unwrap());
         debug!(ns = %ns, serviceaccount = %name, "Authenticated");
-        let n = format!("{}.{}.serviceaccount.identity.linkerd.{}", name, ns, domain);
+        let n = format!("{}.{}.serviceaccount.identity.{}.{}", name, ns, control_plane_ns, domain);
         identities.push(IdentityMatch::Name(n));
     }
 

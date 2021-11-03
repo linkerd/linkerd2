@@ -82,6 +82,9 @@ pub struct Index {
 
     /// A handle that supports updates to the lookup index.
     lookups: lookup::Writer,
+
+    /// The namespace where the linkerd control plane is deployed
+    control_plane_ns: String,
 }
 
 #[derive(Debug)]
@@ -95,6 +98,7 @@ impl Index {
         identity_domain: String,
         default_policy: DefaultPolicy,
         detect_timeout: time::Duration,
+        control_plane_ns: String,
     ) -> (lookup::Reader, Self) {
         // Create a common set of receivers for all supported default policies.
         let default_policy_watches =
@@ -111,6 +115,7 @@ impl Index {
             identity_domain,
             cluster_networks,
             default_policy_watches,
+            control_plane_ns,
         };
         (reader, idx)
     }

@@ -53,6 +53,9 @@ struct Args {
 
     #[structopt(long, default_value = "all-unauthenticated")]
     default_policy: DefaultPolicy,
+
+    #[structopt(long)]
+    control_plane_namespace: String,
 }
 
 #[derive(Clone, Debug)]
@@ -72,6 +75,7 @@ async fn main() -> Result<()> {
         default_policy,
         log_level,
         log_format,
+        control_plane_namespace,
     } = Args::from_args();
 
     log_init(log_level, log_format)?;
@@ -97,6 +101,7 @@ async fn main() -> Result<()> {
             identity_domain,
             default_policy,
             DETECT_TIMEOUT,
+            control_plane_namespace,
         );
 
         tokio::spawn(index.run(client.clone(), ready_tx));
