@@ -78,6 +78,26 @@ const httpStatColumns = [
 
 ];
 
+const trafficSplitWeightColumn = {
+  title: <Trans>columnTitleWeight</Trans>,
+  dataIndex: 'weight',
+  isNumeric: true,
+  filter: d => !d.tsStats ? null : d.tsStats.weight,
+  render: d => !d.tsStats ? null : d.tsStats.weight,
+  sorter: d => {
+    if (!d.tsStats) { return -1; }
+    if (parseInt(d.tsStats.weight, 10)) {
+      return parseInt(d.tsStats.weight, 10);
+    } else {
+      return d.tsStats.weight;
+    }
+  },
+};
+
+const serviceDetailsColumns = [
+  trafficSplitWeightColumn,
+];
+
 const trafficSplitDetailColumns = [
   {
     title: <Trans>columnTitleApexService</Trans>,
@@ -95,21 +115,7 @@ const trafficSplitDetailColumns = [
     render: d => !d.tsStats ? null : d.tsStats.leaf,
     sorter: d => !d.tsStats ? null : d.tsStats.leaf,
   },
-  {
-    title: <Trans>columnTitleWeight</Trans>,
-    dataIndex: 'weight',
-    isNumeric: true,
-    filter: d => !d.tsStats ? null : d.tsStats.weight,
-    render: d => !d.tsStats ? null : d.tsStats.weight,
-    sorter: d => {
-      if (!d.tsStats) { return -1; }
-      if (parseInt(d.tsStats.weight, 10)) {
-        return parseInt(d.tsStats.weight, 10);
-      } else {
-        return d.tsStats.weight;
-      }
-    },
-  },
+  trafficSplitWeightColumn,
 ];
 
 const gatewayColumns = [
@@ -264,6 +270,9 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
     columns = columns.concat(gatewayColumns);
   } else {
     columns = columns.concat(httpStatColumns);
+  }
+  if (isServicesTable) {
+    columns = columns.concat(serviceDetailsColumns);
   }
 
   if (!isAuthorityTable && !isTrafficSplitTable && !isGatewayTable && !isServicesTable) {
