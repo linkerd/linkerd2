@@ -10,6 +10,7 @@ import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
 import { Trans } from '@lingui/macro';
 import _cloneDeep from 'lodash/cloneDeep';
 import _each from 'lodash/each';
+import _some from 'lodash/some';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
 import { processedMetricsPropType } from './util/MetricUtils.jsx';
@@ -186,7 +187,7 @@ const gatewayColumns = [
   },
 ];
 
-const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, PrefixedLink, isTcpTable, grafana, jaeger) => {
+const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, PrefixedLink, isTcpTable, hasTsStats, grafana, jaeger) => {
   const isAuthorityTable = resource === 'authority';
   const isTrafficSplitTable = resource === 'trafficsplit';
   const isServicesTable = resource === 'service';
@@ -284,7 +285,7 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
   if (showNameColumn) {
     columns = [nameColumn];
   }
-  if (isServicesTable) {
+  if (isServicesTable && hasTsStats) {
     columns = columns.concat(serviceDetailsColumns(PrefixedLink));
   }
   if (isTrafficSplitTable) {
@@ -335,7 +336,8 @@ const MetricsTable = ({ metrics, resource, showNamespaceColumn, showName, title,
   const showNameColumn = resource !== 'trafficsplit' ? true : showName;
   let orderBy = 'name';
   if (resource === 'trafficsplit' && !showNameColumn) { orderBy = 'leaf'; }
-  const columns = columnDefinitions(resource, showNsColumn, showNameColumn, api.PrefixedLink, isTcpTable, grafana, jaeger);
+  const hasTsStats = _some(metrics, m => m.tsStats);
+  const columns = columnDefinitions(resource, showNsColumn, showNameColumn, api.PrefixedLink, isTcpTable, hasTsStats, grafana, jaeger);
   const rows = preprocessMetrics(metrics);
   return (
     <BaseTable
