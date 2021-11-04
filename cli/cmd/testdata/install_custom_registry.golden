@@ -1382,13 +1382,9 @@ data:
       image:
         name: my.custom.registry/linkerd-io/proxy-init
         pullPolicy: ""
-<<<<<<< HEAD
-        version: v1.4.0
+        version: v1.5.1
       logFormat: ""
       logLevel: ""
-=======
-        version: v1.5.1
->>>>>>> main
       resources:
         cpu:
           limit: 100m
