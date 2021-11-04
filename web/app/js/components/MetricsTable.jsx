@@ -94,13 +94,28 @@ const trafficSplitWeightColumn = {
   },
 };
 
-const serviceDetailsColumns = [
+const serviceDetailsColumns = PrefixedLink => [
   {
     title: <Trans>columnTitleDestination</Trans>,
-    dataIndex: 'leaf',
+    dataIndex: 'DST',
     isNumeric: false,
     filter: d => !d.tsStats ? null : d.tsStats.leaf,
-    render: d => !d.tsStats ? null : d.tsStats.leaf,
+    render: d => {
+      if (!d.tsStats) {
+        return null;
+      }
+      const nameContents = (
+        <PrefixedLink to={`/namespaces/${d.namespace}/services/${d.tsStats.leaf}`}>
+          {d.tsStats.leaf}
+        </PrefixedLink>
+      );
+      return (
+        <Grid container alignItems="center" spacing={1}>
+          <Grid item>{nameContents}</Grid>
+          {_isEmpty(d.errors) ? null : <Grid item><ErrorModal errors={d.errors} resourceName={d.name} resourceType={d.type} /></Grid>}
+        </Grid>
+      );
+    },
     sorter: d => !d.tsStats ? null : d.tsStats.leaf,
   },
   trafficSplitWeightColumn,
@@ -270,7 +285,7 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
     columns = [nameColumn];
   }
   if (isServicesTable) {
-    columns = columns.concat(serviceDetailsColumns);
+    columns = columns.concat(serviceDetailsColumns(PrefixedLink));
   }
   if (isTrafficSplitTable) {
     columns = columns.concat(trafficSplitDetailColumns);
