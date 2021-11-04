@@ -3,7 +3,7 @@
 ## edge-21.11.1
 
 In this edge, we're very excited to introduce Service Account Token Volume
-Projections, used to set up the pod's identities. These tokens are bounded
+Projections, used to set up the pods' identities. These tokens are bounded
 specifically for this use case and are rotated daily, replacing the usage of the
 default tokens injected by Kubernetes which are overly permissive and not
 rotated.
@@ -11,10 +11,10 @@ rotated.
 Note that this edge release updates the minimum supported kubernetes version to 1.20.
 
 * Updated the minimum supported kubernetes version to 1.20
-* Use Service Account Token Volume Projections to set up the pods identities
+* Use Service Account Token Volume Projections to set up the pods' identities
 * Updated proxy-init's Alpine base image to fix some CVEs (not affecting
   Linkerd)
-* Updated the Prometheus image in viz to 2.30.3
+* Updated the Prometheus image in linkerd-viz to 2.30.3
 * Changed the proxy and policy controller to use jemalloc on x86_64 gnu/linux to
   reduce memory usage
 * Improved retries so that requests without a `content-length` can be retried
