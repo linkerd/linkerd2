@@ -35,7 +35,6 @@ func TestRender(t *testing.T) {
 		ControllerUID:           2103,
 		EnableH2Upgrade:         true,
 		WebhookFailurePolicy:    "WebhookFailurePolicy",
-		OmitWebhookSideEffects:  false,
 		HeartbeatSchedule:       "1 2 3 4 5",
 		InstallNamespace:        true,
 		Identity:                defaultValues.Identity,
@@ -55,6 +54,7 @@ func TestRender(t *testing.T) {
 		IdentityTrustAnchorsPEM: defaultValues.IdentityTrustAnchorsPEM,
 		PodAnnotations:          map[string]string{},
 		PodLabels:               map[string]string{},
+		PriorityClassName:       "PriorityClassName",
 		PolicyController: &charts.PolicyController{
 			Image: &charts.Image{
 				Name:       "PolicyControllerImageName",
@@ -228,6 +228,7 @@ func TestRender(t *testing.T) {
 		{withCustomDestinationGetNetsValues, "install_default_override_dst_get_nets.golden", values.Options{}},
 		{defaultValues, "install_custom_domain.golden", values.Options{Values: []string{"namespace=l5d"}}},
 		{defaultValues, "install_values_file.golden", values.Options{ValueFiles: []string{filepath.Join("testdata", "install_config.yaml")}}},
+		{defaultValues, "install_default_token.golden", values.Options{Values: []string{"identity.serviceAccountTokenProjection=false"}}},
 	}
 
 	for i, tc := range testCases {
@@ -288,7 +289,6 @@ func testInstallOptionsHA(ha bool) (*charts.Values, error) {
 		return nil, err
 	}
 	values.Identity.Issuer.TLS.CrtPEM = crt.EncodeCertificatePEM()
-	values.Identity.Issuer.CrtExpiry = crt.Certificate.NotAfter
 
 	key, err := loadKeyPEM(filepath.Join("testdata", "valid-key.pem"))
 	if err != nil {

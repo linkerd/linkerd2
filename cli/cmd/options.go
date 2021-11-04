@@ -102,13 +102,6 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 				return nil
 			}),
 
-		flag.NewBoolFlag(installUpgradeFlags, "omit-webhook-side-effects", defaults.OmitWebhookSideEffects,
-			"Omit the sideEffects flag in the webhook manifests, This flag must be provided during install or upgrade for Kubernetes versions pre 1.12",
-			func(values *l5dcharts.Values, value bool) error {
-				values.OmitWebhookSideEffects = value
-				return nil
-			}),
-
 		flag.NewBoolFlag(installUpgradeFlags, "control-plane-tracing", defaults.ControlPlaneTracing,
 			"Enables Control Plane Tracing with the defaults", func(values *l5dcharts.Values, value bool) error {
 				values.ControlPlaneTracing = value
@@ -684,7 +677,6 @@ func initializeIssuerCredentials(ctx context.Context, k *k8s.KubernetesAPI, valu
 		if err != nil {
 			return fmt.Errorf("failed to generate root certificate for identity: %s", err)
 		}
-		values.Identity.Issuer.CrtExpiry = root.Cred.Crt.Certificate.NotAfter
 		values.Identity.Issuer.TLS.KeyPEM = root.Cred.EncodePrivateKeyPEM()
 		values.Identity.Issuer.TLS.CrtPEM = root.Cred.Crt.EncodeCertificatePEM()
 		values.IdentityTrustAnchorsPEM = root.Cred.Crt.EncodeCertificatePEM()

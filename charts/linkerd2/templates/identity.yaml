@@ -15,7 +15,6 @@ metadata:
     linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
-    linkerd.io/identity-issuer-expiry: {{required "Please provide the identity issuer certificate expiry date" .Values.identity.issuer.crtExpiry}}
 data:
   crt.pem: {{b64enc (required "Please provide the identity issuer certificate" .Values.identity.issuer.tls.crtPEM | trim)}}
   key.pem: {{b64enc (required "Please provide the identity issue private key" .Values.identity.issuer.tls.keyPEM | trim)}}
@@ -196,7 +195,7 @@ spec:
         The identity controller cannot discover policies, so we configure it with defaults that
         enforce TLS on the identity service.
       */}}
-      {{- $_ := set $tree.Values.proxy "defaultInboundPolicy" "cluster-unauthenticated" }}
+      {{- $_ := set $tree.Values.proxy "defaultInboundPolicy" "all-unauthenticated" }}
       {{- $_ := set $tree.Values.proxy "requireTLSOnInboundPorts" "8080" }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.cniEnabled -}}
@@ -209,6 +208,9 @@ spec:
       {{- $_ := set $tree.Values.proxyInit "ignoreOutboundPorts" "443" }}
       - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
+      {{- if .Values.priorityClassName -}}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{ end -}}
       serviceAccountName: linkerd-identity
       volumes:
       - name: identity-issuer
@@ -219,6 +221,9 @@ spec:
         name: trust-roots
       {{ if not .Values.cniEnabled -}}
       - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
+      {{if .Values.identity.serviceAccountTokenProjection -}}
+      - {{- include "partials.proxy.volumes.service-account-token" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
 {{end -}}

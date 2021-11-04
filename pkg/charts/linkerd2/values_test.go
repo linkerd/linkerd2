@@ -34,7 +34,6 @@ func TestNewValues(t *testing.T) {
 		EnableH2Upgrade:              true,
 		EnablePodAntiAffinity:        false,
 		WebhookFailurePolicy:         "Ignore",
-		OmitWebhookSideEffects:       false,
 		DisableHeartBeat:             false,
 		HeartbeatSchedule:            "",
 		InstallNamespace:             true,
@@ -127,6 +126,7 @@ func TestNewValues(t *testing.T) {
 			},
 		},
 		Identity: &Identity{
+			ServiceAccountTokenProjection: true,
 			Issuer: &Issuer{
 				ClockSkewAllowance: "20s",
 				IssuanceLifetime:   "24h0m0s",

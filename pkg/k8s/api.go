@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -12,8 +13,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	"k8s.io/apimachinery/pkg/api/errors"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -24,7 +27,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
-var minAPIVersion = [3]int{1, 16, 0}
+var minAPIVersion = [3]int{1, 20, 0}
 
 // KubernetesAPI provides a client for accessing a Kubernetes cluster.
 // TODO: support ServiceProfile ClientSet. A prerequisite is moving the
@@ -137,7 +140,7 @@ func (kubeAPI *KubernetesAPI) CheckVersion(versionInfo *version.Info) error {
 // NamespaceExists validates whether a given namespace exists.
 func (kubeAPI *KubernetesAPI) NamespaceExists(ctx context.Context, namespace string) (bool, error) {
 	ns, err := kubeAPI.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
-	if errors.IsNotFound(err) {
+	if kerrors.IsNotFound(err) {
 		return false, nil
 	}
 	if err != nil {
@@ -197,7 +200,7 @@ func (kubeAPI *KubernetesAPI) GetNamespaceWithExtensionLabel(ctx context.Context
 			return &ns, err
 		}
 	}
-	return nil, errors.NewNotFound(corev1.Resource("namespace"), value)
+	return nil, kerrors.NewNotFound(corev1.Resource("namespace"), value)
 }
 
 // GetPodStatus receives a pod and returns the pod status, based on `kubectl` logic.
@@ -284,4 +287,163 @@ func GetProxyVersion(pod corev1.Pod) string {
 		}
 	}
 	return ""
+}
+
+// GetPodsFor takes a resource string, queries the Kubernetes API, and returns a
+// list of pods belonging to that resource.
+func GetPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace string, resource string) ([]corev1.Pod, error) {
+	elems := strings.Split(resource, "/")
+
+	if len(elems) == 1 {
+		return nil, errors.New("no resource name provided")
+	}
+
+	if len(elems) != 2 {
+		return nil, fmt.Errorf("invalid resource string: %s", resource)
+	}
+
+	typ, err := CanonicalResourceNameFromFriendlyName(elems[0])
+	if err != nil {
+		return nil, err
+	}
+	name := elems[1]
+
+	// special case if a single pod was specified
+	if typ == Pod {
+		pod, err := clientset.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return []corev1.Pod{*pod}, nil
+	}
+
+	var matchLabels map[string]string
+	var ownerUID types.UID
+	switch typ {
+	case CronJob:
+		jobs, err := clientset.BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+
+		var pods []corev1.Pod
+		for _, job := range jobs.Items {
+			if isOwner(job.GetUID(), job.GetOwnerReferences()) {
+				jobPods, err := GetPodsFor(ctx, clientset, namespace, fmt.Sprintf("%s/%s", Job, job.GetName()))
+				if err != nil {
+					return nil, err
+				}
+				pods = append(pods, jobPods...)
+			}
+		}
+		return pods, nil
+
+	case DaemonSet:
+		ds, err := clientset.AppsV1().DaemonSets(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		matchLabels = ds.Spec.Selector.MatchLabels
+		ownerUID = ds.GetUID()
+
+	case Deployment:
+		deployment, err := clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		matchLabels = deployment.Spec.Selector.MatchLabels
+		ownerUID = deployment.GetUID()
+
+		replicaSets, err := clientset.AppsV1().ReplicaSets(namespace).List(
+			ctx,
+			metav1.ListOptions{
+				LabelSelector: labels.Set(matchLabels).AsSelector().String(),
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		var pods []corev1.Pod
+		for _, rs := range replicaSets.Items {
+			if isOwner(ownerUID, rs.GetOwnerReferences()) {
+				podsRS, err := GetPodsFor(ctx, clientset, namespace, fmt.Sprintf("%s/%s", ReplicaSet, rs.GetName()))
+				if err != nil {
+					return nil, err
+				}
+				pods = append(pods, podsRS...)
+			}
+		}
+		return pods, nil
+
+	case Job:
+		job, err := clientset.BatchV1().Jobs(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		matchLabels = job.Spec.Selector.MatchLabels
+		ownerUID = job.GetUID()
+
+	case ReplicaSet:
+		rs, err := clientset.AppsV1().ReplicaSets(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		matchLabels = rs.Spec.Selector.MatchLabels
+		ownerUID = rs.GetUID()
+
+	case ReplicationController:
+		rc, err := clientset.CoreV1().ReplicationControllers(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		matchLabels = rc.Spec.Selector
+		ownerUID = rc.GetUID()
+
+	case StatefulSet:
+		ss, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		matchLabels = ss.Spec.Selector.MatchLabels
+		ownerUID = ss.GetUID()
+
+	default:
+		return nil, fmt.Errorf("unsupported resource type: %s", name)
+	}
+
+	podList, err := clientset.
+		CoreV1().
+		Pods(namespace).
+		List(
+			ctx,
+			metav1.ListOptions{
+				LabelSelector: labels.Set(matchLabels).AsSelector().String(),
+			},
+		)
+	if err != nil {
+		return nil, err
+	}
+
+	if ownerUID == "" {
+		return podList.Items, nil
+	}
+
+	pods := []corev1.Pod{}
+	for _, pod := range podList.Items {
+		if isOwner(ownerUID, pod.GetOwnerReferences()) {
+			pods = append(pods, pod)
+		}
+	}
+
+	return pods, nil
+}
+
+func isOwner(u types.UID, ownerRefs []metav1.OwnerReference) bool {
+	for _, or := range ownerRefs {
+		if u == or.UID {
+			return true
+		}
+	}
+	return false
 }

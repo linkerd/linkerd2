@@ -104,7 +104,7 @@ spec:
             vgUC0d2/9FMueIVMb+46WTCOjsqr
             -----END CERTIFICATE-----
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
-          value: /var/run/secrets/kubernetes.io/serviceaccount/token
+          value: /var/run/secrets/tokens/linkerd-identity-token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
           value: linkerd-identity-headless.linkerd.svc.cluster.local.:8080
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
@@ -146,6 +146,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+        - mountPath: /var/run/secrets/tokens
+          name: linkerd-identity-token
       - env:
         - name: WEB_PORT
           value: "80"
@@ -172,7 +174,7 @@ spec:
         - 4190,4191,4567,4568
         - --outbound-ports-to-ignore
         - 4567,4568
-        image: cr.l5d.io/linkerd/proxy-init:v1.4.0
+        image: cr.l5d.io/linkerd/proxy-init:v1.5.1
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -202,6 +204,13 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      - name: linkerd-identity-token
+        projected:
+          sources:
+          - serviceAccountToken:
+              audience: identity.l5d.io
+              expirationSeconds: 86400
+              path: linkerd-identity-token
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -309,7 +318,7 @@ spec:
             vgUC0d2/9FMueIVMb+46WTCOjsqr
             -----END CERTIFICATE-----
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
-          value: /var/run/secrets/kubernetes.io/serviceaccount/token
+          value: /var/run/secrets/tokens/linkerd-identity-token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
           value: linkerd-identity-headless.linkerd.svc.cluster.local.:8080
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
@@ -351,6 +360,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+        - mountPath: /var/run/secrets/tokens
+          name: linkerd-identity-token
       - env:
         - name: WEB_PORT
           value: "80"
@@ -377,7 +388,7 @@ spec:
         - 4190,4191,4567,4568
         - --outbound-ports-to-ignore
         - 4567,4568
-        image: cr.l5d.io/linkerd/proxy-init:v1.4.0
+        image: cr.l5d.io/linkerd/proxy-init:v1.5.1
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -407,4 +418,11 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      - name: linkerd-identity-token
+        projected:
+          sources:
+          - serviceAccountToken:
+              audience: identity.l5d.io
+              expirationSeconds: 86400
+              path: linkerd-identity-token
 ---

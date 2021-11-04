@@ -106,7 +106,8 @@ else
   fi
 fi
 
-if [ -z "$archive" ]; then
+if [ -z "$archive" ]
+then
   # shellcheck source=_tag.sh
   . "$bindir"/_tag.sh
   # shellcheck source=_docker.sh

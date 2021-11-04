@@ -76,6 +76,7 @@ func NewCmdViz() *cobra.Command {
 	vizCmd.PersistentFlags().StringArrayVar(&impersonateGroup, "as-group", []string{}, "Group to impersonate for Kubernetes operations")
 	vizCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 	vizCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
+	vizCmd.AddCommand(NewCmdAuthz())
 	vizCmd.AddCommand(NewCmdCheck())
 	vizCmd.AddCommand(NewCmdDashboard())
 	vizCmd.AddCommand(NewCmdEdges())

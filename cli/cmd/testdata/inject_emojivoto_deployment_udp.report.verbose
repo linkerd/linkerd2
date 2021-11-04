@@ -4,7 +4,7 @@
 √ pods are not annotated to disable injection
 √ at least one resource can be injected or annotated
 ‼ deployment/web uses "protocol: UDP"
-√ pods do not have automountServiceAccountToken set to "false"
+√ pods do not have automountServiceAccountToken set to "false" or service account token projection is enabled
 
 deployment "web" injected
 

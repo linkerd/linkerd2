@@ -156,7 +156,7 @@ webhooks:
   failurePolicy: Fail
   admissionReviewVersions: ["v1", "v1beta1"]
   rules:
-  - operations: [ "CREATE" , "UPDATE" ]
+  - operations: ["CREATE", "UPDATE"]
     apiGroups: ["linkerd.io"]
     apiVersions: ["v1alpha1", "v1alpha2"]
     resources: ["serviceprofiles"]
@@ -201,10 +201,10 @@ webhooks:
   failurePolicy: Fail
   admissionReviewVersions: ["v1", "v1beta1"]
   rules:
-  - operations: [ "CREATE" , "UPDATE" ]
+  - operations: ["CREATE", "UPDATE"]
     apiGroups: ["policy.linkerd.io"]
-    apiVersions: ["v1alpha1"]
-    resources: ["serverauthorizations", "servers"]
+    apiVersions: ["v1alpha1", "v1beta1"]
+    resources: ["servers"]
   sideEffects: None
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -344,6 +344,64 @@ spec:
   versions:
     - name: v1alpha1
       served: true
+      storage: false
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required:
+                - podSelector
+                - port
+              properties:
+                podSelector:
+                  type: object
+                  description: >-
+                    Selects pods in the same namespace.
+                  oneOf:
+                    - required: [matchExpressions]
+                    - required: [matchLabels]
+                  properties:
+                    matchLabels:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    matchExpressions:
+                      type: array
+                      items:
+                        type: object
+                        required: [key, operator]
+                        properties:
+                          key:
+                            type: string
+                          operator:
+                            type: string
+                            enum: [In, NotIn, Exists, DoesNotExist]
+                          values:
+                            type: array
+                            items:
+                              type: string
+                port:
+                  description: >-
+                    A port name or number. Must exist in a pod spec.
+                  x-kubernetes-int-or-string: true
+                proxyProtocol:
+                  description: >-
+                    Configures protocol discovery for inbound connections.
+
+                    Supersedes the `config.linkerd.io/opaque-ports` annotation.
+                  type: string
+                  default: unknown
+                  enum:
+                    - unknown
+                    - HTTP/1
+                    - HTTP/2
+                    - gRPC
+                    - opaque
+                    - TLS
+    - name: v1beta1
+      served: true
       storage: true
       schema:
         openAPIV3Schema:
@@ -400,6 +458,15 @@ spec:
                     - gRPC
                     - opaque
                     - TLS
+      additionalPrinterColumns:
+      - name: Port
+        type: string
+        description: The port the server is listening on
+        jsonPath: .spec.port
+      - name: Protocol
+        type: string
+        description: The protocol of the server
+        jsonPath: .spec.proxyProtocol
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -419,6 +486,136 @@ spec:
     shortNames: [saz]
   versions:
     - name: v1alpha1
+      served: true
+      storage: false
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              description: >-
+                Authorizes clients to communicate with Linkerd-proxied servers.
+              type: object
+              required: [server, client]
+              properties:
+                server:
+                  description: >-
+                    Identifies servers in the same namespace for which this
+                    authorization applies.
+
+                    Only one of `name` or `selector` may be specified.
+                  type: object
+                  oneOf:
+                    - required: [name]
+                    - required: [selector]
+                  properties:
+                    name:
+                      description: References a `Server` instance by name
+                      type: string
+                      pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+                    selector:
+                      description: >-
+                        A label query over servers on which this authorization applies.
+                      type: object
+                      oneOf:
+                        - required: [matchLabels]
+                        - required: [matchExpressions]
+                      properties:
+                        matchLabels:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        matchExpressions:
+                          type: array
+                          items:
+                            type: object
+                            required: [key, operator]
+                            properties:
+                              key:
+                                type: string
+                              operator:
+                                type: string
+                                enum: [In, NotIn, Exists, DoesNotExist]
+                              values:
+                                type: array
+                                items:
+                                  type: string
+                client:
+                  description:  Describes clients authorized to access a server.
+                  type: object
+                  oneOf:
+                    - required: [meshTLS]
+                    - required: [unauthenticated]
+                  properties:
+                    networks:
+                      description: >-
+                        Limits the client IP addresses to which this
+                        authorization applies. If unset, the server chooses a
+                        default (typically, all IPs or the cluster's pod
+                        network).
+                      type: array
+                      items:
+                        type: object
+                        required: [cidr]
+                        properties:
+                          cidr:
+                            type: string
+                          except:
+                            type: array
+                            items:
+                              type: string
+                    unauthenticated:
+                      description: >-
+                        Authorizes unauthenticated clients to access a server.
+                      type: boolean
+                    meshTLS:
+                      type: object
+                      oneOf:
+                        - required: [unauthenticatedTLS]
+                        - required: [identities]
+                        - required: [serviceAccounts]
+                      properties:
+                        unauthenticatedTLS:
+                          type: boolean
+                          description: >-
+                            Indicates that no client identity is required for
+                            communication.
+
+                            This is mostly important for the identity
+                            controller, which must terminate TLS connections
+                            from clients that do not yet have a certificate.
+                        identities:
+                          description: >-
+                            Authorizes clients with the provided proxy identity
+                            strings (as provided via MTLS)
+
+                            The `*` prefix can be used to match all identities in
+                            a domain. An identity string of `*` indicates that
+                            all authentication clients are authorized.
+                          type: array
+                          items:
+                            type: string
+                            pattern: '^(\*|[a-z0-9]([-a-z0-9]*[a-z0-9])?)(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$'
+                        serviceAccounts:
+                          description: >-
+                            Authorizes clients with the provided proxy identity
+                            service accounts (as provided via MTLS)
+                          type: array
+                          items:
+                            type: object
+                            required: [name]
+                            properties:
+                              name:
+                                description: The ServiceAccount's name.
+                                type: string
+                                pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+                              namespace:
+                                description: >-
+                                  The ServiceAccount's namespace. If unset, the
+                                  authorization's namespace is used.
+                                type: string
+                                pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+    - name: v1beta1
       served: true
       storage: true
       schema:
@@ -548,6 +745,11 @@ spec:
                                   authorization's namespace is used.
                                 type: string
                                 pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+      additionalPrinterColumns:
+      - name: Server
+        type: string
+        description: The server that this grants access to
+        jsonPath: .spec.server.name
 ---
 # Source: linkerd2/templates/serviceprofile-crd.yaml
 ---
@@ -1063,6 +1265,9 @@ data:
       cpu:
         limit: ""
         request: 100m
+      ephemeral-storage:
+        limit: ""
+        request: ""
       memory:
         limit: 250Mi
         request: 50Mi
@@ -1075,6 +1280,9 @@ data:
       cpu:
         limit: ""
         request: 100m
+      ephemeral-storage:
+        limit: ""
+        request: ""
       memory:
         limit: 250Mi
         request: 50Mi
@@ -1083,17 +1291,20 @@ data:
     identity:
       issuer:
         clockSkewAllowance: 20s
-        crtExpiry: Jul 30 17:21:14 2020
         externalCA: false
         issuanceLifetime: 24h0m0s
         scheme: linkerd.io/tls
         tls:
           crtPEM: test-crt-pem
+      serviceAccountTokenProjection: true
     identityProxyResources: null
     identityResources:
       cpu:
         limit: ""
         request: 100m
+      ephemeral-storage:
+        limit: ""
+        request: ""
       memory:
         limit: 250Mi
         request: 10Mi
@@ -1106,7 +1317,6 @@ data:
     namespace: linkerd
     nodeSelector:
       beta.kubernetes.io/os: linux
-    omitWebhookSideEffects: false
     podAnnotations: {}
     podLabels: {}
     policyController:
@@ -1118,6 +1328,9 @@ data:
       logLevel: linkerd=info,warn
       resources:
         cpu:
+          limit: ""
+          request: ""
+        ephemeral-storage:
           limit: ""
           request: ""
         memory:
@@ -1134,6 +1347,7 @@ data:
           operator: NotIn
           values:
           - disabled
+    priorityClassName: ""
     profileValidator:
       caBundle: test-profile-validator-ca-bundle
       crtPEM: test-profile-validator-crt-pem
@@ -1173,6 +1387,9 @@ data:
         cpu:
           limit: ""
           request: 100m
+        ephemeral-storage:
+          limit: ""
+          request: ""
         memory:
           limit: 250Mi
           request: 20Mi
@@ -1195,6 +1412,9 @@ data:
         cpu:
           limit: 100m
           request: 10m
+        ephemeral-storage:
+          limit: ""
+          request: ""
         memory:
           limit: 50Mi
           request: 10Mi
@@ -1218,6 +1438,9 @@ data:
       cpu:
         limit: ""
         request: 100m
+      ephemeral-storage:
+        limit: ""
+        request: ""
       memory:
         limit: 250Mi
         request: 50Mi
@@ -1244,7 +1467,6 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
-    linkerd.io/identity-issuer-expiry: Jul 30 17:21:14 2020
 data:
   crt.pem: dGVzdC1jcnQtcGVt
   key.pem: dGVzdC1rZXktcGVt
@@ -1447,7 +1669,7 @@ spec:
         - name: LINKERD2_PROXY_POLICY_WORKLOAD
           value: "$(_pod_ns):$(_pod_name)"
         - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
-          value: cluster-unauthenticated
+          value: all-unauthenticated
         - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -1495,7 +1717,7 @@ spec:
               name: linkerd-identity-trust-roots
               key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
-          value: /var/run/secrets/kubernetes.io/serviceaccount/token
+          value: /var/run/secrets/tokens/linkerd-identity-token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
           value: localhost.:8080
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
@@ -1538,6 +1760,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+        - mountPath: /var/run/secrets/tokens
+          name: linkerd-identity-token
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -1584,6 +1808,13 @@ spec:
         name: trust-roots
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
+      - name: linkerd-identity-token
+        projected:
+          sources:
+          - serviceAccountToken:
+              path: linkerd-identity-token
+              expirationSeconds: 86400
+              audience: identity.l5d.io
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -1730,6 +1961,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/config: 13b4b56fa08dfbe21f77d119bb260c44cafa519b34f114ba1b5bc5e30fc9e19b
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
@@ -1837,7 +2069,7 @@ spec:
               name: linkerd-identity-trust-roots
               key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
-          value: /var/run/secrets/kubernetes.io/serviceaccount/token
+          value: /var/run/secrets/tokens/linkerd-identity-token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
           value: linkerd-identity-headless.linkerd.svc.cluster.local.:8080
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
@@ -1885,6 +2117,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+        - mountPath: /var/run/secrets/tokens
+          name: linkerd-identity-token
       - args:
         - destination
         - -addr=:8086
@@ -1964,21 +2198,21 @@ spec:
         livenessProbe:
           httpGet:
             path: /ready
-            port: admin-http
+            port: admin
           initialDelaySeconds: 10
         name: policy
         ports:
         - containerPort: 8090
           name: grpc
         - containerPort: 9990
-          name: admin-http
+          name: admin
         - containerPort: 9443
           name: policy-https
         readinessProbe:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: admin-http
+            port: admin
         resources:
         securityContext:
           runAsUser: 2103
@@ -2032,6 +2266,13 @@ spec:
           secretName: linkerd-policy-validator-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
+      - name: linkerd-identity-token
+        projected:
+          sources:
+          - serviceAccountToken:
+              path: linkerd-identity-token
+              expirationSeconds: 86400
+              audience: identity.l5d.io
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -2232,7 +2473,7 @@ spec:
               name: linkerd-identity-trust-roots
               key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
-          value: /var/run/secrets/kubernetes.io/serviceaccount/token
+          value: /var/run/secrets/tokens/linkerd-identity-token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
           value: linkerd-identity-headless.linkerd.svc.cluster.local.:8080
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
@@ -2280,6 +2521,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+        - mountPath: /var/run/secrets/tokens
+          name: linkerd-identity-token
       - args:
         - proxy-injector
         - -log-level=info
@@ -2367,6 +2610,13 @@ spec:
           secretName: linkerd-proxy-injector-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
+      - name: linkerd-identity-token
+        projected:
+          sources:
+          - serviceAccountToken:
+              path: linkerd-identity-token
+              expirationSeconds: 86400
+              audience: identity.l5d.io
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity

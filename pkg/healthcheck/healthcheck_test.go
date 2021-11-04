@@ -1590,6 +1590,23 @@ func TestValidateDataPlanePods(t *testing.T) {
 		}
 	})
 
+	t.Run("Does not return an error if the pod is in Shutdown state", func(t *testing.T) {
+		pods := []corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "emoji-d9c7866bb-7v74n"},
+				Status: corev1.PodStatus{
+					Phase:  "Failed",
+					Reason: "Shutdown",
+				},
+			},
+		}
+
+		err := validateDataPlanePods(pods, "emojivoto")
+		if err != nil {
+			t.Fatalf("Expected no error, got %s", err)
+		}
+	})
+
 	t.Run("Returns an error if the proxy container is not ready", func(t *testing.T) {
 		pods := []corev1.Pod{
 			{
@@ -2170,7 +2187,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.4.0","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.5.1","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}`,
 			},
@@ -2216,7 +2233,7 @@ data:
 					},
 					DisableExternalProfiles: true,
 					ProxyVersion:            "install-proxy-version",
-					ProxyInitImageVersion:   "v1.4.0",
+					ProxyInitImageVersion:   "v1.5.1",
 					DebugImage: &configPb.Image{
 						ImageName:  "cr.l5d.io/linkerd/debug",
 						PullPolicy: "IfNotPresent",
@@ -2308,7 +2325,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.4.0","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.5.1","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
   values: |
@@ -2392,7 +2409,6 @@ data:
     installNamespace: true
     nodeSelector:
       beta.kubernetes.io/os: linux
-    omitWebhookSideEffects: false
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     stage: ""
@@ -2405,7 +2421,6 @@ data:
 				ControllerUID:          2103,
 				EnableH2Upgrade:        true,
 				WebhookFailurePolicy:   "WebhookFailurePolicy",
-				OmitWebhookSideEffects: false,
 				InstallNamespace:       true,
 				NodeSelector:           defaultValues.NodeSelector,
 				Tolerations:            defaultValues.Tolerations,
@@ -2470,7 +2485,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.4.0","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.5.1","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
   values: |
@@ -2555,7 +2570,6 @@ data:
     installNamespace: true
     nodeSelector:
       beta.kubernetes.io/os: linux
-    omitWebhookSideEffects: false
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     stage: ""
@@ -2568,7 +2582,6 @@ data:
 				ControllerUID:          2103,
 				EnableH2Upgrade:        true,
 				WebhookFailurePolicy:   "WebhookFailurePolicy",
-				OmitWebhookSideEffects: false,
 				InstallNamespace:       true,
 				NodeSelector:           defaultValues.NodeSelector,
 				Tolerations:            defaultValues.Tolerations,
@@ -3583,6 +3596,63 @@ subsets:
 `,
 			},
 			expected: fmt.Errorf("\t* service svc targets the opaque port pod-test through 1003; add 1003 to its config.linkerd.io/opaque-ports annotation"),
+		},
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+spec:
+  selector:
+    app: test
+  ports:
+  - port: 80
+    targetPort: 6502
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "5432"
+  labels:
+    app: test
+spec:
+  containers:
+  - name: c1
+    image: test
+    ports:
+    - containerPort: 6502
+  - name: c2
+    image: test
+    ports:
+    - containerPort: 5432
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: svc
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.42.0.112
+    nodeName: node
+    targetRef:
+      kind: Pod
+      name: pod
+  ports:
+  - port: 6502
+    protocol: TCP
+  - port: 5432
+    protocol: TCP
+`,
+			},
+			expected: nil,
 		},
 	}
 

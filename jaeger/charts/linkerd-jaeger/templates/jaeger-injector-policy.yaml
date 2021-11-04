@@ -1,5 +1,5 @@
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: {{.Values.namespace}}
@@ -17,7 +17,7 @@ spec:
   port: jaeger-injector
   proxyProtocol: TLS
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: {{.Values.namespace}}
@@ -35,7 +35,7 @@ spec:
   port: admin-http
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: {{.Values.namespace}}

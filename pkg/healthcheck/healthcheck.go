@@ -1357,6 +1357,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 				{
 					description: "opaque ports are properly annotated",
 					hintAnchor:  "linkerd-opaque-ports-definition",
+					warning:     true,
 					check: func(ctx context.Context) error {
 						return hc.checkMisconfiguredOpaquePortAnnotations(ctx)
 					},
@@ -2340,7 +2341,7 @@ func misconfiguredOpaqueAnnotation(service *corev1.Service, pod *corev1.Pod) err
 
 func checkPodPorts(service *corev1.Service, pod *corev1.Pod, podPorts []string, port int) error {
 	for _, sp := range service.Spec.Ports {
-		if sp.Port == int32(port) {
+		if int(sp.Port) == port {
 			for _, c := range pod.Spec.Containers {
 				for _, cp := range c.Ports {
 					if cp.ContainerPort == sp.TargetPort.IntVal || cp.Name == sp.TargetPort.StrVal {
@@ -2367,13 +2368,13 @@ func checkPodPorts(service *corev1.Service, pod *corev1.Pod, podPorts []string, 
 func checkServiceIntPorts(service *corev1.Service, svcPorts []string, port int) (bool, error) {
 	for _, p := range service.Spec.Ports {
 		if p.TargetPort.Type == 0 && p.TargetPort.IntVal == 0 {
-			if p.Port == int32(port) {
+			if int(p.Port) == port {
 				// The service does not have a target port, so its service
 				// port should be marked as opaque.
 				return false, fmt.Errorf("service %s targets the opaque port %d; add it to its %s annotation", service.Name, port, k8s.ProxyOpaquePortsAnnotation)
 			}
 		}
-		if p.TargetPort.IntVal == int32(port) {
+		if int(p.TargetPort.IntVal) == port {
 			svcPort := strconv.Itoa(int(p.Port))
 			if util.ContainsString(svcPort, svcPorts) {
 				// The service exposes svcPort which targets p and svcPort
@@ -2388,9 +2389,14 @@ func checkServiceIntPorts(service *corev1.Service, svcPorts []string, port int) 
 
 func checkServiceNamePorts(service *corev1.Service, pod *corev1.Pod, port int, svcPorts []string) error {
 	for _, p := range service.Spec.Ports {
+		if p.TargetPort.StrVal == "" {
+			// The target port is not named so there is no named container
+			// port to check.
+			continue
+		}
 		for _, c := range pod.Spec.Containers {
 			for _, cp := range c.Ports {
-				if cp.ContainerPort == int32(port) {
+				if int(cp.ContainerPort) == port {
 					// This is the containerPort that maps to the opaque port
 					// we are currently checking.
 					if cp.Name == p.TargetPort.StrVal {
@@ -2676,9 +2682,9 @@ func validateDataPlanePods(pods []corev1.Pod, targetNamespace string) error {
 
 	for _, pod := range pods {
 		status := k8s.GetPodStatus(pod)
-		// Skip validating meshed pods that are in the `Completed` state
+		// Skip validating meshed pods that are in the `Completed` or `Shutdown` state
 		// as they do not have a running proxy
-		if status == "Completed" {
+		if status == "Completed" || status == "Shutdown" {
 			continue
 		}
 
@@ -2696,17 +2702,12 @@ func validateDataPlanePods(pods []corev1.Pod, targetNamespace string) error {
 }
 
 func checkUnschedulablePods(pods []corev1.Pod) error {
-	var errors []string
 	for _, pod := range pods {
 		for _, condition := range pod.Status.Conditions {
 			if condition.Reason == corev1.PodReasonUnschedulable {
-				errors = append(errors, fmt.Sprintf("%s: %s", pod.Name, condition.Message))
+				return fmt.Errorf("%s: %s", pod.Name, condition.Message)
 			}
 		}
-	}
-
-	if len(errors) > 0 {
-		return fmt.Errorf("%s", strings.Join(errors, "\n    "))
 	}
 
 	return nil

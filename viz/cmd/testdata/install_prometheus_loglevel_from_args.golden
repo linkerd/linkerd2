@@ -392,7 +392,7 @@ metadata:
     component: web
     namespace: linkerd-viz
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -408,7 +408,7 @@ spec:
   port: admin-http
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: linkerd-viz
@@ -425,7 +425,7 @@ spec:
     unauthenticated: true
 
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -441,7 +441,7 @@ spec:
   port: linkerd-admin
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: linkerd-viz
@@ -515,6 +515,7 @@ spec:
       - args:
         - -controller-namespace=linkerd
         - -log-level=info
+        - -log-format=plain
         - -cluster-domain=cluster.local
         - -prometheus-url=http://prometheus.linkerd-viz.svc.cluster.local:9090
         image: cr.l5d.io/linkerd/metrics-api:dev-undefined
@@ -540,7 +541,7 @@ spec:
           runAsUser: 2103
       serviceAccountName: metrics-api
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -558,7 +559,7 @@ spec:
   port: http
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: linkerd-viz
@@ -607,6 +608,11 @@ data:
     check_for_updates = false
     [panels]
     disable_sanitize_html = true
+    [log]
+    mode = console
+    [log.console]
+    format = text
+    level = info
   datasources.yaml: |-
     apiVersion: 1
     datasources:
@@ -734,7 +740,7 @@ spec:
           name: grafana-config
         name: grafana-config
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -752,7 +758,7 @@ spec:
   port: http
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: linkerd-viz
@@ -974,11 +980,12 @@ spec:
         fsGroup: 65534
       containers:
       - args:
+        - --log.format=logfmt
         - --config.file=/etc/prometheus/prometheus.yml
         - --log.level=debug
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
-        image: prom/prometheus:v2.19.3
+        image: prom/prometheus:v2.30.3
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1081,6 +1088,7 @@ spec:
         - api
         - -api-namespace=linkerd
         - -log-level=info
+        - -log-format=plain
         - -identity-trust-domain=cluster.local
         image: cr.l5d.io/linkerd/tap:dev-undefined
         imagePullPolicy: IfNotPresent
@@ -1115,7 +1123,7 @@ spec:
         secret:
           secretName: tap-k8s-tls
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -1133,7 +1141,7 @@ spec:
   port: apiserver
   proxyProtocol: TLS
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: linkerd-viz
@@ -1279,6 +1287,7 @@ spec:
         - injector
         - -tap-service-name=tap.linkerd-viz.serviceaccount.identity.linkerd.cluster.local
         - -log-level=info
+        - -log-format=plain
         image: cr.l5d.io/linkerd/tap:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1310,7 +1319,7 @@ spec:
         secret:
           secretName: tap-injector-k8s-tls
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -1328,7 +1337,7 @@ spec:
   port: tap-injector
   proxyProtocol: TLS
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: linkerd-viz
@@ -1412,6 +1421,7 @@ spec:
         - -controller-namespace=linkerd
         - -viz-namespace=linkerd-viz
         - -log-level=info
+        - -log-format=plain
         - -enforced-host=^(localhost|127\.0\.0\.1|web\.linkerd-viz\.svc\.cluster\.local|web\.linkerd-viz\.svc|\[::1\])(:\d+)?$
         image: cr.l5d.io/linkerd/web:dev-undefined
         imagePullPolicy: IfNotPresent
