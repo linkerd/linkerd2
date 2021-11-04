@@ -124,7 +124,10 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 	// documented in the KEP: https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/2433-topology-aware-hints/README.md#kube-proxy
 	for _, address := range et.availableEndpoints.Addresses {
 		if len(address.ForZones) == 0 {
-			return et.availableEndpoints
+			return watcher.AddressSet{
+				Addresses: allAvailEndpoints,
+				Labels:    et.availableEndpoints.Labels,
+			}
 		}
 	}
 
