@@ -94,7 +94,17 @@ const trafficSplitWeightColumn = {
   },
 };
 
+const trafficSplitLeafColumn = {
+  title: <Trans>columnTitleLeafService</Trans>,
+  dataIndex: 'leaf',
+  isNumeric: false,
+  filter: d => !d.tsStats ? null : d.tsStats.leaf,
+  render: d => !d.tsStats ? null : d.tsStats.leaf,
+  sorter: d => !d.tsStats ? null : d.tsStats.leaf,
+};
+
 const serviceDetailsColumns = [
+  trafficSplitLeafColumn,
   trafficSplitWeightColumn,
 ];
 
@@ -107,14 +117,7 @@ const trafficSplitDetailColumns = [
     render: d => !d.tsStats ? null : d.tsStats.apex,
     sorter: d => !d.tsStats ? null : d.tsStats.apex,
   },
-  {
-    title: <Trans>columnTitleLeafService</Trans>,
-    dataIndex: 'leaf',
-    isNumeric: false,
-    filter: d => !d.tsStats ? null : d.tsStats.leaf,
-    render: d => !d.tsStats ? null : d.tsStats.leaf,
-    sorter: d => !d.tsStats ? null : d.tsStats.leaf,
-  },
+  trafficSplitLeafColumn,
   trafficSplitWeightColumn,
 ];
 
@@ -261,6 +264,9 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
   if (showNameColumn) {
     columns = [nameColumn];
   }
+  if (isServicesTable) {
+    columns = columns.concat(serviceDetailsColumns);
+  }
   if (isTrafficSplitTable) {
     columns = columns.concat(trafficSplitDetailColumns);
   }
@@ -270,9 +276,6 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
     columns = columns.concat(gatewayColumns);
   } else {
     columns = columns.concat(httpStatColumns);
-  }
-  if (isServicesTable) {
-    columns = columns.concat(serviceDetailsColumns);
   }
 
   if (!isAuthorityTable && !isTrafficSplitTable && !isGatewayTable && !isServicesTable) {
