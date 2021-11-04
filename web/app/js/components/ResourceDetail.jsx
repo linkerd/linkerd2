@@ -366,7 +366,6 @@ export class ResourceDetailBase extends React.Component {
           upstreams={upstreams}
           api={this.api}
           upstreamDisplayMetrics={upstreamDisplayMetrics}
-          downstreamDisplayMetrics={downstreamDisplayMetrics}
           pathPrefix={pathPrefix}
           isTcpOnly={isTcpOnly}
           resourceMetrics={resourceMetrics}

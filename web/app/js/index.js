@@ -178,7 +178,7 @@ function AppHTML() {
                 path={`${pathPrefix}/namespaces/:namespace/deployments/:deployment`}
                 render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
               <Route
-                path={`${pathPrefix}/namespaces/:namespace/services/:services`}
+                path={`${pathPrefix}/namespaces/:namespace/services/:service`}
                 render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/deployments`}

@@ -5,8 +5,24 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
-import TopRoutesTabs from './TopRoutesTabs.jsx';
+import TopRoutesTabs, { topRoutesQueryPropType } from './TopRoutesTabs.jsx';
 import _isEmpty from 'lodash/isEmpty';
+import _filter from 'lodash/filter';
+
+const getResourceForService = (resourceMetrics, serviceName) => {
+  if (resourceMetrics.length === 1) {
+    return resourceMetrics[0];
+  }
+  const relevantResources = _filter(resourceMetrics, rm => {
+    return !rm.tsStats || rm.tsStats.leaf === serviceName;
+  });
+
+  if (relevantResources.length >= 1) {
+    return relevantResources[0];
+  }
+
+  return resourceMetrics[0];
+};
 
 const ServiceDetail = ({
   api,
@@ -16,7 +32,6 @@ const ServiceDetail = ({
   isTcpOnly,
   pathPrefix,
   upstreamDisplayMetrics,
-  downstreamDisplayMetrics,
   unmeshedSources,
   updateUnmeshedSources,
   upstreams,
@@ -28,8 +43,8 @@ const ServiceDetail = ({
       </Grid>
 
       <Octopus
-        resource={resourceMetrics[0]}
-        neighbors={{ upstream: upstreamDisplayMetrics, downstream: downstreamDisplayMetrics }}
+        resource={getResourceForService(resourceMetrics)}
+        neighbors={{ upstream: upstreamDisplayMetrics }}
         unmeshedSources={Object.values(unmeshedSources)}
         api={api} />
 
@@ -37,7 +52,7 @@ const ServiceDetail = ({
         query={query}
         pathPrefix={pathPrefix}
         updateUnmeshedSources={updateUnmeshedSources}
-        disableTop="false" />
+        disableTop />
       }
 
       {_isEmpty(upstreams) ? null :
@@ -47,12 +62,12 @@ const ServiceDetail = ({
         metrics={upstreamDisplayMetrics} />
       }
 
-      {_isEmpty(downstreamDisplayMetrics) ? null :
+      {resourceMetrics.length <= 1 ? null :
       <MetricsTable
-        resource="multi_resource"
+        resource="service"
         title={<Trans>tableTitleOutbound</Trans>}
-        metrics={downstreamDisplayMetrics} />
-      }
+        metrics={resourceMetrics} />
+       }
 
     </div>
   );
@@ -64,14 +79,13 @@ ServiceDetail.propTypes = {
   }).isRequired,
   resourceMetrics: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
   resourceName: PropTypes.string.isRequired,
-  query: PropTypes.string.isRequired,
+  query: topRoutesQueryPropType.isRequired,
   isTcpOnly: PropTypes.bool.isRequired,
   pathPrefix: PropTypes.string.isRequired,
   upstreamDisplayMetrics: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
-  downstreamDisplayMetrics: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
   unmeshedSources: PropTypes.shape({}).isRequired,
   updateUnmeshedSources: PropTypes.func.isRequired,
-  upstreams: PropTypes.shape({}).isRequired,
+  upstreams: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
 };
 
 export default ServiceDetail;
