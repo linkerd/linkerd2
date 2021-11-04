@@ -1307,6 +1307,9 @@ data:
         cpu:
           limit: ""
           request: ""
+        ephemeral-storage:
+          limit: ""
+          request: ""
         memory:
           limit: ""
           request: ""
@@ -1361,6 +1364,9 @@ data:
         cpu:
           limit: ""
           request: ""
+        ephemeral-storage:
+          limit: ""
+          request: ""
         memory:
           limit: ""
           request: ""
@@ -1376,11 +1382,14 @@ data:
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v1.4.1
+        version: v1.5.0
       resources:
         cpu:
           limit: 100m
           request: 10m
+        ephemeral-storage:
+          limit: ""
+          request: ""
         memory:
           limit: 50Mi
           request: 10Mi
@@ -1684,7 +1693,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443"
-        image: cr.l5d.io/linkerd/proxy-init:v1.4.1
+        image: cr.l5d.io/linkerd/proxy-init:v1.5.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2081,7 +2090,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443"
-        image: cr.l5d.io/linkerd/proxy-init:v1.4.1
+        image: cr.l5d.io/linkerd/proxy-init:v1.5.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2369,7 +2378,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "4567,4568"
-        image: cr.l5d.io/linkerd/proxy-init:v1.4.1
+        image: cr.l5d.io/linkerd/proxy-init:v1.5.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

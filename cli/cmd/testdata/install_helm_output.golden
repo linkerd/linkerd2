@@ -1303,6 +1303,9 @@ data:
         cpu:
           limit: ""
           request: ""
+        ephemeral-storage:
+          limit: ""
+          request: ""
         memory:
           limit: ""
           request: ""
@@ -1357,6 +1360,9 @@ data:
         cpu:
           limit: ""
           request: ""
+        ephemeral-storage:
+          limit: ""
+          request: ""
         memory:
           limit: ""
           request: ""
@@ -1377,6 +1383,9 @@ data:
         cpu:
           limit: 100m
           request: 10m
+        ephemeral-storage:
+          limit: ""
+          request: ""
         memory:
           limit: 50Mi
           request: 10Mi
