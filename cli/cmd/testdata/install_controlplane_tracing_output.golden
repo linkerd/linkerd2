@@ -85,6 +85,9 @@ rules:
 - apiGroups: ["split.smi-spec.io"]
   resources: ["trafficsplits"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
+  verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1243,7 +1246,7 @@ data:
     destinationProxyResources: null
     destinationResources: null
     disableHeartBeat: false
-    enableEndpointSlices: false
+    enableEndpointSlices: true
     enableH2Upgrade: true
     enablePodAntiAffinity: false
     grafanaUrl: ""
@@ -1862,7 +1865,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 3a972809005225b5683a2b27044316fb39690eb989ae38f6259b1602a3c86d18
+        checksum/config: 3290ef57105cdd56ce71577bc09f73cd2e67eb6439f2c76a1c464ce9c65782b5
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
@@ -2002,7 +2005,7 @@ spec:
         - -enable-h2-upgrade=true
         - -log-level=info
         - -log-format=plain
-        - -enable-endpoint-slices=false
+        - -enable-endpoint-slices=true
         - -cluster-domain=cluster.local
         - -identity-trust-domain=cluster.local
         - -default-opaque-ports=25,587,3306,4444,5432,6379,9300,11211
