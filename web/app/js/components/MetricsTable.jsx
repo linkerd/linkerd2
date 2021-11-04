@@ -94,17 +94,15 @@ const trafficSplitWeightColumn = {
   },
 };
 
-const trafficSplitLeafColumn = {
-  title: <Trans>columnTitleLeafService</Trans>,
-  dataIndex: 'leaf',
-  isNumeric: false,
-  filter: d => !d.tsStats ? null : d.tsStats.leaf,
-  render: d => !d.tsStats ? null : d.tsStats.leaf,
-  sorter: d => !d.tsStats ? null : d.tsStats.leaf,
-};
-
 const serviceDetailsColumns = [
-  trafficSplitLeafColumn,
+  {
+    title: <Trans>columnTitleDestination</Trans>,
+    dataIndex: 'leaf',
+    isNumeric: false,
+    filter: d => !d.tsStats ? null : d.tsStats.leaf,
+    render: d => !d.tsStats ? null : d.tsStats.leaf,
+    sorter: d => !d.tsStats ? null : d.tsStats.leaf,
+  },
   trafficSplitWeightColumn,
 ];
 
@@ -117,7 +115,14 @@ const trafficSplitDetailColumns = [
     render: d => !d.tsStats ? null : d.tsStats.apex,
     sorter: d => !d.tsStats ? null : d.tsStats.apex,
   },
-  trafficSplitLeafColumn,
+  {
+    title: <Trans>columnTitleLeafService</Trans>,
+    dataIndex: 'leaf',
+    isNumeric: false,
+    filter: d => !d.tsStats ? null : d.tsStats.leaf,
+    render: d => !d.tsStats ? null : d.tsStats.leaf,
+    sorter: d => !d.tsStats ? null : d.tsStats.leaf,
+  },
   trafficSplitWeightColumn,
 ];
 
