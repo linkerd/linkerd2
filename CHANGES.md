@@ -1,5 +1,30 @@
 # Changes
 
+## edge-21.11.1
+
+In this edge, we're very excited to introduce Service Account Token Volume
+Projections, used to set up the pod's identities. These tokens are bounded
+specifically for this use case and are rotated daily, replacing the usage of the
+default tokens injected by Kubernetes which are overly permissive and not
+rotated.
+
+Note that this edge release updates the minimum supported kubernetes version to 1.20.
+
+* Updated the minimum supported kubernetes version to 1.20
+* Use Service Account Token Volume Projections to set up the pods identities
+* Updated proxy-init's Alpine base image to fix some CVEs (not affecting
+  Linkerd)
+* Updated the Prometheus image in viz to 2.30.3
+* Changed the proxy and policy controller to use jemalloc on x86_64 gnu/linux to
+  reduce memory usage
+* Improved retries so that requests without a `content-length` can be retried
+  (e.g. for `grpc-go` clients)
+* Promoted service discovery updates entries in the proxy's log from TRACE to
+  DEBUG, for improved discovery diagnostics
+* Fixed output for `linkerd check -o json`
+* Added ability to configure ephemeral-storage resources for each component
+  (thanks @michaellzc!)
+
 ## edge-21.10.3
 
 This edge release fixes a bug in the proxy that could cause it to be killed in
