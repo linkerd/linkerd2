@@ -60,20 +60,29 @@ type PodServerRx = watch::Receiver<ServerRx>;
 /// Publishes a pod's port for a new `ServerRx`.
 type PodServerTx = watch::Sender<ServerRx>;
 
+/// Holds cluster metadata.
+#[derive(Clone, Debug)]
+pub struct ClusterInfo {
+    /// Networks including PodIPs in this cluster.
+    ///
+    /// TODO(ver) this can be discovered dynamically by the node index, but this would complicate
+    /// notifications.
+    pub networks: Vec<IpNet>,
+
+    /// The namespace where the linkerd control plane is deployed
+    pub control_plane_ns: String,
+
+    /// The cluster's mesh identity trust domain.
+    pub identity_domain: String,
+}
+
 /// Holds all indexing state. Owned and updated by a single task that processes watch events,
 /// publishing results to the shared lookup map for quick lookups in the API server.
 pub struct Index {
     /// Holds per-namespace pod/server/authorization indexes.
     namespaces: NamespaceIndex,
 
-    /// The cluster's mesh identity trust domain.
-    identity_domain: String,
-
-    /// Networks including PodIPs in this cluster.
-    ///
-    /// TODO(ver) this can be discovered dynamically by the node index, but this would complicate
-    /// notifications.
-    cluster_networks: Vec<IpNet>,
+    cluster_info: ClusterInfo,
 
     /// Holds watches for the cluster's default-allow policies. These watches are never updated but
     /// this state is held so we can used shared references when updating a pod-port's server watch
@@ -82,9 +91,6 @@ pub struct Index {
 
     /// A handle that supports updates to the lookup index.
     lookups: lookup::Writer,
-
-    /// The namespace where the linkerd control plane is deployed
-    control_plane_ns: String,
 }
 
 #[derive(Debug)]
@@ -94,15 +100,13 @@ struct Errors(Vec<anyhow::Error>);
 
 impl Index {
     pub fn new(
-        cluster_networks: Vec<IpNet>,
-        identity_domain: String,
+        cluster_info: ClusterInfo,
         default_policy: DefaultPolicy,
         detect_timeout: time::Duration,
-        control_plane_ns: String,
     ) -> (lookup::Reader, Self) {
         // Create a common set of receivers for all supported default policies.
         let default_policy_watches =
-            DefaultPolicyWatches::new(cluster_networks.clone(), detect_timeout);
+            DefaultPolicyWatches::new(cluster_info.networks.clone(), detect_timeout);
 
         // Provide the cluster-wide default-allow policy to the namespace index so that it may be
         // used when a workload-level annotation is not set.
@@ -112,10 +116,8 @@ impl Index {
         let idx = Self {
             lookups: writer,
             namespaces,
-            identity_domain,
-            cluster_networks,
+            cluster_info,
             default_policy_watches,
-            control_plane_ns,
         };
         (reader, idx)
     }

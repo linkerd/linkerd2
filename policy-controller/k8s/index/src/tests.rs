@@ -13,17 +13,20 @@ use tokio::time;
 #[tokio::test]
 async fn incrementally_configure_server() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
+    let cluster = ClusterInfo {
+        networks: vec![cluster_net],
+        control_plane_ns: "linkerd".to_string(),
+        identity_domain: "cluster.example.com".into(),
+    };
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
     let detect_timeout = time::Duration::from_secs(1);
     let (lookup_rx, mut idx) = Index::new(
-        vec![cluster_net],
-        "cluster.example.com".into(),
+        cluster,
         DefaultPolicy::Allow {
             authenticated_only: false,
             cluster_only: true,
         },
         detect_timeout,
-        "linkerd".to_string(),
     );
 
     let pod = mk_pod(
@@ -136,19 +139,18 @@ async fn incrementally_configure_server() {
 #[test]
 fn server_update_deselects_pod() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
+    let cluster = ClusterInfo {
+        networks: vec![cluster_net],
+        control_plane_ns: "linkerd".to_string(),
+        identity_domain: "cluster.example.com".into(),
+    };
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
     let detect_timeout = time::Duration::from_secs(1);
     let default = DefaultPolicy::Allow {
         authenticated_only: false,
         cluster_only: true,
     };
-    let (lookup_rx, mut idx) = Index::new(
-        vec![cluster_net],
-        "cluster.example.com".into(),
-        default,
-        detect_timeout,
-        "linkerd".to_string(),
-    );
+    let (lookup_rx, mut idx) = Index::new(cluster, default, detect_timeout);
 
     let p = mk_pod(
         "ns-0",
@@ -200,17 +202,16 @@ fn server_update_deselects_pod() {
 #[test]
 fn default_policy_global() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
+    let cluster = ClusterInfo {
+        networks: vec![cluster_net],
+        control_plane_ns: "linkerd".to_string(),
+        identity_domain: "cluster.example.com".into(),
+    };
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
     let detect_timeout = time::Duration::from_secs(1);
 
     for default in &DEFAULTS {
-        let (lookup_rx, mut idx) = Index::new(
-            vec![cluster_net],
-            "cluster.example.com".into(),
-            *default,
-            detect_timeout,
-            "linkerd".to_string(),
-        );
+        let (lookup_rx, mut idx) = Index::new(cluster.clone(), *default, detect_timeout);
 
         let p = mk_pod(
             "ns-0",
@@ -244,13 +245,17 @@ fn default_policy_global() {
 #[test]
 fn default_policy_annotated() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
+    let cluster = ClusterInfo {
+        networks: vec![cluster_net],
+        control_plane_ns: "linkerd".to_string(),
+        identity_domain: "cluster.example.com".into(),
+    };
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
     let detect_timeout = time::Duration::from_secs(1);
 
     for default in &DEFAULTS {
         let (lookup_rx, mut idx) = Index::new(
-            vec![cluster_net],
-            "cluster.example.com".into(),
+            cluster.clone(),
             // Invert default to ensure override applies.
             match *default {
                 DefaultPolicy::Deny => DefaultPolicy::Allow {
@@ -260,7 +265,6 @@ fn default_policy_annotated() {
                 _ => DefaultPolicy::Deny,
             },
             detect_timeout,
-            "linkerd".to_string(),
         );
 
         let mut p = mk_pod(
@@ -292,6 +296,11 @@ fn default_policy_annotated() {
 #[test]
 fn default_policy_annotated_invalid() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
+    let cluster = ClusterInfo {
+        networks: vec![cluster_net],
+        control_plane_ns: "linkerd".to_string(),
+        identity_domain: "cluster.example.com".into(),
+    };
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
     let detect_timeout = time::Duration::from_secs(1);
 
@@ -299,13 +308,7 @@ fn default_policy_annotated_invalid() {
         authenticated_only: false,
         cluster_only: false,
     };
-    let (lookup_rx, mut idx) = Index::new(
-        vec![cluster_net],
-        "cluster.example.com".into(),
-        default,
-        detect_timeout,
-        "linkerd".to_string(),
-    );
+    let (lookup_rx, mut idx) = Index::new(cluster, default, detect_timeout);
 
     let mut p = mk_pod(
         "ns-0",
@@ -343,17 +346,16 @@ fn default_policy_annotated_invalid() {
 #[test]
 fn opaque_annotated() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
+    let cluster = ClusterInfo {
+        networks: vec![cluster_net],
+        control_plane_ns: "linkerd".to_string(),
+        identity_domain: "cluster.example.com".into(),
+    };
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
     let detect_timeout = time::Duration::from_secs(1);
 
     for default in &DEFAULTS {
-        let (lookup_rx, mut idx) = Index::new(
-            vec![cluster_net],
-            "cluster.example.com".into(),
-            *default,
-            detect_timeout,
-            "linkerd".to_string(),
-        );
+        let (lookup_rx, mut idx) = Index::new(cluster.clone(), *default, detect_timeout);
 
         let mut p = mk_pod(
             "ns-0",
@@ -382,17 +384,16 @@ fn opaque_annotated() {
 #[test]
 fn authenticated_annotated() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
+    let cluster = ClusterInfo {
+        networks: vec![cluster_net],
+        control_plane_ns: "linkerd".to_string(),
+        identity_domain: "cluster.example.com".into(),
+    };
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
     let detect_timeout = time::Duration::from_secs(1);
 
     for default in &DEFAULTS {
-        let (lookup_rx, mut idx) = Index::new(
-            vec![cluster_net],
-            "cluster.example.com".into(),
-            *default,
-            detect_timeout,
-            "linkerd".to_string(),
-        );
+        let (lookup_rx, mut idx) = Index::new(cluster.clone(), *default, detect_timeout);
 
         let mut p = mk_pod(
             "ns-0",
