@@ -65,8 +65,7 @@ type PodServerTx = watch::Sender<ServerRx>;
 pub struct ClusterInfo {
     /// Networks including PodIPs in this cluster.
     ///
-    /// TODO(ver) this can be discovered dynamically by the node index, but this would complicate
-    /// notifications.
+    /// Unfortunately, there's no way to discover this at runtime.
     pub networks: Vec<IpNet>,
 
     /// The namespace where the linkerd control plane is deployed
