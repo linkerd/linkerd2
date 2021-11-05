@@ -10,7 +10,9 @@ default tokens injected by Kubernetes which are overly permissive.
 Note that this edge release updates the minimum supported kubernetes version to 1.20.
 
 * Updated the minimum supported kubernetes version to 1.20
-* Use Service Account Token Volume Projections to set up the pods' identities
+* Use Service Account Token Volume Projections to set up the pods' identities;
+  now injection also works on pods with `automountServiceAccountToken` set to
+  `false`
 * Updated proxy-init's Alpine base image to fix some CVEs (not affecting
   Linkerd)
 * Updated the Prometheus image in linkerd-viz to 2.30.3
