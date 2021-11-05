@@ -40,12 +40,13 @@ securityContext:
     {{- end }}
   {{- if .Values.proxyInit.closeWaitTimeoutSecs }}
   privileged: true
-  {{- else }}
-  privileged: false
-  {{- end }}
-  readOnlyRootFilesystem: true
   runAsNonRoot: false
   runAsUser: 0
+  {{- else }}
+  privileged: false
+  runAsNonRoot: true
+  {{- end }}
+  readOnlyRootFilesystem: true
 terminationMessagePolicy: FallbackToLogsOnError
 {{- if or (not .Values.cniEnabled) .Values.proxyInit.saMountPath }}
 volumeMounts:

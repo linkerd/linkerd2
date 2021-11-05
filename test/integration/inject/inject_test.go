@@ -384,7 +384,6 @@ func TestInjectAutoPod(t *testing.T) {
 
 	truthy := true
 	falsy := false
-	zero := int64(0)
 	reg := "cr.l5d.io/linkerd"
 	if override := os.Getenv(flags.EnvOverrideDockerRegistry); override != "" {
 		reg = override
@@ -428,8 +427,7 @@ func TestInjectAutoPod(t *testing.T) {
 				Add: []v1.Capability{v1.Capability("NET_ADMIN"), v1.Capability("NET_RAW")},
 			},
 			Privileged:               &falsy,
-			RunAsUser:                &zero,
-			RunAsNonRoot:             &falsy,
+			RunAsNonRoot:             &truthy,
 			AllowPrivilegeEscalation: &falsy,
 			ReadOnlyRootFilesystem:   &truthy,
 		},

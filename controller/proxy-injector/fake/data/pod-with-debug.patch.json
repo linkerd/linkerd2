@@ -80,9 +80,8 @@
           ]
         },
         "privileged": false,
-        "readOnlyRootFilesystem": true,
-        "runAsNonRoot": false,
-        "runAsUser": 0
+        "runAsNonRoot": true,
+        "readOnlyRootFilesystem": true
       },
       "terminationMessagePolicy": "FallbackToLogsOnError",
       "volumeMounts": [
