@@ -16,10 +16,6 @@ Note that this edge release updates the minimum supported kubernetes version to 
 * Updated the Prometheus image in linkerd-viz to 2.30.3
 * Changed the proxy and policy controller to use jemalloc on x86_64 gnu/linux to
   reduce memory usage
-* Improved retries so that requests without a `content-length` can be retried
-  (e.g. for `grpc-go` clients)
-* Promoted service discovery updates entries in the proxy's log from TRACE to
-  DEBUG, for improved discovery diagnostics
 * Fixed output for `linkerd check -o json`
 * Added ability to configure ephemeral-storage resources for each component
   (thanks @michaellzc!)
