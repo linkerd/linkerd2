@@ -114,16 +114,15 @@ func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
 // consumption zone as the node. An endpoints consumption zone is set
 // by its Hints field and can be different than its actual Topology zone.
 func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
-	allAvailEndpoints := make(map[watcher.ID]watcher.Address)
-	for k, v := range et.availableEndpoints.Addresses {
-		allAvailEndpoints[k] = v
-	}
-
 	// If any address does not have a hint, then all hints are ignored and all
 	// available addresses are returned. This replicates kube-proxy behavior
 	// documented in the KEP: https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/2433-topology-aware-hints/README.md#kube-proxy
 	for _, address := range et.availableEndpoints.Addresses {
 		if len(address.ForZones) == 0 {
+			allAvailEndpoints := make(map[watcher.ID]watcher.Address)
+			for k, v := range et.availableEndpoints.Addresses {
+				allAvailEndpoints[k] = v
+			}
 			return watcher.AddressSet{
 				Addresses: allAvailEndpoints,
 				Labels:    et.availableEndpoints.Labels,
