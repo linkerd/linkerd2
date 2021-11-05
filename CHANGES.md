@@ -5,8 +5,7 @@
 In this edge, we're very excited to introduce Service Account Token Volume
 Projections, used to set up the pods' identities. These tokens are bounded
 specifically for this use case and are rotated daily, replacing the usage of the
-default tokens injected by Kubernetes which are overly permissive and not
-rotated.
+default tokens injected by Kubernetes which are overly permissive.
 
 Note that this edge release updates the minimum supported kubernetes version to 1.20.
 
