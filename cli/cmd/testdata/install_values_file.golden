@@ -1256,6 +1256,7 @@ data:
             AiAtuoI5XuCtrGVRzSmRTl2ra28aV9MyTU7d5qnTAFHKSgIgRKCvluOSgA5O21p5
             51tdrmkHEZRr0qlLSJdHYgEfMzk=
             -----END CERTIFICATE-----
+      serviceAccountTokenProjection: true
     identityProxyResources: null
     identityResources: null
     identityTrustAnchorsPEM: |
@@ -1290,6 +1291,9 @@ data:
       logLevel: linkerd=info,warn
       resources:
         cpu:
+          limit: ""
+          request: ""
+        ephemeral-storage:
           limit: ""
           request: ""
         memory:
@@ -1346,6 +1350,9 @@ data:
         cpu:
           limit: ""
           request: ""
+        ephemeral-storage:
+          limit: ""
+          request: ""
         memory:
           limit: ""
           request: ""
@@ -1361,11 +1368,14 @@ data:
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v1.4.1
+        version: v1.5.1
       resources:
         cpu:
           limit: 100m
           request: 10m
+        ephemeral-storage:
+          limit: ""
+          request: ""
         memory:
           limit: 50Mi
           request: 10Mi
@@ -1619,7 +1629,7 @@ spec:
               name: linkerd-identity-trust-roots
               key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
-          value: /var/run/secrets/kubernetes.io/serviceaccount/token
+          value: /var/run/secrets/tokens/linkerd-identity-token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
           value: localhost.:8080
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
@@ -1657,6 +1667,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+        - mountPath: /var/run/secrets/tokens
+          name: linkerd-identity-token
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -1669,7 +1681,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443"
-        image: cr.l5d.io/linkerd/proxy-init:v1.4.1
+        image: cr.l5d.io/linkerd/proxy-init:v1.5.1
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1686,9 +1698,8 @@ spec:
             - NET_ADMIN
             - NET_RAW
           privileged: false
+          runAsNonRoot: true
           readOnlyRootFilesystem: true
-          runAsNonRoot: false
-          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /run
@@ -1703,6 +1714,13 @@ spec:
         name: trust-roots
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
+      - name: linkerd-identity-token
+        projected:
+          sources:
+          - serviceAccountToken:
+              path: linkerd-identity-token
+              expirationSeconds: 86400
+              audience: identity.l5d.io
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -1916,7 +1934,7 @@ spec:
               name: linkerd-identity-trust-roots
               key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
-          value: /var/run/secrets/kubernetes.io/serviceaccount/token
+          value: /var/run/secrets/tokens/linkerd-identity-token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
           value: linkerd-identity-headless.l5d.svc.example.com.:8080
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
@@ -1959,6 +1977,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+        - mountPath: /var/run/secrets/tokens
+          name: linkerd-identity-token
       - args:
         - destination
         - -addr=:8086
@@ -2066,7 +2086,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443"
-        image: cr.l5d.io/linkerd/proxy-init:v1.4.1
+        image: cr.l5d.io/linkerd/proxy-init:v1.5.1
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2083,9 +2103,8 @@ spec:
             - NET_ADMIN
             - NET_RAW
           privileged: false
+          runAsNonRoot: true
           readOnlyRootFilesystem: true
-          runAsNonRoot: false
-          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /run
@@ -2100,6 +2119,13 @@ spec:
           secretName: linkerd-policy-validator-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
+      - name: linkerd-identity-token
+        projected:
+          sources:
+          - serviceAccountToken:
+              path: linkerd-identity-token
+              expirationSeconds: 86400
+              audience: identity.l5d.io
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -2267,7 +2293,7 @@ spec:
               name: linkerd-identity-trust-roots
               key: ca-bundle.crt
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
-          value: /var/run/secrets/kubernetes.io/serviceaccount/token
+          value: /var/run/secrets/tokens/linkerd-identity-token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
           value: linkerd-identity-headless.l5d.svc.example.com.:8080
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
@@ -2310,6 +2336,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+        - mountPath: /var/run/secrets/tokens
+          name: linkerd-identity-token
       - args:
         - proxy-injector
         - -log-level=info
@@ -2354,7 +2382,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "4567,4568"
-        image: cr.l5d.io/linkerd/proxy-init:v1.4.1
+        image: cr.l5d.io/linkerd/proxy-init:v1.5.1
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2371,9 +2399,8 @@ spec:
             - NET_ADMIN
             - NET_RAW
           privileged: false
+          runAsNonRoot: true
           readOnlyRootFilesystem: true
-          runAsNonRoot: false
-          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /run
@@ -2391,6 +2418,13 @@ spec:
           secretName: linkerd-proxy-injector-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
+      - name: linkerd-identity-token
+        projected:
+          sources:
+          - serviceAccountToken:
+              path: linkerd-identity-token
+              expirationSeconds: 86400
+              audience: identity.l5d.io
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity

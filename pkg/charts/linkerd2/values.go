@@ -176,14 +176,16 @@ type (
 
 	// Resources represents the computational resources setup for a given container
 	Resources struct {
-		CPU    Constraints `json:"cpu"`
-		Memory Constraints `json:"memory"`
+		CPU              Constraints `json:"cpu"`
+		Memory           Constraints `json:"memory"`
+		EphemeralStorage Constraints `json:"ephemeral-storage"`
 	}
 
 	// Identity contains the fields to set the identity variables in the proxy
 	// sidecar container
 	Identity struct {
-		Issuer *Issuer `json:"issuer"`
+		ServiceAccountTokenProjection bool    `json:"serviceAccountTokenProjection"`
+		Issuer                        *Issuer `json:"issuer"`
 	}
 
 	// Issuer has the Helm variables of the identity issuer

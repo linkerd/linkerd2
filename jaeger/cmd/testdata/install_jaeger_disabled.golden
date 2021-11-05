@@ -394,6 +394,7 @@ spec:
           httpGet:
             path: /
             port: 13133
+        resources:
         volumeMounts:
         - mountPath: /conf
           name: collector-config-val

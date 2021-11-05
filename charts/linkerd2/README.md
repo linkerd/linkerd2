@@ -147,6 +147,7 @@ Kubernetes: `>=1.20.0-0`
 | identity.issuer.tls | object | `{"crtPEM":"","keyPEM":""}` | Which scheme is used for the identity issuer secret format |
 | identity.issuer.tls.crtPEM | string | `""` | Issuer certificate (ECDSA). It must be provided during install. |
 | identity.issuer.tls.keyPEM | string | `""` | Key for the issuer certificate (ECDSA). It must be provided during install |
+| identity.serviceAccountTokenProjection | bool | `true` | Use [Service Account token Volume projection](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-token-volume-projection) for pod validation instead of the default token |
 | identityTrustAnchorsPEM | string | `""` | Trust root certificate (ECDSA). It must be provided during install. |
 | identityTrustDomain | string | clusterDomain | Trust domain used for identity |
 | imagePullPolicy | string | `"IfNotPresent"` | Docker image pull policy |
@@ -165,6 +166,8 @@ Kubernetes: `>=1.20.0-0`
 | policyController.resources | object | destinationResources | policy controller resource requests & limits |
 | policyController.resources.cpu.limit | string | `""` | Maximum amount of CPU units that the policy controller can use |
 | policyController.resources.cpu.request | string | `""` | Amount of CPU units that the policy controller requests |
+| policyController.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the policy controller can use |
+| policyController.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the policy controller requests |
 | policyController.resources.memory.limit | string | `""` | Maximum amount of memory that the policy controller can use |
 | policyController.resources.memory.request | string | `""` | Maximum amount of memory that the policy controller requests |
 | policyValidator.caBundle | string | `""` | Bundle of CA certificates for policy validator. If not provided then Helm will use the certificate generated  for `policyValidator.crtPEM`. If `policyValidator.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
@@ -196,6 +199,8 @@ Kubernetes: `>=1.20.0-0`
 | proxy.requireIdentityOnInboundPorts | string | `""` |  |
 | proxy.resources.cpu.limit | string | `""` | Maximum amount of CPU units that the proxy can use |
 | proxy.resources.cpu.request | string | `""` | Amount of CPU units that the proxy requests |
+| proxy.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the proxy can use |
+| proxy.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the proxy requests |
 | proxy.resources.memory.limit | string | `""` | Maximum amount of memory that the proxy can use |
 | proxy.resources.memory.request | string | `""` | Maximum amount of memory that the proxy requests |
 | proxy.uid | int | `2102` | User id under which the proxy runs |
@@ -205,9 +210,11 @@ Kubernetes: `>=1.20.0-0`
 | proxyInit.ignoreOutboundPorts | string | `"4567,4568"` | Default set of outbound ports to skip via iptables - Galera (4567,4568) |
 | proxyInit.image.name | string | `"cr.l5d.io/linkerd/proxy-init"` | Docker image for the proxy-init container |
 | proxyInit.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy-init container Docker image |
-| proxyInit.image.version | string | `"v1.4.1"` | Tag for the proxy-init container Docker image |
+| proxyInit.image.version | string | `"v1.5.1"` | Tag for the proxy-init container Docker image |
 | proxyInit.resources.cpu.limit | string | `"100m"` | Maximum amount of CPU units that the proxy-init container can use |
 | proxyInit.resources.cpu.request | string | `"10m"` | Amount of CPU units that the proxy-init container requests |
+| proxyInit.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the proxy-init container can use |
+| proxyInit.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the proxy-init container requests |
 | proxyInit.resources.memory.limit | string | `"50Mi"` | Maximum amount of memory that the proxy-init container can use |
 | proxyInit.resources.memory.request | string | `"10Mi"` | Amount of memory that the proxy-init container requests |
 | proxyInit.xtMountPath.mountPath | string | `"/run"` |  |

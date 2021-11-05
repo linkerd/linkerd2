@@ -21,11 +21,10 @@ require (
 	github.com/imdario/mergo v0.3.12
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/linkerd/linkerd2-proxy-api v0.3.0
-	github.com/linkerd/linkerd2-proxy-init v1.4.1
+	github.com/linkerd/linkerd2-proxy-init v1.5.1
 	github.com/mattn/go-isatty v0.0.14
 	github.com/mattn/go-runewidth v0.0.13
 	github.com/nsf/termbox-go v0.0.0-20180613055208-5c94acc5e6eb
-	github.com/onsi/gomega v1.8.1 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
 	github.com/prometheus/client_golang v1.11.0
@@ -40,7 +39,7 @@ require (
 	go.opencensus.io v0.23.0
 	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d
 	golang.org/x/tools v0.1.7
-	google.golang.org/grpc v1.41.0
+	google.golang.org/grpc v1.42.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.27.1
 	helm.sh/helm/v3 v3.6.3
@@ -48,7 +47,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.21.3
 	k8s.io/apimachinery v0.21.3
 	k8s.io/client-go v0.21.3
-	k8s.io/code-generator v0.21.3
+	k8s.io/code-generator v0.22.3
 	k8s.io/klog/v2 v2.30.0
 	k8s.io/kube-aggregator v0.21.3
 	rsc.io/letsencrypt v0.0.3 // indirect

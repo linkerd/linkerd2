@@ -100,6 +100,11 @@ metricsAPI:
       limit:
       # -- Amount of memory that the metrics-api container requests
       request:
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the metrics-api container can use
+      limit: ""
+      # -- Amount of ephemeral storage that the metrics-api container requests
+      request: ""
 
   proxy:
     # -- If set, overrides default proxy resources for the proxy injected
@@ -167,6 +172,11 @@ tap:
       limit:
       # -- Amount of memory that the tap container requests
       request:
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the tap container can use
+      limit: ""
+      # -- Amount of ephemeral storage that the tap container requests
+      request: ""
 
   proxy:
     # -- If set, overrides default proxy resources for the proxy injected
@@ -221,6 +231,11 @@ tapInjector:
       limit:
       # -- Amount of memory that the tapInjector container requests
       request:
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the tapInjector container can use
+      limit: ""
+      # -- Amount of ephemeral storage that the tapInjector container requests
+      request: ""
   proxy:
     # -- If set, overrides default proxy resources for the proxy injected
     # into the tapInjector component
@@ -287,6 +302,11 @@ dashboard:
       limit:
       # -- Amount of memory that the web container requests
       request:
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the web container can use
+      limit: ""
+      # -- Amount of ephemeral storage that the web container requests
+      request: ""
 
   proxy:
     # -- If set, overrides default proxy resources for the proxy injected
@@ -301,7 +321,7 @@ grafana:
   logLevel: ""
   # -- log format (plain, json) of the grafana instance
   # @default -- defaultLogFormat
-  logFormat: ""  
+  logFormat: ""
   image:
     # -- Docker registry for the grafana instance
     # @default -- defaultRegistry
@@ -326,6 +346,11 @@ grafana:
       limit:
       # -- Amount of memory that the grafana container requests
       request:
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the grafana container can use
+      limit: ""
+      # -- Amount of ephemeral storage that the grafana container requests
+      request: ""
 
   proxy:
     # -- If set, overrides default proxy resources for the proxy injected
@@ -349,7 +374,7 @@ prometheus:
     # -- Docker image name for the prometheus instance
     name: prometheus
     # -- Docker image tag for the prometheus instance
-    tag: v2.19.3
+    tag: v2.30.3
     # -- Pull policy for the prometheus instance
     # @default -- defaultImagePullPolicy
     pullPolicy: ""
@@ -465,6 +490,11 @@ prometheus:
       limit:
       # -- Amount of memory that the prometheus container requests
       request:
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the prometheus container can use
+      limit: ""
+      # -- Amount of ephemeral storage that the prometheus container requests
+      request: ""
 
   proxy:
     # -- If set, overrides default proxy resources for the proxy injected
