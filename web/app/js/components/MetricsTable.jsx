@@ -219,7 +219,7 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
     key: 'grafanaDashboard',
     isNumeric: true,
     render: row => {
-      if (!isAuthorityTable && (!row.added || _get(row, 'pods.totalPods') === '0')) {
+      if (!isAuthorityTable && !isServicesTable && (!row.added || _get(row, 'pods.totalPods') === '0')) {
         return null;
       }
 
