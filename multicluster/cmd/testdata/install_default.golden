@@ -33,6 +33,7 @@ spec:
         config.linkerd.io/enable-gateway: "true"
       labels:
         app: linkerd-gateway
+        linkerd.io/control-plane-component: gateway
     spec:
       containers:
         - name: pause

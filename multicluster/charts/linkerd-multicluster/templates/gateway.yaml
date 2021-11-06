@@ -33,6 +33,7 @@ spec:
         config.linkerd.io/enable-gateway: "true"
       labels:
         app: {{.Values.gateway.name}}
+        linkerd.io/control-plane-component: gateway
     spec:
       {{- if .Values.enablePodAntiAffinity -}}
       {{- $local := dict "component" "gateway" -}}
@@ -47,11 +48,10 @@ spec:
 kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
 metadata:
-  name: linkerd-dst
+  name: {{.Values.gateway.name}}
   namespace: {{.Values.namespace}}
   labels:
     linkerd.io/control-plane-component: gateway
-    linkerd.io/control-plane-ns: {{.Values.namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:

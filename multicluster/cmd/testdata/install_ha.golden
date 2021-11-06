@@ -36,6 +36,7 @@ spec:
         config.linkerd.io/enable-gateway: "true"
       labels:
         app: linkerd-gateway
+        linkerd.io/control-plane-component: gateway
     spec:
       affinity:
         podAntiAffinity:
@@ -65,11 +66,10 @@ spec:
 kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
 metadata:
-  name: linkerd-dst
+  name: linkerd-gateway
   namespace: linkerd-multicluster
   labels:
     linkerd.io/control-plane-component: gateway
-    linkerd.io/control-plane-ns: linkerd-multicluster
   annotations:
     linkerd.io/created-by: linkerd/helm linkerdVersionValue
 spec:
