@@ -46,7 +46,7 @@ spec:
 {{- if .Values.enablePodAntiAffinity }}
 ---
 kind: PodDisruptionBudget
-apiVersion: policy/v1beta1
+apiVersion: policy/v1
 metadata:
   name: {{.Values.gateway.name}}
   namespace: {{.Values.namespace}}
