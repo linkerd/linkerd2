@@ -10,6 +10,7 @@ import MetricsTable from './MetricsTable.jsx';
 import Octopus from './Octopus.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import ServiceDetail from './ServiceDetail.jsx';
 import SimpleChip from './util/Chip.jsx';
 import Spinner from './util/Spinner.jsx';
 import TopRoutesTabs from './TopRoutesTabs.jsx';
@@ -255,7 +256,6 @@ export class ResourceDetailBase extends React.Component {
         }
 
         const isTcpOnly = !hasHttp && hasTcp;
-        const isTrafficSplit = resourceType === 'trafficsplit';
 
         // figure out when the last traffic this resource received was so we can show a no traffic message
         let newLastMetricReceivedTime = lastMetricReceivedTime;
@@ -273,7 +273,6 @@ export class ResourceDetailBase extends React.Component {
           edges,
           lastMetricReceivedTime: newLastMetricReceivedTime,
           isTcpOnly,
-          isTrafficSplit,
           loaded: true,
           pendingRequests: false,
           error: null,
@@ -317,7 +316,6 @@ export class ResourceDetailBase extends React.Component {
       resourceIsMeshed,
       lastMetricReceivedTime,
       isTcpOnly,
-      isTrafficSplit,
       loaded,
       error,
       upstreamMetrics,
@@ -352,13 +350,28 @@ export class ResourceDetailBase extends React.Component {
 
     const showNoTrafficMsg = resourceIsMeshed && (Date.now() - lastMetricReceivedTime > showNoTrafficMsgDelayMs);
 
-    if (isTrafficSplit) {
+    if (resourceType === 'trafficsplit') {
       return (
         <TrafficSplitDetail
           resourceType={resourceType}
           resourceName={resourceName}
           resourceMetrics={resourceMetrics}
           resourceRsp={resourceRsp} />
+      );
+    }
+    if (resourceType === 'service') {
+      return (
+        <ServiceDetail
+          resourceName={resourceName}
+          upstreams={upstreams}
+          api={this.api}
+          upstreamDisplayMetrics={upstreamDisplayMetrics}
+          pathPrefix={pathPrefix}
+          isTcpOnly={isTcpOnly}
+          resourceMetrics={resourceMetrics}
+          unmeshedSources={unmeshedSources}
+          query={query}
+          updateUnmeshedSources={this.updateUnmeshedSources} />
       );
     }
     return (

@@ -123,6 +123,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+    - uses: actions/setup-go@331ce1d993939866bb63c32c6cbbfd48fa76fc57
+      with:
+        go-version: '1.16'
     - name: Download image archives
       uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
       with:
@@ -154,6 +157,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+    - uses: actions/setup-go@331ce1d993939866bb63c32c6cbbfd48fa76fc57
+      with:
+        go-version: '1.16'
     - name: Set environment variables from scripts
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
@@ -177,6 +183,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+    - uses: actions/setup-go@331ce1d993939866bb63c32c6cbbfd48fa76fc57
+      with:
+        go-version: '1.16'
     - name: Install linkerd CLI
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"

@@ -187,11 +187,17 @@ const (
 	// requestMemoryConfig.
 	ProxyMemoryRequestAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-memory-request"
 
+	// ProxyEphemeralStorageRequestAnnotation can be used to override the requestEphemeralStorage config.
+	ProxyEphemeralStorageRequestAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-ephemeral-storage-request"
+
 	// ProxyCPULimitAnnotation can be used to override the limitCPU config.
 	ProxyCPULimitAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-cpu-limit"
 
 	// ProxyMemoryLimitAnnotation can be used to override the limitMemory config.
 	ProxyMemoryLimitAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-memory-limit"
+
+	// ProxyEphemeralStorageLimitAnnotation can be used to override the limitEphemeralStorage config.
+	ProxyEphemeralStorageLimitAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-ephemeral-storage-limit"
 
 	// ProxyUIDAnnotation can be used to override the UID config.
 	ProxyUIDAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-uid"
