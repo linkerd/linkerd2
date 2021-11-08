@@ -407,6 +407,8 @@ func (h *handler) handleAPIResourceDefinition(w http.ResponseWriter, req *http.R
 		resource, err = h.k8sAPI.AppsV1().DaemonSets(namespace).Get(req.Context(), resourceName, options)
 	case k8s.Deployment:
 		resource, err = h.k8sAPI.AppsV1().Deployments(namespace).Get(req.Context(), resourceName, options)
+	case k8s.Service:
+		resource, err = h.k8sAPI.CoreV1().Services(namespace).Get(req.Context(), resourceName, options)
 	case k8s.Job:
 		resource, err = h.k8sAPI.BatchV1().Jobs(namespace).Get(req.Context(), resourceName, options)
 	case k8s.Pod:
