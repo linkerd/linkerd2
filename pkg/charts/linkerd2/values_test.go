@@ -104,6 +104,8 @@ func TestNewValues(t *testing.T) {
 		ProxyInit: &ProxyInit{
 			IgnoreInboundPorts:  "4567,4568",
 			IgnoreOutboundPorts: "4567,4568",
+			LogLevel:            "",
+			LogFormat:           "",
 			Image: &Image{
 				Name:    "cr.l5d.io/linkerd/proxy-init",
 				Version: testVersion,

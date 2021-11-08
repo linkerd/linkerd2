@@ -118,6 +118,8 @@ type (
 		Capabilities         *Capabilities    `json:"capabilities"`
 		IgnoreInboundPorts   string           `json:"ignoreInboundPorts"`
 		IgnoreOutboundPorts  string           `json:"ignoreOutboundPorts"`
+		LogLevel             string           `json:"logLevel"`
+		LogFormat            string           `json:"logFormat"`
 		Image                *Image           `json:"image"`
 		SAMountPath          *VolumeMountPath `json:"saMountPath"`
 		XTMountPath          *VolumeMountPath `json:"xtMountPath"`
