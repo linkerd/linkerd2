@@ -1379,6 +1379,8 @@ data:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
         version: test-proxy-init-version
+      logFormat: ""
+      logLevel: ""
       resources:
         cpu:
           limit: 100m
