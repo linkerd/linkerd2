@@ -715,7 +715,9 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 				address.Identity, address.AuthorityOverride = authorityOverride, identity
 
 				if endpoint.Hints != nil {
-					address.ForZones = endpoint.Hints.ForZones
+					zones := make([]discovery.ForZone, len(endpoint.Hints.ForZones))
+					copy(zones, endpoint.Hints.ForZones)
+					address.ForZones = zones
 				}
 
 				addressSet.Addresses[id] = address
@@ -733,7 +735,9 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 				}
 
 				if endpoint.Hints != nil {
-					address.ForZones = endpoint.Hints.ForZones
+					zones := make([]discovery.ForZone, len(endpoint.Hints.ForZones))
+					copy(zones, endpoint.Hints.ForZones)
+					address.ForZones = zones
 				}
 
 				addressSet.Addresses[id] = address
