@@ -40,6 +40,7 @@ func Main(args []string) {
 	namespace := cmd.String("namespace", "", "namespace containing Link and credentials Secret")
 	repairPeriod := cmd.Duration("endpoint-refresh-period", 1*time.Minute, "frequency to refresh endpoint resolution")
 	enableHeadlessSvc := cmd.Bool("enable-headless-services", false, "toggle support for headless service mirroring")
+	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", true, "enable the usage of EndpointSlice in mirror services")
 
 	flags.ConfigureAndParse(cmd, args)
 	linkName := cmd.Arg(0)
@@ -120,7 +121,7 @@ main:
 							if err != nil {
 								log.Errorf("Failed to load remote cluster credentials: %s", err)
 							}
-							err = restartClusterWatcher(ctx, link, *namespace, creds, controllerK8sAPI, *requeueLimit, *repairPeriod, metrics, *enableHeadlessSvc)
+							err = restartClusterWatcher(ctx, link, *namespace, creds, controllerK8sAPI, *requeueLimit, *repairPeriod, metrics, *enableHeadlessSvc, *enableEndpointSlices)
 							if err != nil {
 								// failed to restart cluster watcher; give a bit of slack
 								// and restart the link watch to give it another try
@@ -170,6 +171,7 @@ func restartClusterWatcher(
 	repairPeriod time.Duration,
 	metrics servicemirror.ProbeMetricVecs,
 	enableHeadlessSvc bool,
+	enableEndpointSlices bool,
 ) error {
 	if clusterWatcher != nil {
 		clusterWatcher.Stop(false)
@@ -192,6 +194,7 @@ func restartClusterWatcher(
 		requeueLimit,
 		repairPeriod,
 		enableHeadlessSvc,
+		enableEndpointSlices,
 	)
 	if err != nil {
 		return fmt.Errorf("Unable to create cluster watcher: %s", err)

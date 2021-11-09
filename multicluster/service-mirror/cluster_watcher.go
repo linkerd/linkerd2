@@ -14,6 +14,7 @@ import (
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	discovery "k8s.io/api/discovery/v1beta1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -25,7 +26,10 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
-const eventTypeSkipped = "ServiceMirroringSkipped"
+const (
+	eventTypeSkipped = "ServiceMirroringSkipped"
+	kubeSystem       = "kube-system"
+)
 
 type (
 	// RemoteClusterServiceWatcher is a watcher instantiated for every cluster that is being watched
@@ -47,6 +51,7 @@ type (
 		requeueLimit            int
 		repairPeriod            time.Duration
 		headlessServicesEnabled bool
+		enableEndpointSlices    bool
 	}
 
 	// RemoteServiceCreated is generated whenever a remote service is created Observing
@@ -60,9 +65,10 @@ type (
 	// reconcile. Most importantly we need to keep track of exposed ports
 	// and gateway association changes.
 	RemoteServiceUpdated struct {
-		localService   *corev1.Service
-		localEndpoints *corev1.Endpoints
-		remoteUpdate   *corev1.Service
+		localService        *corev1.Service
+		localEndpoints      *corev1.Endpoints
+		localEndpointSlices []*discovery.EndpointSlice
+		remoteUpdate        *corev1.Service
 	}
 
 	// RemoteServiceDeleted when a remote service is going away or it is not
@@ -100,7 +106,8 @@ type (
 	// OnAddEndpointsCalled is issued when the onAdd function of the Endpoints
 	// shared informer is called
 	OnAddEndpointsCalled struct {
-		ep *corev1.Endpoints
+		ep       *corev1.Endpoints
+		epSlices *discovery.EndpointSliceList
 	}
 
 	// OnUpdateCalled is issued when the onUpdate function of the
@@ -112,7 +119,8 @@ type (
 	// OnUpdateEndpointsCalled is issued when the onUpdate function of the
 	// shared Endpoints informer is called
 	OnUpdateEndpointsCalled struct {
-		ep *corev1.Endpoints
+		ep       *corev1.Endpoints
+		epSlices *discovery.EndpointSliceList
 	}
 	// OnDeleteCalled is issued when the onDelete function of the
 	// shared informer is called
@@ -146,6 +154,7 @@ func NewRemoteClusterServiceWatcher(
 	requeueLimit int,
 	repairPeriod time.Duration,
 	enableHeadlessSvc bool,
+	enableEndpointSlices bool,
 ) (*RemoteClusterServiceWatcher, error) {
 	remoteAPI, err := k8s.InitializeAPIForConfig(ctx, cfg, false, k8s.Svc, k8s.Endpoint)
 	if err != nil {
@@ -181,6 +190,7 @@ func NewRemoteClusterServiceWatcher(
 		requeueLimit:            requeueLimit,
 		repairPeriod:            repairPeriod,
 		headlessServicesEnabled: enableHeadlessSvc,
+		enableEndpointSlices:    enableEndpointSlices,
 	}, nil
 }
 
@@ -280,6 +290,21 @@ func (rcsw *RemoteClusterServiceWatcher) getEndpointsPorts(service *corev1.Servi
 	return endpointsPorts
 }
 
+func (rcsw *RemoteClusterServiceWatcher) getEndpointSlicePorts(service *corev1.Service) []discovery.EndpointPort {
+	var endpointsPorts []discovery.EndpointPort
+	for _, remotePort := range service.Spec.Ports {
+		name := remotePort.Name
+		protocol := remotePort.Protocol
+		port := int32(rcsw.link.GatewayPort)
+		endpointsPorts = append(endpointsPorts, discovery.EndpointPort{
+			Name:     &name,
+			Protocol: &protocol,
+			Port:     &port,
+		})
+	}
+	return endpointsPorts
+}
+
 func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices(ctx context.Context) error {
 	matchLabels := map[string]string{
 		consts.MirroredResourceLabel:  "true",
@@ -349,29 +374,56 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Co
 		}
 	}
 
-	endpoints, err := rcsw.localAPIClient.Endpoint().Lister().List(labels.Set(matchLabels).AsSelector())
-	if err != nil {
-		innerErr := fmt.Errorf("could not retrieve endpoints that need cleaning up: %s", err)
-		if kerrors.IsNotFound(err) {
-			return innerErr
-		}
-		return RetryableError{[]error{innerErr}}
-	}
-
-	for _, endpoint := range endpoints {
-		if err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoint.Namespace).Delete(ctx, endpoint.Name, metav1.DeleteOptions{}); err != nil {
+	if rcsw.enableEndpointSlices {
+		endpoints, err := rcsw.localAPIClient.ES().Lister().List(labels.Set(matchLabels).AsSelector())
+		if err != nil {
+			innerErr := fmt.Errorf("could not retrieve endpoints that need cleaning up: %s", err)
 			if kerrors.IsNotFound(err) {
-				continue
+				return innerErr
 			}
-			errors = append(errors, fmt.Errorf("Could not delete endpoints %s/%s: %s", endpoint.Namespace, endpoint.Name, err))
-		} else {
-			rcsw.log.Infof("Deleted endpoints %s/%s", endpoint.Namespace, endpoint.Name)
+			return RetryableError{[]error{innerErr}}
+		}
+
+		for _, endpoint := range endpoints {
+			if err := rcsw.localAPIClient.Client.DiscoveryV1beta1().EndpointSlices(endpoint.Namespace).Delete(ctx, endpoint.Name, metav1.DeleteOptions{}); err != nil {
+				if kerrors.IsNotFound(err) {
+					continue
+				}
+				errors = append(errors, fmt.Errorf("Could not delete endpoints %s/%s: %s", endpoint.Namespace, endpoint.Name, err))
+			} else {
+				rcsw.log.Infof("Deleted endpoints %s/%s", endpoint.Namespace, endpoint.Name)
+			}
+		}
+
+		if len(errors) > 0 {
+			return RetryableError{errors}
+		}
+	} else {
+		endpoints, err := rcsw.localAPIClient.Endpoint().Lister().List(labels.Set(matchLabels).AsSelector())
+		if err != nil {
+			innerErr := fmt.Errorf("could not retrieve endpoints that need cleaning up: %s", err)
+			if kerrors.IsNotFound(err) {
+				return innerErr
+			}
+			return RetryableError{[]error{innerErr}}
+		}
+
+		for _, endpoint := range endpoints {
+			if err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoint.Namespace).Delete(ctx, endpoint.Name, metav1.DeleteOptions{}); err != nil {
+				if kerrors.IsNotFound(err) {
+					continue
+				}
+				errors = append(errors, fmt.Errorf("Could not delete endpoints %s/%s: %s", endpoint.Namespace, endpoint.Name, err))
+			} else {
+				rcsw.log.Infof("Deleted endpoints %s/%s", endpoint.Namespace, endpoint.Name)
+			}
+		}
+
+		if len(errors) > 0 {
+			return RetryableError{errors}
 		}
 	}
 
-	if len(errors) > 0 {
-		return RetryableError{errors}
-	}
 	return nil
 }
 
@@ -435,21 +487,48 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ctx context.
 		return err
 	}
 
-	copiedEndpoints := ev.localEndpoints.DeepCopy()
-	copiedEndpoints.Subsets = []corev1.EndpointSubset{
-		{
-			Addresses: gatewayAddresses,
-			Ports:     rcsw.getEndpointsPorts(ev.remoteUpdate),
-		},
-	}
+	if rcsw.enableEndpointSlices {
+		for _, slice := range ev.localEndpointSlices {
+			copiedEndpoints := slice.DeepCopy()
 
-	if copiedEndpoints.Annotations == nil {
-		copiedEndpoints.Annotations = make(map[string]string)
-	}
-	copiedEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
+			addresses := []string{}
+			for _, address := range gatewayAddresses {
+				addresses = append(addresses, address.IP)
+			}
+			copiedEndpoints.Endpoints = []discovery.Endpoint{
+				{
+					Addresses: addresses,
+				},
+			}
 
-	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(copiedEndpoints.Namespace).Update(ctx, copiedEndpoints, metav1.UpdateOptions{}); err != nil {
-		return RetryableError{[]error{err}}
+			copiedEndpoints.Ports = rcsw.getEndpointSlicePorts(ev.remoteUpdate)
+
+			if copiedEndpoints.Annotations == nil {
+				copiedEndpoints.Annotations = make(map[string]string)
+			}
+			copiedEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
+
+			if _, err := rcsw.localAPIClient.Client.DiscoveryV1beta1().EndpointSlices(copiedEndpoints.Namespace).Update(ctx, copiedEndpoints, metav1.UpdateOptions{}); err != nil {
+				return RetryableError{[]error{err}}
+			}
+		}
+	} else {
+		copiedEndpoints := ev.localEndpoints.DeepCopy()
+		copiedEndpoints.Subsets = []corev1.EndpointSubset{
+			{
+				Addresses: gatewayAddresses,
+				Ports:     rcsw.getEndpointsPorts(ev.remoteUpdate),
+			},
+		}
+
+		if copiedEndpoints.Annotations == nil {
+			copiedEndpoints.Annotations = make(map[string]string)
+		}
+		copiedEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
+
+		if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(copiedEndpoints.Namespace).Update(ctx, copiedEndpoints, metav1.UpdateOptions{}); err != nil {
+			return RetryableError{[]error{err}}
+		}
 	}
 
 	ev.localService.Labels = rcsw.getMirroredServiceLabels(ev.remoteUpdate)
@@ -521,43 +600,89 @@ func (rcsw *RemoteClusterServiceWatcher) createGatewayEndpoints(ctx context.Cont
 
 	localServiceName := rcsw.mirroredResourceName(exportedService.Name)
 	serviceInfo := fmt.Sprintf("%s/%s", exportedService.Namespace, exportedService.Name)
-	endpointsToCreate := &corev1.Endpoints{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      localServiceName,
-			Namespace: exportedService.Namespace,
-			Labels: map[string]string{
-				consts.MirroredResourceLabel:  "true",
-				consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
-			},
-			Annotations: map[string]string{
-				consts.RemoteServiceFqName: fmt.Sprintf("%s.%s.svc.%s", exportedService.Name, exportedService.Namespace, rcsw.link.TargetClusterDomain),
-			},
-		},
-	}
 
-	rcsw.log.Infof("Resolved gateway [%v:%d] for %s", gatewayAddresses, rcsw.link.GatewayPort, serviceInfo)
-
-	if len(gatewayAddresses) > 0 {
-		endpointsToCreate.Subsets = []corev1.EndpointSubset{
-			{
-				Addresses: gatewayAddresses,
-				Ports:     rcsw.getEndpointsPorts(exportedService),
+	if rcsw.enableEndpointSlices {
+		endpointsToCreate := &discovery.EndpointSlice{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      localServiceName,
+				Namespace: exportedService.Namespace,
+				Labels: map[string]string{
+					consts.MirroredResourceLabel:  "true",
+					consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
+				},
+				Annotations: map[string]string{
+					consts.RemoteServiceFqName: fmt.Sprintf("%s.%s.svc.%s", exportedService.Name, exportedService.Namespace, rcsw.link.TargetClusterDomain),
+				},
 			},
 		}
+
+		rcsw.log.Infof("Resolved gateway [%v:%d] for %s", gatewayAddresses, rcsw.link.GatewayPort, serviceInfo)
+
+		if len(gatewayAddresses) > 0 {
+			addresses := []string{}
+			for _, address := range gatewayAddresses {
+				addresses = append(addresses, address.IP)
+			}
+			endpointsToCreate.Endpoints = []discovery.Endpoint{
+				{
+					Addresses: addresses,
+				},
+			}
+			endpointsToCreate.Ports = rcsw.getEndpointSlicePorts(exportedService)
+		} else {
+			rcsw.log.Warnf("gateway for %s does not have ready addresses, skipping addresses", serviceInfo)
+		}
+
+		if rcsw.link.GatewayIdentity != "" {
+			endpointsToCreate.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
+		}
+
+		rcsw.log.Infof("Creating a new endpointslice for %s", serviceInfo)
+		if _, err := rcsw.localAPIClient.Client.DiscoveryV1beta1().EndpointSlices(exportedService.Namespace).Create(ctx, endpointsToCreate, metav1.CreateOptions{}); err != nil {
+			// we clean up after ourselves
+			rcsw.localAPIClient.Client.CoreV1().Services(exportedService.Namespace).Delete(ctx, localServiceName, metav1.DeleteOptions{})
+			// and retry
+			return RetryableError{[]error{err}}
+		}
 	} else {
-		rcsw.log.Warnf("gateway for %s does not have ready addresses, skipping subsets", serviceInfo)
-	}
+		endpointsToCreate := &corev1.Endpoints{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      localServiceName,
+				Namespace: exportedService.Namespace,
+				Labels: map[string]string{
+					consts.MirroredResourceLabel:  "true",
+					consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
+				},
+				Annotations: map[string]string{
+					consts.RemoteServiceFqName: fmt.Sprintf("%s.%s.svc.%s", exportedService.Name, exportedService.Namespace, rcsw.link.TargetClusterDomain),
+				},
+			},
+		}
 
-	if rcsw.link.GatewayIdentity != "" {
-		endpointsToCreate.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
-	}
+		rcsw.log.Infof("Resolved gateway [%v:%d] for %s", gatewayAddresses, rcsw.link.GatewayPort, serviceInfo)
 
-	rcsw.log.Infof("Creating a new endpoints for %s", serviceInfo)
-	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(exportedService.Namespace).Create(ctx, endpointsToCreate, metav1.CreateOptions{}); err != nil {
-		// we clean up after ourselves
-		rcsw.localAPIClient.Client.CoreV1().Services(exportedService.Namespace).Delete(ctx, localServiceName, metav1.DeleteOptions{})
-		// and retry
-		return RetryableError{[]error{err}}
+		if len(gatewayAddresses) > 0 {
+			endpointsToCreate.Subsets = []corev1.EndpointSubset{
+				{
+					Addresses: gatewayAddresses,
+					Ports:     rcsw.getEndpointsPorts(exportedService),
+				},
+			}
+		} else {
+			rcsw.log.Warnf("gateway for %s does not have ready addresses, skipping subsets", serviceInfo)
+		}
+
+		if rcsw.link.GatewayIdentity != "" {
+			endpointsToCreate.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
+		}
+
+		rcsw.log.Infof("Creating a new endpoints for %s", serviceInfo)
+		if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(exportedService.Namespace).Create(ctx, endpointsToCreate, metav1.CreateOptions{}); err != nil {
+			// we clean up after ourselves
+			rcsw.localAPIClient.Client.CoreV1().Services(exportedService.Namespace).Delete(ctx, localServiceName, metav1.DeleteOptions{})
+			// and retry
+			return RetryableError{[]error{err}}
+		}
 	}
 	return nil
 }
@@ -591,14 +716,29 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 		// if we have the local service present, we need to issue an update
 		lastMirroredRemoteVersion, ok := localService.Annotations[consts.RemoteResourceVersionAnnotation]
 		if ok && lastMirroredRemoteVersion != service.ResourceVersion {
-			endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(service.Namespace).Get(localName)
-			if err == nil {
-				rcsw.eventsQueue.Add(&RemoteServiceUpdated{
-					localService:   localService,
-					localEndpoints: endpoints,
-					remoteUpdate:   service,
-				})
-				return nil
+			if rcsw.enableEndpointSlices {
+				matchLabels := map[string]string{
+					"kubernetes.io/service-name": localName,
+				}
+				endpoints, err := rcsw.localAPIClient.ES().Lister().EndpointSlices(service.Namespace).List(labels.Set(matchLabels).AsSelector())
+				if err == nil {
+					rcsw.eventsQueue.Add(&RemoteServiceUpdated{
+						localService:        localService,
+						localEndpointSlices: endpoints,
+						remoteUpdate:        service,
+					})
+					return nil
+				}
+			} else {
+				endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(service.Namespace).Get(localName)
+				if err == nil {
+					rcsw.eventsQueue.Add(&RemoteServiceUpdated{
+						localService:   localService,
+						localEndpoints: endpoints,
+						remoteUpdate:   service,
+					})
+					return nil
+				}
 			}
 			return RetryableError{[]error{err}}
 		}
@@ -757,32 +897,69 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 		},
 	)
 	if rcsw.headlessServicesEnabled {
-		rcsw.remoteAPIClient.Endpoint().Informer().AddEventHandler(
-			cache.ResourceEventHandlerFuncs{
-				AddFunc: func(obj interface{}) {
-					if obj.(metav1.Object).GetNamespace() == "kube-system" {
-						return
-					}
+		if rcsw.enableEndpointSlices {
+			rcsw.remoteAPIClient.ES().Informer().AddEventHandler(
+				cache.ResourceEventHandlerFuncs{
+					AddFunc: func(obj interface{}) {
+						if obj.(metav1.Object).GetNamespace() == kubeSystem {
+							return
+						}
 
-					if ok := isExportedHeadlessEndpoints(obj, rcsw.log); !ok {
-						return
-					}
+						if ok := isExportedHeadlessEndpoints(obj, rcsw.log); !ok {
+							return
+						}
 
-					rcsw.eventsQueue.Add(&OnAddEndpointsCalled{obj.(*corev1.Endpoints)})
+						rcsw.eventsQueue.Add(&OnAddEndpointsCalled{
+							epSlices: obj.(*discovery.EndpointSliceList),
+						})
+					},
+					UpdateFunc: func(old, new interface{}) {
+						if new.(metav1.Object).GetNamespace() == kubeSystem {
+							return
+						}
+
+						if ok := isExportedHeadlessEndpoints(new, rcsw.log); !ok {
+							return
+						}
+
+						rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{
+							epSlices: new.(*discovery.EndpointSliceList),
+						})
+					},
 				},
-				UpdateFunc: func(old, new interface{}) {
-					if new.(metav1.Object).GetNamespace() == "kube-system" {
-						return
-					}
+			)
+		} else {
+			rcsw.remoteAPIClient.Endpoint().Informer().AddEventHandler(
+				cache.ResourceEventHandlerFuncs{
+					AddFunc: func(obj interface{}) {
+						if obj.(metav1.Object).GetNamespace() == "kube-system" {
+							return
+						}
 
-					if ok := isExportedHeadlessEndpoints(new, rcsw.log); !ok {
-						return
-					}
+						if ok := isExportedHeadlessEndpoints(obj, rcsw.log); !ok {
+							return
+						}
 
-					rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{new.(*corev1.Endpoints)})
+						rcsw.eventsQueue.Add(&OnAddEndpointsCalled{
+							ep: obj.(*corev1.Endpoints),
+						})
+					},
+					UpdateFunc: func(old, new interface{}) {
+						if new.(metav1.Object).GetNamespace() == "kube-system" {
+							return
+						}
+
+						if ok := isExportedHeadlessEndpoints(new, rcsw.log); !ok {
+							return
+						}
+
+						rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{
+							ep: new.(*corev1.Endpoints),
+						})
+					},
 				},
-			},
-		)
+			)
+		}
 	}
 	go rcsw.processEvents(ctx)
 
@@ -1350,23 +1527,41 @@ func shouldExportAsHeadlessService(endpoints *corev1.Endpoints, log *logging.Ent
 // headless exported service.
 func isExportedHeadlessEndpoints(obj interface{}, log *logging.Entry) bool {
 	ep, ok := obj.(*corev1.Endpoints)
-	if !ok {
-		log.Errorf("error processing endpoints object: got %#v, expected *corev1.Endpoints", ep)
-		return false
+	if ok {
+		if _, found := ep.Labels[corev1.IsHeadlessService]; !found {
+			// Not an Endpoints object for a headless service? Then we likely don't want
+			// to update anything.
+			log.Debugf("skipped processing endpoints object %s/%s: missing %s label", ep.Namespace, ep.Name, corev1.IsHeadlessService)
+			return false
+		}
+
+		// If Endpoints belong to an unexported service, ignore.
+		if _, found := ep.Labels[consts.DefaultExportedServiceSelector]; !found {
+			log.Debugf("skipped processing endpoints object %s/%s: missing %s label", ep.Namespace, ep.Name, consts.DefaultExportedServiceSelector)
+			return false
+		}
+
+		return true
 	}
 
-	if _, found := ep.Labels[corev1.IsHeadlessService]; !found {
-		// Not an Endpoints object for a headless service? Then we likely don't want
-		// to update anything.
-		log.Debugf("skipped processing endpoints object %s/%s: missing %s label", ep.Namespace, ep.Name, corev1.IsHeadlessService)
-		return false
+	slice, ok := obj.(*discovery.EndpointSlice)
+	if ok {
+		if _, found := slice.Labels[corev1.IsHeadlessService]; !found {
+			// Not an Endpoints object for a headless service? Then we likely don't want
+			// to update anything.
+			log.Debugf("skipped processing endpoints object %s/%s: missing %s label", slice.Namespace, slice.Name, corev1.IsHeadlessService)
+			return false
+		}
+
+		// If Endpoints belong to an unexported service, ignore.
+		if _, found := slice.Labels[consts.DefaultExportedServiceSelector]; !found {
+			log.Debugf("skipped processing endpoints object %s/%s: missing %s label", slice.Namespace, slice.Name, consts.DefaultExportedServiceSelector)
+			return false
+		}
+
+		return true
 	}
 
-	// If Endpoints belong to an unexported service, ignore.
-	if _, found := ep.Labels[consts.DefaultExportedServiceSelector]; !found {
-		log.Debugf("skipped processing endpoints object %s/%s: missing %s label", ep.Namespace, ep.Name, consts.DefaultExportedServiceSelector)
-		return false
-	}
-
-	return true
+	log.Errorf("error processing endpoints object: got %#v, expected *corev1.Endpoints", ep)
+	return false
 }

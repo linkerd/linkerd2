@@ -14,6 +14,11 @@ rules:
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["create","list", "get", "watch"]
+{{- if .Values.enableEndpointSlices }}
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
+  verbs: ["list", "get", "watch"]
+{{- end }}
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1

@@ -735,7 +735,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 
 				identity := es.Annotations[consts.RemoteGatewayIdentity]
 				address, id := pp.newServiceRefAddress(resolvedPort, IPAddr, serviceID.Name, es.Namespace)
-				address.Identity, address.AuthorityOverride = authorityOverride, identity
+				address.Identity, address.AuthorityOverride = identity, authorityOverride
 
 				for k, v := range endpoint.Topology {
 					address.TopologyLabels[k] = v
