@@ -10,6 +10,7 @@ import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
 import { Trans } from '@lingui/macro';
 import _cloneDeep from 'lodash/cloneDeep';
 import _each from 'lodash/each';
+import _some from 'lodash/some';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
 import { processedMetricsPropType } from './util/MetricUtils.jsx';
@@ -78,6 +79,49 @@ const httpStatColumns = [
 
 ];
 
+const trafficSplitWeightColumn = {
+  title: <Trans>columnTitleWeight</Trans>,
+  dataIndex: 'weight',
+  isNumeric: true,
+  filter: d => !d.tsStats ? null : d.tsStats.weight,
+  render: d => !d.tsStats ? null : d.tsStats.weight,
+  sorter: d => {
+    if (!d.tsStats) { return -1; }
+    if (parseInt(d.tsStats.weight, 10)) {
+      return parseInt(d.tsStats.weight, 10);
+    } else {
+      return d.tsStats.weight;
+    }
+  },
+};
+
+const serviceDetailsColumns = PrefixedLink => [
+  {
+    title: <Trans>columnTitleDestination</Trans>,
+    dataIndex: 'DST',
+    isNumeric: false,
+    filter: d => !d.tsStats ? null : d.tsStats.leaf,
+    render: d => {
+      if (!d.tsStats) {
+        return null;
+      }
+      const nameContents = (
+        <PrefixedLink to={`/namespaces/${d.namespace}/services/${d.tsStats.leaf}`}>
+          {d.tsStats.leaf}
+        </PrefixedLink>
+      );
+      return (
+        <Grid container alignItems="center" spacing={1}>
+          <Grid item>{nameContents}</Grid>
+          {_isEmpty(d.errors) ? null : <Grid item><ErrorModal errors={d.errors} resourceName={d.name} resourceType={d.type} /></Grid>}
+        </Grid>
+      );
+    },
+    sorter: d => !d.tsStats ? null : d.tsStats.leaf,
+  },
+  trafficSplitWeightColumn,
+];
+
 const trafficSplitDetailColumns = [
   {
     title: <Trans>columnTitleApexService</Trans>,
@@ -95,21 +139,7 @@ const trafficSplitDetailColumns = [
     render: d => !d.tsStats ? null : d.tsStats.leaf,
     sorter: d => !d.tsStats ? null : d.tsStats.leaf,
   },
-  {
-    title: <Trans>columnTitleWeight</Trans>,
-    dataIndex: 'weight',
-    isNumeric: true,
-    filter: d => !d.tsStats ? null : d.tsStats.weight,
-    render: d => !d.tsStats ? null : d.tsStats.weight,
-    sorter: d => {
-      if (!d.tsStats) { return -1; }
-      if (parseInt(d.tsStats.weight, 10)) {
-        return parseInt(d.tsStats.weight, 10);
-      } else {
-        return d.tsStats.weight;
-      }
-    },
-  },
+  trafficSplitWeightColumn,
 ];
 
 const gatewayColumns = [
@@ -157,9 +187,10 @@ const gatewayColumns = [
   },
 ];
 
-const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, PrefixedLink, isTcpTable, grafana, jaeger) => {
+const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, PrefixedLink, isTcpTable, hasTsStats, grafana, jaeger) => {
   const isAuthorityTable = resource === 'authority';
   const isTrafficSplitTable = resource === 'trafficsplit';
+  const isServicesTable = resource === 'service';
   const isMultiResourceTable = resource === 'multi_resource';
   const isGatewayTable = resource === 'gateway';
   const getResourceDisplayName = isMultiResourceTable ? displayName : d => d.name;
@@ -188,7 +219,7 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
     key: 'grafanaDashboard',
     isNumeric: true,
     render: row => {
-      if (!isAuthorityTable && (!row.added || _get(row, 'pods.totalPods') === '0')) {
+      if (!isAuthorityTable && !isServicesTable && (!row.added || _get(row, 'pods.totalPods') === '0')) {
         return null;
       }
 
@@ -230,7 +261,7 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
       let nameContents;
       if (resource === 'namespace') {
         nameContents = <PrefixedLink to={`/namespaces/${d.name}`}>{d.name}</PrefixedLink>;
-      } else if (!d.added && (!isTrafficSplitTable || isAuthorityTable)) {
+      } else if (!d.added && (!isTrafficSplitTable || isAuthorityTable) && !isServicesTable) {
         nameContents = getResourceDisplayName(d);
       } else {
         nameContents = (
@@ -254,6 +285,9 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
   if (showNameColumn) {
     columns = [nameColumn];
   }
+  if (isServicesTable && hasTsStats) {
+    columns = columns.concat(serviceDetailsColumns(PrefixedLink));
+  }
   if (isTrafficSplitTable) {
     columns = columns.concat(trafficSplitDetailColumns);
   }
@@ -265,7 +299,7 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
     columns = columns.concat(httpStatColumns);
   }
 
-  if (!isAuthorityTable && !isTrafficSplitTable && !isGatewayTable) {
+  if (!isAuthorityTable && !isTrafficSplitTable && !isGatewayTable && !isServicesTable) {
     columns.splice(1, 0, meshedColumn);
   }
 
@@ -302,7 +336,8 @@ const MetricsTable = ({ metrics, resource, showNamespaceColumn, showName, title,
   const showNameColumn = resource !== 'trafficsplit' ? true : showName;
   let orderBy = 'name';
   if (resource === 'trafficsplit' && !showNameColumn) { orderBy = 'leaf'; }
-  const columns = columnDefinitions(resource, showNsColumn, showNameColumn, api.PrefixedLink, isTcpTable, grafana, jaeger);
+  const hasTsStats = _some(metrics, m => m.tsStats);
+  const columns = columnDefinitions(resource, showNsColumn, showNameColumn, api.PrefixedLink, isTcpTable, hasTsStats, grafana, jaeger);
   const rows = preprocessMetrics(metrics);
   return (
     <BaseTable

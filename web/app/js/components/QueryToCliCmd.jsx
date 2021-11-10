@@ -45,7 +45,7 @@ class QueryToCliCmd extends React.Component {
         <br />
 
         <code>
-          linkerd {cmdName} {resource}
+          linkerd viz {cmdName} {resource}
           { displayOrder(cmdName, query).map(item => {
             return !toCliParam[item] ? null : this.renderCliItem(toCliParam[item], query[item]);
           })}

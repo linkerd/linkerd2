@@ -608,6 +608,109 @@ export const deploymentIcon = (
   </svg>
 );
 
+export const serviceIcon = (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    version="1.1"
+    width="24px"
+    height="24px"
+    viewBox="0 0 18 18">
+    <g
+      transform="translate(-0.99262638,-1.174181)"
+      id="layer1">
+      <g
+        transform="matrix(1.0148887,0,0,1.0148887,16.902146,-2.698726)"
+        id="g70">
+        <path
+          fill="#757575"
+          fillOpacity="1"
+          stroke="none"
+          strokeWidth="0"
+          strokeMiterlimit="4"
+          strokeDasharray="none"
+          strokeOpacity="1"
+          d="m -6.8492015,4.2724668 a 1.1191255,1.1099671 0 0 0 -0.4288818,0.1085303 l -5.8524037,2.7963394 a 1.1191255,1.1099671 0 0 0 -0.605524,0.7529759 l -1.443828,6.2812846 a 1.1191255,1.1099671 0 0 0 0.151943,0.851028 1.1191255,1.1099671 0 0 0 0.06362,0.08832 l 4.0508,5.036555 a 1.1191255,1.1099671 0 0 0 0.874979,0.417654 l 6.4961011,-0.0015 a 1.1191255,1.1099671 0 0 0 0.8749788,-0.416906 L 1.3818872,15.149453 A 1.1191255,1.1099671 0 0 0 1.5981986,14.210104 L 0.15212657,7.9288154 A 1.1191255,1.1099671 0 0 0 -0.45339794,7.1758396 L -6.3065496,4.3809971 A 1.1191255,1.1099671 0 0 0 -6.8492015,4.2724668 Z"
+          id="path3055" />
+        <path d="M -6.8523435,3.8176372 A 1.1814304,1.171762 0 0 0 -7.3044284,3.932904 l -6.1787426,2.9512758 a 1.1814304,1.171762 0 0 0 -0.639206,0.794891 l -1.523915,6.6308282 a 1.1814304,1.171762 0 0 0 0.160175,0.89893 1.1814304,1.171762 0 0 0 0.06736,0.09281 l 4.276094,5.317236 a 1.1814304,1.171762 0 0 0 0.92363,0.440858 l 6.8576188,-0.0015 a 1.1814304,1.171762 0 0 0 0.9236308,-0.44011 l 4.2745966,-5.317985 a 1.1814304,1.171762 0 0 0 0.228288,-0.990993 L 0.53894439,7.6775738 A 1.1814304,1.171762 0 0 0 -0.10026101,6.8834313 L -6.2790037,3.9321555 A 1.1814304,1.171762 0 0 0 -6.8523435,3.8176372 Z m 0.00299,0.4550789 a 1.1191255,1.1099671 0 0 1 0.5426517,0.1085303 l 5.85315169,2.7948425 A 1.1191255,1.1099671 0 0 1 0.15197811,7.9290648 L 1.598051,14.21035 a 1.1191255,1.1099671 0 0 1 -0.2163123,0.939348 l -4.0493032,5.037304 a 1.1191255,1.1099671 0 0 1 -0.8749789,0.416906 l -6.4961006,0.0015 a 1.1191255,1.1099671 0 0 1 -0.874979,-0.417652 l -4.0508,-5.036554 a 1.1191255,1.1099671 0 0 1 -0.06362,-0.08832 1.1191255,1.1099671 0 0 1 -0.151942,-0.851028 l 1.443827,-6.2812853 a 1.1191255,1.1099671 0 0 1 0.605524,-0.7529758 l 5.8524036,-2.7963395 a 1.1191255,1.1099671 0 0 1 0.4288819,-0.1085303 z" id="path3054-2-9" />
+      </g>
+      <g
+        transform="translate(0.09238801,0.66897746)"
+        id="g3345">
+        <path
+          id="path964"
+          d="m 4.4949896,11.260826 2.9083311,0 0,2.041667 -2.9083311,0 z"
+          fill="#ffffff"
+          fillRule="evenodd"
+          stroke="none"
+          strokeWidth="0.26458332"
+          strokeLinecap="square"
+          strokeMiterlimit="10" />
+        <path
+          id="path966"
+          d="m 8.4637407,11.260826 2.9083303,0 0,2.041667 -2.9083303,0 z"
+          fill="#ffffff"
+          fillRule="evenodd"
+          stroke="none"
+          strokeWidth="0.26458332"
+          strokeLinecap="square"
+          strokeMiterlimit="10" />
+        <path
+          id="path968"
+          d="m 12.432491,11.260826 2.90833,0 0,2.041667 -2.90833,0 z"
+          fill="#ffffff"
+          fillRule="evenodd"
+          stroke="none"
+          strokeWidth="0.26458332"
+          strokeLinecap="square"
+          strokeMiterlimit="10" />
+        <path
+          id="path970"
+          d="m 7.6137407,5.2082921 4.6083303,0 0,2.041667 -4.6083303,0 z"
+          fill="#ffffff"
+          fillRule="evenodd"
+          stroke="none"
+          strokeWidth="0.26458332"
+          strokeLinecap="square"
+          strokeMiterlimit="10" />
+        <path
+          id="path978"
+          d="m 9.9179005,7.2499601 0,2.005449 -3.966671,0 0,2.0028859"
+          fill="none"
+          fillRule="evenodd"
+          stroke="#ffffff"
+          strokeWidth="0.52916664"
+          strokeLinecap="butt"
+          strokeLinejoin="round"
+          strokeMiterlimit="10"
+          strokeOpacity="1" />
+        <path
+          id="path986"
+          d="m 9.9179005,7.2499601 0,2.005449 3.9666705,0 0,2.0028859"
+          fill="none"
+          fillRule="evenodd"
+          stroke="#ffffff"
+          strokeWidth="0.52899998"
+          strokeLinecap="butt"
+          strokeLinejoin="round"
+          strokeMiterlimit="10"
+          strokeDasharray="none"
+          strokeOpacity="1" />
+        <path
+          id="path982"
+          d="m 9.9095538,7.2512251 0,2.005449 0.0167,0 0,2.0028859"
+          fill="none"
+          fillRule="evenodd"
+          stroke="#ffffff"
+          strokeWidth="0.52916664"
+          strokeLinecap="butt"
+          strokeLinejoin="round"
+          strokeMiterlimit="10"
+          strokeOpacity="1" />
+      </g>
+    </g>
+  </svg>
+);
+
 export const jobIcon = (
   <svg
     xmlns="http://www.w3.org/2000/svg"

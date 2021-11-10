@@ -1,4 +1,17 @@
-import { cronJobIcon, daemonsetIcon, deploymentIcon, githubIcon, jobIcon, linkerdWordLogo, namespaceIcon, podIcon, replicaSetIcon, slackIcon, statefulSetIcon } from './util/SvgWrappers.jsx';
+import {
+  cronJobIcon,
+  daemonsetIcon,
+  deploymentIcon,
+  githubIcon,
+  jobIcon,
+  linkerdWordLogo,
+  namespaceIcon,
+  podIcon,
+  replicaSetIcon,
+  serviceIcon,
+  slackIcon,
+  statefulSetIcon,
+} from './util/SvgWrappers.jsx';
 import { handlePageVisibility, withPageVisibility } from './util/PageVisibility.jsx';
 import AppBar from '@material-ui/core/AppBar';
 import Autocomplete from '@material-ui/lab/Autocomplete';
@@ -523,6 +536,8 @@ class NavigationBase extends React.Component {
           { this.menuItem(`/namespaces/${selectedNamespace}/daemonsets`, <Trans>menuItemDaemonSets</Trans>, daemonsetIcon) }
 
           { this.menuItem(`/namespaces/${selectedNamespace}/deployments`, <Trans>menuItemDeployments</Trans>, deploymentIcon) }
+
+          { this.menuItem(`/namespaces/${selectedNamespace}/services`, <Trans>menuItemServices</Trans>, serviceIcon) }
 
           { this.menuItem(`/namespaces/${selectedNamespace}/jobs`, <Trans>menuItemJobs</Trans>, jobIcon) }
 

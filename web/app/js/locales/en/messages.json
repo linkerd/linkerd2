@@ -114,6 +114,7 @@
   "menuItemCronJobs": "Cron Jobs",
   "menuItemDaemonSets": "Daemon Sets",
   "menuItemDeployments": "Deployments",
+  "menuItemServices": "Services",
   "menuItemDocumentation": "Documentation",
   "menuItemExtension": "Extensions",
   "menuItemGateway": "Gateway",

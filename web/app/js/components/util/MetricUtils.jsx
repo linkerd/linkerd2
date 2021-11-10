@@ -196,9 +196,10 @@ export const processMultiResourceRollup = (rawMetrics, resourceType) => {
     // selected resource in the Octopus graph.
 
     // The below line checks if the statTable contains trafficsplit data and
-    // returns early if the selected resource is not "all" or "trafficsplit",
+    // returns early if the selected resource is not "all" or "trafficsplit" or "service",
     // since any other resource should not include trafficsplit metrics.
-    if (table.podGroup.rows[0].tsStats && resourceType !== 'all' && resourceType !== 'trafficsplit') {
+    const isTrafficSplit = table.podGroup.rows[0].resource.type === 'trafficsplit';
+    if (isTrafficSplit && resourceType !== 'all' && resourceType !== 'trafficsplit') {
       return;
     }
 
@@ -312,4 +313,7 @@ export const processedMetricsPropType = PropTypes.shape({
   totalRequests: PropTypes.number,
   requestRate: PropTypes.number,
   successRate: PropTypes.number,
+  tsStats: PropTypes.shape({
+    weight: PropTypes.string,
+  }),
 });
