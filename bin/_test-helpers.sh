@@ -235,7 +235,7 @@ setup_min_cluster() {
 
   test_setup
   if [ -z "$skip_cluster_create" ]; then
-    "$bindir"/k3d-min cluster create "$@"
+    "$bindir"/k3d cluster create "$@"  --image +v1.20
     image_load "$name"
   fi
   check_cluster
@@ -317,7 +317,6 @@ image_load() {
 start_test() {
   local name=$1
   local config=(--k3s-arg '--disable=local-storage,metrics-server@server:0')
-  local min_config=(--no-hostip --k3s-server-arg '--disable=local-storage,metrics-server')
 
   case $name in
     cluster-domain)
@@ -331,34 +330,23 @@ start_test() {
       ;;
     *)
       config=("$name" "${config[@]}" --no-lb --k3s-arg '--disable=servicelb,traefik@server:0')
-      min_config=("$name" "${min_config[@]}" --no-lb --k3s-server-arg '--disable=servicelb,traefik')
       ;;
   esac
 
   if [ "$name" == "multicluster" ]; then
     start_multicluster_test "${config[@]}"
-  elif [ "$name" == "helm-deep" ]; then
-    start_min_single_test "${min_config[@]}"
   else
     start_single_test "${config[@]}"
   fi
 }
 
-start_min_single_test() {
-  name=$1
-  setup_min_cluster "$@"
-  if [ -n "$cleanup_docker" ]; then
-    rm -rf image-archives
-    docker system prune --force --all
-  fi
-  run_"$name"_test
-  exit_on_err "error calling 'run_${name}_test'"
-  finish "$name"
-}
-
 start_single_test() {
   name=$1
-  setup_cluster "$@"
+  if [ "$name" == "helm-deep" ]; then
+    setup_min_cluster "$@"
+  else
+    setup_cluster "$@"
+  fi
   if [ -n "$cleanup_docker" ]; then
     rm -rf image-archives
     docker system prune --force --all
