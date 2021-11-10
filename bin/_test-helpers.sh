@@ -215,6 +215,7 @@ check_linkerd_binary() {
 
 check_cluster() {
   check_if_k8s_reachable
+  kubectl version
   check_if_l5d_exists
 }
 
