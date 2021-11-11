@@ -209,7 +209,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 		InstallManifest:       installManifest,
 	})
 
-	if options.output != jsonOutput {
+	if options.output == tableOutput {
 		healthcheck.PrintCoreChecksHeader(wout)
 	}
 

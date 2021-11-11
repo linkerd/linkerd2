@@ -73,7 +73,7 @@ func PrintCoreChecksHeader(wout io.Writer) {
 // and handles formatting the output for each extension's check. This function also handles
 // finding the extension in the user's path and runs it.
 func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, flags []string, output string) bool {
-	if output != JSONOutput {
+	if output == TableOutput {
 		headerTxt := "Linkerd extensions checks"
 		fmt.Fprintln(wout)
 		fmt.Fprintln(wout, headerTxt)
