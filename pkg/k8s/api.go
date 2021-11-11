@@ -200,7 +200,9 @@ func (kubeAPI *KubernetesAPI) GetNamespaceWithExtensionLabel(ctx context.Context
 			return &ns, err
 		}
 	}
-	return nil, kerrors.NewNotFound(corev1.Resource("namespace"), value)
+	errNotFound := kerrors.NewNotFound(corev1.Resource("namespace"), value)
+	errNotFound.ErrStatus.Message = fmt.Sprintf("namespace with label \"%s: %s\" not found", LinkerdExtensionLabel, value)
+	return nil, errNotFound
 }
 
 // GetPodStatus receives a pod and returns the pod status, based on `kubectl` logic.
