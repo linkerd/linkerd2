@@ -66,6 +66,7 @@ func PrintCoreChecksHeader(wout io.Writer) {
 	headerTxt := "Linkerd core checks"
 	fmt.Fprintln(wout, headerTxt)
 	fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
+	fmt.Fprintln(wout)
 }
 
 // RunExtensionsChecks runs checks for each extension name passed into the `extensions` parameter
@@ -145,6 +146,8 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 				results.Results = append(results.Results, extensionResults.Results...)
 			}
 		}
+		// add a new line to space out each check output
+		fmt.Fprintln(wout)
 		extensionSuccess := RunChecks(wout, werr, results, output)
 		if !extensionSuccess {
 			success = false
