@@ -210,9 +210,11 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 	})
 
 	if options.output == tableOutput {
-		healthcheck.PrintCoreChecksHeader(wout)
+		healthcheck.PrintChecksHeader(wout, true)
 	}
-
+	if options.output == shortOutput {
+		options.output = "extension-short"
+	}
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
 	extensionSuccess, err := runExtensionChecks(cmd, wout, werr, options)

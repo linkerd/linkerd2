@@ -61,9 +61,15 @@ func (cr CheckResults) RunChecks(observer CheckObserver) bool {
 	return success
 }
 
-// PrintCoreChecksHeader writes the core checks header.
-func PrintCoreChecksHeader(wout io.Writer) {
-	headerTxt := "Linkerd core checks"
+// PrintChecksHeader writes the core/extension checks header.
+func PrintChecksHeader(wout io.Writer, isCore bool) {
+	var headerTxt string
+	if isCore {
+		headerTxt = "Linkerd core checks"
+	} else {
+		headerTxt = "Linkerd extensions checks"
+		fmt.Fprintln(wout)
+	}
 	fmt.Fprintln(wout, headerTxt)
 	fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
 	fmt.Fprintln(wout)
@@ -74,10 +80,7 @@ func PrintCoreChecksHeader(wout io.Writer) {
 // finding the extension in the user's path and runs it.
 func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, flags []string, output string) bool {
 	if output == TableOutput {
-		headerTxt := "Linkerd extensions checks"
-		fmt.Fprintln(wout)
-		fmt.Fprintln(wout, headerTxt)
-		fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
+		PrintChecksHeader(wout, false)
 	}
 
 	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
@@ -146,8 +149,10 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 				results.Results = append(results.Results, extensionResults.Results...)
 			}
 		}
-		// add a new line to space out each check output
-		fmt.Fprintln(wout)
+
+		if output == ShortOutput {
+			output = "extension-short"
+		}
 		extensionSuccess := RunChecks(wout, werr, results, output)
 		if !extensionSuccess {
 			success = false
@@ -210,15 +215,15 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 		printResultDescription(wout, status, result)
 	}
 
+	var headerPrinted bool
 	prettyPrintResultsExtensionShort := func(result *CheckResult) {
-		lastCategory = printCategory(wout, lastCategory, result)
-
 		// bail out early and skip printing if we've got an okStatus
-		// Note: we still print the category headers to show which
-		// extension check we are running.
 		if result.Err == nil {
 			return
 		}
+
+		headerPrinted = printHeader(wout, headerPrinted, hc)
+		lastCategory = printCategory(wout, lastCategory, result)
 
 		spin.Stop()
 		if result.Retry {
@@ -394,6 +399,23 @@ func restartSpinner(spin *spinner.Spinner, result *CheckResult) {
 		spin.Suffix = fmt.Sprintf(" %s", result.Err)
 		spin.Color("bold") // this calls spin.Restart()
 	}
+}
+
+func printHeader(wout io.Writer, headerPrinted bool, hc Runner) bool {
+	if headerPrinted {
+		return headerPrinted
+	}
+
+	var isCore bool
+	_, ok := hc.(CheckResults)
+	if !ok {
+		isCore = true
+	} else {
+		isCore = false
+	}
+	PrintChecksHeader(wout, isCore)
+	headerPrinted = true
+	return headerPrinted
 }
 
 func printCategory(wout io.Writer, lastCategory CategoryID, result *CheckResult) CategoryID {
