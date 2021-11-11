@@ -36,7 +36,6 @@ spec:
         config.linkerd.io/enable-gateway: "true"
       labels:
         app: linkerd-gateway
-        linkerd.io/control-plane-component: gateway
     spec:
       affinity:
         podAntiAffinity:
@@ -44,19 +43,19 @@ spec:
           - podAffinityTerm:
               labelSelector:
                 matchExpressions:
-                - key: linkerd.io/control-plane-component
+                - key: app
                   operator: In
                   values:
-                  - gateway
+                  - linkerd-gateway
               topologyKey: failure-domain.beta.kubernetes.io/zone
             weight: 100
           requiredDuringSchedulingIgnoredDuringExecution:
           - labelSelector:
               matchExpressions:
-              - key: linkerd.io/control-plane-component
+              - key: app
                 operator: In
                 values:
-                - gateway
+                - linkerd-gateway
             topologyKey: kubernetes.io/hostname
       containers:
         - name: pause
@@ -69,14 +68,14 @@ metadata:
   name: linkerd-gateway
   namespace: linkerd-multicluster
   labels:
-    linkerd.io/control-plane-component: gateway
+    app: linkerd-gateway
   annotations:
     linkerd.io/created-by: linkerd/helm linkerdVersionValue
 spec:
   maxUnavailable: 1
   selector:
     matchLabels:
-      linkerd.io/control-plane-component: gateway
+      app: linkerd-gateway
 ---
 apiVersion: v1
 kind: Service
