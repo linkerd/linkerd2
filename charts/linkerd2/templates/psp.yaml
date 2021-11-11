@@ -98,7 +98,4 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-proxy-injector
   namespace: {{.Values.namespace}}
-- kind: ServiceAccount
-  name: linkerd-sp-validator
-  namespace: {{.Values.namespace}}
 {{ end -}}
