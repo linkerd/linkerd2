@@ -27,6 +27,8 @@ const (
 	WideOutput = "wide"
 	// ShortOutput is used to specify the short output format
 	ShortOutput = "short"
+	// ExtensionShortOutput is used to specify the `linkerd check -o short` output format
+	ExtensionShortOutput = "extension-short"
 
 	// DefaultHintBaseURL is the default base URL on the linkerd.io website
 	// that all check hints for the latest linkerd version point to. Each
@@ -238,21 +240,22 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 
 	var success bool
 	switch output {
-	case "short":
+	case ShortOutput:
 		success = hc.RunChecks(prettyPrintResultsShort)
-	case "extension-short":
+	case ExtensionShortOutput:
 		success = hc.RunChecks(prettyPrintResultsExtensionShort)
 	default:
 		success = hc.RunChecks(prettyPrintResults)
 	}
 
-	// this empty line separates final results from the checks list in the output
-	fmt.Fprintln(wout, "")
-
-	if !success {
-		fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
-	} else {
-		fmt.Fprintf(wout, "Status check results are %s\n", okStatus)
+	if output != ExtensionShortOutput {
+		// this empty line separates final results from the checks list in the output
+		fmt.Fprintln(wout, "")
+		if !success {
+			fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
+		} else {
+			fmt.Fprintf(wout, "Status check results are %s\n", okStatus)
+		}
 	}
 
 	return success

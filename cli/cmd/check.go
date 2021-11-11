@@ -213,7 +213,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 		healthcheck.PrintChecksHeader(wout, true)
 	}
 	if options.output == shortOutput {
-		options.output = "extension-short"
+		options.output = healthcheck.ExtensionShortOutput
 	}
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
@@ -224,7 +224,18 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 		os.Exit(1)
 	}
 
-	if !success || !extensionSuccess {
+	totalSuccess := success && extensionSuccess
+
+	if options.output == healthcheck.ExtensionShortOutput {
+		fmt.Fprintln(wout, "")
+		if !totalSuccess {
+			fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
+		} else {
+			fmt.Fprintf(wout, "Status check results are %s\n", okStatus)
+		}
+	}
+
+	if !totalSuccess {
 		os.Exit(1)
 	}
 
