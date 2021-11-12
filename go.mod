@@ -42,7 +42,7 @@ require (
 	google.golang.org/grpc v1.42.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.27.1
-	helm.sh/helm/v3 v3.6.3
+	helm.sh/helm/v3 v3.7.1
 	k8s.io/api v0.22.3
 	k8s.io/apiextensions-apiserver v0.22.3
 	k8s.io/apimachinery v0.22.3
@@ -50,7 +50,6 @@ require (
 	k8s.io/code-generator v0.22.3
 	k8s.io/klog/v2 v2.30.0
 	k8s.io/kube-aggregator v0.22.3
-	rsc.io/letsencrypt v0.0.3 // indirect
 	sigs.k8s.io/yaml v1.3.0
 )
 
