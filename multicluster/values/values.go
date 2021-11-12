@@ -35,6 +35,7 @@ type Values struct {
 	RemoteMirrorServiceAccount     bool     `json:"remoteMirrorServiceAccount"`
 	RemoteMirrorServiceAccountName string   `json:"remoteMirrorServiceAccountName"`
 	TargetClusterName              string   `json:"targetClusterName"`
+	EnableEndpointSlices           bool     `json:"enableEndpointSlices"`
 }
 
 // Gateway contains all options related to the Gateway Service

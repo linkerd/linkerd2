@@ -29,6 +29,7 @@ import (
 const (
 	eventTypeSkipped = "ServiceMirroringSkipped"
 	kubeSystem       = "kube-system"
+	serviceNameLabel = "kubernetes.io/service-name"
 )
 
 type (
@@ -609,11 +610,13 @@ func (rcsw *RemoteClusterServiceWatcher) createGatewayEndpoints(ctx context.Cont
 				Labels: map[string]string{
 					consts.MirroredResourceLabel:  "true",
 					consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
+					serviceNameLabel:              localServiceName,
 				},
 				Annotations: map[string]string{
 					consts.RemoteServiceFqName: fmt.Sprintf("%s.%s.svc.%s", exportedService.Name, exportedService.Namespace, rcsw.link.TargetClusterDomain),
 				},
 			},
+			AddressType: discovery.AddressTypeIPv4,
 		}
 
 		rcsw.log.Infof("Resolved gateway [%v:%d] for %s", gatewayAddresses, rcsw.link.GatewayPort, serviceInfo)
@@ -718,7 +721,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 		if ok && lastMirroredRemoteVersion != service.ResourceVersion {
 			if rcsw.enableEndpointSlices {
 				matchLabels := map[string]string{
-					"kubernetes.io/service-name": localName,
+					serviceNameLabel: localName,
 				}
 				endpoints, err := rcsw.localAPIClient.ES().Lister().EndpointSlices(service.Namespace).List(labels.Set(matchLabels).AsSelector())
 				if err == nil {
