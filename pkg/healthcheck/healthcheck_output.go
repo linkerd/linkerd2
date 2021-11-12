@@ -27,8 +27,6 @@ const (
 	WideOutput = "wide"
 	// ShortOutput is used to specify the short output format
 	ShortOutput = "short"
-	// ExtensionShortOutput is used to specify the `linkerd check -o short` output format
-	ExtensionShortOutput = "extension-short"
 
 	// DefaultHintBaseURL is the default base URL on the linkerd.io website
 	// that all check hints for the latest linkerd version point to. Each
@@ -152,9 +150,6 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 			}
 		}
 
-		if output == ShortOutput {
-			output = "extension-short"
-		}
 		extensionSuccess := RunChecks(wout, werr, results, output)
 		if !extensionSuccess {
 			success = false
@@ -198,27 +193,8 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 		printResultDescription(wout, status, result)
 	}
 
-	prettyPrintResultsShort := func(result *CheckResult) {
-		// bail out early and skip printing if we've got an okStatus
-		if result.Err == nil {
-			return
-		}
-
-		lastCategory = printCategory(wout, lastCategory, result)
-
-		spin.Stop()
-		if result.Retry {
-			restartSpinner(spin, result)
-			return
-		}
-
-		status := getResultStatus(result)
-
-		printResultDescription(wout, status, result)
-	}
-
 	var headerPrinted bool
-	prettyPrintResultsExtensionShort := func(result *CheckResult) {
+	prettyPrintResultsShort := func(result *CheckResult) {
 		// bail out early and skip printing if we've got an okStatus
 		if result.Err == nil {
 			return
@@ -242,13 +218,11 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 	switch output {
 	case ShortOutput:
 		success = hc.RunChecks(prettyPrintResultsShort)
-	case ExtensionShortOutput:
-		success = hc.RunChecks(prettyPrintResultsExtensionShort)
 	default:
 		success = hc.RunChecks(prettyPrintResults)
 	}
 
-	if output != ExtensionShortOutput {
+	if output != ShortOutput {
 		// this empty line separates final results from the checks list in the output
 		fmt.Fprintln(wout, "")
 		if !success {
