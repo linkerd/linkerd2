@@ -17,7 +17,7 @@ rules:
 {{- if .Values.enableEndpointSlices }}
 - apiGroups: ["discovery.k8s.io"]
   resources: ["endpointslices"]
-  verbs: ["list", "get", "watch"]
+  verbs: ["list", "get", "watch", "create", "delete", "update"]
 {{- end }}
 ---
 kind: ClusterRoleBinding
