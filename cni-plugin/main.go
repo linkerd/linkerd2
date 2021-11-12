@@ -78,7 +78,7 @@ type PluginConf struct {
 }
 
 func main() {
-	skel.PluginMain(cmdAdd, cmdDel, version.All)
+	skel.PluginMain(cmdAdd, cmdCheck, cmdDel, version.All, "")
 }
 
 func configureLogging(logLevel string) {
@@ -261,6 +261,11 @@ func cmdAdd(args *skel.CmdArgs) error {
 	}
 
 	logrus.Debug("linkerd-cni: no previous result to pass through, emptying stdout")
+	return nil
+}
+
+func cmdCheck(args *skel.CmdArgs) error {
+	logrus.Debug("linkerd-cni: cmdCheck not implemented")
 	return nil
 }
 
