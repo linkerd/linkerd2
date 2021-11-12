@@ -24,5 +24,5 @@ updates:
       # A compatibility layer should come out at some point
       # see https://reactrouter.com/docs/en/v6/upgrading/v5
       - dependency-name: "react-router-dom"
-        update-type: "semver-major"
+        update-types: ["version-update:semver-major"]
 
