@@ -4,11 +4,9 @@
 
 This edge release introduces a new Services page in the web dashboard that shows
 live calls and route metrics for meshed services. Additionally, the `proxy-init`
-container is no longer enforced to run as root.
-
-The proxy can now retry requests with a `content-length` header—permitting
-requests emitted by grpc-go to be retried. It can also be built using a
-`boringssl` backend instead of the default `rustls` backend.
+container is no longer enforced to run as root. Lastly, the proxy can now retry
+requests with a `content-length` header—permitting requests emitted by grpc-go
+to be retried.
 
 * Removed hardcoding that enforced the `proxy-init` container to run as root
 * Added support for retrying requests without a `content-length` header
@@ -25,8 +23,6 @@ requests emitted by grpc-go to be retried. It can also be built using a
 * Added services to the web dashboard (thanks @krzysztofdrys!)
 * Updated example commands in the web dashboard to use the `viz` subcommand when
   necessary (thanks @mikutas!)
-* Added support for building the proxy using a `boringssl` backend instead of
-  the default `rustls` backend
 * Removed references to `linkerd-sp-validator` service account in the
   `linkerd-psp` role binding (thanks @multimac!)
 
