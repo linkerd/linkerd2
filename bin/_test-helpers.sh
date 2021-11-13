@@ -215,6 +215,7 @@ check_linkerd_binary() {
 
 check_cluster() {
   check_if_k8s_reachable
+  kubectl version
   check_if_l5d_exists
 }
 
@@ -227,6 +228,18 @@ delete_cluster() {
 cleanup_cluster() {
   "$bindir"/test-cleanup --context "$context" "$linkerd_path" > /dev/null 2>&1
   exit_on_err 'error removing existing Linkerd resources'
+}
+
+setup_min_cluster() {
+  local name=$1
+  export helm_path="$bindir"/helm
+
+  test_setup
+  if [ -z "$skip_cluster_create" ]; then
+    "$bindir"/k3d cluster create "$@"  --image +v1.20
+    image_load "$name"
+  fi
+  check_cluster
 }
 
 setup_cluster() {
@@ -304,20 +317,20 @@ image_load() {
 
 start_test() {
   local name=$1
-  local config=(--no-hostip --k3s-server-arg '--disable=local-storage,metrics-server')
+  local config=(--k3s-arg '--disable=local-storage,metrics-server@server:0')
 
   case $name in
     cluster-domain)
-      config=("$name" "${config[@]}" --no-lb --k3s-server-arg --cluster-domain=custom.domain --k3s-server-arg '--disable=servicelb,traefik')
+      config=("$name" "${config[@]}" --no-lb --k3s-arg --cluster-domain=custom.domain --k3s-arg '--disable=servicelb,traefik@server:0')
       ;;
     cni-calico-deep)
-      config=("$name" "${config[@]}" --no-lb --k3s-server-arg --write-kubeconfig-mode=644 --k3s-server-arg --flannel-backend=none --k3s-server-arg --cluster-cidr=192.168.0.0/16 --k3s-server-arg '--disable=servicelb,traefik')
+      config=("$name" "${config[@]}" --no-lb --k3s-arg --write-kubeconfig-mode=644 --k3s-arg --flannel-backend=none --k3s-arg --cluster-cidr=192.168.0.0/16 --k3s-arg '--disable=servicelb,traefik@server:0')
       ;;
     multicluster)
       config=("${config[@]}" --network multicluster-test)
       ;;
     *)
-      config=("$name" "${config[@]}" --no-lb --k3s-server-arg '--disable=servicelb,traefik')
+      config=("$name" "${config[@]}" --no-lb --k3s-arg '--disable=servicelb,traefik@server:0')
       ;;
   esac
 
@@ -330,7 +343,11 @@ start_test() {
 
 start_single_test() {
   name=$1
-  setup_cluster "$@"
+  if [ "$name" == "helm-deep" ]; then
+    setup_min_cluster "$@"
+  else
+    setup_cluster "$@"
+  fi
   if [ -n "$cleanup_docker" ]; then
     rm -rf image-archives
     docker system prune --force --all
