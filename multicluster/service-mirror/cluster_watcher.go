@@ -1031,34 +1031,76 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 	// Create or update gateway mirror endpoints.
 	gatewayMirrorName := fmt.Sprintf("probe-gateway-%s", rcsw.link.TargetClusterName)
 
-	gatewayMirrorEndpoints := &corev1.Endpoints{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      gatewayMirrorName,
-			Namespace: rcsw.serviceMirrorNamespace,
-			Labels: map[string]string{
-				consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
+	if rcsw.enableEndpointSlices {
+
+		addresses := []string{}
+		for _, addr := range gatewayAddresses {
+			addresses = append(addresses, addr.IP)
+		}
+		portName := "mc-probe"
+		port := int32(rcsw.link.ProbeSpec.Port)
+		protocol := v1.Protocol("TCP")
+
+		gatewayMirrorEndpointSlice := &discovery.EndpointSlice{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      gatewayMirrorName,
+				Namespace: rcsw.serviceMirrorNamespace,
+				Labels: map[string]string{
+					consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
+				},
+				Annotations: map[string]string{
+					consts.RemoteGatewayIdentity: rcsw.link.GatewayIdentity,
+				},
 			},
-			Annotations: map[string]string{
-				consts.RemoteGatewayIdentity: rcsw.link.GatewayIdentity,
+			AddressType: discovery.AddressTypeIPv4,
+			Endpoints: []discovery.Endpoint{
+				{
+					Addresses: addresses,
+				},
 			},
-		},
-		Subsets: []corev1.EndpointSubset{
-			{
-				Addresses: gatewayAddresses,
-				Ports: []corev1.EndpointPort{
-					{
-						Name:     "mc-probe",
-						Port:     int32(rcsw.link.ProbeSpec.Port),
-						Protocol: "TCP",
+			Ports: []discovery.EndpointPort{
+				{
+					Name:     &portName,
+					Port:     &port,
+					Protocol: &protocol,
+				},
+			},
+		}
+
+		err = rcsw.createOrUpdateEndpointSlice(ctx, gatewayMirrorEndpointSlice)
+		if err != nil {
+			rcsw.log.Errorf("Failed to create/update gateway mirror endpoints: %s", err)
+		}
+	} else {
+		gatewayMirrorEndpoints := &corev1.Endpoints{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      gatewayMirrorName,
+				Namespace: rcsw.serviceMirrorNamespace,
+				Labels: map[string]string{
+					consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
+				},
+				Annotations: map[string]string{
+					consts.RemoteGatewayIdentity: rcsw.link.GatewayIdentity,
+				},
+			},
+			Subsets: []corev1.EndpointSubset{
+				{
+					Addresses: gatewayAddresses,
+					Ports: []corev1.EndpointPort{
+						{
+							Name:     "mc-probe",
+							Port:     int32(rcsw.link.ProbeSpec.Port),
+							Protocol: "TCP",
+						},
 					},
 				},
 			},
-		},
-	}
+		}
 
-	err = rcsw.createOrUpdateEndpoints(ctx, gatewayMirrorEndpoints)
-	if err != nil {
-		rcsw.log.Errorf("Failed to create/update gateway mirror endpoints: %s", err)
+		err = rcsw.createOrUpdateEndpoints(ctx, gatewayMirrorEndpoints)
+		if err != nil {
+			rcsw.log.Errorf("Failed to create/update gateway mirror endpoints: %s", err)
+		}
 	}
 
 	// Repair mirror service endpoints.
@@ -1077,34 +1119,72 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 			rcsw.log.Debugf("Skipped repairing endpoints for %s/%s", svc.Namespace, svc.Name)
 			continue
 		}
-		endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(svc.Namespace).Get(svc.Name)
-		if err != nil {
-			rcsw.log.Errorf("Could not get endpoints: %s", err)
-			continue
-		}
 
-		updatedEndpoints := endpoints.DeepCopy()
-		updatedEndpoints.Subsets = []corev1.EndpointSubset{
-			{
-				Addresses: gatewayAddresses,
-				Ports:     rcsw.getEndpointsPorts(updatedService),
-			},
-		}
+		if rcsw.enableEndpointSlices {
+			endpointSlice, err := rcsw.localAPIClient.ES().Lister().EndpointSlices(svc.Namespace).Get(svc.Name)
+			if err != nil {
+				rcsw.log.Errorf("Could not get endpoints: %s", err)
+				continue
+			}
 
-		if updatedEndpoints.Annotations == nil {
-			updatedEndpoints.Annotations = make(map[string]string)
-		}
-		updatedEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
+			addresses := []string{}
+			for _, addr := range gatewayAddresses {
+				addresses = append(addresses, addr.IP)
+			}
 
-		_, err = rcsw.localAPIClient.Client.CoreV1().Services(updatedService.Namespace).Update(ctx, updatedService, metav1.UpdateOptions{})
-		if err != nil {
-			rcsw.log.Error(err)
-			continue
-		}
+			updatedEndpointSlice := endpointSlice.DeepCopy()
+			updatedEndpointSlice.Endpoints = []discovery.Endpoint{
+				{
+					Addresses: addresses,
+				},
+			}
+			updatedEndpointSlice.Ports = rcsw.getEndpointSlicePorts(updatedService)
 
-		_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(updatedService.Namespace).Update(ctx, updatedEndpoints, metav1.UpdateOptions{})
-		if err != nil {
-			rcsw.log.Error(err)
+			if updatedEndpointSlice.Annotations == nil {
+				updatedEndpointSlice.Annotations = make(map[string]string)
+			}
+			updatedEndpointSlice.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
+
+			_, err = rcsw.localAPIClient.Client.CoreV1().Services(updatedService.Namespace).Update(ctx, updatedService, metav1.UpdateOptions{})
+			if err != nil {
+				rcsw.log.Error(err)
+				continue
+			}
+
+			_, err = rcsw.localAPIClient.Client.DiscoveryV1beta1().EndpointSlices(updatedService.Namespace).Update(ctx, updatedEndpointSlice, metav1.UpdateOptions{})
+			if err != nil {
+				rcsw.log.Error(err)
+			}
+		} else {
+			endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(svc.Namespace).Get(svc.Name)
+			if err != nil {
+				rcsw.log.Errorf("Could not get endpoints: %s", err)
+				continue
+			}
+
+			updatedEndpoints := endpoints.DeepCopy()
+			updatedEndpoints.Subsets = []corev1.EndpointSubset{
+				{
+					Addresses: gatewayAddresses,
+					Ports:     rcsw.getEndpointsPorts(updatedService),
+				},
+			}
+
+			if updatedEndpoints.Annotations == nil {
+				updatedEndpoints.Annotations = make(map[string]string)
+			}
+			updatedEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
+
+			_, err = rcsw.localAPIClient.Client.CoreV1().Services(updatedService.Namespace).Update(ctx, updatedService, metav1.UpdateOptions{})
+			if err != nil {
+				rcsw.log.Error(err)
+				continue
+			}
+
+			_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(updatedService.Namespace).Update(ctx, updatedEndpoints, metav1.UpdateOptions{})
+			if err != nil {
+				rcsw.log.Error(err)
+			}
 		}
 	}
 
@@ -1126,6 +1206,28 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateEndpoints(ctx context.Con
 	}
 	// Exists so we should update it.
 	_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(ep.Namespace).Update(ctx, ep, metav1.UpdateOptions{})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (rcsw *RemoteClusterServiceWatcher) createOrUpdateEndpointSlice(ctx context.Context, ep *discovery.EndpointSlice) error {
+	_, err := rcsw.localAPIClient.Client.DiscoveryV1beta1().EndpointSlices(ep.Namespace).Get(ctx, ep.Name, metav1.GetOptions{})
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			// Does not exist so we should create it.
+			_, err = rcsw.localAPIClient.Client.DiscoveryV1beta1().EndpointSlices(ep.Namespace).Create(ctx, ep, metav1.CreateOptions{})
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+	// Exists so we should update it.
+	_, err = rcsw.localAPIClient.Client.DiscoveryV1beta1().EndpointSlices(ep.Namespace).Update(ctx, ep, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
