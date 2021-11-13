@@ -60,14 +60,22 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
 
+	resources := []controllerK8s.APIResource{
+		controllerK8s.NS,
+		controllerK8s.Svc,
+		controllerK8s.Endpoint,
+	}
+
+	if *enableEndpointSlices {
+		resources = append(resources, controllerK8s.ES)
+	}
+
 	ctx := context.Background()
 	controllerK8sAPI, err := controllerK8s.InitializeAPI(
 		ctx,
 		*kubeConfigPath,
 		false,
-		controllerK8s.NS,
-		controllerK8s.Svc,
-		controllerK8s.Endpoint,
+		resources...,
 	)
 	if err != nil {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
