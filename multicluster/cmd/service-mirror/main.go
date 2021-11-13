@@ -40,7 +40,7 @@ func Main(args []string) {
 	namespace := cmd.String("namespace", "", "namespace containing Link and credentials Secret")
 	repairPeriod := cmd.Duration("endpoint-refresh-period", 1*time.Minute, "frequency to refresh endpoint resolution")
 	enableHeadlessSvc := cmd.Bool("enable-headless-services", false, "toggle support for headless service mirroring")
-	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", true, "enable the usage of EndpointSlice in mirror services")
+	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", false, "enable the usage of EndpointSlice in mirror services")
 
 	flags.ConfigureAndParse(cmd, args)
 	linkName := cmd.Arg(0)

@@ -18,4 +18,4 @@ logLevel: info
 serviceMirrorRetryLimit: 3
 # -- User id under which the Service Mirror shall be ran
 serviceMirrorUID: 2103
-enableEndpointSlices: true
+enableEndpointSlices: false
