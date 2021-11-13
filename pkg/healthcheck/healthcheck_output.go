@@ -27,8 +27,6 @@ const (
 	WideOutput = "wide"
 	// ShortOutput is used to specify the short output format
 	ShortOutput = "short"
-	// ExtensionShortOutput is used to specify the `linkerd check -o short` output format
-	ExtensionShortOutput = "extension-short"
 
 	// DefaultHintBaseURL is the default base URL on the linkerd.io website
 	// that all check hints for the latest linkerd version point to. Each
@@ -70,11 +68,30 @@ func PrintChecksHeader(wout io.Writer, isCore bool) {
 		headerTxt = "Linkerd core checks"
 	} else {
 		headerTxt = "Linkerd extensions checks"
+		// this ensures there is a new line between the core check status and the extensions header
 		fmt.Fprintln(wout)
 	}
 	fmt.Fprintln(wout, headerTxt)
 	fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
 	fmt.Fprintln(wout)
+}
+
+// PrintChecksResult writes the checks result.
+func PrintChecksResult(wout io.Writer, output string, success bool) {
+	if output == JSONOutput {
+		return
+	}
+
+	switch success {
+	case true:
+		if output != ShortOutput {
+			fmt.Fprintln(wout, "")
+		}
+		fmt.Fprintf(wout, "Status check results are %s\n", okStatus)
+	case false:
+		fmt.Fprintln(wout, "")
+		fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
+	}
 }
 
 // RunExtensionsChecks runs checks for each extension name passed into the `extensions` parameter
@@ -152,9 +169,6 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 			}
 		}
 
-		if output == ShortOutput {
-			output = "extension-short"
-		}
 		extensionSuccess := RunChecks(wout, werr, results, output)
 		if !extensionSuccess {
 			success = false
@@ -179,11 +193,9 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 	spin.Writer = wout
 
 	// We set up different printing functions because we need to handle
-	// 3 check formatting output use cases:
+	// 2 check formatting output use cases:
 	//  1. the default check output in `table` format
-	//  2. the summarized output in `short` format for core checks only
-	//  3. the summarized output in `short` format for extension checks
-	//     and core checks together
+	//  2. the summarized output in `short` format
 	prettyPrintResults := func(result *CheckResult) {
 		lastCategory = printCategory(wout, lastCategory, result)
 
@@ -198,27 +210,8 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 		printResultDescription(wout, status, result)
 	}
 
-	prettyPrintResultsShort := func(result *CheckResult) {
-		// bail out early and skip printing if we've got an okStatus
-		if result.Err == nil {
-			return
-		}
-
-		lastCategory = printCategory(wout, lastCategory, result)
-
-		spin.Stop()
-		if result.Retry {
-			restartSpinner(spin, result)
-			return
-		}
-
-		status := getResultStatus(result)
-
-		printResultDescription(wout, status, result)
-	}
-
 	var headerPrinted bool
-	prettyPrintResultsExtensionShort := func(result *CheckResult) {
+	prettyPrintResultsShort := func(result *CheckResult) {
 		// bail out early and skip printing if we've got an okStatus
 		if result.Err == nil {
 			return
@@ -242,20 +235,8 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 	switch output {
 	case ShortOutput:
 		success = hc.RunChecks(prettyPrintResultsShort)
-	case ExtensionShortOutput:
-		success = hc.RunChecks(prettyPrintResultsExtensionShort)
 	default:
 		success = hc.RunChecks(prettyPrintResults)
-	}
-
-	if output != ExtensionShortOutput {
-		// this empty line separates final results from the checks list in the output
-		fmt.Fprintln(wout, "")
-		if !success {
-			fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
-		} else {
-			fmt.Fprintf(wout, "Status check results are %s\n", okStatus)
-		}
 	}
 
 	return success
@@ -409,15 +390,18 @@ func printHeader(wout io.Writer, headerPrinted bool, hc Runner) bool {
 		return headerPrinted
 	}
 
-	var isCore bool
-	_, ok := hc.(CheckResults)
-	if !ok {
-		isCore = true
-	} else {
-		isCore = false
+	switch v := hc.(type) {
+	case *HealthChecker:
+		if v.IsMainCheckCommand {
+			PrintChecksHeader(wout, true)
+			headerPrinted = true
+		}
+	// When RunExtensionChecks called
+	case CheckResults:
+		PrintChecksHeader(wout, false)
+		headerPrinted = true
 	}
-	PrintChecksHeader(wout, isCore)
-	headerPrinted = true
+
 	return headerPrinted
 }
 

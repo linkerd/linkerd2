@@ -385,6 +385,7 @@ func (c *Category) WithHintBaseURL(hintBaseURL string) *Category {
 
 // Options specifies configuration for a HealthChecker.
 type Options struct {
+	IsMainCheckCommand    bool
 	ControlPlaneNamespace string
 	CNINamespace          string
 	DataPlaneNamespace    string

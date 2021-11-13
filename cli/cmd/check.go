@@ -195,6 +195,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 	}
 
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+		IsMainCheckCommand:    true,
 		ControlPlaneNamespace: controlPlaneNamespace,
 		CNINamespace:          cniNamespace,
 		DataPlaneNamespace:    options.namespace,
@@ -212,9 +213,6 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 	if options.output == tableOutput {
 		healthcheck.PrintChecksHeader(wout, true)
 	}
-	if options.output == shortOutput {
-		options.output = healthcheck.ExtensionShortOutput
-	}
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
 	extensionSuccess, err := runExtensionChecks(cmd, wout, werr, options)
@@ -225,15 +223,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 	}
 
 	totalSuccess := success && extensionSuccess
-
-	if options.output == healthcheck.ExtensionShortOutput {
-		fmt.Fprintln(wout, "")
-		if !totalSuccess {
-			fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
-		} else {
-			fmt.Fprintf(wout, "Status check results are %s\n", okStatus)
-		}
-	}
+	healthcheck.PrintChecksResult(wout, options.output, totalSuccess)
 
 	if !totalSuccess {
 		os.Exit(1)
