@@ -6,7 +6,7 @@ license = "Apache-2.0"
 publish = false
 
 [features]
-default = ["rustls"]
+default = ["native-tls"]
 native-tls = ["kube/native-tls"]
 rustls = ["kube/rustls-tls"]
 
