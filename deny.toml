@@ -40,15 +40,10 @@ wildcards = "allow"
 highlight = "all"
 deny = []
 skip-tree = []
-# Kube seems to pull in a bunch of old dependencies transitively.
 skip = [
-    # structopt pulls in clap, which pulls in an older version of ansi_term
-    { name = "ansi_term", version = "0.11.0" },
     # kube-runtime pulls in snafu v0.6, which pulls in an older version of pin-project
     { name = "pin-project", version = "0.4.28" },
     { name = "pin-project-internal", version = "0.4.28" },
-    # structopt pulls in clap, which pulls in an older version of strsim
-    { name = "strsim", version = "0.8.0" },
 ]
 
 [sources]
