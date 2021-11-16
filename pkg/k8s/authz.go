@@ -113,14 +113,15 @@ func ServiceProfilesAccess(ctx context.Context, k8sClient kubernetes.Interface) 
 // ServersAccess checks whether the Server CRD is installed on the cluster
 // and the client is authorized to access Servers.
 func ServersAccess(ctx context.Context, k8sClient kubernetes.Interface) error {
-	res, err := k8sClient.Discovery().ServerResourcesForGroupVersion(ServerAPIVersion)
+	groupVersion := fmt.Sprintf("%s/%s", PolicyAPIGroup, PolicyAPIVersion)
+	res, err := k8sClient.Discovery().ServerResourcesForGroupVersion(groupVersion)
 	if err != nil {
 		return err
 	}
-	if res.GroupVersion == ServerAPIVersion {
+	if res.GroupVersion == groupVersion {
 		for _, apiRes := range res.APIResources {
 			if apiRes.Kind == Server {
-				return ResourceAuthz(ctx, k8sClient, "", "list", "linkerd.io", "", "servers", "")
+				return ResourceAuthz(ctx, k8sClient, "", "list", PolicyAPIGroup, "", "servers", "")
 			}
 		}
 	}

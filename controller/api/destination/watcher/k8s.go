@@ -113,7 +113,7 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 
 	err = k8sAPI.Srv().Informer().AddIndexers(cache.Indexers{ServerIndex: func(obj interface{}) ([]string, error) {
 		if server, ok := obj.(*v1beta1.Server); ok {
-			return []string{server.Name}, nil
+			return []string{fmt.Sprintf("%s/%s", server.Namespace, server.Name)}, nil
 		}
 		return nil, fmt.Errorf("object is not a server")
 	}})
