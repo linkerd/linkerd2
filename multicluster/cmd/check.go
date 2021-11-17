@@ -56,8 +56,8 @@ func newCheckOptions() *checkOptions {
 }
 
 func (options *checkOptions) validate() error {
-	if options.output != healthcheck.TableOutput && options.output != healthcheck.JSONOutput {
-		return fmt.Errorf("Invalid output type '%s'. Supported output types are: %s, %s", options.output, healthcheck.JSONOutput, healthcheck.TableOutput)
+	if options.output != healthcheck.TableOutput && options.output != healthcheck.JSONOutput && options.output != healthcheck.ShortOutput {
+		return fmt.Errorf("Invalid output type '%s'. Supported output types are: %s, %s, %s", options.output, healthcheck.JSONOutput, healthcheck.TableOutput, healthcheck.ShortOutput)
 	}
 	return nil
 }
@@ -92,6 +92,11 @@ non-zero exit code.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get the multicluster extension namespace
 			kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "failed to run multicluster check: %v\n", err)
+				os.Exit(1)
+			}
+
 			_, err = kubeAPI.GetNamespaceWithExtensionLabel(context.Background(), MulticlusterExtensionName)
 			if err != nil {
 				err = fmt.Errorf("%w; install by running `linkerd multicluster install | kubectl apply -f -`", err)

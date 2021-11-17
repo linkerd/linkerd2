@@ -91,7 +91,7 @@ const Transition = React.forwardRef((props, ref) => {
   return <Slide direction="down" ref={ref} {...props} />;
 });
 
-const Results = ({ title, results, classes }) => {
+const Results = function({ title, results, classes }) {
   const getResultType = (error, warning) => {
     if (error) {
       if (warning) {
@@ -161,7 +161,7 @@ Results.propTypes = {
   title: PropTypes.string.isRequired,
 };
 
-const Icon = ({ type, classes }) => {
+const Icon = function({ type, classes }) {
   return (
     <React.Fragment>
       {(() => {
@@ -209,7 +209,7 @@ class CheckModal extends React.Component {
         open: !prevState.open,
       };
     });
-  }
+  };
 
   runCheck = () => {
     this.setState({
@@ -218,7 +218,7 @@ class CheckModal extends React.Component {
     });
 
     this.api.setCurrentRequests([this.api.fetchCheck()]);
-    this.serverPromise = Promise.all(this.api.getCurrentPromises())
+    Promise.all(this.api.getCurrentPromises())
       .then(([response]) => {
         this.setState({
           running: false,
@@ -228,14 +228,14 @@ class CheckModal extends React.Component {
         });
       })
       .catch(this.handleApiError);
-  }
+  };
 
   handleApiError = error => {
     this.setState({
       running: false,
       error,
     });
-  }
+  };
 
   render() {
     const { open, running, success, results, error } = this.state;
@@ -246,7 +246,7 @@ class CheckModal extends React.Component {
         <Grid
           container
           direction="row"
-          justify="center"
+          justifyContent="center"
           alignItems="center"
           spacing={3}>
           <Grid className={classes.wrapper} item>
@@ -276,7 +276,7 @@ class CheckModal extends React.Component {
             <Grid
               container
               direction="row"
-              justify="space-between"
+              justifyContent="space-between"
               alignItems="center">
               <Grid item>
                 Linkerd Check

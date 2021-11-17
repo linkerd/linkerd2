@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/pkg/util"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	admissionRegistration "k8s.io/api/admissionregistration/v1"
@@ -153,6 +155,7 @@ const (
 	proxyInjectorTLSSecretName    = "linkerd-proxy-injector-k8s-tls"
 	spValidatorOldTLSSecretName   = "linkerd-sp-validator-tls"
 	spValidatorTLSSecretName      = "linkerd-sp-validator-k8s-tls"
+	policyValidatorTLSSecretName  = "linkerd-policy-validator-k8s-tls"
 	certOldKeyName                = "crt.pem"
 	certKeyName                   = "tls.crt"
 	keyOldKeyName                 = "key.pem"
@@ -1062,7 +1065,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					hintAnchor:  "l5d-sp-validator-webhook-cert-valid",
 					fatal:       true,
 					check: func(ctx context.Context) (err error) {
-						anchors, err := hc.fetchSpValidatorCaBundle(ctx)
+						anchors, err := hc.fetchWebhookCaBundle(ctx, k8s.SPValidatorWebhookConfigName)
 						if err != nil {
 							return err
 						}
@@ -1085,6 +1088,45 @@ func (hc *HealthChecker) allCategories() []*Category {
 						cert, err := hc.FetchCredsFromSecret(ctx, hc.ControlPlaneNamespace, spValidatorTLSSecretName)
 						if kerrors.IsNotFound(err) {
 							cert, err = hc.FetchCredsFromOldSecret(ctx, hc.ControlPlaneNamespace, spValidatorOldTLSSecretName)
+						}
+						if err != nil {
+							return err
+						}
+						return hc.CheckCertAndAnchorsExpiringSoon(cert)
+
+					},
+				},
+				{
+					description: "policy-validator webhook has valid cert",
+					hintAnchor:  "l5d-policy-validator-webhook-cert-valid",
+					fatal:       true,
+					check: func(ctx context.Context) (err error) {
+						anchors, err := hc.fetchWebhookCaBundle(ctx, k8s.PolicyValidatorWebhookConfigName)
+						if kerrors.IsNotFound(err) {
+							return &SkipError{Reason: "policy-validator not installed"}
+						}
+						if err != nil {
+							return err
+						}
+						cert, err := hc.FetchCredsFromSecret(ctx, hc.ControlPlaneNamespace, policyValidatorTLSSecretName)
+						if kerrors.IsNotFound(err) {
+							return &SkipError{Reason: "policy-validator not installed"}
+						}
+						if err != nil {
+							return err
+						}
+						identityName := fmt.Sprintf("linkerd-policy-validator.%s.svc", hc.ControlPlaneNamespace)
+						return hc.CheckCertAndAnchors(cert, anchors, identityName)
+					},
+				},
+				{
+					description: "policy-validator cert is valid for at least 60 days",
+					warning:     true,
+					hintAnchor:  "l5d-policy-validator-webhook-cert-not-expiring-soon",
+					check: func(ctx context.Context) error {
+						cert, err := hc.FetchCredsFromSecret(ctx, hc.ControlPlaneNamespace, policyValidatorTLSSecretName)
+						if kerrors.IsNotFound(err) {
+							return &SkipError{Reason: "policy-validator not installed"}
 						}
 						if err != nil {
 							return err
@@ -1315,6 +1357,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 				{
 					description: "opaque ports are properly annotated",
 					hintAnchor:  "linkerd-opaque-ports-definition",
+					warning:     true,
 					check: func(ctx context.Context) error {
 						return hc.checkMisconfiguredOpaquePortAnnotations(ctx)
 					},
@@ -1689,9 +1732,8 @@ func (hc *HealthChecker) fetchProxyInjectorCaBundle(ctx context.Context) ([]*x50
 	return caBundle, nil
 }
 
-func (hc *HealthChecker) fetchSpValidatorCaBundle(ctx context.Context) ([]*x509.Certificate, error) {
-
-	vwc, err := hc.kubeAPI.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, k8s.SPValidatorWebhookConfigName, metav1.GetOptions{})
+func (hc *HealthChecker) fetchWebhookCaBundle(ctx context.Context, webhook string) ([]*x509.Certificate, error) {
+	vwc, err := hc.kubeAPI.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, webhook, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -2177,7 +2219,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 	// This is used instead of `hc.kubeAPI` to limit multiple k8s API requests
 	// and use the caching logic in the shared informers
 	// TODO: move the shared informer code out of `controller/`, and into `pkg` to simplify the dependency tree.
-	kubeAPI := controllerK8s.NewAPI(hc.kubeAPI, nil, nil, controllerK8s.Endpoint, controllerK8s.Pod, controllerK8s.Svc)
+	kubeAPI := controllerK8s.NewAPI(hc.kubeAPI, nil, nil, nil, controllerK8s.Endpoint, controllerK8s.Pod, controllerK8s.Svc)
 	kubeAPI.Sync(ctx.Done())
 
 	services, err := kubeAPI.Svc().Lister().Services(hc.DataPlaneNamespace).List(labels.Everything())
@@ -2192,29 +2234,21 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 			continue
 		}
 
-		endpoint, err := kubeAPI.Endpoint().Lister().Endpoints(service.Namespace).Get(service.Name)
+		endpoints, err := kubeAPI.Endpoint().Lister().Endpoints(service.Namespace).Get(service.Name)
 		if err != nil {
 			return err
 		}
 
-		pods := make([]*corev1.Pod, 0)
-		for _, subset := range endpoint.Subsets {
-			for _, addr := range subset.Addresses {
-				if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
-					pod, err := kubeAPI.Pod().Lister().Pods(service.Namespace).Get(addr.TargetRef.Name)
-					if err != nil {
-						return err
-					}
-					pods = append(pods, pod)
-				}
-			}
+		pods, err := getEndpointsPods(endpoints, kubeAPI, service.Namespace)
+		if err != nil {
+			return err
 		}
 
-		if mismatch := misconfiguredOpaquePortAnnotationsInService(service, pods); mismatch != nil {
-			errStrings = append(
-				errStrings,
-				fmt.Sprintf("\t* %s", mismatch.Error()),
-			)
+		for pod := range pods {
+			err := misconfiguredOpaqueAnnotation(service, pod)
+			if err != nil {
+				errStrings = append(errStrings, fmt.Sprintf("\t* %s", err.Error()))
+			}
 		}
 	}
 
@@ -2225,34 +2259,159 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 	return nil
 }
 
-func misconfiguredOpaquePortAnnotationsInService(service *corev1.Service, pods []*corev1.Pod) error {
-	for _, pod := range pods {
-		if err := misconfiguredOpaqueAnnotation(service, pod); err != nil {
+// getEndpointsPods takes a collection of endpoints and returns the set of all
+// the pods that they target.
+func getEndpointsPods(endpoints *corev1.Endpoints, kubeAPI *controllerK8s.API, namespace string) (map[*corev1.Pod]struct{}, error) {
+	pods := make(map[*corev1.Pod]struct{})
+	for _, subset := range endpoints.Subsets {
+		for _, addr := range subset.Addresses {
+			if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
+				pod, err := kubeAPI.Pod().Lister().Pods(namespace).Get(addr.TargetRef.Name)
+				if err != nil {
+					return nil, err
+				}
+				if _, ok := pods[pod]; !ok {
+					pods[pod] = struct{}{}
+				}
+			}
+		}
+	}
+	return pods, nil
+}
+
+func misconfiguredOpaqueAnnotation(service *corev1.Service, pod *corev1.Pod) error {
+	var svcPorts, podPorts []string
+	if v, ok := service.Annotations[k8s.ProxyOpaquePortsAnnotation]; ok {
+		svcPorts = strings.Split(v, ",")
+	}
+	if v, ok := pod.Annotations[k8s.ProxyOpaquePortsAnnotation]; ok {
+		podPorts = strings.Split(v, ",")
+	}
+
+	// First loop through the services opaque ports and assert that if the pod
+	// exposes a port that is targeted by one of these ports, then it is
+	// marked as opaque on the pod.
+	for _, p := range svcPorts {
+		port, err := strconv.Atoi(p)
+		if err != nil {
+			return fmt.Errorf("failed to convert %s to port number for pod %s", p, pod.Name)
+		}
+		err = checkPodPorts(service, pod, podPorts, port)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Next loop through the pod's opaque ports and assert that if one of
+	// the ports is targeted by a service port, then it is marked as opaque
+	// on the service.
+	for _, p := range podPorts {
+		if util.ContainsString(p, svcPorts) {
+			// The service exposes p and is marked as opaque.
+			continue
+		}
+		port, err := strconv.Atoi(p)
+		if err != nil {
+			return fmt.Errorf("failed to convert %s to port number for pod %s", p, pod.Name)
+		}
+
+		// p is marked as opaque on the pod, but the service that selects it
+		// does not have it marked as opaque. We first check if the service
+		// exposes it as a service or integer targetPort.
+		ok, err := checkServiceIntPorts(service, svcPorts, port)
+		if err != nil {
+			return err
+		}
+		if ok {
+			// The service targets the port as an integer and is marked as
+			// opaque so continue checking other pod ports.
+			continue
+		}
+
+		// The service does not expose p as a service or integer targetPort.
+		// We now check if it targets it as a named port, and if so, that the
+		// service port is marked as opaque.
+		err = checkServiceNamePorts(service, pod, port, svcPorts)
+		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func misconfiguredOpaqueAnnotation(service *corev1.Service, pod *corev1.Pod) error {
-	svcAnnotation, svcAnnotationOk := service.Annotations[k8s.ProxyOpaquePortsAnnotation]
-	podAnnotation, podAnnotationOk := pod.Annotations[k8s.ProxyOpaquePortsAnnotation]
-
-	if svcAnnotationOk && podAnnotationOk {
-		if svcAnnotation != podAnnotation {
-			return fmt.Errorf("pod/%s and service/%s have the annotation %s but values don't match", pod.Name, service.Name, k8s.ProxyOpaquePortsAnnotation)
+func checkPodPorts(service *corev1.Service, pod *corev1.Pod, podPorts []string, port int) error {
+	for _, sp := range service.Spec.Ports {
+		if int(sp.Port) == port {
+			for _, c := range pod.Spec.Containers {
+				for _, cp := range c.Ports {
+					if cp.ContainerPort == sp.TargetPort.IntVal || cp.Name == sp.TargetPort.StrVal {
+						// The pod exposes a container port that would be
+						// targeted by this service port
+						var strPort string
+						if sp.TargetPort.Type == 0 {
+							strPort = strconv.Itoa(int(sp.TargetPort.IntVal))
+						} else {
+							strPort = strconv.Itoa(int(cp.ContainerPort))
+						}
+						if util.ContainsString(strPort, podPorts) {
+							return nil
+						}
+						return fmt.Errorf("service %s expects target port %s to be opaque; add it to pod %s %s annotation", service.Name, strPort, pod.Name, k8s.ProxyOpaquePortsAnnotation)
+					}
+				}
+			}
 		}
-
-		return nil
 	}
+	return nil
+}
 
-	if svcAnnotationOk {
-		return fmt.Errorf("service/%s has the annotation %s but pod/%s doesn't", service.Name, k8s.ProxyOpaquePortsAnnotation, pod.Name)
+func checkServiceIntPorts(service *corev1.Service, svcPorts []string, port int) (bool, error) {
+	for _, p := range service.Spec.Ports {
+		if p.TargetPort.Type == 0 && p.TargetPort.IntVal == 0 {
+			if int(p.Port) == port {
+				// The service does not have a target port, so its service
+				// port should be marked as opaque.
+				return false, fmt.Errorf("service %s targets the opaque port %d; add it to its %s annotation", service.Name, port, k8s.ProxyOpaquePortsAnnotation)
+			}
+		}
+		if int(p.TargetPort.IntVal) == port {
+			svcPort := strconv.Itoa(int(p.Port))
+			if util.ContainsString(svcPort, svcPorts) {
+				// The service exposes svcPort which targets p and svcPort
+				// is properly as opaque.
+				return true, nil
+			}
+			return false, fmt.Errorf("service %s targets the opaque port %d through %d; add %d to its %s annotation", service.Name, port, p.Port, p.Port, k8s.ProxyOpaquePortsAnnotation)
+		}
 	}
-	if podAnnotationOk {
-		return fmt.Errorf("pod/%s has the annotation %s but service/%s doesn't", pod.Name, k8s.ProxyOpaquePortsAnnotation, service.Name)
-	}
+	return false, nil
+}
 
+func checkServiceNamePorts(service *corev1.Service, pod *corev1.Pod, port int, svcPorts []string) error {
+	for _, p := range service.Spec.Ports {
+		if p.TargetPort.StrVal == "" {
+			// The target port is not named so there is no named container
+			// port to check.
+			continue
+		}
+		for _, c := range pod.Spec.Containers {
+			for _, cp := range c.Ports {
+				if int(cp.ContainerPort) == port {
+					// This is the containerPort that maps to the opaque port
+					// we are currently checking.
+					if cp.Name == p.TargetPort.StrVal {
+						svcPort := strconv.Itoa(int(p.Port))
+						if util.ContainsString(svcPort, svcPorts) {
+							// The service targets the container port by name
+							// and is marked as opaque.
+							return nil
+						}
+						return fmt.Errorf("service %s targets the opaque port %s through %d; add %d to its %s annotation", service.Name, cp.Name, p.Port, p.Port, k8s.ProxyOpaquePortsAnnotation)
+					}
+				}
+			}
+		}
+	}
 	return nil
 }
 
@@ -2523,9 +2682,9 @@ func validateDataPlanePods(pods []corev1.Pod, targetNamespace string) error {
 
 	for _, pod := range pods {
 		status := k8s.GetPodStatus(pod)
-		// Skip validating meshed pods that are in the `Completed` state
+		// Skip validating meshed pods that are in the `Completed` or `Shutdown` state
 		// as they do not have a running proxy
-		if status == "Completed" {
+		if status == "Completed" || status == "Shutdown" {
 			continue
 		}
 
@@ -2543,17 +2702,12 @@ func validateDataPlanePods(pods []corev1.Pod, targetNamespace string) error {
 }
 
 func checkUnschedulablePods(pods []corev1.Pod) error {
-	var errors []string
 	for _, pod := range pods {
 		for _, condition := range pod.Status.Conditions {
 			if condition.Reason == corev1.PodReasonUnschedulable {
-				errors = append(errors, fmt.Sprintf("%s: %s", pod.Name, condition.Message))
+				return fmt.Errorf("%s: %s", pod.Name, condition.Message)
 			}
 		}
-	}
-
-	if len(errors) > 0 {
-		return fmt.Errorf("%s", strings.Join(errors, "\n    "))
 	}
 
 	return nil

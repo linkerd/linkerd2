@@ -71,7 +71,7 @@ func NewTrafficSplitWatcher(k8sAPI *k8s.API, log *logging.Entry) *TrafficSplitWa
 // Each time a traffic split is updated with the given apex service, the
 // listener will be updated.
 func (tsw *TrafficSplitWatcher) Subscribe(id ServiceID, listener TrafficSplitUpdateListener) error {
-	tsw.log.Infof("Establishing watch on service %s", id)
+	tsw.log.Debugf("Establishing watch on service %s", id)
 
 	publisher := tsw.getOrNewTrafficSplitPublisher(id, nil)
 
@@ -81,7 +81,7 @@ func (tsw *TrafficSplitWatcher) Subscribe(id ServiceID, listener TrafficSplitUpd
 
 // Unsubscribe removes a listener from the subscribers list for this service.
 func (tsw *TrafficSplitWatcher) Unsubscribe(id ServiceID, listener TrafficSplitUpdateListener) error {
-	tsw.log.Infof("Stopping watch on profile %s", id)
+	tsw.log.Debugf("Stopping watch on profile %s", id)
 
 	publisher, ok := tsw.getTrafficSplitPublisher(id)
 	if !ok {

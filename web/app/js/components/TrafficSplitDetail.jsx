@@ -58,7 +58,7 @@ const formatLeaves = resourceRsp => {
   return leaves;
 };
 
-const TrafficSplitDetail = ({ resourceMetrics, resourceName, resourceRsp, resourceType }) => {
+const TrafficSplitDetail = function({ resourceMetrics, resourceName, resourceRsp, resourceType }) {
   const apexResource = generateApexMetrics(resourceMetrics);
 
   return (

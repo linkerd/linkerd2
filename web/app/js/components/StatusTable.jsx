@@ -44,25 +44,27 @@ const columnConfig = {
   },
 };
 
-const StatusDot = ({ status, columnName, classes }) => (
-  <Tooltip
-    placement="top"
-    title={(
-      <div>
-        <div>{status.name}</div>
-        <div>{_get(columnConfig, [columnName, 'dotExplanation'])(status)}</div>
-        <div>Uptime: {status.uptime} ({status.uptimeSec}s)</div>
-      </div>
+const StatusDot = function({ status, columnName, classes }) {
+  return (
+    <Tooltip
+      placement="top"
+      title={(
+        <div>
+          <div>{status.name}</div>
+          <div>{_get(columnConfig, [columnName, 'dotExplanation'])(status)}</div>
+          <div>Uptime: {status.uptime} ({status.uptimeSec}s)</div>
+        </div>
     )}>
-    <div
-      className={classNames(
-        classes.statusTableDot,
-        classes[status.value],
-      )}
-      key={status.name}>&nbsp;
-    </div>
-  </Tooltip>
-);
+      <div
+        className={classNames(
+          classes.statusTableDot,
+          classes[status.value],
+        )}
+        key={status.name}>&nbsp;
+      </div>
+    </Tooltip>
+  );
+};
 
 StatusDot.propTypes = {
   columnName: PropTypes.string.isRequired,
@@ -102,7 +104,7 @@ const columns = {
   },
 };
 
-const StatusTable = ({ classes, statusColumnTitle, data }) => {
+const StatusTable = function({ classes, statusColumnTitle, data }) {
   const tableCols = [
     columns.resourceName,
     columns.pods,

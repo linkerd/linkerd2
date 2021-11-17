@@ -19,6 +19,8 @@ limitations under the License.
 package scheme
 
 import (
+	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
+	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	linkerdv1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -31,6 +33,8 @@ var Scheme = runtime.NewScheme()
 var Codecs = serializer.NewCodecFactory(Scheme)
 var ParameterCodec = runtime.NewParameterCodec(Scheme)
 var localSchemeBuilder = runtime.SchemeBuilder{
+	serverv1beta1.AddToScheme,
+	serverauthorizationv1beta1.AddToScheme,
 	linkerdv1alpha2.AddToScheme,
 }
 

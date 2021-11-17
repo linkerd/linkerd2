@@ -20,7 +20,7 @@ const styles = theme => ({
   },
 });
 class Version extends React.Component {
-  numericVersion = version => {
+  static numericVersion(version) {
     const parts = version.split('-', 2);
     if (parts.length === 2) {
       return parts[1];
@@ -29,7 +29,7 @@ class Version extends React.Component {
     }
   }
 
-  versionChannel = version => {
+  static versionChannel(version) {
     const parts = version.split('-', 2);
     return parts.length === 2 ? parts[0] : null;
   }
@@ -49,7 +49,7 @@ class Version extends React.Component {
       return <Typography className={classes.versionMsg}><Trans>LinkerdIsUpToDateMsg</Trans></Typography>;
     }
 
-    const versionText = this.numericVersion(latestVersion);
+    const versionText = Version.numericVersion(latestVersion);
 
     return (
       <div>
@@ -68,13 +68,13 @@ class Version extends React.Component {
         </Button>
       </div>
     );
-  }
+  };
 
   render() {
     const { classes, releaseVersion, productName } = this.props;
-    const channel = this.versionChannel(releaseVersion);
+    const channel = Version.versionChannel(releaseVersion);
     let message = ` ${productName || 'controller'}`;
-    message += ` ${this.numericVersion(releaseVersion)}`;
+    message += ` ${Version.numericVersion(releaseVersion)}`;
     if (channel) {
       message += ` (${channel})`;
     }

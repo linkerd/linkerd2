@@ -7,11 +7,14 @@ k3d=""
 cluster=""
 archive=""
 preload=""
-images_default=(proxy controller policy-controller web metrics-api grafana debug cni-plugin jaeger-webhook tap)
 images=()
 
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+# shellcheck source=_docker.sh
+. "$bindir"/_docker.sh
+
 usage() {
-  printf "Load into KinD/k3d the referred Linkerd images. If no images are specified all of them are loaded (%s)\n" "${images_default[*]}"
+  printf "Load into KinD/k3d the referred Linkerd images. If no images are specified all of them are loaded (%s)\n" "${DOCKER_IMAGES[*]}"
   echo ""
   echo "Usage:"
   echo "    bin/image-load [--kind] [--k3d] [--cluster name] [--preload] [--archive] [image] [image]..."
@@ -37,7 +40,7 @@ usage() {
 
 while :
 do
-  case $1 in
+  case ${1:-} in
     -h|--help)
       usage
       exit 0
@@ -59,7 +62,7 @@ do
       archive=1
       ;;
     *)
-      if [ -z "$1" ]; then
+      if [ -z "${1:-}" ]; then
         break
       fi
       if echo "$1" | grep -q '^-.*' ; then
@@ -73,7 +76,7 @@ do
 done
 
 if [ ${#images[@]} -eq 0 ]; then
-  images=("${images_default[@]}")
+  images=("${DOCKER_IMAGES[@]}")
 fi
 
 bindir=$( cd "${0%/*}" && pwd )
@@ -103,7 +106,8 @@ else
   fi
 fi
 
-if [ -z "$archive" ]; then
+if [ -z "$archive" ]
+then
   # shellcheck source=_tag.sh
   . "$bindir"/_tag.sh
   # shellcheck source=_docker.sh

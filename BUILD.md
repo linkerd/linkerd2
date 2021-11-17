@@ -32,7 +32,6 @@ about testing from source can be found in the [TEST.md](TEST.md) guide.
     - [Translations](#translations)
   - [Rust](#rust)
     - [Docker](#docker)
-  - [Multi-architecture builds](#multi-architecture-builds)
 - [Dependencies](#dependencies)
   - [Updating protobuf dependencies](#updating-protobuf-dependencies)
   - [Updating ServiceProfile generated
@@ -279,21 +278,18 @@ the `bin/fmt` script.
 
 The script for building the CLI binaries using docker is
 `bin/docker-build-cli-bin`. This will also be called indirectly when calling
-`bin/docker-build`. By default it creates binaries for Linux, Darwin and
-Windows. For Linux it will create a binary targeted at your current
-architecture. For targeting different architectures, check [Multi-architecture
-Builds](#multi-architecture-builds) below).
+`bin/docker-build`. By default it creates binaries for your current host's
+OS/arch.
 
-For local development and a faster edit-build-test cycle you might want to just
-target your local OS and architecture. For those situations you can just call
-`bin/build-cli-bin`.
+To cross-build targeting a different OS or architecture, set the environment
+variable `DOCKER_TARGET` according to any of the final stages available in
+[cli/Dockerfile](cli/Dockerfile).
 
-If you want to build all the controller images, plus only the CLI for your OS
-and architecture, just call:
+For local development and a faster edit-build-test cycle you can build directly
+without going through a docker container by calling `bin/build-cli-bin`.
 
-```bash
-LINKERD_LOCAL_BUILD_CLI=1 bin/docker-build
-```
+If you set the environment variable `LINKERD_LOCAL_BUILD_CLI=1` then
+`bin/docker-build` will use this last method for the step that builds the CLI.
 
 #### Running the control plane for development
 
@@ -447,25 +443,6 @@ Now, to make a pod use your image, add the following annotations to it:
 config.linkerd.io/proxy-version: dev
 ```
 
-### Multi-architecture builds
-
-Besides the default Linux/amd64 architecture, you can build controller images
-targeting Linux/arm64 and Linux/arm/v7.
-
-For signaling that you want to build multi-architecture images, set the
-environment variable `DOCKER_MULTIARCH=1`. Do to some limitations on buildx, if
-you'd like to do that you're also forced to signal buildx to push the images to
-the registry by setting `DOCKER_PUSH=1`. Naturally, you can't push to the
-official registry and will have to override `DOCKER_REGISTRY` with a registry
-that you control.
-
-To summarize, in order to build all the images for multiple architectures and
-push them to your registry located for example at `ghcr.io/user` you can issue:
-
-```bash
-DOCKER_MULTIARCH=1 DOCKER_PUSH=1 DOCKER_REGISTRY=ghcr.io/user bin/docker-build
-```
-
 ## Dependencies
 
 ### Updating protobuf dependencies
@@ -506,7 +483,7 @@ During development, please use the [`bin/helm`](bin/helm) wrapper script to
 invoke the Helm commands. For example,
 
 ```bash
-bin/helm install charts/linkerd2
+bin/helm install linkerd2 charts/linkerd2
 ```
 
 This ensures that you use the same Helm version as that of the Linkerd CI

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -10,6 +11,7 @@ import (
 	"github.com/linkerd/linkerd2/jaeger/static"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	partials "github.com/linkerd/linkerd2/pkg/charts/static"
+	"github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	api "github.com/linkerd/linkerd2/pkg/public"
@@ -24,14 +26,18 @@ var (
 	// this doesn't include the namespace-metadata.* templates, which are Helm-only
 	templatesJaeger = []string{
 		"templates/namespace.yaml",
+		"templates/proxy-admin-policy.yaml",
 		"templates/jaeger-injector.yaml",
+		"templates/jaeger-injector-policy.yaml",
 		"templates/rbac.yaml",
 		"templates/psp.yaml",
 		"templates/tracing.yaml",
+		"templates/tracing-policy.yaml",
 	}
 )
 
 func newCmdInstall() *cobra.Command {
+	var registry string
 	var skipChecks bool
 	var wait time.Duration
 	var options values.Options
@@ -63,10 +69,12 @@ A full list of configurable values can be found at https://www.github.com/linker
 				})
 			}
 
-			return install(os.Stdout, options)
+			return install(os.Stdout, options, registry)
 		},
 	}
 
+	cmd.Flags().StringVar(&registry, "registry", "cr.l5d.io/linkerd",
+		fmt.Sprintf("Docker registry to pull jaeger-webhook image from ($%s)", flags.EnvOverrideDockerRegistry))
 	cmd.Flags().BoolVar(&skipChecks, "skip-checks", false, `Skip checks for linkerd core control-plane existence`)
 	cmd.Flags().DurationVar(&wait, "wait", 300*time.Second, "Wait for core control-plane components to be available")
 
@@ -75,7 +83,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 	return cmd
 }
 
-func install(w io.Writer, options values.Options) error {
+func install(w io.Writer, options values.Options, registry string) error {
 
 	// Create values override
 	valuesOverrides, err := options.MergeValues(nil)
@@ -85,10 +93,10 @@ func install(w io.Writer, options values.Options) error {
 
 	// TODO: Add any validation logic here
 
-	return render(w, valuesOverrides)
+	return render(w, valuesOverrides, registry)
 }
 
-func render(w io.Writer, valuesOverrides map[string]interface{}) error {
+func render(w io.Writer, valuesOverrides map[string]interface{}, registry string) error {
 
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
@@ -132,6 +140,15 @@ func render(w io.Writer, valuesOverrides map[string]interface{}) error {
 	vals, err = charts.InsertVersionValues(vals)
 	if err != nil {
 		return err
+	}
+
+	regOrig := vals["webhook"].(map[string]interface{})["image"].(map[string]interface{})["name"].(string)
+	if registry != "" {
+		vals["webhook"].(map[string]interface{})["image"].(map[string]interface{})["name"] = cmd.RegistryOverride(regOrig, registry)
+	}
+	// env var overrides CLI flag
+	if override := os.Getenv(flags.EnvOverrideDockerRegistry); override != "" {
+		vals["webhook"].(map[string]interface{})["image"].(map[string]interface{})["name"] = cmd.RegistryOverride(regOrig, override)
 	}
 
 	fullValues := map[string]interface{}{

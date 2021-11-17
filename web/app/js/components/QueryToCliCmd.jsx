@@ -26,11 +26,11 @@ const toCliParam = {
   could be pasted into a terminal
 */
 class QueryToCliCmd extends React.Component {
-  renderCliItem = (queryLabel, queryVal) => {
+  static renderCliItem(queryLabel, queryVal) {
     return _isEmpty(queryVal) ? null : ` ${queryLabel} ${queryVal}`;
   }
 
-  render = () => {
+  render() {
     const { cmdName, query, resource, controllerNamespace } = this.props;
 
     const cmdNameDisplay = _startCase(cmdName);
@@ -45,9 +45,9 @@ class QueryToCliCmd extends React.Component {
         <br />
 
         <code>
-          linkerd {cmdName} {resource}
+          linkerd viz {cmdName} {resource}
           { displayOrder(cmdName, query).map(item => {
-            return !toCliParam[item] ? null : this.renderCliItem(toCliParam[item], query[item]);
+            return !toCliParam[item] ? null : QueryToCliCmd.renderCliItem(toCliParam[item], query[item]);
           })}
           { controllerNamespace === 'linkerd' ? null : ` --linkerd-namespace ${controllerNamespace}`}
         </code>

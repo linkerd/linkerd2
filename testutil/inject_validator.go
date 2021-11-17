@@ -17,34 +17,36 @@ const enabled = "true"
 // correct injector flags and annotations and verify
 // injected pods
 type InjectValidator struct {
-	NoInitContainer        bool
-	DisableIdentity        bool
-	AutoInject             bool
-	AdminPort              int
-	ControlPort            int
-	EnableDebug            bool
-	EnableExternalProfiles bool
-	ImagePullPolicy        string
-	InboundPort            int
-	InitImage              string
-	InitImageVersion       string
-	OutboundPort           int
-	CPULimit               string
-	CPURequest             string
-	MemoryLimit            string
-	MemoryRequest          string
-	Image                  string
-	LogLevel               string
-	LogFormat              string
-	UID                    int
-	Version                string
-	RequireIdentityOnPorts string
-	SkipOutboundPorts      string
-	OpaquePorts            string
-	SkipInboundPorts       string
-	OutboundConnectTimeout string
-	InboundConnectTimeout  string
-	WaitBeforeExitSeconds  int
+	NoInitContainer         bool
+	DisableIdentity         bool
+	AutoInject              bool
+	AdminPort               int
+	ControlPort             int
+	EnableDebug             bool
+	EnableExternalProfiles  bool
+	ImagePullPolicy         string
+	InboundPort             int
+	InitImage               string
+	InitImageVersion        string
+	OutboundPort            int
+	CPULimit                string
+	EphemeralStorageLimit   string
+	CPURequest              string
+	MemoryLimit             string
+	MemoryRequest           string
+	EphemeralStorageRequest string
+	Image                   string
+	LogLevel                string
+	LogFormat               string
+	UID                     int
+	Version                 string
+	RequireIdentityOnPorts  string
+	SkipOutboundPorts       string
+	OpaquePorts             string
+	SkipInboundPorts        string
+	OutboundConnectTimeout  string
+	InboundConnectTimeout   string
+	WaitBeforeExitSeconds   int
 }
 
 func (iv *InjectValidator) getContainer(pod *v1.PodSpec, name string, isInit bool) *v1.Container {
@@ -202,6 +204,28 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 		}
 	}
 
+	if iv.EphemeralStorageLimit != "" {
+		limit := resource.MustParse(iv.EphemeralStorageLimit)
+		if proxyContainer.Resources.Limits.StorageEphemeral() != nil {
+			if !proxyContainer.Resources.Limits.StorageEphemeral().Equal(limit) {
+				return fmt.Errorf("EphemeralStorageLimit: expected %v, actual %v", &limit, proxyContainer.Resources.Limits.StorageEphemeral())
+			}
+		} else {
+			return fmt.Errorf("EphemeralStorageLimit: expected %v, but none", &limit)
+		}
+	}
+
+	if iv.EphemeralStorageRequest != "" {
+		request := resource.MustParse(iv.EphemeralStorageRequest)
+		if proxyContainer.Resources.Requests.StorageEphemeral() != nil {
+			if !proxyContainer.Resources.Requests.StorageEphemeral().Equal(request) {
+				return fmt.Errorf("EphemeralStorageRequest: expected %v, actual %v", &request, proxyContainer.Resources.Requests.StorageEphemeral())
+			}
+		} else {
+			return fmt.Errorf("EphemeralStorageRequest: expected %v, but none", &request)
+		}
+	}
+
 	if iv.Image != "" || iv.Version != "" {
 		image := strings.Split(proxyContainer.Image, ":")
 
@@ -268,7 +292,7 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 	}
 
 	if iv.WaitBeforeExitSeconds != 0 {
-		expectedCmd := fmt.Sprintf("/bin/bash,-c,sleep %d", iv.WaitBeforeExitSeconds)
+		expectedCmd := fmt.Sprintf("/bin/sleep,%d", iv.WaitBeforeExitSeconds)
 		actual := strings.Join(proxyContainer.Lifecycle.PreStop.Exec.Command, ",")
 		if expectedCmd != strings.Join(proxyContainer.Lifecycle.PreStop.Exec.Command, ",") {
 			return fmt.Errorf("preStopHook: expected %s, actual %s", expectedCmd, actual)
@@ -453,9 +477,21 @@ func (iv *InjectValidator) GetFlagsAndAnnotations() ([]string, map[string]string
 		flags = append(flags, fmt.Sprintf("--proxy-memory-limit=%s", iv.MemoryLimit))
 	}
 
+	if iv.EphemeralStorageLimit != "" {
+		annotations[k8s.ProxyEphemeralStorageLimitAnnotation] = iv.EphemeralStorageLimit
+		// TODO - `inject` does not support the `--set` flag, so we can't add this
+		// flags = append(flags, "--set", fmt.Sprintf("proxy.resources.ephemeral-storage.limit=%s", iv.EphemeralStorageLimit))
+	}
+
 	if iv.MemoryRequest != "" {
 		annotations[k8s.ProxyMemoryRequestAnnotation] = iv.MemoryRequest
 		flags = append(flags, fmt.Sprintf("--proxy-memory-request=%s", iv.MemoryRequest))
+	}
+
+	if iv.EphemeralStorageRequest != "" {
+		annotations[k8s.ProxyEphemeralStorageRequestAnnotation] = iv.EphemeralStorageRequest
+		// TODO - `inject` does not support the `--set` flag, so we can't add this
+		// flags = append(flags, "--set", fmt.Sprintf("proxy.resources.ephemeral-storage.request=%s", iv.EphemeralStorageRequest))
 	}
 
 	if iv.Image != "" {

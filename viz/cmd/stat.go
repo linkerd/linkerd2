@@ -121,7 +121,9 @@ func NewCmdStat() *cobra.Command {
   * statefulsets
   * trafficsplits
   * authorities (not supported in --from)
-  * services (only supported if a --from is also specified, or as a --to)
+  * services (not supported in --from)
+  * servers (not supported in --from)
+  * serverauthorizations (not supported in --from)
   * all (all resource types, not supported in --from or --to)
 
 This command will hide resources that have completed, such as pods that are in the Succeeded or Failed phases.
@@ -178,7 +180,14 @@ If no resource name is specified, displays stats about all resources of the spec
   linkerd viz stat namespaces --from ns/default
 
   # Get all inbound stats to the test namespace.
-  linkerd viz stat ns/test`,
+  linkerd viz stat ns/test
+
+  # Get all inbound stats to the emoji-grpc server
+  linkerd viz stat server/emoji-grpc
+
+  # Get all inbound stats to the web-public server authorization resource
+  linkerd viz stat serverauthorization/web-public
+  `,
 		Args: cobra.MinimumNArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 
@@ -317,12 +326,17 @@ type rowStats struct {
 	tcpWriteBytes      float64
 }
 
+type srvStats struct {
+	unauthorizedRate float64
+}
+
 type row struct {
 	meshed string
 	status string
 	*rowStats
 	*tsStats
 	*dstStats
+	*srvStats
 }
 
 type tsStats struct {
@@ -349,7 +363,7 @@ func statHasRequestData(stat *pb.BasicStats) bool {
 }
 
 func isPodOwnerResource(typ string) bool {
-	return typ != k8s.TrafficSplit && typ != k8s.Authority && typ != k8s.Service
+	return typ != k8s.TrafficSplit && typ != k8s.Authority && typ != k8s.Service && typ != k8s.Server && typ != k8s.ServerAuthorization
 }
 
 func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) {
@@ -395,6 +409,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 		if r.Resource.Type == k8s.TrafficSplit || (r.Resource.Type == k8s.Service && r.TsStats != nil) {
 			key = fmt.Sprintf("%s/%s/%s", namespace, name, r.TsStats.Leaf)
 		}
+
 		resourceKey := r.Resource.Type
 
 		if _, ok := statTables[resourceKey]; !ok {
@@ -409,13 +424,16 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 			maxNamespaceLength = len(namespace)
 		}
 
-		meshedCount := fmt.Sprintf("%d/%d", r.MeshedPodCount, r.RunningPodCount)
-		if resourceKey == k8s.Authority || resourceKey == k8s.Service {
-			meshedCount = "-"
-		}
-		statTables[resourceKey][key] = &row{
-			meshed: meshedCount,
-			status: r.Status,
+		statTables[resourceKey][key] = &row{}
+		if resourceKey != k8s.Server && resourceKey != k8s.ServerAuthorization {
+			meshedCount := fmt.Sprintf("%d/%d", r.MeshedPodCount, r.RunningPodCount)
+			if resourceKey == k8s.Authority || resourceKey == k8s.Service {
+				meshedCount = "-"
+			}
+			statTables[resourceKey][key] = &row{
+				meshed: meshedCount,
+				status: r.Status,
+			}
 		}
 
 		if r.Stats != nil && statHasRequestData(r.Stats) {
@@ -467,6 +485,12 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 				}
 			}
 		}
+
+		if r.SrvStats != nil {
+			statTables[resourceKey][key].srvStats = &srvStats{
+				unauthorizedRate: getSuccessRate(r.SrvStats.GetDeniedCount(), r.SrvStats.GetAllowedCount()),
+			}
+		}
 	}
 
 	switch options.outputFormat {
@@ -509,7 +533,7 @@ func showTCPBytes(options *statOptions, resourceType string) bool {
 }
 
 func showTCPConns(resourceType string) bool {
-	return resourceType != k8s.Authority && resourceType != k8s.TrafficSplit
+	return resourceType != k8s.Authority && resourceType != k8s.TrafficSplit && resourceType != k8s.ServerAuthorization
 }
 
 func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType string, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxDstLength, maxWeightLength int, options *statOptions) {
@@ -556,8 +580,12 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			fmt.Sprintf(apexTemplate, apexHeader),
 			fmt.Sprintf(leafTemplate, leafHeader),
 			fmt.Sprintf(weightTemplate, weightHeader))
-	} else {
+	} else if resourceType != k8s.Server && resourceType != k8s.ServerAuthorization {
 		headers = append(headers, "MESHED")
+	}
+
+	if resourceType == k8s.Server {
+		headers = append(headers, "UNAUTHORIZED")
 	}
 
 	headers = append(headers, []string{
@@ -568,7 +596,7 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		"LATENCY_P99",
 	}...)
 
-	if resourceType != k8s.TrafficSplit {
+	if showTCPConns(resourceType) {
 		headers = append(headers, "TCP_CONN")
 	}
 
@@ -588,7 +616,7 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		namespace, name := namespaceName(resourceTypeLabel, key)
 		values := make([]interface{}, 0)
 		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
-		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t-\t"
+		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t"
 		if resourceType == k8s.Pod {
 			templateString = "%s\t" + templateString
 			templateStringEmpty = "%s\t" + templateStringEmpty
@@ -600,15 +628,17 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		} else if hasDstStats {
 			templateString = "%s\t%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
 			templateStringEmpty = "%s\t%s\t%s\t-\t-\t-\t-\t-\t"
+		} else if resourceType == k8s.ServerAuthorization {
+			templateString = "%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
+			templateStringEmpty = "%s\t-\t-\t-\t-\t-\t"
+		} else if resourceType == k8s.Server {
+			templateString = "%s\t%.1frps\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
+			templateStringEmpty = "%s\t%.1frps\t-\t-\t-\t-\t-\t"
 		}
 
-		if !showTCPConns(resourceType) {
-			if resourceType == k8s.Authority {
-				// always show TCP Connections as - for Authorities
-				templateString = templateString + "-\t"
-			}
-		} else {
+		if showTCPConns(resourceType) {
 			templateString = templateString + "%d\t"
+			templateStringEmpty = templateStringEmpty + "-\t"
 		}
 
 		if showTCPBytes(options, resourceType) {
@@ -664,9 +694,19 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 				stats[key].dstStats.dst+strings.Repeat(" ", dstPadding),
 				stats[key].dstStats.weight,
 			)
-		} else {
+		} else if resourceType != k8s.ServerAuthorization && resourceType != k8s.Server {
 			values = append(values, []interface{}{
 				stats[key].meshed,
+			}...)
+		}
+
+		if resourceType == k8s.Server {
+			var unauthorizedRate float64
+			if stats[key].srvStats != nil {
+				unauthorizedRate = stats[key].srvStats.unauthorizedRate
+			}
+			values = append(values, []interface{}{
+				unauthorizedRate,
 			}...)
 		}
 
@@ -723,6 +763,7 @@ type jsonStats struct {
 	Leaf           string   `json:"leaf,omitempty"`
 	Dst            string   `json:"dst,omitempty"`
 	Weight         string   `json:"weight,omitempty"`
+	Unauthorized   *float64 `json:"unauthorized,omitempty"`
 }
 
 func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
@@ -762,6 +803,12 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 				} else if stats[key].dstStats != nil {
 					entry.Dst = stats[key].dstStats.dst
 					entry.Weight = stats[key].dstStats.weight
+				}
+
+				if resourceType == k8s.Server {
+					if stats[key].srvStats != nil {
+						entry.Unauthorized = &stats[key].srvStats.unauthorizedRate
+					}
 				}
 				entries = append(entries, entry)
 			}
@@ -839,7 +886,21 @@ func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.S
 		}
 		requests = append(requests, req)
 	}
+
+	if containsTS(targets) {
+		fmt.Printf("Starting in 2.12, the SMI extension will be required for traffic splitting. Please follow the SMI extension getting started guide from https://linkerd.io/2.10/tasks/linkerd-smi\n\n")
+	}
+
 	return requests, nil
+}
+
+func containsTS(resources []*pb.Resource) bool {
+	for _, resource := range resources {
+		if resource.Type == k8s.TrafficSplit {
+			return true
+		}
+	}
+	return false
 }
 
 func sortStatsKeys(stats map[string]*row) []string {

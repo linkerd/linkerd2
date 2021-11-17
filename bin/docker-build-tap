@@ -16,5 +16,4 @@ rootdir=$( cd "$bindir"/.. && pwd )
 . "$bindir"/_tag.sh
 
 dockerfile=$rootdir/viz/tap/Dockerfile
-tag=$(head_root_tag)
-docker_build tap "$tag" "$dockerfile"
+docker_build tap "${TAG:-$(head_root_tag)}" "$dockerfile"

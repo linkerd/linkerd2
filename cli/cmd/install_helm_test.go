@@ -18,7 +18,7 @@ func TestRenderHelm(t *testing.T) {
 	// override certain defaults with pinned values.
 	// use the Helm lib to render the templates.
 	// the golden file is generated using the following `helm template` command:
-	// helm template --set identityTrustAnchorsPEM="test-crt-pem" --set identity.issuer.tls.crtPEM="test-crt-pem" --set identity.issuer.tls.keyPEM="test-key-pem" charts/linkerd2  --set identity.issuer.crtExpiry="Jul 30 17:21:14 2020" --set proxyInjector.keyPEM="test-proxy-injector-key-pem" --set proxyInjector.crtPEM="test-proxy-injector-crt-pem" --set profileValidator.keyPEM="test-profile-validator-key-pem" --set profileValidator.crtPEM="test-profile-validator-crt-pem" --set tap.keyPEM="test-tap-key-pem" --set tap.crtPEM="test-tap-crt-pem" --set linkerdVersion="linkerd-version"  > cli/cmd/testdata/install_helm_output.golden
+	// helm template --set identityTrustAnchorsPEM="test-crt-pem" --set identity.issuer.tls.crtPEM="test-crt-pem" --set identity.issuer.tls.keyPEM="test-key-pem" charts/linkerd2 --set proxyInjector.keyPEM="test-proxy-injector-key-pem" --set proxyInjector.crtPEM="test-proxy-injector-crt-pem" --set profileValidator.keyPEM="test-profile-validator-key-pem" --set profileValidator.crtPEM="test-profile-validator-crt-pem" --set tap.keyPEM="test-tap-key-pem" --set tap.crtPEM="test-tap-crt-pem" --set linkerdVersion="linkerd-version"  > cli/cmd/testdata/install_helm_output.golden
 
 	t.Run("Non-HA mode", func(t *testing.T) {
 		ha := false
@@ -94,7 +94,6 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
    },
   "identity":{
     "issuer":{
-      "crtExpiry":"Jul 30 17:21:14 2020",
       "tls":{
         "keyPEM":"test-key-pem",
         "crtPEM":"test-crt-pem"
@@ -116,6 +115,11 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
     "keyPEM":"test-profile-validator-key-pem",
     "crtPEM":"test-profile-validator-crt-pem",
 	"caBundle":"test-profile-validator-ca-bundle"
+  },
+  "policyValidator":{
+    "keyPEM":"test-profile-validator-key-pem",
+    "crtPEM":"test-profile-validator-crt-pem",
+	  "caBundle":"test-profile-validator-ca-bundle"
   },
   "tap":{
     "keyPEM":"test-tap-key-pem",

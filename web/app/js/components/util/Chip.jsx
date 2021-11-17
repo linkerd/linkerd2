@@ -18,7 +18,7 @@ const styles = theme => ({
   },
 });
 
-function SimpleChip(props) {
+const SimpleChip = function SimpleChip(props) {
   const { classes, label, type } = props;
 
   return (
@@ -27,7 +27,7 @@ function SimpleChip(props) {
       label={label}
       variant="outlined" />
   );
-}
+};
 
 SimpleChip.propTypes = {
   label: PropTypes.shape({}).isRequired,

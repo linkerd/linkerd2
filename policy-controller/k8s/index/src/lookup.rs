@@ -1,11 +1,8 @@
-use crate::{node::KubeletIps, PodServerRx};
+use crate::PodServerRx;
 use anyhow::{anyhow, Result};
 use dashmap::{mapref::entry::Entry, DashMap};
-use linkerd_policy_controller_core::{
-    ClientAuthentication, ClientAuthorization, DiscoverInboundServer, InboundServer,
-    InboundServerStream, NetworkMatch,
-};
-use std::{collections::HashMap, net::IpAddr, sync::Arc};
+use linkerd_policy_controller_core::{DiscoverInboundServer, InboundServer, InboundServerStream};
+use std::{collections::HashMap, sync::Arc};
 
 #[derive(Debug, Default)]
 pub(crate) struct Writer(ByNs);
@@ -30,8 +27,6 @@ pub(crate) fn pair() -> (Writer, Reader) {
 /// Represents a pod server's configuration.
 #[derive(Clone, Debug)]
 pub struct Rx {
-    kubelet: KubeletIps,
-
     /// A watch of server watches.
     rx: PodServerRx,
 }
@@ -118,19 +113,16 @@ impl DiscoverInboundServer<(String, String, u16)> for Reader {
 // === impl Rx ===
 
 impl Rx {
-    pub(crate) fn new(kubelet: KubeletIps, rx: PodServerRx) -> Self {
-        Self { kubelet, rx }
+    pub(crate) fn new(rx: PodServerRx) -> Self {
+        Self { rx }
     }
 
     pub(crate) fn get(&self) -> InboundServer {
-        Self::mk_server(&*self.kubelet, (*(*self.rx.borrow()).borrow()).clone())
+        (*self.rx.borrow().borrow()).clone()
     }
 
     /// Streams server configuration updates.
     pub(crate) fn into_stream(self) -> InboundServerStream {
-        // The kubelet IPs for a pod cannot change at runtime.
-        let kubelet = self.kubelet;
-
         // Watches server watches. This watch is updated as `Server` resources are created/deleted
         // (or modified to select/deselect a pod-port).
         let mut pod_port_rx = self.rx;
@@ -142,7 +134,7 @@ impl Rx {
         Box::pin(async_stream::stream! {
             // Get the initial server state and publish it.
             let mut server = (*server_rx.borrow_and_update()).clone();
-            yield Self::mk_server(&*kubelet, server.clone());
+            yield server.clone();
 
             loop {
                 tokio::select! {
@@ -152,7 +144,7 @@ impl Rx {
                         if res.is_ok() {
                             let s = (*server_rx.borrow()).clone();
                             if s != server {
-                                yield Self::mk_server(&*kubelet, s.clone());
+                                yield s.clone();
                                 server = s;
                             }
                         }
@@ -168,24 +160,12 @@ impl Rx {
                         server_rx = (*pod_port_rx.borrow()).clone();
                         let s = (*server_rx.borrow_and_update()).clone();
                         if s != server {
-                            yield Self::mk_server(&*kubelet, s.clone());
+                            yield s.clone();
                             server = s;
                         }
                     },
                 }
             }
         })
-    }
-
-    #[inline]
-    fn mk_server(kubelet: &[IpAddr], mut inner: InboundServer) -> InboundServer {
-        let networks = kubelet.iter().copied().map(NetworkMatch::from).collect();
-        let authz = ClientAuthorization {
-            networks,
-            authentication: ClientAuthentication::Unauthenticated,
-        };
-
-        inner.authorizations.insert("_health_check".into(), authz);
-        inner
     }
 }

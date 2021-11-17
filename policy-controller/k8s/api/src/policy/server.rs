@@ -4,10 +4,10 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Describes a server interface exposed by a set of pods.
-#[derive(Clone, Debug, CustomResource, Deserialize, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, CustomResource, Deserialize, Serialize, JsonSchema)]
 #[kube(
     group = "policy.linkerd.io",
-    version = "v1alpha1",
+    version = "v1beta1",
     kind = "Server",
     namespaced
 )]

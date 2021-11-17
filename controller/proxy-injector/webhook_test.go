@@ -268,6 +268,22 @@ func TestGetAnnotationPatch(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
+		filteredServiceBytes, err := factory.FileContents("filtered-service-opaque-ports.json")
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+		filteredServicePatch, err := unmarshalPatch(filteredServiceBytes)
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+		filteredPodBytes, err := factory.FileContents("filtered-pod-opaque-ports.json")
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+		filteredPodPatch, err := unmarshalPatch(filteredPodBytes)
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
 		var testCases = []struct {
 			name               string
 			filename           string
@@ -322,6 +338,28 @@ func TestGetAnnotationPatch(t *testing.T) {
 				ns:       nsWithoutOpaquePorts,
 				conf:     confNsWithoutOpaquePorts(),
 			},
+			{
+				name:     "pod without opaque ports and namespace without",
+				filename: "pod-without-opaque-ports.yaml",
+				ns:       nsWithoutOpaquePorts,
+				conf:     confNsWithoutOpaquePorts(),
+			},
+			{
+				name:               "service opaque ports are filtered",
+				filename:           "filter-service-opaque-ports.yaml",
+				ns:                 nsWithoutOpaquePorts,
+				conf:               confNsWithoutOpaquePorts(),
+				expectedPatchBytes: filteredServiceBytes,
+				expectedPatch:      filteredServicePatch,
+			},
+			{
+				name:               "pod opaque ports are filtered",
+				filename:           "filter-pod-opaque-ports.yaml",
+				ns:                 nsWithoutOpaquePorts,
+				conf:               confNsWithoutOpaquePorts(),
+				expectedPatchBytes: filteredPodBytes,
+				expectedPatch:      filteredPodPatch,
+			},
 		}
 		for _, testCase := range testCases {
 			testCase := testCase // pin
@@ -338,14 +376,9 @@ func TestGetAnnotationPatch(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				var patchJSON []byte
-				opaquePorts, ok := fullConf.GetConfigAnnotation(pkgK8s.ProxyOpaquePortsAnnotation)
-				if ok {
-					fullConf.AppendPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation, opaquePorts)
-					patchJSON, err = fullConf.CreateAnnotationPatch(opaquePorts)
-					if err != nil {
-						t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
-					}
+				patchJSON, err := fullConf.CreateOpaquePortsPatch()
+				if err != nil {
+					t.Fatalf("Unexpected error creating default opaque ports patch: %s", err)
 				}
 				if len(testCase.expectedPatchBytes) != 0 && len(patchJSON) == 0 {
 					t.Fatalf("There was no patch, but one was expected: %s", testCase.expectedPatchBytes)

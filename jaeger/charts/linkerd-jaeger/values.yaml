@@ -25,6 +25,23 @@ collector:
     version: 0.27.0
     pullPolicy: Always
 
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the collector container can use
+      limit:
+      # -- Amount of CPU units that the collector container requests
+      request:
+    memory:
+      # -- Maximum amount of memory that collector container can use
+      limit:
+      # -- Amount of memory that the collector container requests
+      request:
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the collector container can use
+      limit: ""
+      # -- Amount of ephemeral storage that the collector container requests
+      request: ""
+
   # -- NodeSelector section, See the
   # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
   nodeSelector: *default_node_selector
@@ -78,6 +95,23 @@ jaeger:
   # -- CLI arguments for Jaeger, See [Jaeger AIO Memory CLI reference](https://www.jaegertracing.io/docs/1.24/cli/#jaeger-all-in-one-memory)
   args:
     - --query.base-path=/jaeger
+
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the jaeger container can use
+      limit:
+      # -- Amount of CPU units that the jaeger container requests
+      request:
+    memory:
+      # -- Maximum amount of memory that jaeger container can use
+      limit:
+      # -- Amount of memory that the jaeger container requests
+      request:
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the jaeger container can use
+      limit: ""
+      # -- Amount of ephemeral storage that the jaeger container requests
+      request: ""
 
   # -- NodeSelector section, See the
   # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information

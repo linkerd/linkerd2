@@ -167,7 +167,13 @@ func Main(args []string) {
 	//
 	// Bind and serve
 	//
-	go admin.StartServer(*adminAddr)
+	adminServer := admin.NewServer(*adminAddr)
+
+	go func() {
+		log.Infof("starting admin server on %s", *adminAddr)
+		adminServer.ListenAndServe()
+	}()
+
 	lis, err := net.Listen("tcp", *addr)
 	if err != nil {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
@@ -187,4 +193,5 @@ func Main(args []string) {
 	<-stop
 	log.Infof("shutting down gRPC server on %s", *addr)
 	srv.GracefulStop()
+	adminServer.Shutdown(ctx)
 }

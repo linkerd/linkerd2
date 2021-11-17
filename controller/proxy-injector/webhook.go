@@ -96,6 +96,22 @@ func Inject(linkerdNamespace string) webhook.Handler {
 			// If namespace has annotations that do not exist on pod then copy them
 			// over to pod's template.
 			resourceConfig.AppendNamespaceAnnotations()
+
+			// If the pod did not inherit the opaque ports annotation from the
+			// namespace, then add the default value from the config values. This
+			// ensures that the generated patch always sets the opaue ports
+			// annotation.
+			if !resourceConfig.HasWorkloadAnnotation(pkgK8s.ProxyOpaquePortsAnnotation) {
+				defaultPorts := strings.Split(resourceConfig.GetValues().Proxy.OpaquePorts, ",")
+				filteredPorts := resourceConfig.FilterPodOpaquePorts(defaultPorts)
+				// Only add the annotation if there are ports that the pod exposes
+				// that are in the default opaque ports list.
+				if len(filteredPorts) != 0 {
+					ports := strings.Join(filteredPorts, ",")
+					resourceConfig.AppendPodAnnotation(pkgK8s.ProxyOpaquePortsAnnotation, ports)
+				}
+			}
+
 			patchJSON, err := resourceConfig.GetPodPatch(true)
 			if err != nil {
 				return nil, err
@@ -115,14 +131,16 @@ func Inject(linkerdNamespace string) webhook.Handler {
 			}, nil
 		}
 
-		// If the resource is not injectable but does need the opaque ports
-		// annotation added, then admit it after creating a patch that adds the
-		// annotation.
-		if opaquePorts, opaquePortsOk := resourceConfig.GetConfigAnnotation(pkgK8s.ProxyOpaquePortsAnnotation); opaquePortsOk {
-			patchJSON, err := resourceConfig.CreateAnnotationPatch(opaquePorts)
-			if err != nil {
-				return nil, err
-			}
+		// Create a patch which adds the opaque ports annotation if the workload
+		// does already have it set.
+		patchJSON, err := resourceConfig.CreateOpaquePortsPatch()
+		if err != nil {
+			return nil, err
+		}
+
+		// If patchJSON holds a patch after checking the workload annotations,
+		// then we admit the request.
+		if len(patchJSON) != 0 {
 			log.Infof("annotation patch generated for: %s", report.ResName())
 			log.Debugf("annotation patch: %s", patchJSON)
 			proxyInjectionAdmissionResponses.With(admissionResponseLabels(ownerKind, request.Namespace, "false", "", report.InjectAnnotationAt, configLabels)).Inc()

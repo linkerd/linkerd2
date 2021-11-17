@@ -64,7 +64,7 @@ func (opw *OpaquePortsWatcher) Subscribe(id ServiceID, listener OpaquePortsUpdat
 	if svc != nil && svc.Spec.Type == corev1.ServiceTypeExternalName {
 		return invalidService(id.String())
 	}
-	opw.log.Infof("Starting watch on service %s", id)
+	opw.log.Debugf("Starting watch on service %s", id)
 	ss, ok := opw.subscriptions[id]
 	// If there is no watched service, create a subscription for the service
 	// and no opaque ports
@@ -87,7 +87,7 @@ func (opw *OpaquePortsWatcher) Subscribe(id ServiceID, listener OpaquePortsUpdat
 func (opw *OpaquePortsWatcher) Unsubscribe(id ServiceID, listener OpaquePortsUpdateListener) {
 	opw.Lock()
 	defer opw.Unlock()
-	opw.log.Infof("Stopping watch on service %s", id)
+	opw.log.Debugf("Stopping watch on service %s", id)
 	ss, ok := opw.subscriptions[id]
 	if !ok {
 		opw.log.Errorf("Cannot unsubscribe from unknown service %s", id)

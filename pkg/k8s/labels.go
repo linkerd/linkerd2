@@ -187,11 +187,17 @@ const (
 	// requestMemoryConfig.
 	ProxyMemoryRequestAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-memory-request"
 
+	// ProxyEphemeralStorageRequestAnnotation can be used to override the requestEphemeralStorage config.
+	ProxyEphemeralStorageRequestAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-ephemeral-storage-request"
+
 	// ProxyCPULimitAnnotation can be used to override the limitCPU config.
 	ProxyCPULimitAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-cpu-limit"
 
 	// ProxyMemoryLimitAnnotation can be used to override the limitMemory config.
 	ProxyMemoryLimitAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-memory-limit"
+
+	// ProxyEphemeralStorageLimitAnnotation can be used to override the limitEphemeralStorage config.
+	ProxyEphemeralStorageLimitAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-ephemeral-storage-limit"
 
 	// ProxyUIDAnnotation can be used to override the UID config.
 	ProxyUIDAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-uid"
@@ -244,6 +250,10 @@ const (
 	// to be ready.
 	ProxyAwait = ProxyConfigAnnotationsPrefix + "/proxy-await"
 
+	// ProxyDefaultInboundPolicyAnnotation is used to configure the default
+	// inbound policy of the proxy
+	ProxyDefaultInboundPolicyAnnotation = ProxyConfigAnnotationsPrefix + "/default-inbound-policy"
+
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.
 	IdentityModeDefault = "default"
@@ -251,6 +261,23 @@ const (
 	// IdentityModeDisabled is assigned to IdentityModeAnnotation to
 	// disable the proxy from participating in automatic identity.
 	IdentityModeDisabled = Disabled
+
+	// AllUnauthenticated allows all unathenticated connections.
+	AllUnauthenticated = "all-unauthenticated"
+
+	// AllAuthenticated allows all authenticated connections.
+	AllAuthenticated = "all-authenticated"
+
+	// ClusterUnauthenticated allows all unauthenticated connections from
+	// within the cluster.
+	ClusterUnauthenticated = "cluster-unauthenticated"
+
+	// ClusterAuthenticated allows all authenticated connections from within
+	// the cluster.
+	ClusterAuthenticated = "cluster-authenticated"
+
+	// Deny denies all connections.
+	Deny = "deny"
 
 	/*
 	 * Component Names
@@ -271,6 +298,10 @@ const (
 	// InitXtablesLockVolumeMountName is the name of the volumeMount used by proxy-init
 	// to handle iptables-legacy
 	InitXtablesLockVolumeMountName = "linkerd-proxy-init-xtables-lock"
+
+	// LinkerdTokenVolumeMountName is the name of the volumeMount used for
+	// the serviceAccount token
+	LinkerdTokenVolumeMountName = "linkerd-identity-token"
 
 	// ProxyContainerName is the name assigned to the injected proxy container.
 	ProxyContainerName = "linkerd-proxy"
@@ -311,6 +342,9 @@ const (
 
 	// SPValidatorWebhookConfigName is the name of the validating webhook configuration
 	SPValidatorWebhookConfigName = SPValidatorWebhookServiceName + "-webhook-config"
+
+	// PolicyValidatorWebhookConfigName is the name of the validating webhook configuration
+	PolicyValidatorWebhookConfigName = "linkerd-policy-validator-webhook-config"
 
 	// AdmissionWebhookLabel indicates whether admission webhooks are enabled for a namespace
 	AdmissionWebhookLabel = ProxyConfigAnnotationsPrefix + "/admission-webhooks"

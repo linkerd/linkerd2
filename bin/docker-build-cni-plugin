@@ -17,4 +17,4 @@ rootdir=$( cd "$bindir"/.. && pwd )
 
 dockerfile=$rootdir/cni-plugin/Dockerfile
 
-docker_build cni-plugin "$(head_root_tag)" "$dockerfile"
+docker_build cni-plugin "${TAG:-$(head_root_tag)}" "$dockerfile"

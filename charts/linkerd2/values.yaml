@@ -40,6 +40,8 @@ identityTrustDomain: ""
 podAnnotations: {}
 # -- Additional labels to add to all pods
 podLabels: {}
+# -- Kubernetes priorityClassName for the Linkerd Pods
+priorityClassName: ""
 
 # policy controller configuration
 policyController:
@@ -74,6 +76,11 @@ policyController:
       # -- Maximum amount of memory that the policy controller can use
       limit: ""
       # -- Maximum amount of memory that the policy controller requests
+      request: ""
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the policy controller can use
+      limit: ""
+      # -- Amount of ephemeral storage that the policy controller requests
       request: ""
 
 # proxy configuration
@@ -123,6 +130,11 @@ proxy:
       limit: ""
       # -- Maximum amount of memory that the proxy requests
       request: ""
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the proxy can use
+      limit: ""
+      # -- Amount of ephemeral storage that the proxy requests
+      request: ""
   # -- User id under which the proxy runs
   uid: 2102
   # -- If set the proxy sidecar will stay alive for at
@@ -137,14 +149,13 @@ proxy:
   requireIdentityOnInboundPorts: ""
   # -- Default set of opaque ports
   # - SMTP (25,587) server-first
-  # - HTTPS (443) opaque TLS
   # - MYSQL (3306) server-first
   # - Galera (4444) server-first
   # - PostgreSQL (5432) server-first
   # - Redis (6379) server-first
   # - ElasticSearch (9300) server-first
   # - Memcached (11211) clients do not issue any preamble, which breaks detection
-  opaquePorts: "25,443,587,3306,4444,5432,6379,9300,11211"
+  opaquePorts: "25,587,3306,4444,5432,6379,9300,11211"
 
 # proxy-init configuration
 proxyInit:
@@ -154,6 +165,12 @@ proxyInit:
   # -- Default set of outbound ports to skip via iptables
   # - Galera (4567,4568)
   ignoreOutboundPorts: "4567,4568"
+  # -- Log level for the proxy-init
+  # @default -- info
+  logLevel: ""
+  # -- Log format (`plain` or `json`) for the proxy-init
+  # @default -- plain
+  logFormat: ""
   image:
     # -- Docker image for the proxy-init container
     name: cr.l5d.io/linkerd/proxy-init
@@ -161,7 +178,7 @@ proxyInit:
     # @default -- imagePullPolicy
     pullPolicy: ""
     # -- Tag for the proxy-init container Docker image
-    version: v1.3.13
+    version: v1.5.1
   resources:
     cpu:
       # -- Maximum amount of CPU units that the proxy-init container can use
@@ -173,6 +190,11 @@ proxyInit:
       limit: 50Mi
       # -- Amount of memory that the proxy-init container requests
       request: 10Mi
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the proxy-init container can use
+      limit: ""
+      # -- Amount of ephemeral storage that the proxy-init container requests
+      request: ""
   closeWaitTimeoutSecs: 0
   xtMountPath:
     mountPath: /run
@@ -189,8 +211,6 @@ enableH2Upgrade: true
 # PSP has been deprecated since k8s v1.21
 enablePSP: false
 
-# -- Omit the `sideEffects` flag in the webhook manifests
-omitWebhookSideEffects: false
 # -- Failure policy for the proxy injector
 webhookFailurePolicy: Ignore
 
@@ -206,9 +226,9 @@ controllerUID: 2103
 # destination configuration
 # set resources for the sp-validator and its linkerd proxy respectively
 # see proxy.resources for details.
-# destinationResources -- CPU and Memory resources required by destination (see `proxy.resources` for sub-fields)
+# destinationResources -- CPU, Memory and Ephemeral Storage resources required by destination (see `proxy.resources` for sub-fields)
 #destinationResources:
-#destinationProxyResources -- CPU and Memory resources required by proxy
+#destinationProxyResources -- CPU, Memory and Ephemeral Storage resources required by proxy
 # injected into destination pod (see `proxy.resources` for sub-fields)
 #destinationProxyResources:
 
@@ -227,14 +247,14 @@ debugContainer:
 identity:
   # -- If the linkerd-identity-trust-roots ConfigMap has already been created
   externalCA: false
+
+  # -- Use [Service Account token Volume projection](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-token-volume-projection) for pod validation instead of the default token
+  serviceAccountTokenProjection: true
   issuer:
     scheme: linkerd.io/tls
 
     # -- Amount of time to allow for clock skew within a Linkerd cluster
     clockSkewAllowance: 20s
-
-    # -- Expiration timestamp for the issuer certificate. It must be provided during install. Must match the expiry date in crtPEM
-    crtExpiry:
 
     # -- Amount of time for which the Identity issuer should certify identity
     issuanceLifetime: 24h0m0s
@@ -249,9 +269,9 @@ identity:
       keyPEM: |
 
 
-# -|- CPU and Memory resources required by the identity controller (see `proxy.resources` for sub-fields)
+# -|- CPU, Memory and Ephemeral Storage resources required by the identity controller (see `proxy.resources` for sub-fields)
 #identityResources:
-# -|- CPU and Memory resources required by proxy injected into identity pod (see `proxy.resources` for sub-fields)
+# -|- CPU, Memory and Ephemeral Storage resources required by proxy injected into identity pod (see `proxy.resources` for sub-fields)
 #identityProxyResources:
 
 # heartbeat configuration
@@ -284,10 +304,10 @@ proxyInjector:
   # -- Bundle of CA certificates for proxy injector. If not provided then Helm will use the certificate generated  for `proxyInjector.crtPEM`. If `proxyInjector.externalSecret` is set to true, this value must be set, as no certificate will be generated.
   caBundle: |
 
-# -|- CPU and Memory resources required by the proxy injector (see
+# -|- CPU, Memory and Ephemeral Storage resources required by the proxy injector (see
 #`proxy.resources` for sub-fields)
 #proxyInjectorResources:
-#-|- CPU and Memory resources required by proxy injected into the proxy injector
+#-|- CPU, Memory and Ephemeral Storage resources required by proxy injected into the proxy injector
 #pod (see `proxy.resources` for sub-fields)
 #proxyInjectorProxyResources:
 
@@ -318,15 +338,36 @@ profileValidator:
   # as no certificate will be generated.
   caBundle: |
 
-# -|- CPU and Memory resources required by the SP validator (see
-#`proxy.resources` for sub-fields)
-#spValidatorResources:
+# policy validator configuration
+policyValidator:
+  # -- Do not create a secret resource for the policyValidator webhook. If this is set to `true`, the value `policyValidator.caBundle` must be set (see below).
+  externalSecret: false
 
-# If the namespace is controlled by an external tool or can't be installed with Helm
-# you can disable its installation. In this case:
-# - The namespace created by the external tool must match the namespace value above
-# - The external tool needs to create the namespace with the label:
-#     config.linkerd.io/admission-webhooks: disabled
+  # -- Namespace selector used by admission webhook
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
+
+  # -- Certificate for the policy validator. If not provided then Helm
+  # will generate one.
+  crtPEM: |
+
+  # -- Certificate key for the policy validator. If not provided then
+  # Helm will generate one.
+  keyPEM: |
+
+  # -- Bundle of CA certificates for policy validator. If not provided
+  # then Helm will use the certificate generated  for `policyValidator.crtPEM`.
+  # If `policyValidator.externalSecret` is set to true, this value must be set,
+  # as no certificate will be generated.
+  caBundle: |
+
+# -- CPU, Memory and Ephemeral Storage resources required by the SP validator (see
+# `proxy.resources` for sub-fields)
+spValidatorResources:
 
 # -- NodeSelector section, See the [K8S
 # documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector)
