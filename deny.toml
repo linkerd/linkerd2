@@ -40,11 +40,7 @@ wildcards = "allow"
 highlight = "all"
 deny = []
 skip-tree = []
-skip = [
-    # kube-runtime pulls in snafu v0.6, which pulls in an older version of pin-project
-    { name = "pin-project", version = "0.4.28" },
-    { name = "pin-project-internal", version = "0.4.28" },
-]
+skip = []
 
 [sources]
 unknown-registry = "deny"
