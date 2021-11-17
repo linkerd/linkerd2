@@ -1256,6 +1256,6 @@
   },
   "timezone": "",
   "title": "Linkerd Authority",
-  "uid": "authority",
+  "uid": "linkerd-authority",
   "version": 1
 }
