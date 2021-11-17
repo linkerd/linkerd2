@@ -84,7 +84,7 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
   },
 ];
 
-const TopEventTable = ({ tableRows, resourceType, api }) => {
+const TopEventTable = function({ tableRows, resourceType, api }) {
   const columns = topColumns(resourceType, api.ResourceLink, api.PrefixedLink);
 
   return (

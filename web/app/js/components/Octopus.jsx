@@ -56,7 +56,7 @@ class Octopus extends React.Component {
     this.downstreamsRefs = [];
   }
 
-  getNeighborDisplayData = neighbors => {
+  static getNeighborDisplayData(neighbors) {
     // only display maxNumNeighbors neighboring nodes in the octopus graph,
     // otherwise it will be really tall
     // even though _sortBy is a stable sort, the order that this data is returned by the API
@@ -97,7 +97,7 @@ class Octopus extends React.Component {
         this.upstreamsRefs[index] = element;
       }
     }
-  }
+  };
 
   linkedResourceTitle = (resource, display) => {
     // trafficsplit leaf resources cannot be linked
@@ -105,7 +105,7 @@ class Octopus extends React.Component {
 
     const { api: { ResourceLink } } = this.props;
     return <ResourceLink resource={resource} linkText={display} />;
-  }
+  };
 
   renderResourceCard(resource, type, index, isOutbound) {
     const { classes } = this.props;
@@ -134,7 +134,7 @@ class Octopus extends React.Component {
               <Progress variant="determinate" value={resource.successRate * 100} />
 
               <Table>
-                {showTcp ? this.renderTCPStats(resource) : this.renderHttpStats(resource)}
+                {showTcp ? Octopus.renderTCPStats(resource) : Octopus.renderHttpStats(resource)}
               </Table>
             </CardContent>
           </Card>
@@ -143,7 +143,7 @@ class Octopus extends React.Component {
     );
   }
 
-  renderHttpStats = resource => {
+  static renderHttpStats(resource) {
     return (
       <TableBody>
         {resource.isLeafService &&
@@ -170,7 +170,7 @@ class Octopus extends React.Component {
     );
   }
 
-  renderTCPStats = resource => {
+  static renderTCPStats(resource) {
     const { tcp } = resource;
     return (
       <TableBody>
@@ -209,7 +209,7 @@ class Octopus extends React.Component {
         </Grid>
       </RootRef>
     );
-  }
+  };
 
   renderCollapsedNeighbors = (neighbors, index, isOutbound) => {
     const { classes } = this.props;
@@ -234,7 +234,7 @@ class Octopus extends React.Component {
         </Grid>
       </RootRef>
     );
-  }
+  };
 
   renderArrowCol = (numNeighbors, isOutbound) => {
     const container = !isOutbound ? this.upstreamsContainer : this.downstreamsContainer;
@@ -281,7 +281,7 @@ class Octopus extends React.Component {
     );
 
     return svg;
-  }
+  };
 
   render() {
     const { resource, neighbors, unmeshedSources, classes } = this.props;
@@ -290,7 +290,7 @@ class Octopus extends React.Component {
       return null;
     }
 
-    const display = this.getNeighborDisplayData(neighbors);
+    const display = Octopus.getNeighborDisplayData(neighbors);
 
     const numUpstreams = _size(display.upstreams.displayed) + (_isEmpty(unmeshedSources) ? 0 : 1) +
       (_isEmpty(display.upstreams.collapsed) ? 0 : 1);

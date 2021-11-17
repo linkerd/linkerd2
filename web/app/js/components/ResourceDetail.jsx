@@ -293,16 +293,16 @@ export class ResourceDetailBase extends React.Component {
       pendingRequests: false,
       error: e,
     });
-  }
+  };
 
   updateUnmeshedSources = obj => {
     this.unmeshedSources = obj;
-  }
+  };
 
   banner = () => {
     const { error } = this.state;
     return error ? <ErrorBanner message={error} /> : null;
-  }
+  };
 
   content = () => {
     const {
@@ -393,11 +393,9 @@ export class ResourceDetailBase extends React.Component {
 
         {
           resourceIsMeshed ? null :
-          <React.Fragment>
-            <AddResources
-              resourceName={resourceName}
-              resourceType={resourceType} />
-          </React.Fragment>
+          <AddResources
+            resourceName={resourceName}
+            resourceType={resourceType} />
         }
 
         <Octopus
@@ -449,7 +447,7 @@ export class ResourceDetailBase extends React.Component {
 
       </div>
     );
-  }
+  };
 
   render() {
     return (

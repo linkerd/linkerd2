@@ -15,9 +15,9 @@ const styles = theme => _merge({}, statusClassNames(theme), {
   },
 });
 
-const SuccessRateDot = ({ sr, classes }) => (
-  <div className={classNames(classes.successRateDot, classes[getSuccessRateClassification(sr)])} />
-);
+const SuccessRateDot = function({ sr, classes }) {
+  return <div className={classNames(classes.successRateDot, classes[getSuccessRateClassification(sr)])} />;
+};
 
 SuccessRateDot.propTypes = {
   sr: PropTypes.number,

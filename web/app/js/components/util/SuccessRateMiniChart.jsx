@@ -5,15 +5,17 @@ import SuccessRateDot from './SuccessRateDot.jsx';
 import _isNil from 'lodash/isNil';
 import { metricToFormatter } from './Utils.js';
 
-const SuccessRateMiniChart = ({ sr }) => (
-  <Grid container justifyContent="flex-end" alignItems="center" spacing={1}>
-    <Grid item>{metricToFormatter.SUCCESS_RATE(sr)}</Grid>
-    <Grid item>{_isNil(sr) ? null :
-    <SuccessRateDot sr={sr} />
+const SuccessRateMiniChart = function({ sr }) {
+  return (
+    <Grid container justifyContent="flex-end" alignItems="center" spacing={1}>
+      <Grid item>{metricToFormatter.SUCCESS_RATE(sr)}</Grid>
+      <Grid item>{_isNil(sr) ? null :
+      <SuccessRateDot sr={sr} />
     }
+      </Grid>
     </Grid>
-  </Grid>
-);
+  );
+};
 
 SuccessRateMiniChart.propTypes = {
   sr: PropTypes.number,
