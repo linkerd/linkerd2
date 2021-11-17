@@ -88,7 +88,7 @@ class Gateways extends React.Component {
   checkMulticlusterExtension() {
     this.api.setCurrentRequests([this.api.fetchExtension(multiclusterExtensionName)]);
 
-    this.serverPromise = Promise.all(this.api.getCurrentPromises())
+    Promise.all(this.api.getCurrentPromises())
       .then(([extension]) => {
         this.setState({ multiclusterExists: !_isEmpty(extension) });
       })

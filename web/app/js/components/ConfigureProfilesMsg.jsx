@@ -210,7 +210,7 @@ class ConfigureProfilesMsg extends React.Component {
         </Dialog>
       </React.Fragment>
     );
-  }
+  };
 
   render() {
     const { showAsIcon } = this.props;

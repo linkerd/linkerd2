@@ -12,7 +12,7 @@ const headersStyles = {
   },
 };
 
-const HeadersContentBase = ({ headers, classes }) => {
+const HeadersContentBase = function({ headers, classes }) {
   return (
     <React.Fragment>
       {headers.map(header => {

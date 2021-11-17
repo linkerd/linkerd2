@@ -25,7 +25,7 @@ class ClickablePopover extends React.Component {
     if (event.key === 'Enter') {
       this.setState({ anchorEl: event.currentTarget });
     }
-  }
+  };
 
   handleClose = () => {
     this.setState({ anchorEl: null });

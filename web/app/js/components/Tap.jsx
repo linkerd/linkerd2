@@ -107,12 +107,12 @@ class Tap extends React.Component {
     this.setState({
       error: null,
     });
-  }
+  };
 
   onWebsocketRecv = e => {
     this.indexTapResult(e.data);
     this.throttledWebsocketRecvHandler();
-  }
+  };
 
   onWebsocketClose = e => {
     this.stopTapStreaming();
@@ -140,7 +140,7 @@ class Tap extends React.Component {
         });
       }
     }
-  }
+  };
 
   onWebsocketError = e => {
     this.setState({
@@ -148,7 +148,7 @@ class Tap extends React.Component {
     });
 
     this.stopTapStreaming();
-  }
+  };
 
   // keep an index of tap request rows by id. this allows us to collate
   // requestInit/responseInit/responseEnd into one single table row,
@@ -161,7 +161,7 @@ class Tap extends React.Component {
     if (_isNil(resultIndex[d.id])) {
       // don't let tapResultsById grow unbounded
       if (_size(resultIndex) > maxLinesToDisplay) {
-        this.deleteOldestTapResult(resultIndex);
+        Tap.deleteOldestTapResult(resultIndex);
       }
 
       resultIndex[d.id] = {};
@@ -171,15 +171,15 @@ class Tap extends React.Component {
     resultIndex[d.id].base = d;
     resultIndex[d.id].key = d.id;
     resultIndex[d.id].lastUpdated = Date.now();
-  }
+  };
 
   updateTapResults = () => {
     this.setState({
       tapResultsById: this.tapResultsById,
     });
-  }
+  };
 
-  deleteOldestTapResult = resultIndex => {
+  static deleteOldestTapResult(resultIndex) {
     let oldest = Date.now();
     let oldestId = '';
 
@@ -238,16 +238,16 @@ class Tap extends React.Component {
   handleTapStart = e => {
     e.preventDefault();
     this.startTapStreaming();
-  }
+  };
 
   handleTapStop = () => {
     this.ws.close(1000);
     this.setState({ tapIsClosing: true });
-  }
+  };
 
   handleTapClear = () => {
     this.resetTapResults();
-  }
+  };
 
   resetTapResults = () => {
     this.tapResultsById = {};
@@ -256,7 +256,7 @@ class Tap extends React.Component {
       query: emptyTapQuery(),
       showTapEnabledWarning: false,
     });
-  }
+  };
 
   loadFromServer() {
     const { pendingRequests } = this.state;
@@ -271,7 +271,7 @@ class Tap extends React.Component {
     const url = this.api.urlsForResourceNoStats('all');
     const authorityUrl = this.api.urlsForResource('authority');
     this.api.setCurrentRequests([this.api.fetchMetrics(url), this.api.fetchMetrics(authorityUrl)]);
-    this.serverPromise = Promise.all(this.api.getCurrentPromises())
+    Promise.all(this.api.getCurrentPromises())
       .then(rsp => {
         const { resourcesByNs } = groupResourcesByNs(rsp[0]);
         const { authoritiesByNs } = groupResourcesByNs(rsp[1]);
@@ -284,23 +284,12 @@ class Tap extends React.Component {
       .catch(this.handleApiError);
   }
 
-  handleApiError = e => {
-    if (e.isCanceled) {
-      return;
-    }
-
-    this.setState({
-      pendingRequests: false,
-      error: e,
-    });
-  }
-
   updateQuery = query => {
     this.setState({
       query,
       showTapEnabledWarning: false,
     });
-  }
+  };
 
   render() {
     const { tapResultsById, tapRequestInProgress, tapIsClosing, resourcesByNs, authoritiesByNs, query, showTapEnabledWarning, error } = this.state;

@@ -24,7 +24,7 @@ const getResourceForService = (resourceMetrics, serviceName) => {
   return resourceMetrics[0];
 };
 
-const ServiceDetail = ({
+const ServiceDetail = function({
   api,
   resourceMetrics,
   resourceName,
@@ -35,7 +35,7 @@ const ServiceDetail = ({
   unmeshedSources,
   updateUnmeshedSources,
   upstreams,
-}) => {
+}) {
   return (
     <div>
       <Grid container justifyContent="space-between" alignItems="center">
