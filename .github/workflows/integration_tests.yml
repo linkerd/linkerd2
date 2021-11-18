@@ -60,7 +60,7 @@ jobs:
         - uninstall
         - upgrade-edge
         - upgrade-stable
-        #- cni-calico-deep # XXX currently broken
+        - cni-calico-deep
         - default-policy-deny
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})

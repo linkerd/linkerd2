@@ -115,6 +115,9 @@ spec:
         {{- if .Values.enableHeadlessServices }}
         - -enable-headless-services
         {{- end }}
+        {{- if .Values.enableEndpointSlices }}
+        - -enable-endpoint-slices
+        {{- end }}
         - {{.Values.targetClusterName}}
         image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion}}
         name: service-mirror
