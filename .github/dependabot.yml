@@ -9,21 +9,21 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-      time: "3:00"
+      time: "03:00"
       timezone: "UTC"
 
   - package-ecosystem: cargo
     directory: "/"
     schedule:
       interval: daily
-      time: "3:30"
+      time: "03:30"
       timezone: "UTC"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "daily"
-      time: "4:00"
+      time: "04:00"
       timezone: "UTC"
 
   - package-ecosystem: "npm"
