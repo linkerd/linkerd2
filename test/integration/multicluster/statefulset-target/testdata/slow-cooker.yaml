@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: slow-cooker
+  namespace: multicluster-statefulset
 spec:
   replicas: 1
   selector:
@@ -21,6 +22,6 @@ spec:
         - "-c"
         - |
           sleep 15 # wait for pods to start
-          /slow_cooker/slow_cooker -metric-addr 0.0.0.0:9999 http://nginx:8080
+          /slow_cooker/slow_cooker -metric-addr 0.0.0.0:9999 http://nginx-statefulset-0.nginx-statefulset-svc-target.multicluster-statefulset.svc.cluster.local:8080
         ports:
         - containerPort: 9999
