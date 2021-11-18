@@ -1279,8 +1279,9 @@ apiVersion: v1
 metadata:
   name: %s
 data:
-  global: |
-    {"identityContext":{"trustAnchorsPem": "%s"}}
+  values: |
+    identityTrustAnchorsPEM: %s
+
 `, k8s.ConfigConfigMapName, currentCertificate)
 
 	var testCases = []struct {
@@ -2635,50 +2636,6 @@ data:
 			},
 			nil,
 		},
-		{
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-data:
-  global: |
-    {"linkerdNamespace":"ns","identityContext":null, "cniEnabled": true}
-  proxy: |
-    {"proxyImage":{"imageName":"registry", "pullPolicy":"Always"}}
-  install: |
-    {"flags":[{"name":"ha","value":"true"}]}`,
-			},
-			&linkerd2.Values{
-				Namespace:        "ns",
-				CNIEnabled:       true,
-				HighAvailability: true,
-				Proxy: &linkerd2.Proxy{
-					EnableExternalProfiles: true,
-					Image: &linkerd2.Image{
-						Name:       "registry",
-						PullPolicy: "Always",
-					},
-					LogLevel: "",
-					Ports:    &linkerd2.Ports{},
-					Resources: &linkerd2.Resources{
-						CPU:    linkerd2.Constraints{},
-						Memory: linkerd2.Constraints{},
-					},
-				},
-				ProxyInit: &linkerd2.ProxyInit{
-					Image: &linkerd2.Image{},
-				},
-				Identity: &linkerd2.Identity{
-					Issuer: &linkerd2.Issuer{},
-				},
-				DebugContainer: &linkerd2.DebugContainer{
-					Image: &linkerd2.Image{},
-				},
-			},
-			nil,
-		},
 	}
 
 	for i, tc := range testCases {
@@ -2710,8 +2667,13 @@ metadata:
   name: linkerd-config
   namespace: linkerd
 data:
-  global: |
-    {"linkerdNamespace": "linkerd", "identityContext":{"trustAnchorsPem": %s, "trustDomain": "cluster.local", "scheme": "%s"}}
+  values: |
+    namespace: linkerd
+    identityTrustAnchorsPEM: %s
+    identityTrustDomain: cluster.local
+    identity:
+      issuer:
+        scheme: %s
 ---
 `, anchors, scheme)
 }

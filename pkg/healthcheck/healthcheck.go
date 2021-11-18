@@ -1689,35 +1689,30 @@ func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred
 
 // FetchCurrentConfiguration retrieves the current Linkerd configuration
 func FetchCurrentConfiguration(ctx context.Context, k kubernetes.Interface, controlPlaneNamespace string) (*corev1.ConfigMap, *l5dcharts.Values, error) {
-
-	// Get the linkerd-config values if present
-	configMap, configPb, err := FetchLinkerdConfigMap(ctx, k, controlPlaneNamespace)
+	// Get the linkerd-config values if present.
+	configMap, _, err := FetchLinkerdConfigMap(ctx, k, controlPlaneNamespace)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if rawValues := configMap.Data["values"]; rawValues != "" {
-		// Convert into latest values, where global field is removed
-		rawValuesBytes, err := config.RemoveGlobalFieldIfPresent([]byte(rawValues))
-		if err != nil {
-			return nil, nil, err
-		}
-		rawValues = string(rawValuesBytes)
-		var fullValues l5dcharts.Values
-
-		err = yaml.Unmarshal([]byte(rawValues), &fullValues)
-		if err != nil {
-			return nil, nil, err
-		}
-		return configMap, &fullValues, nil
-	}
-
-	if configPb == nil {
+	rawValues := configMap.Data["values"]
+	if rawValues == "" {
 		return configMap, nil, nil
 	}
-	// fall back to the older configMap
-	// TODO: remove this once the newer config override secret becomes the default i.e 2.10
-	return configMap, config.ToValues(configPb), nil
+
+	// Convert into latest values, where global field is removed.
+	rawValuesBytes, err := config.RemoveGlobalFieldIfPresent([]byte(rawValues))
+	if err != nil {
+		return nil, nil, err
+	}
+	rawValues = string(rawValuesBytes)
+	var fullValues l5dcharts.Values
+
+	err = yaml.Unmarshal([]byte(rawValues), &fullValues)
+	if err != nil {
+		return nil, nil, err
+	}
+	return configMap, &fullValues, nil
 }
 
 func (hc *HealthChecker) fetchProxyInjectorCaBundle(ctx context.Context) ([]*x509.Certificate, error) {
