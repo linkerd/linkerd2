@@ -331,12 +331,17 @@ type injectCmd struct {
 	stdOutGoldenFileName string
 	exitCode             int
 	injectProxy          bool
+	values               *linkerd2.Values
 }
 
 func testInjectCmd(t *testing.T, tc injectCmd) {
-	testConfig, err := testInstallValues()
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
+	testConfig := tc.values
+	if testConfig == nil {
+		var err error
+		testConfig, err = testInstallValues()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 	}
 	testConfig.Proxy.Image.Version = "testinjectversion"
 
@@ -391,8 +396,20 @@ func TestRunInjectCmd(t *testing.T) {
 			inputFileName:        "inject_emojivoto_deployment_automountServiceAccountToken_false.input.yml",
 			stdOutGoldenFileName: "inject_emojivoto_deployment_automountServiceAccountToken_false.golden.yml",
 			stdErrGoldenFileName: "inject_emojivoto_deployment_automountServiceAccountToken_false.golden.stderr",
+			exitCode:             0,
+			injectProxy:          true,
+		},
+		{
+			inputFileName:        "inject_emojivoto_deployment_automountServiceAccountToken_false.input.yml",
+			stdOutGoldenFileName: "inject_emojivoto_deployment_automountServiceAccountToken_false_volumeProjection_disabled.golden.yml",
+			stdErrGoldenFileName: "inject_emojivoto_deployment_automountServiceAccountToken_false_volumeProjection_disabled.golden.stderr",
 			exitCode:             1,
 			injectProxy:          false,
+			values: func() *linkerd2.Values {
+				values, _ := testInstallValues()
+				values.Identity.ServiceAccountTokenProjection = false
+				return values
+			}(),
 		},
 		{
 			inputFileName:        "inject_emojivoto_istio.input.yml",

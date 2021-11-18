@@ -3,7 +3,6 @@ package linkerd2
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/imdario/mergo"
 	"github.com/linkerd/linkerd2/pkg/charts"
@@ -31,7 +30,6 @@ type (
 		EnableH2Upgrade              bool                `json:"enableH2Upgrade"`
 		EnablePodAntiAffinity        bool                `json:"enablePodAntiAffinity"`
 		WebhookFailurePolicy         string              `json:"webhookFailurePolicy"`
-		OmitWebhookSideEffects       bool                `json:"omitWebhookSideEffects"`
 		DisableHeartBeat             bool                `json:"disableHeartBeat"`
 		HeartbeatSchedule            string              `json:"heartbeatSchedule"`
 		InstallNamespace             bool                `json:"installNamespace"`
@@ -57,8 +55,9 @@ type (
 		ImagePullSecrets             []map[string]string `json:"imagePullSecrets"`
 		LinkerdVersion               string              `json:"linkerdVersion"`
 
-		PodAnnotations map[string]string `json:"podAnnotations"`
-		PodLabels      map[string]string `json:"podLabels"`
+		PodAnnotations    map[string]string `json:"podAnnotations"`
+		PodLabels         map[string]string `json:"podLabels"`
+		PriorityClassName string            `json:"priorityClassName"`
 
 		PolicyController *PolicyController `json:"policyController"`
 		Proxy            *Proxy            `json:"proxy"`
@@ -120,6 +119,8 @@ type (
 		Capabilities         *Capabilities    `json:"capabilities"`
 		IgnoreInboundPorts   string           `json:"ignoreInboundPorts"`
 		IgnoreOutboundPorts  string           `json:"ignoreOutboundPorts"`
+		LogLevel             string           `json:"logLevel"`
+		LogFormat            string           `json:"logFormat"`
 		Image                *Image           `json:"image"`
 		SAMountPath          *VolumeMountPath `json:"saMountPath"`
 		XTMountPath          *VolumeMountPath `json:"xtMountPath"`
@@ -177,14 +178,16 @@ type (
 
 	// Resources represents the computational resources setup for a given container
 	Resources struct {
-		CPU    Constraints `json:"cpu"`
-		Memory Constraints `json:"memory"`
+		CPU              Constraints `json:"cpu"`
+		Memory           Constraints `json:"memory"`
+		EphemeralStorage Constraints `json:"ephemeral-storage"`
 	}
 
 	// Identity contains the fields to set the identity variables in the proxy
 	// sidecar container
 	Identity struct {
-		Issuer *Issuer `json:"issuer"`
+		ServiceAccountTokenProjection bool    `json:"serviceAccountTokenProjection"`
+		Issuer                        *Issuer `json:"issuer"`
 	}
 
 	// Issuer has the Helm variables of the identity issuer
@@ -193,7 +196,6 @@ type (
 		Scheme             string     `json:"scheme"`
 		ClockSkewAllowance string     `json:"clockSkewAllowance"`
 		IssuanceLifetime   string     `json:"issuanceLifetime"`
-		CrtExpiry          time.Time  `json:"crtExpiry"`
 		TLS                *IssuerTLS `json:"tls"`
 	}
 

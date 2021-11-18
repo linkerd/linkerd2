@@ -118,32 +118,34 @@ func TestInjectAutoParams(t *testing.T) {
 
 	TestHelper.WithDataPlaneNamespace(ctx, injectNS, map[string]string{}, t, func(t *testing.T, ns string) {
 		injectionValidator := testutil.InjectValidator{
-			NoInitContainer:        TestHelper.CNI() || TestHelper.Calico(),
-			AutoInject:             true,
-			AdminPort:              8888,
-			ControlPort:            8881,
-			EnableExternalProfiles: true,
-			EnableDebug:            true,
-			ImagePullPolicy:        "Never",
-			InboundPort:            8882,
-			InitImage:              "init-image",
-			InitImageVersion:       "init-image-version",
-			OutboundPort:           8883,
-			CPULimit:               "160m",
-			CPURequest:             "150m",
-			MemoryLimit:            "150Mi",
-			MemoryRequest:          "100Mi",
-			Image:                  "proxy-image",
-			LogLevel:               "proxy-log-level",
-			UID:                    10,
-			Version:                "proxy-version",
-			RequireIdentityOnPorts: "8884,8885",
-			OpaquePorts:            "8888,8889",
-			OutboundConnectTimeout: "888ms",
-			InboundConnectTimeout:  "999ms",
-			SkipOutboundPorts:      "1111,2222,3333",
-			SkipInboundPorts:       "4444,5555,6666",
-			WaitBeforeExitSeconds:  10,
+			NoInitContainer:         TestHelper.CNI() || TestHelper.Calico(),
+			AutoInject:              true,
+			AdminPort:               8888,
+			ControlPort:             8881,
+			EnableExternalProfiles:  true,
+			EnableDebug:             true,
+			ImagePullPolicy:         "Never",
+			InboundPort:             8882,
+			InitImage:               "init-image",
+			InitImageVersion:        "init-image-version",
+			OutboundPort:            8883,
+			CPULimit:                "160m",
+			CPURequest:              "150m",
+			MemoryLimit:             "150Mi",
+			MemoryRequest:           "100Mi",
+			EphemeralStorageLimit:   "50Mi",
+			EphemeralStorageRequest: "10Mi",
+			Image:                   "proxy-image",
+			LogLevel:                "proxy-log-level",
+			UID:                     10,
+			Version:                 "proxy-version",
+			RequireIdentityOnPorts:  "8884,8885",
+			OpaquePorts:             "8888,8889",
+			OutboundConnectTimeout:  "888ms",
+			InboundConnectTimeout:   "999ms",
+			SkipOutboundPorts:       "1111,2222,3333",
+			SkipInboundPorts:        "4444,5555,6666",
+			WaitBeforeExitSeconds:   10,
 		}
 
 		_, annotations := injectionValidator.GetFlagsAndAnnotations()
@@ -384,7 +386,6 @@ func TestInjectAutoPod(t *testing.T) {
 
 	truthy := true
 	falsy := false
-	zero := int64(0)
 	reg := "cr.l5d.io/linkerd"
 	if override := os.Getenv(flags.EnvOverrideDockerRegistry); override != "" {
 		reg = override
@@ -428,8 +429,7 @@ func TestInjectAutoPod(t *testing.T) {
 				Add: []v1.Capability{v1.Capability("NET_ADMIN"), v1.Capability("NET_RAW")},
 			},
 			Privileged:               &falsy,
-			RunAsUser:                &zero,
-			RunAsNonRoot:             &falsy,
+			RunAsNonRoot:             &truthy,
 			AllowPrivilegeEscalation: &falsy,
 			ReadOnlyRootFilesystem:   &truthy,
 		},

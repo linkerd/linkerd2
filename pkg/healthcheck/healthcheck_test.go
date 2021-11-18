@@ -1590,6 +1590,23 @@ func TestValidateDataPlanePods(t *testing.T) {
 		}
 	})
 
+	t.Run("Does not return an error if the pod is in Shutdown state", func(t *testing.T) {
+		pods := []corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "emoji-d9c7866bb-7v74n"},
+				Status: corev1.PodStatus{
+					Phase:  "Failed",
+					Reason: "Shutdown",
+				},
+			},
+		}
+
+		err := validateDataPlanePods(pods, "emojivoto")
+		if err != nil {
+			t.Fatalf("Expected no error, got %s", err)
+		}
+	})
+
 	t.Run("Returns an error if the proxy container is not ready", func(t *testing.T) {
 		pods := []corev1.Pod{
 			{
@@ -2170,7 +2187,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.4.0","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.5.1","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}`,
 			},
@@ -2216,7 +2233,7 @@ data:
 					},
 					DisableExternalProfiles: true,
 					ProxyVersion:            "install-proxy-version",
-					ProxyInitImageVersion:   "v1.4.0",
+					ProxyInitImageVersion:   "v1.5.1",
 					DebugImage: &configPb.Image{
 						ImageName:  "cr.l5d.io/linkerd/debug",
 						PullPolicy: "IfNotPresent",
@@ -2308,7 +2325,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.4.0","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.5.1","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
   values: |
@@ -2392,7 +2409,6 @@ data:
     installNamespace: true
     nodeSelector:
       beta.kubernetes.io/os: linux
-    omitWebhookSideEffects: false
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     stage: ""
@@ -2405,7 +2421,6 @@ data:
 				ControllerUID:          2103,
 				EnableH2Upgrade:        true,
 				WebhookFailurePolicy:   "WebhookFailurePolicy",
-				OmitWebhookSideEffects: false,
 				InstallNamespace:       true,
 				NodeSelector:           defaultValues.NodeSelector,
 				Tolerations:            defaultValues.Tolerations,
@@ -2470,7 +2485,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.4.0","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.5.1","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
   values: |
@@ -2555,7 +2570,6 @@ data:
     installNamespace: true
     nodeSelector:
       beta.kubernetes.io/os: linux
-    omitWebhookSideEffects: false
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     stage: ""
@@ -2568,7 +2582,6 @@ data:
 				ControllerUID:          2103,
 				EnableH2Upgrade:        true,
 				WebhookFailurePolicy:   "WebhookFailurePolicy",
-				OmitWebhookSideEffects: false,
 				InstallNamespace:       true,
 				NodeSelector:           defaultValues.NodeSelector,
 				Tolerations:            defaultValues.Tolerations,
@@ -3259,306 +3272,387 @@ func TestCheckOpaquePortAnnotations(t *testing.T) {
 apiVersion: v1
 kind: Service
 metadata:
-  name: test-service-1
+  name: svc
   namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
 spec:
-  ports:
-    - name: elasticsearch
-      port: 9200
-      protocol: TCP
-      targetPort: 9200
   selector:
-    service: service-1
+    app: test
+  ports:
+  - name: test
+    port: 9200
+    targetPort: 9200
 `,
 				`
 apiVersion: v1
 kind: Pod
 metadata:
-  name: my-service-deployment
+  name: pod
   namespace: test-ns
   labels:
-    service: service-1
+    app: test
+  annotations:
+    config.linkerd.io/opaque-ports: "9200"
 spec:
   containers:
+  - name: test
+    image: test
+    ports:
     - name: test
-      image: "test-service"
+      containerPort: 9200
 `,
 				`
 apiVersion: v1
 kind: Endpoints
 metadata:
-  annotations:
-    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
-  creationTimestamp: "2021-06-08T08:38:03Z"
-  labels:
-    service: test-service-1
-  name: test-service-1
+  name: svc
   namespace: test-ns
 subsets:
 - addresses:
   - ip: 10.244.3.12
-    nodeName: nodename-1
+    nodeName: nod
     targetRef:
       kind: Pod
-      name: my-service-deployment
+      name: pod
       namespace: test-ns
-      resourceVersion: "20661"
-      uid: b37782aa-1458-4153-8399-dabc2b29aaae
   ports:
-  - name: http-port
-    port: 8080
+  - name: test
+    port: 9200
     protocol: TCP
 `,
 			},
-			expected: nil,
 		},
 		{
 			resources: []string{`
 apiVersion: v1
 kind: Service
 metadata:
-  name: test-service-1
+  name: svc
   namespace: test-ns
-  annotations:
-    config.linkerd.io/opaque-ports: "9200"
 spec:
-  ports:
-    - name: elasticsearch
-      port: 9200
-      protocol: TCP
-      targetPort: 9200
   selector:
-    service: service-1
+    app: test
+  ports:
+  - name: http
+    port: 9200
+    targetPort: 9200
 `,
 				`
 apiVersion: v1
 kind: Pod
 metadata:
-  name: my-service-deployment
+  name: pod
   namespace: test-ns
-  service: service-1
   labels:
-    service: service-1
+    app: test
   annotations:
     config.linkerd.io/opaque-ports: "9200"
 spec:
   containers:
+  - name: test
+    image: test
+    ports:
     - name: test
-      image: "test-service"
+      containerPort: 9200
 `,
 				`
 apiVersion: v1
 kind: Endpoints
 metadata:
-  annotations:
-    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
-  creationTimestamp: "2021-06-08T08:38:03Z"
-  labels:
-    service: test-service-1
-  name: test-service-1
+  name: svc
   namespace: test-ns
 subsets:
 - addresses:
   - ip: 10.244.3.12
-    nodeName: nodename-1
+    nodeName: nod
     targetRef:
       kind: Pod
-      name: my-service-deployment
+      name: pod
       namespace: test-ns
-      resourceVersion: "20661"
-      uid: b37782aa-1458-4153-8399-dabc2b29aaae
   ports:
-  - name: http-port
-    port: 8080
-    protocol: TCP			
-`,
-			},
-			expected: nil,
-		},
-		{
-			resources: []string{`
-apiVersion: v1
-kind: Service
-metadata:
-  name: test-service-1
-  namespace: test-ns
-spec:
-  ports:
-    - name: http
-      port: 9200
-      protocol: TCP
-      targetPort: 9200
-  selector:
-    service: service-1
-`,
-				`
-apiVersion: v1
-kind: Pod
-metadata:
-  name: my-service-deployment
-  namespace: test-ns
-  service: service-1
-  labels:
-    service: service-1
-  annotations:
-    config.linkerd.io/opaque-ports: "9200"
-spec:
-  containers:
-    - name: test
-      image: "test-service"
-`,
-				`
-apiVersion: v1
-kind: Endpoints
-metadata:
-  annotations:
-    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
-  creationTimestamp: "2021-06-08T08:38:03Z"
-  labels:
-    service: test-service-1
-  name: test-service-1
-  namespace: test-ns
-subsets:
-- addresses:
-  - ip: 10.244.3.12
-    nodeName: nodename-1
-    targetRef:
-      kind: Pod
-      name: my-service-deployment
-      namespace: test-ns
-      resourceVersion: "20661"
-      uid: b37782aa-1458-4153-8399-dabc2b29aaae
-  ports:
-  - name: http-port
-    port: 8080
+  - name: test
+    port: 9200
     protocol: TCP
 `,
 			},
-			expected: fmt.Errorf("\t* pod/my-service-deployment has the annotation %s but service/test-service-1 doesn't", k8s.ProxyOpaquePortsAnnotation),
+			expected: fmt.Errorf("\t* service svc targets the opaque port 9200 through 9200; add 9200 to its config.linkerd.io/opaque-ports annotation"),
 		},
 		{
 			resources: []string{`
 apiVersion: v1
 kind: Service
 metadata:
-  name: test-service-1
+  name: svc
   namespace: test-ns
   annotations:
     config.linkerd.io/opaque-ports: "9200"
 spec:
-  ports:
-    - name: http
-      port: 9200
-      protocol: TCP
-      targetPort: 9200
   selector:
-    service: service-1
+    app: test
+  ports:
+  - name: test
+    port: 9200
+    targetPort: 9200
 `,
 				`
 apiVersion: v1
 kind: Pod
 metadata:
-  name: my-service-deployment
+  name: pod
   namespace: test-ns
-  service: service-1
   labels:
-    service: service-1
+    app: test
 spec:
   containers:
+  - name: test
+    image: test
+    ports:
     - name: test
-      image: "test-service"
+      containerPort: 9200
 `,
 				`
 apiVersion: v1
 kind: Endpoints
 metadata:
-  annotations:
-    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
-  creationTimestamp: "2021-06-08T08:38:03Z"
-  labels:
-    service: test-service-1
-  name: test-service-1
+  name: svc
   namespace: test-ns
 subsets:
 - addresses:
   - ip: 10.244.3.12
-    nodeName: nodename-1
+    nodeName: nod
     targetRef:
       kind: Pod
-      name: my-service-deployment
+      name: pod
       namespace: test-ns
-      resourceVersion: "20661"
-      uid: b37782aa-1458-4153-8399-dabc2b29aaae
   ports:
-  - name: http-port
-    port: 8080
-    protocol: TCP		
+  - name: test
+    port: 9200
+    protocol: TCP
 `,
 			},
-			expected: fmt.Errorf("\t* service/test-service-1 has the annotation %s but pod/my-service-deployment doesn't", k8s.ProxyOpaquePortsAnnotation),
+			expected: fmt.Errorf("\t* service svc expects target port 9200 to be opaque; add it to pod pod config.linkerd.io/opaque-ports annotation"),
 		},
 		{
 			resources: []string{`
 apiVersion: v1
 kind: Service
 metadata:
-  name: test-service-1
+  name: svc
   namespace: test-ns
   annotations:
     config.linkerd.io/opaque-ports: "9200"
 spec:
-  ports:
-    - name: elasticsearch
-      port: 9200
-      protocol: TCP
-      targetPort: 9200
   selector:
-    service: service-1
+    app: test
+  ports:
+    - name: test
+      port: 9200
+      targetPort: 9200
 `,
 				`
 apiVersion: v1
 kind: Pod
 metadata:
-  name: my-service-deployment
+  name: pod
   namespace: test-ns
-  service: service-1
   labels:
-    service: service-1
+    app: test
   annotations:
     config.linkerd.io/opaque-ports: "9300"
 spec:
   containers:
+  - name: test
+    image: test
+    ports:
     - name: test
-      image: "test-service"
+      containerPort: 9300
 `,
 				`
 apiVersion: v1
 kind: Endpoints
 metadata:
-  annotations:
-    endpoints.kubernetes.io/last-change-trigger-time: "2021-06-08T08:38:16Z"
-  creationTimestamp: "2021-06-08T08:38:03Z"
-  labels:
-    service: test-service-1
-  name: test-service-1
+  name: svc
   namespace: test-ns
 subsets:
 - addresses:
   - ip: 10.244.3.12
-    nodeName: nodename-1
+    nodeName: node
     targetRef:
       kind: Pod
-      name: my-service-deployment
+      name: pod
       namespace: test-ns
-      resourceVersion: "20661"
-      uid: b37782aa-1458-4153-8399-dabc2b29aaae
   ports:
-  - name: http-port
-    port: 8080
+  - name: test
+    port: 9200
     protocol: TCP
 `,
 			},
-			expected: fmt.Errorf("\t* pod/my-service-deployment and service/test-service-1 have the annotation %s but values don't match", k8s.ProxyOpaquePortsAnnotation),
+		},
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+spec:
+  selector:
+    app: test
+  ports:
+  - name: test
+    port: 1002
+    targetPort: 2002
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "2002"
+  labels:
+    app: test
+spec:
+  containers:
+  - name: test
+    image: test
+    ports:
+    - name: test
+      containerPort: 2002
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: svc
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.42.0.111
+    nodeName: node
+    targetRef:
+      kind: Pod
+      name: pod
+  ports:
+  - name: test
+    port: 2002
+    protocol: TCP
+`,
+			},
+			expected: fmt.Errorf("\t* service svc targets the opaque port 2002 through 1002; add 1002 to its config.linkerd.io/opaque-ports annotation"),
+		},
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+spec:
+  selector:
+    app: test
+  ports:
+  - name: test
+    port: 1003
+    targetPort: pod-test
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "2003"
+  labels:
+    app: test
+spec:
+  containers:
+  - name: test
+    image: test
+    ports:
+    - name: pod-test
+      containerPort: 2003
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: svc
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.42.0.112
+    nodeName: node
+    targetRef:
+      kind: Pod
+      name: pod
+  ports:
+  - name: test
+    port: 2003
+    protocol: TCP
+`,
+			},
+			expected: fmt.Errorf("\t* service svc targets the opaque port pod-test through 1003; add 1003 to its config.linkerd.io/opaque-ports annotation"),
+		},
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+spec:
+  selector:
+    app: test
+  ports:
+  - port: 80
+    targetPort: 6502
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "5432"
+  labels:
+    app: test
+spec:
+  containers:
+  - name: c1
+    image: test
+    ports:
+    - containerPort: 6502
+  - name: c2
+    image: test
+    ports:
+    - containerPort: 5432
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: svc
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.42.0.112
+    nodeName: node
+    targetRef:
+      kind: Pod
+      name: pod
+  ports:
+  - port: 6502
+    protocol: TCP
+  - port: 5432
+    protocol: TCP
+`,
+			},
+			expected: nil,
 		},
 	}
 
@@ -3577,6 +3671,9 @@ subsets:
 				if err.Error() != tc.expected.Error() {
 					t.Fatalf("Expected error: %s, received: %s", tc.expected, err)
 				}
+			}
+			if err != nil && tc.expected == nil {
+				t.Fatalf("Did not expect error but got: %s", err.Error())
 			}
 		})
 	}

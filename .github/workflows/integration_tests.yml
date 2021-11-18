@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
     - uses: ./.github/actions/docker-build
       with:
         docker-registry: ${{ env.DOCKER_REGISTRY }}
@@ -61,13 +61,17 @@ jobs:
         - upgrade-edge
         - upgrade-stable
         - cni-calico-deep
+        - default-policy-deny
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     steps:
     - name: Checkout code
-      uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+    - uses: actions/setup-go@331ce1d993939866bb63c32c6cbbfd48fa76fc57
+      with:
+        go-version: '1.16'
     - name: Set environment variables from scripts
       run: |
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV

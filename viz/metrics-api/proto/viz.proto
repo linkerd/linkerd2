@@ -227,6 +227,11 @@ message TrafficSplitStats {
   string apex = 2;
   string leaf = 3;
   string weight = 4;
+} 
+
+message ServerStats {
+  uint64 allowed_count = 1;
+  uint64 denied_count = 2;
 }
 
 message StatTable {
@@ -253,6 +258,7 @@ message StatTable {
       BasicStats stats = 5;
       TcpStats tcp_stats = 8;
       TrafficSplitStats ts_stats = 10;
+      ServerStats srv_stats = 11;
 
       // Stores a set of errors for each pod name. If a pod has no errors, it may be omitted.
       map<string, PodErrors> errors_by_pod = 7;

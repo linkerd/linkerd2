@@ -6,7 +6,7 @@ set +e
 
 ##### Test setup helpers #####
 
-export default_test_names=(deep external-issuer external-prometheus-deep helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
+export default_test_names=(deep external-issuer external-prometheus-deep helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable default-policy-deny)
 export external_resource_test_names=(external-resources)
 export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}" "${external_resource_test_names[*]}")
 images_load_default=(proxy controller policy-controller web metrics-api grafana tap)
@@ -215,6 +215,7 @@ check_linkerd_binary() {
 
 check_cluster() {
   check_if_k8s_reachable
+  kubectl version
   check_if_l5d_exists
 }
 
@@ -227,6 +228,18 @@ delete_cluster() {
 cleanup_cluster() {
   "$bindir"/test-cleanup --context "$context" "$linkerd_path" > /dev/null 2>&1
   exit_on_err 'error removing existing Linkerd resources'
+}
+
+setup_min_cluster() {
+  local name=$1
+  export helm_path="$bindir"/helm
+
+  test_setup
+  if [ -z "$skip_cluster_create" ]; then
+    "$bindir"/k3d cluster create "$@"  --image +v1.20
+    image_load "$name"
+  fi
+  check_cluster
 }
 
 setup_cluster() {
@@ -304,20 +317,20 @@ image_load() {
 
 start_test() {
   local name=$1
-  local config=(--no-hostip --k3s-server-arg '--disable=local-storage,metrics-server')
+  local config=(--k3s-arg '--disable=local-storage,metrics-server@server:0')
 
   case $name in
     cluster-domain)
-      config=("$name" "${config[@]}" --no-lb --k3s-server-arg --cluster-domain=custom.domain --k3s-server-arg '--disable=servicelb,traefik')
+      config=("$name" "${config[@]}" --no-lb --k3s-arg --cluster-domain=custom.domain --k3s-arg '--disable=servicelb,traefik@server:0')
       ;;
     cni-calico-deep)
-      config=("$name" "${config[@]}" --no-lb --k3s-server-arg --write-kubeconfig-mode=644 --k3s-server-arg --flannel-backend=none --k3s-server-arg --cluster-cidr=192.168.0.0/16 --k3s-server-arg '--disable=servicelb,traefik')
+      config=("$name" "${config[@]}" --no-lb --k3s-arg --write-kubeconfig-mode=644 --k3s-arg --flannel-backend=none --k3s-arg --cluster-cidr=192.168.0.0/16 --k3s-arg '--disable=servicelb,traefik@server:0')
       ;;
     multicluster)
       config=("${config[@]}" --network multicluster-test)
       ;;
     *)
-      config=("$name" "${config[@]}" --no-lb --k3s-server-arg '--disable=servicelb,traefik')
+      config=("$name" "${config[@]}" --no-lb --k3s-arg '--disable=servicelb,traefik@server:0')
       ;;
   esac
 
@@ -330,7 +343,11 @@ start_test() {
 
 start_single_test() {
   name=$1
-  setup_cluster "$@"
+  if [ "$name" == "helm-deep" ]; then
+    setup_min_cluster "$@"
+  else
+    setup_cluster "$@"
+  fi
   if [ -n "$cleanup_docker" ]; then
     rm -rf image-archives
     docker system prune --force --all
@@ -364,7 +381,7 @@ run_test(){
 
   printf 'Test script: [%s] Params: [%s]\n' "${filename##*/}" "$*"
   # Exit on failure here
-  GO111MODULE=on go test -test.timeout=60m --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --helm-path="$helm_path" --k8s-context="$context" --integration-tests "$@" || exit 1
+  GO111MODULE=on go test -test.timeout=60m --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --helm-path="$helm_path" --default-allow-policy="$default_allow_policy" --k8s-context="$context" --integration-tests "$@" || exit 1
 }
 
 # Returns the latest version for the release channel
@@ -531,6 +548,12 @@ run_deep_test() {
   for test in "${tests[@]}"; do
     run_test "$test"
   done
+}
+
+run_default-policy-deny_test() {
+  local tests=()
+  export default_allow_policy='deny'
+  run_test "$test_directory/install_test.go"
 }
 
 run_cni-calico-deep_test() {

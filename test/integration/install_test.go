@@ -169,37 +169,17 @@ func TestInstallCalico(t *testing.T) {
 		return
 	}
 
-	// Install calico CNI plug-in from the official manifests
-	// Calico operator and custom resource definitions.
-	out, err := TestHelper.Kubectl("", []string{"apply", "-f", "https://docs.projectcalico.org/manifests/tigera-operator.yaml"}...)
+	out, err := TestHelper.Kubectl("", []string{"apply", "-f", "https://k3d.io/usage/guides/calico.yaml"}...)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"kubectl apply command failed\n%s", out)
 	}
 
-	// wait for the tigera-operator deployment
-	name := "tigera-operator"
-	ns := "tigera-operator"
-	o, err := TestHelper.Kubectl("", "--namespace="+ns, "wait", "--for=condition=available", "--timeout=120s", "deploy/"+name)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s in namespace %s", name, ns),
-			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
-	}
-
-	// creating the necessary custom resource
-	out, err = TestHelper.Kubectl("", []string{"apply", "-f", "https://docs.projectcalico.org/manifests/custom-resources.yaml"}...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-			"kubectl apply command failed\n%s", out)
-	}
-
-	// Wait for Calico CNI Installation, which is created by the operator based on the custom resource applied above
 	time.Sleep(10 * time.Second)
-	ns = "calico-system"
-	o, err = TestHelper.Kubectl("", "--namespace="+ns, "wait", "--for=condition=available", "--timeout=120s", "deploy/calico-kube-controllers", "deploy/calico-typha")
+	o, err := TestHelper.Kubectl("", "--namespace=kube-system", "wait", "--for=condition=available", "--timeout=120s", "deploy/calico-kube-controllers")
 	if err != nil {
-		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for resources in namespace %s", ns),
-			"failed to wait for condition=available for resources in namespace %s: %s: %s", ns, err, o)
+		testutil.AnnotatedFatalf(t, "failed to wait for condition=available for calico resources",
+			"failed to wait for condition=available for calico resources: %s: %s", err, o)
 	}
 }
 
@@ -281,6 +261,10 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 	if TestHelper.CNI() {
 		args = append(args, "--linkerd-cni-enabled")
+	}
+
+	if policy := TestHelper.DefaultAllowPolicy(); policy != "" {
+		args = append(args, "--set", "policyController.defaultAllowPolicy="+policy)
 	}
 
 	if TestHelper.ExternalIssuer() {
@@ -507,7 +491,6 @@ func helmOverridesEdge(root *tls.CA) ([]string, []string) {
 		"--set", "identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
-		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
 	}
 	vizArgs := []string{
 		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
@@ -821,9 +804,6 @@ func TestOverridesSecret(t *testing.T) {
 			knownKeys["identity"].(tree.Tree)["issuer"].(tree.Tree)["issuanceLifetime"] = "15s"
 			knownKeys["identity"].(tree.Tree)["issuer"].(tree.Tree)["scheme"] = "kubernetes.io/tls"
 		} else {
-			if !TestHelper.Multicluster() {
-				knownKeys["identity"].(tree.Tree)["issuer"].(tree.Tree)["crtExpiry"] = extractValue(t, "identity", "issuer", "crtExpiry")
-			}
 			knownKeys["identity"].(tree.Tree)["issuer"].(tree.Tree)["tls"] = tree.Tree{
 				"crtPEM": extractValue(t, "identity", "issuer", "tls", "crtPEM"),
 				"keyPEM": extractValue(t, "identity", "issuer", "tls", "keyPEM"),
@@ -832,6 +812,13 @@ func TestOverridesSecret(t *testing.T) {
 
 		if TestHelper.CNI() {
 			knownKeys["cniEnabled"] = true
+		}
+
+		if policy := TestHelper.DefaultAllowPolicy(); policy != "" {
+			if _, ok := knownKeys["policyController"]; !ok {
+				knownKeys["policyController"] = tree.Tree{}
+			}
+			knownKeys["policyController"].(tree.Tree)["defaultAllowPolicy"] = policy
 		}
 
 		// Check if the keys in overridesTree match with knownKeys
@@ -944,14 +931,6 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 	}
 
 	expected := getCheckOutput(t, golden, TestHelper.GetLinkerdNamespace())
-
-	// When performing the check before upgrading, the policy-validator will not be installed yet.
-	if (TestHelper.UpgradeFromVersion() != "" && expectedVersion == TestHelper.UpgradeFromVersion()) ||
-		(TestHelper.UpgradeHelmFromVersion() != "" && expectedVersion == TestHelper.UpgradeHelmFromVersion()) {
-		expected = strings.ReplaceAll(expected, "√ policy-validator webhook has valid cert\n", "")
-		expected = strings.ReplaceAll(expected, "√ policy-validator cert is valid for at least 60 days\n", "")
-	}
-
 	timeout := time.Minute * 5
 	err := TestHelper.RetryFor(timeout, func() error {
 		if cliVersionOverride != "" {

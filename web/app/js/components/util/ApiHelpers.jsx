@@ -29,10 +29,11 @@ const makeCancelable = (promise, onSuccess) => {
   let hasCanceled_ = false;
 
   const wrappedPromise = new Promise((resolve, reject) => {
-    return promise.then(
+    promise.then(
       result => hasCanceled_ ? reject({ isCanceled: true }) : resolve(result),
       error => hasCanceled_ ? reject({ isCanceled: true }) : reject(error),
-    );
+    )
+      .catch(error => { reject(error); });
   })
     .then(checkFetchOk)
     .then(onSuccess);
@@ -205,7 +206,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   const prefixLink = to => `${pathPrefix}${to}`;
 
   // prefix all links in the app with `pathPrefix`
-  const PrefixedLink = ({ to, targetBlank, children }) => {
+  const PrefixedLink = function PrefixedLink({ to, targetBlank, children }) {
     const url = prefixLink(to);
 
     return (
@@ -236,7 +237,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   };
 
   // a prefixed link to a Resource Detail page
-  const ResourceLink = ({ resource, linkText }) => {
+  const ResourceLink = function({ resource, linkText }) {
     return (
       <PrefixedLink to={generateResourceURL(resource)}>
         {linkText || `${resource.type}/${resource.name}`}

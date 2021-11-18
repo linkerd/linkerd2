@@ -36,6 +36,7 @@ type TestHelper struct {
 	cni                bool
 	calico             bool
 	certsPath          string
+	defaultAllowPolicy string
 	httpClient         http.Client
 	KubernetesHelper
 	helm
@@ -181,6 +182,7 @@ func NewTestHelper() *TestHelper {
 	cni := flag.Bool("cni", false, "whether to install linkerd with CNI enabled")
 	calico := flag.Bool("calico", false, "whether to install calico CNI plugin")
 	certsPath := flag.String("certs-path", "", "if non-empty, 'linkerd install' will use the files ca.crt, issuer.crt and issuer.key under this path in its --identity-* flags")
+	defaultAllowPolicy := flag.String("default-allow-policy", "", "if non-empty, passed to --set policyController.defaultAllowPolicy at linkerd's install time")
 	flag.Parse()
 
 	if !*runTests {
@@ -230,6 +232,7 @@ func NewTestHelper() *TestHelper {
 		calico:             *calico,
 		uninstall:          *uninstall,
 		certsPath:          *certsPath,
+		defaultAllowPolicy: *defaultAllowPolicy,
 	}
 
 	version, err := testHelper.LinkerdRun("version", "--client", "--short")
@@ -347,6 +350,11 @@ func (h *TestHelper) Uninstall() bool {
 // will use in its --identity-* flags
 func (h *TestHelper) CertsPath() string {
 	return h.certsPath
+}
+
+// DefaultAllowPolicy returns the override value for policyController.defaultAllowPolicy
+func (h *TestHelper) DefaultAllowPolicy() string {
+	return h.defaultAllowPolicy
 }
 
 // UpgradeFromVersion returns the base version of the upgrade test.
@@ -672,6 +680,7 @@ type RowStat struct {
 	P95Latency         string
 	P99Latency         string
 	TCPOpenConnections string
+	UnauthorizedRPS    string
 }
 
 // CheckRowCount checks that expectedRowCount rows have been returned
@@ -729,7 +738,10 @@ func ParseRows(out string, expectedRowCount, expectedColumnCount int) (map[strin
 		rowStats[fields[0]].P50Latency = fields[4+i]
 		rowStats[fields[0]].P95Latency = fields[5+i]
 		rowStats[fields[0]].P99Latency = fields[6+i]
-		rowStats[fields[0]].TCPOpenConnections = fields[7+i]
+
+		if 7+i < len(fields) {
+			rowStats[fields[0]].TCPOpenConnections = fields[7+i]
+		}
 	}
 
 	return rowStats, nil

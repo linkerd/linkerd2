@@ -1,5 +1,6 @@
 import QueryToCliCmd from './QueryToCliCmd.jsx';
 import React from 'react';
+import { expect } from 'chai';
 import { mount } from 'enzyme';
 import { i18nWrap } from '../../test/testHelpers.jsx';
 
@@ -19,8 +20,8 @@ describe('QueryToCliCmd', () => {
         controllerNamespace="linkerd" />)
     );
 
-    expect(component).toIncludeText("Current Routes query");
-    expect(component).toIncludeText("linkerd routes deploy/controller --namespace linkerd");
+    expect(component.html()).to.include("Current Routes query");
+    expect(component.html()).to.include("linkerd viz routes deploy/controller --namespace linkerd");
   });
 
   it('shows the linkerd namespace if the controller is not in the default namespace', () => {
@@ -37,8 +38,8 @@ describe('QueryToCliCmd', () => {
         controllerNamespace="my-linkerd-ns" />)
     );
 
-    expect(component).toIncludeText("Current Routes query");
-    expect(component).toIncludeText("linkerd routes deploy/controller --namespace linkerd --linkerd-namespace my-linkerd-ns");
+    expect(component.html()).to.include("Current Routes query");
+    expect(component.html()).to.include("linkerd viz routes deploy/controller --namespace linkerd --linkerd-namespace my-linkerd-ns");
   });
 
   it('does not render flags for items that are not populated in the query', () => {
@@ -58,8 +59,8 @@ describe('QueryToCliCmd', () => {
         controllerNamespace="linkerd" />)
     );
 
-    expect(component).toIncludeText("Current Tap query");
-    expect(component).toIncludeText("linkerd tap deploy/controller --namespace linkerd --authority foo.bar:8080");
+    expect(component.html()).to.include("Current Tap query");
+    expect(component.html()).to.include("linkerd viz tap deploy/controller --namespace linkerd --authority foo.bar:8080");
   });
 
   it('displays the flags in the specified order per cli command', () => {
@@ -80,8 +81,8 @@ describe('QueryToCliCmd', () => {
         controllerNamespace="linkerd" />)
     );
 
-    expect(component).toIncludeText("Current Tap query");
-    expect(component).toIncludeText("linkerd tap deploy/controller --namespace linkerd --to deploy/prometheus --scheme HTTPS --authority foo.bar:8080");
+    expect(component.html()).to.include("Current Tap query");
+    expect(component.html()).to.include("linkerd viz tap deploy/controller --namespace linkerd --to deploy/prometheus --scheme HTTPS --authority foo.bar:8080");
   });
 
   it("doesn't render a namespace flag when the resource is a namespace", () => {
@@ -98,8 +99,8 @@ describe('QueryToCliCmd', () => {
         controllerNamespace="linkerd" />)
     );
 
-    expect(component).toIncludeText("Current Top query");
-    expect(component).toIncludeText("linkerd top namespace/linkerd");
+    expect(component.html()).to.include("Current Top query");
+    expect(component.html()).to.include("linkerd viz top namespace/linkerd");
   });
 
   it("doesn't render commands for which a flag is not defined", () => {
@@ -118,7 +119,7 @@ describe('QueryToCliCmd', () => {
           controllerNamespace="linkerd" />)
       );
 
-      expect(component).toIncludeText("Current Tap query");
-      expect(component).toIncludeText("linkerd tap deploy/controller --namespace linkerd --scheme HTTPS");
+      expect(component.html()).to.include("Current Tap query");
+      expect(component.html()).to.include("linkerd viz tap deploy/controller --namespace linkerd --scheme HTTPS");
   });
 });

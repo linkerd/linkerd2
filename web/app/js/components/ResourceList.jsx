@@ -15,7 +15,7 @@ export class ResourceListBase extends React.Component {
   banner = () => {
     const { error } = this.props;
     return error ? <ErrorBanner message={error} /> : null;
-  }
+  };
 
   content = () => {
     const { data, loading, error, resource } = this.props;
@@ -45,7 +45,7 @@ export class ResourceListBase extends React.Component {
         }
       </React.Fragment>
     );
-  }
+  };
 
   render() {
     return (

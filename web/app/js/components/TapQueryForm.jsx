@@ -177,7 +177,7 @@ class TapQueryForm extends React.Component {
       updateQuery(state.query);
       this.handleUrlUpdate(newQueryValues);
     };
-  }
+  };
 
   // Each time state.query is updated, this method calls setQuery provided
   // by useQueryParams HOC to partially update url query params that have
@@ -185,7 +185,7 @@ class TapQueryForm extends React.Component {
   handleUrlUpdate = query => {
     const { setQuery } = this.props;
     setQuery({ ...query });
-  }
+  };
 
   handleFormEvent = name => {
     const { query } = this.state;
@@ -201,19 +201,12 @@ class TapQueryForm extends React.Component {
       this.setState(state);
       updateQuery(state.query);
     };
-  }
+  };
 
   handleAdvancedFormExpandClick = () => {
     const { advancedFormExpanded } = this.state;
     this.setState({ advancedFormExpanded: !advancedFormExpanded });
-  }
-
-  autoCompleteData = name => {
-    const { autocomplete, query } = this.state;
-    return _uniq(
-      autocomplete[name].filter(d => d.indexOf(query[name]) !== -1),
-    ).sort();
-  }
+  };
 
   resetTapForm = () => {
     const { updateQuery, handleTapClear } = this.props;
@@ -226,7 +219,7 @@ class TapQueryForm extends React.Component {
 
     updateQuery(emptyTapQuery(), true);
     handleTapClear();
-  }
+  };
 
   renderResourceSelect = (resourceKey, namespaceKey) => {
     const { autocomplete, query } = this.state;
@@ -256,7 +249,7 @@ class TapQueryForm extends React.Component {
         </Select>
       </React.Fragment>
     );
-  }
+  };
 
   renderNamespaceSelect = (title, namespaceKey, resourceKey) => {
     const { autocomplete, query } = this.state;
@@ -278,7 +271,7 @@ class TapQueryForm extends React.Component {
         </Select>
       </React.Fragment>
     );
-  }
+  };
 
   renderTapButton = (tapInProgress, tapIsClosing) => {
     const { query } = this.state;
@@ -308,7 +301,7 @@ class TapQueryForm extends React.Component {
         </Button>
       );
     }
-  }
+  };
 
   renderTextInput = (title, key, helperText) => {
     const { query } = this.state;
@@ -324,7 +317,7 @@ class TapQueryForm extends React.Component {
         helperText={helperText}
         margin="normal" />
     );
-  }
+  };
 
   renderAdvancedTapFormContent() {
     const { autocomplete, query } = this.state;

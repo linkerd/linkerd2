@@ -13,9 +13,11 @@ pub use k8s_openapi::api::{
     self,
     core::v1::{Namespace, Node, NodeSpec, Pod, PodSpec, PodStatus},
 };
-use kube::api::{Api, ListParams};
 pub use kube::api::{ObjectMeta, ResourceExt};
-use kube_runtime::watcher;
+use kube::{
+    api::{Api, ListParams},
+    runtime::watcher,
+};
 use tracing::info_span;
 
 /// Resource watches.

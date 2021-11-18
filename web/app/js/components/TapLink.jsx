@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { faMicroscope } from '@fortawesome/free-solid-svg-icons/faMicroscope';
 
-const TapLink = ({ PrefixedLink, namespace, resource, toNamespace, toResource, path, disabled }) => {
+const TapLink = function({ PrefixedLink, namespace, resource, toNamespace, toResource, path, disabled }) {
   if (disabled || namespace === '') {
     return <FontAwesomeIcon icon={faMicroscope} className="tapGrayed" />;
   }

@@ -153,9 +153,6 @@ func fetchIdentityValues(ctx context.Context, k kubernetes.Interface, idctx *pb.
 	values.Identity.Issuer.Scheme = idctx.Scheme
 	values.Identity.Issuer.ClockSkewAllowance = clockSkewDuration.String()
 	values.Identity.Issuer.IssuanceLifetime = issuanceLifetimeDuration.String()
-	if issuerData.Expiry != nil {
-		values.Identity.Issuer.CrtExpiry = *issuerData.Expiry
-	}
 	values.Identity.Issuer.TLS.KeyPEM = issuerData.IssuerKey
 	values.Identity.Issuer.TLS.CrtPEM = issuerData.IssuerCrt
 

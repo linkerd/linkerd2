@@ -25,6 +25,8 @@ const (
 	StatefulSet           = "statefulset"
 	TrafficSplit          = "trafficsplit"
 	Node                  = "node"
+	Server                = "server"
+	ServerAuthorization   = "serverauthorization"
 
 	ServiceProfileAPIVersion = "linkerd.io/v1alpha2"
 	ServiceProfileKind       = "ServiceProfile"
@@ -57,6 +59,8 @@ var AllResources = []string{
 	ReplicaSet,
 	Service,
 	ServiceProfile,
+	Server,
+	ServerAuthorization,
 	StatefulSet,
 	TrafficSplit,
 }
@@ -104,6 +108,8 @@ var resourceNames = []resourceName{
 	{"rs", "replicaset", "replicasets"},
 	{"svc", "service", "services"},
 	{"sp", "serviceprofile", "serviceprofiles"},
+	{"saz", "serverauthorization", "serverauthorizations"},
+	{"srv", "server", "servers"},
 	{"sts", "statefulset", "statefulsets"},
 	{"ts", "trafficsplit", "trafficsplits"},
 	{"ln", "link", "links"},

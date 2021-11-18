@@ -34,7 +34,6 @@ func TestNewValues(t *testing.T) {
 		EnableH2Upgrade:              true,
 		EnablePodAntiAffinity:        false,
 		WebhookFailurePolicy:         "Ignore",
-		OmitWebhookSideEffects:       false,
 		DisableHeartBeat:             false,
 		HeartbeatSchedule:            "",
 		InstallNamespace:             true,
@@ -99,12 +98,14 @@ func TestNewValues(t *testing.T) {
 			WaitBeforeExitSeconds:  0,
 			OutboundConnectTimeout: "1000ms",
 			InboundConnectTimeout:  "100ms",
-			OpaquePorts:            "25,443,587,3306,4444,5432,6379,9300,11211",
+			OpaquePorts:            "25,587,3306,4444,5432,6379,9300,11211",
 			Await:                  true,
 		},
 		ProxyInit: &ProxyInit{
 			IgnoreInboundPorts:  "4567,4568",
 			IgnoreOutboundPorts: "4567,4568",
+			LogLevel:            "",
+			LogFormat:           "",
 			Image: &Image{
 				Name:    "cr.l5d.io/linkerd/proxy-init",
 				Version: testVersion,
@@ -125,6 +126,7 @@ func TestNewValues(t *testing.T) {
 			},
 		},
 		Identity: &Identity{
+			ServiceAccountTokenProjection: true,
 			Issuer: &Issuer{
 				ClockSkewAllowance: "20s",
 				IssuanceLifetime:   "24h0m0s",

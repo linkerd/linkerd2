@@ -71,6 +71,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 		args         []string
 		expectedRows map[string]string
 		status       string
+		isAuthority  bool
 	}{
 		{
 			args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetLinkerdNamespace()},
@@ -117,12 +118,14 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			expectedRows: map[string]string{
 				prometheusAuthority: "-",
 			},
+			isAuthority: true,
 		},
 		{
 			args: []string{"viz", "stat", "au", "-n", TestHelper.GetVizNamespace(), "--to", fmt.Sprintf("po/%s", prometheusPod), "--to-namespace", prometheusNamespace},
 			expectedRows: map[string]string{
 				prometheusAuthority: "-",
 			},
+			isAuthority: true,
 		},
 	}
 
@@ -131,6 +134,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			args         []string
 			expectedRows map[string]string
 			status       string
+			isAuthority  bool
 		}{
 			{
 				args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetVizNamespace()},
@@ -162,6 +166,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			args         []string
 			expectedRows map[string]string
 			status       string
+			isAuthority  bool
 		}{
 			{
 				args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetVizNamespace()},
@@ -211,6 +216,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			args         []string
 			expectedRows map[string]string
 			status       string
+			isAuthority  bool
 		}{
 			{
 				args: []string{"viz", "stat", "svc", "-n", prefixedNs},
@@ -242,6 +248,9 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 					}
 
 					expectedColumnCount := 8
+					if tt.isAuthority {
+						expectedColumnCount = 7
+					}
 					if tt.status != "" {
 						expectedColumnCount++
 					}
@@ -251,7 +260,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 					}
 
 					for name, meshed := range tt.expectedRows {
-						if err := validateRowStats(name, meshed, tt.status, rowStats); err != nil {
+						if err := validateRowStats(name, meshed, tt.status, rowStats, tt.isAuthority); err != nil {
 							return err
 						}
 					}
@@ -266,7 +275,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 	})
 }
 
-func validateRowStats(name, expectedMeshCount, expectedStatus string, rowStats map[string]*testutil.RowStat) error {
+func validateRowStats(name, expectedMeshCount, expectedStatus string, rowStats map[string]*testutil.RowStat, isAuthority bool) error {
 	stat, ok := rowStats[name]
 	if !ok {
 		return fmt.Errorf("No stats found for [%s]", name)
@@ -308,7 +317,7 @@ func validateRowStats(name, expectedMeshCount, expectedStatus string, rowStats m
 			name, stat.P99Latency)
 	}
 
-	if stat.TCPOpenConnections != "-" {
+	if stat.TCPOpenConnections != "-" && !isAuthority {
 		_, err := strconv.Atoi(stat.TCPOpenConnections)
 		if err != nil {
 			return fmt.Errorf("Error parsing number of TCP connections [%s]: %s", stat.TCPOpenConnections, err.Error())

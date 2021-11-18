@@ -19,4 +19,10 @@ updates:
     directory: "/web/app"
     schedule:
       interval: "daily"
+    ignore:
+      # v6 is backwards-incompatible and requires lots of changes.
+      # A compatibility layer should come out at some point
+      # see https://reactrouter.com/docs/en/v6/upgrading/v5
+      - dependency-name: "react-router-dom"
+        update-types: ["version-update:semver-major"]
 

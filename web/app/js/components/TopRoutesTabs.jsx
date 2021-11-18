@@ -107,22 +107,24 @@ class TopRoutesTabs extends React.Component {
   }
 }
 
-TopRoutesTabs.propTypes = {
-  disableTop: PropTypes.bool,
-  pathPrefix: PropTypes.string.isRequired,
-  query: PropTypes.shape({
-    namespace: PropTypes.string,
-    resourceType: PropTypes.string,
-    resourceName: PropTypes.string,
-  }),
-  theme: PropTypes.shape({}).isRequired,
-  updateUnmeshedSources: PropTypes.func,
-};
-
 TopRoutesTabs.defaultProps = {
   disableTop: false,
   query: {},
   updateUnmeshedSources: _noop,
+};
+
+export const topRoutesQueryPropType = PropTypes.shape({
+  namespace: PropTypes.string,
+  resourceType: PropTypes.string,
+  resourceName: PropTypes.string,
+});
+
+TopRoutesTabs.propTypes = {
+  disableTop: PropTypes.bool,
+  pathPrefix: PropTypes.string.isRequired,
+  query: topRoutesQueryPropType,
+  theme: PropTypes.shape({}).isRequired,
+  updateUnmeshedSources: PropTypes.func,
 };
 
 export default withStyles(styles, { withTheme: true })(TopRoutesTabs);

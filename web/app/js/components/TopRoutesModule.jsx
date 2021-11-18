@@ -13,7 +13,7 @@ import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import { processTopRoutesResults } from './util/MetricUtils.jsx';
 import withREST from './util/withREST.jsx';
 
-const TopRoutesBase = ({ data, loading, error }) => {
+const TopRoutesBase = function({ data, loading, error }) {
   let results = _get(data, '[0].ok.routes', []);
   results = _sortBy(results, o => o.resource);
 

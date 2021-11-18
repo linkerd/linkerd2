@@ -1,0 +1,35 @@
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  namespace: {{.Values.namespace}}
+  name: tap-injector-webhook
+  labels:
+    linkerd.io/extension: viz
+    component: tap-injector
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  podSelector:
+    matchLabels:
+      linkerd.io/extension: viz
+      component: tap-injector
+  port: tap-injector
+  proxyProtocol: TLS
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: ServerAuthorization
+metadata:
+  namespace: {{.Values.namespace}}
+  name: tap-injector
+  labels:
+    linkerd.io/extension: viz
+    component: tap-injector
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  server:
+    name: tap-injector-webhook
+  client:
+    # traffic coming from kube-api
+    unauthenticated: true
