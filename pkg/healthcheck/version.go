@@ -10,7 +10,7 @@ import (
 
 // GetServerVersion returns Linkerd's version, as set in linkerd-config
 func GetServerVersion(ctx context.Context, controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (string, error) {
-	cm, _, err := FetchLinkerdConfigMap(ctx, kubeAPI, controlPlaneNamespace)
+	cm, err := FetchLinkerdConfigMap(ctx, kubeAPI, controlPlaneNamespace)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch linkerd-config: %s", err)
 	}

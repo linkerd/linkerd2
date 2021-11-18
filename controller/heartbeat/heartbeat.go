@@ -29,7 +29,7 @@ type containerMeta struct {
 func K8sValues(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string) url.Values {
 	v := url.Values{}
 
-	cm, _, err := healthcheck.FetchLinkerdConfigMap(ctx, kubeAPI, controlPlaneNamespace)
+	cm, err := healthcheck.FetchLinkerdConfigMap(ctx, kubeAPI, controlPlaneNamespace)
 	if err != nil {
 		log.Errorf("Failed to fetch linkerd-config: %s", err)
 	} else {

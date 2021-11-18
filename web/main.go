@@ -120,7 +120,7 @@ func getUUIDAndVersion(ctx context.Context, k8sAPI *k8s.KubernetesAPI, controlle
 	var uuid string
 	var version string
 
-	cm, _, err := healthcheck.FetchLinkerdConfigMap(ctx, k8sAPI, controllerNamespace)
+	cm, err := healthcheck.FetchLinkerdConfigMap(ctx, k8sAPI, controllerNamespace)
 	if err != nil {
 		log.Errorf("Failed to fetch linkerd-config: %s", err)
 	} else {

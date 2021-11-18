@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	controllerK8s "github.com/linkerd/linkerd2/controller/k8s"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
@@ -1690,7 +1689,7 @@ func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred
 // FetchCurrentConfiguration retrieves the current Linkerd configuration
 func FetchCurrentConfiguration(ctx context.Context, k kubernetes.Interface, controlPlaneNamespace string) (*corev1.ConfigMap, *l5dcharts.Values, error) {
 	// Get the linkerd-config values if present.
-	configMap, _, err := FetchLinkerdConfigMap(ctx, k, controlPlaneNamespace)
+	configMap, err := FetchLinkerdConfigMap(ctx, k, controlPlaneNamespace)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1803,18 +1802,12 @@ func (hc *HealthChecker) FetchCredsFromOldSecret(ctx context.Context, namespace 
 // healthcheck package because healthcheck depends on it, along with other
 // packages that also depend on healthcheck. This function depends on both
 // `pkg/k8s` and `pkg/config`, which do not depend on each other.
-func FetchLinkerdConfigMap(ctx context.Context, k kubernetes.Interface, controlPlaneNamespace string) (*corev1.ConfigMap, *configPb.All, error) {
+func FetchLinkerdConfigMap(ctx context.Context, k kubernetes.Interface, controlPlaneNamespace string) (*corev1.ConfigMap, error) {
 	cm, err := k.CoreV1().ConfigMaps(controlPlaneNamespace).Get(ctx, k8s.ConfigConfigMapName, metav1.GetOptions{})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-
-	configPB, err := config.FromConfigMap(cm.Data)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return cm, configPB, nil
+	return cm, nil
 }
 
 // CheckNamespace checks whether the given namespace exists, and returns an
