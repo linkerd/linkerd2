@@ -5,8 +5,8 @@
 This edge releases fixes a compatibility issue that prevented the policy controller
 from starting in some Kubernetes distributions. This release also includes a new
 High Availability mode for the gateway component in multicluster extension.
-Various dependencies across the CNI, Policy Controller and dashboard
-have also been upgraded. In the Proxy, error logging when the proxy fails
+Various dependencies across the CNI plugin, Policy Controller and dashboard
+have also been upgraded. In the proxy, error logging when the proxy fails
 to accept a connection due to a system error has been improved.
 
 * Updated policy controller to use `openssl` instead of `rustls` to fix
