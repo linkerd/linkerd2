@@ -2,10 +2,8 @@ package cmd
 
 import (
 	"context"
-	"fmt"
+	"time"
 
-	"github.com/golang/protobuf/ptypes"
-	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -13,48 +11,42 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+type identityContext struct {
+	trustAnchorsPem    string
+	scheme             string
+	clockSkewAllowance time.Duration
+	issuanceLifetime   time.Duration
+	trustDomain        string
+}
+
 // fetchIdentityValue checks the kubernetes API to fetch an existing
 // linkerd identity configuration.
 //
 // This bypasses the public API so that we can access secrets and validate
 // permissions.
-func fetchIdentityValues(ctx context.Context, k kubernetes.Interface, idctx *pb.IdentityContext, values *charts.Values) error {
-	if idctx == nil {
-		return nil
-	}
-
-	if idctx.Scheme == "" {
+func fetchIdentityValues(ctx context.Context, k kubernetes.Interface, idctx identityContext, values *charts.Values) error {
+	if idctx.scheme == "" {
 		// if this is empty, then we are upgrading from a version
 		// that did not support issuer schemes. Just default to the
 		// linkerd one.
-		idctx.Scheme = k8s.IdentityIssuerSchemeLinkerd
+		idctx.scheme = k8s.IdentityIssuerSchemeLinkerd
 	}
 
 	var trustAnchorsPEM string
 	var issuerData *issuercerts.IssuerCertData
 	var err error
 
-	trustAnchorsPEM = idctx.GetTrustAnchorsPem()
+	trustAnchorsPEM = idctx.trustAnchorsPem
 
-	issuerData, err = fetchIssuer(ctx, k, trustAnchorsPEM, idctx.Scheme)
+	issuerData, err = fetchIssuer(ctx, k, trustAnchorsPEM, idctx.scheme)
 	if err != nil {
 		return err
 	}
 
-	clockSkewDuration, err := ptypes.Duration(idctx.GetClockSkewAllowance())
-	if err != nil {
-		return fmt.Errorf("could not convert clock skew protobuf Duration format into golang Duration: %s", err)
-	}
-
-	issuanceLifetimeDuration, err := ptypes.Duration(idctx.GetIssuanceLifetime())
-	if err != nil {
-		return fmt.Errorf("could not convert issuance Lifetime protobuf Duration format into golang Duration: %s", err)
-	}
-
 	values.IdentityTrustAnchorsPEM = trustAnchorsPEM
-	values.Identity.Issuer.Scheme = idctx.Scheme
-	values.Identity.Issuer.ClockSkewAllowance = clockSkewDuration.String()
-	values.Identity.Issuer.IssuanceLifetime = issuanceLifetimeDuration.String()
+	values.Identity.Issuer.Scheme = idctx.scheme
+	values.Identity.Issuer.ClockSkewAllowance = idctx.clockSkewAllowance.String()
+	values.Identity.Issuer.IssuanceLifetime = idctx.issuanceLifetime.String()
 	values.Identity.Issuer.TLS.KeyPEM = issuerData.IssuerKey
 	values.Identity.Issuer.TLS.CrtPEM = issuerData.IssuerCrt
 

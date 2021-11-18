@@ -8,8 +8,6 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
-	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -127,16 +125,16 @@ func repair(ctx context.Context, forced bool) error {
 	if err != nil {
 		return fmt.Errorf("Failed to parse IssuanceLifetime from linkerd-config: %s", err)
 	}
-	idCtx := pb.IdentityContext{
-		TrustAnchorsPem:    values.IdentityTrustAnchorsPEM,
-		Scheme:             values.Identity.Issuer.Scheme,
-		ClockSkewAllowance: ptypes.DurationProto(clockSkewDuration),
-		IssuanceLifetime:   ptypes.DurationProto(issuanceLifetime),
-		TrustDomain:        values.IdentityTrustDomain,
+	idCtx := identityContext{
+		trustAnchorsPem:    values.IdentityTrustAnchorsPEM,
+		scheme:             values.Identity.Issuer.Scheme,
+		clockSkewAllowance: clockSkewDuration,
+		issuanceLifetime:   issuanceLifetime,
+		trustDomain:        values.IdentityTrustDomain,
 	}
 
 	// Populate identity values
-	err = fetchIdentityValues(ctx, k8sAPI, &idCtx, &values)
+	err = fetchIdentityValues(ctx, k8sAPI, idCtx, &values)
 	if err != nil {
 		return fmt.Errorf("Failed to load issuer credentials: %s", err)
 	}
