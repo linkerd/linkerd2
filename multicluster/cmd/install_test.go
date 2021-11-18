@@ -30,6 +30,17 @@ func TestRender(t *testing.T) {
 			nil,
 			"install_psp.golden",
 		},
+		{
+			map[string]interface{}{
+				"enablePSP": "true",
+				"gateway": map[string]interface{}{
+					"replicas": 3,
+				},
+				"enablePodAntiAffinity": true,
+			},
+			nil,
+			"install_ha.golden",
+		},
 	}
 
 	for i, tc := range testCases {

@@ -38,6 +38,7 @@ type (
 
 func newMulticlusterInstallCommand() *cobra.Command {
 	options, err := newMulticlusterInstallOptionsWithDefault()
+	var ha bool
 	var wait time.Duration
 	var valuesOptions valuespkg.Options
 
@@ -68,7 +69,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				APIAddr:               apiAddr,
 				RetryDeadline:         time.Now().Add(wait),
 			})
-			return install(cmd.Context(), stdout, options, valuesOptions)
+			return install(cmd.Context(), stdout, options, valuesOptions, ha)
 		},
 	}
 
@@ -79,6 +80,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().Uint32Var(&options.gateway.Probe.Port, "gateway-probe-port", options.gateway.Probe.Port, "The liveness check port of the gateway")
 	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "service-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the service account which can be used by service mirror components in source clusters to discover exported services")
 	cmd.Flags().StringVar(&options.gateway.ServiceType, "gateway-service-type", options.gateway.ServiceType, "Overwrite Service type for gateway service")
+	cmd.Flags().BoolVar(&ha, "ha", false, `Install multicluster extension in High Availability mode.`)
 	cmd.Flags().DurationVar(&wait, "wait", 300*time.Second, "Wait for core control-plane components to be available")
 
 	// Hide developer focused flags in release builds.
@@ -95,7 +97,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	return cmd
 }
 
-func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptions, valuesOptions valuespkg.Options) error {
+func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptions, valuesOptions valuespkg.Options, ha bool) error {
 	values, err := buildMulticlusterInstallValues(ctx, options)
 	if err != nil {
 		return err
@@ -105,6 +107,13 @@ func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptio
 	valuesOverrides, err := valuesOptions.MergeValues(nil)
 	if err != nil {
 		return err
+	}
+
+	if ha {
+		valuesOverrides, err = charts.OverrideFromFile(valuesOverrides, static.Templates, helmMulticlusterDefaultChartName, "values-ha.yaml")
+		if err != nil {
+			return err
+		}
 	}
 
 	return render(w, values, valuesOverrides)

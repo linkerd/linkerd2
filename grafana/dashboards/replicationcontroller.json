@@ -2294,6 +2294,6 @@
   },
   "timezone": "",
   "title": "Linkerd ReplicationController",
-  "uid": "replicationcontroller",
+  "uid": "linkerd-replicationcontroller",
   "version": 1
 }
