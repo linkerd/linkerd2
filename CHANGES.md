@@ -2,17 +2,17 @@
 
 ## edge-21.11.3
 
-This edge releases fixes a compatibility issue that prevented the policy controller
-from starting in some Kubernetes distributions. This release also includes a new
-High Availability mode for the gateway component in multicluster extension.
-Various dependencies across the CNI plugin, Policy Controller and dashboard
-have also been upgraded. In the proxy, error logging when the proxy fails
-to accept a connection due to a system error has been improved.
+This edge releases fixes a compatibility issue that prevented the policy
+controller from starting in some Kubernetes distributions. This release also
+includes a new High Availability mode for the gateway component in multicluster
+extension. Various dependencies across the CNI plugin, Policy Controller and
+dashboard have also been upgraded. In the proxy, error logging when the proxy
+fails to accept a connection due to a system error has been improved.
 
 * Updated policy controller to use `openssl` instead of `rustls` to fix
   compatibility issues with some Kubernetes distributions
 * Added HA mode to multicluster gateway that adds a PodDisruptionBudget,
-  additional replicas and anit-affinity to the deployment (thanks @Crevil)
+  additional replicas and anti-affinity to the deployment (thanks @Crevil)
 * Improved TCP server error messages in the proxy
 * Fixed broken Grafana links in the dashboard
 * Upgraded CNI pkg to v0.8.1 in `linkerd-cni` to support latest CNI
