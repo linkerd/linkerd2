@@ -207,7 +207,7 @@ func multiclusterCategory(hc *healthChecker) *healthcheck.Category {
 		*healthcheck.NewChecker("all gateway mirrors are healthy").
 			WithHintAnchor("l5d-multicluster-gateways-endpoints").
 			WithCheck(func(ctx context.Context) error {
-				return hc.checkIfGatewayMirrorsHaveEndpoints(ctx)
+				return hc.checkGatewayMirrors(ctx)
 			}))
 	checkers = append(checkers,
 		*healthcheck.NewChecker("all mirror services have endpoints").
@@ -545,7 +545,7 @@ func (hc *healthChecker) checkServiceMirrorController(ctx context.Context) error
 	return &healthcheck.VerboseSuccess{Message: strings.Join(clusterNames, "\n")}
 }
 
-func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context) error {
+func (hc *healthChecker) checkGatewayMirrors(ctx context.Context) error {
 	links := []string{}
 	errors := []error{}
 	for _, link := range hc.links {
@@ -560,11 +560,10 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context)
 			continue
 		}
 		svc := gatewayMirrors.Items[0]
-		// Check if there is a relevant end-point
-		endpoints, err := hc.KubeAPIClient().CoreV1().Endpoints(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{})
-		if err != nil || len(endpoints.Subsets) == 0 {
-			errors = append(errors, fmt.Errorf("%s.%s mirrored from cluster [%s] has no endpoints", svc.Name, svc.Namespace, svc.Labels[k8s.RemoteClusterNameLabel]))
-			continue
+		// Check if there is a relevant endpoint or endpointslice
+		err = hc.checkSvcEndpoints(ctx, svc)
+		if err != nil {
+			errors = append(errors, err)
 		}
 
 		vizNs, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, vizCmd.ExtensionName)
@@ -612,6 +611,23 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context)
 	return &healthcheck.VerboseSuccess{Message: strings.Join(links, "\n")}
 }
 
+func (hc *healthChecker) checkSvcEndpoints(ctx context.Context, svc corev1.Service) error {
+	if hc.LinkerdConfig().EnableEndpointSlices {
+		endpointSlices, err := hc.KubeAPIClient().DiscoveryV1beta1().EndpointSlices(svc.Namespace).List(ctx, metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("%s=%s", "kubernetes.io/service-name", svc.Name),
+		})
+		if err != nil || len(endpointSlices.Items) == 0 {
+			return fmt.Errorf("%s.%s mirrored from cluster [%s] has no EndpointSlices", svc.Name, svc.Namespace, svc.Labels[k8s.RemoteClusterNameLabel])
+		}
+	} else {
+		endpoints, err := hc.KubeAPIClient().CoreV1().Endpoints(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{})
+		if err != nil || len(endpoints.Subsets) == 0 {
+			return fmt.Errorf("%s.%s mirrored from cluster [%s] has no Endpoints", svc.Name, svc.Namespace, svc.Labels[k8s.RemoteClusterNameLabel])
+		}
+	}
+	return nil
+}
+
 func (hc *healthChecker) checkIfMirrorServicesHaveEndpoints(ctx context.Context) error {
 	var servicesWithNoEndpoints []string
 	selector := fmt.Sprintf("%s, !%s", k8s.MirroredResourceLabel, k8s.MirroredGatewayLabel)
@@ -620,10 +636,10 @@ func (hc *healthChecker) checkIfMirrorServicesHaveEndpoints(ctx context.Context)
 		return err
 	}
 	for _, svc := range mirrorServices.Items {
-		// Check if there is a relevant end-point
-		endpoint, err := hc.KubeAPIClient().CoreV1().Endpoints(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{})
-		if err != nil || len(endpoint.Subsets) == 0 {
-			servicesWithNoEndpoints = append(servicesWithNoEndpoints, fmt.Sprintf("%s.%s mirrored from cluster [%s]", svc.Name, svc.Namespace, svc.Labels[k8s.RemoteClusterNameLabel]))
+		// Check if there is a relevant endpoint or endpointslice
+		err = hc.checkSvcEndpoints(ctx, svc)
+		if err != nil {
+			servicesWithNoEndpoints = append(servicesWithNoEndpoints, err.Error())
 		}
 	}
 	if len(servicesWithNoEndpoints) > 0 {

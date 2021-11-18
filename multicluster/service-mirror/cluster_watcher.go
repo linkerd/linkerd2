@@ -13,7 +13,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	discovery "k8s.io/api/discovery/v1beta1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -157,7 +156,12 @@ func NewRemoteClusterServiceWatcher(
 	enableHeadlessSvc bool,
 	enableEndpointSlices bool,
 ) (*RemoteClusterServiceWatcher, error) {
-	remoteAPI, err := k8s.InitializeAPIForConfig(ctx, cfg, false, k8s.Svc, k8s.Endpoint)
+
+	resources := []k8s.APIResource{k8s.Svc, k8s.Endpoint}
+	if enableEndpointSlices {
+		resources = append(resources, k8s.ES)
+	}
+	remoteAPI, err := k8s.InitializeAPIForConfig(ctx, cfg, false, resources...)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize api for target cluster %s: %s", clusterName, err)
 	}
@@ -171,7 +175,7 @@ func NewRemoteClusterServiceWatcher(
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{
 		Interface: remoteAPI.Client.CoreV1().Events(""),
 	})
-	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{
+	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{
 		Component: fmt.Sprintf("linkerd-service-mirror-%s", clusterName),
 	})
 
@@ -369,7 +373,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Co
 			if kerrors.IsNotFound(err) {
 				continue
 			}
-			errors = append(errors, fmt.Errorf("Could not delete service %s/%s: %s", svc.Namespace, svc.Name, err))
+			errors = append(errors, fmt.Errorf("could not delete service %s/%s: %s", svc.Namespace, svc.Name, err))
 		} else {
 			rcsw.log.Infof("Deleted service %s/%s", svc.Namespace, svc.Name)
 		}
@@ -378,7 +382,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Co
 	if rcsw.enableEndpointSlices {
 		endpoints, err := rcsw.localAPIClient.ES().Lister().List(labels.Set(matchLabels).AsSelector())
 		if err != nil {
-			innerErr := fmt.Errorf("could not retrieve endpoints that need cleaning up: %s", err)
+			innerErr := fmt.Errorf("could not retrieve EndpointSlices that need cleaning up: %s", err)
 			if kerrors.IsNotFound(err) {
 				return innerErr
 			}
@@ -390,9 +394,9 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Co
 				if kerrors.IsNotFound(err) {
 					continue
 				}
-				errors = append(errors, fmt.Errorf("Could not delete endpoints %s/%s: %s", endpoint.Namespace, endpoint.Name, err))
+				errors = append(errors, fmt.Errorf("could not delete EndpointSlice %s/%s: %s", endpoint.Namespace, endpoint.Name, err))
 			} else {
-				rcsw.log.Infof("Deleted endpoints %s/%s", endpoint.Namespace, endpoint.Name)
+				rcsw.log.Infof("Deleted EndpointSlice %s/%s", endpoint.Namespace, endpoint.Name)
 			}
 		}
 
@@ -414,7 +418,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Co
 				if kerrors.IsNotFound(err) {
 					continue
 				}
-				errors = append(errors, fmt.Errorf("Could not delete endpoints %s/%s: %s", endpoint.Namespace, endpoint.Name, err))
+				errors = append(errors, fmt.Errorf("could not delete endpoints %s/%s: %s", endpoint.Namespace, endpoint.Name, err))
 			} else {
 				rcsw.log.Infof("Deleted endpoints %s/%s", endpoint.Namespace, endpoint.Name)
 			}
@@ -935,7 +939,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 			rcsw.remoteAPIClient.Endpoint().Informer().AddEventHandler(
 				cache.ResourceEventHandlerFuncs{
 					AddFunc: func(obj interface{}) {
-						if obj.(metav1.Object).GetNamespace() == "kube-system" {
+						if obj.(metav1.Object).GetNamespace() == kubeSystem {
 							return
 						}
 
@@ -948,7 +952,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 						})
 					},
 					UpdateFunc: func(old, new interface{}) {
-						if new.(metav1.Object).GetNamespace() == "kube-system" {
+						if new.(metav1.Object).GetNamespace() == kubeSystem {
 							return
 						}
 
@@ -1039,7 +1043,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 		}
 		portName := "mc-probe"
 		port := int32(rcsw.link.ProbeSpec.Port)
-		protocol := v1.Protocol("TCP")
+		protocol := corev1.Protocol("TCP")
 
 		gatewayMirrorEndpointSlice := &discovery.EndpointSlice{
 			ObjectMeta: metav1.ObjectMeta{
@@ -1069,7 +1073,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 
 		err = rcsw.createOrUpdateEndpointSlice(ctx, gatewayMirrorEndpointSlice)
 		if err != nil {
-			rcsw.log.Errorf("Failed to create/update gateway mirror endpoints: %s", err)
+			rcsw.log.Errorf("Failed to create/update gateway mirror EndpointSlice: %s", err)
 		}
 	} else {
 		gatewayMirrorEndpoints := &corev1.Endpoints{
@@ -1123,7 +1127,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 		if rcsw.enableEndpointSlices {
 			endpointSlice, err := rcsw.localAPIClient.ES().Lister().EndpointSlices(svc.Namespace).Get(svc.Name)
 			if err != nil {
-				rcsw.log.Errorf("Could not get endpoints: %s", err)
+				rcsw.log.Errorf("Could not get EndpointSlice: %s", err)
 				continue
 			}
 
@@ -1269,7 +1273,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx con
 	// as a headless mirror. If the service does not have any named addresses in
 	// its Endpoints object, then the endpoints should not be processed.
 	if len(exportedService.Spec.Ports) == 0 {
-		rcsw.recorder.Event(exportedService, v1.EventTypeNormal, eventTypeSkipped, "Skipped mirroring service: object spec has no exposed ports")
+		rcsw.recorder.Event(exportedService, corev1.EventTypeNormal, eventTypeSkipped, "Skipped mirroring service: object spec has no exposed ports")
 		rcsw.log.Infof("Skipped creating headless mirror for %s/%s: service object spec has no exposed ports", exportedService.Namespace, exportedService.Name)
 		return nil
 	}
