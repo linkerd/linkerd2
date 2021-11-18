@@ -9,9 +9,11 @@ RUN apt-get update && \
 ENV CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
 WORKDIR /build
 COPY Cargo.toml Cargo.lock policy-controller/ /build/
+# XXX(ver) we can't easily cross-compile against openssl, so use rustls on arm.
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.56.0,source=/usr/local/cargo,target=/usr/local/cargo \
-    cargo build --locked --release --target=armv7-unknown-linux-gnueabihf --package=linkerd-policy-controller && \
+    cargo build --locked --release --target=armv7-unknown-linux-gnueabihf \
+        --package=linkerd-policy-controller --no-default-features --features="rustls" && \
     mv target/armv7-unknown-linux-gnueabihf/release/linkerd-policy-controller /tmp/
 
 FROM --platform=linux/arm $RUNTIME_IMAGE
