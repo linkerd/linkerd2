@@ -174,8 +174,8 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForServices(remoteGatewayWithNoTLS, remoteGatewayWithTLS))
-		translator.Remove(mkAddressSetForServices(remoteGatewayWithTLS))
+		translator.Add(mkAddressSetForServices(&remoteGatewayWithNoTLS, &remoteGatewayWithTLS))
+		translator.Remove(mkAddressSetForServices(&remoteGatewayWithTLS))
 
 		expectedNumUpdates := 2
 		actualNumUpdates := len(mockGetServer.updatesReceived)
@@ -197,7 +197,7 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForServices(remoteGatewayWithTLS))
+		translator.Add(mkAddressSetForServices(&remoteGatewayWithTLS))
 
 		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -232,7 +232,7 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForServices(remoteGatewayWithTLSAndAuthOverride))
+		translator.Add(mkAddressSetForServices(&remoteGatewayWithTLSAndAuthOverride))
 
 		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -258,7 +258,7 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 	t.Run("Does not send TlsIdentity when not present", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForServices(remoteGatewayWithNoTLS))
+		translator.Add(mkAddressSetForServices(&remoteGatewayWithNoTLS))
 
 		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -279,8 +279,8 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForPods(normalPod, tlsOptionalPod))
-		translator.Remove(mkAddressSetForPods(tlsOptionalPod))
+		translator.Add(mkAddressSetForPods(&normalPod, &tlsOptionalPod))
+		translator.Remove(mkAddressSetForPods(&tlsOptionalPod))
 
 		expectedNumUpdates := 2
 		actualNumUpdates := len(mockGetServer.updatesReceived)
@@ -292,8 +292,8 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 	t.Run("Sends addresses as removed or added", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForPods(normalPod, tlsOptionalPod, tlsDisabledPod))
-		translator.Remove(mkAddressSetForPods(tlsDisabledPod))
+		translator.Add(mkAddressSetForPods(&normalPod, &tlsOptionalPod, &tlsDisabledPod))
+		translator.Remove(mkAddressSetForPods(&tlsDisabledPod))
 
 		addressesAdded := mockGetServer.updatesReceived[0].GetAdd().Addrs
 		actualNumberOfAdded := len(addressesAdded)
@@ -320,7 +320,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 	t.Run("Sends metric labels with added addresses", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForPods(normalPod))
+		translator.Add(mkAddressSetForPods(&normalPod))
 
 		actualGlobalMetricLabels := mockGetServer.updatesReceived[0].GetAdd().MetricLabels
 		expectedGlobalMetricLabels := map[string]string{"namespace": "service-ns", "service": "service-name"}
@@ -347,7 +347,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForPods(normalPod))
+		translator.Add(mkAddressSetForPods(&normalPod))
 
 		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -363,7 +363,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 	t.Run("Does not send TlsIdentity for non-default identity-modes", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForPods(tlsOptionalPod))
+		translator.Add(mkAddressSetForPods(&tlsOptionalPod))
 
 		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -378,7 +378,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 	t.Run("Does not send TlsIdentity for other meshes", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForPods(otherMeshPod))
+		translator.Add(mkAddressSetForPods(&otherMeshPod))
 
 		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -393,7 +393,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 	t.Run("Does not send TlsIdentity when not enabled", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForPods(tlsDisabledPod))
+		translator.Add(mkAddressSetForPods(&tlsDisabledPod))
 
 		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -410,8 +410,8 @@ func TestEndpointTranslatorForZonedAddresses(t *testing.T) {
 	t.Run("Sends one update for add and none for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForServices(west1aAddress, west1bAddress))
-		translator.Remove(mkAddressSetForServices(west1bAddress))
+		translator.Add(mkAddressSetForServices(&west1aAddress, &west1bAddress))
+		translator.Remove(mkAddressSetForServices(&west1bAddress))
 
 		// Only the address meant for west-1a should be added, which means
 		// that when we try to remove the address meant for west-1b there
@@ -424,9 +424,9 @@ func TestEndpointTranslatorForZonedAddresses(t *testing.T) {
 	})
 }
 
-func mkAddressSetForServices(gatewayAddresses ...watcher.Address) watcher.AddressSet {
+func mkAddressSetForServices(gatewayAddresses ...*watcher.Address) watcher.AddressSet {
 	set := watcher.AddressSet{
-		Addresses: make(map[watcher.ServiceID]watcher.Address),
+		Addresses: make(map[watcher.ServiceID]*watcher.Address),
 		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
 	}
 	for _, a := range gatewayAddresses {
@@ -443,9 +443,9 @@ func mkAddressSetForServices(gatewayAddresses ...watcher.Address) watcher.Addres
 	return set
 }
 
-func mkAddressSetForPods(podAddresses ...watcher.Address) watcher.AddressSet {
+func mkAddressSetForPods(podAddresses ...*watcher.Address) watcher.AddressSet {
 	set := watcher.AddressSet{
-		Addresses: make(map[watcher.PodID]watcher.Address),
+		Addresses: make(map[watcher.PodID]*watcher.Address),
 		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
 	}
 	for _, p := range podAddresses {

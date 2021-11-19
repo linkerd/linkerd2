@@ -30,7 +30,7 @@ func newBufferingEndpointListener() *bufferingEndpointListener {
 	}
 }
 
-func addressString(address Address) string {
+func addressString(address *Address) string {
 	addressString := fmt.Sprintf("%s:%d", address.IP, address.Port)
 	if address.Identity != "" {
 		addressString = fmt.Sprintf("%s/%s", addressString, address.Identity)
@@ -90,7 +90,7 @@ func (bel *bufferingEndpointListener) NoEndpoints(exists bool) {
 	bel.noEndpointsExist = exists
 }
 
-func (bel *bufferingEndpointListener) UpdateWithServer(set AddressSet) {}
+func (bel *bufferingEndpointListener) Update(set AddressSet) {}
 
 type bufferingEndpointListenerWithResVersion struct {
 	added   []string
@@ -106,7 +106,7 @@ func newBufferingEndpointListenerWithResVersion() *bufferingEndpointListenerWith
 	}
 }
 
-func addressStringWithResVersion(address Address) string {
+func addressStringWithResVersion(address *Address) string {
 	return fmt.Sprintf("%s:%d:%s", address.IP, address.Port, address.Pod.ResourceVersion)
 }
 
@@ -142,7 +142,7 @@ func (bel *bufferingEndpointListenerWithResVersion) Remove(set AddressSet) {
 
 func (bel *bufferingEndpointListenerWithResVersion) NoEndpoints(exists bool) {}
 
-func (bel *bufferingEndpointListenerWithResVersion) UpdateWithServer(set AddressSet) {}
+func (bel *bufferingEndpointListenerWithResVersion) Update(set AddressSet) {}
 
 func TestEndpointsWatcher(t *testing.T) {
 	for _, tt := range []struct {

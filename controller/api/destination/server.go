@@ -531,7 +531,7 @@ func podReceivingTraffic(pod *corev1.Pod) bool {
 func podToAddressSet(k8sAPI *k8s.API, pod *corev1.Pod) *watcher.AddressSet {
 	ownerKind, ownerName := k8sAPI.GetOwnerKindAndName(context.Background(), pod, true)
 	return &watcher.AddressSet{
-		Addresses: map[watcher.PodID]watcher.Address{
+		Addresses: map[watcher.PodID]*watcher.Address{
 			{
 				Name:      pod.Name,
 				Namespace: pod.Namespace,

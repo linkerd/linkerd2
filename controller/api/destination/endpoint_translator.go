@@ -120,7 +120,7 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 	// documented in the KEP: https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/2433-topology-aware-hints/README.md#kube-proxy
 	for _, address := range et.availableEndpoints.Addresses {
 		if len(address.ForZones) == 0 {
-			allAvailEndpoints := make(map[watcher.ID]watcher.Address)
+			allAvailEndpoints := make(map[watcher.ID]*watcher.Address)
 			for k, v := range et.availableEndpoints.Addresses {
 				allAvailEndpoints[k] = v
 			}
@@ -135,7 +135,7 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 	// Each address that has a hint matching the node's zone should be added
 	// to the set of addresses that will be returned.
 	et.log.Debugf("Filtering through addresses that should be consumed by zone %s", et.nodeTopologyZone)
-	filtered := make(map[watcher.ID]watcher.Address)
+	filtered := make(map[watcher.ID]*watcher.Address)
 	for id, address := range et.availableEndpoints.Addresses {
 		for _, zone := range address.ForZones {
 			if zone.Name == et.nodeTopologyZone {
@@ -163,8 +163,8 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 // the endpoints that match the topological zone, by adding new endpoints and
 // removing stale ones.
 func (et *endpointTranslator) diffEndpoints(filtered watcher.AddressSet) (watcher.AddressSet, watcher.AddressSet) {
-	add := make(map[watcher.ID]watcher.Address)
-	remove := make(map[watcher.ID]watcher.Address)
+	add := make(map[watcher.ID]*watcher.Address)
+	remove := make(map[watcher.ID]*watcher.Address)
 
 	for id, address := range filtered.Addresses {
 		if _, ok := et.filteredSnapshot.Addresses[id]; !ok {
@@ -192,8 +192,8 @@ func (et *endpointTranslator) diffEndpoints(filtered watcher.AddressSet) (watche
 func (et *endpointTranslator) NoEndpoints(exists bool) {
 	et.log.Debugf("NoEndpoints(%+v)", exists)
 
-	et.availableEndpoints.Addresses = map[watcher.ID]watcher.Address{}
-	et.filteredSnapshot.Addresses = map[watcher.ID]watcher.Address{}
+	et.availableEndpoints.Addresses = map[watcher.ID]*watcher.Address{}
+	et.filteredSnapshot.Addresses = map[watcher.ID]*watcher.Address{}
 
 	u := &pb.Update{
 		Update: &pb.Update_NoEndpoints{
@@ -209,7 +209,7 @@ func (et *endpointTranslator) NoEndpoints(exists bool) {
 	}
 }
 
-func (et *endpointTranslator) UpdateWithServer(set watcher.AddressSet) {
+func (et *endpointTranslator) Update(set watcher.AddressSet) {
 	addrs := []*pb.WeightedAddr{}
 
 	// For each address in the address set that is backed by a pod, check
@@ -222,16 +222,17 @@ func (et *endpointTranslator) UpdateWithServer(set watcher.AddressSet) {
 			continue
 		}
 
-		opaquePorts := make(map[uint32]struct{})
-		id := watcher.PodID{
-			Name:      address.Pod.Name,
-			Namespace: address.Pod.Namespace,
+		opaquePorts, ok, getErr := getPodOpaquePortsAnnotations(address.Pod)
+		if getErr != nil {
+			et.log.Errorf("failed getting opaque ports annotation for pod: %s", getErr)
 		}
-		if ports, ok := set.OpaquePodPorts[id]; ok {
-			for port := range ports {
-				opaquePorts[port] = struct{}{}
-			}
+
+		// If the opaque ports annotation was not set, then set the
+		// endpoint's opaque ports to the default value.
+		if !ok {
+			opaquePorts = et.defaultOpaquePorts
 		}
+
 		skippedInboundPorts, skippedErr := getPodSkippedInboundPortsAnnotations(address.Pod)
 		if skippedErr != nil {
 			et.log.Errorf("failed getting ignored inbound ports annotation for pod: %s", skippedErr)
@@ -263,26 +264,15 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			err error
 		)
 		if address.Pod != nil {
-			opaquePorts := make(map[uint32]struct{})
-			id := watcher.PodID{
-				Name:      address.Pod.Name,
-				Namespace: address.Pod.Namespace,
+			opaquePorts, ok, getErr := getPodOpaquePortsAnnotations(address.Pod)
+			if getErr != nil {
+				et.log.Errorf("failed getting opaque ports annotation for pod: %s", getErr)
 			}
-			if ports, ok := set.OpaquePodPorts[id]; ok {
-				for port := range ports {
-					opaquePorts[port] = struct{}{}
-				}
-			} else {
-				var getErr error
-				opaquePorts, ok, getErr = getPodOpaquePortsAnnotations(address.Pod)
-				if getErr != nil {
-					et.log.Errorf("failed getting opaque ports annotation for pod: %s", getErr)
-				}
-				// If the opaque ports annotation was not set, then set the
-				// endpoint's opaque ports to the default value.
-				if !ok {
-					opaquePorts = et.defaultOpaquePorts
-				}
+
+			// If the opaque ports annotation was not set, then set the
+			// endpoint's opaque ports to the default value.
+			if !ok {
+				opaquePorts = et.defaultOpaquePorts
 			}
 
 			skippedInboundPorts, skippedErr := getPodSkippedInboundPortsAnnotations(address.Pod)
@@ -369,7 +359,7 @@ func (et *endpointTranslator) sendClientRemove(set watcher.AddressSet) {
 	}
 }
 
-func toAddr(address watcher.Address) (*net.TcpAddress, error) {
+func toAddr(address *watcher.Address) (*net.TcpAddress, error) {
 	ip, err := addr.ParseProxyIPV4(address.IP)
 	if err != nil {
 		return nil, err
@@ -380,7 +370,7 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 	}, nil
 }
 
-func toWeightedAddr(address watcher.Address, opaquePorts, skippedInboundPorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
+func toWeightedAddr(address *watcher.Address, opaquePorts, skippedInboundPorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
 	controllerNSLabel := address.Pod.Labels[k8s.ControllerNSLabel]
 	sa, ns := k8s.GetServiceAccountAndNS(address.Pod)
 	labels := k8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
@@ -395,7 +385,8 @@ func toWeightedAddr(address watcher.Address, opaquePorts, skippedInboundPorts ma
 				H2: &pb.ProtocolHint_H2{},
 			}
 		}
-		if _, ok := opaquePorts[address.Port]; ok {
+		_, opaquePort := opaquePorts[address.Port]
+		if address.OpaqueProtocol || opaquePort {
 			port, err := getInboundPort(&address.Pod.Spec)
 			if err != nil {
 				log.Error(err)
@@ -455,7 +446,7 @@ func getNodeTopologyZone(nodes coreinformers.NodeInformer, srcNode string) (stri
 
 func newEmptyAddressSet() watcher.AddressSet {
 	return watcher.AddressSet{
-		Addresses: make(map[watcher.ID]watcher.Address),
+		Addresses: make(map[watcher.ID]*watcher.Address),
 		Labels:    make(map[string]string),
 	}
 }
