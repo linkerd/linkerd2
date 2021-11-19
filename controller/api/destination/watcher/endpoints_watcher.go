@@ -17,7 +17,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/cache"
 )
@@ -58,12 +57,9 @@ type (
 
 	// AddressSet is a set of Address, indexed by ID.
 	AddressSet struct {
-		Addresses      map[ID]*Address
-		Labels         map[string]string
-		OpaquePodPorts podPorts
+		Addresses map[ID]*Address
+		Labels    map[string]string
 	}
-
-	podPorts map[PodID]map[Port]struct{}
 
 	portAndHostname struct {
 		port     Port
@@ -557,7 +553,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 
 	if port.enableEndpointSlices {
 		matchLabels := map[string]string{discovery.LabelServiceName: sp.id.Name}
-		selector := k8slabels.Set(matchLabels).AsSelector()
+		selector := labels.Set(matchLabels).AsSelector()
 
 		sliceList, err := sp.k8sAPI.ES().Lister().EndpointSlices(sp.id.Namespace).List(selector)
 		if err != nil && !apierrors.IsNotFound(err) {
@@ -650,9 +646,8 @@ func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 
 func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, newSlice *discovery.EndpointSlice) {
 	updatedAddressSet := AddressSet{
-		Addresses:      make(map[ID]*Address),
-		Labels:         pp.addresses.Labels,
-		OpaquePodPorts: pp.addresses.OpaquePodPorts,
+		Addresses: make(map[ID]*Address),
+		Labels:    pp.addresses.Labels,
 	}
 
 	for id, address := range pp.addresses.Addresses {
@@ -725,9 +720,8 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 	resolvedPort := pp.resolveESTargetPort(es.Ports)
 	if resolvedPort == undefinedEndpointPort {
 		return AddressSet{
-			Labels:         metricLabels(es),
-			Addresses:      make(map[ID]*Address),
-			OpaquePodPorts: pp.addresses.OpaquePodPorts,
+			Labels:    metricLabels(es),
+			Addresses: make(map[ID]*Address),
 		}
 	}
 
@@ -938,7 +932,7 @@ func (pp *portPublisher) updatePort(targetPort namedPort) {
 
 	if pp.enableEndpointSlices {
 		matchLabels := map[string]string{discovery.LabelServiceName: pp.id.Name}
-		selector := k8slabels.Set(matchLabels).AsSelector()
+		selector := labels.Set(matchLabels).AsSelector()
 
 		endpointSlices, err := pp.k8sAPI.ES().Lister().EndpointSlices(pp.id.Namespace).List(selector)
 		if err == nil {
@@ -1014,7 +1008,7 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
 	pp.metrics.setSubscribers(len(pp.listeners))
 }
 
-func (pp *portPublisher) updateServer(server *v1beta1.Server, selector k8slabels.Selector, isAdd bool) {
+func (pp *portPublisher) updateServer(server *v1beta1.Server, selector labels.Selector, isAdd bool) {
 	for _, addr := range pp.addresses.Addresses {
 		if addr.Pod != nil && selector.Matches(labels.Set(addr.Pod.Labels)) {
 			if server.Spec.Port.IntVal == int32(addr.Port) {
@@ -1111,9 +1105,8 @@ func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSe
 		}
 	}
 	add = AddressSet{
-		Addresses:      addAddresses,
-		Labels:         newAddresses.Labels,
-		OpaquePodPorts: newAddresses.OpaquePodPorts,
+		Addresses: addAddresses,
+		Labels:    newAddresses.Labels,
 	}
 	remove = AddressSet{
 		Addresses: removeAddresses,

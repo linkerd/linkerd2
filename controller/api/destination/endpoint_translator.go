@@ -92,9 +92,8 @@ func (et *endpointTranslator) Remove(set watcher.AddressSet) {
 
 func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
 	et.availableEndpoints = watcher.AddressSet{
-		Addresses:      et.availableEndpoints.Addresses,
-		Labels:         set.Labels,
-		OpaquePodPorts: set.OpaquePodPorts,
+		Addresses: et.availableEndpoints.Addresses,
+		Labels:    set.Labels,
 	}
 
 	filtered := et.filterAddresses()
@@ -125,9 +124,8 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 				allAvailEndpoints[k] = v
 			}
 			return watcher.AddressSet{
-				Addresses:      allAvailEndpoints,
-				Labels:         et.availableEndpoints.Labels,
-				OpaquePodPorts: et.availableEndpoints.OpaquePodPorts,
+				Addresses: allAvailEndpoints,
+				Labels:    et.availableEndpoints.Labels,
 			}
 		}
 	}
@@ -146,9 +144,8 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 	if len(filtered) > 0 {
 		et.log.Debugf("Filtered from %d to %d addresses", len(et.availableEndpoints.Addresses), len(filtered))
 		return watcher.AddressSet{
-			Addresses:      filtered,
-			Labels:         et.availableEndpoints.Labels,
-			OpaquePodPorts: et.availableEndpoints.OpaquePodPorts,
+			Addresses: filtered,
+			Labels:    et.availableEndpoints.Labels,
 		}
 	}
 
@@ -179,9 +176,8 @@ func (et *endpointTranslator) diffEndpoints(filtered watcher.AddressSet) (watche
 	}
 
 	return watcher.AddressSet{
-			Addresses:      add,
-			Labels:         filtered.Labels,
-			OpaquePodPorts: filtered.OpaquePodPorts,
+			Addresses: add,
+			Labels:    filtered.Labels,
 		},
 		watcher.AddressSet{
 			Addresses: remove,
