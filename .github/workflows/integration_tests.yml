@@ -69,10 +69,10 @@ jobs:
         - external-resources
         - helm-deep
         - helm-upgrade
+        - uninstall
         - multicluster
         - upgrade-edge
         - upgrade-stable
-        - uninstall
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-20.04
