@@ -222,7 +222,6 @@ func (et *endpointTranslator) Update(set watcher.AddressSet) {
 		if getErr != nil {
 			et.log.Errorf("failed getting opaque ports annotation for pod: %s", getErr)
 		}
-
 		// If the opaque ports annotation was not set, then set the
 		// endpoint's opaque ports to the default value.
 		if !ok {
@@ -380,6 +379,9 @@ func toWeightedAddr(address *watcher.Address, opaquePorts, skippedInboundPorts m
 				H2: &pb.ProtocolHint_H2{},
 			}
 		}
+		// If address is set as opaque by a Server, or its port is set as
+		// opaque by annotation or default value, then hint its proxy's
+		// inbound port.
 		_, opaquePort := opaquePorts[address.Port]
 		if address.OpaqueProtocol || opaquePort {
 			port, err := getInboundPort(&address.Pod.Spec)
