@@ -771,40 +771,10 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
-				servers, err := pp.k8sAPI.Srv().Lister().Servers("").List(labels.Everything())
+				err = setToServerProtocol(pp.k8sAPI, &address, resolvedPort)
 				if err != nil {
-					pp.log.Errorf("failed to list Servers: %s", err)
+					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
 					continue
-				}
-				for _, server := range servers {
-					selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
-					if err != nil {
-						pp.log.Errorf("failed to create Selector: %s", err)
-						continue
-					}
-					if server.Spec.ProxyProtocol == opaqueProtocol && selector.Matches(labels.Set(address.Pod.Labels)) {
-						var portMatch bool
-						switch server.Spec.Port.Type {
-						case intstr.Int:
-							if server.Spec.Port.IntVal == int32(resolvedPort) {
-								portMatch = true
-							}
-						case intstr.String:
-							for _, c := range address.Pod.Spec.Containers {
-								for _, p := range c.Ports {
-									if p.ContainerPort == int32(resolvedPort) && p.Name == server.Spec.Port.StrVal {
-										portMatch = true
-									}
-								}
-							}
-						default:
-							continue
-						}
-						if portMatch {
-							address.OpaqueProtocol = true
-							break
-						}
-					}
 				}
 				if endpoint.Hints != nil {
 					zones := make([]discovery.ForZone, len(endpoint.Hints.ForZones))
@@ -854,40 +824,10 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
-				servers, err := pp.k8sAPI.Srv().Lister().Servers("").List(labels.Everything())
+				err = setToServerProtocol(pp.k8sAPI, &address, resolvedPort)
 				if err != nil {
-					pp.log.Errorf("failed to list Servers: %s", err)
+					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
 					continue
-				}
-				for _, server := range servers {
-					selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
-					if err != nil {
-						pp.log.Errorf("failed to create Selector: %s", err)
-						continue
-					}
-					if server.Spec.ProxyProtocol == opaqueProtocol && selector.Matches(labels.Set(address.Pod.Labels)) {
-						var portMatch bool
-						switch server.Spec.Port.Type {
-						case intstr.Int:
-							if server.Spec.Port.IntVal == int32(resolvedPort) {
-								portMatch = true
-							}
-						case intstr.String:
-							for _, c := range address.Pod.Spec.Containers {
-								for _, p := range c.Ports {
-									if p.ContainerPort == int32(resolvedPort) && p.Name == server.Spec.Port.StrVal {
-										portMatch = true
-									}
-								}
-							}
-						default:
-							continue
-						}
-						if portMatch {
-							address.OpaqueProtocol = true
-							break
-						}
-					}
 				}
 				addresses[id] = &address
 			}
@@ -1196,4 +1136,41 @@ func isValidSlice(es *discovery.EndpointSlice) bool {
 	}
 
 	return true
+}
+
+func setToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
+	servers, err := k8sAPI.Srv().Lister().Servers("").List(labels.Everything())
+	if err != nil {
+		return fmt.Errorf("failed to list Servers: %s", err)
+	}
+	for _, server := range servers {
+		selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
+		if err != nil {
+			return fmt.Errorf("failed to create Selector: %s", err)
+		}
+		if server.Spec.ProxyProtocol == opaqueProtocol && selector.Matches(labels.Set(address.Pod.Labels)) {
+			var portMatch bool
+			switch server.Spec.Port.Type {
+			case intstr.Int:
+				if server.Spec.Port.IntVal == int32(port) {
+					portMatch = true
+				}
+			case intstr.String:
+				for _, c := range address.Pod.Spec.Containers {
+					for _, p := range c.Ports {
+						if p.ContainerPort == int32(port) && p.Name == server.Spec.Port.StrVal {
+							portMatch = true
+						}
+					}
+				}
+			default:
+				continue
+			}
+			if portMatch {
+				address.OpaqueProtocol = true
+				return nil
+			}
+		}
+	}
+	return nil
 }
