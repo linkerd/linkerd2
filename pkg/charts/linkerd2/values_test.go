@@ -135,7 +135,7 @@ func TestNewValues(t *testing.T) {
 			},
 		},
 		NodeSelector: map[string]string{
-			"beta.kubernetes.io/os": "linux",
+			"kubernetes.io/os": "linux",
 		},
 		DebugContainer: &DebugContainer{
 			Image: &Image{
