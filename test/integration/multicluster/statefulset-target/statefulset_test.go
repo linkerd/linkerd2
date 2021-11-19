@@ -89,12 +89,12 @@ func createNginxDeploy() error {
 /////////////////////
 
 // TestMulticlusterStatefulSetTargetTraffic will test that a statefulset can be
-// mirrored from a target cluster to a source cluster. The test deploys two //
+// mirrored from a target cluster to a source cluster. The test deploys two
 // workloads: a slow cooker (as a client) in the src, and an nginx statefulset in
 // (as a server) in the tgt. The slow-cooker is configured to send traffic to an
 // nginx endpoint mirror (nginx-statefulset-0). The traffic should be received
-// by the nginx pod in the tgt. To assert this, we get proxy metrics from the //
-// gateway to make sure our connections from the source cluster were routed //
+// by the nginx pod in the tgt. To assert this, we get proxy metrics from the
+// gateway to make sure our connections from the source cluster were routed
 // correctly.
 func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
 	if err := createSlowCookerDeploy(); err != nil {
