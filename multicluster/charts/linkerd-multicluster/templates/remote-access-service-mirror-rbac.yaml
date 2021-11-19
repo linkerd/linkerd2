@@ -18,6 +18,11 @@ rules:
 - apiGroups: [""]
   resources: ["services", "endpoints"]
   verbs: ["list", "get", "watch"]
+{{- if .Values.enableEndpointSlices }}
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
+  verbs: ["list", "get", "watch", "create", "delete", "update"]
+{{- end }}
 - apiGroups: [""]
   resources: ["configmaps"]
   verbs: ["get"]

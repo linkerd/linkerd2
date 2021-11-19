@@ -1474,7 +1474,7 @@ func (hc *HealthChecker) CheckProxyHealth(ctx context.Context, controlPlaneNames
 	}
 
 	// Validate the status of the pods
-	err = validateDataPlanePods(podList.Items, controlPlaneNamespace)
+	err = validateDataPlanePods(podList.Items, namespace)
 	if err != nil {
 		return err
 	}
