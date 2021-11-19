@@ -10,7 +10,7 @@ linkerdNamespace: linkerd
 # -- Default nodeSelector section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
 nodeSelector: &default_node_selector
-  beta.kubernetes.io/os: linux
+  kubernetes.io/os: linux
 
 # -- Default tolerations section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)

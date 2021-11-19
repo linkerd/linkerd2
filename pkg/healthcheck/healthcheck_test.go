@@ -2408,7 +2408,7 @@ data:
     identityResources: null
     installNamespace: true
     nodeSelector:
-      beta.kubernetes.io/os: linux
+      kubernetes.io/os: linux
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     stage: ""
@@ -2569,7 +2569,7 @@ data:
     identityResources: null
     installNamespace: true
     nodeSelector:
-      beta.kubernetes.io/os: linux
+      kubernetes.io/os: linux
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     stage: ""
@@ -3034,7 +3034,7 @@ spec:
         linkerd.io/created-by: linkerd/cli git-b4266c93
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       hostNetwork: true
       serviceAccountName: linkerd-cni
       containers:

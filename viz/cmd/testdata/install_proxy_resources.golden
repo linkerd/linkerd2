@@ -510,7 +510,7 @@ spec:
         component: metrics-api
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - args:
         - -controller-namespace=linkerd
@@ -696,7 +696,7 @@ spec:
         namespace: linkerd-viz
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - env:
         - name: GF_PATHS_DATA
@@ -983,7 +983,7 @@ spec:
         namespace: linkerd-viz
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       securityContext:
         fsGroup: 65534
       containers:
@@ -1094,7 +1094,7 @@ spec:
         namespace: linkerd-viz
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - args:
         - api
@@ -1293,7 +1293,7 @@ spec:
         component: tap-injector
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - args:
         - injector
@@ -1428,7 +1428,7 @@ spec:
         namespace: linkerd-viz
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - args:
         - -linkerd-metrics-api-addr=metrics-api.linkerd-viz.svc.cluster.local:8085

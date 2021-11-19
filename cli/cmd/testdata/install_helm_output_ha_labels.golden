@@ -1291,7 +1291,7 @@ data:
     linkerdVersion: linkerd-version
     namespace: linkerd
     nodeSelector:
-      beta.kubernetes.io/os: linux
+      kubernetes.io/os: linux
     podAnnotations:
       asda: fasda
       bingo: bongo
@@ -1547,7 +1547,7 @@ spec:
         foo: bar
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -1938,7 +1938,7 @@ spec:
         foo: bar
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -2273,7 +2273,7 @@ spec:
             bingo: bongo
         spec:
           nodeSelector:
-            beta.kubernetes.io/os: linux
+            kubernetes.io/os: linux
           serviceAccountName: linkerd-heartbeat
           restartPolicy: Never
           containers:
@@ -2344,7 +2344,7 @@ spec:
         foo: bar
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:

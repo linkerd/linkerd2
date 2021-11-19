@@ -104,7 +104,7 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       hostNetwork: true
       serviceAccountName: linkerd-cni
       priorityClassName: system-node-critical
