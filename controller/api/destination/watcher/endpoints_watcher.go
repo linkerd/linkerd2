@@ -65,12 +65,6 @@ type (
 
 	podPorts map[PodID]map[Port]struct{}
 
-	podPortID struct {
-		name      string
-		namespace string
-		port      Port
-	}
-
 	portAndHostname struct {
 		port     Port
 		hostname string
@@ -1154,28 +1148,4 @@ func isValidSlice(es *discovery.EndpointSlice) bool {
 	}
 
 	return true
-}
-
-// todo: delete
-func createListOptions(selector *metav1.LabelSelector) (metav1.ListOptions, error) {
-	labelMap, err := metav1.LabelSelectorAsMap(selector)
-	if err != nil {
-		return metav1.ListOptions{}, fmt.Errorf("failed to turn Server's podSelector into label selector map: %v", err)
-	}
-	return metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labelMap).String(),
-	}, nil
-}
-
-func getPortIntFromPod(pod corev1.Pod, serverPort intstr.IntOrString) Port {
-	if serverPort.StrVal != "" {
-		for _, c := range pod.Spec.Containers {
-			for _, cp := range c.Ports {
-				if cp.Name == serverPort.StrVal {
-					return uint32(cp.ContainerPort)
-				}
-			}
-		}
-	}
-	return uint32(serverPort.IntVal)
 }
