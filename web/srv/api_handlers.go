@@ -23,6 +23,7 @@ import (
 	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	tappkg "github.com/linkerd/linkerd2/viz/tap/pkg"
 	log "github.com/sirupsen/logrus"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
@@ -406,6 +407,8 @@ func (h *handler) handleAPIResourceDefinition(w http.ResponseWriter, req *http.R
 		resource, err = h.k8sAPI.AppsV1().DaemonSets(namespace).Get(req.Context(), resourceName, options)
 	case k8s.Deployment:
 		resource, err = h.k8sAPI.AppsV1().Deployments(namespace).Get(req.Context(), resourceName, options)
+	case k8s.Service:
+		resource, err = h.k8sAPI.CoreV1().Services(namespace).Get(req.Context(), resourceName, options)
 	case k8s.Job:
 		resource, err = h.k8sAPI.BatchV1().Jobs(namespace).Get(req.Context(), resourceName, options)
 	case k8s.Pod:
@@ -447,7 +450,7 @@ func (h *handler) handleGetExtensions(w http.ResponseWriter, req *http.Request, 
 	resp := map[string]interface{}{}
 	if extensionName != "" {
 		ns, err := h.k8sAPI.GetNamespaceWithExtensionLabel(ctx, extensionName)
-		if err != nil && strings.HasPrefix(err.Error(), "could not find") {
+		if err != nil && kerrors.IsNotFound(err) {
 			renderJSON(w, resp)
 			return
 		} else if err != nil {

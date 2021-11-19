@@ -1,35 +1,31 @@
 [package]
 name = "linkerd-policy-controller"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 license = "Apache-2.0"
 publish = false
 
 [features]
-default = ["rustls"]
+default = ["native-tls"]
 native-tls = ["kube/native-tls"]
 rustls = ["kube/rustls-tls"]
 
 [dependencies]
 anyhow = "1"
 drain = "0.1"
-futures = "0.3"
+futures = { version = "0.3", default-features = false }
 hyper = { version = "0.14", features = ["http1", "http2", "runtime", "server"] }
-kube = { version = "0.59", default-features = false, features = ["client"] }
+kube = { version = "0.64", default-features = false, features = ["admission", "client"] }
 linkerd-policy-controller-core = { path = "./core" }
 linkerd-policy-controller-grpc = { path = "./grpc" }
 linkerd-policy-controller-k8s-index = { path = "./k8s/index" }
-structopt = "0.3"
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "parking_lot", "signal", "sync"] }
+linkerd-policy-controller-k8s-api = { path = "./k8s/api" }
+serde_json = "1"
+structopt = { version = "0.3", default-features = false }
+tokio = { version = "1", features = ["macros", "parking_lot", "rt", "rt-multi-thread", "signal", "sync"] }
 tracing = "0.1"
-tracing-subscriber = { version = "0.2", default-features = false, features = ["env-filter", "fmt", "tracing-log"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt", "json", "smallvec", "tracing-log"] }
+warp = { version = "0.3", default-features = false, features = ["tls"] }
 
-[workspace]
-resolver = "2"
-members = [
-    ".",
-    "./core",
-    "./grpc",
-    "./k8s/api",
-    "./k8s/index"
-]
+[target.x86_64-unknown-linux-gnu.dependencies]
+jemallocator = "0.3"

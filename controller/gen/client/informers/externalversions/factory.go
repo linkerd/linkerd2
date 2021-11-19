@@ -25,6 +25,8 @@ import (
 
 	versioned "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	internalinterfaces "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/internalinterfaces"
+	server "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/server"
+	serverauthorization "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serverauthorization"
 	serviceprofile "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -172,7 +174,17 @@ type SharedInformerFactory interface {
 	ForResource(resource schema.GroupVersionResource) (GenericInformer, error)
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
+	Server() server.Interface
+	Serverauthorization() serverauthorization.Interface
 	Linkerd() serviceprofile.Interface
+}
+
+func (f *sharedInformerFactory) Server() server.Interface {
+	return server.New(f, f.namespace, f.tweakListOptions)
+}
+
+func (f *sharedInformerFactory) Serverauthorization() serverauthorization.Interface {
+	return serverauthorization.New(f, f.namespace, f.tweakListOptions)
 }
 
 func (f *sharedInformerFactory) Linkerd() serviceprofile.Interface {

@@ -56,16 +56,18 @@ const routesColumns = [
   },
 ];
 
-const TopRoutesTable = ({ rows }) => (
-  <BaseTable
-    enableFilter
-    tableRows={rows}
-    tableColumns={routesColumns}
-    tableClassName="metric-table"
-    defaultOrderBy="route"
-    rowKey={r => r.route + r.authority}
-    padding="dense" />
-);
+const TopRoutesTable = function TopRoutesTable({ rows }) {
+  return (
+    <BaseTable
+      enableFilter
+      tableRows={rows}
+      tableColumns={routesColumns}
+      tableClassName="metric-table"
+      defaultOrderBy="route"
+      rowKey={r => r.route + r.authority}
+      padding="dense" />
+  );
+};
 
 TopRoutesTable.propTypes = {
   rows: PropTypes.arrayOf(PropTypes.shape({})),

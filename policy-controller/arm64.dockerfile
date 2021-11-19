@@ -1,5 +1,5 @@
-ARG RUST_IMAGE=docker.io/library/rust:1.54.0-buster
-ARG RUNTIME_IMAGE=gcr.io/distroless/cc:nonroot
+ARG RUST_IMAGE=docker.io/library/rust:1.56.0
+ARG RUNTIME_IMAGE=gcr.io/distroless/cc
 
 FROM $RUST_IMAGE as build
 RUN apt-get update && \
@@ -8,10 +8,12 @@ RUN apt-get update && \
     rustup target add aarch64-unknown-linux-gnu
 ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
 WORKDIR /build
-COPY . /build
+COPY Cargo.toml Cargo.lock policy-controller/ /build/
+# XXX(ver) we can't easily cross-compile against openssl, so use rustls on arm.
 RUN --mount=type=cache,target=target \
-    --mount=type=cache,from=rust:1.54.0-buster,source=/usr/local/cargo,target=/usr/local/cargo \
-    cargo build --locked --release --target=aarch64-unknown-linux-gnu --package=linkerd-policy-controller && \
+    --mount=type=cache,from=rust:1.56.0,source=/usr/local/cargo,target=/usr/local/cargo \
+    cargo build --locked --release --target=aarch64-unknown-linux-gnu \
+        --package=linkerd-policy-controller --no-default-features --features="rustls" && \
     mv target/aarch64-unknown-linux-gnu/release/linkerd-policy-controller /tmp/
 
 FROM --platform=linux/arm64 $RUNTIME_IMAGE

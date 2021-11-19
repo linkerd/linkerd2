@@ -12,6 +12,18 @@ import (
 	klog "k8s.io/klog/v2"
 )
 
+const (
+
+	// EnvOverrideNamespace is the environment variable used in the CLI to
+	// overidde the control-plane's namespace
+	EnvOverrideNamespace = "LINKERD_NAMESPACE"
+
+	// EnvOverrideDockerRegistry is the environment variable used in the
+	// CLI to override the docker images' registry in the control-plane
+	// manifests
+	EnvOverrideDockerRegistry = "LINKERD_DOCKER_REGISTRY"
+)
+
 // ConfigureAndParse adds flags that are common to all go processes. This
 // func calls flag.Parse(), so it should be called after all other flags have
 // been configured.

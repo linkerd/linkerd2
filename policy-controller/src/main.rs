@@ -1,23 +1,43 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Error, Result};
 use futures::{future, prelude::*};
-use linkerd_policy_controller::k8s::DefaultAllow;
+use linkerd_policy_controller::k8s::DefaultPolicy;
+use linkerd_policy_controller::{admin, admission};
 use linkerd_policy_controller_core::IpNet;
 use std::net::SocketAddr;
 use structopt::StructOpt;
 use tokio::{sync::watch, time};
-use tracing::{debug, info, instrument};
+use tracing::{debug, info, info_span, instrument, Instrument};
+use tracing_subscriber::{fmt::format, prelude::*, EnvFilter};
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu"))]
+#[global_allocator]
+static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "policy", about = "A policy resource prototype")]
 struct Args {
-    #[structopt(short, long, default_value = "0.0.0.0:8080")]
+    #[structopt(
+        parse(try_from_str),
+        long,
+        default_value = "linkerd=info,warn",
+        env = "LINKERD_POLICY_CONTROLLER_LOG"
+    )]
+    log_level: EnvFilter,
+
+    #[structopt(long, default_value = "plain")]
+    log_format: LogFormat,
+
+    #[structopt(long, default_value = "0.0.0.0:8080")]
     admin_addr: SocketAddr,
 
-    #[structopt(short, long, default_value = "0.0.0.0:8090")]
+    #[structopt(long, default_value = "0.0.0.0:8090")]
     grpc_addr: SocketAddr,
+
+    #[structopt(long)]
+    admission_addr: Option<SocketAddr>,
 
     /// Network CIDRs of pod IPs.
     ///
@@ -32,20 +52,33 @@ struct Args {
     identity_domain: String,
 
     #[structopt(long, default_value = "all-unauthenticated")]
-    default_allow: DefaultAllow,
+    default_policy: DefaultPolicy,
+
+    #[structopt(long, default_value = "linkerd")]
+    control_plane_namespace: String,
+}
+
+#[derive(Clone, Debug)]
+enum LogFormat {
+    Json,
+    Plain,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
-
     let Args {
         admin_addr,
         grpc_addr,
+        admission_addr,
         identity_domain,
         cluster_networks: IpNets(cluster_networks),
-        default_allow,
+        default_policy,
+        log_level,
+        log_format,
+        control_plane_namespace,
     } = Args::from_args();
+
+    log_init(log_level, log_format)?;
 
     let (drain_tx, drain_rx) = drain::channel();
 
@@ -58,26 +91,38 @@ async fn main() -> Result<()> {
 
     // Spawn an admin server, failing readiness checks until the index is updated.
     let (ready_tx, ready_rx) = watch::channel(false);
-    tokio::spawn(linkerd_policy_controller::admin::serve(
-        admin_addr, ready_rx,
-    ));
+    tokio::spawn(admin::serve(admin_addr, ready_rx));
 
     // Index cluster resources, returning a handle that supports lookups for the gRPC server.
     let handle = {
         const DETECT_TIMEOUT: time::Duration = time::Duration::from_secs(10);
-        let (handle, index) = linkerd_policy_controller::k8s::Index::new(
-            cluster_networks.clone(),
+        let cluster = linkerd_policy_controller::k8s::ClusterInfo {
+            networks: cluster_networks.clone(),
             identity_domain,
-            default_allow,
-            DETECT_TIMEOUT,
-        );
+            control_plane_ns: control_plane_namespace,
+        };
+        let (handle, index) =
+            linkerd_policy_controller::k8s::Index::new(cluster, default_policy, DETECT_TIMEOUT);
 
-        tokio::spawn(index.run(client, ready_tx));
+        tokio::spawn(index.run(client.clone(), ready_tx));
         handle
     };
 
     // Run the gRPC server, serving results by looking up against the index handle.
-    tokio::spawn(grpc(grpc_addr, cluster_networks, handle, drain_rx));
+    tokio::spawn(grpc(grpc_addr, cluster_networks, handle, drain_rx.clone()));
+
+    // Run the admission controller
+    if let Some(bind_addr) = admission_addr {
+        let (listen_addr, serve) = warp::serve(admission::routes(client))
+            .tls()
+            .cert_path("/var/run/linkerd/tls/tls.crt")
+            .key_path("/var/run/linkerd/tls/tls.key")
+            .bind_with_graceful_shutdown(bind_addr, async move {
+                let _ = drain_rx.signaled().await;
+            });
+        info!(addr = %listen_addr, "Admission controller server listening");
+        tokio::spawn(serve.instrument(info_span!("admission")));
+    }
 
     // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
     // complete before exiting.
@@ -142,4 +187,48 @@ async fn sigterm() {
         Ok(mut term) => term.recv().await,
         _ => future::pending().await,
     };
+}
+
+fn log_init(filter: EnvFilter, format: LogFormat) -> Result<()> {
+    let registry = tracing_subscriber::registry().with(filter);
+
+    match format {
+        LogFormat::Plain => registry.with(tracing_subscriber::fmt::layer()).try_init()?,
+
+        LogFormat::Json => {
+            let event_fmt = tracing_subscriber::fmt::format()
+                // Configure the formatter to output JSON logs.
+                .json()
+                // Output the current span context as a JSON list.
+                .with_span_list(true)
+                // Don't output a field for the current span, since this
+                // would duplicate information already in the span list.
+                .with_current_span(false);
+
+            // Use the JSON event formatter and the JSON field formatter.
+            let fmt = tracing_subscriber::fmt::layer()
+                .event_format(event_fmt)
+                .fmt_fields(format::JsonFields::default());
+
+            registry.with(fmt).try_init()?
+        }
+    };
+
+    Ok(())
+}
+
+// === impl LogFormat ===
+
+impl std::str::FromStr for LogFormat {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        if s == "json" {
+            Ok(Self::Json)
+        } else if s == "plain" {
+            Ok(Self::Plain)
+        } else {
+            bail!("invalid log format: {}", s)
+        }
+    }
 }

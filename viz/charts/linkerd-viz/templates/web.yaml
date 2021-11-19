@@ -84,6 +84,7 @@ spec:
         - -controller-namespace={{.Values.linkerdNamespace}}
         - -viz-namespace={{.Release.Namespace}}
         - -log-level={{.Values.dashboard.logLevel | default .Values.defaultLogLevel}}
+        - -log-format={{.Values.dashboard.logFormat | default .Values.defaultLogFormat}}
         {{- if .Values.dashboard.enforcedHostRegexp }}
         - -enforced-host={{.Values.dashboard.enforcedHostRegexp}}
         {{- else -}}

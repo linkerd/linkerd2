@@ -58,7 +58,7 @@
         "--outbound-ports-to-ignore",
         "4567,4568"
       ],
-      "image": "cr.l5d.io/linkerd/proxy-init:v1.3.13",
+      "image": "cr.l5d.io/linkerd/proxy-init:v1.5.1",
       "imagePullPolicy": "IfNotPresent",
       "name": "linkerd-init",
       "resources": {
@@ -80,9 +80,8 @@
           ]
         },
         "privileged": false,
-        "readOnlyRootFilesystem": true,
-        "runAsNonRoot": false,
-        "runAsUser": 0
+        "runAsNonRoot": true,
+        "readOnlyRootFilesystem": true
       },
       "terminationMessagePolicy": "FallbackToLogsOnError",
       "volumeMounts": [
@@ -99,6 +98,30 @@
     "value": {
       "env": [
         {
+          "name": "_pod_name",
+          "valueFrom": {
+            "fieldRef": {
+              "fieldPath": "metadata.name"
+            }
+          }
+        },
+        {
+          "name": "_pod_ns",
+          "valueFrom": {
+            "fieldRef": {
+              "fieldPath": "metadata.namespace"
+            }
+          }
+        },
+        {
+          "name": "_pod_nodeName",
+          "valueFrom": {
+            "fieldRef": {
+              "fieldPath": "spec.nodeName"
+            }
+          }
+        },
+        {
           "name": "LINKERD2_PROXY_LOG",
           "value": "warn,linkerd=info"
         },
@@ -112,6 +135,22 @@
         },
         {
           "name": "LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS",
+          "value": "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
+        },
+        {
+          "name": "LINKERD2_PROXY_POLICY_SVC_ADDR",
+          "value": "linkerd-policy.linkerd.svc.cluster.local.:8090"
+        },
+        {
+          "name": "LINKERD2_PROXY_POLICY_WORKLOAD",
+          "value": "$(_pod_ns):$(_pod_name)"
+        },
+        {
+          "name": "LINKERD2_PROXY_INBOUND_DEFAULT_POLICY",
+          "value": "all-unauthenticated"
+        },
+        {
+          "name": "LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS",
           "value": "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         },
         {
@@ -164,23 +203,7 @@
         },
         {
           "name": "LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION",
-          "value": "25,443,587,3306,4444,5432,6379,9300,11211"
-        },
-        {
-          "name": "_pod_ns",
-          "valueFrom": {
-            "fieldRef": {
-              "fieldPath": "metadata.namespace"
-            }
-          }
-        },
-        {
-          "name": "_pod_nodeName",
-          "valueFrom": {
-            "fieldRef": {
-              "fieldPath": "spec.nodeName"
-            }
-          }
+          "value": "25,587,3306,4444,5432,6379,9300,11211"
         },
         {
           "name": "LINKERD2_PROXY_DESTINATION_CONTEXT",

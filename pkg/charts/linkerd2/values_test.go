@@ -34,7 +34,6 @@ func TestNewValues(t *testing.T) {
 		EnableH2Upgrade:              true,
 		EnablePodAntiAffinity:        false,
 		WebhookFailurePolicy:         "Ignore",
-		OmitWebhookSideEffects:       false,
 		DisableHeartBeat:             false,
 		HeartbeatSchedule:            "",
 		ClusterDomain:                "cluster.local",
@@ -97,12 +96,14 @@ func TestNewValues(t *testing.T) {
 			WaitBeforeExitSeconds:  0,
 			OutboundConnectTimeout: "1000ms",
 			InboundConnectTimeout:  "100ms",
-			OpaquePorts:            "25,443,587,3306,4444,5432,6379,9300,11211",
+			OpaquePorts:            "25,587,3306,4444,5432,6379,9300,11211",
 			Await:                  true,
 		},
 		ProxyInit: &ProxyInit{
 			IgnoreInboundPorts:  "4567,4568",
 			IgnoreOutboundPorts: "4567,4568",
+			LogLevel:            "",
+			LogFormat:           "",
 			Image: &Image{
 				Name:    "cr.l5d.io/linkerd/proxy-init",
 				Version: testVersion,
@@ -123,6 +124,7 @@ func TestNewValues(t *testing.T) {
 			},
 		},
 		Identity: &Identity{
+			ServiceAccountTokenProjection: true,
 			Issuer: &Issuer{
 				ClockSkewAllowance: "20s",
 				IssuanceLifetime:   "24h0m0s",
@@ -131,7 +133,7 @@ func TestNewValues(t *testing.T) {
 			},
 		},
 		NodeSelector: map[string]string{
-			"beta.kubernetes.io/os": "linux",
+			"kubernetes.io/os": "linux",
 		},
 		DebugContainer: &DebugContainer{
 			Image: &Image{
@@ -140,8 +142,9 @@ func TestNewValues(t *testing.T) {
 			},
 		},
 
-		ProxyInjector:    &ProxyInjector{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
-		ProfileValidator: &ProfileValidator{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
+		ProxyInjector:    &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
+		ProfileValidator: &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
+		PolicyValidator:  &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
 	}
 
 	// pin the versions to ensure consistent test result.

@@ -91,7 +91,6 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
    },
   "identity":{
     "issuer":{
-      "crtExpiry":"Jul 30 17:21:14 2020",
       "tls":{
         "keyPEM":"test-key-pem",
         "crtPEM":"test-crt-pem"
@@ -113,6 +112,11 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
     "keyPEM":"test-profile-validator-key-pem",
     "crtPEM":"test-profile-validator-crt-pem",
 	"caBundle":"test-profile-validator-ca-bundle"
+  },
+  "policyValidator":{
+    "keyPEM":"test-profile-validator-key-pem",
+    "crtPEM":"test-profile-validator-crt-pem",
+	  "caBundle":"test-profile-validator-ca-bundle"
   },
   "tap":{
     "keyPEM":"test-tap-key-pem",

@@ -35,7 +35,6 @@ func TestRender(t *testing.T) {
 		ControllerUID:           2103,
 		EnableH2Upgrade:         true,
 		WebhookFailurePolicy:    "WebhookFailurePolicy",
-		OmitWebhookSideEffects:  false,
 		HeartbeatSchedule:       "1 2 3 4 5",
 		Identity:                defaultValues.Identity,
 		NodeSelector:            defaultValues.NodeSelector,
@@ -53,6 +52,7 @@ func TestRender(t *testing.T) {
 		IdentityTrustAnchorsPEM: defaultValues.IdentityTrustAnchorsPEM,
 		PodAnnotations:          map[string]string{},
 		PodLabels:               map[string]string{},
+		PriorityClassName:       "PriorityClassName",
 		PolicyController: &charts.PolicyController{
 			Image: &charts.Image{
 				Name:       "PolicyControllerImageName",
@@ -136,6 +136,7 @@ func TestRender(t *testing.T) {
 		ControllerReplicas: 1,
 		ProxyInjector:      defaultValues.ProxyInjector,
 		ProfileValidator:   defaultValues.ProfileValidator,
+		PolicyValidator:    defaultValues.PolicyValidator,
 	}
 
 	haValues, err := testInstallOptionsHA(true)
@@ -225,6 +226,7 @@ func TestRender(t *testing.T) {
 		{withCustomDestinationGetNetsValues, "install_default_override_dst_get_nets.golden", values.Options{}},
 		{defaultValues, "install_custom_domain.golden", values.Options{}},
 		{defaultValues, "install_values_file.golden", values.Options{ValueFiles: []string{filepath.Join("testdata", "install_config.yaml")}}},
+		{defaultValues, "install_default_token.golden", values.Options{Values: []string{"identity.serviceAccountTokenProjection=false"}}},
 	}
 
 	for i, tc := range testCases {
@@ -285,7 +287,6 @@ func testInstallOptionsHA(ha bool) (*charts.Values, error) {
 		return nil, err
 	}
 	values.Identity.Issuer.TLS.CrtPEM = crt.EncodeCertificatePEM()
-	values.Identity.Issuer.CrtExpiry = crt.Certificate.NotAfter
 
 	key, err := loadKeyPEM(filepath.Join("testdata", "valid-key.pem"))
 	if err != nil {
@@ -316,6 +317,7 @@ func testInstallOptionsNoCerts(ha bool) (*charts.Values, error) {
 	values.Proxy.Image.Version = installProxyVersion
 	values.DebugContainer.Image.Version = installDebugVersion
 	values.ControllerImageVersion = installControlPlaneVersion
+	values.PolicyController.Image.Version = installControlPlaneVersion
 	values.HeartbeatSchedule = fakeHeartbeatSchedule()
 
 	return values, nil
@@ -331,6 +333,7 @@ func testInstallValues() (*charts.Values, error) {
 	values.DebugContainer.Image.Version = installDebugVersion
 	values.LinkerdVersion = installControlPlaneVersion
 	values.ControllerImageVersion = installControlPlaneVersion
+	values.PolicyController.Image.Version = installControlPlaneVersion
 	values.HeartbeatSchedule = fakeHeartbeatSchedule()
 
 	identityCert, err := ioutil.ReadFile(filepath.Join("testdata", "valid-crt.pem"))
@@ -552,4 +555,7 @@ func addFakeTLSSecrets(values *charts.Values) {
 	values.ProfileValidator.CrtPEM = "profile validator crt"
 	values.ProfileValidator.KeyPEM = "profile validator key"
 	values.ProfileValidator.CaBundle = "profile validator CA bundle"
+	values.PolicyValidator.CrtPEM = "policy validator crt"
+	values.PolicyValidator.KeyPEM = "policy validator key"
+	values.PolicyValidator.CaBundle = "policy validator CA bundle"
 }

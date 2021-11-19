@@ -11,7 +11,7 @@ for your microservices — with no code change required.
 
 ## Quickstart and documentation
 
-You can run Linkerd on any Kubernetes 1.16+ cluster in a matter of seconds. See
+You can run Linkerd on any Kubernetes 1.20+ cluster in a matter of seconds. See
 the [Linkerd Getting Started Guide][getting-started] for how.
 
 For more comprehensive documentation, start with the [Linkerd
@@ -42,8 +42,7 @@ release, just replace with `linkerd-edge`.
 
 ## Installing the chart
 
-You must provide the certificates and keys described in the preceding section,
-and the same expiration date you used to generate the Issuer certificate.
+You must provide the certificates and keys described in the preceding section.
 
 In this example we set the expiration date to one year ahead:
 
@@ -52,7 +51,6 @@ helm install \
   --set-file identityTrustAnchorsPEM=ca.crt \
   --set-file identity.issuer.tls.crtPEM=issuer.crt \
   --set-file identity.issuer.tls.keyPEM=issuer.key \
-  --set identity.issuer.crtExpiry=$(date -d '+8760 hour' +"%Y-%m-%dT%H:%M:%SZ") \
   linkerd/linkerd2
 ```
 
@@ -77,7 +75,6 @@ helm install \
   --set-file identityTrustAnchorsPEM=ca.crt \
   --set-file identity.issuer.tls.crtPEM=issuer.crt \
   --set-file identity.issuer.tls.keyPEM=issuer.key \
-  --set identity.issuer.crtExpiry=$(date -d '+8760 hour' +"%Y-%m-%dT%H:%M:%SZ") \
   -f linkerd2/values-ha.yaml
   linkerd/linkerd2
 ```
@@ -116,7 +113,7 @@ extensions:
 
 ## Requirements
 
-Kubernetes: `>=1.16.0-0`
+Kubernetes: `>=1.20.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|

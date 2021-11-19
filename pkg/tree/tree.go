@@ -149,7 +149,7 @@ func (t Tree) Empty() bool {
 }
 
 // MarshalToTree marshals obj to yaml and then parses the resulting yaml as
-// as Tree.
+// a Tree.
 func MarshalToTree(obj interface{}) (Tree, error) {
 	bytes, err := yaml.Marshal(obj)
 	if err != nil {

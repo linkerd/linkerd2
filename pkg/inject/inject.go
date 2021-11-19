@@ -57,6 +57,8 @@ var (
 		k8s.ProxyLogLevelAnnotation,
 		k8s.ProxyMemoryLimitAnnotation,
 		k8s.ProxyMemoryRequestAnnotation,
+		k8s.ProxyEphemeralStorageLimitAnnotation,
+		k8s.ProxyEphemeralStorageRequestAnnotation,
 		k8s.ProxyUIDAnnotation,
 		k8s.ProxyVersionOverrideAnnotation,
 		k8s.ProxyRequireIdentityOnInboundPortsAnnotation,
@@ -66,6 +68,7 @@ var (
 		k8s.ProxyOutboundConnectTimeout,
 		k8s.ProxyInboundConnectTimeout,
 		k8s.ProxyAwait,
+		k8s.ProxyDefaultInboundPolicyAnnotation,
 	}
 	// ProxyAlphaConfigAnnotations is the list of all alpha configuration
 	// (config.alpha prefix) that can be applied to a pod or namespace.
@@ -247,6 +250,11 @@ func (conf *ResourceConfig) ParseMetaAndYAML(bytes []byte) (*Report, error) {
 	return newReport(conf), nil
 }
 
+// GetValues returns the values used for rendering patches.
+func (conf *ResourceConfig) GetValues() *linkerd2.Values {
+	return conf.values
+}
+
 // GetOverriddenValues returns the final Values struct which is created
 // by overriding annotated configuration on top of default Values
 func (conf *ResourceConfig) GetOverriddenValues() (*linkerd2.Values, error) {
@@ -357,6 +365,89 @@ func (conf *ResourceConfig) GetConfigAnnotation(annotationKey string) (string, b
 		return annotation, true
 	}
 	return "", false
+}
+
+// CreateOpaquePortsPatch creates a patch that will add the default
+// list of opaque ports.
+func (conf *ResourceConfig) CreateOpaquePortsPatch() ([]byte, error) {
+	if conf.HasWorkloadAnnotation(k8s.ProxyOpaquePortsAnnotation) {
+		// The workload already has the opaque ports annotation so a patch
+		// does not need to be created.
+		return nil, nil
+	}
+	opaquePorts, ok := conf.GetConfigAnnotation(k8s.ProxyOpaquePortsAnnotation)
+	if ok {
+		// The workload's namespace has the opaque ports annotation, so it
+		// should inherit that value. A patch is created which adds that
+		// list.
+		return conf.CreateAnnotationPatch(opaquePorts)
+	}
+
+	// Both the workload and the namespace do not have the annotation so a
+	// patch is created which adds the default list.
+	defaultPorts := strings.Split(conf.GetValues().Proxy.OpaquePorts, ",")
+	var filteredPorts []string
+	if conf.IsPod() {
+		// The workload is a pod so only add the default opaque ports that it
+		// exposes as container ports.
+		filteredPorts = conf.FilterPodOpaquePorts(defaultPorts)
+	} else if conf.IsService() {
+		// The workload is a service so only add the default opaque ports that
+		// are exposed as a service port, or targeted as a targetPort.
+		service := conf.workload.obj.(*corev1.Service)
+		for _, p := range service.Spec.Ports {
+			port := strconv.Itoa(int(p.Port))
+			if p.TargetPort.Type == 0 && p.TargetPort.IntVal == 0 {
+				// The port's targetPort is not set, so add the port if is
+				// opaque by default. Checking that targetPort is not set
+				// avoids marking a port as opaque if it targets a port that
+				// not opaque (e.g. port=3306 and targetPort=80; 3306 should
+				// not be opaque)
+				if util.ContainsString(port, defaultPorts) {
+					filteredPorts = append(filteredPorts, port)
+				}
+			} else if util.ContainsString(strconv.Itoa(int(p.TargetPort.IntVal)), defaultPorts) {
+				// The port's targetPort is set; if it is opaque then port
+				// should also be opaque.
+				filteredPorts = append(filteredPorts, port)
+			}
+		}
+	}
+	if len(filteredPorts) == 0 {
+		// There are no default opaque ports to add so a patch does not need
+		// to be created.
+		return nil, nil
+	}
+	ports := strings.Join(filteredPorts, ",")
+	return conf.CreateAnnotationPatch(ports)
+}
+
+// FilterPodOpaquePorts returns a list of opaque ports that a pod exposes that
+// are also in the given default opaque ports list.
+func (conf *ResourceConfig) FilterPodOpaquePorts(defaultPorts []string) []string {
+	var filteredPorts []string
+	for _, c := range conf.pod.spec.Containers {
+		for _, p := range c.Ports {
+			port := strconv.Itoa(int(p.ContainerPort))
+			if util.ContainsString(port, defaultPorts) {
+				filteredPorts = append(filteredPorts, port)
+			}
+		}
+	}
+	return filteredPorts
+}
+
+// HasWorkloadAnnotation returns true if the workload has the annotation set
+// by the resource config or its metadata.
+func (conf *ResourceConfig) HasWorkloadAnnotation(annotation string) bool {
+	if _, ok := conf.pod.meta.Annotations[annotation]; ok {
+		return true
+	}
+	if _, ok := conf.workload.Meta.Annotations[annotation]; ok {
+		return true
+	}
+	_, ok := conf.pod.annotations[annotation]
+	return ok
 }
 
 // CreateAnnotationPatch returns a json patch which adds the opaque ports
@@ -885,6 +976,15 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		}
 	}
 
+	if override, ok := annotations[k8s.ProxyEphemeralStorageRequestAnnotation]; ok {
+		_, err := k8sResource.ParseQuantity(override)
+		if err != nil {
+			log.Warnf("%s (%s)", err, k8s.ProxyEphemeralStorageRequestAnnotation)
+		} else {
+			values.Proxy.Resources.EphemeralStorage.Request = override
+		}
+	}
+
 	if override, ok := annotations[k8s.ProxyCPULimitAnnotation]; ok {
 		q, err := k8sResource.ParseQuantity(override)
 		if err != nil {
@@ -906,6 +1006,15 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 			log.Warnf("%s (%s)", err, k8s.ProxyMemoryLimitAnnotation)
 		} else {
 			values.Proxy.Resources.Memory.Limit = override
+		}
+	}
+
+	if override, ok := annotations[k8s.ProxyEphemeralStorageLimitAnnotation]; ok {
+		_, err := k8sResource.ParseQuantity(override)
+		if err != nil {
+			log.Warnf("%s (%s)", err, k8s.ProxyEphemeralStorageLimitAnnotation)
+		} else {
+			values.Proxy.Resources.EphemeralStorage.Limit = override
 		}
 	}
 
@@ -961,6 +1070,14 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 			values.Proxy.Await = override == k8s.Enabled
 		} else {
 			log.Warnf("unrecognized value used for the %s annotation, valid values are: [%s, %s]", k8s.ProxyAwait, k8s.Enabled, k8s.Disabled)
+		}
+	}
+
+	if override, ok := annotations[k8s.ProxyDefaultInboundPolicyAnnotation]; ok {
+		if override != k8s.AllUnauthenticated && override != k8s.AllAuthenticated && override != k8s.ClusterUnauthenticated && override != k8s.ClusterAuthenticated && override != k8s.Deny {
+			log.Warnf("unrecognized value used for the %s annotation, valid values are: [%s, %s, %s, %s, %s]", k8s.ProxyDefaultInboundPolicyAnnotation, k8s.AllUnauthenticated, k8s.AllAuthenticated, k8s.ClusterUnauthenticated, k8s.ClusterAuthenticated, k8s.Deny)
+		} else {
+			values.Proxy.DefaultInboundPolicy = override
 		}
 	}
 }

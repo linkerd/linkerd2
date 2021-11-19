@@ -14,11 +14,10 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 # shellcheck source=_tag.sh
 . "$bindir"/_tag.sh
 
-if [ -n "$DOCKER_MULTIARCH" ]; then
-    echo "DOCKER_MULTIARCH may not be set with $0" >&2
+if [ "$DOCKER_TARGET" = 'multi-arch' ]; then
+    echo "DOCKER_TARGET may not be set to 'multi-arch' with $0" >&2
     exit 1
 fi
 
-tag=$(head_root_tag)
-ROOTDIR=$( cd "$bindir"/../policy-controller && pwd )
-docker_build policy-controller "$tag" "$ROOTDIR/amd64.dockerfile"
+dir=$( cd "$bindir"/../policy-controller && pwd )
+docker_build policy-controller "${TAG:-$(head_root_tag)}" "$dir/amd64.dockerfile"

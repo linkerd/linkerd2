@@ -71,7 +71,7 @@ func NewProfileWatcher(k8sAPI *k8s.API, log *logging.Entry) *ProfileWatcher {
 // The provided listener will be updated each time the service profile for the
 // given authority is changed.
 func (pw *ProfileWatcher) Subscribe(id ProfileID, listener ProfileUpdateListener) error {
-	pw.log.Infof("Establishing watch on profile %s", id)
+	pw.log.Debugf("Establishing watch on profile %s", id)
 
 	publisher := pw.getOrNewProfilePublisher(id, nil)
 
@@ -81,7 +81,7 @@ func (pw *ProfileWatcher) Subscribe(id ProfileID, listener ProfileUpdateListener
 
 // Unsubscribe removes a listener from the subscribers list for this authority.
 func (pw *ProfileWatcher) Unsubscribe(id ProfileID, listener ProfileUpdateListener) error {
-	pw.log.Infof("Stopping watch on profile %s", id)
+	pw.log.Debugf("Stopping watch on profile %s", id)
 
 	publisher, ok := pw.getProfilePublisher(id)
 	if !ok {

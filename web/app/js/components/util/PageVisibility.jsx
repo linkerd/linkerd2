@@ -19,7 +19,7 @@ export function handlePageVisibility(params) {
 }
 
 export const withPageVisibility = WrappedComponent => {
-  const Component = props => {
+  const Component = function(props) {
     const isVisible = usePageVisibility();
     return <WrappedComponent {...props} isPageVisible={isVisible} />;
   };

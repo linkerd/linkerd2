@@ -12,28 +12,26 @@ class NamespaceConfirmationModal extends React.Component {
     const { open, selectedNamespace, newNamespace, handleConfirmNamespaceChange, handleDialogCancel } = this.props;
 
     return (
-      <React.Fragment>
-        <Dialog
-          open={open}
-          onClose={this.handleClose}>
-          <DialogTitle>
-            Change namespace?
-          </DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              The resource you are viewing is in a different namespace than the namespace you have selected. Do you want to change the namespace from { selectedNamespace } to { newNamespace }?
-            </DialogContentText>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleConfirmNamespaceChange} color="primary">
-              Yes
-            </Button>
-            <Button onClick={handleDialogCancel} variant="text">
-              No
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </React.Fragment>
+      <Dialog
+        open={open}
+        onClose={this.handleClose}>
+        <DialogTitle>
+          Change namespace?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            The resource you are viewing is in a different namespace than the namespace you have selected. Do you want to change the namespace from { selectedNamespace } to { newNamespace }?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleConfirmNamespaceChange} color="primary">
+            Yes
+          </Button>
+          <Button onClick={handleDialogCancel} variant="text">
+            No
+          </Button>
+        </DialogActions>
+      </Dialog>
     );
   }
 }

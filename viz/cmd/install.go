@@ -30,12 +30,18 @@ var (
 		"templates/tap-rbac.yaml",
 		"templates/web-rbac.yaml",
 		"templates/psp.yaml",
+		"templates/admin-policy.yaml",
+		"templates/proxy-admin-policy.yaml",
 		"templates/metrics-api.yaml",
+		"templates/metrics-api-policy.yaml",
 		"templates/grafana.yaml",
+		"templates/grafana-policy.yaml",
 		"templates/prometheus.yaml",
 		"templates/tap.yaml",
+		"templates/tap-policy.yaml",
 		"templates/tap-injector-rbac.yaml",
 		"templates/tap-injector.yaml",
+		"templates/tap-injector-policy.yaml",
 		"templates/web.yaml",
 		"templates/service-profiles.yaml",
 	}
@@ -93,10 +99,12 @@ func install(w io.Writer, options values.Options, ha bool) error {
 		return err
 	}
 
-	// if using -L to specify a non-standard CP namespace, make sure
-	// the linkerdNamespace Helm value is synced
+	// sync values overrides with Helm values
 	if controlPlaneNamespace != defaultLinkerdNamespace {
 		valuesOverrides["linkerdNamespace"] = controlPlaneNamespace
+	}
+	if reg := os.Getenv(flags.EnvOverrideDockerRegistry); reg != "" {
+		valuesOverrides["defaultRegistry"] = reg
 	}
 
 	if ha {

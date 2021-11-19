@@ -19,7 +19,7 @@ const styles = theme => ({
   },
 });
 
-const TapEnabledWarning = ({ resource, cardComponent, namespace, classes }) => {
+const TapEnabledWarning = function({ resource, cardComponent, namespace, classes }) {
   const component = (
     <Grid className={classes.container} container spacing={1} alignItems="center">
       <Grid item><Warning className={classes.iconWarning} /></Grid>

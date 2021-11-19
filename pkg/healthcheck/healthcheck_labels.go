@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -75,7 +76,7 @@ func getMisconfiguredLabels(objectMeta metav1.ObjectMeta) []string {
 
 	for label := range objectMeta.Labels {
 		if hasAnyPrefix(label, validAsAnnotationPrefixOnly) ||
-			containsString(label, validAsAnnotationOnly) {
+			util.ContainsString(label, validAsAnnotationOnly) {
 			invalid = append(invalid, label)
 		}
 	}
@@ -87,7 +88,7 @@ func getMisconfiguredAnnotations(objectMeta metav1.ObjectMeta) []string {
 	var invalid []string
 
 	for ann := range objectMeta.Annotations {
-		if containsString(ann, validAsLabelOnly) {
+		if util.ContainsString(ann, validAsLabelOnly) {
 			invalid = append(invalid, ann)
 		}
 	}
@@ -98,15 +99,6 @@ func getMisconfiguredAnnotations(objectMeta metav1.ObjectMeta) []string {
 func hasAnyPrefix(str string, prefixes []string) bool {
 	for _, pref := range prefixes {
 		if strings.HasPrefix(str, pref) {
-			return true
-		}
-	}
-	return false
-}
-
-func containsString(str string, collection []string) bool {
-	for _, e := range collection {
-		if str == e {
 			return true
 		}
 	}

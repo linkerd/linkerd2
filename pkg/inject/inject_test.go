@@ -53,8 +53,10 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxyIgnoreOutboundPortsAnnotation:           "8079,8080",
 							k8s.ProxyCPURequestAnnotation:                    "0.15",
 							k8s.ProxyMemoryRequestAnnotation:                 "120",
+							k8s.ProxyEphemeralStorageRequestAnnotation:       "10",
 							k8s.ProxyCPULimitAnnotation:                      "1.5",
 							k8s.ProxyMemoryLimitAnnotation:                   "256",
+							k8s.ProxyEphemeralStorageLimitAnnotation:         "50",
 							k8s.ProxyUIDAnnotation:                           "8500",
 							k8s.ProxyLogLevelAnnotation:                      "debug,linkerd=debug",
 							k8s.ProxyLogFormatAnnotation:                     "json",
@@ -95,6 +97,10 @@ func TestGetOverriddenValues(t *testing.T) {
 					Memory: l5dcharts.Constraints{
 						Limit:   "256",
 						Request: "120",
+					},
+					EphemeralStorage: l5dcharts.Constraints{
+						Limit:   "50",
+						Request: "10",
 					},
 				}
 				values.Proxy.UID = 8500

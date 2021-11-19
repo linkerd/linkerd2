@@ -27,13 +27,15 @@ const withREST = (WrappedComponent, componentPromises, options = {}) => {
       this.state = this.getInitialState(this.props);
     }
 
-    getInitialState = () => ({
-      pollingInterval: 2000, // TODO: poll based on metricsWindow size
-      data: [],
-      pendingRequests: false,
-      loading: true,
-      error: null,
-    });
+    getInitialState() {
+      return {
+        pollingInterval: 2000, // TODO: poll based on metricsWindow size
+        data: [],
+        pendingRequests: false,
+        loading: true,
+        error: null,
+      };
+    }
 
     componentDidMount() {
       this.startServerPolling(this.props);
@@ -72,11 +74,9 @@ const withREST = (WrappedComponent, componentPromises, options = {}) => {
       const { pollingInterval } = this.state;
       this.loadFromServer(props);
       if (localOptions.poll) {
-        this.timerId = window.setInterval(
-          this.loadFromServer, pollingInterval, props,
-        );
+        this.timerId = window.setInterval(this.loadFromServer, pollingInterval, props);
       }
-    }
+    };
 
     stopServerPolling = () => {
       this.api.cancelCurrentRequests();
@@ -84,7 +84,7 @@ const withREST = (WrappedComponent, componentPromises, options = {}) => {
       if (localOptions.poll) {
         window.clearInterval(this.timerId);
       }
-    }
+    };
 
     loadFromServer = props => {
       const { pendingRequests } = this.state;
@@ -107,7 +107,7 @@ const withREST = (WrappedComponent, componentPromises, options = {}) => {
           });
         })
         .catch(this.handleApiError);
-    }
+    };
 
     handleApiError = e => {
       if (e.isCanceled) { return; }
@@ -116,7 +116,7 @@ const withREST = (WrappedComponent, componentPromises, options = {}) => {
         pendingRequests: false,
         error: e,
       });
-    }
+    };
 
     render() {
       const { data, error, loading } = this.state;

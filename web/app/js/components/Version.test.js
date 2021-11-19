@@ -1,5 +1,6 @@
 import React from 'react';
 import Version from './Version.jsx';
+import { expect } from 'chai';
 import { mount } from 'enzyme';
 import { i18nWrap } from '../../test/testHelpers.jsx';
 
@@ -16,7 +17,7 @@ describe('Version', () => {
         releaseVersion={curVer} />)
     );
 
-    expect(component).toIncludeText("Linkerd is up to date");
+    expect(component.html()).to.include("Linkerd is up to date");
   });
 
   it('renders update message when versions do not match', () => {
@@ -28,7 +29,7 @@ describe('Version', () => {
         releaseVersion={curVer} />)
     );
 
-    expect(component).toIncludeText("A new version (2.3.4) is available.");
+    expect(component.html()).to.include("A new version (2.3.4) is available.");
   });
 
   it('renders error when version check fails', () => {
@@ -44,7 +45,7 @@ describe('Version', () => {
         releaseVersion={curVer} />)
     );
 
-    expect(component).toIncludeText("Version check failed: Fake error.");
-    expect(component).toIncludeText(errMsg);
+    expect(component.html()).to.include("Version check failed: Fake error.");
+    expect(component.html()).to.include(errMsg);
   });
 });

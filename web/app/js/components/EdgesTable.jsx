@@ -95,7 +95,7 @@ const generateEdgesTableTitle = edges => {
   return title;
 };
 
-const EdgesTable = ({ edges, api, namespace, type, classes }) => {
+const EdgesTable = function({ edges, api, namespace, type, classes }) {
   const edgesColumns = edgesColumnDefinitions(api.PrefixedLink, namespace, type, classes);
   const edgesTableTitle = generateEdgesTableTitle(edges);
 

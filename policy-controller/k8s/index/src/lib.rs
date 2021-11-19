@@ -3,8 +3,6 @@
 //! The policy controller serves discovery requests from inbound proxies, indicating how the proxy
 //! should admit connections into a Pod. It watches the following cluster resources:
 //!
-//! - A `Node`'s `podCIDRs` field can be used to determine the IP of the node's Kubelet instance.
-//!   Traffic is always permitted to a pod from its Kubelet's IP.
 //! - A `Namespace` may be annotated with a default-allow policy that applies to all pods in the
 //!   namespace (unless they are annotated with a default policy).
 //! - Each `Pod` enumerate its ports. We maintain an index of each pod's ports, linked to `Server`
@@ -14,9 +12,8 @@
 //!   `ServerAuthorization` is updated, we find all of the `Server` instances it selects and update
 //!   their authorizations and publishes these updates on the server's broadcast channel.
 //!
-//! ```ignore
-//! [Node] <- [ Pod ]
-//!           |-> [ Port ] <- [ Server ] <- [ ServerAuthorization ]
+//! ```text
+//! [ Pod ] -> [ Port ] <- [ Server ] <- [ ServerAuthorization ]
 //! ```
 //!
 //! Lookups against this index are are initiated for a single pod & port. The pod-port's state is
@@ -31,28 +28,25 @@
 #![forbid(unsafe_code)]
 
 mod authz;
-mod default_allow;
+mod defaults;
 mod lookup;
 mod namespace;
-mod node;
 mod pod;
 mod server;
 #[cfg(test)]
 mod tests;
 
-pub use self::{default_allow::DefaultAllow, lookup::Reader};
+pub use self::{defaults::DefaultPolicy, lookup::Reader};
 use self::{
-    default_allow::DefaultAllowRxs,
+    defaults::DefaultPolicyWatches,
     namespace::{Namespace, NamespaceIndex},
-    node::NodeIndex,
     server::SrvIndex,
 };
-use anyhow::{Context, Error};
+use anyhow::Context;
 use linkerd_policy_controller_core::{InboundServer, IpNet};
-use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
-use std::{future::Future, pin::Pin};
+use linkerd_policy_controller_k8s_api::{self as k8s};
 use tokio::{sync::watch, time};
-use tracing::{debug, instrument, warn};
+use tracing::{debug, warn};
 
 /// Watches a server's configuration for server/authorization changes.
 type ServerRx = watch::Receiver<InboundServer>;
@@ -66,35 +60,36 @@ type PodServerRx = watch::Receiver<ServerRx>;
 /// Publishes a pod's port for a new `ServerRx`.
 type PodServerTx = watch::Sender<ServerRx>;
 
+/// Holds cluster metadata.
+#[derive(Clone, Debug)]
+pub struct ClusterInfo {
+    /// Networks including PodIPs in this cluster.
+    ///
+    /// Unfortunately, there's no way to discover this at runtime.
+    pub networks: Vec<IpNet>,
+
+    /// The namespace where the linkerd control plane is deployed
+    pub control_plane_ns: String,
+
+    /// The cluster's mesh identity trust domain.
+    pub identity_domain: String,
+}
+
 /// Holds all indexing state. Owned and updated by a single task that processes watch events,
 /// publishing results to the shared lookup map for quick lookups in the API server.
 pub struct Index {
     /// Holds per-namespace pod/server/authorization indexes.
     namespaces: NamespaceIndex,
 
-    /// Cached Node IPs.
-    nodes: NodeIndex,
-
-    /// The cluster's mesh identity trust domain.
-    identity_domain: String,
-
-    /// Networks including PodIPs in this cluster.
-    ///
-    /// TODO this can be discovered dynamically by the node index, but this would complicate
-    /// notifications.
-    cluster_networks: Vec<IpNet>,
+    cluster_info: ClusterInfo,
 
     /// Holds watches for the cluster's default-allow policies. These watches are never updated but
     /// this state is held so we can used shared references when updating a pod-port's server watch
     /// with a default policy.
-    default_allows: DefaultAllowRxs,
+    default_policy_watches: DefaultPolicyWatches,
 
     /// A handle that supports updates to the lookup index.
     lookups: lookup::Writer,
-
-    /// Holds the `DefaultAllowRxs` senders so that the receivers never signal an ending. This doesn't
-    /// actually need to be polled.
-    _default_allows_txs: Pin<Box<dyn Future<Output = ()> + Send + 'static>>,
 }
 
 #[derive(Debug)]
@@ -104,28 +99,24 @@ struct Errors(Vec<anyhow::Error>);
 
 impl Index {
     pub fn new(
-        cluster_networks: Vec<IpNet>,
-        identity_domain: String,
-        default_allow: DefaultAllow,
+        cluster_info: ClusterInfo,
+        default_policy: DefaultPolicy,
         detect_timeout: time::Duration,
     ) -> (lookup::Reader, Self) {
         // Create a common set of receivers for all supported default policies.
-        let (default_allows, _default_allows_txs) =
-            DefaultAllowRxs::new(cluster_networks.clone(), detect_timeout);
+        let default_policy_watches =
+            DefaultPolicyWatches::new(cluster_info.networks.clone(), detect_timeout);
 
         // Provide the cluster-wide default-allow policy to the namespace index so that it may be
         // used when a workload-level annotation is not set.
-        let namespaces = NamespaceIndex::new(default_allow);
+        let namespaces = NamespaceIndex::new(default_policy);
 
         let (writer, reader) = lookup::pair();
         let idx = Self {
             lookups: writer,
             namespaces,
-            identity_domain,
-            cluster_networks,
-            default_allows,
-            nodes: NodeIndex::default(),
-            _default_allows_txs: Box::pin(_default_allows_txs),
+            cluster_info,
+            default_policy_watches,
         };
         (reader, idx)
     }
@@ -137,29 +128,20 @@ impl Index {
     ///
     /// All updates are atomically published to the shared `lookups` map after indexing occurs; but
     /// the indexing task is solely responsible for mutating it.
-    #[instrument(skip(self, resources, ready_tx), fields(result))]
     pub async fn run(
         mut self,
         resources: impl Into<k8s::ResourceWatches>,
         ready_tx: watch::Sender<bool>,
-    ) -> Error {
+    ) {
         let k8s::ResourceWatches {
-            mut nodes_rx,
             mut pods_rx,
             mut servers_rx,
             mut authorizations_rx,
         } = resources.into();
 
-        let mut ready = false;
+        let mut initialized = false;
         loop {
             let res = tokio::select! {
-                // Track the kubelet IPs for all nodes.
-                up = nodes_rx.recv() => match up {
-                    k8s::Event::Applied(node) => self.apply_node(node).context("applying a node"),
-                    k8s::Event::Deleted(node) => self.delete_node(&node.name()).context("deleting a node"),
-                    k8s::Event::Restarted(nodes) => self.reset_nodes(nodes).context("resetting nodes"),
-                },
-
                 // Track pods against the appropriate server.
                 up = pods_rx.recv() => match up {
                     k8s::Event::Applied(pod) => self.apply_pod(pod).context("applying a pod"),
@@ -192,15 +174,15 @@ impl Index {
                 warn!(?error);
             }
 
-            // Notify the readiness watch if readiness changes.
-            let ready_now = nodes_rx.ready()
-                && pods_rx.ready()
-                && servers_rx.ready()
-                && authorizations_rx.ready();
-            if ready != ready_now {
-                let _ = ready_tx.send(ready_now);
-                ready = ready_now;
-                debug!(%ready);
+            // Notify the readiness watch once all watches have updated.
+            if !initialized
+                && pods_rx.is_initialized()
+                && servers_rx.is_initialized()
+                && authorizations_rx.is_initialized()
+            {
+                let _ = ready_tx.send(true);
+                initialized = true;
+                debug!("Ready");
             }
         }
     }

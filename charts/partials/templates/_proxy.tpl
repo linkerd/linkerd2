@@ -1,5 +1,18 @@
 {{ define "partials.proxy" -}}
+{{- $trustDomain := (.Values.identityTrustDomain | default .Values.clusterDomain) -}}
 env:
+- name: _pod_name
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.name
+- name: _pod_ns
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.namespace
+- name: _pod_nodeName
+  valueFrom:
+    fieldRef:
+      fieldPath: spec.nodeName
 {{- if .Values.proxy.cores }}
 - name: LINKERD2_PROXY_CORES
   value: {{.Values.proxy.cores | quote}}
@@ -8,6 +21,10 @@ env:
 - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_IDENTITY
   value: {{.Values.proxy.requireIdentityOnInboundPorts | quote}}
 {{ end -}}
+{{ if .Values.proxy.requireTLSOnInboundPorts -}}
+- name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_TLS
+  value: {{.Values.proxy.requireTLSOnInboundPorts | quote}}
+{{ end -}}
 - name: LINKERD2_PROXY_LOG
   value: {{.Values.proxy.logLevel | quote}}
 - name: LINKERD2_PROXY_LOG_FORMAT
@@ -15,6 +32,14 @@ env:
 - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
   value: {{ternary "localhost.:8086" (printf "linkerd-dst-headless.%s.svc.%s.:8086" .Release.Namespace .Values.clusterDomain) (eq (toString .Values.proxy.component) "linkerd-destination")}}
 - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
+  value: {{.Values.clusterNetworks | quote}}
+- name: LINKERD2_PROXY_POLICY_SVC_ADDR
+  value: {{ternary "localhost.:8090" (printf "linkerd-policy.%s.svc.%s.:8090" .Release.Namespace .Values.clusterDomain) (eq (toString .Values.proxy.component) "linkerd-destination")}}
+- name: LINKERD2_PROXY_POLICY_WORKLOAD
+  value: "$(_pod_ns):$(_pod_name)"
+- name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
+  value: {{.Values.proxy.defaultInboundPolicy | default .Values.policyController.defaultAllowPolicy}}
+- name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
   value: {{.Values.clusterNetworks | quote}}
 {{ if .Values.proxy.inboundConnectTimeout -}}
 - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -59,14 +84,6 @@ env:
 - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
   value: {{.Values.proxy.opaquePorts | quote}}
 {{ end -}}
-- name: _pod_ns
-  valueFrom:
-    fieldRef:
-      fieldPath: metadata.namespace
-- name: _pod_nodeName
-  valueFrom:
-    fieldRef:
-      fieldPath: spec.nodeName
 - name: LINKERD2_PROXY_DESTINATION_CONTEXT
   value: |
     {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
@@ -74,6 +91,14 @@ env:
 - name: LINKERD2_PROXY_IDENTITY_DISABLED
   value: disabled
 {{ else -}}
+- name: _pod_sa
+  valueFrom:
+    fieldRef:
+      fieldPath: spec.serviceAccountName
+- name: _l5d_ns
+  value: {{.Release.Namespace}}
+- name: _l5d_trustdomain
+  value: {{$trustDomain}}
 - name: LINKERD2_PROXY_IDENTITY_DIR
   value: /var/run/linkerd/identity/end-entity
 - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -92,23 +117,21 @@ be used in other contexts.
     {{- required "Please provide the identity trust anchors" .Values.identityTrustAnchorsPEM | trim | nindent 4 }}
 {{ end -}}
 - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
+{{- if .Values.identity.serviceAccountTokenProjection }}
+  value: /var/run/secrets/tokens/linkerd-identity-token
+{{ else }}
   value: /var/run/secrets/kubernetes.io/serviceaccount/token
+{{ end -}}
 - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
   value: {{ternary "localhost.:8080" (printf "linkerd-identity-headless.%s.svc.%s.:8080" .Release.Namespace .Values.clusterDomain) (eq (toString .Values.proxy.component) "linkerd-identity")}}
-- name: _pod_sa
-  valueFrom:
-    fieldRef:
-      fieldPath: spec.serviceAccountName
-- name: _l5d_ns
-  value: {{.Release.Namespace}}
-- name: _l5d_trustdomain
-  value: {{.Values.identityTrustDomain | default .Values.clusterDomain}}
 - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
-  value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+  value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.{{.Release.Namespace}}.{{$trustDomain}}
 - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
-  value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+  value: linkerd-identity.{{.Release.Namespace}}.serviceaccount.identity.{{.Release.Namespace}}.{{$trustDomain}}
 - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
-  value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+  value: linkerd-destination.{{.Release.Namespace}}.serviceaccount.identity.{{.Release.Namespace}}.{{$trustDomain}}
+- name: LINKERD2_PROXY_POLICY_SVC_NAME
+  value: linkerd-destination.{{.Release.Namespace}}.serviceaccount.identity.{{.Release.Namespace}}.{{$trustDomain}}
 {{ end -}}
 image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version | default .Values.linkerdVersion}}
 imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPolicy}}
@@ -151,9 +174,8 @@ lifecycle:
   preStop:
     exec:
       command:
-        - /bin/bash
-        - -c
-        - sleep {{.Values.proxy.waitBeforeExitSeconds}}
+        - /bin/sleep
+        - {{.Values.proxy.waitBeforeExitSeconds | quote}}
 {{- end }}
 {{- end }}
 {{- if or (not .Values.proxy.disableIdentity) (.Values.proxy.saMountPath) }}
@@ -161,6 +183,10 @@ volumeMounts:
 {{- if not .Values.proxy.disableIdentity }}
 - mountPath: /var/run/linkerd/identity/end-entity
   name: linkerd-identity-end-entity
+{{- if .Values.identity.serviceAccountTokenProjection }}
+- mountPath: /var/run/secrets/tokens
+  name: linkerd-identity-token
+{{- end }}
 {{- end -}}
 {{- if .Values.proxy.saMountPath }}
 - mountPath: {{.Values.proxy.saMountPath.mountPath}}

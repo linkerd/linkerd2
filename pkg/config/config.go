@@ -154,7 +154,6 @@ func ToValues(configs *pb.All) *l5dcharts.Values {
 				Scheme: configs.GetGlobal().GetIdentityContext().GetScheme(),
 			},
 		},
-		OmitWebhookSideEffects: configs.GetGlobal().GetOmitWebhookSideEffects(),
 		DebugContainer: &l5dcharts.DebugContainer{
 			Image: &l5dcharts.Image{
 				Name:       configs.GetProxy().GetDebugImage().GetImageName(),

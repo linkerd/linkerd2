@@ -2,6 +2,8 @@
 
 set -eu
 
+export OS_ARCH_ALL="linux-amd64 linux-arm64 linux-arm darwin darwin-arm64 windows"
+
 os() {
   os=$(uname -s)
   arch=""

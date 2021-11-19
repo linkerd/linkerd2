@@ -13,7 +13,9 @@ module.exports = {
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
   entry: './js/index.js',
   devServer: {
-    writeToDisk: true
+    devMiddleware: {
+      writeToDisk: true
+    }
   },
   output: {
     path: path.resolve(__dirname, 'dist'),

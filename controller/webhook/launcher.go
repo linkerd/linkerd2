@@ -40,7 +40,13 @@ func Launch(
 	go s.Start()
 
 	k8sAPI.Sync(nil)
-	go admin.StartServer(metricsAddr)
+
+	adminServer := admin.NewServer(metricsAddr)
+
+	go func() {
+		log.Infof("starting admin server on %s", metricsAddr)
+		adminServer.ListenAndServe()
+	}()
 
 	<-stop
 	log.Info("shutting down webhook server")
@@ -49,4 +55,6 @@ func Launch(
 	if err := s.Shutdown(ctx); err != nil {
 		log.Error(err)
 	}
+
+	adminServer.Shutdown(ctx)
 }

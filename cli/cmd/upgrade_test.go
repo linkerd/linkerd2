@@ -205,8 +205,6 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 						diff.a = issuerCerts.key
 						t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 					}
-				} else if pathMatch(diff.path, []string{"metadata", "annotations", "linkerd.io/identity-issuer-expiry"}) {
-					// Differences in expiry are expected; do nothing.
 				} else {
 					t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 				}
@@ -341,6 +339,7 @@ func replaceK8sSecrets(input string) string {
 	manifest = strings.ReplaceAll(manifest, "linkerd-proxy-injector-k8s-tls", "linkerd-proxy-injector-tls")
 	manifest = strings.ReplaceAll(manifest, "linkerd-tap-k8s-tls", "linkerd-tap-tls")
 	manifest = strings.ReplaceAll(manifest, "linkerd-sp-validator-k8s-tls", "linkerd-sp-validator-tls")
+	manifest = strings.ReplaceAll(manifest, "linkerd-policy-validator-k8s-tls", "linkerd-policy-validator-tls")
 	return manifest
 }
 
@@ -612,7 +611,7 @@ func ignorableDiff(id string, diff diff) bool {
 		return true
 	}
 
-	if (id == "Deployment/linkerd-sp-validator" || id == "Deployment/linkerd-proxy-injector" || id == "Deployment/linkerd-tap") &&
+	if (id == "Deployment/linkerd-sp-validator" || id == "Deployment/linkerd-proxy-injector" || id == "Deployment/linkerd-tap" || id == "Deployment/linkerd-destination") &&
 		pathMatch(diff.path, []string{"spec", "template", "metadata", "annotations", "checksum/config"}) {
 		// APIService TLS chains are regenerated upon upgrade so we expect the
 		// caBundle to change.
@@ -621,7 +620,8 @@ func ignorableDiff(id string, diff diff) bool {
 
 	if id == "Secret/linkerd-proxy-injector-tls" || id == "Secret/linkerd-sp-validator-tls" ||
 		id == "Secret/linkerd-tap-tls" || id == "Secret/linkerd-sp-validator-k8s-tls" ||
-		id == "Secret/linkerd-proxy-injector-k8s-tls" || id == "Secret/linkerd-tap-k8s-tls" {
+		id == "Secret/linkerd-proxy-injector-k8s-tls" || id == "Secret/linkerd-tap-k8s-tls" ||
+		id == "Secret/linkerd-policy-validator-tls" || id == "Secret/linkerd-policy-validator-k8s-tls" {
 		// Webhook and APIService TLS chains are regenerated upon upgrade.
 		return true
 	}
