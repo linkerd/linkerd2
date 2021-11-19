@@ -1,4 +1,4 @@
-package statefulset_test
+package target_statefulset_test
 
 import (
 	"context"
@@ -33,57 +33,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func createSlowCookerDeploy() error {
-	// Switch context to apply client in src cluster.
-	out, err := TestHelper.Kubectl("", "config", "use-context", "k3d-source")
-	if err != nil {
-		return fmt.Errorf("cannot switch k8s ctx: %s\n%s", err, out)
-	}
-
-	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(context.Background(),
-		"multicluster-statefulset", nil)
-	if err != nil {
-		return fmt.Errorf("cannot create namespace: %s", err)
-	}
-
-	slowcooker, err := TestHelper.LinkerdRun("inject", "testdata/slow-cooker.yaml")
-	if err != nil {
-		return fmt.Errorf("failed to inject manifest: %s", err)
-	}
-
-	out, err = TestHelper.KubectlApply(slowcooker, "")
-	if err != nil {
-		return fmt.Errorf("failed to apply nginx manifest: %s\n%s", err, out)
-	}
-
-	return nil
-}
-
-func createNginxDeploy() error {
-	out, err := TestHelper.Kubectl("", "config", "use-context", "k3d-target")
-	if err != nil {
-		return fmt.Errorf("cannot switch k8s ctx: %s\n%s", err, out)
-	}
-
-	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(context.Background(),
-		"multicluster-statefulset", nil)
-	if err != nil {
-		return fmt.Errorf("cannot create namespace: %s", err)
-	}
-
-	nginx, err := TestHelper.LinkerdRun("inject", "testdata/nginx.yaml")
-	if err != nil {
-		return fmt.Errorf("failed to inject manifest: %s", err)
-	}
-
-	out, err = TestHelper.KubectlApply(nginx, "")
-	if err != nil {
-		return fmt.Errorf("failed to apply nginx manifest: %s\n%s", err, out)
-	}
-
-	return nil
-}
-
 /////////////////////
 //  TEST EXECUTION //
 /////////////////////
@@ -97,26 +46,25 @@ func createNginxDeploy() error {
 // gateway to make sure our connections from the source cluster were routed
 // correctly.
 func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
-	if err := createSlowCookerDeploy(); err != nil {
-		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %s", err)
+	err := TestHelper.CreateDataPlaneNamespaceIfNotExists(context.Background(),
+		"multicluster-statefulset", nil)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to create multicluster-statefulset namespace", "failed to create multicluster-statefulset namespace: %s", err)
 	}
 
-	// Check that the opaque pod test application started correctly.
-	if err := TestHelper.CheckPods(context.Background(), "multicluster-statefulset", "slow-cooker", 1); err != nil {
-		if rce, ok := err.(*testutil.RestartCountError); ok {
-			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
-		} else {
-			testutil.AnnotatedError(t, "CheckPods timed-out", err)
-		}
+	nginx, err := TestHelper.LinkerdRun("inject", "testdata/nginx.yaml")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to inject nginx manifest", "failed to inject nginx manifest: %s", err)
 	}
 
-	if err := createNginxDeploy(); err != nil {
-		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %s", err)
+	out, err := TestHelper.KubectlApply(nginx, "")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to install nginx", "failed to install nginx: %s\ngot: %s", err, out)
 	}
 
 	// Give enough time for slow-cooker to go live
 	// and send traffic to nginx.
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	t.Run("expect open outbound TCP connection from gateway to nginx", func(t *testing.T) {
 		// Check gateway metrics
