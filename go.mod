@@ -49,7 +49,7 @@ require (
 	k8s.io/client-go v0.22.4
 	k8s.io/code-generator v0.22.4
 	k8s.io/klog/v2 v2.30.0
-	k8s.io/kube-aggregator v0.22.3
+	k8s.io/kube-aggregator v0.22.4
 	sigs.k8s.io/yaml v1.3.0
 )
 
