@@ -101,6 +101,15 @@ func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %s", err)
 	}
 
+	// Check that the opaque pod test application started correctly.
+	if err := TestHelper.CheckPods(context.Background(), "multicluster-statefulset", "slow-cooker", 1); err != nil {
+		if rce, ok := err.(*testutil.RestartCountError); ok {
+			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+		} else {
+			testutil.AnnotatedError(t, "CheckPods timed-out", err)
+		}
+	}
+
 	if err := createNginxDeploy(); err != nil {
 		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %s", err)
 	}
@@ -108,14 +117,6 @@ func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
 	// Give enough time for slow-cooker to go live
 	// and send traffic to nginx.
 	time.Sleep(20 * time.Second)
-
-	// Redundant context switch, we are doing it "just in case" the context was
-	// somehow switched back to the source cluster.
-	out, err := TestHelper.Kubectl("", "config", "use-context", "k3d-target")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "error switching k8s ctx to target cluster", "error switching k8s ctx to target cluster: %s\n%s", err, out)
-
-	}
 
 	t.Run("expect open outbound TCP connection from gateway to nginx", func(t *testing.T) {
 		// Check gateway metrics
@@ -127,7 +128,7 @@ func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
 		// If no match, it means there are no open tcp conns from gateway to
 		// nginx pod.
 		if !tcpConnRE.MatchString(metrics) {
-			testutil.AnnotatedFatal(t, "failed to find expected TCP connection open outbound metric from gateway to nginx\nexpected: %s, got: %s", tcpConnRE, metrics)
+			testutil.AnnotatedFatalf(t, "failed to find expected TCP connection open outbound metric from gateway to nginx", "failed to find expected TCP connection open outbound metric from gateway to nginx\nexpected: %s, got: %s", tcpConnRE, metrics)
 		}
 
 	})
@@ -142,7 +143,7 @@ func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
 		// If no match, it means there are no outbound HTTP requests from
 		// gateway to nginx pod.
 		if !httpReqRE.MatchString(metrics) {
-			testutil.AnnotatedFatal(t, "failed to find expected outbound HTTP request metric from gateway to nginx\nexpected: %s, got: %s", httpReqRE, metrics)
+			testutil.AnnotatedFatalf(t, "failed to find expected outbound HTTP request metric from gateway to nginx", "failed to find expected outbound HTTP request metric from gateway to nginx\nexpected: %s, got: %s", httpReqRE, metrics)
 		}
 	})
 }
