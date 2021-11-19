@@ -1315,7 +1315,7 @@ spec:
       containers:
       - args:
         - injector
-        - -tap-service-name=tap.linkerd-viz.serviceaccount.identity..cluster.local
+        - -tap-service-name=tap.linkerd-viz.serviceaccount.identity.linkerd.cluster.local
         - -log-level=info
         - -log-format=plain
         image: cr.l5d.io/linkerd/tap:dev-undefined

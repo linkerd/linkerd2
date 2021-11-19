@@ -1303,7 +1303,7 @@ spec:
       containers:
       - args:
         - injector
-        - -tap-service-name=tap.linkerd-viz.serviceaccount.identity..cluster.local
+        - -tap-service-name=tap.linkerd-viz.serviceaccount.identity.linkerd.cluster.local
         - -log-level=debug
         - -log-format=plain
         image: gcr.io/linkerd/tap:dev-undefined
