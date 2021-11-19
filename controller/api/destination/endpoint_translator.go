@@ -264,7 +264,6 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			if getErr != nil {
 				et.log.Errorf("failed getting opaque ports annotation for pod: %s", getErr)
 			}
-
 			// If the opaque ports annotation was not set, then set the
 			// endpoint's opaque ports to the default value.
 			if !ok {

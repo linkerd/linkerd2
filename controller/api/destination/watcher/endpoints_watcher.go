@@ -30,6 +30,8 @@ const (
 	targetCluster          = "target_cluster"
 	targetService          = "target_service"
 	targetServiceNamespace = "target_service_namespace"
+
+	opaqueProtocol = "opaque"
 )
 
 const endpointTargetRefPod = "Pod"
@@ -780,10 +782,28 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 						pp.log.Errorf("failed to create Selector: %s", err)
 						continue
 					}
-					// todo: handle Server named port
-					if selector.Matches(labels.Set(address.Pod.Labels)) && uint32(server.Spec.Port.IntVal) == resolvedPort {
-						address.OpaqueProtocol = true
-						break
+					if server.Spec.ProxyProtocol == opaqueProtocol && selector.Matches(labels.Set(address.Pod.Labels)) {
+						var portMatch bool
+						switch server.Spec.Port.Type {
+						case intstr.Int:
+							if server.Spec.Port.IntVal == int32(resolvedPort) {
+								portMatch = true
+							}
+						case intstr.String:
+							for _, c := range address.Pod.Spec.Containers {
+								for _, p := range c.Ports {
+									if p.ContainerPort == int32(resolvedPort) && p.Name == server.Spec.Port.StrVal {
+										portMatch = true
+									}
+								}
+							}
+						default:
+							continue
+						}
+						if portMatch {
+							address.OpaqueProtocol = true
+							break
+						}
 					}
 				}
 				if endpoint.Hints != nil {
@@ -845,10 +865,28 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 						pp.log.Errorf("failed to create Selector: %s", err)
 						continue
 					}
-					// todo: handle Server named port
-					if selector.Matches(labels.Set(address.Pod.Labels)) && uint32(server.Spec.Port.IntVal) == resolvedPort {
-						address.OpaqueProtocol = true
-						break
+					if server.Spec.ProxyProtocol == opaqueProtocol && selector.Matches(labels.Set(address.Pod.Labels)) {
+						var portMatch bool
+						switch server.Spec.Port.Type {
+						case intstr.Int:
+							if server.Spec.Port.IntVal == int32(resolvedPort) {
+								portMatch = true
+							}
+						case intstr.String:
+							for _, c := range address.Pod.Spec.Containers {
+								for _, p := range c.Ports {
+									if p.ContainerPort == int32(resolvedPort) && p.Name == server.Spec.Port.StrVal {
+										portMatch = true
+									}
+								}
+							}
+						default:
+							continue
+						}
+						if portMatch {
+							address.OpaqueProtocol = true
+							break
+						}
 					}
 				}
 				addresses[id] = &address
@@ -1009,13 +1047,30 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
 }
 
 func (pp *portPublisher) updateServer(server *v1beta1.Server, selector labels.Selector, isAdd bool) {
-	for _, addr := range pp.addresses.Addresses {
-		if addr.Pod != nil && selector.Matches(labels.Set(addr.Pod.Labels)) {
-			if server.Spec.Port.IntVal == int32(addr.Port) {
-				if isAdd && server.Spec.ProxyProtocol == "opaque" {
-					addr.OpaqueProtocol = true
+	for _, address := range pp.addresses.Addresses {
+		if address.Pod != nil && selector.Matches(labels.Set(address.Pod.Labels)) {
+			var portMatch bool
+			switch server.Spec.Port.Type {
+			case intstr.Int:
+				if server.Spec.Port.IntVal == int32(address.Port) {
+					portMatch = true
+				}
+			case intstr.String:
+				for _, c := range address.Pod.Spec.Containers {
+					for _, p := range c.Ports {
+						if p.ContainerPort == int32(address.Port) && p.Name == server.Spec.Port.StrVal {
+							portMatch = true
+						}
+					}
+				}
+			default:
+				continue
+			}
+			if portMatch {
+				if isAdd && server.Spec.ProxyProtocol == opaqueProtocol {
+					address.OpaqueProtocol = true
 				} else {
-					addr.OpaqueProtocol = false
+					address.OpaqueProtocol = false
 				}
 			}
 		}
