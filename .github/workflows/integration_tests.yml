@@ -69,8 +69,8 @@ jobs:
         - external-resources
         - helm-deep
         - helm-upgrade
-        - uninstall
         - multicluster
+        - uninstall
         - upgrade-edge
         - upgrade-stable
     needs: [docker_build]
