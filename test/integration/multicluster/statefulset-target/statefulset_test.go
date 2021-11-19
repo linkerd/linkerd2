@@ -34,6 +34,7 @@ func TestMain(m *testing.M) {
 }
 
 func createSlowCookerDeploy() error {
+	// Switch context to apply client in src cluster.
 	out, err := TestHelper.Kubectl("", "config", "use-context", "k3d-source")
 	if err != nil {
 		return fmt.Errorf("cannot switch k8s ctx: %s\n%s", err, out)
@@ -52,7 +53,7 @@ func createSlowCookerDeploy() error {
 
 	out, err = TestHelper.KubectlApply(slowcooker, "")
 	if err != nil {
-		fmt.Errorf("failed to apply nginx manifest: %s\n%s", err, out)
+		return fmt.Errorf("failed to apply nginx manifest: %s\n%s", err, out)
 	}
 
 	return nil
@@ -87,10 +88,15 @@ func createNginxDeploy() error {
 //  TEST EXECUTION //
 /////////////////////
 
-// TestSetupNginx applies the nginx-statefulset.yml manifest in the target
-//cluster in the "default" namespace, and mirrors nginx-svc to source cluster
-//
-func TestMulticlusterTargetTraffic(t *testing.T) {
+// TestMulticlusterStatefulSetTargetTraffic will test that a statefulset can be
+// mirrored from a target cluster to a source cluster. The test deploys two //
+// workloads: a slow cooker (as a client) in the src, and an nginx statefulset in
+// (as a server) in the tgt. The slow-cooker is configured to send traffic to an
+// nginx endpoint mirror (nginx-statefulset-0). The traffic should be received
+// by the nginx pod in the tgt. To assert this, we get proxy metrics from the //
+// gateway to make sure our connections from the source cluster were routed //
+// correctly.
+func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
 	if err := createSlowCookerDeploy(); err != nil {
 		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %s", err)
 	}
@@ -103,6 +109,8 @@ func TestMulticlusterTargetTraffic(t *testing.T) {
 	// and send traffic to nginx.
 	time.Sleep(20 * time.Second)
 
+	// Redundant context switch, we are doing it "just in case" the context was
+	// somehow switched back to the source cluster.
 	out, err := TestHelper.Kubectl("", "config", "use-context", "k3d-target")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "error switching k8s ctx to target cluster", "error switching k8s ctx to target cluster: %s\n%s", err, out)
@@ -115,6 +123,9 @@ func TestMulticlusterTargetTraffic(t *testing.T) {
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "failed to get metrics for gateway deployment", "failed to get metrics for gateway deployment: %s", err)
 		}
+
+		// If no match, it means there are no open tcp conns from gateway to
+		// nginx pod.
 		if !tcpConnRE.MatchString(metrics) {
 			testutil.AnnotatedFatal(t, "failed to find expected TCP connection open outbound metric from gateway to nginx\nexpected: %s, got: %s", tcpConnRE, metrics)
 		}
@@ -127,6 +138,9 @@ func TestMulticlusterTargetTraffic(t *testing.T) {
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "failed to get metrics for gateway deployment", "failed to get metrics for gateway deployment: %s", err)
 		}
+
+		// If no match, it means there are no outbound HTTP requests from
+		// gateway to nginx pod.
 		if !httpReqRE.MatchString(metrics) {
 			testutil.AnnotatedFatal(t, "failed to find expected outbound HTTP request metric from gateway to nginx\nexpected: %s, got: %s", httpReqRE, metrics)
 		}
