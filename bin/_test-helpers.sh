@@ -538,7 +538,7 @@ run_multicluster_test() {
   run_test "$test_directory/multicluster/target2" --multicluster
 
   export context="k3d-target"
-  run_test "$test_directory/multicluster/target3" --multicluster
+  run_test "$test_directory/multicluster/statefulset-target" --multicluster
 }
 
 run_deep_test() {
