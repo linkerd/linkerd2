@@ -345,45 +345,32 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 // include an endpoint. Otherwise, the default profile is sent.
 func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod *corev1.Pod, port uint32) error {
 	log := s.log
-	var endpoint *pb.WeightedAddr
+	var weightedAddr *pb.WeightedAddr
 	opaquePorts := make(map[uint32]struct{})
 	var err error
 	if pod != nil {
-		podSet := podToAddressSet(s.k8sAPI, pod).WithPort(port)
-		podID := watcher.PodID{
-			Namespace: pod.Namespace,
-			Name:      pod.Name,
+		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(context.Background(), pod, true)
+		address := watcher.Address{
+			IP:        pod.Status.PodIP,
+			Port:      port,
+			Pod:       pod,
+			OwnerName: ownerName,
+			OwnerKind: ownerKind,
 		}
-		var ok bool
-		opaquePorts, ok, err = getPodOpaquePortsAnnotations(pod)
-		if err != nil {
-			log.Errorf("failed to get opaque ports annotation for pod: %s", err)
-		}
-
-		// If the opaque ports annotation was not set, then set the
-		// endpoint's opaque ports to the default value.
-		if !ok {
-			opaquePorts = s.defaultOpaquePorts
-		}
-
-		skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(pod)
-		if err != nil {
-			log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
-		}
-
-		endpoint, err = toWeightedAddr(podSet.Addresses[podID], opaquePorts, skippedInboundPorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
+		weightedAddr, opaquePorts, err = toWeightedAddr(&address, s.defaultOpaquePorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
 		if err != nil {
 			return err
 		}
+
 		// `Get` doesn't include the namespace in the per-endpoint
 		// metadata, so it needs to be special-cased.
-		endpoint.MetricLabels["namespace"] = pod.Namespace
+		weightedAddr.MetricLabels["namespace"] = pod.Namespace
 	}
 
 	// Send the default profile without subscribing for future updates. The
 	// profile response will also include an endpoint if the IP (or hostname)
 	// sent in the profile request maps to a pod.
-	translator := newProfileTranslator(stream, log, "", port, endpoint)
+	translator := newProfileTranslator(stream, log, "", port, weightedAddr)
 
 	// If there are opaque ports then update the profile translator
 	// with a service profile that has those values
@@ -525,26 +512,6 @@ func podReceivingTraffic(pod *corev1.Pod) bool {
 	podTerminating := pod.DeletionTimestamp != nil
 
 	return !podTerminating && !podTerminated
-}
-
-// podToAddressSet converts a Pod spec into a set of Addresses.
-func podToAddressSet(k8sAPI *k8s.API, pod *corev1.Pod) *watcher.AddressSet {
-	ownerKind, ownerName := k8sAPI.GetOwnerKindAndName(context.Background(), pod, true)
-	return &watcher.AddressSet{
-		Addresses: map[watcher.PodID]*watcher.Address{
-			{
-				Name:      pod.Name,
-				Namespace: pod.Namespace,
-			}: {
-				IP:        pod.Status.PodIP,
-				Port:      0, // Will be set by individual subscriptions
-				Pod:       pod,
-				OwnerName: ownerName,
-				OwnerKind: ownerKind,
-			},
-		},
-		Labels: map[string]string{"namespace": pod.Namespace},
-	}
 }
 
 ////////////

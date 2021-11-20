@@ -218,26 +218,12 @@ func (et *endpointTranslator) Update(set watcher.AddressSet) {
 			continue
 		}
 
-		opaquePorts, ok, getErr := getPodOpaquePortsAnnotations(address.Pod)
-		if getErr != nil {
-			et.log.Errorf("failed getting opaque ports annotation for pod: %s", getErr)
-		}
-		// If the opaque ports annotation was not set, then set the
-		// endpoint's opaque ports to the default value.
-		if !ok {
-			opaquePorts = et.defaultOpaquePorts
-		}
-
-		skippedInboundPorts, skippedErr := getPodSkippedInboundPortsAnnotations(address.Pod)
-		if skippedErr != nil {
-			et.log.Errorf("failed getting ignored inbound ports annotation for pod: %s", skippedErr)
-		}
-		wa, err := toWeightedAddr(address, opaquePorts, skippedInboundPorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
+		weightedAddr, _, err := toWeightedAddr(address, et.defaultOpaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 		if err != nil {
 			et.log.Errorf("failed to translate endpoints to weighted addr: %s", err)
 			continue
 		}
-		addrs = append(addrs, wa)
+		addrs = append(addrs, weightedAddr)
 	}
 	add := &pb.Update{Update: &pb.Update_Add{
 		Add: &pb.WeightedAddrSet{
@@ -259,22 +245,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			err error
 		)
 		if address.Pod != nil {
-			opaquePorts, ok, getErr := getPodOpaquePortsAnnotations(address.Pod)
-			if getErr != nil {
-				et.log.Errorf("failed getting opaque ports annotation for pod: %s", getErr)
-			}
-			// If the opaque ports annotation was not set, then set the
-			// endpoint's opaque ports to the default value.
-			if !ok {
-				opaquePorts = et.defaultOpaquePorts
-			}
-
-			skippedInboundPorts, skippedErr := getPodSkippedInboundPortsAnnotations(address.Pod)
-			if skippedErr != nil {
-				et.log.Errorf("failed getting ignored inbound ports annotation for pod: %s", err)
-			}
-
-			wa, err = toWeightedAddr(address, opaquePorts, skippedInboundPorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
+			wa, _, err = toWeightedAddr(address, et.defaultOpaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 		} else {
 			var authOverride *pb.AuthorityOverride
 			if address.AuthorityOverride != "" {
@@ -364,11 +335,34 @@ func toAddr(address *watcher.Address) (*net.TcpAddress, error) {
 	}, nil
 }
 
-func toWeightedAddr(address *watcher.Address, opaquePorts, skippedInboundPorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
+func toWeightedAddr(address *watcher.Address, defaultOpaquePorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, map[uint32]struct{}, error) {
+	// When converting an address to a weighted addr, it should be backed by a Pod.
+	if address.Pod == nil {
+		return nil, nil, fmt.Errorf("address not backed by Pod: %s/%d", address.IP, address.Port)
+	}
+
+	var ok bool
+	opaquePorts, ok, err := getPodOpaquePortsAnnotations(address.Pod)
+	if err != nil {
+		log.Errorf("failed to get opaque ports annotation for pod: %s", err)
+	}
+
+	// If the opaque ports annotation was not set, then set the
+	// endpoint's opaque ports to the default value.
+	if !ok {
+		opaquePorts = defaultOpaquePorts
+	}
+
+	skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(address.Pod)
+	if err != nil {
+		log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
+	}
+
 	controllerNSLabel := address.Pod.Labels[k8s.ControllerNSLabel]
 	sa, ns := k8s.GetServiceAccountAndNS(address.Pod)
 	labels := k8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
 	_, isSkippedInboundPort := skippedInboundPorts[address.Port]
+
 	// If the pod is controlled by any Linkerd control plane, then it can be
 	// hinted that this destination knows H2 (and handles our orig-proto
 	// translation)
@@ -418,7 +412,7 @@ func toWeightedAddr(address *watcher.Address, opaquePorts, skippedInboundPorts m
 
 	tcpAddr, err := toAddr(address)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return &pb.WeightedAddr{
@@ -427,7 +421,7 @@ func toWeightedAddr(address *watcher.Address, opaquePorts, skippedInboundPorts m
 		MetricLabels: labels,
 		TlsIdentity:  identity,
 		ProtocolHint: hint,
-	}, nil
+	}, opaquePorts, nil
 }
 
 func getNodeTopologyZone(nodes coreinformers.NodeInformer, srcNode string) (string, error) {
