@@ -2294,6 +2294,6 @@
   },
   "timezone": "",
   "title": "Linkerd DaemonSet",
-  "uid": "daemonset",
+  "uid": "linkerd-daemonset",
   "version": 1
 }

@@ -1,6 +1,8 @@
 gateway:
   # -- If the gateway component should be installed
   enabled: true
+  # -- Number of replicas for the gateway pod
+  replicas: 1
   # -- The name of the gateway that will be installed
   name: linkerd-gateway
   # -- The port on which all the gateway will accept incoming traffic
@@ -49,3 +51,8 @@ identityTrustDomain: cluster.local
 enablePSP: false
 # -- Use EndpointSlices instead of Endpoints
 enableEndpointSlices: false
+
+# -- Enables Pod Anti Affinity logic to balance the placement of replicas
+# across hosts and zones for High Availability.
+# Enable this only when you have multiple replicas of components.
+enablePodAntiAffinity: false

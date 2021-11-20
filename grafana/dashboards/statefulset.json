@@ -2294,6 +2294,6 @@
   },
   "timezone": "",
   "title": "Linkerd StatefulSet",
-  "uid": "statefulset",
+  "uid": "linkerd-statefulset",
   "version": 1
 }

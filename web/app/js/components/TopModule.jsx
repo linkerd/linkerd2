@@ -77,12 +77,12 @@ class TopModule extends React.Component {
     this.setState({
       error: null,
     });
-  }
+  };
 
   onWebsocketRecv = e => {
     this.indexTapResult(e.data);
     this.throttledWebsocketRecvHandler();
-  }
+  };
 
   onWebsocketClose = e => {
     this.updateTapClosingState();
@@ -104,21 +104,21 @@ class TopModule extends React.Component {
         });
       }
     }
-  }
+  };
 
   onWebsocketError = e => {
     this.setState({
       error: { error: `Websocket error: ${e.message}` },
     });
-  }
+  };
 
   closeWebSocket = () => {
     if (this.ws) {
       this.ws.close(1000);
     }
-  }
+  };
 
-  parseTapResult = data => {
+  static parseTapResult(data) {
     const d = processTapEvent(data);
 
     if (d.eventType === 'responseEnd') {
@@ -129,14 +129,14 @@ class TopModule extends React.Component {
     return d;
   }
 
-  topEventKey = event => {
+  static topEventKey(event) {
     const sourceKey = event.source.owner || event.source.pod || event.source.str;
     const dstKey = event.destination.owner || event.destination.pod || event.destination.str;
 
     return [sourceKey, dstKey, _get(event, 'http.requestInit.method.registered'), event.http.requestInit.path].join('_');
   }
 
-  initialTopResult = (d, eventKey) => {
+  static initialTopResult(d, eventKey) {
     // in the event that we key on resources with multiple pods/ips, store them so we can display
     const sourceDisplay = {
       ips: {},
@@ -179,7 +179,7 @@ class TopModule extends React.Component {
     };
   }
 
-  incrementTopResult = (d, result) => {
+  static incrementTopResult(d, result) {
     result.count += 1;
     if (!d.success) {
       result.failure += 1;
@@ -216,17 +216,17 @@ class TopModule extends React.Component {
       return topResults;
     }
 
-    const eventKey = this.topEventKey(d.requestInit);
-    this.addSuccessCount(d);
+    const eventKey = TopModule.topEventKey(d.requestInit);
+    TopModule.addSuccessCount(d);
 
     if (!topResults[eventKey]) {
-      topResults[eventKey] = this.initialTopResult(d, eventKey);
+      topResults[eventKey] = TopModule.initialTopResult(d, eventKey);
     } else {
-      this.incrementTopResult(d, topResults[eventKey]);
+      TopModule.incrementTopResult(d, topResults[eventKey]);
     }
 
     if (_size(topResults) > maxRowsToStore) {
-      this.deleteOldestIndexedResult(topResults);
+      TopModule.deleteOldestIndexedResult(topResults);
     }
 
     if (d.base.proxyDirection === 'INBOUND') {
@@ -240,7 +240,7 @@ class TopModule extends React.Component {
     }
 
     return topResults;
-  }
+  };
 
   updateTapEventIndexState = () => {
     // tap websocket events come in at a really high, bursty rate
@@ -250,7 +250,7 @@ class TopModule extends React.Component {
     this.setState({
       topEventIndex: this.topEventIndex,
     });
-  }
+  };
 
   updateNeighborsFromTapData = (source, sourceLabels) => {
     const { query, updateUnmeshedSources } = this.props;
@@ -260,7 +260,7 @@ class TopModule extends React.Component {
     const resourceType = _isNil(query.resource) ? '' : query.resource.split('/')[0];
     this.unmeshedSources = processNeighborData(source, sourceLabels, this.unmeshedSources, resourceType);
     updateUnmeshedSources(this.unmeshedSources);
-  }
+  };
 
   // keep an index of tap results by id until the request is complete.
   // when the request has completed, add it to the aggregated Top counts and
@@ -269,12 +269,12 @@ class TopModule extends React.Component {
     const { maxRowsToStore } = this.props;
 
     const resultIndex = this.tapResultsById;
-    const d = this.parseTapResult(data);
+    const d = TopModule.parseTapResult(data);
 
     if (_isNil(resultIndex[d.id])) {
       // don't let tapResultsById grow unbounded
       if (_size(resultIndex) > maxRowsToStore) {
-        this.deleteOldestIndexedResult(resultIndex);
+        TopModule.deleteOldestIndexedResult(resultIndex);
       }
 
       resultIndex[d.id] = {};
@@ -291,9 +291,9 @@ class TopModule extends React.Component {
       this.topEventIndex = this.indexTopResult(resultIndex[d.id], this.topEventIndex);
       delete resultIndex[d.id];
     }
-  }
+  };
 
-  addSuccessCount = d => {
+  static addSuccessCount(d) {
     // cope with the fact that gRPC failures are returned with HTTP status 200
     // and correctly classify gRPC failures as failures
     let success = parseInt(_get(d, 'responseInit.http.responseInit.httpStatus'), 10) < 500;
@@ -309,7 +309,7 @@ class TopModule extends React.Component {
     d.success = success;
   }
 
-  deleteOldestIndexedResult = resultIndex => {
+  static deleteOldestIndexedResult(resultIndex) {
     let oldest = Date.now();
     let oldestId = '';
 
@@ -354,7 +354,7 @@ class TopModule extends React.Component {
   banner = () => {
     const { error } = this.state;
     return error ? <ErrorBanner message={error} /> : null;
-  }
+  };
 
   render() {
     const { topEventIndex, showTapEnabledWarning } = this.state;

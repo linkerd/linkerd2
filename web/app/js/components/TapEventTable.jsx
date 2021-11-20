@@ -46,7 +46,9 @@ const spinnerStyles = theme => ({
     margin: theme.spacing(2),
   },
 });
-const SpinnerBase = () => <CircularProgress size={20} />;
+const SpinnerBase = function() {
+  return <CircularProgress size={20} />;
+};
 const Spinner = withStyles(spinnerStyles)(SpinnerBase);
 
 const formatTapLatency = str => {
@@ -198,7 +200,7 @@ const expandedRowRender = (d, expandedWrapStyle) => {
   );
 };
 
-const TapEventTable = ({ tableRows, resource, api }) => {
+const TapEventTable = function({ tableRows, resource, api }) {
   const resourceType = resource.split('/')[0];
   const columns = tapColumns(resourceType, api.ResourceLink);
 

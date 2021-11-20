@@ -33,7 +33,7 @@ namespace: linkerd-viz
 # -- Default nodeSelector section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
 nodeSelector: &default_node_selector
-  beta.kubernetes.io/os: linux
+  kubernetes.io/os: linux
 
 # -- For Private docker registries, authentication is needed.
 #  Registry secrets are applied to the respective service accounts

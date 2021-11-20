@@ -13,7 +13,7 @@ function jaegerQuery(name, namespace, resource) {
   }
 }
 
-const JaegerLink = ({ PrefixedLink, name, namespace, resource }) => {
+const JaegerLink = function({ PrefixedLink, name, namespace, resource }) {
   const link = `/jaeger/search?service=linkerd-proxy&tags=${jaegerQuery(name, namespace, resource)}`;
 
   return (

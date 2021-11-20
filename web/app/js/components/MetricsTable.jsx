@@ -331,7 +331,7 @@ const preprocessMetrics = metrics => {
   return tableData;
 };
 
-const MetricsTable = ({ metrics, resource, showNamespaceColumn, showName, title, api, isTcpTable, selectedNamespace, grafana, jaeger }) => {
+const MetricsTable = function({ metrics, resource, showNamespaceColumn, showName, title, api, isTcpTable, selectedNamespace, grafana, jaeger }) {
   const showNsColumn = resource === 'namespace' || selectedNamespace !== '_all' ? false : showNamespaceColumn;
   const showNameColumn = resource !== 'trafficsplit' ? true : showName;
   let orderBy = 'name';

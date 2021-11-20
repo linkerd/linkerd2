@@ -5,10 +5,12 @@ const Context = React.createContext({
   api: ApiHelpers(''),
 });
 
-export const withContext = Component => props => (
-  <Context.Consumer>
-    {ctx => <Component {...props} {...ctx} />}
-  </Context.Consumer>
-);
+export const withContext = Component => function componentWithContext(props) {
+  return (
+    <Context.Consumer>
+      {ctx => <Component {...props} {...ctx} />}
+    </Context.Consumer>
+  );
+};
 
 export default Context;

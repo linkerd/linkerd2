@@ -26,14 +26,12 @@ const namespacesColumns = PrefixedLink => [
     sorter: d => d.namespace,
     render: d => {
       return (
-        <React.Fragment>
-          <Grid container alignItems="center" spacing={1}>
-            <Grid item><PrefixedLink to={`/namespaces/${d.namespace}`}>{d.namespace}</PrefixedLink></Grid>
-            { _isEmpty(d.errors) ? null :
-            <Grid item><ErrorModal errors={d.errors} resourceName={d.namespace} resourceType="namespace" /></Grid>
+        <Grid container alignItems="center" spacing={1}>
+          <Grid item><PrefixedLink to={`/namespaces/${d.namespace}`}>{d.namespace}</PrefixedLink></Grid>
+          { _isEmpty(d.errors) ? null :
+          <Grid item><ErrorModal errors={d.errors} resourceName={d.namespace} resourceType="namespace" /></Grid>
           }
-          </Grid>
-        </React.Fragment>
+        </Grid>
       );
     },
   },
@@ -72,14 +70,16 @@ const namespacesColumns = PrefixedLink => [
   },
 ];
 
-const MeshedStatusTable = ({ api, tableRows }) => (
-  <BaseTable
-    tableClassName="metric-table mesh-completion-table"
-    tableRows={tableRows}
-    tableColumns={namespacesColumns(api.PrefixedLink)}
-    defaultOrderBy="namespace"
-    rowKey={d => d.namespace} />
-);
+const MeshedStatusTable = function({ api, tableRows }) {
+  return (
+    <BaseTable
+      tableClassName="metric-table mesh-completion-table"
+      tableRows={tableRows}
+      tableColumns={namespacesColumns(api.PrefixedLink)}
+      defaultOrderBy="namespace"
+      rowKey={d => d.namespace} />
+  );
+};
 
 MeshedStatusTable.propTypes = {
   api: PropTypes.shape({

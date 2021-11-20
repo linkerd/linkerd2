@@ -9,9 +9,11 @@ RUN apt-get update && \
 ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
 WORKDIR /build
 COPY Cargo.toml Cargo.lock policy-controller/ /build/
+# XXX(ver) we can't easily cross-compile against openssl, so use rustls on arm.
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.56.0,source=/usr/local/cargo,target=/usr/local/cargo \
-    cargo build --locked --release --target=aarch64-unknown-linux-gnu --package=linkerd-policy-controller && \
+    cargo build --locked --release --target=aarch64-unknown-linux-gnu \
+        --package=linkerd-policy-controller --no-default-features --features="rustls" && \
     mv target/aarch64-unknown-linux-gnu/release/linkerd-policy-controller /tmp/
 
 FROM --platform=linux/arm64 $RUNTIME_IMAGE

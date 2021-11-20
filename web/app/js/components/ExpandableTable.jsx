@@ -55,7 +55,7 @@ class ExpandableTable extends React.Component {
 
   handleDialogOpen = d => () => {
     this.setState({ open: true, datum: d });
-  }
+  };
 
   handleDialogClose = () => {
     this.setState({ open: false, datum: {} });
@@ -99,10 +99,7 @@ class ExpandableTable extends React.Component {
                     <React.Fragment key={`frag-${d.key}`}>
                       <TableRow
                         key={d.key}
-                        onClick={this.handleClick}
-                        ref={ref => {
-                          this.container = ref;
-                        }}>
+                        onClick={this.handleClick}>
                         {
                             columns.map(c => (
                               <TableCell
