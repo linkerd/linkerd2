@@ -1051,6 +1051,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 				Namespace: rcsw.serviceMirrorNamespace,
 				Labels: map[string]string{
 					consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
+					serviceNameLabel:              gatewayMirrorName,
 				},
 				Annotations: map[string]string{
 					consts.RemoteGatewayIdentity: rcsw.link.GatewayIdentity,
