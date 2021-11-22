@@ -264,7 +264,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// the translator which takes profile updates, translates them to protobuf
 	// and pushes them onto the gRPC stream.
 	translator := newProfileTranslator(stream, log, fqn, port, nil)
-	
+
 	// The opaque ports adaptor merges profile updates with service opaque
 	// port annotation updates; it then publishes the result to the traffic
 	// split adaptor.
