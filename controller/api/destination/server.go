@@ -357,7 +357,11 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 			OwnerName: ownerName,
 			OwnerKind: ownerKind,
 		}
-		weightedAddr, opaquePorts, err = toWeightedAddr(&address, s.defaultOpaquePorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
+		opaquePorts, err = getPodOpaquePorts(pod, s.defaultOpaquePorts)
+		if err != nil {
+			log.Errorf("failed to get opaque ports for pod %s/%s: %s", pod.Namespace, pod.Name, err)
+		}
+		weightedAddr, err = toWeightedAddr(&address, opaquePorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
 		if err != nil {
 			return err
 		}
@@ -627,22 +631,22 @@ func hasSuffix(slice []string, suffix []string) bool {
 	return true
 }
 
-func getPodOpaquePortsAnnotations(pod *corev1.Pod) (map[uint32]struct{}, bool, error) {
+func getPodOpaquePorts(pod *corev1.Pod, defaultPorts map[uint32]struct{}) (map[uint32]struct{}, error) {
 	annotation, ok := pod.Annotations[labels.ProxyOpaquePortsAnnotation]
 	if !ok {
-		return nil, false, nil
+		return defaultPorts, nil
 	}
 	opaquePorts := make(map[uint32]struct{})
 	if annotation != "" {
 		for _, portStr := range util.ParseContainerOpaquePorts(annotation, pod.Spec.Containers) {
 			port, err := strconv.ParseUint(portStr, 10, 32)
 			if err != nil {
-				return nil, true, err
+				return nil, err
 			}
 			opaquePorts[uint32(port)] = struct{}{}
 		}
 	}
-	return opaquePorts, true, nil
+	return opaquePorts, nil
 }
 
 func getPodSkippedInboundPortsAnnotations(pod *corev1.Pod) (map[uint32]struct{}, error) {

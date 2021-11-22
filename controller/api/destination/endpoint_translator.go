@@ -218,7 +218,11 @@ func (et *endpointTranslator) Update(set watcher.AddressSet) {
 			continue
 		}
 
-		weightedAddr, _, err := toWeightedAddr(address, et.defaultOpaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
+		opaquePorts, err := getPodOpaquePorts(address.Pod, et.defaultOpaquePorts)
+		if err != nil {
+			et.log.Errorf("failed to get opaque ports for pod %s/%s: %s", address.Pod.Namespace, address.Pod.Name, err)
+		}
+		weightedAddr, err := toWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 		if err != nil {
 			et.log.Errorf("failed to translate endpoints to weighted addr: %s", err)
 			continue
@@ -241,11 +245,16 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 	addrs := []*pb.WeightedAddr{}
 	for _, address := range set.Addresses {
 		var (
-			wa  *pb.WeightedAddr
-			err error
+			wa          *pb.WeightedAddr
+			opaquePorts map[uint32]struct{}
+			err         error
 		)
 		if address.Pod != nil {
-			wa, _, err = toWeightedAddr(address, et.defaultOpaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
+			opaquePorts, err = getPodOpaquePorts(address.Pod, et.defaultOpaquePorts)
+			if err != nil {
+				et.log.Errorf("failed to get opaque ports for pod %s/%s: %s", address.Pod.Namespace, address.Pod.Name, err)
+			}
+			wa, err = toWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 		} else {
 			var authOverride *pb.AuthorityOverride
 			if address.AuthorityOverride != "" {
@@ -335,22 +344,10 @@ func toAddr(address *watcher.Address) (*net.TcpAddress, error) {
 	}, nil
 }
 
-func toWeightedAddr(address *watcher.Address, defaultOpaquePorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, map[uint32]struct{}, error) {
+func toWeightedAddr(address *watcher.Address, opaquePorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
 	// When converting an address to a weighted addr, it should be backed by a Pod.
 	if address.Pod == nil {
-		return nil, nil, fmt.Errorf("address not backed by Pod: %s/%d", address.IP, address.Port)
-	}
-
-	var ok bool
-	opaquePorts, ok, err := getPodOpaquePortsAnnotations(address.Pod)
-	if err != nil {
-		log.Errorf("failed to get opaque ports annotation for pod: %s", err)
-	}
-
-	// If the opaque ports annotation was not set, then set the
-	// endpoint's opaque ports to the default value.
-	if !ok {
-		opaquePorts = defaultOpaquePorts
+		return nil, fmt.Errorf("address not backed by Pod: %s/%d", address.IP, address.Port)
 	}
 
 	skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(address.Pod)
@@ -412,7 +409,7 @@ func toWeightedAddr(address *watcher.Address, defaultOpaquePorts map[uint32]stru
 
 	tcpAddr, err := toAddr(address)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	return &pb.WeightedAddr{
@@ -421,7 +418,7 @@ func toWeightedAddr(address *watcher.Address, defaultOpaquePorts map[uint32]stru
 		MetricLabels: labels,
 		TlsIdentity:  identity,
 		ProtocolHint: hint,
-	}, opaquePorts, nil
+	}, nil
 }
 
 func getNodeTopologyZone(nodes coreinformers.NodeInformer, srcNode string) (string, error) {
