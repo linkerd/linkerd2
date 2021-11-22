@@ -373,7 +373,7 @@ spValidatorResources:
 # documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector)
 # for more information
 nodeSelector:
-  beta.kubernetes.io/os: linux
+  kubernetes.io/os: linux
 
 # -|- Tolerations section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)

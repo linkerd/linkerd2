@@ -1,20 +1,35 @@
 name: Release
+
 on:
   push:
     tags:
-    - "*"
+    - "edge-*"
+    - "stable-*"
+
 permissions:
   contents: read
+
 env:
   GH_ANNOTATION: true
   DOCKER_REGISTRY: ghcr.io/linkerd
+
 jobs:
 
   docker_build:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        component: [proxy, controller, metrics-api, web, cni-plugin, debug, cli-bin, grafana, jaeger-webhook, tap]
+        component:
+        - cli-bin
+        - cni-plugin
+        - controller
+        - debug
+        - grafana
+        - jaeger-webhook
+        - metrics-api
+        - proxy
+        - tap
+        - web
     name: Docker build (${{ matrix.component }})
     timeout-minutes: 30
     steps:
@@ -54,7 +69,10 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        arch: [amd64, arm64, arm]
+        arch:
+        - amd64
+        - arm
+        - arm64
     name: Policy controller build (${{ matrix.arch }})
     steps:
     - name: Set up Docker Buildx
@@ -139,7 +157,9 @@ jobs:
       matrix:
         integration_test:
         - cluster-domain
+        - cni-calico-deep
         - deep
+        - default-policy-deny
         - external-issuer
         - external-prometheus-deep
         - external-resources
@@ -149,8 +169,6 @@ jobs:
         - uninstall
         - upgrade-edge
         - upgrade-stable
-        - cni-calico-deep
-        - default-policy-deny
     needs: [docker_build, policy_controller_manifest]
     name: Integration tests (${{ matrix.integration_test }})
     timeout-minutes: 60

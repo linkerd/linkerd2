@@ -205,7 +205,7 @@ spec:
         app: prometheus
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       securityContext:
         fsGroup: 65534
       containers:

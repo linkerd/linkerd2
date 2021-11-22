@@ -84,7 +84,7 @@ Kubernetes: `>=1.20.0-0`
 | collector.image.name | string | `"otel/opentelemetry-collector"` |  |
 | collector.image.pullPolicy | string | `"Always"` |  |
 | collector.image.version | string | `"0.27.0"` |  |
-| collector.nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
+| collector.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | collector.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the collector container can use |
 | collector.resources.cpu.request | string | `nil` | Amount of CPU units that the collector container requests |
 | collector.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the collector container can use |
@@ -98,7 +98,7 @@ Kubernetes: `>=1.20.0-0`
 | jaeger.image.name | string | `"jaegertracing/all-in-one"` |  |
 | jaeger.image.pullPolicy | string | `"Always"` |  |
 | jaeger.image.version | string | `"1.19.2"` |  |
-| jaeger.nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
+| jaeger.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | jaeger.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the jaeger container can use |
 | jaeger.resources.cpu.request | string | `nil` | Amount of CPU units that the jaeger container requests |
 | jaeger.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the jaeger container can use |
@@ -108,7 +108,7 @@ Kubernetes: `>=1.20.0-0`
 | jaeger.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | linkerdNamespace | string | `"linkerd"` | Namespace of the Linkerd core control-plane install |
 | linkerdVersion | string | `"linkerdVersionValue"` |  |
-| nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | Default nodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
+| nodeSelector | object | `{"kubernetes.io/os":"linux"}` | Default nodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | tolerations | string | `nil` | Default tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | webhook.caBundle | string | `""` | if empty, Helm will auto-generate this field, unless externalSecret is set to true. |
 | webhook.collectorSvcAccount | string | `"collector"` | service account associated with the collector instance |
@@ -122,7 +122,7 @@ Kubernetes: `>=1.20.0-0`
 | webhook.keyPEM | string | `""` |  |
 | webhook.logLevel | string | `"info"` |  |
 | webhook.namespaceSelector | string | `nil` |  |
-| webhook.nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
+| webhook.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | webhook.objectSelector | string | `nil` |  |
 | webhook.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 

@@ -1318,7 +1318,7 @@ data:
     imagePullSecrets: null
     linkerdVersion: dev-undefined
     nodeSelector:
-      beta.kubernetes.io/os: linux
+      kubernetes.io/os: linux
     podAnnotations: {}
     podLabels: {}
     policyController:
@@ -1583,7 +1583,7 @@ spec:
         linkerd.io/proxy-deployment: linkerd-identity
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -1977,7 +1977,7 @@ spec:
         linkerd.io/proxy-deployment: linkerd-destination
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -2312,7 +2312,7 @@ spec:
             linkerd.io/created-by: linkerd/cli dev-undefined
         spec:
           nodeSelector:
-            beta.kubernetes.io/os: linux
+            kubernetes.io/os: linux
           serviceAccountName: linkerd-heartbeat
           restartPolicy: Never
           containers:
@@ -2377,7 +2377,7 @@ spec:
         linkerd.io/proxy-deployment: linkerd-proxy-injector
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
