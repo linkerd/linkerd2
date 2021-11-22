@@ -70,7 +70,7 @@ spec:
         component: jaeger-injector
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - args:
         - -collector-svc-addr=collector.linkerd-jaeger:55678
@@ -363,7 +363,7 @@ spec:
         component: collector
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - command:
         - /otelcol

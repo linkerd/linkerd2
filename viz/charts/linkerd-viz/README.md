@@ -111,7 +111,7 @@ Kubernetes: `>=1.20.0-0`
 | grafana.image.tag | string | linkerdVersion | Docker image tag for the grafana instance |
 | grafana.logFormat | string | defaultLogFormat | log format (plain, json) of the grafana instance |
 | grafana.logLevel | string | defaultLogLevel | log level of the grafana instance |
-| grafana.nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
+| grafana.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | grafana.proxy | string | `nil` |  |
 | grafana.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the grafana container can use |
 | grafana.resources.cpu.request | string | `nil` | Amount of CPU units that the grafana container requests |
@@ -133,7 +133,7 @@ Kubernetes: `>=1.20.0-0`
 | metricsAPI.image.tag | string | linkerdVersion | Docker image tag for the metrics-api component |
 | metricsAPI.logFormat | string | defaultLogFormat | log format of the metrics-api component |
 | metricsAPI.logLevel | string | defaultLogLevel | log level of the metrics-api component |
-| metricsAPI.nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
+| metricsAPI.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | metricsAPI.proxy | string | `nil` |  |
 | metricsAPI.replicas | int | `1` | number of replicas of the metrics-api component |
 | metricsAPI.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the metrics-api container can use |
@@ -143,7 +143,7 @@ Kubernetes: `>=1.20.0-0`
 | metricsAPI.resources.memory.limit | string | `nil` | Maximum amount of memory that metrics-api container can use |
 | metricsAPI.resources.memory.request | string | `nil` | Amount of memory that the metrics-api container requests |
 | metricsAPI.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
-| nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | Default nodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
+| nodeSelector | object | `{"kubernetes.io/os":"linux"}` | Default nodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | prometheus.alertRelabelConfigs | string | `nil` | Alert relabeling is applied to alerts before they are sent to the Alertmanager. |
 | prometheus.alertmanagers | string | `nil` | Alertmanager instances the Prometheus server sends alerts to configured via the static_configs parameter. |
 | prometheus.args | object | `{"config.file":"/etc/prometheus/prometheus.yml","storage.tsdb.path":"/data","storage.tsdb.retention.time":"6h"}` | Command line options for Prometheus binary |
@@ -155,7 +155,7 @@ Kubernetes: `>=1.20.0-0`
 | prometheus.image.tag | string | `"v2.30.3"` | Docker image tag for the prometheus instance |
 | prometheus.logFormat | string | defaultLogLevel | log format (plain, json) of the prometheus instance |
 | prometheus.logLevel | string | defaultLogLevel | log level of the prometheus instance |
-| prometheus.nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
+| prometheus.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | prometheus.proxy | string | `nil` |  |
 | prometheus.remoteWrite | string | `nil` | Allows transparently sending samples to an endpoint. Mostly used for long term storage. |
 | prometheus.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the prometheus container can use |
