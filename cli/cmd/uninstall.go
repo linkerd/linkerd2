@@ -55,7 +55,7 @@ This command provides all Kubernetes namespace-scoped and cluster-scoped resourc
 						extensionNames = append(extensionNames, fmt.Sprintf("* %s", v))
 					}
 
-					fmt.Fprintln(os.Stderr, fmt.Sprintf("Please uninstall the following extensions before uninstalling the control-plane:\n\t%s", strings.Join(extensionNames, "\n\t")))
+					fmt.Fprintf(os.Stderr, "Please uninstall the following extensions before uninstalling the control-plane:\n\t%s\n", strings.Join(extensionNames, "\n\t"))
 					fail = true
 				}
 
@@ -73,7 +73,7 @@ This command provides all Kubernetes namespace-scoped and cluster-scoped resourc
 				}
 
 				if len(injectedPods) > 0 {
-					fmt.Fprintln(os.Stderr, fmt.Sprintf("Please uninject the following pods before uninstalling the control-plane:\n\t%s", strings.Join(injectedPods, "\n\t")))
+					fmt.Fprintf(os.Stderr, "Please uninject the following pods before uninstalling the control-plane:\n\t%s\n", strings.Join(injectedPods, "\n\t"))
 					fail = true
 				}
 
