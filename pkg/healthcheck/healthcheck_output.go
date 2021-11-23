@@ -385,6 +385,8 @@ func restartSpinner(spin *spinner.Spinner, result *CheckResult) {
 	}
 }
 
+// When running in short mode, we defer writing the header
+// until the first time we print a warning or error result.
 func printHeader(wout io.Writer, headerPrinted bool, hc Runner) bool {
 	if headerPrinted {
 		return headerPrinted
