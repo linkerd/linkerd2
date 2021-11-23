@@ -19,7 +19,7 @@ func wrapTransport(config *rest.Config, telemetryName string) *rest.Config {
 // NewL5DCRDClient returns a Linkerd controller client for the given
 // configuration.
 func NewL5DCRDClient(kubeConfig *rest.Config) (*l5dcrdclient.Clientset, error) {
-	return l5dcrdclient.NewForConfig(wrapTransport(kubeConfig, "sp"))
+	return l5dcrdclient.NewForConfig(wrapTransport(kubeConfig, "l5dCrd"))
 }
 
 // NewTsClientSet returns a Kubernetes TrafficSplit client for the given
