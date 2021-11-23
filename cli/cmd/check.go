@@ -214,9 +214,6 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 		healthcheck.PrintChecksHeader(wout, true)
 	}
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
-	if options.output == tableOutput {
-		healthcheck.PrintChecksResult(wout, options.output, success)
-	}
 
 	extensionSuccess, err := runExtensionChecks(cmd, wout, werr, options)
 	if err != nil {
@@ -224,14 +221,9 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 		fmt.Fprintln(werr, err)
 		os.Exit(1)
 	}
-	if options.output == tableOutput {
-		healthcheck.PrintChecksResult(wout, options.output, extensionSuccess)
-	}
 
 	totalSuccess := success && extensionSuccess
-	if options.output == shortOutput {
-		healthcheck.PrintChecksResult(wout, options.output, totalSuccess)
-	}
+	healthcheck.PrintChecksResult(wout, options.output, totalSuccess)
 
 	if !totalSuccess {
 		os.Exit(1)
