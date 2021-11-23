@@ -20,4 +20,5 @@ if [ "$DOCKER_TARGET" = 'multi-arch' ]; then
 fi
 
 dir=$( cd "$bindir"/../policy-controller && pwd )
-docker_build policy-controller "${TAG:-$(head_root_tag)}" "$dir/amd64.dockerfile"
+arch=$(uname -m)
+docker_build policy-controller "${TAG:-$(head_root_tag)}" "$dir/$arch.dockerfile"
