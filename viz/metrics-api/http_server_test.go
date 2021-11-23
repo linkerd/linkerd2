@@ -106,7 +106,8 @@ func getServerVizClient(t *testing.T) (*mockGrpcServer, pb.ApiClient) {
 		}
 		err := http.Serve(listener, handler)
 		if err != nil {
-			t.Fatalf("Could not start server: %v", err)
+			t.Errorf("Could not start server: %v", err)
+			return
 		}
 	}()
 
