@@ -2,6 +2,7 @@ package destination
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -119,7 +120,7 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 	// documented in the KEP: https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/2433-topology-aware-hints/README.md#kube-proxy
 	for _, address := range et.availableEndpoints.Addresses {
 		if len(address.ForZones) == 0 {
-			allAvailEndpoints := make(map[watcher.ID]*watcher.Address)
+			allAvailEndpoints := make(map[watcher.ID]watcher.Address)
 			for k, v := range et.availableEndpoints.Addresses {
 				allAvailEndpoints[k] = v
 			}
@@ -133,7 +134,7 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 	// Each address that has a hint matching the node's zone should be added
 	// to the set of addresses that will be returned.
 	et.log.Debugf("Filtering through addresses that should be consumed by zone %s", et.nodeTopologyZone)
-	filtered := make(map[watcher.ID]*watcher.Address)
+	filtered := make(map[watcher.ID]watcher.Address)
 	for id, address := range et.availableEndpoints.Addresses {
 		for _, zone := range address.ForZones {
 			if zone.Name == et.nodeTopologyZone {
@@ -160,8 +161,8 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 // the endpoints that match the topological zone, by adding new endpoints and
 // removing stale ones.
 func (et *endpointTranslator) diffEndpoints(filtered watcher.AddressSet) (watcher.AddressSet, watcher.AddressSet) {
-	add := make(map[watcher.ID]*watcher.Address)
-	remove := make(map[watcher.ID]*watcher.Address)
+	add := make(map[watcher.ID]watcher.Address)
+	remove := make(map[watcher.ID]watcher.Address)
 
 	for id, address := range filtered.Addresses {
 		if _, ok := et.filteredSnapshot.Addresses[id]; !ok {
@@ -188,8 +189,8 @@ func (et *endpointTranslator) diffEndpoints(filtered watcher.AddressSet) (watche
 func (et *endpointTranslator) NoEndpoints(exists bool) {
 	et.log.Debugf("NoEndpoints(%+v)", exists)
 
-	et.availableEndpoints.Addresses = map[watcher.ID]*watcher.Address{}
-	et.filteredSnapshot.Addresses = map[watcher.ID]*watcher.Address{}
+	et.availableEndpoints.Addresses = map[watcher.ID]watcher.Address{}
+	et.filteredSnapshot.Addresses = map[watcher.ID]watcher.Address{}
 
 	u := &pb.Update{
 		Update: &pb.Update_NoEndpoints{
@@ -333,7 +334,7 @@ func (et *endpointTranslator) sendClientRemove(set watcher.AddressSet) {
 	}
 }
 
-func toAddr(address *watcher.Address) (*net.TcpAddress, error) {
+func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 	ip, err := addr.ParseProxyIPV4(address.IP)
 	if err != nil {
 		return nil, err
@@ -344,7 +345,7 @@ func toAddr(address *watcher.Address) (*net.TcpAddress, error) {
 	}, nil
 }
 
-func toWeightedAddr(address *watcher.Address, opaquePorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
+func toWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
 	// When converting an address to a weighted addr, it should be backed by a Pod.
 	if address.Pod == nil {
 		return nil, fmt.Errorf("address not backed by Pod: %s/%d", address.IP, address.Port)
@@ -434,7 +435,7 @@ func getNodeTopologyZone(nodes coreinformers.NodeInformer, srcNode string) (stri
 
 func newEmptyAddressSet() watcher.AddressSet {
 	return watcher.AddressSet{
-		Addresses: make(map[watcher.ID]*watcher.Address),
+		Addresses: make(map[watcher.ID]watcher.Address),
 		Labels:    make(map[string]string),
 	}
 }

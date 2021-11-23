@@ -30,7 +30,7 @@ func newBufferingEndpointListener() *bufferingEndpointListener {
 	}
 }
 
-func addressString(address *Address) string {
+func addressString(address Address) string {
 	addressString := fmt.Sprintf("%s:%d", address.IP, address.Port)
 	if address.Identity != "" {
 		addressString = fmt.Sprintf("%s/%s", addressString, address.Identity)
@@ -106,7 +106,7 @@ func newBufferingEndpointListenerWithResVersion() *bufferingEndpointListenerWith
 	}
 }
 
-func addressStringWithResVersion(address *Address) string {
+func addressStringWithResVersion(address Address) string {
 	return fmt.Sprintf("%s:%d:%s", address.IP, address.Port, address.Pod.ResourceVersion)
 }
 

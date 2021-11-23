@@ -361,7 +361,7 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 		if err != nil {
 			log.Errorf("failed to get opaque ports for pod %s/%s: %s", pod.Namespace, pod.Name, err)
 		}
-		weightedAddr, err = toWeightedAddr(&address, opaquePorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
+		weightedAddr, err = toWeightedAddr(address, opaquePorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
 		if err != nil {
 			return err
 		}

@@ -59,7 +59,7 @@ type (
 
 	// AddressSet is a set of Address, indexed by ID.
 	AddressSet struct {
-		Addresses map[ID]*Address
+		Addresses map[ID]Address
 		Labels    map[string]string
 	}
 
@@ -648,7 +648,7 @@ func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 
 func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, newSlice *discovery.EndpointSlice) {
 	updatedAddressSet := AddressSet{
-		Addresses: make(map[ID]*Address),
+		Addresses: make(map[ID]Address),
 		Labels:    pp.addresses.Labels,
 	}
 
@@ -723,7 +723,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 	if resolvedPort == undefinedEndpointPort {
 		return AddressSet{
 			Labels:    metricLabels(es),
-			Addresses: make(map[ID]*Address),
+			Addresses: make(map[ID]Address),
 		}
 	}
 
@@ -732,7 +732,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 		pp.log.Errorf("Could not fetch resource service name:%v", err)
 	}
 
-	addresses := make(map[ID]*Address)
+	addresses := make(map[ID]Address)
 	for _, endpoint := range es.Endpoints {
 		if endpoint.Hostname != nil {
 			if pp.hostname != "" && pp.hostname != *endpoint.Hostname {
@@ -759,7 +759,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					copy(zones, endpoint.Hints.ForZones)
 					address.ForZones = zones
 				}
-				addresses[id] = &address
+				addresses[id] = address
 			}
 			continue
 		}
@@ -781,7 +781,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					copy(zones, endpoint.Hints.ForZones)
 					address.ForZones = zones
 				}
-				addresses[id] = &address
+				addresses[id] = address
 			}
 		}
 
@@ -793,7 +793,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 }
 
 func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) AddressSet {
-	addresses := make(map[ID]*Address)
+	addresses := make(map[ID]Address)
 	for _, subset := range endpoints.Subsets {
 		resolvedPort := pp.resolveTargetPort(subset)
 		if resolvedPort == undefinedEndpointPort {
@@ -814,7 +814,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 				address, id := pp.newServiceRefAddress(resolvedPort, endpoint.IP, endpoints.Name, endpoints.Namespace)
 				address.Identity, address.AuthorityOverride = identity, authorityOverride
 
-				addresses[id] = &address
+				addresses[id] = address
 				continue
 			}
 
@@ -829,7 +829,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
 					continue
 				}
-				addresses[id] = &address
+				addresses[id] = address
 			}
 		}
 	}
@@ -987,7 +987,7 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
 }
 
 func (pp *portPublisher) updateServer(server *v1beta1.Server, selector labels.Selector, isAdd bool) {
-	for _, address := range pp.addresses.Addresses {
+	for id, address := range pp.addresses.Addresses {
 		if address.Pod != nil && selector.Matches(labels.Set(address.Pod.Labels)) {
 			var portMatch bool
 			switch server.Spec.Port.Type {
@@ -1012,11 +1012,12 @@ func (pp *portPublisher) updateServer(server *v1beta1.Server, selector labels.Se
 				} else {
 					address.OpaqueProtocol = false
 				}
+				pp.addresses.Addresses[id] = address
 			}
 		}
 	}
 	for _, listener := range pp.listeners {
-		listener.Update(pp.addresses)
+		listener.Add(pp.addresses)
 	}
 }
 
@@ -1027,7 +1028,7 @@ func (pp *portPublisher) updateServer(server *v1beta1.Server, selector labels.Se
 // WithPort sets the port field in all addresses of an address set.
 func (as *AddressSet) WithPort(port Port) AddressSet {
 	wp := AddressSet{
-		Addresses: map[PodID]*Address{},
+		Addresses: map[PodID]Address{},
 		Labels:    as.Labels,
 	}
 	for id, addr := range as.Addresses {
@@ -1061,7 +1062,7 @@ func getTargetPort(service *corev1.Service, port Port) namedPort {
 	return targetPort
 }
 
-func addressChanged(oldAddress *Address, newAddress *Address) bool {
+func addressChanged(oldAddress Address, newAddress Address) bool {
 
 	if oldAddress.Identity != newAddress.Identity {
 		// in this case the identity could have changed; this can happen when for
@@ -1082,8 +1083,8 @@ func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSe
 	// TODO: this detects pods which have been added or removed, but does not
 	// detect addresses which have been modified.  A modified address should trigger
 	// an add of the new version.
-	addAddresses := make(map[ID]*Address)
-	removeAddresses := make(map[ID]*Address)
+	addAddresses := make(map[ID]Address)
+	removeAddresses := make(map[ID]Address)
 	for id, newAddress := range newAddresses.Addresses {
 		if oldAddress, ok := oldAddresses.Addresses[id]; ok {
 			if addressChanged(oldAddress, newAddress) {
