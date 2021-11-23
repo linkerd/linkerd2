@@ -42,7 +42,7 @@ os() {
       ;;
     Linux)
       os=linux
-      arch=architecture
+      arch=$(architecture)
       ;;
     *)
       echo "unsupported os: $os" >&2
