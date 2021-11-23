@@ -164,9 +164,14 @@ func (et *endpointTranslator) diffEndpoints(filtered watcher.AddressSet) (watche
 	add := make(map[watcher.ID]watcher.Address)
 	remove := make(map[watcher.ID]watcher.Address)
 
-	for id, address := range filtered.Addresses {
-		if _, ok := et.filteredSnapshot.Addresses[id]; !ok {
-			add[id] = address
+	for id, new := range filtered.Addresses {
+		old, ok := et.filteredSnapshot.Addresses[id]
+		if !ok {
+			add[id] = new
+		} else {
+			if !reflect.DeepEqual(old, new) {
+				add[id] = new
+			}
 		}
 	}
 
@@ -203,42 +208,6 @@ func (et *endpointTranslator) NoEndpoints(exists bool) {
 	et.log.Debugf("Sending destination no endpoints: %+v", u)
 	if err := et.stream.Send(u); err != nil {
 		et.log.Errorf("Failed to send address update: %s", err)
-	}
-}
-
-func (et *endpointTranslator) Update(set watcher.AddressSet) {
-	addrs := []*pb.WeightedAddr{}
-
-	// For each address in the address set that is backed by a pod, check
-	// which ports are set as opaque by a Server and create a new weighted
-	// addr based off that.
-	for _, address := range set.Addresses {
-		// Addresses that are not backed by pods will not be selected by a
-		// Server, so ignore creating a new weighted addr for these.
-		if address.Pod == nil {
-			continue
-		}
-
-		opaquePorts, err := getPodOpaquePorts(address.Pod, et.defaultOpaquePorts)
-		if err != nil {
-			et.log.Errorf("failed to get opaque ports for pod %s/%s: %s", address.Pod.Namespace, address.Pod.Name, err)
-		}
-		weightedAddr, err := toWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
-		if err != nil {
-			et.log.Errorf("failed to translate endpoints to weighted addr: %s", err)
-			continue
-		}
-		addrs = append(addrs, weightedAddr)
-	}
-	add := &pb.Update{Update: &pb.Update_Add{
-		Add: &pb.WeightedAddrSet{
-			Addrs:        addrs,
-			MetricLabels: set.Labels,
-		},
-	}}
-	et.log.Debugf("Sending server update: %+v", add)
-	if err := et.stream.Send(add); err != nil {
-		et.log.Errorf("Failed to send server update: %s", err)
 	}
 }
 

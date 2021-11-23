@@ -125,7 +125,6 @@ type (
 		Add(set AddressSet)
 		Remove(set AddressSet)
 		NoEndpoints(exists bool)
-		Update(set AddressSet)
 	}
 )
 
