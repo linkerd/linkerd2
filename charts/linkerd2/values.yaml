@@ -247,8 +247,11 @@ debugContainer:
     version: ""
 
 identity:
-  # -- If the linkerd-identity-trust-roots ConfigMap has already been created
+  # -- If the linkerd-identity-trust-roots ConfigMap/Secret has already been created
   externalCA: false
+
+  # -- If the linkerd-identity-trust-roots should be pulled from a Secret instead of a ConfigMap (default)
+  externalCAFromSecret: false
 
   # -- Use [Service Account token Volume projection](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-token-volume-projection) for pod validation instead of the default token
   serviceAccountTokenProjection: true

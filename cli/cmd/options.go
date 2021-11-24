@@ -264,6 +264,12 @@ func makeInstallFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) 
 				values.Identity.Issuer.ExternalCA = value
 				return nil
 			}),
+
+		flag.NewBoolFlag(installOnlyFlags, "identity-external-ca-from-secret", false,
+			"Whether the external CA is from a Secret instead of a Configmap", func(values *l5dcharts.Values, value bool) error {
+				values.Identity.Issuer.ExternalCAFromSecret = value
+				return nil
+			}),
 	}
 
 	return flags, installOnlyFlags

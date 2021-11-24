@@ -112,10 +112,15 @@ be used in other contexts.
     configMapKeyRef:
       name: linkerd-identity-trust-roots
       key: ca-bundle.crt
-{{ else }}
+{{- else if .Values.identity.externalCAFromSecret }}
+  valueFrom:
+    secretKeyRef:
+      name: linkerd-identity-trust-roots
+      key: ca.crt
+{{- else }}
   value: |
     {{- required "Please provide the identity trust anchors" .Values.identityTrustAnchorsPEM | trim | nindent 4 }}
-{{ end -}}
+{{- end }}
 - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
 {{- if .Values.identity.serviceAccountTokenProjection }}
   value: /var/run/secrets/tokens/linkerd-identity-token

@@ -61,7 +61,7 @@ spec:
       {{- $_ := set $tree.Values.proxy "resources" $r }}
       {{- end }}
       {{- $_ := set $tree.Values.proxy "await" true }}
-      {{- $_ := set $tree.Values.proxy "loadTrustBundleFromConfigMap" true }}
+      {{- $_ := set $tree.Values.proxy "loadTrustBundleFromConfigMap" (not $tree.Values.identity.externalCAFromSecret) }}
       {{- $_ := set $tree.Values.proxy "podInboundPorts" "8443,9995" }}
       {{- /*
         The pod needs to accept webhook traffic, and we can't rely on that originating in the
@@ -116,9 +116,18 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
-      - configMap:
+      {{- if .Values.identity.externalCAFromSecret }}
+      - name: trust-roots
+        secret:
+          secretName: linkerd-identity-trust-roots
+          items:
+          - key: "ca.crt"
+            path: "ca-bundle.crt"
+      {{- else }}
+      - name: trust-roots
+        configMap:
           name: linkerd-identity-trust-roots
-        name: trust-roots
+      {{- end }}
       - name: tls
         secret:
           secretName: linkerd-proxy-injector-k8s-tls

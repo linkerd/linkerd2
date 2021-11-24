@@ -192,11 +192,12 @@ type (
 
 	// Issuer has the Helm variables of the identity issuer
 	Issuer struct {
-		ExternalCA         bool       `json:"externalCA"`
-		Scheme             string     `json:"scheme"`
-		ClockSkewAllowance string     `json:"clockSkewAllowance"`
-		IssuanceLifetime   string     `json:"issuanceLifetime"`
-		TLS                *IssuerTLS `json:"tls"`
+		ExternalCA           bool       `json:"externalCA"`
+		ExternalCAFromSecret bool       `json:"externalCAFromSecret"`
+		Scheme               string     `json:"scheme"`
+		ClockSkewAllowance   string     `json:"clockSkewAllowance"`
+		IssuanceLifetime     string     `json:"issuanceLifetime"`
+		TLS                  *IssuerTLS `json:"tls"`
 	}
 
 	// Webhook Helm variables for a webhook

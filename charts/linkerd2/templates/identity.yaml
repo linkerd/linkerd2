@@ -189,7 +189,7 @@ spec:
       {{- $_ := set $tree.Values.proxy "resources" $r }}
       {{- end }}
       {{- $_ := set $tree.Values.proxy "await" false }}
-      {{- $_ := set $tree.Values.proxy "loadTrustBundleFromConfigMap" true }}
+      {{- $_ := set $tree.Values.proxy "loadTrustBundleFromConfigMap" (not $tree.Values.identity.externalCAFromSecret) }}
       {{- $_ := set $tree.Values.proxy "podInboundPorts" "8080,9990" }}
       {{- /*
         The identity controller cannot discover policies, so we configure it with defaults that
@@ -216,9 +216,18 @@ spec:
       - name: identity-issuer
         secret:
           secretName: linkerd-identity-issuer
-      - configMap:
+      {{- if .Values.identity.externalCAFromSecret }}
+      - name: trust-roots
+        secret:
+          secretName: linkerd-identity-trust-roots
+          items:
+          - key: "ca.crt"
+            path: "ca-bundle.crt"
+      {{- else }}
+      - name: trust-roots
+        configMap:
           name: linkerd-identity-trust-roots
-        name: trust-roots
+      {{- end }}
       {{ if not .Values.cniEnabled -}}
       - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
