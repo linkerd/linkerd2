@@ -16,7 +16,6 @@ import (
 	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
-	tsinformers "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/informers/externalversions/split/v1alpha1"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -87,7 +86,6 @@ type API struct {
 	sp       spinformers.ServiceProfileInformer
 	ss       appv1informers.StatefulSetInformer
 	svc      coreinformers.ServiceInformer
-	ts       tsinformers.TrafficSplitInformer
 	node     coreinformers.NodeInformer
 	secret   coreinformers.SecretInformer
 	srv      srvinformers.ServerInformer
@@ -421,14 +419,6 @@ func (api *API) Job() batchv1informers.JobInformer {
 // ServiceProfiles
 func (api *API) SPAvailable() bool {
 	return api.sp != nil
-}
-
-// TS provides access to a shared informer and lister for TrafficSplits.
-func (api *API) TS() tsinformers.TrafficSplitInformer {
-	if api.ts == nil {
-		panic("TS informer not configured")
-	}
-	return api.ts
 }
 
 // Node provides access to a shared informer and lister for Nodes.

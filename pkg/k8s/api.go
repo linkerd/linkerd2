@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/prometheus"
-	tsclient "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -39,7 +38,6 @@ type KubernetesAPI struct {
 	kubernetes.Interface
 	Apiextensions   apiextensionsclient.Interface // for CRDs
 	Apiregistration apiregistration.Interface     // for access to APIService
-	TsClient        tsclient.Interface
 	DynamicClient   dynamic.Interface
 }
 
@@ -83,10 +81,6 @@ func NewAPIForConfig(config *rest.Config, impersonate string, impersonateGroup [
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API server aggregator: %v", err)
 	}
-	tsClient, err := tsclient.NewForConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("error configuring Traffic Split clientset: %v", err)
-	}
 	dynamicClient, err := dynamic.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes Dynamic Client: %v", err)
@@ -97,7 +91,6 @@ func NewAPIForConfig(config *rest.Config, impersonate string, impersonateGroup [
 		Interface:       clientset,
 		Apiextensions:   apiextensions,
 		Apiregistration: aggregatorClient,
-		TsClient:        tsClient,
 		DynamicClient:   dynamicClient,
 	}, nil
 }
