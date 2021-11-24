@@ -195,6 +195,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 	}
 
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+		IsMainCheckCommand:    true,
 		ControlPlaneNamespace: controlPlaneNamespace,
 		CNINamespace:          cniNamespace,
 		DataPlaneNamespace:    options.namespace,
@@ -209,10 +210,9 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 		InstallManifest:       installManifest,
 	})
 
-	if options.output != jsonOutput {
-		healthcheck.PrintCoreChecksHeader(wout)
+	if options.output == tableOutput {
+		healthcheck.PrintChecksHeader(wout, true)
 	}
-
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
 	extensionSuccess, err := runExtensionChecks(cmd, wout, werr, options)
@@ -222,7 +222,10 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 		os.Exit(1)
 	}
 
-	if !success || !extensionSuccess {
+	totalSuccess := success && extensionSuccess
+	healthcheck.PrintChecksResult(wout, options.output, totalSuccess)
+
+	if !totalSuccess {
 		os.Exit(1)
 	}
 
