@@ -317,7 +317,7 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 func toWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
 	// When converting an address to a weighted addr, it should be backed by a Pod.
 	if address.Pod == nil {
-		return nil, fmt.Errorf("address not backed by Pod: %s/%d", address.IP, address.Port)
+		return nil, fmt.Errorf("endpoint not backed by Pod: %s:%d", address.IP, address.Port)
 	}
 
 	skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(address.Pod)
