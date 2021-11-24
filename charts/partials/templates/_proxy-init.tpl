@@ -46,7 +46,7 @@ securityContext:
     {{- include "partials.proxy-init.capabilities.drop" . | nindent 4 -}}
     {{- end }}
     {{- end }}
-  {{- if .Values.proxyInit.closeWaitTimeoutSecs }}
+  {{- if or .Values.proxyInit.closeWaitTimeoutSecs .Values.proxyInit.runAsRoot }}
   privileged: true
   runAsNonRoot: false
   runAsUser: 0
