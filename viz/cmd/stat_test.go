@@ -44,14 +44,6 @@ func TestStat(t *testing.T) {
 		}, k8s.Pod, t)
 	})
 
-	t.Run("Returns trafficsplit stats", func(t *testing.T) {
-		testStatCall(paramsExp{
-			options: options,
-			resNs:   []string{"default"},
-			file:    "stat_one_ts_output.golden",
-		}, k8s.TrafficSplit, t)
-	})
-
 	options.outputFormat = jsonOutput
 	t.Run("Returns namespace stats (json)", func(t *testing.T) {
 		testStatCall(paramsExp{
@@ -64,14 +56,6 @@ func TestStat(t *testing.T) {
 			resNs:   []string{"emojivoto1"},
 			file:    "stat_one_output_json.golden",
 		}, k8s.Namespace, t)
-	})
-
-	t.Run("Returns trafficsplit stats (json)", func(t *testing.T) {
-		testStatCall(paramsExp{
-			options: options,
-			resNs:   []string{"default"},
-			file:    "stat_one_ts_output_json.golden",
-		}, k8s.TrafficSplit, t)
 	})
 
 	options = newStatOptions()
@@ -230,20 +214,13 @@ func TestStat(t *testing.T) {
 func testStatCall(exp paramsExp, resourceType string, t *testing.T) {
 	mockClient := &api.MockAPIClient{}
 	response := api.GenStatSummaryResponse("emoji", resourceType, exp.resNs, exp.counts, true, true)
-	if resourceType == k8s.TrafficSplit {
-		response = api.GenStatTsResponse("foo-split", resourceType, exp.resNs, true, true)
-	}
 
 	mockClient.StatSummaryResponseToReturn = response
 
-	args := []string{"ns"}
-	if resourceType == k8s.TrafficSplit {
-		args = []string{"trafficsplit"}
-	}
 	if exp.options.namespace == "" {
 		exp.options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
 	}
-	reqs, err := buildStatSummaryRequests(args, exp.options)
+	reqs, err := buildStatSummaryRequests([]string{"ns"}, exp.options)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
