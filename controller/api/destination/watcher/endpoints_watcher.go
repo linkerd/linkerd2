@@ -1143,6 +1143,9 @@ func setToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
 	if err != nil {
 		return fmt.Errorf("failed to list Servers: %s", err)
 	}
+	if address.Pod == nil {
+		return fmt.Errorf("endpoint not backed by pod: %s:%d", address.IP, address.Port)
+	}
 	for _, server := range servers {
 		selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
 		if err != nil {
