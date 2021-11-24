@@ -16,8 +16,6 @@ import (
 	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
-	tsclient "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
-	ts "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/informers/externalversions"
 	tsinformers "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/informers/externalversions/split/v1alpha1"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
@@ -62,7 +60,6 @@ const (
 	SP
 	SS
 	Svc
-	TS
 	Node
 	Secret
 	ES // EndpointSlice resource
@@ -98,7 +95,6 @@ type API struct {
 	syncChecks            []cache.InformerSynced
 	sharedInformers       informers.SharedInformerFactory
 	l5dCrdSharedInformers l5dcrdinformer.SharedInformerFactory
-	tsSharedInformers     ts.SharedInformerFactory
 
 	gauges []prometheus.GaugeFunc
 }
@@ -168,20 +164,7 @@ func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, dynamicClient dy
 		break
 	}
 
-	// TrafficSplits
-	var tsClient *tsclient.Clientset
-	for _, res := range resources {
-		if res == TS {
-			tsClient, err = NewTsClientSet(kubeConfig)
-			if err != nil {
-				return nil, err
-			}
-
-			break
-		}
-	}
-
-	api := NewAPI(k8sClient, dynamicClient, l5dCrdClient, tsClient, resources...)
+	api := NewAPI(k8sClient, dynamicClient, l5dCrdClient, resources...)
 	for _, gauge := range api.gauges {
 		prometheus.Register(gauge)
 	}
@@ -193,7 +176,6 @@ func NewAPI(
 	k8sClient kubernetes.Interface,
 	dynamicClient dynamic.Interface,
 	l5dCrdClient l5dcrdclient.Interface,
-	tsClient tsclient.Interface,
 	resources ...APIResource,
 ) *API {
 	sharedInformers := informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
@@ -203,18 +185,12 @@ func NewAPI(
 		l5dCrdSharedInformers = l5dcrdinformer.NewSharedInformerFactory(l5dCrdClient, 10*time.Minute)
 	}
 
-	var tsSharedInformers ts.SharedInformerFactory
-	if tsClient != nil {
-		tsSharedInformers = ts.NewSharedInformerFactory(tsClient, 10*time.Minute)
-	}
-
 	api := &API{
 		Client:                k8sClient,
 		DynamicClient:         dynamicClient,
 		syncChecks:            make([]cache.InformerSynced, 0),
 		sharedInformers:       sharedInformers,
 		l5dCrdSharedInformers: l5dCrdSharedInformers,
-		tsSharedInformers:     tsSharedInformers,
 	}
 
 	for _, resource := range resources {
@@ -289,13 +265,6 @@ func NewAPI(
 			api.svc = sharedInformers.Core().V1().Services()
 			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
 			api.addInformerSizeGauge("service", api.svc.Informer())
-		case TS:
-			if tsSharedInformers == nil {
-				panic("TS shared informer not configured")
-			}
-			api.ts = tsSharedInformers.Split().V1alpha1().TrafficSplits()
-			api.syncChecks = append(api.syncChecks, api.ts.Informer().HasSynced)
-			api.addInformerSizeGauge("traffic_split", api.ts.Informer())
 		case Node:
 			api.node = sharedInformers.Core().V1().Nodes()
 			api.syncChecks = append(api.syncChecks, api.node.Informer().HasSynced)
@@ -315,10 +284,6 @@ func (api *API) Sync(stopCh <-chan struct{}) {
 
 	if api.l5dCrdSharedInformers != nil {
 		api.l5dCrdSharedInformers.Start(stopCh)
-	}
-
-	if api.tsSharedInformers != nil {
-		api.tsSharedInformers.Start(stopCh)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
