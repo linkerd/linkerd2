@@ -2,6 +2,7 @@ package destination
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -163,9 +164,14 @@ func (et *endpointTranslator) diffEndpoints(filtered watcher.AddressSet) (watche
 	add := make(map[watcher.ID]watcher.Address)
 	remove := make(map[watcher.ID]watcher.Address)
 
-	for id, address := range filtered.Addresses {
-		if _, ok := et.filteredSnapshot.Addresses[id]; !ok {
-			add[id] = address
+	for id, new := range filtered.Addresses {
+		old, ok := et.filteredSnapshot.Addresses[id]
+		if !ok {
+			add[id] = new
+		} else {
+			if !reflect.DeepEqual(old, new) {
+				add[id] = new
+			}
 		}
 	}
 
@@ -209,26 +215,16 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 	addrs := []*pb.WeightedAddr{}
 	for _, address := range set.Addresses {
 		var (
-			wa  *pb.WeightedAddr
-			err error
+			wa          *pb.WeightedAddr
+			opaquePorts map[uint32]struct{}
+			err         error
 		)
 		if address.Pod != nil {
-			opaquePorts, ok, getErr := getPodOpaquePortsAnnotations(address.Pod)
-			if getErr != nil {
-				et.log.Errorf("failed getting opaque ports annotation for pod: %s", getErr)
+			opaquePorts, err = getPodOpaquePorts(address.Pod, et.defaultOpaquePorts)
+			if err != nil {
+				et.log.Errorf("failed to get opaque ports for pod %s/%s: %s", address.Pod.Namespace, address.Pod.Name, err)
 			}
-			// If the opaque ports annotation was not set, then set the
-			// endpoint's opaque ports to the default value.
-			if !ok {
-				opaquePorts = et.defaultOpaquePorts
-			}
-
-			skippedInboundPorts, skippedErr := getPodSkippedInboundPortsAnnotations(address.Pod)
-			if skippedErr != nil {
-				et.log.Errorf("failed getting ignored inbound ports annotation for pod: %s", err)
-			}
-
-			wa, err = toWeightedAddr(address, opaquePorts, skippedInboundPorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
+			wa, err = toWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 		} else {
 			var authOverride *pb.AuthorityOverride
 			if address.AuthorityOverride != "" {
@@ -318,11 +314,22 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 	}, nil
 }
 
-func toWeightedAddr(address watcher.Address, opaquePorts, skippedInboundPorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
+func toWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
+	// When converting an address to a weighted addr, it should be backed by a Pod.
+	if address.Pod == nil {
+		return nil, fmt.Errorf("endpoint not backed by Pod: %s:%d", address.IP, address.Port)
+	}
+
+	skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(address.Pod)
+	if err != nil {
+		log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
+	}
+
 	controllerNSLabel := address.Pod.Labels[k8s.ControllerNSLabel]
 	sa, ns := k8s.GetServiceAccountAndNS(address.Pod)
 	labels := k8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
 	_, isSkippedInboundPort := skippedInboundPorts[address.Port]
+
 	// If the pod is controlled by any Linkerd control plane, then it can be
 	// hinted that this destination knows H2 (and handles our orig-proto
 	// translation)
@@ -333,7 +340,11 @@ func toWeightedAddr(address watcher.Address, opaquePorts, skippedInboundPorts ma
 				H2: &pb.ProtocolHint_H2{},
 			}
 		}
-		if _, ok := opaquePorts[address.Port]; ok {
+		// If address is set as opaque by a Server, or its port is set as
+		// opaque by annotation or default value, then hint its proxy's
+		// inbound port.
+		_, opaquePort := opaquePorts[address.Port]
+		if address.OpaqueProtocol || opaquePort {
 			port, err := getInboundPort(&address.Pod.Spec)
 			if err != nil {
 				log.Error(err)

@@ -13,6 +13,8 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 . "$bindir"/_docker.sh
 # shellcheck source=_tag.sh
 . "$bindir"/_tag.sh
+# shellcheck source=_os.sh
+. "$bindir"/_os.sh
 
 if [ "$DOCKER_TARGET" = 'multi-arch' ]; then
     echo "DOCKER_TARGET may not be set to 'multi-arch' with $0" >&2
@@ -20,4 +22,5 @@ if [ "$DOCKER_TARGET" = 'multi-arch' ]; then
 fi
 
 dir=$( cd "$bindir"/../policy-controller && pwd )
-docker_build policy-controller "${TAG:-$(head_root_tag)}" "$dir/amd64.dockerfile"
+arch=$(architecture)
+docker_build policy-controller "${TAG:-$(head_root_tag)}" "$dir/$arch.dockerfile"

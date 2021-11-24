@@ -330,45 +330,36 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 // include an endpoint. Otherwise, the default profile is sent.
 func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod *corev1.Pod, port uint32) error {
 	log := s.log
-	var endpoint *pb.WeightedAddr
+	var weightedAddr *pb.WeightedAddr
 	opaquePorts := make(map[uint32]struct{})
 	var err error
 	if pod != nil {
-		podSet := podToAddressSet(s.k8sAPI, pod).WithPort(port)
-		podID := watcher.PodID{
-			Namespace: pod.Namespace,
-			Name:      pod.Name,
+		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(context.Background(), pod, true)
+		address := watcher.Address{
+			IP:        pod.Status.PodIP,
+			Port:      port,
+			Pod:       pod,
+			OwnerName: ownerName,
+			OwnerKind: ownerKind,
 		}
-		var ok bool
-		opaquePorts, ok, err = getPodOpaquePortsAnnotations(pod)
+		opaquePorts, err = getPodOpaquePorts(pod, s.defaultOpaquePorts)
 		if err != nil {
-			log.Errorf("failed to get opaque ports annotation for pod: %s", err)
+			log.Errorf("failed to get opaque ports for pod %s/%s: %s", pod.Namespace, pod.Name, err)
 		}
-
-		// If the opaque ports annotation was not set, then set the
-		// endpoint's opaque ports to the default value.
-		if !ok {
-			opaquePorts = s.defaultOpaquePorts
-		}
-
-		skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(pod)
-		if err != nil {
-			log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
-		}
-
-		endpoint, err = toWeightedAddr(podSet.Addresses[podID], opaquePorts, skippedInboundPorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
+		weightedAddr, err = toWeightedAddr(address, opaquePorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
 		if err != nil {
 			return err
 		}
+
 		// `Get` doesn't include the namespace in the per-endpoint
 		// metadata, so it needs to be special-cased.
-		endpoint.MetricLabels["namespace"] = pod.Namespace
+		weightedAddr.MetricLabels["namespace"] = pod.Namespace
 	}
 
 	// Send the default profile without subscribing for future updates. The
 	// profile response will also include an endpoint if the IP (or hostname)
 	// sent in the profile request maps to a pod.
-	translator := newProfileTranslator(stream, log, "", port, endpoint)
+	translator := newProfileTranslator(stream, log, "", port, weightedAddr)
 
 	// If there are opaque ports then update the profile translator
 	// with a service profile that has those values
@@ -512,26 +503,6 @@ func podReceivingTraffic(pod *corev1.Pod) bool {
 	return !podTerminating && !podTerminated
 }
 
-// podToAddressSet converts a Pod spec into a set of Addresses.
-func podToAddressSet(k8sAPI *k8s.API, pod *corev1.Pod) *watcher.AddressSet {
-	ownerKind, ownerName := k8sAPI.GetOwnerKindAndName(context.Background(), pod, true)
-	return &watcher.AddressSet{
-		Addresses: map[watcher.PodID]watcher.Address{
-			{
-				Name:      pod.Name,
-				Namespace: pod.Namespace,
-			}: {
-				IP:        pod.Status.PodIP,
-				Port:      0, // Will be set by individual subscriptions
-				Pod:       pod,
-				OwnerName: ownerName,
-				OwnerKind: ownerKind,
-			},
-		},
-		Labels: map[string]string{"namespace": pod.Namespace},
-	}
-}
-
 ////////////
 /// util ///
 ////////////
@@ -645,22 +616,22 @@ func hasSuffix(slice []string, suffix []string) bool {
 	return true
 }
 
-func getPodOpaquePortsAnnotations(pod *corev1.Pod) (map[uint32]struct{}, bool, error) {
+func getPodOpaquePorts(pod *corev1.Pod, defaultPorts map[uint32]struct{}) (map[uint32]struct{}, error) {
 	annotation, ok := pod.Annotations[labels.ProxyOpaquePortsAnnotation]
 	if !ok {
-		return nil, false, nil
+		return defaultPorts, nil
 	}
 	opaquePorts := make(map[uint32]struct{})
 	if annotation != "" {
 		for _, portStr := range util.ParseContainerOpaquePorts(annotation, pod.Spec.Containers) {
 			port, err := strconv.ParseUint(portStr, 10, 32)
 			if err != nil {
-				return nil, true, err
+				return nil, err
 			}
 			opaquePorts[uint32(port)] = struct{}{}
 		}
 	}
-	return opaquePorts, true, nil
+	return opaquePorts, nil
 }
 
 func getPodSkippedInboundPortsAnnotations(pod *corev1.Pod) (map[uint32]struct{}, error) {

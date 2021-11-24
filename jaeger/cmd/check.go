@@ -241,6 +241,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	hc.AppendCategories(jaegerCategory(hc))
 
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
+	healthcheck.PrintChecksResult(wout, options.output, success)
 
 	if !success {
 		os.Exit(1)
