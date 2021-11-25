@@ -88,9 +88,6 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
-- apiGroups: ["split.smi-spec.io"]
-  resources: ["trafficsplits"]
-  verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1867,7 +1864,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 0a447cc95ac5df9d2096fe668509c879b672d1768d4237b2ba84abb18324f6ce
+        checksum/config: ce3031a6e825c196c93dce3831e33e062b3fffb0f71e6fd3d661615ac695cc8c
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
