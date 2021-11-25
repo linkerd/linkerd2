@@ -5,11 +5,9 @@
 This edge release introduces a change in the destination service to honor
 opaque ports set in the `proxyProtocol` field of `Server` resources. This
 change makes it possible to set opaque ports directly in `Server` resources
-without needing the opaque ports annotation on pods. Version `v1alpha1` of the
-policy API has been officially deprecated; `v1alpha1` variants of the resource
-will now emit warnings when used with `kubectl`. The release also features a
-number of fixes and improvements, a big thank you to our external contributors
-for their continued support and involvement.
+without needing the opaque ports annotation on pods. The release also features
+a number of fixes and improvements, a big thank you to our external
+contributors for their continued support and involvement.
 
 * Added support in the destination service for honoring opaque ports marked in
   `Server` resources; ports can now be marked as opaque directly in `Server`
