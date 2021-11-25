@@ -22,8 +22,6 @@ contributors for their continued support and involvement.
 * Deprecated `v1alpha1` version of the policy APIs
 * Removed newline from `linkerd check` header text (thanks @mikutas!)
 * Replaced deprecated `beta.kubernetes.io/os` label with `kubernetes.io/os`
-* Replaced the use of unstructured types for interacting with policy API in
-  `k8s` pkg with a typed client.
 
 ## edge-21.11.3
 
