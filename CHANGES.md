@@ -1,5 +1,32 @@
 # Changes
 
+## edge-21.11.4
+
+This edge release introduces a change in the destination service to honor
+opaque ports set in the `proxyProtocol` field of `Server` resources. This
+change makes it possible to set opaque ports directly in `Server` resources
+without needing the opaque ports annotation on pods. Version `v1alpha1` of the
+policy API has been officially deprecated; `v1alpha1` variants of the resource
+will now emit warnings when used with `kubectl`. The release also features a
+number of fixes and improvements, a big thank you to our external contributors
+for their continued support and involvement.
+
+* Added support in the destination service for honoring opaque ports marked in
+  `Server` resources; ports can now be marked as opaque directly in `Server`
+  resources through the `proxyProtocol` field.
+* Added support to override default behavior and run `proxyInit` as root
+  (thanks @alex-berger!)
+* Added multicluster `Link` CRD to code generation script; consumers of the
+  multicluster API can now use a typed API to interact with multicluster links
+  (thanks @zaharidichev!)
+* Added a multicluster integration test for exported headless services (thanks
+  @importhuman!)
+* Deprecated `v1alpha1` version of the policy APIs
+* Removed newline from `linkerd check` header text (thanks @mikutas!)
+* Replaced deprecated `beta.kubernetes.io/os` label with `kubernetes.io/os`
+* Replaced the use of unstructured types for interacting with policy API in
+  `k8s` pkg with a typed client.
+
 ## edge-21.11.3
 
 This edge releases fixes a compatibility issue that prevented the policy
