@@ -29,7 +29,7 @@ imagePullPolicy: {{.Values.proxyInit.image.pullPolicy | default .Values.imagePul
 name: linkerd-init
 {{ include "partials.resources" .Values.proxyInit.resources }}
 securityContext:
-  {{- if .Values.proxyInit.closeWaitTimeoutSecs }}
+  {{- if or .Values.proxyInit.closeWaitTimeoutSecs .Values.proxyInit.runAsRoot }}
   allowPrivilegeEscalation: true
   {{- else }}
   allowPrivilegeEscalation: false
@@ -46,7 +46,7 @@ securityContext:
     {{- include "partials.proxy-init.capabilities.drop" . | nindent 4 -}}
     {{- end }}
     {{- end }}
-  {{- if .Values.proxyInit.closeWaitTimeoutSecs }}
+  {{- if or .Values.proxyInit.closeWaitTimeoutSecs .Values.proxyInit.runAsRoot }}
   privileged: true
   runAsNonRoot: false
   runAsUser: 0
