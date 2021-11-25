@@ -72,22 +72,23 @@ func ServerAuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI,
 		}
 
 		for _, server := range servers {
-			if server.Spec.PodSelector != nil {
-				selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
-					os.Exit(1)
-				}
-				selectedPods, err := k8sAPI.CoreV1().Pods(server.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
-					os.Exit(1)
-				}
-				if serverIncludesPod(server, selectedPods.Items, podSet) {
-					results = append(results, ServerAndAuthorization{server.GetName(), saz.GetName()})
-				}
+			if server.Spec.PodSelector == nil {
+				continue
 			}
 
+			selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
+				os.Exit(1)
+			}
+			selectedPods, err := k8sAPI.CoreV1().Pods(server.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
+				os.Exit(1)
+			}
+			if serverIncludesPod(server, selectedPods.Items, podSet) {
+				results = append(results, ServerAndAuthorization{server.GetName(), saz.GetName()})
+			}
 		}
 	}
 	return results, nil
@@ -114,22 +115,23 @@ func ServersForResource(ctx context.Context, k8sAPI *KubernetesAPI, namespace st
 	}
 
 	for _, server := range servers.Items {
-		if server.Spec.PodSelector != nil {
-			selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
-				os.Exit(1)
-			}
-			selectedPods, err := k8sAPI.CoreV1().Pods(server.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
-				os.Exit(1)
-			}
-			if serverIncludesPod(server, selectedPods.Items, podSet) {
-				results = append(results, server.GetName())
-			}
+		if server.Spec.PodSelector == nil {
+			continue
 		}
 
+		selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
+			os.Exit(1)
+		}
+		selectedPods, err := k8sAPI.CoreV1().Pods(server.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
+			os.Exit(1)
+		}
+		if serverIncludesPod(server, selectedPods.Items, podSet) {
+			results = append(results, server.GetName())
+		}
 	}
 	return results, nil
 }
