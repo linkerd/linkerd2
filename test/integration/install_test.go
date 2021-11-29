@@ -169,37 +169,17 @@ func TestInstallCalico(t *testing.T) {
 		return
 	}
 
-	// Install calico CNI plug-in from the official manifests
-	// Calico operator and custom resource definitions.
-	out, err := TestHelper.Kubectl("", []string{"apply", "-f", "https://docs.projectcalico.org/manifests/tigera-operator.yaml"}...)
+	out, err := TestHelper.Kubectl("", []string{"apply", "-f", "https://raw.githubusercontent.com/k3d-io/k3d/v4.4.5/docs/usage/guides/calico.yaml"}...)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"kubectl apply command failed\n%s", out)
 	}
 
-	// wait for the tigera-operator deployment
-	name := "tigera-operator"
-	ns := "tigera-operator"
-	o, err := TestHelper.Kubectl("", "--namespace="+ns, "wait", "--for=condition=available", "--timeout=120s", "deploy/"+name)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s in namespace %s", name, ns),
-			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
-	}
-
-	// creating the necessary custom resource
-	out, err = TestHelper.Kubectl("", []string{"apply", "-f", "https://docs.projectcalico.org/manifests/custom-resources.yaml"}...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-			"kubectl apply command failed\n%s", out)
-	}
-
-	// Wait for Calico CNI Installation, which is created by the operator based on the custom resource applied above
 	time.Sleep(10 * time.Second)
-	ns = "calico-system"
-	o, err = TestHelper.Kubectl("", "--namespace="+ns, "wait", "--for=condition=available", "--timeout=120s", "deploy/calico-kube-controllers", "deploy/calico-typha")
+	o, err := TestHelper.Kubectl("", "--namespace=kube-system", "wait", "--for=condition=available", "--timeout=120s", "deploy/calico-kube-controllers")
 	if err != nil {
-		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for resources in namespace %s", ns),
-			"failed to wait for condition=available for resources in namespace %s: %s: %s", ns, err, o)
+		testutil.AnnotatedFatalf(t, "failed to wait for condition=available for calico resources",
+			"failed to wait for condition=available for calico resources: %s: %s", err, o)
 	}
 }
 
@@ -951,7 +931,6 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 	}
 
 	expected := getCheckOutput(t, golden, TestHelper.GetLinkerdNamespace())
-
 	timeout := time.Minute * 5
 	err := TestHelper.RetryFor(timeout, func() error {
 		if cliVersionOverride != "" {
@@ -1025,7 +1004,7 @@ func getCheckOutput(t *testing.T, goldenFile string, namespace string) string {
 
 	var expected bytes.Buffer
 	if err := tpl.Execute(&expected, vars); err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to parse %s template: %s", goldenFile, err), err)
+		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to parse check.viz.golden template: %s", err), err)
 	}
 
 	return expected.String()
