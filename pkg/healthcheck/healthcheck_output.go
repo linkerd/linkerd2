@@ -76,8 +76,6 @@ func PrintChecksHeader(wout io.Writer, isCore bool) {
 		headerTxt = "Linkerd core checks"
 	} else {
 		headerTxt = "Linkerd extensions checks"
-		// this ensures there is a new line between the core check status and the extensions header
-		// fmt.Fprintln(wout)
 	}
 	fmt.Fprintln(wout, headerTxt)
 	fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
@@ -92,12 +90,8 @@ func PrintChecksResult(wout io.Writer, output string, success bool, warning bool
 
 	switch success {
 	case true:
-		// if output != ShortOutput || warning {
-		// 	fmt.Fprintln(wout, "")
-		// }
 		fmt.Fprintf(wout, "Status check results are %s\n", okStatus)
 	case false:
-		// fmt.Fprintln(wout, "")
 		fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
 	}
 }
@@ -327,7 +321,6 @@ func runChecksJSON(wout io.Writer, werr io.Writer, hc Runner) (bool, bool) {
 		}
 	}
 
-	// result := hc.RunChecks(collectJSONOutput)
 	success, warning := hc.RunChecks(collectJSONOutput)
 
 	outputJSON := checkOutput{
