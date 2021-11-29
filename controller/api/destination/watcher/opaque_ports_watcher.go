@@ -203,8 +203,7 @@ func getServiceOpaquePortsAnnotation(svc *corev1.Service) (map[uint32]struct{}, 
 func parseServiceOpaquePorts(annotation string, sps []corev1.ServicePort) []string {
 	portRanges := util.GetPortRanges(annotation)
 	var values []string
-	for _, portRange := range portRanges {
-		pr := portRange.GetPortRange()
+	for _, pr := range portRanges {
 		port, named := isNamed(pr, sps)
 		if named {
 			values = append(values, strconv.Itoa(int(port)))

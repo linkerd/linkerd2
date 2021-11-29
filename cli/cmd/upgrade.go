@@ -265,19 +265,10 @@ func upgrade(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, stage
 	if err != nil {
 		return bytes.Buffer{}, fmt.Errorf("failed to load stored values: %w", err)
 	}
-	// If there is no linkerd-config-overrides secret, assume we are upgrading
-	// from a version of Linkerd prior to the introduction of this secret.  In
-	// this case we load the values from the legacy linkerd-config configmap.
-	if values == nil {
-		values, err = loadStoredValuesLegacy(ctx, k)
-		if err != nil {
-			return bytes.Buffer{}, err
-		}
-	}
 
-	// If values is still nil, then neither the linkerd-config-overrides secret
-	// nor the legacy values were found. This means either means that Linkerd
-	// was installed with Helm or that the installation needs to be repaired.
+	// If values is still nil, then the linkerd-config-overrides secret was not found.
+	// This means either means that Linkerd was installed with Helm or that the installation
+	// needs to be repaired.
 	if values == nil {
 		return bytes.Buffer{}, errors.New(
 			`Could not find the Linkerd config. If Linkerd was installed with Helm, please
