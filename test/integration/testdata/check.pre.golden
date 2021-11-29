@@ -24,6 +24,7 @@ pre-kubernetes-setup
 √ can read Secrets
 √ can read extension-apiserver-authentication configmap
 √ no clock skew detected
+√ proxy-init container runs as root user if docker container runtime is used
 
 linkerd-version
 ---------------

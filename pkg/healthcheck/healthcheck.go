@@ -399,6 +399,7 @@ type Options struct {
 	RetryDeadline         time.Time
 	CNIEnabled            bool
 	InstallManifest       string
+	ChartValues           *l5dcharts.Values
 }
 
 // HealthChecker encapsulates all health check checkers, and clients required to
@@ -626,6 +627,14 @@ func (hc *HealthChecker) allCategories() []*Category {
 						return hc.checkClockSkew(ctx)
 					},
 				},
+				{
+					description: "proxy-init container runs as root user if docker container runtime is used",
+					hintAnchor:  "l5d-proxy-init-run-as-root",
+					fatal:       false,
+					check: func(ctx context.Context) error {
+						return hc.checkProxyInitRunsAsRoot(ctx, hc.Options.ChartValues)
+					},
+				},
 			},
 			false,
 		),
@@ -826,7 +835,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 							}
 							return err
 						}
-						return hc.checkProxyInitRunsAsRoot(ctx)
+						return hc.checkProxyInitRunsAsRoot(ctx, hc.LinkerdConfig())
 					},
 				},
 			},
@@ -2108,9 +2117,8 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Contex
 	return checkResources("ValidatingWebhookConfigurations", objects, []string{k8s.SPValidatorWebhookConfigName}, shouldExist)
 }
 
-func (hc *HealthChecker) checkProxyInitRunsAsRoot(ctx context.Context) error {
-	proxyInit := hc.LinkerdConfig().ProxyInit
-	runAsRoot := proxyInit != nil && proxyInit.RunAsRoot
+func (hc *HealthChecker) checkProxyInitRunsAsRoot(ctx context.Context, config *l5dcharts.Values) error {
+	runAsRoot := config != nil && config.ProxyInit != nil && config.ProxyInit.RunAsRoot
 	hasDockerNodes := false
 	continueToken := ""
 	for {
