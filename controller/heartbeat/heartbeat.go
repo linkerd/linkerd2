@@ -11,7 +11,7 @@ import (
 	"time"
 
 	pkgK8s "github.com/linkerd/linkerd2/controller/k8s"
-	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
@@ -29,7 +29,7 @@ type containerMeta struct {
 func K8sValues(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string) url.Values {
 	v := url.Values{}
 
-	cm, _, err := healthcheck.FetchLinkerdConfigMap(ctx, kubeAPI, controlPlaneNamespace)
+	cm, err := config.FetchLinkerdConfigMap(ctx, kubeAPI, controlPlaneNamespace)
 	if err != nil {
 		log.Errorf("Failed to fetch linkerd-config: %s", err)
 	} else {
@@ -60,13 +60,13 @@ func K8sValues(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneName
 		return v
 	}
 
-	spClient, err := pkgK8s.NewSpClientSet(kubeAPI.Config)
+	l5dCrdClient, err := pkgK8s.NewL5DCRDClient(kubeAPI.Config)
 	if err != nil {
-		log.Errorf("Failed to create service profile client: %s", err)
+		log.Errorf("Failed to create Linkerd CRD client: %s", err)
 		return v
 	}
 
-	spList, err := spClient.LinkerdV1alpha2().ServiceProfiles("").List(ctx, v1.ListOptions{})
+	spList, err := l5dCrdClient.LinkerdV1alpha2().ServiceProfiles("").List(ctx, v1.ListOptions{})
 	if err != nil {
 		log.Errorf("Failed to get service profiles: %s", err)
 		return v

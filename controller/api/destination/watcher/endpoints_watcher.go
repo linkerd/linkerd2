@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
@@ -14,7 +15,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	discovery "k8s.io/api/discovery/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	k8slabels "k8s.io/apimachinery/pkg/labels"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/cache"
 )
@@ -28,6 +30,8 @@ const (
 	targetCluster          = "target_cluster"
 	targetService          = "target_service"
 	targetServiceNamespace = "target_service_namespace"
+
+	opaqueProtocol = "opaque"
 )
 
 const endpointTargetRefPod = "Pod"
@@ -50,6 +54,7 @@ type (
 		Identity          string
 		AuthorityOverride string
 		ForZones          []discovery.ForZone
+		OpaqueProtocol    bool
 	}
 
 	// AddressSet is a set of Address, indexed by ID.
@@ -144,6 +149,12 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry, enableEndpointSlic
 		AddFunc:    ew.addService,
 		DeleteFunc: ew.deleteService,
 		UpdateFunc: func(_, obj interface{}) { ew.addService(obj) },
+	})
+
+	k8sAPI.Srv().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    ew.addServer,
+		DeleteFunc: ew.deleteServer,
+		UpdateFunc: func(_, obj interface{}) { ew.addServer(obj) },
 	})
 
 	if ew.enableEndpointSlices {
@@ -404,6 +415,20 @@ func (ew *EndpointsWatcher) getServicePublisher(id ServiceID) (sp *servicePublis
 	return
 }
 
+func (ew *EndpointsWatcher) addServer(obj interface{}) {
+	server := obj.(*v1beta1.Server)
+	for _, sp := range ew.publishers {
+		sp.updateServer(server, true)
+	}
+}
+
+func (ew *EndpointsWatcher) deleteServer(obj interface{}) {
+	server := obj.(*v1beta1.Server)
+	for _, sp := range ew.publishers {
+		sp.updateServer(server, false)
+	}
+}
+
 ////////////////////////
 /// servicePublisher ///
 ////////////////////////
@@ -529,7 +554,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 
 	if port.enableEndpointSlices {
 		matchLabels := map[string]string{discovery.LabelServiceName: sp.id.Name}
-		selector := k8slabels.Set(matchLabels).AsSelector()
+		selector := labels.Set(matchLabels).AsSelector()
 
 		sliceList, err := sp.k8sAPI.ES().Lister().EndpointSlices(sp.id.Namespace).List(selector)
 		if err != nil && !apierrors.IsNotFound(err) {
@@ -555,6 +580,17 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 
 func (sp *servicePublisher) metricsLabels(port Port, hostname string) prometheus.Labels {
 	return endpointsLabels(sp.id.Namespace, sp.id.Name, strconv.Itoa(int(port)), hostname)
+}
+
+func (sp *servicePublisher) updateServer(server *v1beta1.Server, isAdd bool) {
+	selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
+	if err != nil {
+		sp.log.Errorf("failed to create Selector: %s", err)
+		return
+	}
+	for _, pp := range sp.ports {
+		pp.updateServer(server, selector, isAdd)
+	}
 }
 
 /////////////////////
@@ -611,8 +647,12 @@ func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 
 func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, newSlice *discovery.EndpointSlice) {
 	updatedAddressSet := AddressSet{
-		Addresses: pp.addresses.Addresses,
+		Addresses: make(map[ID]Address),
 		Labels:    pp.addresses.Labels,
+	}
+
+	for id, address := range pp.addresses.Addresses {
+		updatedAddressSet.Addresses[id] = address
 	}
 
 	oldAddressSet := pp.endpointSliceToAddresses(oldSlice)
@@ -678,14 +718,12 @@ func metricLabels(resource interface{}) map[string]string {
 }
 
 func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) AddressSet {
-	addressSet := AddressSet{
-		Labels:    metricLabels(es),
-		Addresses: make(map[ID]Address),
-	}
-
 	resolvedPort := pp.resolveESTargetPort(es.Ports)
 	if resolvedPort == undefinedEndpointPort {
-		return addressSet
+		return AddressSet{
+			Labels:    metricLabels(es),
+			Addresses: make(map[ID]Address),
+		}
 	}
 
 	serviceID, err := getEndpointSliceServiceID(es)
@@ -693,6 +731,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 		pp.log.Errorf("Could not fetch resource service name:%v", err)
 	}
 
+	addresses := make(map[ID]Address)
 	for _, endpoint := range es.Endpoints {
 		if endpoint.Hostname != nil {
 			if pp.hostname != "" && pp.hostname != *endpoint.Hostname {
@@ -719,10 +758,8 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					copy(zones, endpoint.Hints.ForZones)
 					address.ForZones = zones
 				}
-
-				addressSet.Addresses[id] = address
+				addresses[id] = address
 			}
-
 			continue
 		}
 
@@ -733,20 +770,25 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
-
+				err = setToServerProtocol(pp.k8sAPI, &address, resolvedPort)
+				if err != nil {
+					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
+					continue
+				}
 				if endpoint.Hints != nil {
 					zones := make([]discovery.ForZone, len(endpoint.Hints.ForZones))
 					copy(zones, endpoint.Hints.ForZones)
 					address.ForZones = zones
 				}
-
-				addressSet.Addresses[id] = address
+				addresses[id] = address
 			}
 		}
 
 	}
-
-	return addressSet
+	return AddressSet{
+		Addresses: addresses,
+		Labels:    metricLabels(es),
+	}
 }
 
 func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) AddressSet {
@@ -781,8 +823,10 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
+				err = setToServerProtocol(pp.k8sAPI, &address, resolvedPort)
 				if err != nil {
-					pp.log.Errorf("failed to set opaque port annotation on pod: %s", err)
+					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
+					continue
 				}
 				addresses[id] = address
 			}
@@ -869,7 +913,7 @@ func (pp *portPublisher) updatePort(targetPort namedPort) {
 
 	if pp.enableEndpointSlices {
 		matchLabels := map[string]string{discovery.LabelServiceName: pp.id.Name}
-		selector := k8slabels.Set(matchLabels).AsSelector()
+		selector := labels.Set(matchLabels).AsSelector()
 
 		endpointSlices, err := pp.k8sAPI.ES().Lister().EndpointSlices(pp.id.Namespace).List(selector)
 		if err == nil {
@@ -945,6 +989,41 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
 	pp.metrics.setSubscribers(len(pp.listeners))
 }
 
+func (pp *portPublisher) updateServer(server *v1beta1.Server, selector labels.Selector, isAdd bool) {
+	for id, address := range pp.addresses.Addresses {
+		if address.Pod != nil && selector.Matches(labels.Set(address.Pod.Labels)) {
+			var portMatch bool
+			switch server.Spec.Port.Type {
+			case intstr.Int:
+				if server.Spec.Port.IntVal == int32(address.Port) {
+					portMatch = true
+				}
+			case intstr.String:
+				for _, c := range address.Pod.Spec.Containers {
+					for _, p := range c.Ports {
+						if p.ContainerPort == int32(address.Port) && p.Name == server.Spec.Port.StrVal {
+							portMatch = true
+						}
+					}
+				}
+			default:
+				continue
+			}
+			if portMatch {
+				if isAdd && server.Spec.ProxyProtocol == opaqueProtocol {
+					address.OpaqueProtocol = true
+				} else {
+					address.OpaqueProtocol = false
+				}
+				pp.addresses.Addresses[id] = address
+			}
+		}
+	}
+	for _, listener := range pp.listeners {
+		listener.Add(pp.addresses)
+	}
+}
+
 ////////////
 /// util ///
 ////////////
@@ -979,7 +1058,6 @@ func getTargetPort(service *corev1.Service, port Port) namedPort {
 	// port spec's name as the target port
 	for _, portSpec := range service.Spec.Ports {
 		if portSpec.Port == int32(port) {
-
 			return intstr.FromString(portSpec.Name)
 		}
 	}
@@ -1062,4 +1140,44 @@ func isValidSlice(es *discovery.EndpointSlice) bool {
 	}
 
 	return true
+}
+
+func setToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
+	servers, err := k8sAPI.Srv().Lister().Servers("").List(labels.Everything())
+	if err != nil {
+		return fmt.Errorf("failed to list Servers: %s", err)
+	}
+	if address.Pod == nil {
+		return fmt.Errorf("endpoint not backed by Pod: %s:%d", address.IP, address.Port)
+	}
+	for _, server := range servers {
+		selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
+		if err != nil {
+			return fmt.Errorf("failed to create Selector: %s", err)
+		}
+		if server.Spec.ProxyProtocol == opaqueProtocol && selector.Matches(labels.Set(address.Pod.Labels)) {
+			var portMatch bool
+			switch server.Spec.Port.Type {
+			case intstr.Int:
+				if server.Spec.Port.IntVal == int32(port) {
+					portMatch = true
+				}
+			case intstr.String:
+				for _, c := range address.Pod.Spec.Containers {
+					for _, p := range c.Ports {
+						if p.ContainerPort == int32(port) && p.Name == server.Spec.Port.StrVal {
+							portMatch = true
+						}
+					}
+				}
+			default:
+				continue
+			}
+			if portMatch {
+				address.OpaqueProtocol = true
+				return nil
+			}
+		}
+	}
+	return nil
 }

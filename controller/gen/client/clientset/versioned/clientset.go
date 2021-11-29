@@ -21,6 +21,7 @@ package versioned
 import (
 	"fmt"
 
+	linkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/link/v1alpha1"
 	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/server/v1beta1"
 	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serverauthorization/v1beta1"
 	linkerdv1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha2"
@@ -31,6 +32,7 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
+	LinkV1alpha1() linkv1alpha1.LinkV1alpha1Interface
 	ServerV1beta1() serverv1beta1.ServerV1beta1Interface
 	ServerauthorizationV1beta1() serverauthorizationv1beta1.ServerauthorizationV1beta1Interface
 	LinkerdV1alpha2() linkerdv1alpha2.LinkerdV1alpha2Interface
@@ -40,9 +42,15 @@ type Interface interface {
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
+	linkV1alpha1               *linkv1alpha1.LinkV1alpha1Client
 	serverV1beta1              *serverv1beta1.ServerV1beta1Client
 	serverauthorizationV1beta1 *serverauthorizationv1beta1.ServerauthorizationV1beta1Client
 	linkerdV1alpha2            *linkerdv1alpha2.LinkerdV1alpha2Client
+}
+
+// LinkV1alpha1 retrieves the LinkV1alpha1Client
+func (c *Clientset) LinkV1alpha1() linkv1alpha1.LinkV1alpha1Interface {
+	return c.linkV1alpha1
 }
 
 // ServerV1beta1 retrieves the ServerV1beta1Client
@@ -81,6 +89,10 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	}
 	var cs Clientset
 	var err error
+	cs.linkV1alpha1, err = linkv1alpha1.NewForConfig(&configShallowCopy)
+	if err != nil {
+		return nil, err
+	}
 	cs.serverV1beta1, err = serverv1beta1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
@@ -105,6 +117,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
+	cs.linkV1alpha1 = linkv1alpha1.NewForConfigOrDie(c)
 	cs.serverV1beta1 = serverv1beta1.NewForConfigOrDie(c)
 	cs.serverauthorizationV1beta1 = serverauthorizationv1beta1.NewForConfigOrDie(c)
 	cs.linkerdV1alpha2 = linkerdv1alpha2.NewForConfigOrDie(c)
@@ -116,6 +129,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
+	cs.linkV1alpha1 = linkv1alpha1.New(c)
 	cs.serverV1beta1 = serverv1beta1.New(c)
 	cs.serverauthorizationV1beta1 = serverauthorizationv1beta1.New(c)
 	cs.linkerdV1alpha2 = linkerdv1alpha2.New(c)

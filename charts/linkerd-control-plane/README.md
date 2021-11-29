@@ -209,6 +209,7 @@ Kubernetes: `>=1.16.0-0`
 | proxyInit.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the proxy-init container requests |
 | proxyInit.resources.memory.limit | string | `"50Mi"` | Maximum amount of memory that the proxy-init container can use |
 | proxyInit.resources.memory.request | string | `"10Mi"` | Amount of memory that the proxy-init container requests |
+| proxyInit.runAsRoot | bool | `false` | Allow overriding the runAsNonRoot behaviour (<https://github.com/linkerd/linkerd2/issues/7308>) |
 | proxyInit.xtMountPath.mountPath | string | `"/run"` |  |
 | proxyInit.xtMountPath.name | string | `"linkerd-proxy-init-xtables-lock"` |  |
 | spValidatorResources | string | `nil` |  |

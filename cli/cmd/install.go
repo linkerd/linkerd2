@@ -216,6 +216,10 @@ A full list of configurable values can be found at https://www.github.com/linker
 
 func newCmdInstall() *cobra.Command {
 	values, err := l5dcharts.NewValues()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
 	var options valuespkg.Options
 
 	allStageFlags, allStageFlagSet := makeAllStageFlags(values)

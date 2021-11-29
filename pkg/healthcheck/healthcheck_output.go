@@ -61,23 +61,45 @@ func (cr CheckResults) RunChecks(observer CheckObserver) bool {
 	return success
 }
 
-// PrintCoreChecksHeader writes the core checks header.
-func PrintCoreChecksHeader(wout io.Writer) {
-	headerTxt := "Linkerd core checks"
+// PrintChecksHeader writes the core/extension checks header.
+func PrintChecksHeader(wout io.Writer, isCore bool) {
+	var headerTxt string
+	if isCore {
+		headerTxt = "Linkerd core checks"
+	} else {
+		headerTxt = "Linkerd extensions checks"
+		// this ensures there is a new line between the core check status and the extensions header
+		fmt.Fprintln(wout)
+	}
 	fmt.Fprintln(wout, headerTxt)
 	fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
 	fmt.Fprintln(wout)
+}
+
+// PrintChecksResult writes the checks result.
+func PrintChecksResult(wout io.Writer, output string, success bool) {
+	if output == JSONOutput {
+		return
+	}
+
+	switch success {
+	case true:
+		if output != ShortOutput {
+			fmt.Fprintln(wout, "")
+		}
+		fmt.Fprintf(wout, "Status check results are %s\n", okStatus)
+	case false:
+		fmt.Fprintln(wout, "")
+		fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
+	}
 }
 
 // RunExtensionsChecks runs checks for each extension name passed into the `extensions` parameter
 // and handles formatting the output for each extension's check. This function also handles
 // finding the extension in the user's path and runs it.
 func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, flags []string, output string) bool {
-	if output != JSONOutput {
-		headerTxt := "Linkerd extensions checks"
-		fmt.Fprintln(wout)
-		fmt.Fprintln(wout, headerTxt)
-		fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
+	if output == TableOutput {
+		PrintChecksHeader(wout, false)
 	}
 
 	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
@@ -146,8 +168,7 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 				results.Results = append(results.Results, extensionResults.Results...)
 			}
 		}
-		// add a new line to space out each check output
-		fmt.Fprintln(wout)
+
 		extensionSuccess := RunChecks(wout, werr, results, output)
 		if !extensionSuccess {
 			success = false
@@ -172,11 +193,9 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 	spin.Writer = wout
 
 	// We set up different printing functions because we need to handle
-	// 3 check formatting output use cases:
+	// 2 check formatting output use cases:
 	//  1. the default check output in `table` format
-	//  2. the summarized output in `short` format for core checks only
-	//  3. the summarized output in `short` format for extension checks
-	//     and core checks together
+	//  2. the summarized output in `short` format
 	prettyPrintResults := func(result *CheckResult) {
 		lastCategory = printCategory(wout, lastCategory, result)
 
@@ -191,34 +210,15 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 		printResultDescription(wout, status, result)
 	}
 
+	var headerPrinted bool
 	prettyPrintResultsShort := func(result *CheckResult) {
 		// bail out early and skip printing if we've got an okStatus
 		if result.Err == nil {
 			return
 		}
 
+		headerPrinted = printHeader(wout, headerPrinted, hc)
 		lastCategory = printCategory(wout, lastCategory, result)
-
-		spin.Stop()
-		if result.Retry {
-			restartSpinner(spin, result)
-			return
-		}
-
-		status := getResultStatus(result)
-
-		printResultDescription(wout, status, result)
-	}
-
-	prettyPrintResultsExtensionShort := func(result *CheckResult) {
-		lastCategory = printCategory(wout, lastCategory, result)
-
-		// bail out early and skip printing if we've got an okStatus
-		// Note: we still print the category headers to show which
-		// extension check we are running.
-		if result.Err == nil {
-			return
-		}
 
 		spin.Stop()
 		if result.Retry {
@@ -233,21 +233,10 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 
 	var success bool
 	switch output {
-	case "short":
+	case ShortOutput:
 		success = hc.RunChecks(prettyPrintResultsShort)
-	case "extension-short":
-		success = hc.RunChecks(prettyPrintResultsExtensionShort)
 	default:
 		success = hc.RunChecks(prettyPrintResults)
-	}
-
-	// this empty line separates final results from the checks list in the output
-	fmt.Fprintln(wout, "")
-
-	if !success {
-		fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
-	} else {
-		fmt.Fprintf(wout, "Status check results are %s\n", okStatus)
 	}
 
 	return success
@@ -394,6 +383,28 @@ func restartSpinner(spin *spinner.Spinner, result *CheckResult) {
 		spin.Suffix = fmt.Sprintf(" %s", result.Err)
 		spin.Color("bold") // this calls spin.Restart()
 	}
+}
+
+// When running in short mode, we defer writing the header
+// until the first time we print a warning or error result.
+func printHeader(wout io.Writer, headerPrinted bool, hc Runner) bool {
+	if headerPrinted {
+		return headerPrinted
+	}
+
+	switch v := hc.(type) {
+	case *HealthChecker:
+		if v.IsMainCheckCommand {
+			PrintChecksHeader(wout, true)
+			headerPrinted = true
+		}
+	// When RunExtensionChecks called
+	case CheckResults:
+		PrintChecksHeader(wout, false)
+		headerPrinted = true
+	}
+
+	return headerPrinted
 }
 
 func printCategory(wout io.Writer, lastCategory CategoryID, result *CheckResult) CategoryID {

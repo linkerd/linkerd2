@@ -6,7 +6,7 @@ require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.0
 	github.com/briandowns/spinner v0.0.0-20190212173954-5cf08d0ac778
 	github.com/clarketm/json v1.15.7
-	github.com/containernetworking/cni v0.8.1
+	github.com/containernetworking/cni v1.0.1
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/emicklei/proto v1.9.1
 	github.com/evanphx/json-patch v4.11.0+incompatible
