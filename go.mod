@@ -30,7 +30,6 @@ require (
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/common v0.32.1
 	github.com/sergi/go-diff v1.2.0
-	github.com/servicemeshinterface/smi-sdk-go v0.5.0
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd
 	github.com/sirupsen/logrus v1.8.1
