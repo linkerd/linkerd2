@@ -49,16 +49,24 @@ type CheckResults struct {
 
 // RunChecks submits each of the individual CheckResult structs to the given
 // observer.
-func (cr CheckResults) RunChecks(observer CheckObserver) bool {
+func (cr CheckResults) RunChecks(observer CheckObserver) (bool, bool) {
 	success := true
+	warning := false
 	for _, result := range cr.Results {
 		result := result // Copy loop variable to make lint happy.
 		if result.Err != nil && !result.Warning {
 			success = false
 		}
+		if result.Err != nil {
+			if !result.Warning {
+				success = false
+			} else {
+				warning = true
+			}
+		}
 		observer(&result)
 	}
-	return success
+	return success, warning
 }
 
 // PrintChecksHeader writes the core/extension checks header.
@@ -69,7 +77,7 @@ func PrintChecksHeader(wout io.Writer, isCore bool) {
 	} else {
 		headerTxt = "Linkerd extensions checks"
 		// this ensures there is a new line between the core check status and the extensions header
-		fmt.Fprintln(wout)
+		// fmt.Fprintln(wout)
 	}
 	fmt.Fprintln(wout, headerTxt)
 	fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
@@ -77,19 +85,19 @@ func PrintChecksHeader(wout io.Writer, isCore bool) {
 }
 
 // PrintChecksResult writes the checks result.
-func PrintChecksResult(wout io.Writer, output string, success bool) {
+func PrintChecksResult(wout io.Writer, output string, success bool, warning bool) {
 	if output == JSONOutput {
 		return
 	}
 
 	switch success {
 	case true:
-		if output != ShortOutput {
-			fmt.Fprintln(wout, "")
-		}
+		// if output != ShortOutput || warning {
+		// 	fmt.Fprintln(wout, "")
+		// }
 		fmt.Fprintf(wout, "Status check results are %s\n", okStatus)
 	case false:
-		fmt.Fprintln(wout, "")
+		// fmt.Fprintln(wout, "")
 		fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
 	}
 }
@@ -97,7 +105,7 @@ func PrintChecksResult(wout io.Writer, output string, success bool) {
 // RunExtensionsChecks runs checks for each extension name passed into the `extensions` parameter
 // and handles formatting the output for each extension's check. This function also handles
 // finding the extension in the user's path and runs it.
-func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, flags []string, output string) bool {
+func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, flags []string, output string) (bool, bool) {
 	if output == TableOutput {
 		PrintChecksHeader(wout, false)
 	}
@@ -106,6 +114,7 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 	spin.Writer = wout
 
 	success := true
+	warning := false
 	for _, extension := range extensions {
 		var path string
 		args := append([]string{"check"}, flags...)
@@ -169,17 +178,18 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 			}
 		}
 
-		extensionSuccess := RunChecks(wout, werr, results, output)
+		var extensionSuccess bool
+		extensionSuccess, warning = RunChecks(wout, werr, results, output)
 		if !extensionSuccess {
 			success = false
 		}
 	}
 
-	return success
+	return success, warning
 }
 
 // RunChecks runs the checks that are part of hc
-func RunChecks(wout io.Writer, werr io.Writer, hc Runner, output string) bool {
+func RunChecks(wout io.Writer, werr io.Writer, hc Runner, output string) (bool, bool) {
 	if output == JSONOutput {
 		return runChecksJSON(wout, werr, hc)
 	}
@@ -187,7 +197,7 @@ func RunChecks(wout io.Writer, werr io.Writer, hc Runner, output string) bool {
 	return runChecksTable(wout, hc, output)
 }
 
-func runChecksTable(wout io.Writer, hc Runner, output string) bool {
+func runChecksTable(wout io.Writer, hc Runner, output string) (bool, bool) {
 	var lastCategory CategoryID
 	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	spin.Writer = wout
@@ -231,15 +241,24 @@ func runChecksTable(wout io.Writer, hc Runner, output string) bool {
 		printResultDescription(wout, status, result)
 	}
 
-	var success bool
+	var (
+		success bool
+		warning bool
+	)
 	switch output {
 	case ShortOutput:
-		success = hc.RunChecks(prettyPrintResultsShort)
+		success, warning = hc.RunChecks(prettyPrintResultsShort)
 	default:
-		success = hc.RunChecks(prettyPrintResults)
+		success, warning = hc.RunChecks(prettyPrintResults)
 	}
 
-	return success
+	// This ensures there is a newline separating check categories from each
+	// other as well as the check result.
+	if output != ShortOutput || warning {
+		fmt.Fprintln(wout)
+	}
+
+	return success, warning
 }
 
 type checkOutput struct {
@@ -269,7 +288,7 @@ const (
 	checkErr     checkResult = "error"
 )
 
-func runChecksJSON(wout io.Writer, werr io.Writer, hc Runner) bool {
+func runChecksJSON(wout io.Writer, werr io.Writer, hc Runner) (bool, bool) {
 	var categories []*checkCategory
 
 	collectJSONOutput := func(result *CheckResult) {
@@ -308,10 +327,11 @@ func runChecksJSON(wout io.Writer, werr io.Writer, hc Runner) bool {
 		}
 	}
 
-	result := hc.RunChecks(collectJSONOutput)
+	// result := hc.RunChecks(collectJSONOutput)
+	success, warning := hc.RunChecks(collectJSONOutput)
 
 	outputJSON := checkOutput{
-		Success:    result,
+		Success:    success,
 		Categories: categories,
 	}
 
@@ -321,7 +341,7 @@ func runChecksJSON(wout io.Writer, werr io.Writer, hc Runner) bool {
 	} else {
 		fmt.Fprintf(werr, "JSON serialization of the check result failed with %s", err)
 	}
-	return result
+	return success, warning
 }
 
 // ParseJSONCheckOutput parses the output of a check command run with json

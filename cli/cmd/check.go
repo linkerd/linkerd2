@@ -213,9 +213,9 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 	if options.output == tableOutput {
 		healthcheck.PrintChecksHeader(wout, true)
 	}
-	success := healthcheck.RunChecks(wout, werr, hc, options.output)
+	success, warning := healthcheck.RunChecks(wout, werr, hc, options.output)
 
-	extensionSuccess, err := runExtensionChecks(cmd, wout, werr, options)
+	extensionSuccess, extensionWarning, err := runExtensionChecks(cmd, wout, werr, options)
 	if err != nil {
 		err = fmt.Errorf("failed to run extensions checks: %s", err)
 		fmt.Fprintln(werr, err)
@@ -223,7 +223,8 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 	}
 
 	totalSuccess := success && extensionSuccess
-	healthcheck.PrintChecksResult(wout, options.output, totalSuccess)
+	totalWarning := warning || extensionWarning
+	healthcheck.PrintChecksResult(wout, options.output, totalSuccess, totalWarning)
 
 	if !totalSuccess {
 		os.Exit(1)
@@ -232,21 +233,21 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 	return nil
 }
 
-func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts *checkOptions) (bool, error) {
+func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts *checkOptions) (bool, bool, error) {
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 
 	namespaces, err := kubeAPI.GetAllNamespacesWithExtensionLabel(cmd.Context())
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 
 	success := true
 	// no extensions to check
 	if len(namespaces) == 0 {
-		return success, nil
+		return success, false, nil
 	}
 
 	nsLabels := make([]string, len(namespaces))
@@ -254,8 +255,8 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 		nsLabels[i] = ns.Labels[k8s.LinkerdExtensionLabel]
 	}
 
-	extensionSuccess := healthcheck.RunExtensionsChecks(wout, werr, nsLabels, getExtensionCheckFlags(cmd.Flags()), opts.output)
-	return extensionSuccess, nil
+	extensionSuccess, extensionWarning := healthcheck.RunExtensionsChecks(wout, werr, nsLabels, getExtensionCheckFlags(cmd.Flags()), opts.output)
+	return extensionSuccess, extensionWarning, nil
 }
 
 func getExtensionCheckFlags(lf *pflag.FlagSet) []string {
