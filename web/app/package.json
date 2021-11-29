@@ -47,7 +47,7 @@
     "@babel/preset-env": "^7.16.4",
     "@babel/preset-react": "^7.16.0",
     "@babel/runtime": "^7.16.3",
-    "@lingui/cli": "3.12.1",
+    "@lingui/cli": "3.13.0",
     "babel-core": "^7.0.0-bridge.0",
     "babel-jest": "^27.3.1",
     "babel-loader": "^8.2.3",
