@@ -249,7 +249,7 @@ func runChecksTable(wout io.Writer, hc Runner, output string) (bool, bool) {
 	// This ensures there is a newline separating check categories from each
 	// other as well as the check result. When running in ShortOutput mode and
 	// there are no warnings, there is no newline printed.
-	if output != ShortOutput || warning {
+	if output != ShortOutput || !success || warning {
 		fmt.Fprintln(wout)
 	}
 
