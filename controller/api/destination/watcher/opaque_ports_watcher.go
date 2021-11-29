@@ -8,7 +8,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	labels "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/util"
-	log "github.com/sirupsen/logrus"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -204,15 +203,14 @@ func getServiceOpaquePortsAnnotation(svc *corev1.Service) (map[uint32]struct{}, 
 func parseServiceOpaquePorts(annotation string, sps []corev1.ServicePort) []string {
 	portRanges := util.GetPortRanges(annotation)
 	var values []string
-	for _, portRange := range portRanges {
-		pr := portRange.GetPortRange()
+	for _, pr := range portRanges {
 		port, named := isNamed(pr, sps)
 		if named {
 			values = append(values, strconv.Itoa(int(port)))
 		} else {
 			pr, err := ports.ParsePortRange(pr)
 			if err != nil {
-				log.Warnf("Invalid port range [%v]: %s", pr, err)
+				logging.Warnf("Invalid port range [%v]: %s", pr, err)
 				continue
 			}
 			for i := pr.LowerBound; i <= pr.UpperBound; i++ {

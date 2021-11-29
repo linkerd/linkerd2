@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	linkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha1"
 	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	linkerdv1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
@@ -33,6 +34,7 @@ var scheme = runtime.NewScheme()
 var codecs = serializer.NewCodecFactory(scheme)
 
 var localSchemeBuilder = runtime.SchemeBuilder{
+	linkv1alpha1.AddToScheme,
 	serverv1beta1.AddToScheme,
 	serverauthorizationv1beta1.AddToScheme,
 	linkerdv1alpha2.AddToScheme,

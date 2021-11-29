@@ -372,7 +372,7 @@ start_multicluster_test() {
 
 multicluster_link() {
   lbIP=$(kubectl --context="$context" get svc -n kube-system traefik -o 'go-template={{ (index .status.loadBalancer.ingress 0).ip }}')
-  "$linkerd_path" multicluster link --api-server-address "https://${lbIP}:6443" --cluster-name "$1"
+  "$linkerd_path" multicluster link --api-server-address "https://${lbIP}:6443" --cluster-name "$1" --set "enableHeadlessServices=true"
 }
 
 run_test(){
@@ -536,6 +536,9 @@ run_multicluster_test() {
 
   export context="k3d-target"
   run_test "$test_directory/multicluster/target2" --multicluster
+
+  export context="k3d-target"
+  run_test "$test_directory/multicluster/target-statefulset" --multicluster
 }
 
 run_deep_test() {

@@ -169,7 +169,7 @@ func TestInstallCalico(t *testing.T) {
 		return
 	}
 
-	out, err := TestHelper.Kubectl("", []string{"apply", "-f", "https://k3d.io/usage/guides/calico.yaml"}...)
+	out, err := TestHelper.Kubectl("", []string{"apply", "-f", "https://k3d.io/v5.1.0/usage/advanced/calico.yaml"}...)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"kubectl apply command failed\n%s", out)

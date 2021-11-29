@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	controllerK8s "github.com/linkerd/linkerd2/controller/k8s"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
@@ -385,6 +384,7 @@ func (c *Category) WithHintBaseURL(hintBaseURL string) *Category {
 
 // Options specifies configuration for a HealthChecker.
 type Options struct {
+	IsMainCheckCommand    bool
 	ControlPlaneNamespace string
 	CNINamespace          string
 	DataPlaneNamespace    string
@@ -1688,35 +1688,30 @@ func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred
 
 // FetchCurrentConfiguration retrieves the current Linkerd configuration
 func FetchCurrentConfiguration(ctx context.Context, k kubernetes.Interface, controlPlaneNamespace string) (*corev1.ConfigMap, *l5dcharts.Values, error) {
-
-	// Get the linkerd-config values if present
-	configMap, configPb, err := FetchLinkerdConfigMap(ctx, k, controlPlaneNamespace)
+	// Get the linkerd-config values if present.
+	configMap, err := config.FetchLinkerdConfigMap(ctx, k, controlPlaneNamespace)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if rawValues := configMap.Data["values"]; rawValues != "" {
-		// Convert into latest values, where global field is removed
-		rawValuesBytes, err := config.RemoveGlobalFieldIfPresent([]byte(rawValues))
-		if err != nil {
-			return nil, nil, err
-		}
-		rawValues = string(rawValuesBytes)
-		var fullValues l5dcharts.Values
-
-		err = yaml.Unmarshal([]byte(rawValues), &fullValues)
-		if err != nil {
-			return nil, nil, err
-		}
-		return configMap, &fullValues, nil
-	}
-
-	if configPb == nil {
+	rawValues := configMap.Data["values"]
+	if rawValues == "" {
 		return configMap, nil, nil
 	}
-	// fall back to the older configMap
-	// TODO: remove this once the newer config override secret becomes the default i.e 2.10
-	return configMap, config.ToValues(configPb), nil
+
+	// Convert into latest values, where global field is removed.
+	rawValuesBytes, err := config.RemoveGlobalFieldIfPresent([]byte(rawValues))
+	if err != nil {
+		return nil, nil, err
+	}
+	rawValues = string(rawValuesBytes)
+	var fullValues l5dcharts.Values
+
+	err = yaml.Unmarshal([]byte(rawValues), &fullValues)
+	if err != nil {
+		return nil, nil, err
+	}
+	return configMap, &fullValues, nil
 }
 
 func (hc *HealthChecker) fetchProxyInjectorCaBundle(ctx context.Context) ([]*x509.Certificate, error) {
@@ -1799,26 +1794,6 @@ func (hc *HealthChecker) FetchCredsFromOldSecret(ctx context.Context, namespace 
 	}
 
 	return cred, nil
-}
-
-// FetchLinkerdConfigMap retrieves the `linkerd-config` ConfigMap from
-// Kubernetes and parses it into `linkerd2.config` protobuf.
-// TODO: Consider a different package for this function. This lives in the
-// healthcheck package because healthcheck depends on it, along with other
-// packages that also depend on healthcheck. This function depends on both
-// `pkg/k8s` and `pkg/config`, which do not depend on each other.
-func FetchLinkerdConfigMap(ctx context.Context, k kubernetes.Interface, controlPlaneNamespace string) (*corev1.ConfigMap, *configPb.All, error) {
-	cm, err := k.CoreV1().ConfigMaps(controlPlaneNamespace).Get(ctx, k8s.ConfigConfigMapName, metav1.GetOptions{})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	configPB, err := config.FromConfigMap(cm.Data)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return cm, configPB, nil
 }
 
 // CheckNamespace checks whether the given namespace exists, and returns an

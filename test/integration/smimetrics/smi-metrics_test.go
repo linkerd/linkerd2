@@ -14,6 +14,7 @@ import (
 
 var TestHelper *testutil.TestHelper
 
+//nolint // The test that uses this is currently skipped.
 type testCase struct {
 	name string
 	kind string
