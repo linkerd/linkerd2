@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	crdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -39,6 +40,7 @@ type KubernetesAPI struct {
 	Apiextensions   apiextensionsclient.Interface // for CRDs
 	Apiregistration apiregistration.Interface     // for access to APIService
 	DynamicClient   dynamic.Interface
+	L5dCrdClient    crdclient.Interface
 }
 
 // NewAPI validates a Kubernetes config and returns a client for accessing the
@@ -86,12 +88,18 @@ func NewAPIForConfig(config *rest.Config, impersonate string, impersonateGroup [
 		return nil, fmt.Errorf("error configuring Kubernetes Dynamic Client: %v", err)
 	}
 
+	l5dCrdClient, err := crdclient.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("error configuring Linkerd CRD clientset: %v", err)
+	}
+
 	return &KubernetesAPI{
 		Config:          config,
 		Interface:       clientset,
 		Apiextensions:   apiextensions,
 		Apiregistration: aggregatorClient,
 		DynamicClient:   dynamicClient,
+		L5dCrdClient:    l5dCrdClient,
 	}, nil
 }
 

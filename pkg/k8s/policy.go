@@ -10,7 +10,6 @@ import (
 	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -42,30 +41,29 @@ func ServerAuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI,
 
 	results := make([]ServerAndAuthorization, 0)
 
-	sazs, err := k8sAPI.DynamicClient.Resource(SazGVR).Namespace(namespace).List(ctx, metav1.ListOptions{})
+	sazs, err := k8sAPI.L5dCrdClient.ServerauthorizationV1beta1().ServerAuthorizations(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get serverauthorization resources: %s\n", err)
 		os.Exit(1)
 	}
 
 	for _, saz := range sazs.Items {
-		var servers []unstructured.Unstructured
+		var servers []serverv1beta1.Server
 
-		if name, found, _ := unstructured.NestedString(saz.UnstructuredContent(), "spec", "server", "name"); found {
-			server, err := k8sAPI.DynamicClient.Resource(ServerGVR).Namespace(saz.GetNamespace()).Get(ctx, name, metav1.GetOptions{})
+		if saz.Spec.Server.Name != "" {
+			server, err := k8sAPI.L5dCrdClient.ServerV1beta1().Servers(saz.GetNamespace()).Get(ctx, saz.Spec.Server.Name, metav1.GetOptions{})
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to get server %s: %s\n", name, err)
+				fmt.Fprintf(os.Stderr, "Failed to get server %s: %s\n", saz.Spec.Server.Name, err)
 				os.Exit(1)
 			}
-			servers = []unstructured.Unstructured{*server}
-		} else if sel, found, _ := unstructured.NestedMap(saz.UnstructuredContent(), "spec", "server", "selector"); found {
-			labelSelector := selector(sel)
-			selector, err := metav1.LabelSelectorAsSelector(&labelSelector)
+			servers = []serverv1beta1.Server{*server}
+		} else if saz.Spec.Server.Selector != nil {
+			selector, err := metav1.LabelSelectorAsSelector(saz.Spec.Server.Selector)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get servers: %s\n", err)
 				os.Exit(1)
 			}
-			serverList, err := k8sAPI.DynamicClient.Resource(ServerGVR).Namespace(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
+			serverList, err := k8sAPI.L5dCrdClient.ServerV1beta1().Servers(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get servers: %s\n", err)
 				os.Exit(1)
@@ -74,23 +72,23 @@ func ServerAuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI,
 		}
 
 		for _, server := range servers {
-			if sel, found, _ := unstructured.NestedMap(server.UnstructuredContent(), "spec", "podSelector"); found {
-				labelSelector := selector(sel)
-				selector, err := metav1.LabelSelectorAsSelector(&labelSelector)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
-					os.Exit(1)
-				}
-				selectedPods, err := k8sAPI.CoreV1().Pods(server.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
-					os.Exit(1)
-				}
-				if serverIncludesPod(server, selectedPods.Items, podSet) {
-					results = append(results, ServerAndAuthorization{server.GetName(), saz.GetName()})
-				}
+			if server.Spec.PodSelector == nil {
+				continue
 			}
 
+			selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
+				os.Exit(1)
+			}
+			selectedPods, err := k8sAPI.CoreV1().Pods(server.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
+				os.Exit(1)
+			}
+			if serverIncludesPod(server, selectedPods.Items, podSet) {
+				results = append(results, ServerAndAuthorization{server.GetName(), saz.GetName()})
+			}
 		}
 	}
 	return results, nil
@@ -110,30 +108,30 @@ func ServersForResource(ctx context.Context, k8sAPI *KubernetesAPI, namespace st
 
 	results := make([]string, 0)
 
-	servers, err := k8sAPI.DynamicClient.Resource(ServerGVR).Namespace(namespace).List(ctx, metav1.ListOptions{})
+	servers, err := k8sAPI.L5dCrdClient.ServerV1beta1().Servers(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get serverauthorization resources: %s\n", err)
 		os.Exit(1)
 	}
 
 	for _, server := range servers.Items {
-		if sel, found, _ := unstructured.NestedMap(server.UnstructuredContent(), "spec", "podSelector"); found {
-			labelSelector := selector(sel)
-			selector, err := metav1.LabelSelectorAsSelector(&labelSelector)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
-				os.Exit(1)
-			}
-			selectedPods, err := k8sAPI.CoreV1().Pods(server.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
-				os.Exit(1)
-			}
-			if serverIncludesPod(server, selectedPods.Items, podSet) {
-				results = append(results, server.GetName())
-			}
+		if server.Spec.PodSelector == nil {
+			continue
 		}
 
+		selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
+			os.Exit(1)
+		}
+		selectedPods, err := k8sAPI.CoreV1().Pods(server.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
+			os.Exit(1)
+		}
+		if serverIncludesPod(server, selectedPods.Items, podSet) {
+			results = append(results, server.GetName())
+		}
 	}
 	return results, nil
 }
@@ -143,30 +141,29 @@ func ServersForResource(ctx context.Context, k8sAPI *KubernetesAPI, namespace st
 func ServerAuthorizationsForServer(ctx context.Context, k8sAPI *KubernetesAPI, namespace string, server string) ([]string, error) {
 	results := make([]string, 0)
 
-	sazs, err := k8sAPI.DynamicClient.Resource(SazGVR).Namespace(namespace).List(ctx, metav1.ListOptions{})
+	sazs, err := k8sAPI.L5dCrdClient.ServerauthorizationV1beta1().ServerAuthorizations(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get serverauthorization resources: %s\n", err)
 		os.Exit(1)
 	}
 
 	for _, saz := range sazs.Items {
-		if name, found, _ := unstructured.NestedString(saz.UnstructuredContent(), "spec", "server", "name"); found {
-			s, err := k8sAPI.DynamicClient.Resource(ServerGVR).Namespace(saz.GetNamespace()).Get(ctx, name, metav1.GetOptions{})
+		if saz.Spec.Server.Name != "" {
+			s, err := k8sAPI.DynamicClient.Resource(ServerGVR).Namespace(saz.GetNamespace()).Get(ctx, saz.Spec.Server.Name, metav1.GetOptions{})
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to get server %s: %s\n", name, err)
+				fmt.Fprintf(os.Stderr, "Failed to get server %s: %s\n", saz.Spec.Server.Name, err)
 				os.Exit(1)
 			}
 			if s.GetName() == server {
 				results = append(results, saz.GetName())
 			}
-		} else if sel, found, _ := unstructured.NestedMap(saz.UnstructuredContent(), "spec", "server", "selector"); found {
-			labelSelector := selector(sel)
-			selector, err := metav1.LabelSelectorAsSelector(&labelSelector)
+		} else if saz.Spec.Server.Selector != nil {
+			selector, err := metav1.LabelSelectorAsSelector(saz.Spec.Server.Selector)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get servers: %s\n", err)
 				os.Exit(1)
 			}
-			serverList, err := k8sAPI.DynamicClient.Resource(ServerGVR).Namespace(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
+			serverList, err := k8sAPI.L5dCrdClient.ServerV1beta1().Servers(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get servers: %s\n", err)
 				os.Exit(1)
@@ -182,58 +179,17 @@ func ServerAuthorizationsForServer(ctx context.Context, k8sAPI *KubernetesAPI, n
 	return results, nil
 }
 
-func selector(selector map[string]interface{}) metav1.LabelSelector {
-	if labels, found, err := unstructured.NestedStringMap(selector, "matchLabels"); found && err == nil {
-		return metav1.LabelSelector{MatchLabels: labels}
-	}
-	if expressions, found, err := unstructured.NestedSlice(selector, "matchExpressions"); found && err == nil {
-		exprs := make([]metav1.LabelSelectorRequirement, len(expressions))
-		for i, expr := range expressions {
-			exprs[i] = matchExpression(expr)
-		}
-		return metav1.LabelSelector{MatchExpressions: exprs}
-	}
-	return metav1.LabelSelector{}
-}
-
-func matchExpression(expr interface{}) metav1.LabelSelectorRequirement {
-	if exprMap, ok := expr.(map[string]interface{}); ok {
-		if key, found, err := unstructured.NestedString(exprMap, "key"); found && err == nil {
-			if op, found, err := unstructured.NestedString(exprMap, "operator"); found && err == nil {
-				if values, found, err := unstructured.NestedStringSlice(exprMap, "values"); found && err == nil {
-					return metav1.LabelSelectorRequirement{
-						Key:      key,
-						Operator: metav1.LabelSelectorOperator(op),
-						Values:   values,
-					}
-				}
-			}
-		}
-	}
-	return metav1.LabelSelectorRequirement{}
-}
-
-func serverIncludesPod(server unstructured.Unstructured, serverPods []corev1.Pod, podSet map[id]struct{}) bool {
+func serverIncludesPod(server serverv1beta1.Server, serverPods []corev1.Pod, podSet map[id]struct{}) bool {
 	for _, pod := range serverPods {
 		if _, ok := podSet[id{pod.Name, pod.Namespace}]; ok {
-			if port, found, err := unstructured.NestedInt64(server.UnstructuredContent(), "spec", "port"); found && err == nil {
-				for _, container := range pod.Spec.Containers {
-					for _, p := range container.Ports {
-						if int32(port) == p.ContainerPort {
-							return true
-						}
+			for _, container := range pod.Spec.Containers {
+				for _, p := range container.Ports {
+					if server.Spec.Port.IntVal == p.ContainerPort || server.Spec.Port.StrVal == p.Name {
+						return true
 					}
 				}
 			}
-			if port, found, err := unstructured.NestedString(server.UnstructuredContent(), "spec", "port"); found && err == nil {
-				for _, container := range pod.Spec.Containers {
-					for _, p := range container.Ports {
-						if port == p.Name {
-							return true
-						}
-					}
-				}
-			}
+
 		}
 	}
 	return false
