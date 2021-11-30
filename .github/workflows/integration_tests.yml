@@ -82,7 +82,7 @@ jobs:
       uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
     - uses: actions/setup-go@331ce1d993939866bb63c32c6cbbfd48fa76fc57
       with:
-        go-version: '1.16'
+        go-version: '1.17'
     - name: Set environment variables from scripts
       run: |
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
