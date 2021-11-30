@@ -1134,39 +1134,44 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 		}
 
 		if rcsw.enableEndpointSlices {
-			endpointSlice, err := rcsw.localAPIClient.ES().Lister().EndpointSlices(svc.Namespace).Get(svc.Name)
+			matchLabels := map[string]string{
+				serviceNameLabel: svc.Name,
+			}
+			endpointSlices, err := rcsw.localAPIClient.ES().Lister().EndpointSlices(svc.Namespace).List(labels.Set(matchLabels).AsSelector())
 			if err != nil {
 				rcsw.log.Errorf("Could not get EndpointSlice: %s", err)
 				continue
 			}
 
-			addresses := []string{}
-			for _, addr := range gatewayAddresses {
-				addresses = append(addresses, addr.IP)
-			}
+			for _, endpointSlice := range endpointSlices {
+				addresses := []string{}
+				for _, addr := range gatewayAddresses {
+					addresses = append(addresses, addr.IP)
+				}
 
-			updatedEndpointSlice := endpointSlice.DeepCopy()
-			updatedEndpointSlice.Endpoints = []discovery.Endpoint{
-				{
-					Addresses: addresses,
-				},
-			}
-			updatedEndpointSlice.Ports = rcsw.getEndpointSlicePorts(updatedService)
+				updatedEndpointSlice := endpointSlice.DeepCopy()
+				updatedEndpointSlice.Endpoints = []discovery.Endpoint{
+					{
+						Addresses: addresses,
+					},
+				}
+				updatedEndpointSlice.Ports = rcsw.getEndpointSlicePorts(updatedService)
 
-			if updatedEndpointSlice.Annotations == nil {
-				updatedEndpointSlice.Annotations = make(map[string]string)
-			}
-			updatedEndpointSlice.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
+				if updatedEndpointSlice.Annotations == nil {
+					updatedEndpointSlice.Annotations = make(map[string]string)
+				}
+				updatedEndpointSlice.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
 
-			_, err = rcsw.localAPIClient.Client.CoreV1().Services(updatedService.Namespace).Update(ctx, updatedService, metav1.UpdateOptions{})
-			if err != nil {
-				rcsw.log.Error(err)
-				continue
-			}
+				_, err = rcsw.localAPIClient.Client.CoreV1().Services(updatedService.Namespace).Update(ctx, updatedService, metav1.UpdateOptions{})
+				if err != nil {
+					rcsw.log.Error(err)
+					continue
+				}
 
-			_, err = rcsw.localAPIClient.Client.DiscoveryV1beta1().EndpointSlices(updatedService.Namespace).Update(ctx, updatedEndpointSlice, metav1.UpdateOptions{})
-			if err != nil {
-				rcsw.log.Error(err)
+				_, err = rcsw.localAPIClient.Client.DiscoveryV1beta1().EndpointSlices(updatedService.Namespace).Update(ctx, updatedEndpointSlice, metav1.UpdateOptions{})
+				if err != nil {
+					rcsw.log.Error(err)
+				}
 			}
 		} else {
 			endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(svc.Namespace).Get(svc.Name)
@@ -1413,10 +1418,11 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx con
 }
 
 func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpointSlice(ctx context.Context, exportedEndpoints *discovery.EndpointSlice) error {
-	exportedService, err := rcsw.remoteAPIClient.Svc().Lister().Services(exportedEndpoints.Namespace).Get(exportedEndpoints.Name)
+	serviceName := exportedEndpoints.Labels[serviceNameLabel]
+	exportedService, err := rcsw.remoteAPIClient.Svc().Lister().Services(exportedEndpoints.Namespace).Get(serviceName)
 	if err != nil {
-		rcsw.log.Debugf("failed to retrieve exported service %s/%s when updating its headless mirror endpointslice: %v", exportedEndpoints.Namespace, exportedEndpoints.Name, err)
-		return fmt.Errorf("error retrieving exported service %s/%s: %v", exportedEndpoints.Namespace, exportedEndpoints.Name, err)
+		rcsw.log.Debugf("failed to retrieve exported service %s/%s when updating its headless mirror endpointslice: %v", exportedEndpoints.Namespace, serviceName, err)
+		return fmt.Errorf("error retrieving exported service %s/%s: %v", exportedEndpoints.Namespace, serviceName, err)
 	}
 
 	// Check whether the endpoints should be processed for a headless exported
@@ -1426,7 +1432,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpointSlice(ctx
 	// its Endpoints object, then the endpoints should not be processed.
 	if len(exportedService.Spec.Ports) == 0 {
 		rcsw.recorder.Event(exportedService, corev1.EventTypeNormal, eventTypeSkipped, "Skipped mirroring service: object spec has no exposed ports")
-		rcsw.log.Infof("Skipped creating headless mirror for %s/%s: service object spec has no exposed ports", exportedService.Namespace, exportedService.Name)
+		rcsw.log.Infof("Skipped creating headless mirror for %s/%s: service object spec has no exposed ports", exportedService.Namespace, serviceName)
 		return nil
 	}
 
@@ -1756,7 +1762,8 @@ func (rcsw *RemoteClusterServiceWatcher) createHeadlessMirrorEndpointSlice(ctx c
 				consts.RemoteServiceFqName: fmt.Sprintf("%s.%s.svc.%s", exportedService.Name, exportedService.Namespace, rcsw.link.TargetClusterDomain),
 			},
 		},
-		Endpoints: endpointsToCreate,
+		Endpoints:   endpointsToCreate,
+		AddressType: exportedEndpoints.AddressType,
 	}
 
 	if rcsw.link.GatewayIdentity != "" {
