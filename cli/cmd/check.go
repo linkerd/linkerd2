@@ -211,7 +211,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 	})
 
 	if options.output == tableOutput {
-		healthcheck.PrintChecksHeader(wout, true)
+		healthcheck.PrintChecksHeader(wout, healthcheck.CoreHeader)
 	}
 	success, warning := healthcheck.RunChecks(wout, werr, hc, options.output)
 

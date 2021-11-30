@@ -28,6 +28,11 @@ const (
 	// ShortOutput is used to specify the short output format
 	ShortOutput = "short"
 
+	// CoreHeader is used when printing core header checks
+	CoreHeader = "core"
+	// extensionsHeader is used when printing extensions header checks
+	extensionsHeader = "extensions"
+
 	// DefaultHintBaseURL is the default base URL on the linkerd.io website
 	// that all check hints for the latest linkerd version point to. Each
 	// check adds its own `hintAnchor` to specify a location on the page.
@@ -69,16 +74,11 @@ func (cr CheckResults) RunChecks(observer CheckObserver) (bool, bool) {
 	return success, warning
 }
 
-// PrintChecksHeader writes the core/extension checks header.
-func PrintChecksHeader(wout io.Writer, isCore bool) {
-	var headerTxt string
-	if isCore {
-		headerTxt = "Linkerd core checks"
-	} else {
-		headerTxt = "Linkerd extensions checks"
-	}
-	fmt.Fprintln(wout, headerTxt)
-	fmt.Fprintln(wout, strings.Repeat("=", len(headerTxt)))
+// PrintChecksHeader writes the header text for a check.
+func PrintChecksHeader(wout io.Writer, header string) {
+	headerText := fmt.Sprintf("Linkerd %s checks", header)
+	fmt.Fprintln(wout, headerText)
+	fmt.Fprintln(wout, strings.Repeat("=", len(headerText)))
 	fmt.Fprintln(wout)
 }
 
@@ -101,7 +101,7 @@ func PrintChecksResult(wout io.Writer, output string, success bool, warning bool
 // finding the extension in the user's path and runs it.
 func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, flags []string, output string) (bool, bool) {
 	if output == TableOutput {
-		PrintChecksHeader(wout, false)
+		PrintChecksHeader(wout, extensionsHeader)
 	}
 
 	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
@@ -409,12 +409,12 @@ func printHeader(wout io.Writer, headerPrinted bool, hc Runner) bool {
 	switch v := hc.(type) {
 	case *HealthChecker:
 		if v.IsMainCheckCommand {
-			PrintChecksHeader(wout, true)
+			PrintChecksHeader(wout, CoreHeader)
 			headerPrinted = true
 		}
 	// When RunExtensionChecks called
 	case CheckResults:
-		PrintChecksHeader(wout, false)
+		PrintChecksHeader(wout, extensionsHeader)
 		headerPrinted = true
 	}
 
