@@ -1422,6 +1422,7 @@ data:
         memory:
           limit: 50Mi
           request: 10Mi
+      runAsRoot: false
       saMountPath: null
       xtMountPath:
         mountPath: /run
