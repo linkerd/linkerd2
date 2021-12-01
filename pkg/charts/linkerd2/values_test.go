@@ -53,6 +53,7 @@ func TestNewValues(t *testing.T) {
 		HighAvailability:             false,
 		PodAnnotations:               map[string]string{},
 		PodLabels:                    map[string]string{},
+		EnableEndpointSlices:         true,
 		PolicyController: &PolicyController{
 			Image: &Image{
 				Name: "cr.l5d.io/linkerd/policy-controller",
