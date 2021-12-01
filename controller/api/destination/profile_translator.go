@@ -12,6 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/util"
 	logging "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 )
 
 const millisPerDecimilli = 10
@@ -23,15 +24,17 @@ type profileTranslator struct {
 	fullyQualifiedName string
 	port               uint32
 	endpoint           *pb.WeightedAddr
+	pod                *corev1.Pod
 }
 
-func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endpoint *pb.WeightedAddr) *profileTranslator {
+func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endpoint *pb.WeightedAddr, pod *corev1.Pod) *profileTranslator {
 	return &profileTranslator{
 		stream:             stream,
 		log:                log.WithField("component", "profile-translator"),
 		fullyQualifiedName: fqn,
 		port:               port,
 		endpoint:           endpoint,
+		pod:                pod,
 	}
 }
 
@@ -40,7 +43,7 @@ func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
 		pt.stream.Send(pt.defaultServiceProfile())
 		return
 	}
-	destinationProfile, err := pt.toServiceProfile(profile)
+	destinationProfile, err := pt.createDestinationProfile(profile)
 	if err != nil {
 		pt.log.Error(err)
 		return
@@ -78,9 +81,9 @@ func toDuration(d time.Duration) *duration.Duration {
 	}
 }
 
-// toServiceProfile returns a Proxy API DestinationProfile, given a
+// createDestinationProfile returns a Proxy API DestinationProfile, given a
 // ServiceProfile.
-func (pt *profileTranslator) toServiceProfile(profile *sp.ServiceProfile) (*pb.DestinationProfile, error) {
+func (pt *profileTranslator) createDestinationProfile(profile *sp.ServiceProfile) (*pb.DestinationProfile, error) {
 	routes := make([]*pb.Route, 0)
 	for _, route := range profile.Spec.Routes {
 		pbRoute, err := toRoute(profile, route)
@@ -102,6 +105,22 @@ func (pt *profileTranslator) toServiceProfile(profile *sp.ServiceProfile) (*pb.D
 	var opaqueProtocol bool
 	if profile.Spec.OpaquePorts != nil {
 		_, opaqueProtocol = profile.Spec.OpaquePorts[pt.port]
+	}
+	// Only set the opaque transport if the translator has an endpoint with a
+	// protocol hint.
+	if pt.endpoint != nil && pt.endpoint.ProtocolHint != nil {
+		if !opaqueProtocol {
+			pt.endpoint.ProtocolHint.OpaqueTransport = nil
+		} else if pt.endpoint.ProtocolHint.OpaqueTransport == nil {
+			port, err := getInboundPort(&pt.pod.Spec)
+			if err != nil {
+				pt.log.Error(err)
+			} else {
+				pt.endpoint.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
+					InboundPort: port,
+				}
+			}
+		}
 	}
 	return &pb.DestinationProfile{
 		Routes:             routes,

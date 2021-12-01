@@ -770,7 +770,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
-				err = setToServerProtocol(pp.k8sAPI, &address, resolvedPort)
+				err = SetToServerProtocol(pp.k8sAPI, &address, resolvedPort)
 				if err != nil {
 					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
 					continue
@@ -823,7 +823,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
-				err = setToServerProtocol(pp.k8sAPI, &address, resolvedPort)
+				err = SetToServerProtocol(pp.k8sAPI, &address, resolvedPort)
 				if err != nil {
 					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
 					continue
@@ -1142,7 +1142,9 @@ func isValidSlice(es *discovery.EndpointSlice) bool {
 	return true
 }
 
-func setToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
+// SetToServerProtocol sets the address's OpaqueProtocol field based off any
+// Servers that select it and override the expected protocol.
+func SetToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
 	servers, err := k8sAPI.Srv().Lister().Servers("").List(labels.Everything())
 	if err != nil {
 		return fmt.Errorf("failed to list Servers: %s", err)

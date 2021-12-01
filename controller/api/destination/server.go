@@ -32,6 +32,7 @@ type (
 		opaquePorts   *watcher.OpaquePortsWatcher
 		profiles      *watcher.ProfileWatcher
 		trafficSplits *watcher.TrafficSplitWatcher
+		servers       *watcher.ServerWatcher
 		nodes         coreinformers.NodeInformer
 
 		enableH2Upgrade     bool
@@ -84,6 +85,7 @@ func NewServer(
 	opaquePorts := watcher.NewOpaquePortsWatcher(k8sAPI, log, defaultOpaquePorts)
 	profiles := watcher.NewProfileWatcher(k8sAPI, log)
 	trafficSplits := watcher.NewTrafficSplitWatcher(k8sAPI, log)
+	servers := watcher.NewServerWatcher(k8sAPI, log)
 
 	srv := server{
 		pb.UnimplementedDestinationServer{},
@@ -91,6 +93,7 @@ func NewServer(
 		opaquePorts,
 		profiles,
 		trafficSplits,
+		servers,
 		k8sAPI.Node(),
 		enableH2Upgrade,
 		controllerNS,
@@ -214,11 +217,15 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			// pod is not nil we will return a single endpoint in the
 			// DestinationProfile response, otherwise we return a default
 			// profile response.
-			err = s.sendEndpointProfile(stream, pod, port)
+			translator, err := s.sendEndpointProfile(stream, pod, port)
 			if err != nil {
 				log.Debugf("Failed to send profile response for endpoint %s:%d: %v", ip.String(), port, err)
 				return err
 			}
+
+			serverAdaptor := newServerAdaptor(translator, port)
+			s.servers.Subscribe(pod, port, serverAdaptor)
+			defer s.servers.Unsubscribe(pod, port, serverAdaptor)
 
 			select {
 			case <-s.shutdown:
@@ -245,11 +252,15 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 				log.Errorf("Failed to get pod for hostname %s: %v", hostname, err)
 			}
 
-			err = s.sendEndpointProfile(stream, pod, port)
+			translator, err := s.sendEndpointProfile(stream, pod, port)
 			if err != nil {
 				log.Debugf("Failed to send profile response for host %s: %v", hostname, err)
 				return err
 			}
+
+			serverAdaptor := newServerAdaptor(translator, port)
+			s.servers.Subscribe(pod, port, serverAdaptor)
+			defer s.servers.Unsubscribe(pod, port, serverAdaptor)
 
 			select {
 			case <-s.shutdown:
@@ -266,7 +277,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// We build up the pipeline of profile updaters backwards, starting from
 	// the translator which takes profile updates, translates them to protobuf
 	// and pushes them onto the gRPC stream.
-	translator := newProfileTranslator(stream, log, fqn, port, nil)
+	translator := newProfileTranslator(stream, log, fqn, port, nil, nil)
 
 	// The traffic split adaptor merges profile updates with traffic split
 	// updates and publishes the result to the profile translator.
@@ -343,7 +354,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 // sendEndpointProfile sends a DestinationProfile response back to the client.
 // If the pod argument is provided, the profile sent to the client will
 // include an endpoint. Otherwise, the default profile is sent.
-func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod *corev1.Pod, port uint32) error {
+func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod *corev1.Pod, port uint32) (*profileTranslator, error) {
 	log := s.log
 	var weightedAddr *pb.WeightedAddr
 	opaquePorts := make(map[uint32]struct{})
@@ -361,9 +372,18 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 		if err != nil {
 			log.Errorf("failed to get opaque ports for pod %s/%s: %s", pod.Namespace, pod.Name, err)
 		}
+		err = watcher.SetToServerProtocol(s.k8sAPI, &address, port)
+		if err != nil {
+			log.Errorf("failed to set address OpaqueProtocol: %s", err)
+		}
+		// If a Server has marked the port as opaque, then ensure the port is
+		// in the set of opaque ports.
+		if address.OpaqueProtocol {
+			opaquePorts[port] = struct{}{}
+		}
 		weightedAddr, err = toWeightedAddr(address, opaquePorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		// `Get` doesn't include the namespace in the per-endpoint
@@ -374,7 +394,7 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 	// Send the default profile without subscribing for future updates. The
 	// profile response will also include an endpoint if the IP (or hostname)
 	// sent in the profile request maps to a pod.
-	translator := newProfileTranslator(stream, log, "", port, weightedAddr)
+	translator := newProfileTranslator(stream, log, "", port, weightedAddr, pod)
 
 	// If there are opaque ports then update the profile translator
 	// with a service profile that has those values
@@ -386,7 +406,7 @@ func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod
 		translator.Update(nil)
 	}
 
-	return nil
+	return translator, nil
 }
 
 // getSvcID returns the service that corresponds to a Cluster IP address if one
