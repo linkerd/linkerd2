@@ -1,7 +1,7 @@
 ARG BUILDPLATFORM=linux/amd64
 
 # Precompile key slow-to-build dependencies
-FROM --platform=$BUILDPLATFORM golang:1.16.4-alpine as go-deps
+FROM --platform=$BUILDPLATFORM golang:1.17.3-alpine as go-deps
 WORKDIR /linkerd-build
 COPY go.mod go.sum ./
 COPY bin/install-deps bin/
@@ -10,7 +10,7 @@ ARG TARGETARCH
 RUN ./bin/install-deps $TARGETARCH
 
 ## bundle web assets
-FROM --platform=$BUILDPLATFORM node:15-buster as webpack-bundle
+FROM --platform=$BUILDPLATFORM node:16-bullseye as webpack-bundle
 RUN curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.10 --network-concurrency 1
 
 ENV PATH /root/.yarn/bin:$PATH

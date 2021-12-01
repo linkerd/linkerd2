@@ -3,7 +3,7 @@ import React from 'react';
 import _isEmpty from 'lodash/isEmpty';
 import { grafanaIcon } from './util/SvgWrappers.jsx';
 
-const GrafanaLink = ({ PrefixedLink, name, namespace, resource }) => {
+const GrafanaLink = function({ PrefixedLink, name, namespace, resource }) {
   let link = `/grafana/d/linkerd-${resource}?var-${resource}=${name}`;
   if (!_isEmpty(namespace)) {
     link += `&var-namespace=${namespace}`;

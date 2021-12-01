@@ -118,7 +118,7 @@ class TopRoutes extends React.Component {
       this.api.fetchMetrics(allMetricsUrl),
     ]);
 
-    this.serverPromise = Promise.all(this.api.getCurrentPromises())
+    Promise.all(this.api.getCurrentPromises())
       .then(([svcList, allMetrics]) => {
         const services = _get(svcList, 'services', []);
         const namespaces = _uniq(services.map(s => s.namespace));
@@ -133,36 +133,25 @@ class TopRoutes extends React.Component {
         });
       })
       .catch(this.handleApiError);
-  }
-
-  handleApiError = e => {
-    if (e.isCanceled) {
-      return;
-    }
-
-    this.setState({
-      pendingRequests: false,
-      error: e,
-    });
-  }
+  };
 
   startServerPolling = () => {
     const { pollingInterval } = this.state;
     this.loadFromServer();
     this.timerId = window.setInterval(this.loadFromServer, pollingInterval);
-  }
+  };
 
   stopServerPolling = () => {
     window.clearInterval(this.timerId);
     this.api.cancelCurrentRequests();
     this.setState({ pendingRequests: false });
-  }
+  };
 
   handleBtnClick = inProgress => () => {
     this.setState({
       requestInProgress: inProgress,
     });
-  }
+  };
 
   // Each time state.query is updated, this method calls setQuery provided
   // by useQueryParams HOC to partially update url query params that have
@@ -170,7 +159,7 @@ class TopRoutes extends React.Component {
   handleUrlUpdate = query => {
     const { setQuery } = this.props;
     setQuery({ ...query });
-  }
+  };
 
   handleNamespaceSelect = nsKey => e => {
     const { query } = this.state;
@@ -191,7 +180,7 @@ class TopRoutes extends React.Component {
 
     this.handleUrlUpdate(query);
     this.setState({ query });
-  }
+  };
 
   renderRoutesQueryForm = () => {
     const { query, requestInProgress } = this.state;
@@ -244,7 +233,7 @@ class TopRoutes extends React.Component {
         <Typography variant="caption"><Trans>createNewProfileMsg</Trans> <ConfigureProfilesMsg showAsIcon /></Typography>
       </CardContent>
     );
-  }
+  };
 
   renderNamespaceDropdown = (title, key, helperText) => {
     const { query, namespaces } = this.state;
@@ -270,7 +259,7 @@ class TopRoutes extends React.Component {
         <FormHelperText>{helperText}</FormHelperText>
       </FormControl>
     );
-  }
+  };
 
   renderResourceDropdown = (title, nameKey, typeKey, helperText) => {
     const { query, services, resourcesByNs } = this.state;
@@ -316,7 +305,7 @@ class TopRoutes extends React.Component {
         <FormHelperText>{helperText}</FormHelperText>
       </FormControl>
     );
-  }
+  };
 
   render() {
     const { query, requestInProgress, error } = this.state;

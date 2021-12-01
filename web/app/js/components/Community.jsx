@@ -10,7 +10,7 @@ const styles = () => ({
   },
 });
 
-const Community = ({ classes }) => {
+const Community = function({ classes }) {
   const [iframeHeight, setIframeHeight] = useState(0);
   useEffect(() => {
     // We add 5px to avoid cutting box shadow

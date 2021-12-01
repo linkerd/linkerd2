@@ -269,6 +269,8 @@ spec:
     - name: v1alpha1
       served: true
       storage: false
+      deprecated: true
+      deprecationWarning: "policy.linkerd.io/v1alpha1 Server is deprecated; use policy.linkerd.io/v1beta1 Server"
       schema:
         openAPIV3Schema:
           type: object
@@ -412,6 +414,8 @@ spec:
     - name: v1alpha1
       served: true
       storage: false
+      deprecated: true
+      deprecationWarning: "policy.linkerd.io/v1alpha1 ServerAuthorization is deprecated; use policy.linkerd.io/v1beta1 ServerAuthorization"
       schema:
         openAPIV3Schema:
           type: object
@@ -1227,7 +1231,7 @@ data:
     linkerdVersion: dev-undefined
     namespace: linkerd
     nodeSelector:
-      beta.kubernetes.io/os: linux
+      kubernetes.io/os: linux
     podAnnotations: {}
     podLabels: {}
     policyController:
@@ -1317,6 +1321,8 @@ data:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
         version: v1.5.1
+      logFormat: ""
+      logLevel: ""
       resources:
         cpu:
           limit: 100m
@@ -1462,7 +1468,7 @@ spec:
         linkerd.io/proxy-deployment: linkerd-identity
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - args:
         - identity
@@ -1646,9 +1652,8 @@ spec:
             - NET_ADMIN
             - NET_RAW
           privileged: false
+          runAsNonRoot: true
           readOnlyRootFilesystem: true
-          runAsNonRoot: false
-          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /run
@@ -1807,7 +1812,7 @@ spec:
         linkerd.io/proxy-deployment: linkerd-destination
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - env:
         - name: _pod_name
@@ -1989,6 +1994,7 @@ spec:
           readOnly: true
       - args:
         - --admin-addr=0.0.0.0:9990
+        - --control-plane-namespace=linkerd
         - --grpc-addr=0.0.0.0:8090
         - --admission-addr=0.0.0.0:9443
         - --cluster-networks=10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
@@ -2052,9 +2058,8 @@ spec:
             - NET_ADMIN
             - NET_RAW
           privileged: false
+          runAsNonRoot: true
           readOnlyRootFilesystem: true
-          runAsNonRoot: false
-          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /run
@@ -2118,7 +2123,7 @@ spec:
         linkerd.io/proxy-deployment: linkerd-proxy-injector
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - env:
         - name: _pod_name
@@ -2300,9 +2305,8 @@ spec:
             - NET_ADMIN
             - NET_RAW
           privileged: false
+          runAsNonRoot: true
           readOnlyRootFilesystem: true
-          runAsNonRoot: false
-          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /run

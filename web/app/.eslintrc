@@ -48,6 +48,10 @@
       "customValidators": [],
       "skipUndeclared": false
     }],
+    "react/no-unstable-nested-components": [
+      "error",
+      {"allowAsProps": true}
+    ],
     "semi": [2, "always"],
     "sort-imports": [0],
     "space-before-blocks": [2, "always"],
@@ -79,6 +83,7 @@
     "no-tabs": 0,
     "no-throw-literal": 0,
     "no-underscore-dangle": 0,
+    "func-names": ["error", "as-needed"],
     "prefer-promise-reject-errors": 0,
     "promise/always-return": 0,
     "react/jsx-props-no-spreading": 0,

@@ -16,18 +16,18 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
     container:
-      image: golang:1.16.4
+      image: golang:1.17.3
     steps:
     - name: Checkout code
       uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
     - name: Go lint
-      run: bin/lint --verbose
+      run: bin/lint --verbose --timeout=10m
   go_format:
     name: Go format
     timeout-minutes: 10
     runs-on: ubuntu-20.04
     container:
-      image: golang:1.16.4
+      image: golang:1.17.3
     steps:
     - name: Checkout code
       uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
@@ -38,7 +38,7 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
     container:
-      image: golang:1.16.4
+      image: golang:1.17.3
     steps:
       - name: Prerequisites
         run: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install unzip

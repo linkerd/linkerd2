@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	crdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	tsclient "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	appsv1 "k8s.io/api/apps/v1"
@@ -41,6 +42,7 @@ type KubernetesAPI struct {
 	Apiregistration apiregistration.Interface     // for access to APIService
 	TsClient        tsclient.Interface
 	DynamicClient   dynamic.Interface
+	L5dCrdClient    crdclient.Interface
 }
 
 // NewAPI validates a Kubernetes config and returns a client for accessing the
@@ -92,6 +94,11 @@ func NewAPIForConfig(config *rest.Config, impersonate string, impersonateGroup [
 		return nil, fmt.Errorf("error configuring Kubernetes Dynamic Client: %v", err)
 	}
 
+	l5dCrdClient, err := crdclient.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("error configuring Linkerd CRD clientset: %v", err)
+	}
+
 	return &KubernetesAPI{
 		Config:          config,
 		Interface:       clientset,
@@ -99,6 +106,7 @@ func NewAPIForConfig(config *rest.Config, impersonate string, impersonateGroup [
 		Apiregistration: aggregatorClient,
 		TsClient:        tsClient,
 		DynamicClient:   dynamicClient,
+		L5dCrdClient:    l5dCrdClient,
 	}, nil
 }
 
@@ -200,7 +208,9 @@ func (kubeAPI *KubernetesAPI) GetNamespaceWithExtensionLabel(ctx context.Context
 			return &ns, err
 		}
 	}
-	return nil, kerrors.NewNotFound(corev1.Resource("namespace"), value)
+	errNotFound := kerrors.NewNotFound(corev1.Resource("namespace"), value)
+	errNotFound.ErrStatus.Message = fmt.Sprintf("namespace with label \"%s: %s\" not found", LinkerdExtensionLabel, value)
+	return nil, errNotFound
 }
 
 // GetPodStatus receives a pod and returns the pod status, based on `kubectl` logic.

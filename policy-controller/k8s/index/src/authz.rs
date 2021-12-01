@@ -1,4 +1,4 @@
-use crate::{server::ServerSelector, Errors, Index, SrvIndex};
+use crate::{server::ServerSelector, ClusterInfo, Errors, Index, SrvIndex};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, IdentityMatch, IpNet, NetworkMatch,
@@ -42,12 +42,7 @@ impl Index {
             .namespaces
             .get_or_default(authz.namespace().expect("namespace required"));
 
-        ns.authzs.apply(
-            authz,
-            &mut ns.servers,
-            &*self.identity_domain,
-            &*self.cluster_networks,
-        )
+        ns.authzs.apply(authz, &mut ns.servers, &self.cluster_info)
     }
 
     #[instrument(
@@ -141,11 +136,10 @@ impl AuthzIndex {
         &mut self,
         authz: policy::ServerAuthorization,
         servers: &mut SrvIndex,
-        domain: &str,
-        cluster_networks: &[IpNet],
+        cluster: &ClusterInfo,
     ) -> Result<()> {
         let name = authz.name();
-        let authz = mk_authz(authz, domain, cluster_networks)?;
+        let authz = mk_authz(authz, cluster)?;
 
         match self.index.entry(name) {
             HashEntry::Vacant(entry) => {
@@ -171,11 +165,7 @@ impl AuthzIndex {
     }
 }
 
-fn mk_authz(
-    srv: policy::authz::ServerAuthorization,
-    domain: &str,
-    cluster_networks: &[IpNet],
-) -> Result<Authz> {
+fn mk_authz(srv: policy::authz::ServerAuthorization, cluster: &ClusterInfo) -> Result<Authz> {
     let policy::authz::ServerAuthorization { metadata, spec, .. } = srv;
 
     let servers = {
@@ -203,7 +193,8 @@ fn mk_authz(
             .collect::<Result<Vec<NetworkMatch>>>()?
     } else {
         // If no networks are specified, the cluster networks are used as the default.
-        cluster_networks
+        cluster
+            .networks
             .iter()
             .copied()
             .map(NetworkMatch::from)
@@ -217,7 +208,7 @@ fn mk_authz(
             .client
             .mesh_tls
             .ok_or_else(|| anyhow!("client mtls missing"))?;
-        mk_mtls_authn(&metadata, mtls, domain)?
+        mk_mtls_authn(&metadata, mtls, cluster)?
     };
 
     Ok(Authz {
@@ -232,7 +223,7 @@ fn mk_authz(
 fn mk_mtls_authn(
     metadata: &k8s::ObjectMeta,
     mtls: MeshTls,
-    domain: &str,
+    cluster: &ClusterInfo,
 ) -> Result<ClientAuthentication> {
     if mtls.unauthenticated_tls {
         return Ok(ClientAuthentication::TlsUnauthenticated);
@@ -264,7 +255,10 @@ fn mk_mtls_authn(
             .namespace
             .unwrap_or_else(|| metadata.namespace.clone().unwrap());
         debug!(ns = %ns, serviceaccount = %name, "Authenticated");
-        let n = format!("{}.{}.serviceaccount.identity.linkerd.{}", name, ns, domain);
+        let n = format!(
+            "{}.{}.serviceaccount.identity.{}.{}",
+            name, ns, cluster.control_plane_ns, cluster.identity_domain
+        );
         identities.push(IdentityMatch::Name(n));
     }
 

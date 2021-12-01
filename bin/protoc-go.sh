@@ -11,7 +11,6 @@ rm -rf controller/gen/common controller/gen/config viz/metrics-api/gen viz/tap/g
 mkdir -p controller/gen/common/net viz/metrics-api/gen/viz viz/tap/gen/tap
 
 "$bindir"/protoc -I proto --go_out=paths=source_relative:controller/gen proto/common/net.proto
-"$bindir"/protoc -I proto --go_out=paths=source_relative:controller/gen proto/config/config.proto
 "$bindir"/protoc -I proto -I viz/metrics-api/proto --go_out=paths=source_relative:viz/metrics-api/gen viz/metrics-api/proto/viz.proto
 "$bindir"/protoc -I proto -I viz/metrics-api/proto --go-grpc_out=paths=source_relative:viz/metrics-api/gen/viz viz/metrics-api/proto/viz.proto
 "$bindir"/protoc -I proto -I viz/tap/proto -I viz/metrics-api/proto --go_out=paths=source_relative:viz/tap/gen viz/tap/proto/viz_tap.proto

@@ -112,7 +112,7 @@ class Namespaces extends React.Component {
       pendingRequests: false,
       error: e,
     });
-  }
+  };
 
   checkNamespaceMatch = () => {
     const { ns } = this.state;
@@ -121,9 +121,9 @@ class Namespaces extends React.Component {
     if (ns !== selectedNamespace) {
       updateNamespaceInContext(ns);
     }
-  }
+  };
 
-  renderResourceSection = (resource, metrics) => {
+  static renderResourceSection(resource, metrics) {
     if (_isEmpty(metrics)) {
       return null;
     }
@@ -153,15 +153,15 @@ class Namespaces extends React.Component {
               _isEmpty(deploymentsWithMetrics) ? null :
               <NetworkGraph namespace={ns} deployments={metrics.deployment} />
             }
-            {this.renderResourceSection('deployment', metrics.deployment)}
-            {this.renderResourceSection('daemonset', metrics.daemonset)}
-            {this.renderResourceSection('pod', metrics.pod)}
-            {this.renderResourceSection('replicationcontroller', metrics.replicationcontroller)}
-            {this.renderResourceSection('statefulset', metrics.statefulset)}
-            {this.renderResourceSection('job', metrics.job)}
-            {this.renderResourceSection('trafficsplit', metrics.trafficsplit)}
-            {this.renderResourceSection('cronjob', metrics.cronjob)}
-            {this.renderResourceSection('replicaset', metrics.replicaset)}
+            {Namespaces.renderResourceSection('deployment', metrics.deployment)}
+            {Namespaces.renderResourceSection('daemonset', metrics.daemonset)}
+            {Namespaces.renderResourceSection('pod', metrics.pod)}
+            {Namespaces.renderResourceSection('replicationcontroller', metrics.replicationcontroller)}
+            {Namespaces.renderResourceSection('statefulset', metrics.statefulset)}
+            {Namespaces.renderResourceSection('job', metrics.job)}
+            {Namespaces.renderResourceSection('trafficsplit', metrics.trafficsplit)}
+            {Namespaces.renderResourceSection('cronjob', metrics.cronjob)}
+            {Namespaces.renderResourceSection('replicaset', metrics.replicaset)}
 
             {
               noMetrics ? null :

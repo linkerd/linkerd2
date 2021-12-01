@@ -128,7 +128,7 @@ class ServiceMesh extends React.Component {
     return extensionList;
   }
 
-  getControllerComponentData = podData => {
+  static getControllerComponentData(podData) {
     const podDataByDeploy = _groupBy(_filter(podData.pods, d => d.controlPlane), p => p.deployment);
     const byDeployName = _mapKeys(podDataByDeploy, (_pods, dep) => dep.split('/')[1]);
 
@@ -162,7 +162,7 @@ class ServiceMesh extends React.Component {
     this.setState({ pendingRequests: false });
   }
 
-  extractNsStatuses = nsData => {
+  static extractNsStatuses(nsData) {
     const podsByNs = _get(nsData, ['ok', 'statTables', 0, 'podGroup', 'rows'], []);
     const dataPlaneNamespaces = podsByNs.map(ns => {
       const meshedPods = parseInt(ns.meshedPodCount, 10);
@@ -196,11 +196,13 @@ class ServiceMesh extends React.Component {
       this.api.fetchMetrics(this.api.urlsForResourceNoStats('namespace')),
     ]);
 
+    // expose serverPromise for testing
+    // eslint-disable-next-line react/no-unused-class-component-methods
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(([pods, nsStats]) => {
         this.setState({
-          components: this.getControllerComponentData(pods),
-          nsStatuses: this.extractNsStatuses(nsStats),
+          components: ServiceMesh.getControllerComponentData(pods),
+          nsStatuses: ServiceMesh.extractNsStatuses(nsStats),
           pendingRequests: false,
           loaded: true,
           error: null,
@@ -211,6 +213,9 @@ class ServiceMesh extends React.Component {
 
   fetchAllInstalledExtensions() {
     this.api.setCurrentRequests([this.api.fetchExtension()]);
+
+    // expose serverPromise for testing
+    // eslint-disable-next-line react/no-unused-class-component-methods
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(([extensions]) => {
         this.setState({ extensions });
@@ -265,7 +270,7 @@ class ServiceMesh extends React.Component {
   renderInstalledExtensions() {
     return (
       <React.Fragment>
-        <Grid container justify="space-between">
+        <Grid container justifyContent="space-between">
           <Grid item xs={3}>
             <Typography variant="h6"><Trans>Installed Extensions</Trans></Typography>
           </Grid>

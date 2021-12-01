@@ -1,20 +1,35 @@
 name: Release
+
 on:
   push:
     tags:
-    - "*"
+    - "edge-*"
+    - "stable-*"
+
 permissions:
   contents: read
+
 env:
   GH_ANNOTATION: true
   DOCKER_REGISTRY: ghcr.io/linkerd
+
 jobs:
 
   docker_build:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        component: [proxy, controller, metrics-api, web, cni-plugin, debug, cli-bin, grafana, jaeger-webhook, tap]
+        component:
+        - cli-bin
+        - cni-plugin
+        - controller
+        - debug
+        - grafana
+        - jaeger-webhook
+        - metrics-api
+        - proxy
+        - tap
+        - web
     name: Docker build (${{ matrix.component }})
     timeout-minutes: 30
     steps:
@@ -54,7 +69,10 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        arch: [amd64, arm64, arm]
+        arch:
+        - amd64
+        - arm
+        - arm64
     name: Policy controller build (${{ matrix.arch }})
     steps:
     - name: Set up Docker Buildx
@@ -66,7 +84,7 @@ jobs:
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
         echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
     - name: Cache docker layers
-      uses: actions/cache@c64c572235d810460d0d6876e9c705ad5002b353
+      uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
       with:
         path: ${{ env.DOCKER_BUILDKIT_CACHE }}
         key: policy-controller-${{ matrix.arch }}-${{ env.TAG }}
@@ -123,6 +141,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+    - uses: actions/setup-go@331ce1d993939866bb63c32c6cbbfd48fa76fc57
+      with:
+        go-version: '1.17'
     - name: Download image archives
       uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
       with:
@@ -136,7 +157,9 @@ jobs:
       matrix:
         integration_test:
         - cluster-domain
+        - cni-calico-deep
         - deep
+        - default-policy-deny
         - external-issuer
         - external-prometheus-deep
         - external-resources
@@ -145,8 +168,6 @@ jobs:
         - uninstall
         - upgrade-edge
         - upgrade-stable
-        - cni-calico-deep
-        - default-policy-deny
     needs: [docker_build, policy_controller_manifest]
     name: Integration tests (${{ matrix.integration_test }})
     timeout-minutes: 60
@@ -154,6 +175,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+    - uses: actions/setup-go@331ce1d993939866bb63c32c6cbbfd48fa76fc57
+      with:
+        go-version: '1.17'
     - name: Set environment variables from scripts
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
@@ -177,6 +201,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+    - uses: actions/setup-go@331ce1d993939866bb63c32c6cbbfd48fa76fc57
+      with:
+        go-version: '1.17'
     - name: Install linkerd CLI
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"

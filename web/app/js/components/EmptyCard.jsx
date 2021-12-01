@@ -12,7 +12,7 @@ const styles = () => ({
   },
 });
 
-const EmptyCard = ({ classes }) => {
+const EmptyCard = function({ classes }) {
   return (
     <Card className={classes.card} elevation={3}>
       <CardContent>

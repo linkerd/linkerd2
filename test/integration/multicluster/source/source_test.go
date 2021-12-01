@@ -69,3 +69,21 @@ func TestInstallVoteBot(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "failed to install vote-bot", "failed to install vote-bot: %s\n%s", err, o)
 	}
 }
+
+func TestInstallSlowCooker(t *testing.T) {
+	err := TestHelper.CreateDataPlaneNamespaceIfNotExists(context.Background(), "multicluster-statefulset", nil)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to create multicluster-statefulset namespace", "failed to create multicluster-statefulset namespace: %s", err)
+	}
+
+	slowcooker, err := TestHelper.LinkerdRun("inject", "testdata/slow-cooker.yaml")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to inject slow-cooker manifest", "failed to inject slow-cooker manifest: %s", err)
+	}
+
+	out, err := TestHelper.KubectlApply(slowcooker, "")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to install slow-cooker", "failed to install slow-cooker: %s\ngot: %s", err, out)
+	}
+
+}

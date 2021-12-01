@@ -27,7 +27,7 @@ import (
 
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
-	"github.com/containernetworking/cni/pkg/types/current"
+	cniv1 "github.com/containernetworking/cni/pkg/types/100"
 	"github.com/containernetworking/cni/pkg/version"
 	"github.com/linkerd/linkerd2-proxy-init/cmd"
 	"github.com/linkerd/linkerd2-proxy-init/iptables"
@@ -70,7 +70,7 @@ type PluginConf struct {
 	// This is the previous result, when called in the context of a chained
 	// plugin. We will just pass any prevResult through.
 	RawPrevResult *map[string]interface{} `json:"prevResult"`
-	PrevResult    *current.Result         `json:"-"`
+	PrevResult    *cniv1.Result           `json:"-"`
 
 	LogLevel   string     `json:"log_level"`
 	ProxyInit  ProxyInit  `json:"linkerd"`
@@ -78,7 +78,7 @@ type PluginConf struct {
 }
 
 func main() {
-	skel.PluginMain(cmdAdd, cmdDel, version.All)
+	skel.PluginMain(cmdAdd, cmdCheck, cmdDel, version.All, "")
 }
 
 func configureLogging(logLevel string) {
@@ -115,9 +115,9 @@ func parseConfig(stdin []byte) (*PluginConf, error) {
 			return nil, fmt.Errorf("linkerd-cni: could not parse prevResult: %v", err)
 		}
 		conf.RawPrevResult = nil
-		conf.PrevResult, err = current.NewResultFromResult(res)
+		conf.PrevResult, err = cniv1.NewResultFromResult(res)
 		if err != nil {
-			return nil, fmt.Errorf("linkerd-cni: could not convert result to current version: %v", err)
+			return nil, fmt.Errorf("linkerd-cni: could not convert result to version 1.0: %v", err)
 		}
 		logrus.Debugf("linkerd-cni: prevResult: %v", conf.PrevResult)
 	}
@@ -261,6 +261,11 @@ func cmdAdd(args *skel.CmdArgs) error {
 	}
 
 	logrus.Debug("linkerd-cni: no previous result to pass through, emptying stdout")
+	return nil
+}
+
+func cmdCheck(args *skel.CmdArgs) error {
+	logrus.Debug("linkerd-cni: cmdCheck not implemented")
 	return nil
 }
 

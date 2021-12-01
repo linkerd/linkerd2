@@ -53,6 +53,9 @@ struct Args {
 
     #[structopt(long, default_value = "all-unauthenticated")]
     default_policy: DefaultPolicy,
+
+    #[structopt(long, default_value = "linkerd")]
+    control_plane_namespace: String,
 }
 
 #[derive(Clone, Debug)]
@@ -72,6 +75,7 @@ async fn main() -> Result<()> {
         default_policy,
         log_level,
         log_format,
+        control_plane_namespace,
     } = Args::from_args();
 
     log_init(log_level, log_format)?;
@@ -92,12 +96,13 @@ async fn main() -> Result<()> {
     // Index cluster resources, returning a handle that supports lookups for the gRPC server.
     let handle = {
         const DETECT_TIMEOUT: time::Duration = time::Duration::from_secs(10);
-        let (handle, index) = linkerd_policy_controller::k8s::Index::new(
-            cluster_networks.clone(),
+        let cluster = linkerd_policy_controller::k8s::ClusterInfo {
+            networks: cluster_networks.clone(),
             identity_domain,
-            default_policy,
-            DETECT_TIMEOUT,
-        );
+            control_plane_ns: control_plane_namespace,
+        };
+        let (handle, index) =
+            linkerd_policy_controller::k8s::Index::new(cluster, default_policy, DETECT_TIMEOUT);
 
         tokio::spawn(index.run(client.clone(), ready_tx));
         handle

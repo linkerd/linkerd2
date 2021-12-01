@@ -1,5 +1,96 @@
 # Changes
 
+## edge-21.11.4
+
+This edge release introduces a change in the destination service to honor
+opaque ports set in the `proxyProtocol` field of `Server` resources. This
+change makes it possible to set opaque ports directly in `Server` resources
+without needing the opaque ports annotation on pods. The release also features
+a number of fixes and improvements, a big thank you to our external
+contributors for their continued support and involvement.
+
+* Added support in the destination service for honoring opaque ports marked in
+  `Server` resources; ports can now be marked as opaque directly in `Server`
+  resources through the `proxyProtocol` field.
+* Added support to override default behavior and run `proxyInit` as root
+  (thanks @alex-berger!)
+* Added multicluster `Link` CRD to code generation script; consumers of the
+  multicluster API can now use a typed API to interact with multicluster links
+  (thanks @zaharidichev!)
+* Added a multicluster integration test for exported headless services (thanks
+  @importhuman!)
+* Deprecated `v1alpha1` version of the policy APIs
+* Removed newline from `linkerd check` header text (thanks @mikutas!)
+* Replaced deprecated `beta.kubernetes.io/os` label with `kubernetes.io/os`
+
+## edge-21.11.3
+
+This edge releases fixes a compatibility issue that prevented the policy
+controller from starting in some Kubernetes distributions. This release also
+includes a new High Availability mode for the gateway component in multicluster
+extension. Various dependencies across the CNI plugin, Policy Controller and
+dashboard have also been upgraded. In the proxy, error logging when the proxy
+fails to accept a connection due to a system error has been improved.
+
+* Updated policy controller to use `openssl` instead of `rustls` to fix
+  compatibility issues with some Kubernetes distributions
+* Added HA mode to multicluster gateway that adds a PodDisruptionBudget,
+  additional replicas and anti-affinity to the deployment (thanks @Crevil)
+* Improved TCP server error messages in the proxy
+* Fixed broken Grafana links in the dashboard
+* Upgraded CNI pkg to v0.8.1 in `linkerd-cni` to support latest CNI
+  versions
+* Updated various dependencies in the dashboard, policy controller
+  (thanks @dependabot)
+
+## edge-21.11.2
+
+This edge release introduces a new Services page in the web dashboard that shows
+live calls and route metrics for meshed services. Additionally, the `proxy-init`
+container is no longer enforced to run as root. Lastly, the proxy can now retry
+requests with a `content-length` header—permitting requests emitted by grpc-go
+to be retried.
+
+* Removed hardcoding that enforced the `proxy-init` container to run as root
+* Added support for retrying requests without a `content-length` header
+* Changed service discovery logs from `TRACE` to `DEBUG`
+* Fixed issue with policy controller where it assumed `linkerd` was the name of
+  the control plane namespace, leading to issues with installations that use a
+  non-default namespace name
+* Added support for ephemeral storage requests and limits configured either
+  through the CLI or annotations (thanks @michaellzc!)
+* Deprecated support for topology keys and added support for topology aware
+  hints
+* Added `logFormat` and `logLevel` configuration values for the `proxy-init`
+  container (thanks @gusfcarvalho!)
+* Added services to the web dashboard (thanks @krzysztofdrys!)
+* Updated example commands in the web dashboard to use the `viz` subcommand when
+  necessary (thanks @mikutas!)
+* Removed references to `linkerd-sp-validator` service account in the
+  `linkerd-psp` role binding (thanks @multimac!)
+
+## edge-21.11.1
+
+In this edge, we're very excited to introduce Service Account Token Volume
+Projections, used to set up the pods' identities. These tokens are bounded
+specifically for this use case and are rotated daily, replacing the usage of the
+default tokens injected by Kubernetes which are overly permissive.
+
+Note that this edge release updates the minimum supported kubernetes version to 1.20.
+
+* Updated the minimum supported kubernetes version to 1.20
+* Use Service Account Token Volume Projections to set up the pods' identities;
+  now injection also works on pods with `automountServiceAccountToken` set to
+  `false`
+* Updated proxy-init's Alpine base image to fix some CVEs (not affecting
+  Linkerd)
+* Updated the Prometheus image in linkerd-viz to 2.30.3
+* Changed the proxy and policy controller to use jemalloc on x86_64 gnu/linux to
+  reduce memory usage
+* Fixed output for `linkerd check -o json`
+* Added ability to configure ephemeral-storage resources for each component
+  (thanks @michaellzc!)
+
 ## edge-21.10.3
 
 This edge release fixes a bug in the proxy that could cause it to be killed in
