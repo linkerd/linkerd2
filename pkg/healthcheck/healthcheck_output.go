@@ -59,9 +59,6 @@ func (cr CheckResults) RunChecks(observer CheckObserver) (bool, bool) {
 	warning := false
 	for _, result := range cr.Results {
 		result := result // Copy loop variable to make lint happy.
-		if result.Err != nil && !result.Warning {
-			success = false
-		}
 		if result.Err != nil {
 			if !result.Warning {
 				success = false
