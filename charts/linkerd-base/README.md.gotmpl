@@ -15,41 +15,30 @@ the [Linkerd Getting Started Guide][getting-started] for how.
 For more comprehensive documentation, start with the [Linkerd
 docs][linkerd-docs].
 
-## Prerequisite: identity certificates
-
-The identity component of Linkerd requires setting up a trust anchor
-certificate, and an issuer certificate with its key. These need to be provided
-to Helm by the user (unlike when using the `linkerd install` CLI which can
-generate these automatically). You can provide your own, or follow [these
-instructions](https://linkerd.io/2/tasks/generate-certificates/) to generate new
-ones.
-
-Note that the provided certificates must be ECDSA certificates.
-
 ## Adding Linkerd's Helm repository
 
 ```bash
-# To add the repo for Linkerd2 stable releases:
+# To add the repo for Linkerd stable releases:
 helm repo add linkerd https://helm.linkerd.io/stable
-# To add the repo for Linkerd2 edge releases:
+# To add the repo for Linkerd edge releases:
 helm repo add linkerd-edge https://helm.linkerd.io/edge
 ```
 
 The following instructions use the `linkerd` repo. For installing an edge
 release, just replace with `linkerd-edge`.
 
-## Installing the chart
+## Installing the linkerd-base chart
 
-You must provide the certificates and keys described in the preceding section.
+This installs the `linkerd-base` chart, which only persists the cluster-level
+resources, such as `ClusterRoles` and `CRD`s. This means the user performing
+the installation requires cluster-level privileges.
 
-In this example we set the expiration date to one year ahead:
+After installing this chart, you need then to install the
+`linkerd-control-plane` chart in the same namespace, which provides all the
+linkerd core control components (and only requires namespace-level privileges).
 
 ```bash
-helm install \
-  --set-file identityTrustAnchorsPEM=ca.crt \
-  --set-file identity.issuer.tls.crtPEM=issuer.crt \
-  --set-file identity.issuer.tls.keyPEM=issuer.key \
-  linkerd/linkerd2
+helm install linkerd-base -n linkerd --create-namespace linkerd/linkerd-base
 ```
 
 ## Setting High-Availability
@@ -57,24 +46,19 @@ helm install \
 Besides the default `values.yaml` file, the chart provides a `values-ha.yaml`
 file that overrides some default values as to set things up under a
 high-availability scenario, analogous to the `--ha` option in `linkerd install`.
-Values such as higher number of replicas, higher memory/cpu limits and
-affinities are specified in that file.
 
 You can get ahold of `values-ha.yaml` by fetching the chart files:
 
 ```bash
-helm fetch --untar linkerd/linkerd2
+helm fetch --untar linkerd/linkerd-base
 ```
 
 Then use the `-f` flag to provide the override file, for example:
 
 ```bash
-helm install \
-  --set-file identityTrustAnchorsPEM=ca.crt \
-  --set-file identity.issuer.tls.crtPEM=issuer.crt \
-  --set-file identity.issuer.tls.keyPEM=issuer.key \
+helm install linkerd-base -n linkerd --create-namespace \
   -f linkerd2/values-ha.yaml
-  linkerd/linkerd2
+  linkerd/linkerd-base
 ```
 
 ## Get involved
@@ -94,20 +78,6 @@ helm install \
 [linkerd-users]: https://lists.cncf.io/g/cncf-linkerd-users
 [slack]: http://slack.linkerd.io
 [twitter]: https://twitter.com/linkerd
-
-## Extensions for Linkerd
-
-The current chart installs the core Linkerd components, which grant you
-reliability and security features. Other functionality is available through
-extensions. Check the corresponding docs for each one of the following
-extensions:
-
-* Observability:
-  [Linkerd-viz](https://github.com/linkerd/linkerd2/blob/main/viz/charts/linkerd-viz/README.md)
-* Multicluster:
-  [Linkerd-multicluster](https://github.com/linkerd/linkerd2/blob/main/multicluster/charts/linkerd-multicluster/README.md)
-* Tracing:
-  [Linkerd-jaeger](https://github.com/linkerd/linkerd2/blob/main/jaeger/charts/linkerd-jaeger/README.md)
 
 {{ template "chart.requirementsSection" . }}
 
