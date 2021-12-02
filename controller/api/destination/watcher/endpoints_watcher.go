@@ -416,6 +416,8 @@ func (ew *EndpointsWatcher) getServicePublisher(id ServiceID) (sp *servicePublis
 }
 
 func (ew *EndpointsWatcher) addServer(obj interface{}) {
+	ew.Lock()
+	defer ew.Unlock()
 	server := obj.(*v1beta1.Server)
 	for _, sp := range ew.publishers {
 		sp.updateServer(server, true)
@@ -423,6 +425,8 @@ func (ew *EndpointsWatcher) addServer(obj interface{}) {
 }
 
 func (ew *EndpointsWatcher) deleteServer(obj interface{}) {
+	ew.Lock()
+	defer ew.Unlock()
 	server := obj.(*v1beta1.Server)
 	for _, sp := range ew.publishers {
 		sp.updateServer(server, false)
