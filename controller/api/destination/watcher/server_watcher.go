@@ -14,8 +14,8 @@ import (
 )
 
 // ServerWatcher watches all the servers in the cluster. When there is an
-// update, it will update any listeners for pods that are selected by the
-// update's Server.
+// update, it only sends updates to listeners if their endpoint's protocol
+// is changed by the Server.
 type ServerWatcher struct {
 	subscriptions map[podPort][]ServerUpdateListener
 	k8sAPI        *k8s.API
