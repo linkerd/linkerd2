@@ -17,6 +17,7 @@ func main() {
 	addr := flag.String("addr", ":8086", "address of destination service")
 	path := flag.String("path", "strest-server.default.svc.cluster.local:8888", "destination path")
 	method := flag.String("method", "get", "which gRPC method to invoke")
+	token := flag.String("token", "", "context token")
 	flag.Parse()
 
 	client, conn, err := destination.NewClient(*addr)
@@ -28,6 +29,7 @@ func main() {
 	req := &pb.GetDestination{
 		Scheme: "k8s",
 		Path:   *path,
+		ContextToken: *token,
 	}
 
 	switch *method {
@@ -73,6 +75,7 @@ func get(client pb.DestinationClient, req *pb.GetDestination) {
 					log.Printf("  - opaque transport port: %d", ot.GetInboundPort())
 				}
 			}
+
 			log.Println()
 		case *pb.Update_Remove:
 			log.Println("Remove:")
