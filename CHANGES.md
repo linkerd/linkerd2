@@ -1,6 +1,6 @@
 # Changes
 
-## edge-21.11.5
+## edge-21.12.1
 
 This edge release enables by default `EndpointSlices` in the destination
 controller, which unblocks any functionality that is specific to
