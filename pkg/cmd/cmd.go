@@ -114,7 +114,7 @@ func ConfigureKubeContextFlagCompletion(cmd *cobra.Command, kubeconfigPath strin
 
 			suggestions := []string{}
 			uniqContexts := map[string]struct{}{}
-			for ctxName, _ := range config.Contexts {
+			for ctxName := range config.Contexts {
 				if strings.HasPrefix(ctxName, toComplete) {
 					if _, ok := uniqContexts[ctxName]; !ok {
 						suggestions = append(suggestions, ctxName)
