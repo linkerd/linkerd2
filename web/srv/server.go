@@ -56,7 +56,7 @@ type (
 	}
 
 	healthChecker interface {
-		RunChecks(observer healthcheck.CheckObserver) bool
+		RunChecks(observer healthcheck.CheckObserver) (bool, bool)
 	}
 )
 
