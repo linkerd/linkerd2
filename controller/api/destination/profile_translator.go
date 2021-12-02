@@ -12,7 +12,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/util"
 	logging "github.com/sirupsen/logrus"
-	corev1 "k8s.io/api/core/v1"
 )
 
 const millisPerDecimilli = 10
@@ -24,17 +23,15 @@ type profileTranslator struct {
 	fullyQualifiedName string
 	port               uint32
 	endpoint           *pb.WeightedAddr
-	pod                *corev1.Pod
 }
 
-func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endpoint *pb.WeightedAddr, pod *corev1.Pod) *profileTranslator {
+func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endpoint *pb.WeightedAddr) *profileTranslator {
 	return &profileTranslator{
 		stream:             stream,
 		log:                log.WithField("component", "profile-translator"),
 		fullyQualifiedName: fqn,
 		port:               port,
 		endpoint:           endpoint,
-		pod:                pod,
 	}
 }
 
@@ -105,22 +102,6 @@ func (pt *profileTranslator) createDestinationProfile(profile *sp.ServiceProfile
 	var opaqueProtocol bool
 	if profile.Spec.OpaquePorts != nil {
 		_, opaqueProtocol = profile.Spec.OpaquePorts[pt.port]
-	}
-	// Only set the opaque transport if the translator has an endpoint with a
-	// protocol hint.
-	if pt.endpoint != nil && pt.endpoint.ProtocolHint != nil {
-		if !opaqueProtocol {
-			pt.endpoint.ProtocolHint.OpaqueTransport = nil
-		} else if pt.endpoint.ProtocolHint.OpaqueTransport == nil {
-			port, err := getInboundPort(&pt.pod.Spec)
-			if err != nil {
-				pt.log.Error(err)
-			} else {
-				pt.endpoint.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
-					InboundPort: port,
-				}
-			}
-		}
 	}
 	return &pb.DestinationProfile{
 		Routes:             routes,
