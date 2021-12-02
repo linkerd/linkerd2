@@ -73,6 +73,7 @@
 - [xCloud](https://www.xbox.com/en-US/xbox-game-streaming/project-xcloud)
 - [YouMail](https://www.youmail.com)
 - [Zimpler](https://www.zimpler.com/)
+- [S&P Global Platts](https://www.spglobal.com/platts/en)
 
 If you're using Linkerd 2.x and aren't on this list, please [submit a pull
 request](https://github.com/linkerd/linkerd2/edit/main/ADOPTERS.md)!
