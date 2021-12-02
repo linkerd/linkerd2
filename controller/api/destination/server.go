@@ -292,7 +292,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// We build up the pipeline of profile updaters backwards, starting from
 	// the translator which takes profile updates, translates them to protobuf
 	// and pushes them onto the gRPC stream.
-	translator := newProfileTranslator(stream, log, fqn, port, nil)
+	translator := newProfileTranslator(stream, log, fqn, port)
 
 	// The traffic split adaptor merges profile updates with traffic split
 	// updates and publishes the result to the profile translator.
