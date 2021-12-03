@@ -66,7 +66,6 @@ var (
 		"templates/heartbeat-rbac.yaml",
 		"templates/policy-crd.yaml",
 		"templates/serviceprofile-crd.yaml",
-		"templates/trafficsplit-crd.yaml",
 		"templates/proxy-injector-rbac.yaml",
 		"templates/psp.yaml",
 	}

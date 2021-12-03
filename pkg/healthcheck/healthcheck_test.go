@@ -210,7 +210,7 @@ func TestHealthChecker(t *testing.T) {
 		hc.AppendCategories(passingCheck1)
 		hc.AppendCategories(passingCheck2)
 
-		success := hc.RunChecks(nullObserver)
+		success, _ := hc.RunChecks(nullObserver)
 
 		if !success {
 			t.Fatalf("Expecting checks to be successful, but got [%t]", success)
@@ -226,7 +226,7 @@ func TestHealthChecker(t *testing.T) {
 		hc.AppendCategories(failingCheck)
 		hc.AppendCategories(passingCheck2)
 
-		success := hc.RunChecks(nullObserver)
+		success, _ := hc.RunChecks(nullObserver)
 
 		if success {
 			t.Fatalf("Expecting checks to not be successful, but got [%t]", success)
@@ -1991,7 +1991,8 @@ func TestLinkerdPreInstallGlobalResourcesChecks(t *testing.T) {
 		}
 
 		observer := newObserver()
-		if !hc.RunChecks(observer.resultFn) {
+		success, _ := hc.RunChecks(observer.resultFn)
+		if !success {
 			t.Errorf("Expect RunChecks to return true")
 		}
 
@@ -2049,7 +2050,8 @@ metadata:
 		}
 
 		observer := newObserver()
-		if hc.RunChecks(observer.resultFn) {
+		success, _ := hc.RunChecks(observer.resultFn)
+		if success {
 			testutil.Error(t, "Expect RunChecks to return false")
 		}
 

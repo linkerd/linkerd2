@@ -62,7 +62,7 @@ func (hc *HealthChecker) VizAPIClient() pb.ApiClient {
 }
 
 // RunChecks implements the healthcheck.Runner interface
-func (hc *HealthChecker) RunChecks(observer healthcheck.CheckObserver) bool {
+func (hc *HealthChecker) RunChecks(observer healthcheck.CheckObserver) (bool, bool) {
 	return hc.HealthChecker.RunChecks(observer)
 }
 

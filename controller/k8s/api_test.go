@@ -1274,67 +1274,6 @@ spec:
 				},
 				k8sResMisc: []string{},
 			},
-			// If a service is the apex of a traffic split, GetPodsFor should
-			// return the pods of the backends.
-			{
-				err: nil,
-				k8sResInput: `
-apiVersion: v1
-kind: Pod
-metadata:
-  name: leaf-1-pod
-  namespace: emojivoto
-  labels:
-    app: leaf-1
-status:
-  phase: Running`,
-				k8sResResults: []string{`
-apiVersion: v1
-kind: Service
-metadata:
-  name: apex
-  namespace: emojivoto
-spec:
-  type: ClusterIP
-  selector:
-    app: apex`,
-					`
-apiVersion: v1
-kind: Service
-metadata:
-  name: leaf-1
-  namespace: emojivoto
-spec:
-  type: ClusterIP
-  selector:
-    app: leaf-1`,
-				},
-				k8sResMisc: []string{`
-
-apiVersion: v1
-kind: Service
-metadata:
-  name: leaf-2
-  namespace: emojivoto
-spec:
-  type: ClusterIP
-  selector:
-    app: leaf-2`,
-					`
-apiVersion: split.smi-spec.io/v1alpha1
-kind: TrafficSplit
-metadata:
-  name: banana-split
-  namespace: emojivoto
-spec:
-  service: apex
-  backends:
-  - service: leaf-1
-    weight: 500m
-  - service: leaf-2
-    weight: 500m`,
-				},
-			},
 		}
 
 		for _, exp := range expectations {

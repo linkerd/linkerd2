@@ -507,12 +507,7 @@ func validateValues(ctx context.Context, k *k8s.KubernetesAPI, values *l5dcharts
 	}
 
 	if values.EnableEndpointSlices && k != nil {
-		k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-		if err != nil {
-			return err
-		}
-
-		err = k8s.EndpointSliceAccess(ctx, k8sAPI)
+		err := k8s.EndpointSliceAccess(ctx, k)
 		if err != nil {
 			return err
 		}

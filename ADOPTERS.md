@@ -17,6 +17,7 @@
 - [CloverHealth](https://www.cloverhealth.com/)
 - [Cohere](https://cohere.ai/)
 - [Commonbond](https://www.commonbond.co/)
+- [Crayon](https://crayon.com)
 - [Doji](https://www.doji.cn/)
 - [Expedia](https://www.expedia.com)
 - [Facelift](https://www.facelift-bbt.com/en)

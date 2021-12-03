@@ -119,7 +119,6 @@ func NewCmdStat() *cobra.Command {
   * replicasets
   * replicationcontrollers
   * statefulsets
-  * trafficsplits
   * authorities (not supported in --from)
   * services (not supported in --from)
   * servers (not supported in --from)
@@ -166,15 +165,6 @@ If no resource name is specified, displays stats about all resources of the spec
 
   # Get all services in all namespaces that receive calls from hello1 deployment in the test namespace.
   linkerd viz stat services --from deploy/hello1 --from-namespace test --all-namespaces
-
-  # Get all trafficsplits and their leaf services.
-  linkerd viz stat ts
-
-  # Get the hello-split trafficsplit and its leaf services.
-  linkerd viz stat ts/hello-split
-
-  # Get all trafficsplits and their leaf services, and metrics for any traffic coming to the leaf services from the hello1 deployment.
-  linkerd viz stat ts --from deploy/hello1
 
   # Get all namespaces that receive traffic from the default namespace.
   linkerd viz stat namespaces --from ns/default
@@ -363,7 +353,7 @@ func statHasRequestData(stat *pb.BasicStats) bool {
 }
 
 func isPodOwnerResource(typ string) bool {
-	return typ != k8s.TrafficSplit && typ != k8s.Authority && typ != k8s.Service && typ != k8s.Server && typ != k8s.ServerAuthorization
+	return typ != k8s.Authority && typ != k8s.Service && typ != k8s.Server && typ != k8s.ServerAuthorization
 }
 
 func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) {
@@ -406,9 +396,6 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 
 		namespace := r.Resource.Namespace
 		key := fmt.Sprintf("%s/%s", namespace, name)
-		if r.Resource.Type == k8s.TrafficSplit || (r.Resource.Type == k8s.Service && r.TsStats != nil) {
-			key = fmt.Sprintf("%s/%s/%s", namespace, name, r.TsStats.Leaf)
-		}
 
 		resourceKey := r.Resource.Type
 
@@ -446,43 +433,6 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 				tcpOpenConnections: r.GetTcpStats().GetOpenConnections(),
 				tcpReadBytes:       getByteRate(r.GetTcpStats().GetReadBytesTotal(), r.TimeWindow),
 				tcpWriteBytes:      getByteRate(r.GetTcpStats().GetWriteBytesTotal(), r.TimeWindow),
-			}
-		}
-		if r.TsStats != nil {
-			if r.GetResource().GetType() == k8s.TrafficSplit {
-				leaf := r.TsStats.Leaf
-				apex := r.TsStats.Apex
-				weight := r.TsStats.Weight
-
-				if len(leaf) > maxLeafLength {
-					maxLeafLength = len(leaf)
-				}
-
-				if len(apex) > maxApexLength {
-					maxApexLength = len(apex)
-				}
-
-				statTables[resourceKey][key].tsStats = &tsStats{
-					apex:   apex,
-					leaf:   leaf,
-					weight: weight,
-				}
-			} else {
-				dst := r.TsStats.Leaf
-				weight := r.TsStats.Weight
-
-				if len(dst) > maxDstLength {
-					maxDstLength = len(dst)
-				}
-
-				if len(weight) > maxWeightLength {
-					maxWeightLength = len(weight)
-				}
-
-				statTables[resourceKey][key].dstStats = &dstStats{
-					dst:    dst,
-					weight: weight,
-				}
 			}
 		}
 
@@ -533,7 +483,7 @@ func showTCPBytes(options *statOptions, resourceType string) bool {
 }
 
 func showTCPConns(resourceType string) bool {
-	return resourceType != k8s.Authority && resourceType != k8s.TrafficSplit && resourceType != k8s.ServerAuthorization
+	return resourceType != k8s.Authority && resourceType != k8s.ServerAuthorization
 }
 
 func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType string, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxDstLength, maxWeightLength int, options *statOptions) {
@@ -779,9 +729,7 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 					Kind:      resourceType,
 					Name:      name,
 				}
-				if resourceType != k8s.TrafficSplit {
-					entry.Meshed = stats[key].meshed
-				}
+
 				if stats[key].rowStats != nil {
 					entry.Success = &stats[key].successRate
 					entry.Rps = &stats[key].requestRate
@@ -887,20 +835,7 @@ func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.S
 		requests = append(requests, req)
 	}
 
-	if containsTS(targets) {
-		fmt.Printf("Starting in 2.12, the SMI extension will be required for traffic splitting. Please follow the SMI extension getting started guide from https://linkerd.io/2.10/tasks/linkerd-smi\n\n")
-	}
-
 	return requests, nil
-}
-
-func containsTS(resources []*pb.Resource) bool {
-	for _, resource := range resources {
-		if resource.Type == k8s.TrafficSplit {
-			return true
-		}
-	}
-	return false
 }
 
 func sortStatsKeys(stats map[string]*row) []string {

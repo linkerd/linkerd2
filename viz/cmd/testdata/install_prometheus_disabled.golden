@@ -34,9 +34,6 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
-- apiGroups: ["split.smi-spec.io"]
-  resources: ["trafficsplits"]
-  verbs: ["list", "get", "watch"]
 - apiGroups: ["policy.linkerd.io"]
   resources: ["servers", "serverauthorizations"]
   verbs: ["list", "get"]
@@ -464,7 +461,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 951a7b61ff59229914ca604c671353e5fdc0eda710bde2bfbb50c9225225babe
+        checksum/config: ae930acf3edba3cbf32c43dacfa4808bf679c5c932870cb2a2a46de1023f01c8
         linkerd.io/created-by: linkerd/helm dev-undefined
         linkerd.io/inject: enabled
       labels:
