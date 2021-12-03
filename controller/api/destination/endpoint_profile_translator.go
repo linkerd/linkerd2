@@ -31,7 +31,7 @@ func newEndpointProfileTranslator(pod *v1.Pod, port uint32, endpoint *pb.Weighte
 	}
 }
 
-func (ept *endpointProfileTranslator) UpdateProtocol(annotatedPorts map[uint32]struct{}, isOpaque bool) {
+func (ept *endpointProfileTranslator) UpdateProtocol(isOpaque bool) {
 	// The protocol for an endpoint should only be updated if there is a pod,
 	// endpoint, and the endpoint has a protocol hint. If there is an endpoint
 	// but it does not have a protocol hint, that means we could not determine
@@ -42,7 +42,7 @@ func (ept *endpointProfileTranslator) UpdateProtocol(annotatedPorts map[uint32]s
 		// opaque, or its port is in the set of annotated opaque ports on the Pod.
 		// If either of these cases is true, then the opaque transport should be
 		// set on the protocol hint; otherwise the opaque transport should be nil.
-		_, ok := annotatedPorts[ept.port]
+		_, ok := ept.annotatedPorts[ept.port]
 		if isOpaque || ok {
 			opaqueProtocol = true
 		}

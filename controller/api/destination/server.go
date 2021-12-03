@@ -213,7 +213,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			}
 			if pod == nil {
 				translator := newEndpointProfileTranslator(nil, port, nil, nil, stream, s.log)
-				translator.UpdateProtocol(nil, false)
+				translator.UpdateProtocol(false)
 			} else {
 				address, err := s.createAddress(pod, port)
 				if err != nil {
@@ -228,7 +228,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 					return err
 				}
 				translator := newEndpointProfileTranslator(pod, port, endpoint, opaquePorts, stream, s.log)
-				translator.UpdateProtocol(opaquePorts, address.OpaqueProtocol)
+				translator.UpdateProtocol(address.OpaqueProtocol)
 				s.servers.Subscribe(pod, port, translator)
 				defer s.servers.Unsubscribe(pod, port, translator)
 			}
@@ -258,7 +258,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			}
 			if pod == nil {
 				translator := newEndpointProfileTranslator(nil, port, nil, nil, stream, s.log)
-				translator.UpdateProtocol(nil, false)
+				translator.UpdateProtocol(false)
 			} else {
 				address, err := s.createAddress(pod, port)
 				if err != nil {
@@ -273,7 +273,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 					return err
 				}
 				translator := newEndpointProfileTranslator(pod, port, endpoint, opaquePorts, stream, s.log)
-				translator.UpdateProtocol(opaquePorts, address.OpaqueProtocol)
+				translator.UpdateProtocol(address.OpaqueProtocol)
 				s.servers.Subscribe(pod, port, translator)
 				defer s.servers.Unsubscribe(pod, port, translator)
 			}

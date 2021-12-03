@@ -30,7 +30,7 @@ type podPort struct {
 
 // ServerUpdateListener is the interface that subscribers must implement.
 type ServerUpdateListener interface {
-	UpdateProtocol(map[uint32]struct{}, bool)
+	UpdateProtocol(bool)
 }
 
 // NewServerWatcher creates a new ServerWatcher.
@@ -140,7 +140,7 @@ func (sw *ServerWatcher) updateServer(server *v1beta1.Server, selector labels.Se
 					isOpaque = false
 				}
 				for _, listener := range listeners {
-					listener.UpdateProtocol(nil, isOpaque)
+					listener.UpdateProtocol(isOpaque)
 				}
 			}
 		}
