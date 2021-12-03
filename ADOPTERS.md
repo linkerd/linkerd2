@@ -60,6 +60,7 @@
 - [Purdue University Global](https://www.purdueglobal.edu/)
 - [reDock](https://www.redock.com/)
 - [ReliMail](https://relimail.com/)
+- [S&P Global Platts](https://www.spglobal.com/platts/en)
 - [Salt Security](https://salt.security/)
 - [SCA](https://sca.com.au)
 - [Search365](https://search365.ai/)
@@ -73,7 +74,6 @@
 - [xCloud](https://www.xbox.com/en-US/xbox-game-streaming/project-xcloud)
 - [YouMail](https://www.youmail.com)
 - [Zimpler](https://www.zimpler.com/)
-- [S&P Global Platts](https://www.spglobal.com/platts/en)
 
 If you're using Linkerd 2.x and aren't on this list, please [submit a pull
 request](https://github.com/linkerd/linkerd2/edit/main/ADOPTERS.md)!
