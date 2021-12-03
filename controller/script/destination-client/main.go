@@ -27,8 +27,8 @@ func main() {
 	defer conn.Close()
 
 	req := &pb.GetDestination{
-		Scheme: "k8s",
-		Path:   *path,
+		Scheme:       "k8s",
+		Path:         *path,
 		ContextToken: *token,
 	}
 
