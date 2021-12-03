@@ -60,6 +60,7 @@
 - [Purdue University Global](https://www.purdueglobal.edu/)
 - [reDock](https://www.redock.com/)
 - [ReliMail](https://relimail.com/)
+- [S&P Global Platts](https://www.spglobal.com/platts/en)
 - [Salt Security](https://salt.security/)
 - [SCA](https://sca.com.au)
 - [Search365](https://search365.ai/)
