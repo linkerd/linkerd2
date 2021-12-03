@@ -50,10 +50,8 @@ spec:
   containers:
   - name: linkerd-proxy
     env:
-    - name: _l5d_ns
-      value: linkerd
-    - name: _l5d_trustdomain
-      value: cluster.local
+    - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
+      value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.linkerd.cluster.local
   serviceAccountName: %s
 status:
   phase: Running

@@ -36,6 +36,8 @@ spec:
         - -collector-svc-addr={{.Values.webhook.collectorSvcAddr}}
         - -collector-svc-account={{.Values.webhook.collectorSvcAccount}}
         - -log-level={{.Values.webhook.logLevel}}
+        - -cluster-domain={{.Values.clusterDomain}}
+        - -linkerd-namespace={{.Values.namespace}}
         image: {{.Values.webhook.image.name}}:{{default .Values.webhook.image.version .Values.cliVersion}}
         imagePullPolicy: {{.Values.webhook.image.pullPolicy}}
         livenessProbe:

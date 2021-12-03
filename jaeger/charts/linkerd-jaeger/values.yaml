@@ -23,6 +23,9 @@ tolerations: &default_tolerations
 # deprecated since k8s v1.21
 enablePSP: false
 
+# -- Kubernetes DNS Domain name to use
+clusterDomain: cluster.local
+
 collector:
   # -- Set to false to exclude collector installation
   enabled: true
