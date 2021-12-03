@@ -17,23 +17,21 @@ func TestRenderHelm(t *testing.T) {
 	// read the control plane chart and its defaults from the local folder.
 	// override certain defaults with pinned values.
 	// use the Helm lib to render the templates.
-	// the golden file is generated using the following `helm template` command:
-	// helm template --set identityTrustAnchorsPEM="test-crt-pem" --set identity.issuer.tls.crtPEM="test-crt-pem" --set identity.issuer.tls.keyPEM="test-key-pem" charts/linkerd2 --set proxyInjector.keyPEM="test-proxy-injector-key-pem" --set proxyInjector.crtPEM="test-proxy-injector-crt-pem" --set profileValidator.keyPEM="test-profile-validator-key-pem" --set profileValidator.crtPEM="test-profile-validator-crt-pem" --set tap.keyPEM="test-tap-key-pem" --set tap.crtPEM="test-tap-crt-pem" --set linkerdVersion="linkerd-version"  > cli/cmd/testdata/install_helm_output.golden
-
 	t.Run("Non-HA mode", func(t *testing.T) {
-		ha := false
-		chartControlPlane := chartControlPlane(t, ha, "", "111", "222")
-		testRenderHelm(t, chartControlPlane, "install_helm_output.golden")
+		chartBase := chartBase(t, false, "", "111", "222")
+		chartControlPlane := chartControlPlane(t, false, "", "111", "222")
+		testRenderHelm(t, chartBase, "install_helm_base_output.golden")
+		testRenderHelm(t, chartControlPlane, "install_helm_control_plane_output.golden")
 	})
 
 	t.Run("HA mode", func(t *testing.T) {
-		ha := true
-		chartControlPlane := chartControlPlane(t, ha, "", "111", "222")
-		testRenderHelm(t, chartControlPlane, "install_helm_output_ha.golden")
+		chartBase := chartBase(t, true, "", "111", "222")
+		chartControlPlane := chartControlPlane(t, true, "", "111", "222")
+		testRenderHelm(t, chartBase, "install_helm_base_output_ha.golden")
+		testRenderHelm(t, chartControlPlane, "install_helm_control_plane_output_ha.golden")
 	})
 
 	t.Run("HA mode with podLabels and podAnnotations", func(t *testing.T) {
-		ha := true
 		additionalConfig := `
 podLabels:
   foo: bar
@@ -42,12 +40,11 @@ podAnnotations:
   bingo: bongo
   asda: fasda
 `
-		chartControlPlane := chartControlPlane(t, ha, additionalConfig, "333", "444")
+		chartControlPlane := chartControlPlane(t, true, additionalConfig, "333", "444")
 		testRenderHelm(t, chartControlPlane, "install_helm_output_ha_labels.golden")
 	})
 
 	t.Run("HA mode with custom namespaceSelector", func(t *testing.T) {
-		ha := true
 		additionalConfig := `
 proxyInjector:
   namespaceSelector:
@@ -64,7 +61,7 @@ profileValidator:
       values:
       - enabled
 `
-		chartControlPlane := chartControlPlane(t, ha, additionalConfig, "111", "222")
+		chartControlPlane := chartControlPlane(t, true, additionalConfig, "111", "222")
 		testRenderHelm(t, chartControlPlane, "install_helm_output_ha_namespace_selector.golden")
 	})
 }
@@ -153,7 +150,7 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
 
 	var buf bytes.Buffer
 	for _, template := range linkerd2Chart.Templates {
-		source := chartName + "/" + template.Name
+		source := linkerd2Chart.Metadata.Name + "/" + template.Name
 		v, exists := rendered[source]
 		if !exists {
 			// skip partial templates
@@ -165,7 +162,7 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
 
 	for _, dep := range linkerd2Chart.Dependencies() {
 		for _, template := range dep.Templates {
-			source := "linkerd2/charts" + "/" + dep.Metadata.Name + "/" + template.Name
+			source := linkerd2Chart.Metadata.Name + "/charts" + "/" + dep.Metadata.Name + "/" + template.Name
 			v, exists := rendered[source]
 			if !exists {
 				// skip partial templates
@@ -177,6 +174,73 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
 	}
 
 	testDataDiffer.DiffTestdata(t, goldenFileName, buf.String())
+}
+
+func chartBase(t *testing.T, ha bool, additionalConfig string, ignoreOutboundPorts string, ignoreInboundPorts string) *chart.Chart {
+	values, err := readTestValues(ha, ignoreOutboundPorts, ignoreInboundPorts)
+	if err != nil {
+		t.Fatal("Unexpected error", err)
+	}
+
+	if additionalConfig != "" {
+		err := yaml.Unmarshal([]byte(additionalConfig), values)
+		if err != nil {
+			t.Fatal("Unexpected error", err)
+		}
+	}
+
+	partialPaths := []string{
+		"templates/_proxy.tpl",
+		"templates/_proxy-init.tpl",
+		"templates/_volumes.tpl",
+		"templates/_resources.tpl",
+		"templates/_metadata.tpl",
+		"templates/_debug.tpl",
+		"templates/_trace.tpl",
+		"templates/_capabilities.tpl",
+		"templates/_affinity.tpl",
+		"templates/_nodeselector.tpl",
+		"templates/_tolerations.tpl",
+		"templates/_validate.tpl",
+		"templates/_pull-secrets.tpl",
+	}
+
+	chartPartials := chartPartials(t, partialPaths)
+
+	rawValues, err := yaml.Marshal(values)
+	if err != nil {
+		t.Fatal("Unexpected error", err)
+	}
+
+	var mapValues chartutil.Values
+	err = yaml.Unmarshal(rawValues, &mapValues)
+	if err != nil {
+		t.Fatal("Unexpected error", err)
+	}
+	linkerd2Chart := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: helmDefaultChartNameBase,
+			Sources: []string{
+				filepath.Join("..", "..", "..", "charts", "linkerd-base"),
+			},
+		},
+		Values: mapValues,
+	}
+
+	linkerd2Chart.AddDependency(chartPartials)
+
+	for _, filepath := range templatesConfigStage {
+		linkerd2Chart.Templates = append(linkerd2Chart.Templates, &chart.File{
+			Name: filepath,
+		})
+	}
+
+	for _, template := range linkerd2Chart.Templates {
+		filepath := filepath.Join(linkerd2Chart.Metadata.Sources[0], template.Name)
+		template.Data = []byte(testutil.ReadTestdata(t, filepath))
+	}
+
+	return linkerd2Chart
 }
 
 func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOutboundPorts string, ignoreInboundPorts string) *chart.Chart {
@@ -222,9 +286,9 @@ func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOut
 	}
 	linkerd2Chart := &chart.Chart{
 		Metadata: &chart.Metadata{
-			Name: helmDefaultChartName,
+			Name: helmDefaultChartNameCP,
 			Sources: []string{
-				filepath.Join("..", "..", "..", "charts", "linkerd2"),
+				filepath.Join("..", "..", "..", "charts", "linkerd-control-plane"),
 			},
 		},
 		Values: mapValues,
@@ -232,7 +296,7 @@ func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOut
 
 	linkerd2Chart.AddDependency(chartPartials)
 
-	for _, filepath := range append(templatesConfigStage, templatesControlPlaneStage...) {
+	for _, filepath := range templatesControlPlaneStage {
 		linkerd2Chart.Templates = append(linkerd2Chart.Templates, &chart.File{
 			Name: filepath,
 		})

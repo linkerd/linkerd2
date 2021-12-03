@@ -209,21 +209,12 @@ imagePullSecrets: []
 # -- Allow proxies to perform transparent HTTP/2 upgrading
 enableH2Upgrade: true
 
-# -- Add a PSP resource and bind it to the control plane ServiceAccounts. Note
-# PSP has been deprecated since k8s v1.21
-enablePSP: false
-
-# -- Failure policy for the proxy injector
-webhookFailurePolicy: Ignore
-
-
 # controllerImage -- Docker image for the destination and identity components
 controllerImage: cr.l5d.io/linkerd/controller
 # -- Number of replicas for each control plane pod
 controllerReplicas: 1
 # -- User ID for the control plane components
 controllerUID: 2103
-
 
 # destination configuration
 # set resources for the sp-validator and its linkerd proxy respectively
@@ -282,90 +273,12 @@ disableHeartBeat: false
 # -- Config for the heartbeat cronjob
 # heartbeatSchedule: "0 0 * * *"
 
-# proxy injector configuration
-proxyInjector:
-  # -- Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `proxyInjector.caBundle` must be set (see below)
-  externalSecret: false
-
-  # -- Namespace selector used by admission webhook. If not set defaults to all
-  # namespaces without the annotation
-  # config.linkerd.io/admission-webhooks=disabled
-  namespaceSelector:
-    matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
-
-  # -- Certificate for the proxy injector. If not provided then Helm will generate one.
-  crtPEM: |
-
-  # -- Certificate key for the proxy injector. If not provided then Helm will generate one.
-  keyPEM: |
-
-  # -- Bundle of CA certificates for proxy injector. If not provided then Helm will use the certificate generated  for `proxyInjector.crtPEM`. If `proxyInjector.externalSecret` is set to true, this value must be set, as no certificate will be generated.
-  caBundle: |
-
 # -|- CPU, Memory and Ephemeral Storage resources required by the proxy injector (see
 #`proxy.resources` for sub-fields)
 #proxyInjectorResources:
 #-|- CPU, Memory and Ephemeral Storage resources required by proxy injected into the proxy injector
 #pod (see `proxy.resources` for sub-fields)
 #proxyInjectorProxyResources:
-
-# service profile validator configuration
-profileValidator:
-  # -- Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `profileValidator.caBundle` must be set (see below).
-  externalSecret: false
-
-  # -- Namespace selector used by admission webhook
-  namespaceSelector:
-    matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
-
-  # -- Certificate for the service profile validator. If not provided then Helm
-  # will generate one.
-  crtPEM: |
-
-  # -- Certificate key for the service profile validator. If not provided then
-  # Helm will generate one.
-  keyPEM: |
-
-  # -- Bundle of CA certificates for service profile validator. If not provided
-  # then Helm will use the certificate generated  for `profileValidator.crtPEM`.
-  # If `profileValidator.externalSecret` is set to true, this value must be set,
-  # as no certificate will be generated.
-  caBundle: |
-
-# policy validator configuration
-policyValidator:
-  # -- Do not create a secret resource for the policyValidator webhook. If this is set to `true`, the value `policyValidator.caBundle` must be set (see below).
-  externalSecret: false
-
-  # -- Namespace selector used by admission webhook
-  namespaceSelector:
-    matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
-
-  # -- Certificate for the policy validator. If not provided then Helm
-  # will generate one.
-  crtPEM: |
-
-  # -- Certificate key for the policy validator. If not provided then
-  # Helm will generate one.
-  keyPEM: |
-
-  # -- Bundle of CA certificates for policy validator. If not provided
-  # then Helm will use the certificate generated  for `policyValidator.crtPEM`.
-  # If `policyValidator.externalSecret` is set to true, this value must be set,
-  # as no certificate will be generated.
-  caBundle: |
 
 # -- CPU, Memory and Ephemeral Storage resources required by the SP validator (see
 # `proxy.resources` for sub-fields)

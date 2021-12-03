@@ -26,9 +26,9 @@ Guide](https://linkerd.io/2/tasks/install/).
 ## Adding Linkerd's Helm repository
 
 ```bash
-# To add the repo for Linkerd2 stable releases:
+# To add the repo for Linkerd stable releases:
 helm repo add linkerd https://helm.linkerd.io/stable
-# To add the repo for Linkerd2 edge releases:
+# To add the repo for Linkerd edge releases:
 helm repo add linkerd-edge https://helm.linkerd.io/edge
 ```
 
@@ -37,16 +37,8 @@ release, just replace with `linkerd-edge`.
 
 ## Installing the Multicluster Extension Chart
 
-### Helm v3
-
 ```bash
-helm install linkerd-multicluster linkerd/linkerd-multicluster
-```
-
-### Helm v2
-
-```bash
-helm install --name linkerd-multicluster linkerd/linkerd-multicluster
+helm install linkerd-multicluster -n linkerd-multicluster --create-namespace linkerd/linkerd-multicluster
 ```
 
 ## Get involved

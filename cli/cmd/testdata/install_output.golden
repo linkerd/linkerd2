@@ -1867,7 +1867,6 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 3b5f3a12c582fc818fa275981006785e6c8f016637331b7656e15c6f41db6f96
         linkerd.io/created-by: CliVersion
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: ProxyVersion
@@ -2236,7 +2235,6 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 54ac8689f1236f2c97fa3bb59f9ac21abab03e06e06eca84b1fd9ba035dce1e8
         linkerd.io/created-by: CliVersion
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: ProxyVersion

@@ -26,9 +26,9 @@ Guide](https://linkerd.io/2/tasks/install/).
 ## Adding Linkerd's Helm repository
 
 ```bash
-# To add the repo for Linkerd2 stable releases:
+# To add the repo for Linkerd stable releases:
 helm repo add linkerd https://helm.linkerd.io/stable
-# To add the repo for Linkerd2 edge releases:
+# To add the repo for Linkerd edge releases:
 helm repo add linkerd-edge https://helm.linkerd.io/edge
 ```
 
@@ -40,13 +40,7 @@ release, just replace with `linkerd-edge`.
 ### Helm v3
 
 ```bash
-helm install linkerd-jaeger linkerd/linkerd-jaeger
-```
-
-### Helm v2
-
-```bash
-helm install --name linkerd-jaeger linkerd/linkerd-jaeger
+helm install linkerd-jaeger -n linkerd-jaeger --create-namespace linkerd/linkerd-jaeger
 ```
 
 ## Get involved

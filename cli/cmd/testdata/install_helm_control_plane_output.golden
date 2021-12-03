@@ -23,7 +23,7 @@ data:
     controllerImageVersion: linkerd-version
     controllerLogFormat: plain
     controllerLogLevel: info
-    controllerReplicas: 3
+    controllerReplicas: 1
     controllerUID: 2103
     debugContainer:
       image:
@@ -31,31 +31,13 @@ data:
         pullPolicy: ""
         version: test-debug-version
     destinationProxyResources: null
-    destinationResources:
-      cpu:
-        limit: ""
-        request: 100m
-      ephemeral-storage:
-        limit: ""
-        request: ""
-      memory:
-        limit: 250Mi
-        request: 50Mi
+    destinationResources: null
     disableHeartBeat: false
     enableEndpointSlices: false
     enableH2Upgrade: true
-    enablePodAntiAffinity: true
+    enablePodAntiAffinity: false
     grafanaUrl: ""
-    heartbeatResources:
-      cpu:
-        limit: ""
-        request: 100m
-      ephemeral-storage:
-        limit: ""
-        request: ""
-      memory:
-        limit: 250Mi
-        request: 50Mi
+    heartbeatResources: null
     heartbeatSchedule: 1 2 3 4 5
     highAvailability: false
     identity:
@@ -68,29 +50,16 @@ data:
           crtPEM: test-crt-pem
       serviceAccountTokenProjection: true
     identityProxyResources: null
-    identityResources:
-      cpu:
-        limit: ""
-        request: 100m
-      ephemeral-storage:
-        limit: ""
-        request: ""
-      memory:
-        limit: 250Mi
-        request: 10Mi
+    identityResources: null
     identityTrustAnchorsPEM: test-trust-anchor
     identityTrustDomain: test.trust.domain
     imagePullPolicy: IfNotPresent
-    imagePullSecrets: null
+    imagePullSecrets: []
     linkerdVersion: linkerd-version
     nodeSelector:
       kubernetes.io/os: linux
-    podAnnotations:
-      asda: fasda
-      bingo: bongo
-    podLabels:
-      fiz: buz
-      foo: bar
+    podAnnotations: {}
+    podLabels: {}
     policyController:
       defaultAllowPolicy: all-unauthenticated
       image:
@@ -158,13 +127,13 @@ data:
       resources:
         cpu:
           limit: ""
-          request: 100m
+          request: ""
         ephemeral-storage:
           limit: ""
           request: ""
         memory:
-          limit: 250Mi
-          request: 20Mi
+          limit: ""
+          request: ""
       saMountPath: null
       uid: 2102
       waitBeforeExitSeconds: 0
@@ -172,8 +141,8 @@ data:
     proxyInit:
       capabilities: null
       closeWaitTimeoutSecs: 0
-      ignoreInboundPorts: "444"
-      ignoreOutboundPorts: "333"
+      ignoreInboundPorts: "222"
+      ignoreOutboundPorts: "111"
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
@@ -206,22 +175,13 @@ data:
           values:
           - disabled
     proxyInjectorProxyResources: null
-    proxyInjectorResources:
-      cpu:
-        limit: ""
-        request: 100m
-      ephemeral-storage:
-        limit: ""
-        request: ""
-      memory:
-        limit: 250Mi
-        request: 50Mi
+    proxyInjectorResources: null
     tap:
       caBundle: test-tap-ca-bundle
       crtPEM: test-tap-crt-pem
       keyPEM: test-tap-key-pem
     tolerations: null
-    webhookFailurePolicy: Fail
+    webhookFailurePolicy: Ignore
 ---
 # Source: linkerd-control-plane/templates/identity.yaml
 ---
@@ -295,22 +255,6 @@ spec:
     port: 8080
     targetPort: 8080
 ---
-kind: PodDisruptionBudget
-apiVersion: policy/v1beta1
-metadata:
-  name: linkerd-identity
-  
-  labels:
-    linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: linkerd-dev
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerd-version
-spec:
-  maxUnavailable: 1
-  selector:
-    matchLabels:
-      linkerd.io/control-plane-component: identity
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -325,54 +269,27 @@ metadata:
   name: linkerd-identity
   
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: identity
       linkerd.io/control-plane-ns: linkerd-dev
       linkerd.io/proxy-deployment: linkerd-identity
-  strategy:
-    rollingUpdate:
-      maxUnavailable: 1
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
-        asda: fasda
-        bingo: bongo
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: identity
         linkerd.io/control-plane-ns: linkerd-dev
         linkerd.io/workload-ns: linkerd-dev
         linkerd.io/proxy-deployment: linkerd-identity
-        fiz: buz
-        foo: bar
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: linkerd.io/control-plane-component
-                  operator: In
-                  values:
-                  - identity
-              topologyKey: failure-domain.beta.kubernetes.io/zone
-            weight: 100
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: linkerd.io/control-plane-component
-                operator: In
-                values:
-                - identity
-            topologyKey: kubernetes.io/hostname
       containers:
       - args:
         - identity
@@ -404,12 +321,6 @@ spec:
           httpGet:
             path: /ready
             port: 9990
-        resources:
-          limits:
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "10Mi"
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -523,11 +434,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
-          limits:
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -547,7 +453,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190,4191,444"
+        - "4190,4191,222"
         - --outbound-ports-to-ignore
         - "443"
         image: cr.l5d.io/linkerd/proxy-init:test-proxy-init-version
@@ -694,22 +600,6 @@ spec:
     port: 443
     targetPort: policy-https
 ---
-kind: PodDisruptionBudget
-apiVersion: policy/v1beta1
-metadata:
-  name: linkerd-dst
-  
-  labels:
-    linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd-dev
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerd-version
-spec:
-  maxUnavailable: 1
-  selector:
-    matchLabels:
-      linkerd.io/control-plane-component: destination
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -724,15 +614,12 @@ metadata:
   name: linkerd-destination
   
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: destination
       linkerd.io/control-plane-ns: linkerd-dev
       linkerd.io/proxy-deployment: linkerd-destination
-  strategy:
-    rollingUpdate:
-      maxUnavailable: 1
   template:
     metadata:
       annotations:
@@ -740,39 +627,15 @@ spec:
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
-        asda: fasda
-        bingo: bongo
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: destination
         linkerd.io/control-plane-ns: linkerd-dev
         linkerd.io/workload-ns: linkerd-dev
         linkerd.io/proxy-deployment: linkerd-destination
-        fiz: buz
-        foo: bar
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: linkerd.io/control-plane-component
-                  operator: In
-                  values:
-                  - destination
-              topologyKey: failure-domain.beta.kubernetes.io/zone
-            weight: 100
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: linkerd.io/control-plane-component
-                operator: In
-                values:
-                - destination
-            topologyKey: kubernetes.io/hostname
       containers:
       - env:
         - name: _pod_name
@@ -878,11 +741,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
-          limits:
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -927,12 +785,6 @@ spec:
           httpGet:
             path: /ready
             port: 9996
-        resources:
-          limits:
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "50Mi"
         securityContext:
           runAsUser: 2103
       - args:
@@ -1009,7 +861,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190,4191,444"
+        - "4190,4191,222"
         - --outbound-ports-to-ignore
         - "443"
         image: cr.l5d.io/linkerd/proxy-init:test-proxy-init-version
@@ -1085,12 +937,8 @@ spec:
           labels:
             linkerd.io/control-plane-component: heartbeat
             linkerd.io/workload-ns: linkerd-dev
-            fiz: buz
-            foo: bar
           annotations:
             linkerd.io/created-by: linkerd/helm linkerd-version
-            asda: fasda
-            bingo: bongo
         spec:
           nodeSelector:
             kubernetes.io/os: linux
@@ -1109,12 +957,6 @@ spec:
             - "-log-level=info"
             - "-log-format=plain"
             - "-prometheus-url=http://prometheus.linkerd-viz.svc.cluster.local:9090"
-            resources:
-              limits:
-                memory: "250Mi"
-              requests:
-                cpu: "100m"
-                memory: "50Mi"
             securityContext:
               runAsUser: 2103
 ---
@@ -1137,13 +979,10 @@ metadata:
   name: linkerd-proxy-injector
   
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: proxy-injector
-  strategy:
-    rollingUpdate:
-      maxUnavailable: 1
   template:
     metadata:
       annotations:
@@ -1151,8 +990,6 @@ spec:
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
-        asda: fasda
-        bingo: bongo
         config.linkerd.io/opaque-ports: "8443"
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
@@ -1160,31 +997,9 @@ spec:
         linkerd.io/control-plane-ns: linkerd-dev
         linkerd.io/workload-ns: linkerd-dev
         linkerd.io/proxy-deployment: linkerd-proxy-injector
-        fiz: buz
-        foo: bar
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: linkerd.io/control-plane-component
-                  operator: In
-                  values:
-                  - proxy-injector
-              topologyKey: failure-domain.beta.kubernetes.io/zone
-            weight: 100
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: linkerd.io/control-plane-component
-                operator: In
-                values:
-                - proxy-injector
-            topologyKey: kubernetes.io/hostname
       containers:
       - env:
         - name: _pod_name
@@ -1290,11 +1105,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
-          limits:
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -1333,12 +1143,6 @@ spec:
           httpGet:
             path: /ready
             port: 9995
-        resources:
-          limits:
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "50Mi"
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -1358,9 +1162,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - "4190,4191,444"
+        - "4190,4191,222"
         - --outbound-ports-to-ignore
-        - "333"
+        - "111"
         image: cr.l5d.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1427,19 +1231,3 @@ spec:
   - name: proxy-injector
     port: 443
     targetPort: proxy-injector
----
-kind: PodDisruptionBudget
-apiVersion: policy/v1beta1
-metadata:
-  name: linkerd-proxy-injector
-  
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd-dev
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerd-version
-spec:
-  maxUnavailable: 1
-  selector:
-    matchLabels:
-      linkerd.io/control-plane-component: proxy-injector

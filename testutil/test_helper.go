@@ -45,7 +45,7 @@ type TestHelper struct {
 
 type helm struct {
 	path                    string
-	chart                   string
+	charts                  string
 	multiclusterChart       string
 	vizChart                string
 	vizStableChart          string
@@ -103,7 +103,7 @@ func NewGenericTestHelper(
 	upgradeFromVersion,
 	clusterDomain,
 	helmPath,
-	helmChart,
+	helmCharts,
 	helmStableChart,
 	helmReleaseName,
 	helmMulticlusterReleaseName,
@@ -125,7 +125,7 @@ func NewGenericTestHelper(
 		upgradeFromVersion: upgradeFromVersion,
 		helm: helm{
 			path:                    helmPath,
-			chart:                   helmChart,
+			charts:                  helmCharts,
 			multiclusterChart:       helmMulticlusterChart,
 			multiclusterReleaseName: helmMulticlusterReleaseName,
 			stableChart:             helmStableChart,
@@ -164,7 +164,7 @@ func NewTestHelper() *TestHelper {
 	vizNamespace := flag.String("viz-namespace", "linkerd-viz", "the namespace where linkerd viz extension is installed")
 	multicluster := flag.Bool("multicluster", false, "when specified the multicluster install functionality is tested")
 	helmPath := flag.String("helm-path", "target/helm", "path of the Helm binary")
-	helmChart := flag.String("helm-chart", "charts/linkerd2", "path to linkerd2's Helm chart")
+	helmCharts := flag.String("helm-charts", "charts/linkerd2", "path to linkerd2's Helm charts")
 	multiclusterHelmChart := flag.String("multicluster-helm-chart", "charts/linkerd-multicluster", "path to linkerd2's multicluster Helm chart")
 	vizHelmChart := flag.String("viz-helm-chart", "charts/linkerd-viz", "path to linkerd2's viz extension Helm chart")
 	vizHelmStableChart := flag.String("viz-helm-stable-chart", "charts/linkerd-viz", "path to linkerd2's viz extension stable Helm chart")
@@ -216,7 +216,7 @@ func NewTestHelper() *TestHelper {
 		multicluster:       *multicluster,
 		helm: helm{
 			path:                    *helmPath,
-			chart:                   *helmChart,
+			charts:                  *helmCharts,
 			multiclusterChart:       *multiclusterHelmChart,
 			vizChart:                *vizHelmChart,
 			vizStableChart:          *vizHelmStableChart,
@@ -295,9 +295,9 @@ func (h *TestHelper) GetMulticlusterHelmReleaseName() string {
 	return h.helm.multiclusterReleaseName
 }
 
-// GetHelmChart returns the path to the Linkerd Helm chart
-func (h *TestHelper) GetHelmChart() string {
-	return h.helm.chart
+// GetHelmCharts returns the path to the Linkerd Helm chart
+func (h *TestHelper) GetHelmCharts() string {
+	return h.helm.charts
 }
 
 // GetMulticlusterHelmChart returns the path to the Linkerd multicluster Helm chart
@@ -502,10 +502,10 @@ func (h *TestHelper) HelmUpgrade(chart string, arg ...string) (string, string, e
 }
 
 // HelmInstall runs the helm install subcommand, with the provided arguments
-func (h *TestHelper) HelmInstall(chart string, arg ...string) (string, string, error) {
+func (h *TestHelper) HelmInstall(chart, releaseName string, arg ...string) (string, string, error) {
 	withParams := append([]string{
 		"install",
-		h.helm.releaseName,
+		releaseName,
 		chart,
 		"--kube-context", h.k8sContext,
 		"--namespace", h.namespace,

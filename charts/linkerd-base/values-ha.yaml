@@ -1,0 +1,5 @@
+# This values.yaml file contains the values needed to enable HA mode.
+# Usage:
+#   helm install -f values.yaml -f values-ha.yaml
+
+webhookFailurePolicy: Fail

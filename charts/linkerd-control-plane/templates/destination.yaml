@@ -147,8 +147,8 @@ spec:
   template:
     metadata:
       annotations:
-        {{- if (or (empty .Values.cliVersion) (not (eq (.Values.stage | toString) "control-plane"))) }}
-        checksum/config: {{ include (print $.Template.BasePath "/destination-rbac.yaml") . | sha256sum }}
+        {{- if empty .Values.cliVersion }}
+        linkerd.io/helm-release-version: {{.Release.Revision | quote}}
         {{- end }}
         {{ include "partials.annotations.created-by" . }}
         {{- include "partials.proxy.annotations" . | nindent 8}}
