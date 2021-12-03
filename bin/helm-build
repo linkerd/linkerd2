@@ -67,7 +67,8 @@ if [ "$1" = package ]; then
     # set version in Values files
     setValues "linkerdVersionValue" "$fullVersion"
 
-    "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2
+    "$bindir"/helm -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd-base
+    "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd-control-plane
     "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2-cni
     "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/multicluster/charts/linkerd-multicluster
     "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/jaeger/charts/linkerd-jaeger
