@@ -10,6 +10,7 @@ import (
 
 	spscheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	corev1 "k8s.io/api/core/v1"
+	discovery "k8s.io/api/discovery/v1beta1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apiextensionsfake "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
@@ -91,12 +92,36 @@ func NewFakeClientSets(configs ...string) (
 		}
 	}
 
+	endpointslice, err := ToRuntimeObject(`apiVersion: discovery.k8s.io/v1beta1
+kind: EndpointSlice
+metadata:
+  name: kubernetes
+  namespace: default`)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+	objs = append(objs, endpointslice)
+
 	cs := fake.NewSimpleClientset(objs...)
 	fakeDiscoveryClient := cs.Discovery().(*discoveryfake.FakeDiscovery)
 	for _, obj := range discoveryObjs {
 		apiResList := obj.(*metav1.APIResourceList)
 		fakeDiscoveryClient.Resources = append(fakeDiscoveryClient.Resources, apiResList)
 	}
+	fakeDiscoveryClient.Resources = append(fakeDiscoveryClient.Resources, &metav1.APIResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "APIResourceList",
+			APIVersion: "v1",
+		},
+		GroupVersion: discovery.SchemeGroupVersion.String(),
+		APIResources: []metav1.APIResource{
+			{
+				Name:         "endpointslices",
+				Kind:         "EndpointSlice",
+				SingularName: "endpointslice",
+			},
+		},
+	})
 
 	return cs,
 		apiextensionsfake.NewSimpleClientset(apiextObjs...),

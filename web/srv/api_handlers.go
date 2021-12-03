@@ -372,7 +372,7 @@ func (h *handler) handleAPICheck(w http.ResponseWriter, req *http.Request, p htt
 	}
 	// TODO (tegioz): ignore runchecks results until we stop filtering checks
 	// in this method (see #3670 for more details)
-	_ = h.hc.RunChecks(collectResults)
+	_, _ = h.hc.RunChecks(collectResults)
 
 	renderJSON(w, map[string]interface{}{
 		"success": success,
@@ -389,7 +389,7 @@ func (h *handler) handleAPIResourceDefinition(w http.ResponseWriter, req *http.R
 		}
 	}
 	if len(missingParams) != 0 {
-		renderJSONError(w, fmt.Errorf("Required params not provided: %s", strings.Join(missingParams, ", ")), http.StatusBadRequest)
+		renderJSONError(w, fmt.Errorf("required params not provided: %s", strings.Join(missingParams, ", ")), http.StatusBadRequest)
 		return
 	}
 

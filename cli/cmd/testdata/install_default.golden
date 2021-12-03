@@ -82,6 +82,9 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
+  verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1149,7 +1152,7 @@ data:
     destinationProxyResources: null
     destinationResources: null
     disableHeartBeat: false
-    enableEndpointSlices: false
+    enableEndpointSlices: true
     enableH2Upgrade: true
     enablePodAntiAffinity: false
     grafanaUrl: ""
@@ -1301,6 +1304,7 @@ data:
         memory:
           limit: 50Mi
           request: 10Mi
+      runAsRoot: false
       saMountPath: null
       xtMountPath:
         mountPath: /run
@@ -1768,7 +1772,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 10450594832de10b3230fb08c65d8ef3043d2a09d12a4a1c6667f5359e5c75f1
+        checksum/config: a04430b9c0dc19d9cee251c74b79f9fde7c1be371e4f1899f8116d976a9b73b1
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
@@ -1908,7 +1912,7 @@ spec:
         - -enable-h2-upgrade=true
         - -log-level=info
         - -log-format=plain
-        - -enable-endpoint-slices=false
+        - -enable-endpoint-slices=true
         - -cluster-domain=cluster.local
         - -identity-trust-domain=cluster.local
         - -default-opaque-ports=25,587,3306,4444,5432,6379,9300,11211

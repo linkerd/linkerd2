@@ -62,36 +62,51 @@ func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "failed to install nginx", "failed to install nginx: %s\ngot: %s", err, out)
 	}
 
-	// Give enough time for slow-cooker to go live
-	// and send traffic to nginx.
-	time.Sleep(30 * time.Second)
-
 	t.Run("expect open outbound TCP connection from gateway to nginx", func(t *testing.T) {
-		// Check gateway metrics
-		metrics, err := TestHelper.LinkerdRun(dgCmd...)
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "failed to get metrics for gateway deployment", "failed to get metrics for gateway deployment: %s", err)
-		}
+		// Use a short time window so that slow-cooker can warm-up and send
+		// requests.
+		err := TestHelper.RetryFor(30*time.Second, func() error {
+			// Check gateway metrics
+			metrics, err := TestHelper.LinkerdRun(dgCmd...)
+			if err != nil {
+				return fmt.Errorf("failed to get metrics for gateway deployment: %s", err)
+			}
 
-		// If no match, it means there are no open tcp conns from gateway to
-		// nginx pod.
-		if !tcpConnRE.MatchString(metrics) {
-			testutil.AnnotatedFatalf(t, "failed to find expected TCP connection open outbound metric from gateway to nginx", "failed to find expected TCP connection open outbound metric from gateway to nginx\nexpected: %s, got: %s", tcpConnRE, metrics)
+			// If no match, it means there are no open tcp conns from gateway to
+			// nginx pod.
+			if !tcpConnRE.MatchString(metrics) {
+				return fmt.Errorf("failed to find expected TCP connection open outbound metric from gateway to nginx\nexpected: %s, got: %s", tcpConnRE, metrics)
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v", err)
 		}
 
 	})
 
 	t.Run("expect non-empty HTTP request metric from gateway to nginx", func(t *testing.T) {
-		// Check gateway metrics
-		metrics, err := TestHelper.LinkerdRun(dgCmd...)
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "failed to get metrics for gateway deployment", "failed to get metrics for gateway deployment: %s", err)
-		}
+		// Use a short time window so that slow-cooker can warm-up and send
+		// requests.
+		err := TestHelper.RetryFor(30*time.Second, func() error {
+			// Check gateway metrics
+			metrics, err := TestHelper.LinkerdRun(dgCmd...)
+			if err != nil {
+				return fmt.Errorf("failed to get metrics for gateway deployment: %s", err)
+			}
 
-		// If no match, it means there are no outbound HTTP requests from
-		// gateway to nginx pod.
-		if !httpReqRE.MatchString(metrics) {
-			testutil.AnnotatedFatalf(t, "failed to find expected outbound HTTP request metric from gateway to nginx", "failed to find expected outbound HTTP request metric from gateway to nginx\nexpected: %s, got: %s", httpReqRE, metrics)
+			// If no match, it means there are no outbound HTTP requests from
+			// gateway to nginx pod.
+			if !httpReqRE.MatchString(metrics) {
+				return fmt.Errorf("failed to find expected outbound HTTP request metric from gateway to nginx\nexpected: %s, got: %s", httpReqRE, metrics)
+			}
+			return nil
+		})
+
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v", err)
 		}
 	})
 }
