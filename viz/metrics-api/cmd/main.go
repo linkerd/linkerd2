@@ -40,7 +40,7 @@ func main() {
 		ctx,
 		*kubeConfigPath,
 		true,
-		k8s.CJ, k8s.DS, k8s.Deploy, k8s.Job, k8s.NS, k8s.Pod, k8s.RC, k8s.RS, k8s.Svc, k8s.SS, k8s.SP, k8s.TS,
+		k8s.CJ, k8s.DS, k8s.Deploy, k8s.Job, k8s.NS, k8s.Pod, k8s.RC, k8s.RS, k8s.Svc, k8s.SS, k8s.SP,
 	)
 	if err != nil {
 		log.Fatalf("Failed to initialize K8s API: %s", err)

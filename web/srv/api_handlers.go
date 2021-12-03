@@ -417,8 +417,6 @@ func (h *handler) handleAPIResourceDefinition(w http.ResponseWriter, req *http.R
 		resource, err = h.k8sAPI.CoreV1().ReplicationControllers(namespace).Get(req.Context(), resourceName, options)
 	case k8s.ReplicaSet:
 		resource, err = h.k8sAPI.AppsV1().ReplicaSets(namespace).Get(req.Context(), resourceName, options)
-	case k8s.TrafficSplit:
-		resource, err = h.k8sAPI.TsClient.SplitV1alpha1().TrafficSplits(namespace).Get(req.Context(), resourceName, options)
 	default:
 		renderJSONError(w, errors.New("Invalid resource type: "+resourceType), http.StatusBadRequest)
 		return
