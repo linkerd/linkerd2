@@ -227,7 +227,7 @@ func multiclusterCategory(hc *healthChecker) *healthcheck.Category {
 	checkers = append(checkers,
 		*healthcheck.NewChecker("multicluster extension proxies are healthy").
 			WithHintAnchor("l5d-multicluster-proxy-healthy").
-			Fatal().
+			Warning().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
