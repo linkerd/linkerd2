@@ -231,7 +231,7 @@ spec:
 		tc := tc // pin
 
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			_, _, _, _, _, err := NewFakeClientSets(tc.k8sConfigs...)
+			_, _, _, _, err := NewFakeClientSets(tc.k8sConfigs...)
 			if !reflect.DeepEqual(err, tc.err) {
 				t.Fatalf("Expected error: %s, Got: %s", tc.err, err)
 			}
@@ -330,7 +330,7 @@ spec:
 				readers = append(readers, strings.NewReader(m))
 			}
 
-			_, _, _, _, _, err := newFakeClientSetsFromManifests(readers)
+			_, _, _, _, err := newFakeClientSetsFromManifests(readers)
 			if !reflect.DeepEqual(err, tc.err) {
 				t.Fatalf("Expected error: %s, Got: %s", tc.err, err)
 			}
