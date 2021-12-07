@@ -220,7 +220,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 				if err != nil {
 					return fmt.Errorf("failed to create address: %s", err)
 				}
-				endpoint, err = s.createEndpoint(address, pod, opaquePorts)
+				endpoint, err = s.createEndpoint(address, opaquePorts)
 				if err != nil {
 					return fmt.Errorf("failed to create endpoint: %s", err)
 				}
@@ -274,7 +274,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 				if err != nil {
 					return fmt.Errorf("failed to create address: %s", err)
 				}
-				endpoint, err = s.createEndpoint(address, pod, opaquePorts)
+				endpoint, err = s.createEndpoint(address, opaquePorts)
 				if err != nil {
 					return fmt.Errorf("failed to create endpoint: %s", err)
 				}
@@ -385,7 +385,7 @@ func (s *server) createAddress(pod *corev1.Pod, port uint32) (watcher.Address, e
 	return address, nil
 }
 
-func (s *server) createEndpoint(address watcher.Address, pod *corev1.Pod, opaquePorts map[uint32]struct{}) (*pb.WeightedAddr, error) {
+func (s *server) createEndpoint(address watcher.Address, opaquePorts map[uint32]struct{}) (*pb.WeightedAddr, error) {
 	weightedAddr, err := createWeightedAddr(address, opaquePorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
 	if err != nil {
 		return nil, err
@@ -393,7 +393,7 @@ func (s *server) createEndpoint(address watcher.Address, pod *corev1.Pod, opaque
 
 	// `Get` doesn't include the namespace in the per-endpoint
 	// metadata, so it needs to be special-cased.
-	weightedAddr.MetricLabels["namespace"] = pod.Namespace
+	weightedAddr.MetricLabels["namespace"] = address.Pod.Namespace
 
 	return weightedAddr, err
 }
