@@ -11,14 +11,6 @@ import (
 	"github.com/linkerd/linkerd2/testutil"
 )
 
-type jsonStats struct {
-	Namespace          string   `json:"namespace"`
-	Name               string   `json:"name"`
-	Success            *float64 `json:"success"`
-	Rps                *float64 `json:"rps"`
-	TCPOpenConnections *int     `json:"tcp_open_connections"`
-}
-
 var TestHelper *testutil.TestHelper
 
 func TestMain(m *testing.M) {
