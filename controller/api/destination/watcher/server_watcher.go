@@ -30,6 +30,9 @@ type podPort struct {
 
 // ServerUpdateListener is the interface that subscribers must implement.
 type ServerUpdateListener interface {
+	// UpdateProtocol takes a bool which is set to true if the endpoint is
+	// opaque and false otherwise. This value is used to send a
+	// DestinationProfile update to listeners for that endpoint.
 	UpdateProtocol(bool)
 }
 
