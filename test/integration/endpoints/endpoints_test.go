@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/linkerd/linkerd2/testutil"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
 	"text/template"
+
+	"github.com/linkerd/linkerd2/testutil"
 )
 
 var TestHelper *testutil.TestHelper
