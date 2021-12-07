@@ -1,5 +1,21 @@
 # Changes
 
+## edge-21.12.1
+
+This edge release enables by default `EndpointSlices` in the destination
+controller, which unblocks any functionality that is specific to
+`EndpointSlices` such as as topology-aware hints. It also contains a couple of
+internal cleanups and upgrades, by our external contributors!
+
+* Added new check to `linkerd check` verifying the nodes aren't running the old
+  Docker container runtime and attempting to run proxy-init as root at the same
+  time, which doesn't work (thanks @alex-berger!)
+* Enabled `EndpointSlices` in the destination controller by default
+* Removed extraneous empty lines and fixed the formatting of warnings in the
+  output of `linkerd check -o short`
+* Upgraded to go 1.17 (thanks @Juneezee!)
+* Removed old protobuf definitions from the codebase (thanks @krzysztofdrys!)
+
 ## edge-21.11.4
 
 This edge release introduces a change in the destination service to honor

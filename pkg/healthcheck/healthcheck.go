@@ -422,7 +422,7 @@ type HealthChecker struct {
 
 // Runner is implemented by any health-checkers that can be triggered with RunChecks()
 type Runner interface {
-	RunChecks(observer CheckObserver) bool
+	RunChecks(observer CheckObserver) (bool, bool)
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -1586,8 +1586,9 @@ func (hc *HealthChecker) checkMinReplicasAvailable(ctx context.Context) error {
 // remaining checks are skipped. If at least one check fails, RunChecks returns
 // false; if all checks passed, RunChecks returns true.  Checks which are
 // designated as warnings will not cause RunCheck to return false, however.
-func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
+func (hc *HealthChecker) RunChecks(observer CheckObserver) (bool, bool) {
 	success := true
+	warning := false
 	for _, c := range hc.categories {
 		if c.enabled {
 			for _, checker := range c.checkers {
@@ -1596,9 +1597,11 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 					if !hc.runCheck(c, &checker, observer) {
 						if !checker.warning {
 							success = false
+						} else {
+							warning = true
 						}
 						if checker.fatal {
-							return success
+							return success, warning
 						}
 					}
 				}
@@ -1606,7 +1609,7 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 		}
 	}
 
-	return success
+	return success, warning
 }
 
 // LinkerdConfig gets the Linkerd configuration values.
@@ -2248,7 +2251,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 	// This is used instead of `hc.kubeAPI` to limit multiple k8s API requests
 	// and use the caching logic in the shared informers
 	// TODO: move the shared informer code out of `controller/`, and into `pkg` to simplify the dependency tree.
-	kubeAPI := controllerK8s.NewAPI(hc.kubeAPI, nil, nil, nil, controllerK8s.Endpoint, controllerK8s.Pod, controllerK8s.Svc)
+	kubeAPI := controllerK8s.NewAPI(hc.kubeAPI, nil, nil, controllerK8s.Endpoint, controllerK8s.Pod, controllerK8s.Svc)
 	kubeAPI.Sync(ctx.Done())
 
 	services, err := kubeAPI.Svc().Lister().Services(hc.DataPlaneNamespace).List(labels.Everything())

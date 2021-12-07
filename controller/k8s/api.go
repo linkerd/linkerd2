@@ -16,9 +16,6 @@ import (
 	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
-	tsclient "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
-	ts "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/informers/externalversions"
-	tsinformers "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/informers/externalversions/split/v1alpha1"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -62,7 +59,6 @@ const (
 	SP
 	SS
 	Svc
-	TS
 	Node
 	Secret
 	ES // EndpointSlice resource
@@ -90,7 +86,6 @@ type API struct {
 	sp       spinformers.ServiceProfileInformer
 	ss       appv1informers.StatefulSetInformer
 	svc      coreinformers.ServiceInformer
-	ts       tsinformers.TrafficSplitInformer
 	node     coreinformers.NodeInformer
 	secret   coreinformers.SecretInformer
 	srv      srvinformers.ServerInformer
@@ -98,7 +93,6 @@ type API struct {
 	syncChecks            []cache.InformerSynced
 	sharedInformers       informers.SharedInformerFactory
 	l5dCrdSharedInformers l5dcrdinformer.SharedInformerFactory
-	tsSharedInformers     ts.SharedInformerFactory
 
 	gauges []prometheus.GaugeFunc
 }
@@ -168,20 +162,7 @@ func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, dynamicClient dy
 		break
 	}
 
-	// TrafficSplits
-	var tsClient *tsclient.Clientset
-	for _, res := range resources {
-		if res == TS {
-			tsClient, err = NewTsClientSet(kubeConfig)
-			if err != nil {
-				return nil, err
-			}
-
-			break
-		}
-	}
-
-	api := NewAPI(k8sClient, dynamicClient, l5dCrdClient, tsClient, resources...)
+	api := NewAPI(k8sClient, dynamicClient, l5dCrdClient, resources...)
 	for _, gauge := range api.gauges {
 		prometheus.Register(gauge)
 	}
@@ -193,7 +174,6 @@ func NewAPI(
 	k8sClient kubernetes.Interface,
 	dynamicClient dynamic.Interface,
 	l5dCrdClient l5dcrdclient.Interface,
-	tsClient tsclient.Interface,
 	resources ...APIResource,
 ) *API {
 	sharedInformers := informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
@@ -203,18 +183,12 @@ func NewAPI(
 		l5dCrdSharedInformers = l5dcrdinformer.NewSharedInformerFactory(l5dCrdClient, 10*time.Minute)
 	}
 
-	var tsSharedInformers ts.SharedInformerFactory
-	if tsClient != nil {
-		tsSharedInformers = ts.NewSharedInformerFactory(tsClient, 10*time.Minute)
-	}
-
 	api := &API{
 		Client:                k8sClient,
 		DynamicClient:         dynamicClient,
 		syncChecks:            make([]cache.InformerSynced, 0),
 		sharedInformers:       sharedInformers,
 		l5dCrdSharedInformers: l5dCrdSharedInformers,
-		tsSharedInformers:     tsSharedInformers,
 	}
 
 	for _, resource := range resources {
@@ -289,13 +263,6 @@ func NewAPI(
 			api.svc = sharedInformers.Core().V1().Services()
 			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
 			api.addInformerSizeGauge("service", api.svc.Informer())
-		case TS:
-			if tsSharedInformers == nil {
-				panic("TS shared informer not configured")
-			}
-			api.ts = tsSharedInformers.Split().V1alpha1().TrafficSplits()
-			api.syncChecks = append(api.syncChecks, api.ts.Informer().HasSynced)
-			api.addInformerSizeGauge("traffic_split", api.ts.Informer())
 		case Node:
 			api.node = sharedInformers.Core().V1().Nodes()
 			api.syncChecks = append(api.syncChecks, api.node.Informer().HasSynced)
@@ -315,10 +282,6 @@ func (api *API) Sync(stopCh <-chan struct{}) {
 
 	if api.l5dCrdSharedInformers != nil {
 		api.l5dCrdSharedInformers.Start(stopCh)
-	}
-
-	if api.tsSharedInformers != nil {
-		api.tsSharedInformers.Start(stopCh)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -456,14 +419,6 @@ func (api *API) Job() batchv1informers.JobInformer {
 // ServiceProfiles
 func (api *API) SPAvailable() bool {
 	return api.sp != nil
-}
-
-// TS provides access to a shared informer and lister for TrafficSplits.
-func (api *API) TS() tsinformers.TrafficSplitInformer {
-	if api.ts == nil {
-		panic("TS informer not configured")
-	}
-	return api.ts
 }
 
 // Node provides access to a shared informer and lister for Nodes.
@@ -1056,24 +1011,9 @@ func (api *API) GetServicesFor(obj runtime.Object, includeFailed bool) ([]*corev
 	}
 	services := make([]*corev1.Service, 0)
 	for _, svc := range allServices {
-		leaves, err := api.getLeafServices(svc)
+		svcPods, err := api.GetPodsFor(svc, includeFailed)
 		if err != nil {
 			return nil, err
-		}
-		svcPods := []*corev1.Pod{}
-		if len(leaves) > 0 {
-			for _, leaf := range leaves {
-				pods, err := api.GetPodsFor(leaf, includeFailed)
-				if err != nil {
-					return nil, err
-				}
-				svcPods = append(svcPods, pods...)
-			}
-		} else {
-			svcPods, err = api.GetPodsFor(svc, includeFailed)
-			if err != nil {
-				return nil, err
-			}
 		}
 
 		if hasOverlap(pods, svcPods) {
@@ -1081,29 +1021,6 @@ func (api *API) GetServicesFor(obj runtime.Object, includeFailed bool) ([]*corev
 		}
 	}
 	return services, nil
-}
-
-func (api *API) getLeafServices(apex *corev1.Service) ([]*corev1.Service, error) {
-	splits, err := api.TS().Lister().TrafficSplits(apex.Namespace).List(labels.Everything())
-	if err != nil {
-		return nil, err
-	}
-	leaves := []*corev1.Service{}
-	for _, split := range splits {
-		if split.Spec.Service == apex.Name {
-			for _, backend := range split.Spec.Backends {
-				if backend.Weight.Sign() == 1 {
-					svc, err := api.Svc().Lister().Services(apex.Namespace).Get(backend.Service)
-					if err != nil {
-						log.Errorf("TrafficSplit %s/%s references non-existent service %s", apex.Namespace, split.Name, backend.Service)
-						continue
-					}
-					leaves = append(leaves, svc)
-				}
-			}
-		}
-	}
-	return leaves, nil
 }
 
 // GetServiceProfileFor returns the service profile for a given service.  We

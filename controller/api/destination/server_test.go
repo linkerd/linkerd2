@@ -382,7 +382,6 @@ spec:
 	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log, false)
 	opaquePorts := watcher.NewOpaquePortsWatcher(k8sAPI, log, defaultOpaquePorts)
 	profiles := watcher.NewProfileWatcher(k8sAPI, log)
-	trafficSplits := watcher.NewTrafficSplitWatcher(k8sAPI, log)
 	servers := watcher.NewServerWatcher(k8sAPI, log)
 
 	// Sync after creating watchers so that the the indexers added get updated
@@ -394,7 +393,6 @@ spec:
 		endpoints,
 		opaquePorts,
 		profiles,
-		trafficSplits,
 		servers,
 		k8sAPI.Node(),
 		true,

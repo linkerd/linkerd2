@@ -82,8 +82,8 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
-- apiGroups: ["split.smi-spec.io"]
-  resources: ["trafficsplits"]
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
   verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
@@ -1023,101 +1023,6 @@ spec:
     - sp
 ---
 ###
-### TrafficSplit CRD
-### Copied from github.com/servicemeshinterface/smi-sdk-go/blob/d4e76b1cd7a33ead5f38d1262dd838a31c80f4e5/crds/split.yaml
-###
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: trafficsplits.split.smi-spec.io
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-spec:
-  group: split.smi-spec.io
-  scope: Namespaced
-  conversion:
-    strategy: None
-  names:
-    kind: TrafficSplit
-    listKind: TrafficSplitList
-    shortNames:
-      - ts
-    plural: trafficsplits
-    singular: trafficsplit
-  versions:
-    - name: v1alpha1
-      served: true
-      storage: true
-      schema:
-        openAPIV3Schema:
-          type: object
-          properties:
-            spec:
-              type: object
-              required:
-                - service
-                - backends
-              properties:
-                service:
-                  description: The apex service of this split.
-                  type: string
-                backends:
-                  description: The backend services of this split.
-                  type: array
-                  items:
-                    type: object
-                    required: ['service', 'weight']
-                    properties:
-                      service:
-                        description: Name of the Kubernetes service.
-                        type: string
-                      weight:
-                        description: Traffic weight value of this backend.
-                        x-kubernetes-int-or-string: true
-      additionalPrinterColumns:
-      - name: Service
-        type: string
-        description: The apex service of this split.
-        jsonPath: .spec.service
-    - name: v1alpha2
-      served: true
-      storage: false
-      additionalPrinterColumns:
-      - name: Service
-        type: string
-        description: The apex service of this split.
-        jsonPath: .spec.service
-      schema:
-        openAPIV3Schema:
-          type: object
-          properties:
-            spec:
-              type: object
-              required:
-                - service
-                - backends
-              properties:
-                service:
-                  description: The apex service of this split.
-                  type: string
-                backends:
-                  description: The backend services of this split.
-                  type: array
-                  items:
-                    type: object
-                    required: ['service', 'weight']
-                    properties:
-                      service:
-                        description: Name of the Kubernetes service.
-                        type: string
-                      weight:
-                        description: Traffic weight value of this backend.
-                        type: number
-  preserveUnknownFields: false
----
-###
 ### Proxy Injector RBAC
 ###
 kind: ClusterRole
@@ -1256,7 +1161,7 @@ data:
         limit: 250Mi
         request: 50Mi
     disableHeartBeat: false
-    enableEndpointSlices: false
+    enableEndpointSlices: true
     enableH2Upgrade: true
     enablePodAntiAffinity: true
     grafanaUrl: ""
@@ -1972,7 +1877,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: ef7c2923ac9a98ca1098f42a170c5266e3a2ff58fdafd80b83b8711890cb16a0
+        checksum/config: fd4355b1aba8e27821a6fc4f9b43f57db662b07427eaff21d75b5f91ba33d23d
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
@@ -2137,7 +2042,7 @@ spec:
         - -enable-h2-upgrade=true
         - -log-level=info
         - -log-format=plain
-        - -enable-endpoint-slices=false
+        - -enable-endpoint-slices=true
         - -cluster-domain=cluster.local
         - -identity-trust-domain=cluster.local
         - -default-opaque-ports=25,587,3306,4444,5432,6379,9300,11211
