@@ -76,7 +76,7 @@ func TestLocalhostServer(t *testing.T) {
 				`request_total\{direction="outbound",authority="nginx\.linkerd-localhost-test\.svc\.cluster\.local:8080",.*,dst_deployment="nginx",dst_namespace="linkerd-localhost-test",dst_pod="nginx.*",dst_pod_template_hash=".*",dst_service="nginx",dst_serviceaccount="default"\} [1-9]\d*`,
 			)
 			if !rpsRE.MatchString(metrics) {
-				return fmt.Errorf("expected non-zero RPS from slowcooker to nginx: %s", metrics)
+				return fmt.Errorf("expected non-zero RPS from slowcooker to nginx\nexpected: %s, got: %s", rpsRE, metrics)
 			}
 
 			// Requests sent to a port which is only bound to localhost should
@@ -85,13 +85,15 @@ func TestLocalhostServer(t *testing.T) {
 				`response_total\{direction="outbound",authority="nginx\.linkerd-localhost-test\.svc\.cluster\.local:8080",.*,classification="success"\} [1-9]\d*`,
 			)
 			if successRE.MatchString(metrics) {
-				return fmt.Errorf("expected zero success-rate from slowcooker to nginx: %s", metrics)
+				return fmt.Errorf("expected zero success-rate from slowcooker to nginx\nexpected: %s, got: %s", successRE, metrics)
 			}
 
-			/*
-				if *stats[0].TCPOpenConnections > 0 {
-					return fmt.Errorf("expected no tcp connection from slowcooker to nginx: %s", out)
-				} */
+			tcpConnRE := regexp.MustCompile(
+				`tcp_open_connections\{direction="outbound",peer="dst",authority="nginx\.linkerd-localhost-test\.svc\.cluster\.local:8080",.*\} 0`,
+			)
+			if !tcpConnRE.MatchString(metrics) {
+				return fmt.Errorf("expected no tcp connections from slowcooker to nginx\nexpected: %s, got: %s", tcpConnRE, metrics)
+			}
 
 			return nil
 		})
