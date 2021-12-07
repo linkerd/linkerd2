@@ -211,23 +211,33 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			if err != nil {
 				return err
 			}
-			if pod == nil {
-				translator := newEndpointProfileTranslator(nil, port, nil, nil, stream, s.log)
+
+			opaquePorts, err := getAnnotatedOpaquePorts(pod, s.defaultOpaquePorts)
+			if err != nil {
+				return fmt.Errorf("failed to get opaque ports for pod: %s", err)
+			}
+			var address watcher.Address
+			var endpoint *pb.WeightedAddr
+			if pod != nil {
+				address, err = s.createAddress(pod, port)
+				if err != nil {
+					return fmt.Errorf("failed to create address: %s", err)
+				}
+				endpoint, err = s.createEndpoint(address, pod, opaquePorts)
+				if err != nil {
+					return fmt.Errorf("failed to create endpoint: %s", err)
+				}
+			}
+			translator := newEndpointProfileTranslator(pod, port, endpoint, stream, s.log)
+
+			// If the endpoint's port is annotated as opaque, we don't need to
+			// subscribe for updates because it will always be opaque
+			// regardless of any Servers that may select it.
+			if _, ok := opaquePorts[port]; ok {
+				translator.UpdateProtocol(true)
+			} else if pod == nil {
 				translator.UpdateProtocol(false)
 			} else {
-				address, err := s.createAddress(pod, port)
-				if err != nil {
-					s.log.Errorf("failed to create address: %s", err)
-				}
-				opaquePorts, err := getAnnotatedOpaquePorts(pod, s.defaultOpaquePorts)
-				if err != nil {
-					s.log.Errorf("failed to get opaque ports for pod %s/%s: %s", pod.Namespace, pod.Name, err)
-				}
-				endpoint, err := s.createEndpoint(address, pod, opaquePorts)
-				if err != nil {
-					return err
-				}
-				translator := newEndpointProfileTranslator(pod, port, endpoint, opaquePorts, stream, s.log)
 				translator.UpdateProtocol(address.OpaqueProtocol)
 				s.servers.Subscribe(pod, port, translator)
 				defer s.servers.Unsubscribe(pod, port, translator)
@@ -256,28 +266,36 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			if err != nil {
 				log.Errorf("failed to get pod for hostname %s: %v", hostname, err)
 			}
-			if pod == nil {
-				translator := newEndpointProfileTranslator(nil, port, nil, nil, stream, s.log)
+			opaquePorts, err := getAnnotatedOpaquePorts(pod, s.defaultOpaquePorts)
+			if err != nil {
+				return fmt.Errorf("failed to get opaque ports for pod: %s", err)
+			}
+			var address watcher.Address
+			var endpoint *pb.WeightedAddr
+			if pod != nil {
+				address, err = s.createAddress(pod, port)
+				if err != nil {
+					return fmt.Errorf("failed to create address: %s", err)
+				}
+				endpoint, err = s.createEndpoint(address, pod, opaquePorts)
+				if err != nil {
+					return fmt.Errorf("failed to create endpoint: %s", err)
+				}
+			}
+			translator := newEndpointProfileTranslator(pod, port, endpoint, stream, s.log)
+
+			// If the endpoint's port is annotated as opaque, we don't need to
+			// subscribe for updates because it will always be opaque
+			// regardless of any Servers that may select it.
+			if _, ok := opaquePorts[port]; ok {
+				translator.UpdateProtocol(true)
+			} else if pod == nil {
 				translator.UpdateProtocol(false)
 			} else {
-				address, err := s.createAddress(pod, port)
-				if err != nil {
-					s.log.Errorf("failed to create address: %s", err)
-				}
-				opaquePorts, err := getAnnotatedOpaquePorts(pod, s.defaultOpaquePorts)
-				if err != nil {
-					s.log.Errorf("failed to get opaque ports for pod %s/%s: %s", pod.Namespace, pod.Name, err)
-				}
-				endpoint, err := s.createEndpoint(address, pod, opaquePorts)
-				if err != nil {
-					return err
-				}
-				translator := newEndpointProfileTranslator(pod, port, endpoint, opaquePorts, stream, s.log)
 				translator.UpdateProtocol(address.OpaqueProtocol)
 				s.servers.Subscribe(pod, port, translator)
 				defer s.servers.Unsubscribe(pod, port, translator)
 			}
-
 			select {
 			case <-s.shutdown:
 			case <-stream.Context().Done():
@@ -638,6 +656,9 @@ func hasSuffix(slice []string, suffix []string) bool {
 }
 
 func getAnnotatedOpaquePorts(pod *corev1.Pod, defaultPorts map[uint32]struct{}) (map[uint32]struct{}, error) {
+	if pod == nil {
+		return defaultPorts, nil
+	}
 	annotation, ok := pod.Annotations[labels.ProxyOpaquePortsAnnotation]
 	if !ok {
 		return defaultPorts, nil
