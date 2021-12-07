@@ -47,7 +47,11 @@ securityContext:
     {{- end }}
     {{- end }}
   {{- if or .Values.proxyInit.closeWaitTimeoutSecs .Values.proxyInit.runAsRoot }}
+  {{- if .Values.proxyInit.closeWaitTimeoutSecs }}
   privileged: true
+  {{- else }}
+  privileged: false
+  {{- end }}
   runAsNonRoot: false
   runAsUser: 0
   {{- else }}
