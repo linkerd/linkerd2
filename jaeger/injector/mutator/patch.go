@@ -27,7 +27,7 @@ const tpl = `[
     "path": "/spec/containers/{{.ProxyIndex}}/env/-",
     "value": {
       "name": "LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME",
-      "value": "{{.CollectorSvcAccount}}.serviceaccount.identity.{{.LinkerdNamepace}}.{{.ClusterDomain}}"
+      "value": "{{.CollectorSvcAccount}}.serviceaccount.identity.{{.LinkerdNamespace}}.{{.ClusterDomain}}"
     }
   },
   {
