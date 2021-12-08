@@ -93,6 +93,8 @@ func NewFakeClientSets(configs ...string) (
 			spObjs = append(spObjs, obj)
 		case TrafficSplit:
 			tsObjs = append(tsObjs, obj)
+		case Server:
+			spObjs = append(spObjs, obj)
 		default:
 			objs = append(objs, obj)
 		}
