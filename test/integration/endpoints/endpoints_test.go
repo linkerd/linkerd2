@@ -22,7 +22,6 @@ func TestMain(m *testing.M) {
 
 func TestGoodEndpoints(t *testing.T) {
 	ctx := context.Background()
-	nginxNs := "linkerd-endpoints-test"
 	controlNs := TestHelper.GetLinkerdNamespace()
 	testDataPath := "testdata"
 	cmd := []string{
@@ -34,7 +33,7 @@ func TestGoodEndpoints(t *testing.T) {
 	}
 
 	if !TestHelper.ExternalPrometheus() {
-		cmd = append(cmd, fmt.Sprintf("nginx.%s.svc.cluster.local:8080", nginxNs))
+		cmd = append(cmd, fmt.Sprintf("nginx.%s.svc.cluster.local:8080", "linkerd-endpoints-test"))
 		TestHelper.WithDataPlaneNamespace(ctx, "endpoints-test", map[string]string{}, t, func(t *testing.T, ns string) {
 			nginx, err := TestHelper.LinkerdRun("inject", "testdata/nginx.yaml")
 			if err != nil {
@@ -55,8 +54,7 @@ func TestGoodEndpoints(t *testing.T) {
 				}
 			}
 
-            checkEndpoints(t, cmd, testDataPath, controlNs, ns)
-
+			checkEndpoints(t, cmd, testDataPath, controlNs, ns)
 		})
 	} else {
 		cmd = append(cmd, "prometheus.external-prometheus.svc.cluster.local:9090")
