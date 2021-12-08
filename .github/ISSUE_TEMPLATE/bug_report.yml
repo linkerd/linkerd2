@@ -9,7 +9,7 @@ body:
   - type: textarea
     attributes:
       label: What is the issue?
-      description: A clear and concise description of what kube is doing and what you would expect.
+      description: A clear and concise description of what Linkerd is doing and what you would expect.
     validations:
       required: true
 
