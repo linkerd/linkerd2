@@ -486,7 +486,7 @@ setup_helm() {
 helm_cleanup() {
   (
     set -e
-    "$helm_path" --kube-context="$context" --namespace linkerd delete "$helm_release_name-base" || true
+    "$helm_path" --kube-context="$context" --namespace linkerd delete "$helm_release_name-crds" || true
     "$helm_path" --kube-context="$context" --namespace linkerd delete "$helm_release_name-control-plane" || true
     kubectl delete ns/linkerd
     "$helm_path" --kube-context="$context" --namespace linkerd-multicluster delete "$helm_multicluster_release_name" || true

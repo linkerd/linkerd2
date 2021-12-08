@@ -36,6 +36,7 @@ heartbeatResources: *controller_resources
 
 # proxy injector configuration
 proxyInjectorResources: *controller_resources
+webhookFailurePolicy: Fail
 
 # service profile validator configuration
 spValidatorResources: *controller_resources

@@ -18,16 +18,16 @@ func TestRenderHelm(t *testing.T) {
 	// override certain defaults with pinned values.
 	// use the Helm lib to render the templates.
 	t.Run("Non-HA mode", func(t *testing.T) {
-		chartBase := chartBase(t, false, "", "111", "222")
+		chartCrds := chartCrds(t, "", "111", "222")
 		chartControlPlane := chartControlPlane(t, false, "", "111", "222")
-		testRenderHelm(t, chartBase, "install_helm_base_output.golden")
+		testRenderHelm(t, chartCrds, "install_helm_crds_output.golden")
 		testRenderHelm(t, chartControlPlane, "install_helm_control_plane_output.golden")
 	})
 
 	t.Run("HA mode", func(t *testing.T) {
-		chartBase := chartBase(t, true, "", "111", "222")
+		chartCrds := chartCrds(t, "", "111", "222")
 		chartControlPlane := chartControlPlane(t, true, "", "111", "222")
-		testRenderHelm(t, chartBase, "install_helm_base_output_ha.golden")
+		testRenderHelm(t, chartCrds, "install_helm_crds_output_ha.golden")
 		testRenderHelm(t, chartControlPlane, "install_helm_control_plane_output_ha.golden")
 	})
 
@@ -176,8 +176,8 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
 	testDataDiffer.DiffTestdata(t, goldenFileName, buf.String())
 }
 
-func chartBase(t *testing.T, ha bool, additionalConfig string, ignoreOutboundPorts string, ignoreInboundPorts string) *chart.Chart {
-	values, err := readTestValues(ha, ignoreOutboundPorts, ignoreInboundPorts)
+func chartCrds(t *testing.T, additionalConfig string, ignoreOutboundPorts string, ignoreInboundPorts string) *chart.Chart {
+	values, err := readTestValues(false, ignoreOutboundPorts, ignoreInboundPorts)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}
@@ -219,9 +219,9 @@ func chartBase(t *testing.T, ha bool, additionalConfig string, ignoreOutboundPor
 	}
 	linkerd2Chart := &chart.Chart{
 		Metadata: &chart.Metadata{
-			Name: helmDefaultChartNameBase,
+			Name: helmDefaultChartNameCrds,
 			Sources: []string{
-				filepath.Join("..", "..", "..", "charts", "linkerd-base"),
+				filepath.Join("..", "..", "..", "charts", "linkerd-crds"),
 			},
 		},
 		Values: mapValues,
@@ -229,7 +229,7 @@ func chartBase(t *testing.T, ha bool, additionalConfig string, ignoreOutboundPor
 
 	linkerd2Chart.AddDependency(chartPartials)
 
-	for _, filepath := range templatesConfigStage {
+	for _, filepath := range templatesCrdFiles {
 		linkerd2Chart.Templates = append(linkerd2Chart.Templates, &chart.File{
 			Name: filepath,
 		})
@@ -295,6 +295,12 @@ func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOut
 	}
 
 	linkerd2Chart.AddDependency(chartPartials)
+
+	for _, filepath := range templatesConfigStage {
+		linkerd2Chart.Templates = append(linkerd2Chart.Templates, &chart.File{
+			Name: filepath,
+		})
+	}
 
 	for _, filepath := range templatesControlPlaneStage {
 		linkerd2Chart.Templates = append(linkerd2Chart.Templates, &chart.File{

@@ -530,25 +530,25 @@ func TestInstallHelm(t *testing.T) {
 			"failed to generate root certificate for identity: %s", err)
 	}
 
-	var baseChartToInstall string
+	var crdsChartToInstall string
 	var controlPlaneChartToInstall string
 	var vizChartToInstall string
 	var args []string
 	var vizArgs []string
 
 	if TestHelper.UpgradeHelmFromVersion() != "" {
-		baseChartToInstall = TestHelper.GetHelmStableChart()
+		crdsChartToInstall = TestHelper.GetHelmStableChart()
 		vizChartToInstall = TestHelper.GetLinkerdVizHelmStableChart()
 		args, vizArgs = helmOverridesStable(helmTLSCerts)
 	} else {
-		baseChartToInstall = TestHelper.GetHelmCharts() + "/linkerd-base"
+		crdsChartToInstall = TestHelper.GetHelmCharts() + "/linkerd-crds"
 		controlPlaneChartToInstall = TestHelper.GetHelmCharts() + "/linkerd-control-plane"
 		vizChartToInstall = TestHelper.GetLinkerdVizHelmChart()
 		args, vizArgs = helmOverridesEdge(helmTLSCerts)
 	}
 
-	releaseName := TestHelper.GetHelmReleaseName() + "-base"
-	if stdout, stderr, err := TestHelper.HelmInstall(baseChartToInstall, releaseName, args...); err != nil {
+	releaseName := TestHelper.GetHelmReleaseName() + "-crds"
+	if stdout, stderr, err := TestHelper.HelmInstall(crdsChartToInstall, releaseName, args...); err != nil {
 		testutil.AnnotatedFatalf(t, "'helm install' command failed",
 			"'helm install' command failed\n%s\n%s", stdout, stderr)
 	}
@@ -656,7 +656,7 @@ func TestUpgradeHelm(t *testing.T) {
 	}
 	extraArgs, vizArgs := helmOverridesEdge(helmTLSCerts)
 	args = append(args, extraArgs...)
-	if stdout, stderr, err := TestHelper.HelmUpgrade(TestHelper.GetHelmCharts()+"/linkerd-base", args...); err != nil {
+	if stdout, stderr, err := TestHelper.HelmUpgrade(TestHelper.GetHelmCharts()+"/linkerd-crds", args...); err != nil {
 		testutil.AnnotatedFatalf(t, "'helm upgrade' command failed",
 			"'helm upgrade' command failed\n%s\n%s", stdout, stderr)
 	}

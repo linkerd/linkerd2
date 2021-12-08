@@ -16,10 +16,10 @@ import (
 )
 
 const (
-	// HelmChartDirBase is the directory name for the linkerd-base chart
-	HelmChartDirBase = "linkerd-base"
+	// HelmChartDirCrds is the directory name for the linkerd-crds chart
+	HelmChartDirCrds = "linkerd-crds"
 
-	// HelmChartDirCP is the directory name for the linkerd-base chart
+	// HelmChartDirCP is the directory name for the linkerd-control-plane chart
 	HelmChartDirCP = "linkerd-control-plane"
 )
 
@@ -225,7 +225,7 @@ type (
 
 // NewValues returns a new instance of the Values type.
 func NewValues() (*Values, error) {
-	v, err := readDefaults(HelmChartDirBase + "/values.yaml")
+	v, err := readDefaults(HelmChartDirCrds + "/values.yaml")
 	if err != nil {
 		return nil, err
 	}
@@ -263,19 +263,11 @@ func ValuesFromConfigMap(cm *corev1.ConfigMap) (*Values, error) {
 
 // MergeHAValues retrieves the default HA values and merges them into the received values
 func MergeHAValues(values *Values) error {
-	haValues, err := readDefaults(HelmChartDirBase + "/values-ha.yaml")
-	if err != nil {
-		return err
-	}
-	haValuesCP, err := readDefaults(HelmChartDirCP + "/values-ha.yaml")
+	haValues, err := readDefaults(HelmChartDirCP + "/values-ha.yaml")
 	if err != nil {
 		return err
 	}
 	*values, err = values.Merge(*haValues)
-	if err != nil {
-		return err
-	}
-	*values, err = values.Merge(*haValuesCP)
 	return err
 }
 

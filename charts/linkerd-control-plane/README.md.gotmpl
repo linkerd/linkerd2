@@ -15,14 +15,10 @@ the [Linkerd Getting Started Guide][getting-started] for how.
 For more comprehensive documentation, start with the [Linkerd
 docs][linkerd-docs].
 
-## Prerequisite: linkerd-base chart
+## Prerequisite: linkerd-crds chart
 
-Before installing this chart, please install the `linkerd-base` chart, which
-creates all the cluster-level resources (such as `ClusterRoles` and `CRD`s)
-that the components from the current chart require.
-
-The current chart, `linkerd-control-plane`, only requires namespace-level
-privileges during install.
+Before installing this chart, please install the `linkerd-crds` chart, which
+creates all the CRDs that the components from the current chart require.
 
 ## Prerequisite: identity certificates
 

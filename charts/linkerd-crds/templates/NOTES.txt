@@ -1,4 +1,4 @@
-The linkerd-base chart was successfully installed 🎉
+The linkerd-crds chart was successfully installed 🎉
 
 To complete the linkerd core installation, please now proceed to install the
 linkerd-control-plane chart in the {{ .Release.Namespace }} namespace.

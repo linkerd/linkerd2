@@ -34,7 +34,7 @@ const (
 	configStage       = "config"
 	controlPlaneStage = "control-plane"
 
-	helmDefaultChartNameBase = "linkerd-base"
+	helmDefaultChartNameCrds = "linkerd-crds"
 	helmDefaultChartNameCP   = "linkerd-control-plane"
 
 	errMsgCannotInitializeClient = `Unable to install the Linkerd control plane. Cannot connect to the Kubernetes cluster:
@@ -59,13 +59,16 @@ Otherwise, you can use the --ignore-cluster flag to overwrite the existing globa
 )
 
 var (
+	templatesCrdFiles = []string{
+		"templates/policy-crd.yaml",
+		"templates/serviceprofile-crd.yaml",
+	}
+
 	templatesConfigStage = []string{
 		"templates/namespace.yaml",
 		"templates/identity-rbac.yaml",
 		"templates/destination-rbac.yaml",
 		"templates/heartbeat-rbac.yaml",
-		"templates/policy-crd.yaml",
-		"templates/serviceprofile-crd.yaml",
 		"templates/proxy-injector-rbac.yaml",
 		"templates/psp.yaml",
 	}
@@ -314,17 +317,29 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 
 	values.Stage = stage
 
-	baseFiles := []*loader.BufferedFile{
+	crdFiles := []*loader.BufferedFile{
+		{Name: chartutil.ChartfileName},
+	}
+	configFiles := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
 
 	if stage == "" || stage == configStage {
-		for _, template := range templatesConfigStage {
-			baseFiles = append(baseFiles,
+		for _, template := range templatesCrdFiles {
+			crdFiles = append(crdFiles,
 				&loader.BufferedFile{Name: template},
 			)
 		}
-		if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirBase+"/", baseFiles); err != nil {
+		if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirCrds+"/", crdFiles); err != nil {
+			return err
+		}
+
+		for _, template := range templatesConfigStage {
+			configFiles = append(configFiles,
+				&loader.BufferedFile{Name: template},
+			)
+		}
+		if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirCP+"/", configFiles); err != nil {
 			return err
 		}
 
@@ -359,7 +374,8 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 	}
 
 	// Create a Chart obj from the files
-	files := append(baseFiles, cpFiles...)
+	configStageFiles := append(crdFiles, configFiles...)
+	files := append(configStageFiles, cpFiles...)
 	files = append(files, partialFiles...)
 	chart, err := loader.LoadFiles(files)
 	if err != nil {
