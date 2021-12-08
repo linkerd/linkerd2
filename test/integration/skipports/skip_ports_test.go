@@ -59,26 +59,32 @@ func TestSkipInboundPorts(t *testing.T) {
 			}
 		}
 
-		// Wait for slow-cookers to start sending requests
-		time.Sleep(30 * time.Second)
-
 		t.Run("expect webapp to not have any 5xx response errors", func(t *testing.T) {
-			pods, err := TestHelper.GetPods(ctx, ns, map[string]string{"app": "webapp"})
+			// Wait for slow-cookers to start sending requests by using a short
+			// time window through RetryFor.
+			err := TestHelper.RetryFor(30*time.Second, func() error {
+				pods, err := TestHelper.GetPods(ctx, ns, map[string]string{"app": "webapp"})
+				if err != nil {
+					return fmt.Errorf("error getting pods\n%s", err)
+				}
+
+				podName := fmt.Sprintf("pod/%s", pods[0].Name)
+				cmd := []string{"diagnostics", "proxy-metrics", "--namespace", ns, podName}
+
+				metrics, err := TestHelper.LinkerdRun(cmd...)
+				if err != nil {
+					return fmt.Errorf("error getting metrics for pod\n%s", err)
+				}
+
+				if httpResponseTotalMetricRE.MatchString(metrics) {
+					return fmt.Errorf("expected not to find HTTP outbound requests when pod is skipping inbound port\n%s", metrics)
+				}
+
+				return nil
+			})
+
 			if err != nil {
-				testutil.AnnotatedFatalf(t, "error getting pods", "error getting pods\n%s", err)
-			}
-
-			podName := fmt.Sprintf("pod/%s", pods[0].Name)
-			cmd := []string{"diagnostics", "proxy-metrics", "--namespace", ns, podName}
-
-			metrics, err := TestHelper.LinkerdRun(cmd...)
-			if err != nil {
-				testutil.AnnotatedFatalf(t, "error getting metrics for pod", "error getting metrics for pod\n%s", err)
-			}
-
-			if httpResponseTotalMetricRE.MatchString(metrics) {
-				testutil.AnnotatedFatalf(t, "expected not to find HTTP outbound response failures to dst=books.skip-ports-test.svc.cluster.local:7002",
-					"expected not to find HTTP outbound requests when pod is skipping inbound port\n%s", metrics)
+				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v", err)
 			}
 		})
 	})

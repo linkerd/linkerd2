@@ -82,9 +82,6 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
-- apiGroups: ["split.smi-spec.io"]
-  resources: ["trafficsplits"]
-  verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1023,101 +1020,6 @@ spec:
     - sp
 ---
 ###
-### TrafficSplit CRD
-### Copied from github.com/servicemeshinterface/smi-sdk-go/blob/d4e76b1cd7a33ead5f38d1262dd838a31c80f4e5/crds/split.yaml
-###
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: trafficsplits.split.smi-spec.io
-  annotations:
-    linkerd.io/created-by: CliVersion
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-spec:
-  group: split.smi-spec.io
-  scope: Namespaced
-  conversion:
-    strategy: None
-  names:
-    kind: TrafficSplit
-    listKind: TrafficSplitList
-    shortNames:
-      - ts
-    plural: trafficsplits
-    singular: trafficsplit
-  versions:
-    - name: v1alpha1
-      served: true
-      storage: true
-      schema:
-        openAPIV3Schema:
-          type: object
-          properties:
-            spec:
-              type: object
-              required:
-                - service
-                - backends
-              properties:
-                service:
-                  description: The apex service of this split.
-                  type: string
-                backends:
-                  description: The backend services of this split.
-                  type: array
-                  items:
-                    type: object
-                    required: ['service', 'weight']
-                    properties:
-                      service:
-                        description: Name of the Kubernetes service.
-                        type: string
-                      weight:
-                        description: Traffic weight value of this backend.
-                        x-kubernetes-int-or-string: true
-      additionalPrinterColumns:
-      - name: Service
-        type: string
-        description: The apex service of this split.
-        jsonPath: .spec.service
-    - name: v1alpha2
-      served: true
-      storage: false
-      additionalPrinterColumns:
-      - name: Service
-        type: string
-        description: The apex service of this split.
-        jsonPath: .spec.service
-      schema:
-        openAPIV3Schema:
-          type: object
-          properties:
-            spec:
-              type: object
-              required:
-                - service
-                - backends
-              properties:
-                service:
-                  description: The apex service of this split.
-                  type: string
-                backends:
-                  description: The backend services of this split.
-                  type: array
-                  items:
-                    type: object
-                    required: ['service', 'weight']
-                    properties:
-                      service:
-                        description: Name of the Kubernetes service.
-                        type: string
-                      weight:
-                        description: Traffic weight value of this backend.
-                        type: number
-  preserveUnknownFields: false
----
-###
 ### Proxy Injector RBAC
 ###
 kind: ClusterRole
@@ -1399,6 +1301,7 @@ data:
         memory:
           limit: 50Mi
           request: 10Mi
+      runAsRoot: false
       saMountPath: null
       xtMountPath:
         mountPath: /run
@@ -1865,7 +1768,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 3b5f3a12c582fc818fa275981006785e6c8f016637331b7656e15c6f41db6f96
+        checksum/config: 794ec047e1dbcff1a459e49ee70a90d0454ed1f8f8df06a7cfeb1aa59e8a4cfb
         linkerd.io/created-by: CliVersion
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: ProxyVersion
@@ -2476,7 +2379,7 @@ spec:
 ---
 apiVersion: v1
 data:
-  linkerd-config-overrides: Y2xpVmVyc2lvbjogQ2xpVmVyc2lvbgpjbHVzdGVyTmV0d29ya3M6IENsdXN0ZXJOZXR3b3Jrcwpjb250cm9sUGxhbmVUcmFjaW5nTmFtZXNwYWNlOiAiIgpjb250cm9sbGVySW1hZ2U6IENvbnRyb2xsZXJJbWFnZQpjb250cm9sbGVySW1hZ2VWZXJzaW9uOiBDb250cm9sbGVySW1hZ2VWZXJzaW9uCmNvbnRyb2xsZXJMb2dGb3JtYXQ6IENvbnRyb2xsZXJMb2dGb3JtYXQKY29udHJvbGxlckxvZ0xldmVsOiBDb250cm9sbGVyTG9nTGV2ZWwKZGVidWdDb250YWluZXI6CiAgaW1hZ2U6CiAgICBuYW1lOiBEZWJ1Z0ltYWdlTmFtZQogICAgcHVsbFBvbGljeTogRGVidWdJbWFnZVB1bGxQb2xpY3kKICAgIHZlcnNpb246IERlYnVnVmVyc2lvbgpoZWFydGJlYXRTY2hlZHVsZTogMSAyIDMgNCA1CmlkZW50aXR5OgogIGlzc3VlcjoKICAgIHRsczoKICAgICAgY3J0UEVNOiB8CiAgICAgICAgLS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCiAgICAgICAgTUlJQndEQ0NBV2VnQXdJQkFnSVJBSlJJZ1o4UnRPOEV3ZzFYZXBmOFQ0NHdDZ1lJS29aSXpqMEVBd0l3S1RFbgogICAgICAgIE1DVUdBMVVFQXhNZWFXUmxiblJwZEhrdWJHbHVhMlZ5WkM1amJIVnpkR1Z5TG14dlkyRnNNQjRYRFRJd01EZ3kKICAgICAgICBPREEzTVRNME4xb1hEVE13TURneU5qQTNNVE0wTjFvd0tURW5NQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1CiAgICAgICAgYTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFMS9GcAogICAgICAgIGZjUm5EY2VkTDZBalVhWFlQdjRESU1CYUp1Zk9JNU5XdHkrWFNYN0pqWGdadE03MmRRdlJhWWFudXhEMzZEdDEKICAgICAgICAyL0p4eWlTZ3hLV1Jkb2F5K2FOd01HNHdEZ1lEVlIwUEFRSC9CQVFEQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCCiAgICAgICAgQWY4Q0FRQXdIUVlEVlIwT0JCWUVGSTFXbnJxTVlLYUhIT28renB5aWlEcTJwTzBLTUNrR0ExVWRFUVFpTUNDQwogICAgICAgIEhtbGtaVzUwYVhSNUxteHBibXRsY21RdVkyeDFjM1JsY2k1c2IyTmhiREFLQmdncWhrak9QUVFEQWdOSEFEQkUKICAgICAgICBBaUF0dW9JNVh1Q3RyR1ZSelNtUlRsMnJhMjhhVjlNeVRVN2Q1cW5UQUZIS1NnSWdSS0N2bHVPU2dBNU8yMXA1CiAgICAgICAgNTF0ZHJta0hFWlJyMHFsTFNKZEhZZ0VmTXprPQogICAgICAgIC0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KICAgICAga2V5UEVNOiB8CiAgICAgICAgLS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCiAgICAgICAgTUhjQ0FRRUVJQUFlOG5mYnpadTljL09CMis4eEpNMEZ6N05Vd1RRYXp1bGtGTnM0VEk1K29Bb0dDQ3FHU000OQogICAgICAgIEF3RUhvVVFEUWdBRTEvRnBmY1JuRGNlZEw2QWpVYVhZUHY0RElNQmFKdWZPSTVOV3R5K1hTWDdKalhnWnRNNzIKICAgICAgICBkUXZSYVlhbnV4RDM2RHQxMi9KeHlpU2d4S1dSZG9heStRPT0KICAgICAgICAtLS0tLUVORCBFQyBQUklWQVRFIEtFWS0tLS0tCmlkZW50aXR5VHJ1c3RBbmNob3JzUEVNOiB8CiAgLS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCiAgTUlJQndUQ0NBV2FnQXdJQkFnSVFlRFpwNWxEYUl5Z1E1VWZNS1pyRkFUQUtCZ2dxaGtqT1BRUURBakFwTVNjdwogIEpRWURWUVFERXg1cFpHVnVkR2wwZVM1c2FXNXJaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dIaGNOTWpBd09ESTQKICBNRGN4TWpRM1doY05NekF3T0RJMk1EY3hNalEzV2pBcE1TY3dKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyCiAgWlhKa0xtTnNkWE4wWlhJdWJHOWpZV3d3V1RBVEJnY3Foa2pPUFFJQkJnZ3Foa2pPUFFNQkJ3TkNBQVJxYzcwWgogIGwxdmd3NzlyakI1dVNJVElDVUE2R3lmdlNGZmN1SWlzN0IvWEZTa2t3QUhVNVMvczFBQVArUjBUWDdIQldVQzQKICB1YUc0V1dzaXdKS05uN21nbzNBd2JqQU9CZ05WSFE4QkFmOEVCQU1DQVFZd0VnWURWUjBUQVFIL0JBZ3dCZ0VCCiAgL3dJQkFUQWRCZ05WSFE0RUZnUVU1WXRqVlZQZmQ3STdOTEhzbjJDMjZFQnlHVjB3S1FZRFZSMFJCQ0l3SUlJZQogIGFXUmxiblJwZEhrdWJHbHVhMlZ5WkM1amJIVnpkR1Z5TG14dlkyRnNNQW9HQ0NxR1NNNDlCQU1DQTBrQU1FWUMKICBJUUNON2xCRkxERHZqeDZWMCtYa2pwS0VSUnNKWWY1YWRNdm5sb0ZsNDhpbEpnSWhBTnR4aG5kY3IrUUpQdUM4CiAgdmdVQzBkMi85Rk11ZUlWTWIrNDZXVENPanNxcgogIC0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KaW1hZ2VQdWxsUG9saWN5OiBJbWFnZVB1bGxQb2xpY3kKaW1hZ2VQdWxsU2VjcmV0czogbnVsbApsaW5rZXJkVmVyc2lvbjogIiIKcG9saWN5Q29udHJvbGxlcjoKICBkZWZhdWx0QWxsb3dQb2xpY3k6IGRlZmF1bHQtYWxsb3ctcG9saWN5CiAgaW1hZ2U6CiAgICBuYW1lOiBQb2xpY3lDb250cm9sbGVySW1hZ2VOYW1lCiAgICBwdWxsUG9saWN5OiBJbWFnZVB1bGxQb2xpY3kKICAgIHZlcnNpb246IFBvbGljeUNvbnRyb2xsZXJWZXJzaW9uCiAgbG9nTGV2ZWw6IGxvZy1sZXZlbAogIHJlc291cmNlczoKICAgIGNwdToKICAgICAgbGltaXQ6IGNwdS1saW1pdAogICAgICByZXF1ZXN0OiBjcHUtcmVxdWVzdAogICAgbWVtb3J5OgogICAgICBsaW1pdDogbWVtb3J5LWxpbWl0CiAgICAgIHJlcXVlc3Q6IG1lbW9yeS1yZXF1ZXN0CnBvbGljeVZhbGlkYXRvcjoKICBjYUJ1bmRsZTogcG9saWN5IHZhbGlkYXRvciBDQSBidW5kbGUKICBjcnRQRU06IHBvbGljeSB2YWxpZGF0b3IgY3J0CiAga2V5UEVNOiBwb2xpY3kgdmFsaWRhdG9yIGtleQpwcmlvcml0eUNsYXNzTmFtZTogUHJpb3JpdHlDbGFzc05hbWUKcHJvZmlsZVZhbGlkYXRvcjoKICBjYUJ1bmRsZTogcHJvZmlsZSB2YWxpZGF0b3IgQ0EgYnVuZGxlCiAgY3J0UEVNOiBwcm9maWxlIHZhbGlkYXRvciBjcnQKICBrZXlQRU06IHByb2ZpbGUgdmFsaWRhdG9yIGtleQpwcm94eToKICBhd2FpdDogZmFsc2UKICBpbWFnZToKICAgIG5hbWU6IFByb3h5SW1hZ2VOYW1lCiAgICBwdWxsUG9saWN5OiBJbWFnZVB1bGxQb2xpY3kKICAgIHZlcnNpb246IFByb3h5VmVyc2lvbgogIGluYm91bmRDb25uZWN0VGltZW91dDogIiIKICBvcGFxdWVQb3J0czogMjUsNDQzLDU4NywzMzA2LDU0MzIsMTEyMTEKICBvdXRib3VuZENvbm5lY3RUaW1lb3V0OiAiIgogIHJlc291cmNlczoKICAgIGNwdToKICAgICAgbGltaXQ6IGNwdS1saW1pdAogICAgICByZXF1ZXN0OiBjcHUtcmVxdWVzdAogICAgbWVtb3J5OgogICAgICBsaW1pdDogbWVtb3J5LWxpbWl0CiAgICAgIHJlcXVlc3Q6IG1lbW9yeS1yZXF1ZXN0CnByb3h5Q29udGFpbmVyTmFtZTogUHJveHlDb250YWluZXJOYW1lCnByb3h5SW5pdDoKICBpZ25vcmVJbmJvdW5kUG9ydHM6ICIiCiAgaWdub3JlT3V0Ym91bmRQb3J0czogIjQ0MyIKICBpbWFnZToKICAgIG5hbWU6IFByb3h5SW5pdEltYWdlTmFtZQogICAgcHVsbFBvbGljeTogSW1hZ2VQdWxsUG9saWN5CiAgICB2ZXJzaW9uOiBQcm94eUluaXRWZXJzaW9uCnByb3h5SW5qZWN0b3I6CiAgY2FCdW5kbGU6IHByb3h5IGluamVjdG9yIENBIGJ1bmRsZQogIGNydFBFTTogcHJveHkgaW5qZWN0b3IgY3J0CiAga2V5UEVNOiBwcm94eSBpbmplY3RvciBrZXkKd2ViaG9va0ZhaWx1cmVQb2xpY3k6IFdlYmhvb2tGYWlsdXJlUG9saWN5Cg==
+  linkerd-config-overrides: Y2xpVmVyc2lvbjogQ2xpVmVyc2lvbgpjbHVzdGVyTmV0d29ya3M6IENsdXN0ZXJOZXR3b3Jrcwpjb250cm9sUGxhbmVUcmFjaW5nTmFtZXNwYWNlOiAiIgpjb250cm9sbGVySW1hZ2U6IENvbnRyb2xsZXJJbWFnZQpjb250cm9sbGVySW1hZ2VWZXJzaW9uOiBDb250cm9sbGVySW1hZ2VWZXJzaW9uCmNvbnRyb2xsZXJMb2dGb3JtYXQ6IENvbnRyb2xsZXJMb2dGb3JtYXQKY29udHJvbGxlckxvZ0xldmVsOiBDb250cm9sbGVyTG9nTGV2ZWwKZGVidWdDb250YWluZXI6CiAgaW1hZ2U6CiAgICBuYW1lOiBEZWJ1Z0ltYWdlTmFtZQogICAgcHVsbFBvbGljeTogRGVidWdJbWFnZVB1bGxQb2xpY3kKICAgIHZlcnNpb246IERlYnVnVmVyc2lvbgplbmFibGVFbmRwb2ludFNsaWNlczogZmFsc2UKaGVhcnRiZWF0U2NoZWR1bGU6IDEgMiAzIDQgNQppZGVudGl0eToKICBpc3N1ZXI6CiAgICB0bHM6CiAgICAgIGNydFBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQogICAgICAgIE1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUpSSWdaOFJ0TzhFd2cxWGVwZjhUNDR3Q2dZSUtvWkl6ajBFQXdJd0tURW4KICAgICAgICBNQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1YTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUI0WERUSXdNRGd5CiAgICAgICAgT0RBM01UTTBOMW9YRFRNd01EZ3lOakEzTVRNME4xb3dLVEVuTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdQogICAgICAgIGEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRTEvRnAKICAgICAgICBmY1JuRGNlZEw2QWpVYVhZUHY0RElNQmFKdWZPSTVOV3R5K1hTWDdKalhnWnRNNzJkUXZSYVlhbnV4RDM2RHQxCiAgICAgICAgMi9KeHlpU2d4S1dSZG9heSthTndNRzR3RGdZRFZSMFBBUUgvQkFRREFnRUdNQklHQTFVZEV3RUIvd1FJTUFZQgogICAgICAgIEFmOENBUUF3SFFZRFZSME9CQllFRkkxV25ycU1ZS2FISE9vK3pweWlpRHEycE8wS01Da0dBMVVkRVFRaU1DQ0MKICAgICAgICBIbWxrWlc1MGFYUjVMbXhwYm10bGNtUXVZMngxYzNSbGNpNXNiMk5oYkRBS0JnZ3Foa2pPUFFRREFnTkhBREJFCiAgICAgICAgQWlBdHVvSTVYdUN0ckdWUnpTbVJUbDJyYTI4YVY5TXlUVTdkNXFuVEFGSEtTZ0lnUktDdmx1T1NnQTVPMjFwNQogICAgICAgIDUxdGRybWtIRVpScjBxbExTSmRIWWdFZk16az0KICAgICAgICAtLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCiAgICAgIGtleVBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gRUMgUFJJVkFURSBLRVktLS0tLQogICAgICAgIE1IY0NBUUVFSUFBZThuZmJ6WnU5Yy9PQjIrOHhKTTBGejdOVXdUUWF6dWxrRk5zNFRJNStvQW9HQ0NxR1NNNDkKICAgICAgICBBd0VIb1VRRFFnQUUxL0ZwZmNSbkRjZWRMNkFqVWFYWVB2NERJTUJhSnVmT0k1Tld0eStYU1g3SmpYZ1p0TTcyCiAgICAgICAgZFF2UmFZYW51eEQzNkR0MTIvSnh5aVNneEtXUmRvYXkrUT09CiAgICAgICAgLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQppZGVudGl0eVRydXN0QW5jaG9yc1BFTTogfAogIC0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQogIE1JSUJ3VENDQVdhZ0F3SUJBZ0lRZURacDVsRGFJeWdRNVVmTUtackZBVEFLQmdncWhrak9QUVFEQWpBcE1TY3cKICBKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyWlhKa0xtTnNkWE4wWlhJdWJHOWpZV3d3SGhjTk1qQXdPREk0CiAgTURjeE1qUTNXaGNOTXpBd09ESTJNRGN4TWpRM1dqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1cgogIFpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d1dUQVRCZ2NxaGtqT1BRSUJCZ2dxaGtqT1BRTUJCd05DQUFScWM3MFoKICBsMXZndzc5cmpCNXVTSVRJQ1VBNkd5ZnZTRmZjdUlpczdCL1hGU2trd0FIVTVTL3MxQUFQK1IwVFg3SEJXVUM0CiAgdWFHNFdXc2l3SktObjdtZ28zQXdiakFPQmdOVkhROEJBZjhFQkFNQ0FRWXdFZ1lEVlIwVEFRSC9CQWd3QmdFQgogIC93SUJBVEFkQmdOVkhRNEVGZ1FVNVl0alZWUGZkN0k3TkxIc24yQzI2RUJ5R1Ywd0tRWURWUjBSQkNJd0lJSWUKICBhV1JsYm5ScGRIa3ViR2x1YTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUFvR0NDcUdTTTQ5QkFNQ0Ewa0FNRVlDCiAgSVFDTjdsQkZMRER2ang2VjArWGtqcEtFUlJzSllmNWFkTXZubG9GbDQ4aWxKZ0loQU50eGhuZGNyK1FKUHVDOAogIHZnVUMwZDIvOUZNdWVJVk1iKzQ2V1RDT2pzcXIKICAtLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCmltYWdlUHVsbFBvbGljeTogSW1hZ2VQdWxsUG9saWN5CmltYWdlUHVsbFNlY3JldHM6IG51bGwKbGlua2VyZFZlcnNpb246ICIiCnBvbGljeUNvbnRyb2xsZXI6CiAgZGVmYXVsdEFsbG93UG9saWN5OiBkZWZhdWx0LWFsbG93LXBvbGljeQogIGltYWdlOgogICAgbmFtZTogUG9saWN5Q29udHJvbGxlckltYWdlTmFtZQogICAgcHVsbFBvbGljeTogSW1hZ2VQdWxsUG9saWN5CiAgICB2ZXJzaW9uOiBQb2xpY3lDb250cm9sbGVyVmVyc2lvbgogIGxvZ0xldmVsOiBsb2ctbGV2ZWwKICByZXNvdXJjZXM6CiAgICBjcHU6CiAgICAgIGxpbWl0OiBjcHUtbGltaXQKICAgICAgcmVxdWVzdDogY3B1LXJlcXVlc3QKICAgIG1lbW9yeToKICAgICAgbGltaXQ6IG1lbW9yeS1saW1pdAogICAgICByZXF1ZXN0OiBtZW1vcnktcmVxdWVzdApwb2xpY3lWYWxpZGF0b3I6CiAgY2FCdW5kbGU6IHBvbGljeSB2YWxpZGF0b3IgQ0EgYnVuZGxlCiAgY3J0UEVNOiBwb2xpY3kgdmFsaWRhdG9yIGNydAogIGtleVBFTTogcG9saWN5IHZhbGlkYXRvciBrZXkKcHJpb3JpdHlDbGFzc05hbWU6IFByaW9yaXR5Q2xhc3NOYW1lCnByb2ZpbGVWYWxpZGF0b3I6CiAgY2FCdW5kbGU6IHByb2ZpbGUgdmFsaWRhdG9yIENBIGJ1bmRsZQogIGNydFBFTTogcHJvZmlsZSB2YWxpZGF0b3IgY3J0CiAga2V5UEVNOiBwcm9maWxlIHZhbGlkYXRvciBrZXkKcHJveHk6CiAgYXdhaXQ6IGZhbHNlCiAgaW1hZ2U6CiAgICBuYW1lOiBQcm94eUltYWdlTmFtZQogICAgcHVsbFBvbGljeTogSW1hZ2VQdWxsUG9saWN5CiAgICB2ZXJzaW9uOiBQcm94eVZlcnNpb24KICBpbmJvdW5kQ29ubmVjdFRpbWVvdXQ6ICIiCiAgb3BhcXVlUG9ydHM6IDI1LDQ0Myw1ODcsMzMwNiw1NDMyLDExMjExCiAgb3V0Ym91bmRDb25uZWN0VGltZW91dDogIiIKICByZXNvdXJjZXM6CiAgICBjcHU6CiAgICAgIGxpbWl0OiBjcHUtbGltaXQKICAgICAgcmVxdWVzdDogY3B1LXJlcXVlc3QKICAgIG1lbW9yeToKICAgICAgbGltaXQ6IG1lbW9yeS1saW1pdAogICAgICByZXF1ZXN0OiBtZW1vcnktcmVxdWVzdApwcm94eUNvbnRhaW5lck5hbWU6IFByb3h5Q29udGFpbmVyTmFtZQpwcm94eUluaXQ6CiAgaWdub3JlSW5ib3VuZFBvcnRzOiAiIgogIGlnbm9yZU91dGJvdW5kUG9ydHM6ICI0NDMiCiAgaW1hZ2U6CiAgICBuYW1lOiBQcm94eUluaXRJbWFnZU5hbWUKICAgIHB1bGxQb2xpY3k6IEltYWdlUHVsbFBvbGljeQogICAgdmVyc2lvbjogUHJveHlJbml0VmVyc2lvbgpwcm94eUluamVjdG9yOgogIGNhQnVuZGxlOiBwcm94eSBpbmplY3RvciBDQSBidW5kbGUKICBjcnRQRU06IHByb3h5IGluamVjdG9yIGNydAogIGtleVBFTTogcHJveHkgaW5qZWN0b3Iga2V5CndlYmhvb2tGYWlsdXJlUG9saWN5OiBXZWJob29rRmFpbHVyZVBvbGljeQo=
 kind: Secret
 metadata:
   creationTimestamp: null

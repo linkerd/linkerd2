@@ -24,7 +24,6 @@ const (
 	Service               = "service"
 	ServiceProfile        = "serviceprofile"
 	StatefulSet           = "statefulset"
-	TrafficSplit          = "trafficsplit"
 	Node                  = "node"
 	Server                = "server"
 	ServerAuthorization   = "serverauthorization"
@@ -66,7 +65,6 @@ var AllResources = []string{
 	Server,
 	ServerAuthorization,
 	StatefulSet,
-	TrafficSplit,
 }
 
 // StatAllResourceTypes represents the resources to query in StatSummary when Resource.Type is "all"
@@ -78,7 +76,6 @@ var StatAllResourceTypes = []string{
 	ReplicationController,
 	Pod,
 	Service,
-	TrafficSplit,
 	Authority,
 	CronJob,
 	ReplicaSet,
@@ -94,7 +91,6 @@ var CompletionResourceTypes = []string{
 	ReplicationController,
 	Pod,
 	Service,
-	TrafficSplit,
 	Authority,
 	CronJob,
 	ReplicaSet,
@@ -115,7 +111,6 @@ var resourceNames = []resourceName{
 	{"saz", "serverauthorization", "serverauthorizations"},
 	{"srv", "server", "servers"},
 	{"sts", "statefulset", "statefulsets"},
-	{"ts", "trafficsplit", "trafficsplits"},
 	{"ln", "link", "links"},
 	{"all", "all", "all"},
 }
@@ -187,8 +182,6 @@ func ShortNameFromCanonicalResourceName(canonicalName string) string {
 		return "sp"
 	case StatefulSet:
 		return "sts"
-	case TrafficSplit:
-		return "ts"
 	default:
 		return ""
 	}

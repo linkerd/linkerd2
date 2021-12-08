@@ -148,7 +148,8 @@ const (
 	linkerdCNIResourceName       = "linkerd-cni"
 	linkerdCNIConfigMapName      = "linkerd-cni-config"
 
-	podCIDRUnavailableSkipReason = "skipping check because the nodes aren't exposing podCIDR"
+	podCIDRUnavailableSkipReason    = "skipping check because the nodes aren't exposing podCIDR"
+	configMapDoesNotExistSkipReason = "skipping check because ConigMap does not exist"
 
 	proxyInjectorOldTLSSecretName = "linkerd-proxy-injector-tls"
 	proxyInjectorTLSSecretName    = "linkerd-proxy-injector-k8s-tls"
@@ -397,6 +398,7 @@ type Options struct {
 	RetryDeadline         time.Time
 	CNIEnabled            bool
 	InstallManifest       string
+	ChartValues           *l5dcharts.Values
 }
 
 // HealthChecker encapsulates all health check checkers, and clients required to
@@ -420,7 +422,7 @@ type HealthChecker struct {
 
 // Runner is implemented by any health-checkers that can be triggered with RunChecks()
 type Runner interface {
-	RunChecks(observer CheckObserver) bool
+	RunChecks(observer CheckObserver) (bool, bool)
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -624,6 +626,14 @@ func (hc *HealthChecker) allCategories() []*Category {
 						return hc.checkClockSkew(ctx)
 					},
 				},
+				{
+					description: "proxy-init container runs as root user if docker container runtime is used",
+					hintAnchor:  "l5d-proxy-init-run-as-root",
+					fatal:       false,
+					check: func(ctx context.Context) error {
+						return hc.checkProxyInitRunsAsRoot(ctx, hc.Options.ChartValues)
+					},
+				},
 			},
 			false,
 		),
@@ -808,6 +818,23 @@ func (hc *HealthChecker) allCategories() []*Category {
 					fatal:       true,
 					check: func(ctx context.Context) error {
 						return hc.checkValidatingWebhookConfigurations(ctx, true)
+					},
+				},
+				{
+					description: "proxy-init container runs as root user if docker container runtime is used",
+					hintAnchor:  "l5d-proxy-init-run-as-root",
+					fatal:       false,
+					check: func(ctx context.Context) error {
+						// We explicitly initialize the config here so that we dont rely on the "l5d-existence-linkerd-config"
+						// check to set the clusterNetworks value, since `linkerd check config` will skip that check.
+						err := hc.InitializeLinkerdGlobalConfig(ctx)
+						if err != nil {
+							if kerrors.IsNotFound(err) {
+								return &SkipError{Reason: configMapDoesNotExistSkipReason}
+							}
+							return err
+						}
+						return hc.checkProxyInitRunsAsRoot(ctx, hc.LinkerdConfig())
 					},
 				},
 			},
@@ -1559,8 +1586,9 @@ func (hc *HealthChecker) checkMinReplicasAvailable(ctx context.Context) error {
 // remaining checks are skipped. If at least one check fails, RunChecks returns
 // false; if all checks passed, RunChecks returns true.  Checks which are
 // designated as warnings will not cause RunCheck to return false, however.
-func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
+func (hc *HealthChecker) RunChecks(observer CheckObserver) (bool, bool) {
 	success := true
+	warning := false
 	for _, c := range hc.categories {
 		if c.enabled {
 			for _, checker := range c.checkers {
@@ -1569,9 +1597,11 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 					if !hc.runCheck(c, &checker, observer) {
 						if !checker.warning {
 							success = false
+						} else {
+							warning = true
 						}
 						if checker.fatal {
-							return success
+							return success, warning
 						}
 					}
 				}
@@ -1579,7 +1609,7 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 		}
 	}
 
-	return success
+	return success, warning
 }
 
 // LinkerdConfig gets the Linkerd configuration values.
@@ -2064,6 +2094,33 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Contex
 	return checkResources("ValidatingWebhookConfigurations", objects, []string{k8s.SPValidatorWebhookConfigName}, shouldExist)
 }
 
+func (hc *HealthChecker) checkProxyInitRunsAsRoot(ctx context.Context, config *l5dcharts.Values) error {
+	runAsRoot := config != nil && config.ProxyInit != nil && config.ProxyInit.RunAsRoot
+	hasDockerNodes := false
+	continueToken := ""
+	for {
+		nodes, err := hc.KubeAPIClient().CoreV1().Nodes().List(ctx, metav1.ListOptions{Continue: continueToken})
+		if err != nil {
+			return err
+		}
+		continueToken = nodes.Continue
+		for _, node := range nodes.Items {
+			crv := node.Status.NodeInfo.ContainerRuntimeVersion
+			if strings.HasPrefix(crv, "docker:") {
+				hasDockerNodes = true
+				break
+			}
+		}
+		if continueToken == "" {
+			break
+		}
+	}
+	if hasDockerNodes && !runAsRoot {
+		return fmt.Errorf("There are nodes using the docker container runtime and proxy-init container must run as root user.\n\tTry installing linkerd via --set proxyInit.runAsRoot=true")
+	}
+	return nil
+}
+
 // MeshedPodIdentityData contains meshed pod details + trust anchors of the proxy
 type MeshedPodIdentityData struct {
 	Name      string
@@ -2194,7 +2251,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 	// This is used instead of `hc.kubeAPI` to limit multiple k8s API requests
 	// and use the caching logic in the shared informers
 	// TODO: move the shared informer code out of `controller/`, and into `pkg` to simplify the dependency tree.
-	kubeAPI := controllerK8s.NewAPI(hc.kubeAPI, nil, nil, nil, controllerK8s.Endpoint, controllerK8s.Pod, controllerK8s.Svc)
+	kubeAPI := controllerK8s.NewAPI(hc.kubeAPI, nil, nil, controllerK8s.Endpoint, controllerK8s.Pod, controllerK8s.Svc)
 	kubeAPI.Sync(ctx.Done())
 
 	services, err := kubeAPI.Svc().Lister().Services(hc.DataPlaneNamespace).List(labels.Everything())
