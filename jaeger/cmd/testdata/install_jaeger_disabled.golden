@@ -78,7 +78,7 @@ spec:
         - -collector-svc-account=collector
         - -log-level=info
         - -cluster-domain=cluster.local
-        - -linkerd-namespace=linkerd-jaeger
+        - -linkerd-namespace=linkerd
         image: cr.l5d.io/linkerd/jaeger-webhook:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
