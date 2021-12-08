@@ -35,7 +35,6 @@ func TestGoodEndpoints(t *testing.T) {
 
 	if !TestHelper.ExternalPrometheus() {
 		cmd = append(cmd, fmt.Sprintf("nginx.%s.svc.cluster.local:8080", nginxNs))
-		cmd = append(cmd, "-ojson")
 		TestHelper.WithDataPlaneNamespace(ctx, "endpoints-test", map[string]string{}, t, func(t *testing.T, ns string) {
 			nginx, err := TestHelper.LinkerdRun("inject", "testdata/nginx.yaml")
 			if err != nil {
@@ -56,10 +55,11 @@ func TestGoodEndpoints(t *testing.T) {
 				}
 			}
 
+            checkEndpoints(t, cmd, testDataPath, controlNs, ns)
+
 		})
 	} else {
 		cmd = append(cmd, "prometheus.external-prometheus.svc.cluster.local:9090")
-		cmd = append(cmd, "-ojson")
 		testDataPath += "/external_prometheus"
 		checkEndpoints(t, cmd, testDataPath, controlNs, "external-prometheus")
 	}
@@ -82,6 +82,7 @@ func TestBadEndpoints(t *testing.T) {
 }
 
 func checkEndpoints(t *testing.T, cmd []string, testDataPath, controlNs, endpointNs string) {
+	cmd = append(cmd, "-ojson")
 	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "unexpected error", err)
