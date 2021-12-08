@@ -28,7 +28,7 @@ body:
 
   - type: textarea
     attributes:
-      label: output of `linkerd check`
+      label: output of `linkerd check -o short`
       placeholder: |
         ```text
         your output here ...
