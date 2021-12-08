@@ -64,3 +64,13 @@ body:
     attributes:
       label: Additional context
       description: "Add any other context about the problem here. Or a screenshot if applicable."
+
+  - type: dropdown
+    attributes:
+      label: Would you like to work on fixing this bug?
+      description: |
+        **NOTE**: Let us know if you would like to submit a PR for this. We are more than happy to help you through the process.
+      options:
+        - "yes"
+        - "no"
+        - "maybe"

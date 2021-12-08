@@ -35,3 +35,13 @@ body:
       label: How would users interact with this feature?
       description: |
         If you can, explain how users will be able to use this. Maybe come sample CLI output?
+
+  - type: dropdown
+    attributes:
+      label: Would you like to work on this feature?
+      description: |
+        **NOTE**: Let us know if you would like to submit a PR for this. We are more than happy to help you through the process.
+      options:
+        - "yes"
+        - "no"
+        - "maybe"
