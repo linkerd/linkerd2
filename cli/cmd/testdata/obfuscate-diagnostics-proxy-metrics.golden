@@ -1,0 +1,6 @@
+# HELP inbound_http_authz_allow_total The total number of inbound HTTP requests that were authorized
+# TYPE inbound_http_authz_allow_total counter
+inbound_http_authz_allow_total{target_addr="f21fd97771d00f42464ae5967f97496c36e2f815cca7d919b396ae3007d2cfc0",target_ip="0.0.0.0",target_port="4191",srv_name="default:all-unauthenticated",saz_name="default:all-unauthenticated",tls="no_identity",no_tls_reason="no_tls_from_remote"} 1319
+inbound_http_authz_allow_total{target_addr="d5b2560e5baa1d8c18a2371e04d6f5a3db53abf1b389fb1fa498e4ea27828a30",target_ip="10.42.0.63",target_port="8080",srv_name="default:all-unauthenticated",saz_name="default:all-unauthenticated",tls="no_identity",no_tls_reason="no_tls_from_remote"} 7
+inbound_http_authz_allow_total{target_addr="541ef355f36b287f47e81e6ff2cf0bfc7745417303452afab7b37b29a73e6065",target_ip="10.42.0.63",target_port="8090",srv_name="default:all-unauthenticated",saz_name="default:all-unauthenticated",tls="no_identity",no_tls_reason="no_tls_from_remote"} 1
+inbound_http_authz_allow_total{target_addr="541ef355f36b287f47e81e6ff2cf0bfc7745417303452afab7b37b29a73e6065",target_ip="10.42.0.63",target_port="8090",srv_name="default:all-unauthenticated",saz_name="default:all-unauthenticated",tls="true",client_id="b1da0aeedf875e2b5693507bc88e31b9bac3147d6df2fea26591f6cc834788f9"} 3147
