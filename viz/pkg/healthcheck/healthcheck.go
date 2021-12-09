@@ -168,7 +168,7 @@ func (hc *HealthChecker) VizCategory() *healthcheck.Category {
 			}),
 		*healthcheck.NewChecker("viz extension proxies are healthy").
 			WithHintAnchor("l5d-viz-proxy-healthy").
-			Fatal().
+			Warning().
 			WithCheck(func(ctx context.Context) (err error) {
 				return hc.CheckProxyHealth(ctx, hc.ControlPlaneNamespace, hc.vizNamespace)
 			}),

@@ -95,7 +95,7 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 	checkers = append(checkers,
 		*healthcheck.NewChecker("jaeger extension pods are running").
 			WithHintAnchor("l5d-jaeger-pods-running").
-			Fatal().
+			Warning().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
@@ -117,7 +117,7 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 	checkers = append(checkers,
 		*healthcheck.NewChecker("jaeger extension proxies are healthy").
 			WithHintAnchor("l5d-jaeger-proxy-healthy").
-			Fatal().
+			Warning().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
