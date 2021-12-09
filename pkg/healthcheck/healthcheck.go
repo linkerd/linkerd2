@@ -2834,15 +2834,12 @@ func CheckPodsRunning(pods []corev1.Pod, podsNotFoundMsg string) error {
 		return fmt.Errorf(podsNotFoundMsg)
 	}
 	for _, pod := range pods {
-		if pod.Status.Phase != corev1.PodRunning {
+		if pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != "Evicted" {
 			return fmt.Errorf("%s status is %s", pod.Name, pod.Status.Phase)
 		}
 
-		// check for container readiness
-		for _, containerStatus := range pod.Status.ContainerStatuses {
-			if !containerStatus.Ready {
-				return fmt.Errorf("container %s in pod %s is not ready ", pod.Name, containerStatus.Name)
-			}
+		if !k8s.GetProxyReady(pod) {
+			return fmt.Errorf("container %s in pod %s is not ready", k8s.ProxyContainerName, pod.Name)
 		}
 	}
 	return nil
