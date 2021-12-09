@@ -106,7 +106,8 @@ else
   fi
 fi
 
-if [ -z "$archive" ]; then
+if [ -z "$archive" ]
+then
   # shellcheck source=_tag.sh
   . "$bindir"/_tag.sh
   # shellcheck source=_docker.sh
@@ -148,5 +149,5 @@ fi
 
 if [ -n "$k3d" ]; then
   printf 'Importing %s...\n' "${images[@]}"
-  "$bin" "${image_sub_cmd[@]}" "${images[@]}"
+  "$bin" "${image_sub_cmd[@]}" "${images[@]}" -m tools-node
 fi

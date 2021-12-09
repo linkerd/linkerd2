@@ -483,7 +483,7 @@ During development, please use the [`bin/helm`](bin/helm) wrapper script to
 invoke the Helm commands. For example,
 
 ```bash
-bin/helm install charts/linkerd2
+bin/helm install linkerd2 charts/linkerd2
 ```
 
 This ensures that you use the same Helm version as that of the Linkerd CI

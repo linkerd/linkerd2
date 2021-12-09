@@ -11,19 +11,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/duration"
-	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/testutil"
-	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type observer struct {
@@ -215,7 +210,7 @@ func TestHealthChecker(t *testing.T) {
 		hc.AppendCategories(passingCheck1)
 		hc.AppendCategories(passingCheck2)
 
-		success := hc.RunChecks(nullObserver)
+		success, _ := hc.RunChecks(nullObserver)
 
 		if !success {
 			t.Fatalf("Expecting checks to be successful, but got [%t]", success)
@@ -231,7 +226,7 @@ func TestHealthChecker(t *testing.T) {
 		hc.AppendCategories(failingCheck)
 		hc.AppendCategories(passingCheck2)
 
-		success := hc.RunChecks(nullObserver)
+		success, _ := hc.RunChecks(nullObserver)
 
 		if success {
 			t.Fatalf("Expecting checks to not be successful, but got [%t]", success)
@@ -1279,8 +1274,9 @@ apiVersion: v1
 metadata:
   name: %s
 data:
-  global: |
-    {"identityContext":{"trustAnchorsPem": "%s"}}
+  values: |
+    identityTrustAnchorsPEM: %s
+
 `, k8s.ConfigConfigMapName, currentCertificate)
 
 	var testCases = []struct {
@@ -1580,6 +1576,23 @@ func TestValidateDataPlanePods(t *testing.T) {
 							Ready: true,
 						},
 					},
+				},
+			},
+		}
+
+		err := validateDataPlanePods(pods, "emojivoto")
+		if err != nil {
+			t.Fatalf("Expected no error, got %s", err)
+		}
+	})
+
+	t.Run("Does not return an error if the pod is in Shutdown state", func(t *testing.T) {
+		pods := []corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "emoji-d9c7866bb-7v74n"},
+				Status: corev1.PodStatus{
+					Phase:  "Failed",
+					Reason: "Shutdown",
 				},
 			},
 		}
@@ -1978,7 +1991,8 @@ func TestLinkerdPreInstallGlobalResourcesChecks(t *testing.T) {
 		}
 
 		observer := newObserver()
-		if !hc.RunChecks(observer.resultFn) {
+		success, _ := hc.RunChecks(observer.resultFn)
+		if !success {
 			t.Errorf("Expect RunChecks to return true")
 		}
 
@@ -2036,7 +2050,8 @@ metadata:
 		}
 
 		observer := newObserver()
-		if hc.RunChecks(observer.resultFn) {
+		success, _ := hc.RunChecks(observer.resultFn)
+		if success {
 			testutil.Error(t, "Expect RunChecks to return false")
 		}
 
@@ -2153,138 +2168,6 @@ func TestKubeSystemNamespaceInHA(t *testing.T) {
 
 }
 
-func TestFetchLinkerdConfigMap(t *testing.T) {
-	testCases := []struct {
-		k8sConfigs []string
-		expected   *configPb.All
-		err        error
-	}{
-		{
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
-  proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.4.0","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
-  install: |
-    {"cliVersion":"dev-undefined","flags":[]}`,
-			},
-			&configPb.All{
-				Global: &configPb.Global{
-					LinkerdNamespace: "linkerd",
-					Version:          "install-control-plane-version",
-					IdentityContext: &configPb.IdentityContext{
-						TrustDomain:     "cluster.local",
-						TrustAnchorsPem: "fake-trust-anchors-pem",
-						IssuanceLifetime: &duration.Duration{
-							Seconds: 86400,
-						},
-						ClockSkewAllowance: &duration.Duration{
-							Seconds: 20,
-						},
-					},
-				}, Proxy: &configPb.Proxy{
-					ProxyImage: &configPb.Image{
-						ImageName:  "cr.l5d.io/linkerd/proxy",
-						PullPolicy: "IfNotPresent",
-					},
-					ProxyInitImage: &configPb.Image{
-						ImageName:  "cr.l5d.io/linkerd/proxy-init",
-						PullPolicy: "IfNotPresent",
-					},
-					ControlPort: &configPb.Port{
-						Port: 4190,
-					},
-					InboundPort: &configPb.Port{
-						Port: 4143,
-					},
-					AdminPort: &configPb.Port{
-						Port: 4191,
-					},
-					OutboundPort: &configPb.Port{
-						Port: 4140,
-					},
-					Resource: &configPb.ResourceRequirements{},
-					ProxyUid: 2102,
-					LogLevel: &configPb.LogLevel{
-						Level: "warn,linkerd=info",
-					},
-					DisableExternalProfiles: true,
-					ProxyVersion:            "install-proxy-version",
-					ProxyInitImageVersion:   "v1.4.0",
-					DebugImage: &configPb.Image{
-						ImageName:  "cr.l5d.io/linkerd/debug",
-						PullPolicy: "IfNotPresent",
-					},
-					DebugImageVersion: "install-debug-version",
-				}, Install: &configPb.Install{
-					CliVersion: "dev-undefined",
-				}},
-			nil,
-		},
-		{
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-data:
-  global: |
-    {"linkerdNamespace":"ns","identityContext":null}
-  proxy: "{}"
-  install: "{}"`,
-			},
-			&configPb.All{Global: &configPb.Global{LinkerdNamespace: "ns", IdentityContext: nil}, Proxy: &configPb.Proxy{}, Install: &configPb.Install{}},
-			nil,
-		},
-		{
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-data:
-  global: "{}"
-  proxy: "{}"
-  install: "{}"`,
-			},
-			&configPb.All{Global: &configPb.Global{}, Proxy: &configPb.Proxy{}, Install: &configPb.Install{}},
-			nil,
-		},
-		{
-			nil,
-			nil,
-			k8sErrors.NewNotFound(schema.GroupResource{Resource: "configmaps"}, "linkerd-config"),
-		},
-	}
-
-	for i, tc := range testCases {
-		tc := tc // pin
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			clientset, err := k8s.NewFakeAPI(tc.k8sConfigs...)
-			if err != nil {
-				t.Fatalf("Unexpected error: %s", err)
-			}
-
-			_, configs, err := FetchLinkerdConfigMap(context.Background(), clientset, "linkerd")
-			if !reflect.DeepEqual(err, tc.err) {
-				t.Fatalf("Expected \"%+v\", got \"%+v\"", tc.err, err)
-			}
-
-			if !proto.Equal(configs, tc.expected) {
-				t.Fatalf("Unexpected config:\nExpected:\n%+v\nGot:\n%+v", tc.expected, configs)
-			}
-		})
-	}
-}
-
 func TestFetchCurrentConfiguration(t *testing.T) {
 	defaultValues, err := linkerd2.NewValues()
 
@@ -2308,7 +2191,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.4.0","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.5.2","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
   values: |
@@ -2391,8 +2274,7 @@ data:
     identityResources: null
     installNamespace: true
     nodeSelector:
-      beta.kubernetes.io/os: linux
-    omitWebhookSideEffects: false
+      kubernetes.io/os: linux
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     stage: ""
@@ -2405,7 +2287,6 @@ data:
 				ControllerUID:          2103,
 				EnableH2Upgrade:        true,
 				WebhookFailurePolicy:   "WebhookFailurePolicy",
-				OmitWebhookSideEffects: false,
 				InstallNamespace:       true,
 				NodeSelector:           defaultValues.NodeSelector,
 				Tolerations:            defaultValues.Tolerations,
@@ -2470,7 +2351,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.4.0","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.5.2","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
   values: |
@@ -2554,8 +2435,7 @@ data:
     identityResources: null
     installNamespace: true
     nodeSelector:
-      beta.kubernetes.io/os: linux
-    omitWebhookSideEffects: false
+      kubernetes.io/os: linux
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     stage: ""
@@ -2568,7 +2448,6 @@ data:
 				ControllerUID:          2103,
 				EnableH2Upgrade:        true,
 				WebhookFailurePolicy:   "WebhookFailurePolicy",
-				OmitWebhookSideEffects: false,
 				InstallNamespace:       true,
 				NodeSelector:           defaultValues.NodeSelector,
 				Tolerations:            defaultValues.Tolerations,
@@ -2622,50 +2501,6 @@ data:
 			},
 			nil,
 		},
-		{
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-data:
-  global: |
-    {"linkerdNamespace":"ns","identityContext":null, "cniEnabled": true}
-  proxy: |
-    {"proxyImage":{"imageName":"registry", "pullPolicy":"Always"}}
-  install: |
-    {"flags":[{"name":"ha","value":"true"}]}`,
-			},
-			&linkerd2.Values{
-				Namespace:        "ns",
-				CNIEnabled:       true,
-				HighAvailability: true,
-				Proxy: &linkerd2.Proxy{
-					EnableExternalProfiles: true,
-					Image: &linkerd2.Image{
-						Name:       "registry",
-						PullPolicy: "Always",
-					},
-					LogLevel: "",
-					Ports:    &linkerd2.Ports{},
-					Resources: &linkerd2.Resources{
-						CPU:    linkerd2.Constraints{},
-						Memory: linkerd2.Constraints{},
-					},
-				},
-				ProxyInit: &linkerd2.ProxyInit{
-					Image: &linkerd2.Image{},
-				},
-				Identity: &linkerd2.Identity{
-					Issuer: &linkerd2.Issuer{},
-				},
-				DebugContainer: &linkerd2.DebugContainer{
-					Image: &linkerd2.Image{},
-				},
-			},
-			nil,
-		},
 	}
 
 	for i, tc := range testCases {
@@ -2697,8 +2532,13 @@ metadata:
   name: linkerd-config
   namespace: linkerd
 data:
-  global: |
-    {"linkerdNamespace": "linkerd", "identityContext":{"trustAnchorsPem": %s, "trustDomain": "cluster.local", "scheme": "%s"}}
+  values: |
+    namespace: linkerd
+    identityTrustAnchorsPEM: %s
+    identityTrustDomain: cluster.local
+    identity:
+      issuer:
+        scheme: %s
 ---
 `, anchors, scheme)
 }
@@ -3021,7 +2861,7 @@ spec:
         linkerd.io/created-by: linkerd/cli git-b4266c93
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       hostNetwork: true
       serviceAccountName: linkerd-cni
       containers:
@@ -3583,6 +3423,63 @@ subsets:
 `,
 			},
 			expected: fmt.Errorf("\t* service svc targets the opaque port pod-test through 1003; add 1003 to its config.linkerd.io/opaque-ports annotation"),
+		},
+		{
+			resources: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: test-ns
+spec:
+  selector:
+    app: test
+  ports:
+  - port: 80
+    targetPort: 6502
+`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod
+  namespace: test-ns
+  annotations:
+    config.linkerd.io/opaque-ports: "5432"
+  labels:
+    app: test
+spec:
+  containers:
+  - name: c1
+    image: test
+    ports:
+    - containerPort: 6502
+  - name: c2
+    image: test
+    ports:
+    - containerPort: 5432
+`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: svc
+  namespace: test-ns
+subsets:
+- addresses:
+  - ip: 10.42.0.112
+    nodeName: node
+    targetRef:
+      kind: Pod
+      name: pod
+  ports:
+  - port: 6502
+    protocol: TCP
+  - port: 5432
+    protocol: TCP
+`,
+			},
+			expected: nil,
 		},
 	}
 

@@ -22,16 +22,14 @@ type profileTranslator struct {
 	log                *logging.Entry
 	fullyQualifiedName string
 	port               uint32
-	endpoint           *pb.WeightedAddr
 }
 
-func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endpoint *pb.WeightedAddr) *profileTranslator {
+func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32) *profileTranslator {
 	return &profileTranslator{
 		stream:             stream,
 		log:                log.WithField("component", "profile-translator"),
 		fullyQualifiedName: fqn,
 		port:               port,
-		endpoint:           endpoint,
 	}
 }
 
@@ -40,7 +38,7 @@ func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
 		pt.stream.Send(pt.defaultServiceProfile())
 		return
 	}
-	destinationProfile, err := pt.toServiceProfile(profile)
+	destinationProfile, err := pt.createDestinationProfile(profile)
 	if err != nil {
 		pt.log.Error(err)
 		return
@@ -54,7 +52,6 @@ func (pt *profileTranslator) defaultServiceProfile() *pb.DestinationProfile {
 		Routes:             []*pb.Route{},
 		RetryBudget:        defaultRetryBudget(),
 		FullyQualifiedName: pt.fullyQualifiedName,
-		Endpoint:           pt.endpoint,
 	}
 }
 
@@ -78,9 +75,9 @@ func toDuration(d time.Duration) *duration.Duration {
 	}
 }
 
-// toServiceProfile returns a Proxy API DestinationProfile, given a
+// createDestinationProfile returns a Proxy API DestinationProfile, given a
 // ServiceProfile.
-func (pt *profileTranslator) toServiceProfile(profile *sp.ServiceProfile) (*pb.DestinationProfile, error) {
+func (pt *profileTranslator) createDestinationProfile(profile *sp.ServiceProfile) (*pb.DestinationProfile, error) {
 	routes := make([]*pb.Route, 0)
 	for _, route := range profile.Spec.Routes {
 		pbRoute, err := toRoute(profile, route)
@@ -108,7 +105,6 @@ func (pt *profileTranslator) toServiceProfile(profile *sp.ServiceProfile) (*pb.D
 		RetryBudget:        budget,
 		DstOverrides:       toDstOverrides(profile.Spec.DstOverrides, pt.port),
 		FullyQualifiedName: pt.fullyQualifiedName,
-		Endpoint:           pt.endpoint,
 		OpaqueProtocol:     opaqueProtocol,
 	}, nil
 }
@@ -256,7 +252,7 @@ func toResponseMatch(rspMatch *sp.ResponseMatch) (*pb.ResponseMatch, error) {
 	}
 
 	if len(matches) == 0 {
-		return nil, errors.New("A response match must have a field set")
+		return nil, errors.New("a response match must have a field set")
 	}
 	if len(matches) == 1 {
 		return matches[0], nil
@@ -350,7 +346,7 @@ func toRequestMatch(reqMatch *sp.RequestMatch) (*pb.RequestMatch, error) {
 	}
 
 	if len(matches) == 0 {
-		return nil, errors.New("A request match must have a field set")
+		return nil, errors.New("a request match must have a field set")
 	}
 	if len(matches) == 1 {
 		return matches[0], nil

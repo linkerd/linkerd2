@@ -95,7 +95,7 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 	checkers = append(checkers,
 		*healthcheck.NewChecker("jaeger extension pods are running").
 			WithHintAnchor("l5d-jaeger-pods-running").
-			Fatal().
+			Warning().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
@@ -117,7 +117,7 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 	checkers = append(checkers,
 		*healthcheck.NewChecker("jaeger extension proxies are healthy").
 			WithHintAnchor("l5d-jaeger-proxy-healthy").
-			Fatal().
+			Warning().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
@@ -175,8 +175,8 @@ func newCheckOptions() *checkOptions {
 }
 
 func (options *checkOptions) validate() error {
-	if options.output != healthcheck.TableOutput && options.output != healthcheck.JSONOutput {
-		return fmt.Errorf("Invalid output type '%s'. Supported output types are: %s, %s", options.output, healthcheck.JSONOutput, healthcheck.TableOutput)
+	if options.output != healthcheck.TableOutput && options.output != healthcheck.JSONOutput && options.output != healthcheck.ShortOutput {
+		return fmt.Errorf("Invalid output type '%s'. Supported output types are: %s, %s, %s", options.output, healthcheck.JSONOutput, healthcheck.TableOutput, healthcheck.ShortOutput)
 	}
 	return nil
 }
@@ -240,7 +240,8 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 
 	hc.AppendCategories(jaegerCategory(hc))
 
-	success := healthcheck.RunChecks(wout, werr, hc, options.output)
+	success, warning := healthcheck.RunChecks(wout, werr, hc, options.output)
+	healthcheck.PrintChecksResult(wout, options.output, success, warning)
 
 	if !success {
 		os.Exit(1)

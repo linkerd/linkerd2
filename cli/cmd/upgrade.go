@@ -161,8 +161,14 @@ The upgrade can be configured by using the --set, --values, --set-string and --s
 A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md
 `,
 
-		Example: `  # Default upgrade.
+		Example: `  # Default upgrade - also removes linkerd resources that no longer exist in the current version
   linkerd upgrade | kubectl apply --prune -l linkerd.io/control-plane-ns=linkerd -f -
+
+  # Then run this again to make sure that certain cluster-scoped resources are correctly pruned
+  linkerd upgrade | kubectl apply --prune -l linkerd.io/control-plane-ns=linkerd \
+  --prune-whitelist=rbac.authorization.k8s.io/v1/clusterrole \
+  --prune-whitelist=rbac.authorization.k8s.io/v1/clusterrolebinding \
+  --prune-whitelist=apiregistration.k8s.io/v1/apiservice -f -
 
   # Similar to install, upgrade may also be broken up into two stages, by user
   # privilege.`,
@@ -259,19 +265,10 @@ func upgrade(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, stage
 	if err != nil {
 		return bytes.Buffer{}, fmt.Errorf("failed to load stored values: %w", err)
 	}
-	// If there is no linkerd-config-overrides secret, assume we are upgrading
-	// from a version of Linkerd prior to the introduction of this secret.  In
-	// this case we load the values from the legacy linkerd-config configmap.
-	if values == nil {
-		values, err = loadStoredValuesLegacy(ctx, k)
-		if err != nil {
-			return bytes.Buffer{}, err
-		}
-	}
 
-	// If values is still nil, then neither the linkerd-config-overrides secret
-	// nor the legacy values were found. This means either means that Linkerd
-	// was installed with Helm or that the installation needs to be repaired.
+	// If values is still nil, then the linkerd-config-overrides secret was not found.
+	// This means either means that Linkerd was installed with Helm or that the installation
+	// needs to be repaired.
 	if values == nil {
 		return bytes.Buffer{}, errors.New(
 			`Could not find the Linkerd config. If Linkerd was installed with Helm, please

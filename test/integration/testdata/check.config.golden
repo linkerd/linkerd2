@@ -20,10 +20,9 @@ linkerd-config
 √ control plane CustomResourceDefinitions exist
 √ control plane MutatingWebhookConfigurations exist
 √ control plane ValidatingWebhookConfigurations exist
+√ proxy-init container runs as root user if docker container runtime is used
 
 linkerd-version
 ---------------
 √ can determine the latest version
 √ cli is up-to-date
-
-Status check results are √

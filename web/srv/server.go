@@ -56,7 +56,7 @@ type (
 	}
 
 	healthChecker interface {
-		RunChecks(observer healthcheck.CheckObserver) bool
+		RunChecks(observer healthcheck.CheckObserver) (bool, bool)
 	}
 )
 
@@ -144,6 +144,7 @@ func NewServer(
 	server.router.GET("/namespaces/:namespace/trafficsplits", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/jobs", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/deployments", handler.handleIndex)
+	server.router.GET("/namespaces/:namespace/services", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/replicationcontrollers", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/pods", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/cronjobs", handler.handleIndex)
@@ -156,6 +157,7 @@ func NewServer(
 	server.router.GET("/trafficsplits", handler.handleIndex)
 	server.router.GET("/jobs", handler.handleIndex)
 	server.router.GET("/deployments", handler.handleIndex)
+	server.router.GET("/services", handler.handleIndex)
 	server.router.GET("/replicationcontrollers", handler.handleIndex)
 	server.router.GET("/pods", handler.handleIndex)
 
@@ -166,6 +168,7 @@ func NewServer(
 	server.router.GET("/namespaces/:namespace/statefulsets/:statefulset", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/trafficsplits/:trafficsplit", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/deployments/:deployment", handler.handleIndex)
+	server.router.GET("/namespaces/:namespace/services/:deployment", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/jobs/:job", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/replicationcontrollers/:replicationcontroller", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/cronjobs/:cronjob", handler.handleIndex)

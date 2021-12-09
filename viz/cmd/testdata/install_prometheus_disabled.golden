@@ -36,9 +36,6 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
-- apiGroups: ["split.smi-spec.io"]
-  resources: ["trafficsplits"]
-  verbs: ["list", "get", "watch"]
 - apiGroups: ["policy.linkerd.io"]
   resources: ["servers", "serverauthorizations"]
   verbs: ["list", "get"]
@@ -352,7 +349,7 @@ metadata:
     component: web
     namespace: linkerd-viz
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -368,7 +365,7 @@ spec:
   port: admin-http
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: linkerd-viz
@@ -385,7 +382,7 @@ spec:
     unauthenticated: true
 
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -401,7 +398,7 @@ spec:
   port: linkerd-admin
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: linkerd-viz
@@ -463,18 +460,19 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 951a7b61ff59229914ca604c671353e5fdc0eda710bde2bfbb50c9225225babe
+        checksum/config: ae930acf3edba3cbf32c43dacfa4808bf679c5c932870cb2a2a46de1023f01c8
         linkerd.io/created-by: linkerd/helm dev-undefined
       labels:
         linkerd.io/extension: viz
         component: metrics-api
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - args:
         - -controller-namespace=linkerd
         - -log-level=info
+        - -log-format=plain
         - -cluster-domain=cluster.local
         - -prometheus-url=external-prom.com
         image: cr.l5d.io/linkerd/metrics-api:dev-undefined
@@ -500,7 +498,7 @@ spec:
           runAsUser: 2103
       serviceAccountName: metrics-api
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -518,7 +516,7 @@ spec:
   port: http
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: linkerd-viz
@@ -567,6 +565,11 @@ data:
     check_for_updates = false
     [panels]
     disable_sanitize_html = true
+    [log]
+    mode = console
+    [log.console]
+    format = text
+    level = info
   datasources.yaml: |-
     apiVersion: 1
     datasources:
@@ -646,7 +649,7 @@ spec:
         namespace: linkerd-viz
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - env:
         - name: GF_PATHS_DATA
@@ -694,7 +697,7 @@ spec:
           name: grafana-config
         name: grafana-config
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -712,7 +715,7 @@ spec:
   port: http
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: linkerd-viz
@@ -788,12 +791,13 @@ spec:
         namespace: linkerd-viz
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - args:
         - api
         - -api-namespace=linkerd
         - -log-level=info
+        - -log-format=plain
         - -identity-trust-domain=cluster.local
         image: cr.l5d.io/linkerd/tap:dev-undefined
         imagePullPolicy: IfNotPresent
@@ -828,7 +832,7 @@ spec:
         secret:
           secretName: tap-k8s-tls
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -846,7 +850,7 @@ spec:
   port: apiserver
   proxyProtocol: TLS
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: linkerd-viz
@@ -986,12 +990,13 @@ spec:
         component: tap-injector
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - args:
         - injector
         - -tap-service-name=tap.linkerd-viz.serviceaccount.identity.linkerd.cluster.local
         - -log-level=info
+        - -log-format=plain
         image: cr.l5d.io/linkerd/tap:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1023,7 +1028,7 @@ spec:
         secret:
           secretName: tap-injector-k8s-tls
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -1041,7 +1046,7 @@ spec:
   port: tap-injector
   proxyProtocol: TLS
 ---
-apiVersion: policy.linkerd.io/v1alpha1
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   namespace: linkerd-viz
@@ -1116,7 +1121,7 @@ spec:
         namespace: linkerd-viz
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - args:
         - -linkerd-metrics-api-addr=metrics-api.linkerd-viz.svc.cluster.local:8085
@@ -1125,6 +1130,7 @@ spec:
         - -controller-namespace=linkerd
         - -viz-namespace=linkerd-viz
         - -log-level=info
+        - -log-format=plain
         - -enforced-host=^(localhost|127\.0\.0\.1|web\.linkerd-viz\.svc\.cluster\.local|web\.linkerd-viz\.svc|\[::1\])(:\d+)?$
         image: cr.l5d.io/linkerd/web:dev-undefined
         imagePullPolicy: IfNotPresent

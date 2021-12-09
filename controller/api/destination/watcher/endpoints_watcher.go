@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
@@ -14,7 +15,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	discovery "k8s.io/api/discovery/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	k8slabels "k8s.io/apimachinery/pkg/labels"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/cache"
 )
@@ -28,6 +30,8 @@ const (
 	targetCluster          = "target_cluster"
 	targetService          = "target_service"
 	targetServiceNamespace = "target_service_namespace"
+
+	opaqueProtocol = "opaque"
 )
 
 const endpointTargetRefPod = "Pod"
@@ -49,14 +53,14 @@ type (
 		OwnerKind         string
 		Identity          string
 		AuthorityOverride string
-		TopologyLabels    map[string]string
+		ForZones          []discovery.ForZone
+		OpaqueProtocol    bool
 	}
 
 	// AddressSet is a set of Address, indexed by ID.
 	AddressSet struct {
-		Addresses       map[ID]Address
-		Labels          map[string]string
-		TopologicalPref []string
+		Addresses map[ID]Address
+		Labels    map[string]string
 	}
 
 	portAndHostname struct {
@@ -91,9 +95,7 @@ type (
 		log                  *logging.Entry
 		k8sAPI               *k8s.API
 		enableEndpointSlices bool
-
-		TopologyPref []string
-		ports        map[portAndHostname]*portPublisher
+		ports                map[portAndHostname]*portPublisher
 		// All access to the servicePublisher and its portPublishers is explicitly synchronized by
 		// this mutex.
 		sync.Mutex
@@ -112,12 +114,10 @@ type (
 		log                  *logging.Entry
 		k8sAPI               *k8s.API
 		enableEndpointSlices bool
-		TopologyPref         []string
-
-		exists    bool
-		addresses AddressSet
-		listeners []EndpointUpdateListener
-		metrics   endpointsMetrics
+		exists               bool
+		addresses            AddressSet
+		listeners            []EndpointUpdateListener
+		metrics              endpointsMetrics
 	}
 
 	// EndpointUpdateListener is the interface that subscribers must implement.
@@ -149,6 +149,12 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry, enableEndpointSlic
 		AddFunc:    ew.addService,
 		DeleteFunc: ew.deleteService,
 		UpdateFunc: func(_, obj interface{}) { ew.addService(obj) },
+	})
+
+	k8sAPI.Srv().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    ew.addServer,
+		DeleteFunc: ew.deleteServer,
+		UpdateFunc: func(_, obj interface{}) { ew.addServer(obj) },
 	})
 
 	if ew.enableEndpointSlices {
@@ -183,9 +189,9 @@ func (ew *EndpointsWatcher) Subscribe(id ServiceID, port Port, hostname string, 
 	}
 
 	if hostname == "" {
-		ew.log.Infof("Establishing watch on endpoint [%s:%d]", id, port)
+		ew.log.Debugf("Establishing watch on endpoint [%s:%d]", id, port)
 	} else {
-		ew.log.Infof("Establishing watch on endpoint [%s.%s:%d]", hostname, id, port)
+		ew.log.Debugf("Establishing watch on endpoint [%s.%s:%d]", hostname, id, port)
 	}
 
 	sp := ew.getOrNewServicePublisher(id)
@@ -197,9 +203,9 @@ func (ew *EndpointsWatcher) Subscribe(id ServiceID, port Port, hostname string, 
 // Unsubscribe removes a listener from the subscribers list for this authority.
 func (ew *EndpointsWatcher) Unsubscribe(id ServiceID, port Port, hostname string, listener EndpointUpdateListener) {
 	if hostname == "" {
-		ew.log.Infof("Stopping watch on endpoint [%s:%d]", id, port)
+		ew.log.Debugf("Stopping watch on endpoint [%s:%d]", id, port)
 	} else {
-		ew.log.Infof("Stopping watch on endpoint [%s.%s:%d]", hostname, id, port)
+		ew.log.Debugf("Stopping watch on endpoint [%s.%s:%d]", hostname, id, port)
 	}
 
 	sp, ok := ew.getServicePublisher(id)
@@ -394,7 +400,6 @@ func (ew *EndpointsWatcher) getOrNewServicePublisher(id ServiceID) *servicePubli
 				"svc":       id.Name,
 			}),
 			k8sAPI:               ew.k8sAPI,
-			TopologyPref:         make([]string, 0),
 			ports:                make(map[portAndHostname]*portPublisher),
 			enableEndpointSlices: ew.enableEndpointSlices,
 		}
@@ -408,6 +413,24 @@ func (ew *EndpointsWatcher) getServicePublisher(id ServiceID) (sp *servicePublis
 	defer ew.RUnlock()
 	sp, ok = ew.publishers[id]
 	return
+}
+
+func (ew *EndpointsWatcher) addServer(obj interface{}) {
+	ew.Lock()
+	defer ew.Unlock()
+	server := obj.(*v1beta1.Server)
+	for _, sp := range ew.publishers {
+		sp.updateServer(server, true)
+	}
+}
+
+func (ew *EndpointsWatcher) deleteServer(obj interface{}) {
+	ew.Lock()
+	defer ew.Unlock()
+	server := obj.(*v1beta1.Server)
+	for _, sp := range ew.publishers {
+		sp.updateServer(server, false)
+	}
 }
 
 ////////////////////////
@@ -464,17 +487,7 @@ func (sp *servicePublisher) updateService(newService *corev1.Service) {
 	defer sp.Unlock()
 	sp.log.Debugf("Updating service for %s", sp.id)
 
-	if sp.enableEndpointSlices {
-		sp.TopologyPref = make([]string, len(newService.Spec.TopologyKeys))
-		copy(sp.TopologyPref, newService.Spec.TopologyKeys)
-	}
-
 	for key, port := range sp.ports {
-		if sp.enableEndpointSlices {
-			port.TopologyPref = sp.TopologyPref
-			port.updateTopologyPreference()
-		}
-
 		newTargetPort := getTargetPort(newService, key.port)
 		if newTargetPort != port.targetPort {
 			port.updatePort(newTargetPort)
@@ -541,12 +554,11 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 		log:                  log,
 		metrics:              endpointsVecs.newEndpointsMetrics(sp.metricsLabels(srcPort, hostname)),
 		enableEndpointSlices: sp.enableEndpointSlices,
-		TopologyPref:         sp.TopologyPref,
 	}
 
 	if port.enableEndpointSlices {
 		matchLabels := map[string]string{discovery.LabelServiceName: sp.id.Name}
-		selector := k8slabels.Set(matchLabels).AsSelector()
+		selector := labels.Set(matchLabels).AsSelector()
 
 		sliceList, err := sp.k8sAPI.ES().Lister().EndpointSlices(sp.id.Namespace).List(selector)
 		if err != nil && !apierrors.IsNotFound(err) {
@@ -572,6 +584,17 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 
 func (sp *servicePublisher) metricsLabels(port Port, hostname string) prometheus.Labels {
 	return endpointsLabels(sp.id.Namespace, sp.id.Name, strconv.Itoa(int(port)), hostname)
+}
+
+func (sp *servicePublisher) updateServer(server *v1beta1.Server, isAdd bool) {
+	selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
+	if err != nil {
+		sp.log.Errorf("failed to create Selector: %s", err)
+		return
+	}
+	for _, pp := range sp.ports {
+		pp.updateServer(server, selector, isAdd)
+	}
 }
 
 /////////////////////
@@ -628,9 +651,8 @@ func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 
 func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, newSlice *discovery.EndpointSlice) {
 	updatedAddressSet := AddressSet{
-		Addresses:       make(map[ID]Address),
-		Labels:          pp.addresses.Labels,
-		TopologicalPref: pp.TopologyPref,
+		Addresses: make(map[ID]Address),
+		Labels:    pp.addresses.Labels,
 	}
 
 	for id, address := range pp.addresses.Addresses {
@@ -700,15 +722,12 @@ func metricLabels(resource interface{}) map[string]string {
 }
 
 func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) AddressSet {
-	addressSet := AddressSet{
-		TopologicalPref: pp.TopologyPref,
-		Labels:          metricLabels(es),
-		Addresses:       make(map[ID]Address),
-	}
-
 	resolvedPort := pp.resolveESTargetPort(es.Ports)
 	if resolvedPort == undefinedEndpointPort {
-		return addressSet
+		return AddressSet{
+			Labels:    metricLabels(es),
+			Addresses: make(map[ID]Address),
+		}
 	}
 
 	serviceID, err := getEndpointSliceServiceID(es)
@@ -716,6 +735,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 		pp.log.Errorf("Could not fetch resource service name:%v", err)
 	}
 
+	addresses := make(map[ID]Address)
 	for _, endpoint := range es.Endpoints {
 		if endpoint.Hostname != nil {
 			if pp.hostname != "" && pp.hostname != *endpoint.Hostname {
@@ -735,15 +755,15 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 
 				identity := es.Annotations[consts.RemoteGatewayIdentity]
 				address, id := pp.newServiceRefAddress(resolvedPort, IPAddr, serviceID.Name, es.Namespace)
-				address.Identity, address.AuthorityOverride = authorityOverride, identity
+				address.Identity, address.AuthorityOverride = identity, authorityOverride
 
-				for k, v := range endpoint.Topology {
-					address.TopologyLabels[k] = v
+				if endpoint.Hints != nil {
+					zones := make([]discovery.ForZone, len(endpoint.Hints.ForZones))
+					copy(zones, endpoint.Hints.ForZones)
+					address.ForZones = zones
 				}
-
-				addressSet.Addresses[id] = address
+				addresses[id] = address
 			}
-
 			continue
 		}
 
@@ -754,18 +774,25 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
-
-				for k, v := range endpoint.Topology {
-					address.TopologyLabels[k] = v
+				err = SetToServerProtocol(pp.k8sAPI, &address, resolvedPort)
+				if err != nil {
+					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
+					continue
 				}
-
-				addressSet.Addresses[id] = address
+				if endpoint.Hints != nil {
+					zones := make([]discovery.ForZone, len(endpoint.Hints.ForZones))
+					copy(zones, endpoint.Hints.ForZones)
+					address.ForZones = zones
+				}
+				addresses[id] = address
 			}
 		}
 
 	}
-
-	return addressSet
+	return AddressSet{
+		Addresses: addresses,
+		Labels:    metricLabels(es),
+	}
 }
 
 func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) AddressSet {
@@ -800,17 +827,18 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
+				err = SetToServerProtocol(pp.k8sAPI, &address, resolvedPort)
 				if err != nil {
-					pp.log.Errorf("failed to set opaque port annotation on pod: %s", err)
+					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
+					continue
 				}
 				addresses[id] = address
 			}
 		}
 	}
 	return AddressSet{
-		Addresses:       addresses,
-		Labels:          metricLabels(endpoints),
-		TopologicalPref: []string{},
+		Addresses: addresses,
+		Labels:    metricLabels(endpoints),
 	}
 }
 
@@ -824,7 +852,7 @@ func (pp *portPublisher) newServiceRefAddress(endpointPort Port, endpointIP, ser
 		Namespace: serviceNamespace,
 	}
 
-	return Address{IP: endpointIP, Port: endpointPort, TopologyLabels: make(map[string]string)}, id
+	return Address{IP: endpointIP, Port: endpointPort}, id
 }
 
 func (pp *portPublisher) newPodRefAddress(endpointPort Port, endpointIP, podName, podNamespace string) (Address, PodID, error) {
@@ -838,12 +866,11 @@ func (pp *portPublisher) newPodRefAddress(endpointPort Port, endpointIP, podName
 	}
 	ownerKind, ownerName := pp.k8sAPI.GetOwnerKindAndName(context.Background(), pod, false)
 	addr := Address{
-		IP:             endpointIP,
-		Port:           endpointPort,
-		Pod:            pod,
-		TopologyLabels: make(map[string]string),
-		OwnerName:      ownerName,
-		OwnerKind:      ownerKind,
+		IP:        endpointIP,
+		Port:      endpointPort,
+		Pod:       pod,
+		OwnerName: ownerName,
+		OwnerKind: ownerKind,
 	}
 
 	return addr, id, nil
@@ -859,7 +886,11 @@ func (pp *portPublisher) resolveESTargetPort(slicePorts []discovery.EndpointPort
 		return Port(pp.targetPort.IntVal)
 	case intstr.String:
 		for _, p := range slicePorts {
-			if *p.Name == pp.targetPort.StrVal {
+			name := ""
+			if p.Name != nil {
+				name = *p.Name
+			}
+			if name == pp.targetPort.StrVal {
 				return Port(*p.Port)
 			}
 		}
@@ -886,7 +917,7 @@ func (pp *portPublisher) updatePort(targetPort namedPort) {
 
 	if pp.enableEndpointSlices {
 		matchLabels := map[string]string{discovery.LabelServiceName: pp.id.Name}
-		selector := k8slabels.Set(matchLabels).AsSelector()
+		selector := labels.Set(matchLabels).AsSelector()
 
 		endpointSlices, err := pp.k8sAPI.ES().Lister().EndpointSlices(pp.id.Namespace).List(selector)
 		if err == nil {
@@ -904,22 +935,6 @@ func (pp *portPublisher) updatePort(targetPort namedPort) {
 		} else {
 			pp.log.Errorf("Unable to get endpoints during port update: %s", err)
 		}
-	}
-}
-
-// updateTopologyPreference is used when a service's topology preference changes. This method
-// propagates the changes to the portPublisher, the portPublisher's AddressSet and triggers
-// an (empty) update for all of its listeners to reflect the new preference changes.
-func (pp *portPublisher) updateTopologyPreference() {
-	pp.addresses.TopologicalPref = pp.TopologyPref
-
-	updatedAddrSet := AddressSet{
-		Addresses:       make(map[ID]Address),
-		Labels:          make(map[string]string),
-		TopologicalPref: pp.TopologyPref,
-	}
-	for _, listener := range pp.listeners {
-		listener.Add(updatedAddrSet)
 	}
 }
 
@@ -978,6 +993,41 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
 	pp.metrics.setSubscribers(len(pp.listeners))
 }
 
+func (pp *portPublisher) updateServer(server *v1beta1.Server, selector labels.Selector, isAdd bool) {
+	for id, address := range pp.addresses.Addresses {
+		if address.Pod != nil && selector.Matches(labels.Set(address.Pod.Labels)) {
+			var portMatch bool
+			switch server.Spec.Port.Type {
+			case intstr.Int:
+				if server.Spec.Port.IntVal == int32(address.Port) {
+					portMatch = true
+				}
+			case intstr.String:
+				for _, c := range address.Pod.Spec.Containers {
+					for _, p := range c.Ports {
+						if p.ContainerPort == int32(address.Port) && p.Name == server.Spec.Port.StrVal {
+							portMatch = true
+						}
+					}
+				}
+			default:
+				continue
+			}
+			if portMatch {
+				if isAdd && server.Spec.ProxyProtocol == opaqueProtocol {
+					address.OpaqueProtocol = true
+				} else {
+					address.OpaqueProtocol = false
+				}
+				pp.addresses.Addresses[id] = address
+			}
+		}
+	}
+	for _, listener := range pp.listeners {
+		listener.Add(pp.addresses)
+	}
+}
+
 ////////////
 /// util ///
 ////////////
@@ -1012,7 +1062,6 @@ func getTargetPort(service *corev1.Service, port Port) namedPort {
 	// port spec's name as the target port
 	for _, portSpec := range service.Spec.Ports {
 		if portSpec.Port == int32(port) {
-
 			return intstr.FromString(portSpec.Name)
 		}
 	}
@@ -1059,13 +1108,11 @@ func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSe
 		}
 	}
 	add = AddressSet{
-		Addresses:       addAddresses,
-		Labels:          newAddresses.Labels,
-		TopologicalPref: newAddresses.TopologicalPref,
+		Addresses: addAddresses,
+		Labels:    newAddresses.Labels,
 	}
 	remove = AddressSet{
-		Addresses:       removeAddresses,
-		TopologicalPref: newAddresses.TopologicalPref,
+		Addresses: removeAddresses,
 	}
 	return add, remove
 }
@@ -1097,4 +1144,46 @@ func isValidSlice(es *discovery.EndpointSlice) bool {
 	}
 
 	return true
+}
+
+// SetToServerProtocol sets the address's OpaqueProtocol field based off any
+// Servers that select it and override the expected protocol.
+func SetToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
+	servers, err := k8sAPI.Srv().Lister().Servers("").List(labels.Everything())
+	if err != nil {
+		return fmt.Errorf("failed to list Servers: %s", err)
+	}
+	if address.Pod == nil {
+		return fmt.Errorf("endpoint not backed by Pod: %s:%d", address.IP, address.Port)
+	}
+	for _, server := range servers {
+		selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
+		if err != nil {
+			return fmt.Errorf("failed to create Selector: %s", err)
+		}
+		if server.Spec.ProxyProtocol == opaqueProtocol && selector.Matches(labels.Set(address.Pod.Labels)) {
+			var portMatch bool
+			switch server.Spec.Port.Type {
+			case intstr.Int:
+				if server.Spec.Port.IntVal == int32(port) {
+					portMatch = true
+				}
+			case intstr.String:
+				for _, c := range address.Pod.Spec.Containers {
+					for _, p := range c.Ports {
+						if p.ContainerPort == int32(port) && p.Name == server.Spec.Port.StrVal {
+							portMatch = true
+						}
+					}
+				}
+			default:
+				continue
+			}
+			if portMatch {
+				address.OpaqueProtocol = true
+				return nil
+			}
+		}
+	}
+	return nil
 }

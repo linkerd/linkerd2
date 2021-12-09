@@ -18,6 +18,8 @@ defaultRegistry: cr.l5d.io/linkerd
 defaultImagePullPolicy: IfNotPresent
 # -- Log level for all the viz components
 defaultLogLevel: info
+# -- Log format (`plain` or `json`) for all the viz components.
+defaultLogFormat: plain
 # -- UID for all the viz components
 defaultUID: 2103
 
@@ -31,7 +33,7 @@ namespace: linkerd-viz
 # -- Default nodeSelector section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
 nodeSelector: &default_node_selector
-  beta.kubernetes.io/os: linux
+  kubernetes.io/os: linux
 
 # -- For Private docker registries, authentication is needed.
 #  Registry secrets are applied to the respective service accounts
@@ -71,6 +73,9 @@ metricsAPI:
   # -- log level of the metrics-api component
   # @default -- defaultLogLevel
   logLevel: ""
+  # -- log format of the metrics-api component
+  # @default -- defaultLogFormat
+  logFormat: ""
   image:
     # -- Docker registry for the metrics-api component
     # @default -- defaultRegistry
@@ -95,6 +100,11 @@ metricsAPI:
       limit:
       # -- Amount of memory that the metrics-api container requests
       request:
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the metrics-api container can use
+      limit: ""
+      # -- Amount of ephemeral storage that the metrics-api container requests
+      request: ""
 
   proxy:
     # -- If set, overrides default proxy resources for the proxy injected
@@ -119,6 +129,9 @@ tap:
   # -- log level of the tap component
   # @default -- defaultLogLevel
   logLevel: ""
+  # -- log format of the tap component
+  # @default -- defaultLogFormat
+  logFormat: ""
   image:
     # -- Docker registry for the tap instance
     # @default -- defaultRegistry
@@ -159,6 +172,11 @@ tap:
       limit:
       # -- Amount of memory that the tap container requests
       request:
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the tap container can use
+      limit: ""
+      # -- Amount of ephemeral storage that the tap container requests
+      request: ""
 
   proxy:
     # -- If set, overrides default proxy resources for the proxy injected
@@ -175,6 +193,9 @@ tapInjector:
   # -- log level of the tapInjector
   # @default -- defaultLogLevel
   logLevel: ""
+  # -- log format of the tapInjector component
+  # @default -- defaultLogFormat
+  logFormat: ""
   image:
     # -- Docker registry for the tapInjector instance
     # @default -- defaultRegistry
@@ -210,6 +231,11 @@ tapInjector:
       limit:
       # -- Amount of memory that the tapInjector container requests
       request:
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the tapInjector container can use
+      limit: ""
+      # -- Amount of ephemeral storage that the tapInjector container requests
+      request: ""
   proxy:
     # -- If set, overrides default proxy resources for the proxy injected
     # into the tapInjector component
@@ -239,6 +265,9 @@ dashboard:
   # -- log level of the dashboard component
   # @default -- defaultLogLevel
   logLevel: ""
+  # -- log format of the dashboard component
+  # @default -- defaultLogFormat
+  logFormat: ""
   image:
     # -- Docker registry for the web instance
     # @default -- defaultRegistry
@@ -273,6 +302,11 @@ dashboard:
       limit:
       # -- Amount of memory that the web container requests
       request:
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the web container can use
+      limit: ""
+      # -- Amount of ephemeral storage that the web container requests
+      request: ""
 
   proxy:
     # -- If set, overrides default proxy resources for the proxy injected
@@ -282,6 +316,12 @@ dashboard:
 grafana:
   # -- toggle field to enable or disable grafana
   enabled: true
+  # -- log level of the grafana instance
+  # @default -- defaultLogLevel
+  logLevel: ""
+  # -- log format (plain, json) of the grafana instance
+  # @default -- defaultLogFormat
+  logFormat: ""
   image:
     # -- Docker registry for the grafana instance
     # @default -- defaultRegistry
@@ -306,6 +346,11 @@ grafana:
       limit:
       # -- Amount of memory that the grafana container requests
       request:
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the grafana container can use
+      limit: ""
+      # -- Amount of ephemeral storage that the grafana container requests
+      request: ""
 
   proxy:
     # -- If set, overrides default proxy resources for the proxy injected
@@ -329,7 +374,7 @@ prometheus:
     # -- Docker image name for the prometheus instance
     name: prometheus
     # -- Docker image tag for the prometheus instance
-    tag: v2.19.3
+    tag: v2.30.3
     # -- Pull policy for the prometheus instance
     # @default -- defaultImagePullPolicy
     pullPolicy: ""
@@ -337,6 +382,9 @@ prometheus:
   # -- log level of the prometheus instance
   # @default -- defaultLogLevel
   logLevel: ""
+  # -- log format (plain, json) of the prometheus instance
+  # @default -- defaultLogLevel
+  logFormat: ""
   # -- Command line options for Prometheus binary
   args:
     storage.tsdb.path: /data
@@ -442,6 +490,11 @@ prometheus:
       limit:
       # -- Amount of memory that the prometheus container requests
       request:
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the prometheus container can use
+      limit: ""
+      # -- Amount of ephemeral storage that the prometheus container requests
+      request: ""
 
   proxy:
     # -- If set, overrides default proxy resources for the proxy injected

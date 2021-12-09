@@ -10,14 +10,12 @@ import (
 	"k8s.io/client-go/rest"
 
 	spv1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
-	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
-	sp "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
+	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
+	l5dcrdinformer "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
+	srvinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/server/v1beta1"
 	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
-	tsclient "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
-	ts "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/informers/externalversions"
-	tsinformers "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/informers/externalversions/split/v1alpha1"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -61,10 +59,11 @@ const (
 	SP
 	SS
 	Svc
-	TS
 	Node
 	Secret
 	ES // EndpointSlice resource
+	Srv
+	Saz
 )
 
 // API provides shared informers for all Kubernetes objects
@@ -87,14 +86,13 @@ type API struct {
 	sp       spinformers.ServiceProfileInformer
 	ss       appv1informers.StatefulSetInformer
 	svc      coreinformers.ServiceInformer
-	ts       tsinformers.TrafficSplitInformer
 	node     coreinformers.NodeInformer
 	secret   coreinformers.SecretInformer
+	srv      srvinformers.ServerInformer
 
-	syncChecks        []cache.InformerSynced
-	sharedInformers   informers.SharedInformerFactory
-	spSharedInformers sp.SharedInformerFactory
-	tsSharedInformers ts.SharedInformerFactory
+	syncChecks            []cache.InformerSynced
+	sharedInformers       informers.SharedInformerFactory
+	l5dCrdSharedInformers l5dcrdinformer.SharedInformerFactory
 
 	gauges []prometheus.GaugeFunc
 }
@@ -140,38 +138,31 @@ func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, dynamicClient dy
 		}
 	}
 
-	// check for need and access to ServiceProfiles
-	var spClient *spclient.Clientset
+	// check for need and access to Linkerd CRD clients
+	var l5dCrdClient *l5dcrdclient.Clientset
 	for _, res := range resources {
-		if res == SP {
+		switch {
+		case res == SP:
 			err := k8s.ServiceProfilesAccess(ctx, k8sClient)
 			if err != nil {
 				return nil, err
 			}
-
-			spClient, err = NewSpClientSet(kubeConfig)
+		case res == Srv:
+			err := k8s.ServersAccess(ctx, k8sClient)
 			if err != nil {
 				return nil, err
 			}
-
-			break
+		default:
+			continue
 		}
+		l5dCrdClient, err = NewL5DCRDClient(kubeConfig)
+		if err != nil {
+			return nil, err
+		}
+		break
 	}
 
-	// TrafficSplits
-	var tsClient *tsclient.Clientset
-	for _, res := range resources {
-		if res == TS {
-			tsClient, err = NewTsClientSet(kubeConfig)
-			if err != nil {
-				return nil, err
-			}
-
-			break
-		}
-	}
-
-	api := NewAPI(k8sClient, dynamicClient, spClient, tsClient, resources...)
+	api := NewAPI(k8sClient, dynamicClient, l5dCrdClient, resources...)
 	for _, gauge := range api.gauges {
 		prometheus.Register(gauge)
 	}
@@ -182,29 +173,22 @@ func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, dynamicClient dy
 func NewAPI(
 	k8sClient kubernetes.Interface,
 	dynamicClient dynamic.Interface,
-	spClient spclient.Interface,
-	tsClient tsclient.Interface,
+	l5dCrdClient l5dcrdclient.Interface,
 	resources ...APIResource,
 ) *API {
 	sharedInformers := informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
 
-	var spSharedInformers sp.SharedInformerFactory
-	if spClient != nil {
-		spSharedInformers = sp.NewSharedInformerFactory(spClient, 10*time.Minute)
-	}
-
-	var tsSharedInformers ts.SharedInformerFactory
-	if tsClient != nil {
-		tsSharedInformers = ts.NewSharedInformerFactory(tsClient, 10*time.Minute)
+	var l5dCrdSharedInformers l5dcrdinformer.SharedInformerFactory
+	if l5dCrdClient != nil {
+		l5dCrdSharedInformers = l5dcrdinformer.NewSharedInformerFactory(l5dCrdClient, 10*time.Minute)
 	}
 
 	api := &API{
-		Client:            k8sClient,
-		DynamicClient:     dynamicClient,
-		syncChecks:        make([]cache.InformerSynced, 0),
-		sharedInformers:   sharedInformers,
-		spSharedInformers: spSharedInformers,
-		tsSharedInformers: tsSharedInformers,
+		Client:                k8sClient,
+		DynamicClient:         dynamicClient,
+		syncChecks:            make([]cache.InformerSynced, 0),
+		sharedInformers:       sharedInformers,
+		l5dCrdSharedInformers: l5dCrdSharedInformers,
 	}
 
 	for _, resource := range resources {
@@ -258,12 +242,19 @@ func NewAPI(
 			api.syncChecks = append(api.syncChecks, api.rs.Informer().HasSynced)
 			api.addInformerSizeGauge("replica_set", api.rs.Informer())
 		case SP:
-			if spSharedInformers == nil {
-				panic("SP shared informer not configured")
+			if l5dCrdSharedInformers == nil {
+				panic("Linkerd CRD shared informer not configured")
 			}
-			api.sp = spSharedInformers.Linkerd().V1alpha2().ServiceProfiles()
+			api.sp = l5dCrdSharedInformers.Linkerd().V1alpha2().ServiceProfiles()
 			api.syncChecks = append(api.syncChecks, api.sp.Informer().HasSynced)
 			api.addInformerSizeGauge("service_profile", api.sp.Informer())
+		case Srv:
+			if l5dCrdSharedInformers == nil {
+				panic("Linkerd CRD shared informer not configured")
+			}
+			api.srv = l5dCrdSharedInformers.Server().V1beta1().Servers()
+			api.syncChecks = append(api.syncChecks, api.srv.Informer().HasSynced)
+			api.addInformerSizeGauge("server", api.srv.Informer())
 		case SS:
 			api.ss = sharedInformers.Apps().V1().StatefulSets()
 			api.syncChecks = append(api.syncChecks, api.ss.Informer().HasSynced)
@@ -272,13 +263,6 @@ func NewAPI(
 			api.svc = sharedInformers.Core().V1().Services()
 			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
 			api.addInformerSizeGauge("service", api.svc.Informer())
-		case TS:
-			if tsSharedInformers == nil {
-				panic("TS shared informer not configured")
-			}
-			api.ts = tsSharedInformers.Split().V1alpha1().TrafficSplits()
-			api.syncChecks = append(api.syncChecks, api.ts.Informer().HasSynced)
-			api.addInformerSizeGauge("traffic_split", api.ts.Informer())
 		case Node:
 			api.node = sharedInformers.Core().V1().Nodes()
 			api.syncChecks = append(api.syncChecks, api.node.Informer().HasSynced)
@@ -296,12 +280,8 @@ func NewAPI(
 func (api *API) Sync(stopCh <-chan struct{}) {
 	api.sharedInformers.Start(stopCh)
 
-	if api.spSharedInformers != nil {
-		api.spSharedInformers.Start(stopCh)
-	}
-
-	if api.tsSharedInformers != nil {
-		api.tsSharedInformers.Start(stopCh)
+	if api.l5dCrdSharedInformers != nil {
+		api.l5dCrdSharedInformers.Start(stopCh)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -411,6 +391,14 @@ func (api *API) SP() spinformers.ServiceProfileInformer {
 	return api.sp
 }
 
+// Srv provides access to a shared informer and lister for Servers.
+func (api *API) Srv() srvinformers.ServerInformer {
+	if api.srv == nil {
+		panic("Srv informer not configured")
+	}
+	return api.srv
+}
+
 // MWC provides access to a shared informer and lister for MutatingWebhookConfigurations.
 func (api *API) MWC() arinformers.MutatingWebhookConfigurationInformer {
 	if api.mwc == nil {
@@ -431,14 +419,6 @@ func (api *API) Job() batchv1informers.JobInformer {
 // ServiceProfiles
 func (api *API) SPAvailable() bool {
 	return api.sp != nil
-}
-
-// TS provides access to a shared informer and lister for TrafficSplits.
-func (api *API) TS() tsinformers.TrafficSplitInformer {
-	if api.ts == nil {
-		panic("TS informer not configured")
-	}
-	return api.ts
 }
 
 // Node provides access to a shared informer and lister for Nodes.
@@ -1031,24 +1011,9 @@ func (api *API) GetServicesFor(obj runtime.Object, includeFailed bool) ([]*corev
 	}
 	services := make([]*corev1.Service, 0)
 	for _, svc := range allServices {
-		leaves, err := api.getLeafServices(svc)
+		svcPods, err := api.GetPodsFor(svc, includeFailed)
 		if err != nil {
 			return nil, err
-		}
-		svcPods := []*corev1.Pod{}
-		if len(leaves) > 0 {
-			for _, leaf := range leaves {
-				pods, err := api.GetPodsFor(leaf, includeFailed)
-				if err != nil {
-					return nil, err
-				}
-				svcPods = append(svcPods, pods...)
-			}
-		} else {
-			svcPods, err = api.GetPodsFor(svc, includeFailed)
-			if err != nil {
-				return nil, err
-			}
 		}
 
 		if hasOverlap(pods, svcPods) {
@@ -1056,29 +1021,6 @@ func (api *API) GetServicesFor(obj runtime.Object, includeFailed bool) ([]*corev
 		}
 	}
 	return services, nil
-}
-
-func (api *API) getLeafServices(apex *corev1.Service) ([]*corev1.Service, error) {
-	splits, err := api.TS().Lister().TrafficSplits(apex.Namespace).List(labels.Everything())
-	if err != nil {
-		return nil, err
-	}
-	leaves := []*corev1.Service{}
-	for _, split := range splits {
-		if split.Spec.Service == apex.Name {
-			for _, backend := range split.Spec.Backends {
-				if backend.Weight.Sign() == 1 {
-					svc, err := api.Svc().Lister().Services(apex.Namespace).Get(backend.Service)
-					if err != nil {
-						log.Errorf("TrafficSplit %s/%s references non-existent service %s", apex.Namespace, split.Name, backend.Service)
-						continue
-					}
-					leaves = append(leaves, svc)
-				}
-			}
-		}
-	}
-	return leaves, nil
 }
 
 // GetServiceProfileFor returns the service profile for a given service.  We

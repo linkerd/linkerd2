@@ -8,7 +8,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	labels "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/util"
-	log "github.com/sirupsen/logrus"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -64,7 +63,7 @@ func (opw *OpaquePortsWatcher) Subscribe(id ServiceID, listener OpaquePortsUpdat
 	if svc != nil && svc.Spec.Type == corev1.ServiceTypeExternalName {
 		return invalidService(id.String())
 	}
-	opw.log.Infof("Starting watch on service %s", id)
+	opw.log.Debugf("Starting watch on service %s", id)
 	ss, ok := opw.subscriptions[id]
 	// If there is no watched service, create a subscription for the service
 	// and no opaque ports
@@ -87,7 +86,7 @@ func (opw *OpaquePortsWatcher) Subscribe(id ServiceID, listener OpaquePortsUpdat
 func (opw *OpaquePortsWatcher) Unsubscribe(id ServiceID, listener OpaquePortsUpdateListener) {
 	opw.Lock()
 	defer opw.Unlock()
-	opw.log.Infof("Stopping watch on service %s", id)
+	opw.log.Debugf("Stopping watch on service %s", id)
 	ss, ok := opw.subscriptions[id]
 	if !ok {
 		opw.log.Errorf("Cannot unsubscribe from unknown service %s", id)
@@ -204,15 +203,14 @@ func getServiceOpaquePortsAnnotation(svc *corev1.Service) (map[uint32]struct{}, 
 func parseServiceOpaquePorts(annotation string, sps []corev1.ServicePort) []string {
 	portRanges := util.GetPortRanges(annotation)
 	var values []string
-	for _, portRange := range portRanges {
-		pr := portRange.GetPortRange()
+	for _, pr := range portRanges {
 		port, named := isNamed(pr, sps)
 		if named {
 			values = append(values, strconv.Itoa(int(port)))
 		} else {
 			pr, err := ports.ParsePortRange(pr)
 			if err != nil {
-				log.Warnf("Invalid port range [%v]: %s", pr, err)
+				logging.Warnf("Invalid port range [%v]: %s", pr, err)
 				continue
 			}
 			for i := pr.LowerBound; i <= pr.UpperBound; i++ {

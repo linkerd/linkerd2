@@ -2294,6 +2294,6 @@
   },
   "timezone": "",
   "title": "Linkerd Job",
-  "uid": "job",
+  "uid": "linkerd-job",
   "version": 1
 }

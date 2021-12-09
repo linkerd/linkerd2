@@ -113,7 +113,7 @@ class App extends React.Component {
   }
 }
 
-function AppHTML() {
+const AppHTML = function() {
   const theme = createTheme(dashboardTheme);
 
   return (
@@ -126,6 +126,7 @@ function AppHTML() {
               <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/namespaces`} />
               <Redirect exact from={`${pathPrefix}/overview`} to={`${pathPrefix}/namespaces`} />
               <Redirect exact from={`${pathPrefix}/deployments`} to={`${pathPrefix}/namespaces/_all/deployments`} />
+              <Redirect exact from={`${pathPrefix}/services`} to={`${pathPrefix}/namespaces/_all/services`} />
               <Redirect exact from={`${pathPrefix}/trafficsplits`} to={`${pathPrefix}/namespaces/_all/trafficsplits`} />
               <Redirect exact from={`${pathPrefix}/daemonsets`} to={`${pathPrefix}/namespaces/_all/daemonsets`} />
               <Redirect exact from={`${pathPrefix}/statefulsets`} to={`${pathPrefix}/namespaces/_all/statefulsets`} />
@@ -177,8 +178,14 @@ function AppHTML() {
                 path={`${pathPrefix}/namespaces/:namespace/deployments/:deployment`}
                 render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
               <Route
+                path={`${pathPrefix}/namespaces/:namespace/services/:service`}
+                render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+              <Route
                 path={`${pathPrefix}/namespaces/:namespace/deployments`}
                 render={props => <Navigation {...props} ChildComponent={ResourceList} resource="deployment" />} />
+              <Route
+                path={`${pathPrefix}/namespaces/:namespace/services`}
+                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="service" />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/replicationcontrollers/:replicationcontroller`}
                 render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
@@ -222,6 +229,6 @@ function AppHTML() {
       </MuiThemeProvider>
     </React.Fragment>
   );
-}
+};
 
 ReactDOM.render(<App />, appMain);

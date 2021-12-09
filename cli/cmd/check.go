@@ -163,12 +163,13 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 	}
 
 	var installManifest string
+	var values *charts.Values
 	if options.preInstallOnly {
 		checks = append(checks, healthcheck.LinkerdPreInstallChecks)
 		if options.cniEnabled {
 			checks = append(checks, healthcheck.LinkerdCNIPluginChecks)
 		}
-		installManifest, err = renderInstallManifest(cmd.Context())
+		values, installManifest, err = renderInstallManifest(cmd.Context())
 		if err != nil {
 			fmt.Fprint(os.Stderr, fmt.Errorf("Error rendering install manifest: %v", err))
 			os.Exit(1)
@@ -195,6 +196,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 	}
 
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+		IsMainCheckCommand:    true,
 		ControlPlaneNamespace: controlPlaneNamespace,
 		CNINamespace:          cniNamespace,
 		DataPlaneNamespace:    options.namespace,
@@ -207,43 +209,47 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 		RetryDeadline:         time.Now().Add(options.wait),
 		CNIEnabled:            options.cniEnabled,
 		InstallManifest:       installManifest,
+		ChartValues:           values,
 	})
 
-	if options.output != jsonOutput {
-		healthcheck.PrintCoreChecksHeader(wout)
+	if options.output == tableOutput {
+		healthcheck.PrintChecksHeader(wout, healthcheck.CoreHeader)
 	}
+	success, warning := healthcheck.RunChecks(wout, werr, hc, options.output)
 
-	success := healthcheck.RunChecks(wout, werr, hc, options.output)
-
-	extensionSuccess, err := runExtensionChecks(cmd, wout, werr, options)
+	extensionSuccess, extensionWarning, err := runExtensionChecks(cmd, wout, werr, options)
 	if err != nil {
 		err = fmt.Errorf("failed to run extensions checks: %s", err)
 		fmt.Fprintln(werr, err)
 		os.Exit(1)
 	}
 
-	if !success || !extensionSuccess {
+	totalSuccess := success && extensionSuccess
+	totalWarning := warning || extensionWarning
+	healthcheck.PrintChecksResult(wout, options.output, totalSuccess, totalWarning)
+
+	if !totalSuccess {
 		os.Exit(1)
 	}
 
 	return nil
 }
 
-func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts *checkOptions) (bool, error) {
+func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts *checkOptions) (bool, bool, error) {
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 
 	namespaces, err := kubeAPI.GetAllNamespacesWithExtensionLabel(cmd.Context())
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 
 	success := true
 	// no extensions to check
 	if len(namespaces) == 0 {
-		return success, nil
+		return success, false, nil
 	}
 
 	nsLabels := make([]string, len(namespaces))
@@ -251,8 +257,8 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 		nsLabels[i] = ns.Labels[k8s.LinkerdExtensionLabel]
 	}
 
-	extensionSuccess := healthcheck.RunExtensionsChecks(wout, werr, nsLabels, getExtensionCheckFlags(cmd.Flags()), opts.output)
-	return extensionSuccess, nil
+	extensionSuccess, extensionWarning := healthcheck.RunExtensionsChecks(wout, werr, nsLabels, getExtensionCheckFlags(cmd.Flags()), opts.output)
+	return extensionSuccess, extensionWarning, nil
 }
 
 func getExtensionCheckFlags(lf *pflag.FlagSet) []string {
@@ -274,16 +280,16 @@ func getExtensionCheckFlags(lf *pflag.FlagSet) []string {
 	return cmdLineFlags
 }
 
-func renderInstallManifest(ctx context.Context) (string, error) {
+func renderInstallManifest(ctx context.Context) (*charts.Values, string, error) {
 	values, err := charts.NewValues()
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 
 	var b strings.Builder
 	err = install(ctx, &b, values, []flag.Flag{}, "", valuespkg.Options{})
 	if err != nil {
-		return "", err
+		return values, "", err
 	}
-	return b.String(), nil
+	return values, b.String(), nil
 }

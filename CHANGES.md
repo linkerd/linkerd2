@@ -1,5 +1,353 @@
 # Changes
 
+## edge-21.12.2
+
+This edge removes the default SMI functionality that is included in
+installations now that the linkerd-smi extension provides these resources. It
+also relaxes the `proxy-init`'s `privileged` value to only be set to `true` when
+needed by certain installation configurations.
+
+Along with some bug fixes, the repository's issue and feature request templates
+have been updated to forms; check them when opening a [new
+issue](https://github.com/linkerd/linkerd2/issues/new/choose)! (thanks
+@mikutas).
+
+* Removed SMI functionality in the default Linkerd installation; this is now
+  part of the linkerd-smi extension
+* Fixed autocompletion of the `--context` flag (thanks @mikutas!)
+* Added support for conditionally setting `proxy-init`'s `privileged: true` only
+  when needed (thanks @alex-berger!)
+* Added support for controlling opaque ports through the Server resource
+* Fixed an issue where `linkerd check` would compare proxy versions of
+  uninjected pods leading to incorrect errors
+* Relaxed extension checks so that the CLI still works when not all extension
+  proxies are healthy
+* Added the `--default-inbound-policy` flag to `linkerd inject` for setting a
+  non-default inbound policy on injected workloads (thanks @ahmedalhulaibi!)
+
+## edge-21.12.1
+
+This edge release enables by default `EndpointSlices` in the destination
+controller, which unblocks any functionality that is specific to
+`EndpointSlices` such as as topology-aware hints. It also contains a couple of
+internal cleanups and upgrades, by our external contributors!
+
+* Added new check to `linkerd check` verifying the nodes aren't running the old
+  Docker container runtime and attempting to run proxy-init as root at the same
+  time, which doesn't work (thanks @alex-berger!)
+* Enabled `EndpointSlices` in the destination controller by default
+* Removed extraneous empty lines and fixed the formatting of warnings in the
+  output of `linkerd check -o short`
+* Upgraded to go 1.17 (thanks @Juneezee!)
+* Removed old protobuf definitions from the codebase (thanks @krzysztofdrys!)
+
+## edge-21.11.4
+
+This edge release introduces a change in the destination service to honor
+opaque ports set in the `proxyProtocol` field of `Server` resources. This
+change makes it possible to set opaque ports directly in `Server` resources
+without needing the opaque ports annotation on pods. The release also features
+a number of fixes and improvements, a big thank you to our external
+contributors for their continued support and involvement.
+
+* Added support in the destination service for honoring opaque ports marked in
+  `Server` resources; ports can now be marked as opaque directly in `Server`
+  resources through the `proxyProtocol` field.
+* Added support to override default behavior and run `proxyInit` as root
+  (thanks @alex-berger!)
+* Added multicluster `Link` CRD to code generation script; consumers of the
+  multicluster API can now use a typed API to interact with multicluster links
+  (thanks @zaharidichev!)
+* Added a multicluster integration test for exported headless services (thanks
+  @importhuman!)
+* Deprecated `v1alpha1` version of the policy APIs
+* Removed newline from `linkerd check` header text (thanks @mikutas!)
+* Replaced deprecated `beta.kubernetes.io/os` label with `kubernetes.io/os`
+
+## edge-21.11.3
+
+This edge releases fixes a compatibility issue that prevented the policy
+controller from starting in some Kubernetes distributions. This release also
+includes a new High Availability mode for the gateway component in multicluster
+extension. Various dependencies across the CNI plugin, Policy Controller and
+dashboard have also been upgraded. In the proxy, error logging when the proxy
+fails to accept a connection due to a system error has been improved.
+
+* Updated policy controller to use `openssl` instead of `rustls` to fix
+  compatibility issues with some Kubernetes distributions
+* Added HA mode to multicluster gateway that adds a PodDisruptionBudget,
+  additional replicas and anti-affinity to the deployment (thanks @Crevil)
+* Improved TCP server error messages in the proxy
+* Fixed broken Grafana links in the dashboard
+* Upgraded CNI pkg to v0.8.1 in `linkerd-cni` to support latest CNI
+  versions
+* Updated various dependencies in the dashboard, policy controller
+  (thanks @dependabot)
+
+## edge-21.11.2
+
+This edge release introduces a new Services page in the web dashboard that shows
+live calls and route metrics for meshed services. Additionally, the `proxy-init`
+container is no longer enforced to run as root. Lastly, the proxy can now retry
+requests with a `content-length` header—permitting requests emitted by grpc-go
+to be retried.
+
+* Removed hardcoding that enforced the `proxy-init` container to run as root
+* Added support for retrying requests without a `content-length` header
+* Changed service discovery logs from `TRACE` to `DEBUG`
+* Fixed issue with policy controller where it assumed `linkerd` was the name of
+  the control plane namespace, leading to issues with installations that use a
+  non-default namespace name
+* Added support for ephemeral storage requests and limits configured either
+  through the CLI or annotations (thanks @michaellzc!)
+* Deprecated support for topology keys and added support for topology aware
+  hints
+* Added `logFormat` and `logLevel` configuration values for the `proxy-init`
+  container (thanks @gusfcarvalho!)
+* Added services to the web dashboard (thanks @krzysztofdrys!)
+* Updated example commands in the web dashboard to use the `viz` subcommand when
+  necessary (thanks @mikutas!)
+* Removed references to `linkerd-sp-validator` service account in the
+  `linkerd-psp` role binding (thanks @multimac!)
+
+## edge-21.11.1
+
+In this edge, we're very excited to introduce Service Account Token Volume
+Projections, used to set up the pods' identities. These tokens are bounded
+specifically for this use case and are rotated daily, replacing the usage of the
+default tokens injected by Kubernetes which are overly permissive.
+
+Note that this edge release updates the minimum supported kubernetes version to 1.20.
+
+* Updated the minimum supported kubernetes version to 1.20
+* Use Service Account Token Volume Projections to set up the pods' identities;
+  now injection also works on pods with `automountServiceAccountToken` set to
+  `false`
+* Updated proxy-init's Alpine base image to fix some CVEs (not affecting
+  Linkerd)
+* Updated the Prometheus image in linkerd-viz to 2.30.3
+* Changed the proxy and policy controller to use jemalloc on x86_64 gnu/linux to
+  reduce memory usage
+* Fixed output for `linkerd check -o json`
+* Added ability to configure ephemeral-storage resources for each component
+  (thanks @michaellzc!)
+
+## edge-21.10.3
+
+This edge release fixes a bug in the proxy that could cause it to be killed in
+certain situations. It also uses a more relaxed policy for the identity
+controller that allows it to work in environments where health checks come from
+outside of the pod network.
+
+* Skipped Prometheus scrapes on policy's `admin` server so that it no longer
+  incorrectly appears as "DOWN" in the Prometheus UI
+* Updated the identity controller to use the 'all-unauthenticated' policy so
+  that it can accept health checks from the node IPs
+* Fixed an infinite loop in the proxy that could cause it to be killed
+* Added tests for the multicluster install command (thanks @crevil!)
+* Fixed a bug where `authz` CLI commands would fail when policy resources had
+  an empty selector
+
+## edge-21.10.2
+
+This edge release fixes linkerd check and the helm charts to explicitly
+indicate that the minimum Kubernetes version is 1.17.0. Prior to this change,
+there was no validation or enforcement from linkerd check or helm to meet this
+minimum requirement.
+
+This edge also improves `check` functionality for extensions by adding the
+`-oshort` flag, and prevents duplicate policy resources from being created for
+linked multicluster services.
+
+* Moved service mirror policy into multicluster base chart
+* Added `-oshort` flag for extension `check` commands
+* Updated minimum kubernetes version to 1.17.0
+* Removed unused `crtExpiry` template parameter from helm charts
+* Fixed multicluster gateway name for ServerAuthorization
+* Added `priorityClassName` to the helm charts to configure control plane
+  components
+
+## edge-21.10.1
+
+This release includes some fixes in the `linkerd check`, along with a
+bunch of dependency updates across the dashboard, Go components, and
+others. On the proxy side, Support for `TLSv1.2` has been dropped
+(Only `TLSv1.3` cipher suite will be used), `h2` crate has been updated
+to support HTTP/2 messages with larger header values.
+
+* Updated `linkerd check` to avoid multiline errors with retryable checks
+* Fixed incorrect opaque ports warning in `linkerd check --proxy` with
+  un-named ports
+* Bumped proxy-init to `1.4.1` which adds support for `--log-level`
+  and `--log-format` flags (thanks @gusfcarvalho)
+* Removed the use of `TLSv1.2` in the proxy
+* Updated the `h2` crate in the proxy to support HTTP/2 messages with
+  larger header values.
+* Updated various dependencies across the dashboard, policy-controller, etc
+  (thanks @dependabot!)
+
+## stable-2.11.0
+
+This release introduces access control policies. Default policies may be
+configured at the cluster- and workspace-levels; and fine grained policies may
+be instrumented via the new `policy.linkerd.io/v1beta1` CRDs: `Server` and
+`ServerAuthorization`. These resources may be created to define how individual
+ports accept connections; and the `Server` resource will be a building block for
+future features that configure inbound proxy behavior.
+
+Furthermore, `ServiceProfile` retry configurations can now instrument retries
+for requests with bodies. This unlocks retry behavior for gRPC services.
+
+**Upgrade notes**: Please see the [upgrade instructions][upgrade-2110].
+
+* Proxy
+  * Reduced CPU & Memory usage by up to 30% in some load tests
+  * Updated retries to support requests with bodies up to 64KB. ServiceProfiles
+    may now configure retries for gRPC services
+  * The proxy's container image is now based on `gcr.io/distroless/cc` to
+    contain a minimal OS footprint that should not trigger unnecessary alerts in
+    security scanners
+  * Added the `inbound_http_errors_total` and `outbound_http_errors_total`
+    metrics to reflect errors that caused the proxy to respond with errors
+  * Added an `l5d-proxy-error` header that is included on responses on trusted
+    connections for debugging purposes
+  * Added a `l5d-client-id` header on mutually-authenticated inbound requests so
+    that applications can discover the client's identity
+  * Added metrics to reflect TCP and HTTP authorization decisions
+  * Added `srv_name` and `saz_name` labels to inbound HTTP metrics
+  * Fixed an issue that could cause the proxy to continually reconnect to
+    defunct service endpoints
+  * Dropped support for non-HTTP outbound services when `linkerd.io/inject:
+    ingress` is used
+  * Instrumented fuzz testing to help guard against unexpected panics
+
+* Control Plane
+  * Added a new `policy-controller` container to the `linkerd-destination`
+    pod--the first control plane component implemented in Rust
+  * Added a new admission controller to validate that multiple `Server`
+    resources do not reference the same port
+  * Added a `linkerd-identity-trust-roots` ConfigMap which configures the trust
+    root bundle for all pods in the core control plane namespace
+  * Eliminated the `linkerd-controller` deployment so that Linkerd's core
+    control plane now consists of only 3 deployments
+  * Updated the proxy injector to configure the `proxy-init` container with
+    `NET_RAW` and `NET_ADMIN` capabilities so that the container does not fail
+    when the pod drops these capabilities
+
+* CLI
+  * Enhanced `linkerd completion` to expand Kubernetes resources from the current
+    kubectl context
+  * Added an `authz` subcommand to display the authorization policies that
+    impact a workload
+  * Added a _short_ output mode for `linkerd check` that only prints failed
+    checks
+  * Added support for `ReplicaSets` to `linkerd stat` so that pods created by
+    Argo `Rollout` resources can be inspected
+
+* Helm: please see the [upgrade instructions][upgrade-2110].
+
+* Extensions:
+  * Introduced a new (optional) SMI extension responsible for reading
+    `specs.smi-spec.io` resources and converting them to Linkerd resources
+  * In `stable-2.12`, this extension will be required to use `TrafficSplit`
+    resources with Linkerd
+  * Added an extensions page to the Linkerd Web UI
+
+  * Viz
+    * Added `Server` and `ServerAuthorization` resources for all ports
+    * Added JSON log formatting
+
+  * Jaeger
+    * Added OpenTelemetry collector instead of OpenCensus
+
+  * Multicluster
+    * Added experimental support for `StatefulSet` workloads
+
+This release includes changes from a massive list of contributors. A special
+thank-you to everyone who helped make this release possible:
+
+Gustavo Fernandes de Carvalho @gusfcarvalho
+Oleg Vorobev @olegy2008
+Bart Peeters @bartpeeters
+Stepan Rabotkin @EpicStep
+LiuDui @xichengliudui
+Andrew Hemming @drewhemm
+Ujjwal Goyal @importhuman
+Knut Götz @knutgoetz
+Sanni Michael @sannimichaelse
+Brandon Sorgdrager @bsord
+Gerald Pape @ubergesundheit
+Alexey Kostin @rumanzo
+rdileep13 @rdileep13
+Takumi Sue @mikutas
+Akshit Grover @akshitgrover
+Sanskar Jaiswal @aryan9600
+Aleksandr Tarasov @aatarasoff
+Taylor @skinn
+Miguel Ángel Pastor Olivar @migue
+wangchenglong01 @wangchenglong01
+Josh Soref @jsoref
+Carol Chen @kipply
+Peter Smit @psmit
+Tarvi Pillessaar @tarvip
+James Roper @jroper
+Dominik Münch @muenchdo
+Szymon Gibała @Szymongib
+Mitch Hulscher @mhulscher
+
+[upgrade-2110]: https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2110
+
+## edge-21.9.5
+
+This edge is a release candidate for `stable-2.11.0`, containing a couple of
+improvements to `linkerd check`, some final tweaks before the stable release,
+and a couple of contributions from the community.
+
+* Had `linkerd check --proxy` stop failing on pods that are in Shutdown status
+  (thanks @olegy2008!)
+* Lowered from error to warning a failed check on misconfigured opaque ports
+  annotations, given that doesn't imply the installation is broken
+* Added log level and format settings to all the viz components (thanks
+  @gusfcarvalho!)
+* Removed label from the multicluster gateway and service-mirror pods to allow
+  them to be properly rolled out when upgrading
+
+## edge-21.9.4
+
+This edge is a release candidate for `stable-2.11.0`! It introduces a new
+`linkerd viz auth` command which shows metrics for server authorizations broken
+down by server for a given resource. It also shows the rate of unauthorized
+requests to each server.  This is helpful for seeing a breakdown of which
+authorizations are being used and what proportion of traffic is being rejected.
+
+It also fixes an issue in the proxy where  HTTP load balancers could continue
+trying to establish connections to endpoints that were removed from service
+discovery. In addition it improves the proxy's error handling so that it can
+signal to an inbound proxy when its peers outbound connections should be torn
+down.
+
+* Changed destination watch updates from `info` to `debug` to reduce the amount
+  of logs (thanks @bartpeeters!)
+* Added the `linkerd viz auth` command which shows metrics for server
+  authorizations broken down by server for a given resource
+* Fixed an issue where the policy controller's validating admission webhook
+  attempted to validate ServerAuthorizations when it should only be validating
+  Servers
+* Removed `omitWebhookSideEffects` setting now that we no longer support
+  Kubernetes 1.12
+* Improved proxy error handling so that it can signal to its peers that their
+  outbound connections should be torn down
+* Fixed an issue where after upgrades there would be a mismatch in certs used by
+  the policy controller validator; the destination pod is now restarted similar
+  to the injector
+* Fixed a field reference in the Helm template to properly refer to
+  `profileValidator.namespaceSelector`
+* Updated policy CRD versions to `v1beta1`
+* Added support for `stat`'s `-o json` option to Server resources
+* Fixed an issue in the proxy where HTTP load balancers could continue trying to
+  establish connections to endpoints that were removed from service discovery
+* Added JSON output format to `linkerd viz authz` command
+
 ## edge-21.9.3
 
 This edge is a release candidate for `stable-2.11.0`! It features a new `linkerd

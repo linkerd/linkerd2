@@ -7,12 +7,10 @@ import (
 
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	spfake "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/fake"
-	tsclient "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
-	tsfake "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned/fake"
 
 	spscheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
-	tsscheme "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned/scheme"
 	corev1 "k8s.io/api/core/v1"
+	discovery "k8s.io/api/discovery/v1beta1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apiextensionsfake "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
@@ -33,7 +31,7 @@ import (
 
 // NewFakeAPI provides a mock KubernetesAPI backed by hard-coded resources
 func NewFakeAPI(configs ...string) (*KubernetesAPI, error) {
-	client, apiextClient, apiregClient, _, _, err := NewFakeClientSets(configs...)
+	client, apiextClient, apiregClient, _, err := NewFakeClientSets(configs...)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +47,7 @@ func NewFakeAPI(configs ...string) (*KubernetesAPI, error) {
 // NewFakeAPIFromManifests reads from a slice of readers, each representing a
 // manifest or collection of manifests, and returns a mock KubernetesAPI.
 func NewFakeAPIFromManifests(readers []io.Reader) (*KubernetesAPI, error) {
-	client, apiextClient, apiregClient, _, _, err := newFakeClientSetsFromManifests(readers)
+	client, apiextClient, apiregClient, _, err := newFakeClientSetsFromManifests(readers)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +66,6 @@ func NewFakeClientSets(configs ...string) (
 	apiextensionsclient.Interface,
 	apiregistrationclient.Interface,
 	spclient.Interface,
-	tsclient.Interface,
 	error,
 ) {
 	objs := []runtime.Object{}
@@ -76,11 +73,10 @@ func NewFakeClientSets(configs ...string) (
 	apiRegObjs := []runtime.Object{}
 	discoveryObjs := []runtime.Object{}
 	spObjs := []runtime.Object{}
-	tsObjs := []runtime.Object{}
 	for _, config := range configs {
 		obj, err := ToRuntimeObject(config)
 		if err != nil {
-			return nil, nil, nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 		switch strings.ToLower(obj.GetObjectKind().GroupVersionKind().Kind) {
 		case "customresourcedefinition":
@@ -91,12 +87,22 @@ func NewFakeClientSets(configs ...string) (
 			discoveryObjs = append(discoveryObjs, obj)
 		case ServiceProfile:
 			spObjs = append(spObjs, obj)
-		case TrafficSplit:
-			tsObjs = append(tsObjs, obj)
+		case Server:
+			spObjs = append(spObjs, obj)
 		default:
 			objs = append(objs, obj)
 		}
 	}
+
+	endpointslice, err := ToRuntimeObject(`apiVersion: discovery.k8s.io/v1beta1
+kind: EndpointSlice
+metadata:
+  name: kubernetes
+  namespace: default`)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+	objs = append(objs, endpointslice)
 
 	cs := fake.NewSimpleClientset(objs...)
 	fakeDiscoveryClient := cs.Discovery().(*discoveryfake.FakeDiscovery)
@@ -104,12 +110,25 @@ func NewFakeClientSets(configs ...string) (
 		apiResList := obj.(*metav1.APIResourceList)
 		fakeDiscoveryClient.Resources = append(fakeDiscoveryClient.Resources, apiResList)
 	}
+	fakeDiscoveryClient.Resources = append(fakeDiscoveryClient.Resources, &metav1.APIResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "APIResourceList",
+			APIVersion: "v1",
+		},
+		GroupVersion: discovery.SchemeGroupVersion.String(),
+		APIResources: []metav1.APIResource{
+			{
+				Name:         "endpointslices",
+				Kind:         "EndpointSlice",
+				SingularName: "endpointslice",
+			},
+		},
+	})
 
 	return cs,
 		apiextensionsfake.NewSimpleClientset(apiextObjs...),
 		apiregistrationfake.NewSimpleClientset(apiRegObjs...),
 		spfake.NewSimpleClientset(spObjs...),
-		tsfake.NewSimpleClientset(tsObjs...),
 		nil
 }
 
@@ -122,7 +141,6 @@ func newFakeClientSetsFromManifests(readers []io.Reader) (
 	apiextensionsclient.Interface,
 	apiregistrationclient.Interface,
 	spclient.Interface,
-	tsclient.Interface,
 	error,
 ) {
 	configs := []string{}
@@ -138,13 +156,13 @@ func newFakeClientSetsFromManifests(readers []io.Reader) (
 				break
 			}
 			if err != nil {
-				return nil, nil, nil, nil, nil, err
+				return nil, nil, nil, nil, err
 			}
 
 			// check for kind
 			var typeMeta metav1.TypeMeta
 			if err := yaml.Unmarshal(bytes, &typeMeta); err != nil {
-				return nil, nil, nil, nil, nil, err
+				return nil, nil, nil, nil, err
 			}
 
 			switch typeMeta.Kind {
@@ -154,7 +172,7 @@ func newFakeClientSetsFromManifests(readers []io.Reader) (
 			case "List":
 				var sourceList corev1.List
 				if err := yaml.Unmarshal(bytes, &sourceList); err != nil {
-					return nil, nil, nil, nil, nil, err
+					return nil, nil, nil, nil, err
 				}
 				for _, item := range sourceList.Items {
 					configs = append(configs, string(item.Raw))
@@ -174,7 +192,6 @@ func ToRuntimeObject(config string) (runtime.Object, error) {
 	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
 	apiregistrationv1.AddToScheme(scheme.Scheme)
 	spscheme.AddToScheme(scheme.Scheme)
-	tsscheme.AddToScheme(scheme.Scheme)
 	decode := scheme.Codecs.UniversalDeserializer().Decode
 	obj, _, err := decode([]byte(config), nil, nil)
 	return obj, err
@@ -188,6 +205,5 @@ func ObjectKinds(obj runtime.Object) ([]schema.GroupVersionKind, bool, error) {
 	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
 	apiregistrationv1.AddToScheme(scheme.Scheme)
 	spscheme.AddToScheme(scheme.Scheme)
-	tsscheme.AddToScheme(scheme.Scheme)
 	return scheme.Scheme.ObjectKinds(obj)
 }

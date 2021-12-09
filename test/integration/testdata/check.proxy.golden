@@ -29,6 +29,7 @@ linkerd-config
 √ control plane CustomResourceDefinitions exist
 √ control plane MutatingWebhookConfigurations exist
 √ control plane ValidatingWebhookConfigurations exist
+√ proxy-init container runs as root user if docker container runtime is used
 
 linkerd-identity
 ----------------
@@ -75,5 +76,3 @@ linkerd-data-plane
 √ data plane service labels are configured correctly
 √ data plane service annotations are configured correctly
 √ opaque ports are properly annotated
-
-Status check results are √

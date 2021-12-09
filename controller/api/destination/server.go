@@ -10,7 +10,6 @@ import (
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
-	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	labels "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
@@ -28,11 +27,11 @@ type (
 	server struct {
 		pb.UnimplementedDestinationServer
 
-		endpoints     *watcher.EndpointsWatcher
-		opaquePorts   *watcher.OpaquePortsWatcher
-		profiles      *watcher.ProfileWatcher
-		trafficSplits *watcher.TrafficSplitWatcher
-		nodes         coreinformers.NodeInformer
+		endpoints   *watcher.EndpointsWatcher
+		opaquePorts *watcher.OpaquePortsWatcher
+		profiles    *watcher.ProfileWatcher
+		servers     *watcher.ServerWatcher
+		nodes       coreinformers.NodeInformer
 
 		enableH2Upgrade     bool
 		controllerNS        string
@@ -83,14 +82,14 @@ func NewServer(
 	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log, enableEndpointSlices)
 	opaquePorts := watcher.NewOpaquePortsWatcher(k8sAPI, log, defaultOpaquePorts)
 	profiles := watcher.NewProfileWatcher(k8sAPI, log)
-	trafficSplits := watcher.NewTrafficSplitWatcher(k8sAPI, log)
+	servers := watcher.NewServerWatcher(k8sAPI, log)
 
 	srv := server{
 		pb.UnimplementedDestinationServer{},
 		endpoints,
 		opaquePorts,
 		profiles,
-		trafficSplits,
+		servers,
 		k8sAPI.Node(),
 		enableH2Upgrade,
 		controllerNS,
@@ -210,14 +209,35 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 				return err
 			}
 
-			// The IP may or may not map to a pod (pod argument can be nil). If
-			// pod is not nil we will return a single endpoint in the
-			// DestinationProfile response, otherwise we return a default
-			// profile response.
-			err = s.sendEndpointProfile(stream, pod, port)
+			opaquePorts, err := getAnnotatedOpaquePorts(pod, s.defaultOpaquePorts)
 			if err != nil {
-				log.Debugf("Failed to send profile response for endpoint %s:%d: %v", ip.String(), port, err)
-				return err
+				return fmt.Errorf("failed to get opaque ports for pod: %s", err)
+			}
+			var address watcher.Address
+			var endpoint *pb.WeightedAddr
+			if pod != nil {
+				address, err = s.createAddress(pod, port)
+				if err != nil {
+					return fmt.Errorf("failed to create address: %s", err)
+				}
+				endpoint, err = s.createEndpoint(address, opaquePorts)
+				if err != nil {
+					return fmt.Errorf("failed to create endpoint: %s", err)
+				}
+			}
+			translator := newEndpointProfileTranslator(pod, port, endpoint, stream, s.log)
+
+			// If the endpoint's port is annotated as opaque, we don't need to
+			// subscribe for updates because it will always be opaque
+			// regardless of any Servers that may select it.
+			if _, ok := opaquePorts[port]; ok {
+				translator.UpdateProtocol(true)
+			} else if pod == nil {
+				translator.UpdateProtocol(false)
+			} else {
+				translator.UpdateProtocol(address.OpaqueProtocol)
+				s.servers.Subscribe(pod, port, translator)
+				defer s.servers.Unsubscribe(pod, port, translator)
 			}
 
 			select {
@@ -225,7 +245,6 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			case <-stream.Context().Done():
 				log.Debugf("GetProfile(%+v) cancelled", dest)
 			}
-
 			return nil
 		}
 	} else {
@@ -242,21 +261,43 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		if hostname != "" {
 			pod, err := getPodByHostname(s.k8sAPI, hostname, service)
 			if err != nil {
-				log.Errorf("Failed to get pod for hostname %s: %v", hostname, err)
+				log.Errorf("failed to get pod for hostname %s: %v", hostname, err)
 			}
-
-			err = s.sendEndpointProfile(stream, pod, port)
+			opaquePorts, err := getAnnotatedOpaquePorts(pod, s.defaultOpaquePorts)
 			if err != nil {
-				log.Debugf("Failed to send profile response for host %s: %v", hostname, err)
-				return err
+				return fmt.Errorf("failed to get opaque ports for pod: %s", err)
 			}
+			var address watcher.Address
+			var endpoint *pb.WeightedAddr
+			if pod != nil {
+				address, err = s.createAddress(pod, port)
+				if err != nil {
+					return fmt.Errorf("failed to create address: %s", err)
+				}
+				endpoint, err = s.createEndpoint(address, opaquePorts)
+				if err != nil {
+					return fmt.Errorf("failed to create endpoint: %s", err)
+				}
+			}
+			translator := newEndpointProfileTranslator(pod, port, endpoint, stream, s.log)
 
+			// If the endpoint's port is annotated as opaque, we don't need to
+			// subscribe for updates because it will always be opaque
+			// regardless of any Servers that may select it.
+			if _, ok := opaquePorts[port]; ok {
+				translator.UpdateProtocol(true)
+			} else if pod == nil {
+				translator.UpdateProtocol(false)
+			} else {
+				translator.UpdateProtocol(address.OpaqueProtocol)
+				s.servers.Subscribe(pod, port, translator)
+				defer s.servers.Unsubscribe(pod, port, translator)
+			}
 			select {
 			case <-s.shutdown:
 			case <-stream.Context().Done():
 				log.Debugf("GetProfile(%+v) cancelled", dest)
 			}
-
 			return nil
 		}
 
@@ -266,24 +307,12 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// We build up the pipeline of profile updaters backwards, starting from
 	// the translator which takes profile updates, translates them to protobuf
 	// and pushes them onto the gRPC stream.
-	translator := newProfileTranslator(stream, log, fqn, port, nil)
-
-	// The traffic split adaptor merges profile updates with traffic split
-	// updates and publishes the result to the profile translator.
-	tsAdaptor := newTrafficSplitAdaptor(translator, service, port, s.clusterDomain)
-
-	// Subscribe the adaptor to traffic split updates.
-	err = s.trafficSplits.Subscribe(service, tsAdaptor)
-	if err != nil {
-		log.Warnf("Failed to subscribe to traffic split for %s: %s", path, err)
-		return err
-	}
-	defer s.trafficSplits.Unsubscribe(service, tsAdaptor)
+	translator := newProfileTranslator(stream, log, fqn, port)
 
 	// The opaque ports adaptor merges profile updates with service opaque
 	// port annotation updates; it then publishes the result to the traffic
 	// split adaptor.
-	opaquePortsAdaptor := newOpaquePortsAdaptor(tsAdaptor)
+	opaquePortsAdaptor := newOpaquePortsAdaptor(translator)
 
 	// Subscribe the adaptor to service updates.
 	err = s.opaquePorts.Subscribe(service, opaquePortsAdaptor)
@@ -340,62 +369,33 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	return nil
 }
 
-// sendEndpointProfile sends a DestinationProfile response back to the client.
-// If the pod argument is provided, the profile sent to the client will
-// include an endpoint. Otherwise, the default profile is sent.
-func (s *server) sendEndpointProfile(stream pb.Destination_GetProfileServer, pod *corev1.Pod, port uint32) error {
-	log := s.log
-	var endpoint *pb.WeightedAddr
-	opaquePorts := make(map[uint32]struct{})
-	var err error
-	if pod != nil {
-		podSet := podToAddressSet(s.k8sAPI, pod).WithPort(port)
-		podID := watcher.PodID{
-			Namespace: pod.Namespace,
-			Name:      pod.Name,
-		}
-		var ok bool
-		opaquePorts, ok, err = getPodOpaquePortsAnnotations(pod)
-		if err != nil {
-			log.Errorf("failed to get opaque ports annotation for pod: %s", err)
-		}
+func (s *server) createAddress(pod *corev1.Pod, port uint32) (watcher.Address, error) {
+	ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(context.Background(), pod, true)
+	address := watcher.Address{
+		IP:        pod.Status.PodIP,
+		Port:      port,
+		Pod:       pod,
+		OwnerName: ownerName,
+		OwnerKind: ownerKind,
+	}
+	err := watcher.SetToServerProtocol(s.k8sAPI, &address, port)
+	if err != nil {
+		return watcher.Address{}, fmt.Errorf("failed to set address OpaqueProtocol: %s", err)
+	}
+	return address, nil
+}
 
-		// If the opaque ports annotation was not set, then set the
-		// endpoint's opaque ports to the default value.
-		if !ok {
-			opaquePorts = s.defaultOpaquePorts
-		}
-
-		skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(pod)
-		if err != nil {
-			log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
-		}
-
-		endpoint, err = toWeightedAddr(podSet.Addresses[podID], opaquePorts, skippedInboundPorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
-		if err != nil {
-			return err
-		}
-		// `Get` doesn't include the namespace in the per-endpoint
-		// metadata, so it needs to be special-cased.
-		endpoint.MetricLabels["namespace"] = pod.Namespace
+func (s *server) createEndpoint(address watcher.Address, opaquePorts map[uint32]struct{}) (*pb.WeightedAddr, error) {
+	weightedAddr, err := createWeightedAddr(address, opaquePorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
+	if err != nil {
+		return nil, err
 	}
 
-	// Send the default profile without subscribing for future updates. The
-	// profile response will also include an endpoint if the IP (or hostname)
-	// sent in the profile request maps to a pod.
-	translator := newProfileTranslator(stream, log, "", port, endpoint)
+	// `Get` doesn't include the namespace in the per-endpoint
+	// metadata, so it needs to be special-cased.
+	weightedAddr.MetricLabels["namespace"] = address.Pod.Namespace
 
-	// If there are opaque ports then update the profile translator
-	// with a service profile that has those values
-	if len(opaquePorts) != 0 {
-		sp := sp.ServiceProfile{}
-		sp.Spec.OpaquePorts = opaquePorts
-		translator.Update(&sp)
-	} else {
-		translator.Update(nil)
-	}
-
-	return nil
+	return weightedAddr, err
 }
 
 // getSvcID returns the service that corresponds to a Cluster IP address if one
@@ -527,26 +527,6 @@ func podReceivingTraffic(pod *corev1.Pod) bool {
 	return !podTerminating && !podTerminated
 }
 
-// podToAddressSet converts a Pod spec into a set of Addresses.
-func podToAddressSet(k8sAPI *k8s.API, pod *corev1.Pod) *watcher.AddressSet {
-	ownerKind, ownerName := k8sAPI.GetOwnerKindAndName(context.Background(), pod, true)
-	return &watcher.AddressSet{
-		Addresses: map[watcher.PodID]watcher.Address{
-			{
-				Name:      pod.Name,
-				Namespace: pod.Namespace,
-			}: {
-				IP:        pod.Status.PodIP,
-				Port:      0, // Will be set by individual subscriptions
-				Pod:       pod,
-				OwnerName: ownerName,
-				OwnerKind: ownerKind,
-			},
-		},
-		Labels: map[string]string{"namespace": pod.Namespace},
-	}
-}
-
 ////////////
 /// util ///
 ////////////
@@ -595,7 +575,7 @@ func profileID(authority string, ctxToken contextToken, clusterDomain string) (w
 func getHostAndPort(authority string) (string, watcher.Port, error) {
 	hostPort := strings.Split(authority, ":")
 	if len(hostPort) > 2 {
-		return "", 0, fmt.Errorf("Invalid destination %s", authority)
+		return "", 0, fmt.Errorf("invalid destination %s", authority)
 	}
 	host := hostPort[0]
 	port := 80
@@ -603,7 +583,7 @@ func getHostAndPort(authority string) (string, watcher.Port, error) {
 		var err error
 		port, err = strconv.Atoi(hostPort[1])
 		if err != nil || port <= 0 || port > 65535 {
-			return "", 0, fmt.Errorf("Invalid port %s", hostPort[1])
+			return "", 0, fmt.Errorf("invalid port %s", hostPort[1])
 		}
 	}
 	return host, watcher.Port(port), nil
@@ -660,22 +640,25 @@ func hasSuffix(slice []string, suffix []string) bool {
 	return true
 }
 
-func getPodOpaquePortsAnnotations(pod *corev1.Pod) (map[uint32]struct{}, bool, error) {
+func getAnnotatedOpaquePorts(pod *corev1.Pod, defaultPorts map[uint32]struct{}) (map[uint32]struct{}, error) {
+	if pod == nil {
+		return defaultPorts, nil
+	}
 	annotation, ok := pod.Annotations[labels.ProxyOpaquePortsAnnotation]
 	if !ok {
-		return nil, false, nil
+		return defaultPorts, nil
 	}
 	opaquePorts := make(map[uint32]struct{})
 	if annotation != "" {
 		for _, portStr := range util.ParseContainerOpaquePorts(annotation, pod.Spec.Containers) {
 			port, err := strconv.ParseUint(portStr, 10, 32)
 			if err != nil {
-				return nil, true, err
+				return nil, err
 			}
 			opaquePorts[uint32(port)] = struct{}{}
 		}
 	}
-	return opaquePorts, true, nil
+	return opaquePorts, nil
 }
 
 func getPodSkippedInboundPortsAnnotations(pod *corev1.Pod) (map[uint32]struct{}, error) {

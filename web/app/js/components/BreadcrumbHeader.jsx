@@ -19,12 +19,7 @@ const routeToCrumbTitle = {
 };
 
 class BreadcrumbHeader extends React.Component {
-  constructor(props) {
-    super(props);
-    this.api = props.api;
-  }
-
-  processResourceDetailURL = segments => {
+  static processResourceDetailURL(segments) {
     if (segments.length === 4) {
       const splitSegments = _chunk(segments, 2);
       const resourceNameSegment = splitSegments[1];
@@ -35,12 +30,12 @@ class BreadcrumbHeader extends React.Component {
     }
   }
 
-  convertURLToBreadcrumbs = location => {
+  static convertURLToBreadcrumbs(location) {
     if (location.length === 0) {
       return [];
     } else {
       const segments = location.split('/').slice(1);
-      const finalSegments = this.processResourceDetailURL(segments);
+      const finalSegments = BreadcrumbHeader.processResourceDetailURL(segments);
 
       return finalSegments.map(segment => {
         const partialUrl = _takeWhile(segments, s => {
@@ -59,7 +54,7 @@ class BreadcrumbHeader extends React.Component {
     }
   }
 
-  segmentToFriendlyTitle = (segment, isResourceType) => {
+  static segmentToFriendlyTitle(segment, isResourceType) {
     if (isResourceType) {
       return routeToCrumbTitle[segment] || friendlyTitle(segment).plural;
     } else {
@@ -67,7 +62,7 @@ class BreadcrumbHeader extends React.Component {
     }
   }
 
-  renderBreadcrumbSegment(segment, numCrumbs, index) {
+  static renderBreadcrumbSegment(segment, numCrumbs, index) {
     const isMeshResource = isResource(segment);
 
     if (isMeshResource) {
@@ -77,22 +72,22 @@ class BreadcrumbHeader extends React.Component {
         // resources ("Namespaces") OR if the breadcrumb group describes a list
         // of resources within a specific namespace ("Namespace > linkerd >
         // Deployments")
-        return this.segmentToFriendlyTitle(segment, true);
+        return BreadcrumbHeader.segmentToFriendlyTitle(segment, true);
       }
       return friendlyTitle(segment).singular;
     }
-    return this.segmentToFriendlyTitle(segment, false);
+    return BreadcrumbHeader.segmentToFriendlyTitle(segment, false);
   }
 
   render() {
     const { pathPrefix, location } = this.props;
     const { pathname } = location;
-    const breadcrumbs = this.convertURLToBreadcrumbs(pathname.replace(pathPrefix, ''));
+    const breadcrumbs = BreadcrumbHeader.convertURLToBreadcrumbs(pathname.replace(pathPrefix, ''));
 
     return breadcrumbs.map((pathSegment, index) => {
       return (
         <span key={pathSegment.segment}>
-          {this.renderBreadcrumbSegment(pathSegment.segment, breadcrumbs.length, index)}
+          {BreadcrumbHeader.renderBreadcrumbSegment(pathSegment.segment, breadcrumbs.length, index)}
           { index < breadcrumbs.length - 1 ? ' > ' : null }
         </span>
       );

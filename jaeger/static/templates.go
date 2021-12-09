@@ -1,5 +1,5 @@
 //go:generate go run generate.go
-// +build !prod
+//go:build !prod
 
 package static
 

@@ -16,12 +16,20 @@ args:
 - --timeout-close-wait-secs
 - {{ .Values.proxyInit.closeWaitTimeoutSecs | quote}}
 {{- end }}
+{{- if .Values.proxyInit.logFormat }}
+- --log-format
+- {{ .Values.proxyInit.logFormat }}
+{{- end }}
+{{- if .Values.proxyInit.logLevel }}
+- --log-level
+- {{ .Values.proxyInit.logLevel }}
+{{- end }}
 image: {{.Values.proxyInit.image.name}}:{{.Values.proxyInit.image.version}}
 imagePullPolicy: {{.Values.proxyInit.image.pullPolicy | default .Values.imagePullPolicy}}
 name: linkerd-init
 {{ include "partials.resources" .Values.proxyInit.resources }}
 securityContext:
-  {{- if .Values.proxyInit.closeWaitTimeoutSecs }}
+  {{- if or .Values.proxyInit.closeWaitTimeoutSecs .Values.proxyInit.runAsRoot }}
   allowPrivilegeEscalation: true
   {{- else }}
   allowPrivilegeEscalation: false
@@ -38,14 +46,19 @@ securityContext:
     {{- include "partials.proxy-init.capabilities.drop" . | nindent 4 -}}
     {{- end }}
     {{- end }}
+  {{- if or .Values.proxyInit.closeWaitTimeoutSecs .Values.proxyInit.runAsRoot }}
   {{- if .Values.proxyInit.closeWaitTimeoutSecs }}
   privileged: true
   {{- else }}
   privileged: false
   {{- end }}
-  readOnlyRootFilesystem: true
   runAsNonRoot: false
   runAsUser: 0
+  {{- else }}
+  privileged: false
+  runAsNonRoot: true
+  {{- end }}
+  readOnlyRootFilesystem: true
 terminationMessagePolicy: FallbackToLogsOnError
 {{- if or (not .Values.cniEnabled) .Values.proxyInit.saMountPath }}
 volumeMounts:

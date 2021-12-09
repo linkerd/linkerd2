@@ -22,9 +22,6 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
-- apiGroups: ["split.smi-spec.io"]
-  resources: ["trafficsplits"]
-  verbs: ["list", "get", "watch"]
   {{- if .Values.enableEndpointSlices }}
 - apiGroups: ["discovery.k8s.io"]
   resources: ["endpointslices"]
@@ -99,13 +96,11 @@ webhooks:
   failurePolicy: {{.Values.webhookFailurePolicy}}
   admissionReviewVersions: ["v1", "v1beta1"]
   rules:
-  - operations: [ "CREATE" , "UPDATE" ]
+  - operations: ["CREATE", "UPDATE"]
     apiGroups: ["linkerd.io"]
     apiVersions: ["v1alpha1", "v1alpha2"]
     resources: ["serviceprofiles"]
-  {{- if not .Values.omitWebhookSideEffects }}
   sideEffects: None
-  {{- end }}
 ---
 {{- $host := printf "linkerd-policy-validator.%s.svc" .Values.namespace }}
 {{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
@@ -136,7 +131,7 @@ metadata:
 webhooks:
 - name: linkerd-policy-validator.linkerd.io
   namespaceSelector:
-    {{- toYaml .Values.profileValidator.namespaceSelector | trim | nindent 4 }}
+    {{- toYaml .Values.policyValidator.namespaceSelector | trim | nindent 4 }}
   clientConfig:
     service:
       name: linkerd-policy-validator
@@ -149,13 +144,11 @@ webhooks:
   failurePolicy: {{.Values.webhookFailurePolicy}}
   admissionReviewVersions: ["v1", "v1beta1"]
   rules:
-  - operations: [ "CREATE" , "UPDATE" ]
+  - operations: ["CREATE", "UPDATE"]
     apiGroups: ["policy.linkerd.io"]
-    apiVersions: ["v1alpha1"]
-    resources: ["serverauthorizations", "servers"]
-  {{- if not .Values.omitWebhookSideEffects }}
+    apiVersions: ["v1alpha1", "v1beta1"]
+    resources: ["servers"]
   sideEffects: None
-  {{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

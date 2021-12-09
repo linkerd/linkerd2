@@ -31,7 +31,7 @@ const (
 	injectDisabledDesc               = "pods are not annotated to disable injection"
 	unsupportedDesc                  = "at least one resource can be injected or annotated"
 	udpDesc                          = "pod specs do not include UDP ports"
-	automountServiceAccountTokenDesc = "pods do not have automountServiceAccountToken set to \"false\""
+	automountServiceAccountTokenDesc = "pods do not have automountServiceAccountToken set to \"false\" or service account token projection is enabled"
 	slash                            = "/"
 )
 
@@ -484,6 +484,10 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 		} else {
 			overrideAnnotations[k8s.ProxyAwait] = k8s.Disabled
 		}
+	}
+
+	if proxy.DefaultInboundPolicy != baseProxy.DefaultInboundPolicy {
+		overrideAnnotations[k8s.ProxyDefaultInboundPolicyAnnotation] = proxy.DefaultInboundPolicy
 	}
 
 	// Set fields that can't be converted into annotations

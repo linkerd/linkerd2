@@ -2340,6 +2340,6 @@
     },
     "timezone": "",
     "title": "Linkerd ReplicaSet",
-    "uid": "replicaset",
+    "uid": "linkerd-replicaset",
     "version": 1
   }

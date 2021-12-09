@@ -20,6 +20,12 @@ package fake
 
 import (
 	clientset "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
+	linkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/link/v1alpha1"
+	fakelinkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/link/v1alpha1/fake"
+	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/server/v1beta1"
+	fakeserverv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/server/v1beta1/fake"
+	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serverauthorization/v1beta1"
+	fakeserverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serverauthorization/v1beta1/fake"
 	linkerdv1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha2"
 	fakelinkerdv1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha2/fake"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -74,7 +80,25 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 	return c.tracker
 }
 
-var _ clientset.Interface = &Clientset{}
+var (
+	_ clientset.Interface = &Clientset{}
+	_ testing.FakeClient  = &Clientset{}
+)
+
+// LinkV1alpha1 retrieves the LinkV1alpha1Client
+func (c *Clientset) LinkV1alpha1() linkv1alpha1.LinkV1alpha1Interface {
+	return &fakelinkv1alpha1.FakeLinkV1alpha1{Fake: &c.Fake}
+}
+
+// ServerV1beta1 retrieves the ServerV1beta1Client
+func (c *Clientset) ServerV1beta1() serverv1beta1.ServerV1beta1Interface {
+	return &fakeserverv1beta1.FakeServerV1beta1{Fake: &c.Fake}
+}
+
+// ServerauthorizationV1beta1 retrieves the ServerauthorizationV1beta1Client
+func (c *Clientset) ServerauthorizationV1beta1() serverauthorizationv1beta1.ServerauthorizationV1beta1Interface {
+	return &fakeserverauthorizationv1beta1.FakeServerauthorizationV1beta1{Fake: &c.Fake}
+}
 
 // LinkerdV1alpha2 retrieves the LinkerdV1alpha2Client
 func (c *Clientset) LinkerdV1alpha2() linkerdv1alpha2.LinkerdV1alpha2Interface {

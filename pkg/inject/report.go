@@ -34,7 +34,7 @@ var (
 		injectDisableAnnotationPresent:       fmt.Sprintf("pod has the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectDisabled),
 		invalidInjectAnnotationWorkload:      fmt.Sprintf("invalid value for annotation \"%s\" at workload", k8s.ProxyInjectAnnotation),
 		invalidInjectAnnotationNamespace:     fmt.Sprintf("invalid value for annotation \"%s\" at namespace", k8s.ProxyInjectAnnotation),
-		disabledAutomountServiceAccountToken: "automountServiceAccountToken set to \"false\"",
+		disabledAutomountServiceAccountToken: "automountServiceAccountToken set to \"false\", with Values.identity.serviceAccountTokenProjection set to \"false\"",
 		udpPortsEnabled:                      "UDP port(s) configured on pod spec",
 	}
 )
@@ -90,12 +90,16 @@ func newReport(conf *ResourceConfig) *Report {
 		report.HostNetwork = conf.pod.spec.HostNetwork
 		report.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
 		report.UDP = checkUDPPorts(conf.pod.spec)
-		if conf.pod.spec.AutomountServiceAccountToken != nil {
+		if conf.pod.spec.AutomountServiceAccountToken != nil &&
+			(conf.values != nil && !conf.values.Identity.ServiceAccountTokenProjection) {
 			report.AutomountServiceAccountToken = *conf.pod.spec.AutomountServiceAccountToken
 		}
 		if conf.origin == OriginWebhook {
 			if vm := conf.serviceAccountVolumeMount(); vm == nil {
-				report.AutomountServiceAccountToken = false
+				// set to false only if it is not using the new linkerd-token volume projection
+				if conf.values != nil && !conf.values.Identity.ServiceAccountTokenProjection {
+					report.AutomountServiceAccountToken = false
+				}
 			}
 		}
 	} else {

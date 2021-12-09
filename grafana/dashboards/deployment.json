@@ -2294,6 +2294,6 @@
   },
   "timezone": "",
   "title": "Linkerd Deployment",
-  "uid": "deployment",
+  "uid": "linkerd-deployment",
   "version": 1
 }

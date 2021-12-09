@@ -34,7 +34,6 @@ func TestNewValues(t *testing.T) {
 		EnableH2Upgrade:              true,
 		EnablePodAntiAffinity:        false,
 		WebhookFailurePolicy:         "Ignore",
-		OmitWebhookSideEffects:       false,
 		DisableHeartBeat:             false,
 		HeartbeatSchedule:            "",
 		InstallNamespace:             true,
@@ -54,6 +53,7 @@ func TestNewValues(t *testing.T) {
 		HighAvailability:             false,
 		PodAnnotations:               map[string]string{},
 		PodLabels:                    map[string]string{},
+		EnableEndpointSlices:         true,
 		PolicyController: &PolicyController{
 			Image: &Image{
 				Name: "cr.l5d.io/linkerd/policy-controller",
@@ -105,6 +105,8 @@ func TestNewValues(t *testing.T) {
 		ProxyInit: &ProxyInit{
 			IgnoreInboundPorts:  "4567,4568",
 			IgnoreOutboundPorts: "4567,4568",
+			LogLevel:            "",
+			LogFormat:           "",
 			Image: &Image{
 				Name:    "cr.l5d.io/linkerd/proxy-init",
 				Version: testVersion,
@@ -125,6 +127,7 @@ func TestNewValues(t *testing.T) {
 			},
 		},
 		Identity: &Identity{
+			ServiceAccountTokenProjection: true,
 			Issuer: &Issuer{
 				ClockSkewAllowance: "20s",
 				IssuanceLifetime:   "24h0m0s",
@@ -133,7 +136,7 @@ func TestNewValues(t *testing.T) {
 			},
 		},
 		NodeSelector: map[string]string{
-			"beta.kubernetes.io/os": "linux",
+			"kubernetes.io/os": "linux",
 		},
 		DebugContainer: &DebugContainer{
 			Image: &Image{

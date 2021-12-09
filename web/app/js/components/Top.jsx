@@ -47,7 +47,7 @@ class Top extends React.Component {
     this.stopServerPolling();
   }
 
-  getResourcesByNs = rsp => {
+  static getResourcesByNs(rsp) {
     const statTables = _get(rsp, [0, 'ok', 'statTables']);
     const authoritiesByNs = {};
     const resourcesByNs = _reduce(statTables, (mem, table) => {
@@ -103,9 +103,9 @@ class Top extends React.Component {
 
     const url = this.api.urlsForResourceNoStats('all');
     this.api.setCurrentRequests([this.api.fetchMetrics(url)]);
-    this.serverPromise = Promise.all(this.api.getCurrentPromises())
+    Promise.all(this.api.getCurrentPromises())
       .then(rsp => {
-        const { resourcesByNs, authoritiesByNs } = this.getResourcesByNs(rsp);
+        const { resourcesByNs, authoritiesByNs } = Top.getResourcesByNs(rsp);
 
         this.setState({
           resourcesByNs,
@@ -116,42 +116,31 @@ class Top extends React.Component {
       .catch(this.handleApiError);
   }
 
-  handleApiError = e => {
-    if (e.isCanceled) {
-      return;
-    }
-
-    this.setState({
-      pendingRequests: false,
-      error: e,
-    });
-  }
-
   updateQuery = query => {
     this.setState({
       query,
     });
-  }
+  };
 
   handleTapStart = () => {
     this.setState({
       tapRequestInProgress: true,
     });
-  }
+  };
 
   handleTapStop = () => {
     this.setState({
       tapRequestInProgress: false,
       tapIsClosing: true,
     });
-  }
+  };
 
   handleTapClear = () => {
     this.setState({
       error: null,
       query: emptyTapQuery(),
     });
-  }
+  };
 
   updateTapClosingState() {
     this.setState({

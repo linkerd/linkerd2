@@ -27,8 +27,8 @@ func newCheckOptions() *checkOptions {
 }
 
 func (options *checkOptions) validate() error {
-	if options.output != healthcheck.TableOutput && options.output != healthcheck.JSONOutput {
-		return fmt.Errorf("Invalid output type '%s'. Supported output types are: %s, %s", options.output, healthcheck.JSONOutput, healthcheck.TableOutput)
+	if options.output != healthcheck.TableOutput && options.output != healthcheck.JSONOutput && options.output != healthcheck.ShortOutput {
+		return fmt.Errorf("Invalid output type '%s'. Supported output types are: %s, %s, %s", options.output, healthcheck.JSONOutput, healthcheck.TableOutput, healthcheck.ShortOutput)
 	}
 	return nil
 }
@@ -92,7 +92,8 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	if options.proxy {
 		hc.AppendCategories(hc.VizDataPlaneCategory())
 	}
-	success := healthcheck.RunChecks(wout, werr, hc, options.output)
+	success, warning := healthcheck.RunChecks(wout, werr, hc, options.output)
+	healthcheck.PrintChecksResult(wout, options.output, success, warning)
 
 	if !success {
 		os.Exit(1)

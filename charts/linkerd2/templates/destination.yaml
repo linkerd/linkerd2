@@ -147,6 +147,9 @@ spec:
   template:
     metadata:
       annotations:
+        {{- if (or (empty .Values.cliVersion) (not (eq (.Values.stage | toString) "control-plane"))) }}
+        checksum/config: {{ include (print $.Template.BasePath "/destination-rbac.yaml") . | sha256sum }}
+        {{- end }}
         {{ include "partials.annotations.created-by" . }}
         {{- include "partials.proxy.annotations" . | nindent 8}}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
@@ -248,6 +251,7 @@ spec:
           readOnly: true
       - args:
         - --admin-addr=0.0.0.0:9990
+        - --control-plane-namespace={{.Values.namespace}}
         - --grpc-addr=0.0.0.0:8090
         - --admission-addr=0.0.0.0:9443
         - --cluster-networks={{.Values.clusterNetworks}}
@@ -260,21 +264,25 @@ spec:
         livenessProbe:
           httpGet:
             path: /ready
-            port: admin-http
+            port: admin
           initialDelaySeconds: 10
         name: policy
         ports:
         - containerPort: 8090
           name: grpc
         - containerPort: 9990
-          name: admin-http
+          {{- /*
+              Rename the port to `admin-http` once `/metrics` endpoint is supported
+              to include this in the prometheus scrapes.
+          */}}
+          name: admin
         - containerPort: 9443
           name: policy-https
         readinessProbe:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: admin-http
+            port: admin
         {{- $res := .Values.policyController.resources | default .Values.destinationResources }}
         {{- if $res }}
         {{- include "partials.resources" $res | nindent 8 }}
@@ -294,6 +302,9 @@ spec:
       {{- $_ := set $tree.Values.proxyInit "ignoreOutboundPorts" "443" }}
       - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
+      {{- if .Values.priorityClassName -}}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{ end -}}
       serviceAccountName: linkerd-destination
       volumes:
       - name: sp-tls
@@ -304,5 +315,8 @@ spec:
           secretName: linkerd-policy-validator-k8s-tls
       {{ if not .Values.cniEnabled -}}
       - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
+      {{if .Values.identity.serviceAccountTokenProjection -}}
+      - {{- include "partials.proxy.volumes.service-account-token" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}

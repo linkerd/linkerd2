@@ -24,7 +24,7 @@ function getSteps(numResources, resource) {
   ];
 }
 
-const CallToAction = ({ resource, numResources, classes }) => {
+const CallToAction = function({ resource, numResources, classes }) {
   const steps = getSteps(numResources, resource);
   const lastStep = steps.length - 1; // hardcode the last step as the active step
 

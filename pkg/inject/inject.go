@@ -57,6 +57,8 @@ var (
 		k8s.ProxyLogLevelAnnotation,
 		k8s.ProxyMemoryLimitAnnotation,
 		k8s.ProxyMemoryRequestAnnotation,
+		k8s.ProxyEphemeralStorageLimitAnnotation,
+		k8s.ProxyEphemeralStorageRequestAnnotation,
 		k8s.ProxyUIDAnnotation,
 		k8s.ProxyVersionOverrideAnnotation,
 		k8s.ProxyRequireIdentityOnInboundPortsAnnotation,
@@ -975,6 +977,15 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		}
 	}
 
+	if override, ok := annotations[k8s.ProxyEphemeralStorageRequestAnnotation]; ok {
+		_, err := k8sResource.ParseQuantity(override)
+		if err != nil {
+			log.Warnf("%s (%s)", err, k8s.ProxyEphemeralStorageRequestAnnotation)
+		} else {
+			values.Proxy.Resources.EphemeralStorage.Request = override
+		}
+	}
+
 	if override, ok := annotations[k8s.ProxyCPULimitAnnotation]; ok {
 		q, err := k8sResource.ParseQuantity(override)
 		if err != nil {
@@ -996,6 +1007,15 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 			log.Warnf("%s (%s)", err, k8s.ProxyMemoryLimitAnnotation)
 		} else {
 			values.Proxy.Resources.Memory.Limit = override
+		}
+	}
+
+	if override, ok := annotations[k8s.ProxyEphemeralStorageLimitAnnotation]; ok {
+		_, err := k8sResource.ParseQuantity(override)
+		if err != nil {
+			log.Warnf("%s (%s)", err, k8s.ProxyEphemeralStorageLimitAnnotation)
+		} else {
+			values.Proxy.Resources.EphemeralStorage.Limit = override
 		}
 	}
 

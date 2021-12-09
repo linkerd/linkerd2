@@ -437,7 +437,7 @@ func renderTapEventJSON(event *tapPb.TapEvent, _ string) string {
 	if err != nil {
 		return fmt.Sprintf("{\"error marshalling JSON\": \"%s\"}", err)
 	}
-	return fmt.Sprintf("%s", e)
+	return string(e[:])
 }
 
 // Map public API `TapEvent`s to `displayTapEvent`s

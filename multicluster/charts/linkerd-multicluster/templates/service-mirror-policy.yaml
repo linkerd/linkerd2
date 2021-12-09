@@ -1,0 +1,34 @@
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  namespace: {{.Values.namespace}}
+  name: service-mirror
+  labels:
+    linkerd.io/control-plane-component: linkerd-service-mirror
+spec:
+  podSelector:
+    matchLabels:
+      linkerd.io/control-plane-component: linkerd-service-mirror
+  port: admin-http
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: ServerAuthorization
+metadata:
+  namespace: {{.Values.namespace}}
+  name: service-mirror
+  labels:
+    linkerd.io/control-plane-component: linkerd-service-mirror
+spec:
+  server:
+    name: service-mirror
+  client:
+    # In order to use `linkerd mc gateways` you need viz' Prometheus instance
+    # to be able to reach the service-mirror. In order to also have a separate
+    # Prometheus scrape the service-mirror an additional ServerAuthorization
+    # resource should be created.
+    meshTLS:
+      serviceAccounts:
+      - name: prometheus
+        namespace: linkerd-viz

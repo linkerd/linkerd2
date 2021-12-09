@@ -21,6 +21,9 @@ package externalversions
 import (
 	"fmt"
 
+	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha1"
+	v1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
+	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	v1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
@@ -52,9 +55,21 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=linkerd.io, Version=v1alpha2
+	// Group=link, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithResource("links"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Link().V1alpha1().Links().Informer()}, nil
+
+		// Group=linkerd.io, Version=v1alpha2
 	case v1alpha2.SchemeGroupVersion.WithResource("serviceprofiles"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Linkerd().V1alpha2().ServiceProfiles().Informer()}, nil
+
+		// Group=server, Version=v1beta1
+	case v1beta1.SchemeGroupVersion.WithResource("servers"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Server().V1beta1().Servers().Informer()}, nil
+
+		// Group=serverauthorization, Version=v1beta1
+	case serverauthorizationv1beta1.SchemeGroupVersion.WithResource("serverauthorizations"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Serverauthorization().V1beta1().ServerAuthorizations().Informer()}, nil
 
 	}
 
