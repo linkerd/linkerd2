@@ -17,8 +17,7 @@ issue](https://github.com/linkerd/linkerd2/issues/new/choose)! (thanks
 * Fixed autocompletion of the `--context` flag (thanks @mikutas!)
 * Added support for conditionally setting `proxy-init`'s `privileged: true` only
   when needed (thanks @alex-berger!)
-* Added `GetProfile` protocol updates for endpoints that are affected by Servers
-  on the cluster
+* Added support for controlling opaque ports through the Server resource
 * Fixed an issue where `linkerd check` would compare proxy versions of
   uninjected pods leading to incorrect errors
 * Relaxed extension checks so that the CLI still works when not all extension
