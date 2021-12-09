@@ -1010,7 +1010,7 @@ func TestCheckConfigPostInstall(t *testing.T) {
 }
 
 func TestCheckPostInstall(t *testing.T) {
-	testCheckCommand(t, "proxy", TestHelper.GetVersion(), "", "")
+	testCheckCommand(t, "proxy", TestHelper.GetVersion(), "", TestHelper.GetLinkerdNamespace())
 }
 
 func TestCheckViz(t *testing.T) {
