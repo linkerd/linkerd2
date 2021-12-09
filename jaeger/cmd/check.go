@@ -110,7 +110,7 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 					return err
 				}
 
-				return healthcheck.CheckPodsRunning(pods, "")
+				return healthcheck.CheckPodsRunning(pods, jaegerNamespace)
 
 			}))
 
