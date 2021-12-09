@@ -397,6 +397,12 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 				return nil
 			}),
 
+		flag.NewStringFlag(proxyFlags, "default-inbound-policy", defaults.Proxy.DefaultInboundPolicy, "Inbound policy to use to control inbound access to the proxy",
+			func(values *l5dcharts.Values, value string) error {
+				values.Proxy.DefaultInboundPolicy = value
+				return nil
+			}),
+
 		// Deprecated flags
 
 		flag.NewStringFlag(proxyFlags, "proxy-memory", defaults.Proxy.Resources.Memory.Request, "Amount of Memory that the proxy sidecar requests",

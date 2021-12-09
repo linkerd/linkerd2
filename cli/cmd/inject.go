@@ -486,6 +486,10 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 		}
 	}
 
+	if proxy.DefaultInboundPolicy != baseProxy.DefaultInboundPolicy {
+		overrideAnnotations[k8s.ProxyDefaultInboundPolicyAnnotation] = proxy.DefaultInboundPolicy
+	}
+
 	// Set fields that can't be converted into annotations
 	values.Namespace = controlPlaneNamespace
 
