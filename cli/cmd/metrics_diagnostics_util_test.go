@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -58,6 +60,41 @@ spec:
 					t.Fatalf("Unexpected error (Expected: %s, Got: %s)", test.err, err)
 				}
 			}
+		})
+	}
+}
+
+func Test_obfuscateMetrics(t *testing.T) {
+	tests := []struct {
+		inputFileName  string
+		goldenFileName string
+		wantErr        bool
+	}{
+		{
+			inputFileName:  "obfuscate-diagnostics-proxy-metrics.input",
+			goldenFileName: "obfuscate-diagnostics-proxy-metrics.golden",
+			wantErr:        false,
+		},
+	}
+	for i, tc := range tests {
+		tc := tc
+		t.Run(fmt.Sprintf("%d: %s", i, tc.inputFileName), func(t *testing.T) {
+			file, err := os.Open("testdata/" + tc.inputFileName)
+			if err != nil {
+				t.Errorf("error opening test input file: %v\n", err)
+			}
+
+			fileBytes, err := ioutil.ReadAll(file)
+			if err != nil {
+				t.Errorf("error reading test input file: %v\n", err)
+			}
+
+			got, err := obfuscateMetrics(fileBytes)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("obfuscateMetrics() error = %v, wantErr %v", err, tc.wantErr)
+				return
+			}
+			testDataDiffer.DiffTestdata(t, tc.goldenFileName, string(got))
 		})
 	}
 }

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -10,6 +12,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/prometheus/common/expfmt"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -125,12 +128,13 @@ func getMetrics(
 		}(pod)
 	}
 
+wait:
 	for {
 		select {
 		case result := <-resultChan:
 			results = append(results, result)
 		case <-time.After(waitingTime):
-			break // timed out
+			break wait // timed out
 		}
 		if atomic.LoadInt32(&activeRoutines) == 0 {
 			break
@@ -140,4 +144,44 @@ func getMetrics(
 	sort.Sort(byResult(results))
 
 	return results
+}
+
+var obfuscationMap = map[string]struct{}{
+	"authority":     {},
+	"client_id":     {},
+	"server_id":     {},
+	"target_addr":   {},
+	"dst_service":   {},
+	"dst_namespace": {},
+}
+
+func obfuscateMetrics(metrics []byte) ([]byte, error) {
+	reader := bytes.NewReader(metrics)
+
+	var metricsParser expfmt.TextParser
+
+	parsedMetrics, err := metricsParser.TextToMetricFamilies(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	var writer bytes.Buffer
+	for _, v := range parsedMetrics {
+		for _, m := range v.Metric {
+			for _, l := range m.Label {
+				if _, ok := obfuscationMap[l.GetName()]; ok {
+					obfuscatedValue := obfuscate(l.GetValue())
+					l.Value = &obfuscatedValue
+				}
+			}
+		}
+		expfmt.MetricFamilyToText(&writer, v)
+	}
+
+	return writer.Bytes(), nil
+}
+
+func obfuscate(s string) string {
+	hash := sha256.Sum256([]byte(s))
+	return fmt.Sprintf("%x", hash[:4])
 }

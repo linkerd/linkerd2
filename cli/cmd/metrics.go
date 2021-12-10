@@ -13,11 +13,13 @@ import (
 type metricsOptions struct {
 	namespace string
 	pod       string
+	obfuscate bool
 }
 
 func newMetricsOptions() *metricsOptions {
 	return &metricsOptions{
-		pod: "",
+		pod:       "",
+		obfuscate: false,
 	}
 }
 
@@ -85,11 +87,20 @@ func newCmdMetrics() *cobra.Command {
 			var buf bytes.Buffer
 			for i, result := range results {
 				content := fmt.Sprintf("#\n# POD %s (%d of %d)\n#\n", result.pod, i+1, len(results))
-				if result.err == nil {
+				switch {
+				case result.err != nil:
+					content += fmt.Sprintf("# ERROR: %s\n", result.err)
+				case options.obfuscate:
+					obfuscatedMetrics, err := obfuscateMetrics(result.metrics)
+					if err != nil {
+						content += fmt.Sprintf("# ERROR %s\n", err)
+					} else {
+						content += string(obfuscatedMetrics)
+					}
+				default:
 					content += string(result.metrics)
-				} else {
-					content += fmt.Sprintf("# ERROR %s\n", result.err)
 				}
+
 				buf.WriteString(content)
 			}
 			fmt.Printf("%s", buf.String())
@@ -99,6 +110,7 @@ func newCmdMetrics() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of resource")
+	cmd.PersistentFlags().BoolVar(&options.obfuscate, "obfuscate", options.obfuscate, "Obfuscate sensitive information")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(cmd, []string{"namespace"},
 		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
