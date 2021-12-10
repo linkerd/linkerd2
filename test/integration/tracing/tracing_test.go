@@ -90,11 +90,16 @@ func TestTracing(t *testing.T) {
 		}
 
 		tpl := template.Must(template.ParseFiles("testdata" + "/" + golden))
+		versionErr := healthcheck.CheckProxyVersionsUpToDate(pods, version.Channels{})
+		versionErrMsg := ""
+		if versionErr != nil {
+			versionErrMsg = versionErr.Error()
+		}
 		vars := struct {
 			ProxyVersionErr string
 			HintURL         string
 		}{
-			healthcheck.CheckProxyVersionsUpToDate(pods, version.Channels{}).Error(),
+			versionErrMsg,
 			healthcheck.HintBaseURL(TestHelper.GetVersion()),
 		}
 
