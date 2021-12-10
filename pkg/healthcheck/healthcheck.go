@@ -1879,7 +1879,9 @@ func (hc *HealthChecker) checkClusterNetworks(ctx context.Context) error {
 		return &SkipError{Reason: podCIDRUnavailableSkipReason}
 	}
 	if len(badPodCIDRS) > 0 {
-		return fmt.Errorf("node has podCIDR(s) %v which are not contained in the Linkerd clusterNetworks.\n\tTry installing linkerd via --set clusterNetworks=%s", badPodCIDRS, strings.Join(badPodCIDRS, ","))
+		sort.Strings(badPodCIDRS)
+		return fmt.Errorf("node has podCIDR(s) %v which are not contained in the Linkerd clusterNetworks.\n\tTry installing linkerd via --set clusterNetworks=\"%s\"",
+			badPodCIDRS, strings.Join(badPodCIDRS, "\\,"))
 	}
 	return nil
 }
