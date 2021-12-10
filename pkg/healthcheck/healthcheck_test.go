@@ -2225,7 +2225,6 @@ data:
     imagePullPolicy: ImagePullPolicy
     imagePullSecrets: null
     linkerdVersion: ""
-    namespace: Namespace
     prometheusUrl: ""
     proxy:
       capabilities: null
@@ -2280,7 +2279,6 @@ data:
     heartbeatSchedule: ""
     identityProxyResources: null
     identityResources: null
-    installNamespace: true
     nodeSelector:
       kubernetes.io/os: linux
     proxyInjectorProxyResources: null
@@ -2295,10 +2293,8 @@ data:
 				ControllerUID:          2103,
 				EnableH2Upgrade:        true,
 				WebhookFailurePolicy:   "WebhookFailurePolicy",
-				InstallNamespace:       true,
 				NodeSelector:           defaultValues.NodeSelector,
 				Tolerations:            defaultValues.Tolerations,
-				Namespace:              "Namespace",
 				ClusterDomain:          "cluster.local",
 				ClusterNetworks:        "ClusterNetworks",
 				ImagePullPolicy:        "ImagePullPolicy",
@@ -2386,7 +2382,6 @@ data:
       imagePullPolicy: ImagePullPolicy
       imagePullSecrets: null
       linkerdVersion: ""
-      namespace: Namespace
       prometheusUrl: ""
       proxy:
         capabilities: null
@@ -2441,7 +2436,6 @@ data:
     heartbeatSchedule: ""
     identityProxyResources: null
     identityResources: null
-    installNamespace: true
     nodeSelector:
       kubernetes.io/os: linux
     proxyInjectorProxyResources: null
@@ -2456,10 +2450,8 @@ data:
 				ControllerUID:          2103,
 				EnableH2Upgrade:        true,
 				WebhookFailurePolicy:   "WebhookFailurePolicy",
-				InstallNamespace:       true,
 				NodeSelector:           defaultValues.NodeSelector,
 				Tolerations:            defaultValues.Tolerations,
-				Namespace:              "Namespace",
 				ClusterDomain:          "cluster.local",
 				ClusterNetworks:        "ClusterNetworks",
 				ImagePullPolicy:        "ImagePullPolicy",

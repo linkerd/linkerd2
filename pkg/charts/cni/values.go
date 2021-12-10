@@ -17,7 +17,6 @@ const (
 
 // Values contains the top-level elements in the cni Helm chart
 type Values struct {
-	Namespace           string `json:"namespace"`
 	InboundProxyPort    uint   `json:"inboundProxyPort"`
 	OutboundProxyPort   uint   `json:"outboundProxyPort"`
 	IgnoreInboundPorts  string `json:"ignoreInboundPorts"`
@@ -32,7 +31,6 @@ type Values struct {
 	DestCNIBinDir       string `json:"destCNIBinDir"`
 	UseWaitFlag         bool   `json:"useWaitFlag"`
 	PriorityClassName   string `json:"priorityClassName"`
-	InstallNamespace    bool   `json:"installNamespace"`
 	ProxyAdminPort      string `json:"proxyAdminPort"`
 	ProxyControlPort    string `json:"proxyControlPort"`
 }

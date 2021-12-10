@@ -1,21 +1,7 @@
 ---
-# Source: linkerd2/templates/namespace.yaml
+# Source: linkerd-control-plane/templates/namespace.yaml
 ---
-###
-### Linkerd Namespace
-###
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: linkerd
-  annotations:
-    linkerd.io/inject: disabled
-  labels:
-    linkerd.io/is-control-plane: "true"
-    config.linkerd.io/admission-webhooks: disabled
-    linkerd.io/control-plane-ns: linkerd
----
-# Source: linkerd2/templates/identity-rbac.yaml
+# Source: linkerd-control-plane/templates/identity-rbac.yaml
 ---
 ###
 ### Identity Controller Service RBAC
@@ -23,10 +9,10 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-linkerd-identity
+  name: linkerd-linkerd-dev-identity
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 rules:
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
@@ -41,29 +27,29 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-linkerd-identity
+  name: linkerd-linkerd-dev-identity
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: linkerd-linkerd-identity
+  name: linkerd-linkerd-dev-identity
 subjects:
 - kind: ServiceAccount
   name: linkerd-identity
-  namespace: linkerd
+  namespace: linkerd-dev
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-identity
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 ---
-# Source: linkerd2/templates/destination-rbac.yaml
+# Source: linkerd-control-plane/templates/destination-rbac.yaml
 ---
 ###
 ### Destination Controller Service
@@ -71,10 +57,10 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-linkerd-destination
+  name: linkerd-linkerd-dev-destination
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 rules:
 - apiGroups: ["apps"]
   resources: ["replicasets"]
@@ -95,36 +81,36 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-linkerd-destination
+  name: linkerd-linkerd-dev-destination
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: linkerd-linkerd-destination
+  name: linkerd-linkerd-dev-destination
 subjects:
 - kind: ServiceAccount
   name: linkerd-destination
-  namespace: linkerd
+  namespace: linkerd-dev
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-destination
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 ---
 kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-sp-validator-k8s-tls
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 type: kubernetes.io/tls
@@ -138,7 +124,7 @@ metadata:
   name: linkerd-sp-validator-webhook-config
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
   namespaceSelector:
@@ -150,10 +136,10 @@ webhooks:
   clientConfig:
     service:
       name: linkerd-sp-validator
-      namespace: linkerd
+      namespace: linkerd-dev
       path: "/"
     caBundle: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1jYS1idW5kbGU=
-  failurePolicy: Fail
+  failurePolicy: Ignore
   admissionReviewVersions: ["v1", "v1beta1"]
   rules:
   - operations: ["CREATE", "UPDATE"]
@@ -166,10 +152,10 @@ kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-policy-validator-k8s-tls
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 type: kubernetes.io/tls
@@ -183,7 +169,7 @@ metadata:
   name: linkerd-policy-validator-webhook-config
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 webhooks:
 - name: linkerd-policy-validator.linkerd.io
   namespaceSelector:
@@ -195,10 +181,10 @@ webhooks:
   clientConfig:
     service:
       name: linkerd-policy-validator
-      namespace: linkerd
+      namespace: linkerd-dev
       path: "/"
     caBundle: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1jYS1idW5kbGU=
-  failurePolicy: Fail
+  failurePolicy: Ignore
   admissionReviewVersions: ["v1", "v1beta1"]
   rules:
   - operations: ["CREATE", "UPDATE"]
@@ -214,7 +200,7 @@ metadata:
   labels:
     app.kubernetes.io/part-of: Linkerd
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 rules:
   - apiGroups:
       - ""
@@ -241,7 +227,7 @@ metadata:
   labels:
     app.kubernetes.io/part-of: Linkerd
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -249,9 +235,9 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: linkerd-destination
-    namespace: linkerd
+    namespace: linkerd-dev
 ---
-# Source: linkerd2/templates/heartbeat-rbac.yaml
+# Source: linkerd-control-plane/templates/heartbeat-rbac.yaml
 ---
 ###
 ### Heartbeat RBAC
@@ -260,9 +246,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-heartbeat
-  namespace: linkerd
+  
   labels:
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 rules:
 - apiGroups: [""]
   resources: ["configmaps"]
@@ -273,9 +259,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: linkerd-heartbeat
-  namespace: linkerd
+  
   labels:
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 roleRef:
   kind: Role
   name: linkerd-heartbeat
@@ -283,14 +269,14 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-heartbeat
-  namespace: linkerd
+  namespace: linkerd-dev
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: linkerd-heartbeat
   labels:
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -304,7 +290,7 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-heartbeat
   labels:
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 roleRef:
   kind: ClusterRole
   name: linkerd-heartbeat
@@ -312,729 +298,18 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-heartbeat
-  namespace: linkerd
+  namespace: linkerd-dev
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-heartbeat
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: heartbeat
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 ---
-# Source: linkerd2/templates/policy-crd.yaml
----
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: servers.policy.linkerd.io
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerd-version
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-spec:
-  group: policy.linkerd.io
-  names:
-    kind: Server
-    plural: servers
-    singular: server
-    shortNames: [srv]
-  scope: Namespaced
-  versions:
-    - name: v1alpha1
-      served: true
-      storage: false
-      deprecated: true
-      deprecationWarning: "policy.linkerd.io/v1alpha1 Server is deprecated; use policy.linkerd.io/v1beta1 Server"
-      schema:
-        openAPIV3Schema:
-          type: object
-          required: [spec]
-          properties:
-            spec:
-              type: object
-              required:
-                - podSelector
-                - port
-              properties:
-                podSelector:
-                  type: object
-                  description: >-
-                    Selects pods in the same namespace.
-                  oneOf:
-                    - required: [matchExpressions]
-                    - required: [matchLabels]
-                  properties:
-                    matchLabels:
-                      type: object
-                      x-kubernetes-preserve-unknown-fields: true
-                    matchExpressions:
-                      type: array
-                      items:
-                        type: object
-                        required: [key, operator]
-                        properties:
-                          key:
-                            type: string
-                          operator:
-                            type: string
-                            enum: [In, NotIn, Exists, DoesNotExist]
-                          values:
-                            type: array
-                            items:
-                              type: string
-                port:
-                  description: >-
-                    A port name or number. Must exist in a pod spec.
-                  x-kubernetes-int-or-string: true
-                proxyProtocol:
-                  description: >-
-                    Configures protocol discovery for inbound connections.
-
-                    Supersedes the `config.linkerd.io/opaque-ports` annotation.
-                  type: string
-                  default: unknown
-                  enum:
-                    - unknown
-                    - HTTP/1
-                    - HTTP/2
-                    - gRPC
-                    - opaque
-                    - TLS
-    - name: v1beta1
-      served: true
-      storage: true
-      schema:
-        openAPIV3Schema:
-          type: object
-          required: [spec]
-          properties:
-            spec:
-              type: object
-              required:
-                - podSelector
-                - port
-              properties:
-                podSelector:
-                  type: object
-                  description: >-
-                    Selects pods in the same namespace.
-                  oneOf:
-                    - required: [matchExpressions]
-                    - required: [matchLabels]
-                  properties:
-                    matchLabels:
-                      type: object
-                      x-kubernetes-preserve-unknown-fields: true
-                    matchExpressions:
-                      type: array
-                      items:
-                        type: object
-                        required: [key, operator]
-                        properties:
-                          key:
-                            type: string
-                          operator:
-                            type: string
-                            enum: [In, NotIn, Exists, DoesNotExist]
-                          values:
-                            type: array
-                            items:
-                              type: string
-                port:
-                  description: >-
-                    A port name or number. Must exist in a pod spec.
-                  x-kubernetes-int-or-string: true
-                proxyProtocol:
-                  description: >-
-                    Configures protocol discovery for inbound connections.
-
-                    Supersedes the `config.linkerd.io/opaque-ports` annotation.
-                  type: string
-                  default: unknown
-                  enum:
-                    - unknown
-                    - HTTP/1
-                    - HTTP/2
-                    - gRPC
-                    - opaque
-                    - TLS
-      additionalPrinterColumns:
-      - name: Port
-        type: string
-        description: The port the server is listening on
-        jsonPath: .spec.port
-      - name: Protocol
-        type: string
-        description: The protocol of the server
-        jsonPath: .spec.proxyProtocol
----
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: serverauthorizations.policy.linkerd.io
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerd-version
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-spec:
-  group: policy.linkerd.io
-  scope: Namespaced
-  names:
-    kind: ServerAuthorization
-    plural: serverauthorizations
-    singular: serverauthorization
-    shortNames: [saz]
-  versions:
-    - name: v1alpha1
-      served: true
-      storage: false
-      deprecated: true
-      deprecationWarning: "policy.linkerd.io/v1alpha1 ServerAuthorization is deprecated; use policy.linkerd.io/v1beta1 ServerAuthorization"
-      schema:
-        openAPIV3Schema:
-          type: object
-          required: [spec]
-          properties:
-            spec:
-              description: >-
-                Authorizes clients to communicate with Linkerd-proxied servers.
-              type: object
-              required: [server, client]
-              properties:
-                server:
-                  description: >-
-                    Identifies servers in the same namespace for which this
-                    authorization applies.
-
-                    Only one of `name` or `selector` may be specified.
-                  type: object
-                  oneOf:
-                    - required: [name]
-                    - required: [selector]
-                  properties:
-                    name:
-                      description: References a `Server` instance by name
-                      type: string
-                      pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
-                    selector:
-                      description: >-
-                        A label query over servers on which this authorization applies.
-                      type: object
-                      oneOf:
-                        - required: [matchLabels]
-                        - required: [matchExpressions]
-                      properties:
-                        matchLabels:
-                          type: object
-                          x-kubernetes-preserve-unknown-fields: true
-                        matchExpressions:
-                          type: array
-                          items:
-                            type: object
-                            required: [key, operator]
-                            properties:
-                              key:
-                                type: string
-                              operator:
-                                type: string
-                                enum: [In, NotIn, Exists, DoesNotExist]
-                              values:
-                                type: array
-                                items:
-                                  type: string
-                client:
-                  description:  Describes clients authorized to access a server.
-                  type: object
-                  oneOf:
-                    - required: [meshTLS]
-                    - required: [unauthenticated]
-                  properties:
-                    networks:
-                      description: >-
-                        Limits the client IP addresses to which this
-                        authorization applies. If unset, the server chooses a
-                        default (typically, all IPs or the cluster's pod
-                        network).
-                      type: array
-                      items:
-                        type: object
-                        required: [cidr]
-                        properties:
-                          cidr:
-                            type: string
-                          except:
-                            type: array
-                            items:
-                              type: string
-                    unauthenticated:
-                      description: >-
-                        Authorizes unauthenticated clients to access a server.
-                      type: boolean
-                    meshTLS:
-                      type: object
-                      oneOf:
-                        - required: [unauthenticatedTLS]
-                        - required: [identities]
-                        - required: [serviceAccounts]
-                      properties:
-                        unauthenticatedTLS:
-                          type: boolean
-                          description: >-
-                            Indicates that no client identity is required for
-                            communication.
-
-                            This is mostly important for the identity
-                            controller, which must terminate TLS connections
-                            from clients that do not yet have a certificate.
-                        identities:
-                          description: >-
-                            Authorizes clients with the provided proxy identity
-                            strings (as provided via MTLS)
-
-                            The `*` prefix can be used to match all identities in
-                            a domain. An identity string of `*` indicates that
-                            all authentication clients are authorized.
-                          type: array
-                          items:
-                            type: string
-                            pattern: '^(\*|[a-z0-9]([-a-z0-9]*[a-z0-9])?)(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$'
-                        serviceAccounts:
-                          description: >-
-                            Authorizes clients with the provided proxy identity
-                            service accounts (as provided via MTLS)
-                          type: array
-                          items:
-                            type: object
-                            required: [name]
-                            properties:
-                              name:
-                                description: The ServiceAccount's name.
-                                type: string
-                                pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
-                              namespace:
-                                description: >-
-                                  The ServiceAccount's namespace. If unset, the
-                                  authorization's namespace is used.
-                                type: string
-                                pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
-    - name: v1beta1
-      served: true
-      storage: true
-      schema:
-        openAPIV3Schema:
-          type: object
-          required: [spec]
-          properties:
-            spec:
-              description: >-
-                Authorizes clients to communicate with Linkerd-proxied servers.
-              type: object
-              required: [server, client]
-              properties:
-                server:
-                  description: >-
-                    Identifies servers in the same namespace for which this
-                    authorization applies.
-
-                    Only one of `name` or `selector` may be specified.
-                  type: object
-                  oneOf:
-                    - required: [name]
-                    - required: [selector]
-                  properties:
-                    name:
-                      description: References a `Server` instance by name
-                      type: string
-                      pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
-                    selector:
-                      description: >-
-                        A label query over servers on which this authorization applies.
-                      type: object
-                      oneOf:
-                        - required: [matchLabels]
-                        - required: [matchExpressions]
-                      properties:
-                        matchLabels:
-                          type: object
-                          x-kubernetes-preserve-unknown-fields: true
-                        matchExpressions:
-                          type: array
-                          items:
-                            type: object
-                            required: [key, operator]
-                            properties:
-                              key:
-                                type: string
-                              operator:
-                                type: string
-                                enum: [In, NotIn, Exists, DoesNotExist]
-                              values:
-                                type: array
-                                items:
-                                  type: string
-                client:
-                  description:  Describes clients authorized to access a server.
-                  type: object
-                  oneOf:
-                    - required: [meshTLS]
-                    - required: [unauthenticated]
-                  properties:
-                    networks:
-                      description: >-
-                        Limits the client IP addresses to which this
-                        authorization applies. If unset, the server chooses a
-                        default (typically, all IPs or the cluster's pod
-                        network).
-                      type: array
-                      items:
-                        type: object
-                        required: [cidr]
-                        properties:
-                          cidr:
-                            type: string
-                          except:
-                            type: array
-                            items:
-                              type: string
-                    unauthenticated:
-                      description: >-
-                        Authorizes unauthenticated clients to access a server.
-                      type: boolean
-                    meshTLS:
-                      type: object
-                      oneOf:
-                        - required: [unauthenticatedTLS]
-                        - required: [identities]
-                        - required: [serviceAccounts]
-                      properties:
-                        unauthenticatedTLS:
-                          type: boolean
-                          description: >-
-                            Indicates that no client identity is required for
-                            communication.
-
-                            This is mostly important for the identity
-                            controller, which must terminate TLS connections
-                            from clients that do not yet have a certificate.
-                        identities:
-                          description: >-
-                            Authorizes clients with the provided proxy identity
-                            strings (as provided via MTLS)
-
-                            The `*` prefix can be used to match all identities in
-                            a domain. An identity string of `*` indicates that
-                            all authentication clients are authorized.
-                          type: array
-                          items:
-                            type: string
-                            pattern: '^(\*|[a-z0-9]([-a-z0-9]*[a-z0-9])?)(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$'
-                        serviceAccounts:
-                          description: >-
-                            Authorizes clients with the provided proxy identity
-                            service accounts (as provided via MTLS)
-                          type: array
-                          items:
-                            type: object
-                            required: [name]
-                            properties:
-                              name:
-                                description: The ServiceAccount's name.
-                                type: string
-                                pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
-                              namespace:
-                                description: >-
-                                  The ServiceAccount's namespace. If unset, the
-                                  authorization's namespace is used.
-                                type: string
-                                pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
-      additionalPrinterColumns:
-      - name: Server
-        type: string
-        description: The server that this grants access to
-        jsonPath: .spec.server.name
----
-# Source: linkerd2/templates/serviceprofile-crd.yaml
----
-###
-### Service Profile CRD
-###
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: serviceprofiles.linkerd.io
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerd-version
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-spec:
-  group: linkerd.io
-  versions:
-  - name: v1alpha1
-    served: true
-    storage: false
-    schema:
-      openAPIV3Schema:
-        type: object
-        properties:
-          spec:
-            type: object
-            description: Spec is the custom resource spec
-            required:
-            - routes
-            properties:
-              dstOverrides:
-                type: array
-                required:
-                - authority
-                - weight
-                items:
-                  type: object
-                  description: WeightedDst is a weighted alternate destination.
-                  properties:
-                    authority:
-                      type: string
-                    weight:
-                      x-kubernetes-int-or-string: true
-                      anyOf:
-                      - type: integer
-                      - type: string
-                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-              opaquePorts:
-                type: array
-                items:
-                  type: string
-              retryBudget:
-                type: object
-                required:
-                - minRetriesPerSecond
-                - retryRatio
-                - ttl
-                description: RetryBudget describes the maximum number of retries that should be issued to this service.
-                properties:
-                  minRetriesPerSecond:
-                    format: int32
-                    type: integer
-                  retryRatio:
-                    type: number
-                    format: float
-                  ttl:
-                    type: string
-              routes:
-                type: array
-                items:
-                  type: object
-                  description: RouteSpec specifies a Route resource.
-                  required:
-                  - condition
-                  - name
-                  properties:
-                    condition:
-                      type: object
-                      description: RequestMatch describes the conditions under which to match a Route.
-                      properties:
-                        pathRegex:
-                          type: string
-                        method:
-                          type: string
-                        all:
-                          type: array
-                          items:
-                            type: object
-                            x-kubernetes-preserve-unknown-fields: true
-                        any:
-                          type: array
-                          items:
-                            type: object
-                            x-kubernetes-preserve-unknown-fields: true
-                        not:
-                          type: array
-                          items:
-                            type: object
-                            x-kubernetes-preserve-unknown-fields: true
-                    isRetryable:
-                      type: boolean
-                    name:
-                      type: string
-                    timeout:
-                      type: string
-                    responseClasses:
-                      type: array
-                      items:
-                        type: object
-                        required:
-                        - condition
-                        description: ResponseClass describes how to classify a response (e.g. success or failures).
-                        properties:
-                          condition:
-                            type: object
-                            description: ResponseMatch describes the conditions under
-                              which to classify a response.
-                            properties:
-                              all:
-                                type: array
-                                items:
-                                  type: object
-                                  x-kubernetes-preserve-unknown-fields: true
-                              any:
-                                type: array
-                                items:
-                                  type: object
-                                  x-kubernetes-preserve-unknown-fields: true
-                              not:
-                                type: array
-                                items:
-                                  type: object
-                                  x-kubernetes-preserve-unknown-fields: true
-                              status:
-                                type: object
-                                description: Range describes a range of integers (e.g. status codes).
-                                properties:
-                                  max:
-                                    format: int32
-                                    type: integer
-                                  min:
-                                    format: int32
-                                    type: integer
-                          isFailure:
-                            type: boolean
-  - name: v1alpha2
-    served: true
-    storage: true
-    schema:
-      openAPIV3Schema:
-        type: object
-        properties:
-          spec:
-            type: object
-            description: Spec is the custom resource spec
-            properties:
-              dstOverrides:
-                type: array
-                required:
-                - authority
-                - weight
-                items:
-                  type: object
-                  description: WeightedDst is a weighted alternate destination.
-                  properties:
-                    authority:
-                      type: string
-                    weight:
-                      x-kubernetes-int-or-string: true
-                      anyOf:
-                      - type: integer
-                      - type: string
-                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-              opaquePorts:
-                type: array
-                items:
-                  type: string
-              retryBudget:
-                type: object
-                required:
-                - minRetriesPerSecond
-                - retryRatio
-                - ttl
-                description: RetryBudget describes the maximum number of retries that should be issued to this service.
-                properties:
-                  minRetriesPerSecond:
-                    format: int32
-                    type: integer
-                  retryRatio:
-                    type: number
-                    format: float
-                  ttl:
-                    type: string
-              routes:
-                type: array
-                items:
-                  type: object
-                  description: RouteSpec specifies a Route resource.
-                  required:
-                  - condition
-                  - name
-                  properties:
-                    condition:
-                      type: object
-                      description: RequestMatch describes the conditions under which to match a Route.
-                      properties:
-                        pathRegex:
-                          type: string
-                        method:
-                          type: string
-                        all:
-                          type: array
-                          items:
-                            type: object
-                            x-kubernetes-preserve-unknown-fields: true
-                        any:
-                          type: array
-                          items:
-                            type: object
-                            x-kubernetes-preserve-unknown-fields: true
-                        not:
-                          type: array
-                          items:
-                            type: object
-                            x-kubernetes-preserve-unknown-fields: true
-                    isRetryable:
-                      type: boolean
-                    name:
-                      type: string
-                    timeout:
-                      type: string
-                    responseClasses:
-                      type: array
-                      items:
-                        type: object
-                        required:
-                        - condition
-                        description: ResponseClass describes how to classify a response (e.g. success or failures).
-                        properties:
-                          condition:
-                            type: object
-                            description: ResponseMatch describes the conditions under
-                              which to classify a response.
-                            properties:
-                              all:
-                                type: array
-                                items:
-                                  type: object
-                                  x-kubernetes-preserve-unknown-fields: true
-                              any:
-                                type: array
-                                items:
-                                  type: object
-                                  x-kubernetes-preserve-unknown-fields: true
-                              not:
-                                type: array
-                                items:
-                                  type: object
-                                  x-kubernetes-preserve-unknown-fields: true
-                              status:
-                                type: object
-                                description: Range describes a range of integers (e.g. status codes).
-                                properties:
-                                  max:
-                                    format: int32
-                                    type: integer
-                                  min:
-                                    format: int32
-                                    type: integer
-                          isFailure:
-                            type: boolean
-  scope: Namespaced
-  preserveUnknownFields: false
-  names:
-    plural: serviceprofiles
-    singular: serviceprofile
-    kind: ServiceProfile
-    shortNames:
-    - sp
----
-# Source: linkerd2/templates/proxy-injector-rbac.yaml
+# Source: linkerd-control-plane/templates/proxy-injector-rbac.yaml
 ---
 ###
 ### Proxy Injector RBAC
@@ -1042,10 +317,10 @@ spec:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-linkerd-proxy-injector
+  name: linkerd-linkerd-dev-proxy-injector
   labels:
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 rules:
 - apiGroups: [""]
   resources: ["events"]
@@ -1066,37 +341,37 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-linkerd-proxy-injector
+  name: linkerd-linkerd-dev-proxy-injector
   labels:
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 subjects:
 - kind: ServiceAccount
   name: linkerd-proxy-injector
-  namespace: linkerd
+  namespace: linkerd-dev
   apiGroup: ""
 roleRef:
   kind: ClusterRole
-  name: linkerd-linkerd-proxy-injector
+  name: linkerd-linkerd-dev-proxy-injector
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 ---
 kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector-k8s-tls
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 type: kubernetes.io/tls
@@ -1110,7 +385,7 @@ metadata:
   name: linkerd-proxy-injector-webhook-config
   labels:
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:
@@ -1122,10 +397,10 @@ webhooks:
   clientConfig:
     service:
       name: linkerd-proxy-injector
-      namespace: linkerd
+      namespace: linkerd-dev
       path: "/"
     caBundle: dGVzdC1wcm94eS1pbmplY3Rvci1jYS1idW5kbGU=
-  failurePolicy: Fail
+  failurePolicy: Ignore
   admissionReviewVersions: ["v1", "v1beta1"]
   rules:
   - operations: [ "CREATE" ]
@@ -1134,21 +409,22 @@ webhooks:
     resources: ["pods", "services"]
   sideEffects: None
 ---
-# Source: linkerd2/templates/psp.yaml
+# Source: linkerd-control-plane/templates/psp.yaml
 ---
-# Source: linkerd2/templates/config.yaml
+# Source: linkerd-control-plane/templates/config.yaml
 ---
 kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-config
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: controller
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 data:
+  linkerd-crds-chart-version: linkerd-crds-1.0.0-edge
   values: |
     cliVersion: ""
     clusterDomain: cluster.local
@@ -1160,7 +436,7 @@ data:
     controllerImageVersion: linkerd-version
     controllerLogFormat: plain
     controllerLogLevel: info
-    controllerReplicas: 3
+    controllerReplicas: 1
     controllerUID: 2103
     debugContainer:
       image:
@@ -1168,31 +444,13 @@ data:
         pullPolicy: ""
         version: test-debug-version
     destinationProxyResources: null
-    destinationResources:
-      cpu:
-        limit: ""
-        request: 100m
-      ephemeral-storage:
-        limit: ""
-        request: ""
-      memory:
-        limit: 250Mi
-        request: 50Mi
+    destinationResources: null
     disableHeartBeat: false
     enableEndpointSlices: true
     enableH2Upgrade: true
-    enablePodAntiAffinity: true
+    enablePodAntiAffinity: false
     grafanaUrl: ""
-    heartbeatResources:
-      cpu:
-        limit: ""
-        request: 100m
-      ephemeral-storage:
-        limit: ""
-        request: ""
-      memory:
-        limit: 250Mi
-        request: 50Mi
+    heartbeatResources: null
     heartbeatSchedule: 1 2 3 4 5
     highAvailability: false
     identity:
@@ -1205,23 +463,12 @@ data:
           crtPEM: test-crt-pem
       serviceAccountTokenProjection: true
     identityProxyResources: null
-    identityResources:
-      cpu:
-        limit: ""
-        request: 100m
-      ephemeral-storage:
-        limit: ""
-        request: ""
-      memory:
-        limit: 250Mi
-        request: 10Mi
+    identityResources: null
     identityTrustAnchorsPEM: test-trust-anchor
     identityTrustDomain: test.trust.domain
     imagePullPolicy: IfNotPresent
-    imagePullSecrets: null
-    installNamespace: true
+    imagePullSecrets: []
     linkerdVersion: linkerd-version
-    namespace: linkerd
     nodeSelector:
       kubernetes.io/os: linux
     podAnnotations: {}
@@ -1293,13 +540,13 @@ data:
       resources:
         cpu:
           limit: ""
-          request: 100m
+          request: ""
         ephemeral-storage:
           limit: ""
           request: ""
         memory:
-          limit: 250Mi
-          request: 20Mi
+          limit: ""
+          request: ""
       saMountPath: null
       uid: 2102
       waitBeforeExitSeconds: 0
@@ -1342,24 +589,15 @@ data:
           values:
           - disabled
     proxyInjectorProxyResources: null
-    proxyInjectorResources:
-      cpu:
-        limit: ""
-        request: 100m
-      ephemeral-storage:
-        limit: ""
-        request: ""
-      memory:
-        limit: 250Mi
-        request: 50Mi
+    proxyInjectorResources: null
     tap:
       caBundle: test-tap-ca-bundle
       crtPEM: test-tap-crt-pem
       keyPEM: test-tap-key-pem
     tolerations: null
-    webhookFailurePolicy: Fail
+    webhookFailurePolicy: Ignore
 ---
-# Source: linkerd2/templates/identity.yaml
+# Source: linkerd-control-plane/templates/identity.yaml
 ---
 ###
 ### Identity Controller Service
@@ -1369,10 +607,10 @@ kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-identity-issuer
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 data:
@@ -1383,10 +621,10 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-identity-trust-roots
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 data:
@@ -1397,10 +635,10 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-identity
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
@@ -1416,10 +654,10 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-identity-headless
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
@@ -1431,22 +669,6 @@ spec:
     port: 8080
     targetPort: 8080
 ---
-kind: PodDisruptionBudget
-apiVersion: policy/v1beta1
-metadata:
-  name: linkerd-identity
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerd-version
-spec:
-  maxUnavailable: 1
-  selector:
-    matchLabels:
-      linkerd.io/control-plane-component: identity
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1457,19 +679,16 @@ metadata:
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: linkerd-version
     linkerd.io/control-plane-component: identity
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   name: linkerd-identity
-  namespace: linkerd
+  
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: identity
-      linkerd.io/control-plane-ns: linkerd
+      linkerd.io/control-plane-ns: linkerd-dev
       linkerd.io/proxy-deployment: linkerd-identity
-  strategy:
-    rollingUpdate:
-      maxUnavailable: 1
   template:
     metadata:
       annotations:
@@ -1479,38 +698,18 @@ spec:
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: identity
-        linkerd.io/control-plane-ns: linkerd
-        linkerd.io/workload-ns: linkerd
+        linkerd.io/control-plane-ns: linkerd-dev
+        linkerd.io/workload-ns: linkerd-dev
         linkerd.io/proxy-deployment: linkerd-identity
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: linkerd.io/control-plane-component
-                  operator: In
-                  values:
-                  - identity
-              topologyKey: failure-domain.beta.kubernetes.io/zone
-            weight: 100
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: linkerd.io/control-plane-component
-                operator: In
-                values:
-                - identity
-            topologyKey: kubernetes.io/hostname
       containers:
       - args:
         - identity
         - -log-level=info
         - -log-format=plain
-        - -controller-namespace=linkerd
+        - -controller-namespace=linkerd-dev
         - -identity-trust-domain=test.trust.domain
         - -identity-issuance-lifetime=24h0m0s
         - -identity-clock-skew-allowance=20s
@@ -1536,12 +735,6 @@ spec:
           httpGet:
             path: /ready
             port: 9990
-        resources:
-          limits:
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "10Mi"
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -1569,11 +762,11 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst-headless.linkerd.svc.cluster.local.:8086
+          value: linkerd-dst-headless.linkerd-dev.svc.cluster.local.:8086
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_POLICY_SVC_ADDR
-          value: linkerd-policy.linkerd.svc.cluster.local.:8090
+          value: linkerd-policy.linkerd-dev.svc.cluster.local.:8090
         - name: LINKERD2_PROXY_POLICY_WORKLOAD
           value: "$(_pod_ns):$(_pod_name)"
         - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
@@ -1614,7 +807,7 @@ spec:
             fieldRef:
               fieldPath: spec.serviceAccountName
         - name: _l5d_ns
-          value: linkerd
+          value: linkerd-dev
         - name: _l5d_trustdomain
           value: test.trust.domain
         - name: LINKERD2_PROXY_IDENTITY_DIR
@@ -1629,13 +822,13 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
           value: localhost.:8080
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
-          value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.linkerd.test.trust.domain
+          value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.linkerd-dev.test.trust.domain
         - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
-          value: linkerd-identity.linkerd.serviceaccount.identity.linkerd.test.trust.domain
+          value: linkerd-identity.linkerd-dev.serviceaccount.identity.linkerd-dev.test.trust.domain
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
-          value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.test.trust.domain
+          value: linkerd-destination.linkerd-dev.serviceaccount.identity.linkerd-dev.test.trust.domain
         - name: LINKERD2_PROXY_POLICY_SVC_NAME
-          value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.test.trust.domain
+          value: linkerd-destination.linkerd-dev.serviceaccount.identity.linkerd-dev.test.trust.domain
         image: cr.l5d.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1655,11 +848,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
-          limits:
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -1726,7 +914,7 @@ spec:
           medium: Memory
         name: linkerd-identity-end-entity
 ---
-# Source: linkerd2/templates/destination.yaml
+# Source: linkerd-control-plane/templates/destination.yaml
 ---
 ###
 ### Destination Controller Service
@@ -1735,10 +923,10 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-dst
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
@@ -1754,10 +942,10 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-dst-headless
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
@@ -1773,10 +961,10 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-sp-validator
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
@@ -1792,10 +980,10 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-policy
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
@@ -1811,10 +999,10 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-policy-validator
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
@@ -1826,22 +1014,6 @@ spec:
     port: 443
     targetPort: policy-https
 ---
-kind: PodDisruptionBudget
-apiVersion: policy/v1beta1
-metadata:
-  name: linkerd-dst
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerd-version
-spec:
-  maxUnavailable: 1
-  selector:
-    matchLabels:
-      linkerd.io/control-plane-component: destination
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1852,55 +1024,32 @@ metadata:
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: linkerd-version
     linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   name: linkerd-destination
-  namespace: linkerd
+  
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: destination
-      linkerd.io/control-plane-ns: linkerd
+      linkerd.io/control-plane-ns: linkerd-dev
       linkerd.io/proxy-deployment: linkerd-destination
-  strategy:
-    rollingUpdate:
-      maxUnavailable: 1
   template:
     metadata:
       annotations:
-        checksum/config: 79404e88eb110c355862f4a931adbf1d33a3a7d51dfba4e552896d9b345694dc
+        linkerd.io/helm-release-version: "0"
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: destination
-        linkerd.io/control-plane-ns: linkerd
-        linkerd.io/workload-ns: linkerd
+        linkerd.io/control-plane-ns: linkerd-dev
+        linkerd.io/workload-ns: linkerd-dev
         linkerd.io/proxy-deployment: linkerd-destination
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: linkerd.io/control-plane-component
-                  operator: In
-                  values:
-                  - destination
-              topologyKey: failure-domain.beta.kubernetes.io/zone
-            weight: 100
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: linkerd.io/control-plane-component
-                operator: In
-                values:
-                - destination
-            topologyKey: kubernetes.io/hostname
       containers:
       - env:
         - name: _pod_name
@@ -1965,7 +1114,7 @@ spec:
             fieldRef:
               fieldPath: spec.serviceAccountName
         - name: _l5d_ns
-          value: linkerd
+          value: linkerd-dev
         - name: _l5d_trustdomain
           value: test.trust.domain
         - name: LINKERD2_PROXY_IDENTITY_DIR
@@ -1978,15 +1127,15 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/tokens/linkerd-identity-token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity-headless.linkerd.svc.cluster.local.:8080
+          value: linkerd-identity-headless.linkerd-dev.svc.cluster.local.:8080
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
-          value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.linkerd.test.trust.domain
+          value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.linkerd-dev.test.trust.domain
         - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
-          value: linkerd-identity.linkerd.serviceaccount.identity.linkerd.test.trust.domain
+          value: linkerd-identity.linkerd-dev.serviceaccount.identity.linkerd-dev.test.trust.domain
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
-          value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.test.trust.domain
+          value: linkerd-destination.linkerd-dev.serviceaccount.identity.linkerd-dev.test.trust.domain
         - name: LINKERD2_PROXY_POLICY_SVC_NAME
-          value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.test.trust.domain
+          value: linkerd-destination.linkerd-dev.serviceaccount.identity.linkerd-dev.test.trust.domain
         image: cr.l5d.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2006,11 +1155,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
-          limits:
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -2029,7 +1173,7 @@ spec:
       - args:
         - destination
         - -addr=:8086
-        - -controller-namespace=linkerd
+        - -controller-namespace=linkerd-dev
         - -enable-h2-upgrade=true
         - -log-level=info
         - -log-format=plain
@@ -2055,12 +1199,6 @@ spec:
           httpGet:
             path: /ready
             port: 9996
-        resources:
-          limits:
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "50Mi"
         securityContext:
           runAsUser: 2103
       - args:
@@ -2093,7 +1231,7 @@ spec:
           readOnly: true
       - args:
         - --admin-addr=0.0.0.0:9990
-        - --control-plane-namespace=linkerd
+        - --control-plane-namespace=linkerd-dev
         - --grpc-addr=0.0.0.0:8090
         - --admission-addr=0.0.0.0:9443
         - --cluster-networks=10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
@@ -2184,7 +1322,7 @@ spec:
           medium: Memory
         name: linkerd-identity-end-entity
 ---
-# Source: linkerd2/templates/heartbeat.yaml
+# Source: linkerd-control-plane/templates/heartbeat.yaml
 ---
 ###
 ### Heartbeat
@@ -2193,13 +1331,13 @@ apiVersion: batch/v1beta1
 kind: CronJob
 metadata:
   name: linkerd-heartbeat
-  namespace: linkerd
+  
   labels:
     app.kubernetes.io/name: heartbeat
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: linkerd-version
     linkerd.io/control-plane-component: heartbeat
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
@@ -2212,7 +1350,7 @@ spec:
         metadata:
           labels:
             linkerd.io/control-plane-component: heartbeat
-            linkerd.io/workload-ns: linkerd
+            linkerd.io/workload-ns: linkerd-dev
           annotations:
             linkerd.io/created-by: linkerd/helm linkerd-version
         spec:
@@ -2229,20 +1367,14 @@ spec:
               value: "the heartbeat controller does not use the proxy"
             args:
             - "heartbeat"
-            - "-controller-namespace=linkerd"
+            - "-controller-namespace=linkerd-dev"
             - "-log-level=info"
             - "-log-format=plain"
             - "-prometheus-url=http://prometheus.linkerd-viz.svc.cluster.local:9090"
-            resources:
-              limits:
-                memory: "250Mi"
-              requests:
-                cpu: "100m"
-                memory: "50Mi"
             securityContext:
               runAsUser: 2103
 ---
-# Source: linkerd2/templates/proxy-injector.yaml
+# Source: linkerd-control-plane/templates/proxy-injector.yaml
 ---
 ###
 ### Proxy Injector
@@ -2257,21 +1389,18 @@ metadata:
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: linkerd-version
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   name: linkerd-proxy-injector
-  namespace: linkerd
+  
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: proxy-injector
-  strategy:
-    rollingUpdate:
-      maxUnavailable: 1
   template:
     metadata:
       annotations:
-        checksum/config: cf6b4520e0ad2b0010db5a18443bd632c87ac0216f8f118e723e0f33f5842d7e
+        linkerd.io/helm-release-version: "0"
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
@@ -2279,32 +1408,12 @@ spec:
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: proxy-injector
-        linkerd.io/control-plane-ns: linkerd
-        linkerd.io/workload-ns: linkerd
+        linkerd.io/control-plane-ns: linkerd-dev
+        linkerd.io/workload-ns: linkerd-dev
         linkerd.io/proxy-deployment: linkerd-proxy-injector
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: linkerd.io/control-plane-component
-                  operator: In
-                  values:
-                  - proxy-injector
-              topologyKey: failure-domain.beta.kubernetes.io/zone
-            weight: 100
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: linkerd.io/control-plane-component
-                operator: In
-                values:
-                - proxy-injector
-            topologyKey: kubernetes.io/hostname
       containers:
       - env:
         - name: _pod_name
@@ -2324,11 +1433,11 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst-headless.linkerd.svc.cluster.local.:8086
+          value: linkerd-dst-headless.linkerd-dev.svc.cluster.local.:8086
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_POLICY_SVC_ADDR
-          value: linkerd-policy.linkerd.svc.cluster.local.:8090
+          value: linkerd-policy.linkerd-dev.svc.cluster.local.:8090
         - name: LINKERD2_PROXY_POLICY_WORKLOAD
           value: "$(_pod_ns):$(_pod_name)"
         - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
@@ -2369,7 +1478,7 @@ spec:
             fieldRef:
               fieldPath: spec.serviceAccountName
         - name: _l5d_ns
-          value: linkerd
+          value: linkerd-dev
         - name: _l5d_trustdomain
           value: test.trust.domain
         - name: LINKERD2_PROXY_IDENTITY_DIR
@@ -2382,15 +1491,15 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/tokens/linkerd-identity-token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity-headless.linkerd.svc.cluster.local.:8080
+          value: linkerd-identity-headless.linkerd-dev.svc.cluster.local.:8080
         - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
-          value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.linkerd.test.trust.domain
+          value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.linkerd-dev.test.trust.domain
         - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
-          value: linkerd-identity.linkerd.serviceaccount.identity.linkerd.test.trust.domain
+          value: linkerd-identity.linkerd-dev.serviceaccount.identity.linkerd-dev.test.trust.domain
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
-          value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.test.trust.domain
+          value: linkerd-destination.linkerd-dev.serviceaccount.identity.linkerd-dev.test.trust.domain
         - name: LINKERD2_PROXY_POLICY_SVC_NAME
-          value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.test.trust.domain
+          value: linkerd-destination.linkerd-dev.serviceaccount.identity.linkerd-dev.test.trust.domain
         image: cr.l5d.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2410,11 +1519,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
-          limits:
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -2434,6 +1538,7 @@ spec:
         - proxy-injector
         - -log-level=info
         - -log-format=plain
+        - -linkerd-namespace=linkerd-dev
         image: cr.l5d.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2452,12 +1557,6 @@ spec:
           httpGet:
             path: /ready
             port: 9995
-        resources:
-          limits:
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "50Mi"
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -2531,10 +1630,10 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  namespace: linkerd
+  
   labels:
     linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
     config.linkerd.io/opaque-ports: "443"
@@ -2546,19 +1645,3 @@ spec:
   - name: proxy-injector
     port: 443
     targetPort: proxy-injector
----
-kind: PodDisruptionBudget
-apiVersion: policy/v1beta1
-metadata:
-  name: linkerd-proxy-injector
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerd-version
-spec:
-  maxUnavailable: 1
-  selector:
-    matchLabels:
-      linkerd.io/control-plane-component: proxy-injector

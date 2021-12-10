@@ -2,7 +2,7 @@
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   name: metrics-api
   labels:
     linkerd.io/extension: viz
@@ -20,7 +20,7 @@ spec:
 apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   name: metrics-api
   labels:
     linkerd.io/extension: viz

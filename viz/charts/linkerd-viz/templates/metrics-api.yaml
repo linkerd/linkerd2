@@ -6,12 +6,13 @@ kind: Service
 apiVersion: v1
 metadata:
   name: metrics-api
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/extension: viz
     component: metrics-api
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    linkerd.io/inject: enabled
 spec:
   type: ClusterIP
   selector:
@@ -27,6 +28,8 @@ kind: Deployment
 metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: metrics-api
@@ -34,7 +37,7 @@ metadata:
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
     component: metrics-api
   name: metrics-api
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
 spec:
   replicas: {{.Values.metricsAPI.replicas}}
   selector:
@@ -52,6 +55,7 @@ spec:
         {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        linkerd.io/inject: enabled
       labels:
         linkerd.io/extension: viz
         component: metrics-api
@@ -74,7 +78,7 @@ spec:
         {{- if .Values.prometheusUrl }}
         - -prometheus-url={{.Values.prometheusUrl}}
         {{- else if .Values.prometheus.enabled }}
-        - -prometheus-url=http://prometheus.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:9090
+        - -prometheus-url=http://prometheus.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}:9090
         {{- else }}
         {{ fail "Please enable `linkerd-prometheus` or provide `prometheusUrl` for the viz extension to function properly"}}
         {{- end }}

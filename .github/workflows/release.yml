@@ -164,7 +164,8 @@ jobs:
         - external-prometheus-deep
         - external-resources
         - helm-deep
-        - helm-upgrade
+        # Skipping Helm upgrade test given chart in 2.11 is backwards-incompatible
+        #- helm-upgrade
         - uninstall
         - upgrade-edge
         - upgrade-stable

@@ -1,4 +1,714 @@
 ---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: servers.policy.linkerd.io
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+  labels:
+    helm.sh/chart: linkerd-control-plane-1.0.0-edge
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  group: policy.linkerd.io
+  names:
+    kind: Server
+    plural: servers
+    singular: server
+    shortNames: [srv]
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: false
+      deprecated: true
+      deprecationWarning: "policy.linkerd.io/v1alpha1 Server is deprecated; use policy.linkerd.io/v1beta1 Server"
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required:
+                - podSelector
+                - port
+              properties:
+                podSelector:
+                  type: object
+                  description: >-
+                    Selects pods in the same namespace.
+                  oneOf:
+                    - required: [matchExpressions]
+                    - required: [matchLabels]
+                  properties:
+                    matchLabels:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    matchExpressions:
+                      type: array
+                      items:
+                        type: object
+                        required: [key, operator]
+                        properties:
+                          key:
+                            type: string
+                          operator:
+                            type: string
+                            enum: [In, NotIn, Exists, DoesNotExist]
+                          values:
+                            type: array
+                            items:
+                              type: string
+                port:
+                  description: >-
+                    A port name or number. Must exist in a pod spec.
+                  x-kubernetes-int-or-string: true
+                proxyProtocol:
+                  description: >-
+                    Configures protocol discovery for inbound connections.
+
+                    Supersedes the `config.linkerd.io/opaque-ports` annotation.
+                  type: string
+                  default: unknown
+                  enum:
+                    - unknown
+                    - HTTP/1
+                    - HTTP/2
+                    - gRPC
+                    - opaque
+                    - TLS
+    - name: v1beta1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required:
+                - podSelector
+                - port
+              properties:
+                podSelector:
+                  type: object
+                  description: >-
+                    Selects pods in the same namespace.
+                  oneOf:
+                    - required: [matchExpressions]
+                    - required: [matchLabels]
+                  properties:
+                    matchLabels:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    matchExpressions:
+                      type: array
+                      items:
+                        type: object
+                        required: [key, operator]
+                        properties:
+                          key:
+                            type: string
+                          operator:
+                            type: string
+                            enum: [In, NotIn, Exists, DoesNotExist]
+                          values:
+                            type: array
+                            items:
+                              type: string
+                port:
+                  description: >-
+                    A port name or number. Must exist in a pod spec.
+                  x-kubernetes-int-or-string: true
+                proxyProtocol:
+                  description: >-
+                    Configures protocol discovery for inbound connections.
+
+                    Supersedes the `config.linkerd.io/opaque-ports` annotation.
+                  type: string
+                  default: unknown
+                  enum:
+                    - unknown
+                    - HTTP/1
+                    - HTTP/2
+                    - gRPC
+                    - opaque
+                    - TLS
+      additionalPrinterColumns:
+      - name: Port
+        type: string
+        description: The port the server is listening on
+        jsonPath: .spec.port
+      - name: Protocol
+        type: string
+        description: The protocol of the server
+        jsonPath: .spec.proxyProtocol
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: serverauthorizations.policy.linkerd.io
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+  labels:
+    helm.sh/chart: linkerd-control-plane-1.0.0-edge
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  group: policy.linkerd.io
+  scope: Namespaced
+  names:
+    kind: ServerAuthorization
+    plural: serverauthorizations
+    singular: serverauthorization
+    shortNames: [saz]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: false
+      deprecated: true
+      deprecationWarning: "policy.linkerd.io/v1alpha1 ServerAuthorization is deprecated; use policy.linkerd.io/v1beta1 ServerAuthorization"
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              description: >-
+                Authorizes clients to communicate with Linkerd-proxied servers.
+              type: object
+              required: [server, client]
+              properties:
+                server:
+                  description: >-
+                    Identifies servers in the same namespace for which this
+                    authorization applies.
+
+                    Only one of `name` or `selector` may be specified.
+                  type: object
+                  oneOf:
+                    - required: [name]
+                    - required: [selector]
+                  properties:
+                    name:
+                      description: References a `Server` instance by name
+                      type: string
+                      pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+                    selector:
+                      description: >-
+                        A label query over servers on which this authorization applies.
+                      type: object
+                      oneOf:
+                        - required: [matchLabels]
+                        - required: [matchExpressions]
+                      properties:
+                        matchLabels:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        matchExpressions:
+                          type: array
+                          items:
+                            type: object
+                            required: [key, operator]
+                            properties:
+                              key:
+                                type: string
+                              operator:
+                                type: string
+                                enum: [In, NotIn, Exists, DoesNotExist]
+                              values:
+                                type: array
+                                items:
+                                  type: string
+                client:
+                  description:  Describes clients authorized to access a server.
+                  type: object
+                  oneOf:
+                    - required: [meshTLS]
+                    - required: [unauthenticated]
+                  properties:
+                    networks:
+                      description: >-
+                        Limits the client IP addresses to which this
+                        authorization applies. If unset, the server chooses a
+                        default (typically, all IPs or the cluster's pod
+                        network).
+                      type: array
+                      items:
+                        type: object
+                        required: [cidr]
+                        properties:
+                          cidr:
+                            type: string
+                          except:
+                            type: array
+                            items:
+                              type: string
+                    unauthenticated:
+                      description: >-
+                        Authorizes unauthenticated clients to access a server.
+                      type: boolean
+                    meshTLS:
+                      type: object
+                      oneOf:
+                        - required: [unauthenticatedTLS]
+                        - required: [identities]
+                        - required: [serviceAccounts]
+                      properties:
+                        unauthenticatedTLS:
+                          type: boolean
+                          description: >-
+                            Indicates that no client identity is required for
+                            communication.
+
+                            This is mostly important for the identity
+                            controller, which must terminate TLS connections
+                            from clients that do not yet have a certificate.
+                        identities:
+                          description: >-
+                            Authorizes clients with the provided proxy identity
+                            strings (as provided via MTLS)
+
+                            The `*` prefix can be used to match all identities in
+                            a domain. An identity string of `*` indicates that
+                            all authentication clients are authorized.
+                          type: array
+                          items:
+                            type: string
+                            pattern: '^(\*|[a-z0-9]([-a-z0-9]*[a-z0-9])?)(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$'
+                        serviceAccounts:
+                          description: >-
+                            Authorizes clients with the provided proxy identity
+                            service accounts (as provided via MTLS)
+                          type: array
+                          items:
+                            type: object
+                            required: [name]
+                            properties:
+                              name:
+                                description: The ServiceAccount's name.
+                                type: string
+                                pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+                              namespace:
+                                description: >-
+                                  The ServiceAccount's namespace. If unset, the
+                                  authorization's namespace is used.
+                                type: string
+                                pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+    - name: v1beta1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              description: >-
+                Authorizes clients to communicate with Linkerd-proxied servers.
+              type: object
+              required: [server, client]
+              properties:
+                server:
+                  description: >-
+                    Identifies servers in the same namespace for which this
+                    authorization applies.
+
+                    Only one of `name` or `selector` may be specified.
+                  type: object
+                  oneOf:
+                    - required: [name]
+                    - required: [selector]
+                  properties:
+                    name:
+                      description: References a `Server` instance by name
+                      type: string
+                      pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+                    selector:
+                      description: >-
+                        A label query over servers on which this authorization applies.
+                      type: object
+                      oneOf:
+                        - required: [matchLabels]
+                        - required: [matchExpressions]
+                      properties:
+                        matchLabels:
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        matchExpressions:
+                          type: array
+                          items:
+                            type: object
+                            required: [key, operator]
+                            properties:
+                              key:
+                                type: string
+                              operator:
+                                type: string
+                                enum: [In, NotIn, Exists, DoesNotExist]
+                              values:
+                                type: array
+                                items:
+                                  type: string
+                client:
+                  description:  Describes clients authorized to access a server.
+                  type: object
+                  oneOf:
+                    - required: [meshTLS]
+                    - required: [unauthenticated]
+                  properties:
+                    networks:
+                      description: >-
+                        Limits the client IP addresses to which this
+                        authorization applies. If unset, the server chooses a
+                        default (typically, all IPs or the cluster's pod
+                        network).
+                      type: array
+                      items:
+                        type: object
+                        required: [cidr]
+                        properties:
+                          cidr:
+                            type: string
+                          except:
+                            type: array
+                            items:
+                              type: string
+                    unauthenticated:
+                      description: >-
+                        Authorizes unauthenticated clients to access a server.
+                      type: boolean
+                    meshTLS:
+                      type: object
+                      oneOf:
+                        - required: [unauthenticatedTLS]
+                        - required: [identities]
+                        - required: [serviceAccounts]
+                      properties:
+                        unauthenticatedTLS:
+                          type: boolean
+                          description: >-
+                            Indicates that no client identity is required for
+                            communication.
+
+                            This is mostly important for the identity
+                            controller, which must terminate TLS connections
+                            from clients that do not yet have a certificate.
+                        identities:
+                          description: >-
+                            Authorizes clients with the provided proxy identity
+                            strings (as provided via MTLS)
+
+                            The `*` prefix can be used to match all identities in
+                            a domain. An identity string of `*` indicates that
+                            all authentication clients are authorized.
+                          type: array
+                          items:
+                            type: string
+                            pattern: '^(\*|[a-z0-9]([-a-z0-9]*[a-z0-9])?)(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$'
+                        serviceAccounts:
+                          description: >-
+                            Authorizes clients with the provided proxy identity
+                            service accounts (as provided via MTLS)
+                          type: array
+                          items:
+                            type: object
+                            required: [name]
+                            properties:
+                              name:
+                                description: The ServiceAccount's name.
+                                type: string
+                                pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+                              namespace:
+                                description: >-
+                                  The ServiceAccount's namespace. If unset, the
+                                  authorization's namespace is used.
+                                type: string
+                                pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+      additionalPrinterColumns:
+      - name: Server
+        type: string
+        description: The server that this grants access to
+        jsonPath: .spec.server.name
+---
+###
+### Service Profile CRD
+###
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: serviceprofiles.linkerd.io
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+  labels:
+    helm.sh/chart: linkerd-control-plane-1.0.0-edge
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  group: linkerd.io
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: false
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            description: Spec is the custom resource spec
+            required:
+            - routes
+            properties:
+              dstOverrides:
+                type: array
+                required:
+                - authority
+                - weight
+                items:
+                  type: object
+                  description: WeightedDst is a weighted alternate destination.
+                  properties:
+                    authority:
+                      type: string
+                    weight:
+                      x-kubernetes-int-or-string: true
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+              opaquePorts:
+                type: array
+                items:
+                  type: string
+              retryBudget:
+                type: object
+                required:
+                - minRetriesPerSecond
+                - retryRatio
+                - ttl
+                description: RetryBudget describes the maximum number of retries that should be issued to this service.
+                properties:
+                  minRetriesPerSecond:
+                    format: int32
+                    type: integer
+                  retryRatio:
+                    type: number
+                    format: float
+                  ttl:
+                    type: string
+              routes:
+                type: array
+                items:
+                  type: object
+                  description: RouteSpec specifies a Route resource.
+                  required:
+                  - condition
+                  - name
+                  properties:
+                    condition:
+                      type: object
+                      description: RequestMatch describes the conditions under which to match a Route.
+                      properties:
+                        pathRegex:
+                          type: string
+                        method:
+                          type: string
+                        all:
+                          type: array
+                          items:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                        any:
+                          type: array
+                          items:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                        not:
+                          type: array
+                          items:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                    isRetryable:
+                      type: boolean
+                    name:
+                      type: string
+                    timeout:
+                      type: string
+                    responseClasses:
+                      type: array
+                      items:
+                        type: object
+                        required:
+                        - condition
+                        description: ResponseClass describes how to classify a response (e.g. success or failures).
+                        properties:
+                          condition:
+                            type: object
+                            description: ResponseMatch describes the conditions under
+                              which to classify a response.
+                            properties:
+                              all:
+                                type: array
+                                items:
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                              any:
+                                type: array
+                                items:
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                              not:
+                                type: array
+                                items:
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                              status:
+                                type: object
+                                description: Range describes a range of integers (e.g. status codes).
+                                properties:
+                                  max:
+                                    format: int32
+                                    type: integer
+                                  min:
+                                    format: int32
+                                    type: integer
+                          isFailure:
+                            type: boolean
+  - name: v1alpha2
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            description: Spec is the custom resource spec
+            properties:
+              dstOverrides:
+                type: array
+                required:
+                - authority
+                - weight
+                items:
+                  type: object
+                  description: WeightedDst is a weighted alternate destination.
+                  properties:
+                    authority:
+                      type: string
+                    weight:
+                      x-kubernetes-int-or-string: true
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+              opaquePorts:
+                type: array
+                items:
+                  type: string
+              retryBudget:
+                type: object
+                required:
+                - minRetriesPerSecond
+                - retryRatio
+                - ttl
+                description: RetryBudget describes the maximum number of retries that should be issued to this service.
+                properties:
+                  minRetriesPerSecond:
+                    format: int32
+                    type: integer
+                  retryRatio:
+                    type: number
+                    format: float
+                  ttl:
+                    type: string
+              routes:
+                type: array
+                items:
+                  type: object
+                  description: RouteSpec specifies a Route resource.
+                  required:
+                  - condition
+                  - name
+                  properties:
+                    condition:
+                      type: object
+                      description: RequestMatch describes the conditions under which to match a Route.
+                      properties:
+                        pathRegex:
+                          type: string
+                        method:
+                          type: string
+                        all:
+                          type: array
+                          items:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                        any:
+                          type: array
+                          items:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                        not:
+                          type: array
+                          items:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                    isRetryable:
+                      type: boolean
+                    name:
+                      type: string
+                    timeout:
+                      type: string
+                    responseClasses:
+                      type: array
+                      items:
+                        type: object
+                        required:
+                        - condition
+                        description: ResponseClass describes how to classify a response (e.g. success or failures).
+                        properties:
+                          condition:
+                            type: object
+                            description: ResponseMatch describes the conditions under
+                              which to classify a response.
+                            properties:
+                              all:
+                                type: array
+                                items:
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                              any:
+                                type: array
+                                items:
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                              not:
+                                type: array
+                                items:
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                              status:
+                                type: object
+                                description: Range describes a range of integers (e.g. status codes).
+                                properties:
+                                  max:
+                                    format: int32
+                                    type: integer
+                                  min:
+                                    format: int32
+                                    type: integer
+                          isFailure:
+                            type: boolean
+  scope: Namespaced
+  preserveUnknownFields: false
+  names:
+    plural: serviceprofiles
+    singular: serviceprofile
+    kind: ServiceProfile
+    shortNames:
+    - sp
+---
 ###
 ### Linkerd Namespace
 ###
@@ -315,713 +1025,6 @@ metadata:
     linkerd.io/control-plane-component: heartbeat
     linkerd.io/control-plane-ns: linkerd
 ---
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: servers.policy.linkerd.io
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-spec:
-  group: policy.linkerd.io
-  names:
-    kind: Server
-    plural: servers
-    singular: server
-    shortNames: [srv]
-  scope: Namespaced
-  versions:
-    - name: v1alpha1
-      served: true
-      storage: false
-      deprecated: true
-      deprecationWarning: "policy.linkerd.io/v1alpha1 Server is deprecated; use policy.linkerd.io/v1beta1 Server"
-      schema:
-        openAPIV3Schema:
-          type: object
-          required: [spec]
-          properties:
-            spec:
-              type: object
-              required:
-                - podSelector
-                - port
-              properties:
-                podSelector:
-                  type: object
-                  description: >-
-                    Selects pods in the same namespace.
-                  oneOf:
-                    - required: [matchExpressions]
-                    - required: [matchLabels]
-                  properties:
-                    matchLabels:
-                      type: object
-                      x-kubernetes-preserve-unknown-fields: true
-                    matchExpressions:
-                      type: array
-                      items:
-                        type: object
-                        required: [key, operator]
-                        properties:
-                          key:
-                            type: string
-                          operator:
-                            type: string
-                            enum: [In, NotIn, Exists, DoesNotExist]
-                          values:
-                            type: array
-                            items:
-                              type: string
-                port:
-                  description: >-
-                    A port name or number. Must exist in a pod spec.
-                  x-kubernetes-int-or-string: true
-                proxyProtocol:
-                  description: >-
-                    Configures protocol discovery for inbound connections.
-
-                    Supersedes the `config.linkerd.io/opaque-ports` annotation.
-                  type: string
-                  default: unknown
-                  enum:
-                    - unknown
-                    - HTTP/1
-                    - HTTP/2
-                    - gRPC
-                    - opaque
-                    - TLS
-    - name: v1beta1
-      served: true
-      storage: true
-      schema:
-        openAPIV3Schema:
-          type: object
-          required: [spec]
-          properties:
-            spec:
-              type: object
-              required:
-                - podSelector
-                - port
-              properties:
-                podSelector:
-                  type: object
-                  description: >-
-                    Selects pods in the same namespace.
-                  oneOf:
-                    - required: [matchExpressions]
-                    - required: [matchLabels]
-                  properties:
-                    matchLabels:
-                      type: object
-                      x-kubernetes-preserve-unknown-fields: true
-                    matchExpressions:
-                      type: array
-                      items:
-                        type: object
-                        required: [key, operator]
-                        properties:
-                          key:
-                            type: string
-                          operator:
-                            type: string
-                            enum: [In, NotIn, Exists, DoesNotExist]
-                          values:
-                            type: array
-                            items:
-                              type: string
-                port:
-                  description: >-
-                    A port name or number. Must exist in a pod spec.
-                  x-kubernetes-int-or-string: true
-                proxyProtocol:
-                  description: >-
-                    Configures protocol discovery for inbound connections.
-
-                    Supersedes the `config.linkerd.io/opaque-ports` annotation.
-                  type: string
-                  default: unknown
-                  enum:
-                    - unknown
-                    - HTTP/1
-                    - HTTP/2
-                    - gRPC
-                    - opaque
-                    - TLS
-      additionalPrinterColumns:
-      - name: Port
-        type: string
-        description: The port the server is listening on
-        jsonPath: .spec.port
-      - name: Protocol
-        type: string
-        description: The protocol of the server
-        jsonPath: .spec.proxyProtocol
----
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: serverauthorizations.policy.linkerd.io
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-spec:
-  group: policy.linkerd.io
-  scope: Namespaced
-  names:
-    kind: ServerAuthorization
-    plural: serverauthorizations
-    singular: serverauthorization
-    shortNames: [saz]
-  versions:
-    - name: v1alpha1
-      served: true
-      storage: false
-      deprecated: true
-      deprecationWarning: "policy.linkerd.io/v1alpha1 ServerAuthorization is deprecated; use policy.linkerd.io/v1beta1 ServerAuthorization"
-      schema:
-        openAPIV3Schema:
-          type: object
-          required: [spec]
-          properties:
-            spec:
-              description: >-
-                Authorizes clients to communicate with Linkerd-proxied servers.
-              type: object
-              required: [server, client]
-              properties:
-                server:
-                  description: >-
-                    Identifies servers in the same namespace for which this
-                    authorization applies.
-
-                    Only one of `name` or `selector` may be specified.
-                  type: object
-                  oneOf:
-                    - required: [name]
-                    - required: [selector]
-                  properties:
-                    name:
-                      description: References a `Server` instance by name
-                      type: string
-                      pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
-                    selector:
-                      description: >-
-                        A label query over servers on which this authorization applies.
-                      type: object
-                      oneOf:
-                        - required: [matchLabels]
-                        - required: [matchExpressions]
-                      properties:
-                        matchLabels:
-                          type: object
-                          x-kubernetes-preserve-unknown-fields: true
-                        matchExpressions:
-                          type: array
-                          items:
-                            type: object
-                            required: [key, operator]
-                            properties:
-                              key:
-                                type: string
-                              operator:
-                                type: string
-                                enum: [In, NotIn, Exists, DoesNotExist]
-                              values:
-                                type: array
-                                items:
-                                  type: string
-                client:
-                  description:  Describes clients authorized to access a server.
-                  type: object
-                  oneOf:
-                    - required: [meshTLS]
-                    - required: [unauthenticated]
-                  properties:
-                    networks:
-                      description: >-
-                        Limits the client IP addresses to which this
-                        authorization applies. If unset, the server chooses a
-                        default (typically, all IPs or the cluster's pod
-                        network).
-                      type: array
-                      items:
-                        type: object
-                        required: [cidr]
-                        properties:
-                          cidr:
-                            type: string
-                          except:
-                            type: array
-                            items:
-                              type: string
-                    unauthenticated:
-                      description: >-
-                        Authorizes unauthenticated clients to access a server.
-                      type: boolean
-                    meshTLS:
-                      type: object
-                      oneOf:
-                        - required: [unauthenticatedTLS]
-                        - required: [identities]
-                        - required: [serviceAccounts]
-                      properties:
-                        unauthenticatedTLS:
-                          type: boolean
-                          description: >-
-                            Indicates that no client identity is required for
-                            communication.
-
-                            This is mostly important for the identity
-                            controller, which must terminate TLS connections
-                            from clients that do not yet have a certificate.
-                        identities:
-                          description: >-
-                            Authorizes clients with the provided proxy identity
-                            strings (as provided via MTLS)
-
-                            The `*` prefix can be used to match all identities in
-                            a domain. An identity string of `*` indicates that
-                            all authentication clients are authorized.
-                          type: array
-                          items:
-                            type: string
-                            pattern: '^(\*|[a-z0-9]([-a-z0-9]*[a-z0-9])?)(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$'
-                        serviceAccounts:
-                          description: >-
-                            Authorizes clients with the provided proxy identity
-                            service accounts (as provided via MTLS)
-                          type: array
-                          items:
-                            type: object
-                            required: [name]
-                            properties:
-                              name:
-                                description: The ServiceAccount's name.
-                                type: string
-                                pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
-                              namespace:
-                                description: >-
-                                  The ServiceAccount's namespace. If unset, the
-                                  authorization's namespace is used.
-                                type: string
-                                pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
-    - name: v1beta1
-      served: true
-      storage: true
-      schema:
-        openAPIV3Schema:
-          type: object
-          required: [spec]
-          properties:
-            spec:
-              description: >-
-                Authorizes clients to communicate with Linkerd-proxied servers.
-              type: object
-              required: [server, client]
-              properties:
-                server:
-                  description: >-
-                    Identifies servers in the same namespace for which this
-                    authorization applies.
-
-                    Only one of `name` or `selector` may be specified.
-                  type: object
-                  oneOf:
-                    - required: [name]
-                    - required: [selector]
-                  properties:
-                    name:
-                      description: References a `Server` instance by name
-                      type: string
-                      pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
-                    selector:
-                      description: >-
-                        A label query over servers on which this authorization applies.
-                      type: object
-                      oneOf:
-                        - required: [matchLabels]
-                        - required: [matchExpressions]
-                      properties:
-                        matchLabels:
-                          type: object
-                          x-kubernetes-preserve-unknown-fields: true
-                        matchExpressions:
-                          type: array
-                          items:
-                            type: object
-                            required: [key, operator]
-                            properties:
-                              key:
-                                type: string
-                              operator:
-                                type: string
-                                enum: [In, NotIn, Exists, DoesNotExist]
-                              values:
-                                type: array
-                                items:
-                                  type: string
-                client:
-                  description:  Describes clients authorized to access a server.
-                  type: object
-                  oneOf:
-                    - required: [meshTLS]
-                    - required: [unauthenticated]
-                  properties:
-                    networks:
-                      description: >-
-                        Limits the client IP addresses to which this
-                        authorization applies. If unset, the server chooses a
-                        default (typically, all IPs or the cluster's pod
-                        network).
-                      type: array
-                      items:
-                        type: object
-                        required: [cidr]
-                        properties:
-                          cidr:
-                            type: string
-                          except:
-                            type: array
-                            items:
-                              type: string
-                    unauthenticated:
-                      description: >-
-                        Authorizes unauthenticated clients to access a server.
-                      type: boolean
-                    meshTLS:
-                      type: object
-                      oneOf:
-                        - required: [unauthenticatedTLS]
-                        - required: [identities]
-                        - required: [serviceAccounts]
-                      properties:
-                        unauthenticatedTLS:
-                          type: boolean
-                          description: >-
-                            Indicates that no client identity is required for
-                            communication.
-
-                            This is mostly important for the identity
-                            controller, which must terminate TLS connections
-                            from clients that do not yet have a certificate.
-                        identities:
-                          description: >-
-                            Authorizes clients with the provided proxy identity
-                            strings (as provided via MTLS)
-
-                            The `*` prefix can be used to match all identities in
-                            a domain. An identity string of `*` indicates that
-                            all authentication clients are authorized.
-                          type: array
-                          items:
-                            type: string
-                            pattern: '^(\*|[a-z0-9]([-a-z0-9]*[a-z0-9])?)(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$'
-                        serviceAccounts:
-                          description: >-
-                            Authorizes clients with the provided proxy identity
-                            service accounts (as provided via MTLS)
-                          type: array
-                          items:
-                            type: object
-                            required: [name]
-                            properties:
-                              name:
-                                description: The ServiceAccount's name.
-                                type: string
-                                pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
-                              namespace:
-                                description: >-
-                                  The ServiceAccount's namespace. If unset, the
-                                  authorization's namespace is used.
-                                type: string
-                                pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
-      additionalPrinterColumns:
-      - name: Server
-        type: string
-        description: The server that this grants access to
-        jsonPath: .spec.server.name
----
-###
-### Service Profile CRD
-###
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: serviceprofiles.linkerd.io
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-spec:
-  group: linkerd.io
-  versions:
-  - name: v1alpha1
-    served: true
-    storage: false
-    schema:
-      openAPIV3Schema:
-        type: object
-        properties:
-          spec:
-            type: object
-            description: Spec is the custom resource spec
-            required:
-            - routes
-            properties:
-              dstOverrides:
-                type: array
-                required:
-                - authority
-                - weight
-                items:
-                  type: object
-                  description: WeightedDst is a weighted alternate destination.
-                  properties:
-                    authority:
-                      type: string
-                    weight:
-                      x-kubernetes-int-or-string: true
-                      anyOf:
-                      - type: integer
-                      - type: string
-                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-              opaquePorts:
-                type: array
-                items:
-                  type: string
-              retryBudget:
-                type: object
-                required:
-                - minRetriesPerSecond
-                - retryRatio
-                - ttl
-                description: RetryBudget describes the maximum number of retries that should be issued to this service.
-                properties:
-                  minRetriesPerSecond:
-                    format: int32
-                    type: integer
-                  retryRatio:
-                    type: number
-                    format: float
-                  ttl:
-                    type: string
-              routes:
-                type: array
-                items:
-                  type: object
-                  description: RouteSpec specifies a Route resource.
-                  required:
-                  - condition
-                  - name
-                  properties:
-                    condition:
-                      type: object
-                      description: RequestMatch describes the conditions under which to match a Route.
-                      properties:
-                        pathRegex:
-                          type: string
-                        method:
-                          type: string
-                        all:
-                          type: array
-                          items:
-                            type: object
-                            x-kubernetes-preserve-unknown-fields: true
-                        any:
-                          type: array
-                          items:
-                            type: object
-                            x-kubernetes-preserve-unknown-fields: true
-                        not:
-                          type: array
-                          items:
-                            type: object
-                            x-kubernetes-preserve-unknown-fields: true
-                    isRetryable:
-                      type: boolean
-                    name:
-                      type: string
-                    timeout:
-                      type: string
-                    responseClasses:
-                      type: array
-                      items:
-                        type: object
-                        required:
-                        - condition
-                        description: ResponseClass describes how to classify a response (e.g. success or failures).
-                        properties:
-                          condition:
-                            type: object
-                            description: ResponseMatch describes the conditions under
-                              which to classify a response.
-                            properties:
-                              all:
-                                type: array
-                                items:
-                                  type: object
-                                  x-kubernetes-preserve-unknown-fields: true
-                              any:
-                                type: array
-                                items:
-                                  type: object
-                                  x-kubernetes-preserve-unknown-fields: true
-                              not:
-                                type: array
-                                items:
-                                  type: object
-                                  x-kubernetes-preserve-unknown-fields: true
-                              status:
-                                type: object
-                                description: Range describes a range of integers (e.g. status codes).
-                                properties:
-                                  max:
-                                    format: int32
-                                    type: integer
-                                  min:
-                                    format: int32
-                                    type: integer
-                          isFailure:
-                            type: boolean
-  - name: v1alpha2
-    served: true
-    storage: true
-    schema:
-      openAPIV3Schema:
-        type: object
-        properties:
-          spec:
-            type: object
-            description: Spec is the custom resource spec
-            properties:
-              dstOverrides:
-                type: array
-                required:
-                - authority
-                - weight
-                items:
-                  type: object
-                  description: WeightedDst is a weighted alternate destination.
-                  properties:
-                    authority:
-                      type: string
-                    weight:
-                      x-kubernetes-int-or-string: true
-                      anyOf:
-                      - type: integer
-                      - type: string
-                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-              opaquePorts:
-                type: array
-                items:
-                  type: string
-              retryBudget:
-                type: object
-                required:
-                - minRetriesPerSecond
-                - retryRatio
-                - ttl
-                description: RetryBudget describes the maximum number of retries that should be issued to this service.
-                properties:
-                  minRetriesPerSecond:
-                    format: int32
-                    type: integer
-                  retryRatio:
-                    type: number
-                    format: float
-                  ttl:
-                    type: string
-              routes:
-                type: array
-                items:
-                  type: object
-                  description: RouteSpec specifies a Route resource.
-                  required:
-                  - condition
-                  - name
-                  properties:
-                    condition:
-                      type: object
-                      description: RequestMatch describes the conditions under which to match a Route.
-                      properties:
-                        pathRegex:
-                          type: string
-                        method:
-                          type: string
-                        all:
-                          type: array
-                          items:
-                            type: object
-                            x-kubernetes-preserve-unknown-fields: true
-                        any:
-                          type: array
-                          items:
-                            type: object
-                            x-kubernetes-preserve-unknown-fields: true
-                        not:
-                          type: array
-                          items:
-                            type: object
-                            x-kubernetes-preserve-unknown-fields: true
-                    isRetryable:
-                      type: boolean
-                    name:
-                      type: string
-                    timeout:
-                      type: string
-                    responseClasses:
-                      type: array
-                      items:
-                        type: object
-                        required:
-                        - condition
-                        description: ResponseClass describes how to classify a response (e.g. success or failures).
-                        properties:
-                          condition:
-                            type: object
-                            description: ResponseMatch describes the conditions under
-                              which to classify a response.
-                            properties:
-                              all:
-                                type: array
-                                items:
-                                  type: object
-                                  x-kubernetes-preserve-unknown-fields: true
-                              any:
-                                type: array
-                                items:
-                                  type: object
-                                  x-kubernetes-preserve-unknown-fields: true
-                              not:
-                                type: array
-                                items:
-                                  type: object
-                                  x-kubernetes-preserve-unknown-fields: true
-                              status:
-                                type: object
-                                description: Range describes a range of integers (e.g. status codes).
-                                properties:
-                                  max:
-                                    format: int32
-                                    type: integer
-                                  min:
-                                    format: int32
-                                    type: integer
-                          isFailure:
-                            type: boolean
-  scope: Namespaced
-  preserveUnknownFields: false
-  names:
-    plural: serviceprofiles
-    singular: serviceprofile
-    kind: ServiceProfile
-    shortNames:
-    - sp
----
 ###
 ### Proxy Injector RBAC
 ###
@@ -1131,6 +1134,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
+  linkerd-crds-chart-version: linkerd-crds-1.0.0-edge
   values: |
     cliVersion: linkerd/cli dev-undefined
     clusterDomain: cluster.local
@@ -1225,9 +1229,7 @@ data:
     identityTrustDomain: cluster.local
     imagePullPolicy: IfNotPresent
     imagePullSecrets: null
-    installNamespace: true
     linkerdVersion: dev-undefined
-    namespace: linkerd
     nodeSelector:
       kubernetes.io/os: linux
     podAnnotations: {}
@@ -1877,7 +1879,6 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: fd4355b1aba8e27821a6fc4f9b43f57db662b07427eaff21d75b5f91ba33d23d
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
@@ -2276,7 +2277,6 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 67e053df1cc859aa15c82ff6e5e65c055041bb36ade50655e9bf44976521018f
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
@@ -2439,6 +2439,7 @@ spec:
         - proxy-injector
         - -log-level=info
         - -log-format=plain
+        - -linkerd-namespace=linkerd
         image: cr.l5d.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

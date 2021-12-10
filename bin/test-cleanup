@@ -31,12 +31,16 @@ echo "cleaning up linkerd resources [${k8s_context}]"
 # Helm cleanup. Just the entries in `helm ls` as the resources should have already been cleaned up by the code above.
 releases=$("$bindir/helm" ls -A -q)
 if [[ "${releases[*]}" =~ 'l5d-viz' ]]; then
-  "$bindir/helm" --kube-context="$k8s_context" delete l5d-viz
+  "$bindir/helm" --kube-context="$k8s_context" --namespace linkerd-viz delete l5d-viz
+  kubectl delete ns linkerd-viz
 fi
 if [[ "${releases[*]}" =~ 'helm-test' ]]; then
-  "$bindir/helm" --kube-context="$k8s_context" delete helm-test
+  "$bindir/helm" --kube-context="$k8s_context" --namespace linkerd delete helm-test-crds
+  "$bindir/helm" --kube-context="$k8s_context" --namespace linkerd delete helm-test-control-plane
+  kubectl delete ns linkerd
 fi
 if [[ "${releases[*]}" =~ 'multicluster-test' ]]; then
-  "$bindir/helm" --kube-context="$k8s_context" delete multicluster-test
+  "$bindir/helm" --kube-context="$k8s_context" --namespace linkerd-multicluster delete multicluster-test
+  kubectl delete ns linkerd-multicluster
 fi
 

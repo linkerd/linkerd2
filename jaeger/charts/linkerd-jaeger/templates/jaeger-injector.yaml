@@ -12,7 +12,7 @@ metadata:
     app.kubernetes.io/version: {{default .Values.webhook.image.version .Values.cliVersion}}
     component: jaeger-injector
   name: jaeger-injector
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
 spec:
   replicas: 1
   selector:
@@ -23,6 +23,8 @@ spec:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/rbac.yaml") . | sha256sum }}
+        linkerd.io/inject: enabled
+        config.linkerd.io/proxy-await: "enabled"
       labels:
         linkerd.io/extension: jaeger
         component: jaeger-injector
@@ -68,7 +70,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: jaeger-injector
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/extension: jaeger
     component: jaeger-injector

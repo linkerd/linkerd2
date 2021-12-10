@@ -2,8 +2,8 @@
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
-  name: metrics-api.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}
-  namespace: {{.Values.namespace}}
+  name: metrics-api.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}
+  {{ include "partials.namespace" . }}
 spec:
   routes:
   - name: POST /api/v1/StatSummary
@@ -39,8 +39,8 @@ spec:
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
-  name: prometheus.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}
-  namespace: {{.Values.namespace}}
+  name: prometheus.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}
+  {{ include "partials.namespace" . }}
 spec:
   routes:
   - name: POST /api/v1/query
@@ -61,8 +61,8 @@ spec:
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
-  name: grafana.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}
-  namespace: {{.Values.namespace}}
+  name: grafana.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}
+  {{ include "partials.namespace" . }}
 spec:
   routes:
   - name: GET /api/annotations

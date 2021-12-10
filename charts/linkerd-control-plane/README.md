@@ -1,10 +1,10 @@
-# linkerd2
+# linkerd-control-plane
 
 Linkerd gives you observability, reliability, and security
 for your microservices — with no code change required.
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square)
-
+![Version: 1.0.0-edge](https://img.shields.io/badge/Version-1.0.0--edge-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
 **Homepage:** <https://linkerd.io>
@@ -16,6 +16,11 @@ the [Linkerd Getting Started Guide][getting-started] for how.
 
 For more comprehensive documentation, start with the [Linkerd
 docs][linkerd-docs].
+
+## Prerequisite: linkerd-crds chart
+
+Before installing this chart, please install the `linkerd-crds` chart, which
+creates all the CRDs that the components from the current chart require.
 
 ## Prerequisite: identity certificates
 
@@ -30,10 +35,13 @@ Note that the provided certificates must be ECDSA certificates.
 
 ## Adding Linkerd's Helm repository
 
+Included here for completeness-sake, but should have already been added when
+`linkerd-base` was installed.
+
 ```bash
-# To add the repo for Linkerd2 stable releases:
+# To add the repo for Linkerd stable releases:
 helm repo add linkerd https://helm.linkerd.io/stable
-# To add the repo for Linkerd2 edge releases:
+# To add the repo for Linkerd edge releases:
 helm repo add linkerd-edge https://helm.linkerd.io/edge
 ```
 
@@ -42,17 +50,19 @@ release, just replace with `linkerd-edge`.
 
 ## Installing the chart
 
-You must provide the certificates and keys described in the preceding section.
-
-In this example we set the expiration date to one year ahead:
+You must provide the certificates and keys described in the preceding section,
+and the same expiration date you used to generate the Issuer certificate.
 
 ```bash
-helm install \
+helm install linkerd-control-plane -n linkerd \
   --set-file identityTrustAnchorsPEM=ca.crt \
   --set-file identity.issuer.tls.crtPEM=issuer.crt \
   --set-file identity.issuer.tls.keyPEM=issuer.key \
-  linkerd/linkerd2
+  linkerd/linkerd-control-plane
 ```
+
+Note that you require to install this chart in the same namespace you installed
+the `linkerd-base` chart.
 
 ## Setting High-Availability
 
@@ -65,18 +75,18 @@ affinities are specified in that file.
 You can get ahold of `values-ha.yaml` by fetching the chart files:
 
 ```bash
-helm fetch --untar linkerd/linkerd2
+helm fetch --untar linkerd/linkerd-control-plane
 ```
 
 Then use the `-f` flag to provide the override file, for example:
 
 ```bash
-helm install \
+helm install linkerd-control-plane -n linkerd \
   --set-file identityTrustAnchorsPEM=ca.crt \
   --set-file identity.issuer.tls.crtPEM=issuer.crt \
   --set-file identity.issuer.tls.keyPEM=issuer.key \
   -f linkerd2/values-ha.yaml
-  linkerd/linkerd2
+  linkerd/linkerd-control-plane
 ```
 
 ## Get involved

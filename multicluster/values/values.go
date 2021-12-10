@@ -23,10 +23,8 @@ type Values struct {
 	ControllerImageVersion         string   `json:"controllerImageVersion"`
 	Gateway                        *Gateway `json:"gateway"`
 	IdentityTrustDomain            string   `json:"identityTrustDomain"`
-	InstallNamespace               bool     `json:"installNamespace"`
 	LinkerdNamespace               string   `json:"linkerdNamespace"`
 	LinkerdVersion                 string   `json:"linkerdVersion"`
-	Namespace                      string   `json:"namespace"`
 	ProxyOutboundPort              uint32   `json:"proxyOutboundPort"`
 	ServiceMirror                  bool     `json:"serviceMirror"`
 	LogLevel                       string   `json:"logLevel"`
