@@ -10,6 +10,7 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
 data:
+  linkerd-crds-chart-version: linkerd-crds-1.0.0-edge
   values: |
   {{- $values := deepCopy .Values }}
   {{- /*

@@ -6,6 +6,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
+    helm.sh/chart: linkerd-control-plane-1.0.0-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -151,6 +152,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
+    helm.sh/chart: linkerd-control-plane-1.0.0-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -439,6 +441,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
+    helm.sh/chart: linkerd-control-plane-1.0.0-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: linkerd.io
@@ -1062,6 +1065,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
+  linkerd-crds-chart-version: linkerd-crds-1.0.0-edge
   values: |
     cliVersion: linkerd/cli dev-undefined
     clusterDomain: cluster.local

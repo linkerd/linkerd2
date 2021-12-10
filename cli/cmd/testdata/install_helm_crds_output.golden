@@ -8,6 +8,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
   labels:
+    helm.sh/chart: linkerd-crds-
     linkerd.io/control-plane-ns: linkerd-dev
 spec:
   group: policy.linkerd.io
@@ -153,6 +154,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
   labels:
+    helm.sh/chart: linkerd-crds-
     linkerd.io/control-plane-ns: linkerd-dev
 spec:
   group: policy.linkerd.io
@@ -443,6 +445,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
   labels:
+    helm.sh/chart: linkerd-crds-
     linkerd.io/control-plane-ns: linkerd-dev
 spec:
   group: linkerd.io

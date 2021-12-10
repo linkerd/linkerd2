@@ -424,6 +424,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 data:
+  linkerd-crds-chart-version: linkerd-crds-1.0.0-edge
   values: |
     cliVersion: ""
     clusterDomain: cluster.local
