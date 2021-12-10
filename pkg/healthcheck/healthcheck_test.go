@@ -1491,14 +1491,14 @@ func TestValidateDataPlaneNamespace(t *testing.T) {
 	}
 }
 
-func TestValidateDataPlanePods(t *testing.T) {
+func TestCheckDataPlanePods(t *testing.T) {
 
 	t.Run("Returns an error if no inject pods were found", func(t *testing.T) {
-		err := validateDataPlanePods([]corev1.Pod{}, "emojivoto")
+		err := CheckPodsRunning([]corev1.Pod{}, "emojivoto")
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "No \"linkerd-proxy\" containers found in the \"emojivoto\" namespace" {
+		if err.Error() != "no \"linkerd-proxy\" containers found in the \"emojivoto\" namespace" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -1555,11 +1555,11 @@ func TestValidateDataPlanePods(t *testing.T) {
 			},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := CheckPodsRunning(pods, "emojivoto")
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "The \"voting-65b9fffd77-rlwsd\" pod is not running" {
+		if err.Error() != "pod \"voting-65b9fffd77-rlwsd\" status is Failed" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -1580,7 +1580,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 			},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := CheckPodsRunning(pods, "emojivoto")
 		if err != nil {
 			t.Fatalf("Expected no error, got %s", err)
 		}
@@ -1597,7 +1597,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 			},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := CheckPodsRunning(pods, "emojivoto")
 		if err != nil {
 			t.Fatalf("Expected no error, got %s", err)
 		}
@@ -1655,11 +1655,11 @@ func TestValidateDataPlanePods(t *testing.T) {
 			},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := CheckPodsRunning(pods, "emojivoto")
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "The \"linkerd-proxy\" container in the \"vote-bot-644b8cb6b4-g8nlr\" pod is not ready" {
+		if err.Error() != "container \"linkerd-proxy\" in pod \"vote-bot-644b8cb6b4-g8nlr\" is not ready" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -1716,7 +1716,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 			},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := CheckPodsRunning(pods, "emojivoto")
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
@@ -1777,7 +1777,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 			},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := CheckPodsRunning(pods, "emojivoto")
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
