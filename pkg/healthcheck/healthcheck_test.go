@@ -1164,6 +1164,14 @@ spec:
   podCIDR: 90.10.90.24/24
 `,
 				`
+apiVersion: v1
+kind: Node
+metadata:
+  name: linkerd-test-ns-identity2
+spec:
+  podCIDR: 242.3.64.0/25
+`,
+				`
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -1177,7 +1185,7 @@ data:
 `,
 			},
 			expected: []string{
-				"linkerd-existence cluster networks contains all node podCIDRs: node has podCIDR(s) [90.10.90.24/24] which are not contained in the Linkerd clusterNetworks.\n\tTry installing linkerd via --set clusterNetworks=90.10.90.24/24",
+				"linkerd-existence cluster networks contains all node podCIDRs: node has podCIDR(s) [242.3.64.0/25 90.10.90.24/24] which are not contained in the Linkerd clusterNetworks.\n\tTry installing linkerd via --set clusterNetworks=\"242.3.64.0/25\\,90.10.90.24/24\"",
 			},
 		},
 		{
