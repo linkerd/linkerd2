@@ -17,13 +17,13 @@ linters:
   - deadcode
   - depguard
   - goconst
-  - golint
+  - revive
   - gosimple
   - govet
   - ineffassign
   - misspell
   - nakedret
-  - scopelint
+  - exportloopref
   - typecheck
   - unconvert
   - unparam
