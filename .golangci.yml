@@ -16,14 +16,14 @@ linters:
   - bodyclose
   - deadcode
   - depguard
+  - exportloopref
   - goconst
-  - revive
   - gosimple
   - govet
   - ineffassign
   - misspell
   - nakedret
-  - exportloopref
+  - revive
   - typecheck
   - unconvert
   - unparam
