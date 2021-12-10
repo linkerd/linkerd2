@@ -2,22 +2,14 @@ package localhost
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"testing"
 	"time"
 
 	"github.com/linkerd/linkerd2/testutil"
 )
-
-type jsonStats struct {
-	Namespace          string   `json:"namespace"`
-	Name               string   `json:"name"`
-	Success            *float64 `json:"success"`
-	Rps                *float64 `json:"rps"`
-	TCPOpenConnections *int     `json:"tcp_open_connections"`
-}
 
 var TestHelper *testutil.TestHelper
 
@@ -66,33 +58,33 @@ func TestLocalhostServer(t *testing.T) {
 		err = TestHelper.RetryFor(50*time.Second, func() error {
 			// Use a short time window so that transient errors at startup
 			// fall out of the window.
-			out, err := TestHelper.LinkerdRun("viz", "stat", "-n", ns, "deploy/slow-cooker", "--to", "deploy/nginx", "-t", "30s", "-o", "json")
+			metrics, err := TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "-n", ns, "deploy/slow-cooker")
 			if err != nil {
-				testutil.AnnotatedFatalf(t, "unexpected stat error",
-					"unexpected stat error: %s\n%s", err, out)
+				testutil.AnnotatedFatalf(t, "unexpected diagnostics error",
+					"unexpected diagnostics error: %s\n%s", err, out)
 			}
 
-			var stats []jsonStats
-			err = json.Unmarshal([]byte(out), &stats)
-			if err != nil {
-				return fmt.Errorf("failed to parse json stat output: %s\n%s", err, out)
-			}
-
-			if len(stats) != 1 {
-				return fmt.Errorf("expected 1 row of stat output, got: %s", out)
-			}
-
-			if stats[0].Rps == nil || *stats[0].Rps == 0.0 {
-				return fmt.Errorf("expected non-zero RPS from slowcooker to nginx: %s", out)
+			rpsRE := regexp.MustCompile(
+				`request_total\{direction="outbound",authority="nginx\.linkerd-localhost-test\.svc\.cluster\.local:8080",.*,dst_deployment="nginx",dst_namespace="linkerd-localhost-test",dst_pod="nginx.*",dst_pod_template_hash=".*",dst_service="nginx",dst_serviceaccount="default"\} [1-9]\d*`,
+			)
+			if !rpsRE.MatchString(metrics) {
+				return fmt.Errorf("expected non-zero RPS from slowcooker to nginx\nexpected: %s, got: %s", rpsRE, metrics)
 			}
 
 			// Requests sent to a port which is only bound to localhost should
 			// fail.
-			if *stats[0].Success >= 1.0 {
-				return fmt.Errorf("expected zero success-rate from slowcooker to nginx: %s", out)
+			successRE := regexp.MustCompile(
+				`response_total\{direction="outbound",authority="nginx\.linkerd-localhost-test\.svc\.cluster\.local:8080",.*,classification="success"\} [1-9]\d*`,
+			)
+			if successRE.MatchString(metrics) {
+				return fmt.Errorf("expected zero success-rate from slowcooker to nginx\nexpected: %s, got: %s", successRE, metrics)
 			}
-			if *stats[0].TCPOpenConnections > 0 {
-				return fmt.Errorf("expected no tcp connection from slowcooker to nginx: %s", out)
+
+			tcpConnRE := regexp.MustCompile(
+				`tcp_open_connections\{direction="outbound",peer="dst",authority="nginx\.linkerd-localhost-test\.svc\.cluster\.local:8080",.*\} 0`,
+			)
+			if !tcpConnRE.MatchString(metrics) {
+				return fmt.Errorf("expected no tcp connections from slowcooker to nginx\nexpected: %s, got: %s", tcpConnRE, metrics)
 			}
 
 			return nil
