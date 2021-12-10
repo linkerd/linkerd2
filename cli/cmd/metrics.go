@@ -90,14 +90,14 @@ func newCmdMetrics() *cobra.Command {
 				switch {
 				case result.err != nil:
 					content += fmt.Sprintf("# ERROR: %s\n", result.err)
-				case result.err == nil && options.obfuscate:
+				case options.obfuscate:
 					obfuscatedMetrics, err := obfuscateMetrics(result.metrics)
 					if err != nil {
 						content += fmt.Sprintf("# ERROR %s\n", err)
 					} else {
 						content += string(obfuscatedMetrics)
 					}
-				case result.err == nil && !options.obfuscate:
+				default:
 					content += string(result.metrics)
 				}
 

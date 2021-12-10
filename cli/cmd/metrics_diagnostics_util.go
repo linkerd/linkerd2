@@ -182,5 +182,6 @@ func obfuscateMetrics(metrics []byte) ([]byte, error) {
 }
 
 func obfuscate(s string) string {
-	return fmt.Sprintf("%x", sha256.Sum256([]byte(s)))
+	hash := sha256.Sum256([]byte(s))
+	return fmt.Sprintf("%x", hash[:4])
 }
