@@ -907,9 +907,6 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 	proxyStage := "proxy"
 	if stage == proxyStage {
 		cmd = []string{"check", "--proxy", "--expected-version", expectedVersion, "--namespace", namespace, "--wait=60m"}
-		// if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
-		// golden = "check.multicluster.proxy.golden"
-		// } else if TestHelper.CNI() {
 		if TestHelper.CNI() {
 			golden = "check.cni.proxy.golden"
 		} else {
@@ -920,9 +917,6 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 		golden = "check.config.golden"
 	} else {
 		cmd = []string{"check", "--expected-version", expectedVersion, "--wait=60m"}
-		// if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
-		// golden = "check.multicluster.golden"
-		// } else if TestHelper.CNI() {
 		if TestHelper.CNI() {
 			golden = "check.cni.golden"
 		} else {
@@ -1016,7 +1010,7 @@ func TestCheckConfigPostInstall(t *testing.T) {
 }
 
 func TestCheckPostInstall(t *testing.T) {
-	testCheckCommand(t, "", TestHelper.GetVersion(), "", "")
+	testCheckCommand(t, "proxy", TestHelper.GetVersion(), TestHelper.GetLinkerdNamespace(), "")
 }
 
 func TestCheckViz(t *testing.T) {
