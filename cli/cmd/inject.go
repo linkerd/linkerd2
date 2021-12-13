@@ -149,7 +149,7 @@ func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, trans
 }
 
 func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Report, error) {
-	conf := inject.NewResourceConfig(rt.values, inject.OriginCLI)
+	conf := inject.NewResourceConfig(rt.values, inject.OriginCLI, controlPlaneNamespace)
 
 	if rt.enableDebugSidecar {
 		conf.AppendPodAnnotation(k8s.ProxyEnableDebugAnnotation, "true")
@@ -486,8 +486,9 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 		}
 	}
 
-	// Set fields that can't be converted into annotations
-	values.Namespace = controlPlaneNamespace
+	if proxy.DefaultInboundPolicy != baseProxy.DefaultInboundPolicy {
+		overrideAnnotations[k8s.ProxyDefaultInboundPolicyAnnotation] = proxy.DefaultInboundPolicy
+	}
 
 	return overrideAnnotations
 }

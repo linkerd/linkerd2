@@ -51,7 +51,7 @@ jobs:
     # absolute path is used here.
     # https://github.com/actions/upload-artifact/issues/8
     - name: Upload artifact
-      uses: actions/upload-artifact@27121b0bdffd731efa15d66772be8dc71245d074
+      uses: actions/upload-artifact@da838ae9595ac94171fa2d4de5a2f117b3e7ac32
       with:
         name: image-archives
         path: /home/runner/archives
@@ -68,7 +68,8 @@ jobs:
         - external-prometheus-deep
         - external-resources
         - helm-deep
-        - helm-upgrade
+        # Skipping Helm upgrade test given chart in 2.11 is backwards-incompatible
+        #- helm-upgrade
         - multicluster
         - uninstall
         - upgrade-edge
@@ -87,7 +88,7 @@ jobs:
       run: |
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
     - name: Download image archives
-      uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
+      uses: actions/download-artifact@f023be2c48cc18debc3bacd34cb396e0295e2869
       with:
         name: image-archives
         path: image-archives

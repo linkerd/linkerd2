@@ -26,12 +26,8 @@ gateway:
   # -- Set loadBalancerIP on gateway service
   loadBalancerIP: ""
 
-# -- If the namespace should be installed
-installNamespace: true
 # -- Control plane version
 linkerdVersion: linkerdVersionValue
-# -- Service Mirror component namespace
-namespace: linkerd-multicluster
 # -- The port on which the proxy accepts outbound traffic
 proxyOutboundPort: 4140
 # -- If the remote mirror service account should be installed

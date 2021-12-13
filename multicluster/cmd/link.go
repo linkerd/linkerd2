@@ -11,6 +11,7 @@ import (
 	"github.com/linkerd/linkerd2/multicluster/static"
 	multicluster "github.com/linkerd/linkerd2/multicluster/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
+	partials "github.com/linkerd/linkerd2/pkg/charts/static"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -263,13 +264,25 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				{Name: "templates/gateway-mirror.yaml"},
 			}
 
+			var partialFiles []*chartloader.BufferedFile
+			for _, template := range charts.L5dPartials {
+				partialFiles = append(partialFiles,
+					&chartloader.BufferedFile{Name: template},
+				)
+			}
+
 			// Load all multicluster link chart files into buffer
 			if err := charts.FilesReader(static.Templates, helmMulticlusterLinkDefaultChartName+"/", files); err != nil {
 				return err
 			}
 
+			// Load all partial chart files into buffer
+			if err := charts.FilesReader(partials.Templates, "", partialFiles); err != nil {
+				return err
+			}
+
 			// Create a Chart obj from the files
-			chart, err := chartloader.LoadFiles(files)
+			chart, err := chartloader.LoadFiles(append(files, partialFiles...))
 			if err != nil {
 				return err
 			}
@@ -291,8 +304,16 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				return err
 			}
 
+			fullValues := map[string]interface{}{
+				"Values": vals,
+				"Release": map[string]interface{}{
+					"Namespace": opts.namespace,
+					"Service":   "CLI",
+				},
+			}
+
 			// Attach the final values into the `Values` field for rendering to work
-			renderedTemplates, err := engine.Render(chart, map[string]interface{}{"Values": vals})
+			renderedTemplates, err := engine.Render(chart, fullValues)
 			if err != nil {
 				return err
 			}
@@ -347,7 +368,7 @@ func newLinkOptionsWithDefault() (*linkOptions, error) {
 
 	return &linkOptions{
 		controlPlaneVersion:     version.Version,
-		namespace:               defaults.Namespace,
+		namespace:               defaultMulticlusterNamespace,
 		dockerRegistry:          defaultDockerRegistry,
 		serviceMirrorRetryLimit: defaults.ServiceMirrorRetryLimit,
 		logLevel:                defaults.LogLevel,
@@ -367,10 +388,6 @@ func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
 		return nil, errors.New("you need to specify a namespace")
 	}
 
-	if opts.namespace == controlPlaneNamespace {
-		return nil, errors.New("you need to setup the multicluster addons in a namespace different than the Linkerd one")
-	}
-
 	if _, err := log.ParseLevel(opts.logLevel); err != nil {
 		return nil, fmt.Errorf("--log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
@@ -385,7 +402,6 @@ func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
 	}
 
 	defaults.TargetClusterName = opts.clusterName
-	defaults.Namespace = opts.namespace
 	defaults.ServiceMirrorRetryLimit = opts.serviceMirrorRetryLimit
 	defaults.LogLevel = opts.logLevel
 	defaults.ControllerImageVersion = opts.controlPlaneVersion

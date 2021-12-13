@@ -17,6 +17,10 @@ shouldn't be used as-is unless you really know what you're doing ;-)
 
 Kubernetes: `>=1.20.0-0`
 
+| Repository | Name | Version |
+|------------|------|---------|
+| file://../../../charts/partials | partials | 0.1.0 |
+
 ## Values
 
 | Key | Type | Default | Description |
@@ -26,7 +30,6 @@ Kubernetes: `>=1.20.0-0`
 | enableHeadlessServices | bool | `false` | Toggle support for mirroring headless services |
 | gateway.probe.port | int | `4191` | The port used for liveliness probing |
 | logLevel | string | `"info"` | Log level for the Multicluster components |
-| namespace | string | `"linkerd-multicluster"` | Service Mirror component namespace |
 | serviceMirrorRetryLimit | int | `3` | Number of times update from the remote cluster is allowed to be requeued (retried) |
 | serviceMirrorUID | int | `2103` | User id under which the Service Mirror shall be ran |
 

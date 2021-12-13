@@ -1,5 +1,30 @@
 # Changes
 
+## edge-21.12.2
+
+This edge removes the default SMI functionality that is included in
+installations now that the linkerd-smi extension provides these resources. It
+also relaxes the `proxy-init`'s `privileged` value to only be set to `true` when
+needed by certain installation configurations.
+
+Along with some bug fixes, the repository's issue and feature request templates
+have been updated to forms; check them when opening a [new
+issue](https://github.com/linkerd/linkerd2/issues/new/choose)! (thanks
+@mikutas).
+
+* Removed SMI functionality in the default Linkerd installation; this is now
+  part of the linkerd-smi extension
+* Fixed autocompletion of the `--context` flag (thanks @mikutas!)
+* Added support for conditionally setting `proxy-init`'s `privileged: true` only
+  when needed (thanks @alex-berger!)
+* Added support for controlling opaque ports through the Server resource
+* Fixed an issue where `linkerd check` would compare proxy versions of
+  uninjected pods leading to incorrect errors
+* Relaxed extension checks so that the CLI still works when not all extension
+  proxies are healthy
+* Added the `--default-inbound-policy` flag to `linkerd inject` for setting a
+  non-default inbound policy on injected workloads (thanks @ahmedalhulaibi!)
+
 ## edge-21.12.1
 
 This edge release enables by default `EndpointSlices` in the destination

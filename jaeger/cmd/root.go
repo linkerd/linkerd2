@@ -14,6 +14,7 @@ import (
 
 const (
 	defaultLinkerdNamespace = "linkerd"
+	defaultJaegerNamespace  = "linkerd-jaeger"
 )
 
 var (

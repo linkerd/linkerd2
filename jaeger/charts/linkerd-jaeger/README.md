@@ -26,9 +26,9 @@ Guide](https://linkerd.io/2/tasks/install/).
 ## Adding Linkerd's Helm repository
 
 ```bash
-# To add the repo for Linkerd2 stable releases:
+# To add the repo for Linkerd stable releases:
 helm repo add linkerd https://helm.linkerd.io/stable
-# To add the repo for Linkerd2 edge releases:
+# To add the repo for Linkerd edge releases:
 helm repo add linkerd-edge https://helm.linkerd.io/edge
 ```
 
@@ -40,13 +40,7 @@ release, just replace with `linkerd-edge`.
 ### Helm v3
 
 ```bash
-helm install linkerd-jaeger linkerd/linkerd-jaeger
-```
-
-### Helm v2
-
-```bash
-helm install --name linkerd-jaeger linkerd/linkerd-jaeger
+helm install linkerd-jaeger -n linkerd-jaeger --create-namespace linkerd/linkerd-jaeger
 ```
 
 ## Get involved
@@ -94,7 +88,6 @@ Kubernetes: `>=1.20.0-0`
 | collector.resources.memory.request | string | `nil` | Amount of memory that the collector container requests |
 | collector.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
-| installNamespace | bool | `true` | Set to false when installing in a custom namespace. |
 | jaeger.args | list | `["--query.base-path=/jaeger"]` | CLI arguments for Jaeger, See [Jaeger AIO Memory CLI reference](https://www.jaegertracing.io/docs/1.24/cli/#jaeger-all-in-one-memory) |
 | jaeger.enabled | bool | `true` | Set to false to exclude all-in-one Jaeger installation |
 | jaeger.image.name | string | `"jaegertracing/all-in-one"` |  |
@@ -110,7 +103,6 @@ Kubernetes: `>=1.20.0-0`
 | jaeger.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | linkerdNamespace | string | `"linkerd"` | Namespace of the Linkerd core control-plane install |
 | linkerdVersion | string | `"linkerdVersionValue"` |  |
-| namespace | string | `"linkerd-jaeger"` |  |
 | nodeSelector | object | `{"kubernetes.io/os":"linux"}` | Default nodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | tolerations | string | `nil` | Default tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | webhook.caBundle | string | `""` | if empty, Helm will auto-generate this field, unless externalSecret is set to true. |

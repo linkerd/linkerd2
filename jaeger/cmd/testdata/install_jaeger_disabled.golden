@@ -5,9 +5,6 @@ metadata:
   name: linkerd-jaeger
   labels:
     linkerd.io/extension: jaeger
-  annotations:
-    linkerd.io/inject: enabled
-    config.linkerd.io/proxy-await: "enabled"
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
@@ -66,6 +63,8 @@ spec:
     metadata:
       annotations:
         checksum/config: 0cf88aabfdb59ab401cb17b59e26b57277ca6c039ec4837e2523759802565c1b
+        linkerd.io/inject: enabled
+        config.linkerd.io/proxy-await: "enabled"
       labels:
         linkerd.io/extension: jaeger
         component: jaeger-injector
@@ -356,6 +355,8 @@ spec:
   template:
     metadata:
       annotations:
+        linkerd.io/inject: enabled
+        config.linkerd.io/proxy-await: "enabled"
         prometheus.io/path: /metrics
         prometheus.io/port: "8888"
         prometheus.io/scrape: "true"

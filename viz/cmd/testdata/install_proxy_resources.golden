@@ -9,8 +9,6 @@ metadata:
   labels:
     linkerd.io/extension: viz
   annotations:
-    linkerd.io/inject: enabled
-    config.linkerd.io/proxy-await: "enabled"
 ---
 ###
 ### Metrics API RBAC
@@ -468,6 +466,7 @@ metadata:
     component: metrics-api
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/inject: enabled
 spec:
   type: ClusterIP
   selector:
@@ -483,6 +482,8 @@ kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: metrics-api
@@ -502,6 +503,7 @@ spec:
       annotations:
         checksum/config: ae930acf3edba3cbf32c43dacfa4808bf679c5c932870cb2a2a46de1023f01c8
         linkerd.io/created-by: linkerd/helm dev-undefined
+        linkerd.io/inject: enabled
       labels:
         linkerd.io/extension: viz
         component: metrics-api
@@ -648,6 +650,7 @@ metadata:
     namespace: linkerd-viz
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/inject: enabled
 spec:
   type: ClusterIP
   selector:
@@ -663,6 +666,8 @@ kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: grafana
@@ -687,6 +692,7 @@ spec:
         config.linkerd.io/proxy-cpu-limit: "100m"
         config.linkerd.io/proxy-memory-request: "20Mi"
         config.linkerd.io/proxy-memory-limit: "250Mi"
+        linkerd.io/inject: enabled
       labels:
         linkerd.io/extension: viz
         component: grafana
@@ -935,6 +941,7 @@ metadata:
     namespace: linkerd-viz
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/inject: enabled
 spec:
   type: ClusterIP
   selector:
@@ -950,6 +957,8 @@ kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: prometheus
@@ -974,6 +983,7 @@ spec:
         config.linkerd.io/proxy-cpu-limit: "100m"
         config.linkerd.io/proxy-memory-request: "20Mi"
         config.linkerd.io/proxy-memory-limit: "250Mi"
+        linkerd.io/inject: enabled
       labels:
         linkerd.io/extension: viz
         component: prometheus
@@ -1042,6 +1052,7 @@ metadata:
     namespace: linkerd-viz
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/inject: enabled
 spec:
   type: ClusterIP
   selector:
@@ -1060,6 +1071,8 @@ apiVersion: apps/v1
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: tap
@@ -1085,6 +1098,7 @@ spec:
         config.linkerd.io/proxy-cpu-limit: "100m"
         config.linkerd.io/proxy-memory-request: "20Mi"
         config.linkerd.io/proxy-memory-limit: "250Mi"
+        linkerd.io/inject: enabled
       labels:
         linkerd.io/extension: viz
         component: tap
@@ -1253,6 +1267,7 @@ metadata:
     component: tap-injector
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/inject: enabled
 spec:
   type: ClusterIP
   selector:
@@ -1268,6 +1283,8 @@ apiVersion: apps/v1
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: tap-injector
@@ -1285,6 +1302,7 @@ spec:
       annotations:
         checksum/config: 954486b77f49f95fc44392cf8ea7672033f74102bab63103d00a61ea7895c281
         linkerd.io/created-by: linkerd/helm dev-undefined
+        linkerd.io/inject: enabled
       labels:
         linkerd.io/extension: viz
         component: tap-injector
@@ -1377,6 +1395,7 @@ metadata:
     namespace: linkerd-viz
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/inject: enabled
 spec:
   type: ClusterIP
   selector:
@@ -1395,6 +1414,8 @@ kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: web
@@ -1419,6 +1440,7 @@ spec:
         config.linkerd.io/proxy-cpu-limit: "100m"
         config.linkerd.io/proxy-memory-request: "20Mi"
         config.linkerd.io/proxy-memory-limit: "250Mi"
+        linkerd.io/inject: enabled
       labels:
         linkerd.io/extension: viz
         component: web

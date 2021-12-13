@@ -25,10 +25,6 @@ defaultUID: 2103
 
 # -- Namespace of the Linkerd core control-plane install
 linkerdNamespace: linkerd
-# -- Set to false when installing in a custom namespace.
-installNamespace: true
-# -- Namespace in which the Linkerd Viz extension has to be installed
-namespace: linkerd-viz
 
 # -- Default nodeSelector section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information

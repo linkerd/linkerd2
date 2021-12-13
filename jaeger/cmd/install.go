@@ -23,6 +23,7 @@ import (
 )
 
 var (
+	// this doesn't include the namespace-metadata.* templates, which are Helm-only
 	templatesJaeger = []string{
 		"templates/namespace.yaml",
 		"templates/proxy-admin-policy.yaml",
@@ -150,8 +151,16 @@ func render(w io.Writer, valuesOverrides map[string]interface{}, registry string
 		vals["webhook"].(map[string]interface{})["image"].(map[string]interface{})["name"] = cmd.RegistryOverride(regOrig, override)
 	}
 
+	fullValues := map[string]interface{}{
+		"Values": vals,
+		"Release": map[string]interface{}{
+			"Namespace": defaultJaegerNamespace,
+			"Service":   "CLI",
+		},
+	}
+
 	// Attach the final values into the `Values` field for rendering to work
-	renderedTemplates, err := engine.Render(chart, map[string]interface{}{"Values": vals})
+	renderedTemplates, err := engine.Render(chart, fullValues)
 	if err != nil {
 		return err
 	}

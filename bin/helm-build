@@ -3,7 +3,8 @@
 set -e
 
 setValues() {
-    sed -i "s/$1/$2/" charts/linkerd2/values.yaml
+    sed -i "s/$1/$2/" charts/linkerd-crds/values.yaml
+    sed -i "s/$1/$2/" charts/linkerd-control-plane/values.yaml
     sed -i "s/$1/$2/" charts/linkerd2-cni/values.yaml
     sed -i "s/$1/$2/" multicluster/charts/linkerd-multicluster/values.yaml
     sed -i "s/$1/$2/" jaeger/charts/linkerd-jaeger/values.yaml
@@ -22,7 +23,8 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
 
 # cleanup dependencies
-rm -f charts/linkerd2/charts/*
+rm -f charts/linkerd-crds/charts/*
+rm -f charts/linkerd-control-plane/charts/*
 rm -f charts/linkerd2-cni/charts/*
 rm -f charts/patch/charts/*
 rm -f jaeger/charts/linkerd-jaeger/charts/*
@@ -35,9 +37,11 @@ rm -f viz/charts/linkerd-viz/charts/*
 "$bindir"/helm lint "$rootdir"/charts/partials
 "$bindir"/helm dep up "$rootdir"/charts/linkerd2-cni
 "$bindir"/helm lint "$rootdir"/charts/linkerd2-cni
-"$bindir"/helm dep up "$rootdir"/charts/linkerd2
+"$bindir"/helm dep up "$rootdir"/charts/linkerd-crds
+"$bindir"/helm dep up "$rootdir"/charts/linkerd-control-plane
 "$bindir"/helm dep up "$rootdir"/charts/patch
-"$bindir"/helm lint --set identityTrustAnchorsPEM="fake-trust" --set identity.issuer.tls.crtPEM="fake-cert" --set identity.issuer.tls.keyPEM="fake-key" "$rootdir"/charts/linkerd2
+"$bindir"/helm lint "$rootdir"/charts/linkerd-crds
+"$bindir"/helm lint --set identityTrustAnchorsPEM="fake-trust" --set identity.issuer.tls.crtPEM="fake-cert" --set identity.issuer.tls.keyPEM="fake-key" "$rootdir"/charts/linkerd-control-plane
 "$bindir"/helm lint "$rootdir"/charts/linkerd2-cni
 "$bindir"/helm dep up "$rootdir"/jaeger/charts/linkerd-jaeger
 "$bindir"/helm lint "$rootdir"/jaeger/charts/linkerd-jaeger
@@ -63,7 +67,8 @@ if [ "$1" = package ]; then
     # set version in Values files
     setValues "linkerdVersionValue" "$fullVersion"
 
-    "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2
+    "$bindir"/helm -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd-crds
+    "$bindir"/helm --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd-control-plane
     "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2-cni
     "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/multicluster/charts/linkerd-multicluster
     "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/jaeger/charts/linkerd-jaeger

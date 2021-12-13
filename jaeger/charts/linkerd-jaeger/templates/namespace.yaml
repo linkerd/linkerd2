@@ -1,12 +1,9 @@
-{{- if (.Values.installNamespace) -}}
+{{- if eq .Release.Service "CLI" -}}
 ---
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: {{.Values.namespace}}
+  name: {{.Release.Namespace}}
   labels:
     linkerd.io/extension: jaeger
-  annotations:
-    linkerd.io/inject: enabled
-    config.linkerd.io/proxy-await: "enabled"
 {{ end -}}

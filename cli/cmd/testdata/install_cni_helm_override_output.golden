@@ -1,20 +1,10 @@
 ---
 # Source: linkerd2-cni/templates/cni-plugin.yaml
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: linkerd-test
-  annotations:
-    linkerd.io/inject: disabled
-  labels:
-    linkerd.io/cni-resource: "true"
-    config.linkerd.io/admission-webhooks: disabled
----
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: linkerd-cni
-  namespace: linkerd-test
+  
   labels:
     linkerd.io/cni-resource: "true"
 ---
@@ -48,7 +38,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-cni-config
-  namespace: linkerd-test
+  
   labels:
     linkerd.io/cni-resource: "true"
 data:
@@ -84,7 +74,7 @@ kind: DaemonSet
 apiVersion: apps/v1
 metadata:
   name: linkerd-cni
-  namespace: linkerd-test
+  
   labels:
     k8s-app: linkerd-cni
     linkerd.io/cni-resource: "true"
