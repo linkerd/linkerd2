@@ -7,11 +7,11 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: grafana-config
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/extension: viz
     component: grafana
-    namespace: {{.Values.namespace}}
+    namespace: {{.Release.Namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 data:
@@ -45,7 +45,7 @@ data:
       {{- if .Values.prometheusUrl }}
       url: {{.Values.prometheusUrl}}
       {{- else }}
-      url: http://prometheus.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:9090
+      url: http://prometheus.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}:9090
       {{- end }}
       isDefault: true
       jsonData:
@@ -70,13 +70,14 @@ kind: Service
 apiVersion: v1
 metadata:
   name: grafana
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/extension: viz
     component: grafana
-    namespace: {{.Values.namespace}}
+    namespace: {{.Release.Namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    linkerd.io/inject: enabled
 spec:
   type: ClusterIP
   selector:
@@ -92,22 +93,24 @@ kind: Deployment
 metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: grafana
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
     component: grafana
-    namespace: {{.Values.namespace}}
+    namespace: {{.Release.Namespace}}
   name: grafana
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
 spec:
   replicas: 1
   selector:
     matchLabels:
       linkerd.io/extension: viz
       component: grafana
-      namespace: {{.Values.namespace}}
+      namespace: {{.Release.Namespace}}
   template:
     metadata:
       annotations:
@@ -116,10 +119,11 @@ spec:
         {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        linkerd.io/inject: enabled
       labels:
         linkerd.io/extension: viz
         component: grafana
-        namespace: {{.Values.namespace}}
+        namespace: {{.Release.Namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.grafana.tolerations -}}

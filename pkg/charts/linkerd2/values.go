@@ -10,15 +10,17 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
 
 const (
-	helmDefaultChartDir     = "linkerd2"
-	helmDefaultHAValuesFile = "values-ha.yaml"
+	// HelmChartDirCrds is the directory name for the linkerd-crds chart
+	HelmChartDirCrds = "linkerd-crds"
+
+	// HelmChartDirCP is the directory name for the linkerd-control-plane chart
+	HelmChartDirCP = "linkerd-control-plane"
 )
 
 type (
@@ -32,9 +34,7 @@ type (
 		WebhookFailurePolicy         string              `json:"webhookFailurePolicy"`
 		DisableHeartBeat             bool                `json:"disableHeartBeat"`
 		HeartbeatSchedule            string              `json:"heartbeatSchedule"`
-		InstallNamespace             bool                `json:"installNamespace"`
 		Configs                      ConfigJSONs         `json:"configs"`
-		Namespace                    string              `json:"namespace"`
 		ClusterDomain                string              `json:"clusterDomain"`
 		ClusterNetworks              string              `json:"clusterNetworks"`
 		ImagePullPolicy              string              `json:"imagePullPolicy"`
@@ -225,7 +225,15 @@ type (
 
 // NewValues returns a new instance of the Values type.
 func NewValues() (*Values, error) {
-	v, err := readDefaults(false)
+	v, err := readDefaults(HelmChartDirCrds + "/values.yaml")
+	if err != nil {
+		return nil, err
+	}
+	vCP, err := readDefaults(HelmChartDirCP + "/values.yaml")
+	if err != nil {
+		return nil, err
+	}
+	*v, err = v.Merge(*vCP)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +263,7 @@ func ValuesFromConfigMap(cm *corev1.ConfigMap) (*Values, error) {
 
 // MergeHAValues retrieves the default HA values and merges them into the received values
 func MergeHAValues(values *Values) error {
-	haValues, err := readDefaults(true)
+	haValues, err := readDefaults(HelmChartDirCP + "/values-ha.yaml")
 	if err != nil {
 		return err
 	}
@@ -263,17 +271,10 @@ func MergeHAValues(values *Values) error {
 	return err
 }
 
-// readDefaults read all the default variables from the values.yaml file.
-func readDefaults(ha bool) (*Values, error) {
-	var valuesFile *loader.BufferedFile
-	if ha {
-		valuesFile = &loader.BufferedFile{Name: helmDefaultHAValuesFile}
-	} else {
-		valuesFile = &loader.BufferedFile{Name: chartutil.ValuesfileName}
-	}
-
-	chartDir := fmt.Sprintf("%s/", helmDefaultChartDir)
-	if err := charts.ReadFile(static.Templates, chartDir, valuesFile); err != nil {
+// readDefaults read all the default variables from filename.
+func readDefaults(filename string) (*Values, error) {
+	valuesFile := &loader.BufferedFile{Name: filename}
+	if err := charts.ReadFile(static.Templates, "/", valuesFile); err != nil {
 		return nil, err
 	}
 

@@ -1312,8 +1312,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 						if err != nil {
 							return err
 						}
-
-						return validateDataPlanePods(pods, hc.DataPlaneNamespace)
+						return CheckPodsRunning(pods, hc.DataPlaneNamespace)
 					},
 				},
 				{
@@ -1442,6 +1441,9 @@ func CheckProxyVersionsUpToDate(pods []corev1.Pod, versions version.Channels) er
 		status := k8s.GetPodStatus(pod)
 		if status == string(corev1.PodRunning) && containsProxy(pod) {
 			proxyVersion := k8s.GetProxyVersion(pod)
+			if proxyVersion == "" {
+				continue
+			}
 			if err := versions.Match(proxyVersion); err != nil {
 				outdatedPods = append(outdatedPods, fmt.Sprintf("\t* %s (%s)", pod.Name, proxyVersion))
 			}
@@ -1459,7 +1461,7 @@ func CheckProxyVersionsUpToDate(pods []corev1.Pod, versions version.Channels) er
 func CheckIfProxyVersionsMatchWithCLI(pods []corev1.Pod) error {
 	for _, pod := range pods {
 		proxyVersion := k8s.GetProxyVersion(pod)
-		if proxyVersion != version.Version {
+		if proxyVersion != "" && proxyVersion != version.Version {
 			return fmt.Errorf("%s running %s but cli running %s", pod.Name, proxyVersion, version.Version)
 		}
 	}
@@ -1501,7 +1503,7 @@ func (hc *HealthChecker) CheckProxyHealth(ctx context.Context, controlPlaneNames
 	}
 
 	// Validate the status of the pods
-	err = validateDataPlanePods(podList.Items, controlPlaneNamespace)
+	err = CheckPodsRunning(podList.Items, controlPlaneNamespace)
 	if err != nil {
 		return err
 	}
@@ -1877,7 +1879,9 @@ func (hc *HealthChecker) checkClusterNetworks(ctx context.Context) error {
 		return &SkipError{Reason: podCIDRUnavailableSkipReason}
 	}
 	if len(badPodCIDRS) > 0 {
-		return fmt.Errorf("node has podCIDR(s) %v which are not contained in the Linkerd clusterNetworks.\n\tTry installing linkerd via --set clusterNetworks=%s", badPodCIDRS, strings.Join(badPodCIDRS, ","))
+		sort.Strings(badPodCIDRS)
+		return fmt.Errorf("node has podCIDR(s) %v which are not contained in the Linkerd clusterNetworks.\n\tTry installing linkerd via --set clusterNetworks=\"%s\"",
+			badPodCIDRS, strings.Join(badPodCIDRS, "\\,"))
 	}
 	return nil
 }
@@ -2703,36 +2707,6 @@ func validateControlPlanePods(pods []corev1.Pod) error {
 	return nil
 }
 
-func validateDataPlanePods(pods []corev1.Pod, targetNamespace string) error {
-	if len(pods) == 0 {
-		msg := fmt.Sprintf("No \"%s\" containers found", k8s.ProxyContainerName)
-		if targetNamespace != "" {
-			msg += fmt.Sprintf(" in the \"%s\" namespace", targetNamespace)
-		}
-		return fmt.Errorf(msg)
-	}
-
-	for _, pod := range pods {
-		status := k8s.GetPodStatus(pod)
-		// Skip validating meshed pods that are in the `Completed` or `Shutdown` state
-		// as they do not have a running proxy
-		if status == "Completed" || status == "Shutdown" {
-			continue
-		}
-
-		if status != string(corev1.PodRunning) && status != "Evicted" {
-			return fmt.Errorf("The \"%s\" pod is not running", pod.Name)
-		}
-
-		if !k8s.GetProxyReady(pod) {
-			return fmt.Errorf("The \"%s\" container in the \"%s\" pod is not ready",
-				k8s.ProxyContainerName, pod.Name)
-		}
-	}
-
-	return nil
-}
-
 func checkUnschedulablePods(pods []corev1.Pod) error {
 	for _, pod := range pods {
 		for _, condition := range pod.Status.Conditions {
@@ -2784,20 +2758,25 @@ func CheckForPods(pods []corev1.Pod, deployNames []string) error {
 
 // CheckPodsRunning checks if the given pods are in running state
 // along with containers to be in ready state
-func CheckPodsRunning(pods []corev1.Pod, podsNotFoundMsg string) error {
-	if len(pods) == 0 && podsNotFoundMsg != "" {
-		return fmt.Errorf(podsNotFoundMsg)
+func CheckPodsRunning(pods []corev1.Pod, namespace string) error {
+	if len(pods) == 0 {
+		msg := fmt.Sprintf("no \"%s\" containers found", k8s.ProxyContainerName)
+		if namespace != "" {
+			msg += fmt.Sprintf(" in the \"%s\" namespace", namespace)
+		}
+		return fmt.Errorf(msg)
 	}
 	for _, pod := range pods {
-		if pod.Status.Phase != corev1.PodRunning {
-			return fmt.Errorf("%s status is %s", pod.Name, pod.Status.Phase)
-		}
+		status := k8s.GetPodStatus(pod)
 
-		// check for container readiness
-		for _, containerStatus := range pod.Status.ContainerStatuses {
-			if !containerStatus.Ready {
-				return fmt.Errorf("container %s in pod %s is not ready ", pod.Name, containerStatus.Name)
-			}
+		// Skip validating meshed pods that are in the `Completed` or
+		// `Shutdown` state as they do not have a running proxy
+		if status == "Completed" || status == "Shutdown" {
+			continue
+		} else if status != string(corev1.PodRunning) && status != "Evicted" {
+			return fmt.Errorf("pod \"%s\" status is %s", pod.Name, pod.Status.Phase)
+		} else if !k8s.GetProxyReady(pod) {
+			return fmt.Errorf("container \"%s\" in pod \"%s\" is not ready", k8s.ProxyContainerName, pod.Name)
 		}
 	}
 	return nil

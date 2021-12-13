@@ -63,7 +63,7 @@ sub-folders, or coming from stdin.`,
 }
 
 func (rt resourceTransformerUninject) transform(bytes []byte) ([]byte, []inject.Report, error) {
-	conf := inject.NewResourceConfig(rt.values, inject.OriginWebhook)
+	conf := inject.NewResourceConfig(rt.values, inject.OriginWebhook, controlPlaneNamespace)
 
 	report, err := conf.ParseMetaAndYAML(bytes)
 	if err != nil {

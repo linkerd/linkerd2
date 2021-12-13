@@ -164,11 +164,11 @@ func (hc *HealthChecker) VizCategory() *healthcheck.Category {
 					return err
 				}
 
-				return healthcheck.CheckPodsRunning(pods, "")
+				return healthcheck.CheckPodsRunning(pods, hc.vizNamespace)
 			}),
 		*healthcheck.NewChecker("viz extension proxies are healthy").
 			WithHintAnchor("l5d-viz-proxy-healthy").
-			Fatal().
+			Warning().
 			WithCheck(func(ctx context.Context) (err error) {
 				return hc.CheckProxyHealth(ctx, hc.ControlPlaneNamespace, hc.vizNamespace)
 			}),

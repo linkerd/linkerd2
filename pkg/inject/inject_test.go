@@ -277,7 +277,8 @@ func TestGetOverriddenValues(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			resourceConfig := NewResourceConfig(testConfig, OriginUnknown).WithKind("Deployment").WithNsAnnotations(testCase.nsAnnotations)
+			resourceConfig := NewResourceConfig(testConfig, OriginUnknown, "linkerd").
+				WithKind("Deployment").WithNsAnnotations(testCase.nsAnnotations)
 			if err := resourceConfig.parse(data); err != nil {
 				t.Fatal(err)
 			}

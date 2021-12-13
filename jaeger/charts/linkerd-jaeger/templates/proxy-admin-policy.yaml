@@ -2,7 +2,7 @@
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   name: proxy-admin
   labels:
     linkerd.io/extension: jaeger
@@ -18,7 +18,7 @@ spec:
 apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   name: proxy-admin
   labels:
     linkerd.io/extension: jaeger

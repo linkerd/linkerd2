@@ -110,9 +110,7 @@ func (h *KubernetesHelper) DeleteNamespaceIfExists(ctx context.Context, namespac
 
 // CreateControlPlaneNamespaceIfNotExists creates linkerd control plane namespace.
 func (h *KubernetesHelper) CreateControlPlaneNamespaceIfNotExists(ctx context.Context, namespace string) error {
-	labels := map[string]string{"linkerd.io/is-control-plane": "true", "config.linkerd.io/admission-webhooks": "disabled", "linkerd.io/control-plane-ns": namespace}
-	annotations := map[string]string{"linkerd.io/inject": "disabled"}
-	return h.createNamespaceIfNotExists(ctx, namespace, annotations, labels)
+	return h.createNamespaceIfNotExists(ctx, namespace, nil, nil)
 }
 
 // CreateDataPlaneNamespaceIfNotExists creates a dataplane namespace if it does not already exist,

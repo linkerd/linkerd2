@@ -30,11 +30,11 @@ env:
 - name: LINKERD2_PROXY_LOG_FORMAT
   value: {{.Values.proxy.logFormat | quote}}
 - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-  value: {{ternary "localhost.:8086" (printf "linkerd-dst-headless.%s.svc.%s.:8086" .Values.namespace .Values.clusterDomain) (eq (toString .Values.proxy.component) "linkerd-destination")}}
+  value: {{ternary "localhost.:8086" (printf "linkerd-dst-headless.%s.svc.%s.:8086" .Release.Namespace .Values.clusterDomain) (eq (toString .Values.proxy.component) "linkerd-destination")}}
 - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
   value: {{.Values.clusterNetworks | quote}}
 - name: LINKERD2_PROXY_POLICY_SVC_ADDR
-  value: {{ternary "localhost.:8090" (printf "linkerd-policy.%s.svc.%s.:8090" .Values.namespace .Values.clusterDomain) (eq (toString .Values.proxy.component) "linkerd-destination")}}
+  value: {{ternary "localhost.:8090" (printf "linkerd-policy.%s.svc.%s.:8090" .Release.Namespace .Values.clusterDomain) (eq (toString .Values.proxy.component) "linkerd-destination")}}
 - name: LINKERD2_PROXY_POLICY_WORKLOAD
   value: "$(_pod_ns):$(_pod_name)"
 - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
@@ -96,7 +96,7 @@ env:
     fieldRef:
       fieldPath: spec.serviceAccountName
 - name: _l5d_ns
-  value: {{.Values.namespace}}
+  value: {{.Release.Namespace}}
 - name: _l5d_trustdomain
   value: {{$trustDomain}}
 - name: LINKERD2_PROXY_IDENTITY_DIR
@@ -123,15 +123,15 @@ be used in other contexts.
   value: /var/run/secrets/kubernetes.io/serviceaccount/token
 {{ end -}}
 - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-  value: {{ternary "localhost.:8080" (printf "linkerd-identity-headless.%s.svc.%s.:8080" .Values.namespace .Values.clusterDomain) (eq (toString .Values.proxy.component) "linkerd-identity")}}
+  value: {{ternary "localhost.:8080" (printf "linkerd-identity-headless.%s.svc.%s.:8080" .Release.Namespace .Values.clusterDomain) (eq (toString .Values.proxy.component) "linkerd-identity")}}
 - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
-  value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.{{.Values.namespace}}.{{$trustDomain}}
+  value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.{{.Release.Namespace}}.{{$trustDomain}}
 - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
-  value: linkerd-identity.{{.Values.namespace}}.serviceaccount.identity.{{.Values.namespace}}.{{$trustDomain}}
+  value: linkerd-identity.{{.Release.Namespace}}.serviceaccount.identity.{{.Release.Namespace}}.{{$trustDomain}}
 - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
-  value: linkerd-destination.{{.Values.namespace}}.serviceaccount.identity.{{.Values.namespace}}.{{$trustDomain}}
+  value: linkerd-destination.{{.Release.Namespace}}.serviceaccount.identity.{{.Release.Namespace}}.{{$trustDomain}}
 - name: LINKERD2_PROXY_POLICY_SVC_NAME
-  value: linkerd-destination.{{.Values.namespace}}.serviceaccount.identity.{{.Values.namespace}}.{{$trustDomain}}
+  value: linkerd-destination.{{.Release.Namespace}}.serviceaccount.identity.{{.Release.Namespace}}.{{$trustDomain}}
 {{ end -}}
 image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version | default .Values.linkerdVersion}}
 imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPolicy}}

@@ -1,0 +1,66 @@
+{{ if not .Values.disableHeartBeat -}}
+---
+###
+### Heartbeat
+###
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: linkerd-heartbeat
+  {{ include "partials.namespace" . }}
+  labels:
+    app.kubernetes.io/name: heartbeat
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
+    linkerd.io/control-plane-component: heartbeat
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  concurrencyPolicy: Replace
+  {{ if .Values.heartbeatSchedule -}}
+  schedule: "{{.Values.heartbeatSchedule}}"
+  {{ else -}}
+  schedule: "{{ dateInZone "04 15 * * *" (now | mustDateModify "+10m") "UTC"}}"
+  {{ end -}}
+  successfulJobsHistoryLimit: 0
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            linkerd.io/control-plane-component: heartbeat
+            linkerd.io/workload-ns: {{.Release.Namespace}}
+            {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 12 }}{{- end }}
+          annotations:
+            {{ include "partials.annotations.created-by" . }}
+            {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 12 }}{{- end }}
+        spec:
+          {{- if .Values.priorityClassName }}
+          priorityClassName: {{ .Values.priorityClassName }}
+          {{- end -}}
+          {{- if .Values.tolerations -}}
+          {{- include "linkerd.tolerations" . | nindent 10 }}
+          {{- end -}}
+          {{- include "linkerd.node-selector" . | nindent 10 }}
+          serviceAccountName: linkerd-heartbeat
+          restartPolicy: Never
+          containers:
+          - name: heartbeat
+            image: {{.Values.controllerImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
+            imagePullPolicy: {{.Values.imagePullPolicy}}
+            env:
+            - name: LINKERD_DISABLED
+              value: "the heartbeat controller does not use the proxy"
+            args:
+            - "heartbeat"
+            - "-controller-namespace={{.Release.Namespace}}"
+            - "-log-level={{.Values.controllerLogLevel}}"
+            - "-log-format={{.Values.controllerLogFormat}}"
+            - "-prometheus-url=http://prometheus.linkerd-viz.svc.{{.Values.clusterDomain}}:9090"
+            {{- if .Values.heartbeatResources -}}
+            {{- include "partials.resources" .Values.heartbeatResources | nindent 12 }}
+            {{- end }}
+            securityContext:
+              runAsUser: {{.Values.controllerUID}}
+{{- end }}

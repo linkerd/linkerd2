@@ -310,6 +310,28 @@ func TestUninjectAndInject(t *testing.T) {
 			injectProxy:      true,
 			testInjectConfig: ingressConfig,
 		},
+		{
+			inputFileName:  "inject_emojivoto_deployment.input.yml",
+			goldenFileName: "inject_emojivoto_deployment_default_inbound_policy.golden.yml",
+			reportFileName: "inject_emojivoto_deployment_default_inbound_policy.golden.report",
+			injectProxy:    false,
+			testInjectConfig: func() *linkerd2.Values {
+				values := defaultConfig()
+				values.Proxy.DefaultInboundPolicy = k8s.AllAuthenticated
+				return values
+			}(),
+		},
+		{
+			inputFileName:  "inject_emojivoto_pod.input.yml",
+			goldenFileName: "inject_emojivoto_pod_default_inbound_policy.golden.yml",
+			reportFileName: "inject_emojivoto_pod_default_inbound_policy.golden.report",
+			injectProxy:    false,
+			testInjectConfig: func() *linkerd2.Values {
+				values := defaultConfig()
+				values.Proxy.DefaultInboundPolicy = k8s.AllAuthenticated
+				return values
+			}(),
+		},
 	}
 
 	for i, tc := range testCases {

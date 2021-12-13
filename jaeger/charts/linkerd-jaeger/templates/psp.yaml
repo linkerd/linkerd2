@@ -4,7 +4,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: psp
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/extension: jaeger
 rules:
@@ -18,7 +18,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: jaeger-psp
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/extension: jaeger
 roleRef:
@@ -29,14 +29,14 @@ subjects:
 {{ if .Values.collector.enabled -}}
 - kind: ServiceAccount
   name: collector
-  namespace: {{.Values.namespace}}
+  namespace: {{.Release.Namespace}}
 {{ end -}}
 - kind: ServiceAccount
   name: jaeger-injector
-  namespace: {{.Values.namespace}}
+  namespace: {{.Release.Namespace}}
 {{ if .Values.jaeger.enabled -}}
 - kind: ServiceAccount
   name: jaeger
-  namespace: {{.Values.namespace}}
+  namespace: {{.Release.Namespace}}
 {{ end -}}
 {{ end -}}

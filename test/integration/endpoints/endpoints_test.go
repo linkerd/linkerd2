@@ -2,6 +2,7 @@ package endpoints
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"regexp"
@@ -20,50 +21,57 @@ func TestMain(m *testing.M) {
 }
 
 func TestGoodEndpoints(t *testing.T) {
-	ns := TestHelper.GetLinkerdNamespace()
-	vizNs := TestHelper.GetVizNamespace()
+	ctx := context.Background()
+	controlNs := TestHelper.GetLinkerdNamespace()
 	testDataPath := "testdata"
 	cmd := []string{
 		"diagnostics",
 		"endpoints",
-		fmt.Sprintf("linkerd-dst.%s.svc.cluster.local:8086", ns),
-		fmt.Sprintf("grafana.%s.svc.cluster.local:3000", vizNs),
-		fmt.Sprintf("linkerd-identity.%s.svc.cluster.local:8080", ns),
-		fmt.Sprintf("linkerd-proxy-injector.%s.svc.cluster.local:443", ns),
-		fmt.Sprintf("tap.%s.svc.cluster.local:8088", vizNs),
-		fmt.Sprintf("web.%s.svc.cluster.local:8084", vizNs),
+		fmt.Sprintf("linkerd-dst.%s.svc.cluster.local:8086", controlNs),
+		fmt.Sprintf("linkerd-identity.%s.svc.cluster.local:8080", controlNs),
+		fmt.Sprintf("linkerd-proxy-injector.%s.svc.cluster.local:443", controlNs),
+		fmt.Sprintf("nginx.%s.svc.cluster.local:8080", "linkerd-endpoints-test"),
+		"-ojson",
 	}
 
-	if !TestHelper.ExternalPrometheus() {
-		cmd = append(cmd, fmt.Sprintf("prometheus.%s.svc.cluster.local:9090", vizNs))
-	} else {
-		cmd = append(cmd, "prometheus.external-prometheus.svc.cluster.local:9090")
-		testDataPath += "/external_prometheus"
-	}
+	TestHelper.WithDataPlaneNamespace(ctx, "endpoints-test", map[string]string{}, t, func(t *testing.T, ns string) {
+		out, err := TestHelper.Kubectl("", "apply", "-f", fmt.Sprintf("%s/%s", testDataPath, "nginx.yaml"), "-n", ns)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s", err, out)
+		}
 
-	cmd = append(cmd, "-ojson")
-	out, err := TestHelper.LinkerdRun(cmd...)
-	if err != nil {
-		testutil.AnnotatedFatal(t, "unexpected error", err)
-	}
+		err = TestHelper.CheckPods(ctx, ns, "nginx", 1)
+		if err != nil {
+			if rce, ok := err.(*testutil.RestartCountError); ok {
+				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+			} else {
+				testutil.AnnotatedError(t, "CheckPods timed-out", err)
+			}
+		}
 
-	tpl := template.Must(template.ParseFiles(testDataPath + "/linkerd_endpoints.golden"))
-	vars := struct {
-		Ns    string
-		VizNs string
-	}{
-		ns,
-		vizNs,
-	}
-	var b bytes.Buffer
-	if err := tpl.Execute(&b, vars); err != nil {
-		testutil.AnnotatedFatalf(t, "failed to parse linkerd_endpoints.golden template", "failed to parse linkerd_endpoints.golden template: %s", err)
-	}
+		out, err = TestHelper.LinkerdRun(cmd...)
+		if err != nil {
+			testutil.AnnotatedFatal(t, "unexpected error", err)
+		}
 
-	r := regexp.MustCompile(b.String())
-	if !r.MatchString(out) {
-		testutil.AnnotatedErrorf(t, "unexpected output", "expected output:\n%s\nactual:\n%s", b.String(), out)
-	}
+		tpl := template.Must(template.ParseFiles(testDataPath + "/linkerd_endpoints.golden"))
+		vars := struct {
+			Ns         string
+			EndpointNs string
+		}{
+			controlNs,
+			ns,
+		}
+		var b bytes.Buffer
+		if err := tpl.Execute(&b, vars); err != nil {
+			testutil.AnnotatedFatalf(t, "failed to parse linkerd_endpoints.golden template", "failed to parse linkerd_endpoints.golden template: %s", err)
+		}
+
+		r := regexp.MustCompile(b.String())
+		if !r.MatchString(out) {
+			testutil.AnnotatedErrorf(t, "unexpected output", "expected output:\n%s\nactual:\n%s", b.String(), out)
+		}
+	})
 }
 
 // TODO: when #3004 gets fixed, add a negative test for mismatched ports

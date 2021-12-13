@@ -1,7 +1,7 @@
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: other
+  name: linkerd-cni
   annotations:
     linkerd.io/inject: disabled
   labels:
@@ -12,7 +12,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: linkerd-cni
-  namespace: other
+  namespace: linkerd-cni
   labels:
     linkerd.io/cni-resource: "true"
 ---
@@ -40,13 +40,13 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-cni
-  namespace: other
+  namespace: linkerd-cni
 ---
 kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-cni-config
-  namespace: other
+  namespace: linkerd-cni
   labels:
     linkerd.io/cni-resource: "true"
 data:
@@ -82,7 +82,7 @@ kind: DaemonSet
 apiVersion: apps/v1
 metadata:
   name: linkerd-cni
-  namespace: other
+  namespace: linkerd-cni
   labels:
     k8s-app: linkerd-cni
     linkerd.io/cni-resource: "true"
