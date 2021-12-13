@@ -2121,7 +2121,7 @@ func CheckProxyInitRunsAsRoot(ctx context.Context, k8sAPI *k8s.KubernetesAPI, ru
 		}
 	}
 	if hasDockerNodes && !runAsRoot {
-		return fmt.Errorf("there are nodes using the docker container runtime and proxy-init container must run as root user.\n\tTry installing linkerd via --set proxyInit.runAsRoot=true")
+		return fmt.Errorf("there are nodes using the docker container runtime and proxy-init container must run as root user.\ntry installing linkerd via --set proxyInit.runAsRoot=true")
 	}
 	return nil
 }
