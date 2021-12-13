@@ -626,14 +626,6 @@ func (hc *HealthChecker) allCategories() []*Category {
 						return hc.checkClockSkew(ctx)
 					},
 				},
-				{
-					description: "proxy-init container runs as root user if docker container runtime is used",
-					hintAnchor:  "l5d-proxy-init-run-as-root",
-					fatal:       false,
-					check: func(ctx context.Context) error {
-						return hc.checkProxyInitRunsAsRoot(ctx, hc.Options.ChartValues)
-					},
-				},
 			},
 			false,
 		),
@@ -834,7 +826,9 @@ func (hc *HealthChecker) allCategories() []*Category {
 							}
 							return err
 						}
-						return hc.checkProxyInitRunsAsRoot(ctx, hc.LinkerdConfig())
+						config := hc.LinkerdConfig()
+						runAsRoot := config != nil && config.ProxyInit != nil && config.ProxyInit.RunAsRoot
+						return CheckProxyInitRunsAsRoot(ctx, hc.KubeAPIClient(), runAsRoot)
 					},
 				},
 			},
@@ -2098,12 +2092,19 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Contex
 	return checkResources("ValidatingWebhookConfigurations", objects, []string{k8s.SPValidatorWebhookConfigName}, shouldExist)
 }
 
-func (hc *HealthChecker) checkProxyInitRunsAsRoot(ctx context.Context, config *l5dcharts.Values) error {
-	runAsRoot := config != nil && config.ProxyInit != nil && config.ProxyInit.RunAsRoot
+// CheckProxyInitRunsAsRoot checks that proxyInit will run as root if cluster
+// uses the Docker container runtime.
+func CheckProxyInitRunsAsRoot(ctx context.Context, k8sAPI *k8s.KubernetesAPI, runAsRoot bool) error {
+	// If the cluster is ignored (and the k8s API is not initialized) or the
+	// proxyInit container will run as root, there is no validation that needs
+	// to take place.
+	if k8sAPI == nil || runAsRoot {
+		return nil
+	}
 	hasDockerNodes := false
 	continueToken := ""
 	for {
-		nodes, err := hc.KubeAPIClient().CoreV1().Nodes().List(ctx, metav1.ListOptions{Continue: continueToken})
+		nodes, err := k8sAPI.CoreV1().Nodes().List(ctx, metav1.ListOptions{Continue: continueToken})
 		if err != nil {
 			return err
 		}
@@ -2120,7 +2121,7 @@ func (hc *HealthChecker) checkProxyInitRunsAsRoot(ctx context.Context, config *l
 		}
 	}
 	if hasDockerNodes && !runAsRoot {
-		return fmt.Errorf("There are nodes using the docker container runtime and proxy-init container must run as root user.\n\tTry installing linkerd via --set proxyInit.runAsRoot=true")
+		return fmt.Errorf("there are nodes using the docker container runtime and proxy-init container must run as root user.\n\tTry installing linkerd via --set proxyInit.runAsRoot=true")
 	}
 	return nil
 }
