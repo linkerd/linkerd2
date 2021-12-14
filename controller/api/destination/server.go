@@ -261,7 +261,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		if hostname != "" {
 			address, pod, err := s.getEndpointByHostname(s.k8sAPI, hostname, service, port)
 			if err != nil {
-				log.Errorf("failed to get pod for hostname %s: %v", hostname, err)
+				return fmt.Errorf("failed to get pod for hostname %s: %v", hostname, err)
 			}
 			opaquePorts, err := getAnnotatedOpaquePorts(pod, s.defaultOpaquePorts)
 			if err != nil {
@@ -386,7 +386,9 @@ func (s *server) createEndpoint(address watcher.Address, opaquePorts map[uint32]
 
 	// `Get` doesn't include the namespace in the per-endpoint
 	// metadata, so it needs to be special-cased.
-	weightedAddr.MetricLabels["namespace"] = address.Pod.Namespace
+	if address.Pod != nil {
+		weightedAddr.MetricLabels["namespace"] = address.Pod.Namespace
+	}
 
 	return weightedAddr, err
 }
@@ -421,7 +423,7 @@ func getSvcID(k8sAPI *k8s.API, clusterIP string, log *logging.Entry) (*watcher.S
 	return service, nil
 }
 
-// getPodByHostname returns a pod that maps to the given hostname (or an
+// getEndpointByHostname returns a pod that maps to the given hostname (or an
 // instanceID). The hostname is generally the prefix of the pod's DNS name;
 // since it may be arbitrary we need to look at the corresponding service's
 // Endpoints object to see whether the hostname matches a pod.
