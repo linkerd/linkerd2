@@ -2,14 +2,6 @@ name: "🐛 Bug Report"
 description: "If something isn't working as expected 🤔."
 labels: ["bug"]
 body:
-  - type: checkboxes
-    attributes:
-      label: Is there an existing issue for this?
-      description: Please search to see if an issue already exists for the bug you encountered.
-      options:
-      - label: I have searched the existing issues
-        required: true
-
   - type: markdown
     attributes:
       value: Thanks for taking the time to file a bug report! Please fill out this form as completely as possible.

@@ -2,14 +2,6 @@ name: 💡 Feature Request"
 description: I have a suggestion (and may want to implement it 🙂)!
 labels: ["enhancement"]
 body:
-  - type: checkboxes
-    attributes:
-      label: Is there an existing issue for this?
-      description: Please search to see if an issue already exists for the feature you want to request.
-      options:
-      - label: I have searched the existing issues
-        required: true
-
   - type: markdown
     attributes:
       value: Thanks for taking the time to suggest a new feature! Please fill out this form as completely as possible.
