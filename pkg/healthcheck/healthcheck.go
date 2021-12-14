@@ -828,7 +828,10 @@ func (hc *HealthChecker) allCategories() []*Category {
 						}
 						config := hc.LinkerdConfig()
 						runAsRoot := config != nil && config.ProxyInit != nil && config.ProxyInit.RunAsRoot
-						return CheckProxyInitRunsAsRoot(ctx, hc.KubeAPIClient(), runAsRoot)
+						if !runAsRoot {
+							return CheckNodesHaveNonDockerRuntime(ctx, hc.KubeAPIClient())
+						}
+						return nil
 					},
 				},
 			},
@@ -2092,14 +2095,10 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Contex
 	return checkResources("ValidatingWebhookConfigurations", objects, []string{k8s.SPValidatorWebhookConfigName}, shouldExist)
 }
 
-// CheckProxyInitRunsAsRoot checks that proxyInit will run as root if cluster
-// uses the Docker container runtime.
-func CheckProxyInitRunsAsRoot(ctx context.Context, k8sAPI *k8s.KubernetesAPI, runAsRoot bool) error {
-	// If proxyInit will run as root, no validation needs to take place
-	// because it will work regardless of the container runtime.
-	if runAsRoot {
-		return nil
-	}
+// CheckNodesHaveNonDockerRuntime checks that each node has a non-Docker
+// runtime. This check is only called if proxyInit is not running as root
+// which is a problem for clusters with a Docker container runtime.
+func CheckNodesHaveNonDockerRuntime(ctx context.Context, k8sAPI *k8s.KubernetesAPI) error {
 	hasDockerNodes := false
 	continueToken := ""
 	for {
@@ -2119,7 +2118,7 @@ func CheckProxyInitRunsAsRoot(ctx context.Context, k8sAPI *k8s.KubernetesAPI, ru
 			break
 		}
 	}
-	if hasDockerNodes && !runAsRoot {
+	if hasDockerNodes {
 		return fmt.Errorf("there are nodes using the docker container runtime and proxy-init container must run as root user.\ntry installing linkerd via --set proxyInit.runAsRoot=true")
 	}
 	return nil

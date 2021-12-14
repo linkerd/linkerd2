@@ -305,10 +305,11 @@ the 'linkerd repair' command to repair the Linkerd config`)
 	if err != nil {
 		return bytes.Buffer{}, err
 	}
-	runAsRoot := getRunAsRoot(valuesOverrides)
-	err = healthcheck.CheckProxyInitRunsAsRoot(ctx, k, runAsRoot)
-	if err != nil {
-		return bytes.Buffer{}, err
+	if !isRunAsRoot(valuesOverrides) {
+		err = healthcheck.CheckNodesHaveNonDockerRuntime(ctx, k)
+		if err != nil {
+			return bytes.Buffer{}, err
+		}
 	}
 
 	// rendering to a buffer and printing full contents of buffer after

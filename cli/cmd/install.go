@@ -148,11 +148,12 @@ A full list of configurable values can be found at https://www.github.com/linker
 				if err != nil {
 					return err
 				}
-				runAsRoot := getRunAsRoot(valuesOverrides)
-				err = healthcheck.CheckProxyInitRunsAsRoot(cmd.Context(), k8sAPI, runAsRoot)
-				if err != nil {
-					fmt.Fprintln(os.Stderr, err)
-					os.Exit(1)
+				if !isRunAsRoot(valuesOverrides) {
+					err = healthcheck.CheckNodesHaveNonDockerRuntime(cmd.Context(), k8sAPI)
+					if err != nil {
+						fmt.Fprintln(os.Stderr, err)
+						os.Exit(1)
+					}
 				}
 			}
 			return render(os.Stdout, values, configStage, valuesOverrides)
@@ -325,11 +326,12 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 			return err
 		}
 
-		runAsRoot := getRunAsRoot(valuesOverrides)
-		err = healthcheck.CheckProxyInitRunsAsRoot(ctx, k8sAPI, runAsRoot)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+		if !isRunAsRoot(valuesOverrides) {
+			err = healthcheck.CheckNodesHaveNonDockerRuntime(ctx, k8sAPI)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
 		}
 	}
 
@@ -346,7 +348,7 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 	return render(w, values, stage, valuesOverrides)
 }
 
-func getRunAsRoot(values map[string]interface{}) bool {
+func isRunAsRoot(values map[string]interface{}) bool {
 	if proxyInit, ok := values["proxyInit"]; ok {
 		if val, ok := proxyInit.(map[string]interface{})["runAsRoot"]; ok {
 			if truth, ok := template.IsTrue(val); ok {
