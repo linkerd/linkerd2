@@ -123,6 +123,13 @@ A full list of configurable values can be found at https://www.github.com/linker
 			if err != nil {
 				return err
 			}
+
+			// Create values override
+			valuesOverrides, err := options.MergeValues(nil)
+			if err != nil {
+				return err
+			}
+
 			var k8sAPI *k8s.KubernetesAPI
 			if !ignoreCluster {
 				// Ensure k8s is reachable and that Linkerd is not already installed.
@@ -141,20 +148,13 @@ A full list of configurable values can be found at https://www.github.com/linker
 				if err != nil {
 					return err
 				}
+				runAsRoot := getRunAsRoot(valuesOverrides)
+				err = healthcheck.CheckProxyInitRunsAsRoot(cmd.Context(), k8sAPI, runAsRoot)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					os.Exit(1)
+				}
 			}
-
-			// Create values override
-			valuesOverrides, err := options.MergeValues(nil)
-			if err != nil {
-				return err
-			}
-			runAsRoot := getRunAsRoot(valuesOverrides)
-			err = healthcheck.CheckProxyInitRunsAsRoot(cmd.Context(), k8sAPI, runAsRoot)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
-			}
-
 			return render(os.Stdout, values, configStage, valuesOverrides)
 		},
 	}
@@ -301,8 +301,13 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 		return err
 	}
 
-	var k8sAPI *k8s.KubernetesAPI
+	// Create values override
+	valuesOverrides, err := options.MergeValues(nil)
+	if err != nil {
+		return err
+	}
 
+	var k8sAPI *k8s.KubernetesAPI
 	if !ignoreCluster {
 		// Ensure there is not already an existing Linkerd installation.
 		k8sAPI, err = k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 30*time.Second)
@@ -319,6 +324,13 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 		if !kerrors.IsNotFound(err) {
 			return err
 		}
+
+		runAsRoot := getRunAsRoot(valuesOverrides)
+		err = healthcheck.CheckProxyInitRunsAsRoot(ctx, k8sAPI, runAsRoot)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
 
 	err = initializeIssuerCredentials(ctx, k8sAPI, values)
@@ -329,18 +341,6 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 	err = validateValues(ctx, k8sAPI, values)
 	if err != nil {
 		return err
-	}
-
-	// Create values override
-	valuesOverrides, err := options.MergeValues(nil)
-	if err != nil {
-		return err
-	}
-	runAsRoot := getRunAsRoot(valuesOverrides)
-	err = healthcheck.CheckProxyInitRunsAsRoot(ctx, k8sAPI, runAsRoot)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
 	}
 
 	return render(w, values, stage, valuesOverrides)

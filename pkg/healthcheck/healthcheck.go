@@ -2095,10 +2095,9 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Contex
 // CheckProxyInitRunsAsRoot checks that proxyInit will run as root if cluster
 // uses the Docker container runtime.
 func CheckProxyInitRunsAsRoot(ctx context.Context, k8sAPI *k8s.KubernetesAPI, runAsRoot bool) error {
-	// If the cluster is ignored (and the k8s API is not initialized) or the
-	// proxyInit container will run as root, there is no validation that needs
-	// to take place.
-	if k8sAPI == nil || runAsRoot {
+	// If proxyInit will run as root, no validation needs to take place
+	// because it will work regardless of the container runtime.
+	if runAsRoot {
 		return nil
 	}
 	hasDockerNodes := false
