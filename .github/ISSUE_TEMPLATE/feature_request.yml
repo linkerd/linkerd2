@@ -2,25 +2,18 @@ name: 💡 Feature Request"
 description: I have a suggestion (and may want to implement it 🙂)!
 labels: ["enhancement"]
 body:
-  - type: checkboxes
-    attributes:
-      label: Is there an existing issue for this?
-      description: Please search to see if an issue already exists for the feature you want to request.
-      options:
-      - label: I have searched the existing issues
-        required: true
-
   - type: markdown
     attributes:
-      value: Thanks for taking the time to suggest a new feature! Please fill out this form as completely as possible.
+      value: |
+        Thanks for taking the time to suggest a new feature! Please fill out this form as completely as possible.
+
+        Please search to see if an issue already exists for the feature you are suggesting.
 
   - type: textarea
     attributes:
       label: What problem are you trying to solve?
-      description: |
-        A concise description of what the problem is.
-      placeholder: |
-        I have an issue when [...]
+      description: A concise description of what the problem is.
+      placeholder: I have an issue when [...]
     validations:
       required: true
 
@@ -41,14 +34,12 @@ body:
   - type: textarea
     attributes:
       label: How would users interact with this feature?
-      description: |
-        If you can, explain how users will be able to use this. Maybe come sample CLI output?
+      description: If you can, explain how users will be able to use this. Maybe come sample CLI output?
 
   - type: dropdown
     attributes:
       label: Would you like to work on this feature?
-      description: |
-        **NOTE**: Let us know if you would like to submit a PR for this. We are more than happy to help you through the process.
+      description: We are more than happy to help you through the process.
       options:
         - "yes"
         - "no"
