@@ -1255,6 +1255,8 @@ data:
       caBundle: policy validator CA bundle
       crtPEM: policy validator crt
       externalSecret: false
+      injectCaFrom: ""
+      injectCaFromSecret: ""
       keyPEM: policy validator key
       namespaceSelector:
         matchExpressions:
@@ -1267,6 +1269,8 @@ data:
       caBundle: profile validator CA bundle
       crtPEM: profile validator crt
       externalSecret: false
+      injectCaFrom: ""
+      injectCaFromSecret: ""
       namespaceSelector:
         matchExpressions:
         - key: config.linkerd.io/admission-webhooks
@@ -1343,6 +1347,8 @@ data:
       caBundle: proxy injector CA bundle
       crtPEM: proxy injector crt
       externalSecret: false
+      injectCaFrom: ""
+      injectCaFromSecret: ""
       namespaceSelector:
         matchExpressions:
         - key: config.linkerd.io/admission-webhooks

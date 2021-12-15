@@ -162,14 +162,16 @@ Kubernetes: `>=1.20.0-0`
 | prometheus.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | prometheusUrl | string | `""` | url of external prometheus instance |
 | tap.UID | string | `nil` | UID for the dashboard resource |
-| tap.caBundle | string | `""` | Bundle of CA certificates for Tap component. If not provided then Helm will use the certificate generated  for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
-| tap.crtPEM | string | `""` | Certificate for the Tap component. If not provided then Helm will generate one. |
-| tap.externalSecret | bool | `false` | Do not create a secret resource for the Tap component. If this is set to `true`, the value `tap.caBundle` must be set (see below). |
+| tap.caBundle | string | `""` | Bundle of CA certificates for tap. If not provided nor injected with cert-manager, then Helm will use the certificate generated for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value, injectCaFrom, or injectCaFromSecret must be set, as no certificate will be generated. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information. |
+| tap.crtPEM | string | `""` | Certificate for the Tap component. If not provided and not using an external secret then Helm will generate one. |
+| tap.externalSecret | bool | `false` | Do not create a secret resource for the Tap component. If this is set to `true`, the value `tap.caBundle` must be set or the ca bundle must injected with cert-manager ca injector using `tap.injectCaFrom` or `tap.injectCaFromSecret` (see below). |
 | tap.image.name | string | `"tap"` | Docker image name for the tap instance |
 | tap.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the tap component |
 | tap.image.registry | string | defaultRegistry | Docker registry for the tap instance |
 | tap.image.tag | string | linkerdVersion | Docker image tag for the tap instance |
-| tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided then Helm will generate one. |
+| tap.injectCaFrom | string | `""` | Inject the CA bundle from a cert-manager Certificate. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-certificate-resource) for more information. |
+| tap.injectCaFromSecret | string | `""` | Inject the CA bundle from a Secret. If set, the `cert-manager.io/inject-ca-from-secret` annotation will be added to the webhook. The Secret must have the CA Bundle stored in the `ca.crt` key and have the `cert-manager.io/allow-direct-injection` annotation set to `true`. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource) for more information. |
+| tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided and not using an external secret then Helm will generate one. |
 | tap.logFormat | string | defaultLogFormat | log format of the tap component |
 | tap.logLevel | string | defaultLogLevel | log level of the tap component |
 | tap.proxy | string | `nil` |  |
@@ -181,15 +183,17 @@ Kubernetes: `>=1.20.0-0`
 | tap.resources.memory.limit | string | `nil` | Maximum amount of memory that tap container can use |
 | tap.resources.memory.request | string | `nil` | Amount of memory that the tap container requests |
 | tapInjector.UID | string | `nil` |  |
-| tapInjector.caBundle | string | `""` | Bundle of CA certificates for the tapInjector. If not provided then Helm will use the certificate generated  for `tapInjector.crtPEM`. If `tapInjector.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
-| tapInjector.crtPEM | string | `""` | Certificate for the tapInjector. If not provided then Helm will generate one. |
-| tapInjector.externalSecret | bool | `false` | Do not create a secret resource for the tapInjector webhook. If this is set to `true`, the value `tapInjector.caBundle` must be set (see below) |
+| tapInjector.caBundle | string | `""` | Bundle of CA certificates for the tapInjector. If not provided nor injected with cert-manager, then Helm will use the certificate generated for `tapInjector.crtPEM`. If `tapInjector.externalSecret` is set to true, this value, injectCaFrom, or injectCaFromSecret must be set, as no certificate will be generated. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information. |
+| tapInjector.crtPEM | string | `""` | Certificate for the tapInjector. If not provided and not using an external secret then Helm will generate one. |
+| tapInjector.externalSecret | bool | `false` | Do not create a secret resource for the tapInjector webhook. If this is set to `true`, the value `tapInjector.caBundle` must be set or the ca bundle must injected with cert-manager ca injector using `tapInjector.injectCaFrom` or `tapInjector.injectCaFromSecret` (see below). |
 | tapInjector.failurePolicy | string | `"Ignore"` |  |
 | tapInjector.image.name | string | `"tap"` | Docker image name for the tapInjector instance |
 | tapInjector.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the tapInjector component |
 | tapInjector.image.registry | string | defaultRegistry | Docker registry for the tapInjector instance |
 | tapInjector.image.tag | string | linkerdVersion | Docker image tag for the tapInjector instance |
-| tapInjector.keyPEM | string | `""` | Certificate key for the tapInjector. If not provided then Helm will generate one. |
+| tapInjector.injectCaFrom | string | `""` | Inject the CA bundle from a cert-manager Certificate. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-certificate-resource) for more information. |
+| tapInjector.injectCaFromSecret | string | `""` | Inject the CA bundle from a Secret. If set, the `cert-manager.io/inject-ca-from-secret` annotation will be added to the webhook. The Secret must have the CA Bundle stored in the `ca.crt` key and have the `cert-manager.io/allow-direct-injection` annotation set to `true`. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource) for more information. |
+| tapInjector.keyPEM | string | `""` | Certificate key for the tapInjector. If not provided and not using an external secret then Helm will generate one. |
 | tapInjector.logFormat | string | defaultLogFormat | log format of the tapInjector component |
 | tapInjector.logLevel | string | defaultLogLevel | log level of the tapInjector |
 | tapInjector.namespaceSelector | string | `nil` |  |

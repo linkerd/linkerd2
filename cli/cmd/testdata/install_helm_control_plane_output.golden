@@ -494,6 +494,8 @@ data:
       caBundle: test-profile-validator-ca-bundle
       crtPEM: test-profile-validator-crt-pem
       externalSecret: false
+      injectCaFrom: ""
+      injectCaFromSecret: ""
       keyPEM: test-profile-validator-key-pem
       namespaceSelector:
         matchExpressions:
@@ -506,6 +508,8 @@ data:
       caBundle: test-profile-validator-ca-bundle
       crtPEM: test-profile-validator-crt-pem
       externalSecret: false
+      injectCaFrom: ""
+      injectCaFromSecret: ""
       namespaceSelector:
         matchExpressions:
         - key: config.linkerd.io/admission-webhooks
@@ -582,6 +586,8 @@ data:
       caBundle: test-proxy-injector-ca-bundle
       crtPEM: test-proxy-injector-crt-pem
       externalSecret: false
+      injectCaFrom: ""
+      injectCaFromSecret: ""
       namespaceSelector:
         matchExpressions:
         - key: config.linkerd.io/admission-webhooks

@@ -209,10 +209,12 @@ type (
 	// TLS has a pair of PEM-encoded key and certificate variables used in the
 	// Helm templates
 	TLS struct {
-		ExternalSecret bool   `json:"externalSecret"`
-		KeyPEM         string `json:"keyPEM"`
-		CrtPEM         string `json:"crtPEM"`
-		CaBundle       string `json:"caBundle"`
+		ExternalSecret     bool   `json:"externalSecret"`
+		KeyPEM             string `json:"keyPEM"`
+		CrtPEM             string `json:"crtPEM"`
+		CaBundle           string `json:"caBundle"`
+		InjectCaFrom       string `json:"injectCaFrom"`
+		InjectCaFromSecret string `json:"injectCaFromSecret"`
 	}
 
 	// IssuerTLS is a stripped down version of TLS that lacks the integral caBundle.

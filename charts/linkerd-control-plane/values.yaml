@@ -286,7 +286,10 @@ disableHeartBeat: false
 
 # proxy injector configuration
 proxyInjector:
-  # -- Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `proxyInjector.caBundle` must be set (see below)
+  # -- Do not create a secret resource for the proxyInjector webhook.
+  # If this is set to `true`, the value `proxyInjector.caBundle` must be set
+  # or the ca bundle must injected with cert-manager ca injector using
+  # `proxyInjector.injectCaFrom` or `proxyInjector.injectCaFromSecret` (see below).
   externalSecret: false
 
   # -- Namespace selector used by admission webhook. If not set defaults to all
@@ -299,14 +302,34 @@ proxyInjector:
       values:
       - disabled
 
-  # -- Certificate for the proxy injector. If not provided then Helm will generate one.
+  # -- Certificate for the proxy injector. If not provided and not using an external secret
+  # then Helm will generate one.
   crtPEM: |
 
-  # -- Certificate key for the proxy injector. If not provided then Helm will generate one.
+  # -- Certificate key for the proxy injector. If not provided and not using an external secret
+  # then Helm will generate one.
   keyPEM: |
 
-  # -- Bundle of CA certificates for proxy injector. If not provided then Helm will use the certificate generated  for `proxyInjector.crtPEM`. If `proxyInjector.externalSecret` is set to true, this value must be set, as no certificate will be generated.
+  # -- Bundle of CA certificates for proxy injector.
+  # If not provided nor injected with cert-manager,
+  # then Helm will use the certificate generated for `proxyInjector.crtPEM`.
+  # If `proxyInjector.externalSecret` is set to true, this value, injectCaFrom, or
+  # injectCaFromSecret must be set, as no certificate will be generated.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information.
   caBundle: |
+
+  # -- Inject the CA bundle from a cert-manager Certificate.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-certificate-resource)
+  # for more information.
+  injectCaFrom: ""
+
+  # -- Inject the CA bundle from a Secret.
+  # If set, the `cert-manager.io/inject-ca-from-secret` annotation will be added to the webhook.
+  # The Secret must have the CA Bundle stored in the `ca.crt` key and have
+  # the `cert-manager.io/allow-direct-injection` annotation set to `true`.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource)
+  # for more information.
+  injectCaFromSecret: ""
 
 # -|- CPU, Memory and Ephemeral Storage resources required by the proxy injector (see
 #`proxy.resources` for sub-fields)
@@ -317,7 +340,10 @@ proxyInjector:
 
 # service profile validator configuration
 profileValidator:
-  # -- Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `profileValidator.caBundle` must be set (see below).
+  # -- Do not create a secret resource for the profileValidator webhook.
+  # If this is set to `true`, the value `proxyInjector.caBundle` must be set
+  # or the ca bundle must injected with cert-manager ca injector using
+  # `proxyInjector.injectCaFrom` or `proxyInjector.injectCaFromSecret` (see below).
   externalSecret: false
 
   # -- Namespace selector used by admission webhook
@@ -328,23 +354,41 @@ profileValidator:
       values:
       - disabled
 
-  # -- Certificate for the service profile validator. If not provided then Helm
-  # will generate one.
+  # -- Certificate for the service profile validator. If not provided and not using an external secret
+  # then Helm will generate one.
   crtPEM: |
 
-  # -- Certificate key for the service profile validator. If not provided then
-  # Helm will generate one.
+  # -- Certificate key for the service profile validator. If not provided and not using an external secret
+  # then Helm will generate one.
   keyPEM: |
 
-  # -- Bundle of CA certificates for service profile validator. If not provided
-  # then Helm will use the certificate generated  for `profileValidator.crtPEM`.
-  # If `profileValidator.externalSecret` is set to true, this value must be set,
-  # as no certificate will be generated.
+  # -- Bundle of CA certificates for proxy injector.
+  # If not provided nor injected with cert-manager,
+  # then Helm will use the certificate generated for `profileValidator.crtPEM`.
+  # If `profileValidator.externalSecret` is set to true, this value, injectCaFrom, or
+  # injectCaFromSecret must be set, as no certificate will be generated.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information.
   caBundle: |
+
+  # -- Inject the CA bundle from a cert-manager Certificate.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-certificate-resource)
+  # for more information.
+  injectCaFrom: ""
+
+  # -- Inject the CA bundle from a Secret.
+  # If set, the `cert-manager.io/inject-ca-from-secret` annotation will be added to the webhook.
+  # The Secret must have the CA Bundle stored in the `ca.crt` key and have
+  # the `cert-manager.io/allow-direct-injection` annotation set to `true`.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource)
+  # for more information.
+  injectCaFromSecret: ""
 
 # policy validator configuration
 policyValidator:
-  # -- Do not create a secret resource for the policyValidator webhook. If this is set to `true`, the value `policyValidator.caBundle` must be set (see below).
+  # -- Do not create a secret resource for the policyValidator webhook.
+  # If this is set to `true`, the value `policyValidator.caBundle` must be set
+  # or the ca bundle must injected with cert-manager ca injector using
+  # `policyValidator.injectCaFrom` or `policyValidator.injectCaFromSecret` (see below).
   externalSecret: false
 
   # -- Namespace selector used by admission webhook
@@ -355,19 +399,34 @@ policyValidator:
       values:
       - disabled
 
-  # -- Certificate for the policy validator. If not provided then Helm
-  # will generate one.
+  # -- Certificate for the policy validator. If not provided and not using an external secret
+  # then Helm will generate one.
   crtPEM: |
 
-  # -- Certificate key for the policy validator. If not provided then
-  # Helm will generate one.
+  # -- Certificate key for the policy validator. If not provided and not using an external secret
+  # then Helm will generate one.
   keyPEM: |
 
-  # -- Bundle of CA certificates for policy validator. If not provided
-  # then Helm will use the certificate generated  for `policyValidator.crtPEM`.
-  # If `policyValidator.externalSecret` is set to true, this value must be set,
-  # as no certificate will be generated.
+  # -- Bundle of CA certificates for proxy injector.
+  # If not provided nor injected with cert-manager,
+  # then Helm will use the certificate generated for `policyValidator.crtPEM`.
+  # If `policyValidator.externalSecret` is set to true, this value, injectCaFrom, or
+  # injectCaFromSecret must be set, as no certificate will be generated.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information.
   caBundle: |
+
+  # -- Inject the CA bundle from a cert-manager Certificate.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-certificate-resource)
+  # for more information.
+  injectCaFrom: ""
+
+  # -- Inject the CA bundle from a Secret.
+  # If set, the `cert-manager.io/inject-ca-from-secret` annotation will be added to the webhook.
+  # The Secret must have the CA Bundle stored in the `ca.crt` key and have
+  # the `cert-manager.io/allow-direct-injection` annotation set to `true`.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource)
+  # for more information.
+  injectCaFromSecret: ""
 
 # -|- CPU, Memory and Ephemeral Storage resources required by the SP validator (see
 #`proxy.resources` for sub-fields)
