@@ -130,7 +130,6 @@ A full list of configurable values can be found at https://www.github.com/linker
 				return err
 			}
 
-			var k8sAPI *k8s.KubernetesAPI
 			if !ignoreCluster {
 				// Ensure k8s is reachable and that Linkerd is not already installed.
 				if err := errAfterRunningChecks(values.CNIEnabled); err != nil {
@@ -144,7 +143,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 
 				// Initialize the k8s API which is used for the proxyInit
 				// runAsRoot check.
-				k8sAPI, err = k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 30*time.Second)
+				k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 30*time.Second)
 				if err != nil {
 					return err
 				}
