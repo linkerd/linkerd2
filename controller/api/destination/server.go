@@ -259,11 +259,11 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		// name. When we fetch the profile using a pod's DNS name, we want to
 		// return an endpoint in the profile response.
 		if hostname != "" {
-			address, pod, err := s.getEndpointByHostname(s.k8sAPI, hostname, service, port)
+			address, err := s.getEndpointByHostname(s.k8sAPI, hostname, service, port)
 			if err != nil {
 				return fmt.Errorf("failed to get pod for hostname %s: %v", hostname, err)
 			}
-			opaquePorts, err := getAnnotatedOpaquePorts(pod, s.defaultOpaquePorts)
+			opaquePorts, err := getAnnotatedOpaquePorts(address.Pod, s.defaultOpaquePorts)
 			if err != nil {
 				return fmt.Errorf("failed to get opaque ports for pod: %s", err)
 			}
@@ -272,19 +272,19 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			if err != nil {
 				return fmt.Errorf("failed to create endpoint: %s", err)
 			}
-			translator := newEndpointProfileTranslator(pod, port, endpoint, stream, s.log)
+			translator := newEndpointProfileTranslator(address.Pod, port, endpoint, stream, s.log)
 
 			// If the endpoint's port is annotated as opaque, we don't need to
 			// subscribe for updates because it will always be opaque
 			// regardless of any Servers that may select it.
 			if _, ok := opaquePorts[port]; ok {
 				translator.UpdateProtocol(true)
-			} else if pod == nil {
+			} else if address.Pod == nil {
 				translator.UpdateProtocol(false)
 			} else {
 				translator.UpdateProtocol(address.OpaqueProtocol)
-				s.servers.Subscribe(pod, port, translator)
-				defer s.servers.Unsubscribe(pod, port, translator)
+				s.servers.Subscribe(address.Pod, port, translator)
+				defer s.servers.Unsubscribe(address.Pod, port, translator)
 			}
 			select {
 			case <-s.shutdown:
@@ -427,10 +427,10 @@ func getSvcID(k8sAPI *k8s.API, clusterIP string, log *logging.Entry) (*watcher.S
 // instanceID). The hostname is generally the prefix of the pod's DNS name;
 // since it may be arbitrary we need to look at the corresponding service's
 // Endpoints object to see whether the hostname matches a pod.
-func (s *server) getEndpointByHostname(k8sAPI *k8s.API, hostname string, svcID watcher.ServiceID, port uint32) (*watcher.Address, *corev1.Pod, error) {
+func (s *server) getEndpointByHostname(k8sAPI *k8s.API, hostname string, svcID watcher.ServiceID, port uint32) (*watcher.Address, error) {
 	ep, err := k8sAPI.Endpoint().Lister().Endpoints(svcID.Namespace).Get(svcID.Name)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	for _, subset := range ep.Subsets {
@@ -442,24 +442,24 @@ func (s *server) getEndpointByHostname(k8sAPI *k8s.API, hostname string, svcID w
 					podNamespace := addr.TargetRef.Namespace
 					pod, err := k8sAPI.Pod().Lister().Pods(podNamespace).Get(podName)
 					if err != nil {
-						return nil, nil, err
+						return nil, err
 					}
 					address, err := s.createAddress(pod, port)
 					if err != nil {
-						return nil, nil, err
+						return nil, err
 					}
-					return &address, pod, nil
+					return &address, nil
 				}
 				return &watcher.Address{
 					IP:   addr.IP,
 					Port: port,
-				}, nil, nil
+				}, nil
 
 			}
 		}
 	}
 
-	return nil, nil, fmt.Errorf("no pod found in Endpoints %s/%s for hostname %s", svcID.Namespace, svcID.Name, hostname)
+	return nil, fmt.Errorf("no pod found in Endpoints %s/%s for hostname %s", svcID.Namespace, svcID.Name, hostname)
 }
 
 // getPodByIP returns a pod that maps to the given IP address. The pod can either
