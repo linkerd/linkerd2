@@ -164,6 +164,8 @@ func buildResource(namespace string, resType string, name string) (*pb.Resource,
 	}, nil
 }
 
+// HTTPMethodtoString returns the HTTP request method
+// from the HTTPMethod protobuf type
 func HTTPMethodToString(method *pb.HttpMethod) string {
 	// Check Unregistered first as Registered (being an enum) defaults
 	// to GET when empty
