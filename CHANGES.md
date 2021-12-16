@@ -14,7 +14,7 @@ Helm best practice, we're no longer creating the linkerd namespace. Users
 require to do that manually, or have the Helm tool do it explicitly. So the
 install procedure would look something like this:
 
-```
+```bash
 helm install linkerd-crds -n linkerd --create-namespace linkerd/linkerd-crds
 
 helm install linkerd-control-plane -n linkerd \
@@ -31,7 +31,7 @@ Although the charts for the main extensions (viz, multicluster, jaeger,
 linkerd2-cni) were not deprecated, they also stopped creating their namespace
 and users are required to uninstall and reinstall them anew, e.g:
 
-```
+```bash
 helm install linkerd-viz -n linkerd-viz --create-namespace linkerd/linkerd-viz
 ```
 
