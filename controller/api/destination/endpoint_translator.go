@@ -318,9 +318,22 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 }
 
 func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
-	// When converting an address to a weighted addr, it should be backed by a Pod.
+
+	tcpAddr, err := toAddr(address)
+	if err != nil {
+		return nil, err
+	}
+
+	weightedAddr := pb.WeightedAddr{
+		Addr:         tcpAddr,
+		Weight:       defaultWeight,
+		MetricLabels: map[string]string{},
+	}
+
+	// If the address is not backed by a pod, there is no additional metadata
+	// to add.
 	if address.Pod == nil {
-		return nil, fmt.Errorf("endpoint not backed by Pod: %s:%d", address.IP, address.Port)
+		return &weightedAddr, nil
 	}
 
 	skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(address.Pod)
@@ -330,16 +343,16 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 
 	controllerNSLabel := address.Pod.Labels[k8s.ControllerNSLabel]
 	sa, ns := k8s.GetServiceAccountAndNS(address.Pod)
-	labels := k8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
+	weightedAddr.MetricLabels = k8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
 	_, isSkippedInboundPort := skippedInboundPorts[address.Port]
 
 	// If the pod is controlled by any Linkerd control plane, then it can be
 	// hinted that this destination knows H2 (and handles our orig-proto
 	// translation)
-	hint := &pb.ProtocolHint{}
+	weightedAddr.ProtocolHint = &pb.ProtocolHint{}
 	if controllerNSLabel != "" && !isSkippedInboundPort {
 		if enableH2Upgrade {
-			hint.Protocol = &pb.ProtocolHint_H2_{
+			weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_H2_{
 				H2: &pb.ProtocolHint_H2{},
 			}
 		}
@@ -352,7 +365,7 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 			if err != nil {
 				log.Error(err)
 			} else {
-				hint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
+				weightedAddr.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
 					InboundPort: port,
 				}
 			}
@@ -364,14 +377,13 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 	//
 	// TODO this should be relaxed to match a trust domain annotation so that
 	// multiple meshes can participate in identity if they share trust roots.
-	var identity *pb.TlsIdentity
 	if identityTrustDomain != "" &&
 		controllerNSLabel == controllerNS &&
 		address.Pod.Annotations[k8s.IdentityModeAnnotation] == k8s.IdentityModeDefault &&
 		!isSkippedInboundPort {
 
 		id := fmt.Sprintf("%s.%s.serviceaccount.identity.%s.%s", sa, ns, controllerNSLabel, identityTrustDomain)
-		identity = &pb.TlsIdentity{
+		weightedAddr.TlsIdentity = &pb.TlsIdentity{
 			Strategy: &pb.TlsIdentity_DnsLikeIdentity_{
 				DnsLikeIdentity: &pb.TlsIdentity_DnsLikeIdentity{
 					Name: id,
@@ -380,18 +392,7 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 		}
 	}
 
-	tcpAddr, err := toAddr(address)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pb.WeightedAddr{
-		Addr:         tcpAddr,
-		Weight:       defaultWeight,
-		MetricLabels: labels,
-		TlsIdentity:  identity,
-		ProtocolHint: hint,
-	}, nil
+	return &weightedAddr, nil
 }
 
 func getK8sNodeTopology(nodes coreinformers.NodeInformer, srcNode string) (map[string]string, error) {
