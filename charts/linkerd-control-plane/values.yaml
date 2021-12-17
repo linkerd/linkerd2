@@ -369,10 +369,6 @@ policyValidator:
   # as no certificate will be generated.
   caBundle: |
 
-# -|- CPU, Memory and Ephemeral Storage resources required by the SP validator (see
-#`proxy.resources` for sub-fields)
-#spValidatorResources:
-
 # If the namespace is controlled by an external tool or can't be installed with Helm
 # you can disable its installation. In this case:
 # - The namespace created by the external tool must match the namespace value above
