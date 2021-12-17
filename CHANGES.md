@@ -1,5 +1,50 @@
 # Changes
 
+## edge-21.12.3
+
+This edge release contains a few improvements to the CLI commands and a major
+change around Helm charts.
+
+* **Breaking change**
+
+The `linkerd2` chart has been deprecated in favor of the `linkerd-crds` and
+`linkerd-control-plane` charts. The former takes care of installing all the
+required CRDs and the latter everything else. Of important note is that, as per
+Helm best practice, we're no longer creating the linkerd namespace. Users
+require to do that manually, or have the Helm tool do it explicitly. So the
+install procedure would look something like this:
+
+```bash
+helm install linkerd-crds -n linkerd --create-namespace linkerd/linkerd-crds
+
+helm install linkerd-control-plane -n linkerd \
+  --set-file identityTrustAnchorsPEM=ca.crt \
+  --set-file identity.issuer.tls.crtPEM=issuer.crt \
+  --set-file identity.issuer.tls.keyPEM=issuer.key \
+  linkerd/linkerd-control-plane
+```
+
+In order to upgrade, please delete your previously installed `linkerd2` chart
+and install the new charts as explained above.
+
+Although the charts for the main extensions (viz, multicluster, jaeger,
+linkerd2-cni) were not deprecated, they also stopped creating their namespace
+and users are required to uninstall and reinstall them anew, e.g:
+
+```bash
+helm install linkerd-viz -n linkerd-viz --create-namespace linkerd/linkerd-viz
+```
+
+* Added a new `--obfuscate` flag to `linkerd diagnostics proxy-metrics` to
+  obfuscate potentially private information in the output (thanks
+  @ahmedalhulaibi!)
+* Fixed formatting of the recommended value for `--set clusterNetworks` in the
+  `linkerd check` output when that parameter doesn't contain all the node
+  podCIDRs (thanks @ElvinEfendi!)
+* Skipped evicted pods in `linkerd viz check` and `linkerd jaeger check`, to
+  avoid the checks fail unnecessarily
+* Removed some no longer used environment variables from the proxy's manifest
+
 ## edge-21.12.2
 
 This edge removes the default SMI functionality that is included in
