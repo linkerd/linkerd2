@@ -164,7 +164,7 @@ Kubernetes: `>=1.20.0-0`
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
 | namespace | string | `"linkerd"` | Control plane namespace |
-| nodeSelector."kubernetes.io/os" | string | `"linux"` |  |
+| nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | podAnnotations | object | `{}` | Additional annotations to add to all pods |
 | podLabels | object | `{}` | Additional labels to add to all pods |
 | policyController.defaultAllowPolicy | string | "all-unauthenticated" | The default allow policy to use when no `Server` selects a pod.  One of: "all-authenticated", "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny" |
