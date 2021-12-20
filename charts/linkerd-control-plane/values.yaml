@@ -375,6 +375,10 @@ policyValidator:
 nodeSelector:
   kubernetes.io/os: linux
 
+# -|- CPU, Memory and Ephemeral Storage resources required by the SP validator (see
+#`proxy.resources` for sub-fields)
+#spValidatorResources:
+
 # -|- Tolerations section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
 # for more information
