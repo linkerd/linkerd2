@@ -372,7 +372,7 @@ start_multicluster_test() {
 
 multicluster_link() {
   lbIP=$(kubectl --context="$context" get svc -n kube-system traefik -o 'go-template={{ (index .status.loadBalancer.ingress 0).ip }}')
-  "$linkerd_path" multicluster link --api-server-address "https://${lbIP}:6443" --cluster-name "$1" --set "enableHeadlessServices=true"
+  "$linkerd_path" multicluster link --log-level debug --api-server-address "https://${lbIP}:6443" --cluster-name "$1" --set "enableHeadlessServices=true"
 }
 
 run_test(){
