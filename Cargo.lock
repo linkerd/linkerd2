@@ -196,6 +196,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "dashmap"
+version = "5.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b799062aaf67eb976af3bdca031ee6f846d2f0a5710ddbb0d2efee33f3cc4760"
+dependencies = [
+ "cfg-if",
+ "num_cpus",
+ "parking_lot",
+]
+
+[[package]]
 name = "derivative"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -782,7 +793,7 @@ version = "0.65.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "406280d56304bc79b37af7f78e0d9719a4eebc3f46e5e79663154874b7696a48"
 dependencies = [
- "dashmap",
+ "dashmap 4.0.2",
  "derivative",
  "futures",
  "json-patch",
@@ -885,7 +896,7 @@ dependencies = [
  "anyhow",
  "async-stream",
  "async-trait",
- "dashmap",
+ "dashmap 5.0.0",
  "futures",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
