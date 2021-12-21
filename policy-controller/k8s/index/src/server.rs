@@ -326,8 +326,6 @@ mod tests {
         port: Port,
     ) -> k8s::policy::Server {
         k8s::policy::Server {
-            api_version: "v1alpha1".to_string(),
-            kind: "Server".to_string(),
             metadata: k8s::ObjectMeta {
                 namespace: Some(ns.into()),
                 name: Some(name.into()),

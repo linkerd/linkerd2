@@ -39,7 +39,10 @@ multiple-versions = "deny"
 wildcards = "allow"
 highlight = "all"
 deny = []
-skip-tree = []
+skip-tree = [
+    # Waiting on seanmonstar/warp#927
+    { name = "tokio-rustls" },
+]
 skip = []
 
 [sources]
