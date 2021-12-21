@@ -97,6 +97,7 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.controllerUID}}
+          allowPrivilegeEscalation: false
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config

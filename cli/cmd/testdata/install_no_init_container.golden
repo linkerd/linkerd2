@@ -1476,6 +1476,7 @@ spec:
             port: 9990
         securityContext:
           runAsUser: 2103
+          allowPrivilegeEscalation: false
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
@@ -1892,6 +1893,7 @@ spec:
             port: 9996
         securityContext:
           runAsUser: 2103
+          allowPrivilegeEscalation: false
       - args:
         - sp-validator
         - -log-level=info
@@ -1916,6 +1918,7 @@ spec:
             port: 9997
         securityContext:
           runAsUser: 2103
+          allowPrivilegeEscalation: false
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: sp-tls
@@ -1953,6 +1956,7 @@ spec:
         resources:
         securityContext:
           runAsUser: 2103
+          allowPrivilegeEscalation: false
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: policy-tls
@@ -2025,6 +2029,7 @@ spec:
             - "-prometheus-url=http://prometheus.linkerd-viz.svc.cluster.local:9090"
             securityContext:
               runAsUser: 2103
+              allowPrivilegeEscalation: false
 ---
 ###
 ### Proxy Injector
@@ -2204,6 +2209,7 @@ spec:
             port: 9995
         securityContext:
           runAsUser: 2103
+          allowPrivilegeEscalation: false
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config

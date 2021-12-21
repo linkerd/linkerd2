@@ -179,6 +179,7 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.controllerUID}}
+          allowPrivilegeEscalation: false
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer

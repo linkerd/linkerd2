@@ -1557,6 +1557,7 @@ spec:
             memory: "10Mi"
         securityContext:
           runAsUser: 2103
+          allowPrivilegeEscalation: false
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
@@ -2065,6 +2066,7 @@ spec:
             memory: "50Mi"
         securityContext:
           runAsUser: 2103
+          allowPrivilegeEscalation: false
       - args:
         - sp-validator
         - -log-level=info
@@ -2089,6 +2091,7 @@ spec:
             port: 9997
         securityContext:
           runAsUser: 2103
+          allowPrivilegeEscalation: false
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: sp-tls
@@ -2126,6 +2129,7 @@ spec:
         resources:
         securityContext:
           runAsUser: 2103
+          allowPrivilegeEscalation: false
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: policy-tls
@@ -2241,6 +2245,7 @@ spec:
                 memory: "50Mi"
             securityContext:
               runAsUser: 2103
+              allowPrivilegeEscalation: false
 ---
 ###
 ### Proxy Injector
@@ -2454,6 +2459,7 @@ spec:
             memory: "50Mi"
         securityContext:
           runAsUser: 2103
+          allowPrivilegeEscalation: false
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config

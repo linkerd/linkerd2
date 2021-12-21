@@ -218,6 +218,7 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.controllerUID}}
+          allowPrivilegeEscalation: false
       - args:
         - sp-validator
         - -log-level={{.Values.controllerLogLevel}}
@@ -245,6 +246,7 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.controllerUID}}
+          allowPrivilegeEscalation: false
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: sp-tls
@@ -289,6 +291,7 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.controllerUID}}
+          allowPrivilegeEscalation: false
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: policy-tls
