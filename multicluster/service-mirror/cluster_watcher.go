@@ -706,11 +706,11 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent(ctx context.Context) (
 	case *OnAddCalled:
 		err = rcsw.createOrUpdateService(ev.svc)
 	case *OnAddEndpointsCalled:
-		err = rcsw.handleCreateOrUpdateEndpoints(ctx, ev.ep, true)
+		err = rcsw.handleCreateOrUpdateEndpoints(ctx, ev.ep)
 	case *OnUpdateCalled:
 		err = rcsw.createOrUpdateService(ev.svc)
 	case *OnUpdateEndpointsCalled:
-		err = rcsw.handleCreateOrUpdateEndpoints(ctx, ev.ep, false)
+		err = rcsw.handleCreateOrUpdateEndpoints(ctx, ev.ep)
 	case *OnDeleteCalled:
 		rcsw.handleOnDelete(ev.svc)
 	case *RemoteServiceCreated:
@@ -1021,15 +1021,11 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateEndpoints(ctx context.Con
 func (rcsw *RemoteClusterServiceWatcher) handleCreateOrUpdateEndpoints(
 	ctx context.Context,
 	exportedEndpoints *corev1.Endpoints,
-	add bool,
 ) error {
 	if isHeadlessEndpoints(exportedEndpoints, rcsw.log) {
 		if rcsw.headlessServicesEnabled {
 			return rcsw.createOrUpdateHeadlessEndpoints(ctx, exportedEndpoints)
 		}
-		return nil
-	}
-	if add {
 		return nil
 	}
 
@@ -1046,7 +1042,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleCreateOrUpdateEndpoints(
 
 	rcsw.log.Infof("Updating subsets for mirror endpoint %s/%s", exportedEndpoints.Namespace, exportedEndpoints.Name)
 	if rcsw.isEmptyEndpoints(exportedEndpoints) {
-		ep.Subsets = nil
+		ep.Subsets = []corev1.EndpointSubset{}
 	} else {
 		exportedService, err := rcsw.remoteAPIClient.Svc().Lister().Services(exportedEndpoints.Namespace).Get(exportedEndpoints.Name)
 		if err != nil {
