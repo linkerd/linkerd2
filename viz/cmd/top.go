@@ -19,6 +19,7 @@ import (
 	metricsAPI "github.com/linkerd/linkerd2/viz/metrics-api"
 	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
+	vizutil "github.com/linkerd/linkerd2/viz/pkg/util"
 	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	"github.com/linkerd/linkerd2/viz/tap/pkg"
 	runewidth "github.com/mattn/go-runewidth"
@@ -585,7 +586,7 @@ func newRow(req topRequest) (tableRow, error) {
 	if route == "" {
 		route = metricsAPI.DefaultRouteName
 	}
-	method := req.reqInit.GetMethod().GetRegistered().String()
+
 	source := stripPort(addr.PublicAddressToString(req.event.GetSource()))
 	if pod := req.event.SourceMeta.Labels["pod"]; pod != "" {
 		source = pod
@@ -631,7 +632,7 @@ func newRow(req topRequest) (tableRow, error) {
 
 	return tableRow{
 		path:        path,
-		method:      method,
+		method:      vizutil.HTTPMethodToString(req.reqInit.GetMethod()),
 		route:       route,
 		source:      source,
 		destination: destination,
