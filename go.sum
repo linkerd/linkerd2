@@ -574,8 +574,8 @@ github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de h1:9TO3cAIGXtEhn
 github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de/go.mod h1:zAbeS9B/r2mtpb6U+EI2rYA5OAXxsYw6wTamcNW+zcE=
 github.com/lightstep/lightstep-tracer-common/golang/gogo v0.0.0-20190605223551-bc2310a04743/go.mod h1:qklhhLq1aX+mtWk9cPHPzaBjWImj5ULL6C7HFJtXQMM=
 github.com/lightstep/lightstep-tracer-go v0.18.1/go.mod h1:jlF1pusYV4pidLvZ+XD0UBX0ZE6WURAspgAczcDHrL4=
-github.com/linkerd/linkerd2-proxy-api v0.3.0 h1:TUfIw+XffDQQ3SQEJcIiHnZgZZxKK/ZfsVx7SeZH2nM=
-github.com/linkerd/linkerd2-proxy-api v0.3.0/go.mod h1:BuA+jXhgCXiBJkNjQrA9h1PLsJN5z6NOYJI5KVYDc2U=
+github.com/linkerd/linkerd2-proxy-api v0.3.1 h1:OkoHjkkKxSWy+HyeCCFD6MHvOBGQ2ZfxV6ygfm0XuuQ=
+github.com/linkerd/linkerd2-proxy-api v0.3.1/go.mod h1:n4CuuDqQXGAbFnxA22OD3NXkLyEayljWNhMVr0qgi9o=
 github.com/linkerd/linkerd2-proxy-init v1.5.2 h1:haasRTIzDGbjbMRhY0RwQRbWn1b1VqymGwiy38xwpzY=
 github.com/linkerd/linkerd2-proxy-init v1.5.2/go.mod h1:aBd7DEKESAVQR+9rZ1Oz9wgGFaCME1F9Dm3XCD1pqUY=
 github.com/lithammer/dedent v1.1.0/go.mod h1:jrXYCQtgg0nJiN+StA2KgR7w6CiQNv9Fd/Z9BP0jIOc=
@@ -1348,7 +1348,6 @@ google.golang.org/grpc v1.35.0/go.mod h1:qjiiYl8FncCW8feJPdyg3v6XW24KsRHe+dy9BAG
 google.golang.org/grpc v1.36.0/go.mod h1:qjiiYl8FncCW8feJPdyg3v6XW24KsRHe+dy9BAGRRjU=
 google.golang.org/grpc v1.36.1/go.mod h1:qjiiYl8FncCW8feJPdyg3v6XW24KsRHe+dy9BAGRRjU=
 google.golang.org/grpc v1.38.0/go.mod h1:NREThFqKR1f3iQ6oBuvc5LadQuXVGo9rkm5ZGrQdJfM=
-google.golang.org/grpc v1.41.0/go.mod h1:U3l9uK9J0sini8mHphKoXyaqDA/8VyGnDee1zzIUK6k=
 google.golang.org/grpc v1.43.0 h1:Eeu7bZtDZ2DpRCsLhUlcrLnvYaMK1Gz86a+hMVvELmM=
 google.golang.org/grpc v1.43.0/go.mod h1:k+4IHHFw41K8+bbowsex27ge2rCb65oeWqe4jJ590SU=
 google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0 h1:M1YKkFIboKNieVO5DLUEVzQfGwJD30Nv2jfUgzb5UcE=
