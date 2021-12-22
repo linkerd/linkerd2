@@ -33,6 +33,9 @@ priorityClassName: ""
 # Note PSP has been deprecated since k8s v1.21
 enablePSP: false
 
+# -- Run CNI container as privileged
+privileged: false
+
 # -|- Tolerations section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
 # for more information
