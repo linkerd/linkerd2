@@ -1,5 +1,19 @@
 # Changes
 
+## edge-21.12.4
+
+This release adds support for custom HTTP methods in the viz stats
+(i.e CLI and Dashboard). Additionally, it also includes various
+smaller improvements.
+
+* Added support for custom HTTP methods in the `linkerd-viz` stats
+* Updated the health checker to pull trust root from the `linkerd-identity-trust-roots`
+  configmap to support cases where they are generated externally (thanks @wim-de-groot)
+* Removed unnecessary `installNamespace` bool flag from the
+  `linkerd-control-plane` chart (thanks @mikutas)
+* Updated the `install` command to error if container runtime check fails
+* Updated various dependencies across the project (thanks @dependabot)
+
 ## edge-21.12.3
 
 This edge release contains a few improvements to the CLI commands and a major
