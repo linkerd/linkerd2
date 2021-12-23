@@ -4,7 +4,7 @@
 
 This release adds support for custom HTTP meathods in the viz stats
 (i.e CLI and Dashboard). Additionally, It also includes various
-other small improvements.
+other smaller improvements.
 
 - Added support for custom HTTP methods in the `linkerd-viz` stats
 - Updated the health checker to pull trust root from the `linkerd-identity-trust-roots`
