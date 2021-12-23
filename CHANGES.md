@@ -6,15 +6,14 @@ This release adds support for custom HTTP meathods in the viz stats
 (i.e CLI and Dashboard). Additionally, It also includes various
 other smaller improvements.
 
-- Added support for custom HTTP methods in the `linkerd-viz` stats
-- Updated the health checker to pull trust root from the `linkerd-identity-trust-roots`
+* Added support for custom HTTP methods in the `linkerd-viz` stats
+* Updated the health checker to pull trust root from the `linkerd-identity-trust-roots`
   configmap to support cases where they are generated externally (thanks @wim-de-groot)
-- Removed unnecessary `installNamespace` bool flag from the
+* Removed unnecessary `installNamespace` bool flag from the
   `linkerd-control-plane` chart (thanks @mikutas)
-- Updated the `install` command to error if container runtime check
-  fails
-- Added support for non-pod endpoints in `GetProfile` responses
-- Updated various dependencies across the project (thanks @dependabot)
+* Updated the `install` command to error if container runtime check fails
+* Added support for non-pod endpoints in `GetProfile` responses
+* Updated various dependencies across the project (thanks @dependabot)
 
 ## edge-21.12.3
 
