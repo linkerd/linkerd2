@@ -13,13 +13,11 @@ func TestRender(t *testing.T) {
 	// pin values that are changed by render functions on each test run
 	defaultValues := map[string]interface{}{
 		"tap": map[string]interface{}{
-			"keyPEM":   "test-tap-key-pem",
-			"crtPEM":   "test-tap-crt-pem",
+                        "externalSecret": true,
 			"caBundle": "test-tap-ca-bundle",
 		},
 		"tapInjector": map[string]interface{}{
-			"keyPEM":   "test-tap-key-pem",
-			"crtPEM":   "test-tap-crt-pem",
+                        "externalSecret": true,
 			"caBundle": "test-tap-ca-bundle",
 		},
 	}
