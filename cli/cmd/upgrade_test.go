@@ -297,15 +297,15 @@ func TestUpgradeWebhookCrtsNameChange(t *testing.T) {
 	injectorCerts := generateCerts(t, "linkerd-proxy-injector.linkerd.svc", false)
 	defer injectorCerts.cleanup()
 	installOpts.ProxyInjector.TLS = &linkerd2.TLS{
-                ExternalSecret: true,
-		CaBundle: injectorCerts.ca,
+		ExternalSecret: true,
+		CaBundle:       injectorCerts.ca,
 	}
 
 	validatorCerts := generateCerts(t, "linkerd-sp-validator.linkerd.svc", false)
 	defer validatorCerts.cleanup()
 	installOpts.ProfileValidator.TLS = &linkerd2.TLS{
-                ExternalSecret: true,
-		CaBundle: validatorCerts.ca,
+		ExternalSecret: true,
+		CaBundle:       validatorCerts.ca,
 	}
 
 	rendered := renderInstall(t, installOpts)
@@ -348,15 +348,15 @@ func TestUpgradeTwoLevelWebhookCrts(t *testing.T) {
 	injectorCerts := generateCerts(t, "linkerd-proxy-injector.linkerd.svc", false)
 	defer injectorCerts.cleanup()
 	installOpts.ProxyInjector.TLS = &linkerd2.TLS{
-                ExternalSecret: true,
-		CaBundle: injectorCerts.ca,
+		ExternalSecret: true,
+		CaBundle:       injectorCerts.ca,
 	}
 
 	validatorCerts := generateCerts(t, "linkerd-sp-validator.linkerd.svc", false)
 	defer validatorCerts.cleanup()
 	installOpts.ProfileValidator.TLS = &linkerd2.TLS{
-                ExternalSecret: true,
-		CaBundle: validatorCerts.ca,
+		ExternalSecret: true,
+		CaBundle:       validatorCerts.ca,
 	}
 
 	install := renderInstall(t, installOpts)
