@@ -1276,16 +1276,15 @@ func TestCheckDataPlaneProxiesCertificate(t *testing.T) {
 	const currentCertificate = "current-certificate"
 	const oldCertificate = "old-certificate"
 
-	linkerdConfigMap := fmt.Sprintf(`
+	linkerdIdentityTrustRoots := fmt.Sprintf(`
 kind: ConfigMap
 apiVersion: v1
 metadata:
   name: %s
 data:
-  values: |
-    identityTrustAnchorsPEM: %s
+  ca-bundle.crt: %s
 
-`, k8s.ConfigConfigMapName, currentCertificate)
+`, "linkerd-identity-trust-roots", currentCertificate)
 
 	var testCases = []struct {
 		checkDescription string
@@ -1338,7 +1337,7 @@ data:
 			hc.DataPlaneNamespace = testCase.namespace
 
 			var err error
-			hc.kubeAPI, err = k8s.NewFakeAPI(append(testCase.resources, linkerdConfigMap)...)
+			hc.kubeAPI, err = k8s.NewFakeAPI(append(testCase.resources, linkerdIdentityTrustRoots)...)
 			if err != nil {
 				t.Fatalf("Unexpected error: %q", err)
 			}

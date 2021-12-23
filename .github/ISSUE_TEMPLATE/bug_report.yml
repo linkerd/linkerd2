@@ -2,17 +2,12 @@ name: "🐛 Bug Report"
 description: "If something isn't working as expected 🤔."
 labels: ["bug"]
 body:
-  - type: checkboxes
-    attributes:
-      label: Is there an existing issue for this?
-      description: Please search to see if an issue already exists for the bug you encountered.
-      options:
-      - label: I have searched the existing issues
-        required: true
-
   - type: markdown
     attributes:
-      value: Thanks for taking the time to file a bug report! Please fill out this form as completely as possible.
+      value: |
+        Thanks for taking the time to file a bug report! Please fill out this form as completely as possible.
+
+        Please search to see if an issue already exists for the bug you encountered.
 
   - type: textarea
     attributes:
@@ -68,8 +63,7 @@ body:
   - type: dropdown
     attributes:
       label: Would you like to work on fixing this bug?
-      description: |
-        **NOTE**: Let us know if you would like to submit a PR for this. We are more than happy to help you through the process.
+      description: We are more than happy to help you through the process.
       options:
         - "yes"
         - "no"

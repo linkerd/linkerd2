@@ -39,7 +39,12 @@ multiple-versions = "deny"
 wildcards = "allow"
 highlight = "all"
 deny = []
-skip-tree = []
+skip-tree = [
+    # Waiting on seanmonstar/warp#927
+    { name = "tokio-rustls" },
+    # Waiting on new kube release
+    { name = "dashmap" },
+]
 skip = []
 
 [sources]

@@ -51,7 +51,7 @@ jobs:
     # absolute path is used here.
     # https://github.com/actions/upload-artifact/issues/8
     - name: Upload artifact
-      uses: actions/upload-artifact@da838ae9595ac94171fa2d4de5a2f117b3e7ac32
+      uses: actions/upload-artifact@82c141cc518b40d92cc801eee768e7aafc9c2fa2
       with:
         name: image-archives
         path: /home/runner/archives
@@ -81,7 +81,7 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
-    - uses: actions/setup-go@331ce1d993939866bb63c32c6cbbfd48fa76fc57
+    - uses: actions/setup-go@424fc82d43fa5a37540bae62709ddcc23d9520d4
       with:
         go-version: '1.17'
     - name: Set environment variables from scripts

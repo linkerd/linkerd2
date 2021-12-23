@@ -505,8 +505,6 @@ fn mk_server(
     pod_labels: impl IntoIterator<Item = (&'static str, &'static str)>,
 ) -> k8s::policy::Server {
     k8s::policy::Server {
-        api_version: "v1alpha1".to_string(),
-        kind: "Server".to_string(),
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.into()),
             name: Some(name.into()),
@@ -533,8 +531,6 @@ fn mk_authz(
     client: k8s::policy::authz::Client,
 ) -> k8s::policy::ServerAuthorization {
     k8s::policy::ServerAuthorization {
-        api_version: "v1alpha1".to_string(),
-        kind: "ServerAuthorization".to_string(),
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.into()),
             name: Some(name.into()),

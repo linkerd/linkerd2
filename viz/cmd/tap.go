@@ -18,6 +18,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
+	vizutil "github.com/linkerd/linkerd2/viz/pkg/util"
 	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	"github.com/linkerd/linkerd2/viz/tap/pkg"
 	log "github.com/sirupsen/logrus"
@@ -372,7 +373,7 @@ func renderTapEvent(event *tapPb.TapEvent, resource string) string {
 			ev.RequestInit.GetId().GetBase(),
 			ev.RequestInit.GetId().GetStream(),
 			flow,
-			ev.RequestInit.GetMethod().GetRegistered().String(),
+			vizutil.HTTPMethodToString(ev.RequestInit.GetMethod()),
 			ev.RequestInit.GetAuthority(),
 			ev.RequestInit.GetPath(),
 			resources,

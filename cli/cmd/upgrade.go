@@ -300,10 +300,22 @@ the 'linkerd repair' command to repair the Linkerd config`)
 		}
 	}
 
+	// Create values override
+	valuesOverrides, err := options.MergeValues(nil)
+	if err != nil {
+		return bytes.Buffer{}, err
+	}
+	if !isRunAsRoot(valuesOverrides) {
+		err = healthcheck.CheckNodesHaveNonDockerRuntime(ctx, k)
+		if err != nil {
+			return bytes.Buffer{}, err
+		}
+	}
+
 	// rendering to a buffer and printing full contents of buffer after
 	// render is complete, to ensure that okStatus prints separately
 	var buf bytes.Buffer
-	if err = render(&buf, values, stage, options); err != nil {
+	if err = render(&buf, values, stage, valuesOverrides); err != nil {
 		upgradeErrorf("Could not render upgrade configuration: %s", err)
 	}
 

@@ -20,6 +20,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
+	vizutil "github.com/linkerd/linkerd2/viz/pkg/util"
 	pb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	"github.com/linkerd/linkerd2/viz/tap/pkg"
 	log "github.com/sirupsen/logrus"
@@ -245,7 +246,7 @@ func getPathDataFromTap(event *pb.TapEvent) *sp.RouteSpec {
 		return profiles.MkRouteSpec(
 			path,
 			profiles.PathToRegex(path), // for now, no path consolidation
-			ev.RequestInit.GetMethod().GetRegistered().String(),
+			vizutil.HTTPMethodToString(ev.RequestInit.GetMethod()),
 			nil)
 	default:
 		return nil

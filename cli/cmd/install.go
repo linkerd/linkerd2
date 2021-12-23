@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/linkerd/linkerd2/cli/flag"
@@ -122,6 +123,13 @@ A full list of configurable values can be found at https://www.github.com/linker
 			if err != nil {
 				return err
 			}
+
+			// Create values override
+			valuesOverrides, err := options.MergeValues(nil)
+			if err != nil {
+				return err
+			}
+
 			if !ignoreCluster {
 				// Ensure k8s is reachable and that Linkerd is not already installed.
 				if err := errAfterRunningChecks(values.CNIEnabled); err != nil {
@@ -132,9 +140,22 @@ A full list of configurable values can be found at https://www.github.com/linker
 					}
 					os.Exit(1)
 				}
-			}
 
-			return render(os.Stdout, values, configStage, options)
+				// Initialize the k8s API which is used for the proxyInit
+				// runAsRoot check.
+				k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 30*time.Second)
+				if err != nil {
+					return err
+				}
+				if !isRunAsRoot(valuesOverrides) {
+					err = healthcheck.CheckNodesHaveNonDockerRuntime(cmd.Context(), k8sAPI)
+					if err != nil {
+						fmt.Fprintln(os.Stderr, err)
+						os.Exit(1)
+					}
+				}
+			}
+			return render(os.Stdout, values, configStage, valuesOverrides)
 		},
 	}
 	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
@@ -280,8 +301,13 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 		return err
 	}
 
-	var k8sAPI *k8s.KubernetesAPI
+	// Create values override
+	valuesOverrides, err := options.MergeValues(nil)
+	if err != nil {
+		return err
+	}
 
+	var k8sAPI *k8s.KubernetesAPI
 	if !ignoreCluster {
 		// Ensure there is not already an existing Linkerd installation.
 		k8sAPI, err = k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 30*time.Second)
@@ -298,6 +324,14 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 		if !kerrors.IsNotFound(err) {
 			return err
 		}
+
+		if !isRunAsRoot(valuesOverrides) {
+			err = healthcheck.CheckNodesHaveNonDockerRuntime(ctx, k8sAPI)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+		}
 	}
 
 	err = initializeIssuerCredentials(ctx, k8sAPI, values)
@@ -310,10 +344,21 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 		return err
 	}
 
-	return render(w, values, stage, options)
+	return render(w, values, stage, valuesOverrides)
 }
 
-func render(w io.Writer, values *l5dcharts.Values, stage string, options valuespkg.Options) error {
+func isRunAsRoot(values map[string]interface{}) bool {
+	if proxyInit, ok := values["proxyInit"]; ok {
+		if val, ok := proxyInit.(map[string]interface{})["runAsRoot"]; ok {
+			if truth, ok := template.IsTrue(val); ok {
+				return truth
+			}
+		}
+	}
+	return false
+}
+
+func render(w io.Writer, values *l5dcharts.Values, stage string, valuesOverrides map[string]interface{}) error {
 
 	values.Stage = stage
 
@@ -388,12 +433,6 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 		return err
 	}
 
-	// Create values override
-	valuesOverrides, err := options.MergeValues(nil)
-	if err != nil {
-		return err
-	}
-
 	vals, err := chartutil.CoalesceValues(chart, valuesOverrides)
 	if err != nil {
 		return err
@@ -410,7 +449,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 	// Attach the final values into the `Values` field for rendering to work
 	renderedTemplates, err := engine.Render(chart, fullValues)
 	if err != nil {
-		return fmt.Errorf("Failed to render the template: %s", err)
+		return fmt.Errorf("failed to render the template: %s", err)
 	}
 
 	// Merge templates and inject

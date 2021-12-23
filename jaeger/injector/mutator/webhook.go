@@ -29,11 +29,13 @@ type Params struct {
 	ProxyIndex          int
 	CollectorSvcAddr    string
 	CollectorSvcAccount string
+	ClusterDomain       string
+	LinkerdNamespace    string
 }
 
 // Mutate returns an AdmissionResponse containing the patch, if any, to apply
 // to the proxy
-func Mutate(collectorSvcAddr, collectorSvcAccount string) webhook.Handler {
+func Mutate(collectorSvcAddr, collectorSvcAccount, clusterDomain, linkerdNamespace string) webhook.Handler {
 	return func(
 		ctx context.Context,
 		api *k8s.API,
@@ -59,6 +61,8 @@ func Mutate(collectorSvcAddr, collectorSvcAccount string) webhook.Handler {
 			ProxyIndex:          webhook.GetProxyContainerIndex(pod.Spec.Containers),
 			CollectorSvcAddr:    collectorSvcAddr,
 			CollectorSvcAccount: collectorSvcAccount,
+			ClusterDomain:       clusterDomain,
+			LinkerdNamespace:    linkerdNamespace,
 		}
 		if params.ProxyIndex < 0 || labels.IsTracingEnabled(pod) {
 			return admissionResponse, nil

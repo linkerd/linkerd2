@@ -428,25 +428,15 @@ policyValidator:
   # for more information.
   injectCaFromSecret: ""
 
-# -|- CPU, Memory and Ephemeral Storage resources required by the SP validator (see
-#`proxy.resources` for sub-fields)
-#spValidatorResources:
-
-# If the namespace is controlled by an external tool or can't be installed with Helm
-# you can disable its installation. In this case:
-# - The namespace created by the external tool must match the namespace value above
-# - The external tool needs to create the namespace with the label:
-#     config.linkerd.io/admission-webhooks: disabled
-
-# installNamespace -- Set to false when installing Linkerd in a custom namespace. See the
-# [Linkerd documentation](https://linkerd.io/2/tasks/install-helm#customizing-the-namespace) for more information.
-installNamespace: true
-
 # -- NodeSelector section, See the [K8S
 # documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector)
 # for more information
 nodeSelector:
   kubernetes.io/os: linux
+
+# -|- CPU, Memory and Ephemeral Storage resources required by the SP validator (see
+#`proxy.resources` for sub-fields)
+#spValidatorResources:
 
 # -|- Tolerations section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)

@@ -626,14 +626,6 @@ func (hc *HealthChecker) allCategories() []*Category {
 						return hc.checkClockSkew(ctx)
 					},
 				},
-				{
-					description: "proxy-init container runs as root user if docker container runtime is used",
-					hintAnchor:  "l5d-proxy-init-run-as-root",
-					fatal:       false,
-					check: func(ctx context.Context) error {
-						return hc.checkProxyInitRunsAsRoot(ctx, hc.Options.ChartValues)
-					},
-				},
 			},
 			false,
 		),
@@ -834,7 +826,12 @@ func (hc *HealthChecker) allCategories() []*Category {
 							}
 							return err
 						}
-						return hc.checkProxyInitRunsAsRoot(ctx, hc.LinkerdConfig())
+						config := hc.LinkerdConfig()
+						runAsRoot := config != nil && config.ProxyInit != nil && config.ProxyInit.RunAsRoot
+						if !runAsRoot {
+							return CheckNodesHaveNonDockerRuntime(ctx, hc.KubeAPIClient())
+						}
+						return nil
 					},
 				},
 			},
@@ -1776,6 +1773,13 @@ func (hc *HealthChecker) fetchWebhookCaBundle(ctx context.Context, webhook strin
 	return caBundle, nil
 }
 
+// FetchTrustBundle retrieves the ca-bundle from the config-map linkerd-identity-trust-roots
+func FetchTrustBundle(ctx context.Context, kubeAPI k8s.KubernetesAPI, controlPlaneNamespace string) (string, error) {
+	configMap, err := kubeAPI.CoreV1().ConfigMaps(controlPlaneNamespace).Get(ctx, "linkerd-identity-trust-roots", metav1.GetOptions{})
+
+	return configMap.Data["ca-bundle.crt"], err
+}
+
 // FetchCredsFromSecret retrieves the TLS creds given a secret name
 func (hc *HealthChecker) FetchCredsFromSecret(ctx context.Context, namespace string, secretName string) (*tls.Cred, error) {
 	secret, err := hc.kubeAPI.CoreV1().Secrets(namespace).Get(ctx, secretName, metav1.GetOptions{})
@@ -2098,12 +2102,14 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Contex
 	return checkResources("ValidatingWebhookConfigurations", objects, []string{k8s.SPValidatorWebhookConfigName}, shouldExist)
 }
 
-func (hc *HealthChecker) checkProxyInitRunsAsRoot(ctx context.Context, config *l5dcharts.Values) error {
-	runAsRoot := config != nil && config.ProxyInit != nil && config.ProxyInit.RunAsRoot
+// CheckNodesHaveNonDockerRuntime checks that each node has a non-Docker
+// runtime. This check is only called if proxyInit is not running as root
+// which is a problem for clusters with a Docker container runtime.
+func CheckNodesHaveNonDockerRuntime(ctx context.Context, k8sAPI *k8s.KubernetesAPI) error {
 	hasDockerNodes := false
 	continueToken := ""
 	for {
-		nodes, err := hc.KubeAPIClient().CoreV1().Nodes().List(ctx, metav1.ListOptions{Continue: continueToken})
+		nodes, err := k8sAPI.CoreV1().Nodes().List(ctx, metav1.ListOptions{Continue: continueToken})
 		if err != nil {
 			return err
 		}
@@ -2119,8 +2125,8 @@ func (hc *HealthChecker) checkProxyInitRunsAsRoot(ctx context.Context, config *l
 			break
 		}
 	}
-	if hasDockerNodes && !runAsRoot {
-		return fmt.Errorf("There are nodes using the docker container runtime and proxy-init container must run as root user.\n\tTry installing linkerd via --set proxyInit.runAsRoot=true")
+	if hasDockerNodes {
+		return fmt.Errorf("there are nodes using the docker container runtime and proxy-init container must run as root user.\ntry installing linkerd via --set proxyInit.runAsRoot=true")
 	}
 	return nil
 }
@@ -2170,12 +2176,11 @@ func checkPodsProxiesCertificate(ctx context.Context, kubeAPI k8s.KubernetesAPI,
 		return err
 	}
 
-	_, values, err := FetchCurrentConfiguration(ctx, kubeAPI, controlPlaneNamespace)
+	trustAnchorsPem, err := FetchTrustBundle(ctx, kubeAPI, controlPlaneNamespace)
 	if err != nil {
 		return err
 	}
 
-	trustAnchorsPem := values.IdentityTrustAnchorsPEM
 	offendingPods := []string{}
 	for _, pod := range meshedPods {
 		// Skip control plane pods since they load their trust anchors from the linkerd-identity-trust-anchors configmap.
