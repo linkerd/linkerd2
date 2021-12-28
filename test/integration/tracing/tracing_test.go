@@ -51,6 +51,11 @@ func TestTracing(t *testing.T) {
 		t.Skip("Skipped. Jaeger & Open Census images does not support ARM yet")
 	}
 
+	// Require an environment variable to be set for this test to be run.
+	if os.Getenv("RUN_FLAKEY_TEST") == "" {
+		t.Skip("Skipping due to flakiness. See linkerd/linkerd2#7538")
+	}
+
 	// cleanup cluster before proceeding
 	namespaces := []string{"smoke-test", "smoke-test-manual", "smoke-test-ann", "opaque-ports-test"}
 	for _, ns := range namespaces {
