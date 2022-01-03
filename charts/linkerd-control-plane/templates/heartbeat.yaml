@@ -63,4 +63,5 @@ spec:
             {{- end }}
             securityContext:
               runAsUser: {{.Values.controllerUID}}
+              allowPrivilegeEscalation: false
 {{- end }}
