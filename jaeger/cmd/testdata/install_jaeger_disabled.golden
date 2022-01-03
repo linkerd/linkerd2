@@ -62,7 +62,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 0cf88aabfdb59ab401cb17b59e26b57277ca6c039ec4837e2523759802565c1b
+        checksum/config: d10abe745e0df2e543fb40fcfecf1df813afc2259991761174790f0735959752
         linkerd.io/inject: enabled
         config.linkerd.io/proxy-await: "enabled"
       labels:
@@ -224,16 +224,6 @@ apiVersion: v1
 metadata:
   name: jaeger-injector
   namespace: linkerd-jaeger
----
-kind: Secret
-apiVersion: v1
-metadata:
-  name: jaeger-injector-k8s-tls
-  namespace: linkerd-jaeger
-type: kubernetes.io/tls
-data:
-  tls.crt: dGVzdC13ZWJob29rLWNydC1wZW0=
-  tls.key: dGVzdC13ZWJob29rLWtleS1wZW0=
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration

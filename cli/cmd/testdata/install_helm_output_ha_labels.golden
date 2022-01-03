@@ -103,21 +103,6 @@ metadata:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
 ---
-kind: Secret
-apiVersion: v1
-metadata:
-  name: linkerd-sp-validator-k8s-tls
-  
-  labels:
-    linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd-dev
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerd-version
-type: kubernetes.io/tls
-data:
-  tls.crt: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1jcnQtcGVt
-  tls.key: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1rZXktcGVt
----
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
@@ -147,21 +132,6 @@ webhooks:
     apiVersions: ["v1alpha1", "v1alpha2"]
     resources: ["serviceprofiles"]
   sideEffects: None
----
-kind: Secret
-apiVersion: v1
-metadata:
-  name: linkerd-policy-validator-k8s-tls
-  
-  labels:
-    linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd-dev
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerd-version
-type: kubernetes.io/tls
-data:
-  tls.crt: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1jcnQtcGVt
-  tls.key: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1rZXktcGVt
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
@@ -364,21 +334,6 @@ metadata:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd-dev
 ---
-kind: Secret
-apiVersion: v1
-metadata:
-  name: linkerd-proxy-injector-k8s-tls
-  
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd-dev
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerd-version
-type: kubernetes.io/tls
-data:
-  tls.crt: dGVzdC1wcm94eS1pbmplY3Rvci1jcnQtcGVt
-  tls.key: dGVzdC1wcm94eS1pbmplY3Rvci1rZXktcGVt
----
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
@@ -523,9 +478,11 @@ data:
           request: ""
     policyValidator:
       caBundle: test-profile-validator-ca-bundle
-      crtPEM: test-profile-validator-crt-pem
-      externalSecret: false
-      keyPEM: test-profile-validator-key-pem
+      crtPEM: ""
+      externalSecret: true
+      injectCaFrom: ""
+      injectCaFromSecret: ""
+      keyPEM: ""
       namespaceSelector:
         matchExpressions:
         - key: config.linkerd.io/admission-webhooks
@@ -535,8 +492,10 @@ data:
     priorityClassName: ""
     profileValidator:
       caBundle: test-profile-validator-ca-bundle
-      crtPEM: test-profile-validator-crt-pem
-      externalSecret: false
+      crtPEM: ""
+      externalSecret: true
+      injectCaFrom: ""
+      injectCaFromSecret: ""
       namespaceSelector:
         matchExpressions:
         - key: config.linkerd.io/admission-webhooks
@@ -611,8 +570,10 @@ data:
         readOnly: false
     proxyInjector:
       caBundle: test-proxy-injector-ca-bundle
-      crtPEM: test-proxy-injector-crt-pem
-      externalSecret: false
+      crtPEM: ""
+      externalSecret: true
+      injectCaFrom: ""
+      injectCaFromSecret: ""
       namespaceSelector:
         matchExpressions:
         - key: config.linkerd.io/admission-webhooks
@@ -632,8 +593,7 @@ data:
         request: 50Mi
     tap:
       caBundle: test-tap-ca-bundle
-      crtPEM: test-tap-crt-pem
-      keyPEM: test-tap-key-pem
+      externalSecret: true
     tolerations: null
     webhookFailurePolicy: Fail
 ---

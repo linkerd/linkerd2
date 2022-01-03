@@ -116,10 +116,20 @@ data:
   tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.tap.keyPEM)) (empty .Values.tap.keyPEM) }}
 ---
 {{- end }}
+{{- include "linkerd.webhook.validation" .Values.tap }}
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
 metadata:
   name: v1alpha1.tap.linkerd.io
+  {{- if or (.Values.tap.injectCaFrom) (.Values.tap.injectCaFromSecret) }}
+  annotations:
+  {{- if .Values.tap.injectCaFrom }}
+    cert-manager.io/inject-ca-from: {{ .Values.tap.injectCaFrom }}
+  {{- end }}
+  {{- if .Values.tap.injectCaFromSecret }}
+    cert-manager.io/inject-ca-from-secret: {{ .Values.tap.injectCaFromSecret }}
+  {{- end }}
+  {{- end }}
   labels:
     linkerd.io/extension: viz
     component: tap
@@ -131,7 +141,6 @@ spec:
   service:
     name: tap
     namespace: {{.Release.Namespace}}
-{{- if and (.Values.tap.externalSecret) (empty .Values.tap.caBundle) }}
-  {{- fail "If tap.externalSecret is true then you need to provide tap.caBundle" }}
-{{- end }}
+  {{- if and (empty .Values.tap.injectCaFrom) (empty .Values.tap.injectCaFromSecret) }}
   caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tap.caBundle)) (empty .Values.tap.caBundle) }}
+  {{- end }}

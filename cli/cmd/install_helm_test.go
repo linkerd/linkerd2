@@ -104,24 +104,20 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
     }
   },
   "proxyInjector":{
-    "keyPEM":"test-proxy-injector-key-pem",
-	"crtPEM":"test-proxy-injector-crt-pem",
-	"caBundle":"test-proxy-injector-ca-bundle"
+    "externalSecret": true,
+    "caBundle":"test-proxy-injector-ca-bundle"
   },
   "profileValidator":{
-    "keyPEM":"test-profile-validator-key-pem",
-    "crtPEM":"test-profile-validator-crt-pem",
-	"caBundle":"test-profile-validator-ca-bundle"
+    "externalSecret": true,
+    "caBundle":"test-profile-validator-ca-bundle"
   },
   "policyValidator":{
-    "keyPEM":"test-profile-validator-key-pem",
-    "crtPEM":"test-profile-validator-crt-pem",
-	  "caBundle":"test-profile-validator-ca-bundle"
+    "externalSecret": true,
+    "caBundle":"test-profile-validator-ca-bundle"
   },
   "tap":{
-    "keyPEM":"test-tap-key-pem",
-    "crtPEM":"test-tap-crt-pem",
-	"caBundle":"test-tap-ca-bundle"
+    "externalSecret": true,
+    "caBundle":"test-tap-ca-bundle"
   }
 }`
 

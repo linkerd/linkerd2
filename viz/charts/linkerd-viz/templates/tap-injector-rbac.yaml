@@ -53,10 +53,20 @@ data:
   tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.tapInjector.keyPEM)) (empty .Values.tapInjector.keyPEM) }}
 ---
 {{- end }}
+{{- include "linkerd.webhook.validation" .Values.tapInjector }}
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-tap-injector-webhook-config
+  {{- if or (.Values.tapInjector.injectCaFrom) (.Values.tapInjector.injectCaFromSecret) }}
+  annotations:
+  {{- if .Values.tapInjector.injectCaFrom }}
+    cert-manager.io/inject-ca-from: {{ .Values.tapInjector.injectCaFrom }}
+  {{- end }}
+  {{- if .Values.tapInjector.injectCaFromSecret }}
+    cert-manager.io/inject-ca-from-secret: {{ .Values.tapInjector.injectCaFromSecret }}
+  {{- end }}
+  {{- end }}
   labels:
     linkerd.io/extension: viz
 webhooks:
@@ -74,10 +84,9 @@ webhooks:
       name: tap-injector
       namespace: {{ .Release.Namespace }}
       path: "/"
-{{- if and (.Values.tapInjector.externalSecret) (empty .Values.tapInjector.caBundle) }}
-  {{- fail "If tapInjector.externalSecret is true then you need to provide tapInjector.caBundle" }}
-{{- end }}
+    {{- if and (empty .Values.tapInjector.injectCaFrom) (empty .Values.tapInjector.injectCaFromSecret) }}
     caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tapInjector.caBundle)) (empty .Values.tapInjector.caBundle) }}
+    {{- end }}
   failurePolicy: {{.Values.tapInjector.failurePolicy}}
   admissionReviewVersions: ["v1", "v1beta1"]
   reinvocationPolicy: IfNeeded

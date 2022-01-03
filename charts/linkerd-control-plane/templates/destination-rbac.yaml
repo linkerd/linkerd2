@@ -73,10 +73,20 @@ data:
   tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.profileValidator.keyPEM)) (empty .Values.profileValidator.keyPEM) }}
 ---
 {{- end }}
+{{- include "linkerd.webhook.validation" .Values.profileValidator }}
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: linkerd-sp-validator-webhook-config
+  {{- if or (.Values.profileValidator.injectCaFrom) (.Values.profileValidator.injectCaFromSecret) }}
+  annotations:
+  {{- if .Values.profileValidator.injectCaFrom }}
+    cert-manager.io/inject-ca-from: {{ .Values.profileValidator.injectCaFrom }}
+  {{- end }}
+  {{- if .Values.profileValidator.injectCaFromSecret }}
+    cert-manager.io/inject-ca-from-secret: {{ .Values.profileValidator.injectCaFromSecret }}
+  {{- end }}
+  {{- end }}
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -89,10 +99,9 @@ webhooks:
       name: linkerd-sp-validator
       namespace: {{ .Release.Namespace }}
       path: "/"
-{{- if and (.Values.profileValidator.externalSecret) (empty .Values.profileValidator.caBundle) }}
-  {{- fail "If profileValidator.externalSecret is true then you need to provide profileValidator.caBundle" }}
-{{- end }}
+    {{- if and (empty .Values.profileValidator.injectCaFrom) (empty .Values.profileValidator.injectCaFromSecret) }}
     caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.profileValidator.caBundle)) (empty .Values.profileValidator.caBundle) }}
+    {{- end }}
   failurePolicy: {{.Values.webhookFailurePolicy}}
   admissionReviewVersions: ["v1", "v1beta1"]
   rules:
@@ -121,10 +130,20 @@ data:
   tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.policyValidator.keyPEM)) (empty .Values.policyValidator.keyPEM) }}
 ---
 {{- end }}
+{{- include "linkerd.webhook.validation" .Values.policyValidator }}
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: linkerd-policy-validator-webhook-config
+  {{- if or (.Values.policyValidator.injectCaFrom) (.Values.policyValidator.injectCaFromSecret) }}
+  annotations:
+  {{- if .Values.policyValidator.injectCaFrom }}
+    cert-manager.io/inject-ca-from: {{ .Values.policyValidator.injectCaFrom }}
+  {{- end }}
+  {{- if .Values.policyValidator.injectCaFromSecret }}
+    cert-manager.io/inject-ca-from-secret: {{ .Values.policyValidator.injectCaFromSecret }}
+  {{- end }}
+  {{- end }}
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -137,10 +156,9 @@ webhooks:
       name: linkerd-policy-validator
       namespace: {{ .Release.Namespace }}
       path: "/"
-{{- if and (.Values.policyValidator.externalSecret) (empty .Values.policyValidator.caBundle) }}
-  {{- fail "If policyValidator.externalSecret is true then you need to provide policyValidator.caBundle" }}
-{{- end }}
+    {{- if and (empty .Values.policyValidator.injectCaFrom) (empty .Values.policyValidator.injectCaFromSecret) }}
     caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.policyValidator.caBundle)) (empty .Values.policyValidator.caBundle) }}
+    {{- end }}
   failurePolicy: {{.Values.webhookFailurePolicy}}
   admissionReviewVersions: ["v1", "v1beta1"]
   rules:
