@@ -170,6 +170,10 @@
           "value": "0.0.0.0:4191"
         },
         {
+          "name": "LINKERD2_PROXY_HEALTH_LISTEN_ADDR",
+          "value": "0.0.0.0:4192"
+        },
+        {
           "name": "LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR",
           "value": "127.0.0.1:4140"
         },
@@ -228,7 +232,7 @@
       "livenessProbe": {
         "httpGet": {
           "path": "/live",
-          "port": 4191
+          "port": 4192
         },
         "initialDelaySeconds": 10
       },
@@ -246,7 +250,7 @@
       "readinessProbe": {
         "httpGet": {
           "path": "/ready",
-          "port": 4191
+          "port": 4192
         },
         "initialDelaySeconds": 2
       },

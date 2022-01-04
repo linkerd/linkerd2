@@ -8,7 +8,7 @@ enableHeadlessServices: false
 gateway:
   probe:
     # -- The port used for liveliness probing
-    port: 4191
+    port: 4192
 # -- Log level for the Multicluster components
 logLevel: info
 # -- Number of times update from the remote cluster is allowed to be requeued

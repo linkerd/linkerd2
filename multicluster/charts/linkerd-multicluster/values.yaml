@@ -16,7 +16,7 @@ gateway:
     # gateway is alive
     path: /ready
     # -- The port used for liveliness probing
-    port: 4191
+    port: 4192
     # nodePort -- Set the probe nodePort (for LoadBalancer or NodePort) to a specific value
     # nodePort:
     # -- The interval (in seconds) between liveness probes

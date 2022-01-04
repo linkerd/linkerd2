@@ -53,6 +53,8 @@ env:
   value: 0.0.0.0:{{.Values.proxy.ports.control}}
 - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
   value: 0.0.0.0:{{.Values.proxy.ports.admin}}
+- name: LINKERD2_PROXY_HEALTH_LISTEN_ADDR
+  value: 0.0.0.0:4192
 - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
   value: 127.0.0.1:{{.Values.proxy.ports.outbound}}
 - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
@@ -134,7 +136,7 @@ imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPol
 livenessProbe:
   httpGet:
     path: /live
-    port: {{.Values.proxy.ports.admin}}
+    port: 4192
   initialDelaySeconds: 10
 name: linkerd-proxy
 ports:
@@ -142,10 +144,12 @@ ports:
   name: linkerd-proxy
 - containerPort: {{.Values.proxy.ports.admin}}
   name: linkerd-admin
+- containerPort: 4192
+  name: linkerd-health
 readinessProbe:
   httpGet:
     path: /ready
-    port: {{.Values.proxy.ports.admin}}
+    port: 4192
   initialDelaySeconds: 2
 {{- if .Values.proxy.resources }}
 {{ include "partials.resources" .Values.proxy.resources }}
