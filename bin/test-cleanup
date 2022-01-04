@@ -22,6 +22,9 @@ echo "cleaning up jaeger extension resources, if present [${k8s_context}]"
 echo "cleaning up the all namespaces labelled with test.linkerd.io/is-test-data-plane"
 kubectl --context="$k8s_context" delete ns -l test.linkerd.io/is-test-data-plane
 
+echo "cleaning up cluster-scoped resources labelled with linkerd.io/extension"
+kubectl --context="$k8s_context" delete all -l linkerd.io/extension
+
 echo "cleaning up cluster-scoped resources labelled with test.linkerd.io/is-test-data-plane"
 kubectl --context="$k8s_context" delete clusterRole,clusterRoleBindings,mutatingwebhookconfiguration -l test.linkerd.io/is-test-data-plane
 
