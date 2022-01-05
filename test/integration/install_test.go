@@ -1232,19 +1232,6 @@ func TestCheckProxy(t *testing.T) {
 	}
 }
 
-func TestInstallCleanUp(t *testing.T) {
-	ctx := context.Background()
-	for _, tc := range injectionCases {
-		tc := tc // pin
-		t.Run(tc.ns, func(t *testing.T) {
-			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
-			if err := TestHelper.DeleteNamespaceIfExists(ctx, prefixedNs); err != nil {
-				testutil.AnnotatedFatal(t, "Deleting namespace failed", err)
-			}
-		})
-	}
-}
-
 func TestRestarts(t *testing.T) {
 	expectedDeployments := testutil.LinkerdDeployReplicasEdge
 	if !TestHelper.ExternalPrometheus() {
