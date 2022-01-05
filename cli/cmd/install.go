@@ -198,25 +198,25 @@ The installation can be configured by using the --set, --values, --set-string an
 A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md
   `,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !skipChecks {
-				// check if global resources exist to determine if the `install config`
-				// stage succeeded
-				if err := errAfterRunningChecks(values.CNIEnabled); err == nil {
-					if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
-						fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
-					} else {
-						fmt.Fprintf(os.Stderr, errMsgGlobalResourcesMissing, controlPlaneNamespace)
-					}
-					os.Exit(1)
-				}
-			}
 			if !ignoreCluster {
+				if !skipChecks {
+					// check if global resources exist to determine if the `install config`
+					// stage succeeded
+					if err := errAfterRunningChecks(values.CNIEnabled); err == nil {
+						if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
+							fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
+						} else {
+							fmt.Fprintf(os.Stderr, errMsgGlobalResourcesMissing, controlPlaneNamespace)
+						}
+						os.Exit(1)
+					}
+				}
+
 				// Ensure there is not already an existing Linkerd installation.
 				if err := errIfLinkerdConfigConfigMapExists(cmd.Context()); err != nil {
 					fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, err.Error())
 					os.Exit(1)
 				}
-
 			}
 
 			return install(cmd.Context(), os.Stdout, values, flags, controlPlaneStage, options)
