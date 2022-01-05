@@ -25,7 +25,8 @@ Kubernetes: `>=1.20.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| controllerImage | string | `"cr.l5d.io/linkerd/controller"` | Docker image for the Service mirror component (uses the Linkerd controller image) |
+| enablePSP  | bool | `false` | Create RoleBindings to associate ServiceAccount of target cluster Service Mirror to the control plane PSP resource. This requires that `enabledPSP` is set to true on the extension and control plane install. Note PSP has been deprecated since k8s v1.21 |
+| controllerImage | string | `"cr.l5d.io/linkerd/controller"` | Docker image for the Service mirror component (uses t  he Linkerd controller image) |
 | controllerImageVersion | string | `"linkerdVersionValue"` | Tag for the Service Mirror container Docker image |
 | enableHeadlessServices | bool | `false` | Toggle support for mirroring headless services |
 | gateway.probe.port | int | `4191` | The port used for liveliness probing |
