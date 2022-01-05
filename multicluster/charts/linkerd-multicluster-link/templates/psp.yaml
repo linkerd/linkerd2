@@ -1,8 +1,9 @@
+{{if .Values.enablePSP -}}
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: multicluster-link-psp
+  name: multicluster-link-psp-{{.Values.targetClusterName}}
   {{ include "partials.namespace" . }}
   labels:
     linkerd.io/extension: multicluster
@@ -15,3 +16,4 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-service-mirror-{{.Values.targetClusterName}}
   namespace: {{.Release.Namespace}}
+{{ end -}}
