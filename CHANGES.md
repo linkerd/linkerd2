@@ -1,5 +1,17 @@
 # Changes
 
+## edge-22.1.1
+
+This release adds support for using the cert-manager CA Injector to configure
+Linkerd's webhooks.
+
+* Fixed a rare issue when a Service's opaque ports annotation does not match
+  that of the pods in the service
+* Disallowed privilege escalation in control plane containers (thanks @kichristensen!)
+* Updated the multicluster extension's service mirror controller to make mirror
+  services empty when the exported service is empty
+* Added support for injecting Webhook CA bundles with cert-manager CA Injector
+  (thanks @bdun1013!)
 ## edge-21.12.4
 
 This release adds support for custom HTTP methods in the viz stats
