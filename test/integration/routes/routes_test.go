@@ -62,7 +62,6 @@ func TestRoutes(t *testing.T) {
 	}
 
 	vizRouteStrings := []testCase{
-		{"grafana", 13},
 		{"metrics-api", 9},
 		{"tap", 4},
 		{"tap-injector", 2},

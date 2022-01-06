@@ -85,7 +85,6 @@ var LinkerdDeployReplicasStable = LinkerdDeployReplicasEdge
 var LinkerdVizDeployReplicas = map[string]DeploySpec{
 	"prometheus":   {"linkerd-viz", 1},
 	"metrics-api":  {"linkerd-viz", 1},
-	"grafana":      {"linkerd-viz", 1},
 	"tap":          {"linkerd-viz", 1},
 	"tap-injector": {"linkerd-viz", 1},
 	"web":          {"linkerd-viz", 1},

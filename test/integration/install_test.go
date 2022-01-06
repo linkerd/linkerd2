@@ -43,7 +43,6 @@ var (
 
 	linkerdSvcEdge = []testutil.Service{
 		{Namespace: "linkerd", Name: "linkerd-dst"},
-		{Namespace: "linkerd-viz", Name: "grafana"},
 		{Namespace: "linkerd", Name: "linkerd-identity"},
 		{Namespace: "linkerd-viz", Name: "web"},
 		{Namespace: "linkerd-viz", Name: "tap"},
@@ -510,7 +509,6 @@ func helmOverridesEdge(root *tls.CA) ([]string, []string) {
 			"--set", "tap.image.registry="+override,
 			"--set", "tapInjector.image.registry="+override,
 			"--set", "dashboard.image.registry="+override,
-			"--set", "grafana.image.registry="+override,
 		)
 	}
 

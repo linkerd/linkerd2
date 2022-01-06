@@ -30,12 +30,12 @@ data:
       static_configs:
       - targets: ['localhost:9090']
 
-    {{ if .Values.grafana.enabled -}}
+    {{ if .Values.grafana.url -}}
     - job_name: 'grafana'
       kubernetes_sd_configs:
       - role: pod
         namespaces:
-          names: ['{{.Release.Namespace}}']
+          names: ['grafana']
       relabel_configs:
       - source_labels:
         - __meta_kubernetes_pod_container_name

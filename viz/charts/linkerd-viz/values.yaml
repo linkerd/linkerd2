@@ -55,9 +55,6 @@ enablePSP: false
 # -- url of external prometheus instance
 prometheusUrl: ""
 
-# -- url of external grafana instance with reverse proxy configured.
-grafanaUrl: ""
-
 # -- url of external jaeger instance
 # Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>` if you plan to use jaeger extension
 jaegerUrl: ""
@@ -347,56 +344,14 @@ dashboard:
     # resources:
 
 grafana:
-  # -- toggle field to enable or disable grafana
-  enabled: true
-  # -- log level of the grafana instance
-  # @default -- defaultLogLevel
-  logLevel: ""
-  # -- log format (plain, json) of the grafana instance
-  # @default -- defaultLogFormat
-  logFormat: ""
-  image:
-    # -- Docker registry for the grafana instance
-    # @default -- defaultRegistry
-    registry: ""
-    # -- Docker image name for the grafana instance
-    name: grafana
-    # -- Docker image tag for the grafana instance
-    # @default -- linkerdVersion
-    tag: ""
-    # -- Pull policy for the grafana instance
-    # @default -- defaultImagePullPolicy
-    pullPolicy: ""
-
-  resources:
-    cpu:
-      # -- Maximum amount of CPU units that the grafana container can use
-      limit:
-      # -- Amount of CPU units that the grafana container requests
-      request:
-    memory:
-      # -- Maximum amount of memory that grafana container can use
-      limit:
-      # -- Amount of memory that the grafana container requests
-      request:
-    ephemeral-storage:
-      # -- Maximum amount of ephemeral storage that the grafana container can use
-      limit: ""
-      # -- Amount of ephemeral storage that the grafana container requests
-      request: ""
-
-  proxy:
-    # -- If set, overrides default proxy resources for the proxy injected
-    # into the grafana component
-    # resources:
-
-  # -- NodeSelector section, See the
-  # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
-  nodeSelector: *default_node_selector
-  # -- Tolerations section, See the
-  # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
-  # for more information
-  tolerations: *default_tolerations
+  # -- url of Grafana instance with reverse proxy configured, used by the
+  # Linkerd viz web dashboard to provide direct links to specific Grafana
+  # dashboards. See grafana/values.yaml for a sample config that points to the
+  # definitions of those dashboards. Defaults to a 'grafana' service installed
+  # in a 'grafana' namespace. Make sure this namespace is referred to in the
+  # prometheus-config ConfigMap, for the "Grafana metrics" dashboard to have
+  # data.
+  url: grafana.grafana:3000
 
 prometheus:
   # -- toggle field to enable or disable prometheus

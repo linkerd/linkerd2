@@ -413,7 +413,6 @@ data:
     enableEndpointSlices: true
     enableH2Upgrade: true
     enablePodAntiAffinity: true
-    grafanaUrl: ""
     heartbeatResources:
       cpu:
         limit: ""

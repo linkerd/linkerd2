@@ -22,14 +22,6 @@ tap:
 dashboard:
   resources: *ha_resources
 
-# grafana configuration
-grafana:
-  resources:
-    cpu: *ha_resources_cpu
-    memory:
-      limit: 1024Mi
-      request: 50Mi
-
 # prometheus configuration
 prometheus:
   resources:

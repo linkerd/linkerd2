@@ -33,11 +33,6 @@ subjects:
 - kind: ServiceAccount
   name: web
   namespace: {{.Release.Namespace}}
-{{ if .Values.grafana.enabled -}}
-- kind: ServiceAccount
-  name: grafana
-  namespace: {{.Release.Namespace}}
-{{ end -}}
 {{ if .Values.prometheus.enabled -}}
 - kind: ServiceAccount
   name: prometheus
