@@ -10,17 +10,19 @@ The file `grafana/values.yaml` provides a default Helm config for the [Grafana
 official Helm
 chart](https://github.com/grafana/helm-charts/tree/main/charts/grafana), which
 pulls the Linkerd dashboards published at
-https://grafana.com/orgs/linkerd/dashboards .
+<https://grafana.com/orgs/linkerd/dashboards>.
 
 You can install the chart like this:
 
-```
+```shell
 helm repo add grafana https://grafana.github.io/helm-charts helm install
-grafana -n grafana --create-namespace grafana/grafana -f https://github.com/linkerd/linkerd2/blob/main/grafana/values.yaml
+grafana -n grafana --create-namespace grafana/grafana \
+  -f https://github.com/linkerd/linkerd2/blob/main/grafana/values.yaml
 ```
 
 Please make sure to update the entries in `grafana/values.yaml` before using the
 file; in particular:
+
 - auth and log settings under `grafana.ini`
 - `datasources.datasources.yaml.datasources[0].url` should point to your
   Prometheus service
@@ -36,5 +38,5 @@ have a proper location set up in the `grafana.url` setting in Linkerd Viz's
 ## Note to developers
 
 The `grafana/dashboards` directory contains the same dashboard definitions
-published under https://grafana.com/orgs/linkerd . Please keep them in sync when
+published under <https://grafana.com/orgs/linkerd>. Please keep them in sync when
 making any changes.
