@@ -179,7 +179,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			{
 				args: []string{"viz", "stat", "ns", TestHelper.GetVizNamespace()},
 				expectedRows: map[string]string{
-					TestHelper.GetVizNamespace(): "5/5",
+					TestHelper.GetVizNamespace(): "4/4",
 				},
 			},
 		}...,
