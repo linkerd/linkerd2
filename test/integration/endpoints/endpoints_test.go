@@ -58,7 +58,7 @@ func TestGoodEndpoints(t *testing.T) {
 			testName := fmt.Sprintf("expect endpoints created for %s", endpointCase.name)
 
 			t.Run(testName, func(t *testing.T) {
-				err = TestHelper.RetryFor(1*time.Second, func() error {
+				err = TestHelper.RetryFor(5*time.Second, func() error {
 					tpl := template.Must(template.New(endpointCase.name).Parse(endpointCase.expectedRE))
 
 					var b bytes.Buffer
