@@ -24,7 +24,6 @@ jobs:
         - cni-plugin
         - controller
         - debug
-        - grafana
         - jaeger-webhook
         - metrics-api
         - policy-controller
