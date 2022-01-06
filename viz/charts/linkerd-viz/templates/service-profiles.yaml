@@ -4,6 +4,8 @@ kind: ServiceProfile
 metadata:
   name: metrics-api.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}
   {{ include "partials.namespace" . }}
+  labels:
+    linkerd.io/extension: viz
 spec:
   routes:
   - name: POST /api/v1/StatSummary
@@ -41,6 +43,8 @@ kind: ServiceProfile
 metadata:
   name: prometheus.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}
   {{ include "partials.namespace" . }}
+  labels:
+    linkerd.io/extension: viz
 spec:
   routes:
   - name: POST /api/v1/query

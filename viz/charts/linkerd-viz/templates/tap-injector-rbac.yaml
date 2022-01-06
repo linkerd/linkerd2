@@ -34,6 +34,8 @@ metadata:
   name: tap-injector
   {{ include "partials.namespace" . }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
+  labels:
+    linkerd.io/extension: viz
 ---
 {{- $host := printf "tap-injector.%s.svc" .Release.Namespace }}
 {{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}

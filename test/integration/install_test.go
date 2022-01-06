@@ -451,7 +451,10 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
 	}
 
-	out, err = TestHelper.KubectlApply(out, "")
+	out, err = TestHelper.KubectlApplyWithArgs(out, []string{
+		"--prune",
+		"-l", "linkerd.io/extension=viz",
+	}...)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)

@@ -681,6 +681,8 @@ apiVersion: v1
 metadata:
   name: tap-injector
   namespace: linkerd-viz
+  labels:
+    linkerd.io/extension: viz
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
@@ -752,7 +754,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 07c5bcd8a9872945d91827ee20c9412909a30ba3944731413022668c59067649
+        checksum/config: 390143015ec83a86ded6630634da5834c8ac7700b93d486a7dc101a15cb87f15
         linkerd.io/created-by: linkerd/helm dev-undefined
         linkerd.io/inject: enabled
       labels:
@@ -934,6 +936,8 @@ kind: ServiceProfile
 metadata:
   name: metrics-api.linkerd-viz.svc.cluster.local
   namespace: linkerd-viz
+  labels:
+    linkerd.io/extension: viz
 spec:
   routes:
   - name: POST /api/v1/StatSummary
