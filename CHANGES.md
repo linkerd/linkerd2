@@ -12,6 +12,7 @@ Linkerd's webhooks.
   services empty when the exported service is empty
 * Added support for injecting Webhook CA bundles with cert-manager CA Injector
   (thanks @bdun1013!)
+
 ## edge-21.12.4
 
 This release adds support for custom HTTP methods in the viz stats
