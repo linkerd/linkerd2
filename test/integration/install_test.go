@@ -1248,7 +1248,8 @@ func TestRestarts(t *testing.T) {
 	}
 }
 
-func TestInstallCleanUp(t *testing.T) {
+// TestCleanUp deletes the resources used in the above tests
+func TestCleanUp(t *testing.T) {
 	ctx := context.Background()
 	for _, tc := range injectionCases {
 		tc := tc // pin
