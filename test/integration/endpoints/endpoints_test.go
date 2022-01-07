@@ -14,18 +14,12 @@ import (
 
 var TestHelper *testutil.TestHelper
 
-type (
-	testCase struct {
-		name       string
-		authority  string
-		expectedRE string
-		ns         string
-	}
-
-	templateData struct {
-		Ns string
-	}
-)
+type testCase struct {
+	name       string
+	authority  string
+	expectedRE string
+	ns         string
+}
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
@@ -67,15 +61,15 @@ func TestGoodEndpoints(t *testing.T) {
 						return fmt.Errorf("endpoint data does not match pattern\nexpected output:\n%s\nactual:\n%s", endpointCase.expectedRE, out)
 					}
 
-                    matches := re.FindStringSubmatch(out)
-                    if matches == nil || len(matches) < 2 {
-                      return fmt.Errorf("invalid endpoint data\nexpected: \n%s\nactual: \n%s", endpointCase.expectedRE, out)
-                    }
+					matches := re.FindStringSubmatch(out)
+					if matches == nil || len(matches) < 2 {
+						return fmt.Errorf("invalid endpoint data\nexpected: \n%s\nactual: \n%s", endpointCase.expectedRE, out)
+					}
 
-                    namespaceMatch := matches[1]
-                    if namespaceMatch != endpointCase.ns {
-                      return fmt.Errorf("endpoint namespace does not match\nexpected: %s, actual: %s", endpointCase.ns, namespaceMatch)
-                    }
+					namespaceMatch := matches[1]
+					if namespaceMatch != endpointCase.ns {
+						return fmt.Errorf("endpoint namespace does not match\nexpected: %s, actual: %s", endpointCase.ns, namespaceMatch)
+					}
 
 					return nil
 				})
