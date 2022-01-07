@@ -39,5 +39,5 @@ have a proper location set up in the `grafana.url` setting in Linkerd Viz's
 
 The `grafana/dashboards` directory contains the same dashboard definitions
 published under <https://grafana.com/orgs/linkerd>. Please keep them in sync when
-making any changes. After logging into grafana.com (using the buoyant account),
+making any changes. After logging into grafana.com (using the linkerd account),
 the dashboards can be managed under Org Settings -> My Dashboards.
