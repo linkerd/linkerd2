@@ -1,14 +1,12 @@
 package endpoints
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
-	"text/template"
 	"time"
 
 	"github.com/linkerd/linkerd2/testutil"
@@ -59,27 +57,30 @@ func TestGoodEndpoints(t *testing.T) {
 
 			t.Run(testName, func(t *testing.T) {
 				err = TestHelper.RetryFor(5*time.Second, func() error {
-					tpl := template.Must(template.New(endpointCase.name).Parse(endpointCase.expectedRE))
-
-					var b bytes.Buffer
-					if err := tpl.Execute(&b, templateData{endpointCase.ns}); err != nil {
-						return fmt.Errorf("failed to parse template for %s: %s", endpointCase.name, err)
-					}
-
 					out, err = TestHelper.LinkerdRun("diagnostics", "endpoints", endpointCase.authority, "-ojson")
 					if err != nil {
 						return fmt.Errorf("failed to get endpoints for %s: %s", endpointCase.authority, err)
 					}
 
-					re := regexp.MustCompile(b.String())
+					re := regexp.MustCompile(endpointCase.expectedRE)
 					if !re.MatchString(out) {
-						return fmt.Errorf("expected output:\n%s\nactual:\n%s", b.String(), out)
+						return fmt.Errorf("endpoint data does not match pattern\nexpected output:\n%s\nactual:\n%s", endpointCase.expectedRE, out)
 					}
+
+                    matches := re.FindStringSubmatch(out)
+                    if matches == nil || len(matches) < 2 {
+                      return fmt.Errorf("invalid endpoint data\nexpected: \n%s\nactual: \n%s", endpointCase.expectedRE, out)
+                    }
+
+                    namespaceMatch := matches[1]
+                    if namespaceMatch != endpointCase.ns {
+                      return fmt.Errorf("endpoint namespace does not match\nexpected: %s, actual: %s", endpointCase.ns, namespaceMatch)
+                    }
 
 					return nil
 				})
 				if err != nil {
-					testutil.AnnotatedErrorf(t, "unexpected error", "unexpected error:\n%v", err)
+					testutil.AnnotatedErrorf(t, "unexpected error", "unexpected error: %v", err)
 				}
 			})
 		}
@@ -109,11 +110,11 @@ func createTestCaseTable(controlNs, endpointNs string) []testCase {
 			authority: fmt.Sprintf("linkerd-dst.%s.svc.cluster.local:8086", controlNs),
 			expectedRE: `\[
   \{
-    "namespace": "{{.Ns}}",
+    "namespace": "(\S*)",
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8086,
     "pod": "linkerd\-destination\-[a-f0-9]+\-[a-z0-9]+",
-    "service": "linkerd\-dst\.{{.Ns}}"
+    "service": "linkerd\-dst\.\S*"
   \}
 \]`,
 			ns: controlNs,
@@ -123,11 +124,11 @@ func createTestCaseTable(controlNs, endpointNs string) []testCase {
 			authority: fmt.Sprintf("linkerd-identity.%s.svc.cluster.local:8080", controlNs),
 			expectedRE: `\[
   \{
-    "namespace": "{{.Ns}}",
+    "namespace": "(\S*)",
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8080,
     "pod": "linkerd\-identity\-[a-f0-9]+\-[a-z0-9]+",
-    "service": "linkerd\-identity\.{{.Ns}}"
+    "service": "linkerd\-identity\.\S*"
   \}
 \]`,
 			ns: controlNs,
@@ -137,11 +138,11 @@ func createTestCaseTable(controlNs, endpointNs string) []testCase {
 			authority: fmt.Sprintf("linkerd-proxy-injector.%s.svc.cluster.local:443", controlNs),
 			expectedRE: `\[
   \{
-    "namespace": "{{.Ns}}",
+    "namespace": "(\S*)",
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8443,
     "pod": "linkerd\-proxy\-injector-[a-f0-9]+\-[a-z0-9]+",
-    "service": "linkerd\-proxy\-injector\.{{.Ns}}"
+    "service": "linkerd\-proxy\-injector\.\S*"
   \}
 \]`,
 			ns: controlNs,
@@ -151,11 +152,11 @@ func createTestCaseTable(controlNs, endpointNs string) []testCase {
 			authority: fmt.Sprintf("nginx.%s.svc.cluster.local:8080", endpointNs),
 			expectedRE: `\[
   \{
-    "namespace": "linkerd-endpoints-test",
+    "namespace": "(\S*)",
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8080,
     "pod": "nginx\-[a-f0-9]+\-[a-z0-9]+",
-    "service": "nginx\.linkerd-endpoints-test"
+    "service": "nginx\.\S*"
   \}
 \]`,
 			ns: endpointNs,
