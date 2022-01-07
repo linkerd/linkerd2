@@ -59,7 +59,7 @@ spec:
             topologyKey: kubernetes.io/hostname
       containers:
         - name: pause
-          image: gcr.io/google_containers/pause
+          image: gcr.io/google_containers/pause:3.2
       serviceAccountName: linkerd-gateway
 ---
 kind: PodDisruptionBudget
