@@ -5,17 +5,19 @@ This document contains instructions for releasing Linkerd2.
 ## 1. Bump the proxy version
 
 Determine the commit SHA of the `linkerd2-proxy` repo to be included in the
-release. If https://github.com/linkerd/linkerd2/blob/main/.proxy-version is
-already at the desired SHA, skip to step 2.
+release. If
+[proxy-version](https://github.com/linkerd/linkerd2/blob/main/.proxy-version)
+is already at the desired SHA, skip to step 2.
 
 If updating to `linkerd-proxy` HEAD, note the commit SHA at
-https://build.l5d.io/linkerd2-proxy/latest.txt (Look for
+[latest.txt](https://build.l5d.io/linkerd2-proxy/latest.txt) (Look for
 `linkerd2-proxy-<linkerd2-proxy-sha>.tar.gz`).
 
 Create a new branch in the `linkerd2` repo, `username/proxy-version-bump`.
 
 Then run:
-```
+
+```bash
 bin/git-commit-proxy-version <linkerd2-proxy-sha>
 ```
 
@@ -29,16 +31,17 @@ following updates are needed:
 
 - `go.mod`
 
-   ```
+   ```mod
    github.com/linkerd/linkerd2-proxy-init v1.2.0
    ```
+
 - `pkg/version/version.go` (this also implies changes in unit test fixtures)
 
    ```go
    var ProxyInitVersion = "v1.2.0"
    ```
 
- - `charts/linkerd2/values.yaml`
+- `charts/linkerd2/values.yaml`
 
    Upgrade the version in `global.proxyInit.image.version`
 
@@ -81,6 +84,7 @@ git cherry-pick b34effab
 git cherry-pick 223bd232
 ...
 ```
+
 Each step might result in conflicts that you'll need to address.
 
 ## 6. Update the Helm charts versions
@@ -142,7 +146,7 @@ git log release/v2.102.0..release/v2.103.0
 ## 8. Post a PR that includes the changes
 
 If you're preparing a minor release, make sure the PR's merge target is the
-releases branch you created above (e.g. `releases/stable-2.9). For the other
+releases branch you created above (e.g. `releases/stable-2.9`). For the other
 cases the target should just be `main`.
 
 This PR needs an approval from a "code owner." Feel free to ping one of the
@@ -246,8 +250,8 @@ That will kick off a CI Release workflow run that will:
 - Create a release in Github, and upload the CLI binaries with their checksums
 - Dispatch an event caught by the website repo that triggers a website rebuild
   which will update the edge/stable versions in the website
-- Retrive the installation script from https://run.linkerd.io and verify it
-  installs the current version being released
+- Retrive the installation script from [run.linkerd.io](https://run.linkerd.io)
+  and verify it installs the current version being released
 - Deploy the updated helm charts
 
 You can locate the CI run [here](https://github.com/linkerd/linkerd2/actions).
@@ -280,9 +284,10 @@ cncf-linkerd-users@lists.cncf.io, and cncf-linkerd-announce@lists.cncf.io,
 announcing the release.
 
 Subscribe to these mailing lists if you aren't on them:
-* https://lists.cncf.io/g/cncf-linkerd-users/join
-* https://lists.cncf.io/g/cncf-linkerd-announce/join
-* https://lists.cncf.io/g/cncf-linkerd-dev/join
+
+- [linkerd-users](https://lists.cncf.io/g/cncf-linkerd-users/join)
+- [linkerd-announce](https://lists.cncf.io/g/cncf-linkerd-announce/join)
+- [linkerd-dev](https://lists.cncf.io/g/cncf-linkerd-dev/join)
 
 Include the full release notes in the email. Liberally apply emoji. ⭐
 
