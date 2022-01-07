@@ -17,7 +17,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: multicluster-psp
+  name: linkerd-multicluster-psp
   {{ include "partials.namespace" . }}
   labels:
     linkerd.io/extension: multicluster
