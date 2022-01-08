@@ -344,11 +344,17 @@ dashboard:
     # resources:
 
 grafana:
-  # -- url of a Grafana instance with reverse proxy configured, used by the
+  # -- url of an in-cluster Grafana instance with reverse proxy configured, used by the
   # Linkerd viz web dashboard to provide direct links to specific Grafana
-  # dashboards. See the [Linkerd
+  # dashboards. Cannot be set if grafana.externalUrl is set. See the [Linkerd
   # documentation](https://linkerd.io/2/tasks/grafana) for more information
   url:
+  # -- url of a Grafana instance hosted off-cluster. Cannot be set if
+  # grafana.url is set. The reverse proxy will not be used for this URL.
+  externalUrl:
+  # -- prefix for Grafana dashboard UID's, used when grafana.externalUrl is
+  # set.
+  uidPrefix:
 
 prometheus:
   # -- toggle field to enable or disable prometheus

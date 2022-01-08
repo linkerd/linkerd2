@@ -187,7 +187,7 @@ const gatewayColumns = [
   },
 ];
 
-const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, PrefixedLink, isTcpTable, hasTsStats, grafana, jaeger) => {
+const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, PrefixedLink, isTcpTable, hasTsStats, grafana, grafanaExternalUrl, grafanaPrefix, jaeger) => {
   const isAuthorityTable = resource === 'authority';
   const isTrafficSplitTable = resource === 'trafficsplit';
   const isServicesTable = resource === 'service';
@@ -228,6 +228,8 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
           name={row.name}
           namespace={row.namespace}
           resource={row.type}
+          grafanaExternalUrl={grafanaExternalUrl}
+          grafanaPrefix={grafanaPrefix}
           PrefixedLink={PrefixedLink} />
       );
     },
@@ -304,7 +306,7 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
   }
 
   if (!isTrafficSplitTable) {
-    if (grafana !== '') {
+    if (grafana !== '' || grafanaExternalUrl !== '') {
       columns = columns.concat(grafanaColumn);
     }
     if (jaeger !== '') {
@@ -331,13 +333,13 @@ const preprocessMetrics = metrics => {
   return tableData;
 };
 
-const MetricsTable = function({ metrics, resource, showNamespaceColumn, showName, title, api, isTcpTable, selectedNamespace, grafana, jaeger }) {
+const MetricsTable = function({ metrics, resource, showNamespaceColumn, showName, title, api, isTcpTable, selectedNamespace, grafana, grafanaExternalUrl, grafanaPrefix, jaeger }) {
   const showNsColumn = resource === 'namespace' || selectedNamespace !== '_all' ? false : showNamespaceColumn;
   const showNameColumn = resource !== 'trafficsplit' ? true : showName;
   let orderBy = 'name';
   if (resource === 'trafficsplit' && !showNameColumn) { orderBy = 'leaf'; }
   const hasTsStats = _some(metrics, m => m.tsStats);
-  const columns = columnDefinitions(resource, showNsColumn, showNameColumn, api.PrefixedLink, isTcpTable, hasTsStats, grafana, jaeger);
+  const columns = columnDefinitions(resource, showNsColumn, showNameColumn, api.PrefixedLink, isTcpTable, hasTsStats, grafana, grafanaExternalUrl, grafanaPrefix, jaeger);
   const rows = preprocessMetrics(metrics);
   return (
     <BaseTable
@@ -363,6 +365,8 @@ MetricsTable.propTypes = {
   showNamespaceColumn: PropTypes.bool,
   title: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
   grafana: PropTypes.string,
+  grafanaExternalUrl: PropTypes.string,
+  grafanaPrefix: PropTypes.string,
   jaeger: PropTypes.string,
 };
 
@@ -371,6 +375,8 @@ MetricsTable.defaultProps = {
   showName: true,
   title: '',
   grafana: '',
+  grafanaExternalUrl: '',
+  grafanaPrefix: '',
   jaeger: '',
   isTcpTable: false,
   metrics: [],

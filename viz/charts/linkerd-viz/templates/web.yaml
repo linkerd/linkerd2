@@ -73,8 +73,17 @@ spec:
       - args:
         - -linkerd-metrics-api-addr=metrics-api.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}:8085
         - -cluster-domain={{.Values.clusterDomain}}
+        {{- if and .Values.grafana.url .Values.grafana.externalUrl }}
+        {{ fail "Cannot set both grafana.url (on-cluster Grafana) and grafana.externalUrl (off-cluster Grafana)"}}
+        {{- end}}
         {{- if .Values.grafana.url }}
         - -grafana-addr={{.Values.grafana.url}}
+        {{- end}}
+        {{- if .Values.grafana.externalUrl }}
+        - -grafana-external-addr={{.Values.grafana.externalUrl}}
+        {{- end}}
+        {{- if .Values.grafana.uidPrefix }}
+        - -grafana-prefix={{.Values.grafana.uidPrefix}}
         {{- end}}
         {{- if .Values.jaegerUrl }}
         - -jaeger-addr={{.Values.jaegerUrl}}
