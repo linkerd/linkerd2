@@ -36,7 +36,7 @@ spec:
     spec:
       containers:
         - name: pause
-          image: gcr.io/google_containers/pause
+          image: gcr.io/google_containers/pause:3.2
       serviceAccountName: linkerd-gateway
 ---
 apiVersion: v1
