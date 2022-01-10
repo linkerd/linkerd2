@@ -1,5 +1,10 @@
 # Changes
 
+## edge-22.1.2
+
+This release sets the version of the extension Helm charts to 30.0.0-edge to
+ensure that previous versions of these charts can be upgraded properly.
+
 ## edge-22.1.1
 
 This release adds support for using the cert-manager CA Injector to configure
