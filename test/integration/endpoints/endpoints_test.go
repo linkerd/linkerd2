@@ -1,19 +1,25 @@
 package endpoints
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
-	"text/template"
+	"time"
 
 	"github.com/linkerd/linkerd2/testutil"
 )
 
 var TestHelper *testutil.TestHelper
+
+type testCase struct {
+	name       string
+	authority  string
+	expectedRE string
+	ns         string
+}
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
@@ -23,19 +29,9 @@ func TestMain(m *testing.M) {
 func TestGoodEndpoints(t *testing.T) {
 	ctx := context.Background()
 	controlNs := TestHelper.GetLinkerdNamespace()
-	testDataPath := "testdata"
-	cmd := []string{
-		"diagnostics",
-		"endpoints",
-		fmt.Sprintf("linkerd-dst.%s.svc.cluster.local:8086", controlNs),
-		fmt.Sprintf("linkerd-identity.%s.svc.cluster.local:8080", controlNs),
-		fmt.Sprintf("linkerd-proxy-injector.%s.svc.cluster.local:443", controlNs),
-		fmt.Sprintf("nginx.%s.svc.cluster.local:8080", "linkerd-endpoints-test"),
-		"-ojson",
-	}
 
 	TestHelper.WithDataPlaneNamespace(ctx, "endpoints-test", map[string]string{}, t, func(t *testing.T, ns string) {
-		out, err := TestHelper.Kubectl("", "apply", "-f", fmt.Sprintf("%s/%s", testDataPath, "nginx.yaml"), "-n", ns)
+		out, err := TestHelper.Kubectl("", "apply", "-f", "testdata/nginx.yaml", "-n", ns)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s", err, out)
 		}
@@ -49,28 +45,40 @@ func TestGoodEndpoints(t *testing.T) {
 			}
 		}
 
-		out, err = TestHelper.LinkerdRun(cmd...)
-		if err != nil {
-			testutil.AnnotatedFatal(t, "unexpected error", err)
+		endpointCases := createTestCaseTable(controlNs, ns)
+		for _, endpointCase := range endpointCases {
+			testName := fmt.Sprintf("expect endpoints created for %s", endpointCase.name)
+
+			t.Run(testName, func(t *testing.T) {
+				err = TestHelper.RetryFor(5*time.Second, func() error {
+					out, err = TestHelper.LinkerdRun("diagnostics", "endpoints", endpointCase.authority, "-ojson")
+					if err != nil {
+						return fmt.Errorf("failed to get endpoints for %s: %s", endpointCase.authority, err)
+					}
+
+					re := regexp.MustCompile(endpointCase.expectedRE)
+					if !re.MatchString(out) {
+						return fmt.Errorf("endpoint data does not match pattern\nexpected output:\n%s\nactual:\n%s", endpointCase.expectedRE, out)
+					}
+
+					matches := re.FindStringSubmatch(out)
+					if matches == nil || len(matches) < 2 {
+						return fmt.Errorf("invalid endpoint data\nexpected: \n%s\nactual: \n%s", endpointCase.expectedRE, out)
+					}
+
+					namespaceMatch := matches[1]
+					if namespaceMatch != endpointCase.ns {
+						return fmt.Errorf("endpoint namespace does not match\nexpected: %s, actual: %s", endpointCase.ns, namespaceMatch)
+					}
+
+					return nil
+				})
+				if err != nil {
+					testutil.AnnotatedErrorf(t, "unexpected error", "unexpected error: %v", err)
+				}
+			})
 		}
 
-		tpl := template.Must(template.ParseFiles(testDataPath + "/linkerd_endpoints.golden"))
-		vars := struct {
-			Ns         string
-			EndpointNs string
-		}{
-			controlNs,
-			ns,
-		}
-		var b bytes.Buffer
-		if err := tpl.Execute(&b, vars); err != nil {
-			testutil.AnnotatedFatalf(t, "failed to parse linkerd_endpoints.golden template", "failed to parse linkerd_endpoints.golden template: %s", err)
-		}
-
-		r := regexp.MustCompile(b.String())
-		if !r.MatchString(out) {
-			testutil.AnnotatedErrorf(t, "unexpected output", "expected output:\n%s\nactual:\n%s", b.String(), out)
-		}
 	})
 }
 
@@ -86,5 +94,66 @@ func TestBadEndpoints(t *testing.T) {
 	}
 	if stderrOut[0] != "Destination API error: Invalid authority: foo" {
 		testutil.AnnotatedErrorf(t, "unexpected error string", "unexpected error string: %s", stderrOut[0])
+	}
+}
+
+func createTestCaseTable(controlNs, endpointNs string) []testCase {
+	return []testCase{
+		{
+			name:      "linkerd-dst",
+			authority: fmt.Sprintf("linkerd-dst.%s.svc.cluster.local:8086", controlNs),
+			expectedRE: `\[
+  \{
+    "namespace": "(\S*)",
+    "ip": "\d+\.\d+\.\d+\.\d+",
+    "port": 8086,
+    "pod": "linkerd\-destination\-[a-f0-9]+\-[a-z0-9]+",
+    "service": "linkerd\-dst\.\S*"
+  \}
+\]`,
+			ns: controlNs,
+		},
+		{
+			name:      "linkerd-identity",
+			authority: fmt.Sprintf("linkerd-identity.%s.svc.cluster.local:8080", controlNs),
+			expectedRE: `\[
+  \{
+    "namespace": "(\S*)",
+    "ip": "\d+\.\d+\.\d+\.\d+",
+    "port": 8080,
+    "pod": "linkerd\-identity\-[a-f0-9]+\-[a-z0-9]+",
+    "service": "linkerd\-identity\.\S*"
+  \}
+\]`,
+			ns: controlNs,
+		},
+		{
+			name:      "linkerd-proxy-injector",
+			authority: fmt.Sprintf("linkerd-proxy-injector.%s.svc.cluster.local:443", controlNs),
+			expectedRE: `\[
+  \{
+    "namespace": "(\S*)",
+    "ip": "\d+\.\d+\.\d+\.\d+",
+    "port": 8443,
+    "pod": "linkerd\-proxy\-injector-[a-f0-9]+\-[a-z0-9]+",
+    "service": "linkerd\-proxy\-injector\.\S*"
+  \}
+\]`,
+			ns: controlNs,
+		},
+		{
+			name:      "nginx",
+			authority: fmt.Sprintf("nginx.%s.svc.cluster.local:8080", endpointNs),
+			expectedRE: `\[
+  \{
+    "namespace": "(\S*)",
+    "ip": "\d+\.\d+\.\d+\.\d+",
+    "port": 8080,
+    "pod": "nginx\-[a-f0-9]+\-[a-z0-9]+",
+    "service": "nginx\.\S*"
+  \}
+\]`,
+			ns: endpointNs,
+		},
 	}
 }
