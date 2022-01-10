@@ -29,8 +29,6 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var ignoreCluster bool
-
 type (
 	multiclusterInstallOptions struct {
 		gateway                 multicluster.Gateway
@@ -43,6 +41,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	var ha bool
 	var wait time.Duration
 	var valuesOptions valuespkg.Options
+	var ignoreCluster bool
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err)
@@ -72,7 +71,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 					RetryDeadline:         time.Now().Add(wait),
 				})
 			}
-			return install(cmd.Context(), stdout, options, valuesOptions, ha)
+			return install(cmd.Context(), stdout, options, valuesOptions, ha, ignoreCluster)
 		},
 	}
 
@@ -102,8 +101,8 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	return cmd
 }
 
-func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptions, valuesOptions valuespkg.Options, ha bool) error {
-	values, err := buildMulticlusterInstallValues(ctx, options)
+func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptions, valuesOptions valuespkg.Options, ha, ignoreCluster bool) error {
+	values, err := buildMulticlusterInstallValues(ctx, options, ignoreCluster)
 	if err != nil {
 		return err
 	}
@@ -217,7 +216,7 @@ func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, er
 	}, nil
 }
 
-func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInstallOptions) (*multicluster.Values, error) {
+func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInstallOptions, ignoreCluster bool) (*multicluster.Values, error) {
 	defaults, err := multicluster.NewInstallValues()
 	if err != nil {
 		return nil, err
