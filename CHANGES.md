@@ -5,6 +5,12 @@
 This release sets the version of the extension Helm charts to 30.0.0-edge to
 ensure that previous versions of these charts can be upgraded properly.
 
+* Reset extensions Helm chart versions at 30.0.0-edge
+* Pin multicluster extension pause container version to 3.2 so that it will work
+  on m1 macs
+* Create a unique PSP `RoleBinding` for each multicluster link to prevent
+  conflicts when PSP is enabled
+
 ## edge-22.1.1
 
 This release adds support for using the cert-manager CA Injector to configure
