@@ -28,7 +28,7 @@
     "lodash": "4.17.21",
     "make-plural": "^7.0.0",
     "path": "0.12.7",
-    "prop-types": "15.8.0",
+    "prop-types": "15.8.1",
     "query-string": "^7.1.0",
     "react": "16.14.0",
     "react-dom": "16.14.0",
