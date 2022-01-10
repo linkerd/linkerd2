@@ -118,9 +118,7 @@ requires bumping its `version` if there were changes in its templates files.
 
 ## 7. Update the release notes
 
-On this branch, add the release notes for this version in `CHANGES.md`. Make
-sure it follows the style outlined in [the Release Notes Style
-Guide](style-guide.md) in this directory.
+On this branch, add the release notes for this version in `CHANGES.md`.
 
 Note: To see all of the changes since the previous release, run the command
 below in the `linkerd2` repo. If the last release was a stable release, be
@@ -250,7 +248,7 @@ That will kick off a CI Release workflow run that will:
 - Create a release in Github, and upload the CLI binaries with their checksums
 - Dispatch an event caught by the website repo that triggers a website rebuild
   which will update the edge/stable versions in the website
-- Retrive the installation script from [run.linkerd.io](https://run.linkerd.io)
+- Retrieve the installation script from [run.linkerd.io](https://run.linkerd.io)
   and verify it installs the current version being released
 - Deploy the updated helm charts
 
@@ -296,7 +294,7 @@ Include the full release notes in the email. Liberally apply emoji. ⭐
 Ensure that you send a brief summary of the release in Linkerd Slack's
 [#announcement](https://linkerd.slack.com/messages/C0JV5E7BR) channel.
 
-## 15. Add a community page announcement to the website repo
+## 14. Add a community page announcement to the website repo
 
 When doing a `stable-X.X.X` be sure to also include an announcement page for
 the Linkerd2 dashboard "Community" sidebar button.
