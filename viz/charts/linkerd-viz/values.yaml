@@ -344,14 +344,11 @@ dashboard:
     # resources:
 
 grafana:
-  # -- url of Grafana instance with reverse proxy configured, used by the
+  # -- url of a Grafana instance with reverse proxy configured, used by the
   # Linkerd viz web dashboard to provide direct links to specific Grafana
-  # dashboards. See grafana/values.yaml for a sample config that points to the
-  # definitions of those dashboards. Defaults to a 'grafana' service installed
-  # in a 'grafana' namespace. Make sure this namespace is referred to in the
-  # prometheus-config ConfigMap, for the "Grafana metrics" dashboard to have
-  # data.
-  url: grafana.grafana:3000
+  # dashboards. See the [Linkerd
+  # documentation](https://linkerd.io/2/tasks/grafana) for more information
+  url:
 
 prometheus:
   # -- toggle field to enable or disable prometheus
