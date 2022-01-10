@@ -7,7 +7,7 @@ ensure that previous versions of these charts can be upgraded properly.
 
 * Reset extensions Helm chart versions at 30.0.0-edge
 * Pin multicluster extension pause container version to 3.2 so that it will work
-  on m1 macs
+  on Arm architectures
 * Create a unique PSP `RoleBinding` for each multicluster link to prevent
   conflicts when PSP is enabled
 
