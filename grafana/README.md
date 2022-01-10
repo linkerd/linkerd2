@@ -15,9 +15,9 @@ pulls the Linkerd dashboards published at
 You can install the chart like this:
 
 ```shell
-helm repo add grafana https://grafana.github.io/helm-charts helm install
-grafana -n grafana --create-namespace grafana/grafana \
-  -f https://github.com/linkerd/linkerd2/blob/main/grafana/values.yaml
+helm repo add grafana https://grafana.github.io/helm-charts
+helm install grafana -n grafana --create-namespace grafana/grafana \
+  -f https://raw.githubusercontent.com/linkerd/linkerd2/main/grafana/values.yaml
 ```
 
 Please make sure to update the entries in `grafana/values.yaml` before using the

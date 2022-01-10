@@ -902,7 +902,6 @@ spec:
       - args:
         - -linkerd-metrics-api-addr=metrics-api.linkerd-viz.svc.cluster.local:8085
         - -cluster-domain=cluster.local
-        - -grafana-addr=grafana.grafana:3000
         - -controller-namespace=linkerd
         - -viz-namespace=linkerd-viz
         - -log-level=info

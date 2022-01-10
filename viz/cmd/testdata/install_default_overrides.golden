@@ -578,17 +578,6 @@ data:
       static_configs:
       - targets: ['localhost:9090']
 
-    - job_name: 'grafana'
-      kubernetes_sd_configs:
-      - role: pod
-        namespaces:
-          names: ['grafana']
-      relabel_configs:
-      - source_labels:
-        - __meta_kubernetes_pod_container_name
-        action: keep
-        regex: ^grafana$
-
     #  Required for: https://grafana.com/grafana/dashboards/315
     - job_name: 'kubernetes-nodes-cadvisor'
       scheme: https
@@ -1194,7 +1183,6 @@ spec:
       - args:
         - -linkerd-metrics-api-addr=metrics-api.linkerd-viz.svc.cluster.local:8085
         - -cluster-domain=cluster.local
-        - -grafana-addr=grafana.grafana:3000
         - -controller-namespace=linkerd
         - -viz-namespace=linkerd-viz
         - -log-level=debug

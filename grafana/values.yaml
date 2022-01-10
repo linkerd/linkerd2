@@ -111,10 +111,6 @@ dashboards:
       gnetId: 15492
       revision: 1
       datasource: prometheus
-    grafana:
-      gnetId: 15485
-      revision: 1
-      datasource: prometheus
     prometheus:
       gnetId: 15489
       revision: 1
