@@ -1,7 +1,7 @@
 {
     "name": "linkerd2",
     "context": "${localWorkspaceFolder}",
-    "image": "ghcr.io/linkerd/dev:v1",
+    "image": "ghcr.io/linkerd/dev:v2",
     // "dockerFile": "./Dockerfile",
     // "build": {
     //     "args": {
