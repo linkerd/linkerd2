@@ -12,6 +12,7 @@ RUN apt update
 RUN apt install -y \
     clang \
     cmake \
+    libssl-dev \
     lsb-release \
     lldb \
     sudo \
