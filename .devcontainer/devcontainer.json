@@ -1,0 +1,28 @@
+{
+    "name": "linkerd2",
+    "image": "ghcr.io/linkerd/dev:v4",
+    // "dockerFile": "./Dockerfile",
+    "extensions": [
+        "DavidAnson.vscode-markdownlint",
+        "matklad.rust-analyzer",
+        "NathanRidley.autotrim",
+        "samverschueren.final-newline",
+        "streetsidesoftware.code-spell-checker",
+        "tamasfe.even-better-toml",
+        "vadimcn.vscode-lldb",
+        "zxh404.vscode-proto3"
+    ],
+    "runArgs": [
+        "--init",
+        // Use the host network so we can access k3d, etc.
+        "--net=host",
+        // For lldb
+        "--cap-add=SYS_PTRACE",
+        "--security-opt=seccomp=unconfined"
+    ],
+    "overrideCommand": false,
+    "remoteUser": "code",
+    "mounts": [
+        "source=/var/run/docker.sock,target=/var/run/docker-host.sock,type=bind"
+    ]
+}
