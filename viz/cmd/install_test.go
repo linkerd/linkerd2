@@ -82,6 +82,7 @@ func TestRender(t *testing.T) {
 						"tag":      "stable-9.2",
 					},
 				},
+				"grafana": map[string]interface{}{"url": "grafana.grafana:3000"},
 			},
 			"install_default_overrides.golden",
 		},
