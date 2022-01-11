@@ -1,15 +1,7 @@
 {
     "name": "linkerd2",
-    "image": "ghcr.io/linkerd/dev:v3",
+    "image": "ghcr.io/linkerd/dev:v4",
     // "dockerFile": "./Dockerfile",
-    // "build": {
-    //     "args": {
-    //         "USER": "code",
-    //         //"USER_UID": "${localEnv:UID}",
-    //         //"USER_GID": "${localEnv:GID}"
-    //     },
-    // },
-    "settings": {},
     "extensions": [
         "DavidAnson.vscode-markdownlint",
         "matklad.rust-analyzer",
