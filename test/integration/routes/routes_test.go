@@ -82,19 +82,4 @@ func TestRoutes(t *testing.T) {
 				"expected %d occurrences of \"%s\", got %d\n%s", r.c, r.s, count, out)
 		}
 	}
-
-	// smoke test / bb routes
-	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
-	cmd = []string{"viz", "routes", "--namespace", prefixedNs, "deploy"}
-	golden := "routes.smoke.golden"
-
-	out, err = TestHelper.LinkerdRun(cmd...)
-	if err != nil {
-		testutil.AnnotatedFatal(t, "'linkerd routes' command failed", err)
-	}
-
-	err = TestHelper.ValidateOutput(out, golden)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "received unexpected output", "received unexpected output\n%s", err)
-	}
 }
