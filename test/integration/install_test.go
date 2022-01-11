@@ -1240,6 +1240,20 @@ func TestRestarts(t *testing.T) {
 	}
 }
 
+// TestCleanUp deletes the resources used in the above tests
+func TestCleanUp(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range injectionCases {
+		tc := tc // pin
+		t.Run(tc.ns, func(t *testing.T) {
+			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
+			if err := TestHelper.DeleteNamespaceIfExists(ctx, prefixedNs); err != nil {
+				testutil.AnnotatedFatal(t, "Deleting namespace failed", err)
+			}
+		})
+	}
+}
+
 func TestCheckMulticluster(t *testing.T) {
 	if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
 		cmd := []string{"multicluster", "check", "--wait=60m"}
