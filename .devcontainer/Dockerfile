@@ -15,11 +15,14 @@ RUN apt install -y \
     libssl-dev \
     lsb-release \
     lldb \
+    npm \
     sudo \
     time
 RUN curl -Lo /usr/local/bin/kubectl "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
     && chmod 755 /usr/local/bin/kubectl
 RUN curl -s https://raw.githubusercontent.com/rancher/k3d/main/install.sh | bash
+
+RUN npm install markdownlint-cli@0.23.1 --global
 
 RUN groupadd --gid=$USER_GID $USER \
     && useradd --uid=$USER_UID --gid=$USER_GID -m $USER \
