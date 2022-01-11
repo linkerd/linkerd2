@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     container:
-      image: docker://rust:1.56.0
+      image: docker://rust:1.56.1
     steps:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       - run: rustup component add rustfmt
@@ -50,7 +50,7 @@ jobs:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     container:
-      image: docker://rust:1.56.0
+      image: docker://rust:1.56.1
     steps:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       - run: rustup component add clippy
@@ -60,7 +60,7 @@ jobs:
     timeout-minutes: 20
     runs-on: ubuntu-latest
     container:
-      image: docker://rust:1.56.0
+      image: docker://rust:1.56.1
     steps:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       # Check each crate independently to ensure its Cargo.toml is sufficient.
@@ -77,7 +77,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     container:
-      image: docker://rust:1.56.0
+      image: docker://rust:1.56.1
     steps:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       - run: cargo test --workspace --no-run
