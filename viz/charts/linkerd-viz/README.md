@@ -96,23 +96,7 @@ Kubernetes: `>=1.20.0-0`
 | defaultUID | int | `2103` | UID for all the viz components |
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
 | enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
-| grafana.enabled | bool | `true` | toggle field to enable or disable grafana |
-| grafana.image.name | string | `"grafana"` | Docker image name for the grafana instance |
-| grafana.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the grafana instance |
-| grafana.image.registry | string | defaultRegistry | Docker registry for the grafana instance |
-| grafana.image.tag | string | linkerdVersion | Docker image tag for the grafana instance |
-| grafana.logFormat | string | defaultLogFormat | log format (plain, json) of the grafana instance |
-| grafana.logLevel | string | defaultLogLevel | log level of the grafana instance |
-| grafana.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
-| grafana.proxy | string | `nil` |  |
-| grafana.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the grafana container can use |
-| grafana.resources.cpu.request | string | `nil` | Amount of CPU units that the grafana container requests |
-| grafana.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the grafana container can use |
-| grafana.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the grafana container requests |
-| grafana.resources.memory.limit | string | `nil` | Maximum amount of memory that grafana container can use |
-| grafana.resources.memory.request | string | `nil` | Amount of memory that the grafana container requests |
-| grafana.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
-| grafanaUrl | string | `""` | url of external grafana instance with reverse proxy configured. |
+| grafana.url | string | `nil` | url of a Grafana instance with reverse proxy configured, used by the Linkerd viz web dashboard to provide direct links to specific Grafana dashboards. See the [Linkerd documentation](https://linkerd.io/2/tasks/grafana) for more information |
 | identityTrustDomain | string | clusterDomain | Trust domain used for identity |
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
 | jaegerUrl | string | `""` | url of external jaeger instance Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>` if you plan to use jaeger extension |

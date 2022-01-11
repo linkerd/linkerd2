@@ -51,7 +51,6 @@ type (
 		IdentityTrustAnchorsPEM      string              `json:"identityTrustAnchorsPEM"`
 		IdentityTrustDomain          string              `json:"identityTrustDomain"`
 		PrometheusURL                string              `json:"prometheusUrl"`
-		GrafanaURL                   string              `json:"grafanaUrl"`
 		ImagePullSecrets             []map[string]string `json:"imagePullSecrets"`
 		LinkerdVersion               string              `json:"linkerdVersion"`
 

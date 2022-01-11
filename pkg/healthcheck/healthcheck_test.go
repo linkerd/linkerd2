@@ -1368,7 +1368,6 @@ func TestValidateControlPlanePods(t *testing.T) {
 
 	t.Run("Returns an error if not all pods are running", func(t *testing.T) {
 		pods := []corev1.Pod{
-			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
 			pod("linkerd-destination-9849948665-37082", corev1.PodFailed, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodFailed, true),
 		}
@@ -2219,7 +2218,6 @@ data:
     controllerImageVersion: ControllerImageVersion
     controllerLogLevel: ControllerLogLevel
     enableEndpointSlices: false
-    grafanaUrl: ""
     highAvailability: false
     imagePullPolicy: ImagePullPolicy
     imagePullSecrets: null
@@ -2376,7 +2374,6 @@ data:
       controllerImageVersion: ControllerImageVersion
       controllerLogLevel: ControllerLogLevel
       enableEndpointSlices: false
-      grafanaUrl: ""
       highAvailability: false
       imagePullPolicy: ImagePullPolicy
       imagePullSecrets: null

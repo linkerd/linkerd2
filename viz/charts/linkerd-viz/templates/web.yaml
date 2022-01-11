@@ -73,10 +73,8 @@ spec:
       - args:
         - -linkerd-metrics-api-addr=metrics-api.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}:8085
         - -cluster-domain={{.Values.clusterDomain}}
-        {{- if .Values.grafanaUrl }}
-        - -grafana-addr={{.Values.grafanaUrl}}
-        {{- else if .Values.grafana.enabled }}
-        - -grafana-addr=grafana.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}:3000
+        {{- if .Values.grafana.url }}
+        - -grafana-addr={{.Values.grafana.url}}
         {{- end}}
         {{- if .Values.jaegerUrl }}
         - -jaeger-addr={{.Values.jaegerUrl}}

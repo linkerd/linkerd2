@@ -367,8 +367,6 @@ To develop with a webpack dev server:
     - `web` on :7777. This is the golang process that serves the dashboard.
     - `webpack-dev-server` on :8080 to manage rebuilding/reloading of the
       javascript.
-    - `grafana` is port-forwarded from the Kubernetes cluster via `kubectl` on
-      :3000
     - `metrics-api` is port-forwarded from the Kubernetes cluster via `kubectl`
       on :8085
 

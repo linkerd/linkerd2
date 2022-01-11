@@ -25,7 +25,6 @@ var (
 	templatesViz = []string{
 		"templates/namespace.yaml",
 		"templates/metrics-api-rbac.yaml",
-		"templates/grafana-rbac.yaml",
 		"templates/prometheus-rbac.yaml",
 		"templates/tap-rbac.yaml",
 		"templates/web-rbac.yaml",
@@ -34,8 +33,6 @@ var (
 		"templates/proxy-admin-policy.yaml",
 		"templates/metrics-api.yaml",
 		"templates/metrics-api-policy.yaml",
-		"templates/grafana.yaml",
-		"templates/grafana-policy.yaml",
 		"templates/prometheus.yaml",
 		"templates/tap.yaml",
 		"templates/tap-policy.yaml",

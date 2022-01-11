@@ -26,15 +26,9 @@ USAGE
 
 check-for-linkerd-and-viz() {
   metrics_api_pod=$(get-pod linkerd-viz metrics-api)
-  grafana_pod=$(get-pod linkerd-viz grafana)
 
   if [[ -z "${metrics_api_pod// }" ]]; then
     err 'Metrics-api is not running. Have you installed Linkerd-Viz?'
-    exit 1
-  fi
-
-  if [[ -z "${grafana_pod// }" ]]; then
-    err 'Grafana is not running. Have you installed Linkerd-Viz?'
     exit 1
   fi
 }
@@ -104,7 +98,6 @@ run() {
 
   check-for-linkerd-and-viz && (
     port-forward linkerd-viz metrics-api 8085 &
-    port-forward linkerd-viz grafana 3000 &
   )
 
   cd "$ROOT"/web && \
