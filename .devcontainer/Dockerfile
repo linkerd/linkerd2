@@ -13,8 +13,8 @@ RUN apt install -y \
     clang \
     cmake \
     libssl-dev \
-    lsb-release \
     lldb \
+    lsb-release \
     npm \
     sudo \
     time
