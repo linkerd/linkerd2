@@ -7,6 +7,8 @@ inputs:
 runs:
   using: composite
   steps:
+  - name: Set up Cloud SDK
+    uses: 'google-github-actions/setup-gcloud@a45a0825993ace67ae6e11cf3011b3e7d6795f82'
   - shell: bash
     run: |
       mkdir -p target/helm
