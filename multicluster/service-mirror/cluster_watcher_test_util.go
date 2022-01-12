@@ -102,6 +102,9 @@ var createExportedService = &testEnvironment{
 		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "mc-gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod),
 		endpointsAsYaml("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{}),
 	},
+	localResources: []string{
+		namespaceAsYaml("ns1"),
+	},
 	link: multicluster.Link{
 		TargetClusterName:   clusterName,
 		TargetClusterDomain: clusterDomain,
@@ -173,6 +176,9 @@ var createExportedHeadlessService = &testEnvironment{
 				Port:     666,
 			},
 		}),
+	},
+	localResources: []string{
+		namespaceAsYaml("ns2"),
 	},
 	link: multicluster.Link{
 		TargetClusterName:   clusterName,
@@ -1028,6 +1034,24 @@ func headlessMirrorEndpointsUpdated(name, namespace string, hostnames, hostIPs [
 	}
 
 	return endpoints
+}
+
+func namespaceAsYaml(name string) string {
+	ns := &corev1.Namespace{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Namespace",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
+
+	bytes, err := yaml.Marshal(ns)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return string(bytes)
 }
 
 func endpointsAsYaml(name, namespace, gatewayIP, gatewayIdentity string, ports []corev1.EndpointPort) string {

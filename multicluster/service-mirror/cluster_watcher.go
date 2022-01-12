@@ -239,35 +239,6 @@ func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceAnnotations(remoteSer
 	return annotations
 }
 
-func (rcsw *RemoteClusterServiceWatcher) mirrorNamespaceIfNecessary(ctx context.Context, namespace string) error {
-	// if the namespace is already present we do not need to change it.
-	// if we are creating it we want to put a label indicating this is a
-	// mirrored resource
-	if _, err := rcsw.localAPIClient.NS().Lister().Get(namespace); err != nil {
-		if kerrors.IsNotFound(err) {
-			// if the namespace is not found, we can just create it
-			ns := &corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						consts.MirroredResourceLabel:  "true",
-						consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
-					},
-					Name: namespace,
-				},
-			}
-			_, err := rcsw.localAPIClient.Client.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
-			if err != nil {
-				// something went wrong with the create, we can just retry as well
-				return RetryableError{[]error{err}}
-			}
-		} else {
-			// something else went wrong, so we can just retry
-			return RetryableError{[]error{err}}
-		}
-	}
-	return nil
-}
-
 // This method takes care of port remapping. What it does essentially is get the one gateway port
 // that we should send traffic to and create endpoint ports that bind to the mirrored service ports
 // (same name, etc) but send traffic to the gateway port. This way we do not need to do any remapping
@@ -490,8 +461,14 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 	serviceInfo := fmt.Sprintf("%s/%s", remoteService.Namespace, remoteService.Name)
 	localServiceName := rcsw.mirroredResourceName(remoteService.Name)
 
-	if err := rcsw.mirrorNamespaceIfNecessary(ctx, remoteService.Namespace); err != nil {
-		return err
+	// Ensure the namespace exists, and skip mirroring if it doesn't
+	if _, err := rcsw.localAPIClient.NS().Lister().Get(remoteService.Namespace); err != nil {
+		if kerrors.IsNotFound(err) {
+			rcsw.log.Warnf("Skipping mirroring of service %s: namespace %s does not exist", serviceInfo, remoteService.Namespace)
+			return nil
+		}
+		// something else went wrong, so we can just retry
+		return RetryableError{[]error{err}}
 	}
 
 	serviceToCreate := &corev1.Service{
