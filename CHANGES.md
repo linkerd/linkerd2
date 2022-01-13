@@ -1,5 +1,14 @@
 # Changes
 
+## edge-22.1.3
+
+This release removes the Grafana component in the linkerd-viz extension.
+Users can now import linkerd dashboards into Grafana from the [Linkerd org](https://grafana.com/orgs/linkerd)
+in Grafana. Users can also follow the instructions in the [docs](https://github.com/linkerd/website/pull/1273)
+to install a separate Grafana that can be integrated with the Linkerd Dashboard.
+
+* Stop shipping grafana-based image in the linkerd-viz extension
+
 ## edge-22.1.2
 
 This release sets the version of the extension Helm charts to 30.0.0-edge to
