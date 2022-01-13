@@ -7,7 +7,9 @@ Users can now import linkerd dashboards into Grafana from the [Linkerd org](http
 in Grafana. Users can also follow the instructions in the [docs](https://github.com/linkerd/website/pull/1273)
 to install a separate Grafana that can be integrated with the Linkerd Dashboard.
 
-* Stop shipping grafana-based image in the linkerd-viz extension
+* Stopped shipping grafana-based image in the linkerd-viz extension
+* Removed `repair` sub-command in the CLI
+* Updated various dependencies across the project (thanks @dependabot)
 
 ## edge-22.1.2
 
