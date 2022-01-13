@@ -30,7 +30,7 @@ name = "ring"
 version = "*"
 expression = "MIT AND ISC AND OpenSSL"
 license-files = [
-    { path = "LICENSE", hash = 0xbd0eed23 }
+    { path = "LICENSE", hash = 0xbd0eed23 },
 ]
 
 [bans]
@@ -47,7 +47,11 @@ skip-tree = [
     # Waiting on a release that updates itoa to v1.
     { name = "http" },
 ]
-skip = []
+skip = [
+    # Waiting on a prost-build release that includes
+    # https://github.com/tokio-rs/prost/pull/583
+    { name = "heck", version = "0.3" },
+]
 
 [sources]
 unknown-registry = "deny"
