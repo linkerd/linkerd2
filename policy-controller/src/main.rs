@@ -2,12 +2,12 @@
 #![forbid(unsafe_code)]
 
 use anyhow::{bail, Context, Error, Result};
+use clap::Parser;
 use futures::{future, prelude::*};
 use linkerd_policy_controller::k8s::DefaultPolicy;
 use linkerd_policy_controller::{admin, admission};
 use linkerd_policy_controller_core::IpNet;
 use std::net::SocketAddr;
-use structopt::StructOpt;
 use tokio::{sync::watch, time};
 use tracing::{debug, info, info_span, instrument, Instrument};
 use tracing_subscriber::{fmt::format, prelude::*, EnvFilter};
@@ -16,10 +16,10 @@ use tracing_subscriber::{fmt::format, prelude::*, EnvFilter};
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "policy", about = "A policy resource prototype")]
+#[derive(Debug, Parser)]
+#[clap(name = "policy", about = "A policy resource prototype")]
 struct Args {
-    #[structopt(
+    #[clap(
         parse(try_from_str),
         long,
         default_value = "linkerd=info,warn",
@@ -27,34 +27,34 @@ struct Args {
     )]
     log_level: EnvFilter,
 
-    #[structopt(long, default_value = "plain")]
+    #[clap(long, default_value = "plain")]
     log_format: LogFormat,
 
-    #[structopt(long, default_value = "0.0.0.0:8080")]
+    #[clap(long, default_value = "0.0.0.0:8080")]
     admin_addr: SocketAddr,
 
-    #[structopt(long, default_value = "0.0.0.0:8090")]
+    #[clap(long, default_value = "0.0.0.0:8090")]
     grpc_addr: SocketAddr,
 
-    #[structopt(long)]
+    #[clap(long)]
     admission_addr: Option<SocketAddr>,
 
     /// Network CIDRs of pod IPs.
     ///
     /// The default includes all private networks.
-    #[structopt(
+    #[clap(
         long,
         default_value = "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
     )]
     cluster_networks: IpNets,
 
-    #[structopt(long, default_value = "cluster.local")]
+    #[clap(long, default_value = "cluster.local")]
     identity_domain: String,
 
-    #[structopt(long, default_value = "all-unauthenticated")]
+    #[clap(long, default_value = "all-unauthenticated")]
     default_policy: DefaultPolicy,
 
-    #[structopt(long, default_value = "linkerd")]
+    #[clap(long, default_value = "linkerd")]
     control_plane_namespace: String,
 }
 
@@ -76,7 +76,7 @@ async fn main() -> Result<()> {
         log_level,
         log_format,
         control_plane_namespace,
-    } = Args::from_args();
+    } = Args::parse();
 
     log_init(log_level, log_format)?;
 
