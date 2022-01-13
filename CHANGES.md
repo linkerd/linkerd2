@@ -4,7 +4,7 @@
 
 This release removes the Grafana component in the linkerd-viz extension.
 Users can now import linkerd dashboards into Grafana from the [Linkerd org](https://grafana.com/orgs/linkerd)
-in Grafana. Users can also follow the instructions in the [docs](https://github.com/linkerd/website/pull/1273)
+in Grafana. Users can also follow the instructions in the [docs](https://github.com/linkerd/website/blob/f687a04ee43c90bd804b04af287bc80c9366db98/linkerd.io/content/2.12/tasks/grafana.md)
 to install a separate Grafana that can be integrated with the Linkerd Dashboard.
 
 * Stopped shipping grafana-based image in the linkerd-viz extension
