@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"html/template"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -115,7 +114,6 @@ func TestTracing(t *testing.T) {
 				"failed to read emojivoto yaml\n%s\n", err)
 		}
 
-		emojivotoYaml = strings.ReplaceAll(emojivotoYaml, "___EMOJIVOTO_NS___", namespace)
 		out, err = TestHelper.KubectlApply(emojivotoYaml, namespace)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
