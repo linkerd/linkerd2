@@ -360,12 +360,10 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
-    - name: Configure gsutils
-      uses: linkerd/linkerd2-action-gcloud@f01c9de238d33e87029fddb7f2f9a1fb93903b8f
+    - name: Log into GCP
+      uses: 'google-github-actions/auth@c6c22902f6af237edb96ede5f25a00e864589b2f'
       with:
-        cloud_sdk_service_account_key: ${{ secrets.LINKERD_SITE_TOKEN }}
-        gcp_project: ${{ secrets.LINKERD_SITE_PROJECT }}
-        gcp_zone: ${{ secrets.LINKERD_SITE_ZONE }}
+        credentials_json: ${{ secrets.LINKERD_SITE_TOKEN }}
     - name: Edge Helm chart creation and upload
       if: startsWith(github.ref, 'refs/tags/edge')
       uses: ./.github/actions/helm-publish
