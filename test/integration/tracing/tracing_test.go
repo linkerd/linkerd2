@@ -108,82 +108,77 @@ func TestTracing(t *testing.T) {
 		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd jaeger check' command timed-out (%s)", timeout), err)
 	}
 
-	// Emojivoto components
-	emojivotoNs := TestHelper.GetTestNamespace("emojivoto")
-	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, emojivotoNs, nil)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", emojivotoNs),
-			"failed to create %s namespace: %s", emojivotoNs, err)
-	}
+	TestHelper.WithDataPlaneNamespace(ctx, "emojivoto", map[string]string{}, t, func(t *testing.T, emojivotoNs string) {
 
-	emojivotoYaml, err := testutil.ReadFile("testdata/emojivoto.yaml")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to read emojivoto yaml",
-			"failed to read emojivoto yaml\n%s\n", err)
-	}
-	emojivotoYaml = strings.ReplaceAll(emojivotoYaml, "___TRACING_NS___", tracingNs)
-	out, stderr, err := TestHelper.PipeToLinkerdRun(emojivotoYaml, "inject", "-")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed",
-			"'linkerd inject' command failed\n%s\n%s", out, stderr)
-	}
-
-	out, err = TestHelper.KubectlApply(out, emojivotoNs)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-			"'kubectl apply' command failed\n%s", out)
-	}
-
-	// wait for deployments to start
-	for _, deploy := range []struct {
-		ns   string
-		name string
-	}{
-		{ns: emojivotoNs, name: "vote-bot"},
-		{ns: emojivotoNs, name: "web"},
-		{ns: emojivotoNs, name: "emoji"},
-		{ns: emojivotoNs, name: "voting"},
-		{ns: tracingNs, name: "collector"},
-		{ns: tracingNs, name: "jaeger"},
-	} {
-		if err := TestHelper.CheckPods(ctx, deploy.ns, deploy.name, 1); err != nil {
-			if rce, ok := err.(*testutil.RestartCountError); ok {
-				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
-			} else {
-				testutil.AnnotatedError(t, "CheckPods timed-out", err)
-			}
-		}
-	}
-
-	t.Run("expect full trace", func(t *testing.T) {
-
-		timeout := 120 * time.Second
-		err = TestHelper.RetryFor(timeout, func() error {
-			url, err := TestHelper.URLFor(ctx, tracingNs, "jaeger", 16686)
-			if err != nil {
-				return err
-			}
-
-			tracesJSON, err := TestHelper.HTTPGetURL(url + "/jaeger/api/traces?lookback=1h&service=linkerd-proxy")
-			if err != nil {
-				return err
-			}
-			traces := traces{}
-
-			err = json.Unmarshal([]byte(tracesJSON), &traces)
-			if err != nil {
-				return err
-			}
-
-			processes := []string{"web", "vote-bot", "voting", "linkerd-proxy"}
-			if !hasTraceWithProcesses(&traces, processes) {
-				return fmt.Errorf("No trace found with processes: %s", processes)
-			}
-			return nil
-		})
+		emojivotoYaml, err := testutil.ReadFile("testdata/emojivoto.yaml")
 		if err != nil {
-			testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out checking trace (%s)", timeout), err)
+			testutil.AnnotatedFatalf(t, "failed to read emojivoto yaml",
+				"failed to read emojivoto yaml\n%s\n", err)
 		}
+		emojivotoYaml = strings.ReplaceAll(emojivotoYaml, "___TRACING_NS___", tracingNs)
+		out, stderr, err := TestHelper.PipeToLinkerdRun(emojivotoYaml, "inject", "-")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'linkerd inject' command failed",
+				"'linkerd inject' command failed\n%s\n%s", out, stderr)
+		}
+
+		out, err = TestHelper.KubectlApply(out, emojivotoNs)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+				"'kubectl apply' command failed\n%s", out)
+		}
+
+		// wait for deployments to start
+		for _, deploy := range []struct {
+			ns   string
+			name string
+		}{
+			{ns: emojivotoNs, name: "vote-bot"},
+			{ns: emojivotoNs, name: "web"},
+			{ns: emojivotoNs, name: "emoji"},
+			{ns: emojivotoNs, name: "voting"},
+			{ns: tracingNs, name: "collector"},
+			{ns: tracingNs, name: "jaeger"},
+		} {
+			if err := TestHelper.CheckPods(ctx, deploy.ns, deploy.name, 1); err != nil {
+				if rce, ok := err.(*testutil.RestartCountError); ok {
+					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+				} else {
+					testutil.AnnotatedError(t, "CheckPods timed-out", err)
+				}
+			}
+		}
+
+		t.Run("expect full trace", func(t *testing.T) {
+
+			timeout := 120 * time.Second
+			err = TestHelper.RetryFor(timeout, func() error {
+				url, err := TestHelper.URLFor(ctx, tracingNs, "jaeger", 16686)
+				if err != nil {
+					return err
+				}
+
+				tracesJSON, err := TestHelper.HTTPGetURL(url + "/jaeger/api/traces?lookback=1h&service=linkerd-proxy")
+				if err != nil {
+					return err
+				}
+				traces := traces{}
+
+				err = json.Unmarshal([]byte(tracesJSON), &traces)
+				if err != nil {
+					return err
+				}
+
+				processes := []string{"web", "vote-bot", "voting", "linkerd-proxy"}
+				if !hasTraceWithProcesses(&traces, processes) {
+					return fmt.Errorf("No trace found with processes: %s", processes)
+				}
+				return nil
+			})
+			if err != nil {
+				testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out checking trace (%s)", timeout), err)
+			}
+		})
 	})
 }
 
