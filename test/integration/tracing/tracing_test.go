@@ -51,11 +51,6 @@ func TestTracing(t *testing.T) {
 		t.Skip("Skipped. Jaeger & Open Census images does not support ARM yet")
 	}
 
-	// Require an environment variable to be set for this test to be run.
-	if os.Getenv("RUN_FLAKEY_TEST") == "" {
-		t.Skip("Skipping due to flakiness. See linkerd/linkerd2#7538")
-	}
-
 	// linkerd-jaeger extension
 	tracingNs := "linkerd-jaeger"
 	out, err := TestHelper.LinkerdRun("jaeger", "install")
@@ -139,34 +134,6 @@ func TestTracing(t *testing.T) {
 			"'kubectl apply' command failed\n%s", out)
 	}
 
-	// Ingress components
-	// Ingress must run in the same namespace as the service it routes to (web)
-	ingressNs := emojivotoNs
-	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, ingressNs, nil)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", ingressNs),
-			"failed to create %s namespace: %s", ingressNs, err)
-	}
-
-	ingressYaml, err := testutil.ReadFile("testdata/ingress.yaml")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to read ingress yaml",
-			"failed to read ingress yaml\n%s\n", err)
-	}
-	ingressYaml = strings.ReplaceAll(ingressYaml, "___INGRESS_NAMESPACE___", ingressNs)
-	ingressYaml = strings.ReplaceAll(ingressYaml, "___TRACING_NS___", tracingNs)
-	out, stderr, err = TestHelper.PipeToLinkerdRun(ingressYaml, "inject", "-")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed",
-			"'linkerd inject' command failed\n%s\n%s", out, stderr)
-	}
-
-	out, err = TestHelper.KubectlApply(out, ingressNs)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-			"'kubectl apply' command failed\n%s", out)
-	}
-
 	// wait for deployments to start
 	for _, deploy := range []struct {
 		ns   string
@@ -176,7 +143,6 @@ func TestTracing(t *testing.T) {
 		{ns: emojivotoNs, name: "web"},
 		{ns: emojivotoNs, name: "emoji"},
 		{ns: emojivotoNs, name: "voting"},
-		{ns: ingressNs, name: "nginx-ingress"},
 		{ns: tracingNs, name: "collector"},
 		{ns: tracingNs, name: "jaeger"},
 	} {
@@ -198,7 +164,7 @@ func TestTracing(t *testing.T) {
 				return err
 			}
 
-			tracesJSON, err := TestHelper.HTTPGetURL(url + "/jaeger/api/traces?lookback=1h&service=nginx")
+			tracesJSON, err := TestHelper.HTTPGetURL(url + "/jaeger/api/traces?lookback=1h&service=linkerd-proxy")
 			if err != nil {
 				return err
 			}
@@ -209,7 +175,7 @@ func TestTracing(t *testing.T) {
 				return err
 			}
 
-			processes := []string{"nginx", "web", "emoji", "voting", "linkerd-proxy"}
+			processes := []string{"web", "vote-bot", "voting", "linkerd-proxy"}
 			if !hasTraceWithProcesses(&traces, processes) {
 				return fmt.Errorf("No trace found with processes: %s", processes)
 			}
