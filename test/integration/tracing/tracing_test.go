@@ -115,15 +115,8 @@ func TestTracing(t *testing.T) {
 				"failed to read emojivoto yaml\n%s\n", err)
 		}
 
-		emojivotoYaml = strings.ReplaceAll(emojivotoYaml, "___TRACING_NS___", tracingNs)
 		emojivotoYaml = strings.ReplaceAll(emojivotoYaml, "___EMOJIVOTO_NS___", namespace)
-		out, stderr, err := TestHelper.PipeToLinkerdRun(emojivotoYaml, "inject", "-")
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "'linkerd inject' command failed",
-				"'linkerd inject' command failed\n%s\n%s", out, stderr)
-		}
-
-		out, err = TestHelper.KubectlApply(out, namespace)
+		out, err = TestHelper.KubectlApply(emojivotoYaml, namespace)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 				"'kubectl apply' command failed\n%s", out)

@@ -75,6 +75,8 @@ spec:
       labels:
         app: emoji-svc
         version: v11
+      annotations:
+        linkerd.io/inject: enabled
     spec:
       containers:
       - env:
@@ -83,7 +85,7 @@ spec:
         - name: PROM_PORT
           value: "8801"
         - name: OC_AGENT_HOST
-          value: "collector.___TRACING_NS___:55678"
+          value: "collector.linkerd-jaeger:55678"
         image: docker.l5d.io/buoyantio/emojivoto-emoji-svc:v11
         name: emoji-svc
         ports:
@@ -115,6 +117,8 @@ spec:
       labels:
         app: vote-bot
         version: v11
+      annotations:
+        linkerd.io/inject: enabled
     spec:
       containers:
       - command:
@@ -123,7 +127,7 @@ spec:
         - name: WEB_HOST
           value: web-svc.___EMOJIVOTO_NS___:80
         - name: OC_AGENT_HOST
-          value: "collector.___TRACING_NS___:55678"
+          value: "collector.linkerd-jaeger:55678"
         image: docker.l5d.io/buoyantio/emojivoto-web:v11
         name: vote-bot
         resources:
@@ -149,6 +153,8 @@ spec:
       labels:
         app: voting-svc
         version: v11
+      annotations:
+        linkerd.io/inject: enabled
     spec:
       containers:
       - env:
@@ -157,7 +163,7 @@ spec:
         - name: PROM_PORT
           value: "8801"
         - name: OC_AGENT_HOST
-          value: "collector.___TRACING_NS___:55678"
+          value: "collector.linkerd-jaeger:55678"
         image: docker.l5d.io/buoyantio/emojivoto-voting-svc:v11
         name: voting-svc
         ports:
@@ -189,6 +195,8 @@ spec:
       labels:
         app: web-svc
         version: v11
+      annotations:
+        linkerd.io/inject: enabled
     spec:
       containers:
       - env:
@@ -201,7 +209,7 @@ spec:
         - name: INDEX_BUNDLE
           value: dist/index_bundle.js
         - name: OC_AGENT_HOST
-          value: "collector.___TRACING_NS___:55678"
+          value: "collector.linkerd-jaeger:55678"
         image: docker.l5d.io/buoyantio/emojivoto-web:v11
         name: web-svc
         ports:
