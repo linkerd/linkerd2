@@ -124,6 +124,10 @@ type (
 	// endpoints should be resolved based on the remote gateway and updated.
 	RepairEndpoints struct{}
 
+	OnLocalNamespaceAdded struct {
+		ns *corev1.Namespace
+	}
+
 	// RetryableError is an error that should be retried through requeuing events
 	RetryableError struct{ Inner []error }
 )
@@ -494,6 +498,21 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 	return rcsw.createGatewayEndpoints(ctx, remoteService)
 }
 
+func (rcsw *RemoteClusterServiceWatcher) handleLocalNamespaceAdded(ctx context.Context, ns *corev1.Namespace) error {
+	// When a local namespace is added, we issue a create event for all the services in the corresponding namespace in
+	// case any of them are exported and need to be mirrored.
+	svcs, err := rcsw.remoteAPIClient.Svc().Lister().Services(ns.Name).List(labels.Everything())
+	if err != nil {
+		return RetryableError{[]error{err}}
+	}
+	for _, svc := range svcs {
+		rcsw.eventsQueue.Add(&OnAddCalled{
+			svc: svc,
+		})
+	}
+	return nil
+}
+
 // isEmptyService returns true if any of these conditions are true:
 // - svc's Endpoint is not found
 // - svc's Endpoint has no Subsets (happens when there's no associated Pod)
@@ -702,6 +721,8 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent(ctx context.Context) (
 		err = rcsw.cleanupOrphanedServices(ctx)
 	case *RepairEndpoints:
 		err = rcsw.repairEndpoints(ctx)
+	case *OnNamespaceAdded:
+		err = rcsw.handleLocalNamespaceAdded(ctx, ev.ns)
 	default:
 		if ev != nil || !done { // we get a nil in case we are shutting down...
 			rcsw.log.Warnf("Received unknown event: %v", ev)
@@ -805,6 +826,18 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 				}
 
 				rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{new.(*corev1.Endpoints)})
+			},
+		},
+	)
+
+	rcsw.localAPIClient.NS().Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				if obj.(metav1.Object).GetName() == "kube-system" {
+					return
+				}
+
+				rcsw.eventsQueue.Add(&OnLocalNamespaceAdded{obj.(*corev1.Namespace)})
 			},
 		},
 	)
