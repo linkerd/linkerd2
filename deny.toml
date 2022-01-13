@@ -42,8 +42,6 @@ deny = []
 skip-tree = [
     # Waiting on seanmonstar/warp#927
     { name = "tokio-rustls" },
-    # Waiting on new kube release
-    { name = "dashmap" },
     # Waiting on a release that updates itoa to v1.
     { name = "http" },
 ]
