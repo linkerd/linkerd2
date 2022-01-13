@@ -108,21 +108,22 @@ func TestTracing(t *testing.T) {
 		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd jaeger check' command timed-out (%s)", timeout), err)
 	}
 
-	TestHelper.WithDataPlaneNamespace(ctx, "emojivoto", map[string]string{}, t, func(t *testing.T, emojivotoNs string) {
-
+	TestHelper.WithDataPlaneNamespace(ctx, "tracing-test", map[string]string{}, t, func(t *testing.T, namespace string) {
 		emojivotoYaml, err := testutil.ReadFile("testdata/emojivoto.yaml")
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "failed to read emojivoto yaml",
 				"failed to read emojivoto yaml\n%s\n", err)
 		}
+
 		emojivotoYaml = strings.ReplaceAll(emojivotoYaml, "___TRACING_NS___", tracingNs)
+		emojivotoYaml = strings.ReplaceAll(emojivotoYaml, "___EMOJIVOTO_NS___", namespace)
 		out, stderr, err := TestHelper.PipeToLinkerdRun(emojivotoYaml, "inject", "-")
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'linkerd inject' command failed",
 				"'linkerd inject' command failed\n%s\n%s", out, stderr)
 		}
 
-		out, err = TestHelper.KubectlApply(out, emojivotoNs)
+		out, err = TestHelper.KubectlApply(out, namespace)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 				"'kubectl apply' command failed\n%s", out)
@@ -133,10 +134,10 @@ func TestTracing(t *testing.T) {
 			ns   string
 			name string
 		}{
-			{ns: emojivotoNs, name: "vote-bot"},
-			{ns: emojivotoNs, name: "web"},
-			{ns: emojivotoNs, name: "emoji"},
-			{ns: emojivotoNs, name: "voting"},
+			{ns: namespace, name: "vote-bot"},
+			{ns: namespace, name: "web"},
+			{ns: namespace, name: "emoji"},
+			{ns: namespace, name: "voting"},
 			{ns: tracingNs, name: "collector"},
 			{ns: tracingNs, name: "jaeger"},
 		} {
