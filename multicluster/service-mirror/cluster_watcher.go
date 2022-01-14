@@ -721,7 +721,7 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent(ctx context.Context) (
 		err = rcsw.cleanupOrphanedServices(ctx)
 	case *RepairEndpoints:
 		err = rcsw.repairEndpoints(ctx)
-	case *OnNamespaceAdded:
+	case *OnLocalNamespaceAdded:
 		err = rcsw.handleLocalNamespaceAdded(ctx, ev.ns)
 	default:
 		if ev != nil || !done { // we get a nil in case we are shutting down...
