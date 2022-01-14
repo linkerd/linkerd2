@@ -25,7 +25,10 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
-const eventTypeSkipped = "ServiceMirroringSkipped"
+const (
+	eventTypeSkipped = "ServiceMirroringSkipped"
+	kubeSystem       = "kube-system"
+)
 
 type (
 	// RemoteClusterServiceWatcher is a watcher instantiated for every cluster that is being watched
@@ -124,6 +127,9 @@ type (
 	// endpoints should be resolved based on the remote gateway and updated.
 	RepairEndpoints struct{}
 
+	// OnLocalNamespaceAdded is issued when when a new namespace is added to
+	// the local cluster. This means that we should check the remote cluster
+	// for exported service in that namespace.
 	OnLocalNamespaceAdded struct {
 		ns *corev1.Namespace
 	}
@@ -498,7 +504,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 	return rcsw.createGatewayEndpoints(ctx, remoteService)
 }
 
-func (rcsw *RemoteClusterServiceWatcher) handleLocalNamespaceAdded(ctx context.Context, ns *corev1.Namespace) error {
+func (rcsw *RemoteClusterServiceWatcher) handleLocalNamespaceAdded(ns *corev1.Namespace) error {
 	// When a local namespace is added, we issue a create event for all the services in the corresponding namespace in
 	// case any of them are exported and need to be mirrored.
 	svcs, err := rcsw.remoteAPIClient.Svc().Lister().Services(ns.Name).List(labels.Everything())
@@ -722,7 +728,7 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent(ctx context.Context) (
 	case *RepairEndpoints:
 		err = rcsw.repairEndpoints(ctx)
 	case *OnLocalNamespaceAdded:
-		err = rcsw.handleLocalNamespaceAdded(ctx, ev.ns)
+		err = rcsw.handleLocalNamespaceAdded(ev.ns)
 	default:
 		if ev != nil || !done { // we get a nil in case we are shutting down...
 			rcsw.log.Warnf("Received unknown event: %v", ev)
@@ -805,7 +811,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 		cache.ResourceEventHandlerFuncs{
 			// AddFunc only relevant for exported headless endpoints
 			AddFunc: func(obj interface{}) {
-				if obj.(metav1.Object).GetNamespace() == "kube-system" {
+				if obj.(metav1.Object).GetNamespace() == kubeSystem {
 					return
 				}
 
@@ -817,7 +823,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 			},
 			// AddFunc relevant for all kind of exported endpoints
 			UpdateFunc: func(old, new interface{}) {
-				if new.(metav1.Object).GetNamespace() == "kube-system" {
+				if new.(metav1.Object).GetNamespace() == kubeSystem {
 					return
 				}
 
@@ -833,7 +839,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 	rcsw.localAPIClient.NS().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				if obj.(metav1.Object).GetName() == "kube-system" {
+				if obj.(metav1.Object).GetName() == kubeSystem {
 					return
 				}
 
