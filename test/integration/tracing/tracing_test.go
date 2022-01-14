@@ -161,9 +161,8 @@ func TestTracing(t *testing.T) {
 					return err
 				}
 
-				processes := []string{"web", "vote-bot", "voting", "linkerd-proxy"}
-				if !hasTraceWithProcesses(&traces, processes) {
-					return fmt.Errorf("No trace found with processes: %s", processes)
+				if !hasTraceWithProcess(&traces, "linkerd-proxy") {
+					return fmt.Errorf("No trace found with processes: linkerd-proxy")
 				}
 				return nil
 			})
@@ -174,22 +173,13 @@ func TestTracing(t *testing.T) {
 	})
 }
 
-func hasTraceWithProcesses(traces *traces, ps []string) bool {
+func hasTraceWithProcess(traces *traces, ps string) bool {
 	for _, trace := range traces.Data {
-		if containsProcesses(trace, ps) {
-			return true
+		for _, process := range trace.Processes {
+			if process.ServiceName == ps {
+				return true
+			}
 		}
 	}
 	return false
-}
-
-func containsProcesses(trace trace, ps []string) bool {
-	toFind := make(map[string]struct{})
-	for _, p := range ps {
-		toFind[p] = struct{}{}
-	}
-	for _, p := range trace.Processes {
-		delete(toFind, p.ServiceName)
-	}
-	return len(toFind) == 0
 }
