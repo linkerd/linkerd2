@@ -206,7 +206,7 @@ func restartClusterWatcher(
 	if err != nil {
 		return fmt.Errorf("Failed to create metrics for cluster watcher: %s", err)
 	}
-	probeWorker = servicemirror.NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.TargetClusterName), &link.ProbeSpec, workerMetrics, link.TargetClusterName)
+	probeWorker = servicemirror.NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.TargetClusterName), &link.ProbeSpec, workerMetrics, link.TargetClusterName, link.GatewayAddress)
 	probeWorker.Start()
 	return nil
 }
