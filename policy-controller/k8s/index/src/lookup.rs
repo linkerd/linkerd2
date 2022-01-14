@@ -1,8 +1,11 @@
 use crate::PodServerRx;
 use anyhow::{anyhow, Result};
-use dashmap::{mapref::entry::Entry, DashMap};
 use linkerd_policy_controller_core::{DiscoverInboundServer, InboundServer, InboundServerStream};
-use std::{collections::HashMap, sync::Arc};
+use parking_lot::RwLock;
+use std::{
+    collections::hash_map::{Entry, HashMap},
+    sync::Arc,
+};
 
 #[derive(Debug, Default)]
 pub(crate) struct Writer(ByNs);
@@ -11,8 +14,8 @@ pub(crate) struct Writer(ByNs);
 #[derive(Clone, Debug)]
 pub struct Reader(ByNs);
 
-type ByNs = Arc<DashMap<String, ByPod>>;
-type ByPod = DashMap<String, ByPort>;
+type ByNs = Arc<RwLock<HashMap<String, ByPod>>>;
+type ByPod = HashMap<String, ByPort>;
 
 // Boxed to enforce immutability.
 type ByPort = Box<HashMap<u16, Rx>>;
@@ -36,6 +39,7 @@ pub struct Rx {
 impl Writer {
     pub(crate) fn contains(&self, ns: impl AsRef<str>, pod: impl AsRef<str>) -> bool {
         self.0
+            .read()
             .get(ns.as_ref())
             .map(|ns| ns.contains_key(pod.as_ref()))
             .unwrap_or(false)
@@ -49,6 +53,7 @@ impl Writer {
     ) -> Result<()> {
         match self
             .0
+            .write()
             .entry(ns.to_string())
             .or_default()
             .entry(pod.to_string())
@@ -65,19 +70,20 @@ impl Writer {
         }
     }
 
-    pub(crate) fn unset(&mut self, ns: impl AsRef<str>, pod: impl AsRef<str>) -> Result<ByPort> {
-        let pods = self
-            .0
-            .get_mut(ns.as_ref())
-            .ok_or_else(|| anyhow!("missing namespace {}", ns.as_ref()))?;
+    pub(crate) fn unset(&mut self, ns: &str, pod: &str) -> Result<ByPort> {
+        let mut nses = self.0.write();
+        let mut ns_entry = match nses.entry(ns.to_string()) {
+            Entry::Occupied(entry) => entry,
+            Entry::Vacant(_) => return Err(anyhow!("missing namespace {}", ns)),
+        };
 
-        let (_, ports) = pods
-            .remove(pod.as_ref())
-            .ok_or_else(|| anyhow!("missing pod {} in namespace {}", pod.as_ref(), ns.as_ref()))?;
+        let ports = ns_entry
+            .get_mut()
+            .remove(pod)
+            .ok_or_else(|| anyhow!("missing pod {} in namespace {}", pod, ns))?;
 
-        if (*pods).is_empty() {
-            drop(pods);
-            self.0.remove(ns.as_ref()).expect("namespace must exist");
+        if ns_entry.get().is_empty() {
+            ns_entry.remove_entry();
         }
 
         Ok(ports)
@@ -89,7 +95,7 @@ impl Writer {
 impl Reader {
     #[inline]
     pub(crate) fn lookup(&self, ns: &str, pod: &str, port: u16) -> Option<Rx> {
-        self.0.get(ns)?.get(pod)?.get(&port).cloned()
+        self.0.read().get(ns)?.get(pod)?.get(&port).cloned()
     }
 }
 
