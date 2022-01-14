@@ -142,8 +142,7 @@ func TestTracing(t *testing.T) {
 		}
 
 		t.Run("expect full trace", func(t *testing.T) {
-
-			timeout := 120 * time.Second
+			timeout := 3 * time.Minute
 			err = TestHelper.RetryFor(timeout, func() error {
 				url, err := TestHelper.URLFor(ctx, tracingNs, "jaeger", 16686)
 				if err != nil {
