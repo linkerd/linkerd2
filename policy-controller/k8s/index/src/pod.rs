@@ -148,7 +148,7 @@ impl Index {
             .remove(pod)
             .ok_or_else(|| anyhow!("pod {} doesn't exist", pod))?;
 
-        self.lookups.unset(&ns, &pod)?;
+        self.lookups.unset(ns, pod)?;
 
         debug!("Removed pod");
 
