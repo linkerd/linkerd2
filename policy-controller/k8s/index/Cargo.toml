@@ -9,9 +9,9 @@ publish = false
 anyhow = "1"
 async-stream = "0.3"
 async-trait = "0.1"
-dashmap = "4"
 futures = { version = "0.3", default-features = false }
 linkerd-policy-controller-core = { path = "../../core" }
 linkerd-policy-controller-k8s-api = { path = "../api" }
+parking_lot = "0.11"
 tokio = { version = "1", features = ["macros", "rt", "sync"] }
 tracing = "0.1"

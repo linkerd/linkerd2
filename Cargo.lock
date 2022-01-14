@@ -913,10 +913,10 @@ dependencies = [
  "anyhow",
  "async-stream",
  "async-trait",
- "dashmap",
  "futures",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
+ "parking_lot",
  "tokio",
  "tracing",
 ]
