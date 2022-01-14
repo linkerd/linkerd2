@@ -70,17 +70,17 @@ impl Writer {
         }
     }
 
-    pub(crate) fn unset(&mut self, ns: impl AsRef<str>, pod: impl AsRef<str>) -> Result<ByPort> {
+    pub(crate) fn unset(&mut self, ns: &str, pod: &str) -> Result<ByPort> {
         let mut nses = self.0.write();
-        let mut ns_entry = match nses.entry(ns.as_ref().to_string()) {
+        let mut ns_entry = match nses.entry(ns.to_string()) {
             Entry::Occupied(entry) => entry,
-            Entry::Vacant(_) => return Err(anyhow!("missing namespace {}", ns.as_ref())),
+            Entry::Vacant(_) => return Err(anyhow!("missing namespace {}", ns)),
         };
 
         let ports = ns_entry
             .get_mut()
-            .remove(pod.as_ref())
-            .ok_or_else(|| anyhow!("missing pod {} in namespace {}", pod.as_ref(), ns.as_ref()))?;
+            .remove(pod)
+            .ok_or_else(|| anyhow!("missing pod {} in namespace {}", pod, ns))?;
 
         if ns_entry.get().is_empty() {
             ns_entry.remove_entry();
