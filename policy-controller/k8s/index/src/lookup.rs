@@ -1,11 +1,9 @@
 use crate::PodServerRx;
+use ahash::AHashMap as HashMap;
 use anyhow::{anyhow, Result};
 use linkerd_policy_controller_core::{DiscoverInboundServer, InboundServer, InboundServerStream};
 use parking_lot::RwLock;
-use std::{
-    collections::hash_map::{Entry, HashMap},
-    sync::Arc,
-};
+use std::{collections::hash_map::Entry, sync::Arc};
 
 #[derive(Debug, Default)]
 pub(crate) struct Writer(ByNs);

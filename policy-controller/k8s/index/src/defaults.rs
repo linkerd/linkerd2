@@ -1,11 +1,12 @@
 use crate::{ServerRx, ServerTx};
+use ahash::AHashMap as HashMap;
 use anyhow::{anyhow, Error, Result};
 use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, IdentityMatch, InboundServer, IpNet, NetworkMatch,
     ProxyProtocol,
 };
 use linkerd_policy_controller_k8s_api as k8s;
-use std::{collections::HashMap, hash::Hash};
+use std::hash::Hash;
 use tokio::{sync::watch, time};
 
 /// Indicates the default behavior to apply when no Server is found for a port.

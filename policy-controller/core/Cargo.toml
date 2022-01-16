@@ -6,6 +6,7 @@ license = "Apache-2.0"
 publish = false
 
 [dependencies]
+ahash = "0.7"
 anyhow = "1"
 async-trait = "0.1"
 futures = { version = "0.3", default-features = false, features = ["std"] }

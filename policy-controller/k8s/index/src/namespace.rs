@@ -1,5 +1,5 @@
 use crate::{authz::AuthzIndex, pod::PodIndex, server::SrvIndex, DefaultPolicy};
-use std::collections::HashMap;
+use ahash::AHashMap as HashMap;
 
 #[derive(Debug)]
 pub(crate) struct NamespaceIndex {
