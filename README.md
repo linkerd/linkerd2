@@ -14,7 +14,7 @@ Linkerd is an ultralight, security-first service mesh for Kubernetes. Linkerd
 adds critical security, observability, and reliability features to your
 Kubernetes stack with no code change required.
 
-Linkerd is a Cloud Native Computing Foundation ([CNCF][cncf]) project.
+inkerd is a Cloud Native Computing Foundation ([CNCF][cncf]) project.
 
 ## Repo layout
 
