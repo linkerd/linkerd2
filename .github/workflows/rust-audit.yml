@@ -1,0 +1,20 @@
+name: rust-audit
+permissions:
+  issues: write
+on:
+  schedule:
+    # Run at 00:00 UTC every day
+    - cron: '0 0 * * *'
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      - uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+      - uses: actions-rs/audit-check@35b7b53b1e25b55642157ac01b4adceb5b9ebef3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
