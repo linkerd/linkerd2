@@ -19,7 +19,6 @@ enablePSP: false
 
 # -- Kubernetes DNS Domain name to use
 clusterDomain: cluster.local
-
 collector:
   # -- Set to false to exclude collector installation
   enabled: true
@@ -183,6 +182,18 @@ webhook:
   objectSelector:
     #matchLabels:
     #  foo: bar
+
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the jaeger-injector container can use
+      limit:
+      # -- Amount of CPU units that the jaeger-injector container requests
+      request:
+    memory:
+      # -- Maximum amount of memory that jaeger-injector container can use
+      limit:
+      # -- Amount of memory that the jaeger-injector container requests
+      request:
 
   # -- NodeSelector section, See the
   # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
