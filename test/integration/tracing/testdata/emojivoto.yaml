@@ -1,193 +1,221 @@
----
-kind: ServiceAccount
 apiVersion: v1
+kind: ServiceAccount
 metadata:
   name: emoji
 ---
-kind: ServiceAccount
 apiVersion: v1
+kind: ServiceAccount
 metadata:
   name: voting
 ---
-kind: ServiceAccount
 apiVersion: v1
+kind: ServiceAccount
 metadata:
   name: web
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  creationTimestamp: null
-  name: emoji
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: emoji-svc
-  strategy: {}
-  template:
-    metadata:
-      creationTimestamp: null
-      labels:
-        app: emoji-svc
-    spec:
-      serviceAccountName: emoji
-      containers:
-      - env:
-        - name: GRPC_PORT
-          value: "8080"
-        - name: OC_AGENT_HOST
-          value: "collector.___TRACING_NS___:55678"
-        image: buoyantio/emojivoto-emoji-svc:v8-tracing
-        name: emoji-svc
-        ports:
-        - containerPort: 8080
-          name: grpc
-        resources:
-          requests:
-            cpu: 100m
-status: {}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: emoji-svc
 spec:
-  selector:
-    app: emoji-svc
-  clusterIP: None
   ports:
   - name: grpc
     port: 8080
     targetPort: 8080
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  creationTimestamp: null
-  name: voting
-spec:
-  replicas: 1
+  - name: prom
+    port: 8801
+    targetPort: 8801
   selector:
-    matchLabels:
-      app: voting-svc
-  strategy: {}
-  template:
-    metadata:
-      creationTimestamp: null
-      labels:
-        app: voting-svc
-    spec:
-      serviceAccountName: voting
-      containers:
-      - env:
-        - name: GRPC_PORT
-          value: "8080"
-        - name: OC_AGENT_HOST
-          value: "collector.___TRACING_NS___:55678"
-        image: buoyantio/emojivoto-voting-svc:v8-tracing
-        name: voting-svc
-        ports:
-        - containerPort: 8080
-          name: grpc
-        resources:
-          requests:
-            cpu: 100m
-status: {}
+    app: emoji-svc
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: voting-svc
 spec:
-  selector:
-    app: voting-svc
-  clusterIP: None
   ports:
   - name: grpc
     port: 8080
     targetPort: 8080
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  creationTimestamp: null
-  name: web
-spec:
-  replicas: 1
+  - name: prom
+    port: 8801
+    targetPort: 8801
   selector:
-    matchLabels:
-      app: web-svc
-  strategy: {}
-  template:
-    metadata:
-      creationTimestamp: null
-      labels:
-        app: web-svc
-    spec:
-      serviceAccountName: web
-      containers:
-      - env:
-        - name: WEB_PORT
-          value: "80"
-        - name: OC_AGENT_HOST
-          value: "collector.___TRACING_NS___:55678"
-        - name: EMOJISVC_HOST
-          value: emoji-svc:8080
-        - name: VOTINGSVC_HOST
-          value: voting-svc:8080
-        - name: INDEX_BUNDLE
-          value: dist/index_bundle.js
-        image: buoyantio/emojivoto-web:v8-tracing
-        name: web-svc
-        ports:
-        - containerPort: 80
-          name: http
-        resources:
-          requests:
-            cpu: 100m
-status: {}
+    app: voting-svc
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: web-svc
 spec:
-  type: LoadBalancer
-  selector:
-    app: web-svc
   ports:
   - name: http
     port: 80
-    targetPort: 80
+    targetPort: 8080
+  selector:
+    app: web-svc
+  type: ClusterIP
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: emoji
+    app.kubernetes.io/part-of: emojivoto
+    app.kubernetes.io/version: v11
+  name: emoji
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: emoji-svc
+      version: v11
+  template:
+    metadata:
+      labels:
+        app: emoji-svc
+        version: v11
+      annotations:
+        linkerd.io/inject: enabled
+    spec:
+      containers:
+      - env:
+        - name: GRPC_PORT
+          value: "8080"
+        - name: PROM_PORT
+          value: "8801"
+        - name: OC_AGENT_HOST
+          value: "collector.linkerd-jaeger:55678"
+        image: docker.l5d.io/buoyantio/emojivoto-emoji-svc:v11
+        name: emoji-svc
+        ports:
+        - containerPort: 8080
+          name: grpc
+        - containerPort: 8801
+          name: prom
+        resources:
+          requests:
+            cpu: 100m
+      serviceAccountName: emoji
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: vote-bot
+    app.kubernetes.io/part-of: emojivoto
+    app.kubernetes.io/version: v11
   name: vote-bot
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: vote-bot
-  strategy: {}
+      version: v11
   template:
     metadata:
-      creationTimestamp: null
       labels:
         app: vote-bot
+        version: v11
+      annotations:
+        linkerd.io/inject: enabled
     spec:
       containers:
       - command:
         - emojivoto-vote-bot
         env:
         - name: WEB_HOST
-          value: nginx-ingress:80
-        image: buoyantio/emojivoto-web:v10
+          value: web-svc:80
+        - name: OC_AGENT_HOST
+          value: "collector.linkerd-jaeger:55678"
+        image: docker.l5d.io/buoyantio/emojivoto-web:v11
         name: vote-bot
         resources:
           requests:
             cpu: 10m
-status: {}
 ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: voting
+    app.kubernetes.io/part-of: emojivoto
+    app.kubernetes.io/version: v11
+  name: voting
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: voting-svc
+      version: v11
+  template:
+    metadata:
+      labels:
+        app: voting-svc
+        version: v11
+      annotations:
+        linkerd.io/inject: enabled
+    spec:
+      containers:
+      - env:
+        - name: GRPC_PORT
+          value: "8080"
+        - name: PROM_PORT
+          value: "8801"
+        - name: OC_AGENT_HOST
+          value: "collector.linkerd-jaeger:55678"
+        image: docker.l5d.io/buoyantio/emojivoto-voting-svc:v11
+        name: voting-svc
+        ports:
+        - containerPort: 8080
+          name: grpc
+        - containerPort: 8801
+          name: prom
+        resources:
+          requests:
+            cpu: 100m
+      serviceAccountName: voting
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: web
+    app.kubernetes.io/part-of: emojivoto
+    app.kubernetes.io/version: v11
+  name: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-svc
+      version: v11
+  template:
+    metadata:
+      labels:
+        app: web-svc
+        version: v11
+      annotations:
+        linkerd.io/inject: enabled
+    spec:
+      containers:
+      - env:
+        - name: WEB_PORT
+          value: "8080"
+        - name: EMOJISVC_HOST
+          value: emoji-svc:8080
+        - name: VOTINGSVC_HOST
+          value: voting-svc:8080
+        - name: INDEX_BUNDLE
+          value: dist/index_bundle.js
+        - name: OC_AGENT_HOST
+          value: "collector.linkerd-jaeger:55678"
+        image: docker.l5d.io/buoyantio/emojivoto-web:v11
+        name: web-svc
+        ports:
+        - containerPort: 8080
+          name: http
+        resources:
+          requests:
+            cpu: 100m
+      serviceAccountName: web
