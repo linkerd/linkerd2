@@ -1,11 +1,9 @@
 use crate::{authz::AuthzIndex, Errors, Index, Namespace, ServerRx, ServerTx};
+use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{ClientAuthorization, InboundServer, ProxyProtocol};
 use linkerd_policy_controller_k8s_api::{self as k8s, policy, ResourceExt};
-use std::{
-    collections::{hash_map::Entry as HashEntry, HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::hash_map::Entry, sync::Arc};
 use tokio::{sync::watch, time};
 use tracing::{debug, instrument, trace};
 
@@ -184,7 +182,7 @@ impl SrvIndex {
         let protocol = Self::mk_protocol(srv.spec.proxy_protocol.as_ref());
 
         match self.index.entry(srv_name) {
-            HashEntry::Vacant(entry) => {
+            Entry::Vacant(entry) => {
                 let labels = k8s::Labels::from(srv.metadata.labels);
                 let authzs = ns_authzs
                     .filter_for_server(entry.key(), labels.clone())
@@ -209,7 +207,7 @@ impl SrvIndex {
                 });
             }
 
-            HashEntry::Occupied(mut entry) => {
+            Entry::Occupied(mut entry) => {
                 trace!(srv = ?entry.get(), "Updating existing server");
 
                 // If something about the server changed, we need to update the config to reflect

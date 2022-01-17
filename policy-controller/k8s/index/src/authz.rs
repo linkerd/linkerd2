@@ -1,4 +1,5 @@
 use crate::{server::ServerSelector, ClusterInfo, Errors, Index, SrvIndex};
+use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, IdentityMatch, IpNet, NetworkMatch,
@@ -8,7 +9,7 @@ use linkerd_policy_controller_k8s_api::{
     policy::{self, authz::MeshTls},
     ResourceExt,
 };
-use std::collections::{hash_map::Entry as HashEntry, HashMap, HashSet};
+use std::collections::hash_map::Entry;
 use tracing::{debug, instrument, trace};
 
 /// Indexes `ServerAuthorization` resources within a namespace.
@@ -142,12 +143,12 @@ impl AuthzIndex {
         let authz = mk_authz(authz, cluster)?;
 
         match self.index.entry(name) {
-            HashEntry::Vacant(entry) => {
+            Entry::Vacant(entry) => {
                 servers.add_authz(entry.key(), &authz.servers, authz.clients.clone());
                 entry.insert(authz);
             }
 
-            HashEntry::Occupied(mut entry) => {
+            Entry::Occupied(mut entry) => {
                 // If the authorization changed materially, then update it in all servers.
                 if entry.get() != &authz {
                     servers.add_authz(entry.key(), &authz.servers, authz.clients.clone());

@@ -1,11 +1,12 @@
 use super::*;
+use ahash::AHashMap as HashMap;
 use futures::prelude::*;
 use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, IdentityMatch, IpNet, Ipv4Net, Ipv6Net,
     NetworkMatch, ProxyProtocol,
 };
 use linkerd_policy_controller_k8s_api::{policy::server::Port, ResourceExt};
-use std::{collections::HashMap, net::IpAddr, str::FromStr};
+use std::{net::IpAddr, str::FromStr};
 use tokio::time;
 
 /// Creates a pod, then a server, then an authorization--then deletes these resources in the reverse
