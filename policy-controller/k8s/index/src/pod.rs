@@ -2,9 +2,10 @@ use crate::{
     defaults::PortDefaults, lookup, DefaultPolicy, DefaultPolicyWatches, Errors, Index, Namespace,
     PodServerTx, ServerRx, SrvIndex,
 };
+use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Context, Result};
 use linkerd_policy_controller_k8s_api::{self as k8s, policy, ResourceExt};
-use std::collections::{hash_map::Entry as HashEntry, HashMap, HashSet};
+use std::collections::hash_map::Entry;
 use tokio::sync::watch;
 use tracing::{debug, instrument, trace};
 
@@ -193,7 +194,7 @@ impl PodIndex {
         let ns_name = pod.namespace().expect("pod must have a namespace");
         let pod_name = pod.name();
         match self.index.entry(pod_name) {
-            HashEntry::Vacant(pod_entry) => {
+            Entry::Vacant(pod_entry) => {
                 let spec = pod.spec.ok_or_else(|| anyhow!("pod missing spec"))?;
 
                 // Check the pod for a default-allow annotation. If it's set, use it; otherwise use
@@ -239,7 +240,7 @@ impl PodIndex {
                 Ok(())
             }
 
-            HashEntry::Occupied(mut entry) => {
+            Entry::Occupied(mut entry) => {
                 debug_assert!(
                     lookups.contains(&ns_name, entry.key()),
                     "pod must exist in lookups"

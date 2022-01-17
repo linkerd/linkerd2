@@ -5,10 +5,11 @@ mod identity_match;
 mod network_match;
 
 pub use self::{identity_match::IdentityMatch, network_match::NetworkMatch};
+use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use futures::prelude::*;
 pub use ipnet::{IpNet, Ipv4Net, Ipv6Net};
-use std::{collections::HashMap, hash::Hash, pin::Pin, time::Duration};
+use std::{hash::Hash, pin::Pin, time::Duration};
 
 /// Models inbound server configuration discovery.
 #[async_trait::async_trait]
