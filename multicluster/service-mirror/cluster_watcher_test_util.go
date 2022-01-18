@@ -739,7 +739,9 @@ func remoteHeadlessEndpointsUpdate(name, namespace, resourceVersion, address str
 }
 
 func remoteServiceAsYaml(name, namespace, resourceVersion string, ports []corev1.ServicePort) string {
-	svc := remoteService(name, namespace, resourceVersion, nil, ports)
+	svc := remoteService(name, namespace, resourceVersion, map[string]string{
+		consts.DefaultExportedServiceSelector: "true",
+	}, ports)
 
 	bytes, err := yaml.Marshal(svc)
 	if err != nil {

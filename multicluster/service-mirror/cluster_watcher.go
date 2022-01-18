@@ -472,7 +472,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 	localServiceName := rcsw.mirroredResourceName(remoteService.Name)
 
 	// Ensure the namespace exists, and skip mirroring if it doesn't
-	if _, err := rcsw.localAPIClient.NS().Lister().Get(remoteService.Namespace); err != nil {
+	if _, err := rcsw.localAPIClient.Client.CoreV1().Namespaces().Get(ctx, remoteService.Namespace, metav1.GetOptions{}); err != nil {
 		if kerrors.IsNotFound(err) {
 			rcsw.log.Warnf("Skipping mirroring of service %s: namespace %s does not exist", serviceInfo, remoteService.Namespace)
 			return nil
