@@ -62,6 +62,9 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+        {{- if .Values.webhook.resources -}}
+        {{- include "partials.resources" .Values.webhook.resources | nindent 8 }}
+        {{- end }}
       serviceAccountName: jaeger-injector
       volumes:
       - name: tls

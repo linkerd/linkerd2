@@ -100,6 +100,7 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+        resources:
       serviceAccountName: jaeger-injector
       volumes:
       - name: tls

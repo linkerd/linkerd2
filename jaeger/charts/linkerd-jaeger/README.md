@@ -121,6 +121,10 @@ Kubernetes: `>=1.20.0-0`
 | webhook.namespaceSelector | string | `nil` |  |
 | webhook.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | webhook.objectSelector | string | `nil` |  |
+| webhook.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the jaeger-injector container can use |
+| webhook.resources.cpu.request | string | `nil` | Amount of CPU units that the jaeger-injector container requests |
+| webhook.resources.memory.limit | string | `nil` | Maximum amount of memory that jaeger-injector container can use |
+| webhook.resources.memory.request | string | `nil` | Amount of memory that the jaeger-injector container requests |
 | webhook.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 
 ----------------------------------------------
