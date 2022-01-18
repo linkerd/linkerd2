@@ -1,10 +1,13 @@
-name: rust-audit
-permissions:
-  issues: write
+name: RUSTSEC audit
+
 on:
   schedule:
     # Run at 00:00 UTC every day
     - cron: '0 0 * * *'
+
+permissions:
+  issues: write
+
 jobs:
   audit:
     runs-on: ubuntu-latest
