@@ -42,6 +42,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	var ha bool
 	var wait time.Duration
 	var valuesOptions valuespkg.Options
+	var ignoreCluster bool
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err)
@@ -59,18 +60,19 @@ The installation can be configured by using the --set, --values, --set-string an
 A full list of configurable values can be found at https://github.com/linkerd/linkerd2/blob/main/multicluster/charts/linkerd-multicluster/README.md
   `,
 		RunE: func(cmd *cobra.Command, args []string) error {
-
-			// Wait for the core control-plane to be up and running
-			api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
-				ControlPlaneNamespace: controlPlaneNamespace,
-				KubeConfig:            kubeconfigPath,
-				KubeContext:           kubeContext,
-				Impersonate:           impersonate,
-				ImpersonateGroup:      impersonateGroup,
-				APIAddr:               apiAddr,
-				RetryDeadline:         time.Now().Add(wait),
-			})
-			return install(cmd.Context(), stdout, options, valuesOptions, ha)
+			if !ignoreCluster {
+				// Wait for the core control-plane to be up and running
+				api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
+					ControlPlaneNamespace: controlPlaneNamespace,
+					KubeConfig:            kubeconfigPath,
+					KubeContext:           kubeContext,
+					Impersonate:           impersonate,
+					ImpersonateGroup:      impersonateGroup,
+					APIAddr:               apiAddr,
+					RetryDeadline:         time.Now().Add(wait),
+				})
+			}
+			return install(cmd.Context(), stdout, options, valuesOptions, ha, ignoreCluster)
 		},
 	}
 
@@ -84,6 +86,8 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().StringVar(&options.gateway.ServiceType, "gateway-service-type", options.gateway.ServiceType, "Overwrite Service type for gateway service")
 	cmd.Flags().BoolVar(&ha, "ha", false, `Install multicluster extension in High Availability mode.`)
 	cmd.Flags().DurationVar(&wait, "wait", 300*time.Second, "Wait for core control-plane components to be available")
+	cmd.Flags().BoolVar(&ignoreCluster, "ignore-cluster", false,
+		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)")
 
 	// Hide developer focused flags in release builds.
 	release, err := version.IsReleaseChannel(version.Version)
@@ -99,8 +103,8 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	return cmd
 }
 
-func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptions, valuesOptions valuespkg.Options, ha bool) error {
-	values, err := buildMulticlusterInstallValues(ctx, options)
+func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptions, valuesOptions valuespkg.Options, ha, ignoreCluster bool) error {
+	values, err := buildMulticlusterInstallValues(ctx, options, ignoreCluster)
 	if err != nil {
 		return err
 	}
@@ -207,24 +211,7 @@ func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, er
 	}, nil
 }
 
-func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInstallOptions) (*multicluster.Values, error) {
-
-	values, err := getLinkerdConfigMap(ctx)
-	if err != nil {
-		if kerrors.IsNotFound(err) {
-			return nil, errors.New("you need Linkerd to be installed in order to install multicluster addons")
-		}
-		return nil, err
-	}
-
-	if opts.namespace == "" {
-		return nil, errors.New("you need to specify a namespace")
-	}
-
-	if opts.namespace == controlPlaneNamespace {
-		return nil, errors.New("you need to setup the multicluster addons in a namespace different than the Linkerd one")
-	}
-
+func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInstallOptions, ignoreCluster bool) (*multicluster.Values, error) {
 	defaults, err := multicluster.NewInstallValues()
 	if err != nil {
 		return nil, err
@@ -235,12 +222,24 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 	defaults.Gateway.Port = opts.gateway.Port
 	defaults.Gateway.Probe.Seconds = opts.gateway.Probe.Seconds
 	defaults.Gateway.Probe.Port = opts.gateway.Probe.Port
-	defaults.IdentityTrustDomain = values.IdentityTrustDomain
 	defaults.LinkerdNamespace = controlPlaneNamespace
-	defaults.ProxyOutboundPort = uint32(values.Proxy.Ports.Outbound)
 	defaults.LinkerdVersion = version.Version
 	defaults.RemoteMirrorServiceAccount = opts.remoteMirrorCredentials
 	defaults.Gateway.ServiceType = opts.gateway.ServiceType
+
+	if ignoreCluster {
+		return defaults, nil
+	}
+
+	values, err := getLinkerdConfigMap(ctx)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return nil, errors.New("you need Linkerd to be installed in order to install multicluster addons")
+		}
+		return nil, err
+	}
+	defaults.ProxyOutboundPort = uint32(values.Proxy.Ports.Outbound)
+	defaults.IdentityTrustDomain = values.IdentityTrustDomain
 
 	return defaults, nil
 }
