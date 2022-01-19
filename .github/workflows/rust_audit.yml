@@ -10,9 +10,18 @@ permissions:
 
 jobs:
   audit:
+    strategy:
+      matrix:
+        repository:
+        - linkerd2
+        - linkerd2-proxy
+        - linkerd-await
     runs-on: ubuntu-latest
+    name: RUSTSEC audit (${{ matrix.repository }})
     steps:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+        with:
+          repository: linkerd/${{ matrix.repository }}
       - uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
         with:
           toolchain: stable
