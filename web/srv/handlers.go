@@ -28,6 +28,8 @@ type (
 		controllerNamespace string
 		clusterDomain       string
 		grafana             string
+		grafanaExternalURL  string
+		grafanaPrefix       string
 		jaeger              string
 		grafanaProxy        *reverseProxy
 		jaegerProxy         *reverseProxy
@@ -49,6 +51,8 @@ func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httpro
 		ControllerNamespace: h.controllerNamespace,
 		PathPrefix:          pathPfx,
 		Grafana:             h.grafana,
+		GrafanaExternalURL:  h.grafanaExternalURL,
+		GrafanaPrefix:       h.grafanaPrefix,
 		Jaeger:              h.jaeger,
 	}
 
