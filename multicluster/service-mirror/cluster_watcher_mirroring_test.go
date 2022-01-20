@@ -11,6 +11,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/multicluster"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -222,6 +223,7 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 	localAPI.Sync(nil)
 
 	q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+	eventRecorder := record.NewFakeRecorder(100)
 
 	watcher := RemoteClusterServiceWatcher{
 		link: &multicluster.Link{
@@ -236,7 +238,7 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 		remoteAPIClient:         remoteAPI,
 		localAPIClient:          localAPI,
 		stopper:                 nil,
-		recorder:                record.NewFakeRecorder(100),
+		recorder:                eventRecorder,
 		log:                     logging.WithFields(logging.Fields{"cluster": clusterName}),
 		eventsQueue:             q,
 		requeueLimit:            0,
@@ -270,6 +272,11 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
+	skippedEvent := <-eventRecorder.Events
+	if skippedEvent != fmt.Sprintf("%s %s %s", v1.EventTypeNormal, eventTypeSkipped, "Skipped mirroring service: namespace does not exist") {
+		t.Error("Expected skipped event, got:", skippedEvent)
+	}
+
 	ns, err := localAPI.Client.CoreV1().Namespaces().Create(context.Background(), &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}}, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -279,9 +286,8 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 	for q.Len() > 0 {
 		watcher.processNextEvent(context.Background())
 	}
-	localAPI.Sync(nil)
 
-	_, err = localAPI.Svc().Lister().Services("ns1").Get("service-one-remote")
+	_, err = localAPI.Client.CoreV1().Services("ns1").Get(context.Background(), "service-one-remote", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("error getting service-one locally: %v", err)
 	}
