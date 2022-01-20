@@ -14,7 +14,9 @@ dashboard and Helm charts.
 * Introduced resource block to `linkerd-jaeger` Helm chart (thanks
   @yuriydzobak!)
 * Introduced parametrized datasource (`DS_PROMETHEUS`) in all Grafana
-  dashboards
+  dashboards. This allows pointing to the right Prometheus datasource when
+  importing a dasbhoard, you can read more about the change
+  [here](https://github.com/linkerd/website/blob/0c3c5cd5ae329cd7dbcca18534f3bc8ec7d57859/linkerd.io/content/2.12/tasks/grafana.md)
 * Introduced a consistent `--ignore-cluster` flag in the CLI for the base
   installation and extensions; manifests will now be rendered even if there is
   an existing installation in the current Kubernetes context (thanks
