@@ -8,6 +8,7 @@ RUN apt update && apt upgrade -y
 RUN apt install -y \
     clang \
     cmake \
+    jq \
     libssl-dev \
     lldb \
     lsb-release \
@@ -39,10 +40,14 @@ ENV HOME=/home/$USER
 RUN mkdir -p $HOME/bin
 ENV PATH=$HOME/bin:$PATH
 
-RUN curl --proto '=https' --tlsv1.3 -vsSfLo $HOME/kubectl "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
-    && chmod 755 $HOME/kubectl
+RUN curl --proto '=https' --tlsv1.3 -vsSfLo $HOME/bin/kubectl "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+    && chmod 755 $HOME/bin/kubectl
 RUN curl --proto '=https' --tlsv1.3 -vsSfL https://raw.githubusercontent.com/rancher/k3d/main/install.sh \
     | USE_SUDO=false K3D_INSTALL_DIR=$HOME/bin bash
+
+ARG YQ_VERSION=v4.2.0
+RUN curl --proto '=https' --tlsv1.3 -vsSfL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o $HOME/bin/yq \
+    && chmod +x $HOME/bin/yq
 
 RUN curl --proto '=https' --tlsv1.3 -vsSfL https://sh.rustup.rs \
     | sh -s -- -y --default-toolchain 1.56.1 -c rustfmt -c clippy -c rls
