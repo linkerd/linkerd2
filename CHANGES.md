@@ -1,5 +1,28 @@
 # Changes
 
+## edge-22.1.4
+
+This edge release features a new configuration annotation, support for
+externally hosted Grafana instances, and other improvements in the CLI,
+dashboard and Helm charts. 
+
+* Added a new annotation to configure skipping subnets in the init container
+  (`config.linkerd.io/skip-subnets`). This configuration option is ideal for
+  Docker-in-Docker (dind) workloads (thanks @michaellzc!)
+* Added support in the dashboard for externally hosted Grafana instances
+  (thanks @jackgill!)
+* Introduced resource block to `linkerd-jaeger` Helm chart (thanks
+  @yuriydzobak!)
+* Introduced parametrized datasource (`DS_PROMETHEUS`) in all Grafana
+  dashboards
+* Introduced a consistent `--ignore-cluster` flag in the CLI for the base
+  installation and extensions; manifests will now be rendered even if there is
+  an existing installation in the current Kubernetes context (thanks
+  @krzysztofdrys!)
+* Updated the service mirror controller to skip mirroring services whose
+  namespaces do not yet exist in the source cluster; previously, the service
+  mirror would create the namespace itself.
+
 ## edge-22.1.3
 
 This release removes the Grafana component in the linkerd-viz extension.
