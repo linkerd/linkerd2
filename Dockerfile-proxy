@@ -12,7 +12,8 @@ RUN ./bin/install-deps $TARGETARCH
 
 FROM --platform=$BUILDPLATFORM curlimages/curl:7.76.1 as fetch
 WORKDIR /build
-COPY bin/fetch-proxy bin/fetch-proxy bin/scurl
+COPY bin/fetch-proxy bin/fetch-proxy
+COPY bin/scurl bin/scurl
 COPY .proxy-version proxy-version
 ARG TARGETARCH
 RUN (proxy=$(bin/fetch-proxy $(cat proxy-version) $TARGETARCH) && \
