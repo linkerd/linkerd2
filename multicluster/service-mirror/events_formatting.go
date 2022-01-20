@@ -87,3 +87,7 @@ func (od OnDeleteCalled) String() string {
 func (re RepairEndpoints) String() string {
 	return "RepairEndpoints"
 }
+
+func (ol OnLocalNamespaceAdded) String() string {
+	return fmt.Sprintf("OnLocalNamespaceAdded: {namespace: %s}", ol.ns)
+}
