@@ -17,7 +17,7 @@ instance with Linkerd, you can refer to our
   @yuriydzobak!)
 * Introduced parametrized datasource (`DS_PROMETHEUS`) in all Grafana
   dashboards. This allows pointing to the right Prometheus datasource when
-  importing a dashboard, you can read more about the change
+  importing a dashboard
 * Introduced a consistent `--ignore-cluster` flag in the CLI for the base
   installation and extensions; manifests will now be rendered even if there is
   an existing installation in the current Kubernetes context (thanks
