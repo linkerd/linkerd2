@@ -1356,6 +1356,7 @@ data:
           limit: 50Mi
           request: 10Mi
       saMountPath: null
+      skipSubnets: ""
       xtMountPath:
         mountPath: /run
         name: linkerd-proxy-init-xtables-lock

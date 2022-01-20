@@ -67,6 +67,7 @@ var (
 		k8s.ProxyInboundConnectTimeout,
 		k8s.ProxyAwait,
 		k8s.ProxyDefaultInboundPolicyAnnotation,
+		k8s.ProxySkipSubnetsAnnotation,
 	}
 	// ProxyAlphaConfigAnnotations is the list of all alpha configuration
 	// (config.alpha prefix) that can be applied to a pod or namespace.
@@ -1060,6 +1061,10 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		} else {
 			values.Proxy.DefaultInboundPolicy = override
 		}
+	}
+
+	if override, ok := annotations[k8s.ProxySkipSubnetsAnnotation]; ok {
+		values.ProxyInit.SkipSubnets = override
 	}
 }
 

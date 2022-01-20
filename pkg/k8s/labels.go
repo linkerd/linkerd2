@@ -164,6 +164,9 @@ const (
 	// ignoreOutboundPorts config.
 	ProxyIgnoreOutboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/skip-outbound-ports"
 
+	// ProxySkipSubnetsAnnotation can be used to override the skipSubnets config
+	ProxySkipSubnetsAnnotation = ProxyConfigAnnotationsPrefix + "/skip-subnets"
+
 	// ProxyInboundPortAnnotation can be used to override the inboundPort config.
 	ProxyInboundPortAnnotation = ProxyConfigAnnotationsPrefix + "/inbound-port"
 
