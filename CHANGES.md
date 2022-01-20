@@ -4,7 +4,9 @@
 
 This edge release features a new configuration annotation, support for
 externally hosted Grafana instances, and other improvements in the CLI,
-dashboard and Helm charts.
+dashboard and Helm charts. To learn more about using an external Grafana
+instance with Linkerd, you can refer to our
+[docs](https://github.com/linkerd/website/blob/0c3c5cd5ae329cd7dbcca18534f3bc8ec7d57859/linkerd.io/content/2.12/tasks/grafana.md).
 
 * Added a new annotation to configure skipping subnets in the init container
   (`config.linkerd.io/skip-subnets`). This configuration option is ideal for
@@ -15,8 +17,7 @@ dashboard and Helm charts.
   @yuriydzobak!)
 * Introduced parametrized datasource (`DS_PROMETHEUS`) in all Grafana
   dashboards. This allows pointing to the right Prometheus datasource when
-  importing a dasbhoard, you can read more about the change
-  [here](https://github.com/linkerd/website/blob/0c3c5cd5ae329cd7dbcca18534f3bc8ec7d57859/linkerd.io/content/2.12/tasks/grafana.md)
+  importing a dashboard, you can read more about the change
 * Introduced a consistent `--ignore-cluster` flag in the CLI for the base
   installation and extensions; manifests will now be rendered even if there is
   an existing installation in the current Kubernetes context (thanks
