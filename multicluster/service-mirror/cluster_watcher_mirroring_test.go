@@ -13,6 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 )
 
@@ -235,6 +236,7 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 		remoteAPIClient:         remoteAPI,
 		localAPIClient:          localAPI,
 		stopper:                 nil,
+		recorder:                record.NewFakeRecorder(100),
 		log:                     logging.WithFields(logging.Fields{"cluster": clusterName}),
 		eventsQueue:             q,
 		requeueLimit:            0,
