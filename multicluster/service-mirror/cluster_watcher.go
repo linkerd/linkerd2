@@ -25,7 +25,10 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
-const eventTypeSkipped = "ServiceMirroringSkipped"
+const (
+	eventTypeSkipped = "ServiceMirroringSkipped"
+	kubeSystem       = "kube-system"
+)
 
 type (
 	// RemoteClusterServiceWatcher is a watcher instantiated for every cluster that is being watched
@@ -123,6 +126,13 @@ type (
 	// RepairEndpoints is issued when the service mirror and mirror gateway
 	// endpoints should be resolved based on the remote gateway and updated.
 	RepairEndpoints struct{}
+
+	// OnLocalNamespaceAdded is issued when when a new namespace is added to
+	// the local cluster. This means that we should check the remote cluster
+	// for exported service in that namespace.
+	OnLocalNamespaceAdded struct {
+		ns *corev1.Namespace
+	}
 
 	// RetryableError is an error that should be retried through requeuing events
 	RetryableError struct{ Inner []error }
@@ -237,35 +247,6 @@ func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceAnnotations(remoteSer
 	}
 
 	return annotations
-}
-
-func (rcsw *RemoteClusterServiceWatcher) mirrorNamespaceIfNecessary(ctx context.Context, namespace string) error {
-	// if the namespace is already present we do not need to change it.
-	// if we are creating it we want to put a label indicating this is a
-	// mirrored resource
-	if _, err := rcsw.localAPIClient.NS().Lister().Get(namespace); err != nil {
-		if kerrors.IsNotFound(err) {
-			// if the namespace is not found, we can just create it
-			ns := &corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						consts.MirroredResourceLabel:  "true",
-						consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
-					},
-					Name: namespace,
-				},
-			}
-			_, err := rcsw.localAPIClient.Client.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
-			if err != nil {
-				// something went wrong with the create, we can just retry as well
-				return RetryableError{[]error{err}}
-			}
-		} else {
-			// something else went wrong, so we can just retry
-			return RetryableError{[]error{err}}
-		}
-	}
-	return nil
 }
 
 // This method takes care of port remapping. What it does essentially is get the one gateway port
@@ -490,8 +471,14 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 	serviceInfo := fmt.Sprintf("%s/%s", remoteService.Namespace, remoteService.Name)
 	localServiceName := rcsw.mirroredResourceName(remoteService.Name)
 
-	if err := rcsw.mirrorNamespaceIfNecessary(ctx, remoteService.Namespace); err != nil {
-		return err
+	// Ensure the namespace exists, and skip mirroring if it doesn't
+	if _, err := rcsw.localAPIClient.Client.CoreV1().Namespaces().Get(ctx, remoteService.Namespace, metav1.GetOptions{}); err != nil {
+		if kerrors.IsNotFound(err) {
+			rcsw.log.Warnf("Skipping mirroring of service %s: namespace %s does not exist", serviceInfo, remoteService.Namespace)
+			return nil
+		}
+		// something else went wrong, so we can just retry
+		return RetryableError{[]error{err}}
 	}
 
 	serviceToCreate := &corev1.Service{
@@ -515,6 +502,21 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 	}
 
 	return rcsw.createGatewayEndpoints(ctx, remoteService)
+}
+
+func (rcsw *RemoteClusterServiceWatcher) handleLocalNamespaceAdded(ns *corev1.Namespace) error {
+	// When a local namespace is added, we issue a create event for all the services in the corresponding namespace in
+	// case any of them are exported and need to be mirrored.
+	svcs, err := rcsw.remoteAPIClient.Svc().Lister().Services(ns.Name).List(labels.Everything())
+	if err != nil {
+		return RetryableError{[]error{err}}
+	}
+	for _, svc := range svcs {
+		rcsw.eventsQueue.Add(&OnAddCalled{
+			svc: svc,
+		})
+	}
+	return nil
 }
 
 // isEmptyService returns true if any of these conditions are true:
@@ -725,6 +727,8 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent(ctx context.Context) (
 		err = rcsw.cleanupOrphanedServices(ctx)
 	case *RepairEndpoints:
 		err = rcsw.repairEndpoints(ctx)
+	case *OnLocalNamespaceAdded:
+		err = rcsw.handleLocalNamespaceAdded(ev.ns)
 	default:
 		if ev != nil || !done { // we get a nil in case we are shutting down...
 			rcsw.log.Warnf("Received unknown event: %v", ev)
@@ -807,7 +811,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 		cache.ResourceEventHandlerFuncs{
 			// AddFunc only relevant for exported headless endpoints
 			AddFunc: func(obj interface{}) {
-				if obj.(metav1.Object).GetNamespace() == "kube-system" {
+				if obj.(metav1.Object).GetNamespace() == kubeSystem {
 					return
 				}
 
@@ -819,7 +823,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 			},
 			// AddFunc relevant for all kind of exported endpoints
 			UpdateFunc: func(old, new interface{}) {
-				if new.(metav1.Object).GetNamespace() == "kube-system" {
+				if new.(metav1.Object).GetNamespace() == kubeSystem {
 					return
 				}
 
@@ -828,6 +832,18 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 				}
 
 				rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{new.(*corev1.Endpoints)})
+			},
+		},
+	)
+
+	rcsw.localAPIClient.NS().Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				if obj.(metav1.Object).GetName() == kubeSystem {
+					return
+				}
+
+				rcsw.eventsQueue.Add(&OnLocalNamespaceAdded{obj.(*corev1.Namespace)})
 			},
 		},
 	)

@@ -6,8 +6,12 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/multicluster"
+	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -197,6 +201,87 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 	} {
 		tc := tt // pin
 		tc.run(t)
+	}
+}
+
+func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
+	remoteAPI, err := k8s.NewFakeAPI(
+		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "mc-gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod),
+		remoteServiceAsYaml("service-one", "ns1", "111", []corev1.ServicePort{}),
+		endpointsAsYaml("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{}),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	localAPI, err := k8s.NewFakeAPI()
+	if err != nil {
+		t.Fatal(err)
+	}
+	remoteAPI.Sync(nil)
+	localAPI.Sync(nil)
+
+	q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+
+	watcher := RemoteClusterServiceWatcher{
+		link: &multicluster.Link{
+			TargetClusterName:   clusterName,
+			TargetClusterDomain: clusterDomain,
+			GatewayIdentity:     "gateway-identity",
+			GatewayAddress:      "192.0.2.127",
+			GatewayPort:         888,
+			ProbeSpec:           defaultProbeSpec,
+			Selector:            *defaultSelector,
+		},
+		remoteAPIClient:         remoteAPI,
+		localAPIClient:          localAPI,
+		stopper:                 nil,
+		log:                     logging.WithFields(logging.Fields{"cluster": clusterName}),
+		eventsQueue:             q,
+		requeueLimit:            0,
+		headlessServicesEnabled: true,
+	}
+
+	q.Add(&RemoteServiceCreated{
+		service: remoteService("service-one", "ns1", "111", map[string]string{
+			consts.DefaultExportedServiceSelector: "true",
+		}, []corev1.ServicePort{
+			{
+				Name:     "port1",
+				Protocol: "TCP",
+				Port:     555,
+			},
+			{
+				Name:     "port2",
+				Protocol: "TCP",
+				Port:     666,
+			},
+		}),
+	})
+	for q.Len() > 0 {
+		watcher.processNextEvent(context.Background())
+	}
+
+	_, err = localAPI.Svc().Lister().Services("ns1").Get("service-one-remote")
+	if err == nil {
+		t.Fatalf("service-one should not exist in local cluster before namespace is created")
+	} else if !errors.IsNotFound(err) {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	ns, err := localAPI.Client.CoreV1().Namespaces().Create(context.Background(), &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}}, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	q.Add(&OnLocalNamespaceAdded{ns})
+	for q.Len() > 0 {
+		watcher.processNextEvent(context.Background())
+	}
+	localAPI.Sync(nil)
+
+	_, err = localAPI.Svc().Lister().Services("ns1").Get("service-one-remote")
+	if err != nil {
+		t.Fatalf("error getting service-one locally: %v", err)
 	}
 }
 
