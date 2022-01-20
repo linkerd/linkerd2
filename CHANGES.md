@@ -4,7 +4,7 @@
 
 This edge release features a new configuration annotation, support for
 externally hosted Grafana instances, and other improvements in the CLI,
-dashboard and Helm charts. 
+dashboard and Helm charts.
 
 * Added a new annotation to configure skipping subnets in the init container
   (`config.linkerd.io/skip-subnets`). This configuration option is ideal for
