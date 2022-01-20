@@ -24,7 +24,7 @@ if [ ! -f "$helmbin" ]; then
     mkdir -p "$targetbin"
     (
         cd "$tmp"
-        curl -Lsf -o "./helm.tar.gz" "$helmcurl"
+        "$bindir"/scurl -o "./helm.tar.gz" "$helmcurl"
         tar zf "./helm.tar.gz" -x "$targetdir"
         chmod +x "$targetdir/helm"
     )

@@ -27,7 +27,8 @@ RUN groupadd --gid=$USER_GID $USER \
 # Install a Docker client that uses the host's Docker daemon
 ARG USE_MOBY=false
 ENV DOCKER_BUILDKIT=1
-RUN curl --proto '=https' --tlsv1.3 -vsSfL https://raw.githubusercontent.com/microsoft/vscode-dev-containers/main/script-library/docker-debian.sh \
+COPY bin/scurl
+RUN bin/scurl -v https://raw.githubusercontent.com/microsoft/vscode-dev-containers/main/script-library/docker-debian.sh \
     | bash -s --  true /var/run/docker-host.sock /var/run/docker.sock "${USER}" "${USE_MOBY}" latest
 
 RUN (echo "LC_ALL=en_US.UTF-8" \
@@ -39,20 +40,20 @@ ENV HOME=/home/$USER
 RUN mkdir -p $HOME/bin
 ENV PATH=$HOME/bin:$PATH
 
-RUN curl --proto '=https' --tlsv1.3 -vsSfLo $HOME/kubectl "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+RUN bin/scurl -vo $HOME/kubectl "https://dl.k8s.io/release/$(bin/scurl https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
     && chmod 755 $HOME/kubectl
-RUN curl --proto '=https' --tlsv1.3 -vsSfL https://raw.githubusercontent.com/rancher/k3d/main/install.sh \
+RUN bin/scurl -v https://raw.githubusercontent.com/rancher/k3d/main/install.sh \
     | USE_SUDO=false K3D_INSTALL_DIR=$HOME/bin bash
 
-RUN curl --proto '=https' --tlsv1.3 -vsSfL https://sh.rustup.rs \
+RUN bin/scurl -v https://sh.rustup.rs \
     | sh -s -- -y --default-toolchain 1.56.1 -c rustfmt -c clippy -c rls
 
 RUN mkdir /tmp/cargo-deny && cd /tmp/cargo-deny && \
-    curl --proto '=https' --tlsv1.3 -vsSfL https://github.com/EmbarkStudios/cargo-deny/releases/download/0.11.0/cargo-deny-0.11.0-x86_64-unknown-linux-musl.tar.gz | tar zxf - && \
+    bin/scurl -v https://github.com/EmbarkStudios/cargo-deny/releases/download/0.11.0/cargo-deny-0.11.0-x86_64-unknown-linux-musl.tar.gz | tar zxf - && \
     mv cargo-deny-0.11.0-x86_64-unknown-linux-musl/cargo-deny $HOME/bin && \
     cd .. && rm -rf /tmp/cargo-deny
 
-RUN curl --proto '=https' --tlsv1.3 -vsSfL https://run.linkerd.io/install-edge | sh \
+RUN bin/scurl -v https://run.linkerd.io/install-edge | sh \
     && ln -s $(readlink ~/.linkerd2/bin/linkerd) ~/bin/linkerd
 
 ENTRYPOINT ["/usr/local/share/docker-init.sh"]
