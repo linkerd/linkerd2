@@ -1197,6 +1197,7 @@ data:
           request: 10Mi
       runAsRoot: false
       saMountPath: null
+      skipSubnets: ""
       xtMountPath:
         mountPath: /run
         name: linkerd-proxy-init-xtables-lock

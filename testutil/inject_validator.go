@@ -47,6 +47,7 @@ type InjectValidator struct {
 	OutboundConnectTimeout  string
 	InboundConnectTimeout   string
 	WaitBeforeExitSeconds   int
+	SkipSubnets             string
 }
 
 func (iv *InjectValidator) getContainer(pod *v1.PodSpec, name string, isInit bool) *v1.Container {
@@ -363,6 +364,12 @@ func (iv *InjectValidator) validateInitContainer(pod *v1.PodSpec) error {
 		}
 	}
 
+	if iv.SkipSubnets != "" {
+		if err := iv.validateArg(initContainer, "--skip-subnets", iv.SkipSubnets); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -549,6 +556,11 @@ func (iv *InjectValidator) GetFlagsAndAnnotations() ([]string, map[string]string
 		annotations[k8s.ProxyWaitBeforeExitSecondsAnnotation] = strconv.Itoa(iv.WaitBeforeExitSeconds)
 		flags = append(flags, fmt.Sprintf("--wait-before-exit-secondst=%s", strconv.Itoa(iv.WaitBeforeExitSeconds)))
 
+	}
+
+	if iv.SkipSubnets != "" {
+		annotations[k8s.ProxySkipSubnetsAnnotation] = iv.SkipSubnets
+		flags = append(flags, fmt.Sprintf("--skip-subnets=%s", iv.SkipSubnets))
 	}
 
 	return flags, annotations
