@@ -54,15 +54,9 @@ func TestOpaquePorts(t *testing.T) {
 				"'kubectl apply' command failed\n%s", out)
 		}
 
-		serverDeploys := []string{
-			opaquePodApp,
-			opaqueSvcApp,
-			opaqueUnmeshedSvcPod,
-		}
-
 		// Check that the server pods are started correctly before continuing
 		// with the rest of the test.
-		for _, deploy := range serverDeploys {
+		for _, deploy := range []string{opaquePodApp, opaqueSvcApp, opaqueUnmeshedSvcPod} {
 			if err := TestHelper.CheckPods(ctx, opaquePortsNs, deploy, 1); err != nil {
 				if rce, ok := err.(*testutil.RestartCountError); ok {
 					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
