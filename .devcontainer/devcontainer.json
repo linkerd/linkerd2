@@ -4,6 +4,7 @@
     //"dockerFile": "./Dockerfile",
     "extensions": [
         "DavidAnson.vscode-markdownlint",
+        "golang.go",
         "matklad.rust-analyzer",
         "NathanRidley.autotrim",
         "samverschueren.final-newline",
