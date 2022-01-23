@@ -86,8 +86,8 @@ async fn incrementally_configure_server() {
         "ns-0",
         "authz-0",
         "srv-0",
-        k8s::policy::authz::Client {
-            mesh_tls: Some(k8s::policy::authz::MeshTls {
+        k8s::policy::server_authz::Client {
+            mesh_tls: Some(k8s::policy::server_authz::MeshTls {
                 unauthenticated_tls: true,
                 ..Default::default()
             }),
@@ -529,7 +529,7 @@ fn mk_authz(
     ns: impl Into<String>,
     name: impl Into<String>,
     server: impl Into<String>,
-    client: k8s::policy::authz::Client,
+    client: k8s::policy::server_authz::Client,
 ) -> k8s::policy::ServerAuthorization {
     k8s::policy::ServerAuthorization {
         metadata: k8s::ObjectMeta {
@@ -538,7 +538,7 @@ fn mk_authz(
             ..Default::default()
         },
         spec: k8s::policy::ServerAuthorizationSpec {
-            server: k8s::policy::authz::Server {
+            server: k8s::policy::server_authz::Server {
                 name: Some(server.into()),
                 selector: None,
             },
