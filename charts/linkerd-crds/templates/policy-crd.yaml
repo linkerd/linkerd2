@@ -614,7 +614,7 @@ spec:
               type: object
               oneOf:
                 - required: [identities]
-                - required: [ientityRefs]
+                - required: [identityRefs]
               properties:
                 identities:
                   description: >-
@@ -661,5 +661,4 @@ spec:
                         maxLength: 253
                         type: string
                     required:
-                      - group
                       - kind
