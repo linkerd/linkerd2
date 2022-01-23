@@ -1,5 +1,5 @@
 ---
-# Source: linkerd-crds/templates/policy-crd.yaml
+# Source: linkerd-crds/templates/policy/server.yaml
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -13,7 +13,7 @@ metadata:
 spec:
   group: policy.linkerd.io
   names:
-    kind: Server
+    # kind: Server
     plural: servers
     singular: server
     shortNames: [srv]
@@ -146,6 +146,8 @@ spec:
         type: string
         description: The protocol of the server
         jsonPath: .spec.proxyProtocol
+---
+# Source: linkerd-crds/templates/policy/serverauthorization.yaml
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -433,6 +435,9 @@ spec:
         description: The server that this grants access to
         jsonPath: .spec.server.name
 ---
+# Source: linkerd-crds/templates/policy/authorizationpolicy.yaml
+
+---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -449,7 +454,7 @@ spec:
     kind: AuthorizationPolicy
     plural: authorizationpolicies
     singular: authorizationpolicy
-    shortNames: [authz]
+    shortNames: []
   versions:
     - name: v1alpha1
       served: true
@@ -535,6 +540,91 @@ spec:
                       - group
                       - kind
 ---
+# Source: linkerd-crds/templates/policy/meshtlsauthentication.yaml
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: meshtlsauthentications.policy.linkerd.io
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+  labels:
+    helm.sh/chart: linkerd-crds-
+    linkerd.io/control-plane-ns: linkerd-dev
+spec:
+  group: policy.linkerd.io
+  scope: Namespaced
+  names:
+    kind: MeshTLSAuthentication
+    plural: meshtlsauthentications
+    singular: meshtlsauthentication
+    shortNames: []
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              description: >-
+                TODO
+              type: object
+              oneOf:
+                - required: [identities]
+                - required: [identityRefs]
+              properties:
+                identities:
+                  description: >-
+                    Authorizes clients with the provided proxy identity strings (as provided via
+                    MTLS)
+
+                    The `*` prefix can be used to match all identities in
+                    a domain. An identity string of `*` indicates that
+                    all authentication clients are authorized.
+                  type: array
+                  items:
+                    type: string
+                    pattern: '^(\*|[a-z0-9]([-a-z0-9]*[a-z0-9])?)(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$'
+                identityRefs:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      group:
+                        description: >-
+                          Group is the group of the referent. When empty, the Kubernetes core API
+                          group is inferred."
+                        maxLength: 253
+                        pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                        type: string
+                      kind:
+                        description: >-
+                          Kind is the kind of the referent.
+                        maxLength: 63
+                        minLength: 1
+                        pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                        type: string
+                      name:
+                        description: >-
+                          Name is the name of the referent. When unspecified, this refers to all
+                          resources of the specified Group and Kind in the specified namespace.
+                        maxLength: 253
+                        minLength: 1
+                        type: string
+                      namespace:
+                        description: >-
+                          Name is the name of the referent. When unspecified, this authentication
+                          refers to the local namespace.
+                        maxLength: 253
+                        type: string
+                    required:
+                      - kind
+---
+# Source: linkerd-crds/templates/policy/networkauthentication.yaml
+---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -583,88 +673,6 @@ spec:
                         type: array
                         items:
                           type: string
----
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: meshtlsauthentications.policy.linkerd.io
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerd-version
-  labels:
-    helm.sh/chart: linkerd-crds-
-    linkerd.io/control-plane-ns: linkerd-dev
-spec:
-  group: policy.linkerd.io
-  scope: Namespaced
-  names:
-    kind: MeshTLSAuthentication
-    plural: meshtlsauthentications
-    singular: meshtlsauthentication
-    shortNames: []
-  versions:
-    - name: v1alpha1
-      served: true
-      storage: true
-      schema:
-        openAPIV3Schema:
-          type: object
-          required: [spec]
-          properties:
-            spec:
-              description: >-
-                TODO
-              type: object
-              oneOf:
-                - required: [identities]
-                - required: [ientityRefs]
-              properties:
-                identities:
-                  description: >-
-                    Authorizes clients with the provided proxy identity strings (as provided via
-                    MTLS)
-
-                    The `*` prefix can be used to match all identities in
-                    a domain. An identity string of `*` indicates that
-                    all authentication clients are authorized.
-                  type: array
-                  items:
-                    type: string
-                    pattern: '^(\*|[a-z0-9]([-a-z0-9]*[a-z0-9])?)(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$'
-                identityRefs:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      group:
-                        description: >-
-                          Group is the group of the referent. When empty, the Kubernetes core API
-                          group is inferred."
-                        maxLength: 253
-                        pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
-                        type: string
-                      kind:
-                        description: >-
-                          Kind is the kind of the referent.
-                        maxLength: 63
-                        minLength: 1
-                        pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
-                        type: string
-                      name:
-                        description: >-
-                          Name is the name of the referent. When unspecified, this refers to all
-                          resources of the specified Group and Kind in the specified namespace.
-                        maxLength: 253
-                        minLength: 1
-                        type: string
-                      namespace:
-                        description: >-
-                          Name is the name of the referent. When unspecified, this authentication
-                          refers to the local namespace.
-                        maxLength: 253
-                        type: string
-                    required:
-                      - group
-                      - kind
 ---
 # Source: linkerd-crds/templates/serviceprofile-crd.yaml
 ---

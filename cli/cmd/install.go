@@ -61,7 +61,11 @@ Otherwise, you can use the --ignore-cluster flag to overwrite the existing globa
 
 var (
 	templatesCrdFiles = []string{
-		"templates/policy-crd.yaml",
+		"templates/policy/server.yaml",
+		"templates/policy/serverauthorization.yaml",
+		"templates/policy/authorizationpolicy.yaml",
+		"templates/policy/meshtlsauthentication.yaml",
+		"templates/policy/networkauthentication.yaml",
 		"templates/serviceprofile-crd.yaml",
 	}
 
