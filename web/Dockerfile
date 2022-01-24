@@ -11,7 +11,7 @@ RUN ./bin/install-deps $TARGETARCH
 
 ## bundle web assets
 FROM --platform=$BUILDPLATFORM node:16-bullseye as webpack-bundle
-RUN bin/scurl -o- https://yarnpkg.com/install.sh | bash -s -- --version 1.22.10 --network-concurrency 1
+RUN bin/scurl --retry=2 https://yarnpkg.com/install.sh | bash -s -- --version 1.22.10 --network-concurrency 1
 
 ENV PATH /root/.yarn/bin:$PATH
 ENV ROOT /linkerd-build
