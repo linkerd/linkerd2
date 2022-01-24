@@ -1,9 +1,10 @@
 {
     "name": "linkerd2",
-    "image": "ghcr.io/linkerd/dev:v4",
-    // "dockerFile": "./Dockerfile",
+    "image": "ghcr.io/linkerd/dev:v5",
+    //"dockerFile": "./Dockerfile",
     "extensions": [
         "DavidAnson.vscode-markdownlint",
+        "golang.go",
         "matklad.rust-analyzer",
         "NathanRidley.autotrim",
         "samverschueren.final-newline",

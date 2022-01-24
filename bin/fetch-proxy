@@ -13,7 +13,7 @@ builddir="$rootdir/target/proxy"
 
 version=${1:-latest}
 if [ "$version" = latest ]; then
-  version=$(curl -sL https://api.github.com/repos/linkerd/linkerd2-proxy/releases/latest |jq -r .tag_name | sed 's,^release/,,')
+  version=$("$bindir"/scurl https://api.github.com/repos/linkerd/linkerd2-proxy/releases/latest |jq -r .tag_name | sed 's,^release/,,')
 fi
 
 assetbase="https://github.com/linkerd/linkerd2-proxy/releases/download/release%2F${version}"
@@ -24,8 +24,8 @@ shafile="${pkgname}.txt"
 
 mkdir -p "$builddir"
 cd "$builddir"
-curl -sLO "$assetbase/$pkgfile"
-curl -sLO "$assetbase/$shafile"
+"$bindir"/scurl -O "$assetbase/$pkgfile"
+"$bindir"/scurl -O "$assetbase/$shafile"
 
 tar -zxvf "$pkgfile" >&2
 expected=$(awk '{print $1}' "$shafile")

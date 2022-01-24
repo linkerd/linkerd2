@@ -141,7 +141,7 @@ func startDocker(testNum int, wd string, testWorkRootDir string, tempCNINetDir s
 		"-v", tempCNINetDir + ":" + hostCniNetDir,
 		"-v", tempCNIBinDir + ":/host/opt/cni/bin",
 		"-v", tempK8sSvcAcctDir + ":/var/run/secrets/kubernetes.io/serviceaccount",
-		"--env-file", wd + "/data/env_vars.sh",
+		"--env-file", wd + "/data/env_vars.list",
 		"-e", cniNetworkConfigName,
 		"-e", "SLEEP=true",
 	}

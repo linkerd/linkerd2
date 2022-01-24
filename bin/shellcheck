@@ -22,7 +22,7 @@ if [ ! -f "$scbin" ]; then
   fi
 
   mkdir -p "$targetbin"
-  curl -sLf "https://github.com/koalaman/shellcheck/releases/download/$scversion/shellcheck-${scversion?}.$file" | tar -OxJv "shellcheck-${scversion}/shellcheck" > "$scbin"
+  "$bindir"/scurl "https://github.com/koalaman/shellcheck/releases/download/$scversion/shellcheck-${scversion?}.$file" | tar -OxJv "shellcheck-${scversion}/shellcheck" > "$scbin"
   chmod +x "$scbin"
 fi
 
