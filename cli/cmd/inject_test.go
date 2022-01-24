@@ -134,6 +134,17 @@ func TestUninjectAndInject(t *testing.T) {
 			}(),
 		},
 		{
+			inputFileName:  "inject_emojivoto_deployment.input.yml",
+			goldenFileName: "inject_emojivoto_deployment_access_log.golden.yml",
+			reportFileName: "inject_emojivoto_deployment.report",
+			injectProxy:    true,
+			testInjectConfig: func() *linkerd2.Values {
+				values := defaultConfig()
+				values.Proxy.AccessLog = "apache"
+				return values
+			}(),
+		},
+		{
 			inputFileName:    "inject_emojivoto_list.input.yml",
 			goldenFileName:   "inject_emojivoto_list.golden.yml",
 			reportFileName:   "inject_emojivoto_list.report",
