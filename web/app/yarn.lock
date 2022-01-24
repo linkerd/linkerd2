@@ -1366,10 +1366,10 @@
     jest-validate "^26.5.2"
     lodash.get "^4.4.2"
 
-"@lingui/core@^3.13.0":
-  version "3.13.0"
-  resolved "https://registry.yarnpkg.com/@lingui/core/-/core-3.13.0.tgz#0b83ba400b0b4abb24a86eb9e24cf9148cb2d84b"
-  integrity sha512-UDmI8UL59rLmQDDjBK8JFMX0+i3+pncl3fWG+tD2cXNJkN+MEBrhECTQ2lsM1tCk09AfiATglPPXm1e0tLxxOw==
+"@lingui/core@^3.13.0", "@lingui/core@^3.13.2":
+  version "3.13.2"
+  resolved "https://registry.yarnpkg.com/@lingui/core/-/core-3.13.2.tgz#1c8b264c7eb5d7fa11c59916542bf5fc8e1b9309"
+  integrity sha512-ic1uC+bS7hpfM4oVugHKel8UhlLAwykSv2TYw3oyeEQhvCS232nSzh+PFbP0BXK1hZ0UdHve7mODpgADuwHIQA==
   dependencies:
     "@babel/runtime" "^7.11.2"
     make-plural "^6.2.2"
