@@ -1203,6 +1203,7 @@ data:
           - disabled
     prometheusUrl: ""
     proxy:
+      accessLog: ""
       await: false
       capabilities: null
       defaultInboundPolicy: ""
