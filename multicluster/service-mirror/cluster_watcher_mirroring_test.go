@@ -2,6 +2,7 @@ package servicemirror
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"testing"
@@ -34,28 +35,37 @@ func (tc *mirroringTestCase) run(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if tc.expectedLocalServices == nil {
-			// ensure the are no local services
-			services, err := localAPI.Client.CoreV1().Services(corev1.NamespaceAll).List(context.Background(), metav1.ListOptions{})
-			if err != nil {
+
+		serviceList, err := localAPI.Client.CoreV1().Services("").List(context.Background(), metav1.ListOptions{})
+		if err != nil {
+			t.Fatalf("Could not list actual services")
+		}
+		actualServices := map[string]v1.Service{}
+		for _, svc := range serviceList.Items {
+			id := fmt.Sprintf("%s/%s", svc.Namespace, svc.Name)
+			actualServices[id] = svc
+		}
+
+		for _, expected := range tc.expectedLocalServices {
+			expectedId := fmt.Sprintf("%s/%s", expected.Namespace, expected.Name)
+			actual, found := actualServices[expectedId]
+			if !found {
+				t.Fatalf("Could not find mirrored service with name %s, found services %v", expected.Name, actualServices)
+			}
+
+			if err := diffServices(expected, &actual); err != nil {
 				t.Fatal(err)
 			}
 
-			if len(services.Items) > 0 {
-				t.Fatalf("Was expecting no local services but instead found %v", services.Items)
+			delete(actualServices, expectedId)
+		}
 
-			}
-		} else {
-			for _, expected := range tc.expectedLocalServices {
-				actual, err := localAPI.Client.CoreV1().Services(expected.Namespace).Get(context.Background(), expected.Name, metav1.GetOptions{})
-				if err != nil {
-					t.Fatalf("Could not find mirrored service with name %s", expected.Name)
-				}
-
-				if err := diffServices(expected, actual); err != nil {
-					t.Fatal(err)
-				}
-			}
+		var extraServices []string
+		for id := range actualServices {
+			extraServices = append(extraServices, id)
+		}
+		if len(extraServices) > 0 {
+			t.Fatalf("Found extra services not in expected list: %v", extraServices)
 		}
 
 		if tc.expectedLocalEndpoints == nil {
