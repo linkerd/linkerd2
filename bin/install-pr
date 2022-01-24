@@ -74,20 +74,21 @@ fi
 linkerd2_pulls_url="https://api.github.com/repos/linkerd/linkerd2/pulls"
 linkerd2_integration_url="https://api.github.com/repos/linkerd/linkerd2/actions/workflows/integration_tests.yml"
 
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+
 # Get the URL for downloading the artifacts archive
 auth="Authorization: token $GITHUB_TOKEN"
-branch=$(curl -sL -H "$auth" "$linkerd2_pulls_url/$pr" | jq -r '.head.ref')
-artifacts=$(curl -sL -H "$auth" "$linkerd2_integration_url/runs?branch=$branch" | jq -r '.workflow_runs[0].artifacts_url')
-archive=$(curl -sL -H "$auth" "$artifacts" | jq -r '.artifacts[0].archive_download_url')
+branch=$("$bindir"/scurl -H "$auth" "$linkerd2_pulls_url/$pr" | jq -r '.head.ref')
+artifacts=$("$bindir"/scurl -H "$auth" "$linkerd2_integration_url/runs?branch=$branch" | jq -r '.workflow_runs[0].artifacts_url')
+archive=$("$bindir"/scurl -H "$auth" "$artifacts" | jq -r '.artifacts[0].archive_download_url')
 
-bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 dir=$(mktemp -d -t "linkerd-pr-$pr.XXXXXXXXXX")
 
 cd "$dir" || exit
 
 echo "### Downloading images ###"
 
-curl -L -o archive.zip -H "$auth" "$archive"
+"$bindir"/scurl -o archive.zip -H "$auth" "$archive"
 unzip -o archive.zip -d image-archives/
 
 echo "### Loading images into Docker ###"
