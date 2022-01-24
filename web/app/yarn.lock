@@ -1378,13 +1378,13 @@
     make-plural "^6.2.2"
     messageformat-parser "^4.1.3"
 
-"@lingui/macro@3.13.0":
-  version "3.13.0"
-  resolved "https://registry.yarnpkg.com/@lingui/macro/-/macro-3.13.0.tgz#accb4a97ff7109d76647a1114f6527037cab5fef"
-  integrity sha512-TmwAiFnxtutDEKp7KFtUmq5vIfv56zn0FV0ZgrISUcW1liVlRyqW6YnQ7cv4AzsPnkBhO2+O2YVoHY1r5owMvA==
+"@lingui/macro@3.13.1":
+  version "3.13.1"
+  resolved "https://registry.yarnpkg.com/@lingui/macro/-/macro-3.13.1.tgz#5b0f57d7ef77b09bdf0d2107422dd3a4ace99c39"
+  integrity sha512-iXdAbREJpIUs3s78Erbg+7ZRuJsD0S0nyGCeEo9Ml/NDO/MtVYo7XCHecwtCdNxDe/h0NItB3m/7uPZ/BvOLOA==
   dependencies:
     "@babel/runtime" "^7.11.2"
-    "@lingui/conf" "^3.13.0"
+    "@lingui/conf" "^3.13.1"
     ramda "^0.27.1"
 
 "@lingui/react@3.13.0":
