@@ -399,7 +399,7 @@ install_version() {
     local install_url=$1
     local version=$2
 
-    "$bindir"/scurl --proto '=https' --tlsv1.2 -sSfL "$install_url" | HOME=$tmp sh > /dev/null 2>&1
+    "$bindir"/scurl "$install_url" | HOME=$tmp sh > /dev/null 2>&1
 
     local linkerd_path=$tmp/.linkerd2/bin/linkerd
     local test_app_namespace=upgrade-test
