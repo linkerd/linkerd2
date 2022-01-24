@@ -41,7 +41,7 @@ ENV HOME=/home/$USER
 RUN mkdir -p $HOME/bin
 ENV PATH=$HOME/bin:$PATH
 
-RUN scurl -vo $HOME/bin/kubectl "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+RUN scurl -vo $HOME/bin/kubectl "https://dl.k8s.io/release/$(scurl https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
     && chmod 755 $HOME/bin/kubectl
 RUN scurl -v https://raw.githubusercontent.com/rancher/k3d/main/install.sh \
     | USE_SUDO=false K3D_INSTALL_DIR=$HOME/bin bash
