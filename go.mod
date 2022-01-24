@@ -7,7 +7,7 @@ require (
 	github.com/briandowns/spinner v0.0.0-20190212173954-5cf08d0ac778
 	github.com/clarketm/json v1.15.7
 	github.com/containernetworking/cni v1.0.1
-	github.com/emicklei/proto v1.9.1
+	github.com/emicklei/proto v1.9.2
 	github.com/evanphx/json-patch v5.6.0+incompatible
 	github.com/fatih/color v1.13.0
 	github.com/fsnotify/fsnotify v1.5.1
@@ -26,7 +26,7 @@ require (
 	github.com/nsf/termbox-go v0.0.0-20180613055208-5c94acc5e6eb
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
-	github.com/prometheus/client_golang v1.11.0
+	github.com/prometheus/client_golang v1.12.0
 	github.com/prometheus/common v0.32.1
 	github.com/sergi/go-diff v1.2.0
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
@@ -41,13 +41,13 @@ require (
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
 	google.golang.org/protobuf v1.27.1
 	helm.sh/helm/v3 v3.7.2
-	k8s.io/api v0.23.1
-	k8s.io/apiextensions-apiserver v0.23.1
-	k8s.io/apimachinery v0.23.1
-	k8s.io/client-go v0.23.1
-	k8s.io/code-generator v0.23.1
+	k8s.io/api v0.23.2
+	k8s.io/apiextensions-apiserver v0.23.2
+	k8s.io/apimachinery v0.23.2
+	k8s.io/client-go v0.23.2
+	k8s.io/code-generator v0.23.2
 	k8s.io/klog/v2 v2.40.1
-	k8s.io/kube-aggregator v0.23.1
+	k8s.io/kube-aggregator v0.23.2
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -128,7 +128,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
-	github.com/prometheus/procfs v0.6.0 // indirect
+	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
@@ -143,7 +143,7 @@ require (
 	golang.org/x/mod v0.5.1 // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20211205182925-97ca703d548d // indirect
+	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9 // indirect
 	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
@@ -162,7 +162,7 @@ require (
 	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
 	sigs.k8s.io/kustomize/api v0.10.1 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.13.0 // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.1.2 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 )
 
 // to avoid the `github.com/golang/protobuf/protoc-gen-go/generator` deprecation warning

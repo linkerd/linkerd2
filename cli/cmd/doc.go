@@ -236,5 +236,9 @@ func generateAnnotationsDocs() []annotationDoc {
 			Name:        k8s.CloseWaitTimeoutAnnotation,
 			Description: "Sets nf_conntrack_tcp_timeout_close_wait. Accepts a duration string, e.g. `1m` or `3600s`",
 		},
+		{
+			Name:        k8s.ProxySkipSubnetsAnnotation,
+			Description: "Comma-separated list of subnets in valid CIDR format that should be skipped by the proxy",
+		},
 	}
 }

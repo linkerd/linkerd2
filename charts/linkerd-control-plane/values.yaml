@@ -167,6 +167,8 @@ proxyInit:
   # -- Default set of outbound ports to skip via iptables
   # - Galera (4567,4568)
   ignoreOutboundPorts: "4567,4568"
+  # -- Comma-separated list of subnets in valid CIDR format that should be skipped by the proxy
+  skipSubnets: ""
   # -- Log level for the proxy-init
   # @default -- info
   logLevel: ""
