@@ -92,7 +92,7 @@ status:
 			},
 		},
 		{
-			err: status.Errorf(codes.NotFound, "no pods to tap for pod/emojivoto-not-meshed\n"),
+			err: status.Errorf(codes.NotFound, "no pods to tap for type=\"pod\" name=\"emojivoto-not-meshed\"\n"),
 			k8sRes: []string{`
 apiVersion: v1
 kind: Pod
@@ -158,7 +158,7 @@ status:
 			},
 		},
 		{
-			err: status.Errorf(codes.NotFound, "no pods to tap for pod/emojivoto-meshed\n"),
+			err: status.Errorf(codes.NotFound, "no pods to tap for type=\"pod\" name=\"emojivoto-meshed\"\n"),
 			k8sRes: []string{`
 apiVersion: v1
 kind: Pod
@@ -186,7 +186,7 @@ status:
 			},
 		},
 		{
-			err: status.Errorf(codes.NotFound, `no pods to tap for pod/emojivoto-meshed-tap-disabled
+			err: status.Errorf(codes.NotFound, `no pods to tap for type="pod" name="emojivoto-meshed-tap-disabled"
 1 pods found with tap disabled via the viz.linkerd.io/disable-tap annotation:
 	* emojivoto-meshed-tap-disabled
 remove this annotation to make these pods valid tap targets
@@ -224,7 +224,7 @@ status:
 			},
 		},
 		{
-			err: status.Errorf(codes.NotFound, `no pods to tap for pod/emojivoto-meshed-tap-not-enabled
+			err: status.Errorf(codes.NotFound, `no pods to tap for type="pod" name="emojivoto-meshed-tap-not-enabled"
 1 pods found with tap not enabled:
 	* emojivoto-meshed-tap-not-enabled
 restart these pods to enable tap and make them valid tap targets
