@@ -257,6 +257,10 @@ const (
 	// inbound policy of the proxy
 	ProxyDefaultInboundPolicyAnnotation = ProxyConfigAnnotationsPrefix + "/default-inbound-policy"
 
+	// ProxyAccessLogAnnotation configures whether HTTP access logging is
+	// enabled, and what access log format is used.
+	ProxyAccessLogAnnotation = ProxyConfigAnnotationsPrefix + "/access-log"
+
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.
 	IdentityModeDefault = "default"
