@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
@@ -16,13 +17,17 @@ func TapReqToURL(req *tapPb.TapByResourceRequest) string {
 	if res.GetType() == k8s.Namespace {
 		return fmt.Sprintf(
 			"/apis/tap.linkerd.io/v1alpha1/watch/namespaces/%s/tap",
-			res.GetName(),
+			url.PathEscape(res.GetName()),
 		)
 	}
 
 	// namespaced
 	return fmt.Sprintf(
 		"/apis/tap.linkerd.io/v1alpha1/watch/namespaces/%s/%s/%s/tap",
-		res.GetNamespace(), res.GetType()+"s", res.GetName(),
+		url.PathEscape(res.GetNamespace()),
+		// FIXME(olix0r): This pluralization is probably not correct for all
+		// resource types.
+		url.PathEscape(res.GetType()+"s"),
+		url.PathEscape(res.GetName()),
 	)
 }
