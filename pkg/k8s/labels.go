@@ -397,6 +397,10 @@ const (
 	// services.
 	DefaultExportedServiceSelector = SvcMirrorPrefix + "/exported"
 
+	// GlobalServiceNameLabel returns whether or not the name is global or should be localized to
+	// each cluster it is mirrored on, containing the remote mirror name
+	GlobalServiceNameLabel = SvcMirrorPrefix + "/global-service-name"
+
 	// MirroredResourceLabel indicates that this resource is the result
 	// of a mirroring operation (can be a namespace or a service)
 	MirroredResourceLabel = SvcMirrorPrefix + "/mirrored-service"

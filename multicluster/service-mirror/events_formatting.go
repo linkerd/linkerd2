@@ -61,7 +61,12 @@ func (rsu RemoteServiceUpdated) String() string {
 }
 
 func (rsd RemoteServiceDeleted) String() string {
-	return fmt.Sprintf("RemoteServiceDeleted: {name: %s, namespace: %s }", rsd.Name, rsd.Namespace)
+	globalName := ""
+	if rsd.GlobalName != nil {
+		globalName = *rsd.GlobalName
+	}
+
+	return fmt.Sprintf("RemoteServiceDeleted: {name: %s, namespace: %s, globalName: %s }", rsd.Name, rsd.Namespace, globalName)
 }
 
 func (cgu ClusterUnregistered) String() string {

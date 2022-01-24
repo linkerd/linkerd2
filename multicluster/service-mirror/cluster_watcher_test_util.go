@@ -2,6 +2,7 @@ package servicemirror
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"reflect"
@@ -14,6 +15,8 @@ import (
 	"github.com/linkerd/linkerd2/pkg/multicluster"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	discoveryv1beta1 "k8s.io/api/discovery/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -55,14 +58,15 @@ func (te *testEnvironment) runEnvironment(watcherQueue workqueue.RateLimitingInt
 	localAPI.Sync(nil)
 
 	watcher := RemoteClusterServiceWatcher{
-		link:                    &te.link,
-		remoteAPIClient:         remoteAPI,
-		localAPIClient:          localAPI,
-		stopper:                 nil,
-		log:                     logging.WithFields(logging.Fields{"cluster": clusterName}),
-		eventsQueue:             watcherQueue,
-		requeueLimit:            0,
-		headlessServicesEnabled: true,
+		link:                       &te.link,
+		remoteAPIClient:            remoteAPI,
+		localAPIClient:             localAPI,
+		stopper:                    nil,
+		log:                        logging.WithFields(logging.Fields{"cluster": clusterName}),
+		eventsQueue:                watcherQueue,
+		requeueLimit:               0,
+		headlessServicesEnabled:    true,
+		endpointMirrorServiceCache: NewEndpointMirrorServiceCache(),
 	}
 
 	for _, ev := range te.events {
@@ -119,7 +123,7 @@ var createExportedService = &testEnvironment{
 var createExportedHeadlessService = &testEnvironment{
 	events: []interface{}{
 		&RemoteServiceCreated{
-			service: remoteHeadlessService("service-one", "ns2", "111", map[string]string{
+			service: remoteHeadlessService("service-one", "ns3", "111", map[string]string{
 				consts.DefaultExportedServiceSelector: "true",
 			}, []corev1.ServicePort{
 				{
@@ -135,7 +139,7 @@ var createExportedHeadlessService = &testEnvironment{
 			}),
 		},
 		&OnAddEndpointsCalled{
-			ep: remoteHeadlessEndpoints("service-one", "ns2", "112", "192.0.0.1", []corev1.EndpointPort{
+			ep: remoteHeadlessEndpoints("service-one", "ns3", "112", "192.0.0.1", []corev1.EndpointPort{
 				{
 					Name:     "port1",
 					Protocol: "TCP",
@@ -151,7 +155,7 @@ var createExportedHeadlessService = &testEnvironment{
 	},
 	remoteResources: []string{
 		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.129", "gateway", 889, "gateway-identity", 123456, "/probe1", 120),
-		remoteHeadlessSvcAsYaml("service-one", "ns2", "111",
+		remoteHeadlessSvcAsYaml("service-one", "ns3", "111",
 			[]corev1.ServicePort{
 				{
 					Name:     "port1",
@@ -164,7 +168,7 @@ var createExportedHeadlessService = &testEnvironment{
 					Port:     666,
 				},
 			}),
-		remoteHeadlessEndpointsAsYaml("service-one", "ns2", "112", "192.0.0.1", []corev1.EndpointPort{
+		remoteHeadlessEndpointsAsYaml("service-one", "ns3", "112", "192.0.0.1", []corev1.EndpointPort{
 			{
 				Name:     "port1",
 				Protocol: "TCP",
@@ -178,7 +182,87 @@ var createExportedHeadlessService = &testEnvironment{
 		}),
 	},
 	localResources: []string{
-		namespaceAsYaml("ns2"),
+		namespaceAsYaml("ns3"),
+	},
+	link: multicluster.Link{
+		TargetClusterName:   clusterName,
+		TargetClusterDomain: clusterDomain,
+		GatewayIdentity:     "gateway-identity",
+		GatewayAddress:      "192.0.2.129",
+		GatewayPort:         889,
+		ProbeSpec: multicluster.ProbeSpec{
+			Port:   123456,
+			Path:   "/probe1",
+			Period: 120,
+		},
+		Selector: *defaultSelector,
+	},
+}
+
+var createExportedGlobalService = &testEnvironment{
+	events: []interface{}{
+		&RemoteServiceCreated{
+			service: remoteHeadlessService("service-one", "ns4", "111", map[string]string{
+				consts.DefaultExportedServiceSelector: "true",
+				consts.GlobalServiceNameLabel:         "service-one-global",
+			}, []corev1.ServicePort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		},
+		&OnAddEndpointsCalled{
+			ep: remoteHeadlessEndpoints("service-one", "ns4", "112", "192.0.0.1", []corev1.EndpointPort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		},
+	},
+	remoteResources: []string{
+		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.129", "gateway", 889, "gateway-identity", 123456, "/probe1", 120),
+		remoteGlobalSvcAsYaml("service-one", "ns4", "111", "service-one-global",
+			[]corev1.ServicePort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		remoteHeadlessEndpointsAsYaml("service-one", "ns4", "112", "192.0.0.1", []corev1.EndpointPort{
+			{
+				Name:     "port1",
+				Protocol: "TCP",
+				Port:     555,
+			},
+			{
+				Name:     "port2",
+				Protocol: "TCP",
+				Port:     666,
+			},
+		}),
+	},
+	localResources: []string{
+		namespaceAsYaml("ns4"),
 	},
 	link: multicluster.Link{
 		TargetClusterName:   clusterName,
@@ -206,6 +290,57 @@ var deleteMirrorService = &testEnvironment{
 		mirrorServiceAsYaml("test-service-remote-to-delete-remote", "test-namespace-to-delete", "", nil),
 		endpointsAsYaml("test-service-remote-to-delete-remote", "test-namespace-to-delete", "", "gateway-identity", nil),
 	},
+	link: multicluster.Link{
+		TargetClusterName:   clusterName,
+		TargetClusterDomain: clusterDomain,
+		GatewayIdentity:     "gateway-identity",
+		GatewayAddress:      "192.0.2.127",
+		GatewayPort:         888,
+		ProbeSpec:           defaultProbeSpec,
+		Selector:            *defaultSelector,
+	},
+}
+
+var deleteHeadlessMirrorService = &testEnvironment{
+	events: []interface{}{
+		&RemoteServiceDeleted{
+			Name:      "test-service-remote-to-delete",
+			Namespace: "test-namespace-to-delete",
+		},
+	},
+	localResources: []string{
+		headlessMirrorAsYaml("test-service-remote-to-delete-remote", "test-namespace-to-delete", "", nil),
+		endpointsAsYaml("test-service-remote-to-delete-remote", "test-namespace-to-delete", "", "gateway-identity", nil),
+	},
+	link: multicluster.Link{
+		TargetClusterName:   clusterName,
+		TargetClusterDomain: clusterDomain,
+		GatewayIdentity:     "gateway-identity",
+		GatewayAddress:      "192.0.2.127",
+		GatewayPort:         888,
+		ProbeSpec:           defaultProbeSpec,
+		Selector:            *defaultSelector,
+	},
+}
+
+func StringRef(s string) *string { return &s }
+
+func ProtocolRef(s v1.Protocol) *v1.Protocol { return &s }
+
+func Int32Ref(s int32) *int32 { return &s }
+
+var deleteGlobalMirrorService = &testEnvironment{
+	events: []interface{}{
+		&RemoteServiceDeleted{
+			Name:       "test-service-remote-to-delete",
+			Namespace:  "test-namespace-to-delete",
+			GlobalName: StringRef("test-service-remote-to-delete-global"),
+		},
+	},
+	localResources: append(
+		globalMirrorPairAsYaml("test-service-remote-to-delete-remote", "test-namespace-to-delete", "", "test-service-remote-to-delete-global", nil),
+		endpointsAsYaml("test-service-remote-to-delete-remote", "test-namespace-to-delete", "", "gateway-identity", nil),
+	),
 	link: multicluster.Link{
 		TargetClusterName:   clusterName,
 		TargetClusterDomain: clusterDomain,
@@ -417,16 +552,267 @@ var updateEndpointsWithChangedHosts = &testEnvironment{
 		Selector:            *defaultSelector,
 	},
 }
+
+var updateEndpointSlicesWithAddedHosts = &testEnvironment{
+	events: []interface{}{
+		&OnUpdateEndpointsCalled{
+			ep: remoteHeadlessEndpointsUpdate("service-two", "estest", "112", "192.0.0.1", []corev1.EndpointPort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		},
+	},
+	remoteResources: []string{
+		gatewayAsYaml("gateway", "gateway-ns", "currentGatewayResVersion", "192.0.2.127", "mc-gateway", 888, "", defaultProbePort, defaultProbePath, defaultProbePeriod),
+		remoteGlobalSvcAsYaml("service-two", "estest", "222", "service-two-global",
+			[]corev1.ServicePort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+	},
+	localResources: append(
+		globalMirrorPairAsYaml("service-two-remote", "estest", "222", "service-two-global",
+			[]corev1.ServicePort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		globalMirrorEndpointSliceAsYaml("service-two-global", "service-two", "estest", "pod-0", "", "gateway-identity", nil),
+		endpointMirrorAsYaml("pod-0", "service-two-remote", "estest", "333", []corev1.ServicePort{
+			{
+				Name:     "port1",
+				Protocol: "TCP",
+				Port:     555,
+			},
+			{
+				Name:     "port2",
+				Protocol: "TCP",
+				Port:     666,
+			},
+		}),
+		headlessMirrorEndpointsAsYaml(
+			"service-two-remote",
+			"estest",
+			"pod-0",
+			"",
+			"gateway-identity",
+			[]corev1.EndpointPort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		endpointMirrorEndpointsAsYaml(
+			"service-two-remote",
+			"estest",
+			"pod-0",
+			"192.0.2.127",
+			"gateway-identity",
+			[]corev1.EndpointPort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     888,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     888,
+				},
+			}),
+	),
+	link: multicluster.Link{
+		TargetClusterName:   clusterName,
+		TargetClusterDomain: clusterDomain,
+		GatewayIdentity:     "gateway-identity",
+		GatewayAddress:      "192.0.2.127",
+		GatewayPort:         888,
+		ProbeSpec:           defaultProbeSpec,
+		Selector:            *defaultSelector,
+	},
+}
+
+var updateEndpointSlicesWithRemovedHosts = &testEnvironment{
+	events: []interface{}{
+		&OnUpdateEndpointsCalled{
+			ep: remoteHeadlessEndpoints("service-two", "estest", "112", "192.0.0.1", []corev1.EndpointPort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		},
+	},
+	remoteResources: []string{
+		gatewayAsYaml("gateway", "gateway-ns", "currentGatewayResVersion", "192.0.2.127", "mc-gateway", 888, "", defaultProbePort, defaultProbePath, defaultProbePeriod),
+		remoteGlobalSvcAsYaml("service-two", "estest", "222", "service-two-global",
+			[]corev1.ServicePort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+	},
+	localResources: append(
+		globalMirrorPairAsYaml("service-two-remote", "estest", "222", "service-two-global",
+			[]corev1.ServicePort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		globalMirrorEndpointSliceAsYaml("service-two-global", "service-two", "estest", "pod-0", "", "gateway-identity", nil),
+		headlessMirrorEndpointsUpdatedAsYaml(
+			"service-two-remote",
+			"estest",
+			[]string{"pod-0", "pod-1"},
+			[]string{"", ""},
+			"gateway-identity",
+			[]corev1.EndpointPort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		endpointMirrorAsYaml("pod-0", "service-two-remote", "estest", "333", []corev1.ServicePort{
+			{
+				Name:     "port1",
+				Protocol: "TCP",
+				Port:     555,
+			},
+			{
+				Name:     "port2",
+				Protocol: "TCP",
+				Port:     666,
+			},
+		}),
+		endpointMirrorEndpointsAsYaml(
+			"service-two-remote",
+			"estest",
+			"pod-0",
+			"192.0.2.127",
+			"gateway-identity",
+			[]corev1.EndpointPort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     888,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     888,
+				},
+			}),
+		endpointMirrorAsYaml("pod-1", "service-two-remote", "estest", "333", []corev1.ServicePort{
+			{
+				Name:     "port1",
+				Protocol: "TCP",
+				Port:     555,
+			},
+			{
+				Name:     "port2",
+				Protocol: "TCP",
+				Port:     666,
+			},
+		}),
+		endpointMirrorEndpointsAsYaml(
+			"service-two-remote",
+			"estest",
+			"pod-1",
+			"192.0.2.127",
+			"gateway-identity",
+			[]corev1.EndpointPort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     888,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     888,
+				},
+			}),
+	),
+	link: multicluster.Link{
+		TargetClusterName:   clusterName,
+		TargetClusterDomain: clusterDomain,
+		GatewayIdentity:     "gateway-identity",
+		GatewayAddress:      "192.0.2.127",
+		GatewayPort:         888,
+		ProbeSpec:           defaultProbeSpec,
+		Selector:            *defaultSelector,
+	},
+}
+
 var clusterUnregistered = &testEnvironment{
 	events: []interface{}{
 		&ClusterUnregistered{},
 	},
-	localResources: []string{
+	localResources: append(
+		globalMirrorPairAsYaml("test-service-3-remote", "test-namespace", "", "test-service-3-global", nil),
 		mirrorServiceAsYaml("test-service-1-remote", "test-namespace", "", nil),
 		endpointsAsYaml("test-service-1-remote", "test-namespace", "", "", nil),
 		mirrorServiceAsYaml("test-service-2-remote", "test-namespace", "", nil),
 		endpointsAsYaml("test-service-2-remote", "test-namespace", "", "", nil),
-	},
+		globalMirrorEndpointSliceAsYaml("test-service-3-global", "test-service-3", "test-namespace", "", "", "", nil),
+	),
 	link: multicluster.Link{
 		TargetClusterName: clusterName,
 	},
@@ -441,6 +827,7 @@ var gcTriggered = &testEnvironment{
 		endpointsAsYaml("test-service-1-remote", "test-namespace", "", "", nil),
 		mirrorServiceAsYaml("test-service-2-remote", "test-namespace", "", nil),
 		endpointsAsYaml("test-service-2-remote", "test-namespace", "", "", nil),
+		globalMirrorEndpointSliceAsYaml("test-service-3-global", "test-service-3", "test-namespace", "foo", "bar", "baz", nil),
 	},
 	remoteResources: []string{
 		remoteServiceAsYaml("test-service-1", "test-namespace", "", nil),
@@ -467,7 +854,6 @@ func onAddOrUpdateExportedSvc(isAdd bool) *testEnvironment {
 			Selector:            *defaultSelector,
 		},
 	}
-
 }
 
 func onAddOrUpdateRemoteServiceUpdated(isAdd bool) *testEnvironment {
@@ -556,6 +942,26 @@ var onDeleteExportedService = &testEnvironment{
 	},
 }
 
+var onDeleteExportedGlobalService = &testEnvironment{
+	events: []interface{}{
+		&OnDeleteCalled{
+			svc: remoteService("test-service", "test-namespace", "currentResVersion", map[string]string{
+				consts.DefaultExportedServiceSelector: "true",
+				consts.GlobalServiceNameLabel:         "test-service-global",
+			}, nil),
+		},
+	},
+	link: multicluster.Link{
+		TargetClusterName:   clusterName,
+		TargetClusterDomain: clusterDomain,
+		GatewayIdentity:     "gateway-identity",
+		GatewayAddress:      "192.0.2.127",
+		GatewayPort:         888,
+		ProbeSpec:           defaultProbeSpec,
+		Selector:            *defaultSelector,
+	},
+}
+
 var onDeleteNonExportedService = &testEnvironment{
 	events: []interface{}{
 		&OnDeleteCalled{
@@ -584,20 +990,24 @@ func onAddOrUpdateEvent(isAdd bool, svc *corev1.Service) interface{} {
 }
 
 func diffServices(expected, actual *corev1.Service) error {
+	errorPrefix := func() string {
+		return fmt.Sprintf("was expecting service %s/%s", expected.Namespace, expected.Name)
+	}
+
 	if expected.Name != actual.Name {
-		return fmt.Errorf("was expecting service with name %s but was %s", expected.Name, actual.Name)
+		return fmt.Errorf("%s with name %s but was %s", errorPrefix(), expected.Name, actual.Name)
 	}
 
 	if expected.Namespace != actual.Namespace {
-		return fmt.Errorf("was expecting service with namespace %s but was %s", expected.Namespace, actual.Namespace)
+		return fmt.Errorf("%s with namespace %s but was %s", errorPrefix(), expected.Namespace, actual.Namespace)
 	}
 
 	if !reflect.DeepEqual(expected.Annotations, actual.Annotations) {
-		return fmt.Errorf("was expecting service with annotations %v but got %v", expected.Annotations, actual.Annotations)
+		return fmt.Errorf("%s with annotations %v but got %v", errorPrefix(), expected.Annotations, actual.Annotations)
 	}
 
 	if !reflect.DeepEqual(expected.Labels, actual.Labels) {
-		return fmt.Errorf("was expecting service with labels %v but got %v", expected.Labels, actual.Labels)
+		return fmt.Errorf("%s with labels %v but got %v", errorPrefix(), expected.Labels, actual.Labels)
 	}
 
 	return nil
@@ -622,6 +1032,43 @@ func diffEndpoints(expected, actual *corev1.Endpoints) error {
 
 	if !reflect.DeepEqual(expected.Subsets, actual.Subsets) {
 		return fmt.Errorf("was expecting endpoints with subsets %v but got %v", expected.Subsets, actual.Subsets)
+	}
+
+	return nil
+}
+
+func diffEndpointSlice(expected, actual *discoveryv1beta1.EndpointSlice) error {
+	errorPrefix := func() string {
+		return fmt.Sprintf("was expecting endpoint slice %s/%s", expected.Namespace, expected.Name)
+	}
+
+	if expected.Name != actual.Name {
+		return fmt.Errorf("%s with name %s but was %s", errorPrefix(), expected.Name, actual.Name)
+	}
+
+	if expected.Namespace != actual.Namespace {
+		return fmt.Errorf("%s with namespace %s but was %s", errorPrefix(), expected.Namespace, actual.Namespace)
+	}
+
+	if !reflect.DeepEqual(expected.Annotations, actual.Annotations) {
+		return fmt.Errorf("%s with annotations %v but got %v", errorPrefix(), expected.Annotations, actual.Annotations)
+	}
+
+	if !reflect.DeepEqual(expected.Labels, actual.Labels) {
+		return fmt.Errorf("%s with labels %v but got %v", errorPrefix(), expected.Labels, actual.Labels)
+	}
+
+	if !reflect.DeepEqual(expected.Endpoints, actual.Endpoints) {
+		expected, _ := json.MarshalIndent(expected.Endpoints, "", "  ")
+		actual, _ := json.MarshalIndent(actual.Endpoints, "", "  ")
+		return fmt.Errorf("%s with endpoints %s but got %s", errorPrefix(), string(expected), string(actual))
+	}
+
+	// TODO
+	if !reflect.DeepEqual(expected.Ports, actual.Ports) {
+		expected, _ := json.MarshalIndent(expected.Ports, "", "  ")
+		actual, _ := json.MarshalIndent(actual.Ports, "", "  ")
+		return fmt.Errorf("%s with ports %s but got %s", errorPrefix(), string(expected), string(actual))
 	}
 
 	return nil
@@ -760,6 +1207,20 @@ func remoteHeadlessSvcAsYaml(name, namespace, resourceVersion string, ports []co
 	return string(bytes)
 }
 
+func remoteGlobalSvcAsYaml(name, namespace, resourceVersion string, globalName string, ports []corev1.ServicePort) string {
+	svc := remoteHeadlessService(name, namespace, resourceVersion, nil, ports)
+	if svc.ObjectMeta.Labels == nil {
+		svc.ObjectMeta.Labels = map[string]string{}
+	}
+	svc.ObjectMeta.Labels[consts.GlobalServiceNameLabel] = globalName
+
+	bytes, err := yaml.Marshal(svc)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return string(bytes)
+}
+
 func remoteHeadlessEndpointsAsYaml(name, namespace, resourceVersion, address string, ports []corev1.EndpointPort) string {
 	ep := remoteHeadlessEndpoints(name, namespace, resourceVersion, address, ports)
 
@@ -798,6 +1259,18 @@ func headlessMirrorService(name, namespace, resourceVersion string, ports []core
 	svc := mirrorService(name, namespace, resourceVersion, ports)
 	svc.Spec.ClusterIP = "None"
 	return svc
+}
+
+func globalMirrorServicePair(name, namespace, resourceVersion string, globalName string, ports []corev1.ServicePort) []*corev1.Service {
+	headlessService := headlessMirrorService(name, namespace, resourceVersion, ports)
+	headlessService.Labels[consts.GlobalServiceNameLabel] = globalName
+	globalService := headlessService.DeepCopy()
+	globalService.Name = globalName
+
+	return []*corev1.Service{
+		headlessService,
+		globalService,
+	}
 }
 
 func endpointMirrorService(hostname, rootName, namespace, resourceVersion string, ports []corev1.ServicePort) *corev1.Service {
@@ -845,6 +1318,22 @@ func headlessMirrorAsYaml(name, namespace, resourceVersion string, ports []corev
 		log.Fatal(err)
 	}
 	return string(bytes)
+}
+
+func globalMirrorPairAsYaml(name, namespace, resourceVersion string, globalName string, ports []corev1.ServicePort) []string {
+	ret := []string{}
+
+	servicePair := globalMirrorServicePair(name, namespace, resourceVersion, globalName, ports)
+
+	for _, svc := range servicePair {
+		bytes, err := yaml.Marshal(svc)
+		if err != nil {
+			log.Fatal(err)
+		}
+		ret = append(ret, string(bytes))
+	}
+
+	return ret
 }
 
 func endpointMirrorAsYaml(hostname, rootName, namespace, resourceVersion string, ports []corev1.ServicePort) string {
@@ -1038,6 +1527,88 @@ func headlessMirrorEndpointsUpdated(name, namespace string, hostnames, hostIPs [
 	return endpoints
 }
 
+func globalMirrorEndpointSlice(globalName, remoteServiceName, namespace, hostname, hostIP, gatewayIdentity string, ports []discoveryv1beta1.EndpointPort) *discoveryv1beta1.EndpointSlice {
+	if ports == nil {
+		ports = []discoveryv1beta1.EndpointPort{}
+	}
+
+	endpoints := &discoveryv1beta1.EndpointSlice{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "EndpointSlice",
+			APIVersion: "discovery.k8s.io/v1beta1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s-%s", globalName, "remote", remoteServiceName),
+			Namespace: namespace,
+			Labels: map[string]string{
+				"kubernetes.io/service-name":             globalName,
+				"endpointslice.kubernetes.io/managed-by": "linkerd",
+				consts.RemoteClusterNameLabel:            clusterName,
+				consts.MirroredResourceLabel:             "true",
+			},
+			Annotations: map[string]string{
+				consts.RemoteServiceFqName: fmt.Sprintf("%s.%s.svc.cluster.local", remoteServiceName, namespace),
+			},
+		},
+		AddressType: discoveryv1beta1.AddressType(v1.IPv4Protocol),
+		Endpoints: []discoveryv1beta1.Endpoint{
+			{
+				Hostname:  &hostname,
+				Addresses: []string{hostIP},
+			},
+		},
+		Ports: ports,
+	}
+
+	if gatewayIdentity != "" {
+		endpoints.Annotations[consts.RemoteGatewayIdentity] = gatewayIdentity
+	}
+
+	return endpoints
+}
+
+func globalMirrorEndpointSliceUpdated(globalName, remoteServiceName, namespace string, hostnames, hostIPs []string, gatewayIdentity string, ports []discoveryv1beta1.EndpointPort) *discoveryv1beta1.EndpointSlice {
+	if ports == nil {
+		ports = []discoveryv1beta1.EndpointPort{}
+	}
+	endpoints := &discoveryv1beta1.EndpointSlice{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "EndpointSlice",
+			APIVersion: "discovery.k8s.io/v1beta1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s-%s", globalName, "remote", remoteServiceName),
+			Namespace: namespace,
+			Labels: map[string]string{
+				"kubernetes.io/service-name":             globalName,
+				"endpointslice.kubernetes.io/managed-by": "linkerd",
+				consts.RemoteClusterNameLabel:            clusterName,
+				consts.MirroredResourceLabel:             "true",
+			},
+			Annotations: map[string]string{
+				consts.RemoteServiceFqName: fmt.Sprintf("%s.%s.svc.cluster.local", remoteServiceName, namespace),
+			},
+		},
+		Endpoints: []discoveryv1beta1.Endpoint{
+			{
+				Hostname:  &hostnames[0],
+				Addresses: []string{hostIPs[0]},
+			},
+			{
+				Hostname:  &hostnames[1],
+				Addresses: []string{hostIPs[1]},
+			},
+		},
+		Ports: ports,
+	}
+
+	if gatewayIdentity != "" {
+		endpoints.Annotations[consts.RemoteGatewayIdentity] = gatewayIdentity
+	}
+
+	return endpoints
+}
+
 func namespaceAsYaml(name string) string {
 	ns := &corev1.Namespace{
 		TypeMeta: metav1.TypeMeta{
@@ -1077,8 +1648,41 @@ func headlessMirrorEndpointsAsYaml(name, namespace, hostname, hostIP, gatewayIde
 	return string(bytes)
 }
 
+func headlessMirrorEndpointsUpdatedAsYaml(name, namespace string, hostname, hostIP []string, gatewayIdentity string, ports []corev1.EndpointPort) string {
+	ep := headlessMirrorEndpointsUpdated(name, namespace, hostname, hostIP, gatewayIdentity, ports)
+
+	bytes, err := yaml.Marshal(ep)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return string(bytes)
+}
+
 func endpointMirrorEndpointsAsYaml(name, namespace, hostname, gatewayIP, gatewayIdentity string, ports []corev1.EndpointPort) string {
 	ep := endpointMirrorEndpoints(name, namespace, hostname, gatewayIP, gatewayIdentity, ports)
+
+	bytes, err := yaml.Marshal(ep)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return string(bytes)
+}
+
+func globalMirrorEndpointSliceAsYaml(globalName, remoteServiceName, namespace, hostname, hostIP, gatewayIdentity string, ports []discoveryv1beta1.EndpointPort) string {
+	ep := globalMirrorEndpointSlice(globalName, remoteServiceName, namespace, hostname, hostIP, gatewayIdentity, ports)
+
+	bytes, err := yaml.Marshal(ep)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return string(bytes)
+}
+
+func globalMirrorEndpointSliceUpdatedAsYaml(globalName, remoteServiceName, namespace string, hostname, hostIP []string, gatewayIdentity string, ports []discoveryv1beta1.EndpointPort) string {
+	ep := globalMirrorEndpointSliceUpdated(globalName, remoteServiceName, namespace, hostname, hostIP, gatewayIdentity, ports)
 
 	bytes, err := yaml.Marshal(ep)
 	if err != nil {

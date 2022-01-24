@@ -39,17 +39,18 @@ type (
 	// it can be requeued up to N times, to ensure that the failure is not due to some temporary network
 	// problems or general glitch in the Matrix.
 	RemoteClusterServiceWatcher struct {
-		serviceMirrorNamespace  string
-		link                    *multicluster.Link
-		remoteAPIClient         *k8s.API
-		localAPIClient          *k8s.API
-		stopper                 chan struct{}
-		recorder                record.EventRecorder
-		log                     *logging.Entry
-		eventsQueue             workqueue.RateLimitingInterface
-		requeueLimit            int
-		repairPeriod            time.Duration
-		headlessServicesEnabled bool
+		serviceMirrorNamespace     string
+		link                       *multicluster.Link
+		remoteAPIClient            *k8s.API
+		localAPIClient             *k8s.API
+		stopper                    chan struct{}
+		recorder                   record.EventRecorder
+		log                        *logging.Entry
+		eventsQueue                workqueue.RateLimitingInterface
+		requeueLimit               int
+		repairPeriod               time.Duration
+		headlessServicesEnabled    bool
+		endpointMirrorServiceCache cache.Store
 	}
 
 	// RemoteServiceCreated is generated whenever a remote service is created Observing
@@ -71,8 +72,9 @@ type (
 	// RemoteServiceDeleted when a remote service is going away or it is not
 	// considered mirrored anymore
 	RemoteServiceDeleted struct {
-		Name      string
-		Namespace string
+		Name       string
+		Namespace  string
+		GlobalName *string
 	}
 
 	// ClusterUnregistered is issued when this ClusterWatcher is shut down.
@@ -187,11 +189,22 @@ func NewRemoteClusterServiceWatcher(
 			"cluster":    clusterName,
 			"apiAddress": cfg.Host,
 		}),
-		eventsQueue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
-		requeueLimit:            requeueLimit,
-		repairPeriod:            repairPeriod,
-		headlessServicesEnabled: enableHeadlessSvc,
+		eventsQueue:                workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		requeueLimit:               requeueLimit,
+		repairPeriod:               repairPeriod,
+		headlessServicesEnabled:    enableHeadlessSvc,
+		endpointMirrorServiceCache: NewEndpointMirrorServiceCache(),
 	}, nil
+}
+
+func NewEndpointMirrorServiceCache() cache.Store {
+	return cache.NewTTLStore(func(obj interface{}) (string, error) {
+		svc, ok := obj.(*corev1.Service)
+		if ok {
+			return fmt.Sprintf("%s/%s", svc.Namespace, svc.Name), nil
+		}
+		return "", fmt.Errorf("object inserted into endpoint mirror service cache is not a valid service")
+	}, 30*time.Second)
 }
 
 func (rcsw *RemoteClusterServiceWatcher) mirroredResourceName(remoteName string) string {
@@ -218,6 +231,12 @@ func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceLabels(remoteService 
 
 	if remoteService == nil {
 		return labels
+	}
+
+	globalName, found := remoteService.ObjectMeta.Labels[consts.GlobalServiceNameLabel]
+
+	if found {
+		labels[consts.GlobalServiceNameLabel] = globalName
 	}
 
 	for key, value := range remoteService.ObjectMeta.Labels {
@@ -265,6 +284,26 @@ func (rcsw *RemoteClusterServiceWatcher) getEndpointsPorts(service *corev1.Servi
 	return endpointsPorts
 }
 
+func (rcsw *RemoteClusterServiceWatcher) cleanupOrphans(ctx context.Context) error {
+	var errors []error
+
+	err := rcsw.cleanupOrphanedServices(ctx)
+	if err != nil {
+		errors = append(errors, err)
+	}
+
+	err = rcsw.cleanupOrphanedEndpointSlices(ctx)
+	if err != nil {
+		errors = append(errors, err)
+	}
+
+	if len(errors) > 0 {
+		return RetryableError{errors}
+	}
+
+	return nil
+}
+
 func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices(ctx context.Context) error {
 	matchLabels := map[string]string{
 		consts.MirroredResourceLabel:  "true",
@@ -292,6 +331,55 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices(ctx context.Con
 					errors = append(errors, err)
 				} else {
 					rcsw.log.Infof("Deleted service %s/%s while cleaning up mirror services", srv.Namespace, srv.Name)
+				}
+			} else {
+				// something went wrong getting the service, we can retry
+				errors = append(errors, err)
+			}
+		}
+	}
+	if len(errors) > 0 {
+		return RetryableError{errors}
+	}
+
+	return nil
+}
+
+func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedEndpointSlices(ctx context.Context) error {
+	matchLabels := map[string]string{
+		consts.MirroredResourceLabel: "true",
+		// Omit the remote cluster name because this GC step can be performed by any service mirror.
+		// The redundancy here is OK. If we're raced on deleting a resource, we'll log and continue.
+	}
+
+	slicesOnLocalCluster, err := rcsw.localAPIClient.ES().Lister().List(labels.Set(matchLabels).AsSelector())
+	if err != nil {
+		innerErr := fmt.Errorf("failed to list services while cleaning up mirror services: %s", err)
+		if kerrors.IsNotFound(err) {
+			return innerErr
+		}
+		// if it is something else, we can just retry
+		return RetryableError{[]error{innerErr}}
+	}
+
+	var errors []error
+	for _, es := range slicesOnLocalCluster {
+		// Each endpoint slice will have a label "kubernetes.io/service-name: ..."
+		// If that service no longer exists, we should prune it.
+
+		_, err := rcsw.remoteAPIClient.Svc().Lister().Services(es.Namespace).Get(es.Labels["kubernetes.io/service_name"])
+		if err != nil {
+			if kerrors.IsNotFound(err) {
+				// service does not exist anymore. Need to delete
+				if err := rcsw.localAPIClient.Client.DiscoveryV1beta1().EndpointSlices(es.Namespace).Delete(ctx, es.Name, metav1.DeleteOptions{}); err != nil {
+					if kerrors.IsNotFound(err) {
+						rcsw.log.Infof("Would delete endpoint slice %s/%s while cleaning up, but already deleted", es.Namespace, es.Name)
+					} else {
+						// something went wrong with deletion, we need to retry
+						errors = append(errors, err)
+					}
+				} else {
+					rcsw.log.Infof("Deleted endpoint slice %s/%s while cleaning up", es.Namespace, es.Name)
 				}
 			} else {
 				// something went wrong getting the service, we can retry
@@ -354,6 +442,26 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Co
 		}
 	}
 
+	endpointSlices, err := rcsw.localAPIClient.ES().Lister().List(labels.Set(matchLabels).AsSelector())
+	if err != nil {
+		innerErr := fmt.Errorf("could not retrieve endpoint slices that need cleaning up: %s", err)
+		if kerrors.IsNotFound(err) {
+			return innerErr
+		}
+		return RetryableError{[]error{innerErr}}
+	}
+
+	for _, endpoint := range endpointSlices {
+		if err := rcsw.localAPIClient.Client.DiscoveryV1beta1().EndpointSlices(endpoint.Namespace).Delete(ctx, endpoint.Name, metav1.DeleteOptions{}); err != nil {
+			if kerrors.IsNotFound(err) {
+				continue
+			}
+			errors = append(errors, fmt.Errorf("Could not delete endpoint slices %s/%s: %s", endpoint.Namespace, endpoint.Name, err))
+		} else {
+			rcsw.log.Infof("Deleted endpoint slices %s/%s", endpoint.Namespace, endpoint.Name)
+		}
+	}
+
 	if len(errors) > 0 {
 		return RetryableError{errors}
 	}
@@ -362,6 +470,29 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Co
 
 // Deletes a locally mirrored service as it is not present on the remote cluster anymore
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ctx context.Context, ev *RemoteServiceDeleted) error {
+	var errors []error
+
+	errs := rcsw.handleRemoteServiceDeletedMirrors(ctx, ev)
+	if len(errs) > 0 {
+		errors = append(errors, errs...)
+	}
+
+	if ev.GlobalName != nil {
+		errs := rcsw.cleanupGlobalMirror(ctx, ev.Namespace, *ev.GlobalName)
+		if len(errs) > 0 {
+			errors = append(errors, errs...)
+		}
+	}
+
+	if len(errors) > 0 {
+		return RetryableError{errors}
+	}
+
+	return nil
+}
+
+// Deletes a locally mirrored service as it is not present on the remote cluster anymore
+func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeletedMirrors(ctx context.Context, ev *RemoteServiceDeleted) []error {
 	localServiceName := rcsw.mirroredResourceName(ev.Name)
 	localService, err := rcsw.localAPIClient.Svc().Lister().Services(ev.Namespace).Get(localServiceName)
 	var errors []error
@@ -403,12 +534,39 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ctx context.
 		}
 	}
 
-	if len(errors) > 0 {
-		return RetryableError{errors}
+	rcsw.log.Infof("Successfully deleted service: %s/%s", ev.Namespace, localServiceName)
+	return errors
+}
+
+func (rcsw *RemoteClusterServiceWatcher) cleanupGlobalMirror(ctx context.Context, namespace string, globalName string) []error {
+	var errors []error
+
+	remainingMirrors, err := rcsw.localAPIClient.Client.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: metav1.FormatLabelSelector(&metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				consts.GlobalServiceNameLabel: globalName,
+				consts.MirroredResourceLabel:  "true",
+			},
+		}),
+	})
+
+	if err != nil {
+		errors = append(errors, fmt.Errorf("could not list remotes used by global service %s/%s: %s", namespace, globalName, err))
 	}
 
-	rcsw.log.Infof("Successfully deleted service: %s/%s", ev.Namespace, localServiceName)
-	return nil
+	remainingMirrorCount := len(remainingMirrors.Items)
+	// The global mirror itself will be the last to match our label selector:
+	if remainingMirrorCount > 1 {
+		rcsw.log.Infof("Refraining from deleting global service %s/%s, found %d remaining mirrors", namespace, globalName, remainingMirrorCount)
+	} else {
+		if err := rcsw.localAPIClient.Client.CoreV1().Services(namespace).Delete(ctx, globalName, metav1.DeleteOptions{}); err != nil {
+			if !kerrors.IsNotFound(err) {
+				errors = append(errors, fmt.Errorf("could not delete global service: %s/%s: %s", namespace, globalName, err))
+			}
+		}
+	}
+
+	return errors
 }
 
 // Updates a locally mirrored service. There might have been some pretty fundamental changes such as
@@ -660,14 +818,26 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 			_, isMirroredRes := localSvc.Labels[consts.MirroredResourceLabel]
 			clusterName := localSvc.Labels[consts.RemoteClusterNameLabel]
 			if isMirroredRes && (clusterName == rcsw.link.TargetClusterName) {
-				rcsw.eventsQueue.Add(&RemoteServiceDeleted{
-					Name:      service.Name,
-					Namespace: service.Namespace,
-				})
+				rcsw.eventsQueue.Add(remoteServiceDeletedEvent(service))
 			}
 		}
 	}
 	return nil
+}
+
+func remoteServiceDeletedEvent(service *v1.Service) *RemoteServiceDeleted {
+	var GlobalName *string
+	value, found := service.Labels[consts.GlobalServiceNameLabel]
+	if found {
+		GlobalName = &value
+	}
+
+	event := RemoteServiceDeleted{
+		Name:       service.Name,
+		Namespace:  service.Namespace,
+		GlobalName: GlobalName,
+	}
+	return &event
 }
 
 func (rcsw *RemoteClusterServiceWatcher) getMirrorServices() ([]*corev1.Service, error) {
@@ -685,10 +855,7 @@ func (rcsw *RemoteClusterServiceWatcher) getMirrorServices() ([]*corev1.Service,
 
 func (rcsw *RemoteClusterServiceWatcher) handleOnDelete(service *corev1.Service) {
 	if rcsw.isExportedService(service) {
-		rcsw.eventsQueue.Add(&RemoteServiceDeleted{
-			Name:      service.Name,
-			Namespace: service.Namespace,
-		})
+		rcsw.eventsQueue.Add(remoteServiceDeletedEvent(service))
 	} else {
 		rcsw.log.Infof("Skipping OnDelete for service %s", service)
 	}
@@ -697,7 +864,12 @@ func (rcsw *RemoteClusterServiceWatcher) handleOnDelete(service *corev1.Service)
 func (rcsw *RemoteClusterServiceWatcher) processNextEvent(ctx context.Context) (bool, interface{}, error) {
 	event, done := rcsw.eventsQueue.Get()
 	if event != nil {
-		rcsw.log.Infof("Received: %s", event)
+		stringlike, ok := event.(fmt.Stringer)
+		if ok {
+			rcsw.log.Infof("Received: %s", stringlike.String())
+		} else {
+			rcsw.log.Infof("Received: %s", event)
+		}
 	} else {
 		if done {
 			rcsw.log.Infof("Received: Stop")
@@ -725,7 +897,7 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent(ctx context.Context) (
 	case *ClusterUnregistered:
 		err = rcsw.cleanupMirroredResources(ctx)
 	case *OrphanedServicesGcTriggered:
-		err = rcsw.cleanupOrphanedServices(ctx)
+		err = rcsw.cleanupOrphans(ctx)
 	case *RepairEndpoints:
 		err = rcsw.repairEndpoints(ctx)
 	case *OnLocalNamespaceAdded:
@@ -1041,7 +1213,18 @@ func (rcsw *RemoteClusterServiceWatcher) handleCreateOrUpdateEndpoints(
 ) error {
 	if isHeadlessEndpoints(exportedEndpoints, rcsw.log) {
 		if rcsw.headlessServicesEnabled {
-			return rcsw.createOrUpdateHeadlessEndpoints(ctx, exportedEndpoints)
+			var errors []error
+			if err := rcsw.createOrUpdateHeadlessEndpoints(ctx, exportedEndpoints); err != nil {
+				errors = append(errors, err)
+			}
+
+			if err := rcsw.createOrUpdateGlobalEndpointSlices(ctx, exportedEndpoints); err != nil {
+				errors = append(errors, err)
+			}
+
+			if len(errors) > 0 {
+				return RetryableError{errors}
+			}
 		}
 		return nil
 	}
@@ -1147,11 +1330,13 @@ func (rcsw *RemoteClusterServiceWatcher) createEndpointMirrorService(ctx context
 			return createdService, RetryableError{[]error{err}}
 		}
 	}
+	rcsw.endpointMirrorServiceCache.Add(createdService)
 
 	rcsw.log.Infof("Creating a new endpoints object for endpoint mirror service %s", endpointMirrorInfo)
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpointMirrorService.Namespace).Create(ctx, endpointMirrorEndpoints, metav1.CreateOptions{}); err != nil {
 		// If we cannot create an Endpoints object for the Endpoint Mirror
 		// service, then delete the Endpoint Mirror service we just created
+		rcsw.log.Errorf("Deleting mirror service %s on error: %v", endpointMirrorInfo, err)
 		rcsw.localAPIClient.Client.CoreV1().Services(endpointMirrorService.Namespace).Delete(ctx, endpointMirrorName, metav1.DeleteOptions{})
 		// and retry
 		return createdService, RetryableError{[]error{err}}

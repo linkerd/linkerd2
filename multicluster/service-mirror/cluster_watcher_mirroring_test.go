@@ -13,6 +13,7 @@ import (
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	discoveryv1beta1 "k8s.io/api/discovery/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -20,11 +21,12 @@ import (
 )
 
 type mirroringTestCase struct {
-	description            string
-	environment            *testEnvironment
-	expectedLocalServices  []*corev1.Service
-	expectedLocalEndpoints []*corev1.Endpoints
-	expectedEventsInQueue  []interface{}
+	description                 string
+	environment                 *testEnvironment
+	expectedLocalServices       []*corev1.Service
+	expectedLocalEndpoints      []*corev1.Endpoints
+	expectedLocalEndpointSlices []*discoveryv1beta1.EndpointSlice
+	expectedEventsInQueue       []interface{}
 }
 
 func (tc *mirroringTestCase) run(t *testing.T) {
@@ -84,6 +86,40 @@ func (tc *mirroringTestCase) run(t *testing.T) {
 			}
 		}
 
+		endpointSliceList, err := localAPI.Client.DiscoveryV1beta1().EndpointSlices("").List(context.Background(), metav1.ListOptions{})
+		if err != nil {
+			t.Fatalf("Could not list actual services")
+		}
+		actualEndpointSlices := map[string]discoveryv1beta1.EndpointSlice{}
+		for _, es := range endpointSliceList.Items {
+			id := fmt.Sprintf("%s/%s", es.Namespace, es.Name)
+			if id == "default/kubernetes" {
+				continue
+			}
+			actualEndpointSlices[id] = es
+		}
+
+		for _, expected := range tc.expectedLocalEndpointSlices {
+			expectedId := fmt.Sprintf("%s/%s", expected.Namespace, expected.Name)
+			actual, found := actualEndpointSlices[expectedId]
+			if !found {
+				t.Fatalf("Could not find endpoint slice with name %s, found endpoint slices %v", expected.Name, actualEndpointSlices)
+			}
+
+			if err := diffEndpointSlice(expected, &actual); err != nil {
+				t.Fatal(err)
+			}
+			delete(actualEndpointSlices, expectedId)
+		}
+
+		var extraSlices []string
+		for id := range actualEndpointSlices {
+			extraSlices = append(extraSlices, id)
+		}
+		if len(extraSlices) > 0 {
+			t.Fatalf("Found extra endpoint slices not in expected list: %v", extraSlices)
+		}
+
 		expectedNumEvents := len(tc.expectedEventsInQueue)
 		actualNumEvents := q.Len()
 
@@ -91,10 +127,12 @@ func (tc *mirroringTestCase) run(t *testing.T) {
 			t.Fatalf("Was expecting %d events but got %d", expectedNumEvents, actualNumEvents)
 		}
 
-		for _, ev := range tc.expectedEventsInQueue {
+		for _, expectedEv := range tc.expectedEventsInQueue {
 			evInQueue, _ := q.Get()
-			if !reflect.DeepEqual(ev, evInQueue) {
-				t.Fatalf("was expecting to see event %s but got %s", ev, evInQueue)
+			if !reflect.DeepEqual(expectedEv, evInQueue) {
+				expected, _ := json.MarshalIndent(expectedEv, "", "  ")
+				actual, _ := json.MarshalIndent(evInQueue, "", "  ")
+				t.Fatalf("was expecting to see event %v but got %v", string(expected), string(actual))
 			}
 		}
 	})
@@ -144,7 +182,7 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 			expectedLocalServices: []*corev1.Service{
 				headlessMirrorService(
 					"service-one-remote",
-					"ns2",
+					"ns3",
 					"111",
 					[]corev1.ServicePort{
 						{
@@ -161,7 +199,7 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 				endpointMirrorService(
 					"pod-0",
 					"service-one-remote",
-					"ns2",
+					"ns3",
 					"112",
 					[]corev1.ServicePort{
 						{
@@ -178,7 +216,7 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 				),
 			},
 			expectedLocalEndpoints: []*corev1.Endpoints{
-				headlessMirrorEndpoints("service-one-remote", "ns2", "pod-0", "", "gateway-identity", []corev1.EndpointPort{
+				headlessMirrorEndpoints("service-one-remote", "ns3", "pod-0", "", "gateway-identity", []corev1.EndpointPort{
 					{
 						Name:     "port1",
 						Port:     555,
@@ -192,7 +230,7 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 				}),
 				endpointMirrorEndpoints(
 					"service-one-remote",
-					"ns2",
+					"ns3",
 					"pod-0",
 					"192.0.2.129",
 					"gateway-identity",
@@ -207,6 +245,84 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 							Port:     889,
 							Protocol: "TCP",
 						},
+					}),
+			},
+		},
+		{
+			description: "create global service and endpoints when gateway can be resolved",
+			environment: createExportedGlobalService,
+			expectedLocalServices: append(globalMirrorServicePair(
+				"service-one-remote",
+				"ns4",
+				"111",
+				"service-one-global",
+				[]corev1.ServicePort{
+					{
+						Name:     "port1",
+						Protocol: "TCP",
+						Port:     555,
+					},
+					{
+						Name:     "port2",
+						Protocol: "TCP",
+						Port:     666,
+					},
+				}),
+				endpointMirrorService(
+					"pod-0",
+					"service-one-remote",
+					"ns4",
+					"112",
+					[]corev1.ServicePort{
+						{
+							Name:     "port1",
+							Protocol: "TCP",
+							Port:     555,
+						},
+						{
+							Name:     "port2",
+							Protocol: "TCP",
+							Port:     666,
+						},
+					},
+				),
+			),
+			expectedLocalEndpoints: []*corev1.Endpoints{
+				headlessMirrorEndpoints("service-one-remote", "ns4", "pod-0", "", "gateway-identity", []corev1.EndpointPort{
+					{
+						Name:     "port1",
+						Port:     555,
+						Protocol: "TCP",
+					},
+					{
+						Name:     "port2",
+						Port:     666,
+						Protocol: "TCP",
+					},
+				}),
+				endpointMirrorEndpoints(
+					"service-one-remote",
+					"ns4",
+					"pod-0",
+					"192.0.2.129",
+					"gateway-identity",
+					[]corev1.EndpointPort{
+						{
+							Name:     "port1",
+							Port:     889,
+							Protocol: "TCP",
+						},
+						{
+							Name:     "port2",
+							Port:     889,
+							Protocol: "TCP",
+						},
+					}),
+			},
+			expectedLocalEndpointSlices: []*discoveryv1beta1.EndpointSlice{
+				globalMirrorEndpointSlice("service-one-global", "service-one", "ns4", "pod-0-remote", "", "gateway-identity",
+					[]discoveryv1beta1.EndpointPort{
+						// TODO: Validate this is needed for a headless service?
 					}),
 			},
 		},
@@ -245,14 +361,15 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 			ProbeSpec:           defaultProbeSpec,
 			Selector:            *defaultSelector,
 		},
-		remoteAPIClient:         remoteAPI,
-		localAPIClient:          localAPI,
-		stopper:                 nil,
-		recorder:                eventRecorder,
-		log:                     logging.WithFields(logging.Fields{"cluster": clusterName}),
-		eventsQueue:             q,
-		requeueLimit:            0,
-		headlessServicesEnabled: true,
+		remoteAPIClient:            remoteAPI,
+		localAPIClient:             localAPI,
+		stopper:                    nil,
+		recorder:                   eventRecorder,
+		log:                        logging.WithFields(logging.Fields{"cluster": clusterName}),
+		eventsQueue:                q,
+		requeueLimit:               0,
+		headlessServicesEnabled:    true,
+		endpointMirrorServiceCache: NewEndpointMirrorServiceCache(),
 	}
 
 	q.Add(&RemoteServiceCreated{
@@ -308,6 +425,14 @@ func TestRemoteServiceDeletedMirroring(t *testing.T) {
 		{
 			description: "deletes locally mirrored service",
 			environment: deleteMirrorService,
+		},
+		{
+			description: "deletes locally mirrored service and global mirror",
+			environment: deleteHeadlessMirrorService,
+		},
+		{
+			description: "deletes locally mirrored service and global mirror",
+			environment: deleteGlobalMirrorService,
 		},
 	} {
 		tc := tt // pin
@@ -463,6 +588,199 @@ func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
 	}
 }
 
+/// Test behavior on the remote cluster adding endpoint for pod-1 on an exported global service
+func TestRemoteEndpointSlicesUpdatedMirroring(t *testing.T) {
+	for _, tt := range []mirroringTestCase{
+		{
+			description: "updates global mirror service with new remote endpoint slices",
+			environment: updateEndpointSlicesWithAddedHosts,
+			expectedLocalServices: append(
+				globalMirrorServicePair("service-two-remote", "estest", "222", "service-two-global", []corev1.ServicePort{
+					{
+						Name:     "port1",
+						Protocol: "TCP",
+						Port:     555,
+					},
+					{
+						Name:     "port2",
+						Protocol: "TCP",
+						Port:     666,
+					},
+				}),
+				endpointMirrorService("pod-0", "service-two-remote", "estest", "333", []corev1.ServicePort{
+					{
+						Name:     "port1",
+						Protocol: "TCP",
+						Port:     555,
+					},
+					{
+						Name:     "port2",
+						Protocol: "TCP",
+						Port:     666,
+					},
+				}),
+				endpointMirrorService("pod-1", "service-two-remote", "estest", "112", []corev1.ServicePort{
+					{
+						Name:     "port1",
+						Protocol: "TCP",
+						Port:     555,
+					},
+					{
+						Name:     "port2",
+						Protocol: "TCP",
+						Port:     666,
+					},
+				}),
+			),
+			expectedLocalEndpoints: []*corev1.Endpoints{
+				headlessMirrorEndpointsUpdated(
+					"service-two-remote",
+					"estest",
+					[]string{"pod-0", "pod-1"},
+					[]string{"", ""},
+					"gateway-identity",
+					[]corev1.EndpointPort{
+						{
+							Name:     "port1",
+							Port:     555,
+							Protocol: "TCP",
+						},
+						{
+							Name:     "port2",
+							Port:     666,
+							Protocol: "TCP",
+						},
+					}),
+				endpointMirrorEndpoints(
+					"service-two-remote",
+					"estest",
+					"pod-0",
+					"192.0.2.127",
+					"gateway-identity",
+					[]corev1.EndpointPort{
+						{
+							Name:     "port1",
+							Port:     888,
+							Protocol: "TCP",
+						},
+						{
+							Name:     "port2",
+							Port:     888,
+							Protocol: "TCP",
+						},
+					}),
+				endpointMirrorEndpoints(
+					"service-two-remote",
+					"estest",
+					"pod-1",
+					"192.0.2.127",
+					"gateway-identity",
+					[]corev1.EndpointPort{
+						{
+							Name:     "port1",
+							Port:     888,
+							Protocol: "TCP",
+						},
+						{
+							Name:     "port2",
+							Port:     888,
+							Protocol: "TCP",
+						},
+					}),
+			},
+			expectedLocalEndpointSlices: []*discoveryv1beta1.EndpointSlice{
+				globalMirrorEndpointSliceUpdated("service-two-global", "service-two", "estest",
+					[]string{"pod-0-remote", "pod-1-remote"},
+					[]string{"", ""},
+					"gateway-identity",
+					[]discoveryv1beta1.EndpointPort{
+						// TODO: Validate this is needed for a headless service?
+					}),
+			},
+		},
+		{
+			description: "updates global mirror service with removed remote endpoint slices",
+			environment: updateEndpointSlicesWithRemovedHosts,
+			expectedLocalServices: append(
+				globalMirrorServicePair("service-two-remote", "estest", "222", "service-two-global", []corev1.ServicePort{
+					{
+						Name:     "port1",
+						Protocol: "TCP",
+						Port:     555,
+					},
+					{
+						Name:     "port2",
+						Protocol: "TCP",
+						Port:     666,
+					},
+				}),
+				endpointMirrorService("pod-0", "service-two-remote", "estest", "333", []corev1.ServicePort{
+					{
+						Name:     "port1",
+						Protocol: "TCP",
+						Port:     555,
+					},
+					{
+						Name:     "port2",
+						Protocol: "TCP",
+						Port:     666,
+					},
+				}),
+			),
+			expectedLocalEndpoints: []*corev1.Endpoints{
+				headlessMirrorEndpoints(
+					"service-two-remote",
+					"estest",
+					"pod-0",
+					"",
+					"gateway-identity",
+					[]corev1.EndpointPort{
+						{
+							Name:     "port1",
+							Port:     555,
+							Protocol: "TCP",
+						},
+						{
+							Name:     "port2",
+							Port:     666,
+							Protocol: "TCP",
+						},
+					}),
+				endpointMirrorEndpoints(
+					"service-two-remote",
+					"estest",
+					"pod-0",
+					"192.0.2.127",
+					"gateway-identity",
+					[]corev1.EndpointPort{
+						{
+							Name:     "port1",
+							Port:     888,
+							Protocol: "TCP",
+						},
+						{
+							Name:     "port2",
+							Port:     888,
+							Protocol: "TCP",
+						},
+					}),
+			},
+			expectedLocalEndpointSlices: []*discoveryv1beta1.EndpointSlice{
+				globalMirrorEndpointSlice("service-two-global", "service-two", "estest",
+					"pod-0-remote",
+					"",
+					"gateway-identity",
+					[]discoveryv1beta1.EndpointPort{
+						// TODO: Validate this is needed for a headless service?
+					}),
+			},
+		},
+	} {
+		tc := tt // pin
+		tc.run(t)
+	}
+}
+
 func TestClusterUnregisteredMirroring(t *testing.T) {
 	for _, tt := range []mirroringTestCase{
 		{
@@ -495,7 +813,6 @@ func TestGcOrphanedServicesMirroring(t *testing.T) {
 }
 
 func onAddOrUpdateTestCases(isAdd bool) []mirroringTestCase {
-
 	testType := "ADD"
 	if !isAdd {
 		testType = "UPDATE"
@@ -579,6 +896,17 @@ func TestOnDelete(t *testing.T) {
 				&RemoteServiceDeleted{
 					Name:      "test-service",
 					Namespace: "test-namespace",
+				},
+			},
+		},
+		{
+			description: "enqueues a RemoteServiceDeleted because there is gateway metadata present on the service",
+			environment: onDeleteExportedGlobalService,
+			expectedEventsInQueue: []interface{}{
+				&RemoteServiceDeleted{
+					Name:       "test-service",
+					Namespace:  "test-namespace",
+					GlobalName: StringRef("test-service-global"),
 				},
 			},
 		},
