@@ -301,7 +301,7 @@ jobs:
       run: echo "INSTALL=install-edge" >> $GITHUB_ENV
     - name: Check published version
       run: |
-        until RES=$(curl -sL https://run.linkerd.io/$INSTALL | grep "LINKERD2_VERSION=\${LINKERD2_VERSION:-$TAG}") \
+        until RES=$(bin/scurl https://run.linkerd.io/$INSTALL | grep "LINKERD2_VERSION=\${LINKERD2_VERSION:-$TAG}") \
           || (( count++ >= 10 ))
         do
           sleep 30

@@ -370,7 +370,7 @@ run_test(){
 # Returns the latest version for the release channel
 # $1: release channel to check
 latest_release_channel() {
-    curl -s https://versioncheck.linkerd.io/version.json | grep -o "$1-[0-9]*.[0-9]*.[0-9]*"
+    "$bindir"/scurl https://versioncheck.linkerd.io/version.json | grep -o "$1-[0-9]*.[0-9]*.[0-9]*"
 }
 
 # Install a specific Linkerd version.
@@ -382,7 +382,7 @@ install_version() {
     local install_url=$1
     local version=$2
 
-    curl -s "$install_url" | HOME=$tmp sh > /dev/null 2>&1
+    "$bindir"/scurl "$install_url" | HOME=$tmp sh > /dev/null 2>&1
 
     local linkerd_path=$tmp/.linkerd2/bin/linkerd
     local test_app_namespace=upgrade-test

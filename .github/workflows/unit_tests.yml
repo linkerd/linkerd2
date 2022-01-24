@@ -34,7 +34,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
     - name: Yarn setup
-      run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
+      run: bin/scurl --retry=2 https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
     - name: JS unit tests
       run: |
         export PATH="$HOME/.yarn/bin:$PATH"

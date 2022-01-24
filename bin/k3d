@@ -24,7 +24,13 @@ if [ ! -f "$k3dbin" ]; then
   fi
 
   mkdir -p "$targetbin"
+<<<<<<< HEAD
   curl -sfL -o "$k3dbin" https://github.com/rancher/k3d/releases/download/$k3dversion/k3d-$os-$arch
+||||||| parent of 2c6db25d (Standardize curl flags with scurl (#7658))
+  curl -sfL -o "$k3dbin" https://github.com/rancher/k3d/releases/latest/download/k3d-$os-$arch
+=======
+  "$bindir"/scurl -o "$k3dbin" https://github.com/rancher/k3d/releases/latest/download/k3d-$os-$arch
+>>>>>>> 2c6db25d (Standardize curl flags with scurl (#7658))
   chmod +x "$k3dbin"
 fi
 
