@@ -1,6 +1,29 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
+  name: slow-cooker-opaque-service
+spec:
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: "enabled"
+      labels:
+        app: slow-cooker-opaque-service
+    spec:
+      containers:
+      - name: slow-cooker-opaque-service
+        image: buoyantio/slow_cooker:1.3.0
+        args:
+        - -qps=1
+        - -metric-addr=0.0.0.0:9999
+        - http://svc-opaque-service:8080
+        ports:
+        - containerPort: 9999
+      restartPolicy: OnFailure
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
   name: slow-cooker-opaque-pod
 spec:
   template:
@@ -13,12 +36,10 @@ spec:
       containers:
       - name: slow-cooker-opaque-pod
         image: buoyantio/slow_cooker:1.3.0
-        command:
-        - "/bin/sh"
         args:
-        - "-c"
-        - |
-          /slow_cooker/slow_cooker -qps 1 -metric-addr 0.0.0.0:9999 http://svc-opaque-pod:8080
+        - -qps=1
+        - -metric-addr=0.0.0.0:9999
+        - http://svc-opaque-pod:8080
         ports:
         - containerPort: 9999
       restartPolicy: OnFailure
@@ -38,38 +59,10 @@ spec:
       containers:
       - name: slow-cooker-opaque-unmeshed-svc
         image: buoyantio/slow_cooker:1.3.0
-        command:
-        - "/bin/sh"
         args:
-        - "-c"
-        - |
-          /slow_cooker/slow_cooker -qps 1 -metric-addr 0.0.0.0:9999 http://svc-opaque-unmeshed:8080
+        - -qps=1
+        - -metric-addr=0.0.0.0:9999
+        - http://svc-opaque-unmeshed:8080
         ports:
         - containerPort: 9999
       restartPolicy: OnFailure
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: slow-cooker-opaque-service
-spec:
-  template:
-    metadata:
-      annotations:
-        linkerd.io/inject: "enabled"
-      labels:
-        app: slow-cooker-opaque-service
-    spec:
-      containers:
-      - name: slow-cooker-opaque-service
-        image: buoyantio/slow_cooker:1.3.0
-        command:
-        - "/bin/sh"
-        args:
-        - "-c"
-        - |
-          /slow_cooker/slow_cooker -qps 1 -metric-addr 0.0.0.0:9999 http://svc-opaque-service:8080
-        ports:
-        - containerPort: 9999
-      restartPolicy: OnFailure
----
