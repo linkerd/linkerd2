@@ -9,6 +9,10 @@ updates:
     directory: "/"
     schedule:
       interval: daily
+      time: "03:30"
+      timezone: "UTC"
+    allow:
+      - dependency-type: "all"
 
   - package-ecosystem: "github-actions"
     directory: "/"
