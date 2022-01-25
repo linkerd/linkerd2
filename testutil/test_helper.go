@@ -8,6 +8,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -17,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -648,6 +651,38 @@ func (h *TestHelper) WithDataPlaneNamespace(ctx context.Context, testName string
 		AnnotatedFatalf(t, fmt.Sprintf("failed to delete %s namespace", prefixedNs),
 			"failed to delete %s namespace: %s", prefixedNs, err)
 	}
+}
+
+// GetCheckOutput is used to assert that the output from `linkerd check` is the
+// same as the expected output found in the golden file passed in as an
+// argument
+func (h *TestHelper) GetCheckOutput(t *testing.T, goldenFile string, namespace string) string {
+	pods, err := h.GetPods(context.Background(), namespace, nil)
+	if err != nil {
+		AnnotatedFatal(t, fmt.Sprintf("failed to retrieve pods: %s", err), err)
+	}
+
+	proxyVersionErr := ""
+	err = healthcheck.CheckProxyVersionsUpToDate(pods, version.Channels{})
+	if err != nil {
+		proxyVersionErr = err.Error()
+	}
+
+	tpl := template.Must(template.ParseFiles("testdata" + "/" + goldenFile))
+	vars := struct {
+		ProxyVersionErr string
+		HintURL         string
+	}{
+		proxyVersionErr,
+		healthcheck.HintBaseURL(h.GetVersion()),
+	}
+
+	var expected bytes.Buffer
+	if err := tpl.Execute(&expected, vars); err != nil {
+		AnnotatedFatal(t, fmt.Sprintf("failed to parse check.viz.golden template: %s", err), err)
+	}
+
+	return expected.String()
 }
 
 // ReadFile reads a file from disk and returns the contents as a string.

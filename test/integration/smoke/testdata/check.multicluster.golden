@@ -1,0 +1,8 @@
+linkerd-multicluster
+--------------------
+√ Link CRD exists
+√ multicluster extension proxies are healthy
+√ multicluster extension proxies are up-to-date
+√ multicluster extension proxies and cli versions match
+
+Status check results are √
