@@ -43,7 +43,7 @@ require (
 	helm.sh/helm/v3 v3.8.0
 	k8s.io/api v0.23.2
 	k8s.io/apiextensions-apiserver v0.23.2
-	k8s.io/apimachinery v0.23.2
+	k8s.io/apimachinery v0.23.3
 	k8s.io/client-go v0.23.2
 	k8s.io/code-generator v0.23.2
 	k8s.io/klog/v2 v2.40.1
@@ -153,7 +153,7 @@ require (
 	k8s.io/cli-runtime v0.23.1 // indirect
 	k8s.io/gengo v0.0.0-20210813121822-485abfe95c7c // indirect
 	k8s.io/kube-openapi v0.0.0-20211115234752-e816edb12b65 // indirect
-	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b // indirect
+	k8s.io/utils v0.0.0-20211116205334-6203023598ed // indirect
 	oras.land/oras-go v1.1.0 // indirect
 	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
 	sigs.k8s.io/kustomize/api v0.10.1 // indirect
