@@ -56,7 +56,8 @@ spec:
 
 An `AuthorizationPolicy`'s `targetRef` may reference a variety of resources
 representing the server-side of a connection (where authorization is enforced).
-The policy controller provides a validating admission controller that prevents resources from being created with unsupported `targetRef` kinds.
+The policy controller provides a validating admission controller that prevents
+resources from being created with unsupported `targetRef` kinds.
 
 To accomplish the same functionality as the `ServerAuthorization` resource, we
 can target a `Server` resource:
