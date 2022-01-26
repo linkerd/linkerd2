@@ -65,7 +65,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   const l5dExtensionsPath = '/api/extensions';
 
   const validMetricsWindows = {
-    '10s': '10 minutes',
+    '10s': '10 seconds',
     '1m': '1 minute',
     '10m': '10 minutes',
     '1h': '1 hour',
