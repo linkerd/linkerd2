@@ -29,7 +29,7 @@ if [ ! -f "$protocbin" ]; then
   mkdir -p "$targetbin"
   (
     cd "$tmp"
-    curl -L --silent --fail -o "./protoc.zip" "$protocurl"
+    "$bindir"/scurl -o "./protoc.zip" "$protocurl"
     unzip -q "./protoc.zip" bin/protoc
     chmod +x bin/protoc
   )

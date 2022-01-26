@@ -111,6 +111,7 @@ type (
 		OpaquePorts                   string           `json:"opaquePorts"`
 		Await                         bool             `json:"await"`
 		DefaultInboundPolicy          string           `json:"defaultInboundPolicy"`
+		AccessLog                     string           `json:"accessLog"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container
@@ -118,6 +119,7 @@ type (
 		Capabilities         *Capabilities    `json:"capabilities"`
 		IgnoreInboundPorts   string           `json:"ignoreInboundPorts"`
 		IgnoreOutboundPorts  string           `json:"ignoreOutboundPorts"`
+		SkipSubnets          string           `json:"skipSubnets"`
 		LogLevel             string           `json:"logLevel"`
 		LogFormat            string           `json:"logFormat"`
 		Image                *Image           `json:"image"`

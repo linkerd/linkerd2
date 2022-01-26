@@ -499,6 +499,7 @@ data:
           - disabled
     prometheusUrl: ""
     proxy:
+      accessLog: ""
       await: true
       capabilities: null
       defaultInboundPolicy: ""
@@ -559,6 +560,7 @@ data:
           request: 10Mi
       runAsRoot: false
       saMountPath: null
+      skipSubnets: ""
       xtMountPath:
         mountPath: /run
         name: linkerd-proxy-init-xtables-lock

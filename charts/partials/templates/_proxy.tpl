@@ -129,6 +129,10 @@ be used in other contexts.
 - name: LINKERD2_PROXY_POLICY_SVC_NAME
   value: linkerd-destination.{{.Release.Namespace}}.serviceaccount.identity.{{.Release.Namespace}}.{{$trustDomain}}
 {{ end -}}
+{{ if .Values.proxy.accessLog -}}
+- name: LINKERD2_PROXY_ACCESS_LOG
+  value: {{.Values.proxy.accessLog | quote}}
+{{ end -}}
 image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version | default .Values.linkerdVersion}}
 imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPolicy}}
 livenessProbe:

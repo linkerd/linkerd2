@@ -164,6 +164,9 @@ const (
 	// ignoreOutboundPorts config.
 	ProxyIgnoreOutboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/skip-outbound-ports"
 
+	// ProxySkipSubnetsAnnotation can be used to override the skipSubnets config
+	ProxySkipSubnetsAnnotation = ProxyConfigAnnotationsPrefix + "/skip-subnets"
+
 	// ProxyInboundPortAnnotation can be used to override the inboundPort config.
 	ProxyInboundPortAnnotation = ProxyConfigAnnotationsPrefix + "/inbound-port"
 
@@ -253,6 +256,10 @@ const (
 	// ProxyDefaultInboundPolicyAnnotation is used to configure the default
 	// inbound policy of the proxy
 	ProxyDefaultInboundPolicyAnnotation = ProxyConfigAnnotationsPrefix + "/default-inbound-policy"
+
+	// ProxyAccessLogAnnotation configures whether HTTP access logging is
+	// enabled, and what access log format is used.
+	ProxyAccessLogAnnotation = ProxyConfigAnnotationsPrefix + "/access-log"
 
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.

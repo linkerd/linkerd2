@@ -131,3 +131,8 @@ func (m *MockProm) QueryExemplars(ctx context.Context, query string, startTime t
 func (m *MockProm) TSDB(ctx context.Context) (promv1.TSDBResult, error) {
 	return promv1.TSDBResult{}, nil
 }
+
+// WalReplay returns the current replay status of the wal.
+func (m *MockProm) WalReplay(ctx context.Context) (promv1.WalReplayStatus, error) {
+	return promv1.WalReplayStatus{}, nil
+}
