@@ -1,7 +1,10 @@
 # Update authorization to use the Target Reference API
 
-The new `networking.k8s.io` APIs provide a pattern called *[policy
-attachment](https://gateway-api.sigs.k8s.io/v1alpha2/references/policy-attachment/#policy-attachment-for-mesh)*.
+The new `networking.k8s.io` APIs provide a pattern called **[policy
+attachment][pa]**. This pattern allows for policies to be generic over the types
+to which they are attached, with the specific supported types becoming an
+implementation detail of Linkerd's policy controller.
+
 We should anticipate this pattern stabilizing as *the Kubernetes way* and ensure
 that our new routing/policy behavior leverages this pattern. This will help us
 take advantage of standardized policies as they become available, and generally
@@ -193,3 +196,5 @@ spec:
 
 * Does this require changing the protobuf API? I don't think so?
 * How should this be exposed in metric labels?
+
+[pa]: https://gateway-api.sigs.k8s.io/v1alpha2/references/policy-attachment/#policy-attachment-for-mesh
