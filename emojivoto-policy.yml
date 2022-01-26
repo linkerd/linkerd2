@@ -49,7 +49,7 @@ metadata:
 spec:
   port: linkerd-admin
   podSelector:
-    matchLabels: {} # every pod
+    matchLabels: {} # all pods
   proxyProtocol: HTTP/1
 
 ---
@@ -118,11 +118,27 @@ apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
   namespace: emojivoto
-  name: servers-web
+  name: voting-web
 spec:
   targetRef:
     group: policy.linkerd.io
     kind: Server
+    name: voting-grpc
+  requiredAuthenticationRefs:
+    - group: policy.linkerd.io
+      kind: MeshTLSAuthentication
+      name: web
+
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: emojivoto
+  name: voting-web
+spec:
+  targetRef:
+    kind: ServiceAccount
+    name: emoji
   requiredAuthenticationRefs:
     - group: policy.linkerd.io
       kind: MeshTLSAuthentication
