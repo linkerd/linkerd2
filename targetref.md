@@ -150,7 +150,7 @@ spec:
    - cidr: ::/0
 ```
 
-#### `MeshTLSAuthentication`
+### `MeshTLSAuthentication`
 
 If we want to require communication is authenticated via mesh TLS, we can use a
 `MeshTLSAuthentication` resource to describe acceptable clients.
