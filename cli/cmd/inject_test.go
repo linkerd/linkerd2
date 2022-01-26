@@ -134,6 +134,17 @@ func TestUninjectAndInject(t *testing.T) {
 			}(),
 		},
 		{
+			inputFileName:  "inject_emojivoto_deployment.input.yml",
+			goldenFileName: "inject_emojivoto_deployment_access_log.golden.yml",
+			reportFileName: "inject_emojivoto_deployment.report",
+			injectProxy:    true,
+			testInjectConfig: func() *linkerd2.Values {
+				values := defaultConfig()
+				values.Proxy.AccessLog = "apache"
+				return values
+			}(),
+		},
+		{
 			inputFileName:    "inject_emojivoto_list.input.yml",
 			goldenFileName:   "inject_emojivoto_list.golden.yml",
 			reportFileName:   "inject_emojivoto_list.report",
@@ -661,6 +672,7 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 	values.Proxy.Resources.Memory.Limit = "50Mi"
 	values.Proxy.WaitBeforeExitSeconds = 10
 	values.Proxy.Await = false
+	values.Proxy.AccessLog = "apache"
 
 	expectedOverrides := map[string]string{
 		k8s.ProxyIgnoreInboundPortsAnnotation:  "8500-8505",
@@ -681,6 +693,7 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 		k8s.ProxyMemoryLimitAnnotation:            "50Mi",
 		k8s.ProxyWaitBeforeExitSecondsAnnotation:  "10",
 		k8s.ProxyAwait:                            "disabled",
+		k8s.ProxyAccessLogAnnotation:              "apache",
 	}
 
 	overrides := getOverrideAnnotations(values, baseValues)

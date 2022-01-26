@@ -2,16 +2,13 @@ use crate::api;
 use anyhow::{anyhow, bail, Result};
 use api::policy::ServerSpec;
 use futures::future;
-use hyper::body::Buf;
-use hyper::http;
-use hyper::{Body, Request, Response};
+use hyper::{body::Buf, http, Body, Request, Response};
 use kube::{api::Api, core::DynamicObject, ResourceExt};
-use std::convert::TryInto;
-use std::{future::Future, pin::Pin};
+use std::task::{Context, Poll};
+use std::{convert::TryInto, future::Future, pin::Pin};
 use tracing::{debug, info, warn};
 
-type BoxError = Box<dyn std::error::Error + Send + Sync>;
-type ResponseFuture = dyn Future<Output = Result<Response<Body>, BoxError>> + Send + 'static;
+type ResponseFuture = dyn Future<Output = Result<Response<Body>, anyhow::Error>> + Send + 'static;
 type BoxFuture = Pin<Box<ResponseFuture>>;
 
 #[derive(Clone)]
@@ -21,23 +18,20 @@ pub struct Service {
 
 impl hyper::service::Service<Request<Body>> for Service {
     type Response = Response<Body>;
-    type Error = BoxError;
+    type Error = anyhow::Error;
     type Future = BoxFuture;
 
-    fn poll_ready(
-        &mut self,
-        _cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Result<(), Self::Error>> {
-        std::task::Poll::Ready(Ok(()))
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<anyhow::Result<()>> {
+        Poll::Ready(Ok(()))
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         if req.method() != http::Method::POST || req.uri().path() != "/" {
-            return Box::pin(future::ready(
+            return Box::pin(future::ok(
                 Response::builder()
                     .status(http::StatusCode::NOT_FOUND)
                     .body(Body::empty())
-                    .map_err(|e| e.into()),
+                    .expect("failed to build response"),
             ));
         }
         let client = self.client.clone();
@@ -81,10 +75,12 @@ impl hyper::service::Service<Request<Body>> for Service {
                 Ok(servers) => servers,
                 Err(error) => {
                     warn!(%error, "Failed to list servers");
-                    return Response::builder()
-                        .status(http::StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(Body::empty())
-                        .map_err(|e| e.into());
+                    return anyhow::Ok(
+                        Response::builder()
+                            .status(http::StatusCode::INTERNAL_SERVER_ERROR)
+                            .body(Body::empty())
+                            .expect("response must be valid"),
+                    );
                 }
             };
 
@@ -102,7 +98,7 @@ impl hyper::service::Service<Request<Body>> for Service {
     }
 }
 
-fn json_response(rsp: AdmissionReview) -> Result<Response<Body>, BoxError> {
+fn json_response(rsp: AdmissionReview) -> Result<Response<Body>, anyhow::Error> {
     let bytes = serde_json::to_vec(&rsp)?;
     Response::builder()
         .status(http::StatusCode::OK)
@@ -116,7 +112,7 @@ type AdmissionRequest = kube::core::admission::AdmissionRequest<DynamicObject>;
 type AdmissionResponse = kube::core::admission::AdmissionResponse;
 type AdmissionReview = kube::core::admission::AdmissionReview<DynamicObject>;
 
-/// Parses a `Server` instance and it's namespace from the admission request.
+/// Parses a `Server` instance and its namespace from the admission request.
 fn parse_server(req: AdmissionRequest) -> Result<(String, String, api::policy::ServerSpec)> {
     let obj = req.object.ok_or_else(|| anyhow!("missing server"))?;
     let ns = obj

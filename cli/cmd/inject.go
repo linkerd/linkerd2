@@ -490,6 +490,10 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 		overrideAnnotations[k8s.ProxyDefaultInboundPolicyAnnotation] = proxy.DefaultInboundPolicy
 	}
 
+	if proxy.AccessLog != baseProxy.AccessLog {
+		overrideAnnotations[k8s.ProxyAccessLogAnnotation] = proxy.AccessLog
+	}
+
 	return overrideAnnotations
 }
 

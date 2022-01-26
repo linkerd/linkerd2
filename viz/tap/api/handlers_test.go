@@ -29,7 +29,7 @@ func TestHandleTap(t *testing.T) {
 			},
 			code:   http.StatusBadRequest,
 			header: http.Header{"Content-Type": []string{"application/json"}},
-			body:   `{"error":"invalid path: /apis"}`,
+			body:   `{"error":"invalid path: \"/apis\""}`,
 		},
 		{
 			req: &http.Request{

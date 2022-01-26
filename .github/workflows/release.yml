@@ -342,7 +342,7 @@ jobs:
       run: echo "INSTALL=install-edge" >> $GITHUB_ENV
     - name: Check published version
       run: |
-        until RES=$(curl -sL https://run.linkerd.io/$INSTALL | grep "LINKERD2_VERSION=\${LINKERD2_VERSION:-$TAG}") \
+        until RES=$(bin/scurl https://run.linkerd.io/$INSTALL | grep "LINKERD2_VERSION=\${LINKERD2_VERSION:-$TAG}") \
           || (( count++ >= 10 ))
         do
           sleep 30
@@ -361,7 +361,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
     - name: Log into GCP
-      uses: 'google-github-actions/auth@c6c22902f6af237edb96ede5f25a00e864589b2f'
+      uses: 'google-github-actions/auth@7a360a247cce1245c1d13bc63d8b2ac927d201c8'
       with:
         credentials_json: ${{ secrets.LINKERD_SITE_TOKEN }}
     - name: Edge Helm chart creation and upload

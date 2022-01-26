@@ -392,7 +392,7 @@ func (s *grpcServer) serviceResourceQuery(ctx context.Context, req *pb.StatSumma
 			}] = weightedDst.Weight.String()
 		}
 	} else if !kerrors.IsNotFound(err) {
-		log.Errorf("Failed to get weights from ServiceProfile %s: %v", spName, err)
+		log.Errorf("Failed to get weights from ServiceProfile %q: %v", spName, err)
 	}
 
 	for k, weight := range weights {

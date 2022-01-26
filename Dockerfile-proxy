@@ -13,12 +13,13 @@ RUN ./bin/install-deps $TARGETARCH
 FROM --platform=$BUILDPLATFORM curlimages/curl:7.76.1 as fetch
 WORKDIR /build
 COPY bin/fetch-proxy bin/fetch-proxy
+COPY bin/scurl bin/scurl
 COPY .proxy-version proxy-version
 ARG TARGETARCH
 RUN (proxy=$(bin/fetch-proxy $(cat proxy-version) $TARGETARCH) && \
     mv "$proxy" linkerd2-proxy)
 ARG LINKERD_AWAIT_VERSION=v0.2.4
-RUN curl -fsSvLo linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-${TARGETARCH} && chmod +x linkerd-await
+RUN bin/scurl -o linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-${TARGETARCH} && chmod +x linkerd-await
 
 ## compile proxy-identity agent
 FROM go-deps as golang

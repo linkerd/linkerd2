@@ -1,26 +1,17 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-use anyhow::{bail, Context, Error, Result};
+use anyhow::{anyhow, bail, Context, Error, Result};
 use clap::Parser;
 use futures::{future, prelude::*};
 use linkerd_policy_controller::k8s::DefaultPolicy;
 use linkerd_policy_controller::{admin, admission};
 use linkerd_policy_controller_core::IpNet;
-use std::net::SocketAddr;
-use tokio::{sync::watch, time};
+use std::{io, net::SocketAddr, sync};
+use tokio::{fs, net::TcpListener, sync::watch, time};
+use tokio_rustls::TlsAcceptor;
 use tracing::{debug, error, info, info_span, instrument, Instrument};
 use tracing_subscriber::{fmt::format, prelude::*, EnvFilter};
-
-use std::convert::Infallible;
-use std::{fs, io, sync};
-
-use async_stream::stream;
-use hyper::server::accept;
-use hyper::service::make_service_fn;
-use hyper::Server;
-use tokio::net::TcpListener;
-use tokio_rustls::TlsAcceptor;
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu"))]
 #[global_allocator]
@@ -124,8 +115,11 @@ async fn main() -> Result<()> {
     if let Some(bind_addr) = admission_addr {
         let tcp = TcpListener::bind(&bind_addr).await?;
         let listen_addr = tcp.local_addr()?;
-        // Prepare a long-running future stream to accept and serve clients.
-        let incoming_tls_stream = stream! {
+        // Connection accept loop
+        let server = async move {
+            let http = hyper::server::conn::Http::new();
+            let handler = admission::Service { client };
+
             loop {
                 let socket = match tcp.accept().await {
                     Ok((socket, _)) => socket,
@@ -136,18 +130,24 @@ async fn main() -> Result<()> {
                 };
                 let tls_cfg = {
                     // Load public certificate.
-                    let certs = match load_certs("/var/run/linkerd/tls/tls.crt") {
+                    let certs = match load_certs("/var/run/linkerd/tls/tls.crt")
+                        .await
+                        .with_context(|| "failed to load certificate")
+                    {
                         Ok(certs) => certs,
-                        Err(err) => {
-                            error!(%err, "Failed to load certificate");
+                        Err(error) => {
+                            error!(%error);
                             continue;
                         }
                     };
                     // Load private key.
-                    let key = match load_private_key("/var/run/linkerd/tls/tls.key") {
+                    let key = match load_private_key("/var/run/linkerd/tls/tls.key")
+                        .await
+                        .with_context(|| "failed to load private key")
+                    {
                         Ok(key) => key,
-                        Err(err) => {
-                            error!(%err, "Failed to load key");
+                        Err(error) => {
+                            error!(%error);
                             continue;
                         }
                     };
@@ -155,10 +155,11 @@ async fn main() -> Result<()> {
                     let mut cfg = match rustls::ServerConfig::builder()
                         .with_safe_defaults()
                         .with_no_client_auth()
-                        .with_single_cert(certs, key) {
+                        .with_single_cert(certs, key)
+                    {
                         Ok(cfg) => cfg,
-                        Err(err) => {
-                            error!(%err, "Failed to configure TLS");
+                        Err(error) => {
+                            error!(%error, "Failed to configure TLS");
                             continue;
                         }
                     };
@@ -167,22 +168,18 @@ async fn main() -> Result<()> {
                     sync::Arc::new(cfg)
                 };
                 let tls_acceptor = TlsAcceptor::from(tls_cfg);
-                let stream = tls_acceptor.accept(socket);
-                match stream.await {
-                    Ok(stream) => yield Ok::<_, Infallible>(stream),
-                    Err(e) => error!(%e, "TLS Error"),
-                }
+                let stream = match tls_acceptor.accept(socket).await {
+                    Ok(stream) => stream,
+                    Err(e) => {
+                        error!(%e, "TLS Error");
+                        continue;
+                    }
+                };
+                let conn = http.serve_connection(stream, handler.clone());
+                tokio::spawn(conn);
             }
         };
 
-        let acceptor = accept::from_stream(incoming_tls_stream);
-
-        let handler = admission::Service { client };
-        let service = make_service_fn(move |_| {
-            let handler = handler.clone();
-            future::ok::<_, io::Error>(handler)
-        });
-        let server = Server::builder(acceptor).serve(service);
         info!(addr = %listen_addr, "Admission controller server listening");
         tokio::spawn(server.instrument(info_span!("admission")));
     }
@@ -297,30 +294,26 @@ impl std::str::FromStr for LogFormat {
 }
 
 // Load public certificate from file.
-fn load_certs(filename: &str) -> Result<Vec<rustls::Certificate>, String> {
+async fn load_certs(filename: &str) -> anyhow::Result<Vec<rustls::Certificate>> {
     // Open certificate file.
-    let certfile =
-        fs::File::open(filename).map_err(|e| format!("failed to open {}: {}", filename, e))?;
-    let mut reader = io::BufReader::new(certfile);
+    let pem = fs::read(filename).await?;
+    let mut reader = io::BufReader::new(pem.as_slice());
 
     // Load and return certificate.
-    let certs = rustls_pemfile::certs(&mut reader)
-        .map_err(|e| format!("failed to load certificate: {}", e))?;
+    let certs = rustls_pemfile::certs(&mut reader)?;
     Ok(certs.into_iter().map(rustls::Certificate).collect())
 }
 
 // Load private key from file.
-fn load_private_key(filename: &str) -> Result<rustls::PrivateKey, String> {
+async fn load_private_key(filename: &str) -> anyhow::Result<rustls::PrivateKey> {
     // Open keyfile.
-    let keyfile =
-        fs::File::open(filename).map_err(|e| format!("failed to open {}: {}", filename, e))?;
-    let mut reader = io::BufReader::new(keyfile);
+    let pem = fs::read(filename).await?;
+    let mut reader = io::BufReader::new(pem.as_slice());
 
     // Load and return a single private key.
-    let keys = rustls_pemfile::rsa_private_keys(&mut reader)
-        .map_err(|e| format!("failed to load private key: {}", e))?;
+    let keys = rustls_pemfile::rsa_private_keys(&mut reader)?;
     if keys.len() != 1 {
-        return Err("expected a single private key".into());
+        return Err(anyhow!("expected a single private key"));
     }
 
     Ok(rustls::PrivateKey(keys[0].clone()))
