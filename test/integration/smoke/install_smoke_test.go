@@ -1,14 +1,18 @@
 package smoke
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"html/template"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
 )
 
@@ -211,7 +215,7 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 		}
 	}
 
-	expected := TestHelper.GetCheckOutput(t, golden, TestHelper.GetLinkerdNamespace())
+	expected := getCheckOutput(t, golden, TestHelper.GetLinkerdNamespace())
 	timeout := time.Minute * 5
 	err := TestHelper.RetryFor(timeout, func() error {
 		if cliVersionOverride != "" {
@@ -233,20 +237,20 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 			if ext == multiclusterExtensionName {
 				// multicluster check --proxy and multicluster check have the same output
 				// so use the same golden file.
-				expected = TestHelper.GetCheckOutput(t, "check.multicluster.golden", TestHelper.GetMulticlusterNamespace())
+				expected = getCheckOutput(t, "check.multicluster.golden", TestHelper.GetMulticlusterNamespace())
 				if !strings.Contains(out, expected) {
 					return fmt.Errorf(
 						"Expected:\n%s\nActual:\n%s", expected, out)
 				}
 			} else if ext == vizExtensionName {
 				if stage == proxyStage {
-					expected = TestHelper.GetCheckOutput(t, "check.viz.proxy.golden", TestHelper.GetVizNamespace())
+					expected = getCheckOutput(t, "check.viz.proxy.golden", TestHelper.GetVizNamespace())
 					if !strings.Contains(out, expected) {
 						return fmt.Errorf(
 							"Expected:\n%s\nActual:\n%s", expected, out)
 					}
 				} else {
-					expected = TestHelper.GetCheckOutput(t, "check.viz.golden", TestHelper.GetVizNamespace())
+					expected = getCheckOutput(t, "check.viz.golden", TestHelper.GetVizNamespace())
 					if !strings.Contains(out, expected) {
 						return fmt.Errorf(
 							"Expected:\n%s\nActual:\n%s", expected, out)
@@ -260,4 +264,33 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 	if err != nil {
 		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd check' command timed-out (%s)", timeout), err)
 	}
+}
+
+func getCheckOutput(t *testing.T, goldenFile string, namespace string) string {
+	pods, err := TestHelper.KubernetesHelper.GetPods(context.Background(), namespace, nil)
+	if err != nil {
+		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to retrieve pods: %s", err), err)
+	}
+
+	proxyVersionErr := ""
+	err = healthcheck.CheckProxyVersionsUpToDate(pods, version.Channels{})
+	if err != nil {
+		proxyVersionErr = err.Error()
+	}
+
+	tpl := template.Must(template.ParseFiles("testdata" + "/" + goldenFile))
+	vars := struct {
+		ProxyVersionErr string
+		HintURL         string
+	}{
+		proxyVersionErr,
+		healthcheck.HintBaseURL(TestHelper.GetVersion()),
+	}
+
+	var expected bytes.Buffer
+	if err := tpl.Execute(&expected, vars); err != nil {
+		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to parse check.viz.golden template: %s", err), err)
+	}
+
+	return expected.String()
 }
