@@ -7,8 +7,13 @@ use futures::{future, prelude::*};
 use linkerd_policy_controller::k8s::DefaultPolicy;
 use linkerd_policy_controller::{admin, admission};
 use linkerd_policy_controller_core::IpNet;
-use std::{io, net::SocketAddr, sync};
-use tokio::{fs, net::TcpListener, sync::watch, time};
+use std::{io, net::SocketAddr, sync::Arc};
+use tokio::{
+    fs,
+    net::{TcpListener, TcpStream},
+    sync::watch,
+    time,
+};
 use tokio_rustls::TlsAcceptor;
 use tracing::{debug, error, info, info_span, instrument, Instrument};
 use tracing_subscriber::{fmt::format, prelude::*, EnvFilter};
@@ -113,75 +118,9 @@ async fn main() -> Result<()> {
     tokio::spawn(grpc(grpc_addr, cluster_networks, handle, drain_rx.clone()));
 
     if let Some(bind_addr) = admission_addr {
-        let tcp = TcpListener::bind(&bind_addr).await?;
-        let listen_addr = tcp.local_addr()?;
-        // Connection accept loop
-        let server = async move {
-            let http = hyper::server::conn::Http::new();
-            let handler = admission::Service { client };
-
-            loop {
-                let socket = match tcp.accept().await {
-                    Ok((socket, _)) => socket,
-                    Err(err) => {
-                        error!(%err, "Failed to accept connection");
-                        continue;
-                    }
-                };
-                let tls_cfg = {
-                    // Load public certificate.
-                    let certs = match load_certs("/var/run/linkerd/tls/tls.crt")
-                        .await
-                        .with_context(|| "failed to load certificate")
-                    {
-                        Ok(certs) => certs,
-                        Err(error) => {
-                            error!(%error);
-                            continue;
-                        }
-                    };
-                    // Load private key.
-                    let key = match load_private_key("/var/run/linkerd/tls/tls.key")
-                        .await
-                        .with_context(|| "failed to load private key")
-                    {
-                        Ok(key) => key,
-                        Err(error) => {
-                            error!(%error);
-                            continue;
-                        }
-                    };
-                    // Do not use client certificate authentication.
-                    let mut cfg = match rustls::ServerConfig::builder()
-                        .with_safe_defaults()
-                        .with_no_client_auth()
-                        .with_single_cert(certs, key)
-                    {
-                        Ok(cfg) => cfg,
-                        Err(error) => {
-                            error!(%error, "Failed to configure TLS");
-                            continue;
-                        }
-                    };
-                    // Configure ALPN to accept HTTP/2, HTTP/1.1 in that order.
-                    cfg.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
-                    sync::Arc::new(cfg)
-                };
-                let tls_acceptor = TlsAcceptor::from(tls_cfg);
-                let stream = match tls_acceptor.accept(socket).await {
-                    Ok(stream) => stream,
-                    Err(e) => {
-                        error!(%e, "TLS Error");
-                        continue;
-                    }
-                };
-                let conn = http.serve_connection(stream, handler.clone());
-                tokio::spawn(conn);
-            }
-        };
-
+        let (listen_addr, serve) = bind_admission_controller(bind_addr, client).await?;
+        tokio::spawn(serve.instrument(info_span!("admission")));
         info!(addr = %listen_addr, "Admission controller server listening");
-        tokio::spawn(server.instrument(info_span!("admission")));
     }
 
     // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
@@ -317,4 +256,105 @@ async fn load_private_key(filename: &str) -> anyhow::Result<rustls::PrivateKey> 
     }
 
     Ok(rustls::PrivateKey(keys[0].clone()))
+}
+
+/// Bind the specified address and serve the admission controller using the
+/// provided kubernetes client.
+async fn bind_admission_controller(
+    bind_addr: SocketAddr,
+    client: kube::Client,
+) -> Result<(
+    SocketAddr,
+    impl std::future::Future<Output = ()> + Send + 'static,
+)> {
+    let tcp = TcpListener::bind(&bind_addr).await?;
+    let listen_addr = tcp.local_addr()?;
+    // Connection accept loop
+    let serve = async move {
+        loop {
+            let socket = match tcp.accept().await {
+                Ok((socket, _)) => socket,
+                Err(err) => {
+                    error!(%err, "Failed to accept connection");
+                    continue;
+                }
+            };
+            let client_addr = match socket.peer_addr() {
+                Ok(addr) => addr,
+                Err(error) => {
+                    error!(%error, "Failed to get peer address");
+                    continue;
+                }
+            };
+
+            tokio::spawn(
+                serve_admission_controller_conn(socket, client.clone())
+                    .instrument(info_span!("connection", client.addr = %client_addr)),
+            );
+        }
+    };
+
+    Ok((listen_addr, serve))
+}
+
+/// Serve an HTTP server for the admission controller on the given TCP
+/// connection.
+async fn serve_admission_controller_conn(socket: TcpStream, client: kube::Client) {
+    let tls = {
+        // Load public certificate.
+        let certs = match load_certs("/var/run/linkerd/tls/tls.crt")
+            .await
+            .with_context(|| "failed to load certificate")
+        {
+            Ok(certs) => certs,
+            Err(error) => {
+                error!(%error);
+                return;
+            }
+        };
+
+        // Load private key.
+        let key = match load_private_key("/var/run/linkerd/tls/tls.key")
+            .await
+            .with_context(|| "failed to load private key")
+        {
+            Ok(key) => key,
+            Err(error) => {
+                error!(%error);
+                return;
+            }
+        };
+
+        let mut cfg = match rustls::ServerConfig::builder()
+            .with_safe_defaults()
+            // Do not use client certificate authentication.
+            .with_no_client_auth()
+            .with_single_cert(certs, key)
+        {
+            Ok(cfg) => cfg,
+            Err(error) => {
+                error!(%error, "Failed to configure TLS");
+                return;
+            }
+        };
+        // Configure ALPN to accept HTTP/2, HTTP/1.1 in that order.
+        cfg.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
+        TlsAcceptor::from(Arc::new(cfg))
+    };
+
+    let stream = match tls.accept(socket).await {
+        Ok(stream) => stream,
+        Err(e) => {
+            error!(%e, "TLS Error");
+            return;
+        }
+    };
+
+    match hyper::server::conn::Http::new()
+        .serve_connection(stream, admission::Service { client })
+        .await
+    {
+        Ok(()) => debug!("Connection closed"),
+        Err(error) => info!(%error, "Connection closed"),
+    };
 }
