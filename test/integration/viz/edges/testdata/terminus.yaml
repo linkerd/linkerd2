@@ -1,0 +1,24 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: terminus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: terminus
+  template:
+    metadata:
+      labels:
+        app: terminus
+    spec:
+      containers:
+      - name: terminus
+        image: buoyantio/bb:v0.0.6
+        args:
+        - terminus
+        - "--h1-server-port=8080"
+        - "--response-text=pong"
+        ports:
+        - containerPort: 8080

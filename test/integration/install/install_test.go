@@ -44,8 +44,7 @@ var (
 	linkerdSvcEdge = []testutil.Service{
 		{Namespace: "linkerd", Name: "linkerd-dst"},
 		{Namespace: "linkerd", Name: "linkerd-identity"},
-		{Namespace: "linkerd-viz", Name: "web"},
-		{Namespace: "linkerd-viz", Name: "tap"},
+
 		{Namespace: "linkerd", Name: "linkerd-dst-headless"},
 		{Namespace: "linkerd", Name: "linkerd-identity-headless"},
 	}
@@ -445,19 +444,21 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	}
 
 	// Install Linkerd Viz Extension
-	exec = append(vizCmd, vizArgs...)
-	out, err = TestHelper.LinkerdRun(exec...)
-	if err != nil {
-		testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
-	}
+	if TestHelper.Viz() || TestHelper.UpgradeFromVersion() != "" {
+		exec = append(vizCmd, vizArgs...)
+		out, err = TestHelper.LinkerdRun(exec...)
+		if err != nil {
+			testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
+		}
 
-	out, err = TestHelper.KubectlApplyWithArgs(out, []string{
-		"--prune",
-		"-l", "linkerd.io/extension=viz",
-	}...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-			"'kubectl apply' command failed\n%s", out)
+		out, err = TestHelper.KubectlApplyWithArgs(out, []string{
+			"--prune",
+			"-l", "linkerd.io/extension=viz",
+		}...)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+				"'kubectl apply' command failed\n%s", out)
+		}
 	}
 
 	TestHelper.WaitRollout(t, expectedDeployments)
@@ -572,8 +573,13 @@ func TestInstallHelm(t *testing.T) {
 func TestControlPlaneResourcesPostInstall(t *testing.T) {
 	expectedServices := linkerdSvcEdge
 	expectedDeployments := testutil.LinkerdDeployReplicasEdge
-	if !TestHelper.ExternalPrometheus() {
-		expectedServices = append(expectedServices, testutil.Service{Namespace: "linkerd-viz", Name: "prometheus"})
+	if !TestHelper.ExternalPrometheus() && TestHelper.Viz() {
+		vizServices := []testutil.Service{
+			{Namespace: "linkerd-viz", Name: "web"},
+			{Namespace: "linkerd-viz", Name: "tap"},
+			{Namespace: "linkerd-viz", Name: "prometheus"},
+		}
+		expectedServices = append(expectedServices, vizServices...)
 		expectedDeployments["prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1}
 	}
 
@@ -1023,6 +1029,10 @@ func TestCheckPostInstall(t *testing.T) {
 }
 
 func TestCheckViz(t *testing.T) {
+	if !TestHelper.Viz() {
+		return
+	}
+
 	cmd := []string{"viz", "check", "--wait=60m"}
 	golden := "check.viz.golden"
 	if TestHelper.ExternalPrometheus() {
@@ -1079,6 +1089,10 @@ func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 }
 
 func TestDashboard(t *testing.T) {
+	if !TestHelper.Viz() {
+		return
+	}
+
 	dashboardPort := 52237
 	dashboardURL := fmt.Sprintf("http://localhost:%d", dashboardPort)
 
@@ -1235,7 +1249,7 @@ func TestCheckProxy(t *testing.T) {
 
 func TestRestarts(t *testing.T) {
 	expectedDeployments := testutil.LinkerdDeployReplicasEdge
-	if !TestHelper.ExternalPrometheus() {
+	if !TestHelper.ExternalPrometheus() && TestHelper.Viz() {
 		expectedDeployments["prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1}
 	}
 	for deploy, spec := range expectedDeployments {
