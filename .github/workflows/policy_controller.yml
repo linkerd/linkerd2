@@ -90,15 +90,17 @@ jobs:
     steps:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       - run: |
-          versions=$(sed -nE 's|.*docker://(.*/)?rust:([^ #]+).*|\2|p' .github/workflows/policy_controller.yml)
           ex=0
+
+          # Check this workflow against the version in rust-toolchain.
+          versions=$(sed -nE 's|.*docker://(.*/)?rust:([^ #]+).*|\2|p' .github/workflows/policy_controller.yml)
           for mismatch in $(echo "$versions" | grep -vF "$(cat rust-toolchain)" || true) ; do
             echo "::error file=.github/workflows/policy_controller.yml::Workflow uses incorrect rust version(s): $mismatch"
             ex=$((ex + 1))
           done
-          exit $ex
-      - run: |
-          ex=0
+
+          # Check the policy-controller dockerfiles workflow against the version
+          # in rust-toolchain.
           for f in policy-controller/*.dockerfile ; do
             versions=$(sed -nE 's|ARG RUST_IMAGE=(.*/)?rust:([^ #]+).*|\2|p' "$f")
             for mismatch in $(echo "$versions" | grep -vF "$(cat rust-toolchain)" || true) ; do
@@ -106,4 +108,5 @@ jobs:
               ex=$((ex + 1))
             done
           done
+
           exit $ex
