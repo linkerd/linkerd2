@@ -561,7 +561,7 @@ run_deep_test() {
 run_default-policy-deny_test() {
   local tests=()
   export default_allow_policy='deny'
-  run_test "$test_directory/install/install_test.go"
+  run_test "$test_directory/install/install_test.go" --viz
 }
 
 run_cni-calico-deep_test() {
