@@ -1,0 +1,22 @@
+---
+apiVersion: http.linkerd.io/v1alpha1
+kind: HttpRouteGroup
+metadata:
+  namespace: emojivoto
+  name: web-api
+spec:
+  routes:
+    - group: ...
+      kind: ...
+      name: ...
+---
+apiVersion: http.linkerd.io/v1alpha1
+kind: HttpRoute
+metadata:
+  namespace: emojivoto
+  name: web-api
+spec:
+  routes:
+    - group: ...
+      kind: ...
+      n
