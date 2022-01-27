@@ -459,9 +459,10 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 				"'kubectl apply' command failed\n%s", out)
 		}
+
+		TestHelper.WaitRollout(t, expectedDeployments)
 	}
 
-	TestHelper.WaitRollout(t, expectedDeployments)
 }
 
 // These need to be updated (if there are changes) once a new stable is released
