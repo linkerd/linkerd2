@@ -555,7 +555,7 @@ run_multicluster_test() {
 run_deep_test() {
   local tests=()
   run_test "$test_directory/install/install_test.go"
-  run_test "$test_direct/deep/..."
+  run_test "$test_directory/deep/..."
 }
 
 run_default-policy-deny_test() {
@@ -567,7 +567,7 @@ run_default-policy-deny_test() {
 run_cni-calico-deep_test() {
   local tests=()
   run_test "$test_directory/install/install_test.go" --cni --calico
-  run_test "$test_directy/deep/..." --cni
+  run_test "$test_directory/deep/..." --cni
 }
 
 run_helm-deep_test() {
