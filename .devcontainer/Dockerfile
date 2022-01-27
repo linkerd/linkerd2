@@ -50,8 +50,9 @@ ARG YQ_VERSION=v4.2.0
 RUN scurl -vo $HOME/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" \
     && chmod +x $HOME/bin/yq
 
+ARG RUST_TOOLCHAIN=1.56.1
 RUN scurl -v https://sh.rustup.rs \
-    | sh -s -- -y --default-toolchain 1.56.1 -c rustfmt -c clippy -c rls
+    | sh -s -- -y --default-toolchain "${RUST_TOOLCHAIN}" -c rustfmt -c clippy -c rls
 
 RUN mkdir /tmp/cargo-deny && cd /tmp/cargo-deny && \
     scurl -v https://github.com/EmbarkStudios/cargo-deny/releases/download/0.11.0/cargo-deny-0.11.0-x86_64-unknown-linux-musl.tar.gz | tar zxf - && \
