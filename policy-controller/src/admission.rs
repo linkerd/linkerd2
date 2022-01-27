@@ -4,12 +4,9 @@ use api::policy::ServerSpec;
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
 use kube::{api::Api, core::DynamicObject, ResourceExt};
+use std::convert::TryInto;
 use std::task::{Context, Poll};
-use std::{convert::TryInto, future::Future, pin::Pin};
 use tracing::{debug, info, warn};
-
-type ResponseFuture = dyn Future<Output = Result<Response<Body>, anyhow::Error>> + Send + 'static;
-type BoxFuture = Pin<Box<ResponseFuture>>;
 
 #[derive(Clone)]
 pub struct Service {
@@ -19,9 +16,9 @@ pub struct Service {
 impl hyper::service::Service<Request<Body>> for Service {
     type Response = Response<Body>;
     type Error = anyhow::Error;
-    type Future = BoxFuture;
+    type Future = future::BoxFuture<'static, Result<Response<Body>>>;
 
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<anyhow::Result<()>> {
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<()>> {
         Poll::Ready(Ok(()))
     }
 
@@ -31,7 +28,7 @@ impl hyper::service::Service<Request<Body>> for Service {
                 Response::builder()
                     .status(http::StatusCode::NOT_FOUND)
                     .body(Body::empty())
-                    .expect("failed to build response"),
+                    .expect("not found response must be valid"),
             ));
         }
         let client = self.client.clone();
@@ -75,12 +72,10 @@ impl hyper::service::Service<Request<Body>> for Service {
                 Ok(servers) => servers,
                 Err(error) => {
                     warn!(%error, "Failed to list servers");
-                    return anyhow::Ok(
-                        Response::builder()
-                            .status(http::StatusCode::INTERNAL_SERVER_ERROR)
-                            .body(Body::empty())
-                            .expect("response must be valid"),
-                    );
+                    return Ok(Response::builder()
+                        .status(http::StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Body::empty())
+                        .expect("error response must be valid"));
                 }
             };
 
@@ -98,13 +93,14 @@ impl hyper::service::Service<Request<Body>> for Service {
     }
 }
 
-fn json_response(rsp: AdmissionReview) -> Result<Response<Body>, anyhow::Error> {
-    let bytes = serde_json::to_vec(&rsp)?;
-    Response::builder()
+fn json_response(rsp: AdmissionReview) -> Result<Response<Body>> {
+    let bytes = serde_json::to_vec(&rsp)
+        .map_err(|e| anyhow::Error::from(e).context("failed to encode admission review as JSON"))?;
+    Ok(Response::builder()
         .status(http::StatusCode::OK)
         .header(http::header::CONTENT_TYPE, "application/json")
         .body(Body::from(bytes))
-        .map_err(|e| e.into())
+        .expect("admission review response must be valid"))
 }
 
 type Review = kube::core::admission::AdmissionReview<DynamicObject>;
