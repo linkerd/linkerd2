@@ -18,6 +18,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	discoveryv1beta1 "k8s.io/api/discovery/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/util/workqueue"
 )
 
@@ -67,6 +68,7 @@ func (te *testEnvironment) runEnvironment(watcherQueue workqueue.RateLimitingInt
 		requeueLimit:               0,
 		headlessServicesEnabled:    true,
 		endpointMirrorServiceCache: NewEndpointMirrorServiceCache(),
+		endpointLeaderElections:    make(map[string]*leaderelection.LeaderElector),
 	}
 
 	for _, ev := range te.events {

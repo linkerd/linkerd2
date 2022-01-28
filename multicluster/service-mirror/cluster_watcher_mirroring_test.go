@@ -16,6 +16,7 @@ import (
 	discoveryv1beta1 "k8s.io/api/discovery/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -370,6 +371,7 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 		requeueLimit:               0,
 		headlessServicesEnabled:    true,
 		endpointMirrorServiceCache: NewEndpointMirrorServiceCache(),
+		endpointLeaderElections:    make(map[string]*leaderelection.LeaderElector),
 	}
 
 	q.Add(&RemoteServiceCreated{

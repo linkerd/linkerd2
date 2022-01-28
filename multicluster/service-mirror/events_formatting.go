@@ -85,6 +85,10 @@ func (ou OnUpdateCalled) String() string {
 	return fmt.Sprintf("OnUpdateCalled: {svc: %s}", formatService(ou.svc))
 }
 
+func (ou OnEndpointSlicesModifiedCalled) String() string {
+	return fmt.Sprintf("OnEndpointSlicesModifiedCalled: {svc: %s/%s}", ou.namespace, ou.serviceName)
+}
+
 func (od OnDeleteCalled) String() string {
 	return fmt.Sprintf("OnDeleteCalled: {svc: %s}", formatService(od.svc))
 }

@@ -12,6 +12,7 @@ import (
 	discoveryv1beta1 "k8s.io/api/discovery/v1beta1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 // TODO: Update documentation
@@ -37,10 +38,12 @@ import (
 // global mirror exists and has an endpoints object, we simply update by
 // either creating or deleting endpoint mirror services.
 func (rcsw *RemoteClusterServiceWatcher) createOrUpdateGlobalEndpointSlices(ctx context.Context, exportedEndpoints *corev1.Endpoints) error {
-	exportedService, err := rcsw.remoteAPIClient.Svc().Lister().Services(exportedEndpoints.Namespace).Get(exportedEndpoints.Name)
+	namespace := exportedEndpoints.Namespace
+
+	exportedService, err := rcsw.remoteAPIClient.Svc().Lister().Services(namespace).Get(exportedEndpoints.Name)
 	if err != nil {
-		rcsw.log.Debugf("failed to retrieve exported service %s/%s when updating its global mirror endpoints: %v", exportedEndpoints.Namespace, exportedEndpoints.Name, err)
-		return fmt.Errorf("error retrieving exported service %s/%s: %v", exportedEndpoints.Namespace, exportedEndpoints.Name, err)
+		rcsw.log.Debugf("failed to retrieve exported service %s/%s when updating its global mirror endpoints: %v", namespace, exportedEndpoints.Name, err)
+		return fmt.Errorf("error retrieving exported service %s/%s: %v", namespace, exportedEndpoints.Name, err)
 	}
 
 	globalName, found := exportedService.Labels[consts.GlobalServiceNameLabel]
@@ -53,7 +56,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateGlobalEndpointSlices(ctx 
 	// this point it would have been possible to have a clusterIP mirror, since
 	// we are creating the mirror service in the scope of the function.
 	if exportedService.Spec.ClusterIP != corev1.ClusterIPNone {
-		rcsw.log.Warnf("Invalid configuration for creating a global mirror of service %s/%s, global mirrors must be headless", exportedService.Namespace, exportedService.Name)
+		rcsw.log.Warnf("Invalid configuration for creating a global mirror of service %s/%s, global mirrors must be headless", namespace, exportedService.Name)
 		return nil
 	}
 
@@ -69,7 +72,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateGlobalEndpointSlices(ctx 
 	}
 
 	mirrorServiceName := globalName
-	_, err = rcsw.localAPIClient.Svc().Lister().Services(exportedService.Namespace).Get(mirrorServiceName)
+	_, err = rcsw.localAPIClient.Svc().Lister().Services(namespace).Get(mirrorServiceName)
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
 			return err
@@ -83,7 +86,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateGlobalEndpointSlices(ctx 
 	}
 
 	endpointSliceName := rcsw.globalEndpointSliceName(globalName, exportedService)
-	endpointSlice, err := rcsw.localAPIClient.ES().Lister().EndpointSlices(exportedEndpoints.Namespace).Get(endpointSliceName)
+	endpointSlice, err := rcsw.localAPIClient.ES().Lister().EndpointSlices(namespace).Get(endpointSliceName)
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
 			return err
@@ -91,7 +94,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateGlobalEndpointSlices(ctx 
 
 		err := rcsw.createGlobalMirrorEndpointSlices(ctx, globalName, exportedService, exportedEndpoints)
 		if err != nil {
-			rcsw.log.Debugf("failed to create global mirrors for endpoints %s/%s: %v", exportedEndpoints.Namespace, exportedEndpoints.Name, err)
+			rcsw.log.Debugf("failed to create global mirrors for endpoints %s/%s: %v", namespace, exportedEndpoints.Name, err)
 			return err
 		}
 
@@ -104,12 +107,97 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateGlobalEndpointSlices(ctx 
 		return err
 	}
 	mirrorEndpoints.Endpoints = endpoints
-	_, err = rcsw.localAPIClient.Client.DiscoveryV1beta1().EndpointSlices(mirrorEndpoints.Namespace).Update(ctx, mirrorEndpoints, metav1.UpdateOptions{})
+	endpointSlice, err = rcsw.localAPIClient.Client.DiscoveryV1beta1().EndpointSlices(namespace).Update(ctx, mirrorEndpoints, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
 
+	_, err = rcsw.localAPIClient.Endpoint().Lister().Endpoints(namespace).Get(mirrorServiceName)
+	if err != nil {
+		if !kerrors.IsNotFound(err) {
+			return err
+		}
+
+		endpoint, err := rcsw.newGlobalEndpoint(namespace, mirrorServiceName, endpointSlice)
+		if err != nil {
+			return err
+		}
+
+		_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(namespace).Create(ctx, endpoint, metav1.CreateOptions{})
+		if err != nil {
+			return err
+		}
+	}
+
+	rcsw.eventsQueue.Add(&OnEndpointSlicesModifiedCalled{namespace, mirrorServiceName})
+
 	return nil
+}
+
+func (rcsw *RemoteClusterServiceWatcher) newGlobalEndpoint(namespace string, mirrorServiceName string, endpointSlice *discoveryv1beta1.EndpointSlice) (*v1.Endpoints, error) {
+	matchLabels := map[string]string{
+		"kubernetes.io/service-name": mirrorServiceName,
+		consts.GlobalResourceLabel:   "true",
+	}
+	endpointSlices, err := rcsw.localAPIClient.ES().Lister().EndpointSlices(namespace).List(labels.Set(matchLabels).AsSelector())
+	if err != nil {
+		return nil, err
+	}
+
+	subsets := []v1.EndpointSubset{}
+
+	for _, es := range endpointSlices {
+		// When we call this immediately after creating/updating an endpoint slice, as in
+		// cluster_watcher_global, the object in our informer store will be out of date.
+		//
+		// The optional endpointSlice argument replaces that object, if it exists. And if it did
+		// not, we insert it into the list.
+		if endpointSlice != nil && es.Name == endpointSlice.Name {
+			continue
+		}
+		subsetAddresses := []corev1.EndpointAddress{}
+		for _, e := range es.Endpoints {
+			subsetAddresses = append(subsetAddresses, corev1.EndpointAddress{
+				Hostname: *e.Hostname,
+				IP:       e.Addresses[0],
+			})
+		}
+		if len(subsetAddresses) > 0 {
+			subsets = append(subsets, v1.EndpointSubset{
+				Addresses: subsetAddresses,
+				Ports:     remapDiscoveryEndpointPortsToCoreEndpointPorts(es.Ports),
+			})
+		}
+	}
+	if endpointSlice != nil {
+		subsetAddresses := []corev1.EndpointAddress{}
+		for _, e := range endpointSlice.Endpoints {
+			subsetAddresses = append(subsetAddresses, corev1.EndpointAddress{
+				Hostname: *e.Hostname,
+				IP:       e.Addresses[0],
+			})
+		}
+		if len(subsetAddresses) > 0 {
+			subsets = append(subsets, v1.EndpointSubset{
+				Addresses: subsetAddresses,
+			})
+		}
+	}
+
+	return &v1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      mirrorServiceName,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"endpointslice.kubernetes.io/skip-mirror":  "true",
+				"control-plane.alpha.kubernetes.io/leader": rcsw.link.TargetClusterName,
+				consts.MirroredResourceLabel:               "true",
+				consts.RemoteClusterNameLabel:              rcsw.link.TargetClusterName,
+			},
+			Annotations: map[string]string{},
+		},
+		Subsets: subsets,
+	}, nil
 }
 
 // createRemoteHeadlessService creates a mirror service for an exported headless
@@ -187,7 +275,7 @@ func (rcsw *RemoteClusterServiceWatcher) createGlobalMirrorEndpointSlices(ctx co
 			Labels: map[string]string{
 				"kubernetes.io/service-name":             globalName,
 				"endpointslice.kubernetes.io/managed-by": "linkerd",
-				consts.MirroredResourceLabel:             "true",
+				consts.GlobalResourceLabel:               "true",
 				consts.RemoteClusterNameLabel:            rcsw.link.TargetClusterName,
 			},
 			Annotations: map[string]string{
@@ -196,7 +284,7 @@ func (rcsw *RemoteClusterServiceWatcher) createGlobalMirrorEndpointSlices(ctx co
 		},
 		Endpoints:   endpointsToCreate,
 		AddressType: discoveryv1beta1.AddressTypeIPv4,
-		Ports:       []discoveryv1beta1.EndpointPort{},
+		Ports:       remapRemoteServicePortsToEndpointPorts(exportedService.Spec.Ports),
 	}
 
 	if rcsw.link.GatewayIdentity != "" {
@@ -212,6 +300,36 @@ func (rcsw *RemoteClusterServiceWatcher) createGlobalMirrorEndpointSlices(ctx co
 	}
 
 	return nil
+}
+
+func remapRemoteServicePortsToEndpointPorts(ports []corev1.ServicePort) []discoveryv1beta1.EndpointPort {
+	// We ignore the NodePort here as its not relevant
+	// to the local cluster
+	var newPorts []discoveryv1beta1.EndpointPort
+	for _, port := range ports {
+		newPorts = append(newPorts, discoveryv1beta1.EndpointPort{
+			Name:        &port.Name,
+			Protocol:    &port.Protocol,
+			Port:        &port.Port,
+			AppProtocol: port.AppProtocol,
+		})
+	}
+	return newPorts
+}
+
+func remapDiscoveryEndpointPortsToCoreEndpointPorts(ports []discoveryv1beta1.EndpointPort) []corev1.EndpointPort {
+	// We ignore the NodePort here as its not relevant
+	// to the local cluster
+	var newPorts []corev1.EndpointPort
+	for _, port := range ports {
+		newPorts = append(newPorts, corev1.EndpointPort{
+			Name:        *port.Name,
+			Protocol:    *port.Protocol,
+			Port:        *port.Port,
+			AppProtocol: port.AppProtocol,
+		})
+	}
+	return newPorts
 }
 
 func BoolRef(b bool) *bool { return &b }

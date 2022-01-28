@@ -2,8 +2,10 @@ package servicemirror
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"time"
 
@@ -14,13 +16,17 @@ import (
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	discoveryv1beta1 "k8s.io/api/discovery/v1beta1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -51,6 +57,7 @@ type (
 		repairPeriod               time.Duration
 		headlessServicesEnabled    bool
 		endpointMirrorServiceCache cache.Store
+		endpointLeaderElections    map[string]*leaderelection.LeaderElector
 	}
 
 	// RemoteServiceCreated is generated whenever a remote service is created Observing
@@ -106,6 +113,13 @@ type (
 	// shared informer is called
 	OnAddEndpointsCalled struct {
 		ep *corev1.Endpoints
+	}
+
+	// OnAddEndpointsCalled is issued when the onAdd, onUpdate, or onDelete function of the
+	// EndpointSlices shared informer is called
+	OnEndpointSlicesModifiedCalled struct {
+		namespace   string
+		serviceName string
 	}
 
 	// OnUpdateCalled is issued when the onUpdate function of the
@@ -194,6 +208,7 @@ func NewRemoteClusterServiceWatcher(
 		repairPeriod:               repairPeriod,
 		headlessServicesEnabled:    enableHeadlessSvc,
 		endpointMirrorServiceCache: NewEndpointMirrorServiceCache(),
+		endpointLeaderElections:    make(map[string]*leaderelection.LeaderElector),
 	}, nil
 }
 
@@ -882,6 +897,8 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent(ctx context.Context) (
 		err = rcsw.createOrUpdateService(ev.svc)
 	case *OnAddEndpointsCalled:
 		err = rcsw.handleCreateOrUpdateEndpoints(ctx, ev.ep)
+	case *OnEndpointSlicesModifiedCalled:
+		err = rcsw.handleModifyEndpointSlices(ctx, ev.namespace, ev.serviceName)
 	case *OnUpdateCalled:
 		err = rcsw.createOrUpdateService(ev.svc)
 	case *OnUpdateEndpointsCalled:
@@ -1005,6 +1022,70 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 				}
 
 				rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{new.(*corev1.Endpoints)})
+			},
+		},
+	)
+
+	rcsw.localAPIClient.ES().Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				namespace := obj.(metav1.Object).GetNamespace()
+				if namespace == kubeSystem {
+					return
+				}
+
+				serviceName, found := obj.(*discoveryv1beta1.EndpointSlice).Annotations["kubernetes.io/service-name"]
+				if !found {
+					return
+				}
+
+				_, found = obj.(*discoveryv1beta1.EndpointSlice).Annotations[consts.GlobalResourceLabel]
+				if !found {
+					return
+				}
+
+				rcsw.eventsQueue.Add(&OnEndpointSlicesModifiedCalled{namespace, serviceName})
+			},
+			// AddFunc relevant for all kind of exported endpoints
+			UpdateFunc: func(old, new interface{}) {
+				namespace := new.(metav1.Object).GetNamespace()
+				if namespace == kubeSystem {
+					return
+				}
+
+				oldServiceName, found := old.(*discoveryv1beta1.EndpointSlice).Annotations["kubernetes.io/service-name"]
+				if found {
+					_, found = old.(*discoveryv1beta1.EndpointSlice).Annotations[consts.GlobalResourceLabel]
+					if found {
+						rcsw.eventsQueue.Add(&OnEndpointSlicesModifiedCalled{namespace, oldServiceName})
+					}
+				}
+
+				newServiceName, found := new.(*discoveryv1beta1.EndpointSlice).Annotations["kubernetes.io/service-name"]
+				if found && newServiceName != oldServiceName {
+					_, found = new.(*discoveryv1beta1.EndpointSlice).Annotations[consts.GlobalResourceLabel]
+					if found {
+						rcsw.eventsQueue.Add(&OnEndpointSlicesModifiedCalled{namespace, newServiceName})
+					}
+				}
+			},
+			DeleteFunc: func(obj interface{}) {
+				namespace := obj.(metav1.Object).GetNamespace()
+				if namespace == kubeSystem {
+					return
+				}
+
+				serviceName, found := obj.(*discoveryv1beta1.EndpointSlice).Annotations["kubernetes.io/service-name"]
+				if !found {
+					return
+				}
+
+				_, found = obj.(*discoveryv1beta1.EndpointSlice).Annotations[consts.GlobalResourceLabel]
+				if !found {
+					return
+				}
+
+				rcsw.eventsQueue.Add(&OnEndpointSlicesModifiedCalled{namespace, serviceName})
 			},
 		},
 	)
@@ -1264,6 +1345,127 @@ func (rcsw *RemoteClusterServiceWatcher) handleCreateOrUpdateEndpoints(
 
 	_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(exportedEndpoints.Namespace).Update(ctx, ep, metav1.UpdateOptions{})
 	return err
+}
+
+// handleCreateOrUpdateEndpointSlices synchronizes global mirror endpoint slices with an endpoints
+// object. This is necessary because kube-dns does not watch endpointslices.
+//
+// See:
+// * https://github.com/kubernetes/dns/issues/504
+// * https://github.com/kubernetes/kubernetes/issues/107742
+func (rcsw *RemoteClusterServiceWatcher) handleModifyEndpointSlices(
+	ctx context.Context,
+	namespace string,
+	serviceName string,
+) error {
+	le, err := rcsw.getLeaderElector(ctx, namespace, serviceName)
+	if err != nil {
+		return RetryableError{[]error{err}}
+	}
+
+	if !le.IsLeader() {
+		// Technically there's a time of check/time of use here. If we became the leader between
+		// these two lines of code, though, the OnStartLeading callback will queue another event.
+		currentLeader := le.GetLeader()
+		if len(strings.TrimSpace(currentLeader)) == 0 {
+			rcsw.log.Errorf("No one is the leader for service %s/%s", namespace, serviceName)
+		}
+
+		return fmt.Errorf("unable to update global mirror endpoint %s/%s, current leader is service mirror %s", namespace, serviceName, currentLeader)
+
+	}
+
+	endpoint, err := rcsw.newGlobalEndpoint(namespace, serviceName, nil)
+	if err != nil {
+		return RetryableError{[]error{err}}
+	}
+
+	patch := &map[string]interface{}{
+		"subsets": endpoint.Subsets,
+	}
+	data, err := json.Marshal(patch)
+	rcsw.log.Infof("created patch for endpoint %s/%s: %s", namespace, serviceName, string(data))
+	if err != nil {
+		rcsw.log.Errorf("error serializing endpoint patch, patch: %v", patch)
+		rcsw.log.Errorf("error serializing endpoint patch, error: %v", err)
+		return RetryableError{[]error{err}}
+	}
+	_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(namespace).Patch(ctx, serviceName, types.StrategicMergePatchType, data, metav1.PatchOptions{})
+	if err != nil {
+		if !kerrors.IsNotFound(err) {
+			rcsw.log.Errorf("error patching global service endpoint %s/%s: %v", namespace, serviceName, err)
+			return nil
+		}
+		_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(namespace).Create(ctx, endpoint, metav1.CreateOptions{})
+		if err != nil {
+			rcsw.log.Errorf("error creating global service endpoint %s/%s: %v", namespace, serviceName, err)
+			return RetryableError{[]error{err}}
+		}
+	}
+
+	return nil
+}
+
+func (rcsw *RemoteClusterServiceWatcher) getLeaderElector(ctx context.Context, namespace, serviceName string) (*leaderelection.LeaderElector, error) {
+	serviceId := fmt.Sprintf("%s/%s", namespace, serviceName)
+	le, found := rcsw.endpointLeaderElections[serviceId]
+	if !found {
+		hostname, err := os.Hostname()
+		if err != nil {
+			return nil, err
+		}
+		lec := leaderelection.LeaderElectionConfig{
+			Lock: &resourcelock.EndpointsLock{
+				EndpointsMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      serviceName,
+				},
+				Client: rcsw.localAPIClient.Client.CoreV1(),
+				LockConfig: resourcelock.ResourceLockConfig{
+					Identity: hostname,
+				},
+			},
+			ReleaseOnCancel: true,
+			LeaseDuration:   15 * time.Second,
+			RenewDeadline:   10 * time.Second,
+			RetryPeriod:     2 * time.Second,
+			Name:            fmt.Sprintf("%s-%s", serviceId, rcsw.link.TargetClusterName),
+			Callbacks: leaderelection.LeaderCallbacks{
+				OnStoppedLeading: func() {
+					rcsw.log.Errorf("Lost leader for service %s", serviceId)
+					delete(rcsw.endpointLeaderElections, serviceId)
+				},
+				OnStartedLeading: func(ctx context.Context) {
+					rcsw.log.Infof("Became leader for service %s", serviceId)
+					rcsw.eventsQueue.Add(&OnEndpointSlicesModifiedCalled{
+						namespace,
+						serviceName,
+					})
+				},
+				OnNewLeader: func(identity string) {
+					rcsw.log.Infof("Service mirror pod %s became leader for service %s", identity, serviceId)
+					rcsw.eventsQueue.Add(&OnEndpointSlicesModifiedCalled{
+						namespace,
+						serviceName,
+					})
+				},
+			},
+		}
+		le, err := leaderelection.NewLeaderElector(lec)
+		if err != nil {
+			return nil, err
+		}
+		if lec.WatchDog != nil {
+			lec.WatchDog.SetLeaderElection(le)
+		}
+		go le.Run(ctx)
+
+		rcsw.endpointLeaderElections[serviceId] = le
+
+		return le, nil
+	}
+
+	return le, nil
 }
 
 // createEndpointMirrorService creates a new Endpoint Mirror service and its

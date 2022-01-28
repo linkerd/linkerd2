@@ -403,6 +403,10 @@ const (
 
 	// MirroredResourceLabel indicates that this resource is the result
 	// of a mirroring operation (can be a namespace or a service)
+	GlobalResourceLabel = SvcMirrorPrefix + "/global-endpoint-slice"
+
+	// MirroredResourceLabel indicates that this resource is the result
+	// of a mirroring operation (can be a namespace or a service)
 	MirroredResourceLabel = SvcMirrorPrefix + "/mirrored-service"
 
 	// MirroredGatewayLabel indicates that this is a mirrored gateway
