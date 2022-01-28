@@ -289,6 +289,7 @@ async fn bind_admission_controller(
 
             tokio::spawn(
                 serve_admission_controller_conn(socket, client.clone())
+                    .map_err(|error| error!(%error))
                     .instrument(info_span!("connection", client.addr = %client_addr)),
             );
         }
@@ -299,62 +300,34 @@ async fn bind_admission_controller(
 
 /// Serve an HTTP server for the admission controller on the given TCP
 /// connection.
-async fn serve_admission_controller_conn(socket: TcpStream, client: kube::Client) {
+async fn serve_admission_controller_conn(socket: TcpStream, client: kube::Client) -> Result<()> {
     let tls = {
         // Load public certificate.
-        let certs = match load_certs("/var/run/linkerd/tls/tls.crt")
+        let certs = load_certs("/var/run/linkerd/tls/tls.crt")
             .await
-            .with_context(|| "failed to load certificate")
-        {
-            Ok(certs) => certs,
-            Err(error) => {
-                error!(%error);
-                return;
-            }
-        };
+            .with_context(|| "failed to load certificate")?;
 
         // Load private key.
-        let key = match load_private_key("/var/run/linkerd/tls/tls.key")
+        let key = load_private_key("/var/run/linkerd/tls/tls.key")
             .await
-            .with_context(|| "failed to load private key")
-        {
-            Ok(key) => key,
-            Err(error) => {
-                error!(%error);
-                return;
-            }
-        };
+            .with_context(|| "failed to load private key")?;
 
-        let mut cfg = match rustls::ServerConfig::builder()
+        let mut cfg = rustls::ServerConfig::builder()
             .with_safe_defaults()
             // Do not use client certificate authentication.
             .with_no_client_auth()
             .with_single_cert(certs, key)
-        {
-            Ok(cfg) => cfg,
-            Err(error) => {
-                error!(%error, "Failed to configure TLS");
-                return;
-            }
-        };
+            .with_context(|| "failed to configure TLS")?;
+
         // Configure ALPN to accept HTTP/2, HTTP/1.1 in that order.
         cfg.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
         TlsAcceptor::from(Arc::new(cfg))
     };
 
-    let stream = match tls.accept(socket).await {
-        Ok(stream) => stream,
-        Err(e) => {
-            error!(%e, "TLS Error");
-            return;
-        }
-    };
+    let stream = tls.accept(socket).await.with_context(|| "TLS error")?;
 
-    match hyper::server::conn::Http::new()
+    hyper::server::conn::Http::new()
         .serve_connection(stream, admission::Service { client })
         .await
-    {
-        Ok(()) => debug!("Connection closed"),
-        Err(error) => info!(%error, "Connection closed"),
-    };
+        .with_context(|| "Connection closed")
 }
