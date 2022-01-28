@@ -59,7 +59,6 @@ func TestInjectManualParams(t *testing.T) {
 	}
 
 	injectionValidator := testutil.InjectValidator{
-		DisableIdentity:        true,
 		Version:                "proxy-version",
 		Image:                  reg + "/proxy-image",
 		InitImage:              reg + "/init-image",
@@ -83,8 +82,6 @@ func TestInjectManualParams(t *testing.T) {
 	// TODO: test config.linkerd.io/proxy-version
 	cmd := append([]string{"inject",
 		"--manual",
-		"--linkerd-namespace=fake-ns",
-		"--ignore-cluster",
 	}, flags...)
 
 	cmd = append(cmd, "testdata/inject_test.yaml")

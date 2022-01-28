@@ -21,18 +21,12 @@ import (
 
 const (
 	envDir          = "LINKERD2_PROXY_IDENTITY_DIR"
-	envDisabled     = "LINKERD2_PROXY_IDENTITY_DISABLED"
 	envLocalName    = "LINKERD2_PROXY_IDENTITY_LOCAL_NAME"
 	envTrustAnchors = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
 )
 
 func main() {
 	defer runProxy()
-
-	if os.Getenv(envDisabled) != "" {
-		log.Debug("Identity disabled.")
-		return
-	}
 
 	dir := os.Getenv(envDir)
 	keyPath, csrPath, err := checkEndEntityDir(dir)

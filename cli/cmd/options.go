@@ -469,12 +469,6 @@ func makeInjectFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 				return nil
 			}),
 
-		flag.NewBoolFlag(injectFlags, "disable-identity", defaults.Proxy.DisableIdentity,
-			"Disables resources from participating in TLS identity", func(values *l5dcharts.Values, value bool) error {
-				values.Proxy.DisableIdentity = value
-				return nil
-			}),
-
 		flag.NewStringSliceFlag(injectFlags, "require-identity-on-inbound-ports", strings.Split(defaults.Proxy.RequireIdentityOnInboundPorts, ","),
 			"Inbound ports on which the proxy should require identity", func(values *l5dcharts.Values, value []string) error {
 				values.Proxy.RequireIdentityOnInboundPorts = strings.Join(value, ",")
@@ -572,10 +566,6 @@ func validateProxyValues(values *l5dcharts.Values) error {
 		if _, _, err := net.ParseCIDR(network); err != nil {
 			return fmt.Errorf("cannot parse destination get networks: %s", err)
 		}
-	}
-
-	if values.Proxy.DisableIdentity && len(values.Proxy.RequireIdentityOnInboundPorts) > 0 {
-		return errors.New("Identity must be enabled when  --require-identity-on-inbound-ports is specified")
 	}
 
 	if values.Proxy.Image.Version != "" && !alphaNumDashDot.MatchString(values.Proxy.Image.Version) {

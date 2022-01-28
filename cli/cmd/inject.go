@@ -446,10 +446,6 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 		overrideAnnotations[k8s.ProxyLogFormatAnnotation] = proxy.LogFormat
 	}
 
-	if proxy.DisableIdentity != baseProxy.DisableIdentity {
-		overrideAnnotations[k8s.ProxyDisableIdentityAnnotation] = strconv.FormatBool(proxy.DisableIdentity)
-	}
-
 	if proxy.RequireIdentityOnInboundPorts != baseProxy.RequireIdentityOnInboundPorts {
 		overrideAnnotations[k8s.ProxyRequireIdentityOnInboundPortsAnnotation] = proxy.RequireIdentityOnInboundPorts
 	}
