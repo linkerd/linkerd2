@@ -326,8 +326,13 @@ async fn serve_admission_controller_conn(socket: TcpStream, client: kube::Client
 
     let stream = tls.accept(socket).await.with_context(|| "TLS error")?;
 
-    hyper::server::conn::Http::new()
+    match hyper::server::conn::Http::new()
         .serve_connection(stream, admission::Service { client })
         .await
         .with_context(|| "Connection closed")
+    {
+        Ok(()) => debug!("Connection closed"),
+        Err(error) => info!(%error, "Connection closed"),
+    };
+    Ok(())
 }
