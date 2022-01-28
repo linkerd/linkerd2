@@ -293,7 +293,7 @@ Help:
 image_load() {
   cluster_name=$1
   images_load=("${images_load_default[@]}")
-  if [[ "$cluster_name" = *deep ]]; then
+  if [[ "$cluster_name" = *viz ]]; then
     images_load+=(jaeger-webhook)
   fi
   if [ "$cluster_name" = "cni-calico-deep" ]; then
