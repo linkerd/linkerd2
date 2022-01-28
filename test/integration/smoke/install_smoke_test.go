@@ -25,6 +25,9 @@ var (
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
+	if TestHelper.CNI() {
+		os.Exit(0)
+	}
 	os.Exit(m.Run())
 }
 
