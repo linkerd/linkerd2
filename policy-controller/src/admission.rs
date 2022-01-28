@@ -1,11 +1,11 @@
 use crate::api;
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use api::policy::ServerSpec;
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
 use kube::{api::Api, core::DynamicObject, ResourceExt};
 use std::convert::TryInto;
-use std::task::{Context, Poll};
+use std::task;
 use tracing::{debug, info, warn};
 
 #[derive(Clone)]
@@ -18,8 +18,8 @@ impl hyper::service::Service<Request<Body>> for Service {
     type Error = anyhow::Error;
     type Future = future::BoxFuture<'static, Result<Response<Body>>>;
 
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<()>> {
-        Poll::Ready(Ok(()))
+    fn poll_ready(&mut self, _cx: &mut task::Context<'_>) -> task::Poll<Result<()>> {
+        task::Poll::Ready(Ok(()))
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
@@ -94,8 +94,7 @@ impl hyper::service::Service<Request<Body>> for Service {
 }
 
 fn json_response(rsp: AdmissionReview) -> Result<Response<Body>> {
-    let bytes = serde_json::to_vec(&rsp)
-        .map_err(|e| anyhow::Error::from(e).context("failed to encode admission review as JSON"))?;
+    let bytes = serde_json::to_vec(&rsp).context("failed to encode admission review as JSON")?;
     Ok(Response::builder()
         .status(http::StatusCode::OK)
         .header(http::header::CONTENT_TYPE, "application/json")
