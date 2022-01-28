@@ -59,6 +59,7 @@ func TestInjectManualParams(t *testing.T) {
 	}
 
 	injectionValidator := testutil.InjectValidator{
+		NoInitContainer:        TestHelper.CNI(),
 		Version:                "proxy-version",
 		Image:                  reg + "/proxy-image",
 		InitImage:              reg + "/init-image",
