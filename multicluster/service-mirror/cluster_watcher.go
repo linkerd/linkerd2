@@ -526,6 +526,11 @@ func (rcsw *RemoteClusterServiceWatcher) handleLocalNamespaceAdded(ns *corev1.Na
 // - svc's Endpoint has Subsets, but none have addresses (only notReadyAddresses,
 // when the pod is not ready yet)
 func (rcsw *RemoteClusterServiceWatcher) isEmptyService(svc *corev1.Service) (bool, error) {
+	if _, found := svc.Labels[consts.MirroredHeadlessSvcNameLabel]; found {
+		// Service is a mirrored headless service, remote will not have a service or endpoints with
+		// this name
+		return false, nil
+	}
 	ep, err := rcsw.remoteAPIClient.Endpoint().Lister().Endpoints(svc.Namespace).Get(svc.Name)
 	if err != nil {
 		if kerrors.IsNotFound(err) {
