@@ -1,29 +1,57 @@
 use crate::api;
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use api::policy::ServerSpec;
+use futures::future;
+use hyper::{body::Buf, http, Body, Request, Response};
 use kube::{api::Api, core::DynamicObject, ResourceExt};
-use std::convert::{Infallible, TryInto};
+use std::convert::TryInto;
+use std::task;
 use tracing::{debug, info, warn};
-use warp::{filters::BoxedFilter, http, reply, Filter};
 
-/// Builds an API handler for a validating admission webhook that examines `Server` resources.
-pub fn routes(client: kube::Client) -> BoxedFilter<(impl warp::Reply,)> {
-    warp::post()
-        .and(warp::path::end())
-        // 64KB should be more than enough for any `Server` instance we can expect.
-        .and(warp::body::content_length_limit(64 * 1024).and(warp::body::json()))
-        .and(warp::any().map(move || client.clone()))
-        .and_then(|review: Review, client| async move {
-            let req: Request = match review.try_into() {
+#[derive(Clone)]
+pub struct Service {
+    pub client: kube::Client,
+}
+
+impl hyper::service::Service<Request<Body>> for Service {
+    type Response = Response<Body>;
+    type Error = anyhow::Error;
+    type Future = future::BoxFuture<'static, Result<Response<Body>>>;
+
+    fn poll_ready(&mut self, _cx: &mut task::Context<'_>) -> task::Poll<Result<()>> {
+        task::Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
+        if req.method() != http::Method::POST || req.uri().path() != "/" {
+            return Box::pin(future::ok(
+                Response::builder()
+                    .status(http::StatusCode::NOT_FOUND)
+                    .body(Body::empty())
+                    .expect("not found response must be valid"),
+            ));
+        }
+        let client = self.client.clone();
+        Box::pin(async move {
+            let bytes = hyper::body::aggregate(req.into_body()).await?;
+            let review: Review = match serde_json::from_reader(bytes.reader()) {
+                Ok(review) => review,
+                Err(error) => {
+                    warn!(%error, "Failed to parse request body");
+                    return json_response(AdmissionResponse::invalid(error).into_review());
+                }
+            };
+
+            let req: AdmissionRequest = match review.try_into() {
                 Ok(req) => req,
                 Err(error) => {
                     warn!(%error, "Invalid admission request");
-                    return ok(reply::json(&Response::invalid(error).into_review()));
+                    return json_response(AdmissionResponse::invalid(error).into_review());
                 }
             };
             debug!(?req);
 
-            let rsp = Response::from(&req);
+            let rsp = AdmissionResponse::from(&req);
 
             // Parse the server instance under review before doing anything with the API--i.e., if
             // this fails we don't have to waste the API calls.
@@ -31,7 +59,7 @@ pub fn routes(client: kube::Client) -> BoxedFilter<(impl warp::Reply,)> {
                 Ok(s) => s,
                 Err(error) => {
                     warn!(%error, "Failed to deserialize server from admission request");
-                    return ok(reply::json(&Response::invalid(error).into_review()));
+                    return json_response(AdmissionResponse::invalid(error).into_review());
                 }
             };
 
@@ -44,7 +72,10 @@ pub fn routes(client: kube::Client) -> BoxedFilter<(impl warp::Reply,)> {
                 Ok(servers) => servers,
                 Err(error) => {
                     warn!(%error, "Failed to list servers");
-                    return ok(http::StatusCode::INTERNAL_SERVER_ERROR);
+                    return Ok(Response::builder()
+                        .status(http::StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Body::empty())
+                        .expect("error response must be valid"));
                 }
             };
 
@@ -57,23 +88,27 @@ pub fn routes(client: kube::Client) -> BoxedFilter<(impl warp::Reply,)> {
                 }
             };
             debug!(?rsp);
-            ok(reply::json(&rsp.into_review()))
+            json_response(rsp.into_review())
         })
-        .with(warp::trace::request())
-        .boxed()
+    }
+}
+
+fn json_response(rsp: AdmissionReview) -> Result<Response<Body>> {
+    let bytes = serde_json::to_vec(&rsp).context("failed to encode admission review as JSON")?;
+    Ok(Response::builder()
+        .status(http::StatusCode::OK)
+        .header(http::header::CONTENT_TYPE, "application/json")
+        .body(Body::from(bytes))
+        .expect("admission review response must be valid"))
 }
 
 type Review = kube::core::admission::AdmissionReview<DynamicObject>;
-type Request = kube::core::admission::AdmissionRequest<DynamicObject>;
-type Response = kube::core::admission::AdmissionResponse;
+type AdmissionRequest = kube::core::admission::AdmissionRequest<DynamicObject>;
+type AdmissionResponse = kube::core::admission::AdmissionResponse;
+type AdmissionReview = kube::core::admission::AdmissionReview<DynamicObject>;
 
-#[inline]
-fn ok(reply: impl warp::Reply + 'static) -> Result<Box<dyn warp::Reply>, Infallible> {
-    Ok(Box::new(reply))
-}
-
-/// Parses a `Server` instance and it's namespace from the admission request.
-fn parse_server(req: Request) -> Result<(String, String, api::policy::ServerSpec)> {
+/// Parses a `Server` instance and its namespace from the admission request.
+fn parse_server(req: AdmissionRequest) -> Result<(String, String, api::policy::ServerSpec)> {
     let obj = req.object.ok_or_else(|| anyhow!("missing server"))?;
     let ns = obj
         .namespace()
