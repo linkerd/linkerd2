@@ -5,18 +5,38 @@ metadata:
   namespace: emojivoto
   name: web-api
 spec:
-  routes:
-    - group: ...
-      kind: ...
-      name: ...
+  matches:
+    - ...
 ---
 apiVersion: http.linkerd.io/v1alpha1
-kind: HttpRoute
+kind: HttpServerBinding
 metadata:
   namespace: emojivoto
   name: web-api
 spec:
+  serverRef:
+    name: web-http
   routes:
-    - group: ...
-      kind: ...
-      n
+    - name: ...
+      namespace: ...
+---
+apiVersion: http.linkerd.io/v1alpha1
+kind: GrpcService
+metadata:
+  namespace: emojivoto
+  name: web-api
+spec:
+  rpcs:
+    - ...
+---
+apiVersion: http.linkerd.io/v1alpha1
+kind: GrpcServerBinding
+metadata:
+  namespace: emojivoto
+  name: emoji
+spec:
+  serverRef:
+    name: emoji-grpc
+  services:
+    - name: ...
+      namespace: ...
