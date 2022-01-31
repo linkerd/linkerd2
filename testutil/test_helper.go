@@ -35,7 +35,6 @@ type TestHelper struct {
 	uninstall          bool
 	cni                bool
 	calico             bool
-	viz                bool
 	certsPath          string
 	defaultAllowPolicy string
 	httpClient         http.Client
@@ -91,6 +90,12 @@ var LinkerdVizDeployReplicas = map[string]DeploySpec{
 	"web":          {"linkerd-viz", 1},
 }
 
+// MulticlusterDeployReplicas is a map containing the number of replicas for each Deployment and the main
+// container name for multicluster components
+var MulticlusterDeployReplicas = map[string]DeploySpec{
+	"linkerd-gateway": {"linkerd-multicluster", 1},
+}
+
 // NewGenericTestHelper returns a new *TestHelper from the options provided as function parameters.
 // This helper was created to be able to reuse this package without hard restrictions
 // as seen in `NewTestHelper()` which is primarily used with integration tests
@@ -113,7 +118,6 @@ func NewGenericTestHelper(
 	multicluster,
 	cni,
 	calico,
-	viz,
 	uninstall bool,
 	httpClient http.Client,
 	kubernetesHelper KubernetesHelper,
@@ -139,17 +143,10 @@ func NewGenericTestHelper(
 		uninstall:          uninstall,
 		cni:                cni,
 		calico:             calico,
-		viz:                viz,
 		httpClient:         httpClient,
 		multicluster:       multicluster,
 		KubernetesHelper:   kubernetesHelper,
 	}
-}
-
-// MulticlusterDeployReplicas is a map containing the number of replicas for each Deployment and the main
-// container name for multicluster components
-var MulticlusterDeployReplicas = map[string]DeploySpec{
-	"linkerd-gateway": {"linkerd-multicluster", 1},
 }
 
 // NewTestHelper creates a new instance of TestHelper for the current test run.
@@ -160,6 +157,7 @@ func NewTestHelper() *TestHelper {
 		os.Exit(code)
 	}
 
+	// TODO (matei): clean-up flags
 	k8sContext := flag.String("k8s-context", "", "kubernetes context associated with the test cluster")
 	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
 	namespace := flag.String("linkerd-namespace", "linkerd", "the namespace where linkerd is installed")
@@ -177,7 +175,6 @@ func NewTestHelper() *TestHelper {
 	clusterDomain := flag.String("cluster-domain", "cluster.local", "when specified, the install test uses a custom cluster domain")
 	externalIssuer := flag.Bool("external-issuer", false, "when specified, the install test uses it to install linkerd with --identity-external-issuer=true")
 	externalPrometheus := flag.Bool("external-prometheus", false, "when specified, the install test uses an external prometheus")
-	viz := flag.Bool("viz", false, "when specified, installs the viz extension")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
 	upgradeHelmFromVersion := flag.String("upgrade-helm-from-version", "", "Indicate a version of the Linkerd helm chart from which the helm installation is being upgraded")
@@ -233,7 +230,6 @@ func NewTestHelper() *TestHelper {
 		externalPrometheus: *externalPrometheus,
 		cni:                *cni,
 		calico:             *calico,
-		viz:                *viz,
 		uninstall:          *uninstall,
 		certsPath:          *certsPath,
 		defaultAllowPolicy: *defaultAllowPolicy,
@@ -379,11 +375,6 @@ func (h *TestHelper) CNI() bool {
 // Calico determines whether Calico CNI plug-in is enabled
 func (h *TestHelper) Calico() bool {
 	return h.calico
-}
-
-// Viz determines whether the viz extension is enabled
-func (h *TestHelper) Viz() bool {
-	return h.viz
 }
 
 // AddInstalledExtension adds an extension name to installedExtensions to
