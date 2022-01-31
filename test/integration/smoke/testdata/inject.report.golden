@@ -1,0 +1,10 @@
+
+deployment "smoke-test-terminus" injected
+service "smoke-test-terminus-svc" skipped
+server "smoke-test-terminus" skipped
+serverauthorization "smoke-test-terminus" skipped
+deployment "smoke-test-gateway" injected
+service "smoke-test-gateway-svc" skipped
+server "smoke-test-proxy-admin" skipped
+serverauthorization "smoke-test-proxy-admin" skipped
+
