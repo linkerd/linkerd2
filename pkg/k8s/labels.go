@@ -112,10 +112,6 @@ const (
 	// disable injection for a pod or namespace.
 	ProxyInjectDisabled = Disabled
 
-	// IdentityModeAnnotation controls how a pod participates
-	// in service identity.
-	IdentityModeAnnotation = Prefix + "/identity-mode"
-
 	/*
 	 * Proxy config annotations
 	 */
@@ -234,9 +230,6 @@ const (
 	// to operate as a gateway, routing requests that target the inbound router.
 	ProxyEnableGatewayAnnotation = ProxyConfigAnnotationsPrefix + "/enable-gateway"
 
-	// ProxyDisableIdentityAnnotation can be used to disable identity on the injected proxy.
-	ProxyDisableIdentityAnnotation = ProxyConfigAnnotationsPrefix + "/disable-identity"
-
 	// ProxyEnableDebugAnnotation is set to true if the debug container is
 	// injected.
 	ProxyEnableDebugAnnotation = ProxyConfigAnnotationsPrefix + "/enable-debug-sidecar"
@@ -260,14 +253,6 @@ const (
 	// ProxyAccessLogAnnotation configures whether HTTP access logging is
 	// enabled, and what access log format is used.
 	ProxyAccessLogAnnotation = ProxyConfigAnnotationsPrefix + "/access-log"
-
-	// IdentityModeDefault is assigned to IdentityModeAnnotation to
-	// use the control plane's default identity scheme.
-	IdentityModeDefault = "default"
-
-	// IdentityModeDisabled is assigned to IdentityModeAnnotation to
-	// disable the proxy from participating in automatic identity.
-	IdentityModeDisabled = Disabled
 
 	// AllUnauthenticated allows all unathenticated connections.
 	AllUnauthenticated = "all-unauthenticated"

@@ -520,7 +520,6 @@ kind: Pod
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli some-version
-    linkerd.io/identity-mode: default
     linkerd.io/proxy-version: some-version
   labels:
     linkerd.io/control-plane-ns: linkerd

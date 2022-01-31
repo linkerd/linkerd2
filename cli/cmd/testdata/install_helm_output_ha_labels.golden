@@ -507,7 +507,6 @@ data:
       await: true
       capabilities: null
       defaultInboundPolicy: ""
-      disableIdentity: false
       enableExternalProfiles: false
       image:
         name: cr.l5d.io/linkerd/proxy
@@ -713,7 +712,6 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/helm linkerd-version
-        linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
         asda: fasda
         bingo: bongo
@@ -1110,7 +1108,6 @@ spec:
       annotations:
         linkerd.io/helm-release-version: "0"
         linkerd.io/created-by: linkerd/helm linkerd-version
-        linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
         asda: fasda
         bingo: bongo
@@ -1521,7 +1518,6 @@ spec:
       annotations:
         linkerd.io/helm-release-version: "0"
         linkerd.io/created-by: linkerd/helm linkerd-version
-        linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
         asda: fasda
         bingo: bongo

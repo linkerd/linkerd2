@@ -20,16 +20,13 @@ import (
 )
 
 var (
-	normalPod = watcher.Address{
+	pod1 = watcher.Address{
 		IP:   "1.1.1.1",
 		Port: 1,
 		Pod: &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod1",
 				Namespace: "ns",
-				Annotations: map[string]string{
-					k8s.IdentityModeAnnotation: k8s.IdentityModeDefault,
-				},
 				Labels: map[string]string{
 					k8s.ControllerNSLabel:    "linkerd",
 					k8s.ProxyDeploymentLabel: "deployment-name",
@@ -43,16 +40,13 @@ var (
 		OwnerName: "rc-name",
 	}
 
-	tlsOptionalPod = watcher.Address{
+	pod2 = watcher.Address{
 		IP:   "1.1.1.2",
 		Port: 2,
 		Pod: &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod2",
 				Namespace: "ns",
-				Annotations: map[string]string{
-					k8s.IdentityModeAnnotation: "optional",
-				},
 				Labels: map[string]string{
 					k8s.ControllerNSLabel:    "linkerd",
 					k8s.ProxyDeploymentLabel: "deployment-name",
@@ -61,34 +55,13 @@ var (
 		},
 	}
 
-	otherMeshPod = watcher.Address{
+	pod3 = watcher.Address{
 		IP:   "1.1.1.3",
 		Port: 3,
 		Pod: &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod3",
 				Namespace: "ns",
-				Annotations: map[string]string{
-					k8s.IdentityModeAnnotation: k8s.IdentityModeDefault,
-				},
-				Labels: map[string]string{
-					k8s.ControllerNSLabel:    "other-linkerd-namespace",
-					k8s.ProxyDeploymentLabel: "deployment-name",
-				},
-			},
-		},
-	}
-
-	tlsDisabledPod = watcher.Address{
-		IP:   "1.1.1.4",
-		Port: 4,
-		Pod: &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "pod4",
-				Namespace: "ns",
-				Annotations: map[string]string{
-					k8s.IdentityModeAnnotation: k8s.IdentityModeDisabled,
-				},
 				Labels: map[string]string{
 					k8s.ControllerNSLabel:    "linkerd",
 					k8s.ProxyDeploymentLabel: "deployment-name",
@@ -97,18 +70,18 @@ var (
 		},
 	}
 
-	remoteGatewayWithNoTLS = watcher.Address{
+	remoteGateway1 = watcher.Address{
 		IP:   "1.1.1.1",
 		Port: 1,
 	}
 
-	remoteGatewayWithTLS = watcher.Address{
+	remoteGateway2 = watcher.Address{
 		IP:       "1.1.1.2",
 		Port:     2,
 		Identity: "some-identity",
 	}
 
-	remoteGatewayWithTLSAndAuthOverride = watcher.Address{
+	remoteGatewayAuthOverride = watcher.Address{
 		IP:                "1.1.1.2",
 		Port:              2,
 		Identity:          "some-identity",
@@ -174,8 +147,8 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForServices(remoteGatewayWithNoTLS, remoteGatewayWithTLS))
-		translator.Remove(mkAddressSetForServices(remoteGatewayWithTLS))
+		translator.Add(mkAddressSetForServices(remoteGateway1, remoteGateway2))
+		translator.Remove(mkAddressSetForServices(remoteGateway2))
 
 		expectedNumUpdates := 2
 		actualNumUpdates := len(mockGetServer.updatesReceived)
@@ -197,7 +170,7 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForServices(remoteGatewayWithTLS))
+		translator.Add(mkAddressSetForServices(remoteGateway2))
 
 		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -232,7 +205,7 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForServices(remoteGatewayWithTLSAndAuthOverride))
+		translator.Add(mkAddressSetForServices(remoteGatewayAuthOverride))
 
 		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -258,7 +231,7 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 	t.Run("Does not send TlsIdentity when not present", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForServices(remoteGatewayWithNoTLS))
+		translator.Add(mkAddressSetForServices(remoteGateway1))
 
 		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -279,8 +252,8 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForPods(normalPod, tlsOptionalPod))
-		translator.Remove(mkAddressSetForPods(tlsOptionalPod))
+		translator.Add(mkAddressSetForPods(pod1, pod2))
+		translator.Remove(mkAddressSetForPods(pod2))
 
 		expectedNumUpdates := 2
 		actualNumUpdates := len(mockGetServer.updatesReceived)
@@ -292,8 +265,8 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 	t.Run("Sends addresses as removed or added", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForPods(normalPod, tlsOptionalPod, tlsDisabledPod))
-		translator.Remove(mkAddressSetForPods(tlsDisabledPod))
+		translator.Add(mkAddressSetForPods(pod1, pod2, pod3))
+		translator.Remove(mkAddressSetForPods(pod3))
 
 		addressesAdded := mockGetServer.updatesReceived[0].GetAdd().Addrs
 		actualNumberOfAdded := len(addressesAdded)
@@ -312,15 +285,15 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		sort.Slice(addressesAdded, func(i, j int) bool {
 			return addressesAdded[i].GetAddr().Port < addressesAdded[j].GetAddr().Port
 		})
-		checkAddressAndWeight(t, addressesAdded[0], normalPod)
-		checkAddressAndWeight(t, addressesAdded[1], tlsOptionalPod)
-		checkAddress(t, addressesRemoved[0], tlsDisabledPod)
+		checkAddressAndWeight(t, addressesAdded[0], pod1)
+		checkAddressAndWeight(t, addressesAdded[1], pod2)
+		checkAddress(t, addressesRemoved[0], pod3)
 	})
 
 	t.Run("Sends metric labels with added addresses", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForPods(normalPod))
+		translator.Add(mkAddressSetForPods(pod1))
 
 		actualGlobalMetricLabels := mockGetServer.updatesReceived[0].GetAdd().MetricLabels
 		expectedGlobalMetricLabels := map[string]string{"namespace": "service-ns", "service": "service-name"}
@@ -347,7 +320,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForPods(normalPod))
+		translator.Add(mkAddressSetForPods(pod1))
 
 		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -357,51 +330,6 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		actualTLSIdentity := addrs[0].GetTlsIdentity().GetDnsLikeIdentity()
 		if !reflect.DeepEqual(actualTLSIdentity, expectedTLSIdentity) {
 			t.Fatalf("Expected TlsIdentity to be [%v] but was [%v]", expectedTLSIdentity, actualTLSIdentity)
-		}
-	})
-
-	t.Run("Does not send TlsIdentity for non-default identity-modes", func(t *testing.T) {
-		mockGetServer, translator := makeEndpointTranslator(t)
-
-		translator.Add(mkAddressSetForPods(tlsOptionalPod))
-
-		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
-		if len(addrs) != 1 {
-			t.Fatalf("Expected [1] address returned, got %v", addrs)
-		}
-
-		if addrs[0].TlsIdentity != nil {
-			t.Fatalf("Expected no TlsIdentity to be sent, but got [%v]", addrs[0].TlsIdentity)
-		}
-	})
-
-	t.Run("Does not send TlsIdentity for other meshes", func(t *testing.T) {
-		mockGetServer, translator := makeEndpointTranslator(t)
-
-		translator.Add(mkAddressSetForPods(otherMeshPod))
-
-		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
-		if len(addrs) != 1 {
-			t.Fatalf("Expected [1] address returned, got %v", addrs)
-		}
-
-		if addrs[0].TlsIdentity != nil {
-			t.Fatalf("Expected no TlsIdentity to be sent, but got [%v]", addrs[0].TlsIdentity)
-		}
-	})
-
-	t.Run("Does not send TlsIdentity when not enabled", func(t *testing.T) {
-		mockGetServer, translator := makeEndpointTranslator(t)
-
-		translator.Add(mkAddressSetForPods(tlsDisabledPod))
-
-		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
-		if len(addrs) != 1 {
-			t.Fatalf("Expected [1] address returned, got %v", addrs)
-		}
-
-		if addrs[0].TlsIdentity != nil {
-			t.Fatalf("Expected no TlsIdentity to be sent, but got [%v]", addrs[0].TlsIdentity)
 		}
 	})
 }

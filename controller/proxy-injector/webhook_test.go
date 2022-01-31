@@ -62,7 +62,7 @@ func confNsWithConfigAnnotations() *inject.ResourceConfig {
 }
 func TestGetPodPatch(t *testing.T) {
 
-	values.Proxy.DisableIdentity = true
+	values.IdentityTrustAnchorsPEM = "IdentityTrustAnchorsPEM"
 
 	factory := fake.NewFactory(filepath.Join("fake", "data"))
 	nsEnabled, err := factory.Namespace("namespace-inject-enabled.yaml")

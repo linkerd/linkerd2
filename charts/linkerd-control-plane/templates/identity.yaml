@@ -94,7 +94,6 @@ spec:
 {{- $tree := deepCopy . }}
 {{ $_ := set $tree.Values.proxy "workloadKind" "deployment" -}}
 {{ $_ := set $tree.Values.proxy "component" "linkerd-identity" -}}
-{{ include "linkerd.proxy.validation" .Values.proxy -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

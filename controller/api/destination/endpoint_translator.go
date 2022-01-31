@@ -376,7 +376,6 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 	// multiple meshes can participate in identity if they share trust roots.
 	if identityTrustDomain != "" &&
 		controllerNSLabel == controllerNS &&
-		address.Pod.Annotations[k8s.IdentityModeAnnotation] == k8s.IdentityModeDefault &&
 		!isSkippedInboundPort {
 
 		id := fmt.Sprintf("%s.%s.serviceaccount.identity.%s.%s", sa, ns, controllerNSLabel, identityTrustDomain)

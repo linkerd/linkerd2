@@ -20,7 +20,6 @@ spec:
         config.linkerd.io/skip-inbound-ports: 7777,8888
         config.linkerd.io/skip-outbound-ports: "9999"
         linkerd.io/created-by: linkerd/cli dev-undefined
-        linkerd.io/identity-mode: default
         linkerd.io/proxy-version: override
       labels:
         app: web-svc

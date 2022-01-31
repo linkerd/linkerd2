@@ -2226,7 +2226,6 @@ data:
     proxy:
       capabilities: null
       component: linkerd-controller
-      disableIdentity: false
       disableTap: false
       enableExternalProfiles: false
       image:
@@ -2382,7 +2381,6 @@ data:
       proxy:
         capabilities: null
         component: linkerd-controller
-        disableIdentity: false
         disableTap: false
         enableExternalProfiles: false
         image:
