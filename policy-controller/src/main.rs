@@ -1,15 +1,21 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-use anyhow::{bail, Context, Error, Result};
+use anyhow::{anyhow, bail, Context, Error, Result};
 use clap::Parser;
 use futures::{future, prelude::*};
 use linkerd_policy_controller::k8s::DefaultPolicy;
 use linkerd_policy_controller::{admin, admission};
 use linkerd_policy_controller_core::IpNet;
-use std::net::SocketAddr;
-use tokio::{sync::watch, time};
-use tracing::{debug, info, info_span, instrument, Instrument};
+use std::{io, net::SocketAddr, sync::Arc};
+use tokio::{
+    fs,
+    net::{TcpListener, TcpStream},
+    sync::watch,
+    time,
+};
+use tokio_rustls::TlsAcceptor;
+use tracing::{debug, error, info, info_span, instrument, Instrument};
 use tracing_subscriber::{fmt::format, prelude::*, EnvFilter};
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu"))]
@@ -111,17 +117,10 @@ async fn main() -> Result<()> {
     // Run the gRPC server, serving results by looking up against the index handle.
     tokio::spawn(grpc(grpc_addr, cluster_networks, handle, drain_rx.clone()));
 
-    // Run the admission controller
     if let Some(bind_addr) = admission_addr {
-        let (listen_addr, serve) = warp::serve(admission::routes(client))
-            .tls()
-            .cert_path("/var/run/linkerd/tls/tls.crt")
-            .key_path("/var/run/linkerd/tls/tls.key")
-            .bind_with_graceful_shutdown(bind_addr, async move {
-                let _ = drain_rx.signaled().await;
-            });
-        info!(addr = %listen_addr, "Admission controller server listening");
+        let (listen_addr, serve) = bind_admission_controller(bind_addr, client).await?;
         tokio::spawn(serve.instrument(info_span!("admission")));
+        info!(addr = %listen_addr, "Admission controller server listening");
     }
 
     // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
@@ -231,4 +230,109 @@ impl std::str::FromStr for LogFormat {
             bail!("invalid log format: {}", s)
         }
     }
+}
+
+// Load public certificate from file.
+async fn load_certs(filename: &str) -> anyhow::Result<Vec<rustls::Certificate>> {
+    // Open certificate file.
+    let pem = fs::read(filename).await?;
+    let mut reader = io::BufReader::new(pem.as_slice());
+
+    // Load and return certificate.
+    let certs = rustls_pemfile::certs(&mut reader)?;
+    Ok(certs.into_iter().map(rustls::Certificate).collect())
+}
+
+// Load private key from file.
+async fn load_private_key(filename: &str) -> anyhow::Result<rustls::PrivateKey> {
+    // Open keyfile.
+    let pem = fs::read(filename).await?;
+    let mut reader = io::BufReader::new(pem.as_slice());
+
+    // Load and return a single private key.
+    let keys = rustls_pemfile::rsa_private_keys(&mut reader)?;
+    if keys.len() != 1 {
+        return Err(anyhow!("expected a single private key"));
+    }
+
+    Ok(rustls::PrivateKey(keys[0].clone()))
+}
+
+/// Bind the specified address and serve the admission controller using the
+/// provided kubernetes client.
+async fn bind_admission_controller(
+    bind_addr: SocketAddr,
+    client: kube::Client,
+) -> Result<(
+    SocketAddr,
+    impl std::future::Future<Output = ()> + Send + 'static,
+)> {
+    let tcp = TcpListener::bind(&bind_addr).await?;
+    let listen_addr = tcp.local_addr()?;
+    // Connection accept loop
+    let serve = async move {
+        loop {
+            let socket = match tcp.accept().await {
+                Ok((socket, _)) => socket,
+                Err(err) => {
+                    error!(%err, "Failed to accept connection");
+                    continue;
+                }
+            };
+            let client_addr = match socket.peer_addr() {
+                Ok(addr) => addr,
+                Err(error) => {
+                    error!(%error, "Failed to get peer address");
+                    continue;
+                }
+            };
+
+            tokio::spawn(
+                serve_admission_controller_conn(socket, client.clone())
+                    .map_err(|error| error!(%error))
+                    .instrument(info_span!("connection", client.addr = %client_addr)),
+            );
+        }
+    };
+
+    Ok((listen_addr, serve))
+}
+
+/// Serve an HTTP server for the admission controller on the given TCP
+/// connection.
+async fn serve_admission_controller_conn(socket: TcpStream, client: kube::Client) -> Result<()> {
+    let tls = {
+        // Load public certificate.
+        let certs = load_certs("/var/run/linkerd/tls/tls.crt")
+            .await
+            .with_context(|| "failed to load certificate")?;
+
+        // Load private key.
+        let key = load_private_key("/var/run/linkerd/tls/tls.key")
+            .await
+            .with_context(|| "failed to load private key")?;
+
+        let mut cfg = rustls::ServerConfig::builder()
+            .with_safe_defaults()
+            // Do not use client certificate authentication.
+            .with_no_client_auth()
+            .with_single_cert(certs, key)
+            .with_context(|| "failed to configure TLS")?;
+
+        // Configure ALPN to accept HTTP/2, HTTP/1.1 in that order.
+        cfg.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
+        TlsAcceptor::from(Arc::new(cfg))
+    };
+
+    let stream = tls.accept(socket).await.with_context(|| "TLS error")?;
+
+    match hyper::server::conn::Http::new()
+        .serve_connection(stream, admission::Service { client })
+        .await
+        .with_context(|| "Connection closed")
+    {
+        Ok(()) => debug!("Connection closed"),
+        Err(error) => info!(%error, "Connection closed"),
+    };
+    Ok(())
 }
