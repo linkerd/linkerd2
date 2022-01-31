@@ -80,3 +80,4 @@
 
 If you're using Linkerd 2.x and aren't on this list, please [submit a pull
 request](https://github.com/linkerd/linkerd2/edit/main/ADOPTERS.md)!
+- [AT&T] (https://il.att.com/)
