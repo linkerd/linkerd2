@@ -521,7 +521,7 @@ run_helm-upgrade_test() {
   helm_cleanup
 }
 
-run_un1_install_test() {
+run_uninstall_test() {
   run_test "$test_directory/install/uninstall/uninstall_test.go" --uninstall=true
 }
 
