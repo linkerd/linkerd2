@@ -1,4 +1,4 @@
-package _install_viz
+package viztest
 
 import (
 	"bytes"

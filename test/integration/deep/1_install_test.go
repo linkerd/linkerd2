@@ -1,4 +1,4 @@
-package install_deep
+package deeptest
 
 import (
 	"fmt"

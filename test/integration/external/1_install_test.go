@@ -1,4 +1,4 @@
-package _install_external
+package externaltest
 
 import (
 	"bytes"

@@ -1,4 +1,4 @@
-package install_multicluster
+package multiclustertest
 
 import (
 	"fmt"
