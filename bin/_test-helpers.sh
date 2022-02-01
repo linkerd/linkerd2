@@ -466,7 +466,6 @@ run_upgrade-edge_test() {
 }
 
 run_viz_test() {
-  local tests=()
   run_test "$test_directory/viz/..."
 }
 
@@ -550,18 +549,15 @@ run_multicluster_test() {
 }
 
 run_deep_test() {
-  local tests=()
   run_test "$test_directory/deep/..."
 }
 
 run_default-policy-deny_test() {
-  local tests=()
   export default_allow_policy='deny'
   run_test "$test_directory/install/1_install_test.go" 
 }
 
 run_cni-calico-deep_test() {
-  local tests=()
   run_test "$test_directory/deep/..." --cni
 }
 
