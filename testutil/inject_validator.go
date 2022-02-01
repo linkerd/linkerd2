@@ -18,7 +18,6 @@ const enabled = "true"
 // injected pods
 type InjectValidator struct {
 	NoInitContainer         bool
-	DisableIdentity         bool
 	AutoInject              bool
 	AdminPort               int
 	ControlPort             int
@@ -427,11 +426,6 @@ func (iv *InjectValidator) GetFlagsAndAnnotations() ([]string, map[string]string
 	if iv.ControlPort != 0 {
 		annotations[k8s.ProxyControlPortAnnotation] = strconv.Itoa(iv.ControlPort)
 		flags = append(flags, fmt.Sprintf("--control-port=%s", strconv.Itoa(iv.ControlPort)))
-	}
-
-	if iv.DisableIdentity {
-		annotations[k8s.IdentityModeDisabled] = enabled
-		flags = append(flags, "--disable-identity")
 	}
 
 	if iv.EnableDebug {

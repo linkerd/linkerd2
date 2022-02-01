@@ -26,7 +26,6 @@ func Main(args []string) {
 	metricsAddr := cmd.String("metrics-addr", ":9996", "address to serve scrapable metrics on")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 	enableH2Upgrade := cmd.Bool("enable-h2-upgrade", true, "Enable transparently upgraded HTTP2 connections among pods in the service mesh")
-	disableIdentity := cmd.Bool("disable-identity", false, "Disable identity configuration")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", true, "Enable the usage of EndpointSlice informers and resources")
 	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
@@ -47,13 +46,9 @@ func Main(args []string) {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
-	if *disableIdentity {
-		log.Info("Identity is disabled")
-	} else {
-		if *trustDomain == "" {
-			*trustDomain = "cluster.local"
-			log.Warnf(" expected trust domain through args (falling back to %s)", *trustDomain)
-		}
+	if *trustDomain == "" {
+		*trustDomain = "cluster.local"
+		log.Warnf(" expected trust domain through args (falling back to %s)", *trustDomain)
 	}
 
 	if *clusterDomain == "" {

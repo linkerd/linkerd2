@@ -87,10 +87,6 @@ env:
 - name: LINKERD2_PROXY_DESTINATION_CONTEXT
   value: |
     {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
-{{ if .Values.proxy.disableIdentity -}}
-- name: LINKERD2_PROXY_IDENTITY_DISABLED
-  value: disabled
-{{ else -}}
 - name: _pod_sa
   valueFrom:
     fieldRef:
@@ -128,7 +124,6 @@ be used in other contexts.
   value: linkerd-destination.{{.Release.Namespace}}.serviceaccount.identity.{{.Release.Namespace}}.{{$trustDomain}}
 - name: LINKERD2_PROXY_POLICY_SVC_NAME
   value: linkerd-destination.{{.Release.Namespace}}.serviceaccount.identity.{{.Release.Namespace}}.{{$trustDomain}}
-{{ end -}}
 {{ if .Values.proxy.accessLog -}}
 - name: LINKERD2_PROXY_ACCESS_LOG
   value: {{.Values.proxy.accessLog | quote}}
@@ -178,20 +173,16 @@ lifecycle:
         - {{.Values.proxy.waitBeforeExitSeconds | quote}}
 {{- end }}
 {{- end }}
-{{- if or (not .Values.proxy.disableIdentity) (.Values.proxy.saMountPath) }}
 volumeMounts:
-{{- if not .Values.proxy.disableIdentity }}
 - mountPath: /var/run/linkerd/identity/end-entity
   name: linkerd-identity-end-entity
 {{- if .Values.identity.serviceAccountTokenProjection }}
 - mountPath: /var/run/secrets/tokens
   name: linkerd-identity-token
 {{- end }}
-{{- end -}}
 {{- if .Values.proxy.saMountPath }}
 - mountPath: {{.Values.proxy.saMountPath.mountPath}}
   name: {{.Values.proxy.saMountPath.name}}
   readOnly: {{.Values.proxy.saMountPath.readOnly}}
-{{- end -}}
 {{- end -}}
 {{- end }}

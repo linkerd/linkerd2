@@ -213,10 +213,6 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Tag to be used for the Linkerd proxy images",
 		},
 		{
-			Name:        k8s.ProxyDisableIdentityAnnotation,
-			Description: "Disables resources from participating in TLS identity",
-		},
-		{
 			Name:        k8s.ProxyEnableDebugAnnotation,
 			Description: "Inject a debug sidecar for data plane debugging",
 		},

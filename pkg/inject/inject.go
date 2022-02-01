@@ -41,7 +41,6 @@ var (
 	ProxyAnnotations = []string{
 		k8s.ProxyAdminPortAnnotation,
 		k8s.ProxyControlPortAnnotation,
-		k8s.ProxyDisableIdentityAnnotation,
 		k8s.ProxyEnableDebugAnnotation,
 		k8s.ProxyEnableExternalProfilesAnnotation,
 		k8s.ProxyImagePullPolicyAnnotation,
@@ -278,10 +277,6 @@ func (conf *ResourceConfig) GetPodPatch(injectProxy bool) ([]byte, error) {
 	values, err := conf.GetOverriddenValues()
 	if err != nil {
 		return nil, fmt.Errorf("could not generate Overridden Values: %s", err)
-	}
-
-	if values.Proxy.RequireIdentityOnInboundPorts != "" && values.Proxy.DisableIdentity {
-		return nil, fmt.Errorf("%s cannot be set when identity is disabled", k8s.ProxyRequireIdentityOnInboundPortsAnnotation)
 	}
 
 	if values.ClusterNetworks != "" {
@@ -804,12 +799,6 @@ func (conf *ResourceConfig) injectObjectMeta(values *podPatch) {
 
 	values.Annotations[k8s.ProxyVersionAnnotation] = values.Proxy.Image.Version
 
-	if values.Identity == nil || values.Proxy.DisableIdentity {
-		values.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeDisabled
-	} else {
-		values.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeDefault
-	}
-
 	if len(conf.pod.labels) > 0 {
 		values.AddRootLabels = len(conf.pod.meta.Labels) == 0
 		for _, k := range sortedKeys(conf.pod.labels) {
@@ -912,13 +901,6 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 
 	if override, ok := annotations[k8s.ProxyLogFormatAnnotation]; ok {
 		values.Proxy.LogFormat = override
-	}
-
-	if override, ok := annotations[k8s.ProxyDisableIdentityAnnotation]; ok {
-		value, err := strconv.ParseBool(override)
-		if err == nil {
-			values.Proxy.DisableIdentity = value
-		}
 	}
 
 	if override, ok := annotations[k8s.ProxyRequireIdentityOnInboundPortsAnnotation]; ok {

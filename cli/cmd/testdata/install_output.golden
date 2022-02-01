@@ -1207,7 +1207,6 @@ data:
       await: false
       capabilities: null
       defaultInboundPolicy: ""
-      disableIdentity: false
       enableExternalProfiles: false
       image:
         name: ProxyImageName
@@ -1391,7 +1390,6 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: CliVersion
-        linkerd.io/identity-mode: default
         linkerd.io/proxy-version: ProxyVersion
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
@@ -1734,7 +1732,6 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: CliVersion
-        linkerd.io/identity-mode: default
         linkerd.io/proxy-version: ProxyVersion
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
@@ -2102,7 +2099,6 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: CliVersion
-        linkerd.io/identity-mode: default
         linkerd.io/proxy-version: ProxyVersion
         config.linkerd.io/opaque-ports: "8443"
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
