@@ -303,6 +303,24 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		TestHelper.WaitRollout(t, expectedDeployments)
 	}
 
+	// Install Linkerd Viz Extension
+	exec = append(vizCmd, vizArgs...)
+	out, err = TestHelper.LinkerdRun(exec...)
+	if err != nil {
+		testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
+	}
+
+	out, err = TestHelper.KubectlApplyWithArgs(out, []string{
+		"--prune",
+		"-l", "linkerd.io/extension=viz",
+	}...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", out)
+	}
+
+	TestHelper.WaitRollout(t, expectedDeployments)
+
 }
 
 // These need to be updated (if there are changes) once a new stable is released
