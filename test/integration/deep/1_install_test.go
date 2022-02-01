@@ -23,7 +23,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestInstallCalico(t *testing.T) {
-	if !TestHelper.Calico() {
+	if !TestHelper.CNI() {
 		return
 	}
 
