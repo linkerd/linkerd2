@@ -16,7 +16,7 @@ clap = { version = "3", default-features = false, features = ["derive", "env", "
 drain = "0.1"
 futures = { version = "0.3", default-features = false }
 hyper = { version = "0.14", features = ["http1", "http2", "runtime", "server"] }
-kube = { version = "0.67", default-features = false, features = ["admission", "client"] }
+kube = { version = "0.68", default-features = false, features = ["admission", "client"] }
 linkerd-policy-controller-core = { path = "./core" }
 linkerd-policy-controller-grpc = { path = "./grpc" }
 linkerd-policy-controller-k8s-index = { path = "./k8s/index" }
