@@ -29,9 +29,6 @@ func TestMain(m *testing.M) {
 func TestEdges(t *testing.T) {
 	ns := TestHelper.GetLinkerdNamespace()
 	promNs := TestHelper.GetVizNamespace()
-	if TestHelper.ExternalPrometheus() {
-		promNs = "external-prometheus"
-	}
 	vars := struct {
 		Ns     string
 		PromNs string
@@ -141,9 +138,6 @@ func TestDirectEdges(t *testing.T) {
 		// check edges
 		timeout := 50 * time.Second
 		testDataPath := "testdata"
-		if TestHelper.ExternalPrometheus() {
-			testDataPath += "/external_prometheus"
-		}
 		err = TestHelper.RetryFor(timeout, func() error {
 			out, err = TestHelper.LinkerdRun("-n", testNamespace, "-o", "json", "viz", "edges", "deploy")
 			if err != nil {

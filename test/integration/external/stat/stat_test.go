@@ -48,13 +48,8 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 	metricsPod = pods[0]
 
 	// Retrieve Prometheus pod details
-	if TestHelper.ExternalPrometheus() {
-		prometheusNamespace = "external-prometheus"
-		prometheusDeployment = "prometheus"
-	} else {
-		prometheusNamespace = TestHelper.GetVizNamespace()
-		prometheusDeployment = "prometheus"
-	}
+	prometheusNamespace = "external-prometheus"
+	prometheusDeployment = "prometheus"
 
 	pods, err = TestHelper.GetPodNamesForDeployment(ctx, prometheusNamespace, prometheusDeployment)
 	if err != nil {
@@ -140,7 +135,6 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 				args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetVizNamespace()},
 				expectedRows: map[string]string{
 					"metrics-api":  "1/1",
-					"prometheus":   "1/1",
 					"tap":          "1/1",
 					"web":          "1/1",
 					"tap-injector": "1/1",
@@ -149,11 +143,12 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			{
 				args: []string{"viz", "stat", "ns", TestHelper.GetVizNamespace()},
 				expectedRows: map[string]string{
-					TestHelper.GetVizNamespace(): "5/5",
+					TestHelper.GetVizNamespace(): "4/4",
 				},
 			},
 			{
-				args: []string{"viz", "stat", "svc", "prometheus", "-n", TestHelper.GetVizNamespace(), "--from", "deploy/metrics-api", "--from-namespace", TestHelper.GetVizNamespace()},
+				args: []string{"viz", "stat", "svc", "prometheus", "-n", prometheusNamespace, "--from", "deploy/metrics-api", "--from-namespace", TestHelper.GetVizNamespace()},
+
 				expectedRows: map[string]string{
 					"prometheus": "-",
 				},
@@ -188,7 +183,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 
 	// Apply a sample application
 	TestHelper.WithDataPlaneNamespace(ctx, "stat-test", map[string]string{}, t, func(t *testing.T, prefixedNs string) {
-		out, err := TestHelper.LinkerdRun("inject", "--manual", "../trafficsplit/testdata/application.yaml")
+		out, err := TestHelper.LinkerdRun("inject", "--manual", "./testdata/application.yaml")
 		if err != nil {
 			testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
 		}
