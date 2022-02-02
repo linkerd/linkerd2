@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/linkerd/linkerd2/testutil"
 )
@@ -99,4 +100,28 @@ func TestInstallViz(t *testing.T) {
 
 	TestHelper.WaitRollout(t, testutil.LinkerdVizDeployReplicas)
 
+}
+
+func TestCheckMulticluster(t *testing.T) {
+	if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
+		cmd := []string{"multicluster", "check", "--wait=60m"}
+		golden := "check.multicluster.golden"
+		timeout := time.Minute
+		err := TestHelper.RetryFor(timeout, func() error {
+			out, err := TestHelper.LinkerdRun(cmd...)
+			if err != nil {
+				return fmt.Errorf("'linkerd multicluster check' command failed\n%s", err)
+			}
+			err = TestHelper.ValidateOutput(out, golden)
+			if err != nil {
+				return fmt.Errorf("received unexpected output\n%s", err.Error())
+			}
+			return nil
+		})
+		if err != nil {
+			testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd multicluster check' command timed-out (%s)", timeout), err)
+		}
+	} else {
+		t.Skip("Skipping for non multicluster test")
+	}
 }
