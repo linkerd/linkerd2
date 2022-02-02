@@ -11,11 +11,14 @@ RUN apt install -y \
     jq \
     libssl-dev \
     lldb \
+    locales \
     lsb-release \
     npm \
     sudo \
     time
 RUN npm install markdownlint-cli@0.23.1 --global
+
+RUN sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && locale-gen
 
 ARG USER=code
 ARG USER_UID=1000
