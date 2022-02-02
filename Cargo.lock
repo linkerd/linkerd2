@@ -123,7 +123,6 @@ dependencies = [
  "num-integer",
  "num-traits",
  "serde",
- "time",
  "winapi",
 ]
 
@@ -684,9 +683,9 @@ dependencies = [
 
 [[package]]
 name = "kube"
-version = "0.67.0"
+version = "0.68.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "067efafecb445fc68e1f3071880fcf3eb9ca09a16115432033a0f4c1e5ad60ef"
+checksum = "d41f782ddd187a0d8965607679bbd741052106b75330696ce7d7712b13194d88"
 dependencies = [
  "k8s-openapi",
  "kube-client",
@@ -697,9 +696,9 @@ dependencies = [
 
 [[package]]
 name = "kube-client"
-version = "0.67.0"
+version = "0.68.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ec03dc0f21b475b32fe7768e1c1448a490c0400309b4358a68bee804cdc0701"
+checksum = "cced1a3e738c2a4bccb52d33066632369c668f366a71c9c58139d9360e1a341d"
 dependencies = [
  "base64",
  "bytes",
@@ -736,9 +735,9 @@ dependencies = [
 
 [[package]]
 name = "kube-core"
-version = "0.67.0"
+version = "0.68.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d82994f9c9b0e13367db9f9b98b30c798da531d4ea2c4c5bebc22e45ba8c67c"
+checksum = "6878656f5e349ef08b0a48d2b1841f1e68c4cf1ef42524feadad2f9a109dd888"
 dependencies = [
  "chrono",
  "form_urlencoded",
@@ -754,9 +753,9 @@ dependencies = [
 
 [[package]]
 name = "kube-derive"
-version = "0.67.0"
+version = "0.68.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9eee59135b9152ec8049f86684b60be68800fbb952a48c272e5e2ad136ef4df"
+checksum = "73f5fa510a64791242047fea4d807a5da06514ee714cace4b942d38a1126f0a8"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -767,9 +766,9 @@ dependencies = [
 
 [[package]]
 name = "kube-runtime"
-version = "0.67.0"
+version = "0.68.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "023a562b3e722d3932654fa6be3772184d73699ad44d3161853874bd79452999"
+checksum = "0990fe3ab89a1217e6a4d4952e1ab0a24783265ed413228efbc489a00f86b3da"
 dependencies = [
  "ahash",
  "backoff",
@@ -1700,17 +1699,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5516c27b78311c50bf42c071425c560ac799b11c30b31f87e3081965fe5e0180"
 dependencies = [
  "once_cell",
-]
-
-[[package]]
-name = "time"
-version = "0.1.44"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6db9e6914ab8b1ae1c260a4ae7a49b6c5611b40328a735b21862567685e73255"
-dependencies = [
- "libc",
- "wasi",
- "winapi",
 ]
 
 [[package]]
