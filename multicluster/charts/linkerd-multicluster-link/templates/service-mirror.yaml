@@ -5,7 +5,7 @@ metadata:
   name: linkerd-service-mirror-access-local-resources-{{.Values.targetClusterName}}
   labels:
     linkerd.io/extension: multicluster
-    linkerd.io/control-plane-component: service-mirror
+    component: service-mirror
     mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 rules:
 - apiGroups: [""]
@@ -21,7 +21,7 @@ metadata:
   name: linkerd-service-mirror-access-local-resources-{{.Values.targetClusterName}}
   labels:
     linkerd.io/extension: multicluster
-    linkerd.io/control-plane-component: service-mirror
+    component: service-mirror
     mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -39,7 +39,7 @@ metadata:
   namespace: {{.Values.namespace}}
   labels:
       linkerd.io/extension: multicluster
-      linkerd.io/control-plane-component: service-mirror
+      component: service-mirror
       mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 rules:
   - apiGroups: [""]
@@ -57,7 +57,7 @@ metadata:
   namespace: {{.Values.namespace}}
   labels:
       linkerd.io/extension: multicluster
-      linkerd.io/control-plane-component: service-mirror
+      component: service-mirror
       mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -75,7 +75,7 @@ metadata:
   namespace: {{.Values.namespace}}
   labels:
     linkerd.io/extension: multicluster
-    linkerd.io/control-plane-component: service-mirror
+    component: service-mirror
     mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 ---
 apiVersion: apps/v1
@@ -83,7 +83,7 @@ kind: Deployment
 metadata:
   labels:
     linkerd.io/extension: multicluster
-    linkerd.io/control-plane-component: service-mirror
+    component: service-mirror
     mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
   name: linkerd-service-mirror-{{.Values.targetClusterName}}
   namespace: {{.Values.namespace}}
@@ -91,14 +91,14 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      linkerd.io/control-plane-component: linkerd-service-mirror
+      component: linkerd-service-mirror
       mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
   template:
     metadata:
       annotations:
         linkerd.io/inject: enabled
       labels:
-        linkerd.io/control-plane-component: linkerd-service-mirror
+        component: linkerd-service-mirror
         mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
     spec:
       containers:

@@ -1197,6 +1197,13 @@ webhooks:
       operator: NotIn
       values:
       - disabled
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+      - kube-system
+      - cert-manager
+  objectSelector:
+    null
   clientConfig:
     service:
       name: linkerd-proxy-injector
@@ -1382,6 +1389,11 @@ data:
           operator: NotIn
           values:
           - disabled
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+          - kube-system
+          - cert-manager
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     tap:
@@ -2179,7 +2191,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 20a7b3bda0bfdd9b7cf388efb0b438612caa444c23e015168dae1cdb0109e34e
+        checksum/config: c5be73974dd70107edd889abd070f744cdb0f1f0ce39486f10fb8b24f454da15
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version

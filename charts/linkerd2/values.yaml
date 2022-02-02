@@ -271,15 +271,26 @@ proxyInjector:
   # -- Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `proxyInjector.caBundle` must be set (see below)
   externalSecret: false
 
-  # -- Namespace selector used by admission webhook. If not set defaults to all
-  # namespaces without the annotation
-  # config.linkerd.io/admission-webhooks=disabled
+  # -- Namespace selector used by admission webhook.
   namespaceSelector:
     matchExpressions:
     - key: config.linkerd.io/admission-webhooks
       operator: NotIn
       values:
       - disabled
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+      - kube-system
+      - cert-manager
+
+  # -- Object selector used by admission webhook.
+  objectSelector:
+    matchExpressions:
+    - key: linkerd.io/control-plane-component
+      operator: DoesNotExist
+    - key: linkerd.io/cni-resource
+      operator: DoesNotExist
 
   # -- Certificate for the proxy injector. If not provided then Helm will generate one.
   crtPEM: |
