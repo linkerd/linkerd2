@@ -1197,6 +1197,8 @@ webhooks:
       operator: In
       values:
       - enabled
+  objectSelector:
+    null
   clientConfig:
     service:
       name: linkerd-proxy-injector
@@ -2311,7 +2313,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 5e2cfa2bd882cd79c2104f822ff8062620bd9103e176aa47064940e2e0fbcff6
+        checksum/config: f590616ff1f50ae5daf722257b66224918e3536f06cbe5684fa8ec9329921e44
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
