@@ -294,15 +294,26 @@ proxyInjector:
   # `proxyInjector.injectCaFrom` or `proxyInjector.injectCaFromSecret` (see below).
   externalSecret: false
 
-  # -- Namespace selector used by admission webhook. If not set defaults to all
-  # namespaces without the annotation
-  # config.linkerd.io/admission-webhooks=disabled
+  # -- Namespace selector used by admission webhook.
   namespaceSelector:
     matchExpressions:
     - key: config.linkerd.io/admission-webhooks
       operator: NotIn
       values:
       - disabled
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+      - kube-system
+      - cert-manager
+
+  # -- Object selector used by admission webhook.
+  objectSelector:
+    matchExpressions:
+    - key: linkerd.io/control-plane-component
+      operator: DoesNotExist
+    - key: linkerd.io/cni-resource
+      operator: DoesNotExist
 
   # -- Certificate for the proxy injector. If not provided and not using an external secret
   # then Helm will generate one.

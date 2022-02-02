@@ -5,11 +5,11 @@ metadata:
   {{ include "partials.namespace" . }}
   name: service-mirror
   labels:
-    linkerd.io/control-plane-component: linkerd-service-mirror
+    component: linkerd-service-mirror
 spec:
   podSelector:
     matchLabels:
-      linkerd.io/control-plane-component: linkerd-service-mirror
+      component: linkerd-service-mirror
   port: admin-http
   proxyProtocol: HTTP/1
 ---
@@ -19,7 +19,7 @@ metadata:
   {{ include "partials.namespace" . }}
   name: service-mirror
   labels:
-    linkerd.io/control-plane-component: linkerd-service-mirror
+    component: linkerd-service-mirror
 spec:
   server:
     name: service-mirror
