@@ -10,8 +10,8 @@ RUN apt install -y \
     cmake \
     jq \
     libssl-dev \
-    locales \
     lldb \
+    locales \
     lsb-release \
     npm \
     sudo \
