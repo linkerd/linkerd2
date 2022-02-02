@@ -203,6 +203,7 @@ spec:
     metadata:
       labels:
         app: prometheus
+        linkerd.io/inject: "enabled"
     spec:
       nodeSelector:
         kubernetes.io/os: linux

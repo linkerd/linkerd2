@@ -51,10 +51,9 @@ jobs:
         integration_test:
         - cluster-domain
         - deep
-        - external-issuer
-        - external-prometheus-deep
-        - external-resources
-        - helm-deep
+        - viz
+        - default-policy-deny
+        - external
         - helm-upgrade
         - multicluster
         - uninstall

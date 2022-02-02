@@ -6,7 +6,7 @@ set +e
 
 ##### Test setup helpers #####
 
-export default_test_names=(deep external-issuer external-prometheus-deep helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable default-policy-deny)
+export default_test_names=(deep viz external helm-upgrade uninstall upgrade-edge upgrade-stable default-policy-deny)
 export external_resource_test_names=(external-resources)
 export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}" "${external_resource_test_names[*]}")
 images_load_default=(proxy controller policy-controller web metrics-api grafana tap)
@@ -280,7 +280,7 @@ Help:
 image_load() {
   cluster_name=$1
   images_load=("${images_load_default[@]}")
-  if [[ "$cluster_name" = *deep ]]; then
+  if [[ "$cluster_name" = *viz ]]; then
     images_load+=(jaeger-webhook)
   fi
   if [ "$cluster_name" = "cni-calico-deep" ]; then
@@ -364,7 +364,7 @@ run_test(){
 
   printf 'Test script: [%s] Params: [%s]\n' "${filename##*/}" "$*"
   # Exit on failure here
-  GO111MODULE=on go test -test.timeout=60m --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --helm-path="$helm_path" --default-allow-policy="$default_allow_policy" --k8s-context="$context" --integration-tests "$@" || exit 1
+  GO111MODULE=on go test -p 1 -test.timeout=60m --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --helm-path="$helm_path" --default-allow-policy="$default_allow_policy" --k8s-context="$context" --integration-tests "$@" || exit 1
 }
 
 # Returns the latest version for the release channel
@@ -411,7 +411,7 @@ install_version() {
     kubectl --context="$context" label namespaces "$test_app_namespace" 'test.linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
     (
         set -x
-        "$linkerd_path" inject "$test_directory/testdata/upgrade_test.yaml" | kubectl --context="$context" apply --namespace="$test_app_namespace" -f - 2>&1
+        "$linkerd_path" inject "$test_directory/install/testdata/upgrade_test.yaml" | kubectl --context="$context" apply --namespace="$test_app_namespace" -f - 2>&1
     )
     exit_on_err 'install_version() - linkerd inject failed'
 }
@@ -438,7 +438,7 @@ upgrade_test() {
   )
   exit_on_err "upgrade_test() - installing viz extension in $upgrade_version failed"
 
-  run_test "$test_directory/install_test.go" --upgrade-from-version="$upgrade_version"
+  run_test "$test_directory/install/1_install_test.go" --upgrade-from-version="$upgrade_version"
 }
 
 # Run the upgrade-edge test by upgrading the most-recent edge release to the
@@ -446,6 +446,10 @@ upgrade_test() {
 run_upgrade-edge_test() {
   edge_install_url="https://run.linkerd.io/install-edge"
   upgrade_test "edge" "$edge_install_url"
+}
+
+run_viz_test() {
+  run_test "$test_directory/viz/..."
 }
 
 # Run the upgrade-stable test by upgrading the most-recent stable release to the
@@ -492,13 +496,13 @@ run_helm-upgrade_test() {
 
   setup_helm
   helm_viz_chart="$( cd "$bindir"/.. && pwd )"/viz/charts/linkerd-viz
-  run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
+  run_test "$test_directory/install/1_install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
   --viz-helm-chart="$helm_viz_chart" --helm-stable-chart='linkerd/linkerd2' --viz-helm-stable-chart="linkerd/linkerd-viz" --helm-release="$helm_release_name" --upgrade-helm-from-version="$stable_version"
   helm_cleanup
 }
 
 run_uninstall_test() {
-  run_test "$test_directory/uninstall/uninstall_test.go" --uninstall=true
+  run_test "$test_directory/install/uninstall/uninstall_test.go" --uninstall=true
 }
 
 run_multicluster_test() {
@@ -508,85 +512,42 @@ run_multicluster_test() {
   "$bindir"/certs-openssl
   cd "$pwd"
   export context="k3d-target"
-  run_test "$test_directory/install_test.go" --multicluster --certs-path "$tmp"
-  run_test "$test_directory/multicluster/target1" --multicluster
+  run_test "$test_directory/multicluster/1_install_test.go" --certs-path "$tmp"
+  run_test "$test_directory/multicluster/target1"
   link=$(multicluster_link target)
 
   export context="k3d-source"
   # Create the emojivoto namespace in the source cluster so that mirror services
   # can be created there.
   kubectl --context="$context" create namespace emojivoto
-  run_test "$test_directory/install_test.go" --multicluster --certs-path "$tmp"
+  run_test "$test_directory/multicluster/1_install_test.go" --certs-path "$tmp"
   echo "$link" | kubectl --context="$context" apply -f -
-  run_test "$test_directory/multicluster/source" --multicluster
-
+  run_test "$test_directory/multicluster/source" 
   export context="k3d-target"
-  run_test "$test_directory/multicluster/target2" --multicluster
-
+  run_test "$test_directory/multicluster/target2" 
   export context="k3d-target"
-  run_test "$test_directory/multicluster/target-statefulset" --multicluster
+  run_test "$test_directory/multicluster/target-statefulset" 
 }
 
 run_deep_test() {
-  local tests=()
-  run_test "$test_directory/install_test.go"
-  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
-  for test in "${tests[@]}"; do
-    run_test "$test"
-  done
+  run_test "$test_directory/deep/..."
 }
 
 run_default-policy-deny_test() {
-  local tests=()
   export default_allow_policy='deny'
-  run_test "$test_directory/install_test.go"
+  run_test "$test_directory/install/1_install_test.go" 
 }
 
 run_cni-calico-deep_test() {
-  local tests=()
-  run_test "$test_directory/install_test.go" --cni --calico
-  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
-  for test in "${tests[@]}"; do
-    run_test "$test" --cni
-  done
+  run_test "$test_directory/deep/..." --cni
 }
 
-run_helm-deep_test() {
-  local tests=()
-  setup_helm
-  helm_multicluster_chart="$( cd "$bindir"/.. && pwd )"/multicluster/charts/linkerd-multicluster
-  helm_viz_chart="$( cd "$bindir"/.. && pwd )"/viz/charts/linkerd-viz
-  run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
-  --helm-release="$helm_release_name" --multicluster-helm-chart="$helm_multicluster_chart" \
-  --viz-helm-chart="$helm_viz_chart" --multicluster-helm-release="$helm_multicluster_release_name"
-  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
-  for test in "${tests[@]}"; do
-    run_test "$test"
-  done
-  helm_cleanup
-}
-
-run_external-issuer_test() {
-  run_test "$test_directory/install_test.go" --external-issuer=true
-  run_test "$test_directory/externalissuer/external_issuer_test.go" --external-issuer=true
-}
-
-run_external-prometheus-deep_test() {
-  run_test "$test_directory/install_test.go" --external-prometheus=true
-  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
-  for test in "${tests[@]}"; do
-    run_test "$test" --external-prometheus=true
-  done
+run_external_test() {
+  run_test "$test_directory/external/..."
 }
 
 run_cluster-domain_test() {
-  run_test "$test_directory/install_test.go" --cluster-domain='custom.domain'
-}
-
-# wrapper to implement external tests
-run_external-resources_test(){
-   run_test "$test_directory/install_test.go"
-   run_test "$test_directory/externalresources/rabbitmq_test.go"
+  run_test "$test_directory/install/1_install_test.go" --cluster-domain='custom.domain' 
 }
 
 # exit_on_err should be called right after a command to check the result status

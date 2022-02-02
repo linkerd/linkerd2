@@ -91,6 +91,12 @@ var LinkerdVizDeployReplicas = map[string]DeploySpec{
 	"web":          {"linkerd-viz", 1},
 }
 
+// MulticlusterDeployReplicas is a map containing the number of replicas for each Deployment and the main
+// container name for multicluster components
+var MulticlusterDeployReplicas = map[string]DeploySpec{
+	"linkerd-gateway": {"linkerd-multicluster", 1},
+}
+
 // NewGenericTestHelper returns a new *TestHelper from the options provided as function parameters.
 // This helper was created to be able to reuse this package without hard restrictions
 // as seen in `NewTestHelper()` which is primarily used with integration tests
@@ -144,12 +150,6 @@ func NewGenericTestHelper(
 	}
 }
 
-// MulticlusterDeployReplicas is a map containing the number of replicas for each Deployment and the main
-// container name for multicluster components
-var MulticlusterDeployReplicas = map[string]DeploySpec{
-	"linkerd-gateway": {"linkerd-multicluster", 1},
-}
-
 // NewTestHelper creates a new instance of TestHelper for the current test run.
 // The new TestHelper can be configured via command line flags.
 func NewTestHelper() *TestHelper {
@@ -158,6 +158,7 @@ func NewTestHelper() *TestHelper {
 		os.Exit(code)
 	}
 
+	// TODO (matei): clean-up flags
 	k8sContext := flag.String("k8s-context", "", "kubernetes context associated with the test cluster")
 	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
 	namespace := flag.String("linkerd-namespace", "linkerd", "the namespace where linkerd is installed")
