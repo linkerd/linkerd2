@@ -1,5 +1,21 @@
 # Changes
 
+## edge-22.2.1
+
+This edge release removed the `disableIdentity` configuration now that the proxy
+no longer supports running without identity.
+
+* Added a `privileged` configuration to linkerd-cni which is required by some
+  environments
+* Fixed an issue where the TLS credentials used by the policy validator were not
+  updated when the credentials were rotated
+* Removed the `disableIdentity` configurations now that the proxy no longer
+  supports running without identity
+* Fixed an issue where `linkerd jaeger check` would needlessly fail for BYO
+  Jaeger or collector installations
+* Fixed a Helm HA installation race condition introduced by the stoppage of
+  namespace creation
+
 ## edge-22.1.5
 
 This edge release adds support for per-request Access Logging for HTTP inbound
