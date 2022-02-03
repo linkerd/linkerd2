@@ -344,9 +344,9 @@ func (h *KubernetesHelper) WaitUntilDeployReady(deploys map[string]DeploySpec) e
 		if err := h.CheckPods(ctx, spec.Namespace, deploy, 1); err != nil {
 			if rce, ok := err.(*RestartCountError); ok {
 				return fmt.Errorf("failed to wait for deploy/%s to become 'ready': too many restarts: %v", deploy, rce)
-			} else {
-				return fmt.Errorf("failed to wait for deploy/%s to become 'ready': timed out", deploy)
 			}
+			return fmt.Errorf("failed to wait for deploy/%s to become 'ready': timed out", deploy)
+
 		}
 	}
 	return nil
