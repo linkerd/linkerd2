@@ -1854,8 +1854,7 @@ spec:
         lifecycle:
           postStart:
             exec:
-              command:
-              - /usr/lib/linkerd/linkerd-await
+              command: ["/usr/lib/linkerd/linkerd-await", "-t", "2m"]
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
@@ -2213,8 +2212,7 @@ spec:
         lifecycle:
           postStart:
             exec:
-              command:
-              - /usr/lib/linkerd/linkerd-await
+              command: ["/usr/lib/linkerd/linkerd-await", "-t", "2m"]
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
