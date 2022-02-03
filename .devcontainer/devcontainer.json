@@ -1,7 +1,8 @@
 {
     "name": "linkerd2",
-    "image": "ghcr.io/linkerd/dev:v5",
-    //"dockerFile": "./Dockerfile",
+    "image": "ghcr.io/linkerd/dev:v6",
+    // "dockerFile": "./Dockerfile",
+    // "context": "..",
     "extensions": [
         "DavidAnson.vscode-markdownlint",
         "golang.go",

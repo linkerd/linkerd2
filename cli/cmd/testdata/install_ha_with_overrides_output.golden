@@ -1063,6 +1063,13 @@ webhooks:
       operator: NotIn
       values:
       - disabled
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+      - kube-system
+      - cert-manager
+  objectSelector:
+    null
   clientConfig:
     service:
       name: linkerd-proxy-injector
@@ -1310,6 +1317,11 @@ data:
           operator: NotIn
           values:
           - disabled
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+          - kube-system
+          - cert-manager
     proxyInjectorProxyResources: null
     proxyInjectorResources:
       cpu:

@@ -94,6 +94,8 @@ spec:
         k8s-app: linkerd-cni
       annotations:
         linkerd.io/created-by: test-version
+        linkerd.io/cni-resource: "true"
+        linkerd.io/inject: disabled
     spec:
       nodeSelector:
         kubernetes.io/os: linux

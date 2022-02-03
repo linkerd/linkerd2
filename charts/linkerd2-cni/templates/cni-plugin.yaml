@@ -22,8 +22,6 @@ kind: Namespace
 apiVersion: v1
 metadata:
   name: {{.Release.Namespace}}
-  annotations:
-    linkerd.io/inject: disabled
   labels:
     linkerd.io/cni-resource: "true"
     config.linkerd.io/admission-webhooks: disabled
@@ -189,6 +187,8 @@ spec:
         k8s-app: linkerd-cni
       annotations:
         {{ include "partials.annotations.created-by" . }}
+        linkerd.io/cni-resource: "true"
+        linkerd.io/inject: disabled
     spec:
       {{- if .Values.tolerations }}
       {{- include "linkerd.tolerations" . | nindent 6 }}
