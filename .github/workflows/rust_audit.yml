@@ -44,6 +44,7 @@ jobs:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
         with:
           repository: linkerd/${{ matrix.repo }}
+          fetch-depth: 1 # Only fetch the latest commit
       - uses: olix0r/rustsecbot@560c817c7a019e1f0c2318721b55156409be7f8c
         with:
           labels: ${{ matrix.labels }}
