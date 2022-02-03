@@ -114,8 +114,7 @@ spec:
             exec:
               command:
               - /usr/lib/linkerd/linkerd-await
-              - -t
-              - 2m
+              - --timeout=2m
         livenessProbe:
           httpGet:
             path: /live
@@ -327,8 +326,7 @@ spec:
             exec:
               command:
               - /usr/lib/linkerd/linkerd-await
-              - -t
-              - 2m
+              - --timeout=2m
         livenessProbe:
           httpGet:
             path: /live
