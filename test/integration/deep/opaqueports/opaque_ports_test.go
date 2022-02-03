@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+
 	"regexp"
 	"testing"
 	"time"
@@ -37,6 +38,9 @@ var (
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
+	if err := TestHelper.WaitUntilDeployReady(testutil.LinkerdDeployReplicasStable); err != nil {
+		panic(fmt.Sprintf("error running test: %v", err))
+	}
 	os.Exit(m.Run())
 }
 

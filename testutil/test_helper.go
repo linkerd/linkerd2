@@ -75,8 +75,9 @@ var LinkerdDeployReplicasEdge = map[string]DeploySpec{
 	"linkerd-proxy-injector": {"linkerd", 1},
 }
 
-// LinkerdDeployReplicasStable is a map containing the number of replicas for each Deployment and the main
-// container name. Override whenever edge deviates from stable.
+// LinkerdDeployReplicasStable is a map containing the number of replicas for
+// each Deployment and the main container name. Override whenever edge deviates
+// from stable.
 var LinkerdDeployReplicasStable = LinkerdDeployReplicasEdge
 
 // LinkerdVizDeployReplicas is a map containing the number of replicas for
@@ -90,10 +91,20 @@ var LinkerdVizDeployReplicas = map[string]DeploySpec{
 	"web":          {"linkerd-viz", 1},
 }
 
-// MulticlusterDeployReplicas is a map containing the number of replicas for each Deployment and the main
-// container name for multicluster components
+// MulticlusterDeployReplicas is a map containing the number of replicas for
+// each Deployment and the main container name for multicluster components
 var MulticlusterDeployReplicas = map[string]DeploySpec{
 	"linkerd-gateway": {"linkerd-multicluster", 1},
+}
+
+// ExternalVizDeployReplicas has an external prometheus instance that's in a
+// separate namespace
+var ExternalVizDeployReplicas = map[string]DeploySpec{
+	"prometheus":   {"external-prometheus", 1},
+	"metrics-api":  {"linkerd-viz", 1},
+	"tap":          {"linkerd-viz", 1},
+	"tap-injector": {"linkerd-viz", 1},
+	"web":          {"linkerd-viz", 1},
 }
 
 // NewGenericTestHelper returns a new *TestHelper from the options provided as function parameters.

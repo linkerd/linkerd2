@@ -14,6 +14,11 @@ var TestHelper *testutil.TestHelper
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
+	// External resources test only relies on control plane, so block until its
+	// pods are ready
+	if err := TestHelper.WaitUntilDeployReady(testutil.LinkerdDeployReplicasStable); err != nil {
+		panic(fmt.Sprintf("error running test: %v", err))
+	}
 	os.Exit(m.Run())
 }
 
