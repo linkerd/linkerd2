@@ -456,6 +456,7 @@ func TestValidate(t *testing.T) {
 			expectedError string
 		}{
 			{"valid", ""},
+			{"valid-with-rsa-anchor", ""},
 			{"expired", "failed to validate issuer credentials: not valid anymore. Expired on 1990-01-01T01:01:11Z"},
 			{"not-valid-yet", "failed to validate issuer credentials: not valid before: 2100-01-01T01:00:51Z"},
 			{"wrong-algo", "failed to validate issuer credentials: must use P-256 curve for public key, instead P-521 was used"},
