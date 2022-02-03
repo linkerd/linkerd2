@@ -12,8 +12,6 @@ unmaintained = "warn"
 yanked = "deny"
 notice = "warn"
 ignore = [
-    # https://github.com/kube-rs/kube-rs/issues/656
-    "RUSTSEC-2020-0071",
     # https://github.com/kube-rs/kube-rs/issues/650
     # https://github.com/kube-rs/kube-rs/issues/660
     "RUSTSEC-2020-0159",
