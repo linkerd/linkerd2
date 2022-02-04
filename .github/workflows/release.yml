@@ -158,11 +158,9 @@ jobs:
         - cluster-domain
         - cni-calico-deep
         - deep
+        - viz
         - default-policy-deny
-        - external-issuer
-        - external-prometheus-deep
-        - external-resources
-        - helm-deep
+        - external
         # Skipping Helm upgrade test given chart in 2.11 is backwards-incompatible
         #- helm-upgrade
         - uninstall
