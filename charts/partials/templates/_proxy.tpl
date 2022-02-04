@@ -164,7 +164,8 @@ lifecycle:
   postStart:
     exec:
       command:
-      - /usr/lib/linkerd/linkerd-await
+        - /usr/lib/linkerd/linkerd-await
+        - --timeout=2m
 {{- end }}
 {{- if .Values.proxy.waitBeforeExitSeconds }}
   preStop:
