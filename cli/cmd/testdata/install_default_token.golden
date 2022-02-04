@@ -1855,7 +1855,8 @@ spec:
           postStart:
             exec:
               command:
-              - /usr/lib/linkerd/linkerd-await
+                - /usr/lib/linkerd/linkerd-await
+                - --timeout=2m
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
@@ -2204,7 +2205,8 @@ spec:
           postStart:
             exec:
               command:
-              - /usr/lib/linkerd/linkerd-await
+                - /usr/lib/linkerd/linkerd-await
+                - --timeout=2m
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
