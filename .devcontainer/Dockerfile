@@ -62,7 +62,17 @@ RUN mkdir /tmp/cargo-deny && cd /tmp/cargo-deny && \
     mv cargo-deny-0.11.0-x86_64-unknown-linux-musl/cargo-deny $HOME/bin && \
     cd .. && rm -rf /tmp/cargo-deny
 
-RUN go install golang.org/x/tools/gopls@latest
+RUN for p in \
+    github.com/uudashr/gopkgs/v2/cmd/gopkgs@latest \
+    github.com/ramya-rao-a/go-outline@latest \
+    github.com/cweill/gotests/gotests@latest \
+    github.com/fatih/gomodifytags@latest \
+    github.com/josharian/impl@latest \
+    github.com/haya14busa/goplay/cmd/goplay@latest \
+    github.com/go-delve/delve/cmd/dlv@latest \
+    github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
+    golang.org/x/tools/gopls@latest \
+    ; do go install "$p" ; done
 
 RUN scurl -v https://run.linkerd.io/install-edge | sh \
     && ln -s $(readlink ~/.linkerd2/bin/linkerd) ~/bin/linkerd
