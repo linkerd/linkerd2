@@ -23,7 +23,7 @@ type testCase struct {
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	if err := TestHelper.WaitUntilDeployReady(testutil.LinkerdDeployReplicasStable); err != nil {
+	if err := TestHelper.WaitUntilDeployReady(testutil.LinkerdDeployReplicasEdge); err != nil {
 		panic(fmt.Sprintf("error running test: %v", err))
 	}
 	os.Exit(m.Run())
