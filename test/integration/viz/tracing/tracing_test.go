@@ -51,9 +51,9 @@ func TestTracing(t *testing.T) {
 	}
 
 	// Require an environment variable to be set for this test to be run.
-	if os.Getenv("RUN_FLAKEY_TEST") == "" {
-		t.Skip("Skipping due to flakiness. See linkerd/linkerd2#7538")
-	}
+	// if os.Getenv("RUN_FLAKEY_TEST") == "" {
+	// 	t.Skip("Skipping due to flakiness. See linkerd/linkerd2#7538")
+	// }
 
 	// linkerd-jaeger extension
 	tracingNs := "linkerd-jaeger"
