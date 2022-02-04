@@ -26,7 +26,7 @@ require (
 	github.com/nsf/termbox-go v0.0.0-20180613055208-5c94acc5e6eb
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
-	github.com/prometheus/client_golang v1.12.0
+	github.com/prometheus/client_golang v1.12.1
 	github.com/prometheus/common v0.32.1
 	github.com/sergi/go-diff v1.2.0
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
@@ -36,18 +36,18 @@ require (
 	github.com/spf13/pflag v1.0.5
 	go.opencensus.io v0.23.0
 	golang.org/x/net v0.0.0-20220107192237-5cfca573fb4d
-	golang.org/x/tools v0.1.8
-	google.golang.org/grpc v1.43.0
+	golang.org/x/tools v0.1.9
+	google.golang.org/grpc v1.44.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
 	google.golang.org/protobuf v1.27.1
 	helm.sh/helm/v3 v3.8.0
-	k8s.io/api v0.23.2
-	k8s.io/apiextensions-apiserver v0.23.2
-	k8s.io/apimachinery v0.23.2
-	k8s.io/client-go v0.23.2
-	k8s.io/code-generator v0.23.2
+	k8s.io/api v0.23.3
+	k8s.io/apiextensions-apiserver v0.23.3
+	k8s.io/apimachinery v0.23.3
+	k8s.io/client-go v0.23.3
+	k8s.io/code-generator v0.23.3
 	k8s.io/klog/v2 v2.40.1
-	k8s.io/kube-aggregator v0.23.2
+	k8s.io/kube-aggregator v0.23.3
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -153,7 +153,7 @@ require (
 	k8s.io/cli-runtime v0.23.1 // indirect
 	k8s.io/gengo v0.0.0-20210813121822-485abfe95c7c // indirect
 	k8s.io/kube-openapi v0.0.0-20211115234752-e816edb12b65 // indirect
-	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b // indirect
+	k8s.io/utils v0.0.0-20211116205334-6203023598ed // indirect
 	oras.land/oras-go v1.1.0 // indirect
 	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
 	sigs.k8s.io/kustomize/api v0.10.1 // indirect

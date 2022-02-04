@@ -22,8 +22,6 @@ kind: Namespace
 apiVersion: v1
 metadata:
   name: {{.Release.Namespace}}
-  annotations:
-    linkerd.io/inject: disabled
   labels:
     linkerd.io/cni-resource: "true"
     config.linkerd.io/admission-webhooks: disabled
@@ -49,7 +47,9 @@ metadata:
   labels:
     linkerd.io/cni-resource: "true"
 spec:
+  {{- if not .Values.privileged }}
   allowPrivilegeEscalation: false
+  {{- end }}
   fsGroup:
     rule: RunAsAny
   hostNetwork: true
@@ -187,6 +187,8 @@ spec:
         k8s-app: linkerd-cni
       annotations:
         {{ include "partials.annotations.created-by" . }}
+        linkerd.io/cni-resource: "true"
+        linkerd.io/inject: disabled
     spec:
       {{- if .Values.tolerations }}
       {{- include "linkerd.tolerations" . | nindent 6 }}
@@ -250,6 +252,7 @@ spec:
           name: linkerd-tmp-dir
         securityContext:
           readOnlyRootFilesystem: true
+          privileged: {{.Values.privileged}}
       volumes:
       {{- if ne .Values.destCNIBinDir .Values.destCNINetDir }}
       - name: cni-bin-dir

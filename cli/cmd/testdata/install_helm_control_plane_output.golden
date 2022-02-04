@@ -349,6 +349,13 @@ webhooks:
       operator: NotIn
       values:
       - disabled
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+      - kube-system
+      - cert-manager
+  objectSelector:
+    null
   clientConfig:
     service:
       name: linkerd-proxy-injector
@@ -476,7 +483,6 @@ data:
       await: true
       capabilities: null
       defaultInboundPolicy: ""
-      disableIdentity: false
       enableExternalProfiles: false
       image:
         name: cr.l5d.io/linkerd/proxy
@@ -550,6 +556,11 @@ data:
           operator: NotIn
           values:
           - disabled
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+          - kube-system
+          - cert-manager
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     tap:
@@ -654,7 +665,6 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/helm linkerd-version
-        linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
@@ -997,7 +1007,6 @@ spec:
       annotations:
         linkerd.io/helm-release-version: "0"
         linkerd.io/created-by: linkerd/helm linkerd-version
-        linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
@@ -1118,7 +1127,8 @@ spec:
           postStart:
             exec:
               command:
-              - /usr/lib/linkerd/linkerd-await
+                - /usr/lib/linkerd/linkerd-await
+                - --timeout=2m
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
@@ -1360,7 +1370,6 @@ spec:
       annotations:
         linkerd.io/helm-release-version: "0"
         linkerd.io/created-by: linkerd/helm linkerd-version
-        linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
         config.linkerd.io/opaque-ports: "8443"
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
@@ -1482,7 +1491,8 @@ spec:
           postStart:
             exec:
               command:
-              - /usr/lib/linkerd/linkerd-await
+                - /usr/lib/linkerd/linkerd-await
+                - --timeout=2m
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity

@@ -664,7 +664,6 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 	values.Proxy.UID = 999
 	values.Proxy.LogLevel = "debug"
 	values.Proxy.LogFormat = "cool"
-	values.Proxy.DisableIdentity = true
 	values.Proxy.EnableExternalProfiles = true
 	values.Proxy.Resources.CPU.Request = "10m"
 	values.Proxy.Resources.CPU.Limit = "100m"
@@ -684,7 +683,6 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 		k8s.ProxyUIDAnnotation:                 "999",
 		k8s.ProxyLogLevelAnnotation:            "debug",
 		k8s.ProxyLogFormatAnnotation:           "cool",
-		k8s.ProxyDisableIdentityAnnotation:     "true",
 
 		k8s.ProxyEnableExternalProfilesAnnotation: "true",
 		k8s.ProxyCPURequestAnnotation:             "10m",

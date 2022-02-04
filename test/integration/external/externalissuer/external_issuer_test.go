@@ -21,10 +21,6 @@ const (
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	if !TestHelper.ExternalIssuer() {
-		fmt.Fprintln(os.Stdout, "Skipping as --external-issuer=false")
-		os.Exit(0)
-	}
 	os.Exit(m.Run())
 }
 

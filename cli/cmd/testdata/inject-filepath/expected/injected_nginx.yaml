@@ -10,7 +10,6 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
-        linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
       labels:
         app: nginx
@@ -116,6 +115,7 @@ spec:
             exec:
               command:
               - /usr/lib/linkerd/linkerd-await
+              - --timeout=2m
         livenessProbe:
           httpGet:
             path: /live

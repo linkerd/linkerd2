@@ -1,0 +1,53 @@
+name: Devcontainer
+
+# When a pull request is opened that changes the Devcontainer configuration,
+# ensure that the container continues to build properly.
+on:
+  pull_request:
+    paths:
+      - rust-toolchain
+      - .devcontainer/**
+      - .github/workflows/devcontainer.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      - run: docker build . -f .devcontainer/Dockerfile
+
+  rust-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      - run: |
+          versions=$(sed -nE 's/^ARG RUST_TOOLCHAIN=([^ ]+)/\1/p' .devcontainer/Dockerfile)
+          ex=0
+          for mismatch in $(echo "$versions" | grep -vF "$(cat rust-toolchain)" || true) ; do
+            echo "::error file=.devcontainer/Dockerfile::Devcontainer uses incorrect rust version(s): $mismatch"
+            ex=$((ex + 1))
+          done
+          exit $ex
+
+  devcontainer-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      - run: |
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update
+          sudo apt-get -y --no-install-recommends install jq
+      - run: |
+          # Strip jsonc comments because `jq` doesn't support them.
+          image=$(sed -E '/^\s*\/\/.*/d' .devcontainer/devcontainer.json |jq -Mr .image)
+          if [ "$image" == "null" ]; then
+            echo "::error file=.devcontainer/devcontainer.json::Missing image"
+            exit 1
+          fi
+          if ! docker pull "$image" ; then
+            echo "::error file=.devcontainer/devcontainer.json::Unable to pull image: $image"
+            exit 1
+          fi

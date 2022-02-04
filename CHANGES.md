@@ -1,5 +1,38 @@
 # Changes
 
+## edge-22.2.1
+
+This edge release removed the `disableIdentity` configuration now that the proxy
+no longer supports running without identity.
+
+* Added a `privileged` configuration to linkerd-cni which is required by some
+  environments
+* Fixed an issue where the TLS credentials used by the policy validator were not
+  updated when the credentials were rotated
+* Removed the `disableIdentity` configurations now that the proxy no longer
+  supports running without identity
+* Fixed an issue where `linkerd jaeger check` would needlessly fail for BYO
+  Jaeger or collector installations
+* Fixed a Helm HA installation race condition introduced by the stoppage of
+  namespace creation
+
+## edge-22.1.5
+
+This edge release adds support for per-request Access Logging for HTTP inbound
+requests in Linkerd. A new annotation i.e. `config.linkerd.io/access-log` is added,
+which configures the proxies to emit access logs to stderr. `apache` and `json`
+are the supported configuration options, emitting access logs in Apache Common
+Log Format and JSON respectively.
+
+Special thanks to @tustvold for all the initial work around this!
+
+* Updated injector to support the new `config.linkerd.io/access-log` annotation
+* Added a new `LINKERD2_PROXY_ACCESS_LOG` proxy environment variable to configure
+  the access log format (thanks @tustvold)
+* Updated service mirror controller to emit relevant events when
+  mirroring is skipped for a service
+* Updated various dependencies across the project (thanks @dependabot)
+
 ## edge-22.1.4
 
 This edge release features a new configuration annotation, support for

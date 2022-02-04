@@ -40,7 +40,6 @@ func TestGetOverriddenValues(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
-							k8s.ProxyDisableIdentityAnnotation:               "true",
 							k8s.ProxyImageAnnotation:                         "cr.l5d.io/linkerd/proxy",
 							k8s.ProxyImagePullPolicyAnnotation:               pullPolicy,
 							k8s.ProxyInitImageAnnotation:                     "cr.l5d.io/linkerd/proxy-init",
@@ -79,7 +78,6 @@ func TestGetOverriddenValues(t *testing.T) {
 				values, _ := l5dcharts.NewValues()
 
 				values.Proxy.Cores = 2
-				values.Proxy.DisableIdentity = true
 				values.Proxy.Image.Name = "cr.l5d.io/linkerd/proxy"
 				values.Proxy.Image.PullPolicy = pullPolicy
 				values.Proxy.Image.Version = proxyVersionOverride
@@ -136,7 +134,6 @@ func TestGetOverriddenValues(t *testing.T) {
 		},
 		{id: "use namespace overrides",
 			nsAnnotations: map[string]string{
-				k8s.ProxyDisableIdentityAnnotation:        "true",
 				k8s.ProxyImageAnnotation:                  "cr.l5d.io/linkerd/proxy",
 				k8s.ProxyImagePullPolicyAnnotation:        pullPolicy,
 				k8s.ProxyInitImageAnnotation:              "cr.l5d.io/linkerd/proxy-init",
@@ -172,7 +169,6 @@ func TestGetOverriddenValues(t *testing.T) {
 				values, _ := l5dcharts.NewValues()
 
 				values.Proxy.Cores = 2
-				values.Proxy.DisableIdentity = true
 				values.Proxy.Image.Name = "cr.l5d.io/linkerd/proxy"
 				values.Proxy.Image.PullPolicy = pullPolicy
 				values.Proxy.Image.Version = proxyVersionOverride

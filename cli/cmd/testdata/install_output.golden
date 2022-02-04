@@ -6,7 +6,7 @@ metadata:
   annotations:
     linkerd.io/created-by: CliVersion
   labels:
-    helm.sh/chart: linkerd-control-plane-1.1.2-edge
+    helm.sh/chart: linkerd-control-plane-1.1.4-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -152,7 +152,7 @@ metadata:
   annotations:
     linkerd.io/created-by: CliVersion
   labels:
-    helm.sh/chart: linkerd-control-plane-1.1.2-edge
+    helm.sh/chart: linkerd-control-plane-1.1.4-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -674,7 +674,7 @@ metadata:
   annotations:
     linkerd.io/created-by: CliVersion
   labels:
-    helm.sh/chart: linkerd-control-plane-1.1.2-edge
+    helm.sh/chart: linkerd-control-plane-1.1.4-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: linkerd.io
@@ -1293,6 +1293,13 @@ webhooks:
       operator: NotIn
       values:
       - disabled
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+      - kube-system
+      - cert-manager
+  objectSelector:
+    null
   clientConfig:
     service:
       name: linkerd-proxy-injector
@@ -1440,7 +1447,6 @@ data:
       await: false
       capabilities: null
       defaultInboundPolicy: ""
-      disableIdentity: false
       enableExternalProfiles: false
       image:
         name: ProxyImageName
@@ -1514,6 +1520,11 @@ data:
           operator: NotIn
           values:
           - disabled
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+          - kube-system
+          - cert-manager
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     tolerations: null
@@ -1624,7 +1635,6 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: CliVersion
-        linkerd.io/identity-mode: default
         linkerd.io/proxy-version: ProxyVersion
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
@@ -1967,7 +1977,6 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: CliVersion
-        linkerd.io/identity-mode: default
         linkerd.io/proxy-version: ProxyVersion
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
@@ -2090,7 +2099,8 @@ spec:
           postStart:
             exec:
               command:
-              - /usr/lib/linkerd/linkerd-await
+                - /usr/lib/linkerd/linkerd-await
+                - --timeout=2m
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
@@ -2335,7 +2345,6 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: CliVersion
-        linkerd.io/identity-mode: default
         linkerd.io/proxy-version: ProxyVersion
         config.linkerd.io/opaque-ports: "8443"
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
@@ -2459,7 +2468,8 @@ spec:
           postStart:
             exec:
               command:
-              - /usr/lib/linkerd/linkerd-await
+                - /usr/lib/linkerd/linkerd-await
+                - --timeout=2m
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity

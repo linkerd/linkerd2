@@ -48,41 +48,29 @@ func TestOpaquePorts(t *testing.T) {
 
 	ctx := context.Background()
 	TestHelper.WithDataPlaneNamespace(ctx, "opaque-ports-test", map[string]string{}, t, func(t *testing.T, opaquePortsNs string) {
-		out, err := TestHelper.LinkerdRun("inject", "testdata/opaque_ports_application.yaml")
-		if err != nil {
-			testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
-		}
-		out, err = TestHelper.KubectlApply(out, opaquePortsNs)
+		out, err := TestHelper.Kubectl("", "apply", "-f", "testdata/opaque_ports_application.yaml", "-n", opaquePortsNs)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 				"'kubectl apply' command failed\n%s", out)
 		}
 
-		// Check that the opaque pod test application started correctly.
-		if err := TestHelper.CheckPods(ctx, opaquePortsNs, opaquePodApp, 1); err != nil {
-			if rce, ok := err.(*testutil.RestartCountError); ok {
-				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
-			} else {
-				testutil.AnnotatedError(t, "CheckPods timed-out", err)
+		// Check that the server pods are started correctly before continuing
+		// with the rest of the test.
+		for _, deploy := range []string{opaquePodApp, opaqueSvcApp, opaqueUnmeshedSvcPod} {
+			if err := TestHelper.CheckPods(ctx, opaquePortsNs, deploy, 1); err != nil {
+				if rce, ok := err.(*testutil.RestartCountError); ok {
+					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+				} else {
+					testutil.AnnotatedError(t, "CheckPods timed-out", err)
+				}
 			}
 		}
 
-		// Check that the opaque service test application started correctly.
-		if err := TestHelper.CheckPods(ctx, opaquePortsNs, opaqueSvcApp, 1); err != nil {
-			if rce, ok := err.(*testutil.RestartCountError); ok {
-				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
-			} else {
-				testutil.AnnotatedError(t, "CheckPods timed-out", err)
-			}
-		}
-
-		// Check that the unmeshed opaque service application started successfully.
-		if err := TestHelper.CheckPods(ctx, opaquePortsNs, opaqueUnmeshedSvcPod, 1); err != nil {
-			if rce, ok := err.(*testutil.RestartCountError); ok {
-				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
-			} else {
-				testutil.AnnotatedError(t, "CheckPods timed-out", err)
-			}
+		// Deploy slow-cooker clients
+		out, err = TestHelper.Kubectl("", "apply", "-f", "testdata/opaque_ports_client.yaml", "-n", opaquePortsNs)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+				"'kubectl apply' command failed\n%s", out)
 		}
 
 		// Use a short time window for these tests to get rid of transient errors
@@ -91,7 +79,7 @@ func TestOpaquePorts(t *testing.T) {
 			// Check the slow cooker metrics
 			err := TestHelper.RetryFor(30*time.Second, func() error {
 				pods, err := TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": opaquePodSC})
-				if err != nil {
+				if err != nil || len(pods) == 0 {
 					return fmt.Errorf("error getting pods\n%s", err)
 				}
 				metrics, err := getPodMetrics(pods[0], opaquePortsNs)
@@ -126,7 +114,7 @@ func TestOpaquePorts(t *testing.T) {
 			// Check the slow cooker metrics
 			err := TestHelper.RetryFor(30*time.Second, func() error {
 				pods, err := TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": opaqueSvcSC})
-				if err != nil {
+				if err != nil || len(pods) == 0 {
 					return fmt.Errorf("error getting pods\n%s", err)
 				}
 				metrics, err := getPodMetrics(pods[0], opaquePortsNs)
