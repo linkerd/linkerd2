@@ -1,3 +1,16 @@
+FROM docker.io/golang:1.17-bullseye as go
+RUN for p in \
+    github.com/uudashr/gopkgs/v2/cmd/gopkgs@latest \
+    github.com/ramya-rao-a/go-outline@latest \
+    github.com/cweill/gotests/gotests@latest \
+    github.com/fatih/gomodifytags@latest \
+    github.com/josharian/impl@latest \
+    github.com/haya14busa/goplay/cmd/goplay@latest \
+    github.com/go-delve/delve/cmd/dlv@latest \
+    github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
+    golang.org/x/tools/gopls@latest \
+    ; do go install "$p" ; done
+
 FROM docker.io/golang:1.17-bullseye
 
 # Note: we do *not* delete the apt cache so subsequent steps (like docker,
@@ -38,6 +51,8 @@ RUN scurl -v https://raw.githubusercontent.com/microsoft/vscode-dev-containers/m
 RUN (echo "LC_ALL=en_US.UTF-8" \
     && echo "LANGUAGE=en_US.UTF-8") >/etc/default/locale
 
+COPY --from=go /go /go
+
 USER $USER
 ENV USER=$USER
 ENV HOME=/home/$USER
@@ -61,18 +76,6 @@ RUN mkdir /tmp/cargo-deny && cd /tmp/cargo-deny && \
     scurl -v https://github.com/EmbarkStudios/cargo-deny/releases/download/0.11.0/cargo-deny-0.11.0-x86_64-unknown-linux-musl.tar.gz | tar zxf - && \
     mv cargo-deny-0.11.0-x86_64-unknown-linux-musl/cargo-deny $HOME/bin && \
     cd .. && rm -rf /tmp/cargo-deny
-
-RUN for p in \
-    github.com/uudashr/gopkgs/v2/cmd/gopkgs@latest \
-    github.com/ramya-rao-a/go-outline@latest \
-    github.com/cweill/gotests/gotests@latest \
-    github.com/fatih/gomodifytags@latest \
-    github.com/josharian/impl@latest \
-    github.com/haya14busa/goplay/cmd/goplay@latest \
-    github.com/go-delve/delve/cmd/dlv@latest \
-    github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
-    golang.org/x/tools/gopls@latest \
-    ; do go install "$p" ; done
 
 RUN scurl -v https://run.linkerd.io/install-edge | sh \
     && ln -s $(readlink ~/.linkerd2/bin/linkerd) ~/bin/linkerd
