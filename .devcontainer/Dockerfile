@@ -72,10 +72,9 @@ ARG YQ_VERSION=v4.2.0
 RUN scurl -vo $HOME/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" \
     && chmod +x $HOME/bin/yq
 
-RUN mkdir /tmp/cargo-deny && cd /tmp/cargo-deny && \
-    scurl -v https://github.com/EmbarkStudios/cargo-deny/releases/download/0.11.0/cargo-deny-0.11.0-x86_64-unknown-linux-musl.tar.gz | tar zxf - && \
-    mv cargo-deny-0.11.0-x86_64-unknown-linux-musl/cargo-deny $HOME/bin && \
-    cd .. && rm -rf /tmp/cargo-deny
+ARG CARGO_DENY_VERSION=0.11.1
+RUN curl --proto '=https' --tlsv1.3 -vsSfL "https://github.com/EmbarkStudios/cargo-deny/releases/download/${CARGO_DENY_VERSION}/cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
+    | tar zvxf - --strip-components=1 -C $HOME/bin "cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl/cargo-deny"
 
 RUN scurl -v https://run.linkerd.io/install-edge | sh \
     && ln -s $(readlink ~/.linkerd2/bin/linkerd) ~/bin/linkerd
