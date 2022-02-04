@@ -17,7 +17,7 @@ RUN for p in \
 FROM docker.io/rust:${RUST_TOOLCHAIN}-bullseye as rust
 RUN rustup component add rustfmt clippy rls
 
-FROM docker.io/golang:1.17-bullseye
+FROM docker.io/golang:${GO_VERSION}-bullseye
 
 # Note: we do *not* delete the apt cache so subsequent steps (like docker,
 # dotfiles) need not pull the cache again. This comes at the cost of a fatter
