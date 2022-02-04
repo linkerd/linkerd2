@@ -1,4 +1,7 @@
-FROM docker.io/golang:1.17-bullseye as go
+ARG GO_VERSION=1.17
+ARG RUST_TOOLCHAIN=1.56.1
+
+FROM docker.io/golang:${GO_VERSION}-bullseye as go
 RUN for p in \
     github.com/uudashr/gopkgs/v2/cmd/gopkgs@latest \
     github.com/ramya-rao-a/go-outline@latest \
@@ -10,6 +13,9 @@ RUN for p in \
     github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
     golang.org/x/tools/gopls@latest \
     ; do go install "$p" ; done
+
+FROM docker.io/rust:${RUST_TOOLCHAIN}-bullseye as rust
+RUN rustup component add rustfmt clippy rls
 
 FROM docker.io/golang:1.17-bullseye
 
@@ -51,8 +57,6 @@ RUN scurl -v https://raw.githubusercontent.com/microsoft/vscode-dev-containers/m
 RUN (echo "LC_ALL=en_US.UTF-8" \
     && echo "LANGUAGE=en_US.UTF-8") >/etc/default/locale
 
-COPY --from=go /go /go
-
 USER $USER
 ENV USER=$USER
 ENV HOME=/home/$USER
@@ -68,10 +72,6 @@ ARG YQ_VERSION=v4.2.0
 RUN scurl -vo $HOME/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" \
     && chmod +x $HOME/bin/yq
 
-ARG RUST_TOOLCHAIN=1.56.1
-RUN scurl -v https://sh.rustup.rs \
-    | sh -s -- -y --default-toolchain "${RUST_TOOLCHAIN}" -c rustfmt -c clippy -c rls
-
 RUN mkdir /tmp/cargo-deny && cd /tmp/cargo-deny && \
     scurl -v https://github.com/EmbarkStudios/cargo-deny/releases/download/0.11.0/cargo-deny-0.11.0-x86_64-unknown-linux-musl.tar.gz | tar zxf - && \
     mv cargo-deny-0.11.0-x86_64-unknown-linux-musl/cargo-deny $HOME/bin && \
@@ -79,6 +79,14 @@ RUN mkdir /tmp/cargo-deny && cd /tmp/cargo-deny && \
 
 RUN scurl -v https://run.linkerd.io/install-edge | sh \
     && ln -s $(readlink ~/.linkerd2/bin/linkerd) ~/bin/linkerd
+
+COPY --from=go /go /go
+
+COPY --from=rust /usr/local/cargo /usr/local/cargo
+COPY --from=rust /usr/local/rustup /usr/local/rustup
+ENV CARGO_HOME=/usr/local/cargo
+ENV RUSTUP_HOME=/usr/local/rustup
+ENV PATH=/usr/local/cargo/bin:$PATH
 
 ENTRYPOINT ["/usr/local/share/docker-init.sh"]
 CMD ["sleep", "infinity"]
