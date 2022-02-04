@@ -311,14 +311,13 @@ You can send test requests to the destination service using the
 bin/go-run controller/script/destination-client -path hello.default.svc.cluster.local:80
 ```
 
-##### Running the Tap APIService for development
+##### Debugging the Tap APIService for development
 
-```bash
-openssl req -nodes -x509 -newkey rsa:4096 -keyout $HOME/key.pem -out $HOME/crt.pem -subj "/C=US"
-bin/go-run viz/tap/cmd tap --disable-common-names --tls-cert=$HOME/crt.pem --tls-key=$HOME/key.pem
-
-curl -k https://localhost:8089/apis/tap.linkerd.io/v1alpha1
-```
+The Tap APIService is a Kubernetes extension API server, so it can be
+challenging to run outside the cluster. The most straightforward workflow is to
+simply test changes by building and loading the container image as explained in
+the [comprehensive configuration](#comprehensive) section above (in order to
+just build this component use `bin/docker-build-tap`).
 
 #### Generating CLI docs
 
