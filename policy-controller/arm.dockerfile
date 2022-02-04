@@ -13,7 +13,7 @@ COPY Cargo.toml Cargo.lock policy-controller/ /build/
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.56.1,source=/usr/local/cargo,target=/usr/local/cargo \
     cargo build --locked --release --target=armv7-unknown-linux-gnueabihf \
-        --package=linkerd-policy-controller --no-default-features --features="rustls" && \
+        --package=linkerd-policy-controller --no-default-features --features="rustls-tls" && \
     mv target/armv7-unknown-linux-gnueabihf/release/linkerd-policy-controller /tmp/
 
 FROM --platform=linux/arm $RUNTIME_IMAGE
