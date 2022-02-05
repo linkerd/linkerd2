@@ -2,7 +2,7 @@ linkerd-jaeger
 --------------
 √ linkerd-jaeger extension Namespace exists
 √ jaeger extension pods are injected
-√ jaeger extension pods are running
+√ jaeger injector pods are running
 √ jaeger extension proxies are healthy
 ‼ jaeger extension proxies are up-to-date
     {{.ProxyVersionErr}}
