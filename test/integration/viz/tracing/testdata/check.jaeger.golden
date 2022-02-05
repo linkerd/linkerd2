@@ -1,8 +1,6 @@
 linkerd-jaeger
 --------------
 √ linkerd-jaeger extension Namespace exists
-√ collector and jaeger service account exists
-√ collector config map exists
 √ jaeger extension pods are injected
 √ jaeger extension pods are running
 √ jaeger extension proxies are healthy
