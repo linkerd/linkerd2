@@ -59,18 +59,7 @@ jobs:
     strategy:
       matrix:
         integration_test:
-        - cluster-domain
-        - cni-calico-deep
-        - deep
         - viz
-        - default-policy-deny
-        - external
-        # Skipping Helm upgrade test given chart in 2.11 is backwards-incompatible
-        #- helm-upgrade
-        - multicluster
-        - uninstall
-        - upgrade-edge
-        - upgrade-stable
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-20.04
