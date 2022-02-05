@@ -1,4 +1,49 @@
-FROM docker.io/golang:1.17-bullseye
+ARG GO_VERSION=1.17
+ARG RUST_TOOLCHAIN=1.56.1
+
+FROM docker.io/golang:${GO_VERSION}-bullseye as go
+RUN for p in \
+    github.com/uudashr/gopkgs/v2/cmd/gopkgs@latest \
+    github.com/ramya-rao-a/go-outline@latest \
+    github.com/cweill/gotests/gotests@latest \
+    github.com/fatih/gomodifytags@latest \
+    github.com/josharian/impl@latest \
+    github.com/haya14busa/goplay/cmd/goplay@latest \
+    github.com/go-delve/delve/cmd/dlv@latest \
+    github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
+    golang.org/x/tools/gopls@latest \
+    ; do go install "$p" ; done
+
+FROM docker.io/golang:${GO_VERSION}-bullseye as cargo-deny
+ARG CARGO_DENY_VERSION=0.11.1
+COPY bin/scurl /usr/local/bin/scurl
+RUN scurl "https://github.com/EmbarkStudios/cargo-deny/releases/download/${CARGO_DENY_VERSION}/cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
+    | tar zvxf - --strip-components=1 -C /usr/local/bin "cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl/cargo-deny"
+
+FROM docker.io/golang:${GO_VERSION}-bullseye as yq
+ARG YQ_VERSION=v4.2.0
+COPY bin/scurl /usr/local/bin/scurl
+RUN scurl -vo /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" \
+    && chmod +x /usr/local/bin/yq
+
+FROM docker.io/golang:${GO_VERSION}-bullseye as kubectl
+COPY bin/scurl /usr/local/bin/scurl
+RUN scurl -vo /usr/local/bin/kubectl "https://dl.k8s.io/release/$(scurl https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+    && chmod 755 /usr/local/bin/kubectl
+
+FROM docker.io/golang:${GO_VERSION}-bullseye as k3d
+COPY bin/scurl /usr/local/bin/scurl
+RUN scurl -v https://raw.githubusercontent.com/rancher/k3d/main/install.sh \
+    | USE_SUDO=false K3D_INSTALL_DIR=/usr/local/bin bash
+
+FROM docker.io/rust:${RUST_TOOLCHAIN}-bullseye as rust
+RUN rustup component add rustfmt clippy rls
+
+##
+## Main container configuration
+##
+
+FROM docker.io/golang:${GO_VERSION}-bullseye
 
 # Note: we do *not* delete the apt cache so subsequent steps (like docker,
 # dotfiles) need not pull the cache again. This comes at the cost of a fatter
@@ -44,26 +89,20 @@ ENV HOME=/home/$USER
 RUN mkdir -p $HOME/bin
 ENV PATH=$HOME/bin:$PATH
 
-RUN scurl -vo $HOME/bin/kubectl "https://dl.k8s.io/release/$(scurl https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
-    && chmod 755 $HOME/bin/kubectl
-RUN scurl -v https://raw.githubusercontent.com/rancher/k3d/main/install.sh \
-    | USE_SUDO=false K3D_INSTALL_DIR=$HOME/bin bash
-
-ARG YQ_VERSION=v4.2.0
-RUN scurl -vo $HOME/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" \
-    && chmod +x $HOME/bin/yq
-
-ARG RUST_TOOLCHAIN=1.56.1
-RUN scurl -v https://sh.rustup.rs \
-    | sh -s -- -y --default-toolchain "${RUST_TOOLCHAIN}" -c rustfmt -c clippy -c rls
-
-RUN mkdir /tmp/cargo-deny && cd /tmp/cargo-deny && \
-    scurl -v https://github.com/EmbarkStudios/cargo-deny/releases/download/0.11.0/cargo-deny-0.11.0-x86_64-unknown-linux-musl.tar.gz | tar zxf - && \
-    mv cargo-deny-0.11.0-x86_64-unknown-linux-musl/cargo-deny $HOME/bin && \
-    cd .. && rm -rf /tmp/cargo-deny
-
 RUN scurl -v https://run.linkerd.io/install-edge | sh \
     && ln -s $(readlink ~/.linkerd2/bin/linkerd) ~/bin/linkerd
+
+COPY --from=go /go /go
+COPY --from=cargo-deny /usr/local/bin/cargo-deny /user/local/bin/cargo-deny
+COPY --from=k3d /usr/local/bin/k3d /user/local/bin/k3d
+COPY --from=kubectl /usr/local/bin/kubectl /user/local/bin/kubectl
+COPY --from=yq /usr/local/bin/yq /user/local/bin/yq
+
+COPY --from=rust /usr/local/cargo /usr/local/cargo
+COPY --from=rust /usr/local/rustup /usr/local/rustup
+ENV CARGO_HOME=/usr/local/cargo
+ENV RUSTUP_HOME=/usr/local/rustup
+ENV PATH=/usr/local/cargo/bin:$PATH
 
 ENTRYPOINT ["/usr/local/share/docker-init.sh"]
 CMD ["sleep", "infinity"]
