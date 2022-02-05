@@ -86,13 +86,8 @@ RUN (echo "LC_ALL=en_US.UTF-8" \
 USER $USER
 ENV USER=$USER
 ENV HOME=/home/$USER
-RUN mkdir -p $HOME/bin
-ENV PATH=$HOME/bin:$PATH
 
-RUN scurl -v https://run.linkerd.io/install-edge | sh \
-    && ln -s $(readlink ~/.linkerd2/bin/linkerd) ~/bin/linkerd
-
-COPY --from=go /go /go
+COPY --from=go /go/bin /go/bin
 COPY --from=cargo-deny /usr/local/bin/cargo-deny /user/local/bin/cargo-deny
 COPY --from=k3d /usr/local/bin/k3d /user/local/bin/k3d
 COPY --from=kubectl /usr/local/bin/kubectl /user/local/bin/kubectl
@@ -102,7 +97,11 @@ COPY --from=rust /usr/local/cargo /usr/local/cargo
 COPY --from=rust /usr/local/rustup /usr/local/rustup
 ENV CARGO_HOME=/usr/local/cargo
 ENV RUSTUP_HOME=/usr/local/rustup
+RUN sudo chmod 777 $CARGO_HOME $RUSTUP_HOME
 ENV PATH=/usr/local/cargo/bin:$PATH
+
+RUN scurl -v https://run.linkerd.io/install-edge | sh
+ENV PATH=$HOME/.linkerd2/bin:$PATH
 
 ENTRYPOINT ["/usr/local/share/docker-init.sh"]
 CMD ["sleep", "infinity"]
