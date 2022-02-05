@@ -439,7 +439,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-control-plane-1.1.1-edge
+    helm.sh/chart: linkerd-control-plane-1.1.4-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -468,13 +468,13 @@ spec:
                   description: >-
                     TODO ...
                   type: object
-                  # Copied from the gateway API.
+                  # Modified from the gateway API.
                   # Copyright 2020 The Kubernetes Authors
                   properties:
                     group:
                       description: >-
                         Group is the group of the referent. When empty, the Kubernetes core API
-                        group is infered."
+                        group is inferred.
                       maxLength: 253
                       pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                       type: string
@@ -486,18 +486,16 @@ spec:
                       pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
                       type: string
                     name:
-                      description: >-
-                        Name is the name of the referent. When unspecified, this policy refers to
-                        all resources of the specified Group and Kind in the local namespace.
+                      description: Name is the name of the referent.
                       maxLength: 253
                       minLength: 1
                       type: string
                   required:
-                    - group
                     - kind
+                    - name
                 requiredAuthenticationRefs:
                   description: >-
-                    The list of required authentications
+                    RequiredAuthenticationRefs enumerates a set of required authentications
                   type: array
                   items:
                     type: object
@@ -531,8 +529,8 @@ spec:
                         maxLength: 253
                         type: string
                     required:
-                      - group
                       - kind
+                      - name
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -541,7 +539,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-control-plane-1.1.1-edge
+    helm.sh/chart: linkerd-control-plane-1.1.4-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -622,7 +620,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-control-plane-1.1.1-edge
+    helm.sh/chart: linkerd-control-plane-1.1.4-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io

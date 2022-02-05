@@ -66,7 +66,7 @@ var (
 		"templates/policy/authorizationpolicy.yaml",
 		"templates/policy/meshtlsauthentication.yaml",
 		"templates/policy/networkauthentication.yaml",
-		"templates/serviceprofile-crd.yaml",
+		"templates/serviceprofile.yaml",
 	}
 
 	templatesConfigStage = []string{
