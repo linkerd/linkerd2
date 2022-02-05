@@ -10,6 +10,12 @@ running a separate docker daemon within in the container). It creates
 devcontainers on the host network so it's easy to use k3d clusters hosted in the
 parent host's docker daemon.
 
+You can build the devcontainer by running:
+
+```sh
+docker build . -f .devcontainer/Dockerfile -t ghcr.io/linkerd/dev
+```
+
 ## Customizing
 
 This configuration is supposed to provide a minimal setup without catering to
