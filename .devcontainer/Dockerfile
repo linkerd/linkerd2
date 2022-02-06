@@ -88,10 +88,10 @@ ENV USER=$USER
 ENV HOME=/home/$USER
 
 COPY --from=go /go/bin /go/bin
-COPY --from=cargo-deny /usr/local/bin/cargo-deny /user/local/bin/cargo-deny
-COPY --from=k3d /usr/local/bin/k3d /user/local/bin/k3d
-COPY --from=kubectl /usr/local/bin/kubectl /user/local/bin/kubectl
-COPY --from=yq /usr/local/bin/yq /user/local/bin/yq
+COPY --from=cargo-deny /usr/local/bin/cargo-deny /usr/local/bin/cargo-deny
+COPY --from=k3d /usr/local/bin/k3d /usr/local/bin/k3d
+COPY --from=kubectl /usr/local/bin/kubectl /usr/local/bin/kubectl
+COPY --from=yq /usr/local/bin/yq /usr/local/bin/yq
 
 COPY --from=rust /usr/local/cargo /usr/local/cargo
 COPY --from=rust /usr/local/rustup /usr/local/rustup
