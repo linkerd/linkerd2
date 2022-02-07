@@ -5739,10 +5739,10 @@ make-plural@^6.2.2:
   resolved "https://registry.yarnpkg.com/make-plural/-/make-plural-6.2.2.tgz#beb5fd751355e72660eeb2218bb98eec92853c6c"
   integrity sha512-8iTuFioatnTTmb/YJjywkVIHLjcwkFD9Ms0JpxjEm9Mo8eQYkh1z+55dwv4yc1jQ8ftVBxWQbihvZL1DfzGGWA==
 
-make-plural@^7.0.0:
-  version "7.0.0"
-  resolved "https://registry.yarnpkg.com/make-plural/-/make-plural-7.0.0.tgz#f4c9c5c3334b935788f10815ffbaa55c9b2e8393"
-  integrity sha512-OTuzMnuhrc7G3LJU5upkhKy7EIAq/dRqANqTUh0B8au7jM5mXq9kVdla3sn3g2GCRIxgooCDQtSJ3s1fAjasbQ==
+make-plural@^7.1.0:
+  version "7.1.0"
+  resolved "https://registry.yarnpkg.com/make-plural/-/make-plural-7.1.0.tgz#8a0381ff8c9be4f074e0acdc42ec97639c2344f9"
+  integrity sha512-PKkwVlAxYVo98NrbclaQIT4F5Oy+X58PZM5r2IwUSCe3syya6PXkIRCn2XCdz7p58Scgpp50PBeHmepXVDG3hg==
 
 makeerror@1.0.x:
   version "1.0.11"
