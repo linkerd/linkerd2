@@ -21,6 +21,8 @@ const (
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
+	// Block test execution until viz extension pods are running
+	TestHelper.WaitUntilDeployReady(testutil.ExternalVizDeployReplicas)
 	os.Exit(m.Run())
 }
 

@@ -17,6 +17,8 @@ const zeroRPS = "0.0rps"
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
+	// Block test execution until viz extension is running
+	TestHelper.WaitUntilDeployReady(testutil.LinkerdVizDeployReplicas)
 	os.Exit(m.Run())
 }
 

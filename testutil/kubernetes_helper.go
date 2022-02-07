@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -330,6 +331,28 @@ func (h *KubernetesHelper) WaitRollout(t *testing.T, deploys map[string]DeploySp
 			AnnotatedFatalf(t,
 				fmt.Sprintf("failed to wait rollout of deploy/%s", deploy),
 				"failed to wait for rollout of deploy/%s: %s: %s\nEvents:\n%s", deploy, err, o, oEvt)
+		}
+	}
+}
+
+// WaitUntilDeployReady will block and wait until all given deploys have been
+// rolled out and their pods are in a 'ready' status. The difference between
+// this and WaitRollout is that WaitUntilDeployReady uses CheckPods underneath,
+// instead of relying on the 'rollout' command. WaitUntilDeployReady will also
+// retry for a long period time. This function is used to block tests from
+// running until the control plane and extensions are ready.
+func (h *KubernetesHelper) WaitUntilDeployReady(deploys map[string]DeploySpec) {
+	ctx := context.Background()
+	for deploy, spec := range deploys {
+		if err := h.CheckPods(ctx, spec.Namespace, deploy, 1); err != nil {
+			var out string
+			if rce, ok := err.(*RestartCountError); ok {
+				out = fmt.Sprintf("error running test: failed to wait for deploy/%s to become 'ready', too many restarts (%v)\n", deploy, rce)
+			} else {
+				out = fmt.Sprintf("error running test: failed to wait for deploy/%s to become 'ready', timed out waiting for condition\n", deploy)
+			}
+			os.Stderr.Write([]byte(out))
+			os.Exit(1)
 		}
 	}
 }

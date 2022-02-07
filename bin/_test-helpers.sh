@@ -364,7 +364,7 @@ run_test(){
 
   printf 'Test script: [%s] Params: [%s]\n' "${filename##*/}" "$*"
   # Exit on failure here
-  GO111MODULE=on go test -p 1 -test.timeout=60m --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --helm-path="$helm_path" --default-allow-policy="$default_allow_policy" --k8s-context="$context" --integration-tests "$@" || exit 1
+  GO111MODULE=on go test -test.timeout=60m --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --helm-path="$helm_path" --default-allow-policy="$default_allow_policy" --k8s-context="$context" --integration-tests "$@" || exit 1
 }
 
 # Returns the latest version for the release channel
@@ -438,7 +438,7 @@ upgrade_test() {
   )
   exit_on_err "upgrade_test() - installing viz extension in $upgrade_version failed"
 
-  run_test "$test_directory/install/1_install_test.go" --upgrade-from-version="$upgrade_version"
+  run_test "$test_directory/install/install_test.go" --upgrade-from-version="$upgrade_version"
 }
 
 # Run the upgrade-edge test by upgrading the most-recent edge release to the
@@ -496,7 +496,7 @@ run_helm-upgrade_test() {
 
   setup_helm
   helm_viz_chart="$( cd "$bindir"/.. && pwd )"/viz/charts/linkerd-viz
-  run_test "$test_directory/install/1_install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
+  run_test "$test_directory/install/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
   --viz-helm-chart="$helm_viz_chart" --helm-stable-chart='linkerd/linkerd2' --viz-helm-stable-chart="linkerd/linkerd-viz" --helm-release="$helm_release_name" --upgrade-helm-from-version="$stable_version"
   helm_cleanup
 }
@@ -512,7 +512,7 @@ run_multicluster_test() {
   "$bindir"/certs-openssl
   cd "$pwd"
   export context="k3d-target"
-  run_test "$test_directory/multicluster/1_install_test.go" --certs-path "$tmp"
+  run_test "$test_directory/multicluster/install_test.go" --certs-path "$tmp"
   run_test "$test_directory/multicluster/target1"
   link=$(multicluster_link target)
 
@@ -520,7 +520,7 @@ run_multicluster_test() {
   # Create the emojivoto namespace in the source cluster so that mirror services
   # can be created there.
   kubectl --context="$context" create namespace emojivoto
-  run_test "$test_directory/multicluster/1_install_test.go" --certs-path "$tmp"
+  run_test "$test_directory/multicluster/install_test.go" --certs-path "$tmp"
   echo "$link" | kubectl --context="$context" apply -f -
   run_test "$test_directory/multicluster/source" 
   export context="k3d-target"
@@ -535,7 +535,7 @@ run_deep_test() {
 
 run_default-policy-deny_test() {
   export default_allow_policy='deny'
-  run_test "$test_directory/install/1_install_test.go" 
+  run_test "$test_directory/install/install_test.go" 
 }
 
 run_cni-calico-deep_test() {
@@ -547,7 +547,7 @@ run_external_test() {
 }
 
 run_cluster-domain_test() {
-  run_test "$test_directory/install/1_install_test.go" --cluster-domain='custom.domain' 
+  run_test "$test_directory/install/install_test.go" --cluster-domain='custom.domain' 
 }
 
 # exit_on_err should be called right after a command to check the result status

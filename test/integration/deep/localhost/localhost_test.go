@@ -15,6 +15,8 @@ var TestHelper *testutil.TestHelper
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
+	// Block test execution until control plane is running
+	TestHelper.WaitUntilDeployReady(testutil.LinkerdDeployReplicasEdge)
 	os.Exit(m.Run())
 }
 
