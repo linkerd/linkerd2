@@ -24,7 +24,7 @@ collector:
   enabled: true
   image:
     name: otel/opentelemetry-collector
-    version: 0.27.0
+    version: 0.43.0
     pullPolicy: Always
 
   resources:
@@ -77,7 +77,8 @@ collector:
     exporters:
       jaeger:
         endpoint: jaeger.${POD_NAMESPACE}:14250
-        insecure: true
+        tls:
+          insecure: true
     service:
       extensions: [health_check]
       pipelines:
@@ -91,7 +92,7 @@ jaeger:
   enabled: true
   image:
     name: jaegertracing/all-in-one
-    version: 1.19.2
+    version: 1.31
     pullPolicy: Always
 
   # -- CLI arguments for Jaeger, See [Jaeger AIO Memory CLI reference](https://www.jaegertracing.io/docs/1.24/cli/#jaeger-all-in-one-memory)

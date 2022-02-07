@@ -46,9 +46,6 @@ func TestMain(m *testing.M) {
 
 func TestTracing(t *testing.T) {
 	ctx := context.Background()
-	if os.Getenv("RUN_ARM_TEST") != "" {
-		t.Skip("Skipped. Jaeger & Open Census images does not support ARM yet")
-	}
 
 	// Require an environment variable to be set for this test to be run.
 	if os.Getenv("RUN_FLAKEY_TEST") == "" {
