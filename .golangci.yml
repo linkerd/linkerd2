@@ -18,6 +18,7 @@ linters:
   - depguard
   - exportloopref
   - goconst
+  - gosec
   - gosimple
   - govet
   - ineffassign
