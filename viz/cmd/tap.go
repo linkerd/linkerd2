@@ -293,21 +293,17 @@ func requestTapByResourceFromAPI(ctx context.Context, w io.Writer, k8sAPI *k8s.K
 }
 
 func writeTapEventsToBuffer(w io.Writer, tapByteStream *bufio.Reader, req *tapPb.TapByResourceRequest, options *tapOptions) error {
-	var err error
 	switch options.output {
 	case "":
-		err = renderTapEvents(tapByteStream, w, renderTapEvent, "")
+		return renderTapEvents(tapByteStream, w, renderTapEvent, "")
 	case wideOutput:
 		resource := req.GetTarget().GetResource().GetType()
-		err = renderTapEvents(tapByteStream, w, renderTapEvent, resource)
+		return renderTapEvents(tapByteStream, w, renderTapEvent, resource)
 	case jsonOutput:
-		err = renderTapEvents(tapByteStream, w, renderTapEventJSON, "")
+		return renderTapEvents(tapByteStream, w, renderTapEventJSON, "")
+	default:
+		return fmt.Errorf("unknown output format: %q", options.output)
 	}
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func renderTapEvents(tapByteStream *bufio.Reader, w io.Writer, render renderTapEventFunc, resource string) error {
