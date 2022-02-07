@@ -25,9 +25,8 @@ var (
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	if TestHelper.CNI() {
-		os.Exit(0)
-	}
+	// Block test execution until control plane pods are running
+	TestHelper.WaitUntilDeployReady(testutil.LinkerdDeployReplicasEdge)
 	os.Exit(m.Run())
 }
 
