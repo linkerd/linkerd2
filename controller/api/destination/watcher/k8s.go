@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"fmt"
+	"net"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -93,7 +94,7 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 				for _, c := range pod.Spec.Containers {
 					for _, p := range c.Ports {
 						if p.HostPort != 0 {
-							addr := fmt.Sprintf("%s:%d", pod.Status.HostIP, p.HostPort)
+							addr := net.JoinHostPort(pod.Status.HostIP, fmt.Sprintf("%d", p.HostPort))
 							hostIPPods = append(hostIPPods, addr)
 						}
 					}
