@@ -120,7 +120,7 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 		return
 	}
 
-	h.log.Debugf("SubjectAccessReview: namespace: %s, resource: %s, name: %s, user: <%s>, group: <%s>",
+	h.log.Debugf("SubjectAccessReview: namespace: %q, resource: %q, name: %q, user: %q, group: %q",
 		namespace, resource, name, h.usernameHeader, h.groupHeader,
 	)
 
