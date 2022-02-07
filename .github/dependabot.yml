@@ -20,6 +20,24 @@ updates:
       timezone: "UTC"
     allow:
       - dependency-type: "all"
+    ignore:
+      # These dependencies will be updated via higher-level aggregator dependencies like `clap`,
+      # `futures`, `kube`, `prost`, and `tracing`:
+      - dependency-name: "clap_derive"
+      - dependency-name: "futures-channel"
+      - dependency-name: "futures-core"
+      - dependency-name: "futures-io"
+      - dependency-name: "futures-sink"
+      - dependency-name: "futures-task"
+      - dependency-name: "futures-util"
+      - dependency-name: "kube-client"
+      - dependency-name: "kube-core"
+      - dependency-name: "kube-derive"
+      - dependency-name: "kube-runtime"
+      - dependency-name: "prost-derive"
+      - dependency-name: "tracing-attributes"
+      - dependency-name: "tracing-core"
+      - dependency-name: "tracing-serde"
 
   - package-ecosystem: "github-actions"
     directory: "/"
