@@ -1,7 +1,6 @@
 package serviceaccounts
 
 import (
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -14,9 +13,8 @@ var TestHelper *testutil.TestHelper
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	if err := TestHelper.WaitUntilDeployReady(testutil.LinkerdDeployReplicasEdge); err != nil {
-		panic(fmt.Sprintf("error running test: %v", err))
-	}
+	// Block test execution until control plane is running
+	TestHelper.WaitUntilDeployReady(testutil.LinkerdDeployReplicasEdge)
 	os.Exit(m.Run())
 }
 

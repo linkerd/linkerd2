@@ -21,10 +21,8 @@ const (
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	// External issuer test relies on viz so block until viz is ready.
-	if err := TestHelper.WaitUntilDeployReady(testutil.ExternalVizDeployReplicas); err != nil {
-		panic(fmt.Sprintf("error running test: %v", err))
-	}
+	// Block test execution until viz extension pods are running
+	TestHelper.WaitUntilDeployReady(testutil.ExternalVizDeployReplicas)
 	os.Exit(m.Run())
 }
 

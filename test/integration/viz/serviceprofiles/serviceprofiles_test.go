@@ -28,9 +28,8 @@ type testCase struct {
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	if err := TestHelper.WaitUntilDeployReady(testutil.LinkerdVizDeployReplicas); err != nil {
-		panic(fmt.Sprintf("error running test: %v", err))
-	}
+	// Block test execution until viz extension is running
+	TestHelper.WaitUntilDeployReady(testutil.LinkerdVizDeployReplicas)
 	os.Exit(m.Run())
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -338,16 +339,18 @@ func (h *KubernetesHelper) WaitRollout(t *testing.T, deploys map[string]DeploySp
 // instead of relying on the 'rollout' command. WaitUntilDeployReady will also
 // retry for a long period time. This function is used to block tests from
 // running until the control plane and extensions are ready.
-func (h *KubernetesHelper) WaitUntilDeployReady(deploys map[string]DeploySpec) error {
+func (h *KubernetesHelper) WaitUntilDeployReady(deploys map[string]DeploySpec) {
 	ctx := context.Background()
 	for deploy, spec := range deploys {
 		if err := h.CheckPods(ctx, spec.Namespace, deploy, 1); err != nil {
+			var out string
 			if rce, ok := err.(*RestartCountError); ok {
-				return fmt.Errorf("failed to wait for deploy/%s to become 'ready': too many restarts: %v", deploy, rce)
+				out = fmt.Sprintf("error running test: failed to wait for deploy/%s to become 'ready', too many restarts (%v)\n", deploy, rce)
+			} else {
+				out = fmt.Sprintf("error running test: failed to wait for deploy/%s to become 'ready', timed out waiting for condition\n", deploy)
 			}
-			return fmt.Errorf("failed to wait for deploy/%s to become 'ready': timed out", deploy)
-
+			os.Stderr.Write([]byte(out))
+			os.Exit(1)
 		}
 	}
-	return nil
 }
