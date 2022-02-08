@@ -78,7 +78,7 @@ Kubernetes: `>=1.20.0-0`
 | collector.enabled | bool | `true` | Set to false to exclude collector installation |
 | collector.image.name | string | `"otel/opentelemetry-collector"` |  |
 | collector.image.pullPolicy | string | `"Always"` |  |
-| collector.image.version | string | `"0.27.0"` |  |
+| collector.image.version | string | `"0.43.0"` |  |
 | collector.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | collector.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the collector container can use |
 | collector.resources.cpu.request | string | `nil` | Amount of CPU units that the collector container requests |
@@ -92,7 +92,7 @@ Kubernetes: `>=1.20.0-0`
 | jaeger.enabled | bool | `true` | Set to false to exclude all-in-one Jaeger installation |
 | jaeger.image.name | string | `"jaegertracing/all-in-one"` |  |
 | jaeger.image.pullPolicy | string | `"Always"` |  |
-| jaeger.image.version | string | `"1.19.2"` |  |
+| jaeger.image.version | float | `1.31` |  |
 | jaeger.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | jaeger.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the jaeger container can use |
 | jaeger.resources.cpu.request | string | `nil` | Amount of CPU units that the jaeger container requests |
