@@ -396,7 +396,7 @@ status:
 			}
 			proxy.RegisterTapServer(s, &mockProxyTapServer)
 
-			lis, err := net.Listen("tcp", ":0")
+			lis, err := net.Listen("tcp", "localhost:0")
 			if err != nil {
 				t.Fatalf("Failed to listen")
 			}
