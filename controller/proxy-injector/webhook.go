@@ -40,7 +40,7 @@ func Inject(linkerdNamespace string) webhook.Handler {
 		// Build the resource config based off the request metadata and kind of
 		// object. This is later used to build the injection report and generated
 		// patch.
-		valuesConfig, err := config.Values(pkgK8s.MountPathValuesConfig)
+		valuesConfig, err := config.Values(pkgK8s.MountPathValuesConfig, pkgK8s.MountPathBase)
 		if err != nil {
 			return nil, err
 		}
