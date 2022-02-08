@@ -1011,29 +1011,26 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 func (rcsw *RemoteClusterServiceWatcher) createOrUpdateEndpoints(ctx context.Context, ep *corev1.Endpoints) error {
 	_, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(ep.Namespace).Get(ctx, ep.Name, metav1.GetOptions{})
 	if err != nil {
-		if kerrors.IsNotFound(err) {
-			// Does not exist so we should create it.
-			_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(ep.Namespace).Create(ctx, ep, metav1.CreateOptions{})
-			if err != nil {
-				return err
-			}
-		} else {
+		if !kerrors.IsNotFound(err) {
+			return err
+		}
+
+		// Does not exist so we should create it.
+		_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(ep.Namespace).Create(ctx, ep, metav1.CreateOptions{})
+		if err != nil {
 			return err
 		}
 	}
+
 	// Exists so we should update it.
 	_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(ep.Namespace).Update(ctx, ep, metav1.UpdateOptions{})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // handleCreateOrUpdateEndpoints forwards the call to
 // createOrUpdateHeadlessEndpoints when adding/updating exported headless
 // endpoints. Otherwise, it handles updates to endpoints to check if they've
-// becomed empty/filled since their creation, in order to empty/fill the
+// become empty/filled since their creation, in order to empty/fill the
 // mirrored endpoints as well
 func (rcsw *RemoteClusterServiceWatcher) handleCreateOrUpdateEndpoints(
 	ctx context.Context,

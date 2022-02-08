@@ -240,12 +240,7 @@ func (hc *HealthChecker) VizCategory() *healthcheck.Category {
 					return err
 				}
 
-				err = healthcheck.CheckForPods(pods, []string{"prometheus"})
-				if err != nil {
-					return err
-				}
-
-				return nil
+				return healthcheck.CheckForPods(pods, []string{"prometheus"})
 			}),
 		*healthcheck.NewChecker("can initialize the client").
 			WithHintAnchor("l5d-viz-existence-client").
