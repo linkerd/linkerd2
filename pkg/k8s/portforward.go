@@ -142,6 +142,10 @@ func newPortForward(
 
 	var err error
 	if localPort == 0 {
+		if host != "localhost" {
+			return nil, fmt.Errorf("local port must be specified when host is not localhost")
+		}
+
 		localPort, err = getEphemeralPort()
 		if err != nil {
 			return nil, err
@@ -247,7 +251,7 @@ func (pf *PortForward) AddressAndPort() string {
 // getEphemeralPort selects a port for the port-forwarding. It binds to a free
 // ephemeral port and returns the port number.
 func getEphemeralPort() (int, error) {
-	ln, err := net.Listen("tcp", ":0")
+	ln, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		return 0, err
 	}
