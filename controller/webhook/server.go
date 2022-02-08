@@ -59,8 +59,10 @@ func NewServer(
 	}()
 
 	server := &http.Server{
-		Addr:      addr,
-		TLSConfig: &tls.Config{},
+		Addr: addr,
+		TLSConfig: &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		},
 	}
 
 	eventBroadcaster := record.NewBroadcaster()

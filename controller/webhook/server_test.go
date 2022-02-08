@@ -14,8 +14,10 @@ import (
 )
 
 var mockHTTPServer = &http.Server{
-	Addr:      ":0",
-	TLSConfig: &tls.Config{},
+	Addr: ":0",
+	TLSConfig: &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	},
 }
 
 func TestServe(t *testing.T) {
