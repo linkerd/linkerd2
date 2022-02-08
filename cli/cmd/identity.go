@@ -197,6 +197,10 @@ func getCertResponse(url string, pod corev1.Pod) ([]*x509.Certificate, error) {
 	}
 	connURL := strings.Trim(url, "http://")
 	conn, err := tls.Dial("tcp", connURL, &tls.Config{
+		// We want to connect directly to a proxy port to dump its certificate. We don't necessarily
+		// want to verify the server's certificate, since this is purely for diagnostics and may be
+		// used when a proxy's issuer doesn't match the control plane's trust root.
+		//nolint:gosec
 		InsecureSkipVerify: true,
 		ServerName:         serverName,
 	})
