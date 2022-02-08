@@ -83,7 +83,7 @@ Kubernetes: `>=1.17.0-0`
 | collector.enabled | bool | `true` | Set to false to exclude collector installation |
 | collector.image.name | string | `"otel/opentelemetry-collector"` |  |
 | collector.image.pullPolicy | string | `"Always"` |  |
-| collector.image.version | string | `"0.27.0"` |  |
+| collector.image.version | string | `"0.43.0"` |  |
 | collector.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | collector.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
@@ -92,7 +92,7 @@ Kubernetes: `>=1.17.0-0`
 | jaeger.enabled | bool | `true` | Set to false to exclude all-in-one Jaeger installation |
 | jaeger.image.name | string | `"jaegertracing/all-in-one"` |  |
 | jaeger.image.pullPolicy | string | `"Always"` |  |
-| jaeger.image.version | string | `"1.19.2"` |  |
+| jaeger.image.version | float | `1.31` |  |
 | jaeger.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | jaeger.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | linkerdNamespace | string | `"linkerd"` | Namespace of the Linkerd core control-plane install |

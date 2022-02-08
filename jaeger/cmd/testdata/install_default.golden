@@ -300,7 +300,8 @@ data:
     exporters:
       jaeger:
         endpoint: jaeger.${POD_NAMESPACE}:14250
-        insecure: true
+        tls:
+          insecure: true
     service:
       extensions: [health_check]
       pipelines:
@@ -384,7 +385,7 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.namespace
-        image: otel/opentelemetry-collector:0.27.0
+        image: otel/opentelemetry-collector:0.43.0
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
@@ -469,7 +470,7 @@ spec:
       containers:
       - args:
         - --query.base-path=/jaeger
-        image: jaegertracing/all-in-one:1.19.2
+        image: jaegertracing/all-in-one:1.31
         imagePullPolicy: Always
         name: jaeger
         ports:
