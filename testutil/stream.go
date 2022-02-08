@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 // Stream provides the ability of read the output of an executing process while
@@ -18,8 +20,12 @@ type Stream struct {
 
 // Stop closes the stream and kills the process
 func (s *Stream) Stop() {
-	s.out.Close()
-	s.cmd.Process.Kill()
+	if err := s.out.Close(); err != nil {
+		logrus.WithError(err).Error("Failed to close stream")
+	}
+	if err := s.cmd.Process.Kill(); err != nil {
+		logrus.WithError(err).Error("Failed to kill process")
+	}
 }
 
 // ReadUntil reads from the process output until specified number of lines has
