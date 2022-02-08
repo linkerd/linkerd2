@@ -3,7 +3,7 @@ package destination
 import (
 	"errors"
 	"fmt"
-	"strings"
+	"net"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
@@ -113,11 +113,9 @@ func toDstOverrides(dsts []*sp.WeightedDst, port uint32) []*pb.WeightedDst {
 	pbDsts := []*pb.WeightedDst{}
 	for _, dst := range dsts {
 		authority := dst.Authority
-		// Authority should be a FQDN with port
-		// Use the port from GetProfile is absent in authority
-		hostPort := strings.Split(authority, ":")
-		if len(hostPort) == 1 {
-			authority = fmt.Sprintf("%s:%d", authority, port)
+		// If the authority does not parse as a host:port, add the port provided by `GetProfile`.
+		if _, _, err := net.SplitHostPort(authority); err != nil {
+			authority = net.JoinHostPort(authority, fmt.Sprintf("%d", port))
 		}
 
 		pbDst := &pb.WeightedDst{

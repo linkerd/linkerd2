@@ -44,7 +44,7 @@ jobs:
     - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
     - uses: EmbarkStudios/cargo-deny-action@2a55392931cddc0ae1d7397515fd0951d39ebaf2
       with:
-        command: check bans licenses sources
+        command: check ${{ matrix.checks }}
 
   clippy:
     timeout-minutes: 5

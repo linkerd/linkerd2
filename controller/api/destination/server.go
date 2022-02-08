@@ -468,7 +468,7 @@ func (s *server) getEndpointByHostname(k8sAPI *k8s.API, hostname string, svcID w
 // port.
 func getPodByIP(k8sAPI *k8s.API, podIP string, port uint32, log *logging.Entry) (*corev1.Pod, error) {
 	// First we check if the address maps to a pod in the host network.
-	addr := fmt.Sprintf("%s:%d", podIP, port)
+	addr := net.JoinHostPort(podIP, fmt.Sprintf("%d", port))
 	hostIPPods, err := getIndexedPods(k8sAPI, watcher.HostIPIndex, addr)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())

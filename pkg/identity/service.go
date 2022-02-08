@@ -2,7 +2,7 @@ package identity
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/hex"
 	"errors"
@@ -241,7 +241,7 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	hasher := md5.New()
+	hasher := sha256.New()
 	hasher.Write(crts[0])
 	hash := hex.EncodeToString(hasher.Sum(nil))
 	identitySegments := strings.Split(tokIdentity, ".")

@@ -87,7 +87,6 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 				}
 
 				return healthcheck.CheckPodsRunning(pods, jaegerNamespace)
-
 			}))
 
 	checkers = append(checkers,

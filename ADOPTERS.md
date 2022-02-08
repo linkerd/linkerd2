@@ -77,6 +77,7 @@
 - [Web Summit](https://websummit.com)
 - [xCloud](https://www.xbox.com/en-US/xbox-game-streaming/project-xcloud)
 - [YouMail](https://www.youmail.com)
+- [ZeroFlucs](https://zeroflucs.io/)
 - [Zimpler](https://www.zimpler.com/)
 
 If you're using Linkerd 2.x and aren't on this list, please [submit a pull

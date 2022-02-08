@@ -1506,12 +1506,7 @@ func (hc *HealthChecker) CheckProxyHealth(ctx context.Context, controlPlaneNames
 	}
 
 	// Check proxy certificates
-	err = checkPodsProxiesCertificate(ctx, *hc.kubeAPI, namespace, controlPlaneNamespace)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return checkPodsProxiesCertificate(ctx, *hc.kubeAPI, namespace, controlPlaneNamespace)
 }
 
 // CheckCertAndAnchorsExpiringSoon checks if the given cert and anchors expire soon, and returns an

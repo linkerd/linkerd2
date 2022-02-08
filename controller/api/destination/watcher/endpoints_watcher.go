@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 	"sync"
@@ -750,7 +751,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 			for _, IPAddr := range endpoint.Addresses {
 				var authorityOverride string
 				if fqName, ok := es.Annotations[consts.RemoteServiceFqName]; ok {
-					authorityOverride = fmt.Sprintf("%s:%d", fqName, pp.srcPort)
+					authorityOverride = net.JoinHostPort(fqName, fmt.Sprintf("%d", pp.srcPort))
 				}
 
 				identity := es.Annotations[consts.RemoteGatewayIdentity]
