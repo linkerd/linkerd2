@@ -12,6 +12,7 @@ RUN for p in \
     github.com/go-delve/delve/cmd/dlv@latest \
     github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
     golang.org/x/tools/gopls@latest \
+    honnef.co/go/tools/cmd/staticcheck@latest \
     ; do go install "$p" ; done
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as cargo-deny
