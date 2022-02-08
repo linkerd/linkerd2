@@ -21,7 +21,7 @@ func formatMetadata(meta map[string]string) string {
 	var metadata []string
 
 	for k, v := range meta {
-		if strings.Contains(k, consts.Prefix) || strings.Contains(k, consts.ProxyConfigAnnotationsPrefix) {
+		if strings.HasPrefix(k, consts.Prefix) || strings.HasPrefix(k, consts.ProxyConfigAnnotationsPrefix) {
 			metadata = append(metadata, fmt.Sprintf("%s=%s", k, v))
 		}
 	}
