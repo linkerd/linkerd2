@@ -3,7 +3,7 @@
 ## edge-22.2.2
 
 This edge release updates the jaeger extension to be available in ARM
-architectures as well, and applies some security-oriented amendments.
+architectures and applies some security-oriented amendments.
 
 * Upgraded jaeger and the opentelemetry-collector to their latest versions,
   which now support ARM architectures
