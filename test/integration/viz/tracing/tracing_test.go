@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/linkerd/linkerd2/jaeger/pkg/labels"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
@@ -48,11 +49,6 @@ func TestMain(m *testing.M) {
 
 func TestTracing(t *testing.T) {
 	ctx := context.Background()
-
-	// Require an environment variable to be set for this test to be run.
-	if os.Getenv("RUN_FLAKEY_TEST") == "" {
-		t.Skip("Skipping due to flakiness. See linkerd/linkerd2#7538")
-	}
 
 	// linkerd-jaeger extension
 	tracingNs := "linkerd-jaeger"
@@ -141,6 +137,16 @@ func TestTracing(t *testing.T) {
 					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 				} else {
 					testutil.AnnotatedError(t, "CheckPods timed-out", err)
+				}
+			}
+
+			pods, err := TestHelper.GetPodsForDeployment(ctx, deploy.ns, deploy.name)
+			if err != nil {
+				testutil.AnnotatedWarn(t, "Failed to get pods", err)
+			}
+			for _, pod := range pods {
+				if !labels.IsTracingEnabled(&pod) {
+					testutil.AnnotatedWarn(t, "Tracing annotation not found on pod", pod.Namespace, pod.Name)
 				}
 			}
 		}
