@@ -1857,10 +1857,13 @@ func (hc *HealthChecker) checkClusterNetworks(ctx context.Context) error {
 		}
 	}
 	var badPodCIDRS []string
+	var nodesSkipped []string
+	var errStrings []string
 	var podCIDRExists bool
 	for _, node := range nodes {
 		podCIDR := node.Spec.PodCIDR
 		if podCIDR == "" {
+			nodesSkipped = append(nodesSkipped, node.Name)
 			continue
 		}
 		podCIDRExists = true
@@ -1873,14 +1876,25 @@ func (hc *HealthChecker) checkClusterNetworks(ctx context.Context) error {
 			badPodCIDRS = append(badPodCIDRS, podCIDR)
 		}
 	}
+	// If none of the nodes exposed a podCIDR then we cannot verify the clusterNetworks.
 	if !podCIDRExists {
 		// DigitalOcean for example, doesn't expose spec.podCIDR (#6398)
 		return &SkipError{Reason: podCIDRUnavailableSkipReason}
 	}
+	// If there is at least one node that does not expose a podCIDR, issue a
+	// warning that clusterNetworks could not be completely verified.
+	if len(nodesSkipped) != 0 {
+		for _, node := range nodesSkipped {
+			errStrings = append(errStrings, fmt.Sprintf("node %s does not expose podCIDRs so clusterNetworks could not be verified", node))
+		}
+	}
 	if len(badPodCIDRS) > 0 {
 		sort.Strings(badPodCIDRS)
-		return fmt.Errorf("node has podCIDR(s) %v which are not contained in the Linkerd clusterNetworks.\n\tTry installing linkerd via --set clusterNetworks=\"%s\"",
-			badPodCIDRS, strings.Join(badPodCIDRS, "\\,"))
+		s := fmt.Sprintf("node has podCIDR(s) %v which are not contained in the Linkerd clusterNetworks.\n\tTry installing linkerd via --set clusterNetworks=\"%s\"", badPodCIDRS, strings.Join(badPodCIDRS, "\\,"))
+		errStrings = append(errStrings, s)
+	}
+	if len(errStrings) > 0 {
+		return fmt.Errorf(strings.Join(errStrings, "\n    "))
 	}
 	return nil
 }
