@@ -39,7 +39,6 @@ type (
 		ClusterNetworks              string              `json:"clusterNetworks"`
 		ImagePullPolicy              string              `json:"imagePullPolicy"`
 		CliVersion                   string              `json:"cliVersion"`
-		ControllerImageVersion       string              `json:"controllerImageVersion"`
 		ControllerLogLevel           string              `json:"controllerLogLevel"`
 		ControllerLogFormat          string              `json:"controllerLogFormat"`
 		ProxyContainerName           string              `json:"proxyContainerName"`
@@ -240,7 +239,6 @@ func NewValues() (*Values, error) {
 		return nil, err
 	}
 
-	v.ControllerImageVersion = version.Version
 	v.Proxy.Image.Version = version.Version
 	v.DebugContainer.Image.Version = version.Version
 	v.CliVersion = k8s.CreatedByAnnotationValue()

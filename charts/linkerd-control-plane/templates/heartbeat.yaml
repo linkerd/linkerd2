@@ -11,7 +11,7 @@ metadata:
   labels:
     app.kubernetes.io/name: heartbeat
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
+    app.kubernetes.io/version: {{.Values.linkerdVersion}}
     linkerd.io/control-plane-component: heartbeat
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
   annotations:
@@ -47,7 +47,7 @@ spec:
           restartPolicy: Never
           containers:
           - name: heartbeat
-            image: {{.Values.controllerImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
+            image: {{.Values.controllerImage}}:{{.Values.linkerdVersion}}
             imagePullPolicy: {{.Values.imagePullPolicy}}
             env:
             - name: LINKERD_DISABLED

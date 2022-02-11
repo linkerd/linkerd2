@@ -688,7 +688,7 @@ spec:
         env:
         - name: LINKERD_DISABLED
           value: "linkerd-await cannot block the identity controller"
-        image: cr.l5d.io/linkerd/controller:linkerd-version
+        image: cr.l5d.io/linkerd/controller:{.Values.linkerdVersion}}
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1170,7 +1170,7 @@ spec:
         - sp-validator
         - -log-level=info
         - -log-format=plain
-        image: cr.l5d.io/linkerd/controller:linkerd-version
+        image: cr.l5d.io/linkerd/controller:{.Values.linkerdVersion}}
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
