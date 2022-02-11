@@ -461,19 +461,39 @@ upgrade_test() {
 # Run the upgrade-edge test by upgrading the most-recent edge release to the
 # HEAD of this branch.
 run_upgrade-edge_test() {
-  edge_install_url="https://run.linkerd.io/install-edge"
-  upgrade_test "edge" "$edge_install_url"
-}
+  local install_edge_install_url="https://run.linkerd.io/install-edge"
+  local release_channel="edge"
+  
+  local upgrade_version
+  upgrade_version=$(latest_release_channel "$release_channel")
 
-run_viz_test() {
-  run_test "$test_directory/viz/..."
+  if [ -z "$upgrade_version" ]; then
+    echo 'error getting upgrade_version'
+    exit 1
+  fi
+
+  run_test "$test_directory/install/install_test.go" --upgrade-from-version="$upgrade_version"
 }
 
 # Run the upgrade-stable test by upgrading the most-recent stable release to the
 # HEAD of this branch.
 run_upgrade-stable_test() {
-  stable_install_url="https://run.linkerd.io/install"
+  local install_url="https://run.linkerd.io/install"
+  local release_channel="stable"
+
+  local upgrade_version
+  upgrade_version=$(latest_release_channel "$release_channel")
+
+  if [ -z "$upgrade_version" ]; then
+    echo 'error getting upgrade_version'
+    exit 1
+  fi
+
   upgrade_test "stable" "$stable_install_url"
+}
+
+run_viz_test() {
+  run_test "$test_directory/viz/..."
 }
 
 setup_helm() {

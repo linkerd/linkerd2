@@ -662,6 +662,22 @@ func (h *TestHelper) WithDataPlaneNamespace(ctx context.Context, testName string
 	}
 }
 
+func (h *TestHelper) GetReleaseChannelVersions() (map[string]string, error) {
+	url := "https://versioncheck.linkerd.io/version.json"
+	resp, err := h.httpClient.Get(url)
+	if err != nil {
+		return map[string]string{}, err
+	}
+
+	var versions map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&versions); err != nil {
+		return map[string]string{}, err
+	}
+
+	defer resp.Body.Close()
+	return versions, nil
+}
+
 // ReadFile reads a file from disk and returns the contents as a string.
 func ReadFile(file string) (string, error) {
 	b, err := ioutil.ReadFile(file)
