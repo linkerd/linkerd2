@@ -162,7 +162,7 @@ func (s *Server) processReq(ctx context.Context, data []byte) (*admissionv1beta1
 	if admissionReview.Request == nil || admissionReview.Request.UID == "" {
 		return nil, fmt.Errorf("invalid admission review request")
 	}
-	log.Infof("received admission review request %s", admissionReview.Request.UID)
+	log.Infof("received admission review request %q", admissionReview.Request.UID)
 	log.Debugf("admission request: %+v", admissionReview.Request)
 
 	admissionResponse, err := s.handler(ctx, s.api, admissionReview.Request, s.recorder)
