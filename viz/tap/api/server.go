@@ -168,13 +168,11 @@ func serverAuth(ctx context.Context, k8sAPI *k8s.API) (string, []string, string,
 	cm, err := k8sAPI.Client.CoreV1().
 		ConfigMaps(metav1.NamespaceSystem).
 		Get(ctx, pkgk8s.ExtensionAPIServerAuthenticationConfigMapName, metav1.GetOptions{})
-
 	if err != nil {
 		return "", nil, "", "", fmt.Errorf("failed to load [%s] config: %w", pkgk8s.ExtensionAPIServerAuthenticationConfigMapName, err)
 	}
 
 	clientCAPem, ok := cm.Data[pkgk8s.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey]
-
 	if !ok {
 		return "", nil, "", "", fmt.Errorf("no client CA cert available for apiextension-server")
 	}
