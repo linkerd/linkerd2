@@ -63,7 +63,7 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 	}})
 
 	if err != nil {
-		return fmt.Errorf("could not create an indexer for services: %s", err)
+		return fmt.Errorf("could not create an indexer for services: %w", err)
 	}
 
 	err = k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{PodIPIndex: func(obj interface{}) ([]string, error) {
@@ -81,7 +81,7 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 	}})
 
 	if err != nil {
-		return fmt.Errorf("could not create an indexer for pods: %s", err)
+		return fmt.Errorf("could not create an indexer for pods: %w", err)
 	}
 
 	err = k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{HostIPIndex: func(obj interface{}) ([]string, error) {
@@ -106,7 +106,7 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 	}})
 
 	if err != nil {
-		return fmt.Errorf("could not create an indexer for pods: %s", err)
+		return fmt.Errorf("could not create an indexer for pods: %w", err)
 	}
 
 	return nil

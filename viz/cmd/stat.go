@@ -210,7 +210,7 @@ If no resource name is specified, displays stats about all resources of the spec
 
 			reqs, err := buildStatSummaryRequests(args, options)
 			if err != nil {
-				return fmt.Errorf("error creating metrics request while making stats request: %v", err)
+				return fmt.Errorf("error creating metrics request while making stats request: %w", err)
 			}
 
 			// The gRPC client is concurrency-safe, so we can reuse it in all the following goroutines
@@ -283,7 +283,7 @@ func respToRows(resp *pb.StatSummaryResponse) []*pb.StatTable_PodGroup_Row {
 func requestStatsFromAPI(client pb.ApiClient, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
 	resp, err := client.StatSummary(context.Background(), req)
 	if err != nil {
-		return nil, fmt.Errorf("StatSummary API error: %v", err)
+		return nil, fmt.Errorf("StatSummary API error: %w", err)
 	}
 	if e := resp.GetError(); e != nil {
 		return nil, fmt.Errorf("StatSummary API response error: %v", e.Error)

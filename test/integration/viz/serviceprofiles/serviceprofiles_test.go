@@ -58,6 +58,7 @@ func testProfiles(t *testing.T) {
 	// wait for deployments to start
 	for _, deploy := range []string{"t1", "t2", "t3", "gateway"} {
 		if err := TestHelper.CheckPods(ctx, testNamespace, deploy, 1); err != nil {
+			//nolint:errorlint
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
@@ -228,7 +229,7 @@ func assertRouteStat(upstream, namespace, downstream string, t *testing.T, asser
 	err := TestHelper.RetryFor(timeout, func() error {
 		routes, err := getRoutes(upstream, namespace, []string{"--to", downstream})
 		if err != nil {
-			return fmt.Errorf("'linkerd routes' command failed: %s", err)
+			return fmt.Errorf("'linkerd routes' command failed: %w", err)
 		}
 
 		var testRoute *cmd2.JSONRouteStats

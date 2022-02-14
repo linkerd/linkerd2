@@ -68,7 +68,7 @@ code.`,
 func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions) error {
 	err := options.validate()
 	if err != nil {
-		return fmt.Errorf("Validation error when executing check command: %v", err)
+		return fmt.Errorf("validation error when executing check command: %w", err)
 	}
 
 	hc := vizHealthCheck.NewHealthChecker([]healthcheck.CategoryID{}, &healthcheck.Options{
@@ -83,8 +83,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	})
 	err = hc.InitializeKubeAPIClient()
 	if err != nil {
-		err = fmt.Errorf("Error initializing k8s API client: %s", err)
-		fmt.Fprintln(werr, err)
+		fmt.Fprintf(werr, "Error initializing k8s API client: %s\n", err)
 		os.Exit(1)
 	}
 

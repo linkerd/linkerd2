@@ -66,6 +66,7 @@ func testEdges(t *testing.T, expectations []edgesExpected) {
 		}
 
 		rsp, err := fakeGrpcServer.Edges(context.TODO(), exp.req)
+		//nolint:errorlint
 		if err != exp.err {
 			t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
 		}

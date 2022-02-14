@@ -55,7 +55,7 @@ func Uninstall(ctx context.Context, k8sAPI *k8s.KubernetesAPI, selector string) 
 	}
 	for _, r := range resources {
 		if err := r.RenderResource(os.Stdout); err != nil {
-			return fmt.Errorf("error rendering Kubernetes resource: %v", err)
+			return fmt.Errorf("error rendering Kubernetes resource: %w", err)
 		}
 	}
 	return nil

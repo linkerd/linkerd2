@@ -215,7 +215,7 @@ type ResourceError struct {
 
 // Error satisfies the error interface for ResourceError. The output is intended
 // for `linkerd check`.
-func (e *ResourceError) Error() string {
+func (e ResourceError) Error() string {
 	names := []string{}
 	for _, res := range e.Resources {
 		names = append(names, res.name)
@@ -231,13 +231,14 @@ type CategoryError struct {
 }
 
 // Error satisfies the error interface for CategoryError.
-func (e *CategoryError) Error() string {
+func (e CategoryError) Error() string {
 	return e.Err.Error()
 }
 
 // IsCategoryError returns true if passed in error is of type CategoryError and belong to the given category
 func IsCategoryError(err error, categoryID CategoryID) bool {
-	if ce, ok := err.(*CategoryError); ok {
+	var ce CategoryError
+	if errors.As(err, &ce) {
 		return ce.Category == categoryID
 	}
 	return false
@@ -249,7 +250,7 @@ type SkipError struct {
 }
 
 // Error satisfies the error interface for SkipError.
-func (e *SkipError) Error() string {
+func (e SkipError) Error() string {
 	return e.Reason
 }
 
@@ -261,7 +262,7 @@ type VerboseSuccess struct {
 
 // Error satisfies the error interface for VerboseSuccess.  Since VerboseSuccess
 // does not actually represent a failure, this returns the empty string.
-func (e *VerboseSuccess) Error() string {
+func (e VerboseSuccess) Error() string {
 	return ""
 }
 
@@ -822,7 +823,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 						err := hc.InitializeLinkerdGlobalConfig(ctx)
 						if err != nil {
 							if kerrors.IsNotFound(err) {
-								return &SkipError{Reason: configMapDoesNotExistSkipReason}
+								return SkipError{Reason: configMapDoesNotExistSkipReason}
 							}
 							return err
 						}
@@ -846,7 +847,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					fatal:       true,
 					check: func(ctx context.Context) error {
 						if !hc.CNIEnabled {
-							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
+							return SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
 						_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.CNINamespace).Get(ctx, linkerdCNIConfigMapName, metav1.GetOptions{})
 						return err
@@ -858,7 +859,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					fatal:       true,
 					check: func(ctx context.Context) error {
 						if !hc.CNIEnabled {
-							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
+							return SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
 						_, err := hc.kubeAPI.RbacV1().ClusterRoles().Get(ctx, linkerdCNIResourceName, metav1.GetOptions{})
 						if kerrors.IsNotFound(err) {
@@ -873,7 +874,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					fatal:       true,
 					check: func(ctx context.Context) error {
 						if !hc.CNIEnabled {
-							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
+							return SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
 						_, err := hc.kubeAPI.RbacV1().ClusterRoleBindings().Get(ctx, linkerdCNIResourceName, metav1.GetOptions{})
 						if kerrors.IsNotFound(err) {
@@ -888,7 +889,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					fatal:       true,
 					check: func(ctx context.Context) error {
 						if !hc.CNIEnabled {
-							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
+							return SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
 						_, err := hc.kubeAPI.CoreV1().ServiceAccounts(hc.CNINamespace).Get(ctx, linkerdCNIResourceName, metav1.GetOptions{})
 						if kerrors.IsNotFound(err) {
@@ -903,7 +904,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					fatal:       true,
 					check: func(ctx context.Context) (err error) {
 						if !hc.CNIEnabled {
-							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
+							return SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
 						hc.cniDaemonSet, err = hc.kubeAPI.Interface.AppsV1().DaemonSets(hc.CNINamespace).Get(ctx, linkerdCNIResourceName, metav1.GetOptions{})
 						if kerrors.IsNotFound(err) {
@@ -920,7 +921,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					fatal:               true,
 					check: func(ctx context.Context) (err error) {
 						if !hc.CNIEnabled {
-							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
+							return SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
 						hc.cniDaemonSet, err = hc.kubeAPI.Interface.AppsV1().DaemonSets(hc.CNINamespace).Get(ctx, linkerdCNIResourceName, metav1.GetOptions{})
 						if kerrors.IsNotFound(err) {
@@ -1007,7 +1008,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					fatal:       true,
 					check: func(context.Context) error {
 						if err := issuercerts.CheckCertAlgoRequirements(hc.issuerCert.Certificate); err != nil {
-							return fmt.Errorf("issuer certificate %s", err)
+							return fmt.Errorf("issuer certificate %w", err)
 						}
 						return nil
 					},
@@ -1018,7 +1019,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					fatal:       true,
 					check: func(ctx context.Context) error {
 						if err := issuercerts.CheckCertValidityPeriod(hc.issuerCert.Certificate); err != nil {
-							return fmt.Errorf("issuer certificate is %s", err)
+							return fmt.Errorf("issuer certificate is %w", err)
 						}
 						return nil
 					},
@@ -1029,7 +1030,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					hintAnchor:  "l5d-identity-issuer-cert-not-expiring-soon",
 					check: func(context.Context) error {
 						if err := issuercerts.CheckExpiringSoon(hc.issuerCert.Certificate); err != nil {
-							return fmt.Errorf("issuer certificate %s", err)
+							return fmt.Errorf("issuer certificate %w", err)
 						}
 						return nil
 					},
@@ -1127,14 +1128,14 @@ func (hc *HealthChecker) allCategories() []*Category {
 					check: func(ctx context.Context) (err error) {
 						anchors, err := hc.fetchWebhookCaBundle(ctx, k8s.PolicyValidatorWebhookConfigName)
 						if kerrors.IsNotFound(err) {
-							return &SkipError{Reason: "policy-validator not installed"}
+							return SkipError{Reason: "policy-validator not installed"}
 						}
 						if err != nil {
 							return err
 						}
 						cert, err := hc.FetchCredsFromSecret(ctx, hc.ControlPlaneNamespace, policyValidatorTLSSecretName)
 						if kerrors.IsNotFound(err) {
-							return &SkipError{Reason: "policy-validator not installed"}
+							return SkipError{Reason: "policy-validator not installed"}
 						}
 						if err != nil {
 							return err
@@ -1150,7 +1151,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					check: func(ctx context.Context) error {
 						cert, err := hc.FetchCredsFromSecret(ctx, hc.ControlPlaneNamespace, policyValidatorTLSSecretName)
 						if kerrors.IsNotFound(err) {
-							return &SkipError{Reason: "policy-validator not installed"}
+							return SkipError{Reason: "policy-validator not installed"}
 						}
 						if err != nil {
 							return err
@@ -1403,7 +1404,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 						if policy != nil && *policy == admissionRegistration.Fail {
 							return hc.checkHAMetadataPresentOnKubeSystemNamespace(ctx)
 						}
-						return &SkipError{Reason: "not run for non HA installs"}
+						return SkipError{Reason: "not run for non HA installs"}
 					},
 				},
 				{
@@ -1415,7 +1416,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 						if hc.isHA() {
 							return hc.checkMinReplicasAvailable(ctx)
 						}
-						return &SkipError{Reason: "not run for non HA installs"}
+						return SkipError{Reason: "not run for non HA installs"}
 					},
 				},
 			},
@@ -1481,11 +1482,11 @@ func (hc *HealthChecker) CheckCertAndAnchors(cert *tls.Cred, trustAnchors []*x50
 
 	// check cert validity
 	if err := issuercerts.CheckCertValidityPeriod(cert.Certificate); err != nil {
-		return fmt.Errorf("certificate is %s", err)
+		return fmt.Errorf("certificate is %w", err)
 	}
 
 	if err := cert.Verify(tls.CertificatesToPool(trustAnchors), identityName, time.Time{}); err != nil {
-		return fmt.Errorf("cert is not issued by the trust anchor: %s", err)
+		return fmt.Errorf("cert is not issued by the trust anchor: %w", err)
 	}
 
 	return nil
@@ -1526,7 +1527,7 @@ func (hc *HealthChecker) CheckCertAndAnchorsExpiringSoon(cert *tls.Cred) error {
 
 	// check cert not expiring soon
 	if err := issuercerts.CheckExpiringSoon(cert.Certificate); err != nil {
-		return fmt.Errorf("certificate %s", err)
+		return fmt.Errorf("certificate %w", err)
 	}
 	return nil
 }
@@ -1616,7 +1617,8 @@ func (hc *HealthChecker) runCheck(category *Category, c *Checker, observer Check
 		ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 		defer cancel()
 		err := c.check(ctx)
-		if se, ok := err.(*SkipError); ok {
+		var se SkipError
+		if errors.As(err, &se) {
 			log.Debugf("Skipping check: %s. Reason: %s", c.description, se.Reason)
 			return true
 		}
@@ -1627,10 +1629,12 @@ func (hc *HealthChecker) runCheck(category *Category, c *Checker, observer Check
 			Warning:     c.warning,
 			HintURL:     fmt.Sprintf("%s%s", category.hintBaseURL, c.hintAnchor),
 		}
-		if vs, ok := err.(*VerboseSuccess); ok {
+
+		var vs VerboseSuccess
+		if errors.As(err, &vs) {
 			checkResult.Description = fmt.Sprintf("%s\n%s", checkResult.Description, vs.Message)
 		} else if err != nil {
-			checkResult.Err = &CategoryError{category.ID, err}
+			checkResult.Err = CategoryError{category.ID, err}
 		}
 
 		if checkResult.Err != nil && time.Now().Before(c.retryDeadline) {
@@ -1875,7 +1879,7 @@ func (hc *HealthChecker) checkClusterNetworks(ctx context.Context) error {
 	}
 	if !podCIDRExists {
 		// DigitalOcean for example, doesn't expose spec.podCIDR (#6398)
-		return &SkipError{Reason: podCIDRUnavailableSkipReason}
+		return SkipError{Reason: podCIDRUnavailableSkipReason}
 	}
 	if len(badPodCIDRS) > 0 {
 		sort.Strings(badPodCIDRS)
@@ -2498,18 +2502,18 @@ func (hc *HealthChecker) checkCanCreateNonNamespacedResources(ctx context.Contex
 	for {
 		// Read single object YAML
 		objYAML, err := yamlReader.Read()
-		if err == io.EOF {
-			break
-		}
 		if err != nil {
-			return fmt.Errorf("error reading install manifest: %v", err)
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return fmt.Errorf("error reading install manifest: %w", err)
 		}
 
 		// Create unstructured object from YAML
 		objMap := map[string]interface{}{}
 		err = yaml.Unmarshal(objYAML, &objMap)
 		if err != nil {
-			return fmt.Errorf("error unmarshaling yaml object %s: %v", objYAML, err)
+			return fmt.Errorf("error unmarshaling yaml object %s: %w", objYAML, err)
 		}
 		if len(objMap) == 0 {
 			// Ignore header blocks with only comments

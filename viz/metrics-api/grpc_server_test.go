@@ -509,6 +509,7 @@ metadata:
 			k8sAPI.Sync(nil)
 
 			rsp, err := fakeGrpcServer.ListServices(context.TODO(), &pb.ListServicesRequest{})
+			//nolint:errorlint
 			if err != exp.err {
 				t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
 			}

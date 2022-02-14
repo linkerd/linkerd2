@@ -63,6 +63,7 @@ func TestPolicy(t *testing.T) {
 		// wait for deployments to start
 		for _, deploy := range []string{"web", "emoji", "vote-bot", "voting"} {
 			if err := TestHelper.CheckPods(ctx, prefixedNs, deploy, 1); err != nil {
+				//nolint:errorlint
 				if rce, ok := err.(*testutil.RestartCountError); ok {
 					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 				} else {
@@ -195,7 +196,7 @@ func validateAuthzRows(name string, rowStats map[string]*testutil.RowStat, isSer
 	if isServer {
 		_, err := strconv.Atoi(stat.TCPOpenConnections)
 		if err != nil {
-			return fmt.Errorf("Error parsing number of TCP connections [%s]: %s", stat.TCPOpenConnections, err.Error())
+			return fmt.Errorf("Error parsing number of TCP connections [%s]: %w", stat.TCPOpenConnections, err)
 		}
 	}
 

@@ -110,11 +110,11 @@ func TestCheckMulticluster(t *testing.T) {
 		err := TestHelper.RetryFor(timeout, func() error {
 			out, err := TestHelper.LinkerdRun(cmd...)
 			if err != nil {
-				return fmt.Errorf("'linkerd multicluster check' command failed\n%s", err)
+				return fmt.Errorf("'linkerd multicluster check' command failed\n%w", err)
 			}
 			err = TestHelper.ValidateOutput(out, golden)
 			if err != nil {
-				return fmt.Errorf("received unexpected output\n%s", err.Error())
+				return fmt.Errorf("received unexpected output\n%w", err)
 			}
 			return nil
 		})

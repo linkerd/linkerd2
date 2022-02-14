@@ -78,7 +78,7 @@ LOOP:
 func (fscw *FsCredsWatcher) UpdateCert(certVal *atomic.Value) error {
 	creds, err := ReadPEMCreds(fscw.keyFilePath, fscw.certFilePath)
 	if err != nil {
-		return fmt.Errorf("failed to read cert from disk: %s", err)
+		return fmt.Errorf("failed to read cert from disk: %w", err)
 	}
 
 	certPEM := creds.EncodePEM()

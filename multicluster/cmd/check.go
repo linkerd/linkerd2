@@ -93,14 +93,13 @@ non-zero exit code.`,
 			// Get the multicluster extension namespace
 			kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "failed to run multicluster check: %v\n", err)
+				fmt.Fprintf(os.Stderr, "failed to run multicluster check: %s\n", err)
 				os.Exit(1)
 			}
 
 			_, err = kubeAPI.GetNamespaceWithExtensionLabel(context.Background(), MulticlusterExtensionName)
 			if err != nil {
-				err = fmt.Errorf("%w; install by running `linkerd multicluster install | kubectl apply -f -`", err)
-				fmt.Fprintln(os.Stderr, err.Error())
+				fmt.Fprintf(os.Stderr, "%s; install by running `linkerd multicluster install | kubectl apply -f -`\n", err)
 				os.Exit(1)
 			}
 			return configureAndRunChecks(stdout, stderr, options)
@@ -124,7 +123,7 @@ non-zero exit code.`,
 func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions) error {
 	err := options.validate()
 	if err != nil {
-		return fmt.Errorf("Validation error when executing check command: %v", err)
+		return fmt.Errorf("Validation error when executing check command: %w", err)
 	}
 	checks := []healthcheck.CategoryID{
 		linkerdMulticlusterExtensionCheck,
@@ -141,15 +140,13 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 
 	err = linkerdHC.InitializeKubeAPIClient()
 	if err != nil {
-		err = fmt.Errorf("Error initializing k8s API client: %s", err)
-		fmt.Fprintln(werr, err)
+		fmt.Fprintf(werr, "Error initializing k8s API client: %s\n", err)
 		os.Exit(1)
 	}
 
 	err = linkerdHC.InitializeLinkerdGlobalConfig(context.Background())
 	if err != nil {
-		err = fmt.Errorf("Failed to fetch linkerd config: %s", err)
-		fmt.Fprintln(werr, err)
+		fmt.Fprintf(werr, "Failed to fetch linkerd config: %s\n", err)
 		os.Exit(1)
 	}
 
@@ -186,7 +183,7 @@ func multiclusterCategory(hc *healthChecker) *healthcheck.Category {
 			WithCheck(func(ctx context.Context) error {
 				localAnchors, err := tls.DecodePEMCertificates(hc.LinkerdConfig().IdentityTrustAnchorsPEM)
 				if err != nil {
-					return fmt.Errorf("Cannot parse source trust anchors: %s", err)
+					return fmt.Errorf("Cannot parse source trust anchors: %w", err)
 				}
 				return hc.checkRemoteClusterAnchors(ctx, localAnchors)
 			}))
@@ -296,7 +293,7 @@ func multiclusterCategory(hc *healthChecker) *healthcheck.Category {
 func (hc *healthChecker) checkLinkCRD(ctx context.Context) error {
 	err := hc.linkAccess(ctx)
 	if err != nil {
-		return fmt.Errorf("multicluster.linkerd.io/Link CRD is missing: %s", err)
+		return fmt.Errorf("multicluster.linkerd.io/Link CRD is missing: %w", err)
 	}
 	return nil
 }
@@ -329,7 +326,7 @@ func (hc *healthChecker) checkLinks(ctx context.Context) error {
 		linkNames = append(linkNames, fmt.Sprintf("\t* %s", l.TargetClusterName))
 	}
 	hc.links = links
-	return &healthcheck.VerboseSuccess{Message: strings.Join(linkNames, "\n")}
+	return healthcheck.VerboseSuccess{Message: strings.Join(linkNames, "\n")}
 }
 
 func (hc *healthChecker) checkRemoteClusterConnectivity(ctx context.Context) error {
@@ -339,34 +336,34 @@ func (hc *healthChecker) checkRemoteClusterConnectivity(ctx context.Context) err
 		// Load the credentials secret
 		secret, err := hc.KubeAPIClient().Interface.CoreV1().Secrets(link.Namespace).Get(ctx, link.ClusterCredentialsSecret, metav1.GetOptions{})
 		if err != nil {
-			errors = append(errors, fmt.Errorf("* secret: [%s/%s]: %s", link.Namespace, link.ClusterCredentialsSecret, err))
+			errors = append(errors, fmt.Errorf("* secret: [%s/%s]: %w", link.Namespace, link.ClusterCredentialsSecret, err))
 			continue
 		}
 		config, err := servicemirror.ParseRemoteClusterSecret(secret)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("* secret: [%s/%s]: could not parse config secret: %s", secret.Namespace, secret.Name, err))
+			errors = append(errors, fmt.Errorf("* secret: [%s/%s]: could not parse config secret: %w", secret.Namespace, secret.Name, err))
 			continue
 		}
 		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(config)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %s", secret.Namespace, secret.Name, link.TargetClusterName, err))
+			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %w", secret.Namespace, secret.Name, link.TargetClusterName, err))
 			continue
 		}
 		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, healthcheck.RequestTimeout)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %s", secret.Namespace, secret.Name, link.TargetClusterName, err))
+			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %w", secret.Namespace, secret.Name, link.TargetClusterName, err))
 			continue
 		}
 		// We use this call just to check connectivity.
 		_, err = remoteAPI.Discovery().ServerVersion()
 		if err != nil {
-			errors = append(errors, fmt.Errorf("* failed to connect to API for cluster: [%s]: %s", link.TargetClusterName, err))
+			errors = append(errors, fmt.Errorf("* failed to connect to API for cluster: [%s]: %w", link.TargetClusterName, err))
 			continue
 		}
 		verbs := []string{"get", "list", "watch"}
 		for _, verb := range verbs {
 			if err := healthcheck.CheckCanPerformAction(ctx, remoteAPI, verb, corev1.NamespaceAll, "", "v1", "services"); err != nil {
-				errors = append(errors, fmt.Errorf("* missing service permission [%s] for cluster [%s]: %s", verb, link.TargetClusterName, err))
+				errors = append(errors, fmt.Errorf("* missing service permission [%s] for cluster [%s]: %w", verb, link.TargetClusterName, err))
 			}
 		}
 		links = append(links, fmt.Sprintf("\t* %s", link.TargetClusterName))
@@ -377,7 +374,7 @@ func (hc *healthChecker) checkRemoteClusterConnectivity(ctx context.Context) err
 	if len(links) == 0 {
 		return &healthcheck.SkipError{Reason: "no links"}
 	}
-	return &healthcheck.VerboseSuccess{Message: strings.Join(links, "\n")}
+	return healthcheck.VerboseSuccess{Message: strings.Join(links, "\n")}
 }
 
 func (hc *healthChecker) checkRemoteClusterAnchors(ctx context.Context, localAnchors []*x509.Certificate) error {
@@ -441,7 +438,7 @@ func (hc *healthChecker) checkRemoteClusterAnchors(ctx context.Context, localAnc
 	if len(links) == 0 {
 		return &healthcheck.SkipError{Reason: "no links"}
 	}
-	return &healthcheck.VerboseSuccess{Message: strings.Join(links, "\n")}
+	return healthcheck.VerboseSuccess{Message: strings.Join(links, "\n")}
 }
 
 func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error {
@@ -508,7 +505,7 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 	if len(links) == 0 {
 		return &healthcheck.SkipError{Reason: "no links"}
 	}
-	return &healthcheck.VerboseSuccess{Message: strings.Join(links, "\n")}
+	return healthcheck.VerboseSuccess{Message: strings.Join(links, "\n")}
 }
 
 func (hc *healthChecker) checkServiceMirrorController(ctx context.Context) error {
@@ -543,7 +540,7 @@ func (hc *healthChecker) checkServiceMirrorController(ctx context.Context) error
 	if len(clusterNames) == 0 {
 		return &healthcheck.SkipError{Reason: "no links"}
 	}
-	return &healthcheck.VerboseSuccess{Message: strings.Join(clusterNames, "\n")}
+	return healthcheck.VerboseSuccess{Message: strings.Join(clusterNames, "\n")}
 }
 
 func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context) error {
@@ -576,7 +573,7 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context)
 		// Check gateway liveness according to probes
 		vizClient, err := client.NewExternalClient(ctx, vizNs.Name, hc.KubeAPIClient())
 		if err != nil {
-			errors = append(errors, fmt.Errorf("failed to initialize viz client: %s", err))
+			errors = append(errors, fmt.Errorf("failed to initialize viz client: %w", err))
 			break
 		}
 		req := vizPb.GatewaysRequest{
@@ -585,7 +582,7 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context)
 		}
 		rsp, err := vizClient.Gateways(ctx, &req)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("failed to fetch gateway metrics for %s.%s: %s", svc.Name, svc.Namespace, err))
+			errors = append(errors, fmt.Errorf("failed to fetch gateway metrics for %s.%s: %w", svc.Name, svc.Namespace, err))
 			continue
 		}
 		table := rsp.GetOk().GetGatewaysTable()
@@ -610,7 +607,7 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context)
 	if len(links) == 0 {
 		return &healthcheck.SkipError{Reason: "no links"}
 	}
-	return &healthcheck.VerboseSuccess{Message: strings.Join(links, "\n")}
+	return healthcheck.VerboseSuccess{Message: strings.Join(links, "\n")}
 }
 
 func (hc *healthChecker) checkIfMirrorServicesHaveEndpoints(ctx context.Context) error {

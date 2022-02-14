@@ -421,7 +421,7 @@ type: kubernetes.io/tls`, base64.StdEncoding.EncodeToString([]byte(root)), base6
 func (h *TestHelper) LinkerdRun(arg ...string) (string, error) {
 	out, stderr, err := h.PipeToLinkerdRun("", arg...)
 	if err != nil {
-		return out, fmt.Errorf("command failed: linkerd %s\n%s\n%s", strings.Join(arg, " "), err, stderr)
+		return out, fmt.Errorf("command failed: linkerd %s\n%w\n%s", strings.Join(arg, " "), err, stderr)
 	}
 	return out, nil
 }
@@ -634,7 +634,7 @@ func (h *TestHelper) HTTPGetURL(url string) (string, error) {
 		defer resp.Body.Close()
 		bytes, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return fmt.Errorf("Error reading response body: %v", err)
+			return fmt.Errorf("Error reading response body: %w", err)
 		}
 		body = string(bytes)
 
@@ -764,7 +764,7 @@ func ParseRows(out string, expectedRowCount, expectedColumnCount int) (map[strin
 func ParseEvents(out string) ([]*corev1.Event, error) {
 	var list corev1.List
 	if err := json.Unmarshal([]byte(out), &list); err != nil {
-		return nil, fmt.Errorf("error unmarshaling list from `kubectl get events`: %s", err)
+		return nil, fmt.Errorf("error unmarshaling list from `kubectl get events`: %w", err)
 	}
 
 	if len(list.Items) == 0 {
@@ -775,7 +775,7 @@ func ParseEvents(out string) ([]*corev1.Event, error) {
 	for _, i := range list.Items {
 		var e corev1.Event
 		if err := json.Unmarshal(i.Raw, &e); err != nil {
-			return nil, fmt.Errorf("error unmarshaling list event from `kubectl get events`: %s", err)
+			return nil, fmt.Errorf("error unmarshaling list event from `kubectl get events`: %w", err)
 		}
 		events = append(events, &e)
 	}

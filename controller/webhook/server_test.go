@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -48,7 +49,7 @@ func TestShutdown(t *testing.T) {
 
 	go func() {
 		if err := testServer.ListenAndServe(); err != nil {
-			if err != http.ErrServerClosed {
+			if errors.Is(err, http.ErrServerClosed) {
 				t.Errorf("Expected server to be gracefully shutdown with error: %q", http.ErrServerClosed)
 			}
 		}
