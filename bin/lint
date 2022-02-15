@@ -2,12 +2,11 @@
 
 set -eu
 
-lintversion=1.43.0
-
 cd "$(pwd -P)"
 
 bindir=$( cd "${0%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
+devcontainerdir=$( cd "$bindir"/../.devcontainer && pwd )
 targetbin=$rootdir/target/bin
 
 cd "$rootdir"
@@ -20,6 +19,7 @@ elif [ "$(uname -o)" = Msys ]; then
   exe=.exe
 fi
 
+lintversion=$(sed -nE 's/^ARG GOLANGCI_LINT=([^ ]+)/\1/p' .devcontainer/Dockerfile)
 lintbin=$targetbin/.golangci-lint-$lintversion$exe
 
 if [ ! -f "$lintbin" ]; then
