@@ -1906,7 +1906,7 @@ spec:
         - sp-validator
         - -log-level=info
         - -log-format=plain
-        image: my.custom.registry/linkerd-io/controller:{.Values.linkerdVersion}}
+        image: my.custom.registry/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

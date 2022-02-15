@@ -1895,7 +1895,7 @@ spec:
         - sp-validator
         - -log-level=info
         - -log-format=plain
-        image: cr.l5d.io/linkerd/controller:{.Values.linkerdVersion}}
+        image: cr.l5d.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

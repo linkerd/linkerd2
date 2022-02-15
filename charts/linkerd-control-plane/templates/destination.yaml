@@ -222,7 +222,7 @@ spec:
         - sp-validator
         - -log-level={{.Values.controllerLogLevel}}
         - -log-format={{.Values.controllerLogFormat}}
-        image: {{.Values.controllerImage}}:{.Values.linkerdVersion}}
+        image: {{.Values.controllerImage}}:{{.Values.linkerdVersion}}
         imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:
           httpGet:

@@ -1908,7 +1908,7 @@ spec:
         - sp-validator
         - -log-level=ControllerLogLevel
         - -log-format=ControllerLogFormat
-        image: ControllerImage:{.Values.linkerdVersion}}
+        image: ControllerImage:
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
           httpGet:
