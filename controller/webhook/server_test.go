@@ -50,7 +50,7 @@ func TestShutdown(t *testing.T) {
 	go func() {
 		if err := testServer.ListenAndServe(); err != nil {
 			if !errors.Is(err, http.ErrServerClosed) {
-				t.Errorf("Expected server to be gracefully shutdown with error: %s", http.ErrServerClosed)
+				t.Errorf("Unexpected error: %s", err)
 			}
 		}
 	}()
