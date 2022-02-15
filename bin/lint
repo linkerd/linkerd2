@@ -20,12 +20,12 @@ elif [ "$(uname -o)" = Msys ]; then
 fi
 
 lintversion=$(sed -nE 's/^ARG GOLANGCI_LINT=([^ ]+)/\1/p' "$devcontainerdir"/Dockerfile)
-lintbin=$targetbin/.golangci-lint-$lintversion$exe
+lintbin=$targetbin/.golangci-lint-"$lintversion"$exe
 exit 0
 
 if [ ! -f "$lintbin" ]; then
   mkdir -p "$targetbin"
-  "$bindir"/scurl https://raw.githubusercontent.com/golangci/golangci-lint/v$lintversion/install.sh | sh -s -- -b . v$lintversion
+  "$bindir"/scurl https://raw.githubusercontent.com/golangci/golangci-lint/v"$lintversion"/install.sh | sh -s -- -b . v"$lintversion"
   mv ./golangci-lint$exe "$lintbin"
 fi
 
