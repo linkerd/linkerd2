@@ -19,8 +19,9 @@ elif [ "$(uname -o)" = Msys ]; then
   exe=.exe
 fi
 
-lintversion=$(sed -nE 's/^ARG GOLANGCI_LINT=([^ ]+)/\1/p' .devcontainer/Dockerfile)
+lintversion=$(sed -nE 's/^ARG GOLANGCI_LINT=([^ ]+)/\1/p' "$devcontainerdir"/Dockerfile)
 lintbin=$targetbin/.golangci-lint-$lintversion$exe
+exit 0
 
 if [ ! -f "$lintbin" ]; then
   mkdir -p "$targetbin"
