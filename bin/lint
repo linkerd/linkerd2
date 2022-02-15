@@ -6,7 +6,7 @@ cd "$(pwd -P)"
 
 bindir=$( cd "${0%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
-devcontainerdir=$( cd "$bindir"/../.devcontainer && pwd )
+devcontainerdir=$( cd "$rootdir"/.devcontainer && pwd )
 targetbin=$rootdir/target/bin
 
 cd "$rootdir"
@@ -19,13 +19,16 @@ elif [ "$(uname -o)" = Msys ]; then
   exe=.exe
 fi
 
-lintversion=$(sed -nE 's/^ARG GOLANGCI_LINT=([^ ]+)/\1/p' "$devcontainerdir"/Dockerfile)
+lintversion=$(sed -nE 's/^ARG GOLANGCI_LINT_VERSION=(v[^ ]+)/\1/p' "$devcontainerdir"/Dockerfile | head -n 1)
+if [ -z "$lintversion" ]; then
+  echo "GOLANGCI_LINT_VERSION is not set in .devcontainer/Dockerfile" >&2
+  exit 1
+fi
 lintbin=$targetbin/.golangci-lint-"$lintversion"$exe
-exit 0
 
 if [ ! -f "$lintbin" ]; then
   mkdir -p "$targetbin"
-  "$bindir"/scurl https://raw.githubusercontent.com/golangci/golangci-lint/v"$lintversion"/install.sh | sh -s -- -b . v"$lintversion"
+  "$bindir"/scurl https://raw.githubusercontent.com/golangci/golangci-lint/"$lintversion"/install.sh | sh -s -- -b . "$lintversion"
   mv ./golangci-lint$exe "$lintbin"
 fi
 
