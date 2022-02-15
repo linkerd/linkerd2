@@ -319,7 +319,7 @@ func (hc *healthChecker) checkLinks(ctx context.Context) error {
 		return err
 	}
 	if len(links) == 0 {
-		return &healthcheck.SkipError{Reason: "no links detected"}
+		return healthcheck.SkipError{Reason: "no links detected"}
 	}
 	linkNames := []string{}
 	for _, l := range links {
@@ -372,7 +372,7 @@ func (hc *healthChecker) checkRemoteClusterConnectivity(ctx context.Context) err
 		return joinErrors(errors, 2)
 	}
 	if len(links) == 0 {
-		return &healthcheck.SkipError{Reason: "no links"}
+		return healthcheck.SkipError{Reason: "no links"}
 	}
 	return healthcheck.VerboseSuccess{Message: strings.Join(links, "\n")}
 }
@@ -436,7 +436,7 @@ func (hc *healthChecker) checkRemoteClusterAnchors(ctx context.Context, localAnc
 		return fmt.Errorf("Problematic clusters:\n    %s", strings.Join(errors, "\n    "))
 	}
 	if len(links) == 0 {
-		return &healthcheck.SkipError{Reason: "no links"}
+		return healthcheck.SkipError{Reason: "no links"}
 	}
 	return healthcheck.VerboseSuccess{Message: strings.Join(links, "\n")}
 }
@@ -503,7 +503,7 @@ func (hc *healthChecker) checkServiceMirrorLocalRBAC(ctx context.Context) error 
 		return fmt.Errorf(strings.Join(errors, "\n"))
 	}
 	if len(links) == 0 {
-		return &healthcheck.SkipError{Reason: "no links"}
+		return healthcheck.SkipError{Reason: "no links"}
 	}
 	return healthcheck.VerboseSuccess{Message: strings.Join(links, "\n")}
 }
@@ -538,7 +538,7 @@ func (hc *healthChecker) checkServiceMirrorController(ctx context.Context) error
 		return joinErrors(errors, 2)
 	}
 	if len(clusterNames) == 0 {
-		return &healthcheck.SkipError{Reason: "no links"}
+		return healthcheck.SkipError{Reason: "no links"}
 	}
 	return healthcheck.VerboseSuccess{Message: strings.Join(clusterNames, "\n")}
 }
@@ -567,7 +567,7 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context)
 
 		vizNs, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, vizCmd.ExtensionName)
 		if err != nil {
-			return &healthcheck.SkipError{Reason: "failed to fetch gateway metrics"}
+			return healthcheck.SkipError{Reason: "failed to fetch gateway metrics"}
 		}
 
 		// Check gateway liveness according to probes
@@ -605,7 +605,7 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context)
 		return joinErrors(errors, 1)
 	}
 	if len(links) == 0 {
-		return &healthcheck.SkipError{Reason: "no links"}
+		return healthcheck.SkipError{Reason: "no links"}
 	}
 	return healthcheck.VerboseSuccess{Message: strings.Join(links, "\n")}
 }
@@ -628,7 +628,7 @@ func (hc *healthChecker) checkIfMirrorServicesHaveEndpoints(ctx context.Context)
 		return fmt.Errorf("Some mirror services do not have endpoints:\n    %s", strings.Join(servicesWithNoEndpoints, "\n    "))
 	}
 	if len(mirrorServices.Items) == 0 {
-		return &healthcheck.SkipError{Reason: "no mirror services"}
+		return healthcheck.SkipError{Reason: "no mirror services"}
 	}
 	return nil
 }
@@ -658,7 +658,7 @@ func (hc *healthChecker) checkForOrphanedServices(ctx context.Context) error {
 		}
 	}
 	if len(mirrorServices.Items) == 0 {
-		return &healthcheck.SkipError{Reason: "no mirror services"}
+		return healthcheck.SkipError{Reason: "no mirror services"}
 	}
 	if len(errors) > 0 {
 		return joinErrors(errors, 1)

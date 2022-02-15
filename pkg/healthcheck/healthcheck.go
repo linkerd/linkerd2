@@ -1629,7 +1629,6 @@ func (hc *HealthChecker) runCheck(category *Category, c *Checker, observer Check
 			Warning:     c.warning,
 			HintURL:     fmt.Sprintf("%s%s", category.hintBaseURL, c.hintAnchor),
 		}
-
 		var vs VerboseSuccess
 		if errors.As(err, &vs) {
 			checkResult.Description = fmt.Sprintf("%s\n%s", checkResult.Description, vs.Message)
@@ -2217,7 +2216,7 @@ func checkResources(resourceName string, objects []runtime.Object, expectedNames
 				}
 				resources = append(resources, res)
 			}
-			return &ResourceError{resourceName, resources}
+			return ResourceError{resourceName, resources}
 		}
 		return nil
 	}
