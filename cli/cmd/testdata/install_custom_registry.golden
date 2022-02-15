@@ -1427,7 +1427,7 @@ spec:
         env:
         - name: LINKERD_DISABLED
           value: "linkerd-await cannot block the identity controller"
-        image: my.custom.registry/linkerd-io/controller:{.Values.linkerdVersion}}
+        image: my.custom.registry/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
