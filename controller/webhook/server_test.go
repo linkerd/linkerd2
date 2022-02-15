@@ -49,8 +49,8 @@ func TestShutdown(t *testing.T) {
 
 	go func() {
 		if err := testServer.ListenAndServe(); err != nil {
-			if errors.Is(err, http.ErrServerClosed) {
-				t.Errorf("Expected server to be gracefully shutdown with error: %q", http.ErrServerClosed)
+			if !errors.Is(err, http.ErrServerClosed) {
+				t.Errorf("Expected server to be gracefully shutdown with error: %s", http.ErrServerClosed)
 			}
 		}
 	}()
@@ -58,6 +58,6 @@ func TestShutdown(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := testServer.Shutdown(ctx); err != nil {
-		t.Fatal("Unexpected error: ", err)
+		t.Fatalf("Unexpected error: %s", err)
 	}
 }
