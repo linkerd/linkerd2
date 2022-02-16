@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/linkerd/dev:v7
+      options: --user root
     steps:
     - name: Checkout code
       uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
