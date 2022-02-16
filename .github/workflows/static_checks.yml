@@ -16,12 +16,12 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
     container:
-      image: golang:1.17.3
+      image: ghcr.io/linkerd/dev:v7
     steps:
     - name: Checkout code
       uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
     - name: Go lint
-      run: bin/lint --verbose --timeout=10m
+      run: golangci-lint run --verbose --timeout=10m
   go_format:
     name: Go format
     timeout-minutes: 10
