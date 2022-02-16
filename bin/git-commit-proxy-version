@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 
 set -eu
 
@@ -6,7 +6,11 @@ if [ $# -ne 1 ]; then
     echo "usage: ${0##*/} v2.N.P" >&2
     exit 64
 fi
-new_proxy_version="$1"
+new_proxy_version="v${1#v}"
+if [[ "$new_proxy_version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then :; else
+    echo "Invalid version: $new_proxy_version" >&2
+    exit 1
+fi
 
 bindir=$( cd "${0%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
@@ -57,7 +61,7 @@ fi
 cd "$rootdir"
 echo "$new_proxy_version" >"$rootdir/.proxy-version"
 
-git commit --file="$tmp/commit.txt" --edit -- "$rootdir/.proxy-version"
+git commit --signoff --file="$tmp/commit.txt" --edit -- "$rootdir/.proxy-version"
 
 rm -rf "$tmp"
 

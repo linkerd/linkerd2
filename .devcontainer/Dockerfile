@@ -2,6 +2,7 @@ ARG GO_VERSION=1.17
 ARG RUST_TOOLCHAIN=1.56.1
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as go
+ARG GOLANGCI_LINT_VERSION=v1.44.0
 RUN for p in \
     github.com/uudashr/gopkgs/v2/cmd/gopkgs@latest \
     github.com/ramya-rao-a/go-outline@latest \
@@ -10,7 +11,7 @@ RUN for p in \
     github.com/josharian/impl@latest \
     github.com/haya14busa/goplay/cmd/goplay@latest \
     github.com/go-delve/delve/cmd/dlv@latest \
-    github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
+    github.com/golangci/golangci-lint/cmd/golangci-lint@${GOLANGCI_LINT_VERSION#v} \
     golang.org/x/tools/gopls@latest \
     ; do go install "$p" ; done
 
