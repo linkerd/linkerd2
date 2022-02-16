@@ -639,7 +639,7 @@ func (h *TestHelper) HTTPGetURL(url string) (string, error) {
 		body = string(bytes)
 
 		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("GET request to [%s] returned status [%d]\n%s", url, resp.StatusCode, body)
+			return fmt.Errorf("GET request to %s returned status code %d with body %q", url, resp.StatusCode, body)
 		}
 
 		return nil
@@ -698,19 +698,18 @@ type RowStat struct {
 
 // CheckRowCount checks that expectedRowCount rows have been returned
 func CheckRowCount(out string, expectedRowCount int) ([]string, error) {
-	out = strings.TrimSuffix(out, "\n")
-	rows := strings.Split(out, "\n")
+	rows := strings.Split(strings.TrimSuffix(out, "\n"), "\n")
 	if len(rows) < 2 {
 		return nil, fmt.Errorf(
-			"Error stripping header and trailing newline; full output:\n%s",
-			strings.Join(rows, "\n"),
+			"Expected at least 2 lines in %q",
+			out,
 		)
 	}
 	rows = rows[1:] // strip header
 	if len(rows) != expectedRowCount {
 		return nil, fmt.Errorf(
-			"Expected [%d] rows in stat output, got [%d]; full output:\n%s",
-			expectedRowCount, len(rows), strings.Join(rows, "\n"))
+			"Expected %d rows in stat output but got %d in %q",
+			expectedRowCount, len(rows), out)
 	}
 
 	return rows, nil
@@ -732,7 +731,7 @@ func ParseRows(out string, expectedRowCount, expectedColumnCount int) (map[strin
 		}
 		if len(fields) != expectedColumnCount {
 			return nil, fmt.Errorf(
-				"Expected [%d] columns in stat output, got [%d]; full output:\n%s",
+				"Expected %d columns in stat output but got %d in %q",
 				expectedColumnCount, len(fields), row)
 		}
 
