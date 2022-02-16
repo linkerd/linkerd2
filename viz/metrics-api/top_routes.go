@@ -356,7 +356,7 @@ func processRouteMetrics(results []promResult, timeWindow string, table indexedT
 	}
 }
 
-//generate correct label.Selector object according to the request
+// generate correct label.Selector object according to the request
 func getTopLabelSelector(req *pb.TopRoutesRequest) (labels.Selector, error) {
 	labelSelector := labels.Everything()
 	if s := req.GetSelector().GetLabelSelector(); s != "" {

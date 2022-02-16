@@ -2773,9 +2773,11 @@ func CheckPodsRunning(pods []corev1.Pod, namespace string) error {
 		// `Shutdown` state as they do not have a running proxy
 		if status == "Completed" || status == "Shutdown" {
 			continue
-		} else if status != string(corev1.PodRunning) && status != "Evicted" {
+		}
+		if status != string(corev1.PodRunning) && status != "Evicted" {
 			return fmt.Errorf("pod \"%s\" status is %s", pod.Name, pod.Status.Phase)
-		} else if !k8s.GetProxyReady(pod) {
+		}
+		if !k8s.GetProxyReady(pod) {
 			return fmt.Errorf("container \"%s\" in pod \"%s\" is not ready", k8s.ProxyContainerName, pod.Name)
 		}
 	}

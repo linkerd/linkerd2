@@ -168,10 +168,8 @@ func (et *endpointTranslator) diffEndpoints(filtered watcher.AddressSet) (watche
 		old, ok := et.filteredSnapshot.Addresses[id]
 		if !ok {
 			add[id] = new
-		} else {
-			if !reflect.DeepEqual(old, new) {
-				add[id] = new
-			}
+		} else if !reflect.DeepEqual(old, new) {
+			add[id] = new
 		}
 	}
 

@@ -85,13 +85,13 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		return statSummaryError(req, "'from' queries are not supported with policy resources, as they have inbound metrics only"), nil
 	}
 
-	switch req.Outbound.(type) {
+	switch ob := req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
-		if req.Outbound.(*pb.StatSummaryRequest_ToResource).ToResource.Type == k8s.All {
+		if ob.ToResource.Type == k8s.All {
 			return statSummaryError(req, "resource type 'all' is not supported as a filter"), nil
 		}
 	case *pb.StatSummaryRequest_FromResource:
-		if req.Outbound.(*pb.StatSummaryRequest_FromResource).FromResource.Type == k8s.All {
+		if ob.FromResource.Type == k8s.All {
 			return statSummaryError(req, "resource type 'all' is not supported as a filter"), nil
 		}
 	}

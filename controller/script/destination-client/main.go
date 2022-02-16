@@ -38,6 +38,7 @@ func main() {
 	case "getProfile":
 		getProfile(client, req)
 	default:
+		//nolint:gocritic
 		log.Fatalf("Unknown method: %s; supported methods: get, getProfile", *method)
 	}
 }

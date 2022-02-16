@@ -1852,7 +1852,7 @@ func TestDataPlanePodLabels(t *testing.T) {
 				expectedErrorMsg: "Some labels on data plane pods should be annotations:\n\t* /emoji-d9c7866bb-7v74n\n\t\tlinkerd.io/inject",
 			},
 		} {
-			tc := tc //pin
+			tc := tc // pin
 			t.Run(tc.description, func(t *testing.T) {
 				err := checkMisconfiguredPodsLabels(tc.pods)
 
@@ -1918,7 +1918,7 @@ func TestServicesLabels(t *testing.T) {
 				expectedErrorMsg: "Some labels on data plane services should be annotations:\n\t* /emoji-d9c7866bb-7v74n\n\t\tconfig.alpha.linkerd.io/alpha-setting",
 			},
 		} {
-			tc := tc //pin
+			tc := tc // pin
 			t.Run(tc.description, func(t *testing.T) {
 				err := checkMisconfiguredServiceLabels(tc.services)
 				if err == nil {
@@ -1970,7 +1970,7 @@ func TestServicesAnnotations(t *testing.T) {
 				expectedErrorMsg: "Some annotations on data plane services should be labels:\n\t* /emoji-d9c7866bb-7v74n\n\t\tmirror.linkerd.io/exported",
 			},
 		} {
-			tc := tc //pin
+			tc := tc // pin
 			t.Run(tc.description, func(t *testing.T) {
 				err := checkMisconfiguredServiceAnnotations(tc.services)
 				if err == nil {
@@ -2668,7 +2668,7 @@ func TestLinkerdIdentityCheckCertConfig(t *testing.T) {
 			schemeInConfig:   string(corev1.SecretTypeTLS),
 			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid: not a PEM certificate"},
 			tlsSecretIssuerDataModifier: func(issuerData issuercerts.IssuerCertData) issuercerts.IssuerCertData {
-				issuerData.TrustAnchors = issuerData.TrustAnchors + "\n"
+				issuerData.TrustAnchors += "\n"
 				return issuerData
 			},
 		},
@@ -3051,7 +3051,7 @@ func TestMinReplicaCheck(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		tc := tc //pin
+		tc := tc // pin
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			hc.kubeAPI, err = k8s.NewFakeAPI(tc.controlPlaneResourceDefs...)
 			if err != nil {
@@ -3478,7 +3478,7 @@ subsets:
 	}
 
 	for i, tc := range testCases {
-		tc := tc //pin
+		tc := tc // pin
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			hc.kubeAPI, err = k8s.NewFakeAPI(tc.resources...)
 			if err != nil {

@@ -190,8 +190,7 @@ func promQuery(promAPI promv1.API, query string, precision int) (string, error) 
 		log.Warnf("%v", warn)
 	}
 
-	switch result := res.(type) {
-	case model.Vector:
+	if result, ok := res.(model.Vector); ok {
 		if len(result) != 1 {
 			return "", fmt.Errorf("unexpected result Prometheus result vector length: %d", len(result))
 		}

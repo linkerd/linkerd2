@@ -574,7 +574,7 @@ func renderTable(table *topTable, requestCh <-chan topRequest, done <-chan struc
 			termbox.Flush()
 		case offset := <-horizontalScroll:
 			if (offset > 0 && scrollpos < 0) || (offset < 0 && scrollpos > (width-tablewidth)) {
-				scrollpos = scrollpos + offset
+				scrollpos += offset
 			}
 		}
 	}

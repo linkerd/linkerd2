@@ -112,14 +112,12 @@ func diffManifest(a manifest, b manifest, path []string) []diff {
 					a:    val,
 					b:    nil,
 				})
-			} else {
-				if !reflect.DeepEqual(val, bv) {
-					diffs = append(diffs, diff{
-						path: extend(path, k),
-						a:    val,
-						b:    bv,
-					})
-				}
+			} else if !reflect.DeepEqual(val, bv) {
+				diffs = append(diffs, diff{
+					path: extend(path, k),
+					a:    val,
+					b:    bv,
+				})
 			}
 		}
 	}

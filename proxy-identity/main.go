@@ -26,8 +26,6 @@ const (
 )
 
 func main() {
-	defer runProxy()
-
 	dir := os.Getenv(envDir)
 	keyPath, csrPath, err := checkEndEntityDir(dir)
 	if err != nil {
@@ -47,6 +45,8 @@ func main() {
 	if _, err := generateAndStoreCSR(csrPath, name, key); err != nil {
 		log.Fatal(err.Error())
 	}
+
+	runProxy()
 }
 
 func loadVerifier(pem string) (verify x509.VerifyOptions, err error) {

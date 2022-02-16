@@ -494,10 +494,8 @@ func TestValidate(t *testing.T) {
 				if err.Error() != tc.expectedError {
 					t.Fatalf("Expected error string\"%s\", got \"%s\"", tc.expectedError, err)
 				}
-			} else {
-				if err != nil {
-					t.Fatalf("Expected no error bu got \"%s\"", err)
-				}
+			} else if err != nil {
+				t.Fatalf("Expected no error bu got \"%s\"", err)
 			}
 		}
 	})
@@ -538,11 +536,8 @@ func TestValidate(t *testing.T) {
 				if err.Error() != tc.expectedError {
 					t.Fatalf("Expected error string\"%s\", got \"%s\"", tc.expectedError, err)
 				}
-			} else {
-				if err != nil {
-					t.Fatalf("Expected no error but got \"%s\"", err)
-
-				}
+			} else if err != nil {
+				t.Fatalf("Expected no error but got \"%s\"", err)
 			}
 		}
 	})

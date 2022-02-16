@@ -11,6 +11,18 @@ run:
   - controller/gen
 issues:
   exclude-use-default: false
+  exclude-rules:
+  # Append should be able to assign to a different var/slice.
+  - linters:
+    - gocritic
+    text: "appendAssign: append result not assigned to the same slice"
+  - linters:
+    - gocritic
+    text: "singleCaseSwitch: should rewrite switch statement to if statement"
+  - linters:
+    - gocritic
+    text: "ifElseChain: rewrite if-else to switch statemen"
+
 linters:
   enable:
   - bodyclose
@@ -18,6 +30,7 @@ linters:
   - depguard
   - exportloopref
   - goconst
+  - gocritic
   - gosimple
   - govet
   - ineffassign

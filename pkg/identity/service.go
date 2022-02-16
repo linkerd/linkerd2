@@ -232,6 +232,7 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 	}
 	crts := crt.ExtractRaw()
 	if len(crts) == 0 {
+		//nolint:gocritic
 		log.Fatal("the issuer provided a certificate without key material")
 	}
 
