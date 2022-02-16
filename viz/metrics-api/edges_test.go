@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -67,7 +66,8 @@ func testEdges(t *testing.T, expectations []edgesExpected) {
 		}
 
 		rsp, err := fakeGrpcServer.Edges(context.TODO(), exp.req)
-		if errors.Is(err, exp.err) {
+		//nolint:errorlint
+		if err != exp.err {
 			t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
 		}
 

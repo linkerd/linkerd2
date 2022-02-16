@@ -937,7 +937,8 @@ status:
 			}
 
 			pods, err := api.GetPodsFor(k8sInputObj, false)
-			if errors.Is(err, exp.err) {
+			//nolint:errorlint
+			if err != exp.err {
 				t.Fatalf("api.GetPodsFor() unexpected error, expected [%s] got: [%s]", exp.err, err)
 			}
 
@@ -1293,7 +1294,8 @@ spec:
 			}
 
 			services, err := api.GetServicesFor(k8sInputObj, false)
-			if errors.Is(err, exp.err) {
+			//nolint:errorlint
+			if err != exp.err {
 				t.Fatalf("api.GetServicesFor() unexpected error, expected [%s] got: [%s]", exp.err, err)
 			}
 
