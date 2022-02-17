@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -230,24 +231,24 @@ func NewCmdTap() *cobra.Command {
 
 			err := options.validate()
 			if err != nil {
-				return fmt.Errorf("validation error when executing tap command: %v", err)
+				return fmt.Errorf("validation error when executing tap command: %w", err)
 			}
 
 			req, err := pkg.BuildTapByResourceRequest(requestParams)
 			if err != nil {
-				fmt.Fprint(os.Stderr, err.Error())
+				fmt.Fprintln(os.Stderr, err.Error())
 				os.Exit(1)
 			}
 
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 			if err != nil {
-				fmt.Fprint(os.Stderr, err.Error())
+				fmt.Fprintln(os.Stderr, err.Error())
 				os.Exit(1)
 			}
 
 			err = requestTapByResourceFromAPI(cmd.Context(), os.Stdout, k8sAPI, req, options)
 			if err != nil {
-				fmt.Fprint(os.Stderr, err.Error())
+				fmt.Fprintln(os.Stderr, err.Error())
 				os.Exit(1)
 			}
 
@@ -311,10 +312,10 @@ func renderTapEvents(tapByteStream *bufio.Reader, w io.Writer, render renderTapE
 		log.Debug("Waiting for data...")
 		event := tapPb.TapEvent{}
 		err := protohttp.FromByteStreamToProtocolBuffers(tapByteStream, &event)
-		if err == io.EOF {
-			break
-		}
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
 			fmt.Fprintln(os.Stderr, err)
 			break
 		}

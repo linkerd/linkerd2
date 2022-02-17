@@ -103,10 +103,11 @@ func TestHttpRequestToProto(t *testing.T) {
 			t.Fatalf("Expecting error, got nothing")
 		}
 
-		if httpErr, ok := err.(HTTPError); ok {
+		var he HTTPError
+		if errors.As(err, &he) {
 			expectedStatusCode := http.StatusBadRequest
-			if httpErr.Code != expectedStatusCode || httpErr.WrappedError == nil {
-				t.Fatalf("Expected error status to be [%d] and contain wrapper error, got status [%d] and error [%v]", expectedStatusCode, httpErr.Code, httpErr.WrappedError)
+			if he.Code != expectedStatusCode || he.WrappedError == nil {
+				t.Fatalf("Expected error status to be [%d] and contain wrapper error, got status [%d] and error [%s]", expectedStatusCode, he.Code, he.WrappedError)
 			}
 		} else {
 			t.Fatalf("Expected error to be httpError, got: %v", err)

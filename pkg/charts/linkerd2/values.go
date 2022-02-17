@@ -304,12 +304,12 @@ func (v *Values) ToMap() (map[string]interface{}, error) {
 	var valuesMap map[string]interface{}
 	rawValues, err := yaml.Marshal(v)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to marshal the values struct: %s", err)
+		return nil, fmt.Errorf("Failed to marshal the values struct: %w", err)
 	}
 
 	err = yaml.Unmarshal(rawValues, &valuesMap)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to Unmarshal Values into a map: %s", err)
+		return nil, fmt.Errorf("Failed to Unmarshal Values into a map: %w", err)
 	}
 
 	return valuesMap, nil
