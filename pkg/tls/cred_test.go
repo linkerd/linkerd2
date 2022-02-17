@@ -64,7 +64,7 @@ func TestCrtExpiry(t *testing.T) {
 		t.Fatalf("Failed to decode PEM Crt: %s", err)
 	}
 
-	//need to remove seconds and nanoseconds for testing returned error
+	// need to remove seconds and nanoseconds for testing returned error
 	now := time.Now()
 
 	testCases := []struct {
@@ -73,14 +73,14 @@ func TestCrtExpiry(t *testing.T) {
 		notAfter    time.Time
 		valid       bool
 	}{
-		//cert not valid yet
+		// cert not valid yet
 		{
 			currentTime: now,
 			notAfter:    now.AddDate(0, 0, 20),
 			notBefore:   now.AddDate(0, 0, 10),
 			valid:       false,
 		},
-		//cert has expired
+		// cert has expired
 		{
 			currentTime: now,
 			notAfter:    now.AddDate(0, 0, -10),
@@ -97,9 +97,9 @@ func TestCrtExpiry(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		tc := tc //pin
+		tc := tc // pin
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			//explicitly kill the certificate
+			// explicitly kill the certificate
 			crt.Certificate.NotBefore = tc.notBefore
 			crt.Certificate.NotAfter = tc.notAfter
 

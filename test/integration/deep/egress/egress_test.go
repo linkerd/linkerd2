@@ -42,6 +42,7 @@ func TestEgressHttp(t *testing.T) {
 
 		err = TestHelper.CheckPods(ctx, ns, "egress-test", 1)
 		if err != nil {
+			//nolint:errorlint
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {

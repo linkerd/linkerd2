@@ -92,6 +92,7 @@ func TestDirectEdges(t *testing.T) {
 		}
 
 		if err := TestHelper.CheckPods(ctx, testNamespace, "terminus", 1); err != nil {
+			//nolint:errorlint
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
@@ -130,6 +131,7 @@ func TestDirectEdges(t *testing.T) {
 		}
 
 		if err := TestHelper.CheckPods(ctx, testNamespace, "slow-cooker", 1); err != nil {
+			//nolint:errorlint
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
@@ -156,7 +158,7 @@ func TestDirectEdges(t *testing.T) {
 			}
 			var buf bytes.Buffer
 			if err := tpl.Execute(&buf, vars); err != nil {
-				return fmt.Errorf("failed to parse direct_edges.golden template: %s", err)
+				return fmt.Errorf("failed to parse direct_edges.golden template: %w", err)
 			}
 
 			pods, err := TestHelper.Kubectl("", []string{"get", "pods", "-A"}...)

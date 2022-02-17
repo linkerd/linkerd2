@@ -1,5 +1,33 @@
 # Changes
 
+## edge-22.2.3
+
+This edge release fixes some `Instant`-related proxy panics that occur on Amazon
+Linux. It also includes many behind the scenes improvements to the project's
+CI and linting.
+
+* Removed the `--controller-image-version` install flag to simplify the way that
+  image versions are handled. The controller image version can be set using the
+  `--set linkerdVersion` flag or Helm value
+* Lowercased logs and removed redundant lines from the Linkerd2 proxy init
+  container
+* Prevented the proxy from logging spurious errors when its pod does not define
+  any container ports
+* Added workarounds to reduce the likelihood of `Instant`-related proxy panics
+  that occur on Amazon Linux
+
+## edge-22.2.2
+
+This edge release updates the jaeger extension to be available in ARM
+architectures and applies some security-oriented amendments.
+
+* Upgraded jaeger and the opentelemetry-collector to their latest versions,
+  which now support ARM architectures
+* Fixed `linkerd multicluster check` which was reporting false warnings
+* Started enforcing TLS v1.2 as a minimum in the webhook servers
+* Had the identity controller emit SHA256 certificate fingerprints in its
+  logs/events, instead of MD5
+
 ## edge-22.2.1
 
 This edge release removed the `disableIdentity` configuration now that the proxy

@@ -155,7 +155,7 @@ func loadCredentials(ctx context.Context, link multicluster.Link, namespace stri
 	// Load the credentials secret
 	secret, err := k8sAPI.Interface.CoreV1().Secrets(namespace).Get(ctx, link.ClusterCredentialsSecret, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("Failed to load credentials secret %s: %s", link.ClusterCredentialsSecret, err)
+		return nil, fmt.Errorf("failed to load credentials secret %s: %w", link.ClusterCredentialsSecret, err)
 	}
 	return sm.ParseRemoteClusterSecret(secret)
 }
@@ -180,7 +180,7 @@ func restartClusterWatcher(
 
 	cfg, err := clientcmd.RESTConfigFromKubeConfig(creds)
 	if err != nil {
-		return fmt.Errorf("Unable to parse kube config: %s", err)
+		return fmt.Errorf("unable to parse kube config: %w", err)
 	}
 
 	clusterWatcher, err = servicemirror.NewRemoteClusterServiceWatcher(
@@ -194,17 +194,17 @@ func restartClusterWatcher(
 		enableHeadlessSvc,
 	)
 	if err != nil {
-		return fmt.Errorf("Unable to create cluster watcher: %s", err)
+		return fmt.Errorf("unable to create cluster watcher: %w", err)
 	}
 
 	err = clusterWatcher.Start(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to start cluster watcher: %s", err)
+		return fmt.Errorf("failed to start cluster watcher: %w", err)
 	}
 
 	workerMetrics, err := metrics.NewWorkerMetrics(link.TargetClusterName)
 	if err != nil {
-		return fmt.Errorf("Failed to create metrics for cluster watcher: %s", err)
+		return fmt.Errorf("failed to create metrics for cluster watcher: %w", err)
 	}
 	probeWorker = servicemirror.NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.TargetClusterName), &link.ProbeSpec, workerMetrics, link.TargetClusterName)
 	probeWorker.Start()

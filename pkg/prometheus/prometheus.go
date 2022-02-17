@@ -13,20 +13,18 @@ import (
 
 var (
 	// RequestLatencyBucketsSeconds represents latency buckets to record (seconds)
-	RequestLatencyBucketsSeconds = append(append(append(append(
+	RequestLatencyBucketsSeconds = append(append(append(
 		prometheus.LinearBuckets(0.01, 0.01, 5),
 		prometheus.LinearBuckets(0.1, 0.1, 5)...),
 		prometheus.LinearBuckets(1, 1, 5)...),
-		prometheus.LinearBuckets(10, 10, 5)...),
-	)
+		prometheus.LinearBuckets(10, 10, 5)...)
 
 	// ResponseSizeBuckets represents response size buckets (bytes)
-	ResponseSizeBuckets = append(append(append(append(
+	ResponseSizeBuckets = append(append(append(
 		prometheus.LinearBuckets(100, 100, 5),
 		prometheus.LinearBuckets(1000, 1000, 5)...),
 		prometheus.LinearBuckets(10000, 10000, 5)...),
-		prometheus.LinearBuckets(1000000, 1000000, 5)...),
-	)
+		prometheus.LinearBuckets(1000000, 1000000, 5)...)
 
 	// server metrics
 	serverCounter = prometheus.NewCounterVec(

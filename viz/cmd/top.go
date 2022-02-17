@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -478,7 +479,7 @@ func recvEvents(tapByteStream *bufio.Reader, eventCh chan<- *tapPb.TapEvent, clo
 		event := &tapPb.TapEvent{}
 		err := protohttp.FromByteStreamToProtocolBuffers(tapByteStream, event)
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				fmt.Println("Tap stream terminated")
 			} else if !strings.HasSuffix(err.Error(), pkg.ErrClosedResponseBody) {
 				fmt.Println(err.Error())
@@ -574,7 +575,7 @@ func renderTable(table *topTable, requestCh <-chan topRequest, done <-chan struc
 			termbox.Flush()
 		case offset := <-horizontalScroll:
 			if (offset > 0 && scrollpos < 0) || (offset < 0 && scrollpos > (width-tablewidth)) {
-				scrollpos = scrollpos + offset
+				scrollpos += offset
 			}
 		}
 	}
@@ -598,7 +599,7 @@ func newRow(req topRequest) (tableRow, error) {
 
 	latency, err := ptypes.Duration(req.rspEnd.GetSinceRequestInit())
 	if err != nil {
-		return tableRow{}, fmt.Errorf("error parsing duration %v: %s", req.rspEnd.GetSinceRequestInit(), err)
+		return tableRow{}, fmt.Errorf("error parsing duration %v: %w", req.rspEnd.GetSinceRequestInit(), err)
 	}
 	// TODO: Once tap events have a classification field, we should use that field
 	// instead of determining success here.

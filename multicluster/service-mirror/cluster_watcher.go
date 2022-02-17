@@ -2,6 +2,7 @@ package servicemirror
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -159,11 +160,11 @@ func NewRemoteClusterServiceWatcher(
 ) (*RemoteClusterServiceWatcher, error) {
 	remoteAPI, err := k8s.InitializeAPIForConfig(ctx, cfg, false, k8s.Svc, k8s.Endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("cannot initialize api for target cluster %s: %s", clusterName, err)
+		return nil, fmt.Errorf("cannot initialize api for target cluster %s: %w", clusterName, err)
 	}
 	_, err = remoteAPI.Client.Discovery().ServerVersion()
 	if err != nil {
-		return nil, fmt.Errorf("cannot connect to api for target cluster %s: %s", clusterName, err)
+		return nil, fmt.Errorf("cannot connect to api for target cluster %s: %w", clusterName, err)
 	}
 
 	// Create k8s event recorder
@@ -273,7 +274,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices(ctx context.Con
 
 	servicesOnLocalCluster, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
 	if err != nil {
-		innerErr := fmt.Errorf("failed to list services while cleaning up mirror services: %s", err)
+		innerErr := fmt.Errorf("failed to list services while cleaning up mirror services: %w", err)
 		if kerrors.IsNotFound(err) {
 			return innerErr
 		}
@@ -314,7 +315,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Co
 
 	services, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
 	if err != nil {
-		innerErr := fmt.Errorf("could not retrieve mirrored services that need cleaning up: %s", err)
+		innerErr := fmt.Errorf("could not retrieve mirrored services that need cleaning up: %w", err)
 		if kerrors.IsNotFound(err) {
 			return innerErr
 		}
@@ -328,7 +329,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Co
 			if kerrors.IsNotFound(err) {
 				continue
 			}
-			errors = append(errors, fmt.Errorf("Could not delete service %s/%s: %s", svc.Namespace, svc.Name, err))
+			errors = append(errors, fmt.Errorf("Could not delete service %s/%s: %w", svc.Namespace, svc.Name, err))
 		} else {
 			rcsw.log.Infof("Deleted service %s/%s", svc.Namespace, svc.Name)
 		}
@@ -336,7 +337,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Co
 
 	endpoints, err := rcsw.localAPIClient.Endpoint().Lister().List(labels.Set(matchLabels).AsSelector())
 	if err != nil {
-		innerErr := fmt.Errorf("could not retrieve endpoints that need cleaning up: %s", err)
+		innerErr := fmt.Errorf("could not retrieve endpoints that need cleaning up: %w", err)
 		if kerrors.IsNotFound(err) {
 			return innerErr
 		}
@@ -348,7 +349,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Co
 			if kerrors.IsNotFound(err) {
 				continue
 			}
-			errors = append(errors, fmt.Errorf("Could not delete endpoints %s/%s: %s", endpoint.Namespace, endpoint.Name, err))
+			errors = append(errors, fmt.Errorf("Could not delete endpoints %s/%s: %w", endpoint.Namespace, endpoint.Name, err))
 		} else {
 			rcsw.log.Infof("Deleted endpoints %s/%s", endpoint.Namespace, endpoint.Name)
 		}
@@ -370,7 +371,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ctx context.
 			rcsw.log.Debugf("Failed to delete mirror service %s/%s: %v", ev.Namespace, ev.Name, err)
 			return nil
 		}
-		errors = append(errors, fmt.Errorf("could not fetch service %s/%s: %s", ev.Namespace, localServiceName, err))
+		errors = append(errors, fmt.Errorf("could not fetch service %s/%s: %w", ev.Namespace, localServiceName, err))
 	}
 
 	// If the mirror service is headless, also delete its endpoint mirror
@@ -382,7 +383,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ctx context.
 		endpointMirrorServices, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
 		if err != nil {
 			if !kerrors.IsNotFound(err) {
-				errors = append(errors, fmt.Errorf("could not fetch endpoint mirrors for mirror service %s/%s: %s", ev.Namespace, localServiceName, err))
+				errors = append(errors, fmt.Errorf("could not fetch endpoint mirrors for mirror service %s/%s: %w", ev.Namespace, localServiceName, err))
 			}
 		}
 
@@ -390,7 +391,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ctx context.
 			err = rcsw.localAPIClient.Client.CoreV1().Services(endpointMirror.Namespace).Delete(ctx, endpointMirror.Name, metav1.DeleteOptions{})
 			if err != nil {
 				if !kerrors.IsNotFound(err) {
-					errors = append(errors, fmt.Errorf("could not delete endpoint mirror %s/%s: %s", endpointMirror.Namespace, endpointMirror.Name, err))
+					errors = append(errors, fmt.Errorf("could not delete endpoint mirror %s/%s: %w", endpointMirror.Namespace, endpointMirror.Name, err))
 				}
 			}
 		}
@@ -399,7 +400,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ctx context.
 	rcsw.log.Infof("Deleting mirrored service %s/%s", ev.Namespace, localServiceName)
 	if err := rcsw.localAPIClient.Client.CoreV1().Services(ev.Namespace).Delete(ctx, localServiceName, metav1.DeleteOptions{}); err != nil {
 		if !kerrors.IsNotFound(err) {
-			errors = append(errors, fmt.Errorf("could not delete service: %s/%s: %s", ev.Namespace, localServiceName, err))
+			errors = append(errors, fmt.Errorf("could not delete service: %s/%s: %w", ev.Namespace, localServiceName, err))
 		}
 	}
 
@@ -698,10 +699,8 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent(ctx context.Context) (
 	event, done := rcsw.eventsQueue.Get()
 	if event != nil {
 		rcsw.log.Infof("Received: %s", event)
-	} else {
-		if done {
-			rcsw.log.Infof("Received: Stop")
-		}
+	} else if done {
+		rcsw.log.Infof("Received: Stop")
 	}
 
 	var err error
@@ -753,21 +752,18 @@ func (rcsw *RemoteClusterServiceWatcher) processEvents(ctx context.Context) {
 		if err == nil {
 			rcsw.eventsQueue.Forget(event)
 		} else {
-			switch e := err.(type) {
-			case RetryableError:
-				{
-					rcsw.log.Warnf("Requeues: %d, Limit: %d for event %s", rcsw.eventsQueue.NumRequeues(event), rcsw.requeueLimit, event)
-					if (rcsw.eventsQueue.NumRequeues(event) < rcsw.requeueLimit) && !done {
-						rcsw.log.Errorf("Error processing %s (will retry): %s", event, e)
-						rcsw.eventsQueue.AddRateLimited(event)
-					} else {
-						rcsw.log.Errorf("Error processing %s (giving up): %s", event, e)
-						rcsw.eventsQueue.Forget(event)
-					}
+			var re RetryableError
+			if errors.As(err, &re) {
+				rcsw.log.Warnf("Requeues: %d, Limit: %d for event %s", rcsw.eventsQueue.NumRequeues(event), rcsw.requeueLimit, event)
+				if (rcsw.eventsQueue.NumRequeues(event) < rcsw.requeueLimit) && !done {
+					rcsw.log.Errorf("Error processing %s (will retry): %s", event, re)
+					rcsw.eventsQueue.AddRateLimited(event)
+				} else {
+					rcsw.log.Errorf("Error processing %s (giving up): %s", event, re)
+					rcsw.eventsQueue.Forget(event)
 				}
-			default:
-				rcsw.log.Errorf("Error processing %s (will not retry): %s", event, e)
-				rcsw.log.Error(e)
+			} else {
+				rcsw.log.Errorf("Error processing %s (will not retry): %s", event, err)
 			}
 		}
 		if done {
@@ -891,7 +887,7 @@ func (rcsw *RemoteClusterServiceWatcher) resolveGatewayAddress() ([]corev1.Endpo
 				IP: ipAddr.String(),
 			})
 		} else {
-			err = fmt.Errorf("Error resolving '%s': %s", addr, err)
+			err = fmt.Errorf("Error resolving '%s': %w", addr, err)
 			rcsw.log.Warn(err)
 			errors = append(errors, err)
 		}
@@ -1061,7 +1057,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleCreateOrUpdateEndpoints(
 		exportedService, err := rcsw.remoteAPIClient.Svc().Lister().Services(exportedEndpoints.Namespace).Get(exportedEndpoints.Name)
 		if err != nil {
 			return RetryableError{[]error{
-				fmt.Errorf("error retrieving exported service %s/%s: %v", exportedEndpoints.Namespace, exportedEndpoints.Name, err),
+				fmt.Errorf("error retrieving exported service %s/%s: %w", exportedEndpoints.Namespace, exportedEndpoints.Name, err),
 			}}
 		}
 		gatewayAddresses, err := rcsw.resolveGatewayAddress()
