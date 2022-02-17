@@ -170,7 +170,7 @@ proxyInit:
     # @default -- imagePullPolicy
     pullPolicy: ""
     # -- Tag for the proxy-init container Docker image
-    version: v1.5.2
+    version: v1.5.3
   resources:
     cpu:
       # -- Maximum amount of CPU units that the proxy-init container can use
