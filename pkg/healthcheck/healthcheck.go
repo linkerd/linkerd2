@@ -738,6 +738,27 @@ func (hc *HealthChecker) allCategories() []*Category {
 					},
 				},
 				{
+					description: "cluster networks can be verified",
+					hintAnchor:  "l5d-cluster-networks-verified",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						nodes, err := hc.kubeAPI.GetNodes(ctx)
+						if err != nil {
+							return err
+						}
+						var warningNodes []string
+						for _, node := range nodes {
+							if node.Spec.PodCIDR != "" {
+								warningNodes = append(warningNodes, node.Name)
+							}
+						}
+						if len(warningNodes) > 0 {
+							return fmt.Errorf("the following nodes do not expose a podCIDR:\n\t%s", strings.Join(warningNodes, "\n\t"))
+						}
+						return nil
+					},
+				},
+				{
 					description: "cluster networks contains all node podCIDRs",
 					hintAnchor:  "l5d-cluster-networks-cidr",
 					check: func(ctx context.Context) error {
@@ -1856,12 +1877,11 @@ func (hc *HealthChecker) checkClusterNetworks(ctx context.Context) error {
 			return err
 		}
 	}
-	var badPodCIDRS, errStrings []string
+	var badPodCIDRS []string
 	var podCIDRExists bool
 	for _, node := range nodes {
 		podCIDR := node.Spec.PodCIDR
 		if podCIDR == "" {
-			errStrings = append(errStrings, fmt.Sprintf("node %s does not expose podCIDRs so clusterNetworks could not be verified", node.Name))
 			continue
 		}
 		podCIDRExists = true
@@ -1881,11 +1901,8 @@ func (hc *HealthChecker) checkClusterNetworks(ctx context.Context) error {
 	}
 	if len(badPodCIDRS) > 0 {
 		sort.Strings(badPodCIDRS)
-		s := fmt.Sprintf("node has podCIDR(s) %v which are not contained in the Linkerd clusterNetworks.\n\tTry installing linkerd via --set clusterNetworks=\"%s\"", badPodCIDRS, strings.Join(badPodCIDRS, "\\,"))
-		errStrings = append(errStrings, s)
-	}
-	if len(errStrings) > 0 {
-		return errors.New(strings.Join(errStrings, "\n    "))
+		return fmt.Errorf("node has podCIDR(s) %v which are not contained in the Linkerd clusterNetworks.\n\tTry installing linkerd via --set clusterNetworks=\"%s\"",
+			badPodCIDRS, strings.Join(badPodCIDRS, "\\,"))
 	}
 	return nil
 }
