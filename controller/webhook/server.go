@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -106,7 +107,7 @@ func getConfiguredServer(
 func (s *Server) Start() {
 	log.Infof("listening at %s", s.Server.Addr)
 	if err := s.ListenAndServeTLS("", ""); err != nil {
-		if err == http.ErrServerClosed {
+		if errors.Is(err, http.ErrServerClosed) {
 			return
 		}
 		log.Fatal(err)

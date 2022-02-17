@@ -863,7 +863,7 @@ func (pp *portPublisher) newPodRefAddress(endpointPort Port, endpointIP, podName
 	}
 	pod, err := pp.k8sAPI.Pod().Lister().Pods(id.Namespace).Get(id.Name)
 	if err != nil {
-		return Address{}, PodID{}, fmt.Errorf("unable to fetch pod %v:%v", id, err)
+		return Address{}, PodID{}, fmt.Errorf("unable to fetch pod %v: %w", id, err)
 	}
 	ownerKind, ownerName := pp.k8sAPI.GetOwnerKindAndName(context.Background(), pod, false)
 	addr := Address{
@@ -1152,7 +1152,7 @@ func isValidSlice(es *discovery.EndpointSlice) bool {
 func SetToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
 	servers, err := k8sAPI.Srv().Lister().Servers("").List(labels.Everything())
 	if err != nil {
-		return fmt.Errorf("failed to list Servers: %s", err)
+		return fmt.Errorf("failed to list Servers: %w", err)
 	}
 	if address.Pod == nil {
 		return fmt.Errorf("endpoint not backed by Pod: %s:%d", address.IP, address.Port)
@@ -1160,7 +1160,7 @@ func SetToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
 	for _, server := range servers {
 		selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
 		if err != nil {
-			return fmt.Errorf("failed to create Selector: %s", err)
+			return fmt.Errorf("failed to create Selector: %w", err)
 		}
 		if server.Spec.ProxyProtocol == opaqueProtocol && selector.Matches(labels.Set(address.Pod.Labels)) {
 			var portMatch bool

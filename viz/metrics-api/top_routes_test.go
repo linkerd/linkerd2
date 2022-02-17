@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"testing"
@@ -214,7 +215,7 @@ func testTopRoutes(t *testing.T, expectations []topRoutesExpected) {
 			}
 
 			rsp, err := fakeGrpcServer.TopRoutes(context.TODO(), exp.req)
-			if err != exp.err {
+			if !errors.Is(err, exp.err) {
 				t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
 			}
 

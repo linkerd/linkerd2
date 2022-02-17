@@ -37,6 +37,7 @@ func TestRabbitMQDeploy(t *testing.T) {
 			testutil.AnnotatedFatalf(t, "kubectl apply command failed", "'kubectl apply' command failed: %s", err)
 		}
 		if err := TestHelper.CheckPods(ctx, testNamespace, "rabbitmq", 1); err != nil {
+			//nolint:errorlint
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out %s", rce)
 			} else {
@@ -54,6 +55,7 @@ func TestRabbitMQDeploy(t *testing.T) {
 			testutil.AnnotatedFatalf(t, "kubectl apply command failed", "'kubectl apply' command failed: %s", err)
 		}
 		if err := TestHelper.CheckPods(ctx, testNamespace, "rabbitmq-client", 1); err != nil {
+			//nolint:errorlint
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out %s", rce)
 			} else {
@@ -66,11 +68,11 @@ func TestRabbitMQDeploy(t *testing.T) {
 		err = TestHelper.RetryFor(timeout, func() error {
 			out, err := TestHelper.Kubectl("", "-n", testNamespace, "logs", "-lapp=rabbitmq-client", "-crabbitmq-client")
 			if err != nil {
-				return fmt.Errorf("'kubectl logs -l app=rabbitmq-client -c rabbitmq-client' command failed\n%s", err)
+				return fmt.Errorf("'kubectl logs -l app=rabbitmq-client -c rabbitmq-client' command failed\n%w", err)
 			}
 			err = TestHelper.ValidateOutput(out, golden)
 			if err != nil {
-				return fmt.Errorf("received unexpected output\n%s", err.Error())
+				return fmt.Errorf("received unexpected output\n%w", err)
 			}
 			return nil
 		})

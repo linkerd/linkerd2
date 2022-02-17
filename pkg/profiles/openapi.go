@@ -31,17 +31,17 @@ func RenderOpenAPI(fileName, namespace, name, clusterDomain string, w io.Writer)
 
 	bytes, err := ioutil.ReadAll(input)
 	if err != nil {
-		return fmt.Errorf("Error reading file: %s", err)
+		return fmt.Errorf("Error reading file: %w", err)
 	}
 	json, err := yaml.YAMLToJSON(bytes)
 	if err != nil {
-		return fmt.Errorf("Error parsing yaml: %s", err)
+		return fmt.Errorf("Error parsing yaml: %w", err)
 	}
 
 	swagger := spec.Swagger{}
 	err = swagger.UnmarshalJSON(json)
 	if err != nil {
-		return fmt.Errorf("Error parsing OpenAPI spec: %s", err)
+		return fmt.Errorf("Error parsing OpenAPI spec: %w", err)
 	}
 
 	profile := swaggerToServiceProfile(swagger, namespace, name, clusterDomain)

@@ -205,17 +205,17 @@ func k8sClient(manifestsFile string) (*k8s.KubernetesAPI, error) {
 	if manifestsFile != "" {
 		readers, err := read(manifestsFile)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to parse manifests from %s: %s", manifestsFile, err)
+			return nil, fmt.Errorf("failed to parse manifests from %s: %w", manifestsFile, err)
 		}
 
 		k, err = k8s.NewFakeAPIFromManifests(readers)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to parse Kubernetes objects from manifest %s: %s", manifestsFile, err)
+			return nil, fmt.Errorf("failed to parse Kubernetes objects from manifest %s: %w", manifestsFile, err)
 		}
 	} else {
 		k, err = k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to create a kubernetes client: %s", err)
+			return nil, fmt.Errorf("failed to create a kubernetes client: %w", err)
 		}
 	}
 	return k, nil

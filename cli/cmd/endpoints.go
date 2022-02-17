@@ -97,14 +97,14 @@ destination.`,
 
 			client, conn, err := destination.NewExternalClient(cmd.Context(), controlPlaneNamespace, k8sAPI)
 			if err != nil {
-				fmt.Fprint(os.Stderr, fmt.Errorf("Error creating destination client: %s", err))
+				fmt.Fprintf(os.Stderr, "Error creating destination client: %s\n", err)
 				os.Exit(1)
 			}
 			defer conn.Close()
 
 			endpoints, err := requestEndpointsFromAPI(client, args)
 			if err != nil {
-				fmt.Fprint(os.Stderr, fmt.Errorf("Destination API error: %s", err))
+				fmt.Fprintf(os.Stderr, "Destination API error: %s\n", err)
 				os.Exit(1)
 			}
 

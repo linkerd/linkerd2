@@ -70,7 +70,7 @@ func TestTracing(t *testing.T) {
 	err = TestHelper.RetryFor(timeout, func() error {
 		out, err := TestHelper.LinkerdRun(checkCmd...)
 		if err != nil {
-			return fmt.Errorf("'linkerd jaeger check' command failed\n%s\n%s", err, out)
+			return fmt.Errorf("'linkerd jaeger check' command failed\n%w\n%s", err, out)
 		}
 
 		pods, err := TestHelper.KubernetesHelper.GetPods(context.Background(), tracingNs, nil)
@@ -133,6 +133,7 @@ func TestTracing(t *testing.T) {
 			{ns: tracingNs, name: "jaeger"},
 		} {
 			if err := TestHelper.CheckPods(ctx, deploy.ns, deploy.name, 1); err != nil {
+				//nolint:errorlint
 				if rce, ok := err.(*testutil.RestartCountError); ok {
 					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 				} else {

@@ -81,6 +81,7 @@ func TestResourcesPostInstall(t *testing.T) {
 	}
 	for deploy, spec := range expectedDeployments {
 		if err := TestHelper.CheckPods(ctx, spec.Namespace, deploy, spec.Replicas); err != nil {
+			//nolint:errorlint
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {

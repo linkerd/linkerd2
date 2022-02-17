@@ -149,7 +149,7 @@ non-zero exit code.`,
 func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, stage string, options *checkOptions) error {
 	err := options.validate()
 	if err != nil {
-		return fmt.Errorf("Validation error when executing check command: %v", err)
+		return fmt.Errorf("Validation error when executing check command: %w", err)
 	}
 
 	if options.cliVersionOverride != "" {
@@ -171,7 +171,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 		}
 		values, installManifest, err = renderInstallManifest(cmd.Context())
 		if err != nil {
-			fmt.Fprint(os.Stderr, fmt.Errorf("Error rendering install manifest: %v", err))
+			fmt.Fprintf(os.Stderr, "Error rendering install manifest: %s\n", err)
 			os.Exit(1)
 		}
 	} else {
@@ -219,8 +219,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 
 	extensionSuccess, extensionWarning, err := runExtensionChecks(cmd, wout, werr, options)
 	if err != nil {
-		err = fmt.Errorf("failed to run extensions checks: %s", err)
-		fmt.Fprintln(werr, err)
+		fmt.Fprintf(werr, "Failed to run extensions checks: %s\n", err)
 		os.Exit(1)
 	}
 

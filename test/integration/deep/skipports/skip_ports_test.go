@@ -53,6 +53,7 @@ func TestSkipInboundPorts(t *testing.T) {
 		// Check all booksapp deployments are up and running
 		for _, deploy := range booksappDeployments {
 			if err := TestHelper.CheckPods(ctx, ns, deploy, 1); err != nil {
+				//nolint:errorlint
 				if rce, ok := err.(*testutil.RestartCountError); ok {
 					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 				} else {
@@ -67,7 +68,7 @@ func TestSkipInboundPorts(t *testing.T) {
 			err := TestHelper.RetryFor(30*time.Second, func() error {
 				pods, err := TestHelper.GetPods(ctx, ns, map[string]string{"app": "webapp"})
 				if err != nil {
-					return fmt.Errorf("error getting pods\n%s", err)
+					return fmt.Errorf("error getting pods\n%w", err)
 				}
 
 				podName := fmt.Sprintf("pod/%s", pods[0].Name)
@@ -75,7 +76,7 @@ func TestSkipInboundPorts(t *testing.T) {
 
 				metrics, err := TestHelper.LinkerdRun(cmd...)
 				if err != nil {
-					return fmt.Errorf("error getting metrics for pod\n%s", err)
+					return fmt.Errorf("error getting metrics for pod\n%w", err)
 				}
 
 				if httpResponseTotalMetricRE.MatchString(metrics) {

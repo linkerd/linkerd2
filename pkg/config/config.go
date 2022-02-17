@@ -20,12 +20,12 @@ func Values(filepath string) (*l5dcharts.Values, error) {
 	values := &l5dcharts.Values{}
 	configYaml, err := ioutil.ReadFile(filepath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %s", err)
+		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
 	log.Debugf("%s config YAML: %s", filepath, configYaml)
 	if err = yaml.Unmarshal(configYaml, values); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal JSON from: %s: %s", filepath, err)
+		return nil, fmt.Errorf("failed to unmarshal JSON from: %s: %w", filepath, err)
 	}
 	return values, err
 }

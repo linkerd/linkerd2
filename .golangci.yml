@@ -16,6 +16,7 @@ linters:
   - bodyclose
   - deadcode
   - depguard
+  - errorlint
   - exportloopref
   - goconst
   - gosimple

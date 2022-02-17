@@ -45,7 +45,7 @@ func (c Channels) Match(actualVersion string) error {
 
 	actual, err := parseChannelVersion(actualVersion)
 	if err != nil {
-		return fmt.Errorf("failed to parse actual version: %s", err)
+		return fmt.Errorf("failed to parse actual version: %w", err)
 	}
 
 	for _, cv := range c.array {
@@ -95,7 +95,7 @@ func getLatestVersions(ctx context.Context, client *http.Client, url string) (Ch
 	for c, v := range versionRsp {
 		cv, err := parseChannelVersion(v)
 		if err != nil {
-			return Channels{}, fmt.Errorf("unexpected versioncheck response: %s", err)
+			return Channels{}, fmt.Errorf("unexpected versioncheck response: %w", err)
 		}
 
 		if c != cv.channel {
