@@ -142,7 +142,7 @@ func TestHealthChecker(t *testing.T) {
 			{
 				description: "skip",
 				check: func(context.Context) error {
-					return &SkipError{Reason: "needs skipping"}
+					return SkipError{Reason: "needs skipping"}
 				},
 				retryDeadline: time.Time{},
 			},
@@ -156,7 +156,7 @@ func TestHealthChecker(t *testing.T) {
 			{
 				description: "skipRpc",
 				check: func(context.Context) error {
-					return &SkipError{Reason: "needs skipping"}
+					return SkipError{Reason: "needs skipping"}
 				},
 				retryDeadline: time.Time{},
 			},

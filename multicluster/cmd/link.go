@@ -54,7 +54,7 @@ func newLinkCommand() *cobra.Command {
 	var valuesOptions valuespkg.Options
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 

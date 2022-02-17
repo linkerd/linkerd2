@@ -51,6 +51,7 @@ func verifyInstallApp(ctx context.Context, t *testing.T) {
 	}
 
 	if err := TestHelper.CheckPods(ctx, prefixedNs, TestAppBackendDeploymentName, 1); err != nil {
+		//nolint:errorlint
 		if rce, ok := err.(*testutil.RestartCountError); ok {
 			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 		} else {
@@ -59,6 +60,7 @@ func verifyInstallApp(ctx context.Context, t *testing.T) {
 	}
 
 	if err := TestHelper.CheckPods(ctx, prefixedNs, "slow-cooker", 1); err != nil {
+		//nolint:errorlint
 		if rce, ok := err.(*testutil.RestartCountError); ok {
 			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 		} else {

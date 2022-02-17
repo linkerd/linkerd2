@@ -38,7 +38,7 @@ func newAPI(retry bool, resourceConfigs []string, extraConfigs ...string) (*API,
 
 	api, err := NewFakeAPI(k8sConfigs...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("NewFakeAPI returned an error: %s", err)
+		return nil, nil, fmt.Errorf("NewFakeAPI returned an error: %w", err)
 	}
 
 	if retry {
@@ -937,7 +937,7 @@ status:
 			}
 
 			pods, err := api.GetPodsFor(k8sInputObj, false)
-			if err != exp.err {
+			if !errors.Is(err, exp.err) {
 				t.Fatalf("api.GetPodsFor() unexpected error, expected [%s] got: [%s]", exp.err, err)
 			}
 
@@ -1293,7 +1293,7 @@ spec:
 			}
 
 			services, err := api.GetServicesFor(k8sInputObj, false)
-			if err != exp.err {
+			if !errors.Is(err, exp.err) {
 				t.Fatalf("api.GetServicesFor() unexpected error, expected [%s] got: [%s]", exp.err, err)
 			}
 

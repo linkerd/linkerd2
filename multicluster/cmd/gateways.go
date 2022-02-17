@@ -47,7 +47,7 @@ func newGatewaysCommand() *cobra.Command {
 
 			vizNs, err := k8sAPI.GetNamespaceWithExtensionLabel(ctx, vizCmd.ExtensionName)
 			if err != nil {
-				return fmt.Errorf("make sure the linkerd-viz extension is installed, using 'linkerd viz install' (%s)", err)
+				return fmt.Errorf("make sure the linkerd-viz extension is installed, using 'linkerd viz install' (%w)", err)
 			}
 
 			client, err := client.NewExternalClient(ctx, vizNs.Name, k8sAPI)
@@ -57,7 +57,7 @@ func newGatewaysCommand() *cobra.Command {
 
 			resp, err := requestGatewaysFromAPI(client, req)
 			if err != nil {
-				fmt.Fprint(os.Stderr, err.Error())
+				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
 
@@ -76,7 +76,7 @@ func newGatewaysCommand() *cobra.Command {
 func requestGatewaysFromAPI(client pb.ApiClient, req *pb.GatewaysRequest) (*pb.GatewaysResponse, error) {
 	resp, err := client.Gateways(context.Background(), req)
 	if err != nil {
-		return nil, fmt.Errorf("Gateways API error: %v", err)
+		return nil, fmt.Errorf("Gateways API error: %w", err)
 	}
 	if e := resp.GetError(); e != nil {
 		return nil, fmt.Errorf("Gateways API response error: %v", e.Error)
