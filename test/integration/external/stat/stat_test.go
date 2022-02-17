@@ -199,6 +199,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 		// wait for deployments to start
 		for _, deploy := range []string{"backend", "failing", "slow-cooker"} {
 			if err := TestHelper.CheckPods(ctx, prefixedNs, deploy, 1); err != nil {
+				//nolint:errorlint
 				if rce, ok := err.(*testutil.RestartCountError); ok {
 					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 				} else {
@@ -273,49 +274,49 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 func validateRowStats(name, expectedMeshCount, expectedStatus string, rowStats map[string]*testutil.RowStat, isAuthority bool) error {
 	stat, ok := rowStats[name]
 	if !ok {
-		return fmt.Errorf("No stats found for [%s]", name)
+		return fmt.Errorf("no stats found for [%s]", name)
 	}
 
 	if stat.Status != expectedStatus {
-		return fmt.Errorf("Expected status '%s' for '%s', got '%s'",
+		return fmt.Errorf("expected status '%s' for '%s', got '%s'",
 			expectedStatus, name, stat.Status)
 	}
 
 	if stat.Meshed != expectedMeshCount {
-		return fmt.Errorf("Expected mesh count [%s] for [%s], got [%s]",
+		return fmt.Errorf("expected mesh count [%s] for [%s], got [%s]",
 			expectedMeshCount, name, stat.Meshed)
 	}
 
 	expectedSuccessRate := "100.00%"
 	if stat.Success != expectedSuccessRate {
-		return fmt.Errorf("Expected success rate [%s] for [%s], got [%s]",
+		return fmt.Errorf("expected success rate [%s] for [%s], got [%s]",
 			expectedSuccessRate, name, stat.Success)
 	}
 
 	if !strings.HasSuffix(stat.Rps, "rps") {
-		return fmt.Errorf("Unexpected rps for [%s], got [%s]",
+		return fmt.Errorf("unexpected rps for [%s], got [%s]",
 			name, stat.Rps)
 	}
 
 	if !strings.HasSuffix(stat.P50Latency, "ms") {
-		return fmt.Errorf("Unexpected p50 latency for [%s], got [%s]",
+		return fmt.Errorf("unexpected p50 latency for [%s], got [%s]",
 			name, stat.P50Latency)
 	}
 
 	if !strings.HasSuffix(stat.P95Latency, "ms") {
-		return fmt.Errorf("Unexpected p95 latency for [%s], got [%s]",
+		return fmt.Errorf("unexpected p95 latency for [%s], got [%s]",
 			name, stat.P95Latency)
 	}
 
 	if !strings.HasSuffix(stat.P99Latency, "ms") {
-		return fmt.Errorf("Unexpected p99 latency for [%s], got [%s]",
+		return fmt.Errorf("unexpected p99 latency for [%s], got [%s]",
 			name, stat.P99Latency)
 	}
 
 	if stat.TCPOpenConnections != "-" && !isAuthority {
 		_, err := strconv.Atoi(stat.TCPOpenConnections)
 		if err != nil {
-			return fmt.Errorf("Error parsing number of TCP connections [%s]: %s", stat.TCPOpenConnections, err.Error())
+			return fmt.Errorf("error parsing number of TCP connections [%s]: %w", stat.TCPOpenConnections, err)
 		}
 	}
 

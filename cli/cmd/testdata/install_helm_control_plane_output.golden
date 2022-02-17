@@ -395,7 +395,6 @@ data:
     controlPlaneTracing: false
     controlPlaneTracingNamespace: linkerd-jaeger
     controllerImage: cr.l5d.io/linkerd/controller
-    controllerImageVersion: linkerd-version
     controllerLogFormat: plain
     controllerLogLevel: info
     controllerReplicas: 1

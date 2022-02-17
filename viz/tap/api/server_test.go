@@ -26,7 +26,7 @@ func TestAPIServerAuth(t *testing.T) {
 		err            error
 	}{
 		{
-			err: fmt.Errorf("failed to load [%s] config: configmaps \"%s\" not found", k8sutils.ExtensionAPIServerAuthenticationConfigMapName, k8sutils.ExtensionAPIServerAuthenticationConfigMapName),
+			err: fmt.Errorf("failed to load [%s] config: configmaps %q not found", k8sutils.ExtensionAPIServerAuthenticationConfigMapName, k8sutils.ExtensionAPIServerAuthenticationConfigMapName),
 		},
 		{
 			k8sRes: []string{`
@@ -63,20 +63,28 @@ data:
 			}
 
 			clientCAPem, allowedNames, usernameHeader, groupHeader, err := serverAuth(ctx, k8sAPI)
-			if !reflect.DeepEqual(err, exp.err) {
-				t.Errorf("apiServerAuth returned unexpected error: %s, expected: %s", err, exp.err)
+
+			if err != nil && exp.err != nil {
+				if err.Error() != exp.err.Error() {
+					t.Errorf("apiServerAuth returned unexpected error: %q, expected: %q", err, exp.err)
+				}
+			} else if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			} else if exp.err != nil {
+				t.Fatalf("Did not encounter expected error: %s", err)
 			}
+
 			if clientCAPem != exp.clientCAPem {
-				t.Errorf("apiServerAuth returned unexpected clientCAPem: %s, expected: %s", clientCAPem, exp.clientCAPem)
+				t.Errorf("apiServerAuth returned unexpected clientCAPem: %q, expected: %q", clientCAPem, exp.clientCAPem)
 			}
 			if !reflect.DeepEqual(allowedNames, exp.allowedNames) {
-				t.Errorf("apiServerAuth returned unexpected allowedNames: %s, expected: %s", allowedNames, exp.allowedNames)
+				t.Errorf("apiServerAuth returned unexpected allowedNames: %q, expected: %q", allowedNames, exp.allowedNames)
 			}
 			if usernameHeader != exp.usernameHeader {
-				t.Errorf("apiServerAuth returned unexpected usernameHeader: %s, expected: %s", usernameHeader, exp.usernameHeader)
+				t.Errorf("apiServerAuth returned unexpected usernameHeader: %q, expected: %q", usernameHeader, exp.usernameHeader)
 			}
 			if groupHeader != exp.groupHeader {
-				t.Errorf("apiServerAuth returned unexpected groupHeader: %s, expected: %s", groupHeader, exp.groupHeader)
+				t.Errorf("apiServerAuth returned unexpected groupHeader: %q, expected: %q", groupHeader, exp.groupHeader)
 			}
 		})
 	}

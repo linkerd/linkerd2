@@ -155,7 +155,7 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 				if len(stderr.String()) > 0 {
 					err = errors.New(stderr.String())
 				} else {
-					err = fmt.Errorf("invalid extension check output from \"%s\" (JSON object expected):\n%s\n[%s]", command, stdout.String(), err)
+					err = fmt.Errorf("invalid extension check output from \"%s\" (JSON object expected):\n%s\n[%w]", command, stdout.String(), err)
 				}
 				results.Results = append(results.Results, CheckResult{
 					Category:    CategoryID(extensionCmd),
