@@ -679,7 +679,7 @@ func joinErrors(errs []error, tabDepth int) error {
 }
 
 func serviceMirrorComponentsSelector(targetCluster string) string {
-	return fmt.Sprintf("%s=%s,%s=%s",
-		k8s.ControllerComponentLabel, linkerdServiceMirrorComponentName,
+	return fmt.Sprintf("component=%s,%s=%s",
+		linkerdServiceMirrorComponentName,
 		k8s.RemoteClusterNameLabel, targetCluster)
 }
