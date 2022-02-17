@@ -748,7 +748,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 						}
 						var warningNodes []string
 						for _, node := range nodes {
-							if node.Spec.PodCIDR != "" {
+							if node.Spec.PodCIDR == "" {
 								warningNodes = append(warningNodes, node.Name)
 							}
 						}
