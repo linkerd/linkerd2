@@ -5,8 +5,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"net/url"
 	"os"
-	"strings"
 
 	"github.com/grantae/certinfo"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
@@ -190,13 +190,12 @@ func getContainerCertificate(k8sAPI *k8s.KubernetesAPI, pod corev1.Pod, containe
 	return getCertResponse(certURL, pod)
 }
 
-func getCertResponse(url string, pod corev1.Pod) ([]*x509.Certificate, error) {
+func getCertResponse(url url.URL, pod corev1.Pod) ([]*x509.Certificate, error) {
 	serverName, err := k8s.PodIdentity(&pod)
 	if err != nil {
 		return nil, err
 	}
-	connURL := strings.Trim(url, "http://")
-	conn, err := tls.Dial("tcp", connURL, &tls.Config{
+	conn, err := tls.Dial("tcp", url.Host, &tls.Config{
 		// We want to connect directly to a proxy port to dump its certificate. We don't necessarily
 		// want to verify the server's certificate, since this is purely for diagnostics and may be
 		// used when a proxy's issuer doesn't match the control plane's trust root.

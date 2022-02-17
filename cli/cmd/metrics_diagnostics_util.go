@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"sort"
 	"sync/atomic"
@@ -36,8 +37,8 @@ func (s byResult) Less(i, j int) bool {
 }
 
 // getResponse makes a http Get request to the passed url and returns the response/error
-func getResponse(url string) ([]byte, error) {
-	resp, err := http.Get(url)
+func getResponse(u url.URL) ([]byte, error) {
+	resp, err := http.Get(u.String())
 	if err != nil {
 		return nil, err
 	}

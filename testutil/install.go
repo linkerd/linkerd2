@@ -42,8 +42,9 @@ func ExerciseTestAppEndpoint(endpoint, namespace string, h *TestHelper) error {
 	if err != nil {
 		return err
 	}
+	testAppURL.Path = endpoint
 	for i := 0; i < 30; i++ {
-		_, err := h.HTTPGetURL(testAppURL + endpoint)
+		_, err := h.HTTPGetURL(testAppURL.String())
 		if err != nil {
 			return err
 		}

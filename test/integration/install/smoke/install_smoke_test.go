@@ -99,7 +99,7 @@ func TestSmoke(t *testing.T) {
 				"failed to get URL: %s", err)
 		}
 
-		output, err := TestHelper.HTTPGetURL(url)
+		output, err := TestHelper.HTTPGetURL(url.String())
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "unexpected error",
 				"unexpected error: %v %s", err, output)

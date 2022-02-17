@@ -149,6 +149,7 @@ func busyTest(t *testing.T, output string) {
 		goldenFilePath = "testdata/tap_busy_output.golden"
 	}
 
+	//nolint:gosec
 	goldenFileBytes, err := ioutil.ReadFile(goldenFilePath)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)

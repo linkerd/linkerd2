@@ -136,25 +136,25 @@ func NewCmdDashboard() *cobra.Command {
 			webURL := portforward.URLFor("")
 			grafanaURL := portforward.URLFor("/grafana")
 
-			fmt.Printf("Linkerd dashboard available at:\n%s\n", webURL)
-			fmt.Printf("Grafana dashboard available at:\n%s\n", grafanaURL)
+			fmt.Printf("Linkerd dashboard available at:\n%s\n", webURL.String())
+			fmt.Printf("Grafana dashboard available at:\n%s\n", grafanaURL.String())
 
 			switch options.show {
 			case showLinkerd:
 				fmt.Println("Opening Linkerd dashboard in the default browser")
 
-				err = browser.OpenURL(webURL)
+				err = browser.OpenURL(webURL.String())
 				if err != nil {
 					fmt.Fprintln(os.Stderr, "Failed to open Linkerd dashboard automatically")
-					fmt.Fprintf(os.Stderr, "Visit %s in your browser to view the dashboard\n", webURL)
+					fmt.Fprintf(os.Stderr, "Visit %s in your browser to view the dashboard\n", webURL.String())
 				}
 			case showGrafana:
 				fmt.Println("Opening Grafana dashboard in the default browser")
 
-				err = browser.OpenURL(grafanaURL)
+				err = browser.OpenURL(grafanaURL.String())
 				if err != nil {
 					fmt.Fprintln(os.Stderr, "Failed to open Grafana dashboard automatically")
-					fmt.Fprintf(os.Stderr, "Visit %s in your browser to view the dashboard\n", grafanaURL)
+					fmt.Fprintf(os.Stderr, "Visit %s in your browser to view the dashboard\n", grafanaURL.String())
 				}
 			case showURL:
 				// no-op, we already printed the URLs

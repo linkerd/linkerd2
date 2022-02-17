@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"regexp"
@@ -301,22 +302,23 @@ func (h *KubernetesHelper) ParseNamespacedResource(resource string) (string, str
 // URLFor creates a kubernetes port-forward, runs it, and returns the URL that
 // tests can use for access to the given deployment. Note that the port-forward
 // remains running for the duration of the test.
-func (h *KubernetesHelper) URLFor(ctx context.Context, namespace, deployName string, remotePort int) (string, error) {
+func (h *KubernetesHelper) URLFor(ctx context.Context, namespace, deployName string, remotePort int) (*url.URL, error) {
 	k8sAPI, err := k8s.NewAPI("", h.k8sContext, "", []string{}, 0)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	pf, err := k8s.NewPortForward(ctx, k8sAPI, namespace, deployName, "localhost", 0, remotePort, false)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if err = pf.Init(); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return pf.URLFor(""), nil
+	url := pf.URLFor("")
+	return &url, nil
 }
 
 // WaitRollout blocks until all the given deployments have been completely

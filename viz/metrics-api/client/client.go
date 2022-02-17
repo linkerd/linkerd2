@@ -171,10 +171,7 @@ func NewExternalClient(ctx context.Context, namespace string, kubeAPI *k8s.Kuber
 		return nil, err
 	}
 
-	apiURL, err := url.Parse(portforward.URLFor(""))
-	if err != nil {
-		return nil, err
-	}
+	apiURL := portforward.URLFor("")
 
 	if err = portforward.Init(); err != nil {
 		return nil, err
@@ -185,5 +182,5 @@ func NewExternalClient(ctx context.Context, namespace string, kubeAPI *k8s.Kuber
 		return nil, err
 	}
 
-	return newClient(apiURL, httpClientToUse, namespace)
+	return newClient(&apiURL, httpClientToUse, namespace)
 }

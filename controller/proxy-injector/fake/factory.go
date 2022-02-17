@@ -77,7 +77,7 @@ func (f *Factory) Deployment(filename string) (*appsv1.Deployment, error) {
 // ii. the file content isn't a valid YAML structure that can be unmarshalled
 // into Container type
 func (f *Factory) Container(filename string) (*corev1.Container, error) {
-	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
+	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filepath.Clean(filename)))
 	if err != nil {
 		return nil, err
 	}

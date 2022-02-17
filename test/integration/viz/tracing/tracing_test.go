@@ -145,6 +145,7 @@ func TestTracing(t *testing.T) {
 				testutil.AnnotatedWarn(t, "Failed to get pods", err)
 			}
 			for _, pod := range pods {
+				pod := pod // pin
 				if !labels.IsTracingEnabled(&pod) {
 					testutil.AnnotatedWarn(t, "Tracing annotation not found on pod", pod.Namespace, pod.Name)
 				}
@@ -159,7 +160,9 @@ func TestTracing(t *testing.T) {
 					return err
 				}
 
-				tracesJSON, err := TestHelper.HTTPGetURL(url + "/jaeger/api/traces?lookback=1h&service=linkerd-proxy")
+				url.Path = "/jaeger/api/traces"
+				url.RawQuery = "lookback=1h&service=linkerd-proxy"
+				tracesJSON, err := TestHelper.HTTPGetURL(url.String())
 				if err != nil {
 					return err
 				}

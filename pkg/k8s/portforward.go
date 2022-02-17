@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -239,8 +240,13 @@ func (pf *PortForward) GetStop() <-chan struct{} {
 }
 
 // URLFor returns the URL for the port-forward connection.
-func (pf *PortForward) URLFor(path string) string {
-	return fmt.Sprintf("http://%s:%d%s", pf.host, pf.localPort, path)
+func (pf *PortForward) URLFor(path string) url.URL {
+	host := net.JoinHostPort(pf.host, strconv.Itoa(pf.localPort))
+	return url.URL{
+		Scheme: "http",
+		Host:   host,
+		Path:   path,
+	}
 }
 
 // AddressAndPort returns the address and port for the port-forward connection.

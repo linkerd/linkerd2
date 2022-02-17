@@ -450,6 +450,7 @@ func (h *TestHelper) PipeToHelmRun(stdin string, arg ...string) (string, string,
 // command's output while it is still executing.
 func (h *TestHelper) LinkerdRunStream(arg ...string) (*Stream, error) {
 	withParams := append([]string{"--linkerd-namespace", h.namespace, "--context=" + h.k8sContext}, arg...)
+	//nolint:gosec
 	cmd := exec.Command(h.linkerd, withParams...)
 
 	cmdReader, err := cmd.StdoutPipe()
@@ -475,8 +476,8 @@ func (h *TestHelper) LinkerdRunStream(arg ...string) (*Stream, error) {
 // --namespace flag, and returns a Stream that can be used to read the
 // command's output while it is still executing.
 func (h *TestHelper) KubectlStream(arg ...string) (*Stream, error) {
-
 	withContext := append([]string{"--namespace", h.namespace, "--context=" + h.k8sContext}, arg...)
+	//nolint:gosec
 	cmd := exec.Command("kubectl", withContext...)
 
 	cmdReader, err := cmd.StdoutPipe()

@@ -146,6 +146,7 @@ func generateAndStoreCSR(p, id string, key *ecdsa.PrivateKey) ([]byte, error) {
 }
 
 func runProxy() {
+	//nolint:gosec
 	err := syscall.Exec("/usr/lib/linkerd/linkerd2-proxy", []string{}, os.Environ())
 	if err != nil {
 		log.Fatalf("Failed to run proxy: %s", err)

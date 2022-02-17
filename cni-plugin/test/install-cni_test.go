@@ -90,11 +90,13 @@ func ls(dir string, t *testing.T) []string {
 }
 
 func cp(src, dest string, t *testing.T) {
+	//nolint:gosec
 	data, err := ioutil.ReadFile(src)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to read file %v", src),
 			"failed to read file %v: %v", src, err)
 	}
+	//nolint:gosec
 	if err = ioutil.WriteFile(dest, data, 0644); err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to write file %v", dest),
 			"failed to write file %v: %v", dest, err)
@@ -165,6 +167,7 @@ func startDocker(testNum int, wd string, testWorkRootDir string, tempCNINetDir s
 	}()
 
 	// Run the docker command and write errors to a temporary file.
+	//nolint:gosec
 	cmd := exec.Command("docker", args...)
 	cmd.Stderr = errFile
 

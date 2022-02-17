@@ -116,13 +116,13 @@ func newCmdDashboard() *cobra.Command {
 
 			webURL := portforward.URLFor("")
 
-			fmt.Printf("Jaeger extension dashboard available at:\n%s\n", webURL)
+			fmt.Printf("Jaeger extension dashboard available at:\n%s\n", webURL.String())
 
 			if !options.showURL {
-				err = browser.OpenURL(webURL)
+				err = browser.OpenURL(webURL.String())
 				if err != nil {
 					fmt.Fprintln(os.Stderr, "Failed to open dashboard automatically")
-					fmt.Fprintf(os.Stderr, "Visit %s in your browser to view the dashboard\n", webURL)
+					fmt.Fprintf(os.Stderr, "Visit %s in your browser to view the dashboard\n", webURL.String())
 				}
 			}
 
