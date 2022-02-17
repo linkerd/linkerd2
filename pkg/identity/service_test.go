@@ -28,7 +28,7 @@ func (fk *fakeValidator) Validate(context.Context, []byte) (string, error) {
 }
 
 func TestServiceNotReady(t *testing.T) {
-	//ch := make(chan tls.Issuer, 1)
+	// ch := make(chan tls.Issuer, 1)
 	svc := NewService(&fakeValidator{"successful-result", nil}, nil, nil, nil, "", "", "")
 	req := &pb.CertifyRequest{
 		Identity:                  "some-identity",

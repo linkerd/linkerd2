@@ -70,7 +70,7 @@ spec:
       containers:
       - image: buoyantio/booksapp:v0.0.2`
 
-//job/books
+// job/books
 var booksJobConfig = `kind: Job
 apiVersion: batch/v1
 metadata:

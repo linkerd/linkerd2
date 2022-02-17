@@ -226,10 +226,10 @@ func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *route
 	templateString := routeTemplate + "\t%s\t%.2f%%\t%.1frps\t"
 	if outputActual {
 		// actual success rate, actual rps
-		templateString = templateString + "%.2f%%\t%.1frps\t"
+		templateString += "%.2f%%\t%.1frps\t"
 	}
 	// p50, p95, p99
-	templateString = templateString + "%dms\t%dms\t%dms\t\n"
+	templateString += "%dms\t%dms\t%dms\t\n"
 
 	var emptyTemplateString string
 	if outputActual {

@@ -66,6 +66,7 @@ func Main(args []string) {
 
 	if *identityScheme == "" || *trustDomain == "" {
 		log.Infof("Identity disabled in control plane configuration.")
+		//nolint:gocritic
 		os.Exit(0)
 	}
 
@@ -79,11 +80,13 @@ func Main(args []string) {
 
 	dom, err := idctl.NewTrustDomain(*controllerNS, *trustDomain)
 	if err != nil {
+		//nolint:gocritic
 		log.Fatalf("Invalid trust domain: %s", err.Error())
 	}
 
 	trustAnchors, err := tls.DecodePEMCertPool(string(identityTrustAnchorPEM))
 	if err != nil {
+		//nolint:gocritic
 		log.Fatalf("Failed to read trust anchors: %s", err)
 	}
 
@@ -118,6 +121,7 @@ func Main(args []string) {
 	watcher := tls.NewFsCredsWatcher(*issuerPath, issuerEvent, issuerError)
 	go func() {
 		if err := watcher.StartWatching(ctx); err != nil {
+			//nolint:gocritic
 			log.Fatalf("Failed to start creds watcher: %s", err)
 		}
 	}()
@@ -158,6 +162,7 @@ func Main(args []string) {
 	//
 	svc := identity.NewService(v, trustAnchors, &validity, recordEventFunc, expectedName, issuerPathCrt, issuerPathKey)
 	if err = svc.Initialize(); err != nil {
+		//nolint:gocritic
 		log.Fatalf("Failed to initialize identity service: %s", err)
 	}
 	go func() {
@@ -176,6 +181,7 @@ func Main(args []string) {
 
 	lis, err := net.Listen("tcp", *addr)
 	if err != nil {
+		//nolint:gocritic
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 

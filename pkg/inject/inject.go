@@ -1101,7 +1101,7 @@ func sortedKeys(m map[string]string) []string {
 	return keys
 }
 
-//IsNamespace checks if a given config is a workload of Kind namespace
+// IsNamespace checks if a given config is a workload of Kind namespace
 func (conf *ResourceConfig) IsNamespace() bool {
 	return strings.ToLower(conf.workload.metaType.Kind) == k8s.Namespace
 }
@@ -1158,10 +1158,10 @@ func (conf *ResourceConfig) AnnotateService(annotations map[string]string) ([]by
 	return yaml.JSONToYAML(j)
 }
 
-//getFilteredJSON method performs JSON marshaling such that zero values of
-//empty structs are respected by `omitempty` tags. We make use of a drop-in
-//replacement of the standard json/encoding library, without which empty struct values
-//present in workload objects would make it into the marshaled JSON.
+// getFilteredJSON method performs JSON marshaling such that zero values of
+// empty structs are respected by `omitempty` tags. We make use of a drop-in
+// replacement of the standard json/encoding library, without which empty struct values
+// present in workload objects would make it into the marshaled JSON.
 func getFilteredJSON(conf runtime.Object) ([]byte, error) {
 	return jsonfilter.Marshal(&conf)
 }
