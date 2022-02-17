@@ -159,14 +159,6 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 				values.EnableEndpointSlices = value
 				return nil
 			}),
-
-		flag.NewStringFlag(installUpgradeFlags, "control-plane-version", defaults.ControllerImageVersion,
-			"Tag to be used for the control plane component images",
-			func(values *l5dcharts.Values, value string) error {
-				values.ControllerImageVersion = value
-				values.PolicyController.Image.Version = value
-				return nil
-			}),
 	}
 
 	// Hide developer focused flags in release builds.
@@ -500,8 +492,8 @@ func makeInjectFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 /* Validation */
 
 func validateValues(ctx context.Context, k *k8s.KubernetesAPI, values *l5dcharts.Values) error {
-	if !alphaNumDashDot.MatchString(values.ControllerImageVersion) {
-		return fmt.Errorf("%s is not a valid version", values.ControllerImageVersion)
+	if !alphaNumDashDot.MatchString(values.LinkerdVersion) {
+		return fmt.Errorf("%s is not a valid version", values.LinkerdVersion)
 	}
 
 	if _, err := log.ParseLevel(values.ControllerLogLevel); err != nil {
