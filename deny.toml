@@ -39,16 +39,14 @@ multiple-versions = "deny"
 wildcards = "allow"
 highlight = "all"
 deny = []
-skip-tree = [
-    # Waiting on seanmonstar/warp#927
-    { name = "tokio-rustls" },
-    # Waiting on a release that updates itoa to v1.
-    { name = "http" },
-]
 skip = [
     # Waiting on a prost-build release that includes
     # https://github.com/tokio-rs/prost/pull/583
     { name = "heck", version = "0.3" },
+    # Waiting on kube, h2, tonic, etc
+    { name = "parking_lot", version = "0.11" },
+    { name = "parking_lot_core", version = "0.8" },
+    { name = "tokio-util", version = "0.6" },
 ]
 
 [sources]
