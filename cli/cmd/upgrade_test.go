@@ -39,6 +39,12 @@ type (
 		keyFile string
 		key     string
 	}
+
+	flagOptions struct {
+		flags           []flag.Flag
+		flagSet         *pflag.FlagSet
+		templateOptions *valuespkg.Options
+	}
 )
 
 /* Test cases */
@@ -50,9 +56,8 @@ type (
    others there are certain expected differences */
 
 func TestUpgradeDefault(t *testing.T) {
-	templateOpts := &valuespkg.Options{}
-	installOpts, upgradeOpts, _ := testOptions(t, templateOpts)
-	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts, *templateOpts)
+	installOpts, upgradeOpts := testOptions(t)
+	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts.flags, *upgradeOpts.templateOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,10 +76,9 @@ func TestUpgradeDefault(t *testing.T) {
 }
 
 func TestUpgradeHA(t *testing.T) {
-	templateOpts := &valuespkg.Options{}
-	installOpts, upgradeOpts, _ := testOptions(t, templateOpts)
+	installOpts, upgradeOpts := testOptions(t)
 	installOpts.HighAvailability = true
-	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts, *templateOpts)
+	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts.flags, *upgradeOpts.templateOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,8 +102,7 @@ func TestUpgradeExternalIssuer(t *testing.T) {
 		t.Fatalf("failed to create install options: %s", err)
 	}
 
-	templateOpts := &valuespkg.Options{}
-	upgradeOpts, _, err := testUpgradeOptions(templateOpts)
+	upgradeOpts, err := testUpgradeOptions()
 	if err != nil {
 		t.Fatalf("failed to create upgrade options: %s", err)
 	}
@@ -114,7 +117,7 @@ func TestUpgradeExternalIssuer(t *testing.T) {
 	}
 	installOpts.IdentityTrustAnchorsPEM = string(ca)
 	install := renderInstall(t, installOpts)
-	upgrade, err := renderUpgrade(install.String()+externalIssuerSecret(issuer), upgradeOpts, *templateOpts)
+	upgrade, err := renderUpgrade(install.String()+externalIssuerSecret(issuer), upgradeOpts.flags, *upgradeOpts.templateOptions)
 
 	if err != nil {
 		t.Fatal(err)
@@ -134,8 +137,7 @@ func TestUpgradeExternalIssuer(t *testing.T) {
 }
 
 func TestUpgradeIssuerWithExternalIssuerFails(t *testing.T) {
-	templateOpts := &valuespkg.Options{}
-	installOpts, upgradeOpts, flagSet := testOptions(t, templateOpts)
+	installOpts, upgradeOpts := testOptions(t)
 
 	issuer := generateIssuerCerts(t, true)
 	defer issuer.cleanup()
@@ -150,11 +152,11 @@ func TestUpgradeIssuerWithExternalIssuerFails(t *testing.T) {
 	upgradedIssuer := generateIssuerCerts(t, true)
 	defer upgradedIssuer.cleanup()
 
-	flagSet.Set("identity-trust-anchors-file", upgradedIssuer.caFile)
-	flagSet.Set("identity-issuer-certificate-file", upgradedIssuer.crtFile)
-	flagSet.Set("identity-issuer-key-file", upgradedIssuer.keyFile)
+	upgradeOpts.flagSet.Set("identity-trust-anchors-file", upgradedIssuer.caFile)
+	upgradeOpts.flagSet.Set("identity-issuer-certificate-file", upgradedIssuer.crtFile)
+	upgradeOpts.flagSet.Set("identity-issuer-key-file", upgradedIssuer.keyFile)
 
-	_, err := renderUpgrade(install.String()+externalIssuerSecret(issuer), upgradeOpts, *templateOpts)
+	_, err := renderUpgrade(install.String()+externalIssuerSecret(issuer), upgradeOpts.flags, *upgradeOpts.templateOptions)
 
 	expectedErr := "cannot update issuer certificates if you are using external cert management solution"
 
@@ -164,17 +166,16 @@ func TestUpgradeIssuerWithExternalIssuerFails(t *testing.T) {
 }
 
 func TestUpgradeOverwriteIssuer(t *testing.T) {
-	templateOpts := &valuespkg.Options{}
-	installOpts, upgradeOpts, flagSet := testOptions(t, templateOpts)
+	installOpts, upgradeOpts := testOptions(t)
 
 	issuerCerts := generateIssuerCerts(t, true)
 	defer issuerCerts.cleanup()
 
-	flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
-	flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
-	flagSet.Set("identity-issuer-key-file", issuerCerts.keyFile)
+	upgradeOpts.flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
+	upgradeOpts.flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
+	upgradeOpts.flagSet.Set("identity-issuer-key-file", issuerCerts.keyFile)
 
-	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts, *templateOpts)
+	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts.flags, *upgradeOpts.templateOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -239,16 +240,15 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 }
 
 func TestUpgradeFailsWithOnlyIssuerCert(t *testing.T) {
-	templateOpts := &valuespkg.Options{}
-	installOpts, upgradeOpts, flagSet := testOptions(t, templateOpts)
+	installOpts, upgradeOpts := testOptions(t)
 
 	issuerCerts := generateIssuerCerts(t, true)
 	defer issuerCerts.cleanup()
 
-	flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
-	flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
+	upgradeOpts.flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
+	upgradeOpts.flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
 
-	_, _, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts, *templateOpts)
+	_, _, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts.flags, *upgradeOpts.templateOptions)
 
 	expectedErr := "failed to validate issuer credentials: failed to read CA: tls: Public and private key do not match"
 
@@ -258,16 +258,15 @@ func TestUpgradeFailsWithOnlyIssuerCert(t *testing.T) {
 }
 
 func TestUpgradeFailsWithOnlyIssuerKey(t *testing.T) {
-	templateOpts := &valuespkg.Options{}
-	installOpts, upgradeOpts, flagSet := testOptions(t, templateOpts)
+	installOpts, upgradeOpts := testOptions(t)
 
 	issuerCerts := generateIssuerCerts(t, false)
 	defer issuerCerts.cleanup()
 
-	flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
-	flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
+	upgradeOpts.flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
+	upgradeOpts.flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
 
-	_, _, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts, *templateOpts)
+	_, _, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts.flags, *upgradeOpts.templateOptions)
 
 	expectedErr := "failed to validate issuer credentials: failed to read CA: tls: Public and private key do not match"
 
@@ -277,8 +276,7 @@ func TestUpgradeFailsWithOnlyIssuerKey(t *testing.T) {
 }
 
 func TestUpgradeRootFailsWithOldPods(t *testing.T) {
-	templateOpts := &valuespkg.Options{}
-	installOpts, upgradeOpts, flagSet := testOptions(t, templateOpts)
+	installOpts, upgradeOpts := testOptions(t)
 
 	oldIssuer := generateIssuerCerts(t, false)
 	defer oldIssuer.cleanup()
@@ -288,11 +286,11 @@ func TestUpgradeRootFailsWithOldPods(t *testing.T) {
 	issuerCerts := generateIssuerCerts(t, true)
 	defer issuerCerts.cleanup()
 
-	flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
-	flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
-	flagSet.Set("identity-issuer-key-file", issuerCerts.keyFile)
+	upgradeOpts.flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
+	upgradeOpts.flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
+	upgradeOpts.flagSet.Set("identity-issuer-key-file", issuerCerts.keyFile)
 
-	_, err := renderUpgrade(install.String()+podWithSidecar(oldIssuer), upgradeOpts, *templateOpts)
+	_, err := renderUpgrade(install.String()+podWithSidecar(oldIssuer), upgradeOpts.flags, *upgradeOpts.templateOptions)
 
 	expectedErr := "You are attempting to use an issuer certificate which does not validate against the trust anchors of the following pods"
 	if err == nil || !strings.HasPrefix(err.Error(), expectedErr) {
@@ -302,8 +300,7 @@ func TestUpgradeRootFailsWithOldPods(t *testing.T) {
 
 // this test constructs a set of secrets resources
 func TestUpgradeWebhookCrtsNameChange(t *testing.T) {
-	templateOpts := &valuespkg.Options{}
-	installOpts, upgradeOpts, _ := testOptions(t, templateOpts)
+	installOpts, upgradeOpts := testOptions(t)
 
 	injectorCerts := generateCerts(t, "linkerd-proxy-injector.linkerd.svc", false)
 	defer injectorCerts.cleanup()
@@ -325,7 +322,7 @@ func TestUpgradeWebhookCrtsNameChange(t *testing.T) {
 	// switch back to old tls secret names.
 	install := replaceK8sSecrets(expected)
 
-	upgrade, err := renderUpgrade(install, upgradeOpts, *templateOpts)
+	upgrade, err := renderUpgrade(install, upgradeOpts.flags, *upgradeOpts.templateOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -353,8 +350,7 @@ func replaceK8sSecrets(input string) string {
 }
 
 func TestUpgradeTwoLevelWebhookCrts(t *testing.T) {
-	templateOpts := &valuespkg.Options{}
-	installOpts, upgradeOpts, _ := testOptions(t, templateOpts)
+	installOpts, upgradeOpts := testOptions(t)
 
 	// This tests the case where the webhook certs are not self-signed.
 	injectorCerts := generateCerts(t, "linkerd-proxy-injector.linkerd.svc", false)
@@ -372,7 +368,7 @@ func TestUpgradeTwoLevelWebhookCrts(t *testing.T) {
 	}
 
 	install := renderInstall(t, installOpts)
-	upgrade, err := renderUpgrade(install.String(), upgradeOpts, *templateOpts)
+	upgrade, err := renderUpgrade(install.String(), upgradeOpts.flags, *upgradeOpts.templateOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,16 +387,16 @@ func TestUpgradeTwoLevelWebhookCrts(t *testing.T) {
 
 /* Helpers */
 
-func testUpgradeOptions(templateOpts *valuespkg.Options) ([]flag.Flag, *pflag.FlagSet, error) {
+func testUpgradeOptions() (flagOptions, error) {
 	defaults, err := charts.NewValues()
 	if err != nil {
-		return nil, nil, err
+		return flagOptions{}, err
 	}
 
 	allStageFlags, allStageFlagSet := makeAllStageFlags(defaults)
 	installUpgradeFlags, installUpgradeFlagSet, err := makeInstallUpgradeFlags(defaults)
 	if err != nil {
-		return nil, nil, err
+		return flagOptions{}, err
 	}
 	proxyFlags, proxyFlagSet := makeProxyFlags(defaults)
 	upgradeFlagSet := makeUpgradeFlags()
@@ -413,25 +409,26 @@ func testUpgradeOptions(templateOpts *valuespkg.Options) ([]flag.Flag, *pflag.Fl
 	flagSet.AddFlagSet(upgradeFlagSet)
 
 	// Explicitly set policy controller override to upgrade control plane version
+	templateOpts := &valuespkg.Options{}
 	flagspkg.AddValueOptionsFlags(flagSet, templateOpts)
 	flagSet.Set("set", fmt.Sprintf("policyController.image.version=%[1]s,linkerdVersion=%[1]s", upgradeControlPlaneVersion))
 
 	flagSet.Set("proxy-version", upgradeProxyVersion)
 
-	return flags, flagSet, nil
+	return flagOptions{flags, flagSet, templateOpts}, nil
 }
 
-func testOptions(t *testing.T, templateOpts *valuespkg.Options) (*charts.Values, []flag.Flag, *pflag.FlagSet) {
+func testOptions(t *testing.T) (*charts.Values, flagOptions) {
 	installValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("failed to create install options: %s", err)
 	}
-	upgradeFlags, upgradeFlagSet, err := testUpgradeOptions(templateOpts)
+	flagOpts, err := testUpgradeOptions()
 	if err != nil {
 		t.Fatalf("failed to create upgrade options: %s", err)
 	}
 
-	return installValues, upgradeFlags, upgradeFlagSet
+	return installValues, flagOpts
 }
 
 func replaceVersions(manifest string) string {
