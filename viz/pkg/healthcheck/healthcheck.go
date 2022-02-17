@@ -213,7 +213,7 @@ func (hc *HealthChecker) VizCategory() *healthcheck.Category {
 			Warning().
 			WithCheck(func(ctx context.Context) error {
 				if hc.externalPrometheusURL != "" {
-					return &healthcheck.SkipError{Reason: "prometheus is disabled"}
+					return healthcheck.SkipError{Reason: "prometheus is disabled"}
 				}
 
 				// Check for ClusterRoles

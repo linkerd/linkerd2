@@ -14,6 +14,9 @@
         "vadimcn.vscode-lldb",
         "zxh404.vscode-proto3"
     ],
+    "settings": {
+        "go.lintTool": "golangci-lint"
+    },
     "runArgs": [
         "--init",
         // Use the host network so we can access k3d, etc.

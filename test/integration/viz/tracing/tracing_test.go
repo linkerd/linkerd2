@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/linkerd/linkerd2/jaeger/pkg/labels"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
@@ -49,11 +51,6 @@ func TestMain(m *testing.M) {
 func TestTracing(t *testing.T) {
 	ctx := context.Background()
 
-	// Require an environment variable to be set for this test to be run.
-	if os.Getenv("RUN_FLAKEY_TEST") == "" {
-		t.Skip("Skipping due to flakiness. See linkerd/linkerd2#7538")
-	}
-
 	// linkerd-jaeger extension
 	tracingNs := "linkerd-jaeger"
 	out, err := TestHelper.LinkerdRun("jaeger", "install")
@@ -74,7 +71,7 @@ func TestTracing(t *testing.T) {
 	err = TestHelper.RetryFor(timeout, func() error {
 		out, err := TestHelper.LinkerdRun(checkCmd...)
 		if err != nil {
-			return fmt.Errorf("'linkerd jaeger check' command failed\n%s\n%s", err, out)
+			return fmt.Errorf("'linkerd jaeger check' command failed\n%w\n%s", err, out)
 		}
 
 		pods, err := TestHelper.KubernetesHelper.GetPods(context.Background(), tracingNs, nil)
@@ -137,10 +134,24 @@ func TestTracing(t *testing.T) {
 			{ns: tracingNs, name: "jaeger"},
 		} {
 			if err := TestHelper.CheckPods(ctx, deploy.ns, deploy.name, 1); err != nil {
+				//nolint:errorlint
 				if rce, ok := err.(*testutil.RestartCountError); ok {
 					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 				} else {
 					testutil.AnnotatedError(t, "CheckPods timed-out", err)
+				}
+			}
+
+			pods, err := TestHelper.GetPodsForDeployment(ctx, deploy.ns, deploy.name)
+			if err != nil {
+				testutil.AnnotatedWarn(t, "Failed to get pods", err)
+			}
+			for _, pod := range pods {
+				if !labels.IsTracingEnabled(&pod) {
+					testutil.AnnotatedWarn(t, "Tracing annotation not found on pod", pod.Namespace, pod.Name)
+					// XXX This test is super duper flakey, so for now we ignore failures when the
+					// annotation is missing See https://github.com/linkerd/linkerd2/issues/7538
+					t.SkipNow()
 				}
 			}
 		}
@@ -165,11 +176,18 @@ func TestTracing(t *testing.T) {
 				}
 
 				if !hasTraceWithProcess(&traces, "linkerd-proxy") {
-					return fmt.Errorf("No trace found with processes: linkerd-proxy")
+					return noProxyTraceFound{}
 				}
 				return nil
 			})
 			if err != nil {
+				// XXX This test is super duper flakey, so for now we ignore failures when proxy
+				// traces are missing. See https://github.com/linkerd/linkerd2/issues/7538
+				var npte noProxyTraceFound
+				if errors.As(err, &npte) {
+					testutil.AnnotatedWarn(t, fmt.Sprintf("timed-out checking trace (%s)", timeout), err)
+					t.SkipNow()
+				}
 				testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out checking trace (%s)", timeout), err)
 			}
 		})
@@ -185,4 +203,10 @@ func hasTraceWithProcess(traces *traces, ps string) bool {
 		}
 	}
 	return false
+}
+
+type noProxyTraceFound struct{}
+
+func (e noProxyTraceFound) Error() string {
+	return "no trace found with processes: linkerd-proxy"
 }

@@ -59,6 +59,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: status.podIPs
+    - name: LINKERD2_PROXY_INBOUND_PORTS
     - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
       value: svc.cluster.local.
     - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -155,7 +156,7 @@ spec:
     - 4190,4191,22,8100-8102
     - --outbound-ports-to-ignore
     - "5432"
-    image: cr.l5d.io/linkerd/proxy-init:v1.5.2
+    image: cr.l5d.io/linkerd/proxy-init:v1.5.3
     imagePullPolicy: IfNotPresent
     name: linkerd-init
     resources:

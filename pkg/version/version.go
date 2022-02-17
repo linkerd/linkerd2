@@ -16,7 +16,7 @@ var Version = undefinedVersion
 // https://github.com/linkerd/linkerd2-proxy-init
 // This has to be kept in sync with the constraint version for
 // github.com/linkerd/linkerd2-proxy-init in /go.mod
-var ProxyInitVersion = "v1.5.2"
+var ProxyInitVersion = "v1.5.3"
 
 const (
 	// undefinedVersion should take the form `channel-version` to conform to
@@ -51,11 +51,11 @@ func match(expectedVersion, actualVersion string) error {
 
 	actual, err := parseChannelVersion(actualVersion)
 	if err != nil {
-		return fmt.Errorf("failed to parse actual version: %s", err)
+		return fmt.Errorf("failed to parse actual version: %w", err)
 	}
 	expected, err := parseChannelVersion(expectedVersion)
 	if err != nil {
-		return fmt.Errorf("failed to parse expected version: %s", err)
+		return fmt.Errorf("failed to parse expected version: %w", err)
 	}
 
 	if actual.channel != expected.channel {

@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -87,7 +88,7 @@ func NewServer(
 
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
-		return nil, fmt.Errorf("net.Listen failed with: %s", err)
+		return nil, fmt.Errorf("net.Listen failed with: %w", err)
 	}
 
 	s := &Server{
@@ -102,7 +103,7 @@ func NewServer(
 	httpServer.TLSConfig.GetCertificate = s.getCertificate
 
 	if err := watcher.UpdateCert(s.certValue); err != nil {
-		return nil, fmt.Errorf("Failed to initialized certificate: %s", err)
+		return nil, fmt.Errorf("failed to initialized certificate: %w", err)
 	}
 
 	go watcher.ProcessEvents(log, s.certValue, updateEvent, errEvent)
@@ -114,7 +115,7 @@ func NewServer(
 func (a *Server) Start(ctx context.Context) {
 	a.log.Infof("starting tap API server on %s", a.Server.Addr)
 	if err := a.ServeTLS(a.listener, "", ""); err != nil {
-		if err == http.ErrServerClosed {
+		if errors.Is(err, http.ErrServerClosed) {
 			return
 		}
 		a.log.Fatal(err)
@@ -167,13 +168,11 @@ func serverAuth(ctx context.Context, k8sAPI *k8s.API) (string, []string, string,
 	cm, err := k8sAPI.Client.CoreV1().
 		ConfigMaps(metav1.NamespaceSystem).
 		Get(ctx, pkgk8s.ExtensionAPIServerAuthenticationConfigMapName, metav1.GetOptions{})
-
 	if err != nil {
-		return "", nil, "", "", fmt.Errorf("failed to load [%s] config: %s", pkgk8s.ExtensionAPIServerAuthenticationConfigMapName, err)
+		return "", nil, "", "", fmt.Errorf("failed to load [%s] config: %w", pkgk8s.ExtensionAPIServerAuthenticationConfigMapName, err)
 	}
 
 	clientCAPem, ok := cm.Data[pkgk8s.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey]
-
 	if !ok {
 		return "", nil, "", "", fmt.Errorf("no client CA cert available for apiextension-server")
 	}

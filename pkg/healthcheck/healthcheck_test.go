@@ -142,7 +142,7 @@ func TestHealthChecker(t *testing.T) {
 			{
 				description: "skip",
 				check: func(context.Context) error {
-					return &SkipError{Reason: "needs skipping"}
+					return SkipError{Reason: "needs skipping"}
 				},
 				retryDeadline: time.Time{},
 			},
@@ -156,7 +156,7 @@ func TestHealthChecker(t *testing.T) {
 			{
 				description: "skipRpc",
 				check: func(context.Context) error {
-					return &SkipError{Reason: "needs skipping"}
+					return SkipError{Reason: "needs skipping"}
 				},
 				retryDeadline: time.Time{},
 			},
@@ -2197,7 +2197,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.5.2","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.5.3","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
   values: |
@@ -2215,7 +2215,6 @@ data:
     clusterNetworks: ClusterNetworks
     cniEnabled: false
     controlPlaneTracing: false
-    controllerImageVersion: ControllerImageVersion
     controllerLogLevel: ControllerLogLevel
     enableEndpointSlices: false
     highAvailability: false
@@ -2285,20 +2284,19 @@ data:
 `,
 			},
 			&linkerd2.Values{
-				ControllerImage:        "ControllerImage",
-				ControllerUID:          2103,
-				EnableH2Upgrade:        true,
-				WebhookFailurePolicy:   "WebhookFailurePolicy",
-				NodeSelector:           defaultValues.NodeSelector,
-				Tolerations:            defaultValues.Tolerations,
-				ClusterDomain:          "cluster.local",
-				ClusterNetworks:        "ClusterNetworks",
-				ImagePullPolicy:        "ImagePullPolicy",
-				CliVersion:             "CliVersion",
-				ControllerLogLevel:     "ControllerLogLevel",
-				ControllerImageVersion: "ControllerImageVersion",
-				ProxyContainerName:     "ProxyContainerName",
-				CNIEnabled:             false,
+				ControllerImage:      "ControllerImage",
+				ControllerUID:        2103,
+				EnableH2Upgrade:      true,
+				WebhookFailurePolicy: "WebhookFailurePolicy",
+				NodeSelector:         defaultValues.NodeSelector,
+				Tolerations:          defaultValues.Tolerations,
+				ClusterDomain:        "cluster.local",
+				ClusterNetworks:      "ClusterNetworks",
+				ImagePullPolicy:      "ImagePullPolicy",
+				CliVersion:           "CliVersion",
+				ControllerLogLevel:   "ControllerLogLevel",
+				ProxyContainerName:   "ProxyContainerName",
+				CNIEnabled:           false,
 				Proxy: &linkerd2.Proxy{
 					Image: &linkerd2.Image{
 						Name:       "ProxyImageName",
@@ -2351,7 +2349,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.5.2","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.5.3","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
   values: |
@@ -2370,7 +2368,6 @@ data:
       clusterNetworks: ClusterNetworks
       cniEnabled: false
       controlPlaneTracing: false
-      controllerImageVersion: ControllerImageVersion
       controllerLogLevel: ControllerLogLevel
       enableEndpointSlices: false
       highAvailability: false
@@ -2440,20 +2437,19 @@ data:
 `,
 			},
 			&linkerd2.Values{
-				ControllerImage:        "ControllerImage",
-				ControllerUID:          2103,
-				EnableH2Upgrade:        true,
-				WebhookFailurePolicy:   "WebhookFailurePolicy",
-				NodeSelector:           defaultValues.NodeSelector,
-				Tolerations:            defaultValues.Tolerations,
-				ClusterDomain:          "cluster.local",
-				ClusterNetworks:        "ClusterNetworks",
-				ImagePullPolicy:        "ImagePullPolicy",
-				CliVersion:             "CliVersion",
-				ControllerLogLevel:     "ControllerLogLevel",
-				ControllerImageVersion: "ControllerImageVersion",
-				ProxyContainerName:     "ProxyContainerName",
-				CNIEnabled:             false,
+				ControllerImage:      "ControllerImage",
+				ControllerUID:        2103,
+				EnableH2Upgrade:      true,
+				WebhookFailurePolicy: "WebhookFailurePolicy",
+				NodeSelector:         defaultValues.NodeSelector,
+				Tolerations:          defaultValues.Tolerations,
+				ClusterDomain:        "cluster.local",
+				ClusterNetworks:      "ClusterNetworks",
+				ImagePullPolicy:      "ImagePullPolicy",
+				CliVersion:           "CliVersion",
+				ControllerLogLevel:   "ControllerLogLevel",
+				ProxyContainerName:   "ProxyContainerName",
+				CNIEnabled:           false,
 				Proxy: &linkerd2.Proxy{
 					Image: &linkerd2.Image{
 						Name:       "ProxyImageName",

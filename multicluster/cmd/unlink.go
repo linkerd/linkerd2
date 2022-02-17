@@ -21,7 +21,7 @@ import (
 func newUnlinkCommand() *cobra.Command {
 	opts, err := newLinkOptionsWithDefault()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 

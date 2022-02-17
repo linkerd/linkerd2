@@ -421,7 +421,7 @@ type: kubernetes.io/tls`, base64.StdEncoding.EncodeToString([]byte(root)), base6
 func (h *TestHelper) LinkerdRun(arg ...string) (string, error) {
 	out, stderr, err := h.PipeToLinkerdRun("", arg...)
 	if err != nil {
-		return out, fmt.Errorf("command failed: linkerd %s\n%s\n%s", strings.Join(arg, " "), err, stderr)
+		return out, fmt.Errorf("command failed: linkerd %s\n%w\n%s", strings.Join(arg, " "), err, stderr)
 	}
 	return out, nil
 }
@@ -634,12 +634,12 @@ func (h *TestHelper) HTTPGetURL(url string) (string, error) {
 		defer resp.Body.Close()
 		bytes, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return fmt.Errorf("Error reading response body: %v", err)
+			return fmt.Errorf("Error reading response body: %w", err)
 		}
 		body = string(bytes)
 
 		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("GET request to [%s] returned status [%d]\n%s", url, resp.StatusCode, body)
+			return fmt.Errorf("GET request to %s returned status code %d with body %q", url, resp.StatusCode, body)
 		}
 
 		return nil
@@ -714,19 +714,18 @@ type RowStat struct {
 
 // CheckRowCount checks that expectedRowCount rows have been returned
 func CheckRowCount(out string, expectedRowCount int) ([]string, error) {
-	out = strings.TrimSuffix(out, "\n")
-	rows := strings.Split(out, "\n")
+	rows := strings.Split(strings.TrimSuffix(out, "\n"), "\n")
 	if len(rows) < 2 {
 		return nil, fmt.Errorf(
-			"Error stripping header and trailing newline; full output:\n%s",
-			strings.Join(rows, "\n"),
+			"Expected at least 2 lines in %q",
+			out,
 		)
 	}
 	rows = rows[1:] // strip header
 	if len(rows) != expectedRowCount {
 		return nil, fmt.Errorf(
-			"Expected [%d] rows in stat output, got [%d]; full output:\n%s",
-			expectedRowCount, len(rows), strings.Join(rows, "\n"))
+			"Expected %d rows in stat output but got %d in %q",
+			expectedRowCount, len(rows), out)
 	}
 
 	return rows, nil
@@ -748,7 +747,7 @@ func ParseRows(out string, expectedRowCount, expectedColumnCount int) (map[strin
 		}
 		if len(fields) != expectedColumnCount {
 			return nil, fmt.Errorf(
-				"Expected [%d] columns in stat output, got [%d]; full output:\n%s",
+				"Expected %d columns in stat output but got %d in %q",
 				expectedColumnCount, len(fields), row)
 		}
 
@@ -780,7 +779,7 @@ func ParseRows(out string, expectedRowCount, expectedColumnCount int) (map[strin
 func ParseEvents(out string) ([]*corev1.Event, error) {
 	var list corev1.List
 	if err := json.Unmarshal([]byte(out), &list); err != nil {
-		return nil, fmt.Errorf("error unmarshaling list from `kubectl get events`: %s", err)
+		return nil, fmt.Errorf("error unmarshaling list from `kubectl get events`: %w", err)
 	}
 
 	if len(list.Items) == 0 {
@@ -791,7 +790,7 @@ func ParseEvents(out string) ([]*corev1.Event, error) {
 	for _, i := range list.Items {
 		var e corev1.Event
 		if err := json.Unmarshal(i.Raw, &e); err != nil {
-			return nil, fmt.Errorf("error unmarshaling list event from `kubectl get events`: %s", err)
+			return nil, fmt.Errorf("error unmarshaling list event from `kubectl get events`: %w", err)
 		}
 		events = append(events, &e)
 	}
