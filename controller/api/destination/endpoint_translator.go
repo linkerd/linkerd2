@@ -421,7 +421,7 @@ func getInboundPort(podSpec *corev1.PodSpec) (uint32, error) {
 			addr := strings.Split(envVar.Value, ":")
 			port, err := strconv.ParseUint(addr[1], 10, 32)
 			if err != nil {
-				return 0, fmt.Errorf("failed to parse inbound port for proxy container: %s", err)
+				return 0, fmt.Errorf("failed to parse inbound port for proxy container: %w", err)
 			}
 			return uint32(port), nil
 		}

@@ -71,7 +71,7 @@ This command will only display traffic which is sent to a service that has a Ser
 			}
 			req, err := buildTopRoutesRequest(args[0], options)
 			if err != nil {
-				return fmt.Errorf("error creating metrics request while making routes request: %v", err)
+				return fmt.Errorf("error creating metrics request while making routes request: %w", err)
 			}
 
 			output, err := requestRouteStatsFromAPI(
@@ -113,7 +113,7 @@ This command will only display traffic which is sent to a service that has a Ser
 func requestRouteStatsFromAPI(client pb.ApiClient, req *pb.TopRoutesRequest, options *routesOptions) (string, error) {
 	resp, err := client.TopRoutes(context.Background(), req)
 	if err != nil {
-		return "", fmt.Errorf("TopRoutes API error: %v", err)
+		return "", fmt.Errorf("TopRoutes API error: %w", err)
 	}
 	if e := resp.GetError(); e != nil {
 		return "", errors.New(e.Error)

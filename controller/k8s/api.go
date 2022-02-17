@@ -101,7 +101,7 @@ type API struct {
 func InitializeAPI(ctx context.Context, kubeConfig string, ensureClusterWideAccess bool, resources ...APIResource) (*API, error) {
 	config, err := k8s.GetConfig(kubeConfig, "")
 	if err != nil {
-		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
+		return nil, fmt.Errorf("error configuring Kubernetes API client: %w", err)
 	}
 
 	dynamicClient, err := dynamic.NewForConfig(config)

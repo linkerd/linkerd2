@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -323,11 +324,11 @@ func (s *GRPCTapServer) tapProxy(ctx context.Context, maxRps float32, match *pro
 		}
 		for { // Stream loop
 			event, err := rsp.Recv()
-			if err == io.EOF {
-				log.Debugf("[%s] proxy terminated the stream", addr)
-				break
-			}
 			if err != nil {
+				if errors.Is(err, io.EOF) {
+					log.Debugf("[%s] proxy terminated the stream", addr)
+					break
+				}
 				log.Errorf("[%s] encountered an error: %s", addr, err)
 				return
 			}
@@ -678,7 +679,7 @@ func getLabelSelector(req *tapPb.TapByResourceRequest) (labels.Selector, error) 
 		var err error
 		labelSelector, err = labels.Parse(s)
 		if err != nil {
-			return nil, fmt.Errorf("invalid label selector \"%s\": %s", s, err)
+			return nil, fmt.Errorf("invalid label selector \"%s\": %w", s, err)
 		}
 	}
 	return labelSelector, nil

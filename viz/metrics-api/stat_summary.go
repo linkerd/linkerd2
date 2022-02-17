@@ -900,7 +900,7 @@ func getLabelSelector(req *pb.StatSummaryRequest) (labels.Selector, error) {
 		var err error
 		labelSelector, err = labels.Parse(s)
 		if err != nil {
-			return nil, fmt.Errorf("invalid label selector \"%s\": %s", s, err)
+			return nil, fmt.Errorf("invalid label selector %q: %w", s, err)
 		}
 	}
 	return labelSelector, nil

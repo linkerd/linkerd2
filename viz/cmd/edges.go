@@ -122,7 +122,7 @@ func NewCmdEdges() *cobra.Command {
 
 			reqs, err := buildEdgesRequests(args, options)
 			if err != nil {
-				return fmt.Errorf("Error creating edges request: %s", err)
+				return fmt.Errorf("Error creating edges request: %w", err)
 			}
 
 			// The gRPC client is concurrency-safe, so we can reuse it in all the following goroutines
@@ -235,10 +235,10 @@ func edgesRespToRows(resp *pb.EdgesResponse) []*pb.Edge {
 func requestEdgesFromAPI(client pb.ApiClient, req *pb.EdgesRequest) (*pb.EdgesResponse, error) {
 	resp, err := client.Edges(context.Background(), req)
 	if err != nil {
-		return nil, fmt.Errorf("Edges API error: %+v", err)
+		return nil, fmt.Errorf("Edges API error: %w", err)
 	}
 	if e := resp.GetError(); e != nil {
-		return nil, fmt.Errorf("Edges API response error: %+v", e.Error)
+		return nil, fmt.Errorf("Edges API response error: %s", e.Error)
 	}
 	return resp, nil
 }

@@ -276,13 +276,13 @@ func (conf *ResourceConfig) GetPodPatch(injectProxy bool) ([]byte, error) {
 
 	values, err := conf.GetOverriddenValues()
 	if err != nil {
-		return nil, fmt.Errorf("could not generate Overridden Values: %s", err)
+		return nil, fmt.Errorf("could not generate Overridden Values: %w", err)
 	}
 
 	if values.ClusterNetworks != "" {
 		for _, network := range strings.Split(strings.Trim(values.ClusterNetworks, ","), ",") {
 			if _, _, err := net.ParseCIDR(network); err != nil {
-				return nil, fmt.Errorf("cannot parse destination get networks: %s", err)
+				return nil, fmt.Errorf("cannot parse destination get networks: %w", err)
 			}
 		}
 	}

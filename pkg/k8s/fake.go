@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"strings"
 
@@ -152,10 +153,10 @@ func newFakeClientSetsFromManifests(readers []io.Reader) (
 		for {
 			// Read a single YAML object
 			bytes, err := r.Read()
-			if err == io.EOF {
-				break
-			}
 			if err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
 				return nil, nil, nil, nil, err
 			}
 

@@ -14,12 +14,12 @@ import (
 func GetServerVersion(ctx context.Context, controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (string, error) {
 	cm, err := config.FetchLinkerdConfigMap(ctx, kubeAPI, controlPlaneNamespace)
 	if err != nil {
-		return "", fmt.Errorf("failed to fetch linkerd-config: %s", err)
+		return "", fmt.Errorf("failed to fetch linkerd-config: %w", err)
 	}
 
 	values, err := linkerd2.ValuesFromConfigMap(cm)
 	if err != nil {
-		return "", fmt.Errorf("failed to load values from linkerd-config: %s", err)
+		return "", fmt.Errorf("failed to load values from linkerd-config: %w", err)
 	}
 
 	return values.LinkerdVersion, nil

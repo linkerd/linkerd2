@@ -69,9 +69,10 @@ func WriteErrorToHTTPResponse(w http.ResponseWriter, errorObtained error) {
 	statusCode := defaultHTTPErrorStatusCode
 	errorToReturn := errorObtained
 
-	if httpErr, ok := errorObtained.(HTTPError); ok {
-		statusCode = httpErr.Code
-		errorToReturn = httpErr.WrappedError
+	var he HTTPError
+	if errors.As(errorObtained, &he) {
+		statusCode = he.Code
+		errorToReturn = he.WrappedError
 	}
 
 	w.Header().Set(errorHeader, http.StatusText(statusCode))
@@ -158,7 +159,7 @@ func CheckIfResponseHasError(rsp *http.Response) error {
 
 		err := FromByteStreamToProtocolBuffers(reader, &apiError)
 		if err != nil {
-			return fmt.Errorf("Response has %s header [%s], but response body didn't contain protobuf error: %v", errorHeader, errorMsg, err)
+			return fmt.Errorf("response has %s header [%s], but response body didn't contain protobuf error: %w", errorHeader, errorMsg, err)
 		}
 
 		return errors.New(apiError.Error)

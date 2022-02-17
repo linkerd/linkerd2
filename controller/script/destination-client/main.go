@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"io"
 
@@ -51,10 +52,10 @@ func get(client pb.DestinationClient, req *pb.GetDestination) {
 
 	for {
 		update, err := rsp.Recv()
-		if err == io.EOF {
-			break
-		}
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
 			log.Fatal(err.Error())
 		}
 
@@ -100,10 +101,10 @@ func getProfile(client pb.DestinationClient, req *pb.GetDestination) {
 
 	for {
 		update, err := rsp.Recv()
-		if err == io.EOF {
-			break
-		}
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
 			log.Fatal(err.Error())
 		}
 		log.Printf("%+v", update)

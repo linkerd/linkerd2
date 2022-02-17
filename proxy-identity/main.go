@@ -135,11 +135,11 @@ func generateAndStoreCSR(p, id string, key *ecdsa.PrivateKey) ([]byte, error) {
 	}
 	csrb, err := x509.CreateCertificateRequest(rand.Reader, &csr, key)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create CSR: %s", err)
+		return nil, fmt.Errorf("failed to create CSR: %w", err)
 	}
 
 	if err = ioutil.WriteFile(p, csrb, 0600); err != nil {
-		return nil, fmt.Errorf("failed to write CSR: %s", err)
+		return nil, fmt.Errorf("failed to write CSR: %w", err)
 	}
 
 	return csrb, nil
