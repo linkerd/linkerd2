@@ -21,7 +21,7 @@ issues:
     text: "singleCaseSwitch: should rewrite switch statement to if statement"
   - linters:
     - gocritic
-    text: "ifElseChain: rewrite if-else to switch statemen"
+    text: "ifElseChain: rewrite if-else to switch statement"
 
 linters:
   enable:
