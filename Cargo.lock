@@ -1852,9 +1852,9 @@ dependencies = [
 
 [[package]]
 name = "tower-http"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33ed53e1fd082268841975cb39587fa9fca9a7a30da84f97818ef667c97f2872"
+checksum = "2bb284cac1883d54083a0edbdc9cabf931dfed87455f8c7266c01ece6394a43a"
 dependencies = [
  "base64",
  "bitflags",
