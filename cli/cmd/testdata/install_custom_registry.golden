@@ -94,7 +94,10 @@ spec:
                 podSelector:
                   type: object
                   description: >-
-                    Selects pods in the same namespace. Selects all if empty.
+                    Selects pods in the same namespace.
+
+                    The result of matchLabels and matchExpressions are ANDed.
+                    Selects all if empty.
                   properties:
                     matchLabels:
                       type: object
