@@ -43,6 +43,7 @@ use self::{
     server::SrvIndex,
 };
 use anyhow::Context;
+use kubert::admin::Readiness;
 use linkerd_policy_controller_core::{InboundServer, IpNet};
 use linkerd_policy_controller_k8s_api::{self as k8s};
 use tokio::{sync::watch, time};
@@ -128,11 +129,7 @@ impl Index {
     ///
     /// All updates are atomically published to the shared `lookups` map after indexing occurs; but
     /// the indexing task is solely responsible for mutating it.
-    pub async fn run(
-        mut self,
-        resources: impl Into<k8s::ResourceWatches>,
-        ready_tx: watch::Sender<bool>,
-    ) {
+    pub async fn run(mut self, resources: impl Into<k8s::ResourceWatches>, ready: Readiness) {
         let k8s::ResourceWatches {
             mut pods_rx,
             mut servers_rx,
@@ -180,7 +177,7 @@ impl Index {
                 && servers_rx.is_initialized()
                 && authorizations_rx.is_initialized()
             {
-                let _ = ready_tx.send(true);
+                let _ = ready.set(true);
                 initialized = true;
                 debug!("Ready");
             }

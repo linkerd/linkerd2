@@ -1,7 +1,6 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-pub mod admin;
 pub mod admission;
 
 pub use linkerd_policy_controller_grpc as grpc;
