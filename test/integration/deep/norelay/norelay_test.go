@@ -38,6 +38,7 @@ func TestNoRelay(t *testing.T) {
 		for name := range deployments {
 			err := TestHelper.CheckPods(ctx, ns, name, 1)
 			if err != nil {
+				//nolint:errorlint
 				if rce, ok := err.(*testutil.RestartCountError); ok {
 					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 				} else {
@@ -88,6 +89,7 @@ func TestRelay(t *testing.T) {
 		for name := range deployments {
 			err := TestHelper.CheckPods(ctx, ns, name, 1)
 			if err != nil {
+				//nolint:errorlint
 				if rce, ok := err.(*testutil.RestartCountError); ok {
 					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 				} else {
