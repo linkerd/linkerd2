@@ -96,10 +96,7 @@ spec:
                 podSelector:
                   type: object
                   description: >-
-                    Selects pods in the same namespace.
-                  oneOf:
-                    - required: [matchExpressions]
-                    - required: [matchLabels]
+                    Selects pods in the same namespace. Selects all if empty.
                   properties:
                     matchLabels:
                       type: object
