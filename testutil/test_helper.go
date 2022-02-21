@@ -8,11 +8,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -662,6 +664,8 @@ func (h *TestHelper) WithDataPlaneNamespace(ctx context.Context, testName string
 	}
 }
 
+// GetReleaseChannelVersions is used to fetch the latest versions for Linkerd's
+// release channels: edge and stable
 func (h *TestHelper) GetReleaseChannelVersions() (map[string]string, error) {
 	url := "https://versioncheck.linkerd.io/version.json"
 	resp, err := h.httpClient.Get(url)
@@ -676,6 +680,25 @@ func (h *TestHelper) GetReleaseChannelVersions() (map[string]string, error) {
 
 	defer resp.Body.Close()
 	return versions, nil
+}
+
+func (h *TestHelper) GetCLIBinary(filepath, version string) error {
+	url := fmt.Sprintf("https://github.com/linkerd/linkerd2/releases/download/%[1]s/linkerd2-cli-%[1]s-%s-%s", version, runtime.GOOS, runtime.GOARCH)
+	resp, err := h.httpClient.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Create if it doesn't already exist
+	out, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE, 755)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	return err
 }
 
 // ReadFile reads a file from disk and returns the contents as a string.
