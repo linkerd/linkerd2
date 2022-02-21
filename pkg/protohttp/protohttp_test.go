@@ -236,12 +236,12 @@ func TestDeserializePayloadFromReader(t *testing.T) {
 	t.Run("Can multiple messages in the same stream", func(t *testing.T) {
 		expectedMessage1 := "Hit the road, Jack and don't you come back\n"
 		for i := 0; i < 450; i++ {
-			expectedMessage1 = expectedMessage1 + fmt.Sprintf("no more (%d), ", i)
+			expectedMessage1 += fmt.Sprintf("no more (%d), ", i)
 		}
 
 		expectedMessage2 := "back street back, alright\n"
 		for i := 0; i < 450; i++ {
-			expectedMessage2 = expectedMessage2 + fmt.Sprintf("tum (%d), ", i)
+			expectedMessage2 += fmt.Sprintf("tum (%d), ", i)
 		}
 
 		messageWithSize1 := SerializeAsPayload([]byte(expectedMessage1))
@@ -273,7 +273,7 @@ func TestDeserializePayloadFromReader(t *testing.T) {
 		goDefaultChunkSize := 4000
 		expectedMessage := "Hit the road, Jack and don't you come back\n"
 		for i := 0; i < 450; i++ {
-			expectedMessage = expectedMessage + fmt.Sprintf("no more (%d), ", i)
+			expectedMessage += fmt.Sprintf("no more (%d), ", i)
 		}
 
 		expectedMessageAsBytes := []byte(expectedMessage)

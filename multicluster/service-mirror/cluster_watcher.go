@@ -699,10 +699,8 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent(ctx context.Context) (
 	event, done := rcsw.eventsQueue.Get()
 	if event != nil {
 		rcsw.log.Infof("Received: %s", event)
-	} else {
-		if done {
-			rcsw.log.Infof("Received: Stop")
-		}
+	} else if done {
+		rcsw.log.Infof("Received: Stop")
 	}
 
 	var err error

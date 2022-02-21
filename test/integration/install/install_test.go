@@ -51,7 +51,7 @@ var (
 	// Override in case edge starts to deviate from stable service-wise
 	linkerdSvcStable = linkerdSvcEdge
 
-	//skippedInboundPorts lists some ports to be marked as skipped, which will
+	// skippedInboundPorts lists some ports to be marked as skipped, which will
 	// be verified in test/integration/inject
 	skippedInboundPorts       = "1234,5678"
 	skippedOutboundPorts      = "1234,5678"

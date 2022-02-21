@@ -587,13 +587,13 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		}
 
 		if showTCPConns(resourceType) {
-			templateString = templateString + "%d\t"
-			templateStringEmpty = templateStringEmpty + "-\t"
+			templateString += "%d\t"
+			templateStringEmpty += "-\t"
 		}
 
 		if showTCPBytes(options, resourceType) {
-			templateString = templateString + "%.1fB/s\t%.1fB/s\t"
-			templateStringEmpty = templateStringEmpty + "-\t-\t"
+			templateString += "%.1fB/s\t%.1fB/s\t"
+			templateStringEmpty += "-\t-\t"
 		}
 
 		if options.allNamespaces {
@@ -603,8 +603,8 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			templateStringEmpty = "%s\t" + templateStringEmpty
 		}
 
-		templateString = templateString + "\n"
-		templateStringEmpty = templateStringEmpty + "\n"
+		templateString += "\n"
+		templateStringEmpty += "\n"
 
 		padding := 0
 		if maxNameLength > len(name) {
@@ -924,7 +924,7 @@ func renderStats(buffer bytes.Buffer, options *statOptionsBase) string {
 		if len(b) > padding {
 			out = string(b[padding:])
 		}
-		out = strings.Replace(out, "\n"+strings.Repeat(" ", padding), "\n", -1)
+		out = strings.ReplaceAll(out, "\n"+strings.Repeat(" ", padding), "\n")
 	}
 
 	return out

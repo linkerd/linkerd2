@@ -739,6 +739,27 @@ func (hc *HealthChecker) allCategories() []*Category {
 					},
 				},
 				{
+					description: "cluster networks can be verified",
+					hintAnchor:  "l5d-cluster-networks-verified",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						nodes, err := hc.kubeAPI.GetNodes(ctx)
+						if err != nil {
+							return err
+						}
+						var warningNodes []string
+						for _, node := range nodes {
+							if node.Spec.PodCIDR == "" {
+								warningNodes = append(warningNodes, node.Name)
+							}
+						}
+						if len(warningNodes) > 0 {
+							return fmt.Errorf("the following nodes do not expose a podCIDR:\n\t%s", strings.Join(warningNodes, "\n\t"))
+						}
+						return nil
+					},
+				},
+				{
 					description: "cluster networks contains all node podCIDRs",
 					hintAnchor:  "l5d-cluster-networks-cidr",
 					check: func(ctx context.Context) error {
@@ -1876,6 +1897,7 @@ func (hc *HealthChecker) checkClusterNetworks(ctx context.Context) error {
 			badPodCIDRS = append(badPodCIDRS, podCIDR)
 		}
 	}
+	// If none of the nodes exposed a podCIDR then we cannot verify the clusterNetworks.
 	if !podCIDRExists {
 		// DigitalOcean for example, doesn't expose spec.podCIDR (#6398)
 		return SkipError{Reason: podCIDRUnavailableSkipReason}
@@ -2776,9 +2798,11 @@ func CheckPodsRunning(pods []corev1.Pod, namespace string) error {
 		// `Shutdown` state as they do not have a running proxy
 		if status == "Completed" || status == "Shutdown" {
 			continue
-		} else if status != string(corev1.PodRunning) && status != "Evicted" {
+		}
+		if status != string(corev1.PodRunning) && status != "Evicted" {
 			return fmt.Errorf("pod \"%s\" status is %s", pod.Name, pod.Status.Phase)
-		} else if !k8s.GetProxyReady(pod) {
+		}
+		if !k8s.GetProxyReady(pod) {
 			return fmt.Errorf("container \"%s\" in pod \"%s\" is not ready", k8s.ProxyContainerName, pod.Name)
 		}
 	}

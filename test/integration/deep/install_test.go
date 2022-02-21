@@ -54,8 +54,8 @@ func TestInstallCNIPlugin(t *testing.T) {
 			"--cni-log-level=debug",
 			// For Flannel (k3d's default CNI) the following settings are required.
 			// For Calico the default ones are fine.
-			//"--dest-cni-net-dir=/var/lib/rancher/k3s/agent/etc/cni/net.d",
-			//"--dest-cni-bin-dir=/bin",
+			// "--dest-cni-net-dir=/var/lib/rancher/k3s/agent/etc/cni/net.d",
+			// "--dest-cni-bin-dir=/bin",
 		}
 	)
 

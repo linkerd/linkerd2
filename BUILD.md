@@ -262,7 +262,7 @@ That is equivalent to running `linkerd check` using the code on your branch.
 To analyze and lint the Go code using golangci-lint, run:
 
 ```bash
-bin/lint
+golangci-lint run
 ```
 
 #### Formatting

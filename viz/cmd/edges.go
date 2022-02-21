@@ -407,7 +407,7 @@ func renderEdges(buffer bytes.Buffer, options *edgesOptions) string {
 	default:
 		// strip left padding on the first column
 		out = string(buffer.Bytes()[padding:])
-		out = strings.Replace(out, "\n"+strings.Repeat(" ", padding), "\n", -1)
+		out = strings.ReplaceAll(out, "\n"+strings.Repeat(" ", padding), "\n")
 	}
 
 	return out
