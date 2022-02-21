@@ -15,4 +15,4 @@ spec:
       - name: curl
         image: curlimages/curl
         command: [ "sh", "-c", "--" ]
-        args: [ "sleep", "infinity" ]
+        args: [ "while true; do sleep 10; done;" ]
