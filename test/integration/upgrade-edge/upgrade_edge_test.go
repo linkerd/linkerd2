@@ -79,7 +79,7 @@ func TestInstallResourcesPreUpgrade(t *testing.T) {
 		args := []string{
 			"install",
 			"--controller-log-level", "debug",
-			"--set", fmt.Sprintf("proxyInit.ignoreInboundPorts=1234\\,5678"),
+			"--set", "proxyInit.ignoreInboundPorts=1234\\,5678",
 		}
 
 		// Pipe cmd & args to `linkerd`
@@ -181,8 +181,7 @@ func TestUpgradeCli(t *testing.T) {
 	cmd := "upgrade"
 	args := []string{
 		"--controller-log-level", "debug",
-		//"--proxy-version", TestHelper.GetVersion(),
-		"--set", fmt.Sprintf("proxyInit.ignoreInboundPorts=1234\\,5678"),
+		"--set", "proxyInit.ignoreInboundPorts=1234\\,5678",
 		"--set", "heartbeatSchedule=1 2 3 4 5",
 	}
 
