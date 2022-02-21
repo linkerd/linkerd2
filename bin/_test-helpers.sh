@@ -433,63 +433,16 @@ install_version() {
     exit_on_err 'install_version() - linkerd inject failed'
 }
 
-upgrade_test() {
-  local release_channel=$1
-  local install_url=$2
-
-  local upgrade_version
-  upgrade_version=$(latest_release_channel "$release_channel")
-
-  if [ -z "$upgrade_version" ]; then
-    echo 'error getting upgrade_version'
-    exit 1
-  fi
-
-  install_version "$install_url" "$upgrade_version"
-
-  # Install viz extension
-  local tmp_linkerd_path=$tmp/.linkerd2/bin/linkerd
-  (
-      set -x
-      "$tmp_linkerd_path" viz install | kubectl --context="$context" apply -f - 2>&1
-  )
-  exit_on_err "upgrade_test() - installing viz extension in $upgrade_version failed"
-
-  run_test "$test_directory/install/install_test.go" --upgrade-from-version="$upgrade_version"
-}
-
 # Run the upgrade-edge test by upgrading the most-recent edge release to the
 # HEAD of this branch.
 run_upgrade-edge_test() {
-  local install_edge_install_url="https://run.linkerd.io/install-edge"
-  local release_channel="edge"
-  
-  local upgrade_version
-  upgrade_version=$(latest_release_channel "$release_channel")
-
-  if [ -z "$upgrade_version" ]; then
-    echo 'error getting upgrade_version'
-    exit 1
-  fi
-
-  run_test "$test_directory/install/install_test.go" --upgrade-from-version="$upgrade_version"
+  run_test "$test_directory/upgrade-edge/..." 
 }
 
 # Run the upgrade-stable test by upgrading the most-recent stable release to the
 # HEAD of this branch.
 run_upgrade-stable_test() {
-  local install_url="https://run.linkerd.io/install"
-  local release_channel="stable"
-
-  local upgrade_version
-  upgrade_version=$(latest_release_channel "$release_channel")
-
-  if [ -z "$upgrade_version" ]; then
-    echo 'error getting upgrade_version'
-    exit 1
-  fi
-
-  upgrade_test "stable" "$stable_install_url"
+  run_test "$test_directory/upgrade-stable/..." 
 }
 
 run_viz_test() {
