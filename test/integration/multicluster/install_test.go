@@ -113,7 +113,7 @@ func TestCheckMulticluster(t *testing.T) {
 		}
 		err = TestHelper.ValidateOutput(out, golden)
 		if err != nil {
-			return fmt.Errorf("received unexpected output\n%s", err.Error())
+			return fmt.Errorf("received unexpected output: %w", err)
 		}
 		return nil
 	})

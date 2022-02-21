@@ -77,7 +77,7 @@ func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
 			// Check gateway metrics
 			metrics, err := TestHelper.LinkerdRun(dgCmd...)
 			if err != nil {
-				return fmt.Errorf("failed to get metrics for gateway deployment: %s", err)
+				return fmt.Errorf("failed to get metrics for gateway deployment: %w", err)
 			}
 
 			// If no match, it means there are no open tcp conns from gateway to
@@ -102,7 +102,7 @@ func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
 			// Check gateway metrics
 			metrics, err := TestHelper.LinkerdRun(dgCmd...)
 			if err != nil {
-				return fmt.Errorf("failed to get metrics for gateway deployment: %s", err)
+				return fmt.Errorf("failed to get metrics for gateway deployment: %w", err)
 			}
 
 			// If no match, it means there are no outbound HTTP requests from
