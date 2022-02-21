@@ -419,6 +419,16 @@ type: kubernetes.io/tls`, base64.StdEncoding.EncodeToString([]byte(root)), base6
 	return err
 }
 
+// CmdRun executes an arbitrary command by calling the binary and return its
+// output
+func (h *TestHelper) CmdRun(cmd string, arg ...string) (string, error) {
+	out, stderr, err := combinedOutput("", cmd, arg...)
+	if err != nil {
+		return out, fmt.Errorf("command failed: '%s %s'\n%w\n%s", cmd, strings.Join(arg, " "), err, stderr)
+	}
+	return out, nil
+}
+
 // LinkerdRun executes a linkerd command returning its stdout.
 func (h *TestHelper) LinkerdRun(arg ...string) (string, error) {
 	out, stderr, err := h.PipeToLinkerdRun("", arg...)

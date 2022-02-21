@@ -1,4 +1,4 @@
-package edgeupgradetest
+package upgradestabletest
 
 import (
 	"bytes"
@@ -30,7 +30,7 @@ var (
 
 	helmTLSCerts *tls.CA
 
-	linkerdSvcEdge = []testutil.Service{
+	linkerdSvcStable = []testutil.Service{
 		{Namespace: "linkerd", Name: "linkerd-dst"},
 		{Namespace: "linkerd", Name: "linkerd-identity"},
 
@@ -44,7 +44,7 @@ var (
 	skippedOutboundPorts      = "1234,5678"
 	multiclusterExtensionName = "multicluster"
 	vizExtensionName          = "viz"
-	linkerdBaseEdgeVersion    string
+	linkerdBaseStableVersion  string
 )
 
 func TestMain(m *testing.M) {
@@ -60,7 +60,7 @@ func TestInstallResourcesPreUpgrade(t *testing.T) {
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd install' command failed", err)
 	}
-	linkerdBaseEdgeVersion = versions["edge"]
+	linkerdBaseStableVersion = versions["stable"]
 
 	tmpDir, err := os.MkdirTemp("", "upgrade-cli")
 	if err != nil {
@@ -68,14 +68,14 @@ func TestInstallResourcesPreUpgrade(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	cliPath := fmt.Sprintf("%s/linkerd2-cli-%s-%s-%s", tmpDir, linkerdBaseEdgeVersion, runtime.GOOS, runtime.GOARCH)
-	if err := TestHelper.GetCLIBinary(cliPath, linkerdBaseEdgeVersion); err != nil {
+	cliPath := fmt.Sprintf("%s/linkerd2-cli-%s-%s-%s", tmpDir, linkerdBaseStableVersion, runtime.GOOS, runtime.GOARCH)
+	if err := TestHelper.GetCLIBinary(cliPath, linkerdBaseStableVersion); err != nil {
 		testutil.AnnotatedFatal(t, "failed to fetch cli executable", err)
 	}
 
 	// Nest all pre-upgrade tests here so they can install and check resources
-	// using the latest edge CLI
-	t.Run(fmt.Sprintf("installing Linkerd %s control plane", linkerdBaseEdgeVersion), func(t *testing.T) {
+	// using the latest stable CLI
+	t.Run(fmt.Sprintf("installing Linkerd %s control plane", linkerdBaseStableVersion), func(t *testing.T) {
 		args := []string{
 			"install",
 			"--controller-log-level", "debug",
@@ -94,12 +94,12 @@ func TestInstallResourcesPreUpgrade(t *testing.T) {
 				"'kubectl apply' command failed\n%s", out)
 		}
 
-		TestHelper.WaitRollout(t, testutil.LinkerdDeployReplicasEdge)
+		TestHelper.WaitRollout(t, testutil.LinkerdDeployReplicasStable)
 	})
 
 	// TestInstallViz will install the viz extension to be used by the rest of the
 	// tests in the viz suite
-	t.Run(fmt.Sprintf("installing Linkerd %s viz extension", linkerdBaseEdgeVersion), func(t *testing.T) {
+	t.Run(fmt.Sprintf("installing Linkerd %s viz extension", linkerdBaseStableVersion), func(t *testing.T) {
 		args := []string{
 			"viz",
 			"install",
@@ -123,17 +123,17 @@ func TestInstallResourcesPreUpgrade(t *testing.T) {
 	})
 
 	// Check client and server versions are what we expect them to be
-	t.Run(fmt.Sprintf("check version is %s pre-upgrade", linkerdBaseEdgeVersion), func(t *testing.T) {
+	t.Run(fmt.Sprintf("check version is %s pre-upgrade", linkerdBaseStableVersion), func(t *testing.T) {
 		out, err := TestHelper.CmdRun(cliPath, "version")
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'linkerd version' command failed", "'linkerd version' command failed\n%s", err.Error())
 		}
 
-		if !strings.Contains(out, fmt.Sprintf("Client version: %s", linkerdBaseEdgeVersion)) {
-			testutil.AnnotatedFatalf(t, "'linkerd version' command failed", "'linkerd version' command failed\nexpected client version: %s, got: %s", linkerdBaseEdgeVersion, out)
+		if !strings.Contains(out, fmt.Sprintf("Client version: %s", linkerdBaseStableVersion)) {
+			testutil.AnnotatedFatalf(t, "'linkerd version' command failed", "'linkerd version' command failed\nexpected client version: %s, got: %s", linkerdBaseStableVersion, out)
 		}
-		if !strings.Contains(out, fmt.Sprintf("Server version: %s", linkerdBaseEdgeVersion)) {
-			testutil.AnnotatedFatalf(t, "'linkerd version' command failed", "'linkerd version' command failed\nexpected server version: %s, got: %s", linkerdBaseEdgeVersion, out)
+		if !strings.Contains(out, fmt.Sprintf("Server version: %s", linkerdBaseStableVersion)) {
+			testutil.AnnotatedFatalf(t, "'linkerd version' command failed", "'linkerd version' command failed\nexpected server version: %s, got: %s", linkerdBaseStableVersion, out)
 		}
 	})
 }
@@ -273,7 +273,7 @@ func TestUpgradeCli(t *testing.T) {
 			"'kubectl apply' command failed\n%s", cmdOut)
 	}
 
-	TestHelper.WaitRollout(t, testutil.LinkerdDeployReplicasEdge)
+	TestHelper.WaitRollout(t, testutil.LinkerdDeployReplicasStable)
 
 	// It is necessary to clone LinkerdVizDeployReplicas so that we do not
 	// mutate its original value.
@@ -307,8 +307,8 @@ func TestUpgradeCli(t *testing.T) {
 }
 
 func TestControlPlaneResourcesPostInstall(t *testing.T) {
-	expectedDeployments := testutil.LinkerdDeployReplicasEdge
-	expectedServices := linkerdSvcEdge
+	expectedDeployments := testutil.LinkerdDeployReplicasStable
+	expectedServices := linkerdSvcStable
 	vizServices := []testutil.Service{
 		{Namespace: "linkerd-viz", Name: "web"},
 		{Namespace: "linkerd-viz", Name: "tap"},
