@@ -48,7 +48,7 @@ type KubernetesAPI struct {
 func NewAPI(configPath, kubeContext string, impersonate string, impersonateGroup []string, timeout time.Duration) (*KubernetesAPI, error) {
 	config, err := GetConfig(configPath, kubeContext)
 	if err != nil {
-		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
+		return nil, fmt.Errorf("error configuring Kubernetes API client: %w", err)
 	}
 	return NewAPIForConfig(config, impersonate, impersonateGroup, timeout)
 }
@@ -73,24 +73,24 @@ func NewAPIForConfig(config *rest.Config, impersonate string, impersonateGroup [
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("error configuring Kubernetes API clientset: %v", err)
+		return nil, fmt.Errorf("error configuring Kubernetes API clientset: %w", err)
 	}
 	apiextensions, err := apiextensionsclient.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("error configuring Kubernetes API Extensions clientset: %v", err)
+		return nil, fmt.Errorf("error configuring Kubernetes API Extensions clientset: %w", err)
 	}
 	aggregatorClient, err := apiregistration.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("error configuring Kubernetes API server aggregator: %v", err)
+		return nil, fmt.Errorf("error configuring Kubernetes API server aggregator: %w", err)
 	}
 	dynamicClient, err := dynamic.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("error configuring Kubernetes Dynamic Client: %v", err)
+		return nil, fmt.Errorf("error configuring Kubernetes Dynamic Client: %w", err)
 	}
 
 	l5dCrdClient, err := crdclient.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("error configuring Linkerd CRD clientset: %v", err)
+		return nil, fmt.Errorf("error configuring Linkerd CRD clientset: %w", err)
 	}
 
 	return &KubernetesAPI{
@@ -108,7 +108,7 @@ func NewAPIForConfig(config *rest.Config, impersonate string, impersonateGroup [
 func (kubeAPI *KubernetesAPI) NewClient() (*http.Client, error) {
 	secureTransport, err := rest.TransportFor(kubeAPI.Config)
 	if err != nil {
-		return nil, fmt.Errorf("error instantiating Kubernetes API client: %v", err)
+		return nil, fmt.Errorf("error instantiating Kubernetes API client: %w", err)
 	}
 
 	return &http.Client{

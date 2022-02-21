@@ -3,6 +3,7 @@ package destination
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -153,7 +154,8 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 
 	err = s.endpoints.Subscribe(service, port, instanceID, translator)
 	if err != nil {
-		if _, ok := err.(watcher.InvalidService); ok {
+		var ise watcher.InvalidService
+		if errors.As(err, &ise) {
 			log.Debugf("Invalid service %s", dest.GetPath())
 			return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
 		}
@@ -211,18 +213,18 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 			opaquePorts, err := getAnnotatedOpaquePorts(pod, s.defaultOpaquePorts)
 			if err != nil {
-				return fmt.Errorf("failed to get opaque ports for pod: %s", err)
+				return fmt.Errorf("failed to get opaque ports for pod: %w", err)
 			}
 			var address watcher.Address
 			var endpoint *pb.WeightedAddr
 			if pod != nil {
 				address, err = s.createAddress(pod, port)
 				if err != nil {
-					return fmt.Errorf("failed to create address: %s", err)
+					return fmt.Errorf("failed to create address: %w", err)
 				}
 				endpoint, err = s.createEndpoint(address, opaquePorts)
 				if err != nil {
-					return fmt.Errorf("failed to create endpoint: %s", err)
+					return fmt.Errorf("failed to create endpoint: %w", err)
 				}
 			}
 			translator := newEndpointProfileTranslator(pod, port, endpoint, stream, s.log)
@@ -261,16 +263,16 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		if hostname != "" {
 			address, err := s.getEndpointByHostname(s.k8sAPI, hostname, service, port)
 			if err != nil {
-				return fmt.Errorf("failed to get pod for hostname %s: %v", hostname, err)
+				return fmt.Errorf("failed to get pod for hostname %s: %w", hostname, err)
 			}
 			opaquePorts, err := getAnnotatedOpaquePorts(address.Pod, s.defaultOpaquePorts)
 			if err != nil {
-				return fmt.Errorf("failed to get opaque ports for pod: %s", err)
+				return fmt.Errorf("failed to get opaque ports for pod: %w", err)
 			}
 			var endpoint *pb.WeightedAddr
 			endpoint, err = s.createEndpoint(*address, opaquePorts)
 			if err != nil {
-				return fmt.Errorf("failed to create endpoint: %s", err)
+				return fmt.Errorf("failed to create endpoint: %w", err)
 			}
 			translator := newEndpointProfileTranslator(address.Pod, port, endpoint, stream, s.log)
 
@@ -373,7 +375,7 @@ func (s *server) createAddress(pod *corev1.Pod, port uint32) (watcher.Address, e
 	}
 	err := watcher.SetToServerProtocol(s.k8sAPI, &address, port)
 	if err != nil {
-		return watcher.Address{}, fmt.Errorf("failed to set address OpaqueProtocol: %s", err)
+		return watcher.Address{}, fmt.Errorf("failed to set address OpaqueProtocol: %w", err)
 	}
 	return address, nil
 }
@@ -512,7 +514,7 @@ func getPodByIP(k8sAPI *k8s.API, podIP string, port uint32, log *logging.Entry) 
 func getIndexedPods(k8sAPI *k8s.API, indexName string, podIP string) ([]*corev1.Pod, error) {
 	objs, err := k8sAPI.Pod().Informer().GetIndexer().ByIndex(indexName, podIP)
 	if err != nil {
-		return nil, fmt.Errorf("failed getting %s indexed pods: %s", indexName, err)
+		return nil, fmt.Errorf("failed getting %s indexed pods: %w", indexName, err)
 	}
 	pods := make([]*corev1.Pod, 0)
 	for _, obj := range objs {
@@ -562,11 +564,11 @@ func (s *server) parseContextToken(token string) contextToken {
 func profileID(authority string, ctxToken contextToken, clusterDomain string) (watcher.ProfileID, error) {
 	host, _, err := getHostAndPort(authority)
 	if err != nil {
-		return watcher.ProfileID{}, fmt.Errorf("invalid authority: %s", err)
+		return watcher.ProfileID{}, fmt.Errorf("invalid authority: %w", err)
 	}
 	service, _, err := parseK8sServiceName(host, clusterDomain)
 	if err != nil {
-		return watcher.ProfileID{}, fmt.Errorf("invalid k8s service name: %s", err)
+		return watcher.ProfileID{}, fmt.Errorf("invalid k8s service name: %w", err)
 	}
 	id := watcher.ProfileID{
 		Name:      fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, clusterDomain),

@@ -46,7 +46,7 @@ func TestTargetTraffic(t *testing.T) {
 			"--container", "web-svc",
 		)
 		if err != nil {
-			return fmt.Errorf("%s\n%s", err, out)
+			return fmt.Errorf("%w\n%s", err, out)
 		}
 		// Check for expected error messages
 		for _, row := range strings.Split(out, "\n") {

@@ -97,7 +97,7 @@ func (crt *Crt) Verify(roots *x509.CertPool, name string, currentTime time.Time)
 	}
 
 	if crtExpiryError(err) {
-		return fmt.Errorf("%s - Current Time : %s - Invalid before %s - Invalid After %s", err, currentTime, crt.Certificate.NotBefore, crt.Certificate.NotAfter)
+		return fmt.Errorf("%w - Current Time : %s - Invalid before %s - Invalid After %s", err, currentTime, crt.Certificate.NotBefore, crt.Certificate.NotAfter)
 	}
 	return err
 }
@@ -232,10 +232,9 @@ func DecodePEMCrt(txt string) (*Crt, error) {
 }
 
 func crtExpiryError(err error) bool {
-	switch v := err.(type) {
-	case x509.CertificateInvalidError:
-		return v.Reason == x509.Expired
-	default:
-		return false
+	var cie x509.CertificateInvalidError
+	if errors.As(err, &cie) {
+		return cie.Reason == x509.Expired
 	}
+	return false
 }

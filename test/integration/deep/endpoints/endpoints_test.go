@@ -40,6 +40,7 @@ func TestGoodEndpoints(t *testing.T) {
 
 		err = TestHelper.CheckPods(ctx, ns, "nginx", 1)
 		if err != nil {
+			//nolint:errorlint
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
@@ -55,7 +56,7 @@ func TestGoodEndpoints(t *testing.T) {
 				err = TestHelper.RetryFor(5*time.Second, func() error {
 					out, err = TestHelper.LinkerdRun("diagnostics", "endpoints", endpointCase.authority, "-ojson")
 					if err != nil {
-						return fmt.Errorf("failed to get endpoints for %s: %s", endpointCase.authority, err)
+						return fmt.Errorf("failed to get endpoints for %s: %w", endpointCase.authority, err)
 					}
 
 					re := regexp.MustCompile(endpointCase.expectedRE)

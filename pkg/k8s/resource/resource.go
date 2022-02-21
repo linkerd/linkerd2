@@ -78,55 +78,55 @@ func FetchKubernetesResources(ctx context.Context, k *k8s.KubernetesAPI, options
 
 	clusterRoles, err := fetchClusterRoles(ctx, k, options)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch ClusterRole resources:%v", err)
+		return nil, fmt.Errorf("could not fetch ClusterRole resources: %w", err)
 	}
 	resources = append(resources, clusterRoles...)
 
 	clusterRoleBindings, err := fetchClusterRoleBindings(ctx, k, options)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch ClusterRoleBinding resources:%v", err)
+		return nil, fmt.Errorf("could not fetch ClusterRoleBinding resources: %w", err)
 	}
 	resources = append(resources, clusterRoleBindings...)
 
 	roles, err := fetchRoles(ctx, k, options)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch Roles:%v", err)
+		return nil, fmt.Errorf("could not fetch Roles: %w", err)
 	}
 	resources = append(resources, roles...)
 
 	roleBindings, err := fetchRoleBindings(ctx, k, options)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch RoleBindings:%v", err)
+		return nil, fmt.Errorf("could not fetch RoleBindings: %w", err)
 	}
 	resources = append(resources, roleBindings...)
 
 	crds, err := fetchCustomResourceDefinitions(ctx, k, options)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch CustomResourceDefinition resources:%v", err)
+		return nil, fmt.Errorf("could not fetch CustomResourceDefinition resources: %w", err)
 	}
 	resources = append(resources, crds...)
 
 	apiCRDs, err := fetchAPIRegistrationResources(ctx, k, options)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch APIService CRDs:%v", err)
+		return nil, fmt.Errorf("could not fetch APIService CRDs: %w", err)
 	}
 	resources = append(resources, apiCRDs...)
 
 	mutatinghooks, err := fetchMutatingWebhooksConfiguration(ctx, k, options)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch MutatingWebhookConfigurations:%v", err)
+		return nil, fmt.Errorf("could not fetch MutatingWebhookConfigurations: %w", err)
 	}
 	resources = append(resources, mutatinghooks...)
 
 	validationhooks, err := fetchValidatingWebhooksConfiguration(ctx, k, options)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch ValidatingWebhookConfiguration:%v", err)
+		return nil, fmt.Errorf("could not fetch ValidatingWebhookConfiguration: %w", err)
 	}
 	resources = append(resources, validationhooks...)
 
 	namespaces, err := fetchNamespace(ctx, k, options)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch Namespace:%v", err)
+		return nil, fmt.Errorf("could not fetch Namespace: %w", err)
 	}
 	resources = append(resources, namespaces...)
 

@@ -71,7 +71,7 @@ This command will only display traffic which is sent to a service that has a Ser
 			}
 			req, err := buildTopRoutesRequest(args[0], options)
 			if err != nil {
-				return fmt.Errorf("error creating metrics request while making routes request: %v", err)
+				return fmt.Errorf("error creating metrics request while making routes request: %w", err)
 			}
 
 			output, err := requestRouteStatsFromAPI(
@@ -113,7 +113,7 @@ This command will only display traffic which is sent to a service that has a Ser
 func requestRouteStatsFromAPI(client pb.ApiClient, req *pb.TopRoutesRequest, options *routesOptions) (string, error) {
 	resp, err := client.TopRoutes(context.Background(), req)
 	if err != nil {
-		return "", fmt.Errorf("TopRoutes API error: %v", err)
+		return "", fmt.Errorf("TopRoutes API error: %w", err)
 	}
 	if e := resp.GetError(); e != nil {
 		return "", errors.New(e.Error)
@@ -226,10 +226,10 @@ func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *route
 	templateString := routeTemplate + "\t%s\t%.2f%%\t%.1frps\t"
 	if outputActual {
 		// actual success rate, actual rps
-		templateString = templateString + "%.2f%%\t%.1frps\t"
+		templateString += "%.2f%%\t%.1frps\t"
 	}
 	// p50, p95, p99
-	templateString = templateString + "%dms\t%dms\t%dms\t\n"
+	templateString += "%dms\t%dms\t%dms\t\n"
 
 	var emptyTemplateString string
 	if outputActual {

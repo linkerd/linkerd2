@@ -276,13 +276,13 @@ func (conf *ResourceConfig) GetPodPatch(injectProxy bool) ([]byte, error) {
 
 	values, err := conf.GetOverriddenValues()
 	if err != nil {
-		return nil, fmt.Errorf("could not generate Overridden Values: %s", err)
+		return nil, fmt.Errorf("could not generate Overridden Values: %w", err)
 	}
 
 	if values.ClusterNetworks != "" {
 		for _, network := range strings.Split(strings.Trim(values.ClusterNetworks, ","), ",") {
 			if _, _, err := net.ParseCIDR(network); err != nil {
-				return nil, fmt.Errorf("cannot parse destination get networks: %s", err)
+				return nil, fmt.Errorf("cannot parse destination get networks: %w", err)
 			}
 		}
 	}
@@ -1101,7 +1101,7 @@ func sortedKeys(m map[string]string) []string {
 	return keys
 }
 
-//IsNamespace checks if a given config is a workload of Kind namespace
+// IsNamespace checks if a given config is a workload of Kind namespace
 func (conf *ResourceConfig) IsNamespace() bool {
 	return strings.ToLower(conf.workload.metaType.Kind) == k8s.Namespace
 }
@@ -1158,10 +1158,10 @@ func (conf *ResourceConfig) AnnotateService(annotations map[string]string) ([]by
 	return yaml.JSONToYAML(j)
 }
 
-//getFilteredJSON method performs JSON marshaling such that zero values of
-//empty structs are respected by `omitempty` tags. We make use of a drop-in
-//replacement of the standard json/encoding library, without which empty struct values
-//present in workload objects would make it into the marshaled JSON.
+// getFilteredJSON method performs JSON marshaling such that zero values of
+// empty structs are respected by `omitempty` tags. We make use of a drop-in
+// replacement of the standard json/encoding library, without which empty struct values
+// present in workload objects would make it into the marshaled JSON.
 func getFilteredJSON(conf runtime.Object) ([]byte, error) {
 	return jsonfilter.Marshal(&conf)
 }

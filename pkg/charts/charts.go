@@ -160,7 +160,7 @@ func FilesReader(fs http.FileSystem, dir string, files []*loader.BufferedFile) e
 // InsertVersion returns the chart values file contents passed in
 // with the version placeholder replaced with the current version
 func InsertVersion(data []byte) []byte {
-	dataWithVersion := strings.Replace(string(data), versionPlaceholder, version.Version, -1)
+	dataWithVersion := strings.ReplaceAll(string(data), versionPlaceholder, version.Version)
 	return []byte(dataWithVersion)
 }
 
