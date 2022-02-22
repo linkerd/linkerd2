@@ -2,6 +2,7 @@ package edgeupgradetest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -31,11 +32,10 @@ var (
 		{Namespace: "linkerd", Name: "linkerd-identity-headless"},
 	}
 
-	//skippedInboundPorts lists some ports to be marked as skipped, which will
+	// skippedInboundPorts lists some ports to be marked as skipped, which will
 	// be verified in test/integration/inject
 	skippedInboundPorts    = "1234,5678"
 	skippedOutboundPorts   = "1234,5678"
-	vizExtensionName       = "viz"
 	linkerdBaseEdgeVersion string
 )
 
@@ -146,7 +146,8 @@ func TestUpgradeTestAppWorksBeforeUpgrade(t *testing.T) {
 	// make sure app is running
 	for _, deploy := range []string{"emoji", "voting", "web"} {
 		if err := TestHelper.CheckPods(ctx, testAppNamespace, deploy, 1); err != nil {
-			if rce, ok := err.(*testutil.RestartCountError); ok {
+			var rce *testutil.RestartCountError
+			if errors.As(err, &rce) {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
 				testutil.AnnotatedError(t, "CheckPods timed-out", err)
@@ -459,7 +460,8 @@ func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 	ctx := context.Background()
 	for _, deploy := range []string{"emoji", "voting", "web"} {
 		if err := TestHelper.CheckPods(ctx, testAppNamespace, deploy, 1); err != nil {
-			if rce, ok := err.(*testutil.RestartCountError); ok {
+			var rce *testutil.RestartCountError
+			if errors.As(err, &rce) {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
 				testutil.AnnotatedError(t, "CheckPods timed-out", err)
