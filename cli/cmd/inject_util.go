@@ -182,7 +182,6 @@ func toURL(path string) (*url.URL, bool) {
 	}
 
 	return nil, false
-
 }
 
 // walk walks the file tree rooted at path. path may be a file or a directory.
