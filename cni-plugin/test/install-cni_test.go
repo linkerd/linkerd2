@@ -153,6 +153,7 @@ func startDocker(testNum int, wd string, testWorkRootDir string, tempCNINetDir s
 	args = append(args, dockerImage, "install-cni.sh")
 
 	// Create a temporary log file to write docker command error log.
+	//nolint:gosec
 	errFile, err := os.Create(errFileName)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "couldn't create docker stderr file",
@@ -173,6 +174,7 @@ func startDocker(testNum int, wd string, testWorkRootDir string, tempCNINetDir s
 
 	containerID, err := cmd.Output()
 	if err != nil {
+		//nolint:gosec
 		errFileContents, _ := ioutil.ReadFile(errFileName)
 		t.Logf("%v contents:\n\n%v\n\n", errFileName, string(errFileContents))
 		testutil.Fatalf(t,
@@ -195,12 +197,14 @@ func docker(cmd, containerID string, t *testing.T) {
 // compareConfResult does a string compare of 2 test files.
 func compareConfResult(testWorkRootDir string, tempCNINetDir string, result string, expected string, t *testing.T) {
 	tempResult := tempCNINetDir + "/" + result
+	//nolint:gosec
 	resultFile, err := ioutil.ReadFile(tempResult)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to read file",
 			"failed to read file %v: %v", tempResult, err)
 	}
 
+	//nolint:gosec
 	expectedFile, err := ioutil.ReadFile(expected)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to read file %v", expected),
@@ -246,6 +250,7 @@ func doTest(testNum int, wd string, initialNetConfFile string, finalNetConfFile 
 	if initialNetConfFile != "NONE" {
 		setEnv(cniConfName, initialNetConfFile, t)
 	}
+	//nolint:gosec
 	defaultData, err := ioutil.ReadFile(wd + "../deployment/linkerd-cni.conf.default")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to read file linkerd-cni.conf.default",
