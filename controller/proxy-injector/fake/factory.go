@@ -41,6 +41,7 @@ func (f *Factory) FileContents(filename string) ([]byte, error) {
 // ii. the file content isn't a valid YAML structure that can be unmarshalled
 // into AdmissionReview type
 func (f *Factory) AdmissionReview(filename string) (*admissionv1beta1.AdmissionReview, error) {
+	//nolint:gosec
 	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
 	if err != nil {
 		return nil, err
@@ -59,6 +60,7 @@ func (f *Factory) AdmissionReview(filename string) (*admissionv1beta1.AdmissionR
 // ii. the file content isn't a valid YAML structure that can be unmarshalled
 // into Deployment type
 func (f *Factory) Deployment(filename string) (*appsv1.Deployment, error) {
+	//nolint:gosec
 	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
 	if err != nil {
 		return nil, err
@@ -97,6 +99,7 @@ func (f *Factory) Container(filename string) (*corev1.Container, error) {
 // ii. the file content isn't a valid YAML structure that can be unmarshalled
 // into ConfigMap type
 func (f *Factory) ConfigMap(filename string) (*corev1.ConfigMap, error) {
+	//nolint:gosec
 	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
 	if err != nil {
 		return nil, err
@@ -116,6 +119,7 @@ func (f *Factory) ConfigMap(filename string) (*corev1.ConfigMap, error) {
 // ii. the file content isn't a valid YAML structure that can be unmarshalled
 // into Namespace type
 func (f *Factory) Namespace(filename string) (*corev1.Namespace, error) {
+	//nolint:gosec
 	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
 	if err != nil {
 		return nil, err
@@ -135,6 +139,7 @@ func (f *Factory) Namespace(filename string) (*corev1.Namespace, error) {
 // ii. the file content isn't a valid YAML structure that can be unmarshalled
 // into Volume type
 func (f *Factory) Volume(filename string) (*corev1.Volume, error) {
+	//nolint:gosec
 	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
 	if err != nil {
 		return nil, err

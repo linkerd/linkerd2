@@ -164,7 +164,9 @@ func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, dynamicClient dy
 
 	api := NewAPI(k8sClient, dynamicClient, l5dCrdClient, resources...)
 	for _, gauge := range api.gauges {
-		prometheus.Register(gauge)
+		if err := prometheus.Register(gauge); err != nil {
+			log.Errorf("failed to register Prometheus gauge: %s", err)
+		}
 	}
 	return api, nil
 }

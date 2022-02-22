@@ -123,14 +123,18 @@ func Main(args []string) {
 
 	go func() {
 		log.Infof("starting gRPC server on %s", *addr)
-		server.Serve(lis)
+		if err := server.Serve(lis); err != nil {
+			log.Fatalf("failed to start gRPC server: %s", err)
+		}
 	}()
 
 	adminServer := admin.NewServer(*metricsAddr)
 
 	go func() {
 		log.Infof("starting admin server on %s", *metricsAddr)
-		adminServer.ListenAndServe()
+		if err := adminServer.ListenAndServe(); err != nil {
+			log.Fatalf("failed to start admin server: %s", err)
+		}
 	}()
 
 	<-stop
@@ -138,5 +142,7 @@ func Main(args []string) {
 	log.Infof("shutting down gRPC server on %s", *addr)
 	close(done)
 	server.GracefulStop()
-	adminServer.Shutdown(ctx)
+	if err = adminServer.Shutdown(ctx); err != nil {
+		log.Fatalf("failed to gracefully shutdown destination server: %s", err)
+	}
 }

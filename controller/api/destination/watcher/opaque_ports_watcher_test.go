@@ -188,6 +188,7 @@ func TestOpaquePortsWatcher(t *testing.T) {
 		watcher := NewOpaquePortsWatcher(k8sAPI, logging.WithField("test", t.Name()), defaultOpaquePorts)
 		k8sAPI.Sync(nil)
 		listener := newTestOpaquePortsListener()
+		//nolint:gosec
 		watcher.Subscribe(tt.service, listener)
 		watcher.addService(tt.svcObject)
 		watcher.deleteService(tt.svcObject)

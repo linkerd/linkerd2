@@ -45,7 +45,9 @@ func Launch(
 
 	go func() {
 		log.Infof("starting admin server on %s", metricsAddr)
-		adminServer.ListenAndServe()
+		if err = adminServer.ListenAndServe(); err != nil {
+			log.Fatalf("Failed to start admin server: %s", err)
+		}
 	}()
 
 	<-stop
@@ -56,5 +58,7 @@ func Launch(
 		log.Error(err)
 	}
 
-	adminServer.Shutdown(ctx)
+	if err = adminServer.Shutdown(ctx); err != nil {
+		log.Fatalf("Failed to gracefully shutdown controller webhook: %s", err)
+	}
 }

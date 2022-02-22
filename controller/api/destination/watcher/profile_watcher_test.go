@@ -90,6 +90,7 @@ func TestProfileWatcherUpdates(t *testing.T) {
 
 			listener := NewBufferingProfileListener()
 
+			//nolint:gosec
 			watcher.Subscribe(tt.id, listener)
 
 			actualProfiles := make([]*sp.ServiceProfileSpec, 0)
@@ -139,6 +140,7 @@ func TestProfileWatcherDeletes(t *testing.T) {
 
 			listener := NewDeletingProfileListener()
 
+			//nolint:gosec
 			watcher.Subscribe(tt.id, listener)
 
 			watcher.deleteProfile(tt.objectToDelete)

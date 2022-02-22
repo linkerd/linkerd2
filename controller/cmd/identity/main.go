@@ -171,7 +171,9 @@ func Main(args []string) {
 
 	go func() {
 		log.Infof("starting admin server on %s", *adminAddr)
-		adminServer.ListenAndServe()
+		if err := adminServer.ListenAndServe(); err != nil {
+			log.Fatalf("failed to start admin server: %s", err)
+		}
 	}()
 
 	lis, err := net.Listen("tcp", *addr)
@@ -188,10 +190,14 @@ func Main(args []string) {
 	identity.Register(srv, svc)
 	go func() {
 		log.Infof("starting gRPC server on %s", *addr)
-		srv.Serve(lis)
+		if err := srv.Serve(lis); err != nil {
+			log.Fatalf("failed to start gRPC server: %s", err)
+		}
 	}()
 	<-stop
 	log.Infof("shutting down gRPC server on %s", *addr)
 	srv.GracefulStop()
-	adminServer.Shutdown(ctx)
+	if err = adminServer.Shutdown(ctx); err != nil {
+		log.Fatalf("failed to gracefully shutdown identity server: %s", err)
+	}
 }

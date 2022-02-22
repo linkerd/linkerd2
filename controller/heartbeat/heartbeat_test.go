@@ -203,6 +203,7 @@ func TestSend(t *testing.T) {
 					if !reflect.DeepEqual(r.URL.Query(), tc.v) {
 						t.Fatalf("Send queried for: %+v, expected: %+v", r.URL.Query(), tc.v)
 					}
+					//nolint:gosec
 					w.Write([]byte(`{"stable":"stable-a.b.c","edge":"edge-d.e.f"}`))
 				}),
 			)
