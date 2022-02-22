@@ -76,19 +76,27 @@ func main() {
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)
-		server.ListenAndServe()
+		if err := server.ListenAndServe(); err != nil {
+			log.Fatalf("failed to start HTTP server: %s", err)
+		}
 	}()
 
 	adminServer := admin.NewServer(*metricsAddr)
 
 	go func() {
 		log.Infof("starting admin server on %s", *metricsAddr)
-		adminServer.ListenAndServe()
+		if err := adminServer.ListenAndServe(); err != nil {
+			log.Fatalf("failed to start admin server: %s", err)
+		}
 	}()
 
 	<-stop
 
 	log.Infof("shutting down HTTP server on %+v", *addr)
-	server.Shutdown(ctx)
-	adminServer.Shutdown(ctx)
+	if err = server.Shutdown(ctx); err != nil {
+		log.Fatalf("failed to gracefully shutdown metrics-api server: %s", err)
+	}
+	if err = adminServer.Shutdown(ctx); err != nil {
+		log.Fatalf("failed to gracefully shutdown metrics-api admin server: %s", err)
+	}
 }

@@ -565,12 +565,16 @@ func renderTable(table *topTable, requestCh <-chan topRequest, done <-chan struc
 		case req := <-requestCh:
 			table.insert(req)
 		case <-ticker.C:
+			// failing to clear is not significant
+			//nolint:gosec
 			termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 			width, _ = termbox.Size()
 			table.adjustColumnWidths()
 			tablewidth = table.tableWidthCalc()
 			table.renderHeaders(scrollpos)
 			table.renderBody(scrollpos)
+			// we'll assume flush is infallible
+			//nolint:gosec
 			termbox.Flush()
 		case offset := <-horizontalScroll:
 			if (offset > 0 && scrollpos < 0) || (offset < 0 && scrollpos > (width-tablewidth)) {

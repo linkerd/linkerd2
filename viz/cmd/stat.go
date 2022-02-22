@@ -296,6 +296,8 @@ func renderStatStats(rows []*pb.StatTable_PodGroup_Row, options *statOptions) st
 	var buffer bytes.Buffer
 	w := tabwriter.NewWriter(&buffer, 0, 0, padding, ' ', tabwriter.AlignRight)
 	writeStatsToBuffer(rows, w, options)
+	// we'll assume flush is infallible
+	//nolint:gosec
 	w.Flush()
 
 	return renderStats(buffer, &options.statOptionsBase)

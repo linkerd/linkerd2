@@ -126,6 +126,8 @@ func renderRouteStats(resp *pb.TopRoutesResponse, options *routesOptions) string
 	var buffer bytes.Buffer
 	w := tabwriter.NewWriter(&buffer, 0, 0, padding, ' ', tabwriter.AlignRight)
 	writeRouteStatsToBuffer(resp, w, options)
+	// we'll assume flush is infallible
+	//nolint:gosec
 	w.Flush()
 
 	return renderStats(buffer, &options.statOptionsBase)

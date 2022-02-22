@@ -277,6 +277,8 @@ func handleAPIResourceList(w http.ResponseWriter, _ *http.Request, _ httprouter.
 // GET /healthz/ping
 func handleHealthz(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	// we'll assume this write is infallible
+	//nolint:gosec
 	w.Write([]byte("ok"))
 }
 
@@ -351,6 +353,8 @@ func renderJSON(w http.ResponseWriter, obj interface{}, status int) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
+	// we'll assume this write is infallible
+	//nolint:gosec
 	w.Write(bytes)
 }
 
@@ -359,6 +363,8 @@ func renderJSONError(w http.ResponseWriter, err error, status int) {
 	w.Header().Set("Content-Type", "application/json")
 	rsp, _ := json.Marshal(jsonError{Error: err.Error()})
 	w.WriteHeader(status)
+	// we'll assume this write is infallible
+	//nolint:gosec
 	w.Write(rsp)
 }
 

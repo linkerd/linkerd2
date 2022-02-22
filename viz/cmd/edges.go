@@ -247,6 +247,8 @@ func renderEdgeStats(rows []*pb.Edge, options *edgesOptions) string {
 	var buffer bytes.Buffer
 	w := tabwriter.NewWriter(&buffer, 0, 0, padding, ' ', tabwriter.AlignRight)
 	writeEdgesToBuffer(rows, w, options)
+	// we'll assume flush is infallible
+	//nolint:gosec
 	w.Flush()
 
 	return renderEdges(buffer, options)

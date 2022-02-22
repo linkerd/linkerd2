@@ -62,6 +62,8 @@ func Reader(ctx context.Context, k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourc
 	log.Debugf("Response from [%s] had headers: %v", url, httpRsp.Header)
 
 	if err := protohttp.CheckIfResponseHasError(httpRsp); err != nil {
+		// we care about returning the response error here
+		//nolint:gosec
 		httpRsp.Body.Close()
 		return nil, nil, err
 	}

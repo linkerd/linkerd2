@@ -167,6 +167,8 @@ func renderTapOutputProfile(ctx context.Context, k8sAPI *k8s.KubernetesAPI, tapR
 	if err != nil {
 		return fmt.Errorf("Error writing Service Profile: %s", err)
 	}
+	// we'll assume writing is infallible
+	//nolint:gosec
 	w.Write(output)
 	return nil
 }

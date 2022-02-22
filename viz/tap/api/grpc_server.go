@@ -532,11 +532,14 @@ func NewGrpcTapServer(
 	controllerNamespace string,
 	trustDomain string,
 	k8sAPI *k8s.API,
-) *GRPCTapServer {
-	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{ipIndex: indexByIP})
-	k8sAPI.Node().Informer().AddIndexers(cache.Indexers{ipIndex: indexByIP})
-
-	return newGRPCTapServer(tapPort, controllerNamespace, trustDomain, k8sAPI)
+) (*GRPCTapServer, error) {
+	if err := k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{ipIndex: indexByIP}); err != nil {
+		return nil, err
+	}
+	if err := k8sAPI.Node().Informer().AddIndexers(cache.Indexers{ipIndex: indexByIP}); err != nil {
+		return nil, err
+	}
+	return newGRPCTapServer(tapPort, controllerNamespace, trustDomain, k8sAPI), nil
 }
 
 func newGRPCTapServer(

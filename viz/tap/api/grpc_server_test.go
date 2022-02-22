@@ -664,7 +664,10 @@ status:
 			if err != nil {
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
-			s := NewGrpcTapServer(4190, "controller-ns", "cluster.local", k8sAPI)
+			s, err := NewGrpcTapServer(4190, "controller-ns", "cluster.local", k8sAPI)
+			if err != nil {
+				t.Fatalf("failed to create new tap server: %s", err)
+			}
 			k8sAPI.Sync(nil)
 
 			labels := make(map[string]string)
@@ -672,6 +675,7 @@ status:
 			if err != nil {
 				t.Fatalf("Error parsing IP %s: %s", exp.requestedIP, err)
 			}
+			//nolint:gosec
 			s.hydrateIPLabels(ctx, ip, labels)
 			if !reflect.DeepEqual(labels, exp.labels) {
 				t.Fatalf("Unexpected labels: [%#v], expected: [%#v]", labels, exp.labels)
