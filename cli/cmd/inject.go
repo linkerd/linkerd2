@@ -70,7 +70,7 @@ sub-folders, or coming from stdin.`,
   kubectl get deploy -o yaml | linkerd inject - | kubectl apply -f -
 
   # Injecting a file from a remote URL
-  linkerd inject http://url.to/yml | kubectl apply -f -
+  linkerd inject https://url.to/yml | kubectl apply -f -
 
   # Inject all the resources inside a folder and its sub-folders.
   linkerd inject <folder> | kubectl apply -f -`,
