@@ -665,6 +665,7 @@ func (h *TestHelper) WithDataPlaneNamespace(ctx context.Context, testName string
 
 // ReadFile reads a file from disk and returns the contents as a string.
 func ReadFile(file string) (string, error) {
+	//nolint:gosec
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		return "", err

@@ -44,6 +44,7 @@ func (td *TestDataDiffer) DiffTestdata(t *testing.T, path, actual string) {
 
 // ReadTestdata reads a file and returns the contents of that file as a string.
 func ReadTestdata(t *testing.T, fileName string) string {
+	//nolint:gosec
 	file, err := os.Open(filepath.Join("testdata", fileName))
 	if err != nil {
 		t.Fatalf("Failed to open expected output file: %v", err)

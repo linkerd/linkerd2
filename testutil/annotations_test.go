@@ -9,6 +9,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	//nolint:gosec
 	os.Setenv(envFlag, "true")
 	os.Exit(m.Run())
 }
@@ -26,6 +27,7 @@ func redirectStdout(t *testing.T) (*os.File, chan string) {
 	outC := make(chan string)
 	go func() {
 		var buf bytes.Buffer
+		//nolint:gosec
 		io.Copy(&buf, newStdout)
 		outC <- buf.String()
 	}()
@@ -34,6 +36,7 @@ func redirectStdout(t *testing.T) (*os.File, chan string) {
 }
 
 func restoreStdout(outC chan string, origStdout *os.File) string {
+	//nolint:gosec
 	os.Stdout.Close()
 	out := <-outC
 	os.Stdout = origStdout

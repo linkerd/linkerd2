@@ -352,6 +352,7 @@ func (h *KubernetesHelper) WaitUntilDeployReady(deploys map[string]DeploySpec) {
 			} else {
 				out = fmt.Sprintf("error running test: failed to wait for deploy/%s to become 'ready', timed out waiting for condition\n", deploy)
 			}
+			//nolint:gosec
 			os.Stderr.Write([]byte(out))
 			os.Exit(1)
 		}
