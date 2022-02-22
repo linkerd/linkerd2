@@ -109,8 +109,12 @@ non-zero exit code.`,
 	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
 	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 	cmd.Flags().Bool("proxy", false, "")
+	// the "proxy" flag exists
+	//nolint:gosec
 	cmd.Flags().MarkHidden("proxy")
 	cmd.Flags().StringP("namespace", "n", "", "")
+	// the "namespace" flag exists
+	//nolint:gosec
 	cmd.Flags().MarkHidden("namespace")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(

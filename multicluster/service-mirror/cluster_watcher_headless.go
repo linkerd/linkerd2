@@ -303,6 +303,8 @@ func (rcsw *RemoteClusterServiceWatcher) createHeadlessMirrorEndpoints(ctx conte
 	rcsw.log.Infof("Creating a new headless mirror endpoints object for headless mirror %s/%s", headlessMirrorServiceName, exportedService.Namespace)
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(exportedService.Namespace).Create(ctx, headlessMirrorEndpoints, metav1.CreateOptions{}); err != nil {
 		// we clean up after ourselves
+		// this is a precautionary deletion because creation failed
+		//nolint:gosec
 		rcsw.localAPIClient.Client.CoreV1().Services(exportedService.Namespace).Delete(ctx, headlessMirrorServiceName, metav1.DeleteOptions{})
 		// and retry
 		return RetryableError{[]error{err}}

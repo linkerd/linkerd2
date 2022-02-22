@@ -69,8 +69,9 @@ func newAllowCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			stdout.Write(buf.Bytes())
-			stdout.Write([]byte("---\n"))
+			// we'll assume basic writes to stdout are infallible
+			stdout.Write(buf.Bytes())     //nolint:gosec
+			stdout.Write([]byte("---\n")) //nolint:gosec
 
 			return nil
 		},

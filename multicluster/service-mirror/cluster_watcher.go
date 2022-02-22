@@ -604,6 +604,8 @@ func (rcsw *RemoteClusterServiceWatcher) createGatewayEndpoints(ctx context.Cont
 	rcsw.log.Infof("Creating a new endpoints for %s", serviceInfo)
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(exportedService.Namespace).Create(ctx, endpointsToCreate, metav1.CreateOptions{}); err != nil {
 		// we clean up after ourselves
+		// this is a precautionary deletion because creation failed
+		//nolint:gosec
 		rcsw.localAPIClient.Client.CoreV1().Services(exportedService.Namespace).Delete(ctx, localServiceName, metav1.DeleteOptions{})
 		// and retry
 		return RetryableError{[]error{err}}
@@ -1149,6 +1151,8 @@ func (rcsw *RemoteClusterServiceWatcher) createEndpointMirrorService(ctx context
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpointMirrorService.Namespace).Create(ctx, endpointMirrorEndpoints, metav1.CreateOptions{}); err != nil {
 		// If we cannot create an Endpoints object for the Endpoint Mirror
 		// service, then delete the Endpoint Mirror service we just created
+		// this is a precautionary deletion because creation failed
+		//nolint:gosec
 		rcsw.localAPIClient.Client.CoreV1().Services(endpointMirrorService.Namespace).Delete(ctx, endpointMirrorName, metav1.DeleteOptions{})
 		// and retry
 		return createdService, RetryableError{[]error{err}}

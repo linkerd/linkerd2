@@ -327,12 +327,13 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				}
 			}
 
-			stdout.Write(credsOut)
-			stdout.Write([]byte("---\n"))
-			stdout.Write(linkOut)
-			stdout.Write([]byte("---\n"))
-			stdout.Write(serviceMirrorOut.Bytes())
-			stdout.Write([]byte("---\n"))
+			// we'll assume basic writes to stdout are infallible
+			stdout.Write(credsOut)                 //nolint:gosec
+			stdout.Write([]byte("---\n"))          //nolint:gosec
+			stdout.Write(linkOut)                  //nolint:gosec
+			stdout.Write([]byte("---\n"))          //nolint:gosec
+			stdout.Write(serviceMirrorOut.Bytes()) //nolint:gosec
+			stdout.Write([]byte("---\n"))          //nolint:gosec
 
 			return nil
 		},

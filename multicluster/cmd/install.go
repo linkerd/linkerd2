@@ -93,9 +93,10 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 		log.Errorf("Unable to parse version: %s", version.Version)
 	}
 	if release {
-		cmd.Flags().MarkHidden("control-plane-version")
-		cmd.Flags().MarkHidden("gateway-nginx-image")
-		cmd.Flags().MarkHidden("gateway-nginx-image-version")
+		// the following flags all exist
+		cmd.Flags().MarkHidden("control-plane-version")       //nolint:gosec
+		cmd.Flags().MarkHidden("gateway-nginx-image")         //nolint:gosec
+		cmd.Flags().MarkHidden("gateway-nginx-image-version") //nolint:gosec
 	}
 
 	return cmd
@@ -198,8 +199,9 @@ func render(w io.Writer, values *multicluster.Values, valuesOverrides map[string
 			return err
 		}
 	}
-	w.Write(buf.Bytes())
-	w.Write([]byte("---\n"))
+	// we'll assume basic writes to stdout are infallible
+	w.Write(buf.Bytes())     //nolint:gosec
+	w.Write([]byte("---\n")) //nolint:gosec
 
 	return nil
 }

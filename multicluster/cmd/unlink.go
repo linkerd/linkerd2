@@ -10,6 +10,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/k8s/resource"
 	mc "github.com/linkerd/linkerd2/pkg/multicluster"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -87,7 +88,9 @@ func newUnlinkCommand() *cobra.Command {
 			}
 
 			for _, r := range resources {
-				r.RenderResource(stdout)
+				if err = r.RenderResource(stdout); err != nil {
+					log.Errorf("failed to render resource %s: %s", r.Name, err)
+				}
 			}
 
 			return nil
@@ -106,7 +109,7 @@ func newUnlinkCommand() *cobra.Command {
 }
 
 func configureClusterNameFlagCompletion(cmd *cobra.Command) {
-	cmd.RegisterFlagCompletionFunc("cluster-name",
+	if err := cmd.RegisterFlagCompletionFunc("cluster-name",
 		func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 			if err != nil {
@@ -120,5 +123,7 @@ func configureClusterNameFlagCompletion(cmd *cobra.Command) {
 			}
 
 			return results, cobra.ShellCompDirectiveDefault
-		})
+		}); err != nil {
+		log.Errorf("failed to configure cluster name flag completion: %s", err)
+	}
 }
