@@ -229,7 +229,6 @@ func readFile(fileName string) (io.Reader, error) {
 	if fileName == "-" {
 		return os.Stdin, nil
 	}
-	//nolint:gosec
 	return os.Open(fileName)
 }
 

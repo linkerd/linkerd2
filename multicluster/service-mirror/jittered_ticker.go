@@ -66,7 +66,9 @@ tickLoop:
 }
 
 func (t *Ticker) calculateDelay() time.Duration {
-	jitter := time.Duration(rand.Int63n(int64(t.MaxJitter))) //nolint:gosec
+	// weakness of random number generator is not significant for calculating a delay
+	//nolint:gosec
+	jitter := time.Duration(rand.Int63n(int64(t.MaxJitter)))
 	delay := t.MinDuration + jitter
 	return delay
 }

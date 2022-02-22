@@ -31,7 +31,8 @@ func NewFactory(rootDir string) *Factory {
 // bytes. If the file doesn't exist in the 'fake/data' folder, an error will be
 // returned.
 func (f *Factory) FileContents(filename string) ([]byte, error) {
-	return ioutil.ReadFile(filepath.Join(f.rootDir, filename)) //nolint:gosec
+	//nolint:gosec
+	return ioutil.ReadFile(filepath.Join(f.rootDir, filename))
 }
 
 // AdmissionReview returns the content of the specified file as an

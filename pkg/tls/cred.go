@@ -194,12 +194,14 @@ func ValidateAndCreateCreds(crt, key string) (*Cred, error) {
 
 // ReadPEMCreds reads PEM-encoded credentials from the named files.
 func ReadPEMCreds(keyPath, crtPath string) (*Cred, error) {
+	// keyPath is set by template
 	//nolint:gosec
 	keyb, err := ioutil.ReadFile(keyPath)
 	if err != nil {
 		return nil, err
 	}
 
+	// crtPath is set by template
 	//nolint:gosec
 	crtb, err := ioutil.ReadFile(crtPath)
 	if err != nil {

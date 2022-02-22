@@ -149,6 +149,7 @@ func read(path string) ([]io.Reader, error) {
 	if path == "-" {
 		in = append(in, os.Stdin)
 	} else if isValidURL(path) {
+		// path has been validated
 		//nolint:gosec
 		resp, err := http.Get(path)
 		if err != nil {
@@ -196,6 +197,7 @@ func walk(path string) ([]io.Reader, error) {
 	}
 
 	if !stat.IsDir() {
+		// path has been validated
 		//nolint:gosec
 		file, err := os.Open(path)
 		if err != nil {

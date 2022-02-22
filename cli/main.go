@@ -19,7 +19,9 @@ func main() {
 		}
 		path, err := exec.LookPath(fmt.Sprintf("linkerd-%s", args[0]))
 		if err == nil {
-			plugin := exec.Command(path, args[1:]...) //nolint:gosec
+			// args are templated
+			//nolint:gosec
+			plugin := exec.Command(path, args[1:]...)
 			plugin.Stdin = os.Stdin
 			plugin.Stdout = os.Stdout
 			plugin.Stderr = os.Stderr
