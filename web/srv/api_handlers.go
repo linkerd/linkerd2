@@ -61,6 +61,8 @@ func renderJSONError(w http.ResponseWriter, err error, status int) {
 	log.Error(err.Error())
 	rsp, _ := json.Marshal(jsonError{Error: err.Error()})
 	w.WriteHeader(status)
+	// we'll assume write is infallible
+	//nolint:gosec
 	w.Write(rsp)
 }
 
@@ -71,16 +73,22 @@ func renderJSON(w http.ResponseWriter, resp interface{}) {
 		renderJSONError(w, err, http.StatusInternalServerError)
 		return
 	}
+	// we'll assume write is infallible
+	//nolint:gosec
 	w.Write(jsonResp)
 }
 
 func renderJSONPb(w http.ResponseWriter, msg proto.Message) {
 	w.Header().Set("Content-Type", "application/json")
-	pbMarshaler.Marshal(w, msg)
+	if err := pbMarshaler.Marshal(w, msg); err != nil {
+		log.Errorf("failed to render JSON: %s", err)
+	}
 }
 
 func renderJSONBytes(w http.ResponseWriter, b []byte) {
 	w.Header().Set("Content-Type", "application/json")
+	// we'll assume write is infallible
+	//nolint:gosec
 	w.Write(b)
 }
 
@@ -432,6 +440,8 @@ func (h *handler) handleAPIResourceDefinition(w http.ResponseWriter, req *http.R
 		return
 	}
 	w.Header().Set("Content-Type", "text/yaml")
+	// we'll assume write is infallible
+	//nolint:gosec
 	w.Write(resourceDefinition)
 }
 

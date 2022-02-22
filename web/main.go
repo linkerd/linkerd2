@@ -101,14 +101,18 @@ func main() {
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)
-		server.ListenAndServe()
+		if err := server.ListenAndServe(); err != nil {
+			log.Fatalf("failed to start HTTP server: %s", err)
+		}
 	}()
 
 	adminServer := admin.NewServer(*metricsAddr)
 
 	go func() {
 		log.Infof("starting admin server on %s", *metricsAddr)
-		adminServer.ListenAndServe()
+		if err := adminServer.ListenAndServe(); err != nil {
+			log.Fatalf("failed to start admin server: %s", err)
+		}
 	}()
 
 	<-stop
@@ -116,8 +120,12 @@ func main() {
 	log.Infof("shutting down HTTP server on %+v", *addr)
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	server.Shutdown(ctx)
-	adminServer.Shutdown(ctx)
+	if err = server.Shutdown(ctx); err != nil {
+		log.Fatalf("failed to shutdown server: %s", err)
+	}
+	if err = adminServer.Shutdown(ctx); err != nil {
+		log.Fatalf("failed to shutdown admin server: %s", err)
+	}
 }
 
 func getUUIDAndVersion(ctx context.Context, k8sAPI *k8s.KubernetesAPI, controllerNamespace string) (string, string) {

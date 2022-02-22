@@ -87,6 +87,8 @@ func (h *handler) handleProfileDownload(w http.ResponseWriter, req *http.Request
 	w.Header().Set("Content-Type", "text/yaml")
 	w.Header().Set("Content-Disposition", dispositionHeaderVal)
 
+	// we'll assume write is infallible
+	//nolint:gosec
 	w.Write(profileYaml.Bytes())
 }
 
