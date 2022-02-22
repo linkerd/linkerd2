@@ -262,6 +262,7 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 		}),
 	})
 	for q.Len() > 0 {
+		//nolint:gosec
 		watcher.processNextEvent(context.Background())
 	}
 
@@ -284,6 +285,7 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 
 	q.Add(&OnLocalNamespaceAdded{ns})
 	for q.Len() > 0 {
+		//nolint:gosec
 		watcher.processNextEvent(context.Background())
 	}
 

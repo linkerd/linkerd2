@@ -70,6 +70,7 @@ func (te *testEnvironment) runEnvironment(watcherQueue workqueue.RateLimitingInt
 	}
 
 	for range te.events {
+		//nolint:gosec
 		watcher.processNextEvent(context.Background())
 	}
 
