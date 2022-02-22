@@ -682,17 +682,20 @@ func (h *TestHelper) GetReleaseChannelVersions() (map[string]string, error) {
 	if err != nil {
 		return map[string]string{}, err
 	}
+	defer resp.Body.Close()
 
 	var versions map[string]string
 	if err := json.NewDecoder(resp.Body).Decode(&versions); err != nil {
 		return map[string]string{}, err
 	}
 
-	defer resp.Body.Close()
 	return versions, nil
 }
 
-func (h *TestHelper) GetCLIBinary(filepath, version string) error {
+// DownloadCLIBinary is used to download the Linkerd CLI from GitHub Releases
+// page. The method takes the version to download and a filepath where to save
+// the binary.
+func (h *TestHelper) DownloadCLIBinary(filepath, version string) error {
 	url := fmt.Sprintf("https://github.com/linkerd/linkerd2/releases/download/%[1]s/linkerd2-cli-%[1]s-%s-%s", version, runtime.GOOS, runtime.GOARCH)
 	resp, err := h.httpClient.Get(url)
 	if err != nil {

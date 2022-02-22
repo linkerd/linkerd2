@@ -1,7 +1,6 @@
 package upgradestabletest
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -9,14 +8,10 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"text/template"
-	"time"
 
 	"github.com/linkerd/linkerd2/pkg/flags"
-	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	"github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tree"
-	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
 )
 
@@ -28,8 +23,6 @@ var (
 
 	configMapUID string
 
-	helmTLSCerts *tls.CA
-
 	linkerdSvcStable = []testutil.Service{
 		{Namespace: "linkerd", Name: "linkerd-dst"},
 		{Namespace: "linkerd", Name: "linkerd-identity"},
@@ -40,11 +33,10 @@ var (
 
 	//skippedInboundPorts lists some ports to be marked as skipped, which will
 	// be verified in test/integration/inject
-	skippedInboundPorts       = "1234,5678"
-	skippedOutboundPorts      = "1234,5678"
-	multiclusterExtensionName = "multicluster"
-	vizExtensionName          = "viz"
-	linkerdBaseStableVersion  string
+	skippedInboundPorts      = "1234,5678"
+	skippedOutboundPorts     = "1234,5678"
+	vizExtensionName         = "viz"
+	linkerdBaseStableVersion string
 )
 
 func TestMain(m *testing.M) {
@@ -58,7 +50,7 @@ func TestMain(m *testing.M) {
 func TestInstallResourcesPreUpgrade(t *testing.T) {
 	versions, err := TestHelper.GetReleaseChannelVersions()
 	if err != nil {
-		testutil.AnnotatedFatal(t, "'linkerd install' command failed", err)
+		testutil.AnnotatedFatal(t, "failed to get the latest release channels versions", err)
 	}
 	linkerdBaseStableVersion = versions["stable"]
 
@@ -69,7 +61,7 @@ func TestInstallResourcesPreUpgrade(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	cliPath := fmt.Sprintf("%s/linkerd2-cli-%s-%s-%s", tmpDir, linkerdBaseStableVersion, runtime.GOOS, runtime.GOARCH)
-	if err := TestHelper.GetCLIBinary(cliPath, linkerdBaseStableVersion); err != nil {
+	if err := TestHelper.DownloadCLIBinary(cliPath, linkerdBaseStableVersion); err != nil {
 		testutil.AnnotatedFatal(t, "failed to fetch cli executable", err)
 	}
 
@@ -143,12 +135,12 @@ func TestUpgradeTestAppWorksBeforeUpgrade(t *testing.T) {
 	testAppNamespace := "upgrade-test"
 
 	// create namespace and install test app
-	if err := TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, testAppNamespace, map[string]string{}); err != nil {
-		testutil.AnnotatedFatalf(t, "Failed to create namespace", "Failed to create namespace %s: %s", testAppNamespace, err)
+	if err := TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, testAppNamespace, map[string]string{k8s.ProxyInjectAnnotation: "enabled"}); err != nil {
+		testutil.AnnotatedFatalf(t, "failed to create namespace", "failed to create namespace %s: %s", testAppNamespace, err)
 	}
 
 	if _, err := TestHelper.Kubectl("", "apply", "-f", "./testdata/emoji.yaml", "-n", testAppNamespace); err != nil {
-		testutil.AnnotatedFatalf(t, "Kubectl apply failed", "Kubectl apply failed: %s", err)
+		testutil.AnnotatedFatalf(t, "'kubectl' apply failed", "'kubectl apply' failed: %s", err)
 	}
 
 	// make sure app is running
@@ -454,78 +446,27 @@ func TestVersionPostInstall(t *testing.T) {
 	}
 }
 
-func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersionOverride string) {
-	var cmd []string
-	var golden string
-	cmd = []string{"check", "--proxy", "--expected-version", expectedVersion, "--namespace", namespace, "--wait=60m"}
-	golden = "check.proxy.golden"
-
-	expected := getCheckOutput(t, golden, TestHelper.GetLinkerdNamespace())
-	timeout := time.Minute * 5
-	err := TestHelper.RetryFor(timeout, func() error {
-		if cliVersionOverride != "" {
-			cliVOverride := []string{"--cli-version-override", cliVersionOverride}
-			cmd = append(cmd, cliVOverride...)
-		}
-		out, err := TestHelper.LinkerdRun(cmd...)
-
-		if err != nil {
-			return fmt.Errorf("'linkerd check' command failed\n%s\n%s", err, out)
-		}
-
-		if !strings.Contains(out, expected) {
-			return fmt.Errorf(
-				"Expected:\n%s\nActual:\n%s", expected, out)
-		}
-
-		for _, ext := range TestHelper.GetInstalledExtensions() {
-			if ext == vizExtensionName {
-				expected = getCheckOutput(t, "check.viz.proxy.golden", TestHelper.GetVizNamespace())
-				if !strings.Contains(out, expected) {
-					return fmt.Errorf(
-						"Expected:\n%s\nActual:\n%s", expected, out)
-				}
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd check' command timed-out (%s)", timeout), err)
-	}
-}
-
-func getCheckOutput(t *testing.T, goldenFile string, namespace string) string {
-	pods, err := TestHelper.KubernetesHelper.GetPods(context.Background(), namespace, nil)
-	if err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to retrieve pods: %s", err), err)
-	}
-
-	proxyVersionErr := ""
-	err = healthcheck.CheckProxyVersionsUpToDate(pods, version.Channels{})
-	if err != nil {
-		proxyVersionErr = err.Error()
-	}
-
-	tpl := template.Must(template.ParseFiles("testdata" + "/" + goldenFile))
-	vars := struct {
-		ProxyVersionErr string
-		HintURL         string
-	}{
-		proxyVersionErr,
-		healthcheck.HintBaseURL(TestHelper.GetVersion()),
-	}
-
-	var expected bytes.Buffer
-	if err := tpl.Execute(&expected, vars); err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to parse check.viz.golden template: %s", err), err)
-	}
-
-	return expected.String()
-}
-
 func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 	testAppNamespace := "upgrade-test"
+
+	// Restart pods after upgrade to make sure they're re-injected with the
+	// latest proxy
+	if _, err := TestHelper.Kubectl("", "rollout", "restart", "deploy", "-n", testAppNamespace); err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl rollout' failed", "'kubectl rollout' failed: %s", err)
+	}
+
+	// make sure app is running before proceeding
+	ctx := context.Background()
+	for _, deploy := range []string{"emoji", "voting", "web"} {
+		if err := TestHelper.CheckPods(ctx, testAppNamespace, deploy, 1); err != nil {
+			if rce, ok := err.(*testutil.RestartCountError); ok {
+				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+			} else {
+				testutil.AnnotatedError(t, "CheckPods timed-out", err)
+			}
+		}
+	}
+
 	if err := testutil.ExerciseTestAppEndpoint("/api/vote?choice=:policeman:", testAppNamespace, TestHelper); err != nil {
 		testutil.AnnotatedFatalf(t, "error exercising test app endpoint after upgrade",
 			"error exercising test app endpoint after upgrade %s", err)

@@ -390,49 +390,6 @@ latest_release_channel() {
     "$bindir"/scurl https://versioncheck.linkerd.io/version.json | grep -o "$1-[0-9]*.[0-9]*.[0-9]*"
 }
 
-# Install a specific Linkerd version.
-# $1 - URL to use to download specific Linkerd version
-# $2 - Linkerd version
-install_version() {
-    tmp=$(mktemp -d -t l5dbin.XXX)
-
-    local install_url=$1
-    local version=$2
-
-    "$bindir"/scurl "$install_url" | HOME=$tmp sh > /dev/null 2>&1
-
-    local linkerd_path=$tmp/.linkerd2/bin/linkerd
-    local test_app_namespace=upgrade-test
-
-    (
-        set -x
-        # TODO: Use a mix of helm override flags and CLI flags and remove this condition
-        # once stable-2.10 is out
-        edge_regex='(edge)-([0-9]+\.[0-9]+\.[0-9]+)'
-        if [[ "$version" =~ $edge_regex ]]; then
-          "$linkerd_path" install --set proxyInit.ignoreInboundPorts="1234\,5678" --controller-log-level debug | kubectl --context="$context" apply -f - 2>&1
-        else
-          "$linkerd_path" install --skip-inbound-ports '1234,5678' --controller-log-level debug | kubectl --context="$context" apply -f - 2>&1
-        fi
-    )
-    exit_on_err "install_version() - installing $version failed"
-
-    (
-        set -x
-        "$linkerd_path" check --wait 60m 2>&1
-    )
-    exit_on_err 'install_version() - linkerd check failed'
-
-    #Now we need to install the app that will be used to verify that upgrade does not break anything
-    kubectl --context="$context" create namespace "$test_app_namespace" > /dev/null 2>&1
-    kubectl --context="$context" label namespaces "$test_app_namespace" 'test.linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
-    (
-        set -x
-        "$linkerd_path" inject "$test_directory/install/testdata/upgrade_test.yaml" | kubectl --context="$context" apply --namespace="$test_app_namespace" -f - 2>&1
-    )
-    exit_on_err 'install_version() - linkerd inject failed'
-}
-
 # Run the upgrade-edge test by upgrading the most-recent edge release to the
 # HEAD of this branch.
 run_upgrade-edge_test() {
