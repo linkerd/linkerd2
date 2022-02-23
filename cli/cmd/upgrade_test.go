@@ -152,9 +152,9 @@ func TestUpgradeIssuerWithExternalIssuerFails(t *testing.T) {
 	upgradedIssuer := generateIssuerCerts(t, true)
 	defer upgradedIssuer.cleanup()
 
-	upgradeOpts.flagSet.Set("identity-trust-anchors-file", upgradedIssuer.caFile)
-	upgradeOpts.flagSet.Set("identity-issuer-certificate-file", upgradedIssuer.crtFile)
-	upgradeOpts.flagSet.Set("identity-issuer-key-file", upgradedIssuer.keyFile)
+	upgradeOpts.flagSet.Set("identity-trust-anchors-file", upgradedIssuer.caFile)       //nolint:gosec
+	upgradeOpts.flagSet.Set("identity-issuer-certificate-file", upgradedIssuer.crtFile) //nolint:gosec
+	upgradeOpts.flagSet.Set("identity-issuer-key-file", upgradedIssuer.keyFile)         //nolint:gosec
 
 	_, err := renderUpgrade(install.String()+externalIssuerSecret(issuer), upgradeOpts.flags, *upgradeOpts.templateOptions)
 
@@ -171,9 +171,9 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 	issuerCerts := generateIssuerCerts(t, true)
 	defer issuerCerts.cleanup()
 
-	upgradeOpts.flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
-	upgradeOpts.flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
-	upgradeOpts.flagSet.Set("identity-issuer-key-file", issuerCerts.keyFile)
+	upgradeOpts.flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)       //nolint:gosec
+	upgradeOpts.flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile) //nolint:gosec
+	upgradeOpts.flagSet.Set("identity-issuer-key-file", issuerCerts.keyFile)         //nolint:gosec
 
 	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts.flags, *upgradeOpts.templateOptions)
 	if err != nil {
@@ -245,8 +245,8 @@ func TestUpgradeFailsWithOnlyIssuerCert(t *testing.T) {
 	issuerCerts := generateIssuerCerts(t, true)
 	defer issuerCerts.cleanup()
 
-	upgradeOpts.flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
-	upgradeOpts.flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
+	upgradeOpts.flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)       //nolint:gosec
+	upgradeOpts.flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile) //nolint:gosec
 
 	_, _, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts.flags, *upgradeOpts.templateOptions)
 
@@ -263,8 +263,8 @@ func TestUpgradeFailsWithOnlyIssuerKey(t *testing.T) {
 	issuerCerts := generateIssuerCerts(t, false)
 	defer issuerCerts.cleanup()
 
-	upgradeOpts.flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
-	upgradeOpts.flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
+	upgradeOpts.flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)       //nolint:gosec
+	upgradeOpts.flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile) //nolint:gosec
 
 	_, _, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts.flags, *upgradeOpts.templateOptions)
 
@@ -286,9 +286,9 @@ func TestUpgradeRootFailsWithOldPods(t *testing.T) {
 	issuerCerts := generateIssuerCerts(t, true)
 	defer issuerCerts.cleanup()
 
-	upgradeOpts.flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
-	upgradeOpts.flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
-	upgradeOpts.flagSet.Set("identity-issuer-key-file", issuerCerts.keyFile)
+	upgradeOpts.flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)       //nolint:gosec
+	upgradeOpts.flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile) //nolint:gosec
+	upgradeOpts.flagSet.Set("identity-issuer-key-file", issuerCerts.keyFile)         //nolint:gosec
 
 	_, err := renderUpgrade(install.String()+podWithSidecar(oldIssuer), upgradeOpts.flags, *upgradeOpts.templateOptions)
 
@@ -411,6 +411,7 @@ func testUpgradeOptions() (flagOptions, error) {
 	// Explicitly set policy controller override to upgrade control plane version
 	templateOpts := &valuespkg.Options{}
 	flagspkg.AddValueOptionsFlags(flagSet, templateOpts)
+	//nolint:gosec
 	flagSet.Set("set", fmt.Sprintf("policyController.image.version=%[1]s,linkerdVersion=%[1]s", upgradeControlPlaneVersion))
 
 	flagSet.Set("proxy-version", upgradeProxyVersion) //nolint:gosec

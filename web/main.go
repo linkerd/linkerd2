@@ -121,6 +121,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	if err = server.Shutdown(ctx); err != nil {
+		//nolint:gocritic
 		log.Fatalf("failed to shutdown server: %s", err)
 	}
 	if err = adminServer.Shutdown(ctx); err != nil {
