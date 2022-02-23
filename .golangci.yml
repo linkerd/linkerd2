@@ -28,10 +28,12 @@ linters:
   - bodyclose
   - deadcode
   - depguard
+  - errcheck
   - errorlint
   - exportloopref
   - goconst
   - gocritic
+  - gosec
   - gosimple
   - govet
   - ineffassign
@@ -48,13 +50,37 @@ linters:
   # - gochecknoglobals
   # - gochecknoinits
   # - gocyclo
-  # - gosec
   # - interfacer
   # - lll
   # - maligned
   # - prealloc
   # - stylecheck
   disable:
-  - errcheck
   - staticcheck
   - structcheck
+
+issues:
+  exclude-rules:
+    # Linters
+    #########
+    - linters:
+      - errcheck
+      text: Error return value of `((io|out|w)\.(Copy|Write))` is not checked
+    # MarkHidden is fallible if the flag does not exist. We assume these exist
+    # exist as they are generally flags we are deprecating or use only for
+    # development.
+    - linters:
+      - errcheck
+      text: Error return value of `.*\.MarkHidden` is not checked
+    # Flag completion is not critical to the CLI and errors are ignored if
+    # registration fails.
+    - linters:
+      - errcheck
+      text: Error return value of `.*\.RegisterFlagCompletionFunc` is not checked
+
+    # Paths
+    #######
+    # We make assumptions about the number of events we expect to process, and
+    # if processNextEvent fails that will still surface in the test.
+    - path: _test.*\.go
+      text: Error return value of `watcher.processNextEvent` is not checked
