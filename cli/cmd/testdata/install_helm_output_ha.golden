@@ -332,6 +332,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
   labels:
+    helm.sh/chart: linkerd2-
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -345,6 +346,8 @@ spec:
     - name: v1alpha1
       served: true
       storage: false
+      deprecated: true
+      deprecationWarning: "policy.linkerd.io/v1alpha1 Server is deprecated; use policy.linkerd.io/v1beta1 Server"
       schema:
         openAPIV3Schema:
           type: object
@@ -418,9 +421,9 @@ spec:
                   type: object
                   description: >-
                     Selects pods in the same namespace.
-                  oneOf:
-                    - required: [matchExpressions]
-                    - required: [matchLabels]
+
+                    The result of matchLabels and matchExpressions are ANDed.
+                    Selects all if empty.
                   properties:
                     matchLabels:
                       type: object
