@@ -72,7 +72,7 @@ func ConfigureNamespaceFlagCompletion(
 	kubeContext string,
 ) {
 	for _, flagName := range flagNames {
-		cmd.RegisterFlagCompletionFunc(flagName,
+		if err := cmd.RegisterFlagCompletionFunc(flagName,
 			func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 				k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 				if err != nil {
@@ -86,23 +86,27 @@ func ConfigureNamespaceFlagCompletion(
 				}
 
 				return results, cobra.ShellCompDirectiveDefault
-			})
+			}); err != nil {
+			log.Errorf("failed to configure flag %s for completion: %s", flagName, err)
+		}
 	}
 }
 
 // ConfigureOutputFlagCompletion sets up resource-aware completion for command
 // flags that accept an output name.
 func ConfigureOutputFlagCompletion(cmd *cobra.Command) {
-	cmd.RegisterFlagCompletionFunc("output",
+	if err := cmd.RegisterFlagCompletionFunc("output",
 		func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return []string{"basic", "json", "short", "table"}, cobra.ShellCompDirectiveDefault
-		})
+		}); err != nil {
+		log.Errorf("failed to configure output flag completion: %s", err)
+	}
 }
 
 // ConfigureKubeContextFlagCompletion sets up resource-aware completion for command
 // flags based off of a kubeconfig
 func ConfigureKubeContextFlagCompletion(cmd *cobra.Command, kubeconfigPath string) {
-	cmd.RegisterFlagCompletionFunc("context",
+	if err := cmd.RegisterFlagCompletionFunc("context",
 		func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			rules := clientcmd.NewDefaultClientConfigLoadingRules()
 			rules.ExplicitPath = kubeconfigPath
@@ -124,7 +128,9 @@ func ConfigureKubeContextFlagCompletion(cmd *cobra.Command, kubeconfigPath strin
 			}
 
 			return suggestions, cobra.ShellCompDirectiveDefault
-		})
+		}); err != nil {
+		log.Errorf("failed to configure kubectl context completion: %s", err)
+	}
 }
 
 // GetLabelSelector creates a label selector as a string based on a label key

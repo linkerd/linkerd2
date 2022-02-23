@@ -52,9 +52,13 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) servePing(w http.ResponseWriter) {
+	// we'll assume write is infallible
+	//nolint:gosec
 	w.Write([]byte("pong\n"))
 }
 
 func (h *handler) serveReady(w http.ResponseWriter) {
+	// we'll assume write is infallible
+	//nolint:gosec
 	w.Write([]byte("ok\n"))
 }

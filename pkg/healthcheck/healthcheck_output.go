@@ -141,6 +141,8 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 		if err == nil {
 			if isatty.IsTerminal(os.Stdout.Fd()) {
 				spin.Suffix = fmt.Sprintf(" Running %s extension check", extension)
+				// we'll assume Color is infallible
+				//nolint:gosec
 				spin.Color("bold") // this calls spin.Restart()
 			}
 			// args has been constructed by the function
@@ -149,6 +151,8 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 			var stdout, stderr bytes.Buffer
 			plugin.Stdout = &stdout
 			plugin.Stderr = &stderr
+			// the plugin being run has been constructed by the cases above and should be infallible
+			// nolint:gosec
 			plugin.Run()
 			extensionResults, err := parseJSONCheckOutput(stdout.Bytes())
 			spin.Stop()
@@ -394,6 +398,8 @@ func getResultStatus(result *CheckResult) string {
 func restartSpinner(spin *spinner.Spinner, result *CheckResult) {
 	if isatty.IsTerminal(os.Stdout.Fd()) {
 		spin.Suffix = fmt.Sprintf(" %s", result.Err)
+		// we'll assume Color is infallible
+		//nolint:gosec
 		spin.Color("bold") // this calls spin.Restart()
 	}
 }

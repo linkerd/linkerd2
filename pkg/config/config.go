@@ -23,6 +23,8 @@ func Values(path, prefix string) (*l5dcharts.Values, error) {
 	if !strings.HasPrefix(path, prefix) {
 		return nil, fmt.Errorf("invalid path: %s", path)
 	}
+	// path has been validated
+	//nolint:gosec
 	configYaml, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %s", err)

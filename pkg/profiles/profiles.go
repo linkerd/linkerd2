@@ -229,6 +229,9 @@ func readFile(fileName string) (io.Reader, error) {
 	if fileName == "-" {
 		return os.Stdin, nil
 	}
+	// fileName contains the information for getting the ServiceProfile that
+	// the user has specified
+	//nolint:gosec
 	return os.Open(fileName)
 }
 

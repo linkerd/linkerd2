@@ -189,9 +189,9 @@ func newFakeClientSetsFromManifests(readers []io.Reader) (
 
 // ToRuntimeObject deserializes Kubernetes YAML into a Runtime Object
 func ToRuntimeObject(config string) (runtime.Object, error) {
-	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
-	apiregistrationv1.AddToScheme(scheme.Scheme)
-	spscheme.AddToScheme(scheme.Scheme)
+	apiextensionsv1beta1.AddToScheme(scheme.Scheme) //nolint:gosec
+	apiregistrationv1.AddToScheme(scheme.Scheme)    //nolint:gosec
+	spscheme.AddToScheme(scheme.Scheme)             //nolint:gosec
 	decode := scheme.Codecs.UniversalDeserializer().Decode
 	obj, _, err := decode([]byte(config), nil, nil)
 	return obj, err
@@ -202,8 +202,8 @@ func ToRuntimeObject(config string) (runtime.Object, error) {
 // object is considered unversioned, or an error if it's not a pointer or is
 // unregistered.
 func ObjectKinds(obj runtime.Object) ([]schema.GroupVersionKind, bool, error) {
-	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
-	apiregistrationv1.AddToScheme(scheme.Scheme)
-	spscheme.AddToScheme(scheme.Scheme)
+	apiextensionsv1beta1.AddToScheme(scheme.Scheme) //nolint:gosec
+	apiregistrationv1.AddToScheme(scheme.Scheme)    //nolint:gosec
+	spscheme.AddToScheme(scheme.Scheme)             //nolint:gosec
 	return scheme.Scheme.ObjectKinds(obj)
 }

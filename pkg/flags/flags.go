@@ -29,16 +29,20 @@ const (
 // been configured.
 func ConfigureAndParse(cmd *flag.FlagSet, args []string) {
 	klog.InitFlags(nil)
-	flag.Set("stderrthreshold", "FATAL")
-	flag.Set("logtostderr", "false")
-	flag.Set("log_file", "/dev/null")
-	flag.Set("v", "0")
+	// the following flags all exist
+	flag.Set("stderrthreshold", "FATAL") //nolint:gosec
+	flag.Set("logtostderr", "false")     //nolint:gosec
+	flag.Set("log_file", "/dev/null")    //nolint:gosec
+	flag.Set("v", "0")                   //nolint:gosec
 	logLevel := cmd.String("log-level", log.InfoLevel.String(),
 		"log level, must be one of: panic, fatal, error, warn, info, debug")
 	logFormat := cmd.String("log-format", "plain",
 		"log format, must be one of: plain, json")
 	printVersion := cmd.Bool("version", false, "print version and exit")
 
+	// we'll assume the args being passed in by calling functions have already
+	// been validated and that parsing continues to not have errors
+	//nolint:gosec
 	cmd.Parse(args)
 
 	// set log timestamps
@@ -64,9 +68,11 @@ func setLogLevel(logLevel string) {
 	log.SetLevel(level)
 
 	if level == log.DebugLevel {
-		flag.Set("stderrthreshold", "INFO")
-		flag.Set("logtostderr", "true")
-		flag.Set("v", "12") // At 7 and higher, authorization tokens get logged.
+		// the following flags exist
+		flag.Set("stderrthreshold", "INFO") //nolint:gosec
+		flag.Set("logtostderr", "true")     //nolint:gosec
+		// At 7 and higher, authorization tokens get logged.
+		flag.Set("v", "12") //nolint:gosec
 		// pipe klog entries to logrus
 		klog.SetOutput(log.StandardLogger().Writer())
 	}

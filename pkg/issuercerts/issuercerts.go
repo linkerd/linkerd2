@@ -5,7 +5,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"time"
 
 	"k8s.io/client-go/kubernetes"
@@ -80,36 +79,6 @@ func FetchExternalIssuerData(ctx context.Context, api kubernetes.Interface, cont
 	}
 
 	return &IssuerCertData{string(anchors), string(crt), string(key), &cert.Certificate.NotAfter}, nil
-}
-
-// LoadIssuerCrtAndKeyFromFiles loads the issuer certificate and key from files
-func LoadIssuerCrtAndKeyFromFiles(keyPEMFile, crtPEMFile string) (string, string, error) {
-	key, err := ioutil.ReadFile(keyPEMFile)
-	if err != nil {
-		return "", "", err
-	}
-
-	crt, err := ioutil.ReadFile(crtPEMFile)
-	if err != nil {
-		return "", "", err
-	}
-
-	return string(key), string(crt), nil
-}
-
-// LoadIssuerDataFromFiles loads the issuer data from file stored on disk
-func LoadIssuerDataFromFiles(keyPEMFile, crtPEMFile, trustPEMFile string) (*IssuerCertData, error) {
-	key, crt, err := LoadIssuerCrtAndKeyFromFiles(keyPEMFile, crtPEMFile)
-	if err != nil {
-		return nil, err
-	}
-
-	anchors, err := ioutil.ReadFile(trustPEMFile)
-	if err != nil {
-		return nil, err
-	}
-
-	return &IssuerCertData{string(anchors), crt, key, nil}, nil
 }
 
 // CheckCertValidityPeriod ensures the certificate is valid time - wise

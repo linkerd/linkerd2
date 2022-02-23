@@ -66,6 +66,7 @@ func TestGetLatestVersions(t *testing.T) {
 
 			ts := httptest.NewServer(http.HandlerFunc(
 				func(w http.ResponseWriter, r *http.Request) {
+					//nolint:gosec
 					w.Write(j)
 				}),
 			)
