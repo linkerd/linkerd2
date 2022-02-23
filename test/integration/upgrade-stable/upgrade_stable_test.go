@@ -447,6 +447,28 @@ func TestVersionPostInstall(t *testing.T) {
 	}
 }
 
+func TestCheckProxyPostUpgrade(t *testing.T) {
+	cmd := []string{
+		"check", "--proxy", "-n", TestHelper.GetLinkerdNamespace(),
+		"--expected-version", TestHelper.GetVersion(),
+		"--wait=60m",
+	}
+
+	out, err := TestHelper.LinkerdRun(cmd...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'linkerd chec' command failed", "'linkerd check' command failed\n%v\n%s", err, out)
+	}
+
+	expected, err := testutil.ReadFile("testdata/check.proxy.golden")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to read file %s\n%v", expected, err)
+	}
+
+	if !strings.Contains(out, expected) {
+		testutil.AnnotatedFatalf(t, "'linkerd check' command failed", "'linkerd check' command failed\nexpected:\n%s\nactual:\n%s", expected, out)
+	}
+}
+
 func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 	testAppNamespace := "upgrade-test"
 
