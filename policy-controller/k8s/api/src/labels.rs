@@ -39,10 +39,25 @@ pub struct Selector {
 // === Selector ===
 
 impl Selector {
-    pub fn new(labels: Option<Map>, exprs: Option<Expressions>) -> Self {
+    #[cfg(test)]
+    fn new(labels: Map, exprs: Expressions) -> Self {
         Self {
-            match_labels: labels,
-            match_expressions: exprs,
+            match_labels: Some(labels),
+            match_expressions: Some(exprs),
+        }
+    }
+
+    fn from_expressions(exprs: Expressions) -> Self {
+        Self {
+            match_labels: None,
+            match_expressions: Some(exprs),
+        }
+    }
+
+    fn from_map(map: Map) -> Self {
+        Self {
+            match_labels: Some(map),
+            match_expressions: None,
         }
     }
 
@@ -67,26 +82,23 @@ impl Selector {
 
 impl std::iter::FromIterator<(String, String)> for Selector {
     fn from_iter<T: IntoIterator<Item = (String, String)>>(iter: T) -> Self {
-        Self::new(Some(iter.into_iter().collect()), None)
+        Self::from_map(iter.into_iter().collect())
     }
 }
 
 impl std::iter::FromIterator<(&'static str, &'static str)> for Selector {
     fn from_iter<T: IntoIterator<Item = (&'static str, &'static str)>>(iter: T) -> Self {
-        Self::new(
-            Some(
-                iter.into_iter()
-                    .map(|(k, v)| (k.to_string(), v.to_string()))
-                    .collect(),
-            ),
-            None,
+        Self::from_map(
+            iter.into_iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
         )
     }
 }
 
 impl std::iter::FromIterator<Expression> for Selector {
     fn from_iter<T: IntoIterator<Item = Expression>>(iter: T) -> Self {
-        Self::new(None, Some(iter.into_iter().collect()))
+        Self::from_expressions(iter.into_iter().collect())
     }
 }
 
@@ -200,12 +212,12 @@ mod tests {
             ),
             (
                 Selector::new(
-                    Some(Map::from([("foo".to_string(), "bar".to_string())])),
-                    Some(vec![Expression {
+                    Map::from([("foo".to_string(), "bar".to_string())]),
+                    vec![Expression {
                         key: "bah".into(),
                         operator: Operator::In,
                         values: Some(Some("bar".to_string()).into_iter().collect()),
-                    }]),
+                    }],
                 ),
                 Labels::from_iter(vec![("foo", "bar"), ("bah", "baz")]),
                 false,
@@ -213,12 +225,12 @@ mod tests {
             ),
             (
                 Selector::new(
-                    Some(Map::from([("foo".to_string(), "bar".to_string())])),
-                    Some(vec![Expression {
+                    Map::from([("foo".to_string(), "bar".to_string())]),
+                    vec![Expression {
                         key: "bah".into(),
                         operator: Operator::In,
                         values: Some(Some("bar".to_string()).into_iter().collect()),
-                    }]),
+                    }],
                 ),
                 Labels::from_iter(vec![("foo", "bar"), ("bah", "bar")]),
                 true,
