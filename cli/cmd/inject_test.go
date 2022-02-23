@@ -638,6 +638,7 @@ func TestWalk(t *testing.T) {
 
 	for _, r := range actual {
 		b := make([]byte, len(data))
+		//nolint:gosec
 		r.Read(b)
 
 		if string(b) != string(data) {

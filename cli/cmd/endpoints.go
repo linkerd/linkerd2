@@ -205,6 +205,8 @@ func renderEndpoints(endpoints endpointsInfo, options *endpointsOptions) string 
 	var buffer bytes.Buffer
 	w := tabwriter.NewWriter(&buffer, 0, 0, padding, ' ', 0)
 	writeEndpointsToBuffer(endpoints, w, options)
+	// we'll assume Flush is infallible
+	//nolint:gosec
 	w.Flush()
 
 	return buffer.String()

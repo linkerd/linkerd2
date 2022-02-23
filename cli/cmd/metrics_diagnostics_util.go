@@ -176,6 +176,8 @@ func obfuscateMetrics(metrics []byte) ([]byte, error) {
 				}
 			}
 		}
+		// we'll assume MetricFamilyToText is infallible
+		//nolint:gosec
 		expfmt.MetricFamilyToText(&writer, v)
 	}
 

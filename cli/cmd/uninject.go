@@ -88,21 +88,27 @@ func (rt resourceTransformerUninjectSilent) transform(bytes []byte) ([]byte, []i
 
 func (resourceTransformerUninject) generateReport(reports []inject.Report, output io.Writer) {
 	// leading newline to separate from yaml output on stdout
+	// we'll assume the following Writes are infallible
+	//nolint:gosec
 	output.Write([]byte("\n"))
 
 	for _, r := range reports {
 		if r.Uninjected.Proxy || r.Uninjected.ProxyInit {
+			//nolint:gosec
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" uninjected\n", r.Kind, r.Name)))
 		} else {
 			if r.Kind != "" {
+				//nolint:gosec
 				output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.Kind, r.Name)))
 			} else {
+				//nolint:gosec
 				output.Write([]byte(fmt.Sprintln("document missing \"kind\" field, skipped")))
 			}
 		}
 	}
 
 	// trailing newline to separate from kubectl output if piping
+	//nolint:gosec
 	output.Write([]byte("\n"))
 }
 

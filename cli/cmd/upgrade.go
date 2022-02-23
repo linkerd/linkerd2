@@ -255,6 +255,8 @@ func upgradeRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, s
 		fmt.Fprintf(os.Stderr, "%s\n\n", controlPlaneMessage)
 	}
 
+	// we'll assume WriteTo is infallible
+	//nolint:gosec
 	buf.WriteTo(os.Stdout)
 
 	return nil

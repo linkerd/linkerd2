@@ -283,33 +283,43 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	//
 	// Warnings
 	//
+	// we'll assume the following writes are infallible
 
 	// Leading newline to separate from yaml output on stdout
+	//nolint:gosec
 	output.Write([]byte("\n"))
 
 	if len(hostNetwork) > 0 {
+		//nolint:gosec
 		output.Write([]byte(fmt.Sprintf("%s \"hostNetwork: true\" detected in %s\n", warnStatus, strings.Join(hostNetwork, ", "))))
 	} else if verbose {
+		//nolint:gosec
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, hostNetworkDesc)))
 	}
 
 	if len(sidecar) > 0 {
+		//nolint:gosec
 		output.Write([]byte(fmt.Sprintf("%s known 3rd party sidecar detected in %s\n", warnStatus, strings.Join(sidecar, ", "))))
 	} else if verbose {
+		//nolint:gosec
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, sidecarDesc)))
 	}
 
 	if len(injectDisabled) > 0 {
+		//nolint:gosec
 		output.Write([]byte(fmt.Sprintf("%s \"%s: %s\" annotation set on %s\n",
 			warnStatus, k8s.ProxyInjectAnnotation, k8s.ProxyInjectDisabled, strings.Join(injectDisabled, ", "))))
 	} else if verbose {
+		//nolint:gosec
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, injectDisabledDesc)))
 	}
 
 	if len(injected) == 0 && !annotatable {
+		//nolint:gosec
 		output.Write([]byte(fmt.Sprintf("%s no supported objects found\n", warnStatus)))
 		warningsPrinted = true
 	} else if verbose {
+		//nolint:gosec
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, unsupportedDesc)))
 	}
 
@@ -318,12 +328,15 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 		if len(udp) > 1 {
 			verb = "use"
 		}
+		//nolint:gosec
 		output.Write([]byte(fmt.Sprintf("%s %s %s \"protocol: UDP\"\n", warnStatus, strings.Join(udp, ", "), verb)))
 	} else if verbose {
+		//nolint:gosec
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, udpDesc)))
 	}
 
 	if len(automountServiceAccountTokenFalse) == 0 && verbose {
+		//nolint:gosec
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, automountServiceAccountTokenDesc)))
 	}
 
@@ -331,27 +344,33 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	// Summary
 	//
 	if warningsPrinted {
+		//nolint:gosec
 		output.Write([]byte("\n"))
 	}
 
 	for _, r := range reports {
 		if r.Annotated {
+			//nolint:gosec
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" annotated\n", r.Kind, r.Name)))
 		}
 		ok, _ := r.Injectable()
 		if ok {
+			//nolint:gosec
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" injected\n", r.Kind, r.Name)))
 		}
 		if !r.Annotated && !ok {
 			if r.Kind != "" {
+				//nolint:gosec
 				output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.Kind, r.Name)))
 			} else {
+				//nolint:gosec
 				output.Write([]byte(fmt.Sprintln("document missing \"kind\" field, skipped")))
 			}
 		}
 	}
 
 	// Trailing newline to separate from kubectl output if piping
+	//nolint:gosec
 	output.Write([]byte("\n"))
 }
 

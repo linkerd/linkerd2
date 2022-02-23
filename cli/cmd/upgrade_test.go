@@ -144,9 +144,9 @@ func TestUpgradeIssuerWithExternalIssuerFails(t *testing.T) {
 	upgradedIssuer := generateIssuerCerts(t, true)
 	defer upgradedIssuer.cleanup()
 
-	flagSet.Set("identity-trust-anchors-file", upgradedIssuer.caFile)
-	flagSet.Set("identity-issuer-certificate-file", upgradedIssuer.crtFile)
-	flagSet.Set("identity-issuer-key-file", upgradedIssuer.keyFile)
+	flagSet.Set("identity-trust-anchors-file", upgradedIssuer.caFile)       //nolint:gosec
+	flagSet.Set("identity-issuer-certificate-file", upgradedIssuer.crtFile) //nolint:gosec
+	flagSet.Set("identity-issuer-key-file", upgradedIssuer.keyFile)         //nolint:gosec
 
 	_, err := renderUpgrade(install.String()+externalIssuerSecret(issuer), upgradeOpts)
 
@@ -163,9 +163,9 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 	issuerCerts := generateIssuerCerts(t, true)
 	defer issuerCerts.cleanup()
 
-	flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
-	flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
-	flagSet.Set("identity-issuer-key-file", issuerCerts.keyFile)
+	flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)       //nolint:gosec
+	flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile) //nolint:gosec
+	flagSet.Set("identity-issuer-key-file", issuerCerts.keyFile)         //nolint:gosec
 
 	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts)
 	if err != nil {
@@ -237,8 +237,8 @@ func TestUpgradeFailsWithOnlyIssuerCert(t *testing.T) {
 	issuerCerts := generateIssuerCerts(t, true)
 	defer issuerCerts.cleanup()
 
-	flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
-	flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
+	flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)       //nolint:gosec
+	flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile) //nolint:gosec
 
 	_, _, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts)
 
@@ -255,8 +255,8 @@ func TestUpgradeFailsWithOnlyIssuerKey(t *testing.T) {
 	issuerCerts := generateIssuerCerts(t, false)
 	defer issuerCerts.cleanup()
 
-	flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
-	flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
+	flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)       //nolint:gosec
+	flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile) //nolint:gosec
 
 	_, _, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts)
 
@@ -278,9 +278,9 @@ func TestUpgradeRootFailsWithOldPods(t *testing.T) {
 	issuerCerts := generateIssuerCerts(t, true)
 	defer issuerCerts.cleanup()
 
-	flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
-	flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
-	flagSet.Set("identity-issuer-key-file", issuerCerts.keyFile)
+	flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)       //nolint:gosec
+	flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile) //nolint:gosec
+	flagSet.Set("identity-issuer-key-file", issuerCerts.keyFile)         //nolint:gosec
 
 	_, err := renderUpgrade(install.String()+podWithSidecar(oldIssuer), upgradeOpts)
 
@@ -400,8 +400,8 @@ func testUpgradeOptions() ([]flag.Flag, *pflag.FlagSet, error) {
 	flagSet.AddFlagSet(proxyFlagSet)
 	flagSet.AddFlagSet(upgradeFlagSet)
 
-	flagSet.Set("control-plane-version", upgradeControlPlaneVersion)
-	flagSet.Set("proxy-version", upgradeProxyVersion)
+	flagSet.Set("control-plane-version", upgradeControlPlaneVersion) //nolint:gosec
+	flagSet.Set("proxy-version", upgradeProxyVersion)                //nolint:gosec
 
 	return flags, flagSet, nil
 }
@@ -485,9 +485,9 @@ func generateCerts(t *testing.T, name string, b64encode bool) issuerCerts {
 }
 
 func (ic issuerCerts) cleanup() {
-	os.Remove(ic.caFile)
-	os.Remove(ic.crtFile)
-	os.Remove(ic.keyFile)
+	os.Remove(ic.caFile)  //nolint:gosec
+	os.Remove(ic.crtFile) //nolint:gosec
+	os.Remove(ic.keyFile) //nolint:gosec
 }
 
 func externalIssuerSecret(certs issuerCerts) string {

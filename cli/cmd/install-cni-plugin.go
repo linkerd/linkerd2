@@ -219,8 +219,9 @@ func renderCNIPlugin(w io.Writer, config *cniPluginOptions) error {
 	if err != nil {
 		return err
 	}
-	w.Write(buf.Bytes())
-	w.Write([]byte("---\n"))
+	// we'll assume the following Writes are infallible
+	w.Write(buf.Bytes())     //nolint:gosec
+	w.Write([]byte("---\n")) //nolint:gosec
 
 	return nil
 }

@@ -58,6 +58,7 @@ func parseManifestList(in string) map[string]manifest {
 	manifestMap := map[string]manifest{}
 	for _, m := range manifestList {
 		manifest := manifest{}
+		//nolint:gosec
 		yaml.Unmarshal([]byte(m), &manifest)
 		manifestMap[manifestKey(manifest)] = manifest
 	}

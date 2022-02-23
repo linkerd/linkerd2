@@ -39,6 +39,8 @@ func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resou
 		_, err := io.Copy(outWriter, postInjectBuf)
 
 		// print error report after yaml output, for better visibility
+		// we'll assume Copy is infallible
+		//nolint:gosec
 		io.Copy(errWriter, reportBuf)
 
 		if err != nil {
@@ -86,8 +88,9 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 		reports = append(reports, irs...)
 
 		if len(errs) == 0 {
-			out.Write(result)
-			out.Write([]byte("---\n"))
+			// we'll assume the following Writes are infallible
+			out.Write(result)          //nolint:gosec
+			out.Write([]byte("---\n")) //nolint:gosec
 		}
 	}
 
@@ -166,6 +169,8 @@ func read(path string) ([]io.Reader, error) {
 		if err != nil {
 			return nil, err
 		}
+		// failing to close the body is insignificant here
+		//nolint:gosec
 		resp.Body.Close()
 		in = append(in, buf)
 	} else {
@@ -217,6 +222,8 @@ func walk(path string) ([]io.Reader, error) {
 			return nil
 		}
 
+		// path has been validated
+		//nolint:gosec
 		file, err := os.Open(path)
 		if err != nil {
 			return err
