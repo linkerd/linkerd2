@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"path/filepath"
-	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -18,22 +16,17 @@ import (
 )
 
 // Values returns the Value struct from the linkerd-config ConfigMap
-func Values(path, prefix string) (*l5dcharts.Values, error) {
-	path = filepath.Clean(path)
-	if !strings.HasPrefix(path, prefix) {
-		return nil, fmt.Errorf("invalid path: %s", path)
-	}
-	// path has been validated
+func Values(filepath string) (*l5dcharts.Values, error) {
+	values := &l5dcharts.Values{}
 	//nolint:gosec
-	configYaml, err := ioutil.ReadFile(path)
+	configYaml, err := ioutil.ReadFile(filepath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
-	log.Debugf("%s config YAML: %s", path, configYaml)
 
-	values := &l5dcharts.Values{}
+	log.Debugf("%s config YAML: %s", filepath, configYaml)
 	if err = yaml.Unmarshal(configYaml, values); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal JSON from: %s: %w", path, err)
+		return nil, fmt.Errorf("failed to unmarshal JSON from: %s: %w", filepath, err)
 	}
 	return values, err
 }
