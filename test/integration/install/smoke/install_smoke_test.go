@@ -59,6 +59,7 @@ func TestSmoke(t *testing.T) {
 		// Wait for pods to in smoke-test dpeloyment to come up
 		for _, deploy := range []string{"smoke-test-terminus", "smoke-test-gateway"} {
 			if err := TestHelper.CheckPods(ctx, ns, deploy, 1); err != nil {
+				//nolint:errorlint
 				if rce, ok := err.(*testutil.RestartCountError); ok {
 					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 				} else {
@@ -77,7 +78,7 @@ func TestSmoke(t *testing.T) {
 		err = TestHelper.RetryFor(timeout, func() error {
 			out, err := TestHelper.LinkerdRun(cmd...)
 			if err != nil {
-				return fmt.Errorf("'linkerd check' command failed\n%s\n%s", err, out)
+				return fmt.Errorf("'linkerd check' command failed\n%w\n%s", err, out)
 			}
 
 			if !strings.Contains(out, expected) {

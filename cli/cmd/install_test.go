@@ -45,7 +45,6 @@ func TestRender(t *testing.T) {
 		CliVersion:              "CliVersion",
 		ControllerLogLevel:      "ControllerLogLevel",
 		ControllerLogFormat:     "ControllerLogFormat",
-		ControllerImageVersion:  "ControllerImageVersion",
 		ProxyContainerName:      "ProxyContainerName",
 		CNIEnabled:              false,
 		IdentityTrustDomain:     defaultValues.IdentityTrustDomain,
@@ -320,8 +319,7 @@ func testInstallOptionsNoCerts(ha bool) (*charts.Values, error) {
 
 	values.Proxy.Image.Version = installProxyVersion
 	values.DebugContainer.Image.Version = installDebugVersion
-	values.ControllerImageVersion = installControlPlaneVersion
-	values.PolicyController.Image.Version = installControlPlaneVersion
+	values.LinkerdVersion = installControlPlaneVersion
 	values.HeartbeatSchedule = fakeHeartbeatSchedule()
 
 	return values, nil
@@ -336,7 +334,6 @@ func testInstallValues() (*charts.Values, error) {
 	values.Proxy.Image.Version = installProxyVersion
 	values.DebugContainer.Image.Version = installDebugVersion
 	values.LinkerdVersion = installControlPlaneVersion
-	values.ControllerImageVersion = installControlPlaneVersion
 	values.PolicyController.Image.Version = installControlPlaneVersion
 	values.HeartbeatSchedule = fakeHeartbeatSchedule()
 
@@ -494,10 +491,8 @@ func TestValidate(t *testing.T) {
 				if err.Error() != tc.expectedError {
 					t.Fatalf("Expected error string\"%s\", got \"%s\"", tc.expectedError, err)
 				}
-			} else {
-				if err != nil {
-					t.Fatalf("Expected no error bu got \"%s\"", err)
-				}
+			} else if err != nil {
+				t.Fatalf("Expected no error bu got \"%s\"", err)
 			}
 		}
 	})
@@ -538,11 +533,8 @@ func TestValidate(t *testing.T) {
 				if err.Error() != tc.expectedError {
 					t.Fatalf("Expected error string\"%s\", got \"%s\"", tc.expectedError, err)
 				}
-			} else {
-				if err != nil {
-					t.Fatalf("Expected no error but got \"%s\"", err)
-
-				}
+			} else if err != nil {
+				t.Fatalf("Expected no error but got \"%s\"", err)
 			}
 		}
 	})

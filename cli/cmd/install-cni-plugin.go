@@ -80,7 +80,7 @@ func (options *cniPluginOptions) pluginImage() string {
 func newCmdInstallCNIPlugin() *cobra.Command {
 	options, err := newCNIInstallOptionsWithDefaults()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 

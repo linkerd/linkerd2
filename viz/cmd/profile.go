@@ -165,7 +165,7 @@ func renderTapOutputProfile(ctx context.Context, k8sAPI *k8s.KubernetesAPI, tapR
 	}
 	output, err := yaml.Marshal(profile)
 	if err != nil {
-		return fmt.Errorf("Error writing Service Profile: %s", err)
+		return fmt.Errorf("Error writing Service Profile: %w", err)
 	}
 	// we'll assume writing is infallible
 	//nolint:gosec
@@ -203,7 +203,7 @@ func routeSpecFromTap(tapByteStream *bufio.Reader, routeLimit int) []*sp.RouteSp
 		if err != nil {
 			// expected errors when hitting the tapDuration deadline
 			var e net.Error
-			if err != io.EOF &&
+			if !errors.Is(err, io.EOF) &&
 				!(errors.As(err, &e) && e.Timeout()) &&
 				!errors.Is(err, context.DeadlineExceeded) &&
 				!strings.HasSuffix(err.Error(), pkg.ErrClosedResponseBody) {

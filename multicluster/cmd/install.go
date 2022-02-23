@@ -44,7 +44,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	var ignoreCluster bool
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 

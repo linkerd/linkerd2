@@ -76,7 +76,6 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
 	overrideJSON := `{
    "cliVersion":"",
    "linkerdVersion":"linkerd-version",
-   "controllerImageVersion":"linkerd-version",
    "identityTrustAnchorsPEM":"test-trust-anchor",
    "identityTrustDomain":"test.trust.domain",
    "proxy":{

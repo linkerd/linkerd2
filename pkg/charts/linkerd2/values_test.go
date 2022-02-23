@@ -49,7 +49,6 @@ func TestNewValues(t *testing.T) {
 		CliVersion:                   "linkerd/cli dev-undefined",
 		ControllerLogLevel:           "info",
 		ControllerLogFormat:          "plain",
-		ControllerImageVersion:       testVersion,
 		LinkerdVersion:               version.Version,
 		ProxyContainerName:           "linkerd-proxy",
 		CNIEnabled:                   false,
@@ -158,7 +157,6 @@ func TestNewValues(t *testing.T) {
 	// pin the versions to ensure consistent test result.
 	// in non-test environment, the default versions are read from the
 	// values.yaml.
-	actual.ControllerImageVersion = testVersion
 	actual.ProxyInit.Image.Version = testVersion
 
 	// Make Add-On Values nil to not have to check for their defaults
@@ -217,7 +215,6 @@ func TestNewValues(t *testing.T) {
 		// pin the versions to ensure consistent test result.
 		// in non-test environment, the default versions are read from the
 		// values.yaml.
-		actual.ControllerImageVersion = testVersion
 		actual.ProxyInit.Image.Version = testVersion
 
 		if !reflect.DeepEqual(expected, actual) {

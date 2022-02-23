@@ -101,7 +101,7 @@ type API struct {
 func InitializeAPI(ctx context.Context, kubeConfig string, ensureClusterWideAccess bool, resources ...APIResource) (*API, error) {
 	config, err := k8s.GetConfig(kubeConfig, "")
 	if err != nil {
-		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
+		return nil, fmt.Errorf("error configuring Kubernetes API client: %w", err)
 	}
 
 	dynamicClient, err := dynamic.NewForConfig(config)
@@ -291,6 +291,7 @@ func (api *API) Sync(stopCh <-chan struct{}) {
 
 	log.Infof("waiting for caches to sync")
 	if !cache.WaitForCacheSync(ctx.Done(), api.syncChecks...) {
+		//nolint:gocritic
 		log.Fatal("failed to sync caches")
 	}
 	log.Infof("caches synced")
@@ -409,7 +410,7 @@ func (api *API) MWC() arinformers.MutatingWebhookConfigurationInformer {
 	return api.mwc
 }
 
-//Job provides access to a shared informer and lister for Jobs.
+// Job provides access to a shared informer and lister for Jobs.
 func (api *API) Job() batchv1informers.JobInformer {
 	if api.job == nil {
 		panic("Job informer not configured")

@@ -27,13 +27,13 @@ func Values(path, prefix string) (*l5dcharts.Values, error) {
 	//nolint:gosec
 	configYaml, err := ioutil.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %s", err)
+		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 	log.Debugf("%s config YAML: %s", path, configYaml)
 
 	values := &l5dcharts.Values{}
 	if err = yaml.Unmarshal(configYaml, values); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal JSON from: %s: %s", path, err)
+		return nil, fmt.Errorf("failed to unmarshal JSON from: %s: %w", path, err)
 	}
 	return values, err
 }

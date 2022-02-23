@@ -169,7 +169,7 @@ func TestInjectAutoParams(t *testing.T) {
 			}
 
 			for _, p := range pods {
-				p := p //pin
+				p := p // pin
 				creator, ok := p.Annotations[k8s.CreatedByAnnotation]
 				if ok && strings.Contains(creator, "proxy-injector") {
 					pod = &p

@@ -24,7 +24,7 @@ func NewDeletingProfileListener() *DeletingProfileListener {
 // Update registers a deletion
 func (dpl *DeletingProfileListener) Update(profile *sp.ServiceProfile) {
 	if profile == nil {
-		dpl.NumDeletes = dpl.NumDeletes + 1
+		dpl.NumDeletes++
 	}
 }
 

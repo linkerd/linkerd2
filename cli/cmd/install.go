@@ -174,7 +174,7 @@ func newCmdInstallControlPlane(values *l5dcharts.Values) *cobra.Command {
 	installOnlyFlags, installOnlyFlagSet := makeInstallFlags(values)
 	installUpgradeFlags, installUpgradeFlagSet, err := makeInstallUpgradeFlags(values)
 	if err != nil {
-		fmt.Fprint(os.Stderr, err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 	proxyFlags, proxyFlagSet := makeProxyFlags(values)
@@ -450,7 +450,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, valuesOverrides
 	// Attach the final values into the `Values` field for rendering to work
 	renderedTemplates, err := engine.Render(chart, fullValues)
 	if err != nil {
-		return fmt.Errorf("failed to render the template: %s", err)
+		return fmt.Errorf("failed to render the template: %w", err)
 	}
 
 	// Merge templates and inject
@@ -551,17 +551,21 @@ func errAfterRunningChecks(cniEnabled bool) error {
 	errMsgs := []string{}
 	hc.RunChecks(func(result *healthcheck.CheckResult) {
 		if result.Err != nil {
-			if ce, ok := result.Err.(*healthcheck.CategoryError); ok {
+			var ce healthcheck.CategoryError
+			if errors.As(result.Err, &ce) {
 				if ce.Category == healthcheck.KubernetesAPIChecks {
 					k8sAPIError = ce
-				} else if re, ok := ce.Err.(*healthcheck.ResourceError); ok {
-					// resource error, print in kind.group/name format
-					for _, res := range re.Resources {
-						errMsgs = append(errMsgs, res.String())
-					}
 				} else {
-					// unknown category error, just print it
-					errMsgs = append(errMsgs, result.Err.Error())
+					var re healthcheck.ResourceError
+					if errors.As(ce.Err, &re) {
+						// resource error, print in kind.group/name format
+						for _, res := range re.Resources {
+							errMsgs = append(errMsgs, res.String())
+						}
+					} else {
+						// unknown category error, just print it
+						errMsgs = append(errMsgs, result.Err.Error())
+					}
 				}
 			} else {
 				// unknown error, just print it

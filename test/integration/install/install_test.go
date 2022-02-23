@@ -51,7 +51,7 @@ var (
 	// Override in case edge starts to deviate from stable service-wise
 	linkerdSvcStable = linkerdSvcEdge
 
-	//skippedInboundPorts lists some ports to be marked as skipped, which will
+	// skippedInboundPorts lists some ports to be marked as skipped, which will
 	// be verified in test/integration/inject
 	skippedInboundPorts       = "1234,5678"
 	skippedOutboundPorts      = "1234,5678"
@@ -107,6 +107,7 @@ func TestUpgradeTestAppWorksBeforeUpgrade(t *testing.T) {
 		testAppNamespace := "upgrade-test"
 		for _, deploy := range []string{"emoji", "voting", "web"} {
 			if err := TestHelper.CheckPods(ctx, testAppNamespace, deploy, 1); err != nil {
+				//nolint:errorlint
 				if rce, ok := err.(*testutil.RestartCountError); ok {
 					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 				} else {
@@ -773,7 +774,7 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 		out, err := TestHelper.LinkerdRun(cmd...)
 
 		if err != nil {
-			return fmt.Errorf("'linkerd check' command failed\n%s\n%s", err, out)
+			return fmt.Errorf("'linkerd check' command failed\n%w\n%s", err, out)
 		}
 
 		if !strings.Contains(out, expected) {
@@ -908,6 +909,7 @@ func TestRestarts(t *testing.T) {
 	}
 	for deploy, spec := range expectedDeployments {
 		if err := TestHelper.CheckPods(context.Background(), spec.Namespace, deploy, spec.Replicas); err != nil {
+			//nolint:errorlint
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {

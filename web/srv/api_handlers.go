@@ -278,7 +278,8 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 			// If there was a [403] error when initiating a tap, close the
 			// socket with `ClosePolicyViolation` status code so that the error
 			// renders without the error prefix in the banner
-			if httpErr, ok := err.(protohttp.HTTPError); ok && httpErr.Code == http.StatusForbidden {
+			var he protohttp.HTTPError
+			if errors.Is(err, &he) && he.Code == http.StatusForbidden {
 				err := fmt.Errorf("missing authorization, visit %s to remedy", tappkg.TapRbacURL)
 				websocketError(ws, websocket.ClosePolicyViolation, err)
 				return
@@ -294,10 +295,10 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 		for {
 			event := tapPb.TapEvent{}
 			err := protohttp.FromByteStreamToProtocolBuffers(reader, &event)
-			if err == io.EOF {
-				break
-			}
 			if err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
 				websocketError(ws, websocket.CloseInternalServerErr, err)
 				break
 			}

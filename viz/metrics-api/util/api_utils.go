@@ -11,7 +11,7 @@ import (
 
 var (
 	defaultMetricTimeWindow    = "1m"
-	metricTimeWindowLowerBound = time.Second * 15 //the window value needs to equal or larger than that
+	metricTimeWindowLowerBound = time.Second * 15 // the window value needs to equal or larger than that
 )
 
 // StatsBaseRequestParams contains parameters that are used to build requests

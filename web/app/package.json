@@ -16,7 +16,7 @@
     "@material-ui/icons": "4.11.2",
     "@material-ui/lab": "^4.0.0-alpha.60",
     "classnames": "2.3.1",
-    "core-js": "^3.21.0",
+    "core-js": "^3.21.1",
     "css-mediaquery": "^0.1.2",
     "d3-drag": "3.0.0",
     "d3-force": "3.0.0",
@@ -41,7 +41,7 @@
     "whatwg-fetch": "3.6.2"
   },
   "devDependencies": {
-    "@babel/core": "^7.17.2",
+    "@babel/core": "^7.17.5",
     "@babel/eslint-parser": "^7.17.0",
     "@babel/plugin-proposal-class-properties": "^7.16.7",
     "@babel/preset-env": "^7.16.11",
@@ -77,7 +77,7 @@
     "sinon-stub-promise": "4.0.0",
     "style-loader": "^3.3.1",
     "url-loader": "^4.1.1",
-    "webpack": "^5.68.0",
+    "webpack": "^5.69.1",
     "webpack-bundle-analyzer": "4.5.0",
     "webpack-cli": "4.9.2",
     "webpack-dev-server": "4.7.4"

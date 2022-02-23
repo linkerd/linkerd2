@@ -127,7 +127,7 @@ func CheckCertAlgoRequirements(cert *x509.Certificate) error {
 func (ic *IssuerCertData) VerifyAndBuildCreds() (*tls.Cred, error) {
 	creds, err := tls.ValidateAndCreateCreds(ic.IssuerCrt, ic.IssuerKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read CA: %s", err)
+		return nil, fmt.Errorf("failed to read CA: %w", err)
 	}
 
 	// we check the time validity of the issuer cert

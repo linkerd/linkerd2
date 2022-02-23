@@ -49,6 +49,7 @@ func TestLocalhostServer(t *testing.T) {
 		for _, deploy := range []string{"nginx", "slow-cooker"} {
 			err = TestHelper.CheckPods(ctx, ns, deploy, 1)
 			if err != nil {
+				//nolint:errorlint
 				if rce, ok := err.(*testutil.RestartCountError); ok {
 					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 				} else {

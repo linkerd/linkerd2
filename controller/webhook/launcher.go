@@ -16,7 +16,7 @@ import (
 // Launch sets up and starts the webhook and metrics servers
 func Launch(
 	ctx context.Context,
-	APIResources []k8s.APIResource,
+	apiresources []k8s.APIResource,
 	handler Handler,
 	component,
 	metricsAddr string,
@@ -27,13 +27,15 @@ func Launch(
 	defer close(stop)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	k8sAPI, err := k8s.InitializeAPI(ctx, kubeconfig, false, APIResources...)
+	k8sAPI, err := k8s.InitializeAPI(ctx, kubeconfig, false, apiresources...)
 	if err != nil {
+		//nolint:gocritic
 		log.Fatalf("failed to initialize Kubernetes API: %s", err)
 	}
 
 	s, err := NewServer(ctx, k8sAPI, addr, pkgk8s.MountPathTLSBase, handler, component)
 	if err != nil {
+		//nolint:gocritic
 		log.Fatalf("failed to initialize the webhook server: %s", err)
 	}
 

@@ -1,5 +1,21 @@
 # Changes
 
+## edge-22.2.3
+
+This edge release fixes some `Instant`-related proxy panics that occur on Amazon
+Linux. It also includes many behind the scenes improvements to the project's
+CI and linting.
+
+* Removed the `--controller-image-version` install flag to simplify the way that
+  image versions are handled. The controller image version can be set using the
+  `--set linkerdVersion` flag or Helm value
+* Lowercased logs and removed redundant lines from the Linkerd2 proxy init
+  container
+* Prevented the proxy from logging spurious errors when its pod does not define
+  any container ports
+* Added workarounds to reduce the likelihood of `Instant`-related proxy panics
+  that occur on Amazon Linux
+
 ## edge-22.2.2
 
 This edge release updates the jaeger extension to be available in ARM

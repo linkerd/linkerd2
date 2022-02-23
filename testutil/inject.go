@@ -38,7 +38,7 @@ func PatchDeploy(in string, name string, annotations map[string]string) (string,
 		ops = append(ops, `{"op": "add", "path": "/spec/template/metadata/annotations", "value": {}}`)
 		for k, v := range annotations {
 			ops = append(ops,
-				fmt.Sprintf(`{"op": "add", "path": "/spec/template/metadata/annotations/%s", "value": "%s"}`, strings.Replace(k, "/", "~1", -1), v),
+				fmt.Sprintf(`{"op": "add", "path": "/spec/template/metadata/annotations/%s", "value": "%s"}`, strings.ReplaceAll(k, "/", "~1"), v),
 			)
 		}
 	}

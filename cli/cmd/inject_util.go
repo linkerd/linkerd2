@@ -63,10 +63,10 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 	for {
 		// Read a single YAML object
 		bytes, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
 			return []error{err}
 		}
 

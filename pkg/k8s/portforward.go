@@ -193,7 +193,7 @@ func (pf *PortForward) run() error {
 
 	err = fw.ForwardPorts()
 	if err != nil {
-		err = fmt.Errorf("%s for %s/%s", err, pf.namespace, pf.podName)
+		err = fmt.Errorf("%w for %s/%s", err, pf.namespace, pf.podName)
 		return err
 	}
 	return nil

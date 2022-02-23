@@ -39,7 +39,6 @@ type (
 		ClusterNetworks              string              `json:"clusterNetworks"`
 		ImagePullPolicy              string              `json:"imagePullPolicy"`
 		CliVersion                   string              `json:"cliVersion"`
-		ControllerImageVersion       string              `json:"controllerImageVersion"`
 		ControllerLogLevel           string              `json:"controllerLogLevel"`
 		ControllerLogFormat          string              `json:"controllerLogFormat"`
 		ProxyContainerName           string              `json:"proxyContainerName"`
@@ -240,7 +239,6 @@ func NewValues() (*Values, error) {
 		return nil, err
 	}
 
-	v.ControllerImageVersion = version.Version
 	v.Proxy.Image.Version = version.Version
 	v.DebugContainer.Image.Version = version.Version
 	v.CliVersion = k8s.CreatedByAnnotationValue()
@@ -306,12 +304,12 @@ func (v *Values) ToMap() (map[string]interface{}, error) {
 	var valuesMap map[string]interface{}
 	rawValues, err := yaml.Marshal(v)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to marshal the values struct: %s", err)
+		return nil, fmt.Errorf("Failed to marshal the values struct: %w", err)
 	}
 
 	err = yaml.Unmarshal(rawValues, &valuesMap)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to Unmarshal Values into a map: %s", err)
+		return nil, fmt.Errorf("Failed to Unmarshal Values into a map: %w", err)
 	}
 
 	return valuesMap, nil

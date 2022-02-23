@@ -54,38 +54,38 @@ func Validate(data []byte) error {
 	var serviceProfile sp.ServiceProfile
 	err := yaml.UnmarshalStrict(data, &serviceProfile)
 	if err != nil {
-		return fmt.Errorf("failed to validate ServiceProfile: %s", err)
+		return fmt.Errorf("failed to validate ServiceProfile: %w", err)
 	}
 
 	errs := validation.IsDNS1123Subdomain(serviceProfile.Name)
 	if len(errs) > 0 {
-		return fmt.Errorf("ServiceProfile \"%s\" has invalid name: %s", serviceProfile.Name, errs[0])
+		return fmt.Errorf("ServiceProfile %q has invalid name: %s", serviceProfile.Name, errs[0])
 	}
 
 	for _, route := range serviceProfile.Spec.Routes {
 		if route.Name == "" {
-			return fmt.Errorf("ServiceProfile \"%s\" has a route with no name", serviceProfile.Name)
+			return fmt.Errorf("ServiceProfile %q has a route with no name", serviceProfile.Name)
 		}
 		if route.Timeout != "" {
 			_, err := time.ParseDuration(route.Timeout)
 			if err != nil {
-				return fmt.Errorf("ServiceProfile \"%s\" has a route with an invalid timeout: %s", serviceProfile.Name, err)
+				return fmt.Errorf("ServiceProfile %q has a route with an invalid timeout: %w", serviceProfile.Name, err)
 			}
 		}
 		if route.Condition == nil {
-			return fmt.Errorf("ServiceProfile \"%s\" has a route with no condition", serviceProfile.Name)
+			return fmt.Errorf("ServiceProfile %q has a route with no condition", serviceProfile.Name)
 		}
 		err := ValidateRequestMatch(route.Condition)
 		if err != nil {
-			return fmt.Errorf("ServiceProfile \"%s\" has a route with an invalid condition: %s", serviceProfile.Name, err)
+			return fmt.Errorf("ServiceProfile %q has a route with an invalid condition: %w", serviceProfile.Name, err)
 		}
 		for _, rc := range route.ResponseClasses {
 			if rc.Condition == nil {
-				return fmt.Errorf("ServiceProfile \"%s\" has a response class with no condition", serviceProfile.Name)
+				return fmt.Errorf("ServiceProfile %q has a response class with no condition", serviceProfile.Name)
 			}
 			err = ValidateResponseMatch(rc.Condition)
 			if err != nil {
-				return fmt.Errorf("ServiceProfile \"%s\" has a response class with an invalid condition: %s", serviceProfile.Name, err)
+				return fmt.Errorf("ServiceProfile %q has a response class with an invalid condition: %w", serviceProfile.Name, err)
 			}
 		}
 	}
@@ -93,16 +93,16 @@ func Validate(data []byte) error {
 	rb := serviceProfile.Spec.RetryBudget
 	if rb != nil {
 		if rb.RetryRatio < 0 {
-			return fmt.Errorf("ServiceProfile \"%s\" RetryBudget RetryRatio must be non-negative: %f", serviceProfile.Name, rb.RetryRatio)
+			return fmt.Errorf("ServiceProfile %q RetryBudget RetryRatio must be non-negative: %f", serviceProfile.Name, rb.RetryRatio)
 		}
 
 		if rb.TTL == "" {
-			return fmt.Errorf("ServiceProfile \"%s\" RetryBudget missing TTL field", serviceProfile.Name)
+			return fmt.Errorf("ServiceProfile %q RetryBudget missing TTL field", serviceProfile.Name)
 		}
 
 		_, err := time.ParseDuration(rb.TTL)
 		if err != nil {
-			return fmt.Errorf("ServiceProfile \"%s\" RetryBudget: %s", serviceProfile.Name, err)
+			return fmt.Errorf("ServiceProfile %q RetryBudget: %w", serviceProfile.Name, err)
 		}
 	}
 
@@ -238,7 +238,7 @@ func readFile(fileName string) (io.Reader, error) {
 func writeProfile(profile sp.ServiceProfile, w io.Writer) error {
 	output, err := yaml.Marshal(profile)
 	if err != nil {
-		return fmt.Errorf("Error writing Service Profile: %s", err)
+		return fmt.Errorf("Error writing Service Profile: %w", err)
 	}
 	_, err = w.Write(output)
 	return err

@@ -60,6 +60,7 @@ func TestOpaquePorts(t *testing.T) {
 		// with the rest of the test.
 		for _, deploy := range []string{opaquePodApp, opaqueSvcApp, opaqueUnmeshedSvcPod} {
 			if err := TestHelper.CheckPods(ctx, opaquePortsNs, deploy, 1); err != nil {
+				//nolint:errorlint
 				if rce, ok := err.(*testutil.RestartCountError); ok {
 					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 				} else {
@@ -82,11 +83,11 @@ func TestOpaquePorts(t *testing.T) {
 			err := TestHelper.RetryFor(30*time.Second, func() error {
 				pods, err := TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": opaquePodSC})
 				if err != nil || len(pods) == 0 {
-					return fmt.Errorf("error getting pods\n%s", err)
+					return fmt.Errorf("error getting pods\n%w", err)
 				}
 				metrics, err := getPodMetrics(pods[0], opaquePortsNs)
 				if err != nil {
-					return fmt.Errorf("error getting metrics for pod\n%s", err)
+					return fmt.Errorf("error getting metrics for pod\n%w", err)
 				}
 				if httpRequestTotalMetricRE.MatchString(metrics) {
 					return fmt.Errorf("expected not to find HTTP outbound requests when pod is opaque\n%s", metrics)
@@ -94,11 +95,11 @@ func TestOpaquePorts(t *testing.T) {
 				// Check the application metrics
 				pods, err = TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": opaquePodApp})
 				if err != nil {
-					return fmt.Errorf("error getting pods\n%s", err)
+					return fmt.Errorf("error getting pods\n%w", err)
 				}
 				metrics, err = getPodMetrics(pods[0], opaquePortsNs)
 				if err != nil {
-					return fmt.Errorf("error getting metrics for pod\n%s", err)
+					return fmt.Errorf("error getting metrics for pod\n%w", err)
 				}
 				if !tcpMetricRE.MatchString(metrics) {
 					return fmt.Errorf("failed to find expected TCP metric when pod is opaque\n%s", metrics)
@@ -108,7 +109,7 @@ func TestOpaquePorts(t *testing.T) {
 			})
 
 			if err != nil {
-				testutil.AnnotatedFatalf(t, "unexpected metric output", "unexpected metric output: %v", err)
+				testutil.AnnotatedFatalf(t, "unexpected metric output", "unexpected metric output: %s", err)
 			}
 		})
 
@@ -117,11 +118,11 @@ func TestOpaquePorts(t *testing.T) {
 			err := TestHelper.RetryFor(30*time.Second, func() error {
 				pods, err := TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": opaqueSvcSC})
 				if err != nil || len(pods) == 0 {
-					return fmt.Errorf("error getting pods\n%s", err)
+					return fmt.Errorf("error getting pods\n%w", err)
 				}
 				metrics, err := getPodMetrics(pods[0], opaquePortsNs)
 				if err != nil {
-					return fmt.Errorf("error getting metrics for pod\n%s", err)
+					return fmt.Errorf("error getting metrics for pod\n%w", err)
 				}
 				if httpRequestTotalMetricRE.MatchString(metrics) {
 					return fmt.Errorf("expected not to find HTTP outbound requests when service is opaque\n%s", metrics)
@@ -129,11 +130,11 @@ func TestOpaquePorts(t *testing.T) {
 				// Check the application metrics
 				pods, err = TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": opaqueSvcApp})
 				if err != nil {
-					return fmt.Errorf("error getting pods\n%s", err)
+					return fmt.Errorf("error getting pods\n%w", err)
 				}
 				metrics, err = getPodMetrics(pods[0], opaquePortsNs)
 				if err != nil {
-					return fmt.Errorf("error getting metrics for pod\n%s", err)
+					return fmt.Errorf("error getting metrics for pod\n%w", err)
 				}
 				if !tcpMetricRE.MatchString(metrics) {
 					return fmt.Errorf("failed to find expected TCP metric when pod is opaque\n%s", metrics)
@@ -154,11 +155,11 @@ func TestOpaquePorts(t *testing.T) {
 				pods, err := TestHelper.GetPods(ctx, opaquePortsNs,
 					map[string]string{"app": opaqueUnmeshedSvcSC})
 				if err != nil {
-					return fmt.Errorf("error getting pods\n%s", err)
+					return fmt.Errorf("error getting pods\n%w", err)
 				}
 				metrics, err := getPodMetrics(pods[0], opaquePortsNs)
 				if err != nil {
-					return fmt.Errorf("error getting metrics for pod\n%s", err)
+					return fmt.Errorf("error getting metrics for pod\n%w", err)
 				}
 
 				if httpRequestTotalUnmeshedRE.MatchString(metrics) {
