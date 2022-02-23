@@ -32,6 +32,7 @@ linters:
   - exportloopref
   - goconst
   - gocritic
+  - gosec
   - gosimple
   - govet
   - ineffassign
