@@ -577,7 +577,7 @@ func TestInjectFilePath(t *testing.T) {
 	})
 }
 
-func TestValidURL(t *testing.T) {
+func TestToURL(t *testing.T) {
 	// if the string follows a URL pattern, true has to be returned
 	// if not false is returned
 
@@ -593,9 +593,9 @@ func TestValidURL(t *testing.T) {
 	}
 
 	for url, expectedValue := range tests {
-		value := isValidURL(url)
-		if value != expectedValue {
-			t.Errorf("Result mismatch for %s. expected %v, but got %v", url, expectedValue, value)
+		_, ok := toURL(url)
+		if ok != expectedValue {
+			t.Errorf("Result mismatch for %s. expected %v, but got %v", url, expectedValue, ok)
 		}
 	}
 
