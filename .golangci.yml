@@ -51,7 +51,7 @@ issues:
   exclude-rules:
   - linters:
     - errcheck
-    text: Error return value of `((httpRsp\.|resp\.|s\.)?((B|b)ody|conn|io|out|stdout|w)\.(Close|Copy|Flush|Write))` is not checked
+    text: Error return value of `((httpRsp\.|resp\.|s\.)?((B|b)ody|buf|conn|io|out|output|stdout|w)\.(Close|Copy|Flush|Write|WriteTo))` is not checked
 
   # The errcheck linter catches these instances and we exclude them with the
   # rule above; therefore we'll ignore redundant warnings through gosec.
@@ -59,12 +59,12 @@ issues:
     - gosec
     text: "G104: Errors unhandled."
 
-  # MarkHidden is fallible if the flag does not exist. We assume these exist
+  # Flag operations are fallible if the flag does not exist. We assume these
   # exist as they are generally flags we are deprecating or use only for
   # development.
   - linters:
     - errcheck
-    text: Error return value of `.*\.MarkHidden` is not checked
+    text: Error return value of `(.*)\.(MarkDeprecated|MarkHidden|Set)` is not checked
 
   # Flag completion is not critical to the CLI and errors are ignored if
   # registration fails.

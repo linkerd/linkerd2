@@ -187,13 +187,14 @@ func toURL(path string) (*url.URL, bool) {
 // walk walks the file tree rooted at path. path may be a file or a directory.
 // Creates a reader for each file found.
 func walk(path string) ([]io.Reader, error) {
-	stat, err := os.Stat(path)
+	p := filepath.Clean(path)
+	stat, err := os.Stat(p)
 	if err != nil {
 		return nil, err
 	}
 
 	if !stat.IsDir() {
-		file, err := os.Open(path)
+		file, err := os.Open(p)
 		if err != nil {
 			return nil, err
 		}
@@ -202,7 +203,7 @@ func walk(path string) ([]io.Reader, error) {
 	}
 
 	var in []io.Reader
-	werr := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+	werr := filepath.Walk(p, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -211,7 +212,7 @@ func walk(path string) ([]io.Reader, error) {
 			return nil
 		}
 
-		file, err := os.Open(path)
+		file, err := os.Open(p)
 		if err != nil {
 			return err
 		}
