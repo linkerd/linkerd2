@@ -76,6 +76,8 @@ func renderJSON(w http.ResponseWriter, resp interface{}) {
 
 func renderJSONPb(w http.ResponseWriter, msg proto.Message) {
 	w.Header().Set("Content-Type", "application/json")
+	// Callers of renderJSONPb pass in msgs that can be serialized into JSON.
+	//nolint:errcheck
 	pbMarshaler.Marshal(w, msg)
 }
 

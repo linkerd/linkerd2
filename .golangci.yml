@@ -77,6 +77,11 @@ issues:
     - linters:
       - errcheck
       text: Error return value of `.*\.RegisterFlagCompletionFunc` is not checked
+    # Errors that occur when gracefully shutting down control plane components
+    # are insignificant.
+    - linters:
+      - errcheck
+      text: Error return value of `(adminServer|server)\.Shutdown` is not checked
 
     # Paths
     #######
