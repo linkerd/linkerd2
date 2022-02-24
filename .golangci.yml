@@ -108,5 +108,5 @@ issues:
 
   # In tests we'll ignore unchecked filename operations because the values
   # are not dynamic.
-  - path: .*test.*\.go
+  - path: (.*test.*\.go|fake)
     text: "G304: Potential file inclusion via variable"

@@ -340,6 +340,11 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			log.Warnf("Failed to subscribe to profile %s: %s", path, err)
 			return err
 		}
+		// The only error that can occur when unsubscribing is if the service
+		// publisher is not tracked by the profile watcher. If this is the
+		// case, there is no cleanup that needs to happen and errors can be
+		// ignored.
+		//nolint:errcheck
 		defer s.profiles.Unsubscribe(profile, primary)
 	}
 
@@ -353,6 +358,10 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		log.Warnf("Failed to subscribe to profile %s: %s", path, err)
 		return err
 	}
+	// The only error that can occur when unsubscribing is if the service
+	// publisher is not tracked by the profile watcher. If this is the case,
+	// there is no cleanup that needs to happen and errors can be ignored.
+	//nolint:errcheck
 	defer s.profiles.Unsubscribe(profile, secondary)
 
 	select {
