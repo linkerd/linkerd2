@@ -603,14 +603,16 @@ func (h *TestHelper) RetryFor(timeout time.Duration, fn func() error) error {
 		return nil
 	}
 
-	timeoutAfter := time.After(timeout)
-	retryAfter := time.Tick(time.Second)
+	timeoutAfter := time.NewTimer(timeout)
+	defer timeoutAfter.Stop()
+	retryAfter := time.NewTicker(time.Second)
+	defer retryAfter.Stop()
 
 	for {
 		select {
-		case <-timeoutAfter:
+		case <-timeoutAfter.C:
 			return err
-		case <-retryAfter:
+		case <-retryAfter.C:
 			err = fn()
 			if err == nil {
 				return nil
