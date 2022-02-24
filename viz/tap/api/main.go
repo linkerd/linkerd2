@@ -56,7 +56,10 @@ func Main(args []string) {
 			log.Warnf("failed to initialize tracing: %s", err)
 		}
 	}
-	grpcTapServer := NewGrpcTapServer(*tapPort, *apiNamespace, *trustDomain, k8sAPI)
+	grpcTapServer, err := NewGrpcTapServer(*tapPort, *apiNamespace, *trustDomain, k8sAPI)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 	apiServer, err := NewServer(ctx, *apiServerAddr, k8sAPI, grpcTapServer, *disableCommonNames)
 	if err != nil {
 		log.Fatal(err.Error())
@@ -68,7 +71,9 @@ func Main(args []string) {
 
 	go func() {
 		log.Infof("starting admin server on %s", *metricsAddr)
-		adminServer.ListenAndServe()
+		if err := adminServer.ListenAndServe(); err != nil {
+			log.Errorf("failed to start tap admin server: %s", err)
+		}
 	}()
 
 	<-stop

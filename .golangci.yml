@@ -9,19 +9,6 @@ run:
   deadline: 5m
   skip-dirs:
   - controller/gen
-issues:
-  exclude-use-default: false
-  exclude-rules:
-  # Append should be able to assign to a different var/slice.
-  - linters:
-    - gocritic
-    text: "appendAssign: append result not assigned to the same slice"
-  - linters:
-    - gocritic
-    text: "singleCaseSwitch: should rewrite switch statement to if statement"
-  - linters:
-    - gocritic
-    text: "ifElseChain: rewrite if-else to switch statement"
 
 linters:
   enable:
@@ -60,32 +47,59 @@ linters:
   - structcheck
 
 issues:
+  exclude-use-default: false
   exclude-rules:
-    # Linters
-    #########
-    - linters:
-      - errcheck
-      text: Error return value of `((io|out|w)\.(Copy|Write))` is not checked
-    # MarkHidden is fallible if the flag does not exist. We assume these exist
-    # exist as they are generally flags we are deprecating or use only for
-    # development.
-    - linters:
-      - errcheck
-      text: Error return value of `.*\.MarkHidden` is not checked
-    # Flag completion is not critical to the CLI and errors are ignored if
-    # registration fails.
-    - linters:
-      - errcheck
-      text: Error return value of `.*\.RegisterFlagCompletionFunc` is not checked
-    # Errors that occur when gracefully shutting down control plane components
-    # are insignificant.
-    - linters:
-      - errcheck
-      text: Error return value of `(adminServer|server)\.Shutdown` is not checked
+  - linters:
+    - errcheck
+    text: Error return value of `((httpRsp\.)?((B|b)ody|conn|io|out|stdout|w)\.(Close|Copy|Flush|Write))` is not checked
 
-    # Paths
-    #######
-    # We make assumptions about the number of events we expect to process, and
-    # if processNextEvent fails that will still surface in the test.
-    - path: _test.*\.go
-      text: Error return value of `watcher.processNextEvent` is not checked
+  # The errcheck linter catches these instances and we exclude them with the
+  # rule above; therefore we'll ignore redundant warnings through gosec.
+  - linters:
+    - gosec
+    text: "G104: Errors unhandled."
+
+  # MarkHidden is fallible if the flag does not exist. We assume these exist
+  # exist as they are generally flags we are deprecating or use only for
+  # development.
+  - linters:
+    - errcheck
+    text: Error return value of `.*\.MarkHidden` is not checked
+
+  # Flag completion is not critical to the CLI and errors are ignored if
+  # registration fails.
+  - linters:
+    - errcheck
+    text: Error return value of `.*\.RegisterFlagCompletionFunc` is not checked
+
+  # Errors that occur when gracefully shutting down control plane components
+  # are insignificant.
+  - linters:
+    - errcheck
+    text: Error return value of `(adminServer|apiServer|server)\.Shutdown` is not checked
+
+  # Append should be able to assign to a different var/slice.
+  - linters:
+    - gocritic
+    text: "appendAssign: append result not assigned to the same slice"
+
+  # This does not always result in more readable code.
+  - linters:
+    - gocritic
+    text: "singleCaseSwitch: should rewrite switch statement to if statement"
+
+  # This does not always result in more readable code.
+  - linters:
+    - gocritic
+    text: "ifElseChain: rewrite if-else to switch statement"
+
+  # In tests we are usually mocking components or have a good idea about the
+  # errors that we expect. For this reason, we ignore unchecked errors in
+  # all test files.
+  - path: _test.*\.go
+    text: Error return value of `.*` is not checked
+
+  # In tests we'll ignore unchecked filename operations because the values
+  # are not dynamic.
+  - path: _test\.go
+    text: "G304: Potential file inclusion via variable"
