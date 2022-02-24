@@ -464,7 +464,7 @@ func TestCheckProxyPostUpgrade(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "failed to read file %s\n%v", expected, err)
 	}
 
-	if !strings.Contains(out, expected) {
+	if !strings.Contains(expected, out) {
 		testutil.AnnotatedFatalf(t, "'linkerd check' command failed", "'linkerd check' command failed\nexpected:\n%s\nactual:\n%s", expected, out)
 	}
 }
