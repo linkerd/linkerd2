@@ -51,7 +51,18 @@ issues:
   exclude-rules:
   - linters:
     - errcheck
-    text: Error return value of `((httpRsp\.|resp\.|s\.)?((B|b)ody|buf|conn|io|out|output|stdout|w)\.(Close|Copy|Flush|Write|WriteTo))` is not checked
+    text: Error return value of `((body|buf|conn|file|io|ln|out|output|stdout|w|ws|watcher)\.(Close|Copy|Flush|Write|WriteTo))` is not checked
+
+  # Ignore error values when closing HTTP response bodies. These generally
+  # happen as cleanup and are part of defer statements.
+  - linters:
+    - errcheck
+    text: Error return value of `(httpRsp|resp|rsp)\.Body\.Close` is not checked
+
+  # Ignore error checks for CLI output.
+  - linters:
+    - errcheck
+    text: Error return value of `(plugin|spin|termbox)\.(Clear|Color|Flush|Run)` is not checked
 
   # The errcheck linter catches these instances and we exclude them with the
   # rule above; therefore we'll ignore redundant warnings through gosec.
@@ -110,3 +121,7 @@ issues:
   # are not dynamic.
   - path: (.*test.*\.go|fake)
     text: "G304: Potential file inclusion via variable"
+
+  # This ignores the errors returned from AddToScheme operations.
+  - path: pkg/k8s/fake.go
+    text: Error return value is not checked

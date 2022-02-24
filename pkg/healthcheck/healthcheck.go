@@ -153,13 +153,16 @@ const (
 
 	proxyInjectorOldTLSSecretName = "linkerd-proxy-injector-tls"
 	proxyInjectorTLSSecretName    = "linkerd-proxy-injector-k8s-tls"
-	spValidatorOldTLSSecretName   = "linkerd-sp-validator-tls"
-	spValidatorTLSSecretName      = "linkerd-sp-validator-k8s-tls"
-	policyValidatorTLSSecretName  = "linkerd-policy-validator-k8s-tls"
-	certOldKeyName                = "crt.pem"
-	certKeyName                   = "tls.crt"
-	keyOldKeyName                 = "key.pem"
-	keyKeyName                    = "tls.key"
+
+	// These are not hardcoded credentials
+	spValidatorOldTLSSecretName = "linkerd-sp-validator-tls"     //nolint:gosec
+	spValidatorTLSSecretName    = "linkerd-sp-validator-k8s-tls" //nolint:gosec
+
+	policyValidatorTLSSecretName = "linkerd-policy-validator-k8s-tls"
+	certOldKeyName               = "crt.pem"
+	certKeyName                  = "tls.crt"
+	keyOldKeyName                = "key.pem"
+	keyKeyName                   = "tls.key"
 )
 
 // AllowedClockSkew sets the allowed skew in clock synchronization

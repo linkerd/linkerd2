@@ -143,6 +143,9 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 				spin.Suffix = fmt.Sprintf(" Running %s extension check", extension)
 				spin.Color("bold") // this calls spin.Restart()
 			}
+			// Path is constructed from the switch statements above and will
+			// be a valid Linkerd subcommand.
+			//nolint:gosec
 			plugin := exec.Command(path, args...)
 			var stdout, stderr bytes.Buffer
 			plugin.Stdout = &stdout
