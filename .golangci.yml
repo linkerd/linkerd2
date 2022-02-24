@@ -93,11 +93,11 @@ issues:
     - gocritic
     text: "ifElseChain: rewrite if-else to switch statement"
 
-  # Test utilities do not need to be linted by gosec since all OS operations
-  # are not dynamic.
+  # Test files do not need to be linted by gosec since all OS operations are
+  # not dynamic.
   - linters:
     - gosec
-    path: testutil
+    path: .*test.*
     text: "G204: Subprocess launched with .*"
 
   # In tests we are usually mocking components or have a good idea about the
