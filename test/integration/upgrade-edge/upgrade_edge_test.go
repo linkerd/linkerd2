@@ -1,6 +1,7 @@
 package edgeupgradetest
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,10 +10,14 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"text/template"
+	"time"
 
 	"github.com/linkerd/linkerd2/pkg/flags"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tree"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
 )
 
@@ -456,16 +461,29 @@ func TestCheckProxyPostUpgrade(t *testing.T) {
 
 	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd chec' command failed", "'linkerd check' command failed\n%v\n%s", err, out)
+		testutil.AnnotatedFatalf(t, "'linkerd check' command failed", "'linkerd check' command failed\n%v\n%s", err, out)
 	}
 
-	expected, err := testutil.ReadFile("testdata/check.proxy.golden")
+	expected := getCheckOutput(t, "check.proxy.golden", TestHelper.GetLinkerdNamespace())
+	timeout := time.Minute * 5
+	err = TestHelper.RetryFor(timeout, func() error {
+		if !strings.Contains(out, expected) {
+			testutil.AnnotatedFatalf(t, "'linkerd check' command failed", "'linkerd check' command failed\nexpected: %s\nactual: %s", expected, out)
+		}
+
+		for _, ext := range TestHelper.GetInstalledExtensions() {
+			if ext == "viz" {
+				expected = getCheckOutput(t, "check.viz.proxy.golden", TestHelper.GetVizNamespace())
+				if !strings.Contains(out, expected) {
+					testutil.AnnotatedFatalf(t, "'linkerd check' command failed", "'linkerd check' command failed\nexpected: %s\nactual: %s", expected, out)
+				}
+			}
+		}
+		return nil
+	})
+
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to read file %s\n%v", expected, err)
-	}
-
-	if !strings.Contains(expected, out) {
-		testutil.AnnotatedFatalf(t, "'linkerd check' command failed", "'linkerd check' command failed\nexpected:\n%s\nactual:\n%s", expected, out)
+		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd check' command timed-out (%s)", timeout), err)
 	}
 }
 
@@ -495,4 +513,33 @@ func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "error exercising test app endpoint after upgrade",
 			"error exercising test app endpoint after upgrade %s", err)
 	}
+}
+
+func getCheckOutput(t *testing.T, goldenFile string, namespace string) string {
+	pods, err := TestHelper.KubernetesHelper.GetPods(context.Background(), namespace, nil)
+	if err != nil {
+		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to retrieve pods: %s", err), err)
+	}
+
+	proxyVersionErr := ""
+	err = healthcheck.CheckProxyVersionsUpToDate(pods, version.Channels{})
+	if err != nil {
+		proxyVersionErr = err.Error()
+	}
+
+	tpl := template.Must(template.ParseFiles("testdata" + "/" + goldenFile))
+	vars := struct {
+		ProxyVersionErr string
+		HintURL         string
+	}{
+		proxyVersionErr,
+		healthcheck.HintBaseURL(TestHelper.GetVersion()),
+	}
+
+	var expected bytes.Buffer
+	if err := tpl.Execute(&expected, vars); err != nil {
+		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to parse check.viz.golden template: %s", err), err)
+	}
+
+	return expected.String()
 }
