@@ -463,7 +463,7 @@ func TestCheckProxyPostUpgrade(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'linkerd check' command failed", "'linkerd check' command failed\n%v\n%s", err, out)
 	}
 
-	expected := getCheckOutput(t, "check.upgrade.golden", TestHelper.GetLinkerdNamespace())
+	expected := getCheckOutput(t, "check.upgrade.golden", TestHelper.GetVizNamespace())
 	if !strings.Contains(out, expected) {
 		testutil.AnnotatedFatalf(t, "'linkerd check' command failed", "'linkerd check' command failed\nexpected: %s\nactual: %s", expected, out)
 	}
