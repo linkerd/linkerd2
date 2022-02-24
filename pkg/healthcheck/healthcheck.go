@@ -1636,8 +1636,8 @@ func (hc *HealthChecker) LinkerdConfig() *l5dcharts.Values {
 func (hc *HealthChecker) runCheck(category *Category, c *Checker, observer CheckObserver) bool {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-		defer cancel()
 		err := c.check(ctx)
+		cancel()
 		var se SkipError
 		if errors.As(err, &se) {
 			log.Debugf("Skipping check: %s. Reason: %s", c.description, se.Reason)
