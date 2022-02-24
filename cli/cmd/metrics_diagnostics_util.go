@@ -132,7 +132,6 @@ func getMetrics(
 	defer timeout.Stop()
 wait:
 	for {
-		timeout.Reset(waitingTime)
 		select {
 		case result := <-resultChan:
 			results = append(results, result)
