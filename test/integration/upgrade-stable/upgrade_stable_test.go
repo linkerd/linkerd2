@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 	"text/template"
-	"time"
 
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -464,26 +463,9 @@ func TestCheckProxyPostUpgrade(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'linkerd check' command failed", "'linkerd check' command failed\n%v\n%s", err, out)
 	}
 
-	expected := getCheckOutput(t, "check.proxy.golden", TestHelper.GetLinkerdNamespace())
-	timeout := time.Minute * 5
-	err = TestHelper.RetryFor(timeout, func() error {
-		if !strings.Contains(out, expected) {
-			testutil.AnnotatedFatalf(t, "'linkerd check' command failed", "'linkerd check' command failed\nexpected: %s\nactual: %s", expected, out)
-		}
-
-		for _, ext := range TestHelper.GetInstalledExtensions() {
-			if ext == "viz" {
-				expected = getCheckOutput(t, "check.viz.proxy.golden", TestHelper.GetVizNamespace())
-				if !strings.Contains(out, expected) {
-					testutil.AnnotatedFatalf(t, "'linkerd check' command failed", "'linkerd check' command failed\nexpected: %s\nactual: %s", expected, out)
-				}
-			}
-		}
-		return nil
-	})
-
-	if err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd check' command timed-out (%s)", timeout), err)
+	expected := getCheckOutput(t, "check.upgrade.golden", TestHelper.GetLinkerdNamespace())
+	if !strings.Contains(out, expected) {
+		testutil.AnnotatedFatalf(t, "'linkerd check' command failed", "'linkerd check' command failed\nexpected: %s\nactual: %s", expected, out)
 	}
 }
 
@@ -538,7 +520,7 @@ func getCheckOutput(t *testing.T, goldenFile string, namespace string) string {
 
 	var expected bytes.Buffer
 	if err := tpl.Execute(&expected, vars); err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to parse check.viz.golden template: %s", err), err)
+		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to parse %s template: %s", goldenFile, err), err)
 	}
 
 	return expected.String()
