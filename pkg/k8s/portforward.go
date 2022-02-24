@@ -204,7 +204,7 @@ func (pf *PortForward) run() error {
 func (pf *PortForward) Init() error {
 	log.Debugf("Starting port forward to %s %d:%d", pf.url, pf.localPort, pf.remotePort)
 
-	failure := make(chan error)
+	failure := make(chan error, 1)
 
 	go func() {
 		if err := pf.run(); err != nil {
