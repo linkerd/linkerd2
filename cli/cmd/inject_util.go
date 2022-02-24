@@ -212,7 +212,7 @@ func walk(path string) ([]io.Reader, error) {
 			return nil
 		}
 
-		file, err := os.Open(p)
+		file, err := os.Open(filepath.Clean(path))
 		if err != nil {
 			return err
 		}
