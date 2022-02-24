@@ -51,7 +51,7 @@ issues:
   exclude-rules:
   - linters:
     - errcheck
-    text: Error return value of `((httpRsp\.)?((B|b)ody|conn|io|out|stdout|w)\.(Close|Copy|Flush|Write))` is not checked
+    text: Error return value of `((httpRsp\.|resp\.|s\.)?((B|b)ody|conn|io|out|stdout|w)\.(Close|Copy|Flush|Write))` is not checked
 
   # The errcheck linter catches these instances and we exclude them with the
   # rule above; therefore we'll ignore redundant warnings through gosec.
@@ -93,13 +93,20 @@ issues:
     - gocritic
     text: "ifElseChain: rewrite if-else to switch statement"
 
+  # Test utilities do not need to be linted by gosec since all OS operations
+  # are not dynamic.
+  - linters:
+    - gosec
+    path: testutil
+    text: "G204: Subprocess launched with .*"
+
   # In tests we are usually mocking components or have a good idea about the
   # errors that we expect. For this reason, we ignore unchecked errors in
   # all test files.
-  - path: _test.*\.go
+  - path: .*test.*\.go
     text: Error return value of `.*` is not checked
 
   # In tests we'll ignore unchecked filename operations because the values
   # are not dynamic.
-  - path: _test\.go
+  - path: .*test.*\.go
     text: "G304: Potential file inclusion via variable"
