@@ -61,7 +61,12 @@ func newLinkCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "link",
 		Short: "Outputs resources that allow another cluster to mirror services from this one",
-		Args:  cobra.NoArgs,
+		Long: `Outputs resources that allow another cluster to mirror services from this one.
+
+Note that the Link resource applies only in one direction. In order for two
+clusters to mirror each other, a Link resource will have to be generated for
+each cluster and applied to the other.`,
+		Args: cobra.NoArgs,
 		Example: `  # To link the west cluster to east
   linkerd --context=east multicluster link --cluster-name east | kubectl --context=west apply -f -
 
