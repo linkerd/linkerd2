@@ -18,6 +18,7 @@ linkerd-existence
 √ control plane replica sets are ready
 √ no unschedulable pods
 √ control plane pods are ready
+√ cluster networks can be verified
 √ cluster networks contains all node podCIDRs
 
 linkerd-config

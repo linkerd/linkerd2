@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 	"text/template"
+	"time"
 
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -458,14 +459,26 @@ func TestCheckProxyPostUpgrade(t *testing.T) {
 		"--wait=60m",
 	}
 
-	out, err := TestHelper.LinkerdRun(cmd...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd check' command failed", "'linkerd check' command failed\n%v\n%s", err, out)
-	}
-
 	expected := getCheckOutput(t, "check.upgrade.golden", TestHelper.GetVizNamespace())
-	if !strings.Contains(out, expected) {
-		testutil.AnnotatedFatalf(t, "'linkerd check' command failed", "'linkerd check' command failed\nexpected: %s\nactual: %s", expected, out)
+	// Check output is non-deterministic for proxies that are not running the
+	// current version. This tends to cause a mismatch between the expected
+	// output (which is templated) and the actual output. We add a retry to "eventually"
+	// get a match
+	err := TestHelper.RetryFor(5*time.Minute, func() error {
+		out, err := TestHelper.LinkerdRun(cmd...)
+		if err != nil {
+			return fmt.Errorf("%v\n%s", err, out)
+		}
+
+		if !strings.Contains(out, expected) {
+			return fmt.Errorf("expected: %s\nactual: %s", expected, out)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'linkerd check' command timed-out", "'linkerd check' command timed-out\n%v", err)
 	}
 }
 
