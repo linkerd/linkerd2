@@ -1,5 +1,20 @@
 # Changes
 
+## edge-22.2.4
+
+This edge release continues to address several security related lints and
+ensures they are checked by CI.
+
+* Add `linkerd check` warning for clusters that cannot verify their
+  `clusterNetworks` due to Nodes missing the `podCIDR` field
+* Changed `Server` CRD to allow having an empty `PodSelector`
+* Modified `linkerd inject` to only support `https` URLs to mitigate security
+  risks
+* Fixed potential goroutine leak in the port forwarding used by several CLI
+  commands and control plane components
+* Fixed timeouts in the policiy validator which could lead to failures if
+  `failurePolicy` was set to `Fail`
+
 ## edge-22.2.3
 
 This edge release fixes some `Instant`-related proxy panics that occur on Amazon
@@ -3142,7 +3157,7 @@ resolutions](https://github.com/linkerd/linkerd2/pull/3848) are released when
 the associated balancer becomes idle.
 
 Finally, an update to follow best practices in the Helm charts has caused a
-*breaking change*. Users who have installed Linkerd using Helm must be certain
+_breaking change_. Users who have installed Linkerd using Helm must be certain
 to read the details of
 [#3822](https://github.com/linkerd/linkerd2/issues/3822)
 
@@ -5207,7 +5222,7 @@ you are upgrading from the `stable-2.0.0` release.
 **Full release notes**:
 
 * CLI
-  * `linkerd routes` command displays per-route stats for *any resource*
+  * `linkerd routes` command displays per-route stats for _any resource_
   * Service profiles are now supported for external authorities
   * `linkerd routes --open-api` flag generates a service profile based on an
     OpenAPI specification (swagger) file
