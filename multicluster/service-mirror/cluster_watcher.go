@@ -954,14 +954,21 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 	for _, svc := range mirrorServices {
 		updatedService := svc.DeepCopy()
 
-		// If the Service is headless we should skip repairing its Endpoints.
-		// Headless Services that are mirrored on a remote cluster will have
-		// their Endpoints created with hostnames and nested clusterIP services,
-		// we should avoid replacing these with the gateway address.
+		// Mirrors for headless services are also headless, and their
+		// Endpoints point to auxiliary services instead of pointing to
+		// the gateway, so they're skipped.
 		if svc.Spec.ClusterIP == corev1.ClusterIPNone {
 			rcsw.log.Debugf("Skipped repairing endpoints for %s/%s", svc.Namespace, svc.Name)
 			continue
 		}
+		// And these auxiliary services have Endpoints that point to
+		// the gateway but aren't mirroring per se any Endpoints on the
+		// target cluster, so they're also skipped.
+		if _, found := svc.Labels[consts.MirroredHeadlessSvcNameLabel]; found {
+			rcsw.log.Debugf("Skipped repairing endpoints for %s/%s", svc.Namespace, svc.Name)
+			continue
+		}
+
 		endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(svc.Namespace).Get(svc.Name)
 		if err != nil {
 			rcsw.log.Errorf("Could not get local endpoints: %s", err)

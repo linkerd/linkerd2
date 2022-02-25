@@ -517,16 +517,15 @@ run_multicluster_test() {
   link=$(multicluster_link target)
 
   export context="k3d-source"
-  # Create the emojivoto namespace in the source cluster so that mirror services
-  # can be created there.
+  # Create the emojivoto and multicluster-statefulset namespaces in the source
+  # cluster so that mirror services can be created there.
   kubectl --context="$context" create namespace emojivoto
+  kubectl --context="$context" create namespace multicluster-statefulset
   run_test "$test_directory/multicluster/install_test.go" --certs-path "$tmp"
   echo "$link" | kubectl --context="$context" apply -f -
   run_test "$test_directory/multicluster/source" 
   export context="k3d-target"
   run_test "$test_directory/multicluster/target2" 
-  export context="k3d-target"
-  run_test "$test_directory/multicluster/target-statefulset" 
 }
 
 run_deep_test() {
