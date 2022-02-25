@@ -10,11 +10,11 @@ kubeVersion: ">=1.20.0-0"
 name: "linkerd-crds"
 sources:
 - https://github.com/linkerd/linkerd2/
-dependencies: 
+dependencies:
 - name: partials
   version: 0.1.0
   repository: file://../partials
-version: 1.0.1-edge
+version: 1.0.2-edge
 icon: https://linkerd.io/images/logo-only-200h.png
 maintainers:
   - name: Linkerd authors
