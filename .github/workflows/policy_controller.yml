@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     container:
-      image: docker://rust:1.56.1
+      image: docker://rust:1.59.0
     steps:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       - run: rustup component add rustfmt
@@ -51,7 +51,7 @@ jobs:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     container:
-      image: docker://rust:1.56.1
+      image: docker://rust:1.59.0
     steps:
       - run: rustup component add clippy
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
@@ -65,7 +65,7 @@ jobs:
     timeout-minutes: 20
     runs-on: ubuntu-latest
     container:
-      image: docker://rust:1.56.1
+      image: docker://rust:1.59.0
     steps:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       - run: |
@@ -86,7 +86,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     container:
-      image: docker://rust:1.56.1
+      image: docker://rust:1.59.0
     steps:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       - run: cargo test --workspace --no-run
