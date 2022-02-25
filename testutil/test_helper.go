@@ -8,11 +8,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -417,6 +419,16 @@ type: kubernetes.io/tls`, base64.StdEncoding.EncodeToString([]byte(root)), base6
 	return err
 }
 
+// CmdRun executes an arbitrary command by calling the binary and return its
+// output
+func (h *TestHelper) CmdRun(cmd string, arg ...string) (string, error) {
+	out, stderr, err := combinedOutput("", cmd, arg...)
+	if err != nil {
+		return out, fmt.Errorf("command failed: '%s %s'\n%w\n%s", cmd, strings.Join(arg, " "), err, stderr)
+	}
+	return out, nil
+}
+
 // LinkerdRun executes a linkerd command returning its stdout.
 func (h *TestHelper) LinkerdRun(arg ...string) (string, error) {
 	out, stderr, err := h.PipeToLinkerdRun("", arg...)
@@ -603,14 +615,16 @@ func (h *TestHelper) RetryFor(timeout time.Duration, fn func() error) error {
 		return nil
 	}
 
-	timeoutAfter := time.After(timeout)
-	retryAfter := time.Tick(time.Second)
+	timeoutAfter := time.NewTimer(timeout)
+	defer timeoutAfter.Stop()
+	retryAfter := time.NewTicker(time.Second)
+	defer retryAfter.Stop()
 
 	for {
 		select {
-		case <-timeoutAfter:
+		case <-timeoutAfter.C:
 			return err
-		case <-retryAfter:
+		case <-retryAfter.C:
 			err = fn()
 			if err == nil {
 				return nil
@@ -660,6 +674,46 @@ func (h *TestHelper) WithDataPlaneNamespace(ctx context.Context, testName string
 		AnnotatedFatalf(t, fmt.Sprintf("failed to delete %s namespace", prefixedNs),
 			"failed to delete %s namespace: %s", prefixedNs, err)
 	}
+}
+
+// GetReleaseChannelVersions is used to fetch the latest versions for Linkerd's
+// release channels: edge and stable
+func (h *TestHelper) GetReleaseChannelVersions() (map[string]string, error) {
+	url := "https://versioncheck.linkerd.io/version.json"
+	resp, err := h.httpClient.Get(url)
+	if err != nil {
+		return map[string]string{}, err
+	}
+	defer resp.Body.Close()
+
+	var versions map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&versions); err != nil {
+		return map[string]string{}, err
+	}
+
+	return versions, nil
+}
+
+// DownloadCLIBinary is used to download the Linkerd CLI from GitHub Releases
+// page. The method takes the version to download and a filepath where to save
+// the binary.
+func (h *TestHelper) DownloadCLIBinary(filepath, version string) error {
+	url := fmt.Sprintf("https://github.com/linkerd/linkerd2/releases/download/%[1]s/linkerd2-cli-%[1]s-%s-%s", version, runtime.GOOS, runtime.GOARCH)
+	resp, err := h.httpClient.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Create if it doesn't already exist
+	out, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE, 755)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	return err
 }
 
 // ReadFile reads a file from disk and returns the contents as a string.

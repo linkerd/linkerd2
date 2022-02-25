@@ -1,4 +1,4 @@
-ARG RUST_IMAGE=docker.io/library/rust:1.56.1
+ARG RUST_IMAGE=docker.io/library/rust:1.59.0
 ARG RUNTIME_IMAGE=gcr.io/distroless/cc
 
 FROM $RUST_IMAGE as build
@@ -11,7 +11,7 @@ WORKDIR /build
 COPY Cargo.toml Cargo.lock policy-controller/ /build/
 # XXX(ver) we can't easily cross-compile against openssl, so use rustls on arm.
 RUN --mount=type=cache,target=target \
-    --mount=type=cache,from=rust:1.56.1,source=/usr/local/cargo,target=/usr/local/cargo \
+    --mount=type=cache,from=rust:1.59.0,source=/usr/local/cargo,target=/usr/local/cargo \
     cargo build --locked --release --target=armv7-unknown-linux-gnueabihf \
         --package=linkerd-policy-controller --no-default-features --features="rustls-tls" && \
     mv target/armv7-unknown-linux-gnueabihf/release/linkerd-policy-controller /tmp/

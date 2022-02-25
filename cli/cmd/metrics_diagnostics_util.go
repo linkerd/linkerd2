@@ -128,12 +128,14 @@ func getMetrics(
 		}(pod)
 	}
 
+	timeout := time.NewTimer(waitingTime)
+	defer timeout.Stop()
 wait:
 	for {
 		select {
 		case result := <-resultChan:
 			results = append(results, result)
-		case <-time.After(waitingTime):
+		case <-timeout.C:
 			break wait // timed out
 		}
 		if atomic.LoadInt32(&activeRoutines) == 0 {

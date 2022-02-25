@@ -3,7 +3,7 @@
 Linkerd gives you observability, reliability, and security
 for your microservices — with no code change required.
 
-![Version: 1.0.1-edge](https://img.shields.io/badge/Version-1.0.1--edge-informational?style=flat-square)
+![Version: 1.0.2-edge](https://img.shields.io/badge/Version-1.0.2--edge-informational?style=flat-square)
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
 
 **Homepage:** <https://linkerd.io>

@@ -103,25 +103,21 @@ func TestInstallViz(t *testing.T) {
 }
 
 func TestCheckMulticluster(t *testing.T) {
-	if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
-		cmd := []string{"multicluster", "check", "--wait=60m"}
-		golden := "check.multicluster.golden"
-		timeout := time.Minute
-		err := TestHelper.RetryFor(timeout, func() error {
-			out, err := TestHelper.LinkerdRun(cmd...)
-			if err != nil {
-				return fmt.Errorf("'linkerd multicluster check' command failed\n%w", err)
-			}
-			err = TestHelper.ValidateOutput(out, golden)
-			if err != nil {
-				return fmt.Errorf("received unexpected output\n%w", err)
-			}
-			return nil
-		})
+	cmd := []string{"multicluster", "check", "--wait=10s"}
+	golden := "check.multicluster.golden"
+	timeout := time.Minute
+	err := TestHelper.RetryFor(timeout, func() error {
+		out, err := TestHelper.LinkerdRun(cmd...)
 		if err != nil {
-			testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd multicluster check' command timed-out (%s)", timeout), err)
+			return fmt.Errorf("'linkerd multicluster check' command failed\n%s", out)
 		}
-	} else {
-		t.Skip("Skipping for non multicluster test")
+		err = TestHelper.ValidateOutput(out, golden)
+		if err != nil {
+			return fmt.Errorf("received unexpected output: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd multicluster check' command timed-out (%s)", timeout), err)
 	}
 }

@@ -23,9 +23,11 @@ struct Pod {
 
     /// The pod's labels.
     labels: k8s::Labels,
-
-    /// The workload's default allow behavior (to apply when no `Server` references a port).
-    default_policy: DefaultPolicy,
+    //
+    // FIXME per-workload default policies should apply to unspecified ports:
+    //
+    // /// The workload's default allow behavior (to apply when no `Server` references a port).
+    // default_policy: DefaultPolicy,
 }
 
 /// An index of all ports in a pod spec to the
@@ -223,7 +225,7 @@ impl PodIndex {
                 // Start tracking the pod's metadata so it can be linked against servers as they are
                 // created. Immediately link the pod's ports to the server index.
                 let mut pod = Pod {
-                    default_policy,
+                    // default_policy,
                     labels: pod.metadata.labels.into(),
                     ports,
                 };
