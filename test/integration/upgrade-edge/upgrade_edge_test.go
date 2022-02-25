@@ -467,7 +467,7 @@ func TestCheckProxyPostUpgrade(t *testing.T) {
 	err := TestHelper.RetryFor(5*time.Minute, func() error {
 		out, err := TestHelper.LinkerdRun(cmd...)
 		if err != nil {
-			return fmt.Errorf("%v\n%s", err, out)
+			return fmt.Errorf("%w\n%s", err, out)
 		}
 
 		if !strings.Contains(out, expected) {
@@ -478,7 +478,7 @@ func TestCheckProxyPostUpgrade(t *testing.T) {
 	})
 
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd check' command timed-out", "'linkerd check' command timed-out\n%v", err)
+		testutil.AnnotatedFatalf(t, "'linkerd check' command timed-out", "'linkerd check' command timed-out\n%w", err)
 	}
 }
 
