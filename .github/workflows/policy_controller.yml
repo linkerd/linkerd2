@@ -48,7 +48,7 @@ jobs:
         command: check ${{ matrix.checks }}
 
   clippy:
-    timeout-minutes: 5
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     container:
       image: docker://rust:1.59.0
@@ -59,7 +59,7 @@ jobs:
           bin/scurl -o /usr/local/bin/cargo-action-fmt "https://github.com/olix0r/cargo-action-fmt/releases/download/release%2F${CARGO_ACTION_FMT_VERSION}/cargo-action-fmt-x86_64-unknown-linux-gnu"
           chmod 755 /usr/local/bin/cargo-action-fmt
       - run: cargo fetch
-      - run: cargo clippy --frozen --all --message-format=json | cargo-action-fmt
+      - run: cargo clippy --frozen --all --no-deps --message-format=json | cargo-action-fmt
 
   check:
     timeout-minutes: 20
@@ -89,8 +89,9 @@ jobs:
       image: docker://rust:1.59.0
     steps:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
-      - run: cargo test --workspace --no-run
-      - run: cargo test --workspace
+      - run: cargo fetch
+      - run: cargo test --workspace --frozen --no-run
+      - run: cargo test --workspace --frozen
 
   rust-toolchain:
     name: rust toolchain
