@@ -12,6 +12,8 @@ ensures they are checked by CI.
   risks
 * Fixed potential goroutine leak in the port forwarding used by several CLI
   commands and control plane components
+* Fixed timeouts in the policiy validator which could lead to failures if
+  `failurePolicy` was set to `Fail`
 
 ## edge-22.2.3
 
