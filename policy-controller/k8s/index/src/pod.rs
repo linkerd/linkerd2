@@ -23,8 +23,9 @@ struct Pod {
 
     /// The pod's labels.
     labels: k8s::Labels,
-
-    // FIXME per-workload default policies should apply to unspecified ports
+    //
+    // FIXME per-workload default policies should apply to unspecified ports:
+    //
     // /// The workload's default allow behavior (to apply when no `Server` references a port).
     // default_policy: DefaultPolicy,
 }
