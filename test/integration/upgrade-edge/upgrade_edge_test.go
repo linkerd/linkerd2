@@ -478,7 +478,7 @@ func TestCheckProxyPostUpgrade(t *testing.T) {
 	})
 
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd check' command timed-out", "'linkerd check' command timed-out\n%w", err)
+		testutil.AnnotatedFatalf(t, "'linkerd check' command timed-out", "'linkerd check' command timed-out\n%v", err)
 	}
 }
 
