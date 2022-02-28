@@ -1336,9 +1336,8 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /ready
+            path: /live
             port: admin
-          initialDelaySeconds: 10
         name: policy
         ports:
         - containerPort: 8090
@@ -1352,6 +1351,7 @@ spec:
           httpGet:
             path: /ready
             port: admin
+          initialDelaySeconds: 10
         resources:
         securityContext:
           runAsUser: 2103
