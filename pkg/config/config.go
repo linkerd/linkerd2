@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -18,10 +17,7 @@ import (
 )
 
 // Values returns the Value struct from the linkerd-config ConfigMap
-func Values(path string, prefix string) (*l5dcharts.Values, error) {
-	if !strings.HasPrefix(path, prefix) {
-		return nil, fmt.Errorf("path does not have expected prefix %s: %s", prefix, path)
-	}
+func Values(path string) (*l5dcharts.Values, error) {
 	p := filepath.Clean(path)
 	configYaml, err := ioutil.ReadFile(p)
 	if err != nil {
