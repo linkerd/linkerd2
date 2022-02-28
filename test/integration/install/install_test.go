@@ -7,7 +7,6 @@ import (
 	"os"
 	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
 	"testing"
 	"text/template"
@@ -862,43 +861,6 @@ func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 		}
 	} else {
 		t.Skip("Skipping for non upgrade test")
-	}
-}
-
-func TestDashboard(t *testing.T) {
-	dashboardPort := 52237
-	dashboardURL := fmt.Sprintf("http://localhost:%d", dashboardPort)
-
-	outputStream, err := TestHelper.LinkerdRunStream("viz", "dashboard", "-p",
-		strconv.Itoa(dashboardPort), "--show", "url")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "error running command",
-			"error running command:\n%s", err)
-	}
-	defer outputStream.Stop()
-
-	outputLines, err := outputStream.ReadUntil(4, 1*time.Minute)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "error running command",
-			"error running command:\n%s", err)
-	}
-
-	output := strings.Join(outputLines, "")
-	if !strings.Contains(output, dashboardURL) {
-		testutil.AnnotatedFatalf(t,
-			"dashboard command failed. Expected url [%s] not present", dashboardURL)
-	}
-
-	resp, err := TestHelper.HTTPGetURL(dashboardURL + "/api/version")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "unexpected error",
-			"unexpected error: %v", err)
-	}
-
-	if !strings.Contains(resp, TestHelper.GetVersion()) {
-		testutil.AnnotatedFatalf(t, "dashboard command failed; response doesn't contain expected version",
-			"dashboard command failed. Expected response [%s] to contain version [%s]",
-			resp, TestHelper.GetVersion())
 	}
 }
 
