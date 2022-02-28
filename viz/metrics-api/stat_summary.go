@@ -55,8 +55,7 @@ const (
 	httpAuthzAllowQuery  = "sum(increase(inbound_http_authz_allow_total%s[%s])) by (%s)"
 	tcpConnectionsQuery  = "sum(tcp_open_connections%s) by (%s)"
 	tcpReadBytesQuery    = "sum(increase(tcp_read_bytes_total%s[%s])) by (%s)"
-	// This is not a hardcoded credential
-	tcpWriteBytesQuery = "sum(increase(tcp_write_bytes_total%s[%s])) by (%s)" //nolint:gosec
+	tcpWriteBytesQuery   = "sum(increase(tcp_write_bytes_total%s[%s])) by (%s)"
 
 	regexAny = ".+"
 )

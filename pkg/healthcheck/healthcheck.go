@@ -154,9 +154,8 @@ const (
 	proxyInjectorOldTLSSecretName = "linkerd-proxy-injector-tls"
 	proxyInjectorTLSSecretName    = "linkerd-proxy-injector-k8s-tls"
 
-	// These are not hardcoded credentials
-	spValidatorOldTLSSecretName = "linkerd-sp-validator-tls"     //nolint:gosec
-	spValidatorTLSSecretName    = "linkerd-sp-validator-k8s-tls" //nolint:gosec
+	spValidatorOldTLSSecretName = "linkerd-sp-validator-tls"
+	spValidatorTLSSecretName    = "linkerd-sp-validator-k8s-tls"
 
 	policyValidatorTLSSecretName = "linkerd-policy-validator-k8s-tls"
 	certOldKeyName               = "crt.pem"

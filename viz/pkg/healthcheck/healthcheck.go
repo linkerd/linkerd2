@@ -29,9 +29,8 @@ const (
 	// LinkerdVizExtensionDataPlaneCheck adds checks related to dataplane for the linkerd-viz extension
 	LinkerdVizExtensionDataPlaneCheck healthcheck.CategoryID = "linkerd-viz-data-plane"
 
-	// These are not hardcoded credentials
-	tapTLSSecretName    = "tap-k8s-tls"     //nolint:gosec
-	tapOldTLSSecretName = "linkerd-tap-tls" //nolint:gosec
+	tapTLSSecretName    = "tap-k8s-tls"
+	tapOldTLSSecretName = "linkerd-tap-tls"
 
 	// linkerdTapAPIServiceName is the name of the tap api service
 	// This key is passed to checkApiService method to check whether

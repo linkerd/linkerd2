@@ -72,6 +72,12 @@ issues:
     - gosec
     text: "G104: Errors unhandled."
 
+  # This gives false negatives if a variable name is too close to the pattern
+  # used to determine if a variable is a credential.
+  - linters:
+    - gosec
+    text: "G101: Potential hardcoded credentials"
+
   # Flag operations are fallible if the flag does not exist. We assume these
   # exist as they are generally flags we are deprecating or use only for
   # development.
