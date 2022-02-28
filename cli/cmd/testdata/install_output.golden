@@ -1937,7 +1937,9 @@ spec:
         - --admin-addr=0.0.0.0:9990
         - --control-plane-namespace=linkerd
         - --grpc-addr=0.0.0.0:8090
-        - --admission-addr=0.0.0.0:9443
+        - --server-addr=0.0.0.0:9443
+        - --server-tls-key=/var/run/linkerd/tls/tls.key
+        - --server-tls-certs=/var/run/linkerd/tls/tls.crt
         - --cluster-networks=ClusterNetworks
         - --identity-domain=cluster.local
         - --default-policy=default-allow-policy
