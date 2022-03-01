@@ -53,13 +53,13 @@ issues:
   # not handled separately already, they tend to be insignificant.
   - linters:
     - errcheck
-    text: Error return value of `((body|buf|conn|file|io|ln|out|output|stdout|w|ws|watcher)\.(Copy|Flush|Write|WriteTo))` is not checked
+    text: Error return value of `.*\.(Copy|Flush|Write|WriteTo)` is not checked
 
   # Ignore error values when closing file or HTTP response bodies. These
   # generally happen as cleanup and are part of defer statements.
   - linters:
     - errcheck
-    text: Error return value of `(((httpRsp|resp|rsp)\.)?(B|b)ody|conn|ln|file|watcher|ws)\.Close` is not checked
+    text: Error return value of `.*\.Close` is not checked
 
   # Ignore error checks for CLI output.
   - linters:
