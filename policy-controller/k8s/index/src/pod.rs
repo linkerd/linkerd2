@@ -92,7 +92,7 @@ impl Index {
             *default_policy,
             &mut self.default_policy_watches,
         ) {
-            warn!(?error, "failed to apply pod");
+            warn!(%error, "failed to apply pod");
         }
     }
 
