@@ -100,7 +100,6 @@ impl Index {
         cluster_info: ClusterInfo,
         default_policy: DefaultPolicy,
         detect_timeout: time::Duration,
-        // stores: k8s::Stores,
     ) -> (lookup::Reader, Self) {
         // Create a common set of receivers for all supported default policies.
         let default_policy_watches =
@@ -116,7 +115,6 @@ impl Index {
             namespaces,
             cluster_info,
             default_policy_watches,
-            // stores,
         };
         (reader, idx)
     }
