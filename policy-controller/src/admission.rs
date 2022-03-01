@@ -23,11 +23,7 @@ pub enum Error {
     ),
 
     #[error("failed to encode json response: {0}")]
-    Json(
-        #[from]
-        #[source]
-        serde_json::Error,
-    ),
+    Json(#[from] serde_json::Error),
 }
 
 impl hyper::service::Service<Request<Body>> for Service {

@@ -3,7 +3,6 @@
 
 pub mod labels;
 pub mod policy;
-// mod watch;
 
 pub use self::{labels::Labels, watcher::Event};
 use futures::prelude::*;
@@ -38,7 +37,6 @@ where
     while let Some(ev) = events.next().await {
         let mut locked = store.lock();
         process(&mut locked, ev);
-        drop(locked);
     }
 
     tracing::warn!("k8s event stream terminated");

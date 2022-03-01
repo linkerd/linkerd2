@@ -91,7 +91,6 @@ pub struct Index {
 
     /// A handle that supports updates to the lookup index.
     lookups: lookup::Writer,
-    //stores: k8s::Stores,
 }
 
 // === impl Index ===

@@ -142,7 +142,7 @@ impl Index {
             None => warn!(%ns, "namespace doesn't exist"),
             Some(idx) => {
                 if idx.pods.index.remove(pod).is_none() {
-                    warn!(%ns, "namespace doesn't exist");
+                    warn!(%pod, "pod doesn't exist");
                 }
             }
         }
