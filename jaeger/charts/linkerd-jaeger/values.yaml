@@ -6,6 +6,11 @@ linkerdNamespace: linkerd
 nodeSelector: &default_node_selector
   kubernetes.io/os: linux
 
+# -- For Private docker registries, authentication is needed.
+#  Registry secrets are applied to the respective service accounts
+imagePullSecrets: []
+# - name: my-private-docker-registry-login-secret
+
 # -- Default tolerations section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
 # for more information
