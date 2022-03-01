@@ -35,8 +35,7 @@ where
 {
     tokio::pin!(events);
     while let Some(ev) = events.next().await {
-        let mut locked = store.lock();
-        process(&mut locked, ev);
+        process(&mut *store.lock(), ev);
     }
 
     tracing::warn!("k8s event stream terminated");
