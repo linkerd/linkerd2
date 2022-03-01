@@ -210,6 +210,8 @@ NetworkGraphBase.defaultProps = {
 
 NetworkGraphBase.propTypes = {
   data: PropTypes.arrayOf(metricsPropType.isRequired).isRequired,
+  /* these objects have a lot of stuff */
+  /* eslint-disable react/forbid-prop-types */
   deployments: PropTypes.arrayOf(PropTypes.object),
 };
 
