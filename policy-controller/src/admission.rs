@@ -16,11 +16,7 @@ pub struct Service {
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("failed to read request body: {0}")]
-    Request(
-        #[from]
-        #[source]
-        hyper::Error,
-    ),
+    Request(#[from] hyper::Error),
 
     #[error("failed to encode json response: {0}")]
     Json(#[from] serde_json::Error),
