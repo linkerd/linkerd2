@@ -7,12 +7,12 @@ import (
 	"sort"
 	"strings"
 
-	proto "github.com/golang/protobuf/proto"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	vizutil "github.com/linkerd/linkerd2/viz/pkg/util"
 	"github.com/prometheus/common/model"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
