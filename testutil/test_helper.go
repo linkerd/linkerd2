@@ -706,7 +706,7 @@ func (h *TestHelper) DownloadCLIBinary(filepath, version string) error {
 	defer resp.Body.Close()
 
 	// Create if it doesn't already exist
-	out, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE, 755)
+	out, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE, 0755)
 	if err != nil {
 		return err
 	}
