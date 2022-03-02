@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
+	protov1 "github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -23,6 +23,7 @@ import (
 	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	tappkg "github.com/linkerd/linkerd2/viz/tap/pkg"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
@@ -76,7 +77,7 @@ func renderJSON(w http.ResponseWriter, resp interface{}) {
 
 func renderJSONPb(w http.ResponseWriter, msg proto.Message) {
 	w.Header().Set("Content-Type", "application/json")
-	pbMarshaler.Marshal(w, msg)
+	pbMarshaler.Marshal(w, protov1.MessageV1(msg))
 }
 
 func renderJSONBytes(w http.ResponseWriter, b []byte) {
