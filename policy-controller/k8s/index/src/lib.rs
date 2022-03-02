@@ -27,12 +27,13 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-mod authz;
 mod defaults;
 mod lookup;
 mod namespace;
-mod pod;
-mod server;
+pub mod pod;
+pub mod server;
+pub mod server_authorization;
+
 #[cfg(test)]
 mod tests;
 
@@ -42,10 +43,8 @@ use self::{
     namespace::{Namespace, NamespaceIndex},
     server::SrvIndex,
 };
-use futures::prelude::*;
 use linkerd_policy_controller_core::{InboundServer, IpNet};
-use linkerd_policy_controller_k8s_api as k8s;
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 use std::sync::Arc;
 use tokio::{sync::watch, time};
 
@@ -76,6 +75,8 @@ pub struct ClusterInfo {
     pub identity_domain: String,
 }
 
+pub type SharedIndex = Arc<RwLock<Index>>;
+
 /// Holds all indexing state. Owned and updated by a single task that processes watch events,
 /// publishing results to the shared lookup map for quick lookups in the API server.
 pub struct Index {
@@ -100,7 +101,7 @@ impl Index {
         cluster_info: ClusterInfo,
         default_policy: DefaultPolicy,
         detect_timeout: time::Duration,
-    ) -> (lookup::Reader, Self) {
+    ) -> (lookup::Reader, SharedIndex) {
         // Create a common set of receivers for all supported default policies.
         let default_policy_watches =
             DefaultPolicyWatches::new(cluster_info.networks.clone(), detect_timeout);
@@ -116,45 +117,10 @@ impl Index {
             cluster_info,
             default_policy_watches,
         };
-        (reader, idx)
+        (reader, Arc::new(RwLock::new(idx)))
     }
-}
 
-pub async fn index_pods(idx: Arc<Mutex<Index>>, events: impl Stream<Item = k8s::Event<k8s::Pod>>) {
-    tokio::pin!(events);
-    while let Some(ev) = events.next().await {
-        match ev {
-            k8s::Event::Applied(pod) => idx.lock().apply_pod(pod),
-            k8s::Event::Deleted(pod) => idx.lock().delete_pod(pod),
-            k8s::Event::Restarted(pods) => idx.lock().reset_pods(pods),
-        }
-    }
-}
-
-pub async fn index_servers(
-    idx: Arc<Mutex<Index>>,
-    events: impl Stream<Item = k8s::Event<k8s::policy::Server>>,
-) {
-    tokio::pin!(events);
-    while let Some(ev) = events.next().await {
-        match ev {
-            k8s::Event::Applied(srv) => idx.lock().apply_server(srv),
-            k8s::Event::Deleted(srv) => idx.lock().delete_server(srv),
-            k8s::Event::Restarted(srvs) => idx.lock().reset_servers(srvs),
-        }
-    }
-}
-
-pub async fn index_serverauthorizations(
-    idx: Arc<Mutex<Index>>,
-    events: impl Stream<Item = k8s::Event<k8s::policy::ServerAuthorization>>,
-) {
-    tokio::pin!(events);
-    while let Some(ev) = events.next().await {
-        match ev {
-            k8s::Event::Applied(saz) => idx.lock().apply_serverauthorization(saz),
-            k8s::Event::Deleted(saz) => idx.lock().delete_serverauthorization(saz),
-            k8s::Event::Restarted(sazs) => idx.lock().reset_serverauthorizations(sazs),
-        }
+    pub fn get_ns(&self, ns: &str) -> Option<&Namespace> {
+        self.namespaces.index.get(ns)
     }
 }
