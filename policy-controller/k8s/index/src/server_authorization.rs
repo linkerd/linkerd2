@@ -67,7 +67,7 @@ fn delete(index: &mut Index, authz: policy::ServerAuthorization) {
         .get_mut(authz.namespace().unwrap().as_str())
     {
         let name = authz.name();
-        ns.servers.remove_authz(name.as_str());
+        ns.servers.remove_server_authz(name.as_str());
         ns.authzs.delete(name.as_str());
     }
 }
@@ -95,7 +95,7 @@ fn restart(index: &mut Index, authzs: Vec<policy::ServerAuthorization>) {
     for (ns_name, authzs) in prior {
         if let Some(ns) = index.namespaces.index.get_mut(&ns_name) {
             for name in authzs.into_iter() {
-                ns.servers.remove_authz(&name);
+                ns.servers.remove_server_authz(&name);
                 ns.authzs.delete(&name);
             }
         }
@@ -141,7 +141,7 @@ impl AuthzIndex {
         cluster: &ClusterInfo,
     ) {
         let name = authz.name();
-        let authz = match mk_serverauthorization(authz, cluster) {
+        let authz = match mk_server_authz(authz, cluster) {
             Ok(authz) => authz,
             Err(error) => {
                 warn!(saz = %name, %error);
@@ -151,14 +151,14 @@ impl AuthzIndex {
 
         match self.index.entry(name) {
             Entry::Vacant(entry) => {
-                servers.add_authz(entry.key(), &authz.servers, authz.clients.clone());
+                servers.add_server_authz(entry.key(), &authz.servers, authz.clients.clone());
                 entry.insert(authz);
             }
 
             Entry::Occupied(mut entry) => {
                 // If the authorization changed materially, then update it in all servers.
                 if entry.get() != &authz {
-                    servers.add_authz(entry.key(), &authz.servers, authz.clients.clone());
+                    servers.add_server_authz(entry.key(), &authz.servers, authz.clients.clone());
                     entry.insert(authz);
                 }
             }
@@ -171,7 +171,7 @@ impl AuthzIndex {
     }
 }
 
-fn mk_serverauthorization(
+fn mk_server_authz(
     srv: policy::server_authorization::ServerAuthorization,
     cluster: &ClusterInfo,
 ) -> Result<Authz> {

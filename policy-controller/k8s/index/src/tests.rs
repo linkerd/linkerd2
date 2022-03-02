@@ -34,7 +34,7 @@ async fn incrementally_configure_server() {
 
     let mut pods = mock(idx.clone(), crate::pod::index);
     let mut servers = mock(idx.clone(), crate::server::index);
-    let mut serverauthorizations = mock(idx, crate::server_authorization::index);
+    let mut server_authzs = mock(idx, crate::server_authorization::index);
 
     let pod = mk_pod(
         "ns-0",
@@ -100,7 +100,7 @@ async fn incrementally_configure_server() {
             ..Default::default()
         },
     );
-    serverauthorizations.restart(vec![authz.clone()]).await;
+    server_authzs.restart(vec![authz.clone()]).await;
 
     // Check that the watch now has authorized traffic as described above.
     let mut rx = port2222.into_stream();
@@ -122,7 +122,7 @@ async fn incrementally_configure_server() {
     );
 
     // Delete the authorization and check that the watch has reverted to its prior state.
-    serverauthorizations.delete(authz).await;
+    server_authzs.delete(authz).await;
     assert_eq!(
         time::timeout(time::Duration::from_secs(1), rx.next()).await,
         Ok(Some(basic_config)),

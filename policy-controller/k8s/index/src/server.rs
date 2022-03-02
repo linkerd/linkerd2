@@ -150,7 +150,7 @@ impl SrvIndex {
     }
 
     /// Adds an authorization to servers matching `selector`.
-    pub(crate) fn add_authz(
+    pub(crate) fn add_server_authz(
         &mut self,
         name: &str,
         selector: &ServerSelector,
@@ -159,18 +159,18 @@ impl SrvIndex {
         for (srv_name, srv) in self.index.iter_mut() {
             if selector.selects(srv_name, &srv.labels) {
                 debug!(server = %srv_name, authz = %name, "Adding authz to server");
-                srv.insert_authz(name.to_string(), authz.clone());
+                srv.insert_server_authz(name.to_string(), authz.clone());
             } else {
                 debug!(server = %srv_name, authz = %name, "Removing authz from server");
-                srv.remove_authz(name);
+                srv.remove_server_authz(name);
             }
         }
     }
 
     /// Removes an authorization by `name`.
-    pub(crate) fn remove_authz(&mut self, name: &str) {
+    pub(crate) fn remove_server_authz(&mut self, name: &str) {
         for srv in self.index.values_mut() {
-            srv.remove_authz(name);
+            srv.remove_server_authz(name);
         }
     }
 
@@ -191,7 +191,7 @@ impl SrvIndex {
     }
 
     /// Update the index with a server instance.
-    fn apply(&mut self, srv: policy::Server, ns_authzs: &AuthzIndex) {
+    fn apply(&mut self, srv: policy::Server, ns_server_authzs: &AuthzIndex) {
         trace!(?srv, "Applying server");
         let srv_name = srv.name();
         let port = srv.spec.port;
@@ -200,7 +200,7 @@ impl SrvIndex {
         match self.index.entry(srv_name) {
             Entry::Vacant(entry) => {
                 let labels = k8s::Labels::from(srv.metadata.labels);
-                let authzs = ns_authzs
+                let authzs = ns_server_authzs
                     .filter_for_server(entry.key(), labels.clone())
                     .map(|(n, a)| (n, a.clone()))
                     .collect::<HashMap<_, _>>();
@@ -248,7 +248,7 @@ impl SrvIndex {
                     let mut config = entry.get().rx.borrow().clone();
 
                     if let Some(labels) = new_labels {
-                        let authzs = ns_authzs
+                        let authzs = ns_server_authzs
                             .filter_for_server(entry.key(), labels.clone())
                             .map(|(n, a)| (n, a.clone()))
                             .collect::<HashMap<_, _>>();
@@ -317,7 +317,7 @@ impl Server {
         &*self.pod_selector
     }
 
-    fn insert_authz(&mut self, name: impl Into<String>, authz: ClientAuthorization) {
+    fn insert_server_authz(&mut self, name: impl Into<String>, authz: ClientAuthorization) {
         debug!("Adding authorization to server");
         self.authorizations.insert(name.into(), authz);
         let mut config = self.rx.borrow().clone();
@@ -325,7 +325,7 @@ impl Server {
         self.tx.send(config).expect("config must send")
     }
 
-    fn remove_authz(&mut self, name: &str) {
+    fn remove_server_authz(&mut self, name: &str) {
         if self.authorizations.remove(name).is_some() {
             debug!("Removing authorization from server");
             let mut config = self.rx.borrow().clone();
@@ -420,14 +420,14 @@ mod tests {
     }
 
     #[test]
-    fn server_add_authz_to_idx() {
+    fn server_add_server_authz_to_idx() {
         let mut idx = {
             let mut idx = SrvIndex::default();
             let srv = mk_server("ns-0", "srv-0", Port::Number(9999));
             idx.apply(srv, &AuthzIndex::default());
             idx
         };
-        idx.add_authz(
+        idx.add_server_authz(
             "authz-test",
             &ServerSelector::Name("srv-0".to_string()),
             ClientAuthorization {
@@ -445,14 +445,14 @@ mod tests {
     }
 
     #[test]
-    fn server_rm_authz_from_idx() {
+    fn server_rm_server_authz_from_idx() {
         let mut idx = {
             let mut idx = SrvIndex::default();
             let srv = mk_server("ns-0", "srv-0", Port::Number(9999));
             idx.apply(srv, &AuthzIndex::default());
             idx
         };
-        idx.add_authz(
+        idx.add_server_authz(
             "authz-test",
             &ServerSelector::Name("srv-0".to_string()),
             ClientAuthorization {
@@ -460,7 +460,7 @@ mod tests {
                 authentication: ClientAuthentication::Unauthenticated,
             },
         );
-        idx.remove_authz("authz-test");
+        idx.remove_server_authz("authz-test");
         let srv = idx.index.get("srv-0").unwrap();
         assert!(
             srv.authorizations.get("authz-test").is_none(),

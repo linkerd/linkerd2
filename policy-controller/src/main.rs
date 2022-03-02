@@ -9,7 +9,7 @@ use linkerd_policy_controller::{admission, k8s};
 use linkerd_policy_controller_core::IpNet;
 use std::net::SocketAddr;
 use tokio::time;
-use tracing::{info, info_span, instrument, Instrument};
+use tracing::{info, instrument};
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu"))]
 #[global_allocator]
@@ -115,10 +115,10 @@ async fn main() -> Result<()> {
     let servers = runtime.watch_all(ListParams::default());
     tokio::spawn(k8s::server::index(index.clone(), servers));
 
-    let serverauthorizations = runtime.watch_all(ListParams::default());
+    let server_authzs = runtime.watch_all(ListParams::default());
     tokio::spawn(k8s::server_authorization::index(
         index.clone(),
-        serverauthorizations,
+        server_authzs,
     ));
 
     // Run the gRPC server, serving results by looking up against the index handle.
