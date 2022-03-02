@@ -40,7 +40,7 @@ impl hyper::service::Service<Request<Body>> for Service {
                     .expect("not found response must be valid"),
             ));
         }
-        let client = self.client.clone();
+        let this = self.clone();
         Box::pin(async move {
             let bytes = hyper::body::aggregate(req.into_body()).await?;
             let review: Review = match serde_json::from_reader(bytes.reader()) {
