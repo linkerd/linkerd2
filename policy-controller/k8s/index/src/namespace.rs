@@ -10,7 +10,7 @@ pub(crate) struct NamespaceIndex {
 }
 
 #[derive(Debug)]
-pub(crate) struct Namespace {
+pub struct Namespace {
     /// Holds the global default-allow policy, which may be overridden per-workload.
     pub default_policy: DefaultPolicy,
 

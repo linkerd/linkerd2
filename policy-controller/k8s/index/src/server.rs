@@ -8,13 +8,13 @@ use tracing::{debug, instrument, trace, warn};
 
 /// Holds the state of all `Server`s in a namespace.
 #[derive(Debug, Default)]
-pub(crate) struct SrvIndex {
+pub struct SrvIndex {
     index: HashMap<String, Server>,
 }
 
 /// The state of a `Server` instance and its authorizations.
 #[derive(Debug)]
-struct Server {
+pub struct Server {
     /// Labels a `Server`.
     labels: k8s::Labels,
 
@@ -136,8 +136,17 @@ impl Index {
 // === impl SrvIndex ===
 
 impl SrvIndex {
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &Server)> {
+        self.index.iter()
+    }
+
     /// Adds an authorization to servers matching `selector`.
-    pub fn add_authz(&mut self, name: &str, selector: &ServerSelector, authz: ClientAuthorization) {
+    pub(crate) fn add_authz(
+        &mut self,
+        name: &str,
+        selector: &ServerSelector,
+        authz: ClientAuthorization,
+    ) {
         for (srv_name, srv) in self.index.iter_mut() {
             if selector.selects(srv_name, &srv.labels) {
                 debug!(server = %srv_name, authz = %name, "Adding authz to server");
@@ -150,14 +159,14 @@ impl SrvIndex {
     }
 
     /// Removes an authorization by `name`.
-    pub fn remove_authz(&mut self, name: &str) {
+    pub(crate) fn remove_authz(&mut self, name: &str) {
         for srv in self.index.values_mut() {
             srv.remove_authz(name);
         }
     }
 
     /// Iterates over servers that select the given `pod_labels`.
-    pub fn iter_matching_pod(
+    pub(crate) fn iter_matching_pod(
         &self,
         pod_labels: k8s::Labels,
     ) -> impl Iterator<Item = (&str, &policy::server::Port, &ServerRx)> {
@@ -291,6 +300,14 @@ impl ServerSelector {
 // === impl Server ===
 
 impl Server {
+    pub fn port(&self) -> &policy::server::Port {
+        &self.port
+    }
+
+    pub fn pod_selector(&self) -> &k8s::labels::Selector {
+        &*self.pod_selector
+    }
+
     fn insert_authz(&mut self, name: impl Into<String>, authz: ClientAuthorization) {
         debug!("Adding authorization to server");
         self.authorizations.insert(name.into(), authz);

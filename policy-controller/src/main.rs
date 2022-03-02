@@ -7,8 +7,7 @@ use futures::prelude::*;
 use kube::api::ListParams;
 use linkerd_policy_controller::{admission, k8s};
 use linkerd_policy_controller_core::IpNet;
-use parking_lot::Mutex;
-use std::{net::SocketAddr, sync::Arc};
+use std::net::SocketAddr;
 use tokio::time;
 use tracing::{info, info_span, instrument, Instrument};
 
@@ -106,7 +105,7 @@ async fn main() -> Result<()> {
             control_plane_ns: control_plane_namespace,
         };
         let (lookup, idx) = k8s::Index::new(cluster, default_policy, DETECT_TIMEOUT);
-        (lookup, Arc::new(Mutex::new(idx)))
+        (lookup, idx)
     };
 
     // Spawn resource indexers that update the index and publish lookups for the gRPC server.
@@ -119,7 +118,7 @@ async fn main() -> Result<()> {
 
     let serverauthorizations = runtime.watch_all(ListParams::default());
     tokio::spawn(
-        k8s::index_serverauthorizations(index, serverauthorizations)
+        k8s::index_serverauthorizations(index.clone(), serverauthorizations)
             .instrument(info_span!("serverauthorizations")),
     );
 
@@ -131,9 +130,7 @@ async fn main() -> Result<()> {
         runtime.shutdown_handle(),
     ));
 
-    // TODO use resource caches instead of a client
-    let client = runtime.client();
-    let runtime = runtime.spawn_server(|| admission::Service { client });
+    let runtime = runtime.spawn_server(|| admission::Service { index });
 
     // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
     // complete before exiting.
