@@ -28,6 +28,7 @@ struct Authz {
     clients: ClientAuthorization,
 }
 
+#[instrument(skip_all, name = "serverauthorizations")]
 pub async fn index(
     idx: SharedIndex,
     events: impl Stream<Item = k8s::WatchEvent<k8s::policy::ServerAuthorization>>,

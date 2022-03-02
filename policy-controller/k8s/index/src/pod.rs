@@ -65,6 +65,7 @@ struct Port {
     server_tx: PodServerTx,
 }
 
+#[instrument(skip_all, name = "pods")]
 pub async fn index(idx: SharedIndex, events: impl Stream<Item = k8s::WatchEvent<k8s::Pod>>) {
     tokio::pin!(events);
     while let Some(ev) = events.next().await {
@@ -75,6 +76,7 @@ pub async fn index(idx: SharedIndex, events: impl Stream<Item = k8s::WatchEvent<
         }
     }
 }
+
 /// Creates or updates a `Pod`, linking it with servers.
 #[instrument(skip_all, fields(
     ns = ?pod.metadata.namespace,

@@ -45,6 +45,7 @@ pub(crate) enum ServerSelector {
     Selector(Arc<k8s::labels::Selector>),
 }
 
+#[instrument(skip_all, name = "servers")]
 pub async fn index(
     idx: SharedIndex,
     events: impl Stream<Item = k8s::WatchEvent<k8s::policy::Server>>,

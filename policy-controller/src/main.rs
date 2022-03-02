@@ -104,29 +104,22 @@ async fn main() -> Result<()> {
             identity_domain,
             control_plane_ns: control_plane_namespace,
         };
-        let (lookup, idx) = k8s::Index::new(cluster, default_policy, DETECT_TIMEOUT);
-        (lookup, idx)
+        k8s::Index::new(cluster, default_policy, DETECT_TIMEOUT)
     };
 
     // Spawn resource indexers that update the index and publish lookups for the gRPC server.
 
     let pods = runtime.watch_all(ListParams::default().labels("linkerd.io/control-plane-ns"));
-    tokio::spawn(k8s::pod::index(index.clone(), pods).instrument(info_span!("pods")));
+    tokio::spawn(k8s::pod::index(index.clone(), pods));
 
     let servers = runtime.watch_all(ListParams::default());
-    tokio::spawn(k8s::server::index(index.clone(), servers).instrument(info_span!("servers")));
+    tokio::spawn(k8s::server::index(index.clone(), servers));
 
     let serverauthorizations = runtime.watch_all(ListParams::default());
-    tokio::spawn(
-<<<<<<< HEAD
-        k8s::server_authorization::index(index, serverauthorizations)
-||||||| d4543cd8
-        k8s::index_serverauthorizations(index, serverauthorizations)
-=======
-        k8s::index_serverauthorizations(index.clone(), serverauthorizations)
->>>>>>> ver/policy-admission-cached
-            .instrument(info_span!("serverauthorizations")),
-    );
+    tokio::spawn(k8s::server_authorization::index(
+        index.clone(),
+        serverauthorizations,
+    ));
 
     // Run the gRPC server, serving results by looking up against the index handle.
     tokio::spawn(grpc(
