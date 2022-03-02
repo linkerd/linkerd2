@@ -2038,7 +2038,9 @@ spec:
         - --admin-addr=0.0.0.0:9990
         - --control-plane-namespace=linkerd
         - --grpc-addr=0.0.0.0:8090
-        - --admission-addr=0.0.0.0:9443
+        - --server-addr=0.0.0.0:9443
+        - --server-tls-key=/var/run/linkerd/tls/tls.key
+        - --server-tls-certs=/var/run/linkerd/tls/tls.crt
         - --cluster-networks=10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         - --identity-domain=cluster.local
         - --default-policy=all-unauthenticated
@@ -2048,9 +2050,8 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /ready
+            path: /live
             port: admin
-          initialDelaySeconds: 10
         name: policy
         ports:
         - containerPort: 8090
@@ -2064,6 +2065,7 @@ spec:
           httpGet:
             path: /ready
             port: admin
+          initialDelaySeconds: 10
         resources:
         securityContext:
           runAsUser: 2103

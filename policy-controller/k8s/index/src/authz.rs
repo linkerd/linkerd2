@@ -1,4 +1,4 @@
-use crate::{server::ServerSelector, ClusterInfo, Errors, Index, SrvIndex};
+use crate::{server::ServerSelector, ClusterInfo, Index, SrvIndex};
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
@@ -10,7 +10,7 @@ use linkerd_policy_controller_k8s_api::{
     ResourceExt,
 };
 use std::collections::hash_map::Entry;
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument, trace, warn};
 
 /// Indexes `ServerAuthorization` resources within a namespace.
 #[derive(Debug, Default)]
@@ -38,7 +38,7 @@ impl Index {
             name = %authz.name(),
         )
     )]
-    pub(crate) fn apply_authz(&mut self, authz: policy::ServerAuthorization) -> Result<()> {
+    pub(crate) fn apply_serverauthorization(&mut self, authz: policy::ServerAuthorization) {
         let ns = self
             .namespaces
             .get_or_default(authz.namespace().expect("namespace required"));
@@ -53,7 +53,7 @@ impl Index {
             name = %authz.name(),
         )
     )]
-    pub(crate) fn delete_authz(&mut self, authz: policy::ServerAuthorization) {
+    pub(crate) fn delete_serverauthorization(&mut self, authz: policy::ServerAuthorization) {
         if let Some(ns) = self
             .namespaces
             .index
@@ -66,7 +66,7 @@ impl Index {
     }
 
     #[instrument(skip(self, authzs))]
-    pub(crate) fn reset_authzs(&mut self, authzs: Vec<policy::ServerAuthorization>) -> Result<()> {
+    pub(crate) fn reset_serverauthorizations(&mut self, authzs: Vec<policy::ServerAuthorization>) {
         let mut prior = self
             .namespaces
             .index
@@ -77,15 +77,12 @@ impl Index {
             })
             .collect::<HashMap<_, _>>();
 
-        let mut errors = vec![];
         for authz in authzs.into_iter() {
             if let Some(ns) = prior.get_mut(authz.namespace().unwrap().as_str()) {
                 ns.remove(authz.name().as_str());
             }
 
-            if let Err(e) = self.apply_authz(authz) {
-                errors.push(e);
-            }
+            self.apply_serverauthorization(authz);
         }
 
         for (ns_name, authzs) in prior {
@@ -96,8 +93,6 @@ impl Index {
                 }
             }
         }
-
-        Errors::ok_if_empty(errors)
     }
 }
 
@@ -138,9 +133,15 @@ impl AuthzIndex {
         authz: policy::ServerAuthorization,
         servers: &mut SrvIndex,
         cluster: &ClusterInfo,
-    ) -> Result<()> {
+    ) {
         let name = authz.name();
-        let authz = mk_authz(authz, cluster)?;
+        let authz = match mk_serverauthorization(authz, cluster) {
+            Ok(authz) => authz,
+            Err(error) => {
+                warn!(saz = %name, %error);
+                return;
+            }
+        };
 
         match self.index.entry(name) {
             Entry::Vacant(entry) => {
@@ -156,8 +157,6 @@ impl AuthzIndex {
                 }
             }
         }
-
-        Ok(())
     }
 
     fn delete(&mut self, name: &str) {
@@ -166,7 +165,10 @@ impl AuthzIndex {
     }
 }
 
-fn mk_authz(srv: policy::authz::ServerAuthorization, cluster: &ClusterInfo) -> Result<Authz> {
+fn mk_serverauthorization(
+    srv: policy::authz::ServerAuthorization,
+    cluster: &ClusterInfo,
+) -> Result<Authz> {
     let policy::authz::ServerAuthorization { metadata, spec, .. } = srv;
 
     let servers = {

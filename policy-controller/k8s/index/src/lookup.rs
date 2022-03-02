@@ -5,7 +5,7 @@ use linkerd_policy_controller_core::{DiscoverInboundServer, InboundServer, Inbou
 use parking_lot::RwLock;
 use std::{collections::hash_map::Entry, sync::Arc};
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct Writer(ByNs);
 
 // Supports lookups in a shared map of pod-ports.
