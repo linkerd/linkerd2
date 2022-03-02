@@ -1,15 +1,20 @@
 use crate::{Index, SharedIndex};
 use futures::prelude::*;
-use linkerd_policy_controller_k8s_api::{policy::authorization_policy as api, Event, ResourceExt};
+use linkerd_policy_controller_k8s_api::{
+    self as k8s, policy::authorization_policy as api, ResourceExt,
+};
 use tracing::{instrument, warn};
 
-pub async fn index(idx: SharedIndex, events: impl Stream<Item = Event<api::AuthorizationPolicy>>) {
+pub async fn index(
+    idx: SharedIndex,
+    events: impl Stream<Item = k8s::WatchEvent<api::AuthorizationPolicy>>,
+) {
     tokio::pin!(events);
     while let Some(ev) = events.next().await {
         match ev {
-            Event::Applied(ap) => apply(&mut *idx.lock(), ap),
-            Event::Deleted(ap) => delete(&mut *idx.lock(), ap),
-            Event::Restarted(aps) => restart(&mut *idx.lock(), aps),
+            k8s::WatchEvent::Applied(ap) => apply(&mut *idx.lock(), ap),
+            k8s::WatchEvent::Deleted(ap) => delete(&mut *idx.lock(), ap),
+            k8s::WatchEvent::Restarted(aps) => restart(&mut *idx.lock(), aps),
         }
     }
 }

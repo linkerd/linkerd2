@@ -65,13 +65,13 @@ struct Port {
     server_tx: PodServerTx,
 }
 
-pub async fn index(idx: SharedIndex, events: impl Stream<Item = k8s::Event<k8s::Pod>>) {
+pub async fn index(idx: SharedIndex, events: impl Stream<Item = k8s::WatchEvent<k8s::Pod>>) {
     tokio::pin!(events);
     while let Some(ev) = events.next().await {
         match ev {
-            k8s::Event::Applied(pod) => apply(&mut *idx.lock(), pod),
-            k8s::Event::Deleted(pod) => delete(&mut *idx.lock(), pod),
-            k8s::Event::Restarted(pods) => restart(&mut *idx.lock(), pods),
+            k8s::WatchEvent::Applied(pod) => apply(&mut *idx.lock(), pod),
+            k8s::WatchEvent::Deleted(pod) => delete(&mut *idx.lock(), pod),
+            k8s::WatchEvent::Restarted(pods) => restart(&mut *idx.lock(), pods),
         }
     }
 }

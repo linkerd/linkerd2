@@ -30,14 +30,14 @@ struct Authz {
 
 pub async fn index(
     idx: SharedIndex,
-    events: impl Stream<Item = k8s::Event<k8s::policy::ServerAuthorization>>,
+    events: impl Stream<Item = k8s::WatchEvent<k8s::policy::ServerAuthorization>>,
 ) {
     tokio::pin!(events);
     while let Some(ev) = events.next().await {
         match ev {
-            k8s::Event::Applied(saz) => apply(&mut *idx.lock(), saz),
-            k8s::Event::Deleted(saz) => delete(&mut *idx.lock(), saz),
-            k8s::Event::Restarted(sazs) => restart(&mut *idx.lock(), sazs),
+            k8s::WatchEvent::Applied(saz) => apply(&mut *idx.lock(), saz),
+            k8s::WatchEvent::Deleted(saz) => delete(&mut *idx.lock(), saz),
+            k8s::WatchEvent::Restarted(sazs) => restart(&mut *idx.lock(), sazs),
         }
     }
 }

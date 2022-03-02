@@ -10,4 +10,4 @@ pub use k8s_openapi::api::{
     core::v1::{Namespace, Node, NodeSpec, Pod, PodSpec, PodStatus},
 };
 pub use kube::api::{ObjectMeta, Resource, ResourceExt};
-pub use kube::runtime::watcher::Event;
+pub use kube::runtime::watcher::Event as WatchEvent;

@@ -45,13 +45,16 @@ pub(crate) enum ServerSelector {
     Selector(Arc<k8s::labels::Selector>),
 }
 
-pub async fn index(idx: SharedIndex, events: impl Stream<Item = k8s::Event<k8s::policy::Server>>) {
+pub async fn index(
+    idx: SharedIndex,
+    events: impl Stream<Item = k8s::WatchEvent<k8s::policy::Server>>,
+) {
     tokio::pin!(events);
     while let Some(ev) = events.next().await {
         match ev {
-            k8s::Event::Applied(srv) => apply(&mut *idx.lock(), srv),
-            k8s::Event::Deleted(srv) => delete(&mut *idx.lock(), srv),
-            k8s::Event::Restarted(srvs) => restart(&mut *idx.lock(), srvs),
+            k8s::WatchEvent::Applied(srv) => apply(&mut *idx.lock(), srv),
+            k8s::WatchEvent::Deleted(srv) => delete(&mut *idx.lock(), srv),
+            k8s::WatchEvent::Restarted(srvs) => restart(&mut *idx.lock(), srvs),
         }
     }
 }
