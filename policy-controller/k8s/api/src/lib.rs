@@ -10,7 +10,7 @@ pub use k8s_openapi::api::{
     self,
     core::v1::{Namespace, Node, NodeSpec, Pod, PodSpec, PodStatus},
 };
-pub use kube::api::{ObjectMeta, ResourceExt};
+pub use kube::api::{ObjectMeta, Resource, ResourceExt};
 use kube::runtime::watcher;
 use parking_lot::Mutex;
 use std::sync::Arc;
