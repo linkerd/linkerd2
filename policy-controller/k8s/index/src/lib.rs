@@ -27,12 +27,13 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-mod authz;
 mod defaults;
 mod lookup;
 mod namespace;
 pub mod pod;
-mod server;
+pub mod server;
+pub mod server_authorization;
+
 #[cfg(test)]
 mod tests;
 
@@ -42,9 +43,7 @@ use self::{
     namespace::{Namespace, NamespaceIndex},
     server::SrvIndex,
 };
-use futures::prelude::*;
 use linkerd_policy_controller_core::{InboundServer, IpNet};
-use linkerd_policy_controller_k8s_api as k8s;
 use parking_lot::Mutex;
 use std::sync::Arc;
 use tokio::{sync::watch, time};
@@ -119,33 +118,5 @@ impl Index {
             default_policy_watches,
         };
         (reader, Arc::new(Mutex::new(idx)))
-    }
-}
-
-pub async fn index_servers(
-    idx: Arc<Mutex<Index>>,
-    events: impl Stream<Item = k8s::Event<k8s::policy::Server>>,
-) {
-    tokio::pin!(events);
-    while let Some(ev) = events.next().await {
-        match ev {
-            k8s::Event::Applied(srv) => idx.lock().apply_server(srv),
-            k8s::Event::Deleted(srv) => idx.lock().delete_server(srv),
-            k8s::Event::Restarted(srvs) => idx.lock().reset_servers(srvs),
-        }
-    }
-}
-
-pub async fn index_serverauthorizations(
-    idx: Arc<Mutex<Index>>,
-    events: impl Stream<Item = k8s::Event<k8s::policy::ServerAuthorization>>,
-) {
-    tokio::pin!(events);
-    while let Some(ev) = events.next().await {
-        match ev {
-            k8s::Event::Applied(saz) => idx.lock().apply_serverauthorization(saz),
-            k8s::Event::Deleted(saz) => idx.lock().delete_serverauthorization(saz),
-            k8s::Event::Restarted(sazs) => idx.lock().reset_serverauthorizations(sazs),
-        }
     }
 }

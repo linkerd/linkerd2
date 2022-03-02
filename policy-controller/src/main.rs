@@ -114,11 +114,11 @@ async fn main() -> Result<()> {
     tokio::spawn(k8s::pod::index(index.clone(), pods).instrument(info_span!("pods")));
 
     let servers = runtime.watch_all(ListParams::default());
-    tokio::spawn(k8s::index_servers(index.clone(), servers).instrument(info_span!("servers")));
+    tokio::spawn(k8s::server::index(index.clone(), servers).instrument(info_span!("servers")));
 
     let serverauthorizations = runtime.watch_all(ListParams::default());
     tokio::spawn(
-        k8s::index_serverauthorizations(index, serverauthorizations)
+        k8s::server_authorization::index(index, serverauthorizations)
             .instrument(info_span!("serverauthorizations")),
     );
 

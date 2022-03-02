@@ -1,6 +1,7 @@
-use crate::{server::ServerSelector, ClusterInfo, Index, SrvIndex};
+use crate::{server::ServerSelector, ClusterInfo, Index, SharedIndex, SrvIndex};
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
+use futures::prelude::*;
 use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, IdentityMatch, IpNet, NetworkMatch,
 };
@@ -27,70 +28,74 @@ struct Authz {
     clients: ClientAuthorization,
 }
 
-// === impl Index ===
-
-impl Index {
-    /// Obtains or constructs an `Authz` and links it to the appropriate `Servers`.
-    #[instrument(
-        skip(self, authz),
-        fields(
-            ns = ?authz.metadata.namespace,
-            name = %authz.name(),
-        )
-    )]
-    pub(crate) fn apply_serverauthorization(&mut self, authz: policy::ServerAuthorization) {
-        let ns = self
-            .namespaces
-            .get_or_default(authz.namespace().expect("namespace required"));
-
-        ns.authzs.apply(authz, &mut ns.servers, &self.cluster_info)
-    }
-
-    #[instrument(
-        skip(self, authz),
-        fields(
-            ns = ?authz.metadata.namespace,
-            name = %authz.name(),
-        )
-    )]
-    pub(crate) fn delete_serverauthorization(&mut self, authz: policy::ServerAuthorization) {
-        if let Some(ns) = self
-            .namespaces
-            .index
-            .get_mut(authz.namespace().unwrap().as_str())
-        {
-            let name = authz.name();
-            ns.servers.remove_authz(name.as_str());
-            ns.authzs.delete(name.as_str());
+pub async fn index(
+    idx: SharedIndex,
+    events: impl Stream<Item = k8s::Event<k8s::policy::ServerAuthorization>>,
+) {
+    tokio::pin!(events);
+    while let Some(ev) = events.next().await {
+        match ev {
+            k8s::Event::Applied(saz) => apply(&mut *idx.lock(), saz),
+            k8s::Event::Deleted(saz) => delete(&mut *idx.lock(), saz),
+            k8s::Event::Restarted(sazs) => restart(&mut *idx.lock(), sazs),
         }
     }
+}
 
-    #[instrument(skip(self, authzs))]
-    pub(crate) fn reset_serverauthorizations(&mut self, authzs: Vec<policy::ServerAuthorization>) {
-        let mut prior = self
-            .namespaces
-            .index
-            .iter()
-            .map(|(n, ns)| {
-                let authzs = ns.authzs.index.keys().cloned().collect::<HashSet<_>>();
-                (n.clone(), authzs)
-            })
-            .collect::<HashMap<_, _>>();
+/// Obtains or constructs an `Authz` and links it to the appropriate `Servers`.
+#[instrument(skip_all, fields(
+    ns = ?authz.metadata.namespace,
+    name = %authz.name(),
+))]
+fn apply(index: &mut Index, authz: policy::ServerAuthorization) {
+    let ns = index
+        .namespaces
+        .get_or_default(authz.namespace().expect("namespace required"));
 
-        for authz in authzs.into_iter() {
-            if let Some(ns) = prior.get_mut(authz.namespace().unwrap().as_str()) {
-                ns.remove(authz.name().as_str());
-            }
+    ns.authzs.apply(authz, &mut ns.servers, &index.cluster_info)
+}
 
-            self.apply_serverauthorization(authz);
+#[instrument(skip_all, fields(
+    ns = ?authz.metadata.namespace,
+    name = %authz.name(),
+))]
+fn delete(index: &mut Index, authz: policy::ServerAuthorization) {
+    if let Some(ns) = index
+        .namespaces
+        .index
+        .get_mut(authz.namespace().unwrap().as_str())
+    {
+        let name = authz.name();
+        ns.servers.remove_authz(name.as_str());
+        ns.authzs.delete(name.as_str());
+    }
+}
+
+#[instrument(skip_all)]
+fn restart(index: &mut Index, authzs: Vec<policy::ServerAuthorization>) {
+    let mut prior = index
+        .namespaces
+        .index
+        .iter()
+        .map(|(n, ns)| {
+            let authzs = ns.authzs.index.keys().cloned().collect::<HashSet<_>>();
+            (n.clone(), authzs)
+        })
+        .collect::<HashMap<_, _>>();
+
+    for authz in authzs.into_iter() {
+        if let Some(ns) = prior.get_mut(authz.namespace().unwrap().as_str()) {
+            ns.remove(authz.name().as_str());
         }
 
-        for (ns_name, authzs) in prior {
-            if let Some(ns) = self.namespaces.index.get_mut(&ns_name) {
-                for name in authzs.into_iter() {
-                    ns.servers.remove_authz(&name);
-                    ns.authzs.delete(&name);
-                }
+        apply(index, authz);
+    }
+
+    for (ns_name, authzs) in prior {
+        if let Some(ns) = index.namespaces.index.get_mut(&ns_name) {
+            for name in authzs.into_iter() {
+                ns.servers.remove_authz(&name);
+                ns.authzs.delete(&name);
             }
         }
     }

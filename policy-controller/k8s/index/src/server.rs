@@ -1,5 +1,6 @@
-use crate::{authz::AuthzIndex, Index, Namespace, ServerRx, ServerTx};
+use crate::{server_authorization::AuthzIndex, Index, Namespace, ServerRx, ServerTx, SharedIndex};
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
+use futures::prelude::*;
 use linkerd_policy_controller_core::{ClientAuthorization, InboundServer, ProxyProtocol};
 use linkerd_policy_controller_k8s_api::{self as k8s, policy, ResourceExt};
 use std::{collections::hash_map::Entry, sync::Arc};
@@ -44,91 +45,95 @@ pub(crate) enum ServerSelector {
     Selector(Arc<k8s::labels::Selector>),
 }
 
+pub async fn index(idx: SharedIndex, events: impl Stream<Item = k8s::Event<k8s::policy::Server>>) {
+    tokio::pin!(events);
+    while let Some(ev) = events.next().await {
+        match ev {
+            k8s::Event::Applied(srv) => apply(&mut *idx.lock(), srv),
+            k8s::Event::Deleted(srv) => delete(&mut *idx.lock(), srv),
+            k8s::Event::Restarted(srvs) => restart(&mut *idx.lock(), srvs),
+        }
+    }
+}
+
 // === impl Index ===
 
-impl Index {
-    /// Builds a `Server`, linking it against authorizations and pod ports.
-    #[instrument(
-        skip(self, srv),
-        fields(
-            ns = ?srv.metadata.namespace,
-            name = %srv.name(),
-        )
-    )]
-    pub(crate) fn apply_server(&mut self, srv: policy::Server) {
+/// Builds a `Server`, linking it against authorizations and pod ports.
+#[instrument(skip_all, fields(
+    ns = ?srv.metadata.namespace,
+    name = %srv.name(),
+))]
+fn apply(index: &mut Index, srv: policy::Server) {
+    let ns_name = srv.namespace().expect("namespace must be set");
+    let Namespace {
+        ref mut pods,
+        ref mut authzs,
+        ref mut servers,
+        default_policy: _,
+    } = index.namespaces.get_or_default(ns_name);
+
+    servers.apply(srv, authzs);
+
+    // If we've updated the server->pod selection, then we need to re-index
+    // all pods and servers.
+    pods.link_servers(servers);
+}
+
+#[instrument(skip_all, fields(
+    ns = ?srv.metadata.namespace,
+    name = %srv.name(),
+))]
+fn delete(index: &mut Index, srv: policy::Server) {
+    rm_server(
+        index,
+        &*srv.namespace().expect("servers must be namespaced"),
+        &*srv.name(),
+    );
+}
+
+fn rm_server(index: &mut Index, ns_name: &str, srv_name: &str) {
+    let ns = match index.namespaces.index.get_mut(ns_name) {
+        Some(ns) => ns,
+        None => {
+            warn!(name = %ns_name, "removing server from non-existent namespace");
+            return;
+        }
+    };
+
+    if ns.servers.index.remove(srv_name).is_none() {
+        warn!(name = %srv_name, "unknown server");
+    }
+
+    // Reset the server config for all pods that were using this server.
+    ns.pods.reset_server(srv_name);
+
+    debug!("Removed server");
+}
+
+#[instrument(skip_all)]
+fn restart(index: &mut Index, srvs: Vec<policy::Server>) {
+    let mut prior_servers = index
+        .namespaces
+        .index
+        .iter()
+        .map(|(n, ns)| {
+            let servers = ns.servers.index.keys().cloned().collect::<HashSet<_>>();
+            (n.clone(), servers)
+        })
+        .collect::<HashMap<_, _>>();
+
+    for srv in srvs.into_iter() {
         let ns_name = srv.namespace().expect("namespace must be set");
-        let Namespace {
-            ref mut pods,
-            ref mut authzs,
-            ref mut servers,
-            default_policy: _,
-        } = self.namespaces.get_or_default(ns_name);
-
-        servers.apply(srv, authzs);
-
-        // If we've updated the server->pod selection, then we need to re-index
-        // all pods and servers.
-        pods.link_servers(servers);
-    }
-
-    #[instrument(
-        skip(self, srv),
-        fields(
-            ns = ?srv.metadata.namespace,
-            name = %srv.name(),
-        )
-    )]
-    pub(crate) fn delete_server(&mut self, srv: policy::Server) {
-        self.rm_server(
-            &*srv.namespace().expect("servers must be namespaced"),
-            &*srv.name(),
-        );
-    }
-
-    fn rm_server(&mut self, ns_name: &str, srv_name: &str) {
-        let ns = match self.namespaces.index.get_mut(ns_name) {
-            Some(ns) => ns,
-            None => {
-                warn!(name = %ns_name, "removing server from non-existent namespace");
-                return;
-            }
-        };
-
-        if ns.servers.index.remove(srv_name).is_none() {
-            warn!(name = %srv_name, "unknown server");
+        if let Some(ns) = prior_servers.get_mut(&ns_name) {
+            ns.remove(srv.name().as_str());
         }
 
-        // Reset the server config for all pods that were using this server.
-        ns.pods.reset_server(srv_name);
-
-        debug!("Removed server");
+        apply(index, srv);
     }
 
-    #[instrument(skip(self, srvs))]
-    pub(crate) fn reset_servers(&mut self, srvs: Vec<policy::Server>) {
-        let mut prior_servers = self
-            .namespaces
-            .index
-            .iter()
-            .map(|(n, ns)| {
-                let servers = ns.servers.index.keys().cloned().collect::<HashSet<_>>();
-                (n.clone(), servers)
-            })
-            .collect::<HashMap<_, _>>();
-
-        for srv in srvs.into_iter() {
-            let ns_name = srv.namespace().expect("namespace must be set");
-            if let Some(ns) = prior_servers.get_mut(&ns_name) {
-                ns.remove(srv.name().as_str());
-            }
-
-            self.apply_server(srv);
-        }
-
-        for (ns_name, ns_servers) in prior_servers.into_iter() {
-            for srv_name in ns_servers.into_iter() {
-                self.rm_server(ns_name.as_str(), &srv_name);
-            }
+    for (ns_name, ns_servers) in prior_servers.into_iter() {
+        for srv_name in ns_servers.into_iter() {
+            rm_server(index, ns_name.as_str(), &srv_name);
         }
     }
 }
