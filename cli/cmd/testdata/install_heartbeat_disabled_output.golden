@@ -1194,13 +1194,13 @@ data:
       resources:
         cpu:
           limit: 100m
-          request: 10m
+          request: 100m
         ephemeral-storage:
           limit: ""
           request: ""
         memory:
           limit: 50Mi
-          request: 10Mi
+          request: 50Mi
       runAsRoot: false
       saMountPath: null
       skipSubnets: ""
@@ -1516,8 +1516,8 @@ spec:
             cpu: "100m"
             memory: "50Mi"
           requests:
-            cpu: "10m"
-            memory: "10Mi"
+            cpu: "100m"
+            memory: "50Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1920,8 +1920,8 @@ spec:
             cpu: "100m"
             memory: "50Mi"
           requests:
-            cpu: "10m"
-            memory: "10Mi"
+            cpu: "100m"
+            memory: "50Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -2164,8 +2164,8 @@ spec:
             cpu: "100m"
             memory: "50Mi"
           requests:
-            cpu: "10m"
-            memory: "10Mi"
+            cpu: "100m"
+            memory: "50Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

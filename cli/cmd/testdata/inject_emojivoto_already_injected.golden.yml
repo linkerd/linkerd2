@@ -178,8 +178,8 @@ spec:
             cpu: 100m
             memory: 50Mi
           requests:
-            cpu: 10m
-            memory: 10Mi
+            cpu: 100m
+            memory: 50Mi
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -387,8 +387,8 @@ spec:
             cpu: 100m
             memory: 50Mi
           requests:
-            cpu: 10m
-            memory: 10Mi
+            cpu: 100m
+            memory: 50Mi
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -596,8 +596,8 @@ spec:
             cpu: 100m
             memory: 50Mi
           requests:
-            cpu: 10m
-            memory: 10Mi
+            cpu: 100m
+            memory: 50Mi
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -805,8 +805,8 @@ spec:
             cpu: 100m
             memory: 50Mi
           requests:
-            cpu: 10m
-            memory: 10Mi
+            cpu: 100m
+            memory: 50Mi
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

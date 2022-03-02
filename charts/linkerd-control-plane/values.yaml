@@ -188,12 +188,12 @@ proxyInit:
       # -- Maximum amount of CPU units that the proxy-init container can use
       limit: 100m
       # -- Amount of CPU units that the proxy-init container requests
-      request: 10m
+      request: 100m
     memory:
       # -- Maximum amount of memory that the proxy-init container can use
       limit: 50Mi
       # -- Amount of memory that the proxy-init container requests
-      request: 10Mi
+      request: 50Mi
     ephemeral-storage:
       # -- Maximum amount of ephemeral storage that the proxy-init container can use
       limit: ""
