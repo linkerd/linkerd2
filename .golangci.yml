@@ -38,6 +38,7 @@ linters:
   - misspell
   - nakedret
   - revive
+  - staticcheck
   - typecheck
   - unconvert
   - unparam
@@ -56,5 +57,4 @@ linters:
   # - stylecheck
   disable:
   - errcheck
-  - staticcheck
   - structcheck
