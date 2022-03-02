@@ -39,7 +39,7 @@ impl NamespaceIndex {
         })
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&String, &Namespace)> + ExactSizeIterator {
+    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, String, Namespace> {
         self.index.iter()
     }
 }

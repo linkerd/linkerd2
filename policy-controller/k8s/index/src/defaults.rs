@@ -6,7 +6,7 @@ use linkerd_policy_controller_core::{
     ProxyProtocol,
 };
 use linkerd_policy_controller_k8s_api as k8s;
-use std::hash::Hash;
+use std::{collections::hash_map::Entry, hash::Hash};
 use tokio::{sync::watch, time};
 
 /// Indicates the default behavior to apply when no Server is found for a port.
@@ -130,7 +130,6 @@ impl DefaultPolicyWatches {
     ///
     /// If a watch for this policy does not already exist, one is created.
     pub fn watch(&mut self, default: DefaultPolicy, config: PortDefaults) -> ServerRx {
-        use std::collections::hash_map::Entry;
         match self.watches.entry((default, config)) {
             Entry::Occupied(entry) => entry.get().1.clone(),
             Entry::Vacant(entry) => {
