@@ -8,7 +8,10 @@ WORKDIR /build
 COPY Cargo.toml Cargo.lock policy-controller/ /build/
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.59.0,source=/usr/local/cargo,target=/usr/local/cargo \
-    cargo build --locked --target=x86_64-unknown-linux-gnu --release --package=linkerd-policy-controller && \
+    cargo fetch --locked
+RUN --mount=type=cache,target=target \
+    --mount=type=cache,from=rust:1.59.0,source=/usr/local/cargo,target=/usr/local/cargo \
+    cargo build --frozen --target=x86_64-unknown-linux-gnu --release --package=linkerd-policy-controller && \
     mv target/x86_64-unknown-linux-gnu/release/linkerd-policy-controller /tmp/
 
 # Creates a minimal runtime image with the controller binary.
