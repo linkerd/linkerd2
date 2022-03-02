@@ -1,9 +1,9 @@
 pub mod authz;
 pub mod server;
-pub mod server_authz;
+pub mod server_authorization;
 
 pub use self::server::{Server, ServerSpec};
-pub use self::server_authz::{ServerAuthorization, ServerAuthorizationSpec};
+pub use self::server_authorization::{ServerAuthorization, ServerAuthorizationSpec};
 
 #[derive(Default, serde::Deserialize, serde::Serialize, Clone, Debug, schemars::JsonSchema)]
 pub struct TargetRef {

@@ -6,7 +6,7 @@ use linkerd_policy_controller_core::{
 };
 use linkerd_policy_controller_k8s_api::{
     self as k8s,
-    policy::{self, server_authz::MeshTls},
+    policy::{self, server_authorization::MeshTls},
     ResourceExt,
 };
 use std::collections::hash_map::Entry;
@@ -166,13 +166,13 @@ impl AuthzIndex {
 }
 
 fn mk_serverauthorization(
-    srv: policy::server_authz::ServerAuthorization,
+    srv: policy::server_authorization::ServerAuthorization,
     cluster: &ClusterInfo,
 ) -> Result<Authz> {
-    let policy::server_authz::ServerAuthorization { metadata, spec, .. } = srv;
+    let policy::server_authorization::ServerAuthorization { metadata, spec, .. } = srv;
 
     let servers = {
-        let policy::server_authz::Server { name, selector } = spec.server;
+        let policy::server_authorization::Server { name, selector } = spec.server;
         match (name, selector) {
             (Some(n), None) => ServerSelector::Name(n),
             (None, Some(sel)) => ServerSelector::Selector(sel.into()),
@@ -183,7 +183,7 @@ fn mk_serverauthorization(
 
     let networks = if let Some(nets) = spec.client.networks {
         nets.into_iter()
-            .map(|policy::server_authz::Network { cidr, except }| {
+            .map(|policy::server_authorization::Network { cidr, except }| {
                 let net = cidr.parse::<IpNet>()?;
                 debug!(%net, "Unauthenticated");
                 let except = except
