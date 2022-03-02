@@ -26,6 +26,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
@@ -300,7 +301,7 @@ func buildExtractHTTP(extract *tapPb.TapByResourceRequest_Extract_Http) *proxy.O
 func (s *GRPCTapServer) tapProxy(ctx context.Context, maxRps float32, match *proxy.ObserveRequest_Match, extract *proxy.ObserveRequest_Extract, addr string, events chan *tapPb.TapEvent) {
 	tapAddr := fmt.Sprintf("%s:%d", addr, s.tapPort)
 	log.Infof("Establishing tap on %s", tapAddr)
-	conn, err := grpc.DialContext(ctx, tapAddr, grpc.WithInsecure())
+	conn, err := grpc.DialContext(ctx, tapAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Error(err)
 		return
