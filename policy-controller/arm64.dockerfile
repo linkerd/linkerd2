@@ -8,7 +8,8 @@ RUN apt-get update && \
     rustup target add aarch64-unknown-linux-gnu
 ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
 WORKDIR /build
-COPY Cargo.toml Cargo.lock policy-controller/ /build/
+COPY Cargo.toml Cargo.lock .
+COPY policy-controller policy-controller
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.59.0,source=/usr/local/cargo,target=/usr/local/cargo \
     cargo fetch --locked

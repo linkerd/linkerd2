@@ -8,7 +8,8 @@ RUN apt-get update && \
     rustup target add armv7-unknown-linux-gnueabihf
 ENV CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
 WORKDIR /build
-COPY Cargo.toml Cargo.lock policy-controller/ /build/
+COPY Cargo.toml Cargo.lock .
+COPY policy-controller policy-controller
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.59.0,source=/usr/local/cargo,target=/usr/local/cargo \
     cargo fetch --locked
