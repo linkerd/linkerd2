@@ -45,7 +45,7 @@ use self::{
     server::SrvIndex,
 };
 use linkerd_policy_controller_core::{InboundServer, IpNet};
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 use std::sync::Arc;
 use tokio::{sync::watch, time};
 
@@ -76,6 +76,8 @@ pub struct ClusterInfo {
     pub identity_domain: String,
 }
 
+pub type SharedIndex = Arc<RwLock<Index>>;
+
 /// Holds all indexing state. Owned and updated by a single task that processes watch events,
 /// publishing results to the shared lookup map for quick lookups in the API server.
 pub struct Index {
@@ -92,8 +94,6 @@ pub struct Index {
     /// A handle that supports updates to the lookup index.
     lookups: lookup::Writer,
 }
-
-pub type SharedIndex = Arc<Mutex<Index>>;
 
 // === impl Index ===
 
@@ -118,6 +118,10 @@ impl Index {
             cluster_info,
             default_policy_watches,
         };
-        (reader, Arc::new(Mutex::new(idx)))
+        (reader, Arc::new(RwLock::new(idx)))
+    }
+
+    pub fn get_ns(&self, ns: &str) -> Option<&Namespace> {
+        self.namespaces.index.get(ns)
     }
 }

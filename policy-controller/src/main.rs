@@ -118,7 +118,13 @@ async fn main() -> Result<()> {
 
     let serverauthorizations = runtime.watch_all(ListParams::default());
     tokio::spawn(
+<<<<<<< HEAD
         k8s::server_authorization::index(index, serverauthorizations)
+||||||| d4543cd8
+        k8s::index_serverauthorizations(index, serverauthorizations)
+=======
+        k8s::index_serverauthorizations(index.clone(), serverauthorizations)
+>>>>>>> ver/policy-admission-cached
             .instrument(info_span!("serverauthorizations")),
     );
 
@@ -130,9 +136,7 @@ async fn main() -> Result<()> {
         runtime.shutdown_handle(),
     ));
 
-    // TODO use resource caches instead of a client
-    let client = runtime.client();
-    let runtime = runtime.spawn_server(|| admission::Service { client });
+    let runtime = runtime.spawn_server(|| admission::Service { index });
 
     // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
     // complete before exiting.

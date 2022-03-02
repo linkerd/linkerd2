@@ -15,7 +15,7 @@ use tracing::{debug, instrument, trace, warn};
 
 /// Indexes `ServerAuthorization` resources within a namespace.
 #[derive(Debug, Default)]
-pub(crate) struct AuthzIndex {
+pub struct AuthzIndex {
     index: HashMap<String, Authz>,
 }
 
@@ -35,9 +35,9 @@ pub async fn index(
     tokio::pin!(events);
     while let Some(ev) = events.next().await {
         match ev {
-            k8s::WatchEvent::Applied(saz) => apply(&mut *idx.lock(), saz),
-            k8s::WatchEvent::Deleted(saz) => delete(&mut *idx.lock(), saz),
-            k8s::WatchEvent::Restarted(sazs) => restart(&mut *idx.lock(), sazs),
+            k8s::WatchEvent::Applied(saz) => apply(&mut *idx.write(), saz),
+            k8s::WatchEvent::Deleted(saz) => delete(&mut *idx.write(), saz),
+            k8s::WatchEvent::Restarted(sazs) => restart(&mut *idx.write(), sazs),
         }
     }
 }

@@ -12,7 +12,7 @@ use tracing::{debug, instrument, trace, warn};
 
 /// Indexes pod state (within a namespace).
 #[derive(Debug, Default)]
-pub(crate) struct PodIndex {
+pub struct PodIndex {
     index: HashMap<String, Pod>,
 }
 
@@ -69,9 +69,9 @@ pub async fn index(idx: SharedIndex, events: impl Stream<Item = k8s::WatchEvent<
     tokio::pin!(events);
     while let Some(ev) = events.next().await {
         match ev {
-            k8s::WatchEvent::Applied(pod) => apply(&mut *idx.lock(), pod),
-            k8s::WatchEvent::Deleted(pod) => delete(&mut *idx.lock(), pod),
-            k8s::WatchEvent::Restarted(pods) => restart(&mut *idx.lock(), pods),
+            k8s::WatchEvent::Applied(pod) => apply(&mut *idx.write(), pod),
+            k8s::WatchEvent::Deleted(pod) => delete(&mut *idx.write(), pod),
+            k8s::WatchEvent::Restarted(pods) => restart(&mut *idx.write(), pods),
         }
     }
 }

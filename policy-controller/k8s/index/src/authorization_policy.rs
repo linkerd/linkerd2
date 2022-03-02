@@ -12,9 +12,9 @@ pub async fn index(
     tokio::pin!(events);
     while let Some(ev) = events.next().await {
         match ev {
-            k8s::WatchEvent::Applied(ap) => apply(&mut *idx.lock(), ap),
-            k8s::WatchEvent::Deleted(ap) => delete(&mut *idx.lock(), ap),
-            k8s::WatchEvent::Restarted(aps) => restart(&mut *idx.lock(), aps),
+            k8s::WatchEvent::Applied(ap) => apply(&mut *idx.write(), ap),
+            k8s::WatchEvent::Deleted(ap) => delete(&mut *idx.write(), ap),
+            k8s::WatchEvent::Restarted(aps) => restart(&mut *idx.write(), aps),
         }
     }
 }
