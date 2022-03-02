@@ -31,7 +31,7 @@ mod authz;
 mod defaults;
 mod lookup;
 mod namespace;
-mod pod;
+pub mod pod;
 mod server;
 #[cfg(test)]
 mod tests;
@@ -93,6 +93,8 @@ pub struct Index {
     lookups: lookup::Writer,
 }
 
+pub type SharedIndex = Arc<Mutex<Index>>;
+
 // === impl Index ===
 
 impl Index {
@@ -100,7 +102,7 @@ impl Index {
         cluster_info: ClusterInfo,
         default_policy: DefaultPolicy,
         detect_timeout: time::Duration,
-    ) -> (lookup::Reader, Self) {
+    ) -> (lookup::Reader, SharedIndex) {
         // Create a common set of receivers for all supported default policies.
         let default_policy_watches =
             DefaultPolicyWatches::new(cluster_info.networks.clone(), detect_timeout);
@@ -116,18 +118,7 @@ impl Index {
             cluster_info,
             default_policy_watches,
         };
-        (reader, idx)
-    }
-}
-
-pub async fn index_pods(idx: Arc<Mutex<Index>>, events: impl Stream<Item = k8s::Event<k8s::Pod>>) {
-    tokio::pin!(events);
-    while let Some(ev) = events.next().await {
-        match ev {
-            k8s::Event::Applied(pod) => idx.lock().apply_pod(pod),
-            k8s::Event::Deleted(pod) => idx.lock().delete_pod(pod),
-            k8s::Event::Restarted(pods) => idx.lock().reset_pods(pods),
-        }
+        (reader, Arc::new(Mutex::new(idx)))
     }
 }
 

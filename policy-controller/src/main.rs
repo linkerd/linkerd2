@@ -7,8 +7,7 @@ use futures::prelude::*;
 use kube::api::ListParams;
 use linkerd_policy_controller::{admission, k8s};
 use linkerd_policy_controller_core::IpNet;
-use parking_lot::Mutex;
-use std::{net::SocketAddr, sync::Arc};
+use std::net::SocketAddr;
 use tokio::time;
 use tracing::{info, info_span, instrument, Instrument};
 
@@ -106,13 +105,13 @@ async fn main() -> Result<()> {
             control_plane_ns: control_plane_namespace,
         };
         let (lookup, idx) = k8s::Index::new(cluster, default_policy, DETECT_TIMEOUT);
-        (lookup, Arc::new(Mutex::new(idx)))
+        (lookup, idx)
     };
 
     // Spawn resource indexers that update the index and publish lookups for the gRPC server.
 
     let pods = runtime.watch_all(ListParams::default().labels("linkerd.io/control-plane-ns"));
-    tokio::spawn(k8s::index_pods(index.clone(), pods).instrument(info_span!("pods")));
+    tokio::spawn(k8s::pod::index(index.clone(), pods).instrument(info_span!("pods")));
 
     let servers = runtime.watch_all(ListParams::default());
     tokio::spawn(k8s::index_servers(index.clone(), servers).instrument(info_span!("servers")));
