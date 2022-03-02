@@ -27,7 +27,8 @@ func (s *Stream) Stop() {
 func (s *Stream) ReadUntil(lineCount int, timeout time.Duration) ([]string, error) {
 	output := make([]string, 0)
 	lines := make(chan string)
-	timeoutAfter := time.After(timeout)
+	timeoutAfter := time.NewTimer(timeout)
+	defer timeoutAfter.Stop()
 	scanner := bufio.NewScanner(s.out)
 	stopSignal := false
 
@@ -44,7 +45,7 @@ func (s *Stream) ReadUntil(lineCount int, timeout time.Duration) ([]string, erro
 
 	for {
 		select {
-		case <-timeoutAfter:
+		case <-timeoutAfter.C:
 			stopSignal = true
 			return output, fmt.Errorf("cmd [%s] Timed out trying to read %d lines", strings.Join(s.cmd.Args, " "), lineCount)
 		case line := <-lines:

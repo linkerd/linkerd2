@@ -51,6 +51,8 @@ skip = [
     { name = "parking_lot", version = "0.11" },
     { name = "parking_lot_core", version = "0.8" },
     { name = "tokio-util", version = "0.6" },
+    # Waiting on kube
+    { name = "rustls-pemfile", version = "0.2" },
 ]
 
 [sources]

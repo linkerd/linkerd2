@@ -3,55 +3,40 @@
 
 pub mod labels;
 pub mod policy;
-mod watch;
 
-pub use self::{
-    labels::Labels,
-    watch::{Event, Watch},
-};
+pub use self::{labels::Labels, watcher::Event};
+use futures::prelude::*;
 pub use k8s_openapi::api::{
     self,
     core::v1::{Namespace, Node, NodeSpec, Pod, PodSpec, PodStatus},
 };
 pub use kube::api::{ObjectMeta, ResourceExt};
-use kube::{
-    api::{Api, ListParams},
-    runtime::watcher,
-};
-use tracing::info_span;
+use kube::runtime::watcher;
+use parking_lot::Mutex;
+use std::sync::Arc;
 
-/// Resource watches.
-pub struct ResourceWatches {
-    pub pods_rx: Watch<Pod>,
-    pub servers_rx: Watch<policy::Server>,
-    pub authorizations_rx: Watch<policy::ServerAuthorization>,
-}
+pub type EventResult<T> = watcher::Result<watcher::Event<T>>;
 
-// === impl ResourceWatches ===
-
-impl ResourceWatches {
-    /// Limits the amount of time a watch can be idle before being reset.
-    ///
-    /// Must be less than 295 or Kubernetes throws an error.
-    const DEFAULT_TIMEOUT_SECS: u32 = 290;
-}
-
-impl From<kube::Client> for ResourceWatches {
-    fn from(client: kube::Client) -> Self {
-        let params = ListParams::default().timeout(Self::DEFAULT_TIMEOUT_SECS);
-
-        // We only need to watch pods that are injected with a Linkerd sidecar because these are the
-        // only pods that can have inbound policy. We avoid indexing information about uninjected
-        // pods.
-        let pod_params = params.clone().labels("linkerd.io/control-plane-ns");
-
-        Self {
-            pods_rx: Watch::from(watcher(Api::all(client.clone()), pod_params))
-                .instrument(info_span!("pods")),
-            servers_rx: Watch::from(watcher(Api::all(client.clone()), params.clone()))
-                .instrument(info_span!("servers")),
-            authorizations_rx: Watch::from(watcher(Api::all(client), params))
-                .instrument(info_span!("serverauthorizations")),
-        }
+/// Processes an `E`-typed event stream of `T`-typed resources.
+///
+/// The `F`-typed processor is called for each event with exclusive mutable accecss to an `S`-typed
+/// store.
+///
+/// The `H`-typed initialization handle is dropped after the first event is processed to signal to
+/// the application that the index has been updated.
+///
+/// It is assumed that the event stream is infinite. If an error is encountered, the stream is
+/// immediately polled again; and if this attempt to read from the stream fails, a backoff is
+/// employed before attempting to read from the stream again.
+pub async fn index<T, E, H, S, F>(events: E, store: Arc<Mutex<S>>, process: F)
+where
+    E: Stream<Item = watcher::Event<T>>,
+    F: Fn(&mut S, watcher::Event<T>),
+{
+    tokio::pin!(events);
+    while let Some(ev) = events.next().await {
+        process(&mut *store.lock(), ev);
     }
+
+    tracing::warn!("k8s event stream terminated");
 }

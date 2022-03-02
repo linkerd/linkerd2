@@ -37,7 +37,7 @@ async fn incrementally_configure_server() {
         pod_net.hosts().next().unwrap(),
         Some(("container-0", vec![2222, 9999])),
     );
-    idx.apply_pod(pod.clone()).unwrap();
+    idx.apply_pod(pod.clone());
 
     let default = DefaultPolicy::Allow {
         authenticated_only: false,
@@ -94,7 +94,7 @@ async fn incrementally_configure_server() {
             ..Default::default()
         },
     );
-    idx.apply_authz(authz.clone()).unwrap();
+    idx.apply_serverauthorization(authz.clone());
 
     // Check that the watch now has authorized traffic as described above.
     let mut rx = port2222.into_stream();
@@ -116,21 +116,21 @@ async fn incrementally_configure_server() {
     );
 
     // Delete the authorization and check that the watch has reverted to its prior state.
-    idx.delete_authz(authz);
+    idx.delete_serverauthorization(authz);
     assert_eq!(
         time::timeout(time::Duration::from_secs(1), rx.next()).await,
         Ok(Some(basic_config)),
     );
 
     // Delete the server and check that the watch has reverted the default state.
-    idx.delete_server(srv).unwrap();
+    idx.delete_server(srv);
     assert_eq!(
         time::timeout(time::Duration::from_secs(1), rx.next()).await,
         Ok(Some(default_config))
     );
 
     // Delete the pod and check that the watch recognizes that the watch has been closed.
-    idx.delete_pod(pod).unwrap();
+    idx.delete_pod(pod);
     assert_eq!(
         time::timeout(time::Duration::from_secs(1), rx.next()).await,
         Ok(None)
@@ -160,7 +160,7 @@ fn server_update_deselects_pod() {
         pod_net.hosts().next().unwrap(),
         Some(("container-0", vec![2222])),
     );
-    idx.apply_pod(p).unwrap();
+    idx.apply_pod(p);
 
     let srv = {
         let mut srv = mk_server("ns-0", "srv-0", Port::Number(2222), None, None);
@@ -221,7 +221,7 @@ fn default_policy_global() {
             pod_net.hosts().next().unwrap(),
             Some(("container-0", vec![2222])),
         );
-        idx.reset_pods(vec![p]).unwrap();
+        idx.reset_pods(vec![p]);
 
         let config = InboundServer {
             name: format!("default:{}", default),
@@ -277,7 +277,7 @@ fn default_policy_annotated() {
         );
         p.annotations_mut()
             .insert(DefaultPolicy::ANNOTATION.into(), default.to_string());
-        idx.reset_pods(vec![p]).unwrap();
+        idx.reset_pods(vec![p]);
 
         let config = InboundServer {
             name: format!("default:{}", default),
@@ -320,7 +320,7 @@ fn default_policy_annotated_invalid() {
     );
     p.annotations_mut()
         .insert(DefaultPolicy::ANNOTATION.into(), "bogus".into());
-    idx.reset_pods(vec![p]).unwrap();
+    idx.reset_pods(vec![p]);
 
     // Lookup port 2222 -> default config.
     let port2222 = lookup_rx
@@ -367,7 +367,7 @@ fn opaque_annotated() {
         );
         p.annotations_mut()
             .insert("config.linkerd.io/opaque-ports".into(), "2222".into());
-        idx.reset_pods(vec![p]).unwrap();
+        idx.reset_pods(vec![p]);
 
         let config = InboundServer {
             name: format!("default:{}", default),
@@ -407,7 +407,7 @@ fn authenticated_annotated() {
             "config.linkerd.io/proxy-require-identity-inbound-ports".into(),
             "2222".into(),
         );
-        idx.reset_pods(vec![p]).unwrap();
+        idx.reset_pods(vec![p]);
 
         let config = {
             let policy = match *default {

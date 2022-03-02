@@ -36,10 +36,10 @@ spec:
           ns=$(curl -kfv -H "Authorization: Bearer $token" \
             "https://kubernetes.default.svc/api/v1/namespaces/{{.Release.Namespace}}")
 
-          if echo "$ns" | grep -vq 'labels'; then
+          if ! echo "$ns" | grep -q 'labels'; then
             ops="$ops{\"op\": \"add\",\"path\": \"/metadata/labels\",\"value\": {}},"
           fi
-          if echo "$ns" | grep -vq 'annotations'; then
+          if ! echo "$ns" | grep -q 'annotations'; then
             ops="$ops{\"op\": \"add\", \"path\": \"/metadata/annotations\", \"value\": {}},"
           fi
 

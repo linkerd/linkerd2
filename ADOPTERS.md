@@ -37,6 +37,7 @@
 - [Kurio](https://kurio.id)
 - [LeadIQ](https://leadiq.com)
 - [Lendico](https://www.lendico.de/)
+- [Livspace](https://www.livspace.com/)
 - [Lumoa](https://www.lumoa.me/)
 - [M1 Finance](https://www.m1finance.com/)
 - [manager.cl](https://www.manager.cl/)

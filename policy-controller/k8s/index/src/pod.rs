@@ -1,5 +1,5 @@
 use crate::{
-    defaults::PortDefaults, lookup, DefaultPolicy, DefaultPolicyWatches, Errors, Index, Namespace,
+    defaults::PortDefaults, lookup, DefaultPolicy, DefaultPolicyWatches, Index, Namespace,
     PodServerTx, ServerRx, SrvIndex,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
@@ -7,7 +7,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use linkerd_policy_controller_k8s_api::{self as k8s, policy, ResourceExt};
 use std::collections::hash_map::Entry;
 use tokio::sync::watch;
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument, trace, warn};
 
 /// Indexes pod state (within a namespace).
 #[derive(Debug, Default)]
@@ -23,9 +23,11 @@ struct Pod {
 
     /// The pod's labels.
     labels: k8s::Labels,
-
-    /// The workload's default allow behavior (to apply when no `Server` references a port).
-    default_policy: DefaultPolicy,
+    //
+    // FIXME per-workload default policies should apply to unspecified ports:
+    //
+    // /// The workload's default allow behavior (to apply when no `Server` references a port).
+    // default_policy: DefaultPolicy,
 }
 
 /// An index of all ports in a pod spec to the
@@ -73,7 +75,7 @@ impl Index {
             name = %pod.name(),
         )
     )]
-    pub(crate) fn apply_pod(&mut self, pod: k8s::Pod) -> Result<()> {
+    pub(crate) fn apply_pod(&mut self, pod: k8s::Pod) {
         let Namespace {
             default_policy,
             ref mut pods,
@@ -83,13 +85,15 @@ impl Index {
             .namespaces
             .get_or_default(pod.namespace().expect("namespace must be set"));
 
-        pods.apply(
+        if let Err(error) = pods.apply(
             pod,
             servers,
             &mut self.lookups,
             *default_policy,
             &mut self.default_policy_watches,
-        )
+        ) {
+            warn!(%error, "failed to apply pod");
+        }
     }
 
     #[instrument(
@@ -99,14 +103,15 @@ impl Index {
             name = %pod.name(),
         )
     )]
-    pub(crate) fn delete_pod(&mut self, pod: k8s::Pod) -> Result<()> {
-        let ns_name = pod.namespace().expect("namespace must be set");
-        let pod_name = pod.name();
-        self.rm_pod(ns_name.as_str(), pod_name.as_str())
+    pub(crate) fn delete_pod(&mut self, pod: k8s::Pod) {
+        self.rm_pod(
+            &*pod.namespace().expect("namespace must be set"),
+            pod.name().as_str(),
+        );
     }
 
     #[instrument(skip(self, pods))]
-    pub(crate) fn reset_pods(&mut self, pods: Vec<k8s::Pod>) -> Result<()> {
+    pub(crate) fn reset_pods(&mut self, pods: Vec<k8s::Pod>) {
         let mut prior_pods = self
             .namespaces
             .iter()
@@ -116,44 +121,37 @@ impl Index {
             })
             .collect::<HashMap<_, _>>();
 
-        let mut errors = vec![];
         for pod in pods.into_iter() {
             let ns_name = pod.namespace().unwrap();
             if let Some(ns) = prior_pods.get_mut(ns_name.as_str()) {
                 ns.remove(pod.name().as_str());
             }
 
-            if let Err(error) = self.apply_pod(pod) {
-                errors.push(error);
-            }
+            self.apply_pod(pod);
         }
 
         for (ns, pods) in prior_pods.into_iter() {
             for pod in pods.into_iter() {
-                if let Err(error) = self.rm_pod(ns.as_str(), pod.as_str()) {
-                    errors.push(error);
+                self.rm_pod(ns.as_str(), pod.as_str());
+            }
+        }
+    }
+
+    fn rm_pod(&mut self, ns: &str, pod: &str) {
+        match self.namespaces.index.get_mut(ns) {
+            None => warn!(%ns, "namespace doesn't exist"),
+            Some(idx) => {
+                if idx.pods.index.remove(pod).is_none() {
+                    warn!(%pod, "pod doesn't exist");
                 }
             }
         }
 
-        Errors::ok_if_empty(errors)
-    }
-
-    fn rm_pod(&mut self, ns: &str, pod: &str) -> Result<()> {
-        self.namespaces
-            .index
-            .get_mut(ns)
-            .ok_or_else(|| anyhow!("namespace {} doesn't exist", ns))?
-            .pods
-            .index
-            .remove(pod)
-            .ok_or_else(|| anyhow!("pod {} doesn't exist", pod))?;
-
-        self.lookups.unset(ns, pod)?;
+        if let Err(error) = self.lookups.unset(ns, pod) {
+            warn!(%ns, %error, "failed to unset pod lookup");
+        }
 
         debug!("Removed pod");
-
-        Ok(())
     }
 }
 
@@ -223,7 +221,7 @@ impl PodIndex {
                 // Start tracking the pod's metadata so it can be linked against servers as they are
                 // created. Immediately link the pod's ports to the server index.
                 let mut pod = Pod {
-                    default_policy,
+                    // default_policy,
                     labels: pod.metadata.labels.into(),
                     ports,
                 };
@@ -348,7 +346,7 @@ impl Pod {
         if let Some(sn) = port.server_name.as_ref() {
             if sn != name {
                 debug_assert!(false, "Pod port must not match multiple servers");
-                tracing::warn!("Pod port matches multiple servers: {} and {}", sn, name);
+                warn!("Pod port matches multiple servers: {} and {}", sn, name);
             }
             // If the name matched there's no use in proceeding with a redundant update
             return;

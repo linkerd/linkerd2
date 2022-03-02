@@ -390,90 +390,20 @@ latest_release_channel() {
     "$bindir"/scurl https://versioncheck.linkerd.io/version.json | grep -o "$1-[0-9]*.[0-9]*.[0-9]*"
 }
 
-# Install a specific Linkerd version.
-# $1 - URL to use to download specific Linkerd version
-# $2 - Linkerd version
-install_version() {
-    tmp=$(mktemp -d -t l5dbin.XXX)
-
-    local install_url=$1
-    local version=$2
-
-    "$bindir"/scurl "$install_url" | HOME=$tmp sh > /dev/null 2>&1
-
-    local linkerd_path=$tmp/.linkerd2/bin/linkerd
-    local test_app_namespace=upgrade-test
-
-    (
-        set -x
-        # TODO: Use a mix of helm override flags and CLI flags and remove this condition
-        # once stable-2.10 is out
-        edge_regex='(edge)-([0-9]+\.[0-9]+\.[0-9]+)'
-        if [[ "$version" =~ $edge_regex ]]; then
-          "$linkerd_path" install --set proxyInit.ignoreInboundPorts="1234\,5678" --controller-log-level debug | kubectl --context="$context" apply -f - 2>&1
-        else
-          "$linkerd_path" install --skip-inbound-ports '1234,5678' --controller-log-level debug | kubectl --context="$context" apply -f - 2>&1
-        fi
-    )
-    exit_on_err "install_version() - installing $version failed"
-
-    (
-        set -x
-        "$linkerd_path" check --wait 60m 2>&1
-    )
-    exit_on_err 'install_version() - linkerd check failed'
-
-    #Now we need to install the app that will be used to verify that upgrade does not break anything
-    kubectl --context="$context" create namespace "$test_app_namespace" > /dev/null 2>&1
-    kubectl --context="$context" label namespaces "$test_app_namespace" 'test.linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
-    (
-        set -x
-        "$linkerd_path" inject "$test_directory/install/testdata/upgrade_test.yaml" | kubectl --context="$context" apply --namespace="$test_app_namespace" -f - 2>&1
-    )
-    exit_on_err 'install_version() - linkerd inject failed'
-}
-
-upgrade_test() {
-  local release_channel=$1
-  local install_url=$2
-
-  local upgrade_version
-  upgrade_version=$(latest_release_channel "$release_channel")
-
-  if [ -z "$upgrade_version" ]; then
-    echo 'error getting upgrade_version'
-    exit 1
-  fi
-
-  install_version "$install_url" "$upgrade_version"
-
-  # Install viz extension
-  local tmp_linkerd_path=$tmp/.linkerd2/bin/linkerd
-  (
-      set -x
-      "$tmp_linkerd_path" viz install | kubectl --context="$context" apply -f - 2>&1
-  )
-  exit_on_err "upgrade_test() - installing viz extension in $upgrade_version failed"
-
-  run_test "$test_directory/install/install_test.go" --upgrade-from-version="$upgrade_version"
-}
-
 # Run the upgrade-edge test by upgrading the most-recent edge release to the
 # HEAD of this branch.
 run_upgrade-edge_test() {
-  edge_install_url="https://run.linkerd.io/install-edge"
-  upgrade_test "edge" "$edge_install_url"
-}
-
-run_viz_test() {
-  run_test "$test_directory/viz/..."
+  run_test "$test_directory/upgrade-edge/..." 
 }
 
 # Run the upgrade-stable test by upgrading the most-recent stable release to the
 # HEAD of this branch.
 run_upgrade-stable_test() {
-  stable_install_url="https://run.linkerd.io/install"
-  upgrade_test "stable" "$stable_install_url"
+  run_test "$test_directory/upgrade-stable/..." 
+}
+
+run_viz_test() {
+  run_test "$test_directory/viz/..."
 }
 
 setup_helm() {
@@ -536,16 +466,15 @@ run_multicluster_test() {
   link=$(multicluster_link target)
 
   export context="k3d-source"
-  # Create the emojivoto namespace in the source cluster so that mirror services
-  # can be created there.
+  # Create the emojivoto and multicluster-statefulset namespaces in the source
+  # cluster so that mirror services can be created there.
   kubectl --context="$context" create namespace emojivoto
+  kubectl --context="$context" create namespace multicluster-statefulset
   run_test "$test_directory/multicluster/install_test.go" --certs-path "$tmp"
   echo "$link" | kubectl --context="$context" apply -f -
   run_test "$test_directory/multicluster/source" 
   export context="k3d-target"
   run_test "$test_directory/multicluster/target2" 
-  export context="k3d-target"
-  run_test "$test_directory/multicluster/target-statefulset" 
 }
 
 run_deep_test() {

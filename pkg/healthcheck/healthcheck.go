@@ -739,6 +739,27 @@ func (hc *HealthChecker) allCategories() []*Category {
 					},
 				},
 				{
+					description: "cluster networks can be verified",
+					hintAnchor:  "l5d-cluster-networks-verified",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						nodes, err := hc.kubeAPI.GetNodes(ctx)
+						if err != nil {
+							return err
+						}
+						var warningNodes []string
+						for _, node := range nodes {
+							if node.Spec.PodCIDR == "" {
+								warningNodes = append(warningNodes, node.Name)
+							}
+						}
+						if len(warningNodes) > 0 {
+							return fmt.Errorf("the following nodes do not expose a podCIDR:\n\t%s", strings.Join(warningNodes, "\n\t"))
+						}
+						return nil
+					},
+				},
+				{
 					description: "cluster networks contains all node podCIDRs",
 					hintAnchor:  "l5d-cluster-networks-cidr",
 					check: func(ctx context.Context) error {
@@ -1615,8 +1636,8 @@ func (hc *HealthChecker) LinkerdConfig() *l5dcharts.Values {
 func (hc *HealthChecker) runCheck(category *Category, c *Checker, observer CheckObserver) bool {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-		defer cancel()
 		err := c.check(ctx)
+		cancel()
 		var se SkipError
 		if errors.As(err, &se) {
 			log.Debugf("Skipping check: %s. Reason: %s", c.description, se.Reason)
@@ -1876,6 +1897,7 @@ func (hc *HealthChecker) checkClusterNetworks(ctx context.Context) error {
 			badPodCIDRS = append(badPodCIDRS, podCIDR)
 		}
 	}
+	// If none of the nodes exposed a podCIDR then we cannot verify the clusterNetworks.
 	if !podCIDRExists {
 		// DigitalOcean for example, doesn't expose spec.podCIDR (#6398)
 		return SkipError{Reason: podCIDRUnavailableSkipReason}
