@@ -19,7 +19,7 @@ jobs:
       image: golang:1.16.4
     steps:
     - name: Checkout code
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
     - name: Go lint
       run: bin/lint --verbose
   go_format:
@@ -30,7 +30,7 @@ jobs:
       image: golang:1.16.4
     steps:
     - name: Checkout code
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
     - name: Format
       run: bin/fmt
   proto_diff:
@@ -43,7 +43,7 @@ jobs:
       - name: Prerequisites
         run: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install unzip
       - name: Checkout code
-        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+        uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
       - name: Diff proto files
         run: bin/protoc-diff
   shellcheck:
@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
     - name: shellcheck
       # For more information on shellcheck failures:
       # https://github.com/koalaman/shellcheck/wiki/Checks
@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
     - name: Chocolatey - lint
       uses: devblackops/github-action-psscriptanalyzer@47643b05d29d2e63ab8ec3fcbac4f409df6c98e2
       env:
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
     - name: Markdown lint
       run: bin/markdownlint-all
   chart_docs_diff:
@@ -87,6 +87,6 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
     - name: Check docs for diff
       run: bin/helm-docs-diff
