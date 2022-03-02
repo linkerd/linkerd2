@@ -1,4 +1,4 @@
-pub mod authz;
+pub mod authorization_policy;
 pub mod server;
 pub mod server_authorization;
 
