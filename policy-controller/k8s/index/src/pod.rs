@@ -310,8 +310,6 @@ impl PodIndex {
 
 impl Pod {
     /// Links this pod to servers (by label selector).
-    ///
-    ///
     fn link_servers(&mut self, servers: &SrvIndex) {
         let mut remaining_ports = self.ports.by_port.keys().copied().collect::<HashSet<u16>>();
 
