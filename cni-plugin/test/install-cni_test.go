@@ -95,7 +95,7 @@ func cp(src, dest string, t *testing.T) {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to read file %v", src),
 			"failed to read file %v: %v", src, err)
 	}
-	if err = ioutil.WriteFile(dest, data, 0644); err != nil {
+	if err = ioutil.WriteFile(dest, data, 0600); err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to write file %v", dest),
 			"failed to write file %v: %v", dest, err)
 	}

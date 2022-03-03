@@ -396,7 +396,7 @@ status:
 			}
 			proxy.RegisterTapServer(s, &mockProxyTapServer)
 
-			lis, err := net.Listen("tcp", ":0")
+			lis, err := net.Listen("tcp", "localhost:0")
 			if err != nil {
 				t.Fatalf("Failed to listen")
 			}
@@ -664,7 +664,7 @@ status:
 			if err != nil {
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
-			s := NewGrpcTapServer(4190, "controller-ns", "cluster.local", k8sAPI)
+			s, _ := NewGrpcTapServer(4190, "controller-ns", "cluster.local", k8sAPI)
 			k8sAPI.Sync(nil)
 
 			labels := make(map[string]string)

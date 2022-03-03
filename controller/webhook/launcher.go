@@ -47,7 +47,9 @@ func Launch(
 
 	go func() {
 		log.Infof("starting admin server on %s", metricsAddr)
-		adminServer.ListenAndServe()
+		if err := adminServer.ListenAndServe(); err != nil {
+			log.Errorf("failed to start webhook admin server: %s", err)
+		}
 	}()
 
 	<-stop

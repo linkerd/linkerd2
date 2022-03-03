@@ -196,7 +196,8 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 			}
 			if len(gwAddresses) == 0 && opts.gatewayAddresses == "" {
 				return fmt.Errorf("Gateway %s.%s has no ingress addresses", gateway.Name, gateway.Namespace)
-			} else if len(gwAddresses) > 0 {
+			}
+			if len(gwAddresses) > 0 {
 				gatewayAddresses = strings.Join(gwAddresses, ",")
 			} else {
 				gatewayAddresses = opts.gatewayAddresses
