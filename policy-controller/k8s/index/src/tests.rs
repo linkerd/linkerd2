@@ -637,30 +637,20 @@ struct Mock<T, F> {
 }
 
 impl<T, F: Future<Output = ()>> Mock<T, F> {
-    async fn apply(&mut self, val: T) {
-        self.tx
-            .send(k8s::WatchEvent::Applied(val))
-            .await
-            .ok()
-            .expect("channel closed");
+    async fn update(&mut self, ev: k8s::WatchEvent<T>) {
+        self.tx.send(ev).await.ok().expect("channel closed");
         assert_pending!(self.task.poll());
+    }
+
+    async fn apply(&mut self, val: T) {
+        self.update(k8s::WatchEvent::Applied(val)).await;
     }
 
     async fn delete(&mut self, val: T) {
-        self.tx
-            .send(k8s::WatchEvent::Deleted(val))
-            .await
-            .ok()
-            .expect("channel closed");
-        assert_pending!(self.task.poll());
+        self.update(k8s::WatchEvent::Deleted(val)).await;
     }
 
     async fn restart(&mut self, vals: Vec<T>) {
-        self.tx
-            .send(k8s::WatchEvent::Restarted(vals))
-            .await
-            .ok()
-            .expect("channel closed");
-        assert_pending!(self.task.poll());
+        self.update(k8s::WatchEvent::Restarted(vals)).await;
     }
 }
