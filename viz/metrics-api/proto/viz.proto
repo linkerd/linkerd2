@@ -39,7 +39,6 @@ message Service {
 }
 
 message ListPodsRequest {
-  string namespace = 1 [deprecated=true];
   ResourceSelection selector = 2;
 }
 message ListPodsResponse {
@@ -227,7 +226,7 @@ message TrafficSplitStats {
   string apex = 2;
   string leaf = 3;
   string weight = 4;
-} 
+}
 
 message ServerStats {
   uint64 allowed_count = 1;
