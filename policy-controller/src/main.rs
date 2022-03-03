@@ -129,9 +129,7 @@ async fn main() -> Result<()> {
         runtime.shutdown_handle(),
     ));
 
-    // TODO use resource caches instead of a client
-    let client = runtime.client();
-    let runtime = runtime.spawn_server(|| admission::Service { client });
+    let runtime = runtime.spawn_server(|| admission::Service { index });
 
     // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
     // complete before exiting.

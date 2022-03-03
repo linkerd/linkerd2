@@ -1,5 +1,20 @@
 # Changes
 
+## edge-22.3.1
+
+This edge release includes updates to dependencies, CI, and rust 1.59.0. It also
+includes changes to the `linkerd-jaeger` chart to ensure that namespace labels
+are preserved and adds support for `imagePullSecrets`, along with improvements
+to the multicluster and policy functionality.
+
+* Added note to `multicluster link` command to clarify that the link is
+  one-direction
+* Introduced `imagePullSecrets` to Jaeger Helm chart
+* Updated Rust to v1.59.0
+* Fixed a bug where labels can be overwritten in the `linkerd-jaeger` chart
+* Fix broken mirrored headles services after `repairEndpoints` runs
+* Updated `Server` CRD to handle an empty `PodSelector`
+
 ## edge-22.2.4
 
 This edge release continues to address several security related lints and

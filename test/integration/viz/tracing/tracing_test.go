@@ -147,6 +147,7 @@ func TestTracing(t *testing.T) {
 				testutil.AnnotatedWarn(t, "Failed to get pods", err)
 			}
 			for _, pod := range pods {
+				pod := pod
 				if !labels.IsTracingEnabled(&pod) {
 					testutil.AnnotatedWarn(t, "Tracing annotation not found on pod", pod.Namespace, pod.Name)
 					// XXX This test is super duper flakey, so for now we ignore failures when the

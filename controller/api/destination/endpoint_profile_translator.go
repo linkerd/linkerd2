@@ -51,7 +51,9 @@ func (ept *endpointProfileTranslator) UpdateProtocol(opaqueProtocol bool) {
 	}
 	profile := ept.createDefaultProfile(opaqueProtocol)
 	ept.log.Debugf("sending protocol update: %+v", profile)
-	ept.stream.Send(profile)
+	if err := ept.stream.Send(profile); err != nil {
+		ept.log.Errorf("failed to send protocol update: %s", err)
+	}
 }
 
 func (ept *endpointProfileTranslator) createDefaultProfile(opaqueProtocol bool) *pb.DestinationProfile {
