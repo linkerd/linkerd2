@@ -21,7 +21,7 @@ async fn incrementally_configure_server() {
     };
     let pod_net = IpNet::from_str("192.0.2.2/28").unwrap();
     let detect_timeout = time::Duration::from_secs(1);
-    let (lookup_rx, mut idx) = Index::new(
+    let (lookup_rx, idx) = Index::new(
         cluster,
         DefaultPolicy::Allow {
             authenticated_only: false,
@@ -37,7 +37,7 @@ async fn incrementally_configure_server() {
         pod_net.hosts().next().unwrap(),
         Some(("container-0", vec![2222, 9999])),
     );
-    idx.apply_pod(pod.clone());
+    idx.write().apply_pod(pod.clone());
 
     let default = DefaultPolicy::Allow {
         authenticated_only: false,
@@ -69,7 +69,7 @@ async fn incrementally_configure_server() {
         srv.spec.proxy_protocol = Some(k8s::policy::server::ProxyProtocol::Http1);
         srv
     };
-    idx.apply_server(srv.clone());
+    idx.write().apply_server(srv.clone());
 
     // Check that the watch has been updated to reflect the above change and that this change _only_
     // applies to the correct port.
@@ -94,7 +94,7 @@ async fn incrementally_configure_server() {
             ..Default::default()
         },
     );
-    idx.apply_serverauthorization(authz.clone());
+    idx.write().apply_serverauthorization(authz.clone());
 
     // Check that the watch now has authorized traffic as described above.
     let mut rx = port2222.into_stream();
@@ -116,21 +116,21 @@ async fn incrementally_configure_server() {
     );
 
     // Delete the authorization and check that the watch has reverted to its prior state.
-    idx.delete_serverauthorization(authz);
+    idx.write().delete_serverauthorization(authz);
     assert_eq!(
         time::timeout(time::Duration::from_secs(1), rx.next()).await,
         Ok(Some(basic_config)),
     );
 
     // Delete the server and check that the watch has reverted the default state.
-    idx.delete_server(srv);
+    idx.write().delete_server(srv);
     assert_eq!(
         time::timeout(time::Duration::from_secs(1), rx.next()).await,
         Ok(Some(default_config))
     );
 
     // Delete the pod and check that the watch recognizes that the watch has been closed.
-    idx.delete_pod(pod);
+    idx.write().delete_pod(pod);
     assert_eq!(
         time::timeout(time::Duration::from_secs(1), rx.next()).await,
         Ok(None)
@@ -151,7 +151,7 @@ fn server_update_deselects_pod() {
         authenticated_only: false,
         cluster_only: true,
     };
-    let (lookup_rx, mut idx) = Index::new(cluster, default, detect_timeout);
+    let (lookup_rx, idx) = Index::new(cluster, default, detect_timeout);
 
     let p = mk_pod(
         "ns-0",
@@ -160,14 +160,14 @@ fn server_update_deselects_pod() {
         pod_net.hosts().next().unwrap(),
         Some(("container-0", vec![2222])),
     );
-    idx.apply_pod(p);
+    idx.write().apply_pod(p);
 
     let srv = {
         let mut srv = mk_server("ns-0", "srv-0", Port::Number(2222), None, None);
         srv.spec.proxy_protocol = Some(k8s::policy::server::ProxyProtocol::Http2);
         srv
     };
-    idx.apply_server(srv.clone());
+    idx.write().apply_server(srv.clone());
 
     // The default policy applies for all exposed ports.
     let port2222 = lookup_rx.lookup("ns-0", "pod-0", 2222).unwrap();
@@ -180,7 +180,7 @@ fn server_update_deselects_pod() {
         }
     );
 
-    idx.apply_server({
+    idx.write().apply_server({
         let mut srv = srv;
         srv.spec.pod_selector = Some(("label", "value")).into_iter().collect();
         srv
@@ -212,7 +212,7 @@ fn default_policy_global() {
     let detect_timeout = time::Duration::from_secs(1);
 
     for default in &DEFAULTS {
-        let (lookup_rx, mut idx) = Index::new(cluster.clone(), *default, detect_timeout);
+        let (lookup_rx, idx) = Index::new(cluster.clone(), *default, detect_timeout);
 
         let p = mk_pod(
             "ns-0",
@@ -221,7 +221,7 @@ fn default_policy_global() {
             pod_net.hosts().next().unwrap(),
             Some(("container-0", vec![2222])),
         );
-        idx.reset_pods(vec![p]);
+        idx.write().reset_pods(vec![p]);
 
         let config = InboundServer {
             name: format!("default:{}", default),
@@ -255,7 +255,7 @@ fn default_policy_annotated() {
     let detect_timeout = time::Duration::from_secs(1);
 
     for default in &DEFAULTS {
-        let (lookup_rx, mut idx) = Index::new(
+        let (lookup_rx, idx) = Index::new(
             cluster.clone(),
             // Invert default to ensure override applies.
             match *default {
@@ -277,7 +277,7 @@ fn default_policy_annotated() {
         );
         p.annotations_mut()
             .insert(DefaultPolicy::ANNOTATION.into(), default.to_string());
-        idx.reset_pods(vec![p]);
+        idx.write().reset_pods(vec![p]);
 
         let config = InboundServer {
             name: format!("default:{}", default),
@@ -309,7 +309,7 @@ fn default_policy_annotated_invalid() {
         authenticated_only: false,
         cluster_only: false,
     };
-    let (lookup_rx, mut idx) = Index::new(cluster, default, detect_timeout);
+    let (lookup_rx, idx) = Index::new(cluster, default, detect_timeout);
 
     let mut p = mk_pod(
         "ns-0",
@@ -320,7 +320,7 @@ fn default_policy_annotated_invalid() {
     );
     p.annotations_mut()
         .insert(DefaultPolicy::ANNOTATION.into(), "bogus".into());
-    idx.reset_pods(vec![p]);
+    idx.write().reset_pods(vec![p]);
 
     // Lookup port 2222 -> default config.
     let port2222 = lookup_rx
@@ -356,7 +356,7 @@ fn opaque_annotated() {
     let detect_timeout = time::Duration::from_secs(1);
 
     for default in &DEFAULTS {
-        let (lookup_rx, mut idx) = Index::new(cluster.clone(), *default, detect_timeout);
+        let (lookup_rx, idx) = Index::new(cluster.clone(), *default, detect_timeout);
 
         let mut p = mk_pod(
             "ns-0",
@@ -367,7 +367,7 @@ fn opaque_annotated() {
         );
         p.annotations_mut()
             .insert("config.linkerd.io/opaque-ports".into(), "2222".into());
-        idx.reset_pods(vec![p]);
+        idx.write().reset_pods(vec![p]);
 
         let config = InboundServer {
             name: format!("default:{}", default),
@@ -394,7 +394,7 @@ fn authenticated_annotated() {
     let detect_timeout = time::Duration::from_secs(1);
 
     for default in &DEFAULTS {
-        let (lookup_rx, mut idx) = Index::new(cluster.clone(), *default, detect_timeout);
+        let (lookup_rx, idx) = Index::new(cluster.clone(), *default, detect_timeout);
 
         let mut p = mk_pod(
             "ns-0",
@@ -407,7 +407,7 @@ fn authenticated_annotated() {
             "config.linkerd.io/proxy-require-identity-inbound-ports".into(),
             "2222".into(),
         );
-        idx.reset_pods(vec![p]);
+        idx.write().reset_pods(vec![p]);
 
         let config = {
             let policy = match *default {

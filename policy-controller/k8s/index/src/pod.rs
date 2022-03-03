@@ -11,7 +11,7 @@ use tracing::{debug, instrument, trace, warn};
 
 /// Indexes pod state (within a namespace).
 #[derive(Debug, Default)]
-pub(crate) struct PodIndex {
+pub struct PodIndex {
     index: HashMap<String, Pod>,
 }
 
