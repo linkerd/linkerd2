@@ -14,7 +14,7 @@ use tracing::{debug, instrument, trace, warn};
 
 /// Indexes `ServerAuthorization` resources within a namespace.
 #[derive(Debug, Default)]
-pub(crate) struct AuthzIndex {
+pub struct AuthzIndex {
     index: HashMap<String, Authz>,
 }
 
