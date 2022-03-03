@@ -3,7 +3,6 @@ package heartbeat
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"net/http"
 	"net/url"
@@ -13,6 +12,7 @@ import (
 	pkgK8s "github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/util"
 	"github.com/linkerd/linkerd2/pkg/version"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
@@ -235,7 +235,7 @@ func send(client *http.Client, baseURL string, v url.Values) error {
 		return fmt.Errorf("check URL [%s] request failed with: %w", req.URL.String(), err)
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := util.ReadAllLimit(resp.Body, util.MB)
 	if err != nil {
 		return fmt.Errorf("failed to read response body: %w", err)
 	}
