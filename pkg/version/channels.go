@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+
+	"github.com/linkerd/linkerd2/pkg/util"
 )
 
 // Channels provides an interface to interact with a set of release channels.
@@ -80,7 +81,7 @@ func getLatestVersions(ctx context.Context, client *http.Client, url string) (Ch
 		return Channels{}, fmt.Errorf("unexpected versioncheck response: %s", rsp.Status)
 	}
 
-	bytes, err := ioutil.ReadAll(rsp.Body)
+	bytes, err := util.ReadAllLimit(rsp.Body, util.MB)
 	if err != nil {
 		return Channels{}, err
 	}

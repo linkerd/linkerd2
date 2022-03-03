@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/util"
 	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/status"
@@ -45,7 +45,7 @@ func (e HTTPError) Error() string {
 
 // HTTPRequestToProto converts an HTTP Request to a protobuf request.
 func HTTPRequestToProto(req *http.Request, protoRequestOut proto.Message) error {
-	bytes, err := ioutil.ReadAll(req.Body)
+	bytes, err := util.ReadAllLimit(req.Body, 100*util.MB)
 	if err != nil {
 		return HTTPError{
 			Code:         http.StatusBadRequest,
@@ -167,7 +167,7 @@ func CheckIfResponseHasError(rsp *http.Response) error {
 	// check for JSON-encoded error
 	if rsp.StatusCode != http.StatusOK {
 		if rsp.Body != nil {
-			bytes, err := ioutil.ReadAll(rsp.Body)
+			bytes, err := util.ReadAllLimit(rsp.Body, 100*util.MB)
 			if err == nil && len(bytes) > 0 {
 				body := string(bytes)
 				obj, err := k8s.ToRuntimeObject(body)
