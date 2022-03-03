@@ -561,8 +561,8 @@ data:
           limit: ""
           request: ""
         memory:
-          limit: 50Mi
-          request: 50Mi
+          limit: 20Mi
+          request: 20Mi
       runAsRoot: false
       saMountPath: null
       skipSubnets: ""
@@ -929,10 +929,10 @@ spec:
         resources:
           limits:
             cpu: "100m"
-            memory: "50Mi"
+            memory: "20Mi"
           requests:
             cpu: "100m"
-            memory: "50Mi"
+            memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1386,10 +1386,10 @@ spec:
         resources:
           limits:
             cpu: "100m"
-            memory: "50Mi"
+            memory: "20Mi"
           requests:
             cpu: "100m"
-            memory: "50Mi"
+            memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1725,10 +1725,10 @@ spec:
         resources:
           limits:
             cpu: "100m"
-            memory: "50Mi"
+            memory: "20Mi"
           requests:
             cpu: "100m"
-            memory: "50Mi"
+            memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

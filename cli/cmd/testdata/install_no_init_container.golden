@@ -1268,8 +1268,8 @@ data:
           limit: ""
           request: ""
         memory:
-          limit: 50Mi
-          request: 50Mi
+          limit: 20Mi
+          request: 20Mi
       runAsRoot: false
       saMountPath: null
       skipSubnets: ""

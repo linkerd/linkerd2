@@ -121,8 +121,8 @@ func TestNewValues(t *testing.T) {
 					Request: "100m",
 				},
 				Memory: Constraints{
-					Limit:   "50Mi",
-					Request: "50Mi",
+					Limit:   "20Mi",
+					Request: "20Mi",
 				},
 			},
 			XTMountPath: &VolumeMountPath{

@@ -59,11 +59,11 @@
       "resources": {
         "limits": {
           "cpu": "100m",
-          "memory": "50Mi"
+          "memory": "20Mi"
         },
         "requests": {
           "cpu": "100m",
-          "memory": "50Mi"
+          "memory": "20Mi"
         }
       },
       "securityContext": {

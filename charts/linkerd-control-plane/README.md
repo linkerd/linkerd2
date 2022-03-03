@@ -230,8 +230,8 @@ Kubernetes: `>=1.20.0-0`
 | proxyInit.resources.cpu.request | string | `"100m"` | Amount of CPU units that the proxy-init container requests |
 | proxyInit.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the proxy-init container can use |
 | proxyInit.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the proxy-init container requests |
-| proxyInit.resources.memory.limit | string | `"50Mi"` | Maximum amount of memory that the proxy-init container can use |
-| proxyInit.resources.memory.request | string | `"50Mi"` | Amount of memory that the proxy-init container requests |
+| proxyInit.resources.memory.limit | string | `"20Mi"` | Maximum amount of memory that the proxy-init container can use |
+| proxyInit.resources.memory.request | string | `"20Mi"` | Amount of memory that the proxy-init container requests |
 | proxyInit.runAsRoot | bool | `false` | Allow overriding the runAsNonRoot behaviour (<https://github.com/linkerd/linkerd2/issues/7308>) |
 | proxyInit.skipSubnets | string | `""` | Comma-separated list of subnets in valid CIDR format that should be skipped by the proxy |
 | proxyInit.xtMountPath.mountPath | string | `"/run"` |  |
