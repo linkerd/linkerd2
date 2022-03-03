@@ -85,7 +85,7 @@ jobs:
       run: |
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
     - name: Download image archives
-      uses: actions/download-artifact@f023be2c48cc18debc3bacd34cb396e0295e2869
+      uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
       with:
         name: image-archives
         path: image-archives
