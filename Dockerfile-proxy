@@ -24,6 +24,7 @@ RUN bin/scurl -o linkerd-await https://github.com/linkerd/linkerd-await/releases
 ## compile proxy-identity agent
 FROM go-deps as golang
 WORKDIR /linkerd-build
+COPY pkg/util pkg/util
 COPY pkg/flags pkg/flags
 COPY pkg/tls pkg/tls
 COPY pkg/version pkg/version

@@ -59,14 +59,14 @@ func ReadTestdata(t *testing.T, fileName string) string {
 
 func writeTestdata(t *testing.T, fileName string, data []byte) {
 	p := filepath.Join("testdata", fileName)
-	if err := ioutil.WriteFile(p, data, 0644); err != nil {
+	if err := ioutil.WriteFile(p, data, 0600); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func writeRejects(t *testing.T, origFileName string, data []byte, rejectPath string) {
 	p := filepath.Join(rejectPath, origFileName+".rej")
-	if err := ioutil.WriteFile(p, data, 0644); err != nil {
+	if err := ioutil.WriteFile(p, data, 0600); err != nil {
 		t.Fatal(err)
 	}
 }

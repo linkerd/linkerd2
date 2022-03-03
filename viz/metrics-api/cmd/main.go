@@ -76,14 +76,18 @@ func main() {
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)
-		server.ListenAndServe()
+		if err := server.ListenAndServe(); err != nil {
+			log.Errorf("failed to start metrics API HTTP server: %s", err)
+		}
 	}()
 
 	adminServer := admin.NewServer(*metricsAddr)
 
 	go func() {
 		log.Infof("starting admin server on %s", *metricsAddr)
-		adminServer.ListenAndServe()
+		if err := adminServer.ListenAndServe(); err != nil {
+			log.Errorf("failed to start metrics API admin server: %s", err)
+		}
 	}()
 
 	<-stop

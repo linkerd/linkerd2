@@ -1,7 +1,6 @@
 package watcher
 
 import (
-	"fmt"
 	"sync"
 
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
@@ -80,15 +79,14 @@ func (pw *ProfileWatcher) Subscribe(id ProfileID, listener ProfileUpdateListener
 }
 
 // Unsubscribe removes a listener from the subscribers list for this authority.
-func (pw *ProfileWatcher) Unsubscribe(id ProfileID, listener ProfileUpdateListener) error {
+func (pw *ProfileWatcher) Unsubscribe(id ProfileID, listener ProfileUpdateListener) {
 	pw.log.Debugf("Stopping watch on profile %s", id)
 
 	publisher, ok := pw.getProfilePublisher(id)
 	if !ok {
-		return fmt.Errorf("cannot unsubscribe from unknown service [%s] ", id)
+		pw.log.Errorf("cannot unsubscribe from unknown service [%s]", id)
 	}
 	publisher.unsubscribe(listener)
-	return nil
 }
 
 func (pw *ProfileWatcher) addProfile(obj interface{}) {

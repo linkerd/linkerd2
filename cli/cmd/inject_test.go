@@ -624,10 +624,10 @@ func TestWalk(t *testing.T) {
 		file1 = filepath.Join(tmpFolderRoot, "root.txt")
 		file2 = filepath.Join(tmpFolderData, "data.txt")
 	)
-	if err := ioutil.WriteFile(file1, data, 0644); err != nil {
+	if err := ioutil.WriteFile(file1, data, 0600); err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
-	if err := ioutil.WriteFile(file2, data, 0644); err != nil {
+	if err := ioutil.WriteFile(file2, data, 0600); err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
 

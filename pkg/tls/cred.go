@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
 	"time"
 )
 
@@ -194,12 +195,12 @@ func ValidateAndCreateCreds(crt, key string) (*Cred, error) {
 
 // ReadPEMCreds reads PEM-encoded credentials from the named files.
 func ReadPEMCreds(keyPath, crtPath string) (*Cred, error) {
-	keyb, err := ioutil.ReadFile(keyPath)
+	keyb, err := ioutil.ReadFile(filepath.Clean(keyPath))
 	if err != nil {
 		return nil, err
 	}
 
-	crtb, err := ioutil.ReadFile(crtPath)
+	crtb, err := ioutil.ReadFile(filepath.Clean(crtPath))
 	if err != nil {
 		return nil, err
 	}

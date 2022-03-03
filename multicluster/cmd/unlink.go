@@ -10,6 +10,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/k8s/resource"
 	mc "github.com/linkerd/linkerd2/pkg/multicluster"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -87,7 +88,9 @@ func newUnlinkCommand() *cobra.Command {
 			}
 
 			for _, r := range resources {
-				r.RenderResource(stdout)
+				if err := r.RenderResource(stdout); err != nil {
+					log.Errorf("failed to render resource %s: %s", r.Name, err)
+				}
 			}
 
 			return nil

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
 	"text/template"
 	"time"
@@ -229,7 +230,7 @@ func readFile(fileName string) (io.Reader, error) {
 	if fileName == "-" {
 		return os.Stdin, nil
 	}
-	return os.Open(fileName)
+	return os.Open(filepath.Clean(fileName))
 }
 
 func writeProfile(profile sp.ServiceProfile, w io.Writer) error {
