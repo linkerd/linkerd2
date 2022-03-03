@@ -3,14 +3,15 @@ use anyhow::{anyhow, bail, Result};
 use api::policy::ServerSpec;
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
-use kube::{core::DynamicObject, Api, ResourceExt};
+use kube::{core::DynamicObject, ResourceExt};
+use linkerd_policy_controller_k8s_index::{Index, SharedIndex};
 use std::task;
 use thiserror::Error;
 use tracing::{debug, info, warn};
 
 #[derive(Clone)]
 pub struct Service {
-    pub client: kube::Client,
+    pub index: SharedIndex,
 }
 
 #[derive(Debug, Error)]
@@ -40,7 +41,8 @@ impl hyper::service::Service<Request<Body>> for Service {
                     .expect("not found response must be valid"),
             ));
         }
-        let client = self.client.clone();
+
+        let index = self.index.clone();
         Box::pin(async move {
             let bytes = hyper::body::aggregate(req.into_body()).await?;
             let review: Review = match serde_json::from_reader(bytes.reader()) {
@@ -72,24 +74,8 @@ impl hyper::service::Service<Request<Body>> for Service {
                 }
             };
 
-            // Fetch a list of servers so that we can detect conflicts.
-            //
-            // TODO(ver) We already have a watch on these resources, so we could simply lookup
-            // against an index to avoid unnecessary work on the API server.
-            let api = Api::<api::policy::Server>::namespaced(client, &*ns);
-            let servers = match api.list(&Default::default()).await {
-                Ok(servers) => servers,
-                Err(error) => {
-                    warn!(%error, "Failed to list servers");
-                    return Ok(Response::builder()
-                        .status(http::StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(Body::empty())
-                        .expect("error response must be valid"));
-                }
-            };
-
             // If validation fails, deny admission.
-            let rsp = match validate(&name, &review_spec, &*servers.items) {
+            let rsp = match validate(&ns, &name, &review_spec, &*index.read()) {
                 Ok(()) => rsp,
                 Err(error) => {
                     info!(%error, %ns, %name, "Denying server");
@@ -133,23 +119,21 @@ fn parse_server(req: AdmissionRequest) -> Result<(String, String, api::policy::S
 }
 
 /// Validates a new server (`review`) against existing `servers`.
-fn validate(
-    review_name: &str,
-    review_spec: &api::policy::ServerSpec,
-    servers: &[api::policy::Server],
-) -> Result<()> {
-    for s in servers {
-        // If the port and pod selectors select the same resources, fail the admission of the
-        // server. Ignore existing instances of this Server (e.g., if the server's metadata is
-        // changing).
-        if s.name() != review_name
-            // TODO(ver) this isn't rigorous about detecting servers that select the same port if one port
-            // specifies a numeric port and the other specifies the port's name.
-            && s.spec.port == review_spec.port
-            // TODO(ver) We can probably detect overlapping selectors more effectively.
-            && s.spec.pod_selector == review_spec.pod_selector
-        {
-            bail!("identical server spec already exists");
+fn validate(ns: &str, name: &str, spec: &api::policy::ServerSpec, index: &Index) -> Result<()> {
+    if let Some(nsidx) = index.get_ns(ns) {
+        for (srvname, srv) in nsidx.servers.iter() {
+            // If the port and pod selectors select the same resources, fail the admission of the
+            // server. Ignore existing instances of this Server (e.g., if the server's metadata is
+            // changing).
+            if srvname != name
+                // TODO(ver) this isn't rigorous about detecting servers that select the same port if one port
+                // specifies a numeric port and the other specifies the port's name.
+                && *srv.port() == spec.port
+                // TODO(ver) We can probably detect overlapping selectors more effectively.
+                && *srv.pod_selector() == spec.pod_selector
+            {
+                bail!("identical server spec already exists");
+            }
         }
     }
 
