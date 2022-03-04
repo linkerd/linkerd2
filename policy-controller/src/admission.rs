@@ -28,10 +28,6 @@ pub enum Error {
     Json(#[from] serde_json::Error),
 }
 
-#[derive(Debug, thiserror::Error)]
-#[error(transparent)]
-pub struct ParseError(#[from] anyhow::Error);
-
 type Review = kube::core::admission::AdmissionReview<DynamicObject>;
 type AdmissionRequest = kube::core::admission::AdmissionRequest<DynamicObject>;
 type AdmissionResponse = kube::core::admission::AdmissionResponse;
@@ -214,13 +210,13 @@ impl Validate for NetworkAuthenticationSpec {
         for net in self.networks.iter() {
             let cidr = match ipnet::IpNet::from_str(&*net.cidr) {
                 Ok(cidr) => cidr,
-                Err(e) => bail!(anyhow::Error::new(e).context("invalid 'cidr'")),
+                Err(e) => bail!(anyhow!(e).context("invalid 'cidr'")),
             };
 
             for except in net.except.iter().flatten() {
                 let except = match ipnet::IpNet::from_str(&*except) {
                     Ok(except) => except,
-                    Err(e) => bail!(anyhow::Error::new(e).context("invalid 'except' network")),
+                    Err(e) => bail!(anyhow!(e).context("invalid 'except' network")),
                 };
                 if !cidr.contains(&except) {
                     bail!("cidr '{}' does not include exception '{}'", cidr, except);
