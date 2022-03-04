@@ -149,6 +149,14 @@ impl SrvIndex {
         self.index.iter()
     }
 
+    pub fn get(&self, name: &str) -> Option<&Server> {
+        self.index.get(name)
+    }
+
+    pub fn contains_key(&self, name: &str) -> bool {
+        self.index.contains_key(name)
+    }
+
     /// Adds an authorization to servers matching `selector`.
     pub(crate) fn add_server_authz(
         &mut self,
