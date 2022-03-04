@@ -1,5 +1,3 @@
-use ipnet::IpNet;
-
 #[derive(
     Clone,
     Debug,
@@ -23,6 +21,6 @@ pub struct NetworkAuthenticationSpec {
 #[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Network {
-    pub cidr: IpNet,
-    pub except: Option<Vec<IpNet>>,
+    pub cidr: String,
+    pub except: Option<Vec<String>>,
 }

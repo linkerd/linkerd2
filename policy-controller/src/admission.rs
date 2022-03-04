@@ -1,12 +1,12 @@
-use crate::api::policy::{AuthorizationPolicy, AuthorizationPolicySpec, Server, ServerSpec};
+use crate::api::policy::{
+    AuthorizationPolicy, AuthorizationPolicySpec, MeshTLSAuthentication, MeshTLSAuthenticationSpec,
+    NetworkAuthentication, NetworkAuthenticationSpec, Server, ServerSpec,
+};
 use anyhow::{anyhow, bail, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
 use k8s_openapi::serde::de::DeserializeOwned;
-use kube::{
-    core::{DynamicObject, GroupVersionKind},
-    Resource, ResourceExt,
-};
+use kube::{core::DynamicObject, Resource, ResourceExt};
 use linkerd_policy_controller_k8s_index::{Index, SharedIndex};
 use std::task;
 use thiserror::Error;
@@ -82,25 +82,39 @@ impl hyper::service::Service<Request<Body>> for AdmissionService {
 }
 
 fn admit(req: AdmissionRequest, index: &SharedIndex) -> AdmissionResponse {
-    let GroupVersionKind {
-        group,
-        version,
-        kind,
-    } = &req.kind;
-
-    if *group == *AuthorizationPolicy::group(&()) && *kind == *AuthorizationPolicy::kind(&()) {
+    if is_kind::<AuthorizationPolicy>(&req) {
         return admit_authz_policy(req);
     }
 
-    if *group == *Server::group(&()) && kind == &*Server::kind(&()) {
+    if is_kind::<MeshTLSAuthentication>(&req) {
+        return admit_meshtls_authn(req);
+    }
+
+    if is_kind::<NetworkAuthentication>(&req) {
+        return admit_network_authn(req);
+    }
+
+    if is_kind::<Server>(&req) {
         return admit_server(req, index);
     }
 
-    warn!(%group, %version, %kind, "unsupported resource type");
+    info!(
+        group = %req.kind.group,
+        version = %req.kind.version,
+        kind = %req.kind.kind,
+        "unsupported resource type",
+    );
     AdmissionResponse::invalid(format_args!(
         "unsupported resource type: {}.{}.{}",
-        group, version, kind
+        req.kind.group, req.kind.version, req.kind.kind
     ))
+}
+
+fn is_kind<T>(req: &AdmissionRequest) -> bool
+where
+    T: Resource<DynamicType = ()>,
+{
+    *req.kind.group == *T::group(&()) && *req.kind.kind == *T::kind(&())
 }
 
 // === AuthorizationPolicy ===
@@ -110,7 +124,7 @@ fn admit_authz_policy(req: AdmissionRequest) -> AdmissionResponse {
     let (ns, name, spec) = match parse_spec(req) {
         Ok(s) => s,
         Err(error) => {
-            warn!(%error, "failed to deserialize server from admission request");
+            warn!(%error, "failed to deserialize AuthorizationPolicy");
             return AdmissionResponse::invalid(error);
         }
     };
@@ -129,6 +143,76 @@ fn validate_authz_policy(spec: AuthorizationPolicySpec) -> Result<()> {
         || *spec.target_ref.kind != *Server::kind(&())
     {
         bail!("targetRef must be a policy.linkerd.io Server");
+    }
+
+    Ok(())
+}
+
+// === MeshTLSAuthentication ===
+
+fn admit_meshtls_authn(req: AdmissionRequest) -> AdmissionResponse {
+    let rsp = AdmissionResponse::from(&req);
+    let (ns, name, spec) = match parse_spec(req) {
+        Ok(s) => s,
+        Err(error) => {
+            warn!(%error, "failed to deserialize MeshTLSAuthentication");
+            return AdmissionResponse::invalid(error);
+        }
+    };
+
+    match validate_meshtls_authn(spec) {
+        Ok(()) => rsp,
+        Err(error) => {
+            info!(%error, %ns, %name, "denying MeshTLSAuthentication");
+            rsp.deny(error)
+        }
+    }
+}
+
+fn validate_meshtls_authn(_spec: MeshTLSAuthenticationSpec) -> Result<()> {
+    // TODO parse identity strings
+
+    Ok(())
+}
+
+// === NetworkAuthentication ===
+
+fn admit_network_authn(req: AdmissionRequest) -> AdmissionResponse {
+    let rsp = AdmissionResponse::from(&req);
+    let (ns, name, spec) = match parse_spec(req) {
+        Ok(s) => s,
+        Err(error) => {
+            warn!(%error, "failed to deserialize NetworkAuthentication");
+            return AdmissionResponse::invalid(error);
+        }
+    };
+
+    match validate_network_authn(spec) {
+        Ok(()) => rsp,
+        Err(error) => {
+            info!(%error, %ns, %name, "denying NetworkAuthentication");
+            rsp.deny(error)
+        }
+    }
+}
+
+fn validate_network_authn(spec: NetworkAuthenticationSpec) -> Result<()> {
+    use std::str::FromStr;
+
+    for net in spec.networks.iter() {
+        let cidr = match ipnet::IpNet::from_str(&*net.cidr) {
+            Ok(cidr) => cidr,
+            Err(e) => bail!(anyhow::Error::new(e).context("invalid 'cidr'")),
+        };
+        for except in net.except.iter().flatten() {
+            let except = match ipnet::IpNet::from_str(&*except) {
+                Ok(except) => except,
+                Err(e) => bail!(anyhow::Error::new(e).context("invalid 'except' network")),
+            };
+            if !cidr.contains(&except) {
+                bail!("cidr '{}' does not include exception '{}'", cidr, except);
+            }
+        }
     }
 
     Ok(())
@@ -180,17 +264,24 @@ fn validate_server(ns: &str, name: &str, spec: ServerSpec, index: &Index) -> Res
 // === utils ===
 
 fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(String, String, T)> {
-    let obj = req.object.ok_or_else(|| anyhow!("missing server"))?;
+    let obj = req
+        .object
+        .ok_or_else(|| anyhow!("admission request missing 'object"))?;
+
     let ns = obj
         .namespace()
-        .ok_or_else(|| anyhow!("no 'namespace' field set on server"))?;
+        .ok_or_else(|| anyhow!("admission request missing 'namespace'"))?;
     let name = obj.name();
-    let data = obj
-        .data
-        .get("spec")
-        .cloned()
-        .ok_or_else(|| anyhow!("no 'spec' field set on server"))?;
-    let spec = serde_json::from_value(data)?;
+
+    let spec = {
+        let data = obj
+            .data
+            .get("spec")
+            .cloned()
+            .ok_or_else(|| anyhow!("admission request missing 'spec'"))?;
+        serde_json::from_value(data)?
+    };
+
     Ok((ns, name, spec))
 }
 
