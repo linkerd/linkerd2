@@ -3,12 +3,15 @@ name: Policy Controller
 on:
   pull_request:
     paths:
-      - 'Cargo.lock'
-      - 'Cargo.toml'
-      - 'deny.toml'
-      - 'rust-toolchain'
-      - 'policy-controller/**'
-      - '.github/workflows/policy_controller.yml'
+      - .github/workflows/policy_controller.yml
+      - Cargo.lock
+      - Cargo.toml
+      - charts/linkerd-control-plane/templates/destination-rbac.yaml
+      - charts/linkerd-crds/templates/policy/**
+      - deny.toml
+      - policy-controller/**
+      - policy-test/**
+      - rust-toolchain
 
 permissions:
   contents: read
@@ -19,6 +22,8 @@ env:
   CARGO_NET_RETRY: 10
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
+  DOCKER_REGISTRY: ghcr.io/linkerd
+  LINKERD_DOCKER_REGISTRY: ghcr.io/linkerd
 
 jobs:
   fmt:
@@ -58,7 +63,7 @@ jobs:
       - run: |
           bin/scurl -o /usr/local/bin/cargo-action-fmt "https://github.com/olix0r/cargo-action-fmt/releases/download/release%2F${CARGO_ACTION_FMT_VERSION}/cargo-action-fmt-x86_64-unknown-linux-gnu"
           chmod 755 /usr/local/bin/cargo-action-fmt
-      - run: cargo fetch
+      - run: cargo fetch --locked
       - run: cargo clippy --frozen --all --no-deps --message-format=json | cargo-action-fmt
 
   check:
@@ -71,7 +76,7 @@ jobs:
       - run: |
           bin/scurl -o /usr/local/bin/cargo-action-fmt "https://github.com/olix0r/cargo-action-fmt/releases/download/release%2F${CARGO_ACTION_FMT_VERSION}/cargo-action-fmt-x86_64-unknown-linux-gnu"
           chmod 755 /usr/local/bin/cargo-action-fmt
-      - run: cargo fetch
+      - run: cargo fetch --locked
       # Check each crate independently to ensure its Cargo.toml is sufficient.
       - run: |
           for toml in $(find . -mindepth 2 -name Cargo.toml | sort -r)
@@ -89,9 +94,9 @@ jobs:
       image: docker://rust:1.59.0
     steps:
       - uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
-      - run: cargo fetch
-      - run: cargo test --workspace --frozen --no-run
-      - run: cargo test --workspace --frozen
+      - run: cargo fetch --locked
+      - run: cargo test --workspace --exclude=linkerd-policy-test --frozen --no-run
+      - run: cargo test --workspace --exclude=linkerd-policy-test --frozen
 
   rust-toolchain:
     name: rust toolchain
@@ -120,3 +125,119 @@ jobs:
           done
 
           exit $ex
+
+  docker_build:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        component:
+          - controller
+          - policy-controller
+          - proxy
+    name: Docker build (${{ matrix.component }})
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
+      - uses: ./.github/actions/docker-build
+        with:
+          docker-registry: ${{ env.DOCKER_REGISTRY }}
+          docker-target: linux-amd64
+          component: ${{ matrix.component }}
+      - name: Create artifact with CLI and image archives
+        env:
+          ARCHIVES: /home/runner/archives
+        run: |
+          mkdir -p $ARCHIVES
+          docker save "$DOCKER_REGISTRY/${{ matrix.component }}:$TAG" > $ARCHIVES/${{ matrix.component }}.tar
+      - name: Upload artifact
+        uses: actions/upload-artifact@6673cd052c4cd6fcf4b4e6e60ea986c889389535
+        with:
+          name: image-archives
+          path: ${{ env.ARCHIVES }}
+
+  integration_tests:
+    needs: [docker_build]
+    name: Policy controller integration tests
+    runs-on: ubuntu-20.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
+
+      - name: Setup path
+        run: |
+          mkdir -p $HOME/bin
+          export PATH="$HOME/bin:$PATH"
+          echo "PATH=$PATH" >> $GITHUB_ENV
+      - name: Install kubectl
+        run: |
+          bin/scurl -vo $HOME/bin/kubectl "https://dl.k8s.io/release/$(bin/scurl https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+            && chmod 755 $HOME/bin/kubectl
+          kubectl version --client
+      - name: Install k3d
+        run: |
+          bin/scurl -v https://raw.githubusercontent.com/rancher/k3d/main/install.sh \
+            | USE_SUDO=false K3D_INSTALL_DIR=$HOME/bin bash
+          k3d --version
+
+      # Go is needed to build the CLI.
+      - uses: actions/setup-go@f6164bd8c8acb4a71fb2791a8b6c4024ff038dab
+        with:
+          go-version: '1.17'
+      - name: Build the Linkerd CLI
+        run: |
+          # Compile the linkerd CLI
+          bin/linkerd version --short --client
+
+      - name: Create cluster
+        run: |
+          k3d cluster create --no-lb --k3s-arg "--disable=servicelb,traefik@server:0"
+          kubectl version --short
+
+      - name: Download image archives
+        uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
+        with:
+          name: image-archives
+          path: image-archives
+      - name: Load images
+        run: |
+          docker load <image-archives/controller.tar
+          docker load <image-archives/policy-controller.tar
+          docker load <image-archives/proxy.tar
+          docker pull $DOCKER_REGISTRY/proxy-init:v1.5.3
+          docker image ls | grep $DOCKER_REGISTRY
+          tag="$(CI_FORCE_CLEAN=1 bin/root-tag)"
+          k3d image import \
+            $DOCKER_REGISTRY/controller:$tag \
+            $DOCKER_REGISTRY/policy-controller:$tag \
+            $DOCKER_REGISTRY/proxy:$tag \
+            $DOCKER_REGISTRY/proxy-init:v1.5.3
+
+      - run: bin/linkerd check --pre --wait=1m
+      - run: bin/linkerd install | kubectl apply -f -
+      - name: Wait for pods to be ready
+        run: |
+          if ! kubectl wait pods -n linkerd -l linkerd.io/control-plane-ns --for condition=Ready --timeout=1m ; then
+            kubectl describe po -n linkerd >&2
+            exit 1
+          fi
+      - run: bin/linkerd check --wait=1m
+
+      - name: Install rust
+        run: |
+          rm -rf $HOME/.cargo
+          bin/scurl -v https://sh.rustup.rs \
+            | sh -s -- -y --default-toolchain $(cat rust-toolchain)
+          source $HOME/.cargo/env
+          echo "PATH=$PATH" >> $GITHUB_ENV
+          cargo version
+
+      - name: Install cargo-action-fmt
+        run: |
+          bin/scurl -o /usr/local/bin/cargo-action-fmt "https://github.com/olix0r/cargo-action-fmt/releases/download/release%2F${CARGO_ACTION_FMT_VERSION}/cargo-action-fmt-x86_64-unknown-linux-gnu"
+          chmod 755 /usr/local/bin/cargo-action-fmt
+
+      - run: cargo fetch --locked
+      - run: cargo test -p linkerd-policy-test --frozen --no-run | cargo-action-fmt
+      - run: cargo test -p linkerd-policy-test --frozen

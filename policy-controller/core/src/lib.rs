@@ -63,7 +63,7 @@ pub enum ClientAuthentication {
     /// Indicates that clients need not be authenticated.
     Unauthenticated,
 
-    /// Indicates that clients must use TLS bu need not provide a client identity.
+    /// Indicates that clients must use TLS but need not provide a client identity.
     TlsUnauthenticated,
 
     /// Indicates that clients must use mutually-authenticated TLS.

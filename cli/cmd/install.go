@@ -63,6 +63,9 @@ var (
 	templatesCrdFiles = []string{
 		"templates/policy/server.yaml",
 		"templates/policy/serverauthorization.yaml",
+		"templates/policy/authorizationpolicy.yaml",
+		"templates/policy/meshtlsauthentication.yaml",
+		"templates/policy/networkauthentication.yaml",
 		"templates/serviceprofile.yaml",
 	}
 

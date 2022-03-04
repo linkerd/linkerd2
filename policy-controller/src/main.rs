@@ -129,7 +129,7 @@ async fn main() -> Result<()> {
         runtime.shutdown_handle(),
     ));
 
-    let runtime = runtime.spawn_server(|| admission::Service { index });
+    let runtime = runtime.spawn_server(|| admission::AdmissionService { index });
 
     // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
     // complete before exiting.

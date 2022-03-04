@@ -430,6 +430,237 @@ spec:
         type: string
         description: The server that this grants access to
         jsonPath: .spec.server.name
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: authorizationpolicies.policy.linkerd.io
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+  labels:
+    helm.sh/chart: linkerd-control-plane-1.1.8-edge
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  group: policy.linkerd.io
+  scope: Namespaced
+  names:
+    kind: AuthorizationPolicy
+    plural: authorizationpolicies
+    singular: authorizationpolicy
+    shortNames: []
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              description: >-
+                Authorizes clients to communicate with Linkerd-proxied servers.
+              type: object
+              required: [targetRef, requiredAuthenticationRefs]
+              properties:
+                targetRef:
+                  description: >-
+                    TODO ...
+                  type: object
+                  # Modified from the gateway API.
+                  # Copyright 2020 The Kubernetes Authors
+                  properties:
+                    group:
+                      description: >-
+                        Group is the group of the referent. When empty, the Kubernetes core API
+                        group is inferred.
+                      maxLength: 253
+                      pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                      type: string
+                    kind:
+                      description: >-
+                        Kind is the kind of the referent.
+                      maxLength: 63
+                      minLength: 1
+                      pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                      type: string
+                    name:
+                      description: Name is the name of the referent.
+                      maxLength: 253
+                      minLength: 1
+                      type: string
+                  required:
+                    - kind
+                    - name
+                requiredAuthenticationRefs:
+                  description: >-
+                    RequiredAuthenticationRefs enumerates a set of required authentications
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      group:
+                        description: >-
+                          Group is the group of the referent. When empty, the Kubernetes core API
+                          group is inferred."
+                        maxLength: 253
+                        pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                        type: string
+                      kind:
+                        description: >-
+                          Kind is the kind of the referent.
+                        maxLength: 63
+                        minLength: 1
+                        pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                        type: string
+                      name:
+                        description: >-
+                          Name is the name of the referent. When unspecified, this authentication
+                          refers to all resources of the specified Group and Kind in the specified
+                          namespace.
+                        maxLength: 253
+                        minLength: 1
+                        type: string
+                      namespace:
+                        description: >-
+                          Name is the name of the referent. When unspecified, this authentication
+                          refers to the local namespace.
+                        maxLength: 253
+                        type: string
+                    required:
+                      - kind
+                      - name
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: meshtlsauthentications.policy.linkerd.io
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+  labels:
+    helm.sh/chart: linkerd-control-plane-1.1.8-edge
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  group: policy.linkerd.io
+  scope: Namespaced
+  names:
+    kind: MeshTLSAuthentication
+    plural: meshtlsauthentications
+    singular: meshtlsauthentication
+    shortNames: []
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              description: >-
+                TODO
+              type: object
+              oneOf:
+                - required: [identities]
+                - required: [identityRefs]
+              properties:
+                identities:
+                  description: >-
+                    Authorizes clients with the provided proxy identity strings (as provided via
+                    MTLS)
+
+                    The `*` prefix can be used to match all identities in
+                    a domain. An identity string of `*` indicates that
+                    all authentication clients are authorized.
+                  type: array
+                  items:
+                    type: string
+                    pattern: '^(\*|[a-z0-9]([-a-z0-9]*[a-z0-9])?)(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$'
+                identityRefs:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      group:
+                        description: >-
+                          Group is the group of the referent. When empty, the Kubernetes core API
+                          group is inferred."
+                        maxLength: 253
+                        pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                        type: string
+                      kind:
+                        description: >-
+                          Kind is the kind of the referent.
+                        maxLength: 63
+                        minLength: 1
+                        pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                        type: string
+                      name:
+                        description: >-
+                          Name is the name of the referent. When unspecified, this refers to all
+                          resources of the specified Group and Kind in the specified namespace.
+                        maxLength: 253
+                        minLength: 1
+                        type: string
+                      namespace:
+                        description: >-
+                          Name is the name of the referent. When unspecified, this authentication
+                          refers to the local namespace.
+                        maxLength: 253
+                        type: string
+                    required:
+                      - kind
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: networkauthentications.policy.linkerd.io
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+  labels:
+    helm.sh/chart: linkerd-control-plane-1.1.8-edge
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  group: policy.linkerd.io
+  scope: Namespaced
+  names:
+    kind: NetworkAuthentication
+    plural: networkauthentications
+    singular: networkauthentication
+    shortNames: []
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              description: >-
+                TODO
+              type: object
+              required: [networks]
+              properties:
+                networks:
+                  description: >-
+                    The list of networks that this authentication applies to.
+                  type: array
+                  items:
+                    type: object
+                    required: [cidr]
+                    properties:
+                      cidr:
+                        description: >-
+                          The CIDR of the network that this authentication
+                        type: string
+                      except:
+                        type: array
+                        items:
+                          type: string
 ---
 ###
 ### Service Profile CRD
@@ -878,7 +1109,11 @@ webhooks:
   - operations: ["CREATE", "UPDATE"]
     apiGroups: ["policy.linkerd.io"]
     apiVersions: ["v1alpha1", "v1beta1"]
-    resources: ["servers"]
+    resources:
+    - authorizationpolicies
+    - networkauthentications
+    - meshtlsauthentications
+    - servers
   sideEffects: None
 ---
 apiVersion: rbac.authorization.k8s.io/v1
