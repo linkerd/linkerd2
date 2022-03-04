@@ -857,6 +857,7 @@ dependencies = [
  "linkerd-policy-controller-k8s-api",
  "linkerd-policy-controller-k8s-index",
  "parking_lot 0.12.0",
+ "serde",
  "serde_json",
  "thiserror",
  "tokio",

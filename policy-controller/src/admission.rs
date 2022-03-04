@@ -5,9 +5,9 @@ use crate::api::policy::{
 use anyhow::{anyhow, bail, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
-use k8s_openapi::serde::de::DeserializeOwned;
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use linkerd_policy_controller_k8s_index::{Index, SharedIndex};
+use serde::de::DeserializeOwned;
 use std::task;
 use thiserror::Error;
 use tracing::{debug, info, warn};
@@ -25,6 +25,10 @@ pub enum Error {
     #[error("failed to encode json response: {0}")]
     Json(#[from] serde_json::Error),
 }
+
+#[derive(Debug, thiserror::Error)]
+#[error(transparent)]
+pub struct ParseError(#[from] anyhow::Error);
 
 type Review = kube::core::admission::AdmissionReview<DynamicObject>;
 type AdmissionRequest = kube::core::admission::AdmissionRequest<DynamicObject>;
@@ -63,16 +67,17 @@ impl hyper::service::Service<Request<Body>> for AdmissionService {
                 }
             };
 
-            let rsp = match review.try_into() {
-                Ok(req) => {
+            let rsp = review
+                .try_into()
+                .map_err(anyhow::Error::from)
+                .and_then(|req| {
                     debug!(?req);
                     admit(req, &index)
-                }
-                Err(error) => {
+                })
+                .unwrap_or_else(|error| {
                     warn!(%error, "invalid admission request");
                     AdmissionResponse::invalid(error)
-                }
-            };
+                });
 
             // If validation fails, deny admission.
             debug!(?rsp);
@@ -81,7 +86,7 @@ impl hyper::service::Service<Request<Body>> for AdmissionService {
     }
 }
 
-fn admit(req: AdmissionRequest, index: &SharedIndex) -> AdmissionResponse {
+fn admit(req: AdmissionRequest, index: &SharedIndex) -> Result<AdmissionResponse> {
     if is_kind::<AuthorizationPolicy>(&req) {
         return admit_authz_policy(req);
     }
@@ -96,18 +101,14 @@ fn admit(req: AdmissionRequest, index: &SharedIndex) -> AdmissionResponse {
 
     if is_kind::<Server>(&req) {
         return admit_server(req, index);
-    }
+    };
 
-    info!(
-        group = %req.kind.group,
-        version = %req.kind.version,
-        kind = %req.kind.kind,
-        "unsupported resource type",
-    );
-    AdmissionResponse::invalid(format_args!(
+    bail!(
         "unsupported resource type: {}.{}.{}",
-        req.kind.group, req.kind.version, req.kind.kind
-    ))
+        req.kind.group,
+        req.kind.version,
+        req.kind.kind
+    )
 }
 
 fn is_kind<T>(req: &AdmissionRequest) -> bool
@@ -119,21 +120,15 @@ where
 
 // === AuthorizationPolicy ===
 
-fn admit_authz_policy(req: AdmissionRequest) -> AdmissionResponse {
+fn admit_authz_policy(req: AdmissionRequest) -> Result<AdmissionResponse> {
     let rsp = AdmissionResponse::from(&req);
-    let (ns, name, spec) = match parse_spec(req) {
-        Ok(s) => s,
-        Err(error) => {
-            warn!(%error, "failed to deserialize AuthorizationPolicy");
-            return AdmissionResponse::invalid(error);
-        }
-    };
-
+    let (ns, name, spec) =
+        parse_spec(req).map_err(|e| e.context("failed to deserialize AuthorizationPolicy"))?;
     match validate_authz_policy(spec) {
-        Ok(()) => rsp,
+        Ok(()) => Ok(rsp),
         Err(error) => {
             info!(%error, %ns, %name, "denying AuthorizationPolicy");
-            rsp.deny(error)
+            Ok(rsp.deny(error))
         }
     }
 }
@@ -150,21 +145,15 @@ fn validate_authz_policy(spec: AuthorizationPolicySpec) -> Result<()> {
 
 // === MeshTLSAuthentication ===
 
-fn admit_meshtls_authn(req: AdmissionRequest) -> AdmissionResponse {
+fn admit_meshtls_authn(req: AdmissionRequest) -> Result<AdmissionResponse> {
     let rsp = AdmissionResponse::from(&req);
-    let (ns, name, spec) = match parse_spec(req) {
-        Ok(s) => s,
-        Err(error) => {
-            warn!(%error, "failed to deserialize MeshTLSAuthentication");
-            return AdmissionResponse::invalid(error);
-        }
-    };
-
+    let (ns, name, spec) =
+        parse_spec(req).map_err(|e| e.context("failed to deserialize MeshTLSAuthentication"))?;
     match validate_meshtls_authn(spec) {
-        Ok(()) => rsp,
+        Ok(()) => Ok(rsp),
         Err(error) => {
             info!(%error, %ns, %name, "denying MeshTLSAuthentication");
-            rsp.deny(error)
+            Ok(rsp.deny(error))
         }
     }
 }
@@ -177,21 +166,15 @@ fn validate_meshtls_authn(_spec: MeshTLSAuthenticationSpec) -> Result<()> {
 
 // === NetworkAuthentication ===
 
-fn admit_network_authn(req: AdmissionRequest) -> AdmissionResponse {
+fn admit_network_authn(req: AdmissionRequest) -> Result<AdmissionResponse> {
     let rsp = AdmissionResponse::from(&req);
-    let (ns, name, spec) = match parse_spec(req) {
-        Ok(s) => s,
-        Err(error) => {
-            warn!(%error, "failed to deserialize NetworkAuthentication");
-            return AdmissionResponse::invalid(error);
-        }
-    };
-
+    let (ns, name, spec) =
+        parse_spec(req).map_err(|e| e.context("failed to deserialize NetworkAuthentication"))?;
     match validate_network_authn(spec) {
-        Ok(()) => rsp,
+        Ok(()) => Ok(rsp),
         Err(error) => {
             info!(%error, %ns, %name, "denying NetworkAuthentication");
-            rsp.deny(error)
+            Ok(rsp.deny(error))
         }
     }
 }
@@ -220,21 +203,15 @@ fn validate_network_authn(spec: NetworkAuthenticationSpec) -> Result<()> {
 
 // === Server ===
 
-fn admit_server(req: AdmissionRequest, index: &SharedIndex) -> AdmissionResponse {
+fn admit_server(req: AdmissionRequest, index: &SharedIndex) -> Result<AdmissionResponse> {
     let rsp = AdmissionResponse::from(&req);
-    let (ns, name, spec) = match parse_spec(req) {
-        Ok(s) => s,
-        Err(error) => {
-            warn!(%error, "failed to deserialize server from admission request");
-            return AdmissionResponse::invalid(error);
-        }
-    };
-
+    let (ns, name, spec) =
+        parse_spec(req).map_err(|e| e.context("failed to deserialize Server"))?;
     match validate_server(&ns, &name, spec, &*index.read()) {
-        Ok(()) => rsp,
+        Ok(()) => Ok(rsp),
         Err(error) => {
             info!(%error, %ns, %name, "denying server");
-            rsp.deny(error)
+            Ok(rsp.deny(error))
         }
     }
 }
