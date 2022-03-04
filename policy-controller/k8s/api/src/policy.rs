@@ -33,7 +33,7 @@ impl TargetRef {
     }
 
     /// Checks whether the target references the given namespaced resource
-    pub fn targets_resource<T>(&self, resource: T, default_ns: &str) -> bool
+    pub fn targets_resource<T>(&self, resource: &T, default_ns: &str) -> bool
     where
         T: kube::Resource,
         T::DynamicType: Default,
@@ -68,7 +68,7 @@ impl TargetRef {
     }
 
     /// Checks whether the target references the given cluster-level resource
-    pub fn targets_cluster_resource<T>(&self, resource: T) -> bool
+    pub fn targets_cluster_resource<T>(&self, resource: &T) -> bool
     where
         T: kube::Resource,
         T::DynamicType: Default,

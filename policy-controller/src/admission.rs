@@ -171,14 +171,14 @@ fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(String, Str
 
 impl Validate for AuthorizationPolicySpec {
     fn validate(&self, _ns: &str, _name: &str, _idx: &Index) -> Result<()> {
-        // TODO support namespace references.
+        // TODO support namespace references?
         if self.target_ref.targets_kind::<Server>() {
             bail!("invalid targetRef kind");
         }
 
         for authn in self.required_authentication_refs.iter() {
-            if !authn.target_ref.targets_kind::<MeshTLSAuthentication>()
-                && !authn.target_ref.targets_kind::<NetworkAuthentication>()
+            if !authn.targets_kind::<MeshTLSAuthentication>()
+                && !authn.targets_kind::<NetworkAuthentication>()
             {
                 bail!("invalid required authentiation kind");
             }
@@ -192,8 +192,8 @@ impl Validate for MeshTLSAuthenticationSpec {
     fn validate(&self, _ns: &str, _name: &str, _idx: &Index) -> Result<()> {
         // The CRD validates identity strings, but does not validate identity references.
 
-        // TODO support namespace references.
         for id in self.identity_refs.iter().flatten() {
+            // TODO support namespace references?
             if !id.targets_kind::<ServiceAccount>() {
                 bail!("invalid identity target");
             }
@@ -214,6 +214,13 @@ impl Validate for NetworkAuthenticationSpec {
             for except in net.except.iter().flatten() {
                 let except = ipnet::IpNet::from_str(&*except)
                     .map_err(|e| anyhow!(e).context("invalid 'except' network"))?;
+                if except.contains(&cidr) {
+                    bail!(
+                        "cidr '{}' is completely negated by exception '{}'",
+                        cidr,
+                        except
+                    );
+                }
                 if !cidr.contains(&except) {
                     bail!("cidr '{}' does not include exception '{}'", cidr, except);
                 }
