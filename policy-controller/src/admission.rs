@@ -218,16 +218,12 @@ impl Validate for NetworkAuthenticationSpec {
         use std::str::FromStr;
 
         for net in self.networks.iter() {
-            let cidr = match ipnet::IpNet::from_str(&*net.cidr) {
-                Ok(cidr) => cidr,
-                Err(e) => bail!(anyhow!(e).context("invalid 'cidr'")),
-            };
+            let cidr = ipnet::IpNet::from_str(&*net.cidr)
+                .map_err(|e| anyhow!(e).context("invalid 'cidr'"))?;
 
             for except in net.except.iter().flatten() {
-                let except = match ipnet::IpNet::from_str(&*except) {
-                    Ok(except) => except,
-                    Err(e) => bail!(anyhow!(e).context("invalid 'except' network")),
-                };
+                let except = ipnet::IpNet::from_str(&*except)
+                    .map_err(|e| anyhow!(e).context("invalid 'except' network"))?;
                 if !cidr.contains(&except) {
                     bail!("cidr '{}' does not include exception '{}'", cidr, except);
                 }
