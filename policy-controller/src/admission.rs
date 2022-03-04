@@ -128,16 +128,20 @@ fn admit(req: AdmissionRequest, index: &SharedIndex) -> Result<AdmissionResponse
 
 fn is_kind<T>(req: &AdmissionRequest) -> bool
 where
-    T: Resource<DynamicType = ()>,
+    T: Resource,
+    T::DynamicType: Default,
 {
-    *req.kind.group == *T::group(&()) && *req.kind.kind == *T::kind(&())
+    let dt = Default::default();
+    *req.kind.group == *T::group(&dt) && *req.kind.kind == *T::kind(&dt)
 }
 
 fn targets_kind<T>(tgt: &TargetRef) -> bool
 where
-    T: Resource<DynamicType = ()>,
+    T: Resource,
+    T::DynamicType: Default,
 {
-    tgt.group.as_deref() == Some(&*T::group(&())) && *tgt.kind == *T::kind(&())
+    let dt = Default::default();
+    tgt.group.as_deref() == Some(&*T::group(&dt)) && *tgt.kind == *T::kind(&dt)
 }
 
 fn admit_kind<T: DeserializeOwned + Validate>(
