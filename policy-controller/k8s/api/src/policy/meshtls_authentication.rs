@@ -17,6 +17,6 @@ use super::TargetRef;
 )]
 #[serde(rename_all = "camelCase")]
 pub struct MeshTLSAuthenticationSpec {
-    pub identities: Vec<String>,
-    pub identity_refs: Vec<TargetRef>,
+    pub identities: Option<Vec<String>>,
+    pub identity_refs: Option<Vec<TargetRef>>,
 }

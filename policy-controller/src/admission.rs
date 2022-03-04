@@ -5,7 +5,9 @@ use crate::api::policy::{
 use anyhow::{anyhow, bail, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
+use k8s_openapi::api::core::v1::ServiceAccount;
 use kube::{core::DynamicObject, Resource, ResourceExt};
+use linkerd_policy_controller_k8s_api::policy::TargetRef;
 use linkerd_policy_controller_k8s_index::{Index, SharedIndex};
 use serde::de::DeserializeOwned;
 use std::task;
@@ -131,6 +133,13 @@ where
     *req.kind.group == *T::group(&()) && *req.kind.kind == *T::kind(&())
 }
 
+fn targets_kind<T>(tgt: &TargetRef) -> bool
+where
+    T: Resource<DynamicType = ()>,
+{
+    tgt.group.as_deref() == Some(&*T::group(&())) && *tgt.kind == *T::kind(&())
+}
+
 fn admit_kind<T: DeserializeOwned + Validate>(
     req: AdmissionRequest,
     index: &SharedIndex,
@@ -171,7 +180,7 @@ fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(String, Str
 }
 
 impl Validate for AuthorizationPolicySpec {
-    fn validate(&self, _: &str, _: &str, _: &Index) -> Result<()> {
+    fn validate(&self, _ns: &str, _name: &str, _idx: &Index) -> Result<()> {
         if self.target_ref.group.as_deref() != Some(&*Server::group(&()))
             || *self.target_ref.kind != *Server::kind(&())
         {
@@ -183,15 +192,21 @@ impl Validate for AuthorizationPolicySpec {
 }
 
 impl Validate for MeshTLSAuthenticationSpec {
-    fn validate(&self, _: &str, _: &str, _: &Index) -> Result<()> {
-        // TODO parse identity strings
+    fn validate(&self, _ns: &str, _name: &str, _idx: &Index) -> Result<()> {
+        // TODO validate identity strings
+
+        for id in self.identity_refs.iter().flatten() {
+            if !targets_kind::<ServiceAccount>(id) {
+                bail!("invalid identity target");
+            }
+        }
 
         Ok(())
     }
 }
 
 impl Validate for NetworkAuthenticationSpec {
-    fn validate(&self, _: &str, _: &str, _: &Index) -> Result<()> {
+    fn validate(&self, _ns: &str, _name: &str, _idx: &Index) -> Result<()> {
         use std::str::FromStr;
 
         for net in self.networks.iter() {
@@ -199,6 +214,7 @@ impl Validate for NetworkAuthenticationSpec {
                 Ok(cidr) => cidr,
                 Err(e) => bail!(anyhow::Error::new(e).context("invalid 'cidr'")),
             };
+
             for except in net.except.iter().flatten() {
                 let except = match ipnet::IpNet::from_str(&*except) {
                     Ok(except) => except,
