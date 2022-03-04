@@ -7,7 +7,6 @@ use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
 use k8s_openapi::api::core::v1::ServiceAccount;
 use kube::{core::DynamicObject, Resource, ResourceExt};
-use linkerd_policy_controller_k8s_api::policy::TargetRef;
 use linkerd_policy_controller_k8s_index::{Index, SharedIndex};
 use serde::de::DeserializeOwned;
 use std::task;
@@ -131,15 +130,6 @@ where
     *req.kind.group == *T::group(&dt) && *req.kind.kind == *T::kind(&dt)
 }
 
-fn targets_kind<T>(tgt: &TargetRef) -> bool
-where
-    T: Resource,
-    T::DynamicType: Default,
-{
-    let dt = Default::default();
-    tgt.group.as_deref() == Some(&*T::group(&dt)) && *tgt.kind == *T::kind(&dt)
-}
-
 fn admit_spec<T: DeserializeOwned + Validate>(
     req: AdmissionRequest,
     index: &SharedIndex,
@@ -182,13 +172,13 @@ fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(String, Str
 impl Validate for AuthorizationPolicySpec {
     fn validate(&self, _ns: &str, _name: &str, _idx: &Index) -> Result<()> {
         // TODO support namespace references.
-        if targets_kind::<Server>(&self.target_ref) {
+        if self.target_ref.targets_kind::<Server>() {
             bail!("invalid targetRef kind");
         }
 
         for authn in self.required_authentication_refs.iter() {
-            if !targets_kind::<MeshTLSAuthentication>(&authn.target_ref)
-                && !targets_kind::<NetworkAuthentication>(&authn.target_ref)
+            if !authn.target_ref.targets_kind::<MeshTLSAuthentication>()
+                && !authn.target_ref.targets_kind::<NetworkAuthentication>()
             {
                 bail!("invalid required authentiation kind");
             }
@@ -204,7 +194,7 @@ impl Validate for MeshTLSAuthenticationSpec {
 
         // TODO support namespace references.
         for id in self.identity_refs.iter().flatten() {
-            if !targets_kind::<ServiceAccount>(id) {
+            if !id.targets_kind::<ServiceAccount>() {
                 bail!("invalid identity target");
             }
         }

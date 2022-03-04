@@ -12,9 +12,21 @@ pub use self::{
     server_authorization::{ServerAuthorization, ServerAuthorizationSpec},
 };
 
-#[derive(Default, serde::Deserialize, serde::Serialize, Clone, Debug, schemars::JsonSchema)]
+/// Targets a resource--or resource type--within a the same namespace.
+#[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 pub struct TargetRef {
     pub group: Option<String>,
     pub kind: String,
     pub name: Option<String>,
+}
+
+impl TargetRef {
+    pub fn targets_kind<T>(&self) -> bool
+    where
+        T: kube::Resource,
+        T::DynamicType: Default,
+    {
+        let dt = Default::default();
+        self.group.as_deref() == Some(&*T::group(&dt)) && *self.kind == *T::kind(&dt)
+    }
 }
