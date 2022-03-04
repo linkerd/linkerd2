@@ -11,7 +11,7 @@ metadata:
 spec:
   group: policy.linkerd.io
   names:
-    # kind: Server
+    kind: Server
     plural: servers
     singular: server
     shortNames: [srv]
