@@ -99,19 +99,19 @@ fn json_response(rsp: AdmissionReview) -> Result<Response<Body>, Error> {
 
 fn admit(req: AdmissionRequest, index: &SharedIndex) -> Result<AdmissionResponse> {
     if is_kind::<AuthorizationPolicy>(&req) {
-        return admit_kind::<AuthorizationPolicySpec>(req, index);
+        return admit_spec::<AuthorizationPolicySpec>(req, index);
     }
 
     if is_kind::<MeshTLSAuthentication>(&req) {
-        return admit_kind::<MeshTLSAuthenticationSpec>(req, index);
+        return admit_spec::<MeshTLSAuthenticationSpec>(req, index);
     }
 
     if is_kind::<NetworkAuthentication>(&req) {
-        return admit_kind::<NetworkAuthenticationSpec>(req, index);
+        return admit_spec::<NetworkAuthenticationSpec>(req, index);
     }
 
     if is_kind::<Server>(&req) {
-        return admit_kind::<ServerSpec>(req, index);
+        return admit_spec::<ServerSpec>(req, index);
     };
 
     bail!(
@@ -140,7 +140,7 @@ where
     tgt.group.as_deref() == Some(&*T::group(&dt)) && *tgt.kind == *T::kind(&dt)
 }
 
-fn admit_kind<T: DeserializeOwned + Validate>(
+fn admit_spec<T: DeserializeOwned + Validate>(
     req: AdmissionRequest,
     index: &SharedIndex,
 ) -> Result<AdmissionResponse> {
@@ -181,8 +181,17 @@ fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(String, Str
 
 impl Validate for AuthorizationPolicySpec {
     fn validate(&self, _ns: &str, _name: &str, _idx: &Index) -> Result<()> {
+        // TODO support namespace references.
         if targets_kind::<Server>(&self.target_ref) {
             bail!("invalid targetRef kind");
+        }
+
+        for authn in self.required_authentication_refs.iter() {
+            if !targets_kind::<MeshTLSAuthentication>(&authn.target_ref)
+                && !targets_kind::<NetworkAuthentication>(&authn.target_ref)
+            {
+                bail!("invalid required authentiation kind");
+            }
         }
 
         Ok(())
@@ -191,8 +200,9 @@ impl Validate for AuthorizationPolicySpec {
 
 impl Validate for MeshTLSAuthenticationSpec {
     fn validate(&self, _ns: &str, _name: &str, _idx: &Index) -> Result<()> {
-        // TODO validate identity strings
+        // The CRD validates identity strings, but does not validate identity references.
 
+        // TODO support namespace references.
         for id in self.identity_refs.iter().flatten() {
             if !targets_kind::<ServiceAccount>(id) {
                 bail!("invalid identity target");

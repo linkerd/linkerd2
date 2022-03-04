@@ -1,9 +1,14 @@
 use super::TargetRef;
-use kube::CustomResource;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(CustomResource, Default, Deserialize, Serialize, Clone, Debug, JsonSchema)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    kube::CustomResource,
+    serde::Deserialize,
+    serde::Serialize,
+    schemars::JsonSchema,
+)]
 #[kube(
     group = "policy.linkerd.io",
     version = "v1alpha1",
@@ -16,10 +21,10 @@ pub struct AuthorizationPolicySpec {
     pub required_authentication_refs: Vec<RequiredAuthenticationRef>,
 }
 
-#[derive(Default, Deserialize, Serialize, Clone, Debug, JsonSchema)]
+#[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 pub struct RequiredAuthenticationRef {
-    pub group: Option<String>,
-    pub kind: String,
+    #[serde(flatten)]
+    pub target_ref: TargetRef,
+
     pub namespace: Option<String>,
-    pub name: Option<String>,
 }
