@@ -181,9 +181,7 @@ fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(String, Str
 
 impl Validate for AuthorizationPolicySpec {
     fn validate(&self, _ns: &str, _name: &str, _idx: &Index) -> Result<()> {
-        if self.target_ref.group.as_deref() != Some(&*Server::group(&()))
-            || *self.target_ref.kind != *Server::kind(&())
-        {
+        if targets_kind::<Server>(&self.target_ref) {
             bail!("invalid targetRef kind");
         }
 
