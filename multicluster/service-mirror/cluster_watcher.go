@@ -50,6 +50,8 @@ type (
 		eventsQueue             workqueue.RateLimitingInterface
 		requeueLimit            int
 		repairPeriod            time.Duration
+		alive                   bool
+		liveness                chan bool
 		headlessServicesEnabled bool
 	}
 
@@ -156,6 +158,7 @@ func NewRemoteClusterServiceWatcher(
 	link *multicluster.Link,
 	requeueLimit int,
 	repairPeriod time.Duration,
+	liveness chan bool,
 	enableHeadlessSvc bool,
 ) (*RemoteClusterServiceWatcher, error) {
 	remoteAPI, err := k8s.InitializeAPIForConfig(ctx, cfg, false, k8s.Svc, k8s.Endpoint)
@@ -191,6 +194,7 @@ func NewRemoteClusterServiceWatcher(
 		eventsQueue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
 		requeueLimit:            requeueLimit,
 		repairPeriod:            repairPeriod,
+		liveness:                liveness,
 		headlessServicesEnabled: enableHeadlessSvc,
 	}, nil
 }
@@ -860,6 +864,11 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 			case <-ticker.C:
 				ev := RepairEndpoints{}
 				rcsw.eventsQueue.Add(&ev)
+			case alive := <-rcsw.liveness:
+				rcsw.log.Debugf("gateway liveness change from %t to %t", rcsw.alive, alive)
+				rcsw.alive = alive
+				ev := RepairEndpoints{}
+				rcsw.eventsQueue.Add(&ev)
 			case <-rcsw.stopper:
 				return
 			}
@@ -973,23 +982,37 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 		}
 
 		updatedEndpoints := endpoints.DeepCopy()
-		updatedEndpoints.Subsets = []corev1.EndpointSubset{
-			{
-				Addresses: gatewayAddresses,
-				Ports:     rcsw.getEndpointsPorts(updatedService),
-			},
-		}
+		if !rcsw.alive {
+			// The gateway is not alive so the Endpoints update should reflect
+			// that by changing the gateway addresses to not ready. This
+			// ensures that mirror services on the source cluster do not
+			// attempt to send any traffic to the target gateway.
+			updatedEndpoints.Subsets = []corev1.EndpointSubset{
+				{
+					NotReadyAddresses: gatewayAddresses,
+					Ports:             rcsw.getEndpointsPorts(updatedService),
+				},
+			}
+			rcsw.log.Debugf("updated service %s/%s to not ready", updatedService.Namespace, updatedService.Name)
+		} else {
+			updatedEndpoints.Subsets = []corev1.EndpointSubset{
+				{
+					Addresses: gatewayAddresses,
+					Ports:     rcsw.getEndpointsPorts(updatedService),
+				},
+			}
 
-		// If the Service's Endpoints has no Subsets, use an empty Subset locally as well
-		targetService := svc.DeepCopy()
-		targetService.Name = rcsw.targetResourceName(svc.Name)
-		empty, err := rcsw.isEmptyService(targetService)
-		if err != nil {
-			rcsw.log.Errorf("could not check service emptiness: %s", err)
-			continue
-		}
-		if empty {
-			updatedEndpoints.Subsets = []corev1.EndpointSubset{}
+			// If the Service's Endpoints has no Subsets, use an empty Subset locally as well
+			targetService := svc.DeepCopy()
+			targetService.Name = rcsw.targetResourceName(svc.Name)
+			empty, err := rcsw.isEmptyService(targetService)
+			if err != nil {
+				rcsw.log.Errorf("could not check service emptiness: %s", err)
+				continue
+			}
+			if empty {
+				updatedEndpoints.Subsets = []corev1.EndpointSubset{}
+			}
 		}
 
 		if updatedEndpoints.Annotations == nil {

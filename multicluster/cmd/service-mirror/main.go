@@ -180,11 +180,19 @@ func restartClusterWatcher(
 		probeWorker.Stop()
 	}
 
+	// Start probe worker
+	workerMetrics, err := metrics.NewWorkerMetrics(link.TargetClusterName)
+	if err != nil {
+		return fmt.Errorf("failed to create metrics for cluster watcher: %w", err)
+	}
+	probeWorker = servicemirror.NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.TargetClusterName), &link.ProbeSpec, workerMetrics, link.TargetClusterName)
+	probeWorker.Start()
+
+	// Start cluster watcher
 	cfg, err := clientcmd.RESTConfigFromKubeConfig(creds)
 	if err != nil {
 		return fmt.Errorf("unable to parse kube config: %w", err)
 	}
-
 	clusterWatcher, err = servicemirror.NewRemoteClusterServiceWatcher(
 		ctx,
 		namespace,
@@ -193,22 +201,16 @@ func restartClusterWatcher(
 		&link,
 		requeueLimit,
 		repairPeriod,
+		probeWorker.Liveness,
 		enableHeadlessSvc,
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create cluster watcher: %w", err)
 	}
-
 	err = clusterWatcher.Start(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to start cluster watcher: %w", err)
 	}
 
-	workerMetrics, err := metrics.NewWorkerMetrics(link.TargetClusterName)
-	if err != nil {
-		return fmt.Errorf("failed to create metrics for cluster watcher: %w", err)
-	}
-	probeWorker = servicemirror.NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.TargetClusterName), &link.ProbeSpec, workerMetrics, link.TargetClusterName)
-	probeWorker.Start()
 	return nil
 }
