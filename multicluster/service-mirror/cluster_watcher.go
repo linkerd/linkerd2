@@ -435,7 +435,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ctx context.
 			},
 		}
 	} else {
-		rcsw.log.Warnf("gateway for %s/%s does not have ready addresses; skipping subnets", ev.localService.Namespace, ev.localService.Name)
+		rcsw.log.Warnf("gateway for %s/%s does not have ready addresses; skipping endpoint subsets", ev.localService.Namespace, ev.localService.Name)
 	}
 
 	if copiedEndpoints.Annotations == nil {
@@ -604,7 +604,7 @@ func (rcsw *RemoteClusterServiceWatcher) createGatewayEndpoints(ctx context.Cont
 			},
 		}
 	} else {
-		rcsw.log.Warnf("exported service is empty or gateway for %s does not have ready addresses, skipping subsets", serviceInfo)
+		rcsw.log.Warnf("exported service is empty or gateway for %s does not have ready addresses, skipping endpoint subsets", serviceInfo)
 	}
 
 	if rcsw.link.GatewayIdentity != "" {
@@ -998,7 +998,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 					Ports:             rcsw.getEndpointsPorts(updatedService),
 				},
 			}
-			rcsw.log.Debugf("updated service %s/%s to not ready", updatedService.Namespace, updatedService.Name)
+			rcsw.log.Warnf("gateway for service %s/%s does not have ready addresses; updating endpoint subsets to not ready", updatedService.Namespace, updatedService.Name)
 		} else {
 			updatedEndpoints.Subsets = []corev1.EndpointSubset{
 				{
