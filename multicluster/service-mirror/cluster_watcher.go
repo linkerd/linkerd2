@@ -426,11 +426,16 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ctx context.
 	}
 
 	copiedEndpoints := ev.localEndpoints.DeepCopy()
-	copiedEndpoints.Subsets = []corev1.EndpointSubset{
-		{
-			Addresses: gatewayAddresses,
-			Ports:     rcsw.getEndpointsPorts(ev.remoteUpdate),
-		},
+
+	if rcsw.alive {
+		copiedEndpoints.Subsets = []corev1.EndpointSubset{
+			{
+				Addresses: gatewayAddresses,
+				Ports:     rcsw.getEndpointsPorts(ev.remoteUpdate),
+			},
+		}
+	} else {
+		rcsw.log.Warnf("gateway for %s/%s does not have ready addresses; skipping subnets", ev.localService.Namespace, ev.localService.Name)
 	}
 
 	if copiedEndpoints.Annotations == nil {
