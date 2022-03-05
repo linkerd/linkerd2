@@ -591,7 +591,7 @@ func (rcsw *RemoteClusterServiceWatcher) createGatewayEndpoints(ctx context.Cont
 
 	rcsw.log.Infof("Resolved gateway [%v:%d] for %s", gatewayAddresses, rcsw.link.GatewayPort, serviceInfo)
 
-	if !empty && len(gatewayAddresses) > 0 {
+	if rcsw.alive && !empty && len(gatewayAddresses) > 0 {
 		endpointsToCreate.Subsets = []corev1.EndpointSubset{
 			{
 				Addresses: gatewayAddresses,
