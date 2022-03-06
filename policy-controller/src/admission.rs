@@ -4,14 +4,15 @@ use api::policy::ServerSpec;
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
 use kube::{core::DynamicObject, ResourceExt};
-use linkerd_policy_controller_k8s_index::{Index, SharedIndex};
+use linkerd_policy_controller_k8s_index::SharedIndex;
 use std::task;
 use thiserror::Error;
 use tracing::{debug, info, warn};
 
 #[derive(Clone)]
-pub struct Service {
-    pub index: SharedIndex,
+pub struct Admission {
+    client: kube::Client,
+    index: SharedIndex,
 }
 
 #[derive(Debug, Error)]
@@ -23,7 +24,7 @@ pub enum Error {
     Json(#[from] serde_json::Error),
 }
 
-impl hyper::service::Service<Request<Body>> for Service {
+impl hyper::service::Service<Request<Body>> for Admission {
     type Response = Response<Body>;
     type Error = Error;
     type Future = future::BoxFuture<'static, Result<Response<Body>, Error>>;
@@ -42,7 +43,7 @@ impl hyper::service::Service<Request<Body>> for Service {
             ));
         }
 
-        let index = self.index.clone();
+        let admission = self.clone();
         Box::pin(async move {
             let bytes = hyper::body::aggregate(req.into_body()).await?;
             let review: Review = match serde_json::from_reader(bytes.reader()) {
@@ -75,7 +76,7 @@ impl hyper::service::Service<Request<Body>> for Service {
             };
 
             // If validation fails, deny admission.
-            let rsp = match validate(&ns, &name, &review_spec, &*index.read()) {
+            let rsp = match admission.validate(&ns, &name, review_spec).await {
                 Ok(()) => rsp,
                 Err(error) => {
                     info!(%error, %ns, %name, "Denying server");
@@ -86,6 +87,59 @@ impl hyper::service::Service<Request<Body>> for Service {
             json_response(rsp.into_review())
         })
     }
+}
+
+impl Admission {
+    pub fn new(client: kube::Client, index: SharedIndex) -> Self {
+        Self { client, index }
+    }
+
+    /// Checks that `spec` doesn't select the same pod/ports as other existing Servers
+    //
+    // TODO(ver) this isn't rigorous about detecting servers that select the same port if one port
+    // specifies a numeric port and the other specifies the port's name.
+    async fn validate(self, ns: &str, name: &str, spec: api::policy::ServerSpec) -> Result<()> {
+        // First, check the index for conflicts, this is relatively cheap to do
+        // to find a problem and avoids hitting the API to find most problems.
+        if let Some(nsidx) = self.index.read().get_ns(ns) {
+            for (srvname, srv) in nsidx.servers.iter() {
+                if srvname != name
+                    && *srv.port() == spec.port
+                    && overlaps(srv.pod_selector(), &spec.pod_selector)
+                {
+                    bail!("identical server spec already exists");
+                }
+            }
+        }
+
+        // If we didn't find a problem by checking the index, then fallback to
+        // checking the API. The index may not be 100% up-to-date (especially in
+        // CI), so this is a more robust check (at the cost of an API call).
+        let servers = kube::Api::<api::policy::Server>::namespaced(self.client, ns)
+            .list(&kube::api::ListParams::default())
+            .await?;
+        for server in servers.items.into_iter() {
+            if server.name() != name
+                && server.spec.port == spec.port
+                && overlaps(&server.spec.pod_selector, &spec.pod_selector)
+            {
+                bail!("identical server spec already exists");
+            }
+        }
+
+        Ok(())
+    }
+}
+
+/// Detects whether two pod selectors can select the same pod
+//
+// TODO(ver) We can probably detect overlapping selectors more effectively.
+fn overlaps(left: &api::labels::Selector, right: &api::labels::Selector) -> bool {
+    if left.selects_all() || right.selects_all() {
+        return true;
+    }
+
+    left == right
 }
 
 fn json_response(rsp: AdmissionReview) -> Result<Response<Body>, Error> {
@@ -116,26 +170,4 @@ fn parse_server(req: AdmissionRequest) -> Result<(String, String, api::policy::S
         .ok_or_else(|| anyhow!("no 'spec' field set on server"))?;
     let spec = serde_json::from_value::<ServerSpec>(data)?;
     Ok((ns, name, spec))
-}
-
-/// Validates a new server (`review`) against existing `servers`.
-fn validate(ns: &str, name: &str, spec: &api::policy::ServerSpec, index: &Index) -> Result<()> {
-    if let Some(nsidx) = index.get_ns(ns) {
-        for (srvname, srv) in nsidx.servers.iter() {
-            // If the port and pod selectors select the same resources, fail the admission of the
-            // server. Ignore existing instances of this Server (e.g., if the server's metadata is
-            // changing).
-            if srvname != name
-                // TODO(ver) this isn't rigorous about detecting servers that select the same port if one port
-                // specifies a numeric port and the other specifies the port's name.
-                && *srv.port() == spec.port
-                // TODO(ver) We can probably detect overlapping selectors more effectively.
-                && *srv.pod_selector() == spec.pod_selector
-            {
-                bail!("identical server spec already exists");
-            }
-        }
-    }
-
-    Ok(())
 }
