@@ -4,7 +4,6 @@ use api::policy::ServerSpec;
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
 use kube::{core::DynamicObject, ResourceExt};
-use linkerd_policy_controller_k8s_index::SharedIndex;
 use std::task;
 use thiserror::Error;
 use tracing::{debug, info, warn};
@@ -12,7 +11,6 @@ use tracing::{debug, info, warn};
 #[derive(Clone)]
 pub struct Admission {
     client: kube::Client,
-    index: SharedIndex,
 }
 
 #[derive(Debug, Error)]
@@ -90,8 +88,8 @@ impl hyper::service::Service<Request<Body>> for Admission {
 }
 
 impl Admission {
-    pub fn new(client: kube::Client, index: SharedIndex) -> Self {
-        Self { client, index }
+    pub fn new(client: kube::Client) -> Self {
+        Self { client }
     }
 
     /// Checks that `spec` doesn't select the same pod/ports as other existing Servers
@@ -99,22 +97,9 @@ impl Admission {
     // TODO(ver) this isn't rigorous about detecting servers that select the same port if one port
     // specifies a numeric port and the other specifies the port's name.
     async fn validate(self, ns: &str, name: &str, spec: api::policy::ServerSpec) -> Result<()> {
-        // First, check the index for conflicts, this is relatively cheap to do
-        // to find a problem and avoids hitting the API to find most problems.
-        if let Some(nsidx) = self.index.read().get_ns(ns) {
-            for (srvname, srv) in nsidx.servers.iter() {
-                if srvname != name
-                    && *srv.port() == spec.port
-                    && overlaps(srv.pod_selector(), &spec.pod_selector)
-                {
-                    bail!("identical server spec already exists");
-                }
-            }
-        }
-
-        // If we didn't find a problem by checking the index, then fallback to
-        // checking the API. The index may not be 100% up-to-date (especially in
-        // CI), so this is a more robust check (at the cost of an API call).
+        // Since we can't ensure that the local index is up-to-date with the API server (i.e.
+        // updates may be delayed), we issue an API request to get the latest state of servers in
+        // the namespace.
         let servers = kube::Api::<api::policy::Server>::namespaced(self.client, ns)
             .list(&kube::api::ListParams::default())
             .await?;

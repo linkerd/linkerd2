@@ -118,7 +118,7 @@ async fn main() -> Result<()> {
 
     let serverauthorizations = runtime.watch_all(ListParams::default());
     tokio::spawn(
-        k8s::index_serverauthorizations(index.clone(), serverauthorizations)
+        k8s::index_serverauthorizations(index, serverauthorizations)
             .instrument(info_span!("serverauthorizations")),
     );
 
@@ -131,7 +131,7 @@ async fn main() -> Result<()> {
     ));
 
     let client = runtime.client();
-    let runtime = runtime.spawn_server(|| Admission::new(client, index));
+    let runtime = runtime.spawn_server(|| Admission::new(client));
 
     // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
     // complete before exiting.
