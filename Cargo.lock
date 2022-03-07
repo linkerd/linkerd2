@@ -901,10 +901,8 @@ dependencies = [
 name = "linkerd-policy-controller-k8s-api"
 version = "0.1.0"
 dependencies = [
- "futures",
  "k8s-openapi",
  "kube",
- "parking_lot 0.12.0",
  "schemars",
  "serde",
  "serde_json",
@@ -927,6 +925,8 @@ dependencies = [
  "linkerd-policy-controller-k8s-api",
  "parking_lot 0.12.0",
  "tokio",
+ "tokio-stream",
+ "tokio-test",
  "tracing",
 ]
 

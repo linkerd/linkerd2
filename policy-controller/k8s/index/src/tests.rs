@@ -5,9 +5,11 @@ use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, IdentityMatch, IpNet, Ipv4Net, Ipv6Net,
     NetworkMatch, ProxyProtocol,
 };
-use linkerd_policy_controller_k8s_api::{policy::server::Port, ResourceExt};
+use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
 use std::{net::IpAddr, str::FromStr};
-use tokio::time;
+use tokio::{sync::mpsc, time};
+use tokio_stream::wrappers::ReceiverStream;
+use tokio_test::{assert_pending, task};
 
 /// Creates a pod, then a server, then an authorization--then deletes these resources in the reverse
 /// order--checking the server watch is updated at each step.
@@ -30,6 +32,10 @@ async fn incrementally_configure_server() {
         detect_timeout,
     );
 
+    let mut pods = mock(idx.clone(), crate::pod::index);
+    let mut servers = mock(idx.clone(), crate::server::index);
+    let mut server_authzs = mock(idx, crate::server_authorization::index);
+
     let pod = mk_pod(
         "ns-0",
         "pod-0",
@@ -37,7 +43,7 @@ async fn incrementally_configure_server() {
         pod_net.hosts().next().unwrap(),
         Some(("container-0", vec![2222, 9999])),
     );
-    idx.write().apply_pod(pod.clone());
+    pods.restart(vec![pod.clone()]).await;
 
     let default = DefaultPolicy::Allow {
         authenticated_only: false,
@@ -69,7 +75,7 @@ async fn incrementally_configure_server() {
         srv.spec.proxy_protocol = Some(k8s::policy::server::ProxyProtocol::Http1);
         srv
     };
-    idx.write().apply_server(srv.clone());
+    servers.restart(vec![srv.clone()]).await;
 
     // Check that the watch has been updated to reflect the above change and that this change _only_
     // applies to the correct port.
@@ -86,15 +92,15 @@ async fn incrementally_configure_server() {
         "ns-0",
         "authz-0",
         "srv-0",
-        k8s::policy::authz::Client {
-            mesh_tls: Some(k8s::policy::authz::MeshTls {
+        k8s::policy::server_authorization::Client {
+            mesh_tls: Some(k8s::policy::server_authorization::MeshTls {
                 unauthenticated_tls: true,
                 ..Default::default()
             }),
             ..Default::default()
         },
     );
-    idx.write().apply_serverauthorization(authz.clone());
+    server_authzs.restart(vec![authz.clone()]).await;
 
     // Check that the watch now has authorized traffic as described above.
     let mut rx = port2222.into_stream();
@@ -116,29 +122,29 @@ async fn incrementally_configure_server() {
     );
 
     // Delete the authorization and check that the watch has reverted to its prior state.
-    idx.write().delete_serverauthorization(authz);
+    server_authzs.delete(authz).await;
     assert_eq!(
         time::timeout(time::Duration::from_secs(1), rx.next()).await,
         Ok(Some(basic_config)),
     );
 
     // Delete the server and check that the watch has reverted the default state.
-    idx.write().delete_server(srv);
+    servers.delete(srv).await;
     assert_eq!(
         time::timeout(time::Duration::from_secs(1), rx.next()).await,
         Ok(Some(default_config))
     );
 
     // Delete the pod and check that the watch recognizes that the watch has been closed.
-    idx.write().delete_pod(pod);
+    pods.delete(pod).await;
     assert_eq!(
         time::timeout(time::Duration::from_secs(1), rx.next()).await,
         Ok(None)
     );
 }
 
-#[test]
-fn server_update_deselects_pod() {
+#[tokio::test]
+async fn server_update_deselects_pod() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let cluster = ClusterInfo {
         networks: vec![cluster_net],
@@ -153,6 +159,9 @@ fn server_update_deselects_pod() {
     };
     let (lookup_rx, idx) = Index::new(cluster, default, detect_timeout);
 
+    let mut pods = mock(idx.clone(), crate::pod::index);
+    let mut servers = mock(idx, crate::server::index);
+
     let p = mk_pod(
         "ns-0",
         "pod-0",
@@ -160,14 +169,14 @@ fn server_update_deselects_pod() {
         pod_net.hosts().next().unwrap(),
         Some(("container-0", vec![2222])),
     );
-    idx.write().apply_pod(p);
+    pods.restart(vec![p.clone()]).await;
 
     let srv = {
         let mut srv = mk_server("ns-0", "srv-0", Port::Number(2222), None, None);
         srv.spec.proxy_protocol = Some(k8s::policy::server::ProxyProtocol::Http2);
         srv
     };
-    idx.write().apply_server(srv.clone());
+    servers.restart(vec![srv.clone()]).await;
 
     // The default policy applies for all exposed ports.
     let port2222 = lookup_rx.lookup("ns-0", "pod-0", 2222).unwrap();
@@ -180,11 +189,13 @@ fn server_update_deselects_pod() {
         }
     );
 
-    idx.write().apply_server({
-        let mut srv = srv;
-        srv.spec.pod_selector = Some(("label", "value")).into_iter().collect();
-        srv
-    });
+    servers
+        .apply({
+            let mut srv = srv;
+            srv.spec.pod_selector = Some(("label", "value")).into_iter().collect();
+            srv
+        })
+        .await;
     assert_eq!(
         port2222.get(),
         InboundServer {
@@ -200,8 +211,8 @@ fn server_update_deselects_pod() {
 /// Tests that pod servers are configured with defaults based on the global `DefaultPolicy` policy.
 ///
 /// Iterates through each default policy and validates that it produces expected configurations.
-#[test]
-fn default_policy_global() {
+#[tokio::test]
+async fn default_policy_global() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let cluster = ClusterInfo {
         networks: vec![cluster_net],
@@ -213,6 +224,7 @@ fn default_policy_global() {
 
     for default in &DEFAULTS {
         let (lookup_rx, idx) = Index::new(cluster.clone(), *default, detect_timeout);
+        let mut pods = mock(idx, crate::pod::index);
 
         let p = mk_pod(
             "ns-0",
@@ -221,7 +233,7 @@ fn default_policy_global() {
             pod_net.hosts().next().unwrap(),
             Some(("container-0", vec![2222])),
         );
-        idx.write().reset_pods(vec![p]);
+        pods.restart(vec![p]).await;
 
         let config = InboundServer {
             name: format!("default:{}", default),
@@ -243,8 +255,8 @@ fn default_policy_global() {
 /// policy.
 ///
 /// Iterates through each default policy and validates that it produces expected configurations.
-#[test]
-fn default_policy_annotated() {
+#[tokio::test]
+async fn default_policy_annotated() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let cluster = ClusterInfo {
         networks: vec![cluster_net],
@@ -268,6 +280,8 @@ fn default_policy_annotated() {
             detect_timeout,
         );
 
+        let mut pods = mock(idx, crate::pod::index);
+
         let mut p = mk_pod(
             "ns-0",
             "pod-0",
@@ -277,7 +291,7 @@ fn default_policy_annotated() {
         );
         p.annotations_mut()
             .insert(DefaultPolicy::ANNOTATION.into(), default.to_string());
-        idx.write().reset_pods(vec![p]);
+        pods.restart(vec![p]).await;
 
         let config = InboundServer {
             name: format!("default:{}", default),
@@ -294,8 +308,8 @@ fn default_policy_annotated() {
     }
 }
 /// Tests that an invalid workload annotation is ignored in favor of the global default.
-#[test]
-fn default_policy_annotated_invalid() {
+#[tokio::test]
+async fn default_policy_annotated_invalid() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let cluster = ClusterInfo {
         networks: vec![cluster_net],
@@ -310,6 +324,7 @@ fn default_policy_annotated_invalid() {
         cluster_only: false,
     };
     let (lookup_rx, idx) = Index::new(cluster, default, detect_timeout);
+    let mut pods = mock(idx, crate::pod::index);
 
     let mut p = mk_pod(
         "ns-0",
@@ -320,7 +335,7 @@ fn default_policy_annotated_invalid() {
     );
     p.annotations_mut()
         .insert(DefaultPolicy::ANNOTATION.into(), "bogus".into());
-    idx.write().reset_pods(vec![p]);
+    pods.restart(vec![p]).await;
 
     // Lookup port 2222 -> default config.
     let port2222 = lookup_rx
@@ -344,8 +359,8 @@ fn default_policy_annotated_invalid() {
     );
 }
 
-#[test]
-fn opaque_annotated() {
+#[tokio::test]
+async fn opaque_annotated() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let cluster = ClusterInfo {
         networks: vec![cluster_net],
@@ -357,6 +372,7 @@ fn opaque_annotated() {
 
     for default in &DEFAULTS {
         let (lookup_rx, idx) = Index::new(cluster.clone(), *default, detect_timeout);
+        let mut pods = mock(idx, crate::pod::index);
 
         let mut p = mk_pod(
             "ns-0",
@@ -367,7 +383,7 @@ fn opaque_annotated() {
         );
         p.annotations_mut()
             .insert("config.linkerd.io/opaque-ports".into(), "2222".into());
-        idx.write().reset_pods(vec![p]);
+        pods.restart(vec![p]).await;
 
         let config = InboundServer {
             name: format!("default:{}", default),
@@ -382,8 +398,8 @@ fn opaque_annotated() {
     }
 }
 
-#[test]
-fn authenticated_annotated() {
+#[tokio::test]
+async fn authenticated_annotated() {
     let cluster_net = IpNet::from_str("192.0.2.0/24").unwrap();
     let cluster = ClusterInfo {
         networks: vec![cluster_net],
@@ -395,6 +411,7 @@ fn authenticated_annotated() {
 
     for default in &DEFAULTS {
         let (lookup_rx, idx) = Index::new(cluster.clone(), *default, detect_timeout);
+        let mut pods = mock(idx, crate::pod::index);
 
         let mut p = mk_pod(
             "ns-0",
@@ -407,7 +424,7 @@ fn authenticated_annotated() {
             "config.linkerd.io/proxy-require-identity-inbound-ports".into(),
             "2222".into(),
         );
-        idx.write().reset_pods(vec![p]);
+        pods.restart(vec![p]).await;
 
         let config = {
             let policy = match *default {
@@ -529,7 +546,7 @@ fn mk_authz(
     ns: impl Into<String>,
     name: impl Into<String>,
     server: impl Into<String>,
-    client: k8s::policy::authz::Client,
+    client: k8s::policy::server_authorization::Client,
 ) -> k8s::policy::ServerAuthorization {
     k8s::policy::ServerAuthorization {
         metadata: k8s::ObjectMeta {
@@ -538,7 +555,7 @@ fn mk_authz(
             ..Default::default()
         },
         spec: k8s::policy::ServerAuthorizationSpec {
-            server: k8s::policy::authz::Server {
+            server: k8s::policy::server_authorization::Server {
                 name: Some(server.into()),
                 selector: None,
             },
@@ -602,4 +619,38 @@ fn mk_default_policy(
     }
     .into_iter()
     .collect()
+}
+
+fn mock<T, P, Fut>(idx: SharedIndex, process: P) -> Mock<T, Fut>
+where
+    P: FnOnce(SharedIndex, ReceiverStream<k8s::WatchEvent<T>>) -> Fut,
+    Fut: Future<Output = ()>,
+{
+    let (tx, rx) = mpsc::channel(1);
+    let task = task::spawn(process(idx, ReceiverStream::new(rx)));
+    Mock { tx, task }
+}
+
+struct Mock<T, F> {
+    tx: mpsc::Sender<k8s::WatchEvent<T>>,
+    task: task::Spawn<F>,
+}
+
+impl<T, F: Future<Output = ()>> Mock<T, F> {
+    async fn update(&mut self, ev: k8s::WatchEvent<T>) {
+        self.tx.send(ev).await.ok().expect("channel closed");
+        assert_pending!(self.task.poll());
+    }
+
+    async fn apply(&mut self, val: T) {
+        self.update(k8s::WatchEvent::Applied(val)).await;
+    }
+
+    async fn delete(&mut self, val: T) {
+        self.update(k8s::WatchEvent::Deleted(val)).await;
+    }
+
+    async fn restart(&mut self, vals: Vec<T>) {
+        self.update(k8s::WatchEvent::Restarted(vals)).await;
+    }
 }
