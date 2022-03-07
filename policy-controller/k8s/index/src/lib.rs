@@ -27,12 +27,13 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-mod authz;
 mod defaults;
 mod lookup;
 mod namespace;
-mod pod;
-mod server;
+pub mod pod;
+pub mod server;
+pub mod server_authorization;
+
 #[cfg(test)]
 mod tests;
 
@@ -42,9 +43,7 @@ use self::{
     namespace::{Namespace, NamespaceIndex},
     server::SrvIndex,
 };
-use futures::prelude::*;
 use linkerd_policy_controller_core::{InboundServer, IpNet};
-use linkerd_policy_controller_k8s_api as k8s;
 use parking_lot::RwLock;
 use std::sync::Arc;
 use tokio::{sync::watch, time};
@@ -123,44 +122,5 @@ impl Index {
 
     pub fn get_ns(&self, ns: &str) -> Option<&Namespace> {
         self.namespaces.index.get(ns)
-    }
-}
-
-pub async fn index_pods(idx: SharedIndex, events: impl Stream<Item = k8s::Event<k8s::Pod>>) {
-    tokio::pin!(events);
-    while let Some(ev) = events.next().await {
-        match ev {
-            k8s::Event::Applied(pod) => idx.write().apply_pod(pod),
-            k8s::Event::Deleted(pod) => idx.write().delete_pod(pod),
-            k8s::Event::Restarted(pods) => idx.write().reset_pods(pods),
-        }
-    }
-}
-
-pub async fn index_servers(
-    idx: SharedIndex,
-    events: impl Stream<Item = k8s::Event<k8s::policy::Server>>,
-) {
-    tokio::pin!(events);
-    while let Some(ev) = events.next().await {
-        match ev {
-            k8s::Event::Applied(srv) => idx.write().apply_server(srv),
-            k8s::Event::Deleted(srv) => idx.write().delete_server(srv),
-            k8s::Event::Restarted(srvs) => idx.write().reset_servers(srvs),
-        }
-    }
-}
-
-pub async fn index_serverauthorizations(
-    idx: SharedIndex,
-    events: impl Stream<Item = k8s::Event<k8s::policy::ServerAuthorization>>,
-) {
-    tokio::pin!(events);
-    while let Some(ev) = events.next().await {
-        match ev {
-            k8s::Event::Applied(saz) => idx.write().apply_serverauthorization(saz),
-            k8s::Event::Deleted(saz) => idx.write().delete_serverauthorization(saz),
-            k8s::Event::Restarted(sazs) => idx.write().reset_serverauthorizations(sazs),
-        }
     }
 }
