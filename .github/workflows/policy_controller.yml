@@ -22,8 +22,6 @@ env:
   CARGO_NET_RETRY: 10
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
-  DOCKER_REGISTRY: ghcr.io/linkerd
-  LINKERD_DOCKER_REGISTRY: ghcr.io/linkerd
 
 jobs:
   fmt:
@@ -141,44 +139,45 @@ jobs:
         uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
       - uses: ./.github/actions/docker-build
         with:
-          docker-registry: ${{ env.DOCKER_REGISTRY }}
+          docker-registry: ghcr.io/linkerd
           docker-target: linux-amd64
           component: ${{ matrix.component }}
       - name: Create artifact with CLI and image archives
-        env:
-          ARCHIVES: /home/runner/archives
         run: |
-          mkdir -p $ARCHIVES
-          docker save "$DOCKER_REGISTRY/${{ matrix.component }}:$TAG" > $ARCHIVES/${{ matrix.component }}.tar
+          mkdir -p /home/runner/archives
+          docker save "ghcr.io/linkerd/${{ matrix.component }}:$TAG" \
+            >/home/runner/archives/${{ matrix.component }}.tar
       - name: Upload artifact
         uses: actions/upload-artifact@6673cd052c4cd6fcf4b4e6e60ea986c889389535
         with:
           name: image-archives
-          path: ${{ env.ARCHIVES }}
+          path: /home/runner/archives
 
-  integration_tests:
+  integration:
     needs: [docker_build]
-    name: Policy controller integration tests
+    name: Policy controller integration
     runs-on: ubuntu-20.04
     timeout-minutes: 20
     steps:
       - name: Checkout code
         uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
 
-      - name: Setup path
-        run: |
-          mkdir -p $HOME/bin
-          export PATH="$HOME/bin:$PATH"
-          echo "PATH=$PATH" >> $GITHUB_ENV
       - name: Install kubectl
         run: |
-          bin/scurl -vo $HOME/bin/kubectl "https://dl.k8s.io/release/$(bin/scurl https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
-            && chmod 755 $HOME/bin/kubectl
+          dir=$(mktemp -d)
+          version=$(bin/scurl https://dl.k8s.io/release/stable.txt)
+          bin/scurl -vo $dir/kubectl "https://dl.k8s.io/release/${version}/bin/linux/amd64/kubectl"
+          chmod 755 $dir/kubectl
+          sudo mv $dir/kubectl /usr/local/bin/kubectl
+          cli_version=$(kubectl version --client --short | sed -ne 's/^Client Version: //p')
+          if [[ "$version" != "$cli_version" ]] ; then
+            echo "::error::kubectl version is $cli_version; expected $version"
+            exit 1
+          fi
           kubectl version --client
       - name: Install k3d
         run: |
-          bin/scurl -v https://raw.githubusercontent.com/rancher/k3d/main/install.sh \
-            | USE_SUDO=false K3D_INSTALL_DIR=$HOME/bin bash
+          bin/scurl -v https://raw.githubusercontent.com/rancher/k3d/main/install.sh | bash
           k3d --version
 
       # Go is needed to build the CLI.
@@ -205,17 +204,19 @@ jobs:
           docker load <image-archives/controller.tar
           docker load <image-archives/policy-controller.tar
           docker load <image-archives/proxy.tar
-          docker pull $DOCKER_REGISTRY/proxy-init:v1.5.3
-          docker image ls | grep $DOCKER_REGISTRY
+          docker pull ghcr.io/linkerd/proxy-init:v1.5.3
+          docker image ls | grep ghcr.io/linkerd
           tag="$(CI_FORCE_CLEAN=1 bin/root-tag)"
           k3d image import \
-            $DOCKER_REGISTRY/controller:$tag \
-            $DOCKER_REGISTRY/policy-controller:$tag \
-            $DOCKER_REGISTRY/proxy:$tag \
-            $DOCKER_REGISTRY/proxy-init:v1.5.3
+            ghcr.io/linkerd/controller:$tag \
+            ghcr.io/linkerd/policy-controller:$tag \
+            ghcr.io/linkerd/proxy:$tag \
+            ghcr.io/linkerd/proxy-init:v1.5.3
 
       - run: bin/linkerd check --pre --wait=1m
       - run: bin/linkerd install | kubectl apply -f -
+        env:
+          LINKERD_DOCKER_REGISTRY: ghcr.io/linkerd
       - name: Wait for pods to be ready
         run: |
           if ! kubectl wait pods -n linkerd -l linkerd.io/control-plane-ns --for condition=Ready --timeout=1m ; then

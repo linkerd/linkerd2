@@ -5,7 +5,7 @@ use anyhow::{bail, Result};
 use clap::Parser;
 use futures::prelude::*;
 use kube::api::ListParams;
-use linkerd_policy_controller::{admission, k8s};
+use linkerd_policy_controller::{k8s, Admission};
 use linkerd_policy_controller_core::IpNet;
 use std::net::SocketAddr;
 use tokio::time;
@@ -129,7 +129,8 @@ async fn main() -> Result<()> {
         runtime.shutdown_handle(),
     ));
 
-    let runtime = runtime.spawn_server(|| admission::AdmissionService { index });
+    let client = runtime.client();
+    let runtime = runtime.spawn_server(|| Admission::new(client, index));
 
     // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
     // complete before exiting.

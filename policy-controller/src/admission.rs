@@ -1,6 +1,10 @@
-use crate::api::policy::{
-    AuthorizationPolicy, AuthorizationPolicySpec, MeshTLSAuthentication, MeshTLSAuthenticationSpec,
-    NetworkAuthentication, NetworkAuthenticationSpec, Server, ServerSpec,
+use crate::api::{
+    labels,
+    policy::{
+        AuthorizationPolicy, AuthorizationPolicySpec, MeshTLSAuthentication,
+        MeshTLSAuthenticationSpec, NetworkAuthentication, NetworkAuthenticationSpec, Server,
+        ServerSpec,
+    },
 };
 use anyhow::{anyhow, bail, Result};
 use futures::future;
@@ -14,8 +18,9 @@ use thiserror::Error;
 use tracing::{debug, info, warn};
 
 #[derive(Clone)]
-pub struct AdmissionService {
-    pub index: SharedIndex,
+pub struct Admission {
+    client: kube::Client,
+    index: SharedIndex,
 }
 
 #[derive(Debug, Error)]
@@ -32,13 +37,14 @@ type AdmissionRequest = kube::core::admission::AdmissionRequest<DynamicObject>;
 type AdmissionResponse = kube::core::admission::AdmissionResponse;
 type AdmissionReview = kube::core::admission::AdmissionReview<DynamicObject>;
 
-trait Validate {
-    fn validate(&self, ns: &str, name: &str, index: &SharedIndex) -> Result<()>;
+#[async_trait::async_trait]
+trait Validate<T> {
+    async fn validate(self, ns: &str, name: &str, spec: T) -> Result<()>;
 }
 
 // === impl AdmissionService ===
 
-impl hyper::service::Service<Request<Body>> for AdmissionService {
+impl hyper::service::Service<Request<Body>> for Admission {
     type Response = Response<Body>;
     type Error = Error;
     type Future = future::BoxFuture<'static, Result<Response<Body>, Error>>;
@@ -58,7 +64,7 @@ impl hyper::service::Service<Request<Body>> for AdmissionService {
             ));
         }
 
-        let index = self.index.clone();
+        let admission = self.clone();
         Box::pin(async move {
             let bytes = hyper::body::aggregate(req.into_body()).await?;
             let review: Review = match serde_json::from_reader(bytes.reader()) {
@@ -70,57 +76,75 @@ impl hyper::service::Service<Request<Body>> for AdmissionService {
             };
             tracing::trace!(?review);
 
-            let rsp = review
-                .try_into()
-                .map_err(anyhow::Error::from)
-                .and_then(|req| {
+            let rsp = match review.try_into() {
+                Ok(req) => {
                     debug!(?req);
-                    admit(req, &index)
-                })
-                .unwrap_or_else(|error| {
+                    match admission.admit(req).await {
+                        Ok(rsp) => rsp,
+                        Err(error) => {
+                            warn!(%error, "invalid admission request");
+                            AdmissionResponse::invalid(error)
+                        }
+                    }
+                }
+                Err(error) => {
                     warn!(%error, "invalid admission request");
                     AdmissionResponse::invalid(error)
-                });
-
-            // If validation fails, deny admission.
+                }
+            };
             debug!(?rsp);
             json_response(rsp.into_review())
         })
     }
 }
 
-fn json_response(rsp: AdmissionReview) -> Result<Response<Body>, Error> {
-    let bytes = serde_json::to_vec(&rsp)?;
-    Ok(Response::builder()
-        .status(http::StatusCode::OK)
-        .header(http::header::CONTENT_TYPE, "application/json")
-        .body(Body::from(bytes))
-        .expect("admission review response must be valid"))
-}
-
-fn admit(req: AdmissionRequest, index: &SharedIndex) -> Result<AdmissionResponse> {
-    if is_kind::<AuthorizationPolicy>(&req) {
-        return admit_spec::<AuthorizationPolicySpec>(req, index);
+impl Admission {
+    pub fn new(client: kube::Client, index: SharedIndex) -> Self {
+        Self { client, index }
     }
 
-    if is_kind::<MeshTLSAuthentication>(&req) {
-        return admit_spec::<MeshTLSAuthenticationSpec>(req, index);
+    async fn admit(self, req: AdmissionRequest) -> Result<AdmissionResponse> {
+        if is_kind::<AuthorizationPolicy>(&req) {
+            return self.admit_spec::<AuthorizationPolicySpec>(req).await;
+        }
+
+        if is_kind::<MeshTLSAuthentication>(&req) {
+            return self.admit_spec::<MeshTLSAuthenticationSpec>(req).await;
+        }
+
+        if is_kind::<NetworkAuthentication>(&req) {
+            return self.admit_spec::<NetworkAuthenticationSpec>(req).await;
+        }
+
+        if is_kind::<Server>(&req) {
+            return self.admit_spec::<ServerSpec>(req).await;
+        };
+
+        bail!(
+            "unsupported resource type: {}.{}.{}",
+            req.kind.group,
+            req.kind.version,
+            req.kind.kind
+        )
     }
 
-    if is_kind::<NetworkAuthentication>(&req) {
-        return admit_spec::<NetworkAuthenticationSpec>(req, index);
+    async fn admit_spec<T>(self, req: AdmissionRequest) -> Result<AdmissionResponse>
+    where
+        T: DeserializeOwned,
+        Self: Validate<T>,
+    {
+        let kind = req.kind.kind.clone();
+        let rsp = AdmissionResponse::from(&req);
+        let (ns, name, spec) = parse_spec::<T>(req)
+            .map_err(|e| e.context(format!("failed to deserialize {}", kind)))?;
+        match self.validate(&ns, &name, spec).await {
+            Ok(()) => Ok(rsp),
+            Err(error) => {
+                info!(%error, %ns, %name, %kind, "denied");
+                Ok(rsp.deny(error))
+            }
+        }
     }
-
-    if is_kind::<Server>(&req) {
-        return admit_spec::<ServerSpec>(req, index);
-    };
-
-    bail!(
-        "unsupported resource type: {}.{}.{}",
-        req.kind.group,
-        req.kind.version,
-        req.kind.kind
-    )
 }
 
 fn is_kind<T>(req: &AdmissionRequest) -> bool
@@ -132,21 +156,24 @@ where
     *req.kind.group == *T::group(&dt) && *req.kind.kind == *T::kind(&dt)
 }
 
-fn admit_spec<T: DeserializeOwned + Validate>(
-    req: AdmissionRequest,
-    index: &SharedIndex,
-) -> Result<AdmissionResponse> {
-    let kind = req.kind.kind.clone();
-    let rsp = AdmissionResponse::from(&req);
-    let (ns, name, spec) =
-        parse_spec::<T>(req).map_err(|e| e.context(format!("failed to deserialize {}", kind)))?;
-    match spec.validate(&ns, &name, index) {
-        Ok(()) => Ok(rsp),
-        Err(error) => {
-            info!(%error, %ns, %name, %kind, "denied");
-            Ok(rsp.deny(error))
-        }
+/// Detects whether two pod selectors can select the same pod
+//
+// TODO(ver) We can probably detect overlapping selectors more effectively.
+fn overlaps(left: &labels::Selector, right: &labels::Selector) -> bool {
+    if left.selects_all() || right.selects_all() {
+        return true;
     }
+
+    left == right
+}
+
+fn json_response(rsp: AdmissionReview) -> Result<Response<Body>, Error> {
+    let bytes = serde_json::to_vec(&rsp)?;
+    Ok(Response::builder()
+        .status(http::StatusCode::OK)
+        .header(http::header::CONTENT_TYPE, "application/json")
+        .body(Body::from(bytes))
+        .expect("admission review response must be valid"))
 }
 
 fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(String, String, T)> {
@@ -171,21 +198,61 @@ fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(String, Str
     Ok((ns, name, spec))
 }
 
-impl Validate for AuthorizationPolicySpec {
-    fn validate(&self, _ns: &str, _name: &str, _idx: &SharedIndex) -> Result<()> {
+#[async_trait::async_trait]
+impl Validate<ServerSpec> for Admission {
+    /// Checks that `spec` doesn't select the same pod/ports as other existing Servers
+    //
+    // TODO(ver) this isn't rigorous about detecting servers that select the same port if one port
+    // specifies a numeric port and the other specifies the port's name.
+    async fn validate(self, ns: &str, name: &str, spec: ServerSpec) -> Result<()> {
+        // First, check the index for conflicts, this is relatively cheap to do
+        // to find a problem and avoids hitting the API to find most problems.
+        if let Some(nsidx) = self.index.read().get_ns(ns) {
+            for (srvname, srv) in nsidx.servers.iter() {
+                if srvname != name
+                    && *srv.port() == spec.port
+                    && overlaps(srv.pod_selector(), &spec.pod_selector)
+                {
+                    bail!("identical server spec already exists");
+                }
+            }
+        }
+
+        // If we didn't find a problem by checking the index, then fallback to
+        // checking the API. The index may not be 100% up-to-date (especially in
+        // CI), so this is a more robust check (at the cost of an API call).
+        let servers = kube::Api::<Server>::namespaced(self.client, ns)
+            .list(&kube::api::ListParams::default())
+            .await?;
+        for server in servers.items.into_iter() {
+            if server.name() != name
+                && server.spec.port == spec.port
+                && overlaps(&server.spec.pod_selector, &spec.pod_selector)
+            {
+                bail!("identical server spec already exists");
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl Validate<AuthorizationPolicySpec> for Admission {
+    async fn validate(self, _ns: &str, _name: &str, spec: AuthorizationPolicySpec) -> Result<()> {
         // TODO support namespace references?
-        if !self.target_ref.targets_kind::<Server>() {
+        if !spec.target_ref.targets_kind::<Server>() {
             bail!("invalid targetRef kind");
         }
         assert!(
-            self.target_ref.namespace.is_none(),
+            spec.target_ref.namespace.is_none(),
             "authorization policy targetRef namespace cannot be set (in the CRD)"
         );
 
-        if self.required_authentication_refs.is_empty() {
+        if spec.required_authentication_refs.is_empty() {
             bail!("at least one authentication reference is required");
         }
-        for authn in self.required_authentication_refs.iter() {
+        for authn in spec.required_authentication_refs.iter() {
             if !authn.targets_kind::<MeshTLSAuthentication>()
                 && !authn.targets_kind::<NetworkAuthentication>()
             {
@@ -197,11 +264,12 @@ impl Validate for AuthorizationPolicySpec {
     }
 }
 
-impl Validate for MeshTLSAuthenticationSpec {
-    fn validate(&self, _ns: &str, _name: &str, _idx: &SharedIndex) -> Result<()> {
+#[async_trait::async_trait]
+impl Validate<MeshTLSAuthenticationSpec> for Admission {
+    async fn validate(self, _ns: &str, _name: &str, spec: MeshTLSAuthenticationSpec) -> Result<()> {
         // The CRD validates identity strings, but does not validate identity references.
 
-        for id in self.identity_refs.iter().flatten() {
+        for id in spec.identity_refs.iter().flatten() {
             // TODO support namespace references?
             if !id.targets_kind::<ServiceAccount>() {
                 bail!(
@@ -216,11 +284,12 @@ impl Validate for MeshTLSAuthenticationSpec {
     }
 }
 
-impl Validate for NetworkAuthenticationSpec {
-    fn validate(&self, _ns: &str, _name: &str, _idx: &SharedIndex) -> Result<()> {
+#[async_trait::async_trait]
+impl Validate<NetworkAuthenticationSpec> for Admission {
+    async fn validate(self, _ns: &str, _name: &str, spec: NetworkAuthenticationSpec) -> Result<()> {
         use std::str::FromStr;
 
-        for net in self.networks.iter() {
+        for net in spec.networks.into_iter() {
             let cidr = ipnet::IpNet::from_str(&*net.cidr)
                 .map_err(|e| anyhow!(e).context("invalid 'cidr'"))?;
 
@@ -241,31 +310,6 @@ impl Validate for NetworkAuthenticationSpec {
                 }
                 if !cidr.contains(&except) {
                     bail!("cidr '{}' does not include exception '{}'", cidr, except);
-                }
-            }
-        }
-
-        Ok(())
-    }
-}
-
-impl Validate for ServerSpec {
-    /// Validates a new server (`review`) against existing `servers`.
-    fn validate(&self, ns: &str, name: &str, index: &SharedIndex) -> Result<()> {
-        if let Some(nsidx) = index.read().get_ns(ns) {
-            for (srvname, srv) in nsidx.servers.iter() {
-                // If the port and pod selectors select the same resources, fail the admission of
-                // the server. Ignore existing instances of this Server (e.g., if the server's
-                // metadata is changing).
-                if *srvname != name
-                    // TODO(ver) this isn't rigorous about detecting servers that select the same
-                    // port if one port specifies a numeric port and the other specifies the port's
-                    // name.
-                    && *srv.port() == self.port
-                    // TODO(ver) We can probably detect overlapping selectors more effectively.
-                    && *srv.pod_selector() == self.pod_selector
-                {
-                    bail!("identical server spec already exists");
                 }
             }
         }
