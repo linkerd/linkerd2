@@ -35,7 +35,7 @@ features = [
 ]
 
 [dependencies.kubert]
-version = "0.3.0"
+version = "0.3.3"
 default-features = false
 features = [
     "clap",
