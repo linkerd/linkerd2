@@ -139,7 +139,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
-      - uses: ./.github/actions/docker-build
+      - uses: .github/actions/docker-build
         with:
           docker-registry: ghcr.io/linkerd
           docker-target: linux-amd64
@@ -200,12 +200,6 @@ jobs:
       - run: bin/linkerd install | kubectl apply -f -
         env:
           LINKERD_DOCKER_REGISTRY: ghcr.io/linkerd
-      # - name: Wait for pods to be ready
-      #   run: |
-      #     if ! kubectl wait pods -n linkerd -l linkerd.io/control-plane-ns --for condition=Ready --timeout=1m ; then
-      #       kubectl describe po -n linkerd >&2
-      #       exit 1
-      #     fi
       - run: bin/linkerd check --wait=1m
 
       - name: Install rust
