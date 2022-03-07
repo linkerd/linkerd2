@@ -603,8 +603,16 @@ func (rcsw *RemoteClusterServiceWatcher) createGatewayEndpoints(ctx context.Cont
 				Ports:     rcsw.getEndpointsPorts(exportedService),
 			},
 		}
+	} else if len(gatewayAddresses) > 0 {
+		endpointsToCreate.Subsets = []corev1.EndpointSubset{
+			{
+				NotReadyAddresses: gatewayAddresses,
+				Ports:             rcsw.getEndpointsPorts(exportedService),
+			},
+		}
+		rcsw.log.Warnf("gateway for %s does not have ready addresses, setting endpoint subsets to not ready", serviceInfo)
 	} else {
-		rcsw.log.Warnf("exported service is empty or gateway for %s does not have ready addresses, skipping endpoint subsets", serviceInfo)
+		rcsw.log.Warnf("exported service %s is empty", serviceInfo)
 	}
 
 	if rcsw.link.GatewayIdentity != "" {
