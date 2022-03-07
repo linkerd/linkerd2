@@ -15,32 +15,14 @@ async fn accepts_valid() {
         spec: NetworkAuthenticationSpec {
             networks: vec![
                 Network {
-                    cidr: "10.1.0.0/24".to_string(),
+                    cidr: "10.1.0.0/24".parse().unwrap(),
                     except: None,
                 },
                 Network {
-                    cidr: "10.1.1.0/24".to_string(),
-                    except: Some(vec!["10.1.1.0/28".to_string()]),
+                    cidr: "10.1.1.0/24".parse().unwrap(),
+                    except: Some(vec!["10.1.1.0/28".parse().unwrap()]),
                 },
             ],
-        },
-    })
-    .await;
-}
-
-#[tokio::test(flavor = "current_thread")]
-async fn rejects_invalid_cidr() {
-    admission::rejects(|ns| NetworkAuthentication {
-        metadata: api::ObjectMeta {
-            namespace: Some(ns),
-            name: Some("test".to_string()),
-            ..Default::default()
-        },
-        spec: NetworkAuthenticationSpec {
-            networks: vec![Network {
-                cidr: "10.1.0.0".to_string(),
-                except: None,
-            }],
         },
     })
     .await;
@@ -56,26 +38,8 @@ async fn accepts_ip_except() {
         },
         spec: NetworkAuthenticationSpec {
             networks: vec![Network {
-                cidr: "10.1.0.0/16".to_string(),
-                except: Some(vec!["10.1.1.1".to_string()]),
-            }],
-        },
-    })
-    .await;
-}
-
-#[tokio::test(flavor = "current_thread")]
-async fn rejects_invalid_except() {
-    admission::rejects(|ns| NetworkAuthentication {
-        metadata: api::ObjectMeta {
-            namespace: Some(ns),
-            name: Some("test".to_string()),
-            ..Default::default()
-        },
-        spec: NetworkAuthenticationSpec {
-            networks: vec![Network {
-                cidr: "10.1.0.0/16".to_string(),
-                except: Some(vec!["bogus".to_string()]),
+                cidr: "10.1.0.0/16".parse().unwrap(),
+                except: Some(vec!["10.1.1.1".parse().unwrap()]),
             }],
         },
     })
@@ -92,8 +56,8 @@ async fn rejects_except_whole_cidr() {
         },
         spec: NetworkAuthenticationSpec {
             networks: vec![Network {
-                cidr: "10.1.1.0/24".to_string(),
-                except: Some(vec!["10.1.0.0/16".to_string()]),
+                cidr: "10.1.1.0/24".parse().unwrap(),
+                except: Some(vec!["10.1.0.0/16".parse().unwrap()]),
             }],
         },
     })
@@ -110,8 +74,54 @@ async fn rejects_except_not_in_cidr() {
         },
         spec: NetworkAuthenticationSpec {
             networks: vec![Network {
-                cidr: "10.1.1.0/24".to_string(),
-                except: Some(vec!["10.1.2.0/24".to_string()]),
+                cidr: "10.1.1.0/24".parse().unwrap(),
+                except: Some(vec!["10.1.2.0/24".parse().unwrap()]),
+            }],
+        },
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn rejects_invalid_cidr() {
+    // Duplicate the CRD with relaxed validation so we can send an invalid CIDR value.
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        kube::CustomResource,
+        serde::Deserialize,
+        serde::Serialize,
+        schemars::JsonSchema,
+    )]
+    #[kube(
+        group = "policy.linkerd.io",
+        version = "v1alpha1",
+        kind = "NetworkAuthentication",
+        namespaced
+    )]
+    #[serde(rename_all = "camelCase")]
+    pub struct NetworkAuthenticationSpec {
+        pub networks: Vec<Network>,
+    }
+
+    #[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Network {
+        pub cidr: String,
+        pub except: Option<Vec<String>>,
+    }
+
+    admission::rejects(|ns| NetworkAuthentication {
+        metadata: api::ObjectMeta {
+            namespace: Some(ns),
+            name: Some("test".to_string()),
+            ..Default::default()
+        },
+        spec: NetworkAuthenticationSpec {
+            networks: vec![Network {
+                cidr: "10.1.0.0/16".to_string(),
+                except: Some(vec!["bogus".to_string()]),
             }],
         },
     })

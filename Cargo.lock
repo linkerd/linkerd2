@@ -612,6 +612,10 @@ name = "ipnet"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "35e70ee094dc02fd9c13fdad4940090f22dbd6ac7c9e7094a46cf0232a50bc7c"
+dependencies = [
+ "schemars",
+ "serde",
+]
 
 [[package]]
 name = "itertools"
@@ -904,12 +908,14 @@ dependencies = [
 name = "linkerd-policy-controller-k8s-api"
 version = "0.1.0"
 dependencies = [
+ "ipnet",
  "k8s-openapi",
  "kube",
  "schemars",
  "serde",
  "serde_json",
  "serde_yaml",
+ "thiserror",
  "tokio",
  "tracing",
 ]
@@ -942,7 +948,9 @@ dependencies = [
  "kube",
  "linkerd-policy-controller-k8s-api",
  "rand",
+ "schemars",
  "serde",
+ "serde_json",
  "tokio",
  "tokio-test",
  "tracing",

@@ -12,7 +12,7 @@ use hyper::{body::Buf, http, Body, Request, Response};
 use k8s_openapi::api::core::v1::ServiceAccount;
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use serde::de::DeserializeOwned;
-use std::{net::IpAddr, task};
+use std::task;
 use thiserror::Error;
 use tracing::{debug, info, warn};
 
@@ -77,13 +77,7 @@ impl hyper::service::Service<Request<Body>> for Admission {
             let rsp = match review.try_into() {
                 Ok(req) => {
                     debug!(?req);
-                    match admission.admit(req).await {
-                        Ok(rsp) => rsp,
-                        Err(error) => {
-                            warn!(%error, "invalid admission request");
-                            AdmissionResponse::invalid(error)
-                        }
-                    }
+                    admission.admit(req).await
                 }
                 Err(error) => {
                     warn!(%error, "invalid admission request");
@@ -101,7 +95,7 @@ impl Admission {
         Self { client }
     }
 
-    async fn admit(self, req: AdmissionRequest) -> Result<AdmissionResponse> {
+    async fn admit(self, req: AdmissionRequest) -> AdmissionResponse {
         if is_kind::<AuthorizationPolicy>(&req) {
             return self.admit_spec::<AuthorizationPolicySpec>(req).await;
         }
@@ -118,30 +112,33 @@ impl Admission {
             return self.admit_spec::<ServerSpec>(req).await;
         };
 
-        bail!(
+        AdmissionResponse::invalid(format_args!(
             "unsupported resource type: {}.{}.{}",
-            req.kind.group,
-            req.kind.version,
-            req.kind.kind
-        )
+            req.kind.group, req.kind.version, req.kind.kind
+        ))
     }
 
-    async fn admit_spec<T>(self, req: AdmissionRequest) -> Result<AdmissionResponse>
+    async fn admit_spec<T>(self, req: AdmissionRequest) -> AdmissionResponse
     where
         T: DeserializeOwned,
         Self: Validate<T>,
     {
         let kind = req.kind.kind.clone();
         let rsp = AdmissionResponse::from(&req);
-        let (ns, name, spec) = parse_spec::<T>(req)
-            .map_err(|e| e.context(format!("failed to deserialize {}", kind)))?;
-        match self.validate(&ns, &name, spec).await {
-            Ok(()) => Ok(rsp),
+        let (ns, name, spec) = match parse_spec::<T>(req) {
+            Ok(spec) => spec,
             Err(error) => {
-                info!(%error, %ns, %name, %kind, "denied");
-                Ok(rsp.deny(error))
+                info!(%error, "failed to parse {} spec", kind);
+                return rsp.deny(error);
             }
+        };
+
+        if let Err(error) = self.validate(&ns, &name, spec).await {
+            info!(%error, %ns, %name, %kind, "denied");
+            return rsp.deny(error);
         }
+
+        rsp
     }
 }
 
@@ -272,29 +269,22 @@ impl Validate<MeshTLSAuthenticationSpec> for Admission {
 #[async_trait::async_trait]
 impl Validate<NetworkAuthenticationSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: NetworkAuthenticationSpec) -> Result<()> {
-        use std::str::FromStr;
-
         for net in spec.networks.into_iter() {
-            let cidr = ipnet::IpNet::from_str(&*net.cidr)
-                .map_err(|e| anyhow!(e).context("invalid 'cidr'"))?;
-
-            for except in net.except.iter().flatten() {
-                let except = match ipnet::IpNet::from_str(&*except) {
-                    Ok(net) => net,
-                    Err(error) => match IpAddr::from_str(&*except) {
-                        Ok(addr) => addr.into(),
-                        Err(_) => bail!("invalid 'except' network: {}", error),
-                    },
-                };
-                if except.contains(&cidr) {
+            for except in net.except.into_iter().flatten() {
+                let except = except.into_net();
+                if except.contains(&net.cidr) {
                     bail!(
                         "cidr '{}' is completely negated by exception '{}'",
-                        cidr,
+                        net.cidr,
                         except
                     );
                 }
-                if !cidr.contains(&except) {
-                    bail!("cidr '{}' does not include exception '{}'", cidr, except);
+                if !net.cidr.contains(&except) {
+                    bail!(
+                        "cidr '{}' does not include exception '{}'",
+                        net.cidr,
+                        except
+                    );
                 }
             }
         }
