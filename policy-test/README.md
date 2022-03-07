@@ -2,8 +2,6 @@
 
 The `policy-test` crate includes integration tests for the policy controller.
 
-These tests run again sthe defau
-
 ## Running locally
 
 ### 1. Create a cluster
