@@ -242,6 +242,7 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 		log:                     logging.WithFields(logging.Fields{"cluster": clusterName}),
 		eventsQueue:             q,
 		requeueLimit:            0,
+		alive:                   true,
 		headlessServicesEnabled: true,
 	}
 
@@ -290,6 +291,241 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 	_, err = localAPI.Client.CoreV1().Services("ns1").Get(context.Background(), "service-one-remote", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("error getting service-one locally: %v", err)
+	}
+}
+
+func TestServiceCreatedGatewayAlive(t *testing.T) {
+	remoteAPI, err := k8s.NewFakeAPI(
+		gatewayAsYaml("gateway", "gateway-ns", "1", "192.0.0.1", "gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod),
+		remoteServiceAsYaml("svc", "ns", "1", []corev1.ServicePort{}),
+		endpointsAsYaml("svc", "ns", "192.0.0.1", "gateway-identity", []corev1.EndpointPort{}),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	localAPI, err := k8s.NewFakeAPI(
+		namespaceAsYaml("ns"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	remoteAPI.Sync(nil)
+	localAPI.Sync(nil)
+
+	events := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+	watcher := RemoteClusterServiceWatcher{
+		link: &multicluster.Link{
+			TargetClusterName:   clusterName,
+			TargetClusterDomain: clusterDomain,
+			GatewayIdentity:     "gateway-identity",
+			GatewayAddress:      "192.0.0.1",
+			GatewayPort:         888,
+			ProbeSpec:           defaultProbeSpec,
+			Selector:            *defaultSelector,
+		},
+		remoteAPIClient: remoteAPI,
+		localAPIClient:  localAPI,
+		log:             logging.WithFields(logging.Fields{"cluster": clusterName}),
+		eventsQueue:     events,
+		requeueLimit:    0,
+		alive:           true,
+	}
+
+	events.Add(&RemoteServiceCreated{
+		service: remoteService("svc", "ns", "1", map[string]string{
+			consts.DefaultExportedServiceSelector: "true",
+		}, []corev1.ServicePort{
+			{
+				Name:     "port",
+				Protocol: "TCP",
+				Port:     111,
+			},
+		}),
+	})
+	for events.Len() > 0 {
+		watcher.processNextEvent(context.Background())
+	}
+	localAPI.Sync(nil)
+
+	// Expect Service svc-remote to be created with ready endpoints because
+	// the Namespace ns exists and the gateway is alive.
+	_, err = localAPI.Client.CoreV1().Services("ns").Get(context.Background(), "svc-remote", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("error getting svc-remote Service: %v", err)
+	}
+	endpoints, err := localAPI.Client.CoreV1().Endpoints("ns").Get(context.Background(), "svc-remote", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("error getting svc-remote Endpoints: %v", err)
+	}
+	if len(endpoints.Subsets) == 0 {
+		t.Fatal("expected svc-remote Endpoints subsets")
+	}
+	for _, ss := range endpoints.Subsets {
+		if len(ss.Addresses) == 0 || len(ss.NotReadyAddresses) != 0 {
+			t.Fatal("svc-remote Service endpoints should be ready")
+		}
+	}
+
+	// The gateway is now down which triggers repairing Endpoints on the local
+	// cluster.
+	watcher.alive = false
+	events.Add(&RepairEndpoints{})
+	for events.Len() > 0 {
+		watcher.processNextEvent(context.Background())
+	}
+	localAPI.Sync(nil)
+
+	// When repairing Endpoints on the local cluster, the gateway address
+	// should have been moved to NotReadyAddresses meaning that Endpoints
+	// for the mirrored Service svc-remote should have no ready addresses.
+	endpoints, err = localAPI.Client.CoreV1().Endpoints("ns").Get(context.Background(), "svc-remote", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("error getting svc-remote Endpoints locally: %v", err)
+	}
+	if len(endpoints.Subsets) == 0 {
+		t.Fatal("expected svc-remote Endpoints subsets")
+	}
+	for _, ss := range endpoints.Subsets {
+		if len(ss.NotReadyAddresses) == 0 || len(ss.Addresses) != 0 {
+			t.Fatal("svc-remote Service endpoints should not be ready")
+		}
+	}
+
+	// Issue an update for the remote Service which adds a new label
+	// 'new-label'. This should exercise RemoteServiceUpdated which should
+	// update svc-remote; the gateway is still not alive though so we expect
+	// the Endpoints of svc-remote to still have no ready addresses.
+	events.Add(&RemoteServiceUpdated{
+		localService:   remoteService("svc-remote", "ns", "2", nil, nil),
+		localEndpoints: endpoints,
+		remoteUpdate: remoteService("svc", "ns", "2", map[string]string{
+			consts.DefaultExportedServiceSelector: "true",
+			"new-label":                           "hi",
+		}, []corev1.ServicePort{
+			{
+				Name:     "port",
+				Protocol: "TCP",
+				Port:     111,
+			},
+		}),
+	})
+	for events.Len() > 0 {
+		watcher.processNextEvent(context.Background())
+	}
+	localAPI.Sync(nil)
+	service, err := localAPI.Client.CoreV1().Services("ns").Get(context.Background(), "svc-remote", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("error getting svc-remote Service: %v", err)
+	}
+	_, ok := service.Labels["new-label"]
+	if !ok {
+		t.Fatalf("error updating svc-remote Service: %v", err)
+	}
+	endpoints, err = localAPI.Client.CoreV1().Endpoints("ns").Get(context.Background(), "svc-remote", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("error getting svc-remote Endpoints: %v", err)
+	}
+	if len(endpoints.Subsets) == 0 {
+		t.Fatal("expected svc-remote Endpoints subsets")
+	}
+	for _, ss := range endpoints.Subsets {
+		if len(ss.NotReadyAddresses) == 0 || len(ss.Addresses) != 0 {
+			t.Fatal("svc-remote Service endpoints should not be ready")
+		}
+	}
+}
+
+func TestServiceCreatedGatewayDown(t *testing.T) {
+	remoteAPI, err := k8s.NewFakeAPI(
+		gatewayAsYaml("gateway", "gateway-ns", "1", "192.0.0.1", "gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod),
+		remoteServiceAsYaml("svc", "ns", "1", []corev1.ServicePort{}),
+		endpointsAsYaml("svc", "ns", "192.0.0.1", "gateway-identity", []corev1.EndpointPort{}),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	localAPI, err := k8s.NewFakeAPI(
+		namespaceAsYaml("ns"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	remoteAPI.Sync(nil)
+	localAPI.Sync(nil)
+
+	events := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+	watcher := RemoteClusterServiceWatcher{
+		link: &multicluster.Link{
+			TargetClusterName:   clusterName,
+			TargetClusterDomain: clusterDomain,
+			GatewayIdentity:     "gateway-identity",
+			GatewayAddress:      "192.0.0.1",
+			GatewayPort:         888,
+			ProbeSpec:           defaultProbeSpec,
+			Selector:            *defaultSelector,
+		},
+		remoteAPIClient: remoteAPI,
+		localAPIClient:  localAPI,
+		log:             logging.WithFields(logging.Fields{"cluster": clusterName}),
+		eventsQueue:     events,
+		requeueLimit:    0,
+		alive:           false,
+	}
+
+	events.Add(&RemoteServiceCreated{
+		service: remoteService("svc", "ns", "1", map[string]string{
+			consts.DefaultExportedServiceSelector: "true",
+		}, []corev1.ServicePort{
+			{
+				Name:     "port",
+				Protocol: "TCP",
+				Port:     111,
+			},
+		}),
+	})
+	for events.Len() > 0 {
+		watcher.processNextEvent(context.Background())
+	}
+	localAPI.Sync(nil)
+
+	// Expect Service svc-remote to be created with Endpoints subsets
+	// that are not ready because the gateway is down.
+	_, err = localAPI.Client.CoreV1().Services("ns").Get(context.Background(), "svc-remote", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("error getting svc-remote Service: %v", err)
+	}
+	endpoints, err := localAPI.Client.CoreV1().Endpoints("ns").Get(context.Background(), "svc-remote", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("error getting svc-remote Endpoints: %v", err)
+	}
+	if len(endpoints.Subsets) == 0 {
+		t.Fatal("expected svc-remote Endpoints subsets")
+	}
+	for _, ss := range endpoints.Subsets {
+		if len(ss.NotReadyAddresses) == 0 || len(ss.Addresses) != 0 {
+			t.Fatal("svc-remote Service endpoints should not be ready")
+		}
+	}
+
+	// The gateway is now alive which triggers repairing Endpoints on the
+	// local cluster.
+	watcher.alive = true
+	events.Add(&RepairEndpoints{})
+	for events.Len() > 0 {
+		watcher.processNextEvent(context.Background())
+	}
+	localAPI.Sync(nil)
+	endpoints, err = localAPI.Client.CoreV1().Endpoints("ns").Get(context.Background(), "svc-remote", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("error getting svc-remote Endpoints locally: %v", err)
+	}
+	if len(endpoints.Subsets) == 0 {
+		t.Fatal("expected svc-remote Endpoints subsets")
+	}
+	for _, ss := range endpoints.Subsets {
+		if len(ss.Addresses) == 0 || len(ss.NotReadyAddresses) != 0 {
+			t.Fatal("svc-remote Service endpoints should be ready")
+		}
 	}
 }
 
