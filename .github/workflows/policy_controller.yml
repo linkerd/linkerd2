@@ -22,6 +22,8 @@ env:
   CARGO_NET_RETRY: 10
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
+  PROXY_INIT_VERSION: v1.5.3
+  K3D_VERSION: v5.3.0
 
 jobs:
   fmt:
@@ -142,6 +144,8 @@ jobs:
           docker-registry: ghcr.io/linkerd
           docker-target: linux-amd64
           component: ${{ matrix.component }}
+      # TAG is set by docker-build
+      - run: echo $TAG
       - name: Create artifact with CLI and image archives
         run: |
           mkdir -p /home/runner/archives
@@ -162,37 +166,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
 
-      - name: Install kubectl
-        run: |
-          dir=$(mktemp -d)
-          version=$(bin/scurl https://dl.k8s.io/release/stable.txt)
-          bin/scurl -vo $dir/kubectl "https://dl.k8s.io/release/${version}/bin/linux/amd64/kubectl"
-          chmod 755 $dir/kubectl
-          sudo mv $dir/kubectl /usr/local/bin/kubectl
-          cli_version=$(kubectl version --client --short | sed -ne 's/^Client Version: //p')
-          if [[ "$version" != "$cli_version" ]] ; then
-            echo "::error::kubectl version is $cli_version; expected $version"
-            exit 1
-          fi
-          kubectl version --client
-      - name: Install k3d
-        run: |
-          bin/scurl -v https://raw.githubusercontent.com/rancher/k3d/main/install.sh | bash
-          k3d --version
-
-      # Go is needed to build the CLI.
       - uses: actions/setup-go@f6164bd8c8acb4a71fb2791a8b6c4024ff038dab
         with:
           go-version: '1.17'
       - name: Build the Linkerd CLI
-        run: |
-          # Compile the linkerd CLI
-          bin/linkerd version --short --client
+        run: bin/linkerd version --short --client
 
-      - name: Create cluster
-        run: |
-          k3d cluster create --no-lb --k3s-arg "--disable=servicelb,traefik@server:0"
-          kubectl version --short
+      - run: bin/scurl -v https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh | bash
+      - run: k3d --version
+      - run: k3d cluster create --no-lb --k3s-arg "--no-deploy=local-storage,traefik,servicelb,metrics-server@server:*"
+      - run: kubectl version
 
       - name: Download image archives
         uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
@@ -204,32 +187,31 @@ jobs:
           docker load <image-archives/controller.tar
           docker load <image-archives/policy-controller.tar
           docker load <image-archives/proxy.tar
-          docker pull ghcr.io/linkerd/proxy-init:v1.5.3
+          docker pull ghcr.io/linkerd/proxy-init:$PROXY_INIT_VERSION
           docker image ls | grep ghcr.io/linkerd
           tag="$(CI_FORCE_CLEAN=1 bin/root-tag)"
           k3d image import \
             ghcr.io/linkerd/controller:$tag \
             ghcr.io/linkerd/policy-controller:$tag \
             ghcr.io/linkerd/proxy:$tag \
-            ghcr.io/linkerd/proxy-init:v1.5.3
+            ghcr.io/linkerd/proxy-init:$PROXY_INIT_VERSION
 
       - run: bin/linkerd check --pre --wait=1m
       - run: bin/linkerd install | kubectl apply -f -
         env:
           LINKERD_DOCKER_REGISTRY: ghcr.io/linkerd
-      - name: Wait for pods to be ready
-        run: |
-          if ! kubectl wait pods -n linkerd -l linkerd.io/control-plane-ns --for condition=Ready --timeout=1m ; then
-            kubectl describe po -n linkerd >&2
-            exit 1
-          fi
+      # - name: Wait for pods to be ready
+      #   run: |
+      #     if ! kubectl wait pods -n linkerd -l linkerd.io/control-plane-ns --for condition=Ready --timeout=1m ; then
+      #       kubectl describe po -n linkerd >&2
+      #       exit 1
+      #     fi
       - run: bin/linkerd check --wait=1m
 
       - name: Install rust
         run: |
           rm -rf $HOME/.cargo
-          bin/scurl -v https://sh.rustup.rs \
-            | sh -s -- -y --default-toolchain $(cat rust-toolchain)
+          bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain $(cat rust-toolchain)
           source $HOME/.cargo/env
           echo "PATH=$PATH" >> $GITHUB_ENV
           cargo version
