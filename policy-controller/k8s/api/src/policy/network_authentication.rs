@@ -45,6 +45,20 @@ impl Except {
             Except::IpAddr(addr) => ipnet::IpNet::from(addr),
         }
     }
+
+    pub fn contains(&self, other: &ipnet::IpNet) -> bool {
+        match self {
+            Except::IpNet(net) => net.contains(other),
+            Except::IpAddr(addr) => ipnet::IpNet::from(*addr).contains(other),
+        }
+    }
+
+    pub fn contained_by(&self, other: &ipnet::IpNet) -> bool {
+        match self {
+            Except::IpNet(net) => other.contains(net),
+            Except::IpAddr(addr) => other.contains(addr),
+        }
+    }
 }
 
 impl std::str::FromStr for Except {

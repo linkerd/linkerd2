@@ -274,7 +274,6 @@ impl Validate<NetworkAuthenticationSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: NetworkAuthenticationSpec) -> Result<()> {
         for net in spec.networks.into_iter() {
             for except in net.except.into_iter().flatten() {
-                let except = except.into_net();
                 if except.contains(&net.cidr) {
                     bail!(
                         "cidr '{}' is completely negated by exception '{}'",
@@ -282,7 +281,7 @@ impl Validate<NetworkAuthenticationSpec> for Admission {
                         except
                     );
                 }
-                if !net.cidr.contains(&except) {
+                if !except.contained_by(&net.cidr) {
                     bail!(
                         "cidr '{}' does not include exception '{}'",
                         net.cidr,
