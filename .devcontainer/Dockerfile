@@ -2,7 +2,7 @@ ARG GO_VERSION=1.17
 ARG RUST_TOOLCHAIN=1.59.0
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as go
-ARG GOLANGCI_LINT_VERSION=v1.44.0
+ARG GOLANGCI_LINT_VERSION=v1.44.2
 RUN for p in \
     github.com/uudashr/gopkgs/v2/cmd/gopkgs@latest \
     github.com/ramya-rao-a/go-outline@latest \
@@ -11,12 +11,12 @@ RUN for p in \
     github.com/josharian/impl@latest \
     github.com/haya14busa/goplay/cmd/goplay@latest \
     github.com/go-delve/delve/cmd/dlv@latest \
-    github.com/golangci/golangci-lint/cmd/golangci-lint@${GOLANGCI_LINT_VERSION#v} \
+    github.com/golangci/golangci-lint/cmd/golangci-lint@${GOLANGCI_LINT_VERSION} \
     golang.org/x/tools/gopls@latest \
     ; do go install "$p" ; done
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as cargo-deny
-ARG CARGO_DENY_VERSION=0.11.1
+ARG CARGO_DENY_VERSION=0.11.3
 COPY bin/scurl /usr/local/bin/scurl
 RUN scurl "https://github.com/EmbarkStudios/cargo-deny/releases/download/${CARGO_DENY_VERSION}/cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
     | tar zvxf - --strip-components=1 -C /usr/local/bin "cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl/cargo-deny"
@@ -33,8 +33,9 @@ RUN scurl -vo /usr/local/bin/kubectl "https://dl.k8s.io/release/$(scurl https://
     && chmod 755 /usr/local/bin/kubectl
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as k3d
+ARG K3D_VERSION=v5.3.0
 COPY bin/scurl /usr/local/bin/scurl
-RUN scurl -v https://raw.githubusercontent.com/rancher/k3d/main/install.sh \
+RUN scurl -v https://raw.githubusercontent.com/rancher/k3d/$K3D_VERSION/install.sh \
     | USE_SUDO=false K3D_INSTALL_DIR=/usr/local/bin bash
 
 FROM docker.io/rust:${RUST_TOOLCHAIN}-bullseye as rust

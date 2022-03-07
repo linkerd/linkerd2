@@ -16,21 +16,21 @@ where
     let _tracing = init_tracing();
 
     let namespace = {
+        // TODO(ver) include the test name in this string?
         let rng = &mut rand::thread_rng();
         let sfx = (0..6)
             .map(|_| rng.sample(LowercaseAlphanumeric) as char)
             .collect::<String>();
         format!("linkerd-policy-test-{}", sfx)
     };
-    tracing::info!(%namespace);
 
-    tracing::debug!(%namespace, "initializing client");
+    tracing::debug!("initializing client");
     let client = kube::Client::try_default()
         .await
-        .expect("failed to initialie k8s client");
+        .expect("failed to initialize k8s client");
     let api = kube::Api::<api::Namespace>::all(client.clone());
 
-    tracing::debug!(%namespace, "creating namespace");
+    tracing::debug!(%namespace, "creating");
     let ns = api::Namespace {
         metadata: api::ObjectMeta {
             name: Some(namespace.clone()),
@@ -42,7 +42,7 @@ where
         .await
         .expect("failed to create Namespace");
 
-    tracing::trace!(%namespace, "spawning");
+    tracing::trace!("spawning");
     let test = test(client.clone(), namespace.clone());
     let res = tokio::spawn(test.instrument(tracing::info_span!("test", %namespace))).await;
     if res.is_err() {
@@ -51,7 +51,7 @@ where
         drop(_tracing);
     }
 
-    tracing::debug!(%namespace, "deleting Namespace");
+    tracing::debug!(%namespace, "deleting");
     api.delete(&namespace, &kube::api::DeleteParams::background())
         .await
         .expect("failed to delete Namespace");

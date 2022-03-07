@@ -1,8 +1,4 @@
-# Policy controller tests
-
 The `policy-test` crate includes integration tests for the policy controller.
-
-These tests run again sthe defau
 
 ## Running locally
 
