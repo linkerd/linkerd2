@@ -133,7 +133,9 @@ impl Admission {
 
 /// Detects whether two pod selectors can select the same pod
 //
-// TODO(ver) We can probably detect overlapping selectors more effectively.
+// TODO(ver) We can probably detect overlapping selectors more effectively. For example, if `left`
+// selects pods with 'foo=bar' and `right` selects pods with 'foo', we should indicate the selectors
+// overlap. It's a bit tricky to work through all of the cases though, so we'll just punt for now.
 fn overlaps(left: &api::labels::Selector, right: &api::labels::Selector) -> bool {
     if left.selects_all() || right.selects_all() {
         return true;
