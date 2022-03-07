@@ -147,7 +147,7 @@ spec:
         description: The protocol of the server
         jsonPath: .spec.proxyProtocol
 ---
-# Source: linkerd-crds/templates/policy/serverauthorization.yaml
+# Source: linkerd-crds/templates/policy/server-authorization.yaml
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -435,7 +435,7 @@ spec:
         description: The server that this grants access to
         jsonPath: .spec.server.name
 ---
-# Source: linkerd-crds/templates/policy/authorizationpolicy.yaml
+# Source: linkerd-crds/templates/policy/authorization-policy.yaml
 
 ---
 apiVersion: apiextensions.k8s.io/v1
@@ -538,7 +538,7 @@ spec:
                       - kind
                       - name
 ---
-# Source: linkerd-crds/templates/policy/meshtlsauthentication.yaml
+# Source: linkerd-crds/templates/policy/meshtls-authentication.yaml
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -621,7 +621,7 @@ spec:
                     required:
                       - kind
 ---
-# Source: linkerd-crds/templates/policy/networkauthentication.yaml
+# Source: linkerd-crds/templates/policy/network-authentication.yaml
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
