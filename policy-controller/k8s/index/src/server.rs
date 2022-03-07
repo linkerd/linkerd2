@@ -1,5 +1,6 @@
-use crate::{authz::AuthzIndex, Index, Namespace, ServerRx, ServerTx};
+use crate::{server_authorization::AuthzIndex, Index, Namespace, ServerRx, ServerTx, SharedIndex};
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
+use futures::prelude::*;
 use linkerd_policy_controller_core::{ClientAuthorization, InboundServer, ProxyProtocol};
 use linkerd_policy_controller_k8s_api::{self as k8s, policy, ResourceExt};
 use std::{collections::hash_map::Entry, sync::Arc};
@@ -44,91 +45,99 @@ pub(crate) enum ServerSelector {
     Selector(Arc<k8s::labels::Selector>),
 }
 
+#[instrument(skip_all, name = "servers")]
+pub async fn index(
+    idx: SharedIndex,
+    events: impl Stream<Item = k8s::WatchEvent<k8s::policy::Server>>,
+) {
+    tokio::pin!(events);
+    while let Some(ev) = events.next().await {
+        match ev {
+            k8s::WatchEvent::Applied(srv) => apply(&mut *idx.write(), srv),
+            k8s::WatchEvent::Deleted(srv) => delete(&mut *idx.write(), srv),
+            k8s::WatchEvent::Restarted(srvs) => restart(&mut *idx.write(), srvs),
+        }
+    }
+}
+
 // === impl Index ===
 
-impl Index {
-    /// Builds a `Server`, linking it against authorizations and pod ports.
-    #[instrument(
-        skip(self, srv),
-        fields(
-            ns = ?srv.metadata.namespace,
-            name = %srv.name(),
-        )
-    )]
-    pub(crate) fn apply_server(&mut self, srv: policy::Server) {
+/// Builds a `Server`, linking it against authorizations and pod ports.
+#[instrument(skip_all, fields(
+    ns = ?srv.metadata.namespace,
+    name = %srv.name(),
+))]
+fn apply(index: &mut Index, srv: policy::Server) {
+    let ns_name = srv.namespace().expect("namespace must be set");
+    let Namespace {
+        ref mut pods,
+        ref mut authzs,
+        ref mut servers,
+        default_policy: _,
+    } = index.namespaces.get_or_default(ns_name);
+
+    servers.apply(srv, authzs);
+
+    // If we've updated the server->pod selection, then we need to re-index
+    // all pods and servers.
+    pods.link_servers(servers);
+}
+
+#[instrument(skip_all, fields(
+    ns = ?srv.metadata.namespace,
+    name = %srv.name(),
+))]
+fn delete(index: &mut Index, srv: policy::Server) {
+    rm_server(
+        index,
+        &*srv.namespace().expect("servers must be namespaced"),
+        &*srv.name(),
+    );
+}
+
+fn rm_server(index: &mut Index, ns_name: &str, srv_name: &str) {
+    let ns = match index.namespaces.index.get_mut(ns_name) {
+        Some(ns) => ns,
+        None => {
+            warn!(name = %ns_name, "removing server from non-existent namespace");
+            return;
+        }
+    };
+
+    if ns.servers.index.remove(srv_name).is_none() {
+        warn!(name = %srv_name, "unknown server");
+    }
+
+    // Reset the server config for all pods that were using this server.
+    ns.pods.reset_server(srv_name);
+
+    debug!("Removed server");
+}
+
+#[instrument(skip_all)]
+fn restart(index: &mut Index, srvs: Vec<policy::Server>) {
+    let mut prior_servers = index
+        .namespaces
+        .index
+        .iter()
+        .map(|(n, ns)| {
+            let servers = ns.servers.index.keys().cloned().collect::<HashSet<_>>();
+            (n.clone(), servers)
+        })
+        .collect::<HashMap<_, _>>();
+
+    for srv in srvs.into_iter() {
         let ns_name = srv.namespace().expect("namespace must be set");
-        let Namespace {
-            ref mut pods,
-            ref mut authzs,
-            ref mut servers,
-            default_policy: _,
-        } = self.namespaces.get_or_default(ns_name);
-
-        servers.apply(srv, authzs);
-
-        // If we've updated the server->pod selection, then we need to re-index
-        // all pods and servers.
-        pods.link_servers(servers);
-    }
-
-    #[instrument(
-        skip(self, srv),
-        fields(
-            ns = ?srv.metadata.namespace,
-            name = %srv.name(),
-        )
-    )]
-    pub(crate) fn delete_server(&mut self, srv: policy::Server) {
-        self.rm_server(
-            &*srv.namespace().expect("servers must be namespaced"),
-            &*srv.name(),
-        );
-    }
-
-    fn rm_server(&mut self, ns_name: &str, srv_name: &str) {
-        let ns = match self.namespaces.index.get_mut(ns_name) {
-            Some(ns) => ns,
-            None => {
-                warn!(name = %ns_name, "removing server from non-existent namespace");
-                return;
-            }
-        };
-
-        if ns.servers.index.remove(srv_name).is_none() {
-            warn!(name = %srv_name, "unknown server");
+        if let Some(ns) = prior_servers.get_mut(&ns_name) {
+            ns.remove(srv.name().as_str());
         }
 
-        // Reset the server config for all pods that were using this server.
-        ns.pods.reset_server(srv_name);
-
-        debug!("Removed server");
+        apply(index, srv);
     }
 
-    #[instrument(skip(self, srvs))]
-    pub(crate) fn reset_servers(&mut self, srvs: Vec<policy::Server>) {
-        let mut prior_servers = self
-            .namespaces
-            .index
-            .iter()
-            .map(|(n, ns)| {
-                let servers = ns.servers.index.keys().cloned().collect::<HashSet<_>>();
-                (n.clone(), servers)
-            })
-            .collect::<HashMap<_, _>>();
-
-        for srv in srvs.into_iter() {
-            let ns_name = srv.namespace().expect("namespace must be set");
-            if let Some(ns) = prior_servers.get_mut(&ns_name) {
-                ns.remove(srv.name().as_str());
-            }
-
-            self.apply_server(srv);
-        }
-
-        for (ns_name, ns_servers) in prior_servers.into_iter() {
-            for srv_name in ns_servers.into_iter() {
-                self.rm_server(ns_name.as_str(), &srv_name);
-            }
+    for (ns_name, ns_servers) in prior_servers.into_iter() {
+        for srv_name in ns_servers.into_iter() {
+            rm_server(index, ns_name.as_str(), &srv_name);
         }
     }
 }
@@ -141,7 +150,7 @@ impl SrvIndex {
     }
 
     /// Adds an authorization to servers matching `selector`.
-    pub(crate) fn add_authz(
+    pub(crate) fn add_server_authz(
         &mut self,
         name: &str,
         selector: &ServerSelector,
@@ -150,18 +159,18 @@ impl SrvIndex {
         for (srv_name, srv) in self.index.iter_mut() {
             if selector.selects(srv_name, &srv.labels) {
                 debug!(server = %srv_name, authz = %name, "Adding authz to server");
-                srv.insert_authz(name.to_string(), authz.clone());
+                srv.insert_server_authz(name.to_string(), authz.clone());
             } else {
                 debug!(server = %srv_name, authz = %name, "Removing authz from server");
-                srv.remove_authz(name);
+                srv.remove_server_authz(name);
             }
         }
     }
 
     /// Removes an authorization by `name`.
-    pub(crate) fn remove_authz(&mut self, name: &str) {
+    pub(crate) fn remove_server_authz(&mut self, name: &str) {
         for srv in self.index.values_mut() {
-            srv.remove_authz(name);
+            srv.remove_server_authz(name);
         }
     }
 
@@ -182,7 +191,7 @@ impl SrvIndex {
     }
 
     /// Update the index with a server instance.
-    fn apply(&mut self, srv: policy::Server, ns_authzs: &AuthzIndex) {
+    fn apply(&mut self, srv: policy::Server, ns_server_authzs: &AuthzIndex) {
         trace!(?srv, "Applying server");
         let srv_name = srv.name();
         let port = srv.spec.port;
@@ -191,7 +200,7 @@ impl SrvIndex {
         match self.index.entry(srv_name) {
             Entry::Vacant(entry) => {
                 let labels = k8s::Labels::from(srv.metadata.labels);
-                let authzs = ns_authzs
+                let authzs = ns_server_authzs
                     .filter_for_server(entry.key(), labels.clone())
                     .map(|(n, a)| (n, a.clone()))
                     .collect::<HashMap<_, _>>();
@@ -239,7 +248,7 @@ impl SrvIndex {
                     let mut config = entry.get().rx.borrow().clone();
 
                     if let Some(labels) = new_labels {
-                        let authzs = ns_authzs
+                        let authzs = ns_server_authzs
                             .filter_for_server(entry.key(), labels.clone())
                             .map(|(n, a)| (n, a.clone()))
                             .collect::<HashMap<_, _>>();
@@ -308,7 +317,7 @@ impl Server {
         &*self.pod_selector
     }
 
-    fn insert_authz(&mut self, name: impl Into<String>, authz: ClientAuthorization) {
+    fn insert_server_authz(&mut self, name: impl Into<String>, authz: ClientAuthorization) {
         debug!("Adding authorization to server");
         self.authorizations.insert(name.into(), authz);
         let mut config = self.rx.borrow().clone();
@@ -316,7 +325,7 @@ impl Server {
         self.tx.send(config).expect("config must send")
     }
 
-    fn remove_authz(&mut self, name: &str) {
+    fn remove_server_authz(&mut self, name: &str) {
         if self.authorizations.remove(name).is_some() {
             debug!("Removing authorization from server");
             let mut config = self.rx.borrow().clone();
@@ -329,7 +338,7 @@ impl Server {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::authz::AuthzIndex;
+    use crate::server_authorization::AuthzIndex;
     use linkerd_policy_controller_core::ClientAuthentication;
     use linkerd_policy_controller_k8s_api::policy::server::{Port, ProxyProtocol};
 
@@ -411,14 +420,14 @@ mod tests {
     }
 
     #[test]
-    fn server_add_authz_to_idx() {
+    fn server_add_server_authz_to_idx() {
         let mut idx = {
             let mut idx = SrvIndex::default();
             let srv = mk_server("ns-0", "srv-0", Port::Number(9999));
             idx.apply(srv, &AuthzIndex::default());
             idx
         };
-        idx.add_authz(
+        idx.add_server_authz(
             "authz-test",
             &ServerSelector::Name("srv-0".to_string()),
             ClientAuthorization {
@@ -436,14 +445,14 @@ mod tests {
     }
 
     #[test]
-    fn server_rm_authz_from_idx() {
+    fn server_rm_server_authz_from_idx() {
         let mut idx = {
             let mut idx = SrvIndex::default();
             let srv = mk_server("ns-0", "srv-0", Port::Number(9999));
             idx.apply(srv, &AuthzIndex::default());
             idx
         };
-        idx.add_authz(
+        idx.add_server_authz(
             "authz-test",
             &ServerSelector::Name("srv-0".to_string()),
             ClientAuthorization {
@@ -451,7 +460,7 @@ mod tests {
                 authentication: ClientAuthentication::Unauthenticated,
             },
         );
-        idx.remove_authz("authz-test");
+        idx.remove_server_authz("authz-test");
         let srv = idx.index.get("srv-0").unwrap();
         assert!(
             srv.authorizations.get("authz-test").is_none(),

@@ -17,3 +17,7 @@ linkerd-policy-controller-k8s-api = { path = "../api" }
 parking_lot = "0.12"
 tokio = { version = "1", features = ["macros", "rt", "sync"] }
 tracing = "0.1"
+
+[dev-dependencies]
+tokio-stream = "0.1"
+tokio-test = "0.4"
