@@ -345,7 +345,6 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 	for events.Len() > 0 {
 		watcher.processNextEvent(context.Background())
 	}
-	localAPI.Sync(nil)
 
 	// Expect Service svc-remote to be created with ready endpoints because
 	// the Namespace ns exists and the gateway is alive.
@@ -361,8 +360,11 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 		t.Fatal("expected svc-remote Endpoints subsets")
 	}
 	for _, ss := range endpoints.Subsets {
-		if len(ss.Addresses) == 0 || len(ss.NotReadyAddresses) != 0 {
-			t.Fatal("svc-remote Service endpoints should be ready")
+		if len(ss.Addresses) == 0 {
+			t.Fatal("svc-remote Endpoints should have addresses")
+		}
+		if len(ss.NotReadyAddresses) != 0 {
+			t.Fatalf("svc-remote Endpoints should not have not ready addresses: %v", ss.NotReadyAddresses)
 		}
 	}
 
@@ -373,7 +375,6 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 	for events.Len() > 0 {
 		watcher.processNextEvent(context.Background())
 	}
-	localAPI.Sync(nil)
 
 	// When repairing Endpoints on the local cluster, the gateway address
 	// should have been moved to NotReadyAddresses meaning that Endpoints
@@ -386,8 +387,11 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 		t.Fatal("expected svc-remote Endpoints subsets")
 	}
 	for _, ss := range endpoints.Subsets {
-		if len(ss.NotReadyAddresses) == 0 || len(ss.Addresses) != 0 {
-			t.Fatal("svc-remote Service endpoints should not be ready")
+		if len(ss.NotReadyAddresses) == 0 {
+			t.Fatal("svc-remote Endpoints should have not ready addresses")
+		}
+		if len(ss.Addresses) != 0 {
+			t.Fatalf("svc-remote Endpoints should not have addresses: %v", ss.Addresses)
 		}
 	}
 
@@ -412,7 +416,6 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 	for events.Len() > 0 {
 		watcher.processNextEvent(context.Background())
 	}
-	localAPI.Sync(nil)
 	service, err := localAPI.Client.CoreV1().Services("ns").Get(context.Background(), "svc-remote", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("error getting svc-remote Service: %v", err)
@@ -429,8 +432,11 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 		t.Fatal("expected svc-remote Endpoints subsets")
 	}
 	for _, ss := range endpoints.Subsets {
-		if len(ss.NotReadyAddresses) == 0 || len(ss.Addresses) != 0 {
-			t.Fatal("svc-remote Service endpoints should not be ready")
+		if len(ss.NotReadyAddresses) == 0 {
+			t.Fatal("svc-remote Endpoints should have not ready addresses")
+		}
+		if len(ss.Addresses) != 0 {
+			t.Fatalf("svc-remote Endpoints should not have addresses: %v", ss.Addresses)
 		}
 	}
 }
@@ -486,7 +492,6 @@ func TestServiceCreatedGatewayDown(t *testing.T) {
 	for events.Len() > 0 {
 		watcher.processNextEvent(context.Background())
 	}
-	localAPI.Sync(nil)
 
 	// Expect Service svc-remote to be created with Endpoints subsets
 	// that are not ready because the gateway is down.
@@ -502,8 +507,11 @@ func TestServiceCreatedGatewayDown(t *testing.T) {
 		t.Fatal("expected svc-remote Endpoints subsets")
 	}
 	for _, ss := range endpoints.Subsets {
-		if len(ss.NotReadyAddresses) == 0 || len(ss.Addresses) != 0 {
-			t.Fatal("svc-remote Service endpoints should not be ready")
+		if len(ss.NotReadyAddresses) == 0 {
+			t.Fatal("svc-remote Endpoints should have not ready addresses")
+		}
+		if len(ss.Addresses) != 0 {
+			t.Fatalf("svc-remote Endpoints should not have addresses: %v", ss.Addresses)
 		}
 	}
 
@@ -514,7 +522,6 @@ func TestServiceCreatedGatewayDown(t *testing.T) {
 	for events.Len() > 0 {
 		watcher.processNextEvent(context.Background())
 	}
-	localAPI.Sync(nil)
 	endpoints, err = localAPI.Client.CoreV1().Endpoints("ns").Get(context.Background(), "svc-remote", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("error getting svc-remote Endpoints locally: %v", err)
@@ -523,8 +530,11 @@ func TestServiceCreatedGatewayDown(t *testing.T) {
 		t.Fatal("expected svc-remote Endpoints subsets")
 	}
 	for _, ss := range endpoints.Subsets {
-		if len(ss.Addresses) == 0 || len(ss.NotReadyAddresses) != 0 {
-			t.Fatal("svc-remote Service endpoints should be ready")
+		if len(ss.Addresses) == 0 {
+			t.Fatal("svc-remote Endpoints should have addresses")
+		}
+		if len(ss.NotReadyAddresses) != 0 {
+			t.Fatalf("svc-remote Service endpoints should not have not ready addresses: %v", ss.NotReadyAddresses)
 		}
 	}
 }

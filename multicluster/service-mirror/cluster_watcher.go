@@ -504,7 +504,6 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 		},
 	}
 
-	rcsw.log.Infof("Creating a new service mirror for %s", serviceInfo)
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Services(remoteService.Namespace).Create(ctx, serviceToCreate, metav1.CreateOptions{}); err != nil {
 		if !kerrors.IsAlreadyExists(err) {
 			// we might have created it during earlier attempt, if that is not the case, we retry
@@ -698,6 +697,16 @@ func (rcsw *RemoteClusterServiceWatcher) getMirrorServices() ([]*corev1.Service,
 	services, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
 	if err != nil {
 		return nil, err
+	}
+	if len(services) == 0 {
+		serviceList, err := rcsw.localAPIClient.Client.CoreV1().Services("").List(context.Background(), metav1.ListOptions{LabelSelector: labels.SelectorFromSet(matchLabels).String()})
+		if err != nil {
+			return nil, err
+		}
+		for _, service := range serviceList.Items {
+			service := service
+			services = append(services, &service)
+		}
 	}
 	return services, nil
 }
@@ -990,12 +999,20 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 
 		endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(svc.Namespace).Get(svc.Name)
 		if err != nil {
-			rcsw.log.Errorf("Could not get local endpoints: %s", err)
-			continue
+			if !kerrors.IsNotFound(err) {
+				rcsw.log.Errorf("failed to list local endpoints: %s", err)
+				continue
+			}
+			endpoints, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{})
+			if err != nil {
+				rcsw.log.Errorf("failed to get local endpoints %s/%s: %s", svc.Namespace, svc.Name, err)
+			}
 		}
 
 		updatedEndpoints := endpoints.DeepCopy()
 		if !rcsw.alive {
+			rcsw.log.Warnf("gateway for service %s/%s does not have ready addresses; updating endpoint subsets to not ready", updatedService.Namespace, updatedService.Name)
+
 			// The gateway is not alive so the Endpoints update should reflect
 			// that by changing the gateway addresses to not ready. This
 			// ensures that mirror services on the source cluster do not
@@ -1006,8 +1023,9 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 					Ports:             rcsw.getEndpointsPorts(updatedService),
 				},
 			}
-			rcsw.log.Warnf("gateway for service %s/%s does not have ready addresses; updating endpoint subsets to not ready", updatedService.Namespace, updatedService.Name)
 		} else {
+			rcsw.log.Debugf("gateway for service %s/%s has addresses; updating endpoint subsets to: %v", updatedService.Namespace, updatedService.Name, gatewayAddresses)
+
 			updatedEndpoints.Subsets = []corev1.EndpointSubset{
 				{
 					Addresses: gatewayAddresses,
@@ -1024,6 +1042,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 				continue
 			}
 			if empty {
+				rcsw.log.Warnf("exported service %s/%s is empty", targetService.Namespace, targetService.Name)
 				updatedEndpoints.Subsets = []corev1.EndpointSubset{}
 			}
 		}
