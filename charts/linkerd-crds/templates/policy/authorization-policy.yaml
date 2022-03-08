@@ -8,7 +8,6 @@ metadata:
     {{ include "partials.annotations.created-by" . }}
   labels:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    linkerd.io/control-plane-ns: {{.Release.Namespace}}
 spec:
   group: policy.linkerd.io
   scope: Namespaced
@@ -28,14 +27,15 @@ spec:
           properties:
             spec:
               description: >-
-                Authorizes clients to communicate with Linkerd-proxied servers.
+                Authorizes clients to communicate with Linkerd-proxied server resources.
               type: object
               required: [targetRef, requiredAuthenticationRefs]
               properties:
                 targetRef:
                   description: >-
-                    TODO ...
+                    TargetRef references a resource to which the authorization policy applies.
                   type: object
+                  required: [kind, name]
                   # Modified from the gateway API.
                   # Copyright 2020 The Kubernetes Authors
                   properties:
@@ -58,15 +58,13 @@ spec:
                       maxLength: 253
                       minLength: 1
                       type: string
-                  required:
-                    - kind
-                    - name
                 requiredAuthenticationRefs:
                   description: >-
                     RequiredAuthenticationRefs enumerates a set of required authentications
                   type: array
                   items:
                     type: object
+                    required: [kind, name]
                     properties:
                       group:
                         description: >-
@@ -96,6 +94,3 @@ spec:
                           refers to the local namespace.
                         maxLength: 253
                         type: string
-                    required:
-                      - kind
-                      - name

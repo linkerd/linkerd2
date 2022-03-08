@@ -7,7 +7,6 @@ metadata:
     {{ include "partials.annotations.created-by" . }}
   labels:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    linkerd.io/control-plane-ns: {{.Release.Namespace}}
 spec:
   group: policy.linkerd.io
   scope: Namespaced
@@ -27,13 +26,12 @@ spec:
           properties:
             spec:
               description: >-
-                TODO
+                NetworkAuthentication defines a list of authenticated client
+                networks to be referenced by an `AuthenticationPolicy`.
               type: object
               required: [networks]
               properties:
                 networks:
-                  description: >-
-                    The list of networks that this authentication applies to.
                   type: array
                   items:
                     type: object
@@ -41,9 +39,11 @@ spec:
                     properties:
                       cidr:
                         description: >-
-                          The CIDR of the network that this authentication
+                          The CIDR of the network to be authorized.
                         type: string
                       except:
+                        description: >-
+                          A list of IP networks/addresses not to be included in the above `cidr`.
                         type: array
                         items:
                           type: string

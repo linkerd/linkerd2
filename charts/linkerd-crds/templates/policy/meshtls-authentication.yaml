@@ -7,7 +7,6 @@ metadata:
     {{ include "partials.annotations.created-by" . }}
   labels:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    linkerd.io/control-plane-ns: {{.Release.Namespace}}
 spec:
   group: policy.linkerd.io
   scope: Namespaced
@@ -27,7 +26,8 @@ spec:
           properties:
             spec:
               description: >-
-                TODO
+                MeshTLSAuthentication defines a list of authenticated client IDs
+                to be referenced by an `AuthenticationPolicy`.
               type: object
               oneOf:
                 - required: [identities]
@@ -49,6 +49,8 @@ spec:
                   type: array
                   items:
                     type: object
+                    required:
+                      - kind
                     properties:
                       group:
                         description: >-
@@ -77,5 +79,3 @@ spec:
                           refers to the local namespace.
                         maxLength: 253
                         type: string
-                    required:
-                      - kind

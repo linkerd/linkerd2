@@ -440,7 +440,6 @@ metadata:
     linkerd.io/created-by: CliVersion
   labels:
     helm.sh/chart: linkerd-control-plane-1.1.8-edge
-    linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
   scope: Namespaced
@@ -460,14 +459,15 @@ spec:
           properties:
             spec:
               description: >-
-                Authorizes clients to communicate with Linkerd-proxied servers.
+                Authorizes clients to communicate with Linkerd-proxied server resources.
               type: object
               required: [targetRef, requiredAuthenticationRefs]
               properties:
                 targetRef:
                   description: >-
-                    TODO ...
+                    TargetRef references a resource to which the authorization policy applies.
                   type: object
+                  required: [kind, name]
                   # Modified from the gateway API.
                   # Copyright 2020 The Kubernetes Authors
                   properties:
@@ -490,15 +490,13 @@ spec:
                       maxLength: 253
                       minLength: 1
                       type: string
-                  required:
-                    - kind
-                    - name
                 requiredAuthenticationRefs:
                   description: >-
                     RequiredAuthenticationRefs enumerates a set of required authentications
                   type: array
                   items:
                     type: object
+                    required: [kind, name]
                     properties:
                       group:
                         description: >-
@@ -528,9 +526,6 @@ spec:
                           refers to the local namespace.
                         maxLength: 253
                         type: string
-                    required:
-                      - kind
-                      - name
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -540,7 +535,6 @@ metadata:
     linkerd.io/created-by: CliVersion
   labels:
     helm.sh/chart: linkerd-control-plane-1.1.8-edge
-    linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
   scope: Namespaced
@@ -560,7 +554,8 @@ spec:
           properties:
             spec:
               description: >-
-                TODO
+                MeshTLSAuthentication defines a list of authenticated client IDs
+                to be referenced by an `AuthenticationPolicy`.
               type: object
               oneOf:
                 - required: [identities]
@@ -582,6 +577,8 @@ spec:
                   type: array
                   items:
                     type: object
+                    required:
+                      - kind
                     properties:
                       group:
                         description: >-
@@ -610,8 +607,6 @@ spec:
                           refers to the local namespace.
                         maxLength: 253
                         type: string
-                    required:
-                      - kind
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -621,7 +616,6 @@ metadata:
     linkerd.io/created-by: CliVersion
   labels:
     helm.sh/chart: linkerd-control-plane-1.1.8-edge
-    linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
   scope: Namespaced
@@ -641,13 +635,12 @@ spec:
           properties:
             spec:
               description: >-
-                TODO
+                NetworkAuthentication defines a list of authenticated client
+                networks to be referenced by an `AuthenticationPolicy`.
               type: object
               required: [networks]
               properties:
                 networks:
-                  description: >-
-                    The list of networks that this authentication applies to.
                   type: array
                   items:
                     type: object
@@ -655,9 +648,11 @@ spec:
                     properties:
                       cidr:
                         description: >-
-                          The CIDR of the network that this authentication
+                          The CIDR of the network to be authorized.
                         type: string
                       except:
+                        description: >-
+                          A list of IP networks/addresses not to be included in the above `cidr`.
                         type: array
                         items:
                           type: string
