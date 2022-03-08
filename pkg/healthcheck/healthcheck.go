@@ -2795,7 +2795,11 @@ func CheckPodsRunning(pods []corev1.Pod, namespace string) error {
 	}
 	for _, pod := range pods {
 		status := k8s.GetPodStatus(pod)
-		if shouldSkip(status) {
+
+		// Skip validating pods that have a status which indicates there would
+		// be no running proxy container.
+		switch status {
+		case "Completed", "NodeShutdown", "Shutdown":
 			continue
 		}
 		if status != string(corev1.PodRunning) && status != "Evicted" {
@@ -2821,18 +2825,6 @@ func CheckIfDataPlanePodsExist(pods []corev1.Pod) error {
 func containsProxy(pod corev1.Pod) bool {
 	for _, containerSpec := range pod.Spec.Containers {
 		if containerSpec.Name == k8s.ProxyContainerName {
-			return true
-		}
-	}
-	return false
-}
-
-// shouldSkip returns true if a Pod should be skipped when validating status
-// as it would not have a proxy container running.
-func shouldSkip(status string) bool {
-	skipStatuses := []string{"Completed", "NodeShutdown", "Shutdown"}
-	for _, s := range skipStatuses {
-		if s == status {
 			return true
 		}
 	}
