@@ -166,16 +166,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
 
-      - uses: actions/setup-go@f6164bd8c8acb4a71fb2791a8b6c4024ff038dab
-        with:
-          go-version: '1.17'
-      - name: Build the Linkerd CLI
-        run: bin/linkerd version --short --client
+      - name: Install rust
+        run: |
+          rm -rf $HOME/.cargo
+          bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain $(cat rust-toolchain)
+          source $HOME/.cargo/env
+          echo "PATH=$PATH" >> $GITHUB_ENV
+          bin/scurl -o /usr/local/bin/cargo-action-fmt "https://github.com/olix0r/cargo-action-fmt/releases/download/release%2F${CARGO_ACTION_FMT_VERSION}/cargo-action-fmt-x86_64-unknown-linux-gnu"
+          chmod 755 /usr/local/bin/cargo-action-fmt
+          cargo version
+          cargo-action-fmt --version
 
       - run: bin/scurl -v https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh | bash
       - run: k3d --version
       - run: k3d cluster create --no-lb --k3s-arg "--no-deploy=local-storage,traefik,servicelb,metrics-server@server:*"
       - run: kubectl version
+
+      # Build the tests before installing Linkerd and running the tests. This gives the cluster a
+      # chance to settle down before loading images, etc. It also ensures that the tests compile
+      # before doing extra work.
+      - run: cargo fetch --locked
+      - run: cargo test -p linkerd-policy-test --frozen --no-run | cargo-action-fmt
 
       - name: Download image archives
         uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
@@ -190,31 +201,27 @@ jobs:
           docker pull ghcr.io/linkerd/proxy-init:$PROXY_INIT_VERSION
           docker image ls | grep ghcr.io/linkerd
           tag="$(CI_FORCE_CLEAN=1 bin/root-tag)"
-          k3d image import \
-            ghcr.io/linkerd/controller:$tag \
-            ghcr.io/linkerd/policy-controller:$tag \
-            ghcr.io/linkerd/proxy:$tag \
-            ghcr.io/linkerd/proxy-init:$PROXY_INIT_VERSION
+          # Image loading is flakey in CI, so retry!
+          until k3d image import \
+                  ghcr.io/linkerd/controller:$tag \
+                  ghcr.io/linkerd/policy-controller:$tag \
+                  ghcr.io/linkerd/proxy:$tag \
+                  ghcr.io/linkerd/proxy-init:$PROXY_INIT_VERSION ; do
+            sleep 2
+            echo retrying...
+          done
 
+      # Build the CLI and install Linkerd.
+      - uses: actions/setup-go@f6164bd8c8acb4a71fb2791a8b6c4024ff038dab
+        with:
+          go-version: '1.17'
+      - name: Build the Linkerd CLI
+        run: bin/linkerd version --short --client
       - run: bin/linkerd check --pre --wait=1m
       - run: bin/linkerd install | kubectl apply -f -
         env:
           LINKERD_DOCKER_REGISTRY: ghcr.io/linkerd
       - run: bin/linkerd check --wait=1m
 
-      - name: Install rust
-        run: |
-          rm -rf $HOME/.cargo
-          bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain $(cat rust-toolchain)
-          source $HOME/.cargo/env
-          echo "PATH=$PATH" >> $GITHUB_ENV
-          cargo version
-
-      - name: Install cargo-action-fmt
-        run: |
-          bin/scurl -o /usr/local/bin/cargo-action-fmt "https://github.com/olix0r/cargo-action-fmt/releases/download/release%2F${CARGO_ACTION_FMT_VERSION}/cargo-action-fmt-x86_64-unknown-linux-gnu"
-          chmod 755 /usr/local/bin/cargo-action-fmt
-
-      - run: cargo fetch --locked
-      - run: cargo test -p linkerd-policy-test --frozen --no-run | cargo-action-fmt
+      # Run the tests.
       - run: cargo test -p linkerd-policy-test --frozen
