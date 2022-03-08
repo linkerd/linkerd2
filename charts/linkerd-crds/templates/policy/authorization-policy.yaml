@@ -8,6 +8,7 @@ metadata:
     {{ include "partials.annotations.created-by" . }}
   labels:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
 spec:
   group: policy.linkerd.io
   scope: Namespaced
