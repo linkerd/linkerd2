@@ -440,6 +440,7 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
     helm.sh/chart: linkerd-control-plane-1.1.8-edge
+    linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
   scope: Namespaced
@@ -535,6 +536,7 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
     helm.sh/chart: linkerd-control-plane-1.1.8-edge
+    linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
   scope: Namespaced
@@ -616,6 +618,7 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
     helm.sh/chart: linkerd-control-plane-1.1.8-edge
+    linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
   scope: Namespaced
