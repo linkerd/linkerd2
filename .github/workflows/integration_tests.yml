@@ -1,18 +1,14 @@
 name: Integration tests
-on:
-  pull_request: {}
-  push:
-    paths-ignore:
-    - '*.md'
-    - '**/*.md'
-    - 'web/app/package.json'
-    branches:
-    - main
+
+on: [pull_request]
+
 permissions:
   contents: read
+
 env:
   GH_ANNOTATION: true
   DOCKER_REGISTRY: ghcr.io/linkerd
+
 jobs:
 
   docker_build:
