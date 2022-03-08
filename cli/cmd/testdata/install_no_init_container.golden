@@ -1263,13 +1263,13 @@ data:
       resources:
         cpu:
           limit: 100m
-          request: 10m
+          request: 100m
         ephemeral-storage:
           limit: ""
           request: ""
         memory:
-          limit: 50Mi
-          request: 10Mi
+          limit: 20Mi
+          request: 20Mi
       runAsRoot: false
       saMountPath: null
       skipSubnets: ""
