@@ -20,6 +20,9 @@ spec:
     linkerd.io/extension: viz
     component: web
   ports:
+  {{- if .Values.dashboard.service.extraPorts -}}
+  {{- toYaml .Values.dashboard.service.extraPorts | trim | nindent 2 }}
+  {{- end}}
   - name: http
     port: 8084
     targetPort: 8084
@@ -70,6 +73,9 @@ spec:
       {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
       containers:
+      {{- if .Values.dashboard.sidecarContainers -}}
+      {{- toYaml .Values.dashboard.sidecarContainers | trim | nindent 6 }}
+      {{- end}}
       - args:
         - -linkerd-metrics-api-addr=metrics-api.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}:8085
         - -cluster-domain={{.Values.clusterDomain}}
