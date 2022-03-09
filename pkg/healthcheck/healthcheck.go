@@ -2809,9 +2809,10 @@ func CheckPodsRunning(pods []corev1.Pod, namespace string) error {
 	for _, pod := range pods {
 		status := k8s.GetPodStatus(pod)
 
-		// Skip validating meshed pods that are in the `Completed` or
-		// `Shutdown` state as they do not have a running proxy
-		if status == "Completed" || status == "Shutdown" {
+		// Skip validating pods that have a status which indicates there would
+		// be no running proxy container.
+		switch status {
+		case "Completed", "NodeShutdown", "Shutdown":
 			continue
 		} else if status != string(corev1.PodRunning) && status != "Evicted" {
 			return fmt.Errorf("pod \"%s\" status is %s", pod.Name, pod.Status.Phase)
