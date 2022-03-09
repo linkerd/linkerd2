@@ -62,7 +62,7 @@
   },
   {
     "op": "add",
-    "path": "{{$prefix}}/spec/initContainers/-",
+    "path": "{{$prefix}}/spec/initContainers/0",
     "value":
       {{- include "partials.proxy-init" . | fromYaml | toPrettyJson | nindent 6 }}
   },

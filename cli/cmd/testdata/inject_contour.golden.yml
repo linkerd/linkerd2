@@ -178,17 +178,6 @@ spec:
           name: contour-config
       initContainers:
       - args:
-        - bootstrap
-        - /config/contour.yaml
-        command:
-        - contour
-        image: gcr.io/heptio-images/contour:master
-        imagePullPolicy: Always
-        name: envoy-initconfig
-        volumeMounts:
-        - mountPath: /config
-          name: contour-config
-      - args:
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port
@@ -222,6 +211,17 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
+      - args:
+        - bootstrap
+        - /config/contour.yaml
+        command:
+        - contour
+        image: gcr.io/heptio-images/contour:master
+        imagePullPolicy: Always
+        name: envoy-initconfig
+        volumeMounts:
+        - mountPath: /config
+          name: contour-config
       volumes:
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock

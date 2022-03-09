@@ -379,6 +379,7 @@ func TestInjectAutoPod(t *testing.T) {
 	injectNS := "inject-pod-test"
 	podName := "inject-pod-test-terminus"
 	opaquePodName := "inject-opaque-pod-test-terminus"
+	initContainerPodName := "init-container-pod-test-terminus"
 	nsAnnotations := map[string]string{
 		k8s.ProxyInjectAnnotation:      k8s.ProxyInjectEnabled,
 		k8s.ProxyOpaquePortsAnnotation: opaquePorts,
@@ -481,27 +482,77 @@ func TestInjectAutoPod(t *testing.T) {
 			testutil.Fatalf(t, "expected pod in namespace %s to have %s opaque ports, but it had %s", ns, manualOpaquePorts, annotation)
 		}
 
+		initContainerPods, err := TestHelper.GetPods(ctx, ns, map[string]string{"app": initContainerPodName})
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "failed to get pods", "failed to get pods for namespace %s: %s", ns, err)
+		}
+		if len(opaquePods) != 1 {
+			testutil.Fatalf(t, "wrong number of pods returned for namespace %s: %d", ns, len(initContainerPods))
+		}
+
 		containers := pods[0].Spec.Containers
 		if proxyContainer := testutil.GetProxyContainer(containers); proxyContainer == nil {
 			testutil.Fatalf(t, "pod in namespace %s wasn't injected with the proxy container", ns)
 		}
 
 		if !TestHelper.CNI() {
-			initContainers := pods[0].Spec.InitContainers
-			if len(initContainers) == 0 {
-				testutil.Fatalf(t, "pod in namespace %s wasn't injected with the init container", ns)
+			pod := initContainerPods[0]
+			if len(pod.Spec.InitContainers) != 2 {
+				testutil.Fatalf(t, "pod %q in namespace %s has invalid number of init containers %d, expected 2",
+					initContainerPodName,
+					ns,
+					len(pod.Spec.InitContainers))
 			}
-			initContainer := initContainers[0]
-			if mounts := initContainer.VolumeMounts; len(mounts) == 0 {
-				testutil.AnnotatedFatalf(t, "init container doesn't have volume mounts", "init container doesn't have volume mounts: %#v", initContainer)
+
+			pods := []struct {
+				name string
+				pod  v1.Pod
+			}{
+				{
+					name: podName,
+					pod:  pods[0],
+				},
+				{
+					name: opaquePodName,
+					pod:  opaquePods[0],
+				},
+				{
+					name: initContainerPodName,
+					pod:  initContainerPods[0],
+				},
 			}
-			// Removed token volume name from comparison because it contains a random string
-			initContainer.VolumeMounts[1].Name = ""
-			if !reflect.DeepEqual(expectedInitContainer, initContainer) {
-				testutil.AnnotatedFatalf(t, "malformed init container", "malformed init container:\nexpected:\n%#v\nactual:\n%#v", expectedInitContainer, initContainer)
+
+			for _, podType := range pods {
+				validateInitContainer(t, ns, podType.name, podType.pod, expectedInitContainer)
 			}
 		}
 	})
+}
+
+func validateInitContainer(t *testing.T, ns string, podName string, pod v1.Pod, expectedInitContainer v1.Container) {
+	initContainers := pod.Spec.InitContainers
+	if len(initContainers) == 0 {
+		testutil.Fatalf(t, "pod %q in namespace %s wasn't injected with the init container",
+			podName,
+			ns)
+	}
+	initContainer := initContainers[0]
+	if mounts := initContainer.VolumeMounts; len(mounts) == 0 {
+		testutil.AnnotatedFatalf(t,
+			"init container doesn't have volume mounts",
+			"init container for %q doesn't have volume mounts: %#v",
+			podName,
+			initContainer)
+	}
+	// Removed token volume name from comparison because it contains a random string
+	initContainer.VolumeMounts[1].Name = ""
+	if !reflect.DeepEqual(expectedInitContainer, initContainer) {
+		testutil.AnnotatedFatalf(t, "malformed init container",
+			"malformed init container for %q:\nexpected:\n%#v\nactual:\n%#v",
+			podName,
+			expectedInitContainer,
+			initContainer)
+	}
 }
 
 func TestInjectDisabledAutoPod(t *testing.T) {

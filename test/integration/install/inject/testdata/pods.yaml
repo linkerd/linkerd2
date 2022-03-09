@@ -27,3 +27,24 @@ spec:
     args: ["terminus", "--grpc-server-port", "9090", "--response-text", "BANANA"]
     ports:
     - containerPort: 9090
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: init-container-pod-test-terminus
+  labels:
+    app: init-container-pod-test-terminus
+spec:
+  initContainers:
+    - name: test-init
+      image: alpine
+      command:
+        - sh
+        - -c
+        - sleep 1
+  containers:
+    - name: bb-terminus
+      image: buoyantio/bb:v0.0.6
+      args: ["terminus", "--grpc-server-port", "9090", "--response-text", "BANANA"]
+      ports:
+        - containerPort: 9090

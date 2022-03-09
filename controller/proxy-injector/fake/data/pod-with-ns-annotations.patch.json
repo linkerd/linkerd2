@@ -49,7 +49,7 @@
   },
   {
     "op": "add",
-    "path": "/spec/initContainers/-",
+    "path": "/spec/initContainers/0",
     "value": {
       "args": [
         "--incoming-proxy-port",
