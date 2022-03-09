@@ -343,6 +343,41 @@ dashboard:
     # into the dashboard component
     # resources:
 
+  # -- An extra Ports section specifies a list of ports to add 
+  # to the web service e.g. port to sidecar container
+  service:
+    extraPorts:
+      # Ex:
+      # - name: extraPort
+      #   port: 4180
+      #   targetPort: 4180
+
+
+  # -- A sidecarContainers section specifies a list of secondary containers to run
+  # in the web pod e.g. oauth2 container for autentication
+  sidecarContainers:
+  # Ex:
+  # - name: oauth2-proxy
+  #   image: quay.io/oauth2-proxy/oauth2-proxy:latest
+  #   args:
+  #     - "-upstream=http://127.0.0.1:8084/"
+  #     - "-provider=github"
+  #     - "-cookie-secure=true"
+  #     - "-cookie-expire=168h0m"
+  #     - "-cookie-refresh=60m"
+  #     - "-cookie-secret=SECRET COOKIE"
+  #     - "-cookie-domain=DOMAIN"
+  #     - "-http-address=0.0.0.0:4180"
+  #     - "-redirect-url=REDIRECT URL"
+  #     - "-github-org=fromAtoB"
+  #     - "-email-domain=*"
+  #     - "-client-id=github oauth ID"
+  #     - "-client-secret=github oauth secret"
+  #   ports:
+  #   - containerPort: 4180
+
+
+
 grafana:
   # -- url of an in-cluster Grafana instance with reverse proxy configured, used by the
   # Linkerd viz web dashboard to provide direct links to specific Grafana

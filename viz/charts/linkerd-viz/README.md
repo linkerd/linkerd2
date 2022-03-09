@@ -89,6 +89,8 @@ Kubernetes: `>=1.20.0-0`
 | dashboard.resources.memory.limit | string | `nil` | Maximum amount of memory that web container can use |
 | dashboard.resources.memory.request | string | `nil` | Amount of memory that the web container requests |
 | dashboard.restrictPrivileges | bool | `false` | Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check |
+| dashboard.service.extraPorts | string | `nil` | An extra Ports section specifies a list of ports to add to the web service e.g. port to sidecar container |
+| dashboard.sidecarContainers | string | `nil` | A sidecarContainers section specifies a list of secondary containers to run in the web pod e.g. oauth2 container for autentication |
 | defaultImagePullPolicy | string | `"IfNotPresent"` | Docker imagePullPolicy for all viz components |
 | defaultLogFormat | string | `"plain"` | Log format (`plain` or `json`) for all the viz components. |
 | defaultLogLevel | string | `"info"` | Log level for all the viz components |
