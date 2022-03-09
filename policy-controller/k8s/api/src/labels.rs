@@ -61,6 +61,16 @@ impl Selector {
         }
     }
 
+    /// Indicates whether this label selector matches all pods
+    pub fn selects_all(&self) -> bool {
+        match (self.match_labels.as_ref(), self.match_expressions.as_ref()) {
+            (None, None) => true,
+            (Some(l), None) => l.is_empty(),
+            (None, Some(e)) => e.is_empty(),
+            (Some(l), Some(e)) => l.is_empty() && e.is_empty(),
+        }
+    }
+
     pub fn matches(&self, labels: &Labels) -> bool {
         for expr in self.match_expressions.iter().flatten() {
             if !expr.matches(labels.as_ref()) {

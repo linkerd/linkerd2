@@ -1,4 +1,4 @@
-use crate::{authz::AuthzIndex, pod::PodIndex, server::SrvIndex, DefaultPolicy};
+use crate::{pod::PodIndex, server::SrvIndex, server_authorization::AuthzIndex, DefaultPolicy};
 use ahash::AHashMap as HashMap;
 
 #[derive(Debug)]
@@ -10,7 +10,7 @@ pub(crate) struct NamespaceIndex {
 }
 
 #[derive(Debug)]
-pub(crate) struct Namespace {
+pub struct Namespace {
     /// Holds the global default-allow policy, which may be overridden per-workload.
     pub default_policy: DefaultPolicy,
 

@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
 	"time"
 
 	"k8s.io/client-go/kubernetes"
@@ -84,12 +85,12 @@ func FetchExternalIssuerData(ctx context.Context, api kubernetes.Interface, cont
 
 // LoadIssuerCrtAndKeyFromFiles loads the issuer certificate and key from files
 func LoadIssuerCrtAndKeyFromFiles(keyPEMFile, crtPEMFile string) (string, string, error) {
-	key, err := ioutil.ReadFile(keyPEMFile)
+	key, err := ioutil.ReadFile(filepath.Clean(keyPEMFile))
 	if err != nil {
 		return "", "", err
 	}
 
-	crt, err := ioutil.ReadFile(crtPEMFile)
+	crt, err := ioutil.ReadFile(filepath.Clean(crtPEMFile))
 	if err != nil {
 		return "", "", err
 	}
@@ -104,7 +105,7 @@ func LoadIssuerDataFromFiles(keyPEMFile, crtPEMFile, trustPEMFile string) (*Issu
 		return nil, err
 	}
 
-	anchors, err := ioutil.ReadFile(trustPEMFile)
+	anchors, err := ioutil.ReadFile(filepath.Clean(trustPEMFile))
 	if err != nil {
 		return nil, err
 	}

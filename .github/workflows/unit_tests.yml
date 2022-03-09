@@ -1,14 +1,10 @@
 name: Unit tests
-on:
-  pull_request: {}
-  push:
-    paths-ignore:
-    - '*.md'
-    - '**/*.md'
-    branches:
-    - main
+
+on: [pull_request]
+
 permissions:
   contents: read
+
 jobs:
   go_unit_tests:
     name: Go unit tests
@@ -18,12 +14,13 @@ jobs:
       image: golang:1.17.3
     steps:
     - name: Checkout code
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
     - name: Go unit tests
       run: |
         go get gotest.tools/gotestsum@v0.4.2
         # TODO: validate bin/protoc-go.sh does not dirty the repo
         LINKERD_TEST_PRETTY_DIFF=1 gotestsum -- -race -v -mod=readonly ./...
+
   js_unit_tests:
     name: JS unit tests
     timeout-minutes: 30
@@ -32,7 +29,7 @@ jobs:
       image: node:14-stretch
     steps:
     - name: Checkout code
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
     - name: Yarn setup
       run: bin/scurl --retry=2 https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
     - name: JS unit tests

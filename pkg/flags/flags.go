@@ -39,6 +39,9 @@ func ConfigureAndParse(cmd *flag.FlagSet, args []string) {
 		"log format, must be one of: plain, json")
 	printVersion := cmd.Bool("version", false, "print version and exit")
 
+	// We'll assume the args being passed in by calling functions have already
+	// been validated and that parsing does not have errors.
+	//nolint:errcheck
 	cmd.Parse(args)
 
 	// set log timestamps
