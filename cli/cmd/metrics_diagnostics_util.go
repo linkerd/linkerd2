@@ -37,6 +37,9 @@ func (s byResult) Less(i, j int) bool {
 
 // getResponse makes a http Get request to the passed url and returns the response/error
 func getResponse(url string) ([]byte, error) {
+	// url has been constructed by k8s.newPortForward and is not passed in by
+	// the user.
+	//nolint:gosec
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -177,6 +180,8 @@ func obfuscateMetrics(metrics []byte) ([]byte, error) {
 				}
 			}
 		}
+		// We'll assume MetricFamilyToText errors are insignificant
+		//nolint:errcheck
 		expfmt.MetricFamilyToText(&writer, v)
 	}
 

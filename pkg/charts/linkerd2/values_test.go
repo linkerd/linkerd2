@@ -118,11 +118,11 @@ func TestNewValues(t *testing.T) {
 			Resources: &Resources{
 				CPU: Constraints{
 					Limit:   "100m",
-					Request: "10m",
+					Request: "100m",
 				},
 				Memory: Constraints{
-					Limit:   "50Mi",
-					Request: "10Mi",
+					Limit:   "20Mi",
+					Request: "20Mi",
 				},
 			},
 			XTMountPath: &VolumeMountPath{

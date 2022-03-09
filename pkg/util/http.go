@@ -1,10 +1,19 @@
 package util
 
 import (
+	"fmt"
+	"io"
+	"io/ioutil"
 	"strings"
 
 	httpPb "github.com/linkerd/linkerd2-proxy-api/go/http_types"
 )
+
+// KB = Kilobyte
+const KB = 1024
+
+// MB = Megabyte
+const MB = KB * 1024
 
 // ParseScheme converts a scheme string to protobuf
 // TODO: validate scheme
@@ -40,4 +49,18 @@ func ParseMethod(method string) *httpPb.HttpMethod {
 			Unregistered: strings.ToUpper(method),
 		},
 	}
+}
+
+// ReadAllLimit reads from r until EOF or until limit bytes are read. If EOF is
+// reached, the full bytes are returned. If the limit is reached, an error is
+// returned.
+func ReadAllLimit(r io.Reader, limit int) ([]byte, error) {
+	bytes, err := ioutil.ReadAll(io.LimitReader(r, int64(limit)))
+	if err != nil {
+		return nil, err
+	}
+	if len(bytes) == limit {
+		return nil, fmt.Errorf("limit reached while reading: %d", limit)
+	}
+	return bytes, nil
 }

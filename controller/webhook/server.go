@@ -6,13 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"sync/atomic"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
 	pkgTls "github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/pkg/util"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
@@ -125,7 +125,7 @@ func (s *Server) serve(res http.ResponseWriter, req *http.Request) {
 		err  error
 	)
 	if req.Body != nil {
-		data, err = ioutil.ReadAll(req.Body)
+		data, err = util.ReadAllLimit(req.Body, 10*util.MB)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return

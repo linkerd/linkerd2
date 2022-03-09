@@ -1,18 +1,14 @@
 name: Integration tests
-on:
-  pull_request: {}
-  push:
-    paths-ignore:
-    - '*.md'
-    - '**/*.md'
-    - 'web/app/package.json'
-    branches:
-    - main
+
+on: [pull_request]
+
 permissions:
   contents: read
+
 env:
   GH_ANNOTATION: true
   DOCKER_REGISTRY: ghcr.io/linkerd
+
 jobs:
 
   docker_build:
@@ -50,7 +46,7 @@ jobs:
     # absolute path is used here.
     # https://github.com/actions/upload-artifact/issues/8
     - name: Upload artifact
-      uses: actions/upload-artifact@82c141cc518b40d92cc801eee768e7aafc9c2fa2
+      uses: actions/upload-artifact@6673cd052c4cd6fcf4b4e6e60ea986c889389535
       with:
         name: image-archives
         path: /home/runner/archives
@@ -85,7 +81,7 @@ jobs:
       run: |
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
     - name: Download image archives
-      uses: actions/download-artifact@f023be2c48cc18debc3bacd34cb396e0295e2869
+      uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
       with:
         name: image-archives
         path: image-archives

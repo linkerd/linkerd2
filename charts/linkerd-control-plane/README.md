@@ -3,7 +3,7 @@
 Linkerd gives you observability, reliability, and security
 for your microservices — with no code change required.
 
-![Version: 1.1.7-edge](https://img.shields.io/badge/Version-1.1.7--edge-informational?style=flat-square)
+![Version: 1.1.8-edge](https://img.shields.io/badge/Version-1.1.8--edge-informational?style=flat-square)
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -227,11 +227,11 @@ Kubernetes: `>=1.20.0-0`
 | proxyInit.logFormat | string | plain | Log format (`plain` or `json`) for the proxy-init |
 | proxyInit.logLevel | string | info | Log level for the proxy-init |
 | proxyInit.resources.cpu.limit | string | `"100m"` | Maximum amount of CPU units that the proxy-init container can use |
-| proxyInit.resources.cpu.request | string | `"10m"` | Amount of CPU units that the proxy-init container requests |
+| proxyInit.resources.cpu.request | string | `"100m"` | Amount of CPU units that the proxy-init container requests |
 | proxyInit.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the proxy-init container can use |
 | proxyInit.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the proxy-init container requests |
-| proxyInit.resources.memory.limit | string | `"50Mi"` | Maximum amount of memory that the proxy-init container can use |
-| proxyInit.resources.memory.request | string | `"10Mi"` | Amount of memory that the proxy-init container requests |
+| proxyInit.resources.memory.limit | string | `"20Mi"` | Maximum amount of memory that the proxy-init container can use |
+| proxyInit.resources.memory.request | string | `"20Mi"` | Amount of memory that the proxy-init container requests |
 | proxyInit.runAsRoot | bool | `false` | Allow overriding the runAsNonRoot behaviour (<https://github.com/linkerd/linkerd2/issues/7308>) |
 | proxyInit.skipSubnets | string | `""` | Comma-separated list of subnets in valid CIDR format that should be skipped by the proxy |
 | proxyInit.xtMountPath.mountPath | string | `"/run"` |  |

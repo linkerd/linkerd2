@@ -98,7 +98,8 @@ func (pw *ProbeWorker) doProbe() {
 		pw.metrics.alive.Set(0)
 		pw.metrics.probes.With(notSuccessLabel).Inc()
 		return
-	} else if resp.StatusCode != 200 {
+	}
+	if resp.StatusCode != 200 {
 		pw.log.Warnf("Gateway returned unexpected status %d. Marking as unhealthy", resp.StatusCode)
 		pw.metrics.alive.Set(0)
 		pw.metrics.probes.With(notSuccessLabel).Inc()

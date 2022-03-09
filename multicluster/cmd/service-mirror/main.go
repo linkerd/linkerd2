@@ -80,7 +80,9 @@ func Main(args []string) {
 
 	go func() {
 		log.Infof("starting admin server on %s", *metricsAddr)
-		adminServer.ListenAndServe()
+		if err := adminServer.ListenAndServe(); err != nil {
+			log.Errorf("failed to start service mirror admin server: %s", err)
+		}
 	}()
 
 	controllerK8sAPI.Sync(nil)

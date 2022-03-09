@@ -61,7 +61,12 @@ func newLinkCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "link",
 		Short: "Outputs resources that allow another cluster to mirror services from this one",
-		Args:  cobra.NoArgs,
+		Long: `Outputs resources that allow another cluster to mirror services from this one.
+
+Note that the Link resource applies only in one direction. In order for two
+clusters to mirror each other, a Link resource will have to be generated for
+each cluster and applied to the other.`,
+		Args: cobra.NoArgs,
 		Example: `  # To link the west cluster to east
   linkerd --context=east multicluster link --cluster-name east | kubectl --context=west apply -f -
 
@@ -191,7 +196,8 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 			}
 			if len(gwAddresses) == 0 && opts.gatewayAddresses == "" {
 				return fmt.Errorf("Gateway %s.%s has no ingress addresses", gateway.Name, gateway.Namespace)
-			} else if len(gwAddresses) > 0 {
+			}
+			if len(gwAddresses) > 0 {
 				gatewayAddresses = strings.Join(gwAddresses, ",")
 			} else {
 				gatewayAddresses = opts.gatewayAddresses

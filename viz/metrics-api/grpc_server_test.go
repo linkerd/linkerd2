@@ -171,25 +171,6 @@ spec:
 				},
 			},
 			{
-				err: fmt.Errorf("cannot set both namespace and resource in the request. These are mutually exclusive"),
-				promRes: model.Vector{
-					&model.Sample{
-						Metric:    model.Metric{"pod": "emojivoto-meshed"},
-						Timestamp: 456,
-					},
-				},
-				k8sRes: []string{},
-				req: &pb.ListPodsRequest{
-					Namespace: "test",
-					Selector: &pb.ResourceSelection{
-						Resource: &pb.Resource{
-							Type: pkgK8s.Pod,
-						},
-					},
-				},
-				res: nil,
-			},
-			{
 				err: nil,
 				promRes: model.Vector{
 					&model.Sample{

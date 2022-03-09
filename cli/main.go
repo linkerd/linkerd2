@@ -19,6 +19,9 @@ func main() {
 		}
 		path, err := exec.LookPath(fmt.Sprintf("linkerd-%s", args[0]))
 		if err == nil {
+			// We're working with a Linkerd plugin at this point which means
+			// it's up to the plugin to cleanse the arguments if needed.
+			//nolint:gosec
 			plugin := exec.Command(path, args[1:]...)
 			plugin.Stdin = os.Stdin
 			plugin.Stdout = os.Stdout
