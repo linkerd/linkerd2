@@ -15,6 +15,10 @@ type fallbackProfileListener struct {
 }
 
 type fallbackChildListener struct {
+	// structcheck doesn't handle embedded structs well. fallbackChildListener
+	// is only used as an embedded field in the primary or backup listeners.
+	// https://github.com/golangci/golangci-lint/issues/1517
+	//nolint:structcheck
 	state  *sp.ServiceProfile
 	parent *fallbackProfileListener
 }
