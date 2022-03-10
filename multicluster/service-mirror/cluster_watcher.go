@@ -688,29 +688,6 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 	return nil
 }
 
-func (rcsw *RemoteClusterServiceWatcher) getMirrorServices() ([]*corev1.Service, error) {
-	matchLabels := map[string]string{
-		consts.MirroredResourceLabel:  "true",
-		consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
-	}
-
-	services, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
-	if err != nil {
-		return nil, err
-	}
-	if len(services) == 0 {
-		serviceList, err := rcsw.localAPIClient.Client.CoreV1().Services("").List(context.Background(), metav1.ListOptions{LabelSelector: labels.SelectorFromSet(matchLabels).String()})
-		if err != nil {
-			return nil, err
-		}
-		for _, service := range serviceList.Items {
-			service := service
-			services = append(services, &service)
-		}
-	}
-	return services, nil
-}
-
 func (rcsw *RemoteClusterServiceWatcher) handleOnDelete(service *corev1.Service) {
 	if rcsw.isExportedService(service) {
 		rcsw.eventsQueue.Add(&RemoteServiceDeleted{
@@ -975,12 +952,16 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 	}
 
 	// Repair mirror service endpoints.
-	mirrorServices, err := rcsw.getMirrorServices()
-	if err != nil {
-		rcsw.log.Errorf("Failed to list mirror services: %s", err)
+	matchLabels := map[string]string{
+		consts.MirroredResourceLabel:  "true",
+		consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
 	}
-	for _, svc := range mirrorServices {
-		updatedService := svc.DeepCopy()
+	mirrorServices, err := rcsw.localAPIClient.Client.CoreV1().Services("").List(context.Background(), metav1.ListOptions{LabelSelector: labels.SelectorFromSet(matchLabels).String()})
+	if err != nil {
+		rcsw.log.Errorf("failed to list mirror services: %s", err)
+	}
+	for _, svc := range mirrorServices.Items {
+		updatedService := svc
 
 		// Mirrors for headless services are also headless, and their
 		// Endpoints point to auxiliary services instead of pointing to
@@ -1020,7 +1001,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 			updatedEndpoints.Subsets = []corev1.EndpointSubset{
 				{
 					NotReadyAddresses: gatewayAddresses,
-					Ports:             rcsw.getEndpointsPorts(updatedService),
+					Ports:             rcsw.getEndpointsPorts(&updatedService),
 				},
 			}
 		} else {
@@ -1029,7 +1010,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 			updatedEndpoints.Subsets = []corev1.EndpointSubset{
 				{
 					Addresses: gatewayAddresses,
-					Ports:     rcsw.getEndpointsPorts(updatedService),
+					Ports:     rcsw.getEndpointsPorts(&updatedService),
 				},
 			}
 
@@ -1052,7 +1033,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 		}
 		updatedEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
 
-		_, err = rcsw.localAPIClient.Client.CoreV1().Services(updatedService.Namespace).Update(ctx, updatedService, metav1.UpdateOptions{})
+		_, err = rcsw.localAPIClient.Client.CoreV1().Services(updatedService.Namespace).Update(ctx, &updatedService, metav1.UpdateOptions{})
 		if err != nil {
 			rcsw.log.Error(err)
 			continue
