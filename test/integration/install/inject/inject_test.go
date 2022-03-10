@@ -486,7 +486,7 @@ func TestInjectAutoPod(t *testing.T) {
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "failed to get pods", "failed to get pods for namespace %s: %s", ns, err)
 		}
-		if len(opaquePods) != 1 {
+		if len(initContainerPods) != 1 {
 			testutil.Fatalf(t, "wrong number of pods returned for namespace %s: %d", ns, len(initContainerPods))
 		}
 
