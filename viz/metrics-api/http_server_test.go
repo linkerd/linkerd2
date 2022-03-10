@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	vizClient "github.com/linkerd/linkerd2/viz/metrics-api/client"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	"google.golang.org/protobuf/proto"
 )
 
 type mockServer struct {

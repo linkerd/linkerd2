@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -597,10 +596,12 @@ func newRow(req topRequest) (tableRow, error) {
 		destination = pod
 	}
 
-	latency, err := ptypes.Duration(req.rspEnd.GetSinceRequestInit())
+	err := req.rspEnd.GetSinceRequestInit().CheckValid()
 	if err != nil {
 		return tableRow{}, fmt.Errorf("error parsing duration %v: %w", req.rspEnd.GetSinceRequestInit(), err)
 	}
+	latency := req.rspEnd.GetSinceRequestInit().AsDuration()
+
 	// TODO: Once tap events have a classification field, we should use that field
 	// instead of determining success here.
 	success := req.rspInit.GetHttpStatus() < 500

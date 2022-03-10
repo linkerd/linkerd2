@@ -304,7 +304,7 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 
 			json, err := pbMarshaler.Marshal(&event)
 			if err != nil {
-				websocketError(ws, websocket.CloseInternalServerErr, err)
+				websocketError(ws, websocket.CloseUnsupportedData, err)
 				break
 			}
 			buf := new(bytes.Buffer)
