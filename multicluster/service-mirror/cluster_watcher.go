@@ -50,7 +50,7 @@ type (
 		eventsQueue             workqueue.RateLimitingInterface
 		requeueLimit            int
 		repairPeriod            time.Duration
-		alive                   bool
+		gatewayAlive            bool
 		liveness                chan bool
 		headlessServicesEnabled bool
 	}
@@ -427,7 +427,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ctx context.
 
 	copiedEndpoints := ev.localEndpoints.DeepCopy()
 
-	if rcsw.alive {
+	if rcsw.gatewayAlive {
 		copiedEndpoints.Subsets = []corev1.EndpointSubset{
 			{
 				Addresses: gatewayAddresses,
@@ -595,7 +595,7 @@ func (rcsw *RemoteClusterServiceWatcher) createGatewayEndpoints(ctx context.Cont
 
 	rcsw.log.Infof("Resolved gateway [%v:%d] for %s", gatewayAddresses, rcsw.link.GatewayPort, serviceInfo)
 
-	if rcsw.alive && !empty && len(gatewayAddresses) > 0 {
+	if rcsw.gatewayAlive && !empty && len(gatewayAddresses) > 0 {
 		endpointsToCreate.Subsets = []corev1.EndpointSubset{
 			{
 				Addresses: gatewayAddresses,
@@ -864,8 +864,8 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 				ev := RepairEndpoints{}
 				rcsw.eventsQueue.Add(&ev)
 			case alive := <-rcsw.liveness:
-				rcsw.log.Debugf("gateway liveness change from %t to %t", rcsw.alive, alive)
-				rcsw.alive = alive
+				rcsw.log.Debugf("gateway liveness change from %t to %t", rcsw.gatewayAlive, alive)
+				rcsw.gatewayAlive = alive
 				ev := RepairEndpoints{}
 				rcsw.eventsQueue.Add(&ev)
 			case <-rcsw.stopper:
@@ -991,7 +991,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 		}
 
 		updatedEndpoints := endpoints.DeepCopy()
-		if !rcsw.alive {
+		if !rcsw.gatewayAlive {
 			rcsw.log.Warnf("gateway for service %s/%s does not have ready addresses; updating endpoint subsets to not ready", updatedService.Namespace, updatedService.Name)
 
 			// The gateway is not alive so the Endpoints update should reflect
