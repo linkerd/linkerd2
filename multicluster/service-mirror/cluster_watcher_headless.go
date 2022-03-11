@@ -302,13 +302,90 @@ func (rcsw *RemoteClusterServiceWatcher) createHeadlessMirrorEndpoints(ctx conte
 
 	rcsw.log.Infof("Creating a new headless mirror endpoints object for headless mirror %s/%s", headlessMirrorServiceName, exportedService.Namespace)
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(exportedService.Namespace).Create(ctx, headlessMirrorEndpoints, metav1.CreateOptions{}); err != nil {
-		// we clean up after ourselves
-		rcsw.localAPIClient.Client.CoreV1().Services(exportedService.Namespace).Delete(ctx, headlessMirrorServiceName, metav1.DeleteOptions{})
+		if svcErr := rcsw.localAPIClient.Client.CoreV1().Services(exportedService.Namespace).Delete(ctx, headlessMirrorServiceName, metav1.DeleteOptions{}); svcErr != nil {
+			rcsw.log.Errorf("failed to delete Service %s after Endpoints creation failed: %s", headlessMirrorServiceName, svcErr)
+		}
 		// and retry
 		return RetryableError{[]error{err}}
 	}
 
 	return nil
+}
+
+// createEndpointMirrorService creates a new Endpoint Mirror service and its
+// corresponding endpoints object. It returns the newly created Endpoint Mirror
+// service object. When a headless service is exported, we create a Headless
+// Mirror service in the source cluster and then for each hostname in the
+// exported service's endpoints object, we also create an Endpoint Mirror
+// service (and its corresponding endpoints object).
+func (rcsw *RemoteClusterServiceWatcher) createEndpointMirrorService(ctx context.Context, endpointHostname, resourceVersion, endpointMirrorName string, exportedService *corev1.Service) (*corev1.Service, error) {
+	gatewayAddresses, err := rcsw.resolveGatewayAddress()
+	if err != nil {
+		return nil, err
+	}
+
+	endpointMirrorAnnotations := map[string]string{
+		consts.RemoteResourceVersionAnnotation: resourceVersion, // needed to detect real changes
+		consts.RemoteServiceFqName:             fmt.Sprintf("%s.%s.%s.svc.%s", endpointHostname, exportedService.Name, exportedService.Namespace, rcsw.link.TargetClusterDomain),
+	}
+
+	endpointMirrorLabels := rcsw.getMirroredServiceLabels(nil)
+	mirrorServiceName := rcsw.mirroredResourceName(exportedService.Name)
+	endpointMirrorLabels[consts.MirroredHeadlessSvcNameLabel] = mirrorServiceName
+
+	// Create service spec, clusterIP
+	endpointMirrorService := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        endpointMirrorName,
+			Namespace:   exportedService.Namespace,
+			Annotations: endpointMirrorAnnotations,
+			Labels:      endpointMirrorLabels,
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: remapRemoteServicePorts(exportedService.Spec.Ports),
+		},
+	}
+	endpointMirrorEndpoints := &corev1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      endpointMirrorService.Name,
+			Namespace: endpointMirrorService.Namespace,
+			Labels:    endpointMirrorLabels,
+			Annotations: map[string]string{
+				consts.RemoteServiceFqName: endpointMirrorService.Annotations[consts.RemoteServiceFqName],
+			},
+		},
+		Subsets: []corev1.EndpointSubset{
+			{
+				Addresses: gatewayAddresses,
+				Ports:     rcsw.getEndpointsPorts(exportedService),
+			},
+		},
+	}
+
+	if rcsw.link.GatewayIdentity != "" {
+		endpointMirrorEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
+	}
+
+	exportedServiceInfo := fmt.Sprintf("%s/%s", exportedService.Namespace, exportedService.Name)
+	endpointMirrorInfo := fmt.Sprintf("%s/%s", endpointMirrorService.Namespace, endpointMirrorName)
+	rcsw.log.Infof("Creating a new endpoint mirror service %s for exported headless service %s", endpointMirrorInfo, exportedServiceInfo)
+	createdService, err := rcsw.localAPIClient.Client.CoreV1().Services(endpointMirrorService.Namespace).Create(ctx, endpointMirrorService, metav1.CreateOptions{})
+	if err != nil {
+		if !kerrors.IsAlreadyExists(err) {
+			// we might have created it during earlier attempt, if that is not the case, we retry
+			return createdService, RetryableError{[]error{err}}
+		}
+	}
+
+	rcsw.log.Infof("Creating a new endpoints object for endpoint mirror service %s", endpointMirrorInfo)
+	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpointMirrorService.Namespace).Create(ctx, endpointMirrorEndpoints, metav1.CreateOptions{}); err != nil {
+		if svcErr := rcsw.localAPIClient.Client.CoreV1().Services(endpointMirrorService.Namespace).Delete(ctx, endpointMirrorName, metav1.DeleteOptions{}); svcErr != nil {
+			rcsw.log.Errorf("Failed to delete service %s after endpoints creation failed: %s", endpointMirrorName, svcErr)
+		}
+		return createdService, RetryableError{[]error{err}}
+	}
+
+	return createdService, nil
 }
 
 // shouldExportAsHeadlessService checks if an exported service should be
