@@ -906,44 +906,17 @@ func (rcsw *RemoteClusterServiceWatcher) resolveGatewayAddress() ([]corev1.Endpo
 }
 
 func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) error {
-	gatewayAddresses, err := rcsw.resolveGatewayAddress()
-	if err != nil {
-		return err
-	}
-
 	endpointRepairCounter.With(prometheus.Labels{
 		gatewayClusterName: rcsw.link.TargetClusterName,
 	}).Inc()
 
-	// Create or update gateway mirror endpoints.
-	gatewayMirrorName := fmt.Sprintf("probe-gateway-%s", rcsw.link.TargetClusterName)
-
-	gatewayMirrorEndpoints := &corev1.Endpoints{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      gatewayMirrorName,
-			Namespace: rcsw.serviceMirrorNamespace,
-			Labels: map[string]string{
-				consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
-			},
-			Annotations: map[string]string{
-				consts.RemoteGatewayIdentity: rcsw.link.GatewayIdentity,
-			},
-		},
-		Subsets: []corev1.EndpointSubset{
-			{
-				Addresses: gatewayAddresses,
-				Ports: []corev1.EndpointPort{
-					{
-						Name:     "mc-probe",
-						Port:     int32(rcsw.link.ProbeSpec.Port),
-						Protocol: "TCP",
-					},
-				},
-			},
-		},
+	// Create or update the gateway mirror endpoints responsible for driving
+	// the cluster watcher's gateway liveness status.
+	gatewayAddresses, err := rcsw.resolveGatewayAddress()
+	if err != nil {
+		return err
 	}
-
-	err = rcsw.createOrUpdateEndpoints(ctx, gatewayMirrorEndpoints)
+	err = rcsw.createOrUpdateGatewayEndpoints(ctx, gatewayAddresses)
 	if err != nil {
 		rcsw.log.Errorf("Failed to create/update gateway mirror endpoints: %s", err)
 	}
@@ -1027,22 +1000,51 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 	return nil
 }
 
-func (rcsw *RemoteClusterServiceWatcher) createOrUpdateEndpoints(ctx context.Context, ep *corev1.Endpoints) error {
-	_, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(ep.Namespace).Get(ctx, ep.Name, metav1.GetOptions{})
+// createOrUpdateGatewayEndpoints will create or update the gateway mirror
+// endpoints for a remote cluster. These endpoints are required for the probe worker
+// responsible for probing gateway liveness.
+func (rcsw *RemoteClusterServiceWatcher) createOrUpdateGatewayEndpoints(ctx context.Context, addressses []v1.EndpointAddress) error {
+	gatewayMirrorName := fmt.Sprintf("probe-gateway-%s", rcsw.link.TargetClusterName)
+	endpoints := &corev1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      gatewayMirrorName,
+			Namespace: rcsw.serviceMirrorNamespace,
+			Labels: map[string]string{
+				consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
+			},
+			Annotations: map[string]string{
+				consts.RemoteGatewayIdentity: rcsw.link.GatewayIdentity,
+			},
+		},
+		Subsets: []corev1.EndpointSubset{
+			{
+				Addresses: addressses,
+				Ports: []corev1.EndpointPort{
+					{
+						Name:     "mc-probe",
+						Port:     int32(rcsw.link.ProbeSpec.Port),
+						Protocol: "TCP",
+					},
+				},
+			},
+		},
+	}
+	_, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoints.Namespace).Get(ctx, endpoints.Name, metav1.GetOptions{})
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
 			return err
 		}
 
-		// Does not exist so we should create it.
-		_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(ep.Namespace).Create(ctx, ep, metav1.CreateOptions{})
+		// Mirror endpoints for the gateway do not exist so they need to be created.
+		_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoints.Namespace).Create(ctx, endpoints, metav1.CreateOptions{})
 		if err != nil {
 			return err
 		}
+		return nil
 	}
 
-	// Exists so we should update it.
-	_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(ep.Namespace).Update(ctx, ep, metav1.UpdateOptions{})
+	// Mirror endpoints for the gateway already exist so they need to be updated.
+	_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoints.Namespace).Update(ctx, endpoints, metav1.UpdateOptions{})
 	return err
 }
 
