@@ -1,4 +1,4 @@
-use crate::{authz::AuthzIndex, pod::PodIndex, server::SrvIndex, DefaultPolicy};
+use crate::{pod::PodIndex, server::SrvIndex, server_authorization::AuthzIndex, DefaultPolicy};
 use ahash::AHashMap as HashMap;
 
 #[derive(Debug)]

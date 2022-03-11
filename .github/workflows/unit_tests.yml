@@ -1,14 +1,10 @@
 name: Unit tests
-on:
-  pull_request: {}
-  push:
-    paths-ignore:
-    - '*.md'
-    - '**/*.md'
-    branches:
-    - main
+
+on: [pull_request]
+
 permissions:
   contents: read
+
 jobs:
   go_unit_tests:
     name: Go unit tests
@@ -24,6 +20,7 @@ jobs:
         go get gotest.tools/gotestsum@v0.4.2
         # TODO: validate bin/protoc-go.sh does not dirty the repo
         LINKERD_TEST_PRETTY_DIFF=1 gotestsum -- -race -v -mod=readonly ./...
+
   js_unit_tests:
     name: JS unit tests
     timeout-minutes: 30

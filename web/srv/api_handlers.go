@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -23,6 +21,8 @@ import (
 	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	tappkg "github.com/linkerd/linkerd2/viz/tap/pkg"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
@@ -40,7 +40,7 @@ type (
 
 var (
 	defaultResourceType = k8s.Deployment
-	pbMarshaler         = jsonpb.Marshaler{EmitDefaults: true}
+	pbMarshaler         = protojson.MarshalOptions{EmitUnpopulated: true}
 	maxMessageSize      = 2048
 	websocketUpgrader   = websocket.Upgrader{
 		ReadBufferSize:  maxMessageSize,
@@ -76,9 +76,11 @@ func renderJSON(w http.ResponseWriter, resp interface{}) {
 
 func renderJSONPb(w http.ResponseWriter, msg proto.Message) {
 	w.Header().Set("Content-Type", "application/json")
-	// Callers of renderJSONPb pass in msgs that can be serialized into JSON.
-	//nolint:errcheck
-	pbMarshaler.Marshal(w, msg)
+	json, err := pbMarshaler.Marshal(msg)
+	if err != nil {
+		renderJSONError(w, err, http.StatusBadRequest)
+	}
+	w.Write(json)
 }
 
 func renderJSONBytes(w http.ResponseWriter, b []byte) {
@@ -170,11 +172,14 @@ func (h *handler) handleAPIStat(w http.ResponseWriter, req *http.Request, p http
 	}
 
 	// Marshal result into json and cache it
-	var resultJSON bytes.Buffer
-	if err := pbMarshaler.Marshal(&resultJSON, result); err != nil {
+	json, err := pbMarshaler.Marshal(result)
+	if err != nil {
 		renderJSONError(w, err, http.StatusInternalServerError)
 		return
 	}
+	var resultJSON bytes.Buffer
+	resultJSON.Write(json)
+
 	h.statCache.SetDefault(req.URL.RawQuery, resultJSON.Bytes())
 
 	renderJSONBytes(w, resultJSON.Bytes())
@@ -297,12 +302,13 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 				break
 			}
 
-			buf := new(bytes.Buffer)
-			err = pbMarshaler.Marshal(buf, &event)
+			json, err := pbMarshaler.Marshal(&event)
 			if err != nil {
-				websocketError(ws, websocket.CloseInternalServerErr, err)
+				websocketError(ws, websocket.CloseUnsupportedData, err)
 				break
 			}
+			buf := new(bytes.Buffer)
+			buf.Write(json)
 
 			if err := ws.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {

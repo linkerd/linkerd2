@@ -27,6 +27,7 @@ linters:
   - misspell
   - nakedret
   - revive
+  - staticcheck
   - typecheck
   - unconvert
   - unparam
@@ -43,7 +44,6 @@ linters:
   # - prealloc
   # - stylecheck
   disable:
-  - staticcheck
   - structcheck
 
 issues:
