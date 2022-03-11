@@ -1042,7 +1042,8 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateEndpoints(ctx context.Con
 	}
 
 	// Exists so we should update it.
-	return rcsw.updateEndpoints(ctx, ep)
+	_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(ep.Namespace).Update(ctx, ep, metav1.UpdateOptions{})
+	return err
 }
 
 // handleCreateOrUpdateEndpoints forwards the call to
