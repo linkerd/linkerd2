@@ -426,16 +426,11 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ctx context.
 	}
 
 	copiedEndpoints := ev.localEndpoints.DeepCopy()
-
-	if rcsw.gatewayAlive {
-		copiedEndpoints.Subsets = []corev1.EndpointSubset{
-			{
-				Addresses: gatewayAddresses,
-				Ports:     rcsw.getEndpointsPorts(ev.remoteUpdate),
-			},
-		}
-	} else {
-		rcsw.log.Warnf("gateway for %s/%s does not have ready addresses; skipping endpoint subsets", ev.localService.Namespace, ev.localService.Name)
+	copiedEndpoints.Subsets = []corev1.EndpointSubset{
+		{
+			Addresses: gatewayAddresses,
+			Ports:     rcsw.getEndpointsPorts(ev.remoteUpdate),
+		},
 	}
 
 	if copiedEndpoints.Annotations == nil {
@@ -443,7 +438,8 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ctx context.
 	}
 	copiedEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
 
-	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(copiedEndpoints.Namespace).Update(ctx, copiedEndpoints, metav1.UpdateOptions{}); err != nil {
+	err = rcsw.updateEndpoints(ctx, copiedEndpoints)
+	if err != nil {
 		return RetryableError{[]error{err}}
 	}
 
@@ -991,41 +987,24 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 		}
 
 		updatedEndpoints := endpoints.DeepCopy()
-		if !rcsw.gatewayAlive {
-			rcsw.log.Warnf("gateway for service %s/%s does not have ready addresses; updating endpoint subsets to not ready", updatedService.Namespace, updatedService.Name)
+		updatedEndpoints.Subsets = []corev1.EndpointSubset{
+			{
+				Addresses: gatewayAddresses,
+				Ports:     rcsw.getEndpointsPorts(&updatedService),
+			},
+		}
 
-			// The gateway is not alive so the Endpoints update should reflect
-			// that by changing the gateway addresses to not ready. This
-			// ensures that mirror services on the source cluster do not
-			// attempt to send any traffic to the target gateway.
-			updatedEndpoints.Subsets = []corev1.EndpointSubset{
-				{
-					NotReadyAddresses: gatewayAddresses,
-					Ports:             rcsw.getEndpointsPorts(&updatedService),
-				},
-			}
-		} else {
-			rcsw.log.Debugf("gateway for service %s/%s has addresses; updating endpoint subsets to: %v", updatedService.Namespace, updatedService.Name, gatewayAddresses)
-
-			updatedEndpoints.Subsets = []corev1.EndpointSubset{
-				{
-					Addresses: gatewayAddresses,
-					Ports:     rcsw.getEndpointsPorts(&updatedService),
-				},
-			}
-
-			// If the Service's Endpoints has no Subsets, use an empty Subset locally as well
-			targetService := svc.DeepCopy()
-			targetService.Name = rcsw.targetResourceName(svc.Name)
-			empty, err := rcsw.isEmptyService(targetService)
-			if err != nil {
-				rcsw.log.Errorf("could not check service emptiness: %s", err)
-				continue
-			}
-			if empty {
-				rcsw.log.Warnf("exported service %s/%s is empty", targetService.Namespace, targetService.Name)
-				updatedEndpoints.Subsets = []corev1.EndpointSubset{}
-			}
+		// If the Service's Endpoints has no Subsets, use an empty Subset locally as well
+		targetService := svc.DeepCopy()
+		targetService.Name = rcsw.targetResourceName(svc.Name)
+		empty, err := rcsw.isEmptyService(targetService)
+		if err != nil {
+			rcsw.log.Errorf("could not check service emptiness: %s", err)
+			continue
+		}
+		if empty {
+			rcsw.log.Warnf("exported service %s/%s is empty", targetService.Namespace, targetService.Name)
+			updatedEndpoints.Subsets = []corev1.EndpointSubset{}
 		}
 
 		if updatedEndpoints.Annotations == nil {
@@ -1038,8 +1017,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 			rcsw.log.Error(err)
 			continue
 		}
-
-		_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(updatedService.Namespace).Update(ctx, updatedEndpoints, metav1.UpdateOptions{})
+		err = rcsw.updateEndpoints(ctx, updatedEndpoints)
 		if err != nil {
 			rcsw.log.Error(err)
 		}
@@ -1063,8 +1041,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateEndpoints(ctx context.Con
 	}
 
 	// Exists so we should update it.
-	_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(ep.Namespace).Update(ctx, ep, metav1.UpdateOptions{})
-	return err
+	return rcsw.updateEndpoints(ctx, ep)
 }
 
 // handleCreateOrUpdateEndpoints forwards the call to
@@ -1115,9 +1092,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleCreateOrUpdateEndpoints(
 			},
 		}
 	}
-
-	_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(exportedEndpoints.Namespace).Update(ctx, ep, metav1.UpdateOptions{})
-	return err
+	return rcsw.updateEndpoints(ctx, ep)
 }
 
 // createEndpointMirrorService creates a new Endpoint Mirror service and its
@@ -1195,6 +1170,25 @@ func (rcsw *RemoteClusterServiceWatcher) createEndpointMirrorService(ctx context
 	}
 
 	return createdService, nil
+}
+
+// updateEndpoints will update endpoints based off gateway liveness. If the
+// gateway is not alive, then the addresses in each subset will be set to not
+// ready; these will moved back to ready once the gateway is alive and an
+// update is received.
+func (rcsw *RemoteClusterServiceWatcher) updateEndpoints(ctx context.Context, endpoints *corev1.Endpoints) error {
+	if !rcsw.gatewayAlive {
+		rcsw.log.Warnf("gateway for %s/%s does not have ready addresses; setting addresses to not ready", endpoints.Namespace, endpoints.Name)
+		var subsets []v1.EndpointSubset
+		for _, subset := range endpoints.Subsets {
+			subset.NotReadyAddresses = append(subset.NotReadyAddresses, subset.Addresses...)
+			subset.Addresses = nil
+			subsets = append(subsets, subset)
+		}
+		endpoints.Subsets = subsets
+	}
+	_, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoints.Namespace).Update(ctx, endpoints, metav1.UpdateOptions{})
+	return err
 }
 
 func isExportedEndpoints(obj interface{}, log *logging.Entry) bool {

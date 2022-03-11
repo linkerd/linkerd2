@@ -167,9 +167,9 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx con
 		return RetryableError{errors}
 	}
 
-	// Update
+	// Update endpoints
 	mirrorEndpoints.Subsets = newSubsets
-	_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(mirrorEndpoints.Namespace).Update(ctx, mirrorEndpoints, metav1.UpdateOptions{})
+	err = rcsw.updateEndpoints(ctx, mirrorEndpoints)
 	if err != nil {
 		return RetryableError{[]error{err}}
 	}
