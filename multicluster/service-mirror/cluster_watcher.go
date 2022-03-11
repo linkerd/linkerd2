@@ -1001,8 +1001,9 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 }
 
 // createOrUpdateGatewayEndpoints will create or update the gateway mirror
-// endpoints for a remote cluster. These endpoints are required for the probe worker
-// responsible for probing gateway liveness.
+// endpoints for a remote cluster. These endpoints are required for the probe
+// worker responsible for probing gateway liveness, so these endpoints are
+// never in a not ready state.
 func (rcsw *RemoteClusterServiceWatcher) createOrUpdateGatewayEndpoints(ctx context.Context, addressses []v1.EndpointAddress) error {
 	gatewayMirrorName := fmt.Sprintf("probe-gateway-%s", rcsw.link.TargetClusterName)
 	endpoints := &corev1.Endpoints{
@@ -1035,7 +1036,10 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateGatewayEndpoints(ctx cont
 			return err
 		}
 
-		// Mirror endpoints for the gateway do not exist so they need to be created.
+		// Mirror endpoints for the gateway do not exist so they need to be
+		// created. As mentioned above, these endpoints are required for the
+		// probe worker and therefore should never be put in a not ready
+		// state.
 		_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoints.Namespace).Create(ctx, endpoints, metav1.CreateOptions{})
 		if err != nil {
 			return err
@@ -1043,7 +1047,9 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateGatewayEndpoints(ctx cont
 		return nil
 	}
 
-	// Mirror endpoints for the gateway already exist so they need to be updated.
+	// Mirror endpoints for the gateway already exist so they need to be
+	// updated. As mentioned above, these endpoints are required for the probe
+	// worker and therefore should never be put in a not ready state.
 	_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoints.Namespace).Update(ctx, endpoints, metav1.UpdateOptions{})
 	return err
 }
