@@ -12,7 +12,7 @@ improvements have been made to the devcontainer.
   default the init container does not break a pod's `Guaranteed` QOS class
 * Added a new check condition to skip pods whose status is `NodeShutdown`
   during validation as they will not have a proxy container
-* Fixed an issue that would prevent proxies from senting HTTP Upgrade requests
+* Fixed an issue that would prevent proxies from sending HTTP Upgrade requests
   (used in websockets) through multi-cluster gateways
 
 ## edge-22.3.1
