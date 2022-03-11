@@ -29,7 +29,7 @@ type ProbeWorker struct {
 func NewProbeWorker(localGatewayName string, spec *multicluster.ProbeSpec, metrics *ProbeMetrics, probekey string) *ProbeWorker {
 	return &ProbeWorker{
 		localGatewayName: localGatewayName,
-		Liveness:         make(chan bool, 1),
+		Liveness:         make(chan bool, 10),
 		RWMutex:          &sync.RWMutex{},
 		probeSpec:        spec,
 		stopCh:           make(chan struct{}),
