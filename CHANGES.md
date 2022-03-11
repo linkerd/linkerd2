@@ -1,5 +1,20 @@
 # Changes
 
+## edge-22.3.2
+
+This edge release includes a few fixes and quality of life improvements. An
+issue has been fixed in the proxy allowing HTTP Upgrade requests to work
+through multi-cluster gateways, and the init container's resource limits and
+requests have been revised. Additionally, more Go linters have been enabled and
+improvements have been made to the devcontainer.
+
+* Changed `linkerd-init` resource (CPU/memory) limits and requests to ensure by
+  default the init container does not break a pod's `Guaranteed` QOS class
+* Added a new check condition to skip pods whose status is `NodeShutdown`
+  during validation as they will not have a proxy container
+* Fixed an issue that would prevent proxies from senting HTTP Upgrade requests
+  (used in websockets) through multi-cluster gateways
+
 ## edge-22.3.1
 
 This edge release includes updates to dependencies, CI, and rust 1.59.0. It also
