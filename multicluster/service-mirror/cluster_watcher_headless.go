@@ -169,7 +169,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx con
 
 	// Update endpoints
 	mirrorEndpoints.Subsets = newSubsets
-	err = rcsw.updateEndpoints(ctx, mirrorEndpoints)
+	err = rcsw.createOrUpdateEndpoints(ctx, mirrorEndpoints)
 	if err != nil {
 		return RetryableError{[]error{err}}
 	}
@@ -301,14 +301,11 @@ func (rcsw *RemoteClusterServiceWatcher) createHeadlessMirrorEndpoints(ctx conte
 	}
 
 	rcsw.log.Infof("Creating a new headless mirror endpoints object for headless mirror %s/%s", headlessMirrorServiceName, exportedService.Namespace)
-	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(exportedService.Namespace).Create(ctx, headlessMirrorEndpoints, metav1.CreateOptions{}); err != nil {
-		// This is a precautionary deletion because creation failed, so we
-		// ignore the error if Delete also fails.
-		//nolint:errcheck
+	err := rcsw.createOrUpdateEndpoints(ctx, headlessMirrorEndpoints)
+	if err != nil {
 		if svcErr := rcsw.localAPIClient.Client.CoreV1().Services(exportedService.Namespace).Delete(ctx, headlessMirrorServiceName, metav1.DeleteOptions{}); svcErr != nil {
-			rcsw.log.Errorf("failed to delete Service %s after Endpoints creation failed: %s", headlessMirrorServiceName, svcErr)
+			rcsw.log.Errorf("Failed to delete service %s after endpoints creation failed: %s", headlessMirrorServiceName, svcErr)
 		}
-		// and retry
 		return RetryableError{[]error{err}}
 	}
 
