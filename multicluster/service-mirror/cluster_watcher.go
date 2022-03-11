@@ -1183,13 +1183,10 @@ func (rcsw *RemoteClusterServiceWatcher) createEndpointMirrorService(ctx context
 func (rcsw *RemoteClusterServiceWatcher) updateEndpoints(ctx context.Context, endpoints *corev1.Endpoints) error {
 	if !rcsw.gatewayAlive {
 		rcsw.log.Warnf("gateway for %s/%s does not have ready addresses; setting addresses to not ready", endpoints.Namespace, endpoints.Name)
-		var subsets []v1.EndpointSubset
-		for _, subset := range endpoints.Subsets {
-			subset.NotReadyAddresses = append(subset.NotReadyAddresses, subset.Addresses...)
-			subset.Addresses = nil
-			subsets = append(subsets, subset)
+		for i := range endpoints.Subsets {
+			endpoints.Subsets[i].NotReadyAddresses = append(endpoints.Subsets[i].NotReadyAddresses, endpoints.Subsets[i].Addresses...)
+			endpoints.Subsets[i].Addresses = nil
 		}
-		endpoints.Subsets = subsets
 	}
 	_, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoints.Namespace).Update(ctx, endpoints, metav1.UpdateOptions{})
 	return err
