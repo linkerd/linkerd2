@@ -155,8 +155,13 @@ func TestHandleApiGateway(t *testing.T) {
 		if err != nil {
 			t.Fatalf("not expecting error compacting api check output golden file but got: %v", err)
 		}
-		if !bytes.Equal(body, apiGatewayOutputGoldenCompact.Bytes()) {
-			t.Errorf("expecting response body to be\n %s\n but got\n %s", apiGatewayOutputGoldenCompact.Bytes(), body)
+		bodyCompact := &bytes.Buffer{}
+		err = json.Compact(bodyCompact, body)
+		if err != nil {
+			t.Fatalf("failed to compact response body: %s", err)
+		}
+		if !bytes.Equal(bodyCompact.Bytes(), apiGatewayOutputGoldenCompact.Bytes()) {
+			t.Errorf("expecting response body to be\n %s\n but got\n %s", apiGatewayOutputGoldenCompact.Bytes(), bodyCompact.Bytes())
 		}
 	})
 

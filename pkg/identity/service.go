@@ -15,13 +15,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/golang/protobuf/ptypes"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/identity"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -237,12 +237,7 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 		//nolint:gocritic
 		log.Fatal("the issuer provided a certificate without key material")
 	}
-
-	validUntil, err := ptypes.TimestampProto(crt.Certificate.NotAfter)
-	if err != nil {
-		log.Errorf("invalid expiry time: %s", err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	validUntil := timestamppb.New(crt.Certificate.NotAfter)
 
 	hasher := sha256.New()
 	hasher.Write(crts[0])

@@ -1609,6 +1609,23 @@ func TestCheckDataPlanePods(t *testing.T) {
 		}
 	})
 
+	t.Run("Does not return an error if the pod is in NodeShutdown state", func(t *testing.T) {
+		pods := []corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "emoji-d9c7866bb-7v74n"},
+				Status: corev1.PodStatus{
+					Phase:  "Failed",
+					Reason: "NodeShutdown",
+				},
+			},
+		}
+
+		err := CheckPodsRunning(pods, "emojivoto")
+		if err != nil {
+			t.Fatalf("Expected no error, got %s", err)
+		}
+	})
+
 	t.Run("Returns an error if the proxy container is not ready", func(t *testing.T) {
 		pods := []corev1.Pod{
 			{

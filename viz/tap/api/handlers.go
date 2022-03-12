@@ -171,6 +171,8 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 	}
 
 	serverStream := serverStream{w: flushableWriter, req: req, log: h.log}
+	// This API endpoint is marked as deprecated but it's still used.
+	//nolint:staticcheck
 	err = h.grpcTapServer.TapByResource(&tapReq, &serverStream)
 	if err != nil {
 		h.log.Error(err)
