@@ -945,14 +945,41 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 		// Endpoints point to auxiliary services instead of pointing to
 		// the gateway, so they're skipped.
 		if svc.Spec.ClusterIP == corev1.ClusterIPNone {
-			rcsw.log.Debugf("Skipped repairing endpoints for %s/%s", svc.Namespace, svc.Name)
+			rcsw.log.Debugf("Skipped repairing endpoints for headless mirror %s/%s", svc.Namespace, svc.Name)
 			continue
 		}
-		// And these auxiliary services have Endpoints that point to
-		// the gateway but aren't mirroring per se any Endpoints on the
-		// target cluster, so they're also skipped.
+
+		// These endpoints belong to the auxiliary services pointed to by
+		// headless mirror services. They point the gateway addresses and
+		// their readiness is tied to the gateway liveness. We should attempt
+		// to repair these addresses in case there has been a change in
+		// gateway liveness.
 		if _, found := svc.Labels[consts.MirroredHeadlessSvcNameLabel]; found {
-			rcsw.log.Debugf("Skipped repairing endpoints for %s/%s", svc.Namespace, svc.Name)
+			endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(svc.Namespace).Get(svc.Name)
+			if err != nil {
+				// The endpoints do not yet exist for the auxiliary service so
+				// there is nothing to repair.
+				rcsw.log.Debugf("Skipped repairing mirror endpoints for headless mirror %s/%s", svc.Namespace, svc.Name)
+				continue
+			}
+
+			// Each of these subset's addresses should point to the gateway
+			// and default to ready. The call to createOrUpdateEndpoints
+			// ensures that if the gateway is not alive, these addresses are
+			// transitioned back to not ready.
+			gatewayAddresses, err := rcsw.resolveGatewayAddress()
+			if err != nil {
+				rcsw.log.Errorf("Failed to resolve gateway addresses: %s", err)
+				continue
+			}
+			for i := range endpoints.Subsets {
+				endpoints.Subsets[i].Addresses = gatewayAddresses
+				endpoints.Subsets[i].NotReadyAddresses = nil
+			}
+			err = rcsw.createOrUpdateEndpoints(ctx, endpoints)
+			if err != nil {
+				return RetryableError{[]error{err}}
+			}
 			continue
 		}
 
