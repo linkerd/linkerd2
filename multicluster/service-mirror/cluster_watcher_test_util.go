@@ -62,6 +62,7 @@ func (te *testEnvironment) runEnvironment(watcherQueue workqueue.RateLimitingInt
 		log:                     logging.WithFields(logging.Fields{"cluster": clusterName}),
 		eventsQueue:             watcherQueue,
 		requeueLimit:            0,
+		gatewayAlive:            true,
 		headlessServicesEnabled: true,
 	}
 
