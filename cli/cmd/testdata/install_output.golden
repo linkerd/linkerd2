@@ -439,7 +439,7 @@ metadata:
   annotations:
     linkerd.io/created-by: CliVersion
   labels:
-    helm.sh/chart: linkerd-control-plane-1.1.8-edge
+    helm.sh/chart: linkerd-control-plane-1.1.9-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -535,7 +535,7 @@ metadata:
   annotations:
     linkerd.io/created-by: CliVersion
   labels:
-    helm.sh/chart: linkerd-control-plane-1.1.8-edge
+    helm.sh/chart: linkerd-control-plane-1.1.9-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -617,7 +617,7 @@ metadata:
   annotations:
     linkerd.io/created-by: CliVersion
   labels:
-    helm.sh/chart: linkerd-control-plane-1.1.8-edge
+    helm.sh/chart: linkerd-control-plane-1.1.9-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
