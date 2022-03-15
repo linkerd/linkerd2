@@ -1,0 +1,166 @@
+apiVersion: v1
+data:
+  kubeconfig: YXBpVmVyc2lvbjogdjEKY2x1c3RlcnM6Ci0gY2x1c3RlcjoKICAgIGNlcnRpZmljYXRlLWF1dGhvcml0eS1kYXRhOiBMUzB0TFMxQ1JVZEpUaUJEUlZKVVNVWkpRMEZVUlMwdExTMHRDazFKU1VKa2FrTkRRVkl5WjBGM1NVSkJaMGxDUVVSQlMwSm5aM0ZvYTJwUFVGRlJSRUZxUVdwTlUwVjNTSGRaUkZaUlVVUkVRbWh5VFROTmRHTXlWbmtLWkcxV2VVeFhUbWhSUkVVeVRrUmpkMDFxUVhsUFJFRjNTR2hqVGsxcVNYZE5la1Y0VFZSamVrOUVRWGRYYUdOT1RYcEpkMDE2UVRSTlZHTjZUMFJCZHdwWGFrRnFUVk5GZDBoM1dVUldVVkZFUkVKb2NrMHpUWFJqTWxaNVpHMVdlVXhYVG1oUlJFVXlUa1JqZDAxcVFYbFBSRUYzVjFSQlZFSm5ZM0ZvYTJwUENsQlJTVUpDWjJkeGFHdHFUMUJSVFVKQ2QwNURRVUZSYTB0NWRHcHpXaTlhUVVrd1EyWlhNbE01TXpOd2R5OUhTek5PV1hSWE1HNU9NbHBhVjJ4WVpsWUtNMnRvVmpJd1RFdFpSVmRFT1RCd0t6WjRRVFE0TW1aMFF6ZHJVRzVwWWtnNGFFOVJaRnAxZVZOcmFHRnZNRWwzVVVSQlQwSm5UbFpJVVRoQ1FXWTRSUXBDUVUxRFFYRlJkMFIzV1VSV1VqQlVRVkZJTDBKQlZYZEJkMFZDTDNwQlpFSm5UbFpJVVRSRlJtZFJWWGszZEZwRmRpOVJiQ3RWY25KV2FqTlhVM3AwQ2s1S1oyRlFkazEzUTJkWlNVdHZXa2w2YWpCRlFYZEpSRkozUVhkU1FVbG5RMDFyZG14dFpqaFljVlI0Y0hneWEyZFFRbmhaVFhwcVExZHdOM28zZUZFS1EwbGhhV2RSTmpKRkt6UkRTVWRMUWs4eWNtUmhNM05aVVhSeVZsaE1ka3MwVEdWWlZEaDZlRFpUYzNKdllrVmtkVUZHVGl0U1RFc0tMUzB0TFMxRlRrUWdRMFZTVkVsR1NVTkJWRVV0TFMwdExRbz0KICAgIHNlcnZlcjogaHR0cHM6Ly8xNzIuMjkuMC4zOjY0NDMKICBuYW1lOiBrM2QteApjb250ZXh0czoKLSBjb250ZXh0OgogICAgY2x1c3RlcjogazNkLXgKICAgIHVzZXI6IGxpbmtlcmQtc2VydmljZS1taXJyb3ItcmVtb3RlLWFjY2Vzcy1kZWZhdWx0CiAgbmFtZTogazNkLXgKY3VycmVudC1jb250ZXh0OiBrM2QteApraW5kOiBDb25maWcKcHJlZmVyZW5jZXM6IHt9CnVzZXJzOgotIG5hbWU6IGxpbmtlcmQtc2VydmljZS1taXJyb3ItcmVtb3RlLWFjY2Vzcy1kZWZhdWx0CiAgdXNlcjoKICAgIHRva2VuOiBleUpoYkdjaU9pSlNVekkxTmlJc0ltdHBaQ0k2SW5GcFZIZDJTMEYyWWtOd1drdHBRMDlKVFhBemRHTm1lVWxzYUZaQlNIRTBlV1JVVTI1eFluSm5WMEVpZlEuZXlKcGMzTWlPaUpyZFdKbGNtNWxkR1Z6TDNObGNuWnBZMlZoWTJOdmRXNTBJaXdpYTNWaVpYSnVaWFJsY3k1cGJ5OXpaWEoyYVdObFlXTmpiM1Z1ZEM5dVlXMWxjM0JoWTJVaU9pSnNhVzVyWlhKa0xXMTFiSFJwWTJ4MWMzUmxjaUlzSW10MVltVnlibVYwWlhNdWFXOHZjMlZ5ZG1salpXRmpZMjkxYm5RdmMyVmpjbVYwTG01aGJXVWlPaUpzYVc1clpYSmtMWE5sY25acFkyVXRiV2x5Y205eUxYSmxiVzkwWlMxaFkyTmxjM010WkdWbVlYVnNkQzEwYjJ0bGJpMXNjSEV5YUNJc0ltdDFZbVZ5Ym1WMFpYTXVhVzh2YzJWeWRtbGpaV0ZqWTI5MWJuUXZjMlZ5ZG1salpTMWhZMk52ZFc1MExtNWhiV1VpT2lKc2FXNXJaWEprTFhObGNuWnBZMlV0YldseWNtOXlMWEpsYlc5MFpTMWhZMk5sYzNNdFpHVm1ZWFZzZENJc0ltdDFZbVZ5Ym1WMFpYTXVhVzh2YzJWeWRtbGpaV0ZqWTI5MWJuUXZjMlZ5ZG1salpTMWhZMk52ZFc1MExuVnBaQ0k2SWpSaVpqZzBZemhrTFRSa05UY3ROR0UwWVMxaU16RmxMV1U0WlRnM1l6TTBOR0UyTmlJc0luTjFZaUk2SW5ONWMzUmxiVHB6WlhKMmFXTmxZV05qYjNWdWREcHNhVzVyWlhKa0xXMTFiSFJwWTJ4MWMzUmxjanBzYVc1clpYSmtMWE5sY25acFkyVXRiV2x5Y205eUxYSmxiVzkwWlMxaFkyTmxjM010WkdWbVlYVnNkQ0o5LmtkNUZVS0MtNFpNX003cWtxdF8wdUtVWG4wMVBETWR0dFlQTmsxSDBSMDVRNW5Ud1dtUlhuc1Z2WUpxVk83UFBpYVlfQTlYX3ByRUZleWRjOEdWSUFBNTA0QmJTZnpsak00ZndHQlQ2VjNpSWhaSjhUQlVIS19MU0hxTmN3RHlXTnRuWWVqM25iVURvTGY0R0tMeE1SdG1zc0JUZ1ZpZTVSRlo3RlktQnk2RGw3ajJmc0FkN0tiRjlkRWZ4VVVtY0hJaWliNndLOVZpbWZDMHZCRWxXN2VrQk9faDZFTi1aY2MwVnlZamRSOXRreG9uSEc0Vmw1bDlET1gwQU53Rlp6TDdYUFFac0YtYnRQQXFVakttd1BHaVNzSlZwZVAzRFlDbVFGYWRQOFNIaXoyalpRdC1KWUkzRUx2TXpOVmR5VG1Va1RoTmdZenZlaXB6UGpOTWZHZwo=
+kind: Secret
+metadata:
+  creationTimestamp: null
+  name: cluster-credentials-k3d-x
+  namespace: linkerd-multicluster
+type: mirror.linkerd.io/remote-kubeconfig
+---
+apiVersion: multicluster.linkerd.io/v1alpha1
+kind: Link
+metadata:
+  name: k3d-x
+  namespace: linkerd-multicluster
+spec:
+  clusterCredentialsSecret: cluster-credentials-k3d-x
+  gatewayAddress: 172.29.0.3
+  gatewayIdentity: linkerd-gateway.linkerd-multicluster.serviceaccount.identity.linkerd.cluster.local
+  gatewayPort: "4143"
+  probeSpec:
+    path: /ready
+    period: 3s
+    port: "4191"
+  selector:
+    matchExpressions:
+    - key: mirror.linkerd.io/exported
+      operator: Exists
+  targetClusterDomain: cluster.local
+  targetClusterLinkerdNamespace: linkerd
+  targetClusterName: k3d-x
+---
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-service-mirror-access-local-resources-k3d-x
+  labels:
+    linkerd.io/extension: multicluster
+    component: service-mirror
+    mirror.linkerd.io/cluster-name: k3d-x
+rules:
+- apiGroups: [""]
+  resources: ["endpoints", "services"]
+  verbs: ["list", "get", "watch", "create", "delete", "update"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["list", "get", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-service-mirror-access-local-resources-k3d-x
+  labels:
+    linkerd.io/extension: multicluster
+    component: service-mirror
+    mirror.linkerd.io/cluster-name: k3d-x
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-service-mirror-access-local-resources-k3d-x
+subjects:
+- kind: ServiceAccount
+  name: linkerd-service-mirror-k3d-x
+  namespace: linkerd-multicluster
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-service-mirror-read-remote-creds-k3d-x
+  namespace: linkerd-multicluster
+  labels:
+      linkerd.io/extension: multicluster
+      component: service-mirror
+      mirror.linkerd.io/cluster-name: k3d-x
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["cluster-credentials-k3d-x"]
+    verbs: ["list", "get", "watch"]
+  - apiGroups: ["multicluster.linkerd.io"]
+    resources: ["links"]
+    verbs: ["list", "get", "watch"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-service-mirror-read-remote-creds-k3d-x
+  namespace: linkerd-multicluster
+  labels:
+      linkerd.io/extension: multicluster
+      component: service-mirror
+      mirror.linkerd.io/cluster-name: k3d-x
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: linkerd-service-mirror-read-remote-creds-k3d-x
+subjects:
+  - kind: ServiceAccount
+    name: linkerd-service-mirror-k3d-x
+    namespace: linkerd-multicluster
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-service-mirror-k3d-x
+  namespace: linkerd-multicluster
+  labels:
+    linkerd.io/extension: multicluster
+    component: service-mirror
+    mirror.linkerd.io/cluster-name: k3d-x
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    linkerd.io/extension: multicluster
+    component: service-mirror
+    mirror.linkerd.io/cluster-name: k3d-x
+  name: linkerd-service-mirror-k3d-x
+  namespace: linkerd-multicluster
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: linkerd-service-mirror
+      mirror.linkerd.io/cluster-name: k3d-x
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+      labels:
+        component: linkerd-service-mirror
+        mirror.linkerd.io/cluster-name: k3d-x
+    spec:
+      containers:
+      - args:
+        - service-mirror
+        - -log-level=debug
+        - -event-requeue-limit=3
+        - -namespace=linkerd-multicluster
+        - -enable-headless-services
+        - k3d-x
+        image: cr.l5d.io/linkerd/controller:dev-e0ce5f08-kevin
+        name: service-mirror
+        securityContext:
+          runAsUser: 2103
+        ports:
+        - containerPort: 9999
+          name: admin-http
+      serviceAccountName: linkerd-service-mirror-k3d-x
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: probe-gateway-k3d-x
+  namespace: linkerd-multicluster
+  labels:
+    mirror.linkerd.io/mirrored-gateway: "true"
+    mirror.linkerd.io/cluster-name: k3d-x
+spec:
+  ports:
+  - name: mc-probe
+    port: 4191
+    protocol: TCP
+---
