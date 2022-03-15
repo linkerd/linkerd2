@@ -1,5 +1,18 @@
 # Changes
 
+## edge-22.3.3
+
+This edge release ensures that in multicluster installations, mirror service
+endpoints have their readiness tied to gateway liveness. When the gateway for a
+target cluster is not alive, the endpoints that point to it on a source cluster
+will properly indicate that they are not ready.
+
+* Fixed tap controller logging errors that were succeptible to log forgery by
+  ensuring special characters are escaped
+* Fixed issue where mirror service endpoints were always ready regardless of
+  gateway liveness
+* Removed unused `namespace` entry in `linkerd-control-plane` chart
+
 ## edge-22.3.2
 
 This edge release includes a few fixes and quality of life improvements. An
