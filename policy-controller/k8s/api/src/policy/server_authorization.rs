@@ -1,4 +1,5 @@
 use super::super::labels;
+use ipnet::IpNet;
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -56,8 +57,8 @@ pub struct MeshTls {
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
 pub struct Network {
-    pub cidr: String,
-    pub except: Option<Vec<String>>,
+    pub cidr: IpNet,
+    pub except: Option<Vec<IpNet>>,
 }
 
 /// References a Kubernetes `ServiceAccount` instance.
