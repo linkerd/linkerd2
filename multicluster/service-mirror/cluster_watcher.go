@@ -1117,13 +1117,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleCreateOrUpdateEndpoints(
 // the gateway is not alive, then the addresses in each subset will be set to
 // not ready.
 func (rcsw *RemoteClusterServiceWatcher) createMirrorEndpoints(ctx context.Context, endpoints *corev1.Endpoints) error {
-	if !rcsw.gatewayAlive {
-		rcsw.log.Warnf("gateway for %s/%s does not have ready addresses; setting addresses to not ready", endpoints.Namespace, endpoints.Name)
-		for i := range endpoints.Subsets {
-			endpoints.Subsets[i].NotReadyAddresses = append(endpoints.Subsets[i].NotReadyAddresses, endpoints.Subsets[i].Addresses...)
-			endpoints.Subsets[i].Addresses = nil
-		}
-	}
+	rcsw.updateReadiness(endpoints)
 	_, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoints.Namespace).Create(ctx, endpoints, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("Failed to create mirror endpoints for %s/%s: %w", endpoints.Namespace, endpoints.Name, err)
@@ -1136,6 +1130,15 @@ func (rcsw *RemoteClusterServiceWatcher) createMirrorEndpoints(ctx context.Conte
 // not ready. Future calls to updateMirrorEndpoints can set the addresses back
 // to ready if the gateway is alive.
 func (rcsw *RemoteClusterServiceWatcher) updateMirrorEndpoints(ctx context.Context, endpoints *corev1.Endpoints) error {
+	rcsw.updateReadiness(endpoints)
+	_, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoints.Namespace).Update(ctx, endpoints, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("Failed to update mirror endpoints for %s/%s: %w", endpoints.Namespace, endpoints.Name, err)
+	}
+	return err
+}
+
+func (rcsw *RemoteClusterServiceWatcher) updateReadiness(endpoints *corev1.Endpoints) {
 	if !rcsw.gatewayAlive {
 		rcsw.log.Warnf("gateway for %s/%s does not have ready addresses; setting addresses to not ready", endpoints.Namespace, endpoints.Name)
 		for i := range endpoints.Subsets {
@@ -1143,11 +1146,6 @@ func (rcsw *RemoteClusterServiceWatcher) updateMirrorEndpoints(ctx context.Conte
 			endpoints.Subsets[i].Addresses = nil
 		}
 	}
-	_, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoints.Namespace).Update(ctx, endpoints, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("Failed to update mirror endpoints for %s/%s: %w", endpoints.Namespace, endpoints.Name, err)
-	}
-	return err
 }
 
 func isExportedEndpoints(obj interface{}, log *logging.Entry) bool {
