@@ -165,7 +165,9 @@ webhooks:
   - operations: ["CREATE", "UPDATE"]
     apiGroups: ["policy.linkerd.io"]
     apiVersions: ["v1alpha1", "v1beta1"]
-    resources: ["servers"]
+    resources:
+    - serverauthorizations
+    - servers
   sideEffects: None
 ---
 apiVersion: rbac.authorization.k8s.io/v1
