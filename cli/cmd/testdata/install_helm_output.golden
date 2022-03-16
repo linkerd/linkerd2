@@ -204,7 +204,9 @@ webhooks:
   - operations: ["CREATE", "UPDATE"]
     apiGroups: ["policy.linkerd.io"]
     apiVersions: ["v1alpha1", "v1beta1"]
-    resources: ["servers"]
+    resources:
+    - serverauthorizations
+    - servers
   sideEffects: None
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1837,7 +1839,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 14940bccd962673f2a2c6bb60f328179e5b4ef7e8ccb051575c43a1192bb2fc4
+        checksum/config: fd636b28ccc923c7a3b562e2b1c9da41226b916d971a5e7eb6dcf1bc010434f1
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
