@@ -1,234 +1,90 @@
-use crate::{server::ServerSelector, ClusterInfo, Index, SharedIndex, SrvIndex};
+use crate::{
+    index::{Index, ServerSelector},
+    ClusterInfo,
+};
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
-use anyhow::{anyhow, bail, Result};
-use futures::prelude::*;
+use anyhow::Result;
+use k8s::{policy::server_authorization::MeshTls, ResourceExt};
 use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, IdentityMatch, NetworkMatch,
 };
-use linkerd_policy_controller_k8s_api::{
-    self as k8s,
-    policy::{self, server_authorization::MeshTls},
-    ResourceExt,
-};
+use linkerd_policy_controller_k8s_api as k8s;
 use std::collections::hash_map::Entry;
-use tracing::{debug, instrument, trace, warn};
 
-/// Indexes `ServerAuthorization` resources within a namespace.
-#[derive(Debug, Default)]
-pub struct AuthzIndex {
-    index: HashMap<String, Authz>,
-}
+impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> for Index {
+    fn apply(&mut self, saz: k8s::policy::ServerAuthorization) {
+        let namespace = saz.namespace().unwrap();
+        let name = saz.name();
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct Authz {
-    /// Selects `Server` instances in the same namespace.
-    servers: ServerSelector,
-
-    /// The current authorization policy to apply.
-    clients: ClientAuthorization,
-}
-
-#[instrument(skip_all, name = "serverauthorizations")]
-pub async fn index(
-    idx: SharedIndex,
-    events: impl Stream<Item = k8s::WatchEvent<k8s::policy::ServerAuthorization>>,
-) {
-    tokio::pin!(events);
-    while let Some(ev) = events.next().await {
-        match ev {
-            k8s::WatchEvent::Applied(saz) => apply(&mut *idx.write(), saz),
-            k8s::WatchEvent::Deleted(saz) => delete(&mut *idx.write(), saz),
-            k8s::WatchEvent::Restarted(sazs) => restart(&mut *idx.write(), sazs),
-        }
-    }
-}
-
-/// Obtains or constructs an `Authz` and links it to the appropriate `Servers`.
-#[instrument(skip_all, fields(
-    ns = ?authz.metadata.namespace,
-    name = %authz.name(),
-))]
-fn apply(index: &mut Index, authz: policy::ServerAuthorization) {
-    let ns = index
-        .namespaces
-        .get_or_default(authz.namespace().expect("namespace required"));
-
-    ns.authzs.apply(authz, &mut ns.servers, &index.cluster_info)
-}
-
-#[instrument(skip_all, fields(
-    ns = ?authz.metadata.namespace,
-    name = %authz.name(),
-))]
-fn delete(index: &mut Index, authz: policy::ServerAuthorization) {
-    if let Some(ns) = index
-        .namespaces
-        .index
-        .get_mut(authz.namespace().unwrap().as_str())
-    {
-        let name = authz.name();
-        ns.servers.remove_server_authz(name.as_str());
-        ns.authzs.delete(name.as_str());
-    }
-}
-
-#[instrument(skip_all)]
-fn restart(index: &mut Index, authzs: Vec<policy::ServerAuthorization>) {
-    let mut prior = index
-        .namespaces
-        .index
-        .iter()
-        .map(|(n, ns)| {
-            let authzs = ns.authzs.index.keys().cloned().collect::<HashSet<_>>();
-            (n.clone(), authzs)
-        })
-        .collect::<HashMap<_, _>>();
-
-    for authz in authzs.into_iter() {
-        if let Some(ns) = prior.get_mut(authz.namespace().unwrap().as_str()) {
-            ns.remove(authz.name().as_str());
-        }
-
-        apply(index, authz);
-    }
-
-    for (ns_name, authzs) in prior {
-        if let Some(ns) = index.namespaces.index.get_mut(&ns_name) {
-            for name in authzs.into_iter() {
-                ns.servers.remove_server_authz(&name);
-                ns.authzs.delete(&name);
-            }
-        }
-    }
-}
-
-// === impl AuthzIndex ===
-
-impl AuthzIndex {
-    /// Enumerates authorizations in this namespace matching either the given server name or its
-    /// labels.
-    pub(crate) fn filter_for_server(
-        &self,
-        server_name: impl Into<String>,
-        server_labels: k8s::Labels,
-    ) -> impl Iterator<Item = (String, &ClientAuthorization)> {
-        let server_name = server_name.into();
-        self.index.iter().filter_map(move |(authz_name, a)| {
-            let matches = match a.servers {
-                ServerSelector::Name(ref n) => {
-                    trace!(selector.name = %n, server.name = %server_name);
-                    n == &server_name
-                }
-                ServerSelector::Selector(ref s) => {
-                    trace!(selector = ?s, ?server_labels);
-                    s.matches(&server_labels)
-                }
-            };
-            debug!(authz = %authz_name, %matches);
-            if matches {
-                Some((authz_name.clone(), &a.clients))
-            } else {
-                None
-            }
-        })
-    }
-
-    /// Updates the authorization and server indexes with a new or updated authorization instance.
-    fn apply(
-        &mut self,
-        authz: policy::ServerAuthorization,
-        servers: &mut SrvIndex,
-        cluster: &ClusterInfo,
-    ) {
-        let name = authz.name();
-        let authz = match mk_server_authz(authz, cluster) {
-            Ok(authz) => authz,
+        let authz = match client_authz(saz.spec.client, &namespace, self.cluster_info()) {
+            Ok(ca) => ca,
             Err(error) => {
-                warn!(saz = %name, %error);
+                tracing::warn!(%error, %namespace, saz = %name, "invalid authorization");
                 return;
             }
         };
 
-        match self.index.entry(name) {
-            Entry::Vacant(entry) => {
-                servers.add_server_authz(entry.key(), &authz.servers, authz.clients.clone());
-                entry.insert(authz);
-            }
+        self.ns_or_default(namespace).apply_server_authorization(
+            name,
+            server_selector(saz.spec.server),
+            authz,
+        )
+    }
 
-            Entry::Occupied(mut entry) => {
-                // If the authorization changed materially, then update it in all servers.
-                if entry.get() != &authz {
-                    servers.add_server_authz(entry.key(), &authz.servers, authz.clients.clone());
-                    entry.insert(authz);
-                }
+    fn delete(&mut self, namespace: String, name: String) {
+        if let Entry::Occupied(mut entry) = self.entry(namespace) {
+            entry.get_mut().delete_server_authorization(&*name);
+            if entry.get().is_empty() {
+                entry.remove();
             }
         }
     }
 
-    fn delete(&mut self, name: &str) {
-        self.index.remove(name);
-        debug!("Removed authz");
+    fn snapshot_keys(&self) -> HashMap<String, HashSet<String>> {
+        self.snapshot_server_authorizations()
     }
 }
 
-fn mk_server_authz(
-    srv: policy::server_authorization::ServerAuthorization,
-    cluster: &ClusterInfo,
-) -> Result<Authz> {
-    let policy::server_authorization::ServerAuthorization { metadata, spec, .. } = srv;
-
-    let servers = {
-        let policy::server_authorization::Server { name, selector } = spec.server;
-        match (name, selector) {
-            (Some(n), None) => ServerSelector::Name(n),
-            (None, Some(sel)) => ServerSelector::Selector(sel.into()),
-            (Some(_), Some(_)) => bail!("authorization selection is ambiguous"),
-            (None, None) => bail!("authorization selects no servers"),
-        }
-    };
-
-    let networks = if let Some(nets) = spec.client.networks {
-        nets.into_iter()
-            .map(|net| {
-                debug!(net = %net.cidr, "Unauthenticated");
-                Ok(NetworkMatch {
-                    net: net.cidr,
-                    except: net.except.unwrap_or_default(),
-                })
-            })
-            .collect::<Result<Vec<NetworkMatch>>>()?
-    } else {
-        // If no networks are specified, the cluster networks are used as the default.
-        cluster
-            .networks
-            .iter()
-            .copied()
-            .map(NetworkMatch::from)
-            .collect()
-    };
-
-    let authentication = if spec.client.unauthenticated {
-        ClientAuthentication::Unauthenticated
-    } else {
-        let mtls = spec
-            .client
-            .mesh_tls
-            .ok_or_else(|| anyhow!("client mtls missing"))?;
-        mk_mtls_authn(&metadata, mtls, cluster)?
-    };
-
-    Ok(Authz {
-        servers,
-        clients: ClientAuthorization {
-            networks,
-            authentication,
-        },
+fn server_selector(s: k8s::policy::server_authorization::Server) -> ServerSelector {
+    s.name.map(ServerSelector::Name).unwrap_or_else(|| {
+        s.selector
+            .map(ServerSelector::Selector)
+            .unwrap_or_else(|| ServerSelector::Selector(k8s::labels::Selector::default()))
     })
 }
 
-fn mk_mtls_authn(
-    metadata: &k8s::ObjectMeta,
+fn client_authz(
+    client: k8s::policy::server_authorization::Client,
+    namespace: &str,
+    cluster: &ClusterInfo,
+) -> Result<ClientAuthorization> {
+    let networks = client
+        .networks
+        .into_iter()
+        .flatten()
+        .map(|net| NetworkMatch {
+            net: net.cidr,
+            except: net.except.unwrap_or_default(),
+        })
+        .collect();
+
+    let authentication = if client.unauthenticated {
+        ClientAuthentication::Unauthenticated
+    } else if let Some(mtls) = client.mesh_tls {
+        client_mtls_authn(mtls, namespace, cluster)?
+    } else {
+        anyhow::bail!("no client authentication configured");
+    };
+
+    Ok(ClientAuthorization {
+        networks,
+        authentication,
+    })
+}
+
+fn client_mtls_authn(
     mtls: MeshTls,
+    namespace: &str,
     cluster: &ClusterInfo,
 ) -> Result<ClientAuthentication> {
     if mtls.unauthenticated_tls {
@@ -239,10 +95,10 @@ fn mk_mtls_authn(
 
     for id in mtls.identities.into_iter().flatten() {
         if id == "*" {
-            debug!(suffix = %id, "Authenticated");
+            tracing::debug!(suffix = %id, "Authenticated");
             identities.push(IdentityMatch::Suffix(vec![]));
         } else if id.starts_with("*.") {
-            debug!(suffix = %id, "Authenticated");
+            tracing::debug!(suffix = %id, "Authenticated");
             let mut parts = id.split('.');
             let star = parts.next();
             debug_assert_eq!(star, Some("*"));
@@ -250,26 +106,24 @@ fn mk_mtls_authn(
                 parts.map(|p| p.to_string()).collect::<Vec<_>>(),
             ));
         } else {
-            debug!(%id, "Authenticated");
-            identities.push(IdentityMatch::Name(id));
+            tracing::debug!(%id, "Authenticated");
+            identities.push(IdentityMatch::Exact(id));
         }
     }
 
     for sa in mtls.service_accounts.into_iter().flatten() {
         let name = sa.name;
-        let ns = sa
-            .namespace
-            .unwrap_or_else(|| metadata.namespace.clone().unwrap());
-        debug!(ns = %ns, serviceaccount = %name, "Authenticated");
+        let ns = sa.namespace.unwrap_or_else(|| namespace.to_string());
+        tracing::debug!(ns = %ns, serviceaccount = %name, "Authenticated");
         let n = format!(
             "{}.{}.serviceaccount.identity.{}.{}",
             name, ns, cluster.control_plane_ns, cluster.identity_domain
         );
-        identities.push(IdentityMatch::Name(n));
+        identities.push(IdentityMatch::Exact(n));
     }
 
     if identities.is_empty() {
-        bail!("authorization authorizes no clients");
+        anyhow::bail!("authorization authorizes no clients");
     }
 
     Ok(ClientAuthentication::TlsAuthenticated(identities))

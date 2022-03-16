@@ -1,4 +1,4 @@
-use crate::api::{
+use crate::k8s::{
     labels,
     policy::{Server, ServerAuthorization, ServerAuthorizationSpec, ServerSpec},
 };

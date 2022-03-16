@@ -5,11 +5,11 @@ use anyhow::{bail, Result};
 use clap::Parser;
 use futures::prelude::*;
 use kube::api::ListParams;
-use linkerd_policy_controller::{k8s, Admission};
+use linkerd_policy_controller::{k8s, Admission, ClusterInfo, DefaultPolicy, Index, IndexDiscover};
 use linkerd_policy_controller_core::IpNet;
 use std::net::SocketAddr;
 use tokio::time;
-use tracing::{info, instrument};
+use tracing::{info, info_span, instrument, Instrument};
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu"))]
 #[global_allocator]
@@ -60,7 +60,7 @@ struct Args {
     identity_domain: String,
 
     #[clap(long, default_value = "all-unauthenticated")]
-    default_policy: k8s::DefaultPolicy,
+    default_policy: DefaultPolicy,
 
     #[clap(long, default_value = "linkerd")]
     control_plane_namespace: String,
@@ -98,34 +98,37 @@ async fn main() -> Result<()> {
 
     // Build the index data structure, which will be used to process events from all watches
     // The lookup handle is used by the gRPC server.
-    let (lookup, index) = {
-        let cluster = k8s::ClusterInfo {
-            networks: cluster_networks.clone(),
-            identity_domain,
-            control_plane_ns: control_plane_namespace,
-        };
-        k8s::Index::new(cluster, default_policy, DETECT_TIMEOUT)
-    };
+    let index = Index::shared(ClusterInfo {
+        networks: cluster_networks.clone(),
+        identity_domain,
+        control_plane_ns: control_plane_namespace,
+        default_policy,
+        default_detect_timeout: DETECT_TIMEOUT,
+    });
 
     // Spawn resource indexers that update the index and publish lookups for the gRPC server.
 
-    let pods = runtime.watch_all(ListParams::default().labels("linkerd.io/control-plane-ns"));
-    tokio::spawn(k8s::pod::index(index.clone(), pods));
+    let pods =
+        runtime.watch_all::<k8s::Pod>(ListParams::default().labels("linkerd.io/control-plane-ns"));
+    tokio::spawn(kubert::index::namespaced(index.clone(), pods).instrument(info_span!("pods")));
 
-    let servers = runtime.watch_all(ListParams::default());
-    tokio::spawn(k8s::server::index(index.clone(), servers));
+    let servers = runtime.watch_all::<k8s::policy::Server>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(index.clone(), servers).instrument(info_span!("servers")),
+    );
 
-    let server_authzs = runtime.watch_all(ListParams::default());
-    tokio::spawn(k8s::server_authorization::index(
-        index.clone(),
-        server_authzs,
-    ));
+    let server_authzs =
+        runtime.watch_all::<k8s::policy::ServerAuthorization>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(index.clone(), server_authzs)
+            .instrument(info_span!("serverauthorizations")),
+    );
 
     // Run the gRPC server, serving results by looking up against the index handle.
     tokio::spawn(grpc(
         grpc_addr,
         cluster_networks,
-        lookup,
+        index.clone(),
         runtime.shutdown_handle(),
     ));
 
@@ -154,15 +157,18 @@ impl std::str::FromStr for IpNets {
     }
 }
 
-#[instrument(skip(handle, drain))]
+#[instrument(skip_all, fields(addr))]
 async fn grpc(
     addr: SocketAddr,
     cluster_networks: Vec<IpNet>,
-    handle: linkerd_policy_controller_k8s_index::Reader,
+    index: linkerd_policy_controller_k8s_index::SharedIndex,
     drain: drain::Watch,
 ) -> Result<()> {
-    let server =
-        linkerd_policy_controller_grpc::Server::new(handle, cluster_networks, drain.clone());
+    let server = linkerd_policy_controller_grpc::Server::new(
+        IndexDiscover::new(index),
+        cluster_networks,
+        drain.clone(),
+    );
     let (close_tx, close_rx) = tokio::sync::oneshot::channel();
     tokio::pin! {
         let srv = server.serve(addr, close_rx.map(|_| {}));
