@@ -810,10 +810,11 @@ dependencies = [
 
 [[package]]
 name = "kubert"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db6d5039ebf63d1978760db7e835579aa790511979cb78eb9d4dcdd45f1112c5"
+checksum = "00bb0ddd8742f6541b17271cf533e2e288d97eba728ba016a209705ed657ff13"
 dependencies = [
+ "ahash",
  "clap",
  "drain",
  "futures-core",
@@ -822,6 +823,7 @@ dependencies = [
  "kube-client",
  "kube-core",
  "kube-runtime",
+ "parking_lot 0.12.0",
  "pin-project-lite",
  "rustls-pemfile 0.3.0",
  "serde",
@@ -856,6 +858,7 @@ name = "linkerd-policy-controller"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-stream",
  "async-trait",
  "clap",
  "drain",
@@ -937,6 +940,7 @@ dependencies = [
  "tokio-stream",
  "tokio-test",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
