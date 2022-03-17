@@ -78,6 +78,7 @@ spec:
         - -tap-service-name=tap.{{.Release.Namespace}}.serviceaccount.identity.{{.Values.linkerdNamespace}}.{{.Values.identityTrustDomain | default .Values.clusterDomain}}
         - -log-level={{.Values.tapInjector.logLevel | default .Values.defaultLogLevel}}
         - -log-format={{.Values.tapInjector.logFormat | default .Values.defaultLogFormat}}
+        - -enable-pprof={{.Values.enablePprof | default false}}
         image: {{.Values.tapInjector.image.registry | default .Values.defaultRegistry}}/{{.Values.tapInjector.image.name}}:{{.Values.tapInjector.image.tag | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.tapInjector.image.pullPolicy | default .Values.defaultImagePullPolicy}}
         livenessProbe:

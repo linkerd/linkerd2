@@ -78,6 +78,7 @@ spec:
         - -log-level=info
         - -cluster-domain=cluster.local
         - -linkerd-namespace=linkerd
+        - -enable-pprof=false
         image: cr.l5d.io/linkerd/jaeger-webhook:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:

@@ -26,6 +26,8 @@ func Main(args []string) {
 	tapPort := cmd.Uint("tap-port", 4190, "proxy tap port to connect to")
 	disableCommonNames := cmd.Bool("disable-common-names", false, "disable checks for Common Names (for development)")
 	trustDomain := cmd.String("identity-trust-domain", defaultDomain, "configures the name suffix used for identities")
+	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
+
 	traceCollector := flags.AddTraceFlags(cmd)
 	flags.ConfigureAndParse(cmd, args)
 	ctx := context.Background()
@@ -67,7 +69,7 @@ func Main(args []string) {
 	k8sAPI.Sync(nil)
 	go apiServer.Start(ctx)
 
-	adminServer := admin.NewServer(*metricsAddr)
+	adminServer := admin.NewServer(*metricsAddr, *enablePprof)
 
 	go func() {
 		log.Infof("starting admin server on %s", *metricsAddr)

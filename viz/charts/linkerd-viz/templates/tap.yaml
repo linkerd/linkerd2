@@ -88,6 +88,7 @@ spec:
         - -log-level={{.Values.tap.logLevel | default .Values.defaultLogLevel}}
         - -log-format={{.Values.tap.logFormat | default .Values.defaultLogFormat}}
         - -identity-trust-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
+        - -enable-pprof={{.Values.enablePprof | default false}}
         image: {{.Values.tap.image.registry | default .Values.defaultRegistry}}/{{.Values.tap.image.name}}:{{.Values.tap.image.tag | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.tap.image.pullPolicy | default .Values.defaultImagePullPolicy}}
         livenessProbe:
