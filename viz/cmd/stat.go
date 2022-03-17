@@ -36,9 +36,10 @@ type statOptions struct {
 }
 
 type statOptionsBase struct {
-	// structcheck doesn't handle embedded structs well. statOptionsBase is
-	// only used as an embedded field in statOptions.
-	// https://github.com/golangci/golangci-lint/issues/1517
+	// namespace is only referenced from the outer struct statOptions (e.g.
+	// options.namespace where options's type is _not_ this struct).
+	// structcheck issues a false positive for this field as it does not think
+	// it's used.
 	//nolint:structcheck
 	namespace    string
 	timeWindow   string
