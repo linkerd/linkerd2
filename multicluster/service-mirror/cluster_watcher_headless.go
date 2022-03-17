@@ -169,7 +169,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx con
 
 	// Update endpoints
 	mirrorEndpoints.Subsets = newSubsets
-	err = rcsw.createOrUpdateEndpoints(ctx, mirrorEndpoints)
+	err = rcsw.updateMirrorEndpoints(ctx, mirrorEndpoints)
 	if err != nil {
 		return RetryableError{[]error{err}}
 	}
