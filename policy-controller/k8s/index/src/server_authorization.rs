@@ -4,11 +4,12 @@ use crate::{
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::Result;
-use k8s::{policy::server_authorization::MeshTls, ResourceExt};
 use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, IdentityMatch, NetworkMatch,
 };
-use linkerd_policy_controller_k8s_api as k8s;
+use linkerd_policy_controller_k8s_api::{
+    self as k8s, policy::server_authorization::MeshTls, ResourceExt,
+};
 use std::collections::hash_map::Entry;
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> for Index {
