@@ -15,7 +15,6 @@ type reverseProxy struct {
 
 func newReverseProxy(addr string, prefix string) *reverseProxy {
 	director := func(req *http.Request) {
-		req.Host = addr
 		req.URL.Host = addr
 		req.URL.Scheme = "http"
 		req.URL.Path = strings.TrimPrefix(req.URL.Path, prefix)

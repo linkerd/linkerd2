@@ -164,6 +164,7 @@ webhooks:
     - authorizationpolicies
     - networkauthentications
     - meshtlsauthentications
+    - serverauthorizations
     - servers
   sideEffects: None
 ---

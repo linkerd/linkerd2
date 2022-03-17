@@ -167,9 +167,9 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx con
 		return RetryableError{errors}
 	}
 
-	// Update
+	// Update endpoints
 	mirrorEndpoints.Subsets = newSubsets
-	_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(mirrorEndpoints.Namespace).Update(ctx, mirrorEndpoints, metav1.UpdateOptions{})
+	err = rcsw.updateMirrorEndpoints(ctx, mirrorEndpoints)
 	if err != nil {
 		return RetryableError{[]error{err}}
 	}
@@ -377,6 +377,13 @@ func (rcsw *RemoteClusterServiceWatcher) createEndpointMirrorService(ctx context
 		}
 	}
 
+	// todo: The endpoints are created without checking for gateway liveness.
+	// We do this because if we do check — and the gateway is down — these endpoints are
+	// never repaired. This is because in repairEndpoints we skip local
+	// endpoints that are mirroring headless services since they may not have
+	// a matching endpoint on the remote cluster.
+	//
+	// Explained by cluster_watcher.go L943-L945.
 	rcsw.log.Infof("Creating a new endpoints object for endpoint mirror service %s", endpointMirrorInfo)
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpointMirrorService.Namespace).Create(ctx, endpointMirrorEndpoints, metav1.CreateOptions{}); err != nil {
 		if svcErr := rcsw.localAPIClient.Client.CoreV1().Services(endpointMirrorService.Namespace).Delete(ctx, endpointMirrorName, metav1.DeleteOptions{}); svcErr != nil {

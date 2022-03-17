@@ -3,7 +3,7 @@ use crate::api::{
     policy::{
         AuthorizationPolicy, AuthorizationPolicySpec, MeshTLSAuthentication,
         MeshTLSAuthenticationSpec, NetworkAuthentication, NetworkAuthenticationSpec, Server,
-        ServerSpec,
+        ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
     },
 };
 use anyhow::{anyhow, bail, Result};
@@ -112,6 +112,10 @@ impl Admission {
             return self.admit_spec::<ServerSpec>(req).await;
         };
 
+        if is_kind::<ServerAuthorization>(&req) {
+            return self.admit_spec::<ServerAuthorizationSpec>(req).await;
+        };
+
         AdmissionResponse::invalid(format_args!(
             "unsupported resource type: {}.{}.{}",
             req.kind.group, req.kind.version, req.kind.kind
@@ -197,32 +201,6 @@ fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(String, Str
 }
 
 #[async_trait::async_trait]
-impl Validate<ServerSpec> for Admission {
-    /// Checks that `spec` doesn't select the same pod/ports as other existing Servers
-    //
-    // TODO(ver) this isn't rigorous about detecting servers that select the same port if one port
-    // specifies a numeric port and the other specifies the port's name.
-    async fn validate(self, ns: &str, name: &str, spec: ServerSpec) -> Result<()> {
-        // Since we can't ensure that the local index is up-to-date with the API server (i.e.
-        // updates may be delayed), we issue an API request to get the latest state of servers in
-        // the namespace.
-        let servers = kube::Api::<Server>::namespaced(self.client, ns)
-            .list(&kube::api::ListParams::default())
-            .await?;
-        for server in servers.items.into_iter() {
-            if server.name() != name
-                && server.spec.port == spec.port
-                && overlaps(&server.spec.pod_selector, &spec.pod_selector)
-            {
-                bail!("identical server spec already exists");
-            }
-        }
-
-        Ok(())
-    }
-}
-
-#[async_trait::async_trait]
 impl Validate<AuthorizationPolicySpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: AuthorizationPolicySpec) -> Result<()> {
         // TODO support namespace references?
@@ -270,6 +248,32 @@ impl Validate<MeshTLSAuthenticationSpec> for Admission {
 }
 
 #[async_trait::async_trait]
+impl Validate<ServerSpec> for Admission {
+    /// Checks that `spec` doesn't select the same pod/ports as other existing Servers
+    //
+    // TODO(ver) this isn't rigorous about detecting servers that select the same port if one port
+    // specifies a numeric port and the other specifies the port's name.
+    async fn validate(self, ns: &str, name: &str, spec: ServerSpec) -> Result<()> {
+        // Since we can't ensure that the local index is up-to-date with the API server (i.e.
+        // updates may be delayed), we issue an API request to get the latest state of servers in
+        // the namespace.
+        let servers = kube::Api::<Server>::namespaced(self.client, ns)
+            .list(&kube::api::ListParams::default())
+            .await?;
+        for server in servers.items.into_iter() {
+            if server.name() != name
+                && server.spec.port == spec.port
+                && overlaps(&server.spec.pod_selector, &spec.pod_selector)
+            {
+                bail!("identical server spec already exists");
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
 impl Validate<NetworkAuthenticationSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: NetworkAuthenticationSpec) -> Result<()> {
         for net in spec.networks.into_iter() {
@@ -282,6 +286,32 @@ impl Validate<NetworkAuthenticationSpec> for Admission {
                     );
                 }
                 if !except.contained_by(&net.cidr) {
+                    bail!(
+                        "cidr '{}' does not include exception '{}'",
+                        net.cidr,
+                        except
+                    );
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl Validate<ServerAuthorizationSpec> for Admission {
+    async fn validate(self, _ns: &str, _name: &str, spec: ServerAuthorizationSpec) -> Result<()> {
+        for net in spec.client.networks.into_iter().flatten() {
+            for except in net.except.into_iter().flatten() {
+                if except.contains(&net.cidr) {
+                    bail!(
+                        "cidr '{}' is completely negated by exception '{}'",
+                        net.cidr,
+                        except
+                    );
+                }
+                if !net.cidr.contains(&except) {
                     bail!(
                         "cidr '{}' does not include exception '{}'",
                         net.cidr,
