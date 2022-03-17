@@ -24,7 +24,7 @@ func NewServer(addr string) *http.Server {
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// #8087: temporarily disable pprof endpoints for stable-2.11.2. Enabling
-	// pprof will be made configurable or stable-2.12.
+	// pprof will be made configurable for stable-2.12.
 	// debugPathPrefix := "/debug/pprof/"
 	switch req.URL.Path {
 	case "/metrics":
