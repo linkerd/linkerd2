@@ -157,7 +157,7 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 
 	url := pkg.TapReqToURL(&tapReq)
 	if url != req.URL.Path {
-		err = fmt.Errorf("tap request body did not match APIServer URL: %+v != %q", url, req.URL.Path)
+		err = fmt.Errorf("tap request body did not match APIServer URL: %q != %q", url, req.URL.Path)
 		h.log.Error(err)
 		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
@@ -171,9 +171,11 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 	}
 
 	serverStream := serverStream{w: flushableWriter, req: req, log: h.log}
+	// This API endpoint is marked as deprecated but it's still used.
+	//nolint:staticcheck
 	err = h.grpcTapServer.TapByResource(&tapReq, &serverStream)
 	if err != nil {
-		h.log.Error(err)
+		h.log.Errorf("TapByResource failed: %q", err)
 		protohttp.WriteErrorToHTTPResponse(flushableWriter, err)
 		return
 	}

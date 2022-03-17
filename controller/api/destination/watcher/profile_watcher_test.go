@@ -94,6 +94,8 @@ func TestProfileWatcherUpdates(t *testing.T) {
 
 			actualProfiles := make([]*sp.ServiceProfileSpec, 0)
 
+			listener.mu.RLock()
+			defer listener.mu.RUnlock()
 			for _, profile := range listener.Profiles {
 				if profile == nil {
 					actualProfiles = append(actualProfiles, nil)

@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/net"
 	proxy "github.com/linkerd/linkerd2-proxy-api/go/net"
 	l5dNetPb "github.com/linkerd/linkerd2/controller/gen/common/net"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestPublicAddressToString(t *testing.T) {

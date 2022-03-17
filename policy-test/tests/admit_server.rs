@@ -1,7 +1,6 @@
-use api::policy::server::ProxyProtocol;
 use linkerd_policy_controller_k8s_api::{
     self as api,
-    policy::server::{Port, Server, ServerSpec},
+    policy::server::{Port, ProxyProtocol, Server, ServerSpec},
 };
 use linkerd_policy_test::{admission, with_temp_ns};
 

@@ -6,7 +6,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-control-plane-1.1.8-edge
+    helm.sh/chart: linkerd-control-plane-1.1.10-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -152,7 +152,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-control-plane-1.1.8-edge
+    helm.sh/chart: linkerd-control-plane-1.1.10-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -441,7 +441,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-control-plane-1.1.8-edge
+    helm.sh/chart: linkerd-control-plane-1.1.10-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: linkerd.io
@@ -878,7 +878,9 @@ webhooks:
   - operations: ["CREATE", "UPDATE"]
     apiGroups: ["policy.linkerd.io"]
     apiVersions: ["v1alpha1", "v1beta1"]
-    resources: ["servers"]
+    resources:
+    - serverauthorizations
+    - servers
   sideEffects: None
 ---
 apiVersion: rbac.authorization.k8s.io/v1
