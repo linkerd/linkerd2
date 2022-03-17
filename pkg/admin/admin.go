@@ -1,10 +1,7 @@
 package admin
 
 import (
-	"fmt"
 	"net/http"
-	"net/http/pprof"
-	"strings"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -26,7 +23,9 @@ func NewServer(addr string) *http.Server {
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	debugPathPrefix := "/debug/pprof/"
+	// #8087: temporarily disable pprof endpoints for stable-2.11.2. Enabling
+	// pprof will be made configurable or stable-2.12.
+	// debugPathPrefix := "/debug/pprof/"
 	switch req.URL.Path {
 	case "/metrics":
 		h.promHandler.ServeHTTP(w, req)
@@ -34,20 +33,21 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		h.servePing(w)
 	case "/ready":
 		h.serveReady(w)
-	case fmt.Sprintf("%scmdline", debugPathPrefix):
-		pprof.Cmdline(w, req)
-	case fmt.Sprintf("%sprofile", debugPathPrefix):
-		pprof.Profile(w, req)
-	case fmt.Sprintf("%strace", debugPathPrefix):
-		pprof.Trace(w, req)
-	case fmt.Sprintf("%ssymbol", debugPathPrefix):
-		pprof.Symbol(w, req)
+	// case fmt.Sprintf("%scmdline", debugPathPrefix):
+	// 	pprof.Cmdline(w, req)
+	// case fmt.Sprintf("%sprofile", debugPathPrefix):
+	// 	pprof.Profile(w, req)
+	// case fmt.Sprintf("%strace", debugPathPrefix):
+	// 	pprof.Trace(w, req)
+	// case fmt.Sprintf("%ssymbol", debugPathPrefix):
+	// 	pprof.Symbol(w, req)
 	default:
-		if strings.HasPrefix(req.URL.Path, "/debug/pprof/") {
-			pprof.Index(w, req)
-		} else {
-			http.NotFound(w, req)
-		}
+		// if strings.HasPrefix(req.URL.Path, "/debug/pprof/") {
+		// 	pprof.Index(w, req)
+		// } else {
+		// 	http.NotFound(w, req)
+		// }
+		http.NotFound(w, req)
 	}
 }
 
