@@ -7,7 +7,7 @@ mod admission;
 
 pub use self::admission::Admission;
 pub use linkerd_policy_controller_core::{
-    DiscoverInboundServer, InboundServer, InboundServerStream,
+    DiscoverInboundServer, InboundServer, InboundServerStream, IpNet,
 };
 pub use linkerd_policy_controller_grpc as grpc;
 pub use linkerd_policy_controller_k8s_api as k8s;

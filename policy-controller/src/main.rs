@@ -5,8 +5,9 @@ use anyhow::{bail, Result};
 use clap::Parser;
 use futures::prelude::*;
 use kube::api::ListParams;
-use linkerd_policy_controller::{k8s, Admission, ClusterInfo, DefaultPolicy, Index, IndexDiscover};
-use linkerd_policy_controller_core::IpNet;
+use linkerd_policy_controller::{
+    grpc, k8s, Admission, ClusterInfo, DefaultPolicy, Index, IndexDiscover, IpNet, SharedIndex,
+};
 use std::net::SocketAddr;
 use tokio::time;
 use tracing::{info, info_span, instrument, Instrument};
@@ -161,14 +162,11 @@ impl std::str::FromStr for IpNets {
 async fn grpc(
     addr: SocketAddr,
     cluster_networks: Vec<IpNet>,
-    index: linkerd_policy_controller_k8s_index::SharedIndex,
+    index: SharedIndex,
     drain: drain::Watch,
 ) -> Result<()> {
-    let server = linkerd_policy_controller_grpc::Server::new(
-        IndexDiscover::new(index),
-        cluster_networks,
-        drain.clone(),
-    );
+    let discover = IndexDiscover::new(index);
+    let server = grpc::Server::new(discover, cluster_networks, drain.clone());
     let (close_tx, close_rx) = tokio::sync::oneshot::channel();
     tokio::pin! {
         let srv = server.serve(addr, close_rx.map(|_| {}));
