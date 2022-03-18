@@ -36,6 +36,11 @@ type statOptions struct {
 }
 
 type statOptionsBase struct {
+	// namespace is only referenced from the outer struct statOptions (e.g.
+	// options.namespace where options's type is _not_ this struct).
+	// structcheck issues a false positive for this field as it does not think
+	// it's used.
+	//nolint:structcheck
 	namespace    string
 	timeWindow   string
 	outputFormat string

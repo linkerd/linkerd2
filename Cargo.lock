@@ -612,6 +612,10 @@ name = "ipnet"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "35e70ee094dc02fd9c13fdad4940090f22dbd6ac7c9e7094a46cf0232a50bc7c"
+dependencies = [
+ "schemars",
+ "serde",
+]
 
 [[package]]
 name = "itertools"
@@ -852,10 +856,12 @@ name = "linkerd-policy-controller"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "clap",
  "drain",
  "futures",
  "hyper",
+ "ipnet",
  "jemallocator",
  "k8s-openapi",
  "kube",
@@ -865,6 +871,7 @@ dependencies = [
  "linkerd-policy-controller-k8s-api",
  "linkerd-policy-controller-k8s-index",
  "parking_lot 0.12.0",
+ "serde",
  "serde_json",
  "thiserror",
  "tokio",
@@ -901,6 +908,7 @@ dependencies = [
 name = "linkerd-policy-controller-k8s-api"
 version = "0.1.0"
 dependencies = [
+ "ipnet",
  "k8s-openapi",
  "kube",
  "schemars",
@@ -939,7 +947,9 @@ dependencies = [
  "kube",
  "linkerd-policy-controller-k8s-api",
  "rand",
+ "schemars",
  "serde",
+ "serde_json",
  "tokio",
  "tokio-test",
  "tracing",
@@ -1702,9 +1712,9 @@ checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
 name = "syn"
-version = "1.0.88"
+version = "1.0.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebd69e719f31e88618baa1eaa6ee2de5c9a1c004f1e9ecdb58e8352a13f20a01"
+checksum = "ea297be220d52398dcc07ce15a209fce436d361735ac1db700cab3b6cdfb9f54"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2332,6 +2342,6 @@ dependencies = [
 
 [[package]]
 name = "zeroize"
-version = "1.5.3"
+version = "1.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50344758e2f40e3a1fcfc8f6f91aa57b5f8ebd8d27919fe6451f15aaaf9ee608"
+checksum = "7eb5728b8afd3f280a869ce1d4c554ffaed35f45c231fc41bfbd0381bef50317"

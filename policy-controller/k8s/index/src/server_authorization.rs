@@ -3,7 +3,7 @@ use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use futures::prelude::*;
 use linkerd_policy_controller_core::{
-    ClientAuthentication, ClientAuthorization, IdentityMatch, IpNet, NetworkMatch,
+    ClientAuthentication, ClientAuthorization, IdentityMatch, NetworkMatch,
 };
 use linkerd_policy_controller_k8s_api::{
     self as k8s,
@@ -189,15 +189,12 @@ fn mk_server_authz(
 
     let networks = if let Some(nets) = spec.client.networks {
         nets.into_iter()
-            .map(|policy::server_authorization::Network { cidr, except }| {
-                let net = cidr.parse::<IpNet>()?;
-                debug!(%net, "Unauthenticated");
-                let except = except
-                    .into_iter()
-                    .flatten()
-                    .map(|cidr| cidr.parse().map_err(Into::into))
-                    .collect::<Result<Vec<IpNet>>>()?;
-                Ok(NetworkMatch { net, except })
+            .map(|net| {
+                debug!(net = %net.cidr, "Unauthenticated");
+                Ok(NetworkMatch {
+                    net: net.cidr,
+                    except: net.except.unwrap_or_default(),
+                })
             })
             .collect::<Result<Vec<NetworkMatch>>>()?
     } else {

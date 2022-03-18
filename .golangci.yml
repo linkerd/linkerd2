@@ -28,6 +28,7 @@ linters:
   - nakedret
   - revive
   - staticcheck
+  - structcheck
   - typecheck
   - unconvert
   - unparam
@@ -43,8 +44,6 @@ linters:
   # - maligned
   # - prealloc
   # - stylecheck
-  disable:
-  - structcheck
 
 issues:
   exclude-use-default: false
