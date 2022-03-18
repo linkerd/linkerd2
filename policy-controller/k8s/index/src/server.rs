@@ -7,7 +7,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
     fn apply(&mut self, server: k8s::policy::Server) {
         let namespace = server.namespace().unwrap();
         self.ns_or_default(namespace).apply_server(
-            server.name(),
+            &server.name(),
             server.metadata.labels.into(),
             server.spec.pod_selector,
             server.spec.port,

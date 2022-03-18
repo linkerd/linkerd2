@@ -1,10 +1,12 @@
 //! This module handles all of the indexing logic without dealing with the specifics of how the
-//! resources are laid out in the Kubernetes API (e.g annotation handling is done in the various
-//! resource-specific modules).
+//! resources are laid out in the Kubernetes API. This makes the set of inputs and outputs explicit.
 //!
 //! The `Index` type exposes a single public method: `Index::pod_server_rx`, which is used to lookup
-//! pod/ports by discovery clients. Its other methods, as well as the `NamespaceIndex` type, are
-//! only exposed within the crate to facilitate indexing via `kubert::index`.
+//! pod/ports by discovery clients.
+//!
+//! Its other methods, as well as the `NamespaceIndex` type, are only exposed within the crate to
+//! facilitate indexing via `kubert::index` handlers, which are implemented in the `pod`, `server`,
+//! `server_authorization`, etc. modules.
 
 use crate::{defaults::DefaultPolicy, ClusterInfo};
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
@@ -35,20 +37,10 @@ pub struct Index {
 /// Holds the state of a single namespace.
 #[derive(Debug)]
 pub(crate) struct NamespaceIndex {
-    cluster_info: Arc<ClusterInfo>,
-
     /// Holds per-pod port indexes.
     pods: HashMap<String, PodIndex>,
 
-    /// Holds servers by-name
-    servers: HashMap<String, ServerIndex>,
-
-    /// Holds server authorizations by-name
-    server_authorizations: HashMap<String, Arc<ServerAuthorization>>,
-
-    authorization_policies: HashMap<String, Arc<AuthorizationPolicy>>,
-    network_authentications: HashMap<String, Arc<NetworkAuthenticationSpec>>,
-    meshtls_authentications: HashMap<String, Arc<MeshTLSAuthenticationSpec>>,
+    policy: PolicyIndex,
 }
 
 /// Per-pod settings, as configured by the pod's annotations.
@@ -60,7 +52,7 @@ pub(crate) struct PodSettings {
 }
 
 /// Selects `Server`s for a `ServerAuthoriation`
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) enum ServerSelector {
     Name(String),
     Selector(k8s::labels::Selector),
@@ -69,10 +61,11 @@ pub(crate) enum ServerSelector {
 /// A pod's port index.
 #[derive(Debug)]
 struct PodIndex {
-    /// The pod's labels. Used by `Server` pod selectors.
-    labels: k8s::Labels,
+    /// The pod's name. Used for logging.
+    name: String,
 
-    settings: PodSettings,
+    /// Holds pod metadata/config that can change.
+    meta: PodMeta,
 
     /// The pod's named container ports. Used by `Server` port selectors.
     ///
@@ -86,6 +79,17 @@ struct PodIndex {
     port_servers: HashMap<u16, PodPortServer>,
 }
 
+/// Holds pod metadata/config that can change.
+#[derive(Debug, PartialEq)]
+struct PodMeta {
+    /// The pod's labels. Used by `Server` pod selectors.
+    labels: k8s::Labels,
+
+    // Pod-specific settings (i.e., derived from annotations).
+    settings: PodSettings,
+}
+
+/// Holds the state of a single port on a pod.
 #[derive(Debug)]
 struct PodPortServer {
     /// The name of the server resource that matches this port. Unset when no server resources match
@@ -99,26 +103,31 @@ struct PodPortServer {
     rx: watch::Receiver<InboundServer>,
 }
 
-/// The important parts of a `Server` resource.
+/// Holds the state of policy resources for a single namespace.
 #[derive(Debug)]
-struct ServerIndex {
-    meta: ServerMeta,
+struct PolicyIndex {
+    /// Holds servers by-name
+    servers: HashMap<String, Server>,
 
-    server_authorizations: HashSet<String>,
-    authorization_policies: HashSet<String>,
+    authorization_policies: HashMap<String, Arc<AuthorizationPolicy>>,
+    network_authentications: HashMap<String, Arc<NetworkAuthenticationSpec>>,
+    meshtls_authentications: HashMap<String, Arc<MeshTLSAuthenticationSpec>>,
+
+    server_authorizations: HashMap<String, ServerAuthorization>,
+
+    cluster_info: Arc<ClusterInfo>,
 }
 
-/// The important parts of a `Server` resource.
+/// The parts of a `Server` resource that can change.
 #[derive(Debug, PartialEq)]
-struct ServerMeta {
-    name: String,
+struct Server {
     labels: k8s::Labels,
     pod_selector: k8s::labels::Selector,
     port_ref: Port,
     protocol: ProxyProtocol,
 }
 
-/// The important parts of a `ServerAuthorization` resource.
+/// The parts of a `ServerAuthorization` resource that can chagne.
 #[derive(Debug, PartialEq)]
 struct ServerAuthorization {
     authz: ClientAuthorization,
@@ -166,9 +175,8 @@ impl Index {
 
     /// Obtains a pod:port's server receiver.
     ///
-    /// This receiver is updated as servers and authorizations change.
-    ///
-    /// The receiver closes when the pod is removed from the index.
+    /// An error is returned if the pod is not found. If the port is not found, a default is server
+    /// is created.
     pub fn pod_server_rx(
         &mut self,
         namespace: &str,
@@ -183,7 +191,10 @@ impl Index {
             .pods
             .get_mut(pod)
             .ok_or_else(|| anyhow::anyhow!("pod {}.{} not found", pod, namespace))?;
-        Ok(pod.get_or_default(port, &*self.cluster_info).rx.clone())
+        Ok(pod
+            .port_server_or_default(port, &*self.cluster_info)
+            .rx
+            .clone())
     }
 
     pub(crate) fn cluster_info(&self) -> &ClusterInfo {
@@ -198,13 +209,15 @@ impl Index {
         self.namespaces
             .entry(ns.to_string())
             .or_insert_with(|| NamespaceIndex {
-                cluster_info: self.cluster_info.clone(),
                 pods: HashMap::default(),
-                servers: HashMap::default(),
-                server_authorizations: HashMap::default(),
-                authorization_policies: HashMap::default(),
-                network_authentications: HashMap::default(),
-                meshtls_authentications: HashMap::default(),
+                policy: PolicyIndex {
+                    cluster_info: self.cluster_info.clone(),
+                    servers: HashMap::default(),
+                    server_authorizations: HashMap::default(),
+                    authorization_policies: HashMap::default(),
+                    network_authentications: HashMap::default(),
+                    meshtls_authentications: HashMap::default(),
+                },
             })
     }
 
@@ -230,6 +243,7 @@ impl Index {
                     .namespaces
                     .get(&namespace)
                     .expect("namespace must exist")
+                    .policy
                     .servers
                     .get(server)
                 {
@@ -258,7 +272,7 @@ impl Index {
             .pods
             .values_mut()
         {
-            if server.meta.pod_selector.matches(&pod.labels) {}
+            if server.pod_selector.matches(&pod.meta.labels) {}
         }
     }
 
@@ -274,9 +288,13 @@ impl Index {
                     let nsidx = self.namespaces.get(ns).ok_or_else(|| {
                         anyhow::anyhow!("NetworkAuthentication {}.{} not found", name, ns)
                     })?;
-                    let authn = nsidx.network_authentications.get(&*name).ok_or_else(|| {
-                        anyhow::anyhow!("NetworkAuthentication {}.{} not found", name, ns)
-                    })?;
+                    let authn = nsidx
+                        .policy
+                        .network_authentications
+                        .get(&*name)
+                        .ok_or_else(|| {
+                            anyhow::anyhow!("NetworkAuthentication {}.{} not found", name, ns)
+                        })?;
                     Ok(Authentication::Network(authn.clone()))
                 }
                 AuthenticationTarget::MeshTLS { namespace, name } => {
@@ -284,9 +302,13 @@ impl Index {
                     let nsidx = self.namespaces.get(ns).ok_or_else(|| {
                         anyhow::anyhow!("MeshTLSAuthentication {}.{} not found", name, ns)
                     })?;
-                    let authn = nsidx.meshtls_authentications.get(&*name).ok_or_else(|| {
-                        anyhow::anyhow!("MeshTLSAuthentication {}.{} not found", name, ns)
-                    })?;
+                    let authn = nsidx
+                        .policy
+                        .meshtls_authentications
+                        .get(&*name)
+                        .ok_or_else(|| {
+                            anyhow::anyhow!("MeshTLSAuthentication {}.{} not found", name, ns)
+                        })?;
                     Ok(Authentication::MeshTLS(authn.clone()))
                 }
             })
@@ -297,7 +319,9 @@ impl Index {
 impl NamespaceIndex {
     /// Returns true if the index does not include any resources.
     pub(crate) fn is_empty(&self) -> bool {
-        self.pods.is_empty() && self.servers.is_empty() && self.server_authorizations.is_empty()
+        self.pods.is_empty()
+            && self.policy.servers.is_empty()
+            && self.policy.server_authorizations.is_empty()
     }
 
     /// Adds or updates a Pod.
@@ -307,16 +331,17 @@ impl NamespaceIndex {
     /// Returns true if the Pod was updated and false if it already existed and was unchanged.
     pub(crate) fn apply_pod(
         &mut self,
-        name: impl ToString,
+        name: &str,
         labels: k8s::Labels,
         port_names: HashMap<String, HashSet<u16>>,
         settings: PodSettings,
     ) -> Result<()> {
+        let meta = PodMeta { labels, settings };
         let pod = match self.pods.entry(name.to_string()) {
             Entry::Vacant(entry) => entry.insert(PodIndex {
-                labels,
+                name: name.to_string(),
+                meta,
                 port_names,
-                settings,
                 port_servers: HashMap::default(),
             }),
 
@@ -325,57 +350,29 @@ impl NamespaceIndex {
 
                 // Pod labels and annotations may change at runtime, but the port list may not
                 if pod.port_names != port_names {
-                    bail!("pod {} port names must not change", name.to_string());
+                    bail!("pod {} port names must not change", name);
                 }
 
                 // If there aren't meaningful changes, then don't bother doing any more work.
-                if pod.settings == settings && pod.labels == labels {
-                    tracing::debug!(pod = %name.to_string(), "no changes");
+                if pod.meta == meta {
+                    tracing::debug!(pod = %name, "No changes");
                     return Ok(());
                 }
-                tracing::debug!(pod = %name.to_string(), "updating");
-                pod.settings = settings;
-                pod.labels = labels;
+                tracing::debug!(pod = %name, "Updating");
+                pod.meta = meta;
                 pod
             }
         };
 
-        // Snapshot the current list of server ports so we can track which ones are matched to
-        // servers. This mainly handles the case where a pod's labels/default policy changes at
-        // runtime.
-        let mut snapshot = pod.port_servers.keys().copied().collect::<HashSet<_>>();
-        tracing::trace!(?snapshot);
+        pod.reindex_servers(&self.policy);
 
-        // Determine which servers match ports on this pod and update the port servers. This will
-        // populate a list of
-        for server in self.servers.values() {
-            if server.pod_selector.matches(&pod.labels) {
-                for port in pod.select_ports(&server.port_ref).into_iter() {
-                    tracing::debug!(pod = %name.to_string(), server = %server.name, %port, "updating server");
-                    let s = mk_inbound_server(
-                        server,
-                        mk_client_authzs(server, &self.server_authorizations),
-                    );
-                    pod.update_server(port, server.name.clone(), s);
-                    snapshot.remove(&port);
-                }
-            }
-        }
-
-        // If there are remaining ports that are not matched by a server, ensure they have the pod's
-        // default server applies.
-        if !snapshot.is_empty() {
-            for port in snapshot.into_iter() {
-                tracing::debug!(pod = %name.to_string(), %port, "setting defaul server");
-                pod.set_default_server(port, &self.cluster_info);
-            }
-        }
         Ok(())
     }
 
     /// Deletes a Pod from the index.
     pub(crate) fn delete_pod(&mut self, name: &str) {
         // Once the pod is removed, there's nothing else to update. Any open watches will complete.
+        // No other parts of the index need to be updated.
         self.pods.remove(name);
     }
 
@@ -384,96 +381,47 @@ impl NamespaceIndex {
     /// Returns true if the Server was updated and false if it already existed and was unchanged.
     pub(crate) fn apply_server(
         &mut self,
-        name: impl ToString,
+        name: &str,
         labels: k8s::Labels,
         pod_selector: k8s::labels::Selector,
         port_ref: Port,
         protocol: Option<ProxyProtocol>,
     ) {
         let server = Server {
-            meta: ServerMeta {
-                name: name.to_string(),
-                labels,
-                pod_selector,
-                port_ref,
-                protocol,
-            },
-            authorization_policies: HashMap::default(),
-            server_authorizations: HashMap::default(),
+            labels,
+            pod_selector,
+            port_ref,
+            protocol: protocol.unwrap_or(ProxyProtocol::Detect {
+                timeout: self.policy.cluster_info.default_detect_timeout,
+            }),
         };
 
-        let server = match self.servers.entry(name.to_string()) {
-            Entry::Vacant(entry) => entry.insert(server),
+        match self.policy.servers.entry(name.to_string()) {
+            Entry::Vacant(entry) => {
+                entry.insert(server);
+            }
             Entry::Occupied(entry) => {
                 let srv = entry.into_mut();
-                if srv.meta == server.meta {
-                    tracing::debug!(server = %server.meta.name, "No changes");
+                if *srv == server {
+                    tracing::debug!(server = %name, "no changes");
                     return;
                 }
-                tracing::debug!(server = %server.meta.name, "Updating");
+                tracing::debug!(server = %name, "updating");
                 *srv = server;
-                srv
-            }
-        };
-
-        for (sazname, saz) in self.server_authorizations.iter() {
-            if saz.server_selector.selects(&server.meta) {
-                server.server_authorizations.insert(sazname.clone());
             }
         }
-        // TODO authorization polcies
 
-        for pod in self.pods.values_mut() {
-            if server.meta.pod_selector.matches(&pod.labels) {
-                // If the server selects the pod, then update all matching ports on the pod.
-                let s = mk_inbound_server(
-                    &server.meta,
-                    mk_client_authzs(server, &self.server_authorizations), // TODO authorization policies
-                );
-                for port in pod.select_ports(&server.meta.port_ref).into_iter() {
-                    pod.update_server(port, name.to_string(), s.clone());
-                }
-            } else {
-                // If the server used to select the pod but no longer does, then we need to revert
-                // it to the pod's default server.
-                //
-                // We need to create a new vector of server ports so we can access `pod` mutably.
-                #[allow(clippy::needless_collect)]
-                let server_ports = pod
-                    .port_servers
-                    .iter()
-                    .filter_map(|(port, ps)| {
-                        if ps.name.as_ref() == Some(&server.meta.name) {
-                            Some(port)
-                        } else {
-                            None
-                        }
-                    })
-                    .copied()
-                    .collect::<Vec<_>>();
-                for port in server_ports.into_iter() {
-                    pod.set_default_server(port, &self.cluster_info);
-                }
-            }
-        }
+        // This could be more nuanced to eliminate needless work, but this comes with
+        // complexity. For now, we optimize for clarity.
+        self.reindex_all_pods();
     }
 
     /// Deletes a Server from the index, reverting all pods that use it to use their default server.
     ///
     /// Returns true if the Server was deleted and false if it did not exist.
     pub(crate) fn delete_server(&mut self, name: &str) {
-        if self.servers.remove(name).is_none() {
-            return;
-        }
-
-        for pod in self.pods.values_mut() {
-            for (port, ps) in pod.port_servers.iter_mut() {
-                if ps.name.as_deref() == Some(name) {
-                    ps.name = None;
-                    let server = default_inbound_server(*port, &pod.settings, &*self.cluster_info);
-                    ps.tx.send(server).expect("receiver is held by the index");
-                }
-            }
+        if self.policy.servers.remove(name).is_some() {
+            self.reindex_all_pods();
         }
     }
 
@@ -491,57 +439,39 @@ impl NamespaceIndex {
             authz,
             server_selector,
         };
-        let server_authz = match self.server_authorizations.entry(name.to_string()) {
-            Entry::Vacant(entry) => entry.insert(Arc::new(server_authz)).clone(),
+        match self.policy.server_authorizations.entry(name.to_string()) {
+            Entry::Vacant(entry) => {
+                entry.insert(server_authz);
+            }
             Entry::Occupied(entry) => {
                 let saz = entry.into_mut();
-                if **saz == server_authz {
+                if *saz == server_authz {
                     return;
                 }
-                *saz = Arc::new(server_authz);
-                saz.clone()
+                *saz = server_authz;
             }
         };
 
-        for (srvname, server) in self.servers.iter() {
-            if server_authz.server_selector.selects(server) {
-                let update = mk_inbound_server(
-                    server,
-                    mk_client_authzs(server, &self.server_authorizations),
-                );
-                for pod in self.pods.values_mut() {
-                    if server.pod_selector.matches(&pod.labels) {
-                        for port in pod.select_ports(&server.port_ref).into_iter() {
-                            pod.update_server(port, srvname.to_string(), update.clone());
-                        }
-                    }
-                }
-            }
-        }
+        self.reindex_all_pods()
     }
 
     /// Deletes a ServerAuthorization from the index.
     pub(crate) fn delete_server_authorization(&mut self, name: &str) {
-        let saz = match self.server_authorizations.remove(name) {
-            Some(saz) => saz,
-            None => return,
-        };
+        if self.policy.server_authorizations.remove(name).is_some() {
+            self.reindex_all_pods()
+        }
+    }
 
-        // Update all pods that use servers that were formerly selected by this authorization.
-        for (srvname, server) in self.servers.iter() {
-            if saz.server_selector.selects(server) {
-                let update = mk_inbound_server(
-                    server,
-                    mk_client_authzs(server, &self.server_authorizations),
-                );
-                for pod in self.pods.values_mut() {
-                    if server.pod_selector.matches(&pod.labels) {
-                        for port in pod.select_ports(&server.port_ref).into_iter() {
-                            pod.update_server(port, srvname.to_string(), update.clone());
-                        }
-                    }
-                }
-            }
+    /// Updates all pod servers in the cluster.
+    ///
+    /// This may be a computationally expensive operation in clusters with many resources in a
+    /// single namespace.
+    //
+    // We could implement more nuanced approaches, but this is simpler until we are sure we need the
+    // complexity.
+    fn reindex_all_pods(&mut self) {
+        for pod in self.pods.values_mut() {
+            pod.reindex_servers(&self.policy);
         }
     }
 
@@ -555,7 +485,7 @@ impl NamespaceIndex {
             target,
             authentications,
         };
-        match self.authorization_policies.entry(name.to_string()) {
+        match self.policy.authorization_policies.entry(name.to_string()) {
             Entry::Vacant(entry) => Some(entry.insert(Arc::new(authz)).clone()),
             Entry::Occupied(entry) => {
                 let ap = entry.into_mut();
@@ -604,7 +534,33 @@ impl NamespaceIndex {
 // === impl PodIndex ===
 
 impl PodIndex {
-    fn update_server(&mut self, port: u16, name: impl ToString, server: InboundServer) {
+    /// Determines the policies for ports on this pod.
+    fn reindex_servers(&mut self, policy: &PolicyIndex) {
+        // Keep track of which ports were already indexed to determine whether it needs to be reset
+        // to the default policy.
+        let mut ports = self.port_servers.keys().copied().collect::<HashSet<_>>();
+
+        for (srvname, server) in policy.servers.iter() {
+            if server.pod_selector.matches(&self.meta.labels) {
+                for port in self.select_ports(&server.port_ref).into_iter() {
+                    let s = policy.mk_inbound_server(srvname.clone(), server);
+                    self.update_server(port, srvname, s);
+                    ports.remove(&port);
+                }
+            }
+        }
+
+        // Reset all remaining ports to the default policy.
+        for port in ports.into_iter() {
+            self.set_default_server(port, &policy.cluster_info);
+        }
+    }
+
+    /// Updates a pod-port to use the given named server.
+    ///
+    /// The name is used explicity (and not derived from the `server` itself) to ensure that we're
+    /// not handling a default server.
+    fn update_server(&mut self, port: u16, name: &str, server: InboundServer) {
         match self.port_servers.entry(port) {
             Entry::Vacant(entry) => {
                 let (tx, rx) = watch::channel(server);
@@ -619,7 +575,7 @@ impl PodIndex {
                 let ps = entry.get_mut();
 
                 // Avoid sending redundant updates.
-                if *ps.rx.borrow() == server {
+                if ps.name.as_deref() == Some(name) && *ps.rx.borrow() == server {
                     return;
                 }
 
@@ -634,8 +590,10 @@ impl PodIndex {
         }
     }
 
+    /// Updates a pod-port to use the given named server.
     fn set_default_server(&mut self, port: u16, config: &ClusterInfo) {
-        let server = default_inbound_server(port, &self.settings, config);
+        let server = Self::default_inbound_server(port, &self.meta.settings, config);
+        tracing::debug!(pod = %self.name, %port, server = %config.default_policy, "Setting default server");
         match self.port_servers.entry(port) {
             Entry::Vacant(entry) => {
                 let (tx, rx) = watch::channel(server);
@@ -656,6 +614,9 @@ impl PodIndex {
         }
     }
 
+    /// Enumerates ports.
+    ///
+    /// A named port may refer to an arbitrary number of port numbers.
     fn select_ports(&mut self, port_ref: &Port) -> Vec<u16> {
         match port_ref {
             Port::Number(p) => Some(*p).into_iter().collect(),
@@ -669,13 +630,101 @@ impl PodIndex {
         }
     }
 
-    fn get_or_default(&mut self, port: u16, config: &ClusterInfo) -> &mut PodPortServer {
+    fn port_server_or_default(&mut self, port: u16, config: &ClusterInfo) -> &mut PodPortServer {
         match self.port_servers.entry(port) {
             Entry::Occupied(entry) => entry.into_mut(),
             Entry::Vacant(entry) => {
-                let (tx, rx) = watch::channel(default_inbound_server(port, &self.settings, config));
+                let (tx, rx) = watch::channel(Self::default_inbound_server(
+                    port,
+                    &self.meta.settings,
+                    config,
+                ));
                 entry.insert(PodPortServer { name: None, tx, rx })
             }
+        }
+    }
+
+    fn default_inbound_server(
+        port: u16,
+        settings: &PodSettings,
+        config: &ClusterInfo,
+    ) -> InboundServer {
+        let protocol = if settings.opaque_ports.contains(&port) {
+            ProxyProtocol::Opaque
+        } else {
+            ProxyProtocol::Detect {
+                timeout: config.default_detect_timeout,
+            }
+        };
+
+        let mut policy = settings.default_policy.unwrap_or(config.default_policy);
+        if settings.require_id_ports.contains(&port) {
+            if let DefaultPolicy::Allow {
+                ref mut authenticated_only,
+                ..
+            } = policy
+            {
+                *authenticated_only = true;
+            }
+        }
+
+        let mut authorizations = HashMap::default();
+        if let DefaultPolicy::Allow {
+            authenticated_only,
+            cluster_only,
+        } = policy
+        {
+            let authentication = if authenticated_only {
+                ClientAuthentication::TlsAuthenticated(vec![IdentityMatch::Suffix(vec![])])
+            } else {
+                ClientAuthentication::Unauthenticated
+            };
+            let networks = if cluster_only {
+                config.networks.iter().copied().map(Into::into).collect()
+            } else {
+                vec![
+                    "0.0.0.0/0".parse::<IpNet>().unwrap().into(),
+                    "::/0".parse::<IpNet>().unwrap().into(),
+                ]
+            };
+            authorizations.insert(
+                format!("default:{}", policy),
+                ClientAuthorization {
+                    authentication,
+                    networks,
+                },
+            );
+        };
+
+        InboundServer {
+            name: format!("default:{}", policy),
+            protocol,
+            authorizations,
+        }
+    }
+}
+
+// === impl PolicyIndex ===
+
+impl PolicyIndex {
+    fn mk_client_authzs(&self, server: &Server) -> HashMap<String, ClientAuthorization> {
+        self.server_authorizations
+            .iter()
+            .filter_map(move |(name, saz)| {
+                if saz.server_selector.selects(name, &server.labels) {
+                    Some((name.to_string(), saz.authz.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    fn mk_inbound_server(&self, name: String, server: &Server) -> InboundServer {
+        InboundServer {
+            name,
+            protocol: server.protocol.clone(),
+            authorizations: self.mk_client_authzs(server),
         }
     }
 }
@@ -683,97 +732,10 @@ impl PodIndex {
 // === impl ServerSelector ===
 
 impl ServerSelector {
-    fn selects(&self, server: &ServerMeta) -> bool {
+    fn selects(&self, name: &str, labels: &k8s::Labels) -> bool {
         match self {
-            Self::Name(n) => *n == server.name,
-            Self::Selector(selector) => selector.matches(&server.labels),
+            Self::Name(n) => *n == name,
+            Self::Selector(selector) => selector.matches(labels),
         }
-    }
-}
-
-// === helpers ===
-
-fn default_inbound_server(
-    port: u16,
-    settings: &PodSettings,
-    config: &ClusterInfo,
-) -> InboundServer {
-    let protocol = if settings.opaque_ports.contains(&port) {
-        ProxyProtocol::Opaque
-    } else {
-        ProxyProtocol::Detect {
-            timeout: config.default_detect_timeout,
-        }
-    };
-
-    let mut policy = settings.default_policy.unwrap_or(config.default_policy);
-    if settings.require_id_ports.contains(&port) {
-        if let DefaultPolicy::Allow {
-            ref mut authenticated_only,
-            ..
-        } = policy
-        {
-            *authenticated_only = true;
-        }
-    }
-
-    let mut authorizations = HashMap::default();
-    if let DefaultPolicy::Allow {
-        authenticated_only,
-        cluster_only,
-    } = policy
-    {
-        let authentication = if authenticated_only {
-            ClientAuthentication::TlsAuthenticated(vec![IdentityMatch::Suffix(vec![])])
-        } else {
-            ClientAuthentication::Unauthenticated
-        };
-        let networks = if cluster_only {
-            config.networks.iter().copied().map(Into::into).collect()
-        } else {
-            vec![
-                "0.0.0.0/0".parse::<IpNet>().unwrap().into(),
-                "::/0".parse::<IpNet>().unwrap().into(),
-            ]
-        };
-        authorizations.insert(
-            format!("default:{}", policy),
-            ClientAuthorization {
-                authentication,
-                networks,
-            },
-        );
-    };
-
-    InboundServer {
-        name: format!("default:{}", policy),
-        protocol,
-        authorizations,
-    }
-}
-
-fn mk_client_authzs(
-    server: &ServerIndex,
-    server_authzs: &HashMap<String, Arc<ServerAuthorization>>,
-) -> HashMap<String, ClientAuthorization> {
-    server
-        .server_authorizations
-        .iter()
-        .filter_map(|name| {
-            server_authzs
-                .get(name)
-                .map(|saz| (name.to_string(), saz.authz.clone()))
-        })
-        .collect()
-}
-
-fn mk_inbound_server(
-    server: &ServerMeta,
-    authorizations: HashMap<String, ClientAuthorization>,
-) -> InboundServer {
-    InboundServer {
-        name: server.name.clone(),
-        protocol: server.protocol.clone(),
-        authorizations,
     }
 }
