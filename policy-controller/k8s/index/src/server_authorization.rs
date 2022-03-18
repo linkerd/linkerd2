@@ -47,11 +47,9 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
 }
 
 fn server_selector(s: k8s::policy::server_authorization::Server) -> ServerSelector {
-    s.name.map(ServerSelector::Name).unwrap_or_else(|| {
-        s.selector
-            .map(ServerSelector::Selector)
-            .unwrap_or_else(|| ServerSelector::Selector(k8s::labels::Selector::default()))
-    })
+    s.name
+        .map(ServerSelector::Name)
+        .unwrap_or_else(|| ServerSelector::Selector(s.selector.unwrap_or_default()))
 }
 
 fn client_authz(
