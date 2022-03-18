@@ -1,5 +1,4 @@
 use crate::Index;
-use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use linkerd_policy_controller_core::ProxyProtocol;
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
 use std::collections::hash_map::Entry;
@@ -23,10 +22,6 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
                 entry.remove();
             }
         }
-    }
-
-    fn snapshot_keys(&self) -> HashMap<String, HashSet<String>> {
-        self.snapshot_servers()
     }
 }
 
