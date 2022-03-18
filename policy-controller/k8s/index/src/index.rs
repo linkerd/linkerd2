@@ -60,7 +60,7 @@ pub(crate) struct PodSettings {
 }
 
 /// Selects `Server`s for a `ServerAuthoriation`
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub(crate) enum ServerSelector {
     Name(String),
     Selector(k8s::labels::Selector),
@@ -372,15 +372,15 @@ impl NamespaceIndex {
         };
 
         let server = match self.servers.entry(name.to_string()) {
-            Entry::Vacant(entry) => entry.insert(server),
+            Entry::Vacant(entry) => entry.insert(Arc::new(server)),
             Entry::Occupied(entry) => {
                 let srv = entry.into_mut();
-                if *srv == server {
+                if **srv == server {
                     tracing::debug!(server = %server.name, "no changes");
                     return;
                 }
                 tracing::debug!(server = %server.name, "updating");
-                *srv = server;
+                *srv = Arc::new(server);
                 srv
             }
         };
@@ -389,7 +389,7 @@ impl NamespaceIndex {
             if server.pod_selector.matches(&pod.labels) {
                 // If the server selects the pod, then update all matching ports on the pod.
                 let s = mk_inbound_server(
-                    server,
+                    &*server,
                     mk_client_authzs(server, &self.server_authorizations),
                 );
                 for port in pod.select_ports(&server.port_ref).into_iter() {
@@ -451,23 +451,22 @@ impl NamespaceIndex {
     ) {
         let server_authz = ServerAuthorization {
             authz,
-            server_selector: server_selector.clone(),
+            server_selector,
         };
-        match self.server_authorizations.entry(name.to_string()) {
-            Entry::Vacant(entry) => {
-                entry.insert(server_authz);
-            }
+        let server_authz = match self.server_authorizations.entry(name.to_string()) {
+            Entry::Vacant(entry) => entry.insert(Arc::new(server_authz)).clone(),
             Entry::Occupied(entry) => {
                 let saz = entry.into_mut();
-                if *saz == server_authz {
+                if **saz == server_authz {
                     return;
                 }
-                *saz = server_authz;
+                *saz = Arc::new(server_authz);
+                saz.clone()
             }
-        }
+        };
 
         for (srvname, server) in self.servers.iter() {
-            if server_selector.selects(server) {
+            if server_authz.server_selector.selects(server) {
                 let update = mk_inbound_server(
                     server,
                     mk_client_authzs(server, &self.server_authorizations),
@@ -721,7 +720,7 @@ fn default_inbound_server(
 
 fn mk_client_authzs(
     server: &Server,
-    server_authzs: &HashMap<String, ServerAuthorization>,
+    server_authzs: &HashMap<String, Arc<ServerAuthorization>>,
 ) -> HashMap<String, ClientAuthorization> {
     server_authzs
         .iter()
