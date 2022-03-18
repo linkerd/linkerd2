@@ -148,10 +148,10 @@ fn parse_portset(s: &str) -> Result<HashSet<u16>> {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_portset;
-
     #[test]
     fn parse_portset() {
+        use super::parse_portset;
+
         assert!(parse_portset("").unwrap().is_empty(), "empty");
         assert!(parse_portset("0").is_err(), "0");
         assert_eq!(
