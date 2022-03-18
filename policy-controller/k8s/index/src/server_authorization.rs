@@ -2,7 +2,6 @@ use crate::{
     index::{Index, ServerSelector},
     ClusterInfo,
 };
-use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::Result;
 use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, IdentityMatch, NetworkMatch,
@@ -39,10 +38,6 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
                 entry.remove();
             }
         }
-    }
-
-    fn snapshot_keys(&self) -> HashMap<String, HashSet<String>> {
-        self.snapshot_server_authorizations()
     }
 }
 

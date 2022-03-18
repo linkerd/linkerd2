@@ -28,10 +28,6 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
             }
         }
     }
-
-    fn snapshot_keys(&self) -> HashMap<String, HashSet<String>> {
-        self.snapshot_pods()
-    }
 }
 
 /// Gets the set of named TCP ports from a pod spec.

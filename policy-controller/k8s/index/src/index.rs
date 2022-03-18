@@ -159,37 +159,6 @@ impl Index {
                 server_authorizations: HashMap::default(),
             })
     }
-
-    pub(crate) fn snapshot_pods(&self) -> HashMap<String, HashSet<String>> {
-        let mut snap = HashMap::default();
-        for (ns, idx) in self.namespaces.iter() {
-            let pods = idx.pods.keys().map(|n| n.to_string()).collect();
-            snap.insert(ns.clone(), pods);
-        }
-        snap
-    }
-
-    pub(crate) fn snapshot_servers(&self) -> HashMap<String, HashSet<String>> {
-        let mut snap = HashMap::default();
-        for (ns, idx) in self.namespaces.iter() {
-            let servers = idx.servers.keys().map(|n| n.to_string()).collect();
-            snap.insert(ns.clone(), servers);
-        }
-        snap
-    }
-
-    pub(crate) fn snapshot_server_authorizations(&self) -> HashMap<String, HashSet<String>> {
-        let mut snap = HashMap::default();
-        for (ns, idx) in self.namespaces.iter() {
-            let sazs = idx
-                .server_authorizations
-                .keys()
-                .map(|n| n.to_string())
-                .collect();
-            snap.insert(ns.clone(), sazs);
-        }
-        snap
-    }
 }
 
 impl NamespaceIndex {
