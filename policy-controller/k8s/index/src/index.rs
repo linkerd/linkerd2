@@ -515,6 +515,8 @@ impl PodIndex {
     }
 }
 
+// === impl ServerSelector ===
+
 impl ServerSelector {
     fn selects(&self, server: &Server) -> bool {
         match self {
@@ -523,6 +525,8 @@ impl ServerSelector {
         }
     }
 }
+
+// === helpers ===
 
 fn default_inbound_server(
     port: u16,
