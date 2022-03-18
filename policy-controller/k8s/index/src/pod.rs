@@ -11,7 +11,7 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
         let settings = pod_settings(&pod.metadata);
 
         if let Err(error) = self.ns_or_default(namespace).apply_pod(
-            name,
+            &name,
             pod.metadata.labels.into(),
             tcp_port_names(pod.spec),
             settings,
