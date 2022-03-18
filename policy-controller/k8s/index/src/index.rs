@@ -41,7 +41,7 @@ pub(crate) struct NamespaceIndex {
     pods: HashMap<String, PodIndex>,
 
     /// Holds servers by-name
-    servers: HashMap<String, Arc<Server>>,
+    servers: HashMap<String, ServerIndex>,
 
     /// Holds server authorizations by-name
     server_authorizations: HashMap<String, Arc<ServerAuthorization>>,
@@ -100,8 +100,17 @@ struct PodPortServer {
 }
 
 /// The important parts of a `Server` resource.
+#[derive(Debug)]
+struct ServerIndex {
+    meta: ServerMeta,
+
+    server_authorizations: HashSet<String>,
+    authorization_policies: HashSet<String>,
+}
+
+/// The important parts of a `Server` resource.
 #[derive(Debug, PartialEq)]
-struct Server {
+struct ServerMeta {
     name: String,
     labels: k8s::Labels,
     pod_selector: k8s::labels::Selector,
@@ -215,22 +224,42 @@ impl Index {
             None => return, // no changes
         };
 
-        let _authns = {
-            // TODO Ensure server exists.
-
-            // Find all referenced authentications
-            let _authns = match self.gather_authentications(&namespace, &*authz.authentications) {
-                Ok(authns) => authns,
-                Err(error) => {
-                    tracing::debug!(%namespace, %name, %error, "authorization references unknown authentications");
-                    return;
+        let server = match authz.target {
+            AuthorizationPolicyTarget::Server(ref server) => {
+                match self
+                    .namespaces
+                    .get(&namespace)
+                    .expect("namespace must exist")
+                    .servers
+                    .get(server)
+                {
+                    Some(s) => s.clone(),
+                    None => {
+                        tracing::debug!(%namespace, %name, %server, "authorization references unknown server");
+                        return;
+                    }
                 }
-            };
-
-            // Update all impacted pod/servers.
+            }
         };
 
-        // TODO if we've
+        // Find all referenced authentications
+        let authns = match self.gather_authentications(&namespace, &*authz.authentications) {
+            Ok(authns) => authns,
+            Err(error) => {
+                tracing::debug!(%namespace, %name, %error, "authorization references unknown authentications");
+                return;
+            }
+        };
+
+        for pod in self
+            .namespaces
+            .get_mut(&namespace)
+            .expect("namespace must exist")
+            .pods
+            .values_mut()
+        {
+            if server.meta.pod_selector.matches(&pod.labels) {}
+        }
     }
 
     fn gather_authentications(
@@ -362,37 +391,46 @@ impl NamespaceIndex {
         protocol: Option<ProxyProtocol>,
     ) {
         let server = Server {
-            name: name.to_string(),
-            labels,
-            pod_selector,
-            port_ref,
-            protocol: protocol.unwrap_or(ProxyProtocol::Detect {
-                timeout: self.cluster_info.default_detect_timeout,
-            }),
+            meta: ServerMeta {
+                name: name.to_string(),
+                labels,
+                pod_selector,
+                port_ref,
+                protocol,
+            },
+            authorization_policies: HashMap::default(),
+            server_authorizations: HashMap::default(),
         };
 
         let server = match self.servers.entry(name.to_string()) {
-            Entry::Vacant(entry) => entry.insert(Arc::new(server)),
+            Entry::Vacant(entry) => entry.insert(server),
             Entry::Occupied(entry) => {
                 let srv = entry.into_mut();
-                if **srv == server {
-                    tracing::debug!(server = %server.name, "no changes");
+                if srv.meta == server.meta {
+                    tracing::debug!(server = %server.meta.name, "No changes");
                     return;
                 }
-                tracing::debug!(server = %server.name, "updating");
-                *srv = Arc::new(server);
+                tracing::debug!(server = %server.meta.name, "Updating");
+                *srv = server;
                 srv
             }
         };
 
+        for (sazname, saz) in self.server_authorizations.iter() {
+            if saz.server_selector.selects(&server.meta) {
+                server.server_authorizations.insert(sazname.clone());
+            }
+        }
+        // TODO authorization polcies
+
         for pod in self.pods.values_mut() {
-            if server.pod_selector.matches(&pod.labels) {
+            if server.meta.pod_selector.matches(&pod.labels) {
                 // If the server selects the pod, then update all matching ports on the pod.
                 let s = mk_inbound_server(
-                    &*server,
-                    mk_client_authzs(server, &self.server_authorizations),
+                    &server.meta,
+                    mk_client_authzs(server, &self.server_authorizations), // TODO authorization policies
                 );
-                for port in pod.select_ports(&server.port_ref).into_iter() {
+                for port in pod.select_ports(&server.meta.port_ref).into_iter() {
                     pod.update_server(port, name.to_string(), s.clone());
                 }
             } else {
@@ -405,7 +443,7 @@ impl NamespaceIndex {
                     .port_servers
                     .iter()
                     .filter_map(|(port, ps)| {
-                        if ps.name.as_ref() == Some(&server.name) {
+                        if ps.name.as_ref() == Some(&server.meta.name) {
                             Some(port)
                         } else {
                             None
@@ -534,6 +572,7 @@ impl NamespaceIndex {
         unimplemented!()
     }
 
+    #[allow(dead_code)]
     pub(crate) fn apply_meshtls_authentication(
         &mut self,
         _name: impl ToString,
@@ -542,10 +581,12 @@ impl NamespaceIndex {
         unimplemented!()
     }
 
+    #[allow(dead_code)]
     pub(crate) fn delete_meshtls_authentication(&mut self, _name: &str) {
         unimplemented!()
     }
 
+    #[allow(dead_code)]
     pub(crate) fn apply_network_authentication(
         &mut self,
         _name: impl ToString,
@@ -554,6 +595,7 @@ impl NamespaceIndex {
         unimplemented!()
     }
 
+    #[allow(dead_code)]
     pub(crate) fn delete_network_authentication(&mut self, _name: &str) {
         unimplemented!()
     }
@@ -641,18 +683,10 @@ impl PodIndex {
 // === impl ServerSelector ===
 
 impl ServerSelector {
-    fn selects(&self, server: &Server) -> bool {
+    fn selects(&self, server: &ServerMeta) -> bool {
         match self {
             Self::Name(n) => *n == server.name,
             Self::Selector(selector) => selector.matches(&server.labels),
-        }
-    }
-}
-
-impl AuthorizationPolicyTarget {
-    fn is_server(&self, name: String) -> bool {
-        match self {
-            Self::Server(n) => *n == name,
         }
     }
 }
@@ -719,23 +753,22 @@ fn default_inbound_server(
 }
 
 fn mk_client_authzs(
-    server: &Server,
+    server: &ServerIndex,
     server_authzs: &HashMap<String, Arc<ServerAuthorization>>,
 ) -> HashMap<String, ClientAuthorization> {
-    server_authzs
+    server
+        .server_authorizations
         .iter()
-        .filter_map(move |(name, saz)| {
-            if saz.server_selector.selects(server) {
-                Some((name.to_string(), saz.authz.clone()))
-            } else {
-                None
-            }
+        .filter_map(|name| {
+            server_authzs
+                .get(name)
+                .map(|saz| (name.to_string(), saz.authz.clone()))
         })
         .collect()
 }
 
 fn mk_inbound_server(
-    server: &Server,
+    server: &ServerMeta,
     authorizations: HashMap<String, ClientAuthorization>,
 ) -> InboundServer {
     InboundServer {
