@@ -9,7 +9,6 @@ use linkerd_policy_controller_core::{
 use linkerd_policy_controller_k8s_api::{
     self as k8s, policy::server_authorization::MeshTls, ResourceExt,
 };
-use std::collections::hash_map::Entry;
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> for Index {
     fn apply(&mut self, saz: k8s::policy::ServerAuthorization) {
@@ -24,20 +23,11 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
             }
         };
 
-        self.ns_or_default(namespace).apply_server_authorization(
-            name,
-            server_selector(saz.spec.server),
-            authz,
-        )
+        self.apply_server_authorization(namespace, name, server_selector(saz.spec.server), authz)
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        if let Entry::Occupied(mut entry) = self.entry(namespace) {
-            entry.get_mut().delete_server_authorization(&*name);
-            if entry.get().is_empty() {
-                entry.remove();
-            }
-        }
+        self.delete_server_authorization(namespace, &name);
     }
 }
 

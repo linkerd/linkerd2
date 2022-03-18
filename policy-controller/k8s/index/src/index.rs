@@ -4,7 +4,7 @@
 //! The `Index` type exposes a single public method: `Index::pod_server_rx`, which is used to lookup
 //! pod/ports by discovery clients.
 //!
-//! Its other methods, as well as the `NamespaceIndex` type, are only exposed within the crate to
+//! Its other methods, as well as the `Namespace` type, are only exposed within the crate to
 //! facilitate indexing via `kubert::index` handlers, which are implemented in the `pod`, `server`,
 //! `server_authorization`, etc. modules.
 
@@ -12,7 +12,8 @@ use crate::{defaults::DefaultPolicy, ClusterInfo};
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{bail, Result};
 use linkerd_policy_controller_core::{
-    ClientAuthentication, ClientAuthorization, IdentityMatch, InboundServer, IpNet, ProxyProtocol,
+    ClientAuthentication, ClientAuthorization, IdentityMatch, InboundServer, IpNet, NetworkMatch,
+    ProxyProtocol,
 };
 use linkerd_policy_controller_k8s_api::{
     self as k8s,
@@ -29,14 +30,24 @@ pub type SharedIndex = Arc<RwLock<Index>>;
 #[derive(Debug)]
 pub struct Index {
     /// Holds per-namespace pod/server/authorization indexes.
-    namespaces: HashMap<String, NamespaceIndex>,
+    namespaces: NamespaceIndex,
+
+    /// Holds Authentication resources by-namespace,
+    authentications: HashMap<String, NsAuthenticationIndex>,
 
     cluster_info: Arc<ClusterInfo>,
 }
 
+#[derive(Debug)]
+struct NamespaceIndex {
+    cluster_info: Arc<ClusterInfo>,
+
+    namespaces: HashMap<String, Namespace>,
+}
+
 /// Holds the state of a single namespace.
 #[derive(Debug)]
-pub(crate) struct NamespaceIndex {
+struct Namespace {
     /// Holds per-pod port indexes.
     pods: HashMap<String, PodIndex>,
 
@@ -58,6 +69,29 @@ pub(crate) enum ServerSelector {
     Selector(k8s::labels::Selector),
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum AuthorizationPolicyTarget {
+    Server(String),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum AuthenticationTarget {
+    Network {
+        namespace: Option<String>,
+        name: String,
+    },
+    MeshTLS {
+        namespace: Option<String>,
+        name: String,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum Authentication {
+    Network(Arc<[NetworkMatch]>),
+    MeshTLS(Arc<[IdentityMatch]>),
+}
+
 /// A pod's port index.
 #[derive(Debug)]
 struct PodIndex {
@@ -73,8 +107,8 @@ struct PodIndex {
     /// `admin-http` port.
     port_names: HashMap<String, HashSet<u16>>,
 
-    /// All known TCP server ports. This may be updated by `NamespaceIndex::reindex`--when a port is
-    /// selected by a `Server`--or by `NamespaceIndex::get_pod_server` when a client discovers a
+    /// All known TCP server ports. This may be updated by `Namespace::reindex`--when a port is
+    /// selected by a `Server`--or by `Namespace::get_pod_server` when a client discovers a
     /// port that has no configured server (and i.e. uses the default policy).
     port_servers: HashMap<u16, PodPortServer>,
 }
@@ -109,13 +143,21 @@ struct PolicyIndex {
     /// Holds servers by-name
     servers: HashMap<String, Server>,
 
-    authorization_policies: HashMap<String, Arc<AuthorizationPolicy>>,
-    network_authentications: HashMap<String, Arc<NetworkAuthenticationSpec>>,
-    meshtls_authentications: HashMap<String, Arc<MeshTLSAuthenticationSpec>>,
+    authorization_policies: HashMap<String, AuthorizationPolicy>,
 
     server_authorizations: HashMap<String, ServerAuthorization>,
 
     cluster_info: Arc<ClusterInfo>,
+}
+
+/// Holds all of the authentication targets for a namespace.
+///
+/// This is its own data structure so that `Namespace` indexing may read data from all other
+/// namespaces (instead of resources only from the indexed namespace).
+#[derive(Debug, Default)]
+struct NsAuthenticationIndex {
+    network: HashMap<String, Arc<[NetworkMatch]>>,
+    meshtls: HashMap<String, Arc<[IdentityMatch]>>,
 }
 
 /// The parts of a `Server` resource that can change.
@@ -140,36 +182,18 @@ struct AuthorizationPolicy {
     authentications: Vec<AuthenticationTarget>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) enum AuthorizationPolicyTarget {
-    Server(String),
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) enum AuthenticationTarget {
-    Network {
-        namespace: Option<String>,
-        name: String,
-    },
-    MeshTLS {
-        namespace: Option<String>,
-        name: String,
-    },
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Authentication {
-    Network(Arc<NetworkAuthenticationSpec>),
-    MeshTLS(Arc<MeshTLSAuthenticationSpec>),
-}
-
 // === impl Index ===
 
 impl Index {
     pub fn shared(cluster_info: impl Into<Arc<ClusterInfo>>) -> SharedIndex {
+        let cluster_info = cluster_info.into();
         Arc::new(RwLock::new(Self {
-            cluster_info: cluster_info.into(),
-            namespaces: HashMap::default(),
+            cluster_info: cluster_info.clone(),
+            authentications: HashMap::new(),
+            namespaces: NamespaceIndex {
+                cluster_info,
+                namespaces: HashMap::new(),
+            },
         }))
     }
 
@@ -184,6 +208,7 @@ impl Index {
         port: u16,
     ) -> Result<watch::Receiver<InboundServer>> {
         let ns = self
+            .namespaces
             .namespaces
             .get_mut(namespace)
             .ok_or_else(|| anyhow::anyhow!("namespace not found: {}", namespace))?;
@@ -201,129 +226,6 @@ impl Index {
         &*self.cluster_info
     }
 
-    pub(crate) fn entry(&mut self, ns: String) -> Entry<'_, String, NamespaceIndex> {
-        self.namespaces.entry(ns)
-    }
-
-    pub(crate) fn ns_or_default(&mut self, ns: impl ToString) -> &mut NamespaceIndex {
-        self.namespaces
-            .entry(ns.to_string())
-            .or_insert_with(|| NamespaceIndex {
-                pods: HashMap::default(),
-                policy: PolicyIndex {
-                    cluster_info: self.cluster_info.clone(),
-                    servers: HashMap::default(),
-                    server_authorizations: HashMap::default(),
-                    authorization_policies: HashMap::default(),
-                    network_authentications: HashMap::default(),
-                    meshtls_authentications: HashMap::default(),
-                },
-            })
-    }
-
-    pub(crate) fn apply_authorization_policy(
-        &mut self,
-        namespace: String,
-        name: String,
-        target: AuthorizationPolicyTarget,
-        authentications: Vec<AuthenticationTarget>,
-    ) {
-        let authz = match self.ns_or_default(&namespace).store_authorization_policy(
-            name.clone(),
-            target,
-            authentications,
-        ) {
-            Some(authz) => authz,
-            None => return, // no changes
-        };
-
-        let server = match authz.target {
-            AuthorizationPolicyTarget::Server(ref server) => {
-                match self
-                    .namespaces
-                    .get(&namespace)
-                    .expect("namespace must exist")
-                    .policy
-                    .servers
-                    .get(server)
-                {
-                    Some(s) => s.clone(),
-                    None => {
-                        tracing::debug!(%namespace, %name, %server, "authorization references unknown server");
-                        return;
-                    }
-                }
-            }
-        };
-
-        // Find all referenced authentications
-        let authns = match self.gather_authentications(&namespace, &*authz.authentications) {
-            Ok(authns) => authns,
-            Err(error) => {
-                tracing::debug!(%namespace, %name, %error, "authorization references unknown authentications");
-                return;
-            }
-        };
-
-        for pod in self
-            .namespaces
-            .get_mut(&namespace)
-            .expect("namespace must exist")
-            .pods
-            .values_mut()
-        {
-            if server.pod_selector.matches(&pod.meta.labels) {}
-        }
-    }
-
-    fn gather_authentications(
-        &self,
-        default_ns: &str,
-        refs: &[AuthenticationTarget],
-    ) -> Result<Vec<Authentication>> {
-        refs.iter()
-            .map(|ar| match ar {
-                AuthenticationTarget::Network { namespace, name } => {
-                    let ns = namespace.as_deref().unwrap_or(default_ns);
-                    let nsidx = self.namespaces.get(ns).ok_or_else(|| {
-                        anyhow::anyhow!("NetworkAuthentication {}.{} not found", name, ns)
-                    })?;
-                    let authn = nsidx
-                        .policy
-                        .network_authentications
-                        .get(&*name)
-                        .ok_or_else(|| {
-                            anyhow::anyhow!("NetworkAuthentication {}.{} not found", name, ns)
-                        })?;
-                    Ok(Authentication::Network(authn.clone()))
-                }
-                AuthenticationTarget::MeshTLS { namespace, name } => {
-                    let ns = namespace.as_deref().unwrap_or(default_ns);
-                    let nsidx = self.namespaces.get(ns).ok_or_else(|| {
-                        anyhow::anyhow!("MeshTLSAuthentication {}.{} not found", name, ns)
-                    })?;
-                    let authn = nsidx
-                        .policy
-                        .meshtls_authentications
-                        .get(&*name)
-                        .ok_or_else(|| {
-                            anyhow::anyhow!("MeshTLSAuthentication {}.{} not found", name, ns)
-                        })?;
-                    Ok(Authentication::MeshTLS(authn.clone()))
-                }
-            })
-            .collect()
-    }
-}
-
-impl NamespaceIndex {
-    /// Returns true if the index does not include any resources.
-    pub(crate) fn is_empty(&self) -> bool {
-        self.pods.is_empty()
-            && self.policy.servers.is_empty()
-            && self.policy.server_authorizations.is_empty()
-    }
-
     /// Adds or updates a Pod.
     ///
     /// Labels may be updated but port names may not be updated after a pod is created.
@@ -331,15 +233,17 @@ impl NamespaceIndex {
     /// Returns true if the Pod was updated and false if it already existed and was unchanged.
     pub(crate) fn apply_pod(
         &mut self,
-        name: &str,
+        namespace: String,
+        name: String,
         labels: k8s::Labels,
         port_names: HashMap<String, HashSet<u16>>,
         settings: PodSettings,
     ) -> Result<()> {
         let meta = PodMeta { labels, settings };
-        let pod = match self.pods.entry(name.to_string()) {
+        let ns = self.namespaces.get_or_default(namespace.clone());
+        let pod = match ns.pods.entry(name.to_string()) {
             Entry::Vacant(entry) => entry.insert(PodIndex {
-                name: name.to_string(),
+                name,
                 meta,
                 port_names,
                 port_servers: HashMap::default(),
@@ -364,16 +268,20 @@ impl NamespaceIndex {
             }
         };
 
-        pod.reindex_servers(&self.policy);
+        pod.reindex_servers(&namespace, &self.authentications, &ns.policy);
 
         Ok(())
     }
 
     /// Deletes a Pod from the index.
-    pub(crate) fn delete_pod(&mut self, name: &str) {
-        // Once the pod is removed, there's nothing else to update. Any open watches will complete.
-        // No other parts of the index need to be updated.
-        self.pods.remove(name);
+    pub(crate) fn delete_pod(&mut self, namespace: String, name: &str) {
+        if let Entry::Occupied(mut ns) = self.namespaces.namespaces.entry(namespace) {
+            // Once the pod is removed, there's nothing else to update. Any open watches will complete.
+            // No other parts of the index need to be updated.
+            if ns.get_mut().pods.remove(name).is_some() && ns.get().is_empty() {
+                ns.remove();
+            }
+        }
     }
 
     /// Adds or updates a Server.
@@ -381,48 +289,46 @@ impl NamespaceIndex {
     /// Returns true if the Server was updated and false if it already existed and was unchanged.
     pub(crate) fn apply_server(
         &mut self,
-        name: &str,
+        namespace: String,
+        name: String,
         labels: k8s::Labels,
         pod_selector: k8s::labels::Selector,
         port_ref: Port,
         protocol: Option<ProxyProtocol>,
     ) {
-        let server = Server {
-            labels,
-            pod_selector,
-            port_ref,
-            protocol: protocol.unwrap_or(ProxyProtocol::Detect {
-                timeout: self.policy.cluster_info.default_detect_timeout,
-            }),
-        };
+        self.ns_with_default_reindexed(namespace, |ns| {
+            let server = Server {
+                labels,
+                pod_selector,
+                port_ref,
+                protocol: protocol.unwrap_or(ProxyProtocol::Detect {
+                    timeout: ns.policy.cluster_info.default_detect_timeout,
+                }),
+            };
 
-        match self.policy.servers.entry(name.to_string()) {
-            Entry::Vacant(entry) => {
-                entry.insert(server);
-            }
-            Entry::Occupied(entry) => {
-                let srv = entry.into_mut();
-                if *srv == server {
-                    tracing::debug!(server = %name, "no changes");
-                    return;
+            match ns.policy.servers.entry(name.to_string()) {
+                Entry::Vacant(entry) => {
+                    entry.insert(server);
                 }
-                tracing::debug!(server = %name, "updating");
-                *srv = server;
+                Entry::Occupied(entry) => {
+                    let srv = entry.into_mut();
+                    if *srv == server {
+                        tracing::debug!(server = %name, "no changes");
+                        return false;
+                    }
+                    tracing::debug!(server = %name, "updating");
+                    *srv = server;
+                }
             }
-        }
-
-        // This could be more nuanced to eliminate needless work, but this comes with
-        // complexity. For now, we optimize for clarity.
-        self.reindex_all_pods();
+            true
+        })
     }
 
     /// Deletes a Server from the index, reverting all pods that use it to use their default server.
     ///
     /// Returns true if the Server was deleted and false if it did not exist.
-    pub(crate) fn delete_server(&mut self, name: &str) {
-        if self.policy.servers.remove(name).is_some() {
-            self.reindex_all_pods();
-        }
+    pub(crate) fn delete_server(&mut self, namespace: String, name: &str) {
+        self.ns_with_reindexed(namespace, |ns| ns.policy.servers.remove(name).is_some())
     }
 
     /// Adds or updates a ServerAuthorization.
@@ -431,103 +337,222 @@ impl NamespaceIndex {
     /// unchanged.
     pub(crate) fn apply_server_authorization(
         &mut self,
-        name: impl ToString,
+        namespace: String,
+        name: String,
         server_selector: ServerSelector,
         authz: ClientAuthorization,
     ) {
-        let server_authz = ServerAuthorization {
-            authz,
-            server_selector,
-        };
-        match self.policy.server_authorizations.entry(name.to_string()) {
-            Entry::Vacant(entry) => {
-                entry.insert(server_authz);
-            }
-            Entry::Occupied(entry) => {
-                let saz = entry.into_mut();
-                if *saz == server_authz {
-                    return;
+        self.ns_with_default_reindexed(namespace, move |ns| {
+            let server_authz = ServerAuthorization {
+                authz,
+                server_selector,
+            };
+            match ns.policy.server_authorizations.entry(name) {
+                Entry::Vacant(entry) => {
+                    entry.insert(server_authz);
                 }
-                *saz = server_authz;
+                Entry::Occupied(entry) => {
+                    let saz = entry.into_mut();
+                    if *saz == server_authz {
+                        return false;
+                    }
+                    *saz = server_authz;
+                }
             }
-        };
-
-        self.reindex_all_pods()
+            true
+        })
     }
 
     /// Deletes a ServerAuthorization from the index.
-    pub(crate) fn delete_server_authorization(&mut self, name: &str) {
-        if self.policy.server_authorizations.remove(name).is_some() {
-            self.reindex_all_pods()
-        }
+    pub(crate) fn delete_server_authorization(&mut self, namespace: String, name: &str) {
+        self.ns_with_reindexed(namespace, |ns| {
+            ns.policy.server_authorizations.remove(name).is_some()
+        })
     }
 
-    /// Updates all pod servers in the cluster.
-    ///
-    /// This may be a computationally expensive operation in clusters with many resources in a
-    /// single namespace.
-    //
-    // We could implement more nuanced approaches, but this is simpler until we are sure we need the
-    // complexity.
-    fn reindex_all_pods(&mut self) {
-        for pod in self.pods.values_mut() {
-            pod.reindex_servers(&self.policy);
-        }
-    }
-
-    fn store_authorization_policy(
+    pub(crate) fn apply_authorization_policy(
         &mut self,
-        name: impl ToString,
+        namespace: String,
+        name: String,
         target: AuthorizationPolicyTarget,
         authentications: Vec<AuthenticationTarget>,
-    ) -> Option<Arc<AuthorizationPolicy>> {
-        let authz = AuthorizationPolicy {
-            target,
-            authentications,
-        };
-        match self.policy.authorization_policies.entry(name.to_string()) {
-            Entry::Vacant(entry) => Some(entry.insert(Arc::new(authz)).clone()),
-            Entry::Occupied(entry) => {
-                let ap = entry.into_mut();
-                if **ap == authz {
-                    return None;
+    ) {
+        self.ns_with_default_reindexed(namespace, |ns| {
+            let authz = AuthorizationPolicy {
+                target,
+                authentications,
+            };
+            match ns.policy.authorization_policies.entry(name) {
+                Entry::Vacant(entry) => {
+                    entry.insert(authz);
                 }
-                *ap = Arc::new(authz);
-                Some(ap.clone())
+                Entry::Occupied(entry) => {
+                    let ap = entry.into_mut();
+                    if *ap == authz {
+                        return false;
+                    }
+                    *ap = authz;
+                }
+            }
+            true
+        })
+    }
+
+    pub(crate) fn delete_authorization_policy(&mut self, namespace: String, name: &str) {
+        self.ns_with_reindexed(namespace, |ns| {
+            ns.policy.authorization_policies.remove(name).is_some()
+        })
+    }
+
+    pub(crate) fn apply_meshtls_authentication(
+        &mut self,
+        namespace: String,
+        name: String,
+        identities: Vec<IdentityMatch>,
+    ) {
+        self.authn_with_all_reindexed(namespace, |authns| {
+            match authns.meshtls.entry(name) {
+                Entry::Vacant(entry) => {
+                    entry.insert(identities.into());
+                }
+                Entry::Occupied(entry) => {
+                    let ap = entry.into_mut();
+                    if **ap == *identities {
+                        return false;
+                    }
+                    *ap = identities.into();
+                }
+            }
+            true
+        })
+    }
+
+    pub(crate) fn delete_meshtls_authentication(&mut self, namespace: String, name: &str) {
+        self.authn_with_all_reindexed(namespace, |authns| authns.meshtls.remove(name).is_some())
+    }
+
+    pub(crate) fn apply_network_authentication(
+        &mut self,
+        namespace: String,
+        name: String,
+        networks: Vec<NetworkMatch>,
+    ) {
+        self.authn_with_all_reindexed(namespace, |authns| {
+            match authns.network.entry(name) {
+                Entry::Vacant(entry) => {
+                    entry.insert(networks.into());
+                }
+                Entry::Occupied(entry) => {
+                    let na = entry.into_mut();
+                    if **na == *networks {
+                        return false;
+                    }
+                    *na = networks.into();
+                }
+            }
+            true
+        })
+    }
+
+    pub(crate) fn delete_network_authentication(&mut self, namespace: String, name: &str) {
+        self.authn_with_all_reindexed(namespace, |authns| authns.network.remove(name).is_some())
+    }
+
+    fn authn_with_all_reindexed(
+        &mut self,
+        namespace: String,
+        f: impl FnOnce(&mut NsAuthenticationIndex) -> bool,
+    ) {
+        if f(self.authentications.entry(namespace).or_default()) {
+            self.namespaces.reindex_all(&self.authentications);
+        }
+    }
+
+    fn ns_with_reindexed(&mut self, namespace: String, f: impl FnOnce(&mut Namespace) -> bool) {
+        self.namespaces
+            .ns_with_reindexed(&self.authentications, namespace, f)
+    }
+
+    fn ns_with_default_reindexed(
+        &mut self,
+        namespace: String,
+        f: impl FnOnce(&mut Namespace) -> bool,
+    ) {
+        self.namespaces
+            .ns_with_default_reindexed(&self.authentications, namespace, f)
+    }
+}
+
+impl NamespaceIndex {
+    fn get_or_default(&mut self, ns: String) -> &mut Namespace {
+        self.namespaces
+            .entry(ns)
+            .or_insert_with(|| Namespace::new(self.cluster_info.clone()))
+    }
+
+    fn ns_with_default_reindexed(
+        &mut self,
+        authentications: &HashMap<String, NsAuthenticationIndex>,
+        namespace: String,
+        f: impl FnOnce(&mut Namespace) -> bool,
+    ) {
+        let ns = self
+            .namespaces
+            .entry(namespace.clone())
+            .or_insert_with(|| Namespace::new(self.cluster_info.clone()));
+        if f(ns) {
+            for pod in ns.pods.values_mut() {
+                pod.reindex_servers(&namespace, authentications, &ns.policy);
             }
         }
     }
 
-    pub(crate) fn delete_authorization_policy(&mut self, _name: &str) {
-        unimplemented!()
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn apply_meshtls_authentication(
+    fn ns_with_reindexed(
         &mut self,
-        _name: impl ToString,
-        _target: AuthorizationPolicyTarget,
+        authentications: &HashMap<String, NsAuthenticationIndex>,
+        namespace: String,
+        f: impl FnOnce(&mut Namespace) -> bool,
     ) {
-        unimplemented!()
+        if let Entry::Occupied(mut ns) = self.namespaces.entry(namespace.clone()) {
+            if f(ns.get_mut()) {
+                if ns.get().is_empty() {
+                    ns.remove();
+                } else {
+                    let ns = ns.into_mut();
+                    for pod in ns.pods.values_mut() {
+                        pod.reindex_servers(&namespace, authentications, &ns.policy);
+                    }
+                }
+            }
+        }
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn delete_meshtls_authentication(&mut self, _name: &str) {
-        unimplemented!()
+    fn reindex_all(&mut self, authentications: &HashMap<String, NsAuthenticationIndex>) {
+        for (nsname, ns) in self.namespaces.iter_mut() {
+            for pod in ns.pods.values_mut() {
+                pod.reindex_servers(nsname, authentications, &ns.policy);
+            }
+        }
     }
+}
 
-    #[allow(dead_code)]
-    pub(crate) fn apply_network_authentication(
-        &mut self,
-        _name: impl ToString,
-        _target: AuthorizationPolicyTarget,
-    ) {
-        unimplemented!()
+impl Namespace {
+    fn new(cluster_info: Arc<ClusterInfo>) -> Self {
+        Namespace {
+            pods: HashMap::default(),
+            policy: PolicyIndex {
+                cluster_info,
+                servers: HashMap::default(),
+                server_authorizations: HashMap::default(),
+                authorization_policies: HashMap::default(),
+            },
+        }
     }
-
-    #[allow(dead_code)]
-    pub(crate) fn delete_network_authentication(&mut self, _name: &str) {
-        unimplemented!()
+    /// Returns true if the index does not include any resources.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.pods.is_empty()
+            && self.policy.servers.is_empty()
+            && self.policy.server_authorizations.is_empty()
     }
 }
 
@@ -535,7 +560,12 @@ impl NamespaceIndex {
 
 impl PodIndex {
     /// Determines the policies for ports on this pod.
-    fn reindex_servers(&mut self, policy: &PolicyIndex) {
+    fn reindex_servers(
+        &mut self,
+        namespace: &str,
+        authentications: &HashMap<String, NsAuthenticationIndex>,
+        policy: &PolicyIndex,
+    ) {
         // Keep track of which ports were already indexed to determine whether it needs to be reset
         // to the default policy.
         let mut ports = self.port_servers.keys().copied().collect::<HashSet<_>>();
@@ -543,7 +573,12 @@ impl PodIndex {
         for (srvname, server) in policy.servers.iter() {
             if server.pod_selector.matches(&self.meta.labels) {
                 for port in self.select_ports(&server.port_ref).into_iter() {
-                    let s = policy.mk_inbound_server(srvname.clone(), server);
+                    let s = policy.mk_inbound_server(
+                        namespace,
+                        srvname.clone(),
+                        server,
+                        authentications,
+                    );
                     self.update_server(port, srvname, s);
                     ports.remove(&port);
                 }
@@ -707,24 +742,93 @@ impl PodIndex {
 // === impl PolicyIndex ===
 
 impl PolicyIndex {
-    fn mk_client_authzs(&self, server: &Server) -> HashMap<String, ClientAuthorization> {
-        self.server_authorizations
-            .iter()
-            .filter_map(move |(name, saz)| {
-                if saz.server_selector.selects(name, &server.labels) {
-                    Some((name.to_string(), saz.authz.clone()))
+    fn mk_client_authzs(
+        &self,
+        namespace: &str,
+        server_name: &str,
+        server: &Server,
+        authentications: &HashMap<String, NsAuthenticationIndex>,
+    ) -> HashMap<String, ClientAuthorization> {
+        let mut authzs = HashMap::default();
+        for (name, saz) in self.server_authorizations.iter() {
+            if saz.server_selector.selects(server_name, &server.labels) {
+                authzs.insert(format!("serverauthorization:{}", name), saz.authz.clone());
+            }
+        }
+
+        for (name, ap) in self.authorization_policies.iter() {
+            if ap.target.server() != Some(server_name) {
+                continue;
+            }
+
+            let networks = ap
+                .authentications
+                .iter()
+                .filter_map(|t| {
+                    if let AuthenticationTarget::Network {
+                        namespace: ns,
+                        name,
+                    } = t
+                    {
+                        let authn = authentications
+                            .get(ns.as_deref().unwrap_or(namespace))?
+                            .network
+                            .get(name)?;
+                        Some(authn.to_vec())
+                    } else {
+                        None
+                    }
+                })
+                .flatten()
+                .collect::<Vec<NetworkMatch>>();
+
+            let identities = ap
+                .authentications
+                .iter()
+                .filter_map(|t| {
+                    if let AuthenticationTarget::MeshTLS {
+                        namespace: ns,
+                        name,
+                    } = t
+                    {
+                        let authn = authentications
+                            .get(ns.as_deref().unwrap_or(namespace))?
+                            .meshtls
+                            .get(name)?;
+                        Some(authn.to_vec())
+                    } else {
+                        None
+                    }
+                })
+                .flatten()
+                .collect::<Vec<IdentityMatch>>();
+
+            let authz = ClientAuthorization {
+                networks,
+                authentication: if identities.is_empty() {
+                    ClientAuthentication::Unauthenticated
                 } else {
-                    None
-                }
-            })
-            .collect()
+                    ClientAuthentication::TlsAuthenticated(identities)
+                },
+            };
+            authzs.insert(format!("authorizationpolicy:{}", name), authz);
+        }
+
+        authzs
     }
 
-    fn mk_inbound_server(&self, name: String, server: &Server) -> InboundServer {
+    fn mk_inbound_server(
+        &self,
+        namespace: &str,
+        name: String,
+        server: &Server,
+        authentications: &HashMap<String, NsAuthenticationIndex>,
+    ) -> InboundServer {
+        let authorizations = self.mk_client_authzs(namespace, &name, server, authentications);
         InboundServer {
             name,
+            authorizations,
             protocol: server.protocol.clone(),
-            authorizations: self.mk_client_authzs(server),
         }
     }
 }
@@ -736,6 +840,16 @@ impl ServerSelector {
         match self {
             Self::Name(n) => *n == name,
             Self::Selector(selector) => selector.matches(labels),
+        }
+    }
+}
+
+// === impl AuthorizationPolicyTarget ===
+
+impl AuthorizationPolicyTarget {
+    fn server(&self) -> Option<&str> {
+        match self {
+            Self::Server(n) => Some(n),
         }
     }
 }

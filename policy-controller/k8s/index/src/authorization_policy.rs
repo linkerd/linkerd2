@@ -1,7 +1,6 @@
 use crate::index::{AuthenticationTarget, AuthorizationPolicyTarget, Index};
 use anyhow::Result;
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::TargetRef, ResourceExt};
-use std::collections::hash_map::Entry;
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::AuthorizationPolicy> for Index {
     fn apply(&mut self, policy: k8s::policy::AuthorizationPolicy) {
@@ -39,12 +38,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::AuthorizationPolicy> fo
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        if let Entry::Occupied(mut entry) = self.entry(namespace) {
-            entry.get_mut().delete_authorization_policy(&*name);
-            if entry.get().is_empty() {
-                entry.remove();
-            }
-        }
+        self.delete_authorization_policy(namespace, &name);
     }
 }
 

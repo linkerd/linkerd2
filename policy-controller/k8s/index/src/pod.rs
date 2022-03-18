@@ -2,7 +2,6 @@ use crate::{index::PodSettings, DefaultPolicy, Index};
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{bail, Context, Result};
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
-use std::collections::hash_map::Entry;
 
 impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
     fn apply(&mut self, pod: k8s::Pod) {
@@ -10,8 +9,9 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
         let name = pod.name();
         let settings = pod_settings(&pod.metadata);
 
-        if let Err(error) = self.ns_or_default(namespace).apply_pod(
-            &name,
+        if let Err(error) = self.apply_pod(
+            namespace,
+            name,
             pod.metadata.labels.into(),
             tcp_port_names(pod.spec),
             settings,
@@ -21,12 +21,7 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        if let Entry::Occupied(mut entry) = self.entry(namespace) {
-            entry.get_mut().delete_pod(&*name);
-            if entry.get().is_empty() {
-                entry.remove();
-            }
-        }
+        self.delete_pod(namespace, &name);
     }
 }
 
