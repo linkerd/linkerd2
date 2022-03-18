@@ -943,7 +943,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 		rcsw.log.Errorf("Failed to list mirror services: %s", err)
 	}
 	for _, svc := range mirrorServices.Items {
-		updatedService := svc
+		svc := svc
 
 		// Mirrors for headless services are also headless, and their
 		// Endpoints point to auxiliary services instead of pointing to
@@ -976,7 +976,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 		updatedEndpoints.Subsets = []corev1.EndpointSubset{
 			{
 				Addresses: gatewayAddresses,
-				Ports:     rcsw.getEndpointsPorts(&updatedService),
+				Ports:     rcsw.getEndpointsPorts(&svc),
 			},
 		}
 
@@ -998,11 +998,6 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 		}
 		updatedEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
 
-		_, err = rcsw.localAPIClient.Client.CoreV1().Services(updatedService.Namespace).Update(ctx, &updatedService, metav1.UpdateOptions{})
-		if err != nil {
-			rcsw.log.Error(err)
-			continue
-		}
 		err = rcsw.updateMirrorEndpoints(ctx, updatedEndpoints)
 		if err != nil {
 			rcsw.log.Error(err)
