@@ -1,10 +1,12 @@
 //! This module handles all of the indexing logic without dealing with the specifics of how the
-//! resources are laid out in the Kubernetes API (e.g annotation handling is done in the various
-//! resource-specific modules).
+//! resources are laid out in the Kubernetes API. This makes the set of inputs and outputs explicit.
 //!
 //! The `Index` type exposes a single public method: `Index::pod_server_rx`, which is used to lookup
-//! pod/ports by discovery clients. Its other methods, as well as the `NamespaceIndex` type, are
-//! only exposed within the crate to facilitate indexing via `kubert::index`.
+//! pod/ports by discovery clients.
+//!
+//! Its other methods, as well as the `NamespaceIndex` type, are only exposed within the crate to
+//! facilitate indexing via `kubert::index` handlers, which are implemented in the `pod`, `server`,
+//! `server_authorization`, etc. modules.
 
 use crate::{defaults::DefaultPolicy, ClusterInfo};
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
@@ -84,6 +86,7 @@ struct PodMeta {
     settings: PodSettings,
 }
 
+/// Holds the state of a single port on a pod.
 #[derive(Debug)]
 struct PodPortServer {
     /// The name of the server resource that matches this port. Unset when no server resources match
