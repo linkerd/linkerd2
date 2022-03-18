@@ -4,6 +4,7 @@ use super::TargetRef;
     Clone,
     Debug,
     Default,
+    PartialEq,
     kube::CustomResource,
     serde::Deserialize,
     serde::Serialize,

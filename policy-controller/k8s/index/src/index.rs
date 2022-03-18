@@ -12,7 +12,10 @@ use anyhow::{bail, Result};
 use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, IdentityMatch, InboundServer, IpNet, ProxyProtocol,
 };
-use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port};
+use linkerd_policy_controller_k8s_api::{
+    self as k8s,
+    policy::{server::Port, MeshTLSAuthenticationSpec, NetworkAuthenticationSpec},
+};
 use parking_lot::RwLock;
 use std::{collections::hash_map::Entry, sync::Arc};
 use tokio::sync::watch;
@@ -32,16 +35,20 @@ pub struct Index {
 /// Holds the state of a single namespace.
 #[derive(Debug)]
 pub(crate) struct NamespaceIndex {
+    cluster_info: Arc<ClusterInfo>,
+
     /// Holds per-pod port indexes.
     pods: HashMap<String, PodIndex>,
 
     /// Holds servers by-name
-    servers: HashMap<String, Server>,
+    servers: HashMap<String, Arc<Server>>,
 
     /// Holds server authorizations by-name
-    server_authorizations: HashMap<String, ServerAuthorization>,
+    server_authorizations: HashMap<String, Arc<ServerAuthorization>>,
 
-    cluster_info: Arc<ClusterInfo>,
+    authorization_policies: HashMap<String, Arc<AuthorizationPolicy>>,
+    network_authentications: HashMap<String, Arc<NetworkAuthenticationSpec>>,
+    meshtls_authentications: HashMap<String, Arc<MeshTLSAuthenticationSpec>>,
 }
 
 /// Per-pod settings, as configured by the pod's annotations.
@@ -103,10 +110,39 @@ struct Server {
 }
 
 /// The important parts of a `ServerAuthorization` resource.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 struct ServerAuthorization {
     authz: ClientAuthorization,
     server_selector: ServerSelector,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct AuthorizationPolicy {
+    target: AuthorizationPolicyTarget,
+    authentications: Vec<AuthenticationTarget>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum AuthorizationPolicyTarget {
+    Server(String),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum AuthenticationTarget {
+    Network {
+        namespace: Option<String>,
+        name: String,
+    },
+    MeshTLS {
+        namespace: Option<String>,
+        name: String,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Authentication {
+    Network(Arc<NetworkAuthenticationSpec>),
+    MeshTLS(Arc<MeshTLSAuthenticationSpec>),
 }
 
 // === impl Index ===
@@ -157,7 +193,75 @@ impl Index {
                 pods: HashMap::default(),
                 servers: HashMap::default(),
                 server_authorizations: HashMap::default(),
+                authorization_policies: HashMap::default(),
+                network_authentications: HashMap::default(),
+                meshtls_authentications: HashMap::default(),
             })
+    }
+
+    pub(crate) fn apply_authorization_policy(
+        &mut self,
+        namespace: String,
+        name: String,
+        target: AuthorizationPolicyTarget,
+        authentications: Vec<AuthenticationTarget>,
+    ) {
+        let authz = match self.ns_or_default(&namespace).store_authorization_policy(
+            name.clone(),
+            target,
+            authentications,
+        ) {
+            Some(authz) => authz,
+            None => return, // no changes
+        };
+
+        let _authns = {
+            // TODO Ensure server exists.
+
+            // Find all referenced authentications
+            let _authns = match self.gather_authentications(&namespace, &*authz.authentications) {
+                Ok(authns) => authns,
+                Err(error) => {
+                    tracing::debug!(%namespace, %name, %error, "authorization references unknown authentications");
+                    return;
+                }
+            };
+
+            // Update all impacted pod/servers.
+        };
+
+        // TODO if we've
+    }
+
+    fn gather_authentications(
+        &self,
+        default_ns: &str,
+        refs: &[AuthenticationTarget],
+    ) -> Result<Vec<Authentication>> {
+        refs.iter()
+            .map(|ar| match ar {
+                AuthenticationTarget::Network { namespace, name } => {
+                    let ns = namespace.as_deref().unwrap_or(default_ns);
+                    let nsidx = self.namespaces.get(ns).ok_or_else(|| {
+                        anyhow::anyhow!("NetworkAuthentication {}.{} not found", name, ns)
+                    })?;
+                    let authn = nsidx.network_authentications.get(&*name).ok_or_else(|| {
+                        anyhow::anyhow!("NetworkAuthentication {}.{} not found", name, ns)
+                    })?;
+                    Ok(Authentication::Network(authn.clone()))
+                }
+                AuthenticationTarget::MeshTLS { namespace, name } => {
+                    let ns = namespace.as_deref().unwrap_or(default_ns);
+                    let nsidx = self.namespaces.get(ns).ok_or_else(|| {
+                        anyhow::anyhow!("MeshTLSAuthentication {}.{} not found", name, ns)
+                    })?;
+                    let authn = nsidx.meshtls_authentications.get(&*name).ok_or_else(|| {
+                        anyhow::anyhow!("MeshTLSAuthentication {}.{} not found", name, ns)
+                    })?;
+                    Ok(Authentication::MeshTLS(authn.clone()))
+                }
+            })
+            .collect()
     }
 }
 
@@ -403,6 +507,57 @@ impl NamespaceIndex {
             }
         }
     }
+
+    fn store_authorization_policy(
+        &mut self,
+        name: impl ToString,
+        target: AuthorizationPolicyTarget,
+        authentications: Vec<AuthenticationTarget>,
+    ) -> Option<Arc<AuthorizationPolicy>> {
+        let authz = AuthorizationPolicy {
+            target,
+            authentications,
+        };
+        match self.authorization_policies.entry(name.to_string()) {
+            Entry::Vacant(entry) => Some(entry.insert(Arc::new(authz)).clone()),
+            Entry::Occupied(entry) => {
+                let ap = entry.into_mut();
+                if **ap == authz {
+                    return None;
+                }
+                *ap = Arc::new(authz);
+                Some(ap.clone())
+            }
+        }
+    }
+
+    pub(crate) fn delete_authorization_policy(&mut self, _name: &str) {
+        unimplemented!()
+    }
+
+    pub(crate) fn apply_meshtls_authentication(
+        &mut self,
+        _name: impl ToString,
+        _target: AuthorizationPolicyTarget,
+    ) {
+        unimplemented!()
+    }
+
+    pub(crate) fn delete_meshtls_authentication(&mut self, _name: &str) {
+        unimplemented!()
+    }
+
+    pub(crate) fn apply_network_authentication(
+        &mut self,
+        _name: impl ToString,
+        _target: AuthorizationPolicyTarget,
+    ) {
+        unimplemented!()
+    }
+
+    pub(crate) fn delete_network_authentication(&mut self, _name: &str) {
+        unimplemented!()
+    }
 }
 
 // === impl PodIndex ===
@@ -491,6 +646,14 @@ impl ServerSelector {
         match self {
             Self::Name(n) => *n == server.name,
             Self::Selector(selector) => selector.matches(&server.labels),
+        }
+    }
+}
+
+impl AuthorizationPolicyTarget {
+    fn is_server(&self, name: String) -> bool {
+        match self {
+            Self::Server(n) => *n == name,
         }
     }
 }
