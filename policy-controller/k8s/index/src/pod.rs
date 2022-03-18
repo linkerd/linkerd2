@@ -145,3 +145,32 @@ fn parse_portset(s: &str) -> Result<HashSet<u16>> {
 
     Ok(ports)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::parse_portset;
+
+    #[test]
+    fn parse_portset() {
+        assert!(parse_portset("").unwrap().is_empty(), "empty");
+        assert!(parse_portset("0").is_err(), "0");
+        assert_eq!(
+            parse_portset("1").unwrap(),
+            vec![1].into_iter().collect(),
+            "1"
+        );
+        assert_eq!(
+            parse_portset("1-2").unwrap(),
+            vec![1, 2].into_iter().collect(),
+            "1-2"
+        );
+        assert_eq!(
+            parse_portset("4,1-2").unwrap(),
+            vec![1, 2, 4].into_iter().collect(),
+            "4,1-2"
+        );
+        assert!(parse_portset("2-1").is_err(), "2-1");
+        assert!(parse_portset("2-").is_err(), "2-");
+        assert!(parse_portset("65537").is_err(), "65537");
+    }
+}
