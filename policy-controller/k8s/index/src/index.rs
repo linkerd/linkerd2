@@ -407,11 +407,11 @@ impl Index {
                     entry.insert(identities.into());
                 }
                 Entry::Occupied(entry) => {
-                    let ap = entry.into_mut();
-                    if **ap == *identities {
+                    let ids = entry.into_mut();
+                    if **ids == *identities {
                         return false;
                     }
-                    *ap = identities.into();
+                    *ids = identities.into();
                 }
             }
             true

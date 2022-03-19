@@ -101,7 +101,7 @@ fn links_unnamed_server_port() {
 }
 
 #[test]
-fn links_server_authz_by_name() {
+fn links_server_authorization_by_name() {
     let test = TestConfig::default();
 
     test.index
@@ -166,7 +166,7 @@ fn links_server_authz_by_name() {
 }
 
 #[test]
-fn links_server_authz_by_label() {
+fn links_server_authorization_by_label() {
     let test = TestConfig::default();
 
     test.index
@@ -456,6 +456,93 @@ fn authenticated_annotated() {
     );
 }
 
+#[test]
+fn links_authorization_policy_with_mtls_name() {
+    let test = TestConfig::default();
+
+    test.index
+        .write()
+        .apply_pod(
+            "ns-0".to_string(),
+            "pod-0".to_string(),
+            Some(("app", "app-0")).into_iter().collect(),
+            HashMap::default(),
+            PodSettings::default(),
+        )
+        .expect("pod-0.ns-0 should not already exist");
+
+    let mut rx = test
+        .index
+        .write()
+        .pod_server_rx("ns-0", "pod-0", 8080)
+        .expect("pod-0.ns-0 should exist");
+    assert_eq!(*rx.borrow_and_update(), test.default_server());
+
+    test.index.write().apply_server(
+        "ns-0".to_string(),
+        "srv-8080".to_string(),
+        Default::default(),
+        Some(("app", "app-0")).into_iter().collect(),
+        Port::Number(8080),
+        Some(ProxyProtocol::Http1),
+    );
+    assert!(rx.has_changed().unwrap());
+    assert_eq!(
+        *rx.borrow_and_update(),
+        InboundServer {
+            name: "srv-8080".to_string(),
+            authorizations: Default::default(),
+            protocol: ProxyProtocol::Http1,
+        },
+    );
+
+    let authz = ClientAuthorization {
+        networks: vec!["10.0.0.0/8".parse::<IpNet>().unwrap().into()],
+        authentication: ClientAuthentication::TlsAuthenticated(vec![IdentityMatch::Exact(
+            "foo.bar".to_string(),
+        )]),
+    };
+    test.index.write().apply_authorization_policy(
+        "ns-0".to_string(),
+        "authz-foo".to_string(),
+        AuthorizationPolicyTarget::Server("srv-8080".to_string()),
+        vec![
+            AuthenticationTarget::Network {
+                namespace: None,
+                name: "net-foo".to_string(),
+            },
+            AuthenticationTarget::MeshTLS {
+                namespace: Some("ns-1".to_string()),
+                name: "mtls-bar".to_string(),
+            },
+        ],
+    );
+    test.index.write().apply_network_authentication(
+        "ns-0".to_string(),
+        "net-foo".to_string(),
+        vec![NetworkMatch {
+            net: "10.0.0.0/8".parse().unwrap(),
+            except: vec![],
+        }],
+    );
+    test.index.write().apply_meshtls_authentication(
+        "ns-1".to_string(),
+        "mtls-bar".to_string(),
+        vec![IdentityMatch::Exact("foo.bar".to_string())],
+    );
+    assert!(rx.has_changed().unwrap());
+    assert_eq!(
+        *rx.borrow(),
+        InboundServer {
+            name: "srv-8080".to_string(),
+            authorizations: Some(("authorizationpolicy:authz-foo".to_string(), authz))
+                .into_iter()
+                .collect(),
+            protocol: ProxyProtocol::Http1,
+        },
+    );
+}
+
 // === Helpers ===
 
 const DEFAULTS: [DefaultPolicy; 5] = [
@@ -535,15 +622,6 @@ fn mk_default_policy(
     .collect()
 }
 
-fn init_tracing() -> tracing::subscriber::DefaultGuard {
-    tracing::subscriber::set_default(
-        tracing_subscriber::fmt()
-            .with_test_writer()
-            .with_max_level(tracing::Level::TRACE)
-            .finish(),
-    )
-}
-
 struct TestConfig {
     index: SharedIndex,
     detect_timeout: time::Duration,
@@ -554,7 +632,7 @@ struct TestConfig {
 
 impl TestConfig {
     fn from_default_policy(default_policy: DefaultPolicy) -> Self {
-        let _tracing = init_tracing();
+        let _tracing = Self::init_tracing();
         let cluster_net = "192.0.2.0/24".parse().unwrap();
         let detect_timeout = time::Duration::from_secs(1);
         let cluster = ClusterInfo {
@@ -572,6 +650,15 @@ impl TestConfig {
             default_policy,
             _tracing,
         }
+    }
+
+    fn init_tracing() -> tracing::subscriber::DefaultGuard {
+        tracing::subscriber::set_default(
+            tracing_subscriber::fmt()
+                .with_test_writer()
+                .with_max_level(tracing::Level::TRACE)
+                .finish(),
+        )
     }
 
     fn default_server(&self) -> InboundServer {

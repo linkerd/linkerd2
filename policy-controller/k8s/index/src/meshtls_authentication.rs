@@ -7,16 +7,30 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::MeshTLSAuthentication> 
         let namespace = authn.namespace().unwrap();
         let name = authn.name();
 
-        let authns = authn
+        let identities = authn.spec.identities.into_iter().flatten().map(|s| {
+            s.parse::<IdentityMatch>()
+                .expect("identity match parsing is infallible")
+        });
+
+        let identity_refs = authn
             .spec
-            .identities
+            .identity_refs
             .into_iter()
             .flatten()
-            .map(|s| {
-                s.parse::<IdentityMatch>()
-                    .expect("identity match parsing is infallible")
-            })
-            .collect::<Vec<_>>();
+            .filter_map(|tgt| {
+                if !tgt.kind.eq_ignore_ascii_case("ServiceAccount") {
+                    return None;
+                }
+                let ns = tgt.namespace.as_deref().unwrap_or(&namespace);
+                let name = tgt.name.as_deref()?;
+                let cluster = self.cluster_info();
+                Some(IdentityMatch::Exact(format!(
+                    "{}.{}.serviceaccount.{}.{}",
+                    name, ns, cluster.control_plane_ns, cluster.identity_domain
+                )))
+            });
+
+        let authns = identities.chain(identity_refs).collect::<Vec<_>>();
 
         if authns.is_empty() {
             tracing::warn!("No authentication targets");
