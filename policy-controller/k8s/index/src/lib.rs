@@ -26,6 +26,7 @@
 mod authorization_policy;
 mod defaults;
 mod index;
+mod meshtls_authentication;
 mod pod;
 mod server;
 mod server_authorization;
