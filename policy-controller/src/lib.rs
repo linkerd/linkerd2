@@ -45,14 +45,15 @@ impl DiscoverInboundServer<(String, String, u16)> for IndexDiscover {
             Err(_) => return Ok(None),
         };
 
-        Ok(Some(Box::pin(async_stream::stream! {
-            let server = (*rx.borrow_and_update()).clone();
-            yield server;
-
-            while rx.changed().await.is_ok() {
+        Ok(Some(Box::pin(async_stream::stream!({
+            loop {
                 let server = (*rx.borrow_and_update()).clone();
                 yield server;
+
+                if rx.changed().await.is_err() {
+                    return;
+                }
             }
-        })))
+        }))))
     }
 }

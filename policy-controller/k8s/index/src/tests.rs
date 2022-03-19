@@ -24,9 +24,9 @@ fn links_named_server_port() {
     ports.insert("admin-http".to_string(), Some(8080).into_iter().collect());
     test.index
         .write()
-        .ns_or_default("ns-0")
         .apply_pod(
-            "pod-0",
+            "ns-0".to_string(),
+            "pod-0".to_string(),
             Some(("app", "app-0")).into_iter().collect(),
             ports,
             PodSettings::default(),
@@ -40,8 +40,9 @@ fn links_named_server_port() {
         .expect("pod-0.ns-0 should exist");
     assert_eq!(*rx.borrow_and_update(), test.default_server());
 
-    test.index.write().ns_or_default("ns-0").apply_server(
-        "srv-admin-http",
+    test.index.write().apply_server(
+        "ns-0".to_string(),
+        "srv-admin-http".to_string(),
         Default::default(),
         Some(("app", "app-0")).into_iter().collect(),
         Port::Name("admin-http".to_string()),
@@ -64,9 +65,9 @@ fn links_unnamed_server_port() {
 
     test.index
         .write()
-        .ns_or_default("ns-0")
         .apply_pod(
-            "pod-0",
+            "ns-0".to_string(),
+            "pod-0".to_string(),
             Some(("app", "app-0")).into_iter().collect(),
             HashMap::default(),
             PodSettings::default(),
@@ -80,8 +81,9 @@ fn links_unnamed_server_port() {
         .expect("pod-0.ns-0 should exist");
     assert_eq!(*rx.borrow_and_update(), test.default_server());
 
-    test.index.write().ns_or_default("ns-0").apply_server(
-        "srv-8080",
+    test.index.write().apply_server(
+        "ns-0".to_string(),
+        "srv-8080".to_string(),
         Default::default(),
         Some(("app", "app-0")).into_iter().collect(),
         Port::Number(8080),
@@ -99,14 +101,14 @@ fn links_unnamed_server_port() {
 }
 
 #[test]
-fn links_server_authz_by_name() {
+fn links_server_authorization_by_name() {
     let test = TestConfig::default();
 
     test.index
         .write()
-        .ns_or_default("ns-0")
         .apply_pod(
-            "pod-0",
+            "ns-0".to_string(),
+            "pod-0".to_string(),
             Some(("app", "app-0")).into_iter().collect(),
             HashMap::default(),
             PodSettings::default(),
@@ -120,8 +122,9 @@ fn links_server_authz_by_name() {
         .expect("pod-0.ns-0 should exist");
     assert_eq!(*rx.borrow_and_update(), test.default_server());
 
-    test.index.write().ns_or_default("ns-0").apply_server(
-        "srv-8080",
+    test.index.write().apply_server(
+        "ns-0".to_string(),
+        "srv-8080".to_string(),
         Default::default(),
         Some(("app", "app-0")).into_iter().collect(),
         Port::Number(8080),
@@ -143,34 +146,34 @@ fn links_server_authz_by_name() {
             "foo.bar".to_string(),
         )]),
     };
-    test.index
-        .write()
-        .ns_or_default("ns-0")
-        .apply_server_authorization(
-            "authz-foo",
-            ServerSelector::Name("srv-8080".to_string()),
-            authz.clone(),
-        );
+    test.index.write().apply_server_authorization(
+        "ns-0".to_string(),
+        "authz-foo".to_string(),
+        ServerSelector::Name("srv-8080".to_string()),
+        authz.clone(),
+    );
     assert!(rx.has_changed().unwrap());
     assert_eq!(
         *rx.borrow(),
         InboundServer {
             name: "srv-8080".to_string(),
-            authorizations: Some(("authz-foo".to_string(), authz)).into_iter().collect(),
+            authorizations: Some(("serverauthorization:authz-foo".to_string(), authz))
+                .into_iter()
+                .collect(),
             protocol: ProxyProtocol::Http1,
         },
     );
 }
 
 #[test]
-fn links_server_authz_by_label() {
+fn links_server_authorization_by_label() {
     let test = TestConfig::default();
 
     test.index
         .write()
-        .ns_or_default("ns-0")
         .apply_pod(
-            "pod-0",
+            "ns-0".to_string(),
+            "pod-0".to_string(),
             Some(("app", "app-0")).into_iter().collect(),
             HashMap::default(),
             PodSettings::default(),
@@ -184,8 +187,9 @@ fn links_server_authz_by_label() {
         .expect("pod-0.ns-0 should exist");
     assert_eq!(*rx.borrow_and_update(), test.default_server());
 
-    test.index.write().ns_or_default("ns-0").apply_server(
-        "srv-8080",
+    test.index.write().apply_server(
+        "ns-0".to_string(),
+        "srv-8080".to_string(),
         Some(("app", "app-0")).into_iter().collect(),
         Some(("app", "app-0")).into_iter().collect(),
         Port::Number(8080),
@@ -207,20 +211,20 @@ fn links_server_authz_by_label() {
             "foo.bar".to_string(),
         )]),
     };
-    test.index
-        .write()
-        .ns_or_default("ns-0")
-        .apply_server_authorization(
-            "authz-foo",
-            ServerSelector::Selector(Some(("app", "app-0")).into_iter().collect()),
-            authz.clone(),
-        );
+    test.index.write().apply_server_authorization(
+        "ns-0".to_string(),
+        "authz-foo".to_string(),
+        ServerSelector::Selector(Some(("app", "app-0")).into_iter().collect()),
+        authz.clone(),
+    );
     assert!(rx.has_changed().unwrap());
     assert_eq!(
         *rx.borrow(),
         InboundServer {
             name: "srv-8080".to_string(),
-            authorizations: Some(("authz-foo".to_string(), authz)).into_iter().collect(),
+            authorizations: Some(("serverauthorization:authz-foo".to_string(), authz))
+                .into_iter()
+                .collect(),
             protocol: ProxyProtocol::Http1,
         },
     );
@@ -232,9 +236,9 @@ fn updates_default_server() {
 
     test.index
         .write()
-        .ns_or_default("ns-0")
         .apply_pod(
-            "pod-0",
+            "ns-0".to_string(),
+            "pod-0".to_string(),
             Some(("app", "app-0")).into_iter().collect(),
             HashMap::default(),
             PodSettings::default(),
@@ -250,9 +254,9 @@ fn updates_default_server() {
 
     test.index
         .write()
-        .ns_or_default("ns-0")
         .apply_pod(
-            "pod-0",
+            "ns-0".to_string(),
+            "pod-0".to_string(),
             Some(("app", "app-0")).into_iter().collect(),
             HashMap::default(),
             PodSettings {
@@ -281,16 +285,17 @@ fn server_update_deselects_pod() {
     // Start with a pod selected by a server.
     test.index
         .write()
-        .ns_or_default("ns-0")
         .apply_pod(
-            "pod-0",
+            "ns-0".to_string(),
+            "pod-0".to_string(),
             Some(("app", "app-0")).into_iter().collect(),
             HashMap::default(),
             PodSettings::default(),
         )
         .expect("pod should apply");
-    test.index.write().ns_or_default("ns-0").apply_server(
-        "srv-8080",
+    test.index.write().apply_server(
+        "ns-0".to_string(),
+        "srv-8080".to_string(),
         Labels::default(),
         Some(("app", "app-0")).into_iter().collect(),
         Port::Number(8080),
@@ -304,8 +309,9 @@ fn server_update_deselects_pod() {
     assert_eq!(rx.borrow_and_update().name, "srv-8080");
 
     // Update the server to no longer select the pod.
-    test.index.write().ns_or_default("ns-0").apply_server(
-        "srv-8080",
+    test.index.write().apply_server(
+        "ns-0".to_string(),
+        "srv-8080".to_string(),
         Labels::default(),
         Some(("app", "app-1")).into_iter().collect(),
         Port::Number(8080),
@@ -339,9 +345,9 @@ fn default_policy_annotated() {
         // Start with a pod using the cluster default policy.
         test.index
             .write()
-            .ns_or_default("ns-0")
             .apply_pod(
-                "pod-0",
+                "ns-0".to_string(),
+                "pod-0".to_string(),
                 Some(("app", "app-0")).into_iter().collect(),
                 HashMap::default(),
                 PodSettings::default(),
@@ -360,9 +366,9 @@ fn default_policy_annotated() {
         // Update the pod to use a workload-specified default policy.
         test.index
             .write()
-            .ns_or_default("ns-0")
             .apply_pod(
-                "pod-0",
+                "ns-0".to_string(),
+                "pod-0".to_string(),
                 Some(("app", "app-0")).into_iter().collect(),
                 HashMap::default(),
                 PodSettings {
@@ -384,9 +390,9 @@ fn opaque_annotated() {
 
     test.index
         .write()
-        .ns_or_default("ns-0")
         .apply_pod(
-            "pod-0",
+            "ns-0".to_string(),
+            "pod-0".to_string(),
             Some(("app", "app-0")).into_iter().collect(),
             HashMap::default(),
             PodSettings {
@@ -416,9 +422,9 @@ fn authenticated_annotated() {
 
     test.index
         .write()
-        .ns_or_default("ns-0")
         .apply_pod(
-            "pod-0",
+            "ns-0".to_string(),
+            "pod-0".to_string(),
             Some(("app", "app-0")).into_iter().collect(),
             HashMap::default(),
             PodSettings {
@@ -446,6 +452,93 @@ fn authenticated_annotated() {
             protocol: ProxyProtocol::Detect {
                 timeout: test.detect_timeout,
             },
+        },
+    );
+}
+
+#[test]
+fn links_authorization_policy_with_mtls_name() {
+    let test = TestConfig::default();
+
+    test.index
+        .write()
+        .apply_pod(
+            "ns-0".to_string(),
+            "pod-0".to_string(),
+            Some(("app", "app-0")).into_iter().collect(),
+            HashMap::default(),
+            PodSettings::default(),
+        )
+        .expect("pod-0.ns-0 should not already exist");
+
+    let mut rx = test
+        .index
+        .write()
+        .pod_server_rx("ns-0", "pod-0", 8080)
+        .expect("pod-0.ns-0 should exist");
+    assert_eq!(*rx.borrow_and_update(), test.default_server());
+
+    test.index.write().apply_server(
+        "ns-0".to_string(),
+        "srv-8080".to_string(),
+        Default::default(),
+        Some(("app", "app-0")).into_iter().collect(),
+        Port::Number(8080),
+        Some(ProxyProtocol::Http1),
+    );
+    assert!(rx.has_changed().unwrap());
+    assert_eq!(
+        *rx.borrow_and_update(),
+        InboundServer {
+            name: "srv-8080".to_string(),
+            authorizations: Default::default(),
+            protocol: ProxyProtocol::Http1,
+        },
+    );
+
+    let authz = ClientAuthorization {
+        networks: vec!["10.0.0.0/8".parse::<IpNet>().unwrap().into()],
+        authentication: ClientAuthentication::TlsAuthenticated(vec![IdentityMatch::Exact(
+            "foo.bar".to_string(),
+        )]),
+    };
+    test.index.write().apply_authorization_policy(
+        "ns-0".to_string(),
+        "authz-foo".to_string(),
+        AuthorizationPolicyTarget::Server("srv-8080".to_string()),
+        vec![
+            AuthenticationTarget::Network {
+                namespace: None,
+                name: "net-foo".to_string(),
+            },
+            AuthenticationTarget::MeshTLS {
+                namespace: Some("ns-1".to_string()),
+                name: "mtls-bar".to_string(),
+            },
+        ],
+    );
+    test.index.write().apply_network_authentication(
+        "ns-0".to_string(),
+        "net-foo".to_string(),
+        vec![NetworkMatch {
+            net: "10.0.0.0/8".parse().unwrap(),
+            except: vec![],
+        }],
+    );
+    test.index.write().apply_meshtls_authentication(
+        "ns-1".to_string(),
+        "mtls-bar".to_string(),
+        vec![IdentityMatch::Exact("foo.bar".to_string())],
+    );
+    assert!(rx.has_changed().unwrap());
+    assert_eq!(
+        *rx.borrow(),
+        InboundServer {
+            name: "srv-8080".to_string(),
+            authorizations: Some(("authorizationpolicy:authz-foo".to_string(), authz))
+                .into_iter()
+                .collect(),
+            protocol: ProxyProtocol::Http1,
         },
     );
 }
@@ -529,15 +622,6 @@ fn mk_default_policy(
     .collect()
 }
 
-fn init_tracing() -> tracing::subscriber::DefaultGuard {
-    tracing::subscriber::set_default(
-        tracing_subscriber::fmt()
-            .with_test_writer()
-            .with_max_level(tracing::Level::TRACE)
-            .finish(),
-    )
-}
-
 struct TestConfig {
     index: SharedIndex,
     detect_timeout: time::Duration,
@@ -548,7 +632,7 @@ struct TestConfig {
 
 impl TestConfig {
     fn from_default_policy(default_policy: DefaultPolicy) -> Self {
-        let _tracing = init_tracing();
+        let _tracing = Self::init_tracing();
         let cluster_net = "192.0.2.0/24".parse().unwrap();
         let detect_timeout = time::Duration::from_secs(1);
         let cluster = ClusterInfo {
@@ -566,6 +650,15 @@ impl TestConfig {
             default_policy,
             _tracing,
         }
+    }
+
+    fn init_tracing() -> tracing::subscriber::DefaultGuard {
+        tracing::subscriber::set_default(
+            tracing_subscriber::fmt()
+                .with_test_writer()
+                .with_max_level(tracing::Level::TRACE)
+                .finish(),
+        )
     }
 
     fn default_server(&self) -> InboundServer {

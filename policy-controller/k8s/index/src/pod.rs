@@ -2,7 +2,6 @@ use crate::{index::PodSettings, DefaultPolicy, Index};
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{bail, Context, Result};
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
-use std::collections::hash_map::Entry;
 
 impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
     fn apply(&mut self, pod: k8s::Pod) {
@@ -10,7 +9,8 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
         let name = pod.name();
         let settings = pod_settings(&pod.metadata);
 
-        if let Err(error) = self.ns_or_default(namespace).apply_pod(
+        if let Err(error) = self.apply_pod(
+            namespace,
             name,
             pod.metadata.labels.into(),
             tcp_port_names(pod.spec),
@@ -21,16 +21,7 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        if let Entry::Occupied(mut entry) = self.entry(namespace) {
-            entry.get_mut().delete_pod(&*name);
-            if entry.get().is_empty() {
-                entry.remove();
-            }
-        }
-    }
-
-    fn snapshot_keys(&self) -> HashMap<String, HashSet<String>> {
-        self.snapshot_pods()
+        self.delete_pod(namespace, &name);
     }
 }
 
@@ -144,4 +135,33 @@ fn parse_portset(s: &str) -> Result<HashSet<u16>> {
     }
 
     Ok(ports)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn parse_portset() {
+        use super::parse_portset;
+
+        assert!(parse_portset("").unwrap().is_empty(), "empty");
+        assert!(parse_portset("0").is_err(), "0");
+        assert_eq!(
+            parse_portset("1").unwrap(),
+            vec![1].into_iter().collect(),
+            "1"
+        );
+        assert_eq!(
+            parse_portset("1-2").unwrap(),
+            vec![1, 2].into_iter().collect(),
+            "1-2"
+        );
+        assert_eq!(
+            parse_portset("4,1-2").unwrap(),
+            vec![1, 2, 4].into_iter().collect(),
+            "4,1-2"
+        );
+        assert!(parse_portset("2-1").is_err(), "2-1");
+        assert!(parse_portset("2-").is_err(), "2-");
+        assert!(parse_portset("65537").is_err(), "65537");
+    }
 }

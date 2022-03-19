@@ -1,13 +1,12 @@
 use crate::Index;
-use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use linkerd_policy_controller_core::ProxyProtocol;
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
-use std::collections::hash_map::Entry;
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
     fn apply(&mut self, server: k8s::policy::Server) {
         let namespace = server.namespace().unwrap();
-        self.ns_or_default(namespace).apply_server(
+        self.apply_server(
+            namespace,
             server.name(),
             server.metadata.labels.into(),
             server.spec.pod_selector,
@@ -17,16 +16,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        if let Entry::Occupied(mut entry) = self.entry(namespace) {
-            entry.get_mut().delete_server(&*name);
-            if entry.get().is_empty() {
-                entry.remove();
-            }
-        }
-    }
-
-    fn snapshot_keys(&self) -> HashMap<String, HashSet<String>> {
-        self.snapshot_servers()
+        self.delete_server(namespace, &name);
     }
 }
 

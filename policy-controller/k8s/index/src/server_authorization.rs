@@ -2,14 +2,13 @@ use crate::{
     index::{Index, ServerSelector},
     ClusterInfo,
 };
-use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::Result;
-use k8s::{policy::server_authorization::MeshTls, ResourceExt};
 use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, IdentityMatch, NetworkMatch,
 };
-use linkerd_policy_controller_k8s_api as k8s;
-use std::collections::hash_map::Entry;
+use linkerd_policy_controller_k8s_api::{
+    self as k8s, policy::server_authorization::MeshTls, ResourceExt,
+};
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> for Index {
     fn apply(&mut self, saz: k8s::policy::ServerAuthorization) {
@@ -24,33 +23,18 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
             }
         };
 
-        self.ns_or_default(namespace).apply_server_authorization(
-            name,
-            server_selector(saz.spec.server),
-            authz,
-        )
+        self.apply_server_authorization(namespace, name, server_selector(saz.spec.server), authz)
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        if let Entry::Occupied(mut entry) = self.entry(namespace) {
-            entry.get_mut().delete_server_authorization(&*name);
-            if entry.get().is_empty() {
-                entry.remove();
-            }
-        }
-    }
-
-    fn snapshot_keys(&self) -> HashMap<String, HashSet<String>> {
-        self.snapshot_server_authorizations()
+        self.delete_server_authorization(namespace, &name);
     }
 }
 
 fn server_selector(s: k8s::policy::server_authorization::Server) -> ServerSelector {
-    s.name.map(ServerSelector::Name).unwrap_or_else(|| {
-        s.selector
-            .map(ServerSelector::Selector)
-            .unwrap_or_else(|| ServerSelector::Selector(k8s::labels::Selector::default()))
-    })
+    s.name
+        .map(ServerSelector::Name)
+        .unwrap_or_else(|| ServerSelector::Selector(s.selector.unwrap_or_default()))
 }
 
 fn client_authz(

@@ -2,6 +2,7 @@
     Clone,
     Debug,
     Default,
+    PartialEq,
     kube::CustomResource,
     serde::Deserialize,
     serde::Serialize,
@@ -18,14 +19,16 @@ pub struct NetworkAuthenticationSpec {
     pub networks: Vec<Network>,
 }
 
-#[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+#[derive(
+    Clone, Debug, Default, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Network {
     pub cidr: ipnet::IpNet,
     pub except: Option<Vec<Except>>,
 }
 
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 #[serde(untagged)]
 pub enum Except {
     IpAddr(std::net::IpAddr),

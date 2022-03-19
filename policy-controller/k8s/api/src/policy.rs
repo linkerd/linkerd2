@@ -13,7 +13,9 @@ pub use self::{
 };
 
 /// Targets a resource--or resource type--within a the same namespace.
-#[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+#[derive(
+    Clone, Debug, Default, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema,
+)]
 pub struct TargetRef {
     pub group: Option<String>,
     pub kind: String,
