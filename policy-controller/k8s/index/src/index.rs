@@ -15,10 +15,7 @@ use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, IdentityMatch, InboundServer, IpNet, NetworkMatch,
     ProxyProtocol,
 };
-use linkerd_policy_controller_k8s_api::{
-    self as k8s,
-    policy::{server::Port, MeshTLSAuthenticationSpec, NetworkAuthenticationSpec},
-};
+use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port};
 use parking_lot::RwLock;
 use std::{collections::hash_map::Entry, sync::Arc};
 use tokio::sync::watch;
@@ -84,12 +81,6 @@ pub(crate) enum AuthenticationTarget {
         namespace: Option<String>,
         name: String,
     },
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) enum Authentication {
-    Network(Arc<[NetworkMatch]>),
-    MeshTLS(Arc<[IdentityMatch]>),
 }
 
 /// A pod's port index.
@@ -549,7 +540,7 @@ impl Namespace {
         }
     }
     /// Returns true if the index does not include any resources.
-    pub(crate) fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.pods.is_empty()
             && self.policy.servers.is_empty()
             && self.policy.server_authorizations.is_empty()
