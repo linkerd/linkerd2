@@ -37,7 +37,11 @@ impl TargetRef {
             group = "core";
         }
 
-        self.group.as_deref().unwrap_or("core") == group && *self.kind == *T::kind(&dt)
+        self.group
+            .as_deref()
+            .unwrap_or("core")
+            .eq_ignore_ascii_case(group)
+            && self.kind.eq_ignore_ascii_case(&*T::kind(&dt))
     }
 
     /// Checks whether the target references the given namespaced resource
@@ -46,29 +50,26 @@ impl TargetRef {
         T: kube::Resource,
         T::DynamicType: Default,
     {
-        use kube::ResourceExt;
-
         if !self.targets_kind::<T>() {
             return false;
         }
 
-        if let Some(rns) = resource.namespace() {
-            if rns != self.namespace.as_deref().unwrap_or(default_ns) {
-                // If the resource specifies a namespace other than the target or the default
-                // namespace, that's a deal-breaker.
-                return false;
-            }
-        } else if let Some(ns) = self.namespace.as_deref() {
-            if ns != default_ns {
-                // If the resource does not specify a namespace but the target specifies a resource
-                // other than the local default, that's a deal-breaker.
-                return false;
-            }
+        let tns = self.namespace.as_deref().unwrap_or(default_ns);
+        let rns = resource.meta().namespace.as_deref().unwrap_or(default_ns);
+        if !tns.eq_ignore_ascii_case(rns) {
+            // If the resource specifies a namespace other than the target or the default
+            // namespace, that's a deal-breaker.
+            return false;
         }
 
         if let Some(name) = self.name.as_deref() {
-            if name != resource.name() {
-                return false;
+            match resource.meta().name.as_deref() {
+                None => return false,
+                Some(rname) => {
+                    if !rname.eq_ignore_ascii_case(name) {
+                        return false;
+                    }
+                }
             }
         }
 
@@ -81,20 +82,23 @@ impl TargetRef {
         T: kube::Resource,
         T::DynamicType: Default,
     {
-        use kube::ResourceExt;
-
         if !self.targets_kind::<T>() {
             return false;
         }
 
-        if self.namespace.is_some() || resource.namespace().is_some() {
+        if self.namespace.is_some() || resource.meta().namespace.is_some() {
             // If the reference or the resource has a namespace, that's a deal-breaker.
             return false;
         }
 
         if let Some(name) = self.name.as_deref() {
-            if name != resource.name() {
-                return false;
+            match resource.meta().name.as_deref() {
+                None => return false,
+                Some(rname) => {
+                    if !rname.eq_ignore_ascii_case(name) {
+                        return false;
+                    }
+                }
             }
         }
 
@@ -104,16 +108,116 @@ impl TargetRef {
 
 #[cfg(test)]
 mod tests {
-    use super::TargetRef;
-    use k8s_openapi::api::core::v1::ServiceAccount;
+    use super::{Server, TargetRef};
+    use crate::{Namespace, ObjectMeta, ServiceAccount};
+
+    #[test]
+    fn targets_namespace() {
+        let t = TargetRef {
+            kind: "Namespace".to_string(),
+            name: Some("appns".to_string()),
+            ..TargetRef::default()
+        };
+        assert!(t.targets_kind::<Namespace>());
+    }
 
     #[test]
     fn targets_service_account() {
-        let t = TargetRef {
+        for tgt in &[
+            TargetRef {
+                kind: "ServiceAccount".to_string(),
+                namespace: Some("appns".to_string()),
+                name: Some("default".to_string()),
+                ..TargetRef::default()
+            },
+            TargetRef {
+                group: Some("core".to_string()),
+                kind: "ServiceAccount".to_string(),
+                namespace: Some("appns".to_string()),
+                name: Some("default".to_string()),
+                ..TargetRef::default()
+            },
+            TargetRef {
+                group: Some("CORE".to_string()),
+                kind: "SERVICEACCOUNT".to_string(),
+                namespace: Some("APPNS".to_string()),
+                name: Some("DEFAULT".to_string()),
+                ..TargetRef::default()
+            },
+            TargetRef {
+                kind: "ServiceAccount".to_string(),
+                name: Some("default".to_string()),
+                ..TargetRef::default()
+            },
+            TargetRef {
+                kind: "ServiceAccount".to_string(),
+                ..TargetRef::default()
+            },
+        ] {
+            assert!(tgt.targets_kind::<ServiceAccount>());
+
+            assert!(!tgt.targets_kind::<Namespace>());
+
+            let sa = ServiceAccount {
+                metadata: ObjectMeta {
+                    namespace: Some("appns".to_string()),
+                    name: Some("default".to_string()),
+                    ..ObjectMeta::default()
+                },
+                ..ServiceAccount::default()
+            };
+            assert!(
+                tgt.targets_resource(&sa, "appns"),
+                "ServiceAccounts are targeted by name: {:#?}",
+                tgt
+            );
+
+            let sa = ServiceAccount {
+                metadata: ObjectMeta {
+                    namespace: Some("otherns".to_string()),
+                    name: Some("default".to_string()),
+                    ..ObjectMeta::default()
+                },
+                ..ServiceAccount::default()
+            };
+            assert!(
+                !tgt.targets_resource(&sa, "appns"),
+                "ServiceAccounts in other namespaces should not be targeted: {:#?}",
+                tgt
+            );
+        }
+
+        let tgt = TargetRef {
             kind: "ServiceAccount".to_string(),
             name: Some("default".to_string()),
             ..TargetRef::default()
         };
-        assert!(t.targets_kind::<ServiceAccount>())
+        assert!(
+            {
+                let sa = ServiceAccount {
+                    metadata: ObjectMeta {
+                        namespace: Some("appns".to_string()),
+                        name: Some("special".to_string()),
+                        ..ObjectMeta::default()
+                    },
+                    ..ServiceAccount::default()
+                };
+                !tgt.targets_resource(&sa, "appns")
+            },
+            "resource comparison uses "
+        );
+    }
+
+    #[test]
+    fn targets_server() {
+        let tgt = TargetRef {
+            group: Some("policy.linkerd.io".to_string()),
+            kind: "Server".to_string(),
+            namespace: Some("appns".to_string()),
+            name: Some("http".to_string()),
+            ..TargetRef::default()
+        };
+
+        assert!(tgt.targets_kind::<Server>());
     }
 }

@@ -63,3 +63,12 @@ pub struct ClusterInfo {
     /// The cluster-wide default protocol detection timeout.
     pub default_detect_timeout: time::Duration,
 }
+
+impl ClusterInfo {
+    fn service_account_identity(&self, ns: &str, name: &str) -> String {
+        format!(
+            "{}.{}.serviceaccount.{}.{}",
+            name, ns, self.control_plane_ns, self.identity_domain
+        )
+    }
+}

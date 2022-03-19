@@ -75,37 +75,21 @@ fn client_mtls_authn(
         return Ok(ClientAuthentication::TlsUnauthenticated);
     }
 
-    let mut identities = Vec::new();
+    let ids = mtls
+        .identities
+        .into_iter()
+        .flatten()
+        .map(|s| match s.parse::<IdentityMatch>() {
+            Ok(id) => id,
+            Err(e) => match e {},
+        });
 
-    for id in mtls.identities.into_iter().flatten() {
-        if id == "*" {
-            tracing::debug!(suffix = %id, "Authenticated");
-            identities.push(IdentityMatch::Suffix(vec![]));
-        } else if id.starts_with("*.") {
-            tracing::debug!(suffix = %id, "Authenticated");
-            let mut parts = id.split('.');
-            let star = parts.next();
-            debug_assert_eq!(star, Some("*"));
-            identities.push(IdentityMatch::Suffix(
-                parts.map(|p| p.to_string()).collect::<Vec<_>>(),
-            ));
-        } else {
-            tracing::debug!(%id, "Authenticated");
-            identities.push(IdentityMatch::Exact(id));
-        }
-    }
+    let sa_ids = mtls.service_accounts.into_iter().flatten().map(|sa| {
+        let ns = sa.namespace.as_deref().unwrap_or(namespace);
+        IdentityMatch::Exact(cluster.service_account_identity(ns, &sa.name))
+    });
 
-    for sa in mtls.service_accounts.into_iter().flatten() {
-        let name = sa.name;
-        let ns = sa.namespace.unwrap_or_else(|| namespace.to_string());
-        tracing::debug!(ns = %ns, serviceaccount = %name, "Authenticated");
-        let n = format!(
-            "{}.{}.serviceaccount.identity.{}.{}",
-            name, ns, cluster.control_plane_ns, cluster.identity_domain
-        );
-        identities.push(IdentityMatch::Exact(n));
-    }
-
+    let identities = ids.chain(sa_ids).collect::<Vec<_>>();
     if identities.is_empty() {
         anyhow::bail!("authorization authorizes no clients");
     }

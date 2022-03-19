@@ -21,8 +21,9 @@ impl FromStr for IdentityMatch {
         }
 
         if s.starts_with("*.") {
-            let parts = s.split('.').skip(1).map(|s| s.to_string()).collect();
-            return Ok(IdentityMatch::Suffix(parts));
+            return Ok(IdentityMatch::Suffix(
+                s.split('.').skip(1).map(|s| s.to_string()).collect(),
+            ));
         }
 
         Ok(IdentityMatch::Exact(s.to_string()))
