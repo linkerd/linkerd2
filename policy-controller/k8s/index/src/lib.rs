@@ -124,3 +124,12 @@ impl Index {
         self.namespaces.index.get(ns)
     }
 }
+
+impl ClusterInfo {
+    fn service_account_identity(&self, ns: &str, sa: &str) -> String {
+        format!(
+            "{}.{}.serviceaccount.identity.{}.{}",
+            sa, ns, self.control_plane_ns, self.identity_domain
+        )
+    }
+}
