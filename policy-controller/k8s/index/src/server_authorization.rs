@@ -7,7 +7,7 @@ use linkerd_policy_controller_k8s_api::{self as k8s, policy::server_authorizatio
 
 /// The parts of a `ServerAuthorization` resource that can chagne.
 #[derive(Debug, PartialEq)]
-pub(crate) struct Meta {
+pub(crate) struct ServerAuthz {
     pub authz: ClientAuthorization,
     pub server_selector: ServerSelector,
 }
@@ -19,7 +19,7 @@ pub(crate) enum ServerSelector {
     Selector(k8s::labels::Selector),
 }
 
-impl Meta {
+impl ServerAuthz {
     pub(crate) fn from_resource(
         saz: k8s::policy::ServerAuthorization,
         cluster: &ClusterInfo,

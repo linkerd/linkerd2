@@ -4,14 +4,14 @@ use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port};
 
 /// The parts of a `Server` resource that can change.
 #[derive(Debug, PartialEq)]
-pub(crate) struct Meta {
+pub(crate) struct Server {
     pub labels: k8s::Labels,
     pub pod_selector: k8s::labels::Selector,
     pub port_ref: Port,
     pub protocol: ProxyProtocol,
 }
 
-impl Meta {
+impl Server {
     pub(crate) fn from_resource(srv: k8s::policy::Server, cluster: &ClusterInfo) -> Self {
         Self {
             labels: srv.metadata.labels.into(),

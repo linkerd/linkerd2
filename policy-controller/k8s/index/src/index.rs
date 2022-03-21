@@ -92,8 +92,8 @@ struct PodPortServer {
 #[derive(Debug)]
 struct PolicyIndex {
     cluster_info: Arc<ClusterInfo>,
-    servers: HashMap<String, server::Meta>,
-    server_authorizations: HashMap<String, server_authorization::Meta>,
+    servers: HashMap<String, server::Server>,
+    server_authorizations: HashMap<String, server_authorization::ServerAuthz>,
 }
 
 // === impl Index ===
@@ -176,7 +176,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
     fn apply(&mut self, srv: k8s::policy::Server) {
         let namespace = srv.namespace().expect("server must be namespaced");
         let name = srv.name();
-        let server = server::Meta::from_resource(srv, &self.cluster_info);
+        let server = server::Server::from_resource(srv, &self.cluster_info);
         self.namespaces
             .get_or_default_with_reindex(namespace, |ns| ns.policy.update_server(name, server))
     }
@@ -189,7 +189,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
     fn reset(&mut self, srvs: Vec<k8s::policy::Server>, deleted: HashMap<String, HashSet<String>>) {
         #[derive(Default)]
         struct Ns {
-            added: Vec<(String, server::Meta)>,
+            added: Vec<(String, server::Server)>,
             removed: HashSet<String>,
         }
 
@@ -199,7 +199,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
         for srv in srvs.into_iter() {
             let namespace = srv.namespace().expect("server must be namespaced");
             let name = srv.name();
-            let server = server::Meta::from_resource(srv, &self.cluster_info);
+            let server = server::Server::from_resource(srv, &self.cluster_info);
             updates_by_ns
                 .entry(namespace)
                 .or_default()
@@ -240,7 +240,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
     fn apply(&mut self, saz: k8s::policy::ServerAuthorization) {
         let namespace = saz.namespace().unwrap();
         let name = saz.name();
-        match server_authorization::Meta::from_resource(saz, &self.cluster_info) {
+        match server_authorization::ServerAuthz::from_resource(saz, &self.cluster_info) {
             Ok(meta) => self
                 .namespaces
                 .get_or_default_with_reindex(namespace, move |ns| {
@@ -263,7 +263,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
     ) {
         #[derive(Default)]
         struct Ns {
-            added: Vec<(String, server_authorization::Meta)>,
+            added: Vec<(String, server_authorization::ServerAuthz)>,
             removed: HashSet<String>,
         }
 
@@ -275,7 +275,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
                 .namespace()
                 .expect("serverauthorization must be namespaced");
             let name = saz.name();
-            match server_authorization::Meta::from_resource(saz, &self.cluster_info) {
+            match server_authorization::ServerAuthz::from_resource(saz, &self.cluster_info) {
                 Ok(meta) => updates_by_ns
                     .entry(namespace)
                     .or_default()
@@ -644,7 +644,7 @@ impl PolicyIndex {
         self.servers.is_empty() && self.server_authorizations.is_empty()
     }
 
-    fn update_server(&mut self, name: String, server: server::Meta) -> bool {
+    fn update_server(&mut self, name: String, server: server::Server) -> bool {
         match self.servers.entry(name.clone()) {
             Entry::Vacant(entry) => {
                 entry.insert(server);
@@ -665,7 +665,7 @@ impl PolicyIndex {
     fn update_server_authz(
         &mut self,
         name: String,
-        server_authz: server_authorization::Meta,
+        server_authz: server_authorization::ServerAuthz,
     ) -> bool {
         match self.server_authorizations.entry(name) {
             Entry::Vacant(entry) => {
@@ -682,7 +682,7 @@ impl PolicyIndex {
         true
     }
 
-    fn inbound_server(&self, name: String, server: &server::Meta) -> InboundServer {
+    fn inbound_server(&self, name: String, server: &server::Server) -> InboundServer {
         let authorizations = self.client_authzs(&name, server);
         InboundServer {
             name,
@@ -694,7 +694,7 @@ impl PolicyIndex {
     fn client_authzs(
         &self,
         server_name: &str,
-        server: &server::Meta,
+        server: &server::Server,
     ) -> HashMap<String, ClientAuthorization> {
         self.server_authorizations
             .iter()
