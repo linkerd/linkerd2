@@ -443,14 +443,14 @@ impl Pod {
     fn reindex_servers(&mut self, policy: &PolicyIndex) {
         // Keep track of the ports that are already known in the pod so that, after applying server
         // matches, we can ensure remaining ports are set to the default policy.
-        let mut orig_ports = self.port_servers.keys().copied().collect::<HashSet<_>>();
+        let mut unmatched_ports = self.port_servers.keys().copied().collect::<HashSet<_>>();
 
         // Keep track of which ports have been matched to servers to that we can detect when
         // multiple servers match a single port.
         //
         // We start with capacity for the known ports on the pod; but this can grow if servers
         // select additional ports.
-        let mut matched_ports = HashMap::with_capacity(orig_ports.len());
+        let mut matched_ports = HashMap::with_capacity(unmatched_ports.len());
 
         for (srvname, server) in policy.servers.iter() {
             if server.pod_selector.matches(&self.meta.labels) {
@@ -471,13 +471,13 @@ impl Pod {
                     self.update_server(port, srvname, s);
 
                     matched_ports.insert(port, srvname.clone());
-                    orig_ports.remove(&port);
+                    unmatched_ports.remove(&port);
                 }
             }
         }
 
         // Reset all remaining ports to the default policy.
-        for port in orig_ports.into_iter() {
+        for port in unmatched_ports.into_iter() {
             self.set_default_server(port, &policy.cluster_info);
         }
     }
