@@ -266,7 +266,7 @@ fn to_authz(
             let identities = identities
                 .iter()
                 .filter_map(|i| match i {
-                    IdentityMatch::Name(n) => Some(proto::Identity {
+                    IdentityMatch::Exact(n) => Some(proto::Identity {
                         name: n.to_string(),
                     }),
                     _ => None,
