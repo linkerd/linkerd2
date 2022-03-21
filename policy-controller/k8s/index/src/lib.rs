@@ -64,7 +64,7 @@ pub struct ClusterInfo {
 impl ClusterInfo {
     fn service_account_identity(&self, ns: &str, sa: &str) -> String {
         format!(
-            "{}.{}.serviceaccount.{}.{}",
+            "{}.{}.serviceaccount.identity.{}.{}",
             sa, ns, self.control_plane_ns, self.identity_domain
         )
     }
