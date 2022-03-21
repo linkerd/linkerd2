@@ -64,13 +64,13 @@ struct Pod {
     ///
     /// A pod may have multiple ports with the same name. E.g., each container
     /// may have its own `admin-http` port.
-    port_names: HashMap<String, HashSet<u16>>,
+    port_names: HashMap<String, pod::PortSet>,
 
     /// All known TCP server ports. This may be updated by
     /// `Namespace::reindex`--when a port is selected by a `Server`--or by
     /// `Namespace::get_pod_server` when a client discovers a port that has no
     /// configured server (and i.e. uses the default policy).
-    port_servers: HashMap<u16, PodPortServer>,
+    port_servers: pod::PortMap<PodPortServer>,
 }
 
 /// Holds the state of a single port on a pod.
@@ -395,14 +395,14 @@ impl PodIndex {
         &mut self,
         name: String,
         meta: pod::Meta,
-        port_names: HashMap<String, HashSet<u16>>,
+        port_names: HashMap<String, pod::PortSet>,
     ) -> Result<Option<&mut Pod>> {
         let pod = match self.by_name.entry(name.clone()) {
             Entry::Vacant(entry) => entry.insert(Pod {
                 name,
                 meta,
                 port_names,
-                port_servers: HashMap::default(),
+                port_servers: pod::PortMap::default(),
             }),
 
             Entry::Occupied(entry) => {
@@ -443,14 +443,17 @@ impl Pod {
     fn reindex_servers(&mut self, policy: &PolicyIndex) {
         // Keep track of the ports that are already known in the pod so that, after applying server
         // matches, we can ensure remaining ports are set to the default policy.
-        let mut unmatched_ports = self.port_servers.keys().copied().collect::<HashSet<_>>();
+        let mut unmatched_ports = self.port_servers.keys().copied().collect::<pod::PortSet>();
 
         // Keep track of which ports have been matched to servers to that we can detect when
         // multiple servers match a single port.
         //
         // We start with capacity for the known ports on the pod; but this can grow if servers
         // select additional ports.
-        let mut matched_ports = HashMap::with_capacity(unmatched_ports.len());
+        let mut matched_ports = pod::PortMap::with_capacity_and_hasher(
+            unmatched_ports.len(),
+            std::hash::BuildHasherDefault::<pod::PortHasher>::default(),
+        );
 
         for (srvname, server) in policy.servers.iter() {
             if server.pod_selector.matches(&self.meta.labels) {
