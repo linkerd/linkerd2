@@ -19,6 +19,7 @@ use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, Resou
 use parking_lot::RwLock;
 use std::{collections::hash_map::Entry, sync::Arc};
 use tokio::sync::watch;
+use tracing::instrument;
 
 pub type SharedIndex = Arc<RwLock<Index>>;
 
@@ -106,8 +107,8 @@ struct PolicyIndex {
     namespace: String,
     cluster_info: Arc<ClusterInfo>,
 
-    servers: HashMap<String, server::Meta>,
-    server_authorizations: HashMap<String, server_authorization::Meta>,
+    servers: HashMap<String, server::Server>,
+    server_authorizations: HashMap<String, server_authorization::ServerAuthz>,
 
     authorization_policies: HashMap<String, authorization_policy::Spec>,
 }
@@ -219,7 +220,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
     fn apply(&mut self, srv: k8s::policy::Server) {
         let namespace = srv.namespace().expect("server must be namespaced");
         let name = srv.name();
-        let server = server::Meta::from_resource(srv, &self.cluster_info);
+        let server = server::Server::from_resource(srv, &self.cluster_info);
         self.ns_or_default_with_reindex(namespace, |ns| ns.policy.update_server(name, server))
     }
 
@@ -230,7 +231,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
     fn reset(&mut self, srvs: Vec<k8s::policy::Server>, deleted: HashMap<String, HashSet<String>>) {
         #[derive(Default)]
         struct Ns {
-            added: Vec<(String, server::Meta)>,
+            added: Vec<(String, server::Server)>,
             removed: HashSet<String>,
         }
 
@@ -240,7 +241,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
         for srv in srvs.into_iter() {
             let namespace = srv.namespace().expect("server must be namespaced");
             let name = srv.name();
-            let server = server::Meta::from_resource(srv, &self.cluster_info);
+            let server = server::Server::from_resource(srv, &self.cluster_info);
             updates_by_ns
                 .entry(namespace)
                 .or_default()
@@ -252,16 +253,26 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
         }
 
         for (namespace, Ns { added, removed }) in updates_by_ns.into_iter() {
-            self.ns_or_default_with_reindex(namespace, |ns| {
-                let mut changed = !removed.is_empty();
-                for name in removed.into_iter() {
-                    ns.policy.servers.remove(&name);
-                }
-                for (name, server) in added.into_iter() {
-                    changed = ns.policy.update_server(name, server) || changed;
-                }
-                changed
-            })
+            if added.is_empty() {
+                self.ns_with_reindex(namespace, |ns| {
+                    let changed = !removed.is_empty();
+                    for name in removed.into_iter() {
+                        ns.policy.servers.remove(&name);
+                    }
+                    changed
+                });
+            } else {
+                self.ns_or_default_with_reindex(namespace, |ns| {
+                    let mut changed = !removed.is_empty();
+                    for name in removed.into_iter() {
+                        ns.policy.servers.remove(&name);
+                    }
+                    for (name, server) in added.into_iter() {
+                        changed = ns.policy.update_server(name, server) || changed;
+                    }
+                    changed
+                });
+            }
         }
     }
 }
@@ -270,7 +281,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
     fn apply(&mut self, saz: k8s::policy::ServerAuthorization) {
         let namespace = saz.namespace().unwrap();
         let name = saz.name();
-        match server_authorization::Meta::from_resource(saz, &self.cluster_info) {
+        match server_authorization::ServerAuthz::from_resource(saz, &self.cluster_info) {
             Ok(meta) => self.ns_or_default_with_reindex(namespace, move |ns| {
                 ns.policy.update_server_authz(name, meta)
             }),
@@ -291,7 +302,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
     ) {
         #[derive(Default)]
         struct Ns {
-            added: Vec<(String, server_authorization::Meta)>,
+            added: Vec<(String, server_authorization::ServerAuthz)>,
             removed: HashSet<String>,
         }
 
@@ -303,7 +314,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
                 .namespace()
                 .expect("serverauthorization must be namespaced");
             let name = saz.name();
-            match server_authorization::Meta::from_resource(saz, &self.cluster_info) {
+            match server_authorization::ServerAuthz::from_resource(saz, &self.cluster_info) {
                 Ok(meta) => updates_by_ns
                     .entry(namespace)
                     .or_default()
@@ -556,23 +567,45 @@ impl PodIndex {
 
 impl Pod {
     /// Determines the policies for ports on this pod.
+    #[instrument(skip_all, name = "reindex", fields(pod = %self.name))]
     fn reindex_servers(&mut self, policy: &PolicyIndex, authentications: &AuthenticationNsIndex) {
-        // Keep track of which ports were already indexed to determine whether
-        // it needs to be reset to the default policy.
-        let mut ports = self.port_servers.keys().copied().collect::<HashSet<_>>();
+        // Keep track of the ports that are already known in the pod so that, after applying server
+        // matches, we can ensure remaining ports are set to the default policy.
+        let mut unmatched_ports = self.port_servers.keys().copied().collect::<HashSet<_>>();
+
+        // Keep track of which ports have been matched to servers to that we can detect when
+        // multiple servers match a single port.
+        //
+        // We start with capacity for the known ports on the pod; but this can grow if servers
+        // select additional ports.
+        let mut matched_ports = HashMap::with_capacity(unmatched_ports.len());
 
         for (srvname, server) in policy.servers.iter() {
             if server.pod_selector.matches(&self.meta.labels) {
                 for port in self.select_ports(&server.port_ref).into_iter() {
+                    // If the port is already matched to a server, then log a warning and skip
+                    // updating it so it doesn't flap between servers.
+                    if let Some(prior) = matched_ports.get(&port) {
+                        tracing::warn!(
+                            port = %port,
+                            server = %prior,
+                            conflict = %srvname,
+                            "Port already matched by another server; skipping"
+                        );
+                        continue;
+                    }
+
                     let s = policy.inbound_server(srvname.clone(), server, authentications);
                     self.update_server(port, srvname, s);
-                    ports.remove(&port);
+
+                    matched_ports.insert(port, srvname.clone());
+                    unmatched_ports.remove(&port);
                 }
             }
         }
 
         // Reset all remaining ports to the default policy.
-        for port in ports.into_iter() {
+        for port in unmatched_ports.into_iter() {
             self.set_default_server(port, &policy.cluster_info);
         }
     }
@@ -597,6 +630,7 @@ impl Pod {
 
                 // Avoid sending redundant updates.
                 if ps.name.as_deref() == Some(name) && *ps.rx.borrow() == server {
+                    tracing::trace!(port = %port, server = %name, "Skipped redundant server update");
                     return;
                 }
 
@@ -611,12 +645,14 @@ impl Pod {
                 ps.tx.send(server).expect("a receiver is held by the index");
             }
         }
+
+        tracing::debug!(port = %port, server = %name, "Updated server");
     }
 
     /// Updates a pod-port to use the given named server.
     fn set_default_server(&mut self, port: u16, config: &ClusterInfo) {
         let server = Self::default_inbound_server(port, &self.meta.settings, config);
-        tracing::debug!(pod = %self.name, %port, server = %config.default_policy, "Setting default server");
+        tracing::debug!(%port, server = %config.default_policy, "Setting default server");
         match self.port_servers.entry(port) {
             Entry::Vacant(entry) => {
                 let (tx, rx) = watch::channel(server);
@@ -736,7 +772,7 @@ impl PolicyIndex {
         self.servers.is_empty() && self.server_authorizations.is_empty()
     }
 
-    fn update_server(&mut self, name: String, server: server::Meta) -> bool {
+    fn update_server(&mut self, name: String, server: server::Server) -> bool {
         match self.servers.entry(name.clone()) {
             Entry::Vacant(entry) => {
                 entry.insert(server);
@@ -757,7 +793,7 @@ impl PolicyIndex {
     fn update_server_authz(
         &mut self,
         name: String,
-        server_authz: server_authorization::Meta,
+        server_authz: server_authorization::ServerAuthz,
     ) -> bool {
         match self.server_authorizations.entry(name) {
             Entry::Vacant(entry) => {
@@ -777,7 +813,7 @@ impl PolicyIndex {
     fn inbound_server(
         &self,
         name: String,
-        server: &server::Meta,
+        server: &server::Server,
         authentications: &AuthenticationNsIndex,
     ) -> InboundServer {
         let authorizations = self.client_authzs(&name, server, authentications);
@@ -791,7 +827,7 @@ impl PolicyIndex {
     fn client_authzs(
         &self,
         server_name: &str,
-        server: &server::Meta,
+        server: &server::Server,
         authentications: &AuthenticationNsIndex,
     ) -> HashMap<String, ClientAuthorization> {
         let mut authzs = HashMap::default();
