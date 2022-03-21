@@ -6,7 +6,10 @@ use linkerd_policy_controller_core::{
     Ipv6Net, NetworkMatch, ProxyProtocol,
 };
 use linkerd_policy_controller_k8s_api::{
-    self as k8s, api::core::v1::ContainerPort, policy::server::Port, ResourceExt,
+    self as k8s,
+    api::core::v1::ContainerPort,
+    policy::{server::Port, TargetRef},
+    ResourceExt,
 };
 use tokio::time;
 
@@ -343,6 +346,92 @@ fn authenticated_annotated() {
     }
 }
 
+#[test]
+fn links_authorization_policy_with_mtls_name() {
+    let test = TestConfig::default();
+
+    let mut pod = mk_pod("ns-0", "pod-0", Some(("container-0", None)));
+    pod.labels_mut()
+        .insert("app".to_string(), "app-0".to_string());
+    test.index.write().apply(pod);
+
+    let mut rx = test
+        .index
+        .write()
+        .pod_server_rx("ns-0", "pod-0", 8080)
+        .expect("pod-0.ns-0 should exist");
+    assert_eq!(*rx.borrow_and_update(), test.default_server());
+
+    test.index.write().apply(mk_server(
+        "ns-0",
+        "srv-8080",
+        Port::Number(8080),
+        None,
+        Some(("app", "app-0")),
+        Some(k8s::policy::server::ProxyProtocol::Http1),
+    ));
+    assert!(rx.has_changed().unwrap());
+    assert_eq!(
+        *rx.borrow_and_update(),
+        InboundServer {
+            name: "srv-8080".to_string(),
+            authorizations: Default::default(),
+            protocol: ProxyProtocol::Http1,
+        },
+    );
+
+    let authz = ClientAuthorization {
+        networks: vec!["10.0.0.0/8".parse::<IpNet>().unwrap().into()],
+        authentication: ClientAuthentication::TlsAuthenticated(vec![IdentityMatch::Exact(
+            "foo.bar".to_string(),
+        )]),
+    };
+    test.index.write().apply(mk_authorization_policy(
+        "ns-0",
+        "authz-foo",
+        "srv-8080",
+        vec![
+            TargetRef {
+                group: Some("policy.linkerd.io".to_string()),
+                kind: "NetworkAuthentication".to_string(),
+                namespace: None,
+                name: Some("net-foo".to_string()),
+            },
+            TargetRef {
+                group: Some("policy.linkerd.io".to_string()),
+                kind: "MeshTLSAuthentication".to_string(),
+                namespace: Some("ns-1".to_string()),
+                name: Some("mtls-bar".to_string()),
+            },
+        ],
+    ));
+    test.index.write().apply(mk_network_authentication(
+        "ns-0".to_string(),
+        "net-foo".to_string(),
+        vec![k8s::policy::network_authentication::Network {
+            cidr: "10.0.0.0/8".parse().unwrap(),
+            except: None,
+        }],
+    ));
+    test.index.write().apply(mk_meshtls_authentication(
+        "ns-1".to_string(),
+        "mtls-bar".to_string(),
+        Some("foo.bar".to_string()),
+        None,
+    ));
+    assert!(rx.has_changed().unwrap());
+    assert_eq!(
+        *rx.borrow(),
+        InboundServer {
+            name: "srv-8080".to_string(),
+            authorizations: Some(("authorizationpolicy:authz-foo".to_string(), authz))
+                .into_iter()
+                .collect(),
+            protocol: ProxyProtocol::Http1,
+        },
+    );
+}
+
 // === Helpers ===
 
 const DEFAULTS: [DefaultPolicy; 5] = [
@@ -366,21 +455,21 @@ const DEFAULTS: [DefaultPolicy; 5] = [
 ];
 
 fn mk_pod(
-    ns: impl Into<String>,
-    name: impl Into<String>,
-    containers: impl IntoIterator<Item = (impl Into<String>, impl IntoIterator<Item = ContainerPort>)>,
+    ns: impl ToString,
+    name: impl ToString,
+    containers: impl IntoIterator<Item = (impl ToString, impl IntoIterator<Item = ContainerPort>)>,
 ) -> k8s::Pod {
     k8s::Pod {
         metadata: k8s::ObjectMeta {
-            namespace: Some(ns.into()),
-            name: Some(name.into()),
+            namespace: Some(ns.to_string()),
+            name: Some(name.to_string()),
             ..Default::default()
         },
         spec: Some(k8s::api::core::v1::PodSpec {
             containers: containers
                 .into_iter()
                 .map(|(name, ports)| k8s::api::core::v1::Container {
-                    name: name.into(),
+                    name: name.to_string(),
                     ports: Some(ports.into_iter().collect()),
                     ..Default::default()
                 })
@@ -392,8 +481,8 @@ fn mk_pod(
 }
 
 fn mk_server(
-    ns: impl Into<String>,
-    name: impl Into<String>,
+    ns: impl ToString,
+    name: impl ToString,
     port: Port,
     srv_labels: impl IntoIterator<Item = (&'static str, &'static str)>,
     pod_labels: impl IntoIterator<Item = (&'static str, &'static str)>,
@@ -401,8 +490,8 @@ fn mk_server(
 ) -> k8s::policy::Server {
     k8s::policy::Server {
         metadata: k8s::ObjectMeta {
-            namespace: Some(ns.into()),
-            name: Some(name.into()),
+            namespace: Some(ns.to_string()),
+            name: Some(name.to_string()),
             labels: Some(
                 srv_labels
                     .into_iter()
@@ -420,15 +509,15 @@ fn mk_server(
 }
 
 fn mk_server_authz(
-    ns: impl Into<String>,
-    name: impl Into<String>,
+    ns: impl ToString,
+    name: impl ToString,
     selector: ServerSelector,
     client: k8s::policy::server_authorization::Client,
 ) -> k8s::policy::ServerAuthorization {
     k8s::policy::ServerAuthorization {
         metadata: k8s::ObjectMeta {
-            namespace: Some(ns.into()),
-            name: Some(name.into()),
+            namespace: Some(ns.to_string()),
+            name: Some(name.to_string()),
             ..Default::default()
         },
         spec: k8s::policy::ServerAuthorizationSpec {
@@ -443,6 +532,76 @@ fn mk_server_authz(
                 },
             },
             client,
+        },
+    }
+}
+
+fn mk_authorization_policy(
+    ns: impl ToString,
+    name: impl ToString,
+    server: impl ToString,
+    authns: impl IntoIterator<Item = TargetRef>,
+) -> k8s::policy::AuthorizationPolicy {
+    k8s::policy::AuthorizationPolicy {
+        metadata: k8s::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some(name.to_string()),
+            ..Default::default()
+        },
+        spec: k8s::policy::AuthorizationPolicySpec {
+            target_ref: TargetRef {
+                group: Some("policy.linkerd.io".to_string()),
+                kind: "Server".to_string(),
+                name: Some(server.to_string()),
+                namespace: None,
+            },
+            required_authentication_refs: authns.into_iter().collect(),
+        },
+    }
+}
+
+fn mk_meshtls_authentication(
+    ns: impl ToString,
+    name: impl ToString,
+    identities: impl IntoIterator<Item = String>,
+    refs: impl IntoIterator<Item = TargetRef>,
+) -> k8s::policy::MeshTLSAuthentication {
+    let identities = identities.into_iter().collect::<Vec<_>>();
+    let identity_refs = refs.into_iter().collect::<Vec<_>>();
+    k8s::policy::MeshTLSAuthentication {
+        metadata: k8s::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some(name.to_string()),
+            ..Default::default()
+        },
+        spec: k8s::policy::MeshTLSAuthenticationSpec {
+            identities: if identities.is_empty() {
+                None
+            } else {
+                Some(identities)
+            },
+            identity_refs: if identity_refs.is_empty() {
+                None
+            } else {
+                Some(identity_refs)
+            },
+        },
+    }
+}
+
+fn mk_network_authentication(
+    ns: impl ToString,
+    name: impl ToString,
+    networks: impl IntoIterator<Item = k8s::policy::network_authentication::Network>,
+) -> k8s::policy::NetworkAuthentication {
+    k8s::policy::NetworkAuthentication {
+        metadata: k8s::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some(name.to_string()),
+            ..Default::default()
+        },
+        spec: k8s::policy::NetworkAuthenticationSpec {
+            networks: networks.into_iter().collect(),
         },
     }
 }
