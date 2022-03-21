@@ -83,9 +83,7 @@ spec:
                         type: string
                       name:
                         description: >-
-                          Name is the name of the referent. When unspecified, this authentication
-                          refers to all resources of the specified Group and Kind in the specified
-                          namespace.
+                          Name is the name of the referent.
                         maxLength: 253
                         minLength: 1
                         type: string

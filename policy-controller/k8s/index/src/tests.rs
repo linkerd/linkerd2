@@ -395,13 +395,13 @@ fn links_authorization_policy_with_mtls_name() {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: "NetworkAuthentication".to_string(),
                 namespace: None,
-                name: Some("net-foo".to_string()),
+                name: "net-foo".to_string(),
             },
             TargetRef {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: "MeshTLSAuthentication".to_string(),
                 namespace: Some("ns-1".to_string()),
-                name: Some("mtls-bar".to_string()),
+                name: "mtls-bar".to_string(),
             },
         ],
     ));
@@ -552,7 +552,7 @@ fn mk_authorization_policy(
             target_ref: TargetRef {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: "Server".to_string(),
-                name: Some(server.to_string()),
+                name: server.to_string(),
                 namespace: None,
             },
             required_authentication_refs: authns.into_iter().collect(),

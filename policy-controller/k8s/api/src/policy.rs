@@ -19,11 +19,19 @@ pub use self::{
 pub struct TargetRef {
     pub group: Option<String>,
     pub kind: String,
-    pub name: Option<String>,
+    pub name: String,
     pub namespace: Option<String>,
 }
 
 impl TargetRef {
+    pub fn group_kind(&self) -> String {
+        if let Some(g) = self.group.as_deref() {
+            format!("{}.{}", g, self.kind)
+        } else {
+            self.kind.clone()
+        }
+    }
+
     /// Checks whether the target references the given resource type
     pub fn targets_kind<T>(&self) -> bool
     where
@@ -62,13 +70,11 @@ impl TargetRef {
             return false;
         }
 
-        if let Some(name) = self.name.as_deref() {
-            match resource.meta().name.as_deref() {
-                None => return false,
-                Some(rname) => {
-                    if !rname.eq_ignore_ascii_case(name) {
-                        return false;
-                    }
+        match resource.meta().name.as_deref() {
+            None => return false,
+            Some(rname) => {
+                if !self.name.eq_ignore_ascii_case(rname) {
+                    return false;
                 }
             }
         }
@@ -91,13 +97,11 @@ impl TargetRef {
             return false;
         }
 
-        if let Some(name) = self.name.as_deref() {
-            match resource.meta().name.as_deref() {
-                None => return false,
-                Some(rname) => {
-                    if !rname.eq_ignore_ascii_case(name) {
-                        return false;
-                    }
+        match resource.meta().name.as_deref() {
+            None => return false,
+            Some(rname) => {
+                if !self.name.eq_ignore_ascii_case(rname) {
+                    return false;
                 }
             }
         }
@@ -115,7 +119,7 @@ mod tests {
     fn targets_namespace() {
         let t = TargetRef {
             kind: "Namespace".to_string(),
-            name: Some("appns".to_string()),
+            name: "appns".to_string(),
             ..TargetRef::default()
         };
         assert!(t.targets_kind::<Namespace>());
@@ -127,28 +131,24 @@ mod tests {
             TargetRef {
                 kind: "ServiceAccount".to_string(),
                 namespace: Some("appns".to_string()),
-                name: Some("default".to_string()),
+                name: "default".to_string(),
                 ..TargetRef::default()
             },
             TargetRef {
                 group: Some("core".to_string()),
                 kind: "ServiceAccount".to_string(),
                 namespace: Some("appns".to_string()),
-                name: Some("default".to_string()),
+                name: "default".to_string(),
             },
             TargetRef {
                 group: Some("CORE".to_string()),
                 kind: "SERVICEACCOUNT".to_string(),
                 namespace: Some("APPNS".to_string()),
-                name: Some("DEFAULT".to_string()),
+                name: "DEFAULT".to_string(),
             },
             TargetRef {
                 kind: "ServiceAccount".to_string(),
-                name: Some("default".to_string()),
-                ..TargetRef::default()
-            },
-            TargetRef {
-                kind: "ServiceAccount".to_string(),
+                name: "default".to_string(),
                 ..TargetRef::default()
             },
         ] {
@@ -187,7 +187,7 @@ mod tests {
 
         let tgt = TargetRef {
             kind: "ServiceAccount".to_string(),
-            name: Some("default".to_string()),
+            name: "default".to_string(),
             ..TargetRef::default()
         };
         assert!(
@@ -212,7 +212,7 @@ mod tests {
             group: Some("policy.linkerd.io".to_string()),
             kind: "Server".to_string(),
             namespace: Some("appns".to_string()),
-            name: Some("http".to_string()),
+            name: "http".to_string(),
         };
 
         assert!(tgt.targets_kind::<Server>());

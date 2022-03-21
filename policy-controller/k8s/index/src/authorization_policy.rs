@@ -57,47 +57,25 @@ impl Target {
 }
 
 fn target(t: TargetRef) -> Result<Target> {
-    if let Some(name) = t.name {
-        if let Some(group) = t.group {
-            if group.eq_ignore_ascii_case("policy.linkerd.io")
-                && t.kind.eq_ignore_ascii_case("Server")
-            {
-                return Ok(Target::Server(name));
-            }
-
-            anyhow::bail!("unsupported authorization target: {}.{}", group, t.kind);
-        }
-
-        anyhow::bail!("unsupported authorization target: {}", t.kind);
+    if t.targets_kind::<k8s::policy::Server>() {
+        return Ok(Target::Server(t.name));
     }
 
-    anyhow::bail!("authorization targets must have a 'name'");
+    anyhow::bail!("unsupported authorization target type: {}", t.group_kind());
 }
 
 fn authentication_ref(t: TargetRef) -> Result<AuthenticationTarget> {
-    if let Some(name) = t.name {
-        if let Some(group) = t.group {
-            if group.eq_ignore_ascii_case("policy.linkerd.io") {
-                if t.kind.eq_ignore_ascii_case("NetworkAuthentication") {
-                    return Ok(AuthenticationTarget::Network {
-                        namespace: t.namespace,
-                        name,
-                    });
-                }
-
-                if t.kind.eq_ignore_ascii_case("MeshTLSAuthentication") {
-                    return Ok(AuthenticationTarget::MeshTLS {
-                        namespace: t.namespace,
-                        name,
-                    });
-                }
-            }
-
-            anyhow::bail!("unsupported authentication target: {}.{}", group, t.kind);
-        }
-
-        anyhow::bail!("unsupported authentication target: {}", t.kind);
+    if t.targets_kind::<k8s::policy::MeshTLSAuthentication>() {
+        Ok(AuthenticationTarget::MeshTLS {
+            namespace: t.namespace,
+            name: t.name,
+        })
+    } else if t.targets_kind::<k8s::policy::NetworkAuthentication>() {
+        Ok(AuthenticationTarget::Network {
+            namespace: t.namespace,
+            name: t.name,
+        })
+    } else {
+        anyhow::bail!("unsupported authentication target: {}", t.group_kind());
     }
-
-    anyhow::bail!("authentication targets must have a 'name'");
 }
