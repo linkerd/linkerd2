@@ -1,5 +1,5 @@
 use crate::DefaultPolicy;
-use ahash::{AHashMap as HashMap, AHashSet as HashSet};
+use ahash::AHashMap as HashMap;
 use anyhow::{bail, Context, Result};
 use linkerd_policy_controller_k8s_api as k8s;
 
@@ -16,14 +16,36 @@ pub(crate) struct Meta {
 /// Per-pod settings, as configured by the pod's annotations.
 #[derive(Debug, Default, PartialEq)]
 pub(crate) struct Settings {
-    pub require_id_ports: HashSet<u16>,
-    pub opaque_ports: HashSet<u16>,
+    pub require_id_ports: PortSet,
+    pub opaque_ports: PortSet,
     pub default_policy: Option<DefaultPolicy>,
 }
 
+/// A `HashSet` specialized for ports.
+///
+/// Because ports are `u16` values, this type avoids the overhead of actually
+/// hashing ports.
+pub(crate) type PortSet = std::collections::HashSet<u16, std::hash::BuildHasherDefault<PortHasher>>;
+
+/// A `HashMap` specialized for ports.
+///
+/// Because ports are `u16` values, this type avoids the overhead of actually
+/// hashing ports.
+pub(crate) type PortMap<V> =
+    std::collections::HashMap<u16, V, std::hash::BuildHasherDefault<PortHasher>>;
+
+/// A hasher for ports.
+///
+/// Because ports are single `u16` values, we don't have to hash them; we can just use
+/// the integer values as hashes directly.
+///
+/// Borrowed from the proxy.
+#[derive(Default)]
+pub(crate) struct PortHasher(u16);
+
 /// Gets the set of named TCP ports from a pod spec.
-pub(crate) fn tcp_port_names(spec: Option<k8s::PodSpec>) -> HashMap<String, HashSet<u16>> {
-    let mut port_names = HashMap::default();
+pub(crate) fn tcp_port_names(spec: Option<k8s::PodSpec>) -> HashMap<String, PortSet> {
+    let mut port_names = HashMap::<String, PortSet>::default();
     if let Some(spec) = spec {
         for container in spec.containers.into_iter() {
             if let Some(ports) = container.ports {
@@ -32,7 +54,7 @@ pub(crate) fn tcp_port_names(spec: Option<k8s::PodSpec>) -> HashMap<String, Hash
                         if let Some(name) = port.name {
                             port_names
                                 .entry(name)
-                                .or_insert_with(HashSet::new)
+                                .or_default()
                                 .insert(port.container_port as u16);
                         }
                     }
@@ -102,7 +124,7 @@ fn default_policy(
 fn ports_annotation(
     annotations: &std::collections::BTreeMap<String, String>,
     annotation: &str,
-) -> HashSet<u16> {
+) -> PortSet {
     annotations
         .get(annotation)
         .map(|spec| {
@@ -115,8 +137,8 @@ fn ports_annotation(
 }
 
 /// Read a comma-separated of ports or port ranges from the given string.
-fn parse_portset(s: &str) -> Result<HashSet<u16>> {
-    let mut ports = HashSet::new();
+fn parse_portset(s: &str) -> Result<PortSet> {
+    let mut ports = PortSet::default();
 
     for spec in s.split(',') {
         match spec.split_once('-') {
@@ -144,6 +166,24 @@ fn parse_portset(s: &str) -> Result<HashSet<u16>> {
     }
 
     Ok(ports)
+}
+
+// === impl PortHasher ===
+
+impl std::hash::Hasher for PortHasher {
+    fn write(&mut self, _: &[u8]) {
+        unreachable!("hashing a `u16` calls `write_u16`");
+    }
+
+    #[inline]
+    fn write_u16(&mut self, port: u16) {
+        self.0 = port;
+    }
+
+    #[inline]
+    fn finish(&self) -> u64 {
+        self.0 as u64
+    }
 }
 
 #[cfg(test)]
