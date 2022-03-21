@@ -1,32 +1,28 @@
-use crate::{index::PodSettings, DefaultPolicy, Index};
+use crate::DefaultPolicy;
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{bail, Context, Result};
-use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
+use linkerd_policy_controller_k8s_api as k8s;
 
-impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
-    fn apply(&mut self, pod: k8s::Pod) {
-        let namespace = pod.namespace().unwrap();
-        let name = pod.name();
-        let settings = pod_settings(&pod.metadata);
+/// Holds pod metadata/config that can change.
+#[derive(Debug, PartialEq)]
+pub(crate) struct Meta {
+    /// The pod's labels. Used by `Server` pod selectors.
+    pub labels: k8s::Labels,
 
-        if let Err(error) = self.apply_pod(
-            namespace,
-            name,
-            pod.metadata.labels.into(),
-            tcp_port_names(pod.spec),
-            settings,
-        ) {
-            tracing::error!(%error, "Illegal pod update");
-        }
-    }
+    // Pod-specific settings (i.e., derived from annotations).
+    pub settings: Settings,
+}
 
-    fn delete(&mut self, namespace: String, name: String) {
-        self.delete_pod(namespace, &name);
-    }
+/// Per-pod settings, as configured by the pod's annotations.
+#[derive(Debug, Default, PartialEq)]
+pub(crate) struct Settings {
+    pub require_id_ports: HashSet<u16>,
+    pub opaque_ports: HashSet<u16>,
+    pub default_policy: Option<DefaultPolicy>,
 }
 
 /// Gets the set of named TCP ports from a pod spec.
-fn tcp_port_names(spec: Option<k8s::PodSpec>) -> HashMap<String, HashSet<u16>> {
+pub(crate) fn tcp_port_names(spec: Option<k8s::PodSpec>) -> HashMap<String, HashSet<u16>> {
     let mut port_names = HashMap::default();
     if let Some(spec) = spec {
         for container in spec.containers.into_iter() {
@@ -47,32 +43,45 @@ fn tcp_port_names(spec: Option<k8s::PodSpec>) -> HashMap<String, HashSet<u16>> {
     port_names
 }
 
-/// Reads pod settings from the pod metadata including:
-///
-/// - Opaque ports
-/// - Ports that require identity
-/// - The pod's default policy
-fn pod_settings(meta: &k8s::ObjectMeta) -> PodSettings {
-    let anns = match meta.annotations.as_ref() {
-        None => return PodSettings::default(),
-        Some(anns) => anns,
-    };
+impl Meta {
+    pub(crate) fn from_metadata(meta: k8s::ObjectMeta) -> Self {
+        let settings = Settings::from_metadata(&meta);
+        tracing::trace!(?settings);
+        Self {
+            settings,
+            labels: meta.labels.into(),
+        }
+    }
+}
 
-    let default_policy = default_policy(anns).unwrap_or_else(|error| {
-        tracing::warn!(%error, "invalid default policy annotation value");
-        None
-    });
+impl Settings {
+    /// Reads pod settings from the pod metadata including:
+    ///
+    /// - Opaque ports
+    /// - Ports that require identity
+    /// - The pod's default policy
+    pub(crate) fn from_metadata(meta: &k8s::ObjectMeta) -> Self {
+        let anns = match meta.annotations.as_ref() {
+            None => return Self::default(),
+            Some(anns) => anns,
+        };
 
-    let opaque_ports = ports_annotation(anns, "config.linkerd.io/opaque-ports");
-    let require_id_ports = ports_annotation(
-        anns,
-        "config.linkerd.io/proxy-require-identity-inbound-ports",
-    );
+        let default_policy = default_policy(anns).unwrap_or_else(|error| {
+            tracing::warn!(%error, "invalid default policy annotation value");
+            None
+        });
 
-    PodSettings {
-        default_policy,
-        opaque_ports,
-        require_id_ports,
+        let opaque_ports = ports_annotation(anns, "config.linkerd.io/opaque-ports");
+        let require_id_ports = ports_annotation(
+            anns,
+            "config.linkerd.io/proxy-require-identity-inbound-ports",
+        );
+
+        Self {
+            default_policy,
+            opaque_ports,
+            require_id_ports,
+        }
     }
 }
 

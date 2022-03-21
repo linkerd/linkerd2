@@ -15,6 +15,11 @@ type fallbackProfileListener struct {
 }
 
 type fallbackChildListener struct {
+	// state is only referenced from the outer struct primaryProfileListener
+	// or backupProfileListener (e.g. listener.state where listener's type is
+	// _not_ this struct). structcheck issues a false positive for this field
+	// as it does not think it's used.
+	//nolint:structcheck
 	state  *sp.ServiceProfile
 	parent *fallbackProfileListener
 }

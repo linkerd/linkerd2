@@ -1,32 +1,39 @@
-use crate::Index;
+use crate::ClusterInfo;
 use linkerd_policy_controller_core::ProxyProtocol;
-use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
+use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port};
 
-impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
-    fn apply(&mut self, server: k8s::policy::Server) {
-        let namespace = server.namespace().unwrap();
-        self.apply_server(
-            namespace,
-            server.name(),
-            server.metadata.labels.into(),
-            server.spec.pod_selector,
-            server.spec.port,
-            proxy_protocol(server.spec.proxy_protocol),
-        );
-    }
+/// The parts of a `Server` resource that can change.
+#[derive(Debug, PartialEq)]
+pub(crate) struct Meta {
+    pub labels: k8s::Labels,
+    pub pod_selector: k8s::labels::Selector,
+    pub port_ref: Port,
+    pub protocol: ProxyProtocol,
+}
 
-    fn delete(&mut self, namespace: String, name: String) {
-        self.delete_server(namespace, &name);
+impl Meta {
+    pub(crate) fn from_resource(srv: k8s::policy::Server, cluster: &ClusterInfo) -> Self {
+        Self {
+            labels: srv.metadata.labels.into(),
+            pod_selector: srv.spec.pod_selector,
+            port_ref: srv.spec.port,
+            protocol: proxy_protocol(srv.spec.proxy_protocol, cluster),
+        }
     }
 }
 
-fn proxy_protocol(p: Option<k8s::policy::server::ProxyProtocol>) -> Option<ProxyProtocol> {
-    match p? {
-        k8s::policy::server::ProxyProtocol::Unknown => None,
-        k8s::policy::server::ProxyProtocol::Http1 => Some(ProxyProtocol::Http1),
-        k8s::policy::server::ProxyProtocol::Http2 => Some(ProxyProtocol::Http2),
-        k8s::policy::server::ProxyProtocol::Grpc => Some(ProxyProtocol::Http2),
-        k8s::policy::server::ProxyProtocol::Opaque => Some(ProxyProtocol::Opaque),
-        k8s::policy::server::ProxyProtocol::Tls => Some(ProxyProtocol::Tls),
+fn proxy_protocol(
+    p: Option<k8s::policy::server::ProxyProtocol>,
+    cluster: &ClusterInfo,
+) -> ProxyProtocol {
+    match p {
+        None | Some(k8s::policy::server::ProxyProtocol::Unknown) => ProxyProtocol::Detect {
+            timeout: cluster.default_detect_timeout,
+        },
+        Some(k8s::policy::server::ProxyProtocol::Http1) => ProxyProtocol::Http1,
+        Some(k8s::policy::server::ProxyProtocol::Http2) => ProxyProtocol::Http2,
+        Some(k8s::policy::server::ProxyProtocol::Grpc) => ProxyProtocol::Http2,
+        Some(k8s::policy::server::ProxyProtocol::Opaque) => ProxyProtocol::Opaque,
+        Some(k8s::policy::server::ProxyProtocol::Tls) => ProxyProtocol::Tls,
     }
 }

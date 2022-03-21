@@ -135,14 +135,12 @@ mod tests {
                 kind: "ServiceAccount".to_string(),
                 namespace: Some("appns".to_string()),
                 name: Some("default".to_string()),
-                ..TargetRef::default()
             },
             TargetRef {
                 group: Some("CORE".to_string()),
                 kind: "SERVICEACCOUNT".to_string(),
                 namespace: Some("APPNS".to_string()),
                 name: Some("DEFAULT".to_string()),
-                ..TargetRef::default()
             },
             TargetRef {
                 kind: "ServiceAccount".to_string(),
@@ -215,7 +213,6 @@ mod tests {
             kind: "Server".to_string(),
             namespace: Some("appns".to_string()),
             name: Some("http".to_string()),
-            ..TargetRef::default()
         };
 
         assert!(tgt.targets_kind::<Server>());

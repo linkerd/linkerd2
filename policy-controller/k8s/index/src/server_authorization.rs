@@ -1,40 +1,62 @@
-use crate::{
-    index::{Index, ServerSelector},
-    ClusterInfo,
-};
+use crate::ClusterInfo;
 use anyhow::Result;
 use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, IdentityMatch, NetworkMatch,
 };
-use linkerd_policy_controller_k8s_api::{
-    self as k8s, policy::server_authorization::MeshTls, ResourceExt,
-};
+use linkerd_policy_controller_k8s_api::{self as k8s, policy::server_authorization::MeshTls};
 
-impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> for Index {
-    fn apply(&mut self, saz: k8s::policy::ServerAuthorization) {
-        let namespace = saz.namespace().unwrap();
-        let name = saz.name();
+/// The parts of a `ServerAuthorization` resource that can chagne.
+#[derive(Debug, PartialEq)]
+pub(crate) struct Meta {
+    pub authz: ClientAuthorization,
+    pub server_selector: ServerSelector,
+}
 
-        let authz = match client_authz(saz.spec.client, &namespace, self.cluster_info()) {
-            Ok(ca) => ca,
-            Err(error) => {
-                tracing::warn!(%error, %namespace, saz = %name, "invalid authorization");
-                return;
-            }
+/// Selects `Server`s for a `ServerAuthoriation`
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum ServerSelector {
+    Name(String),
+    Selector(k8s::labels::Selector),
+}
+
+impl Meta {
+    pub(crate) fn from_resource(
+        saz: k8s::policy::ServerAuthorization,
+        cluster: &ClusterInfo,
+    ) -> Result<Self> {
+        let authz = {
+            let namespace = saz
+                .metadata
+                .namespace
+                .as_deref()
+                .expect("resource must be namespaced");
+            client_authz(saz.spec.client, namespace, cluster)?
         };
-
-        self.apply_server_authorization(namespace, name, server_selector(saz.spec.server), authz)
-    }
-
-    fn delete(&mut self, namespace: String, name: String) {
-        self.delete_server_authorization(namespace, &name);
+        let server_selector = saz.spec.server.into();
+        Ok(Self {
+            authz,
+            server_selector,
+        })
     }
 }
 
-fn server_selector(s: k8s::policy::server_authorization::Server) -> ServerSelector {
-    s.name
-        .map(ServerSelector::Name)
-        .unwrap_or_else(|| ServerSelector::Selector(s.selector.unwrap_or_default()))
+// === impl ServerSelector ===
+
+impl From<k8s::policy::server_authorization::Server> for ServerSelector {
+    fn from(s: k8s::policy::server_authorization::Server) -> Self {
+        s.name
+            .map(Self::Name)
+            .unwrap_or_else(|| Self::Selector(s.selector.unwrap_or_default()))
+    }
+}
+
+impl ServerSelector {
+    pub(crate) fn selects(&self, name: &str, labels: &k8s::Labels) -> bool {
+        match self {
+            Self::Name(n) => *n == name,
+            Self::Selector(selector) => selector.matches(labels),
+        }
+    }
 }
 
 fn client_authz(
@@ -79,17 +101,17 @@ fn client_mtls_authn(
         .identities
         .into_iter()
         .flatten()
-        .map(|s| match s.parse::<IdentityMatch>() {
+        .map(|id| match id.parse() {
             Ok(id) => id,
             Err(e) => match e {},
         });
 
-    let sa_ids = mtls.service_accounts.into_iter().flatten().map(|sa| {
+    let sas = mtls.service_accounts.into_iter().flatten().map(|sa| {
         let ns = sa.namespace.as_deref().unwrap_or(namespace);
         IdentityMatch::Exact(cluster.service_account_identity(ns, &sa.name))
     });
 
-    let identities = ids.chain(sa_ids).collect::<Vec<_>>();
+    let identities = ids.chain(sas).collect::<Vec<_>>();
     if identities.is_empty() {
         anyhow::bail!("authorization authorizes no clients");
     }

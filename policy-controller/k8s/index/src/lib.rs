@@ -65,10 +65,10 @@ pub struct ClusterInfo {
 }
 
 impl ClusterInfo {
-    fn service_account_identity(&self, ns: &str, name: &str) -> String {
+    fn service_account_identity(&self, ns: &str, sa: &str) -> String {
         format!(
             "{}.{}.serviceaccount.{}.{}",
-            name, ns, self.control_plane_ns, self.identity_domain
+            sa, ns, self.control_plane_ns, self.identity_domain
         )
     }
 }

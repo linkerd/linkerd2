@@ -129,7 +129,13 @@ async fn main() -> Result<()> {
     tokio::spawn(grpc(
         grpc_addr,
         cluster_networks,
+<<<<<<< HEAD
         index.clone(),
+||||||| c78b4259
+        lookup,
+=======
+        index,
+>>>>>>> ver/policy-reidx
         runtime.shutdown_handle(),
     ));
 
@@ -158,7 +164,13 @@ impl std::str::FromStr for IpNets {
     }
 }
 
+<<<<<<< HEAD
 #[instrument(skip_all, fields(addr))]
+||||||| c78b4259
+#[instrument(skip(handle, drain))]
+=======
+#[instrument(skip_all, fields(port = %addr.port()))]
+>>>>>>> ver/policy-reidx
 async fn grpc(
     addr: SocketAddr,
     cluster_networks: Vec<IpNet>,

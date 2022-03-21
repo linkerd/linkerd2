@@ -1,10 +1,13 @@
-use crate::{defaults::DefaultPolicy, index::*, ClusterInfo};
+use crate::{defaults::DefaultPolicy, index::*, server_authorization::ServerSelector, ClusterInfo};
 use ahash::AHashMap as HashMap;
+use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::{
     ClientAuthentication, ClientAuthorization, IdentityMatch, InboundServer, IpNet, Ipv4Net,
     Ipv6Net, NetworkMatch, ProxyProtocol,
 };
-use linkerd_policy_controller_k8s_api::{policy::server::Port, Labels};
+use linkerd_policy_controller_k8s_api::{
+    self as k8s, api::core::v1::ContainerPort, policy::server::Port, ResourceExt,
+};
 use tokio::time;
 
 #[test]
@@ -20,18 +23,22 @@ fn pod_must_exist_for_lookup() {
 fn links_named_server_port() {
     let test = TestConfig::default();
 
-    let mut ports = HashMap::with_capacity(1);
-    ports.insert("admin-http".to_string(), Some(8080).into_iter().collect());
-    test.index
-        .write()
-        .apply_pod(
-            "ns-0".to_string(),
-            "pod-0".to_string(),
-            Some(("app", "app-0")).into_iter().collect(),
-            ports,
-            PodSettings::default(),
-        )
-        .expect("pod-0.ns-0 should apply");
+    let mut pod = mk_pod(
+        "ns-0",
+        "pod-0",
+        Some((
+            "container-0",
+            Some(ContainerPort {
+                name: Some("admin-http".to_string()),
+                container_port: 8080,
+                protocol: Some("TCP".to_string()),
+                ..ContainerPort::default()
+            }),
+        )),
+    );
+    pod.labels_mut()
+        .insert("app".to_string(), "app-0".to_string());
+    test.index.write().apply(pod);
 
     let mut rx = test
         .index
@@ -40,14 +47,14 @@ fn links_named_server_port() {
         .expect("pod-0.ns-0 should exist");
     assert_eq!(*rx.borrow_and_update(), test.default_server());
 
-    test.index.write().apply_server(
-        "ns-0".to_string(),
-        "srv-admin-http".to_string(),
-        Default::default(),
-        Some(("app", "app-0")).into_iter().collect(),
+    test.index.write().apply(mk_server(
+        "ns-0",
+        "srv-admin-http",
         Port::Name("admin-http".to_string()),
-        Some(ProxyProtocol::Http1),
-    );
+        None,
+        Some(("app", "app-0")),
+        Some(k8s::policy::server::ProxyProtocol::Http1),
+    ));
     assert!(rx.has_changed().unwrap());
     assert_eq!(
         *rx.borrow_and_update(),
@@ -63,16 +70,10 @@ fn links_named_server_port() {
 fn links_unnamed_server_port() {
     let test = TestConfig::default();
 
-    test.index
-        .write()
-        .apply_pod(
-            "ns-0".to_string(),
-            "pod-0".to_string(),
-            Some(("app", "app-0")).into_iter().collect(),
-            HashMap::default(),
-            PodSettings::default(),
-        )
-        .expect("pod-0.ns-0 should apply");
+    let mut pod = mk_pod("ns-0", "pod-0", Some(("container-0", None)));
+    pod.labels_mut()
+        .insert("app".to_string(), "app-0".to_string());
+    test.index.write().apply(pod);
 
     let mut rx = test
         .index
@@ -81,14 +82,14 @@ fn links_unnamed_server_port() {
         .expect("pod-0.ns-0 should exist");
     assert_eq!(*rx.borrow_and_update(), test.default_server());
 
-    test.index.write().apply_server(
-        "ns-0".to_string(),
-        "srv-8080".to_string(),
-        Default::default(),
-        Some(("app", "app-0")).into_iter().collect(),
+    test.index.write().apply(mk_server(
+        "ns-0",
+        "srv-8080",
         Port::Number(8080),
-        Some(ProxyProtocol::Http1),
-    );
+        None,
+        Some(("app", "app-0")),
+        Some(k8s::policy::server::ProxyProtocol::Http1),
+    ));
     assert!(rx.has_changed().unwrap());
     assert_eq!(
         *rx.borrow_and_update(),
@@ -101,19 +102,25 @@ fn links_unnamed_server_port() {
 }
 
 #[test]
-fn links_server_authorization_by_name() {
+fn links_server_authz_by_name() {
+    link_server_authz(ServerSelector::Name("srv-8080".to_string()))
+}
+
+#[test]
+fn links_server_authz_by_label() {
+    link_server_authz(ServerSelector::Selector(
+        Some(("app", "app-0")).into_iter().collect(),
+    ));
+}
+
+#[inline]
+fn link_server_authz(selector: ServerSelector) {
     let test = TestConfig::default();
 
-    test.index
-        .write()
-        .apply_pod(
-            "ns-0".to_string(),
-            "pod-0".to_string(),
-            Some(("app", "app-0")).into_iter().collect(),
-            HashMap::default(),
-            PodSettings::default(),
-        )
-        .expect("pod-0.ns-0 should not already exist");
+    let mut pod = mk_pod("ns-0", "pod-0", Some(("container-0", None)));
+    pod.labels_mut()
+        .insert("app".to_string(), "app-0".to_string());
+    test.index.write().apply(pod);
 
     let mut rx = test
         .index
@@ -122,14 +129,14 @@ fn links_server_authorization_by_name() {
         .expect("pod-0.ns-0 should exist");
     assert_eq!(*rx.borrow_and_update(), test.default_server());
 
-    test.index.write().apply_server(
-        "ns-0".to_string(),
-        "srv-8080".to_string(),
-        Default::default(),
-        Some(("app", "app-0")).into_iter().collect(),
+    test.index.write().apply(mk_server(
+        "ns-0",
+        "srv-8080",
         Port::Number(8080),
-        Some(ProxyProtocol::Http1),
-    );
+        Some(("app", "app-0")),
+        Some(("app", "app-0")),
+        Some(k8s::policy::server::ProxyProtocol::Http1),
+    ));
     assert!(rx.has_changed().unwrap());
     assert_eq!(
         *rx.borrow_and_update(),
@@ -139,197 +146,80 @@ fn links_server_authorization_by_name() {
             protocol: ProxyProtocol::Http1,
         },
     );
-
-    let authz = ClientAuthorization {
-        networks: vec!["10.0.0.0/8".parse::<IpNet>().unwrap().into()],
-        authentication: ClientAuthentication::TlsAuthenticated(vec![IdentityMatch::Exact(
-            "foo.bar".to_string(),
-        )]),
-    };
-    test.index.write().apply_server_authorization(
-        "ns-0".to_string(),
-        "authz-foo".to_string(),
-        ServerSelector::Name("srv-8080".to_string()),
-        authz.clone(),
-    );
-    assert!(rx.has_changed().unwrap());
-    assert_eq!(
-        *rx.borrow(),
-        InboundServer {
-            name: "srv-8080".to_string(),
-            authorizations: Some(("serverauthorization:authz-foo".to_string(), authz))
-                .into_iter()
-                .collect(),
-            protocol: ProxyProtocol::Http1,
-        },
-    );
-}
-
-#[test]
-fn links_server_authorization_by_label() {
-    let test = TestConfig::default();
-
-    test.index
-        .write()
-        .apply_pod(
-            "ns-0".to_string(),
-            "pod-0".to_string(),
-            Some(("app", "app-0")).into_iter().collect(),
-            HashMap::default(),
-            PodSettings::default(),
-        )
-        .expect("pod-0.ns-0 should not already exist");
-
-    let mut rx = test
-        .index
-        .write()
-        .pod_server_rx("ns-0", "pod-0", 8080)
-        .expect("pod-0.ns-0 should exist");
-    assert_eq!(*rx.borrow_and_update(), test.default_server());
-
-    test.index.write().apply_server(
-        "ns-0".to_string(),
-        "srv-8080".to_string(),
-        Some(("app", "app-0")).into_iter().collect(),
-        Some(("app", "app-0")).into_iter().collect(),
-        Port::Number(8080),
-        Some(ProxyProtocol::Http1),
-    );
-    assert!(rx.has_changed().unwrap());
-    assert_eq!(
-        *rx.borrow_and_update(),
-        InboundServer {
-            name: "srv-8080".to_string(),
-            authorizations: Default::default(),
-            protocol: ProxyProtocol::Http1,
-        },
-    );
-
-    let authz = ClientAuthorization {
-        networks: vec!["10.0.0.0/8".parse::<IpNet>().unwrap().into()],
-        authentication: ClientAuthentication::TlsAuthenticated(vec![IdentityMatch::Exact(
-            "foo.bar".to_string(),
-        )]),
-    };
-    test.index.write().apply_server_authorization(
-        "ns-0".to_string(),
-        "authz-foo".to_string(),
-        ServerSelector::Selector(Some(("app", "app-0")).into_iter().collect()),
-        authz.clone(),
-    );
-    assert!(rx.has_changed().unwrap());
-    assert_eq!(
-        *rx.borrow(),
-        InboundServer {
-            name: "srv-8080".to_string(),
-            authorizations: Some(("serverauthorization:authz-foo".to_string(), authz))
-                .into_iter()
-                .collect(),
-            protocol: ProxyProtocol::Http1,
-        },
-    );
-}
-
-#[test]
-fn updates_default_server() {
-    let test = TestConfig::default();
-
-    test.index
-        .write()
-        .apply_pod(
-            "ns-0".to_string(),
-            "pod-0".to_string(),
-            Some(("app", "app-0")).into_iter().collect(),
-            HashMap::default(),
-            PodSettings::default(),
-        )
-        .expect("pod should apply");
-
-    let mut rx = test
-        .index
-        .write()
-        .pod_server_rx("ns-0", "pod-0", 8080)
-        .expect("pod-0.ns-0 should exist");
-    assert_eq!(*rx.borrow_and_update(), test.default_server());
-
-    test.index
-        .write()
-        .apply_pod(
-            "ns-0".to_string(),
-            "pod-0".to_string(),
-            Some(("app", "app-0")).into_iter().collect(),
-            HashMap::default(),
-            PodSettings {
-                default_policy: Some(DefaultPolicy::Deny),
+    test.index.write().apply(mk_server_authz(
+        "ns-0",
+        "authz-foo",
+        selector,
+        k8s::policy::server_authorization::Client {
+            networks: Some(vec![k8s::policy::server_authorization::Network {
+                cidr: "10.0.0.0/8".parse::<IpNet>().unwrap(),
+                except: None,
+            }]),
+            unauthenticated: false,
+            mesh_tls: Some(k8s::policy::server_authorization::MeshTls {
+                identities: Some(vec!["foo.bar".to_string()]),
                 ..Default::default()
-            },
-        )
-        .expect("port names are not changing");
+            }),
+        },
+    ));
     assert!(rx.has_changed().unwrap());
-    assert_eq!(
-        *rx.borrow_and_update(),
-        InboundServer {
-            name: "default:deny".to_string(),
-            protocol: ProxyProtocol::Detect {
-                timeout: time::Duration::from_secs(1),
-            },
-            authorizations: Default::default()
-        }
-    );
+    assert_eq!(rx.borrow().name, "srv-8080");
+    assert_eq!(rx.borrow().protocol, ProxyProtocol::Http1,);
+    assert!(rx.borrow().authorizations.contains_key("authz-foo"));
 }
 
 #[test]
 fn server_update_deselects_pod() {
     let test = TestConfig::default();
 
-    // Start with a pod selected by a server.
+    test.index.write().reset(
+        vec![mk_pod("ns-0", "pod-0", Some(("container-0", None)))],
+        Default::default(),
+    );
+
+    let mut srv = mk_server(
+        "ns-0",
+        "srv-0",
+        Port::Number(2222),
+        None,
+        None,
+        Some(k8s::policy::server::ProxyProtocol::Http2),
+    );
     test.index
         .write()
-        .apply_pod(
-            "ns-0".to_string(),
-            "pod-0".to_string(),
-            Some(("app", "app-0")).into_iter().collect(),
-            HashMap::default(),
-            PodSettings::default(),
-        )
-        .expect("pod should apply");
-    test.index.write().apply_server(
-        "ns-0".to_string(),
-        "srv-8080".to_string(),
-        Labels::default(),
-        Some(("app", "app-0")).into_iter().collect(),
-        Port::Number(8080),
-        Some(ProxyProtocol::Http1),
-    );
+        .reset(vec![srv.clone()], Default::default());
+
+    // The default policy applies for all ports.
     let mut rx = test
         .index
         .write()
-        .pod_server_rx("ns-0", "pod-0", 8080)
-        .expect("pod-0.ns-0 should exist");
-    assert_eq!(rx.borrow_and_update().name, "srv-8080");
-
-    // Update the server to no longer select the pod.
-    test.index.write().apply_server(
-        "ns-0".to_string(),
-        "srv-8080".to_string(),
-        Labels::default(),
-        Some(("app", "app-1")).into_iter().collect(),
-        Port::Number(8080),
-        Some(ProxyProtocol::Http1),
-    );
-
-    // Ensure the server reverts to the default.
-    assert!(rx.has_changed().unwrap());
+        .pod_server_rx("ns-0", "pod-0", 2222)
+        .unwrap();
     assert_eq!(
-        rx.borrow_and_update().name,
-        "default:cluster-unauthenticated"
+        *rx.borrow_and_update(),
+        InboundServer {
+            name: "srv-8080".to_string(),
+            authorizations: Some(("serverauthorization:authz-foo".to_string(), authz))
+                .into_iter()
+                .collect(),
+            protocol: ProxyProtocol::Http1,
+        },
     );
 }
 
-/// Tests that pod servers are configured with defaults based on the workload-defined `DefaultPolicy`
-/// policy.
+    test.index.write().apply({
+        srv.spec.pod_selector = Some(("label", "value")).into_iter().collect();
+        srv
+    });
+    assert!(rx.has_changed().unwrap());
+    assert_eq!(*rx.borrow(), test.default_server());
+}
+
+/// Tests that pod servers are configured with defaults based on the
+/// workload-defined `DefaultPolicy` policy.
 ///
-/// Iterates through each default policy and validates that it produces expected configurations.
+/// Iterates through each default policy and validates that it produces expected
+/// configurations.
 #[test]
 fn default_policy_annotated() {
     for default in &DEFAULTS {
@@ -342,205 +232,115 @@ fn default_policy_annotated() {
             _ => DefaultPolicy::Deny,
         });
 
-        // Start with a pod using the cluster default policy.
+        // Initially create the pod without an annotation and check that it gets
+        // the global default.
+        let mut pod = mk_pod("ns-0", "pod-0", Some(("container-0", None)));
         test.index
             .write()
-            .apply_pod(
-                "ns-0".to_string(),
-                "pod-0".to_string(),
-                Some(("app", "app-0")).into_iter().collect(),
-                HashMap::default(),
-                PodSettings::default(),
-            )
-            .expect("pod should apply");
+            .reset(vec![pod.clone()], Default::default());
+
         let mut rx = test
             .index
             .write()
-            .pod_server_rx("ns-0", "pod-0", 8080)
+            .pod_server_rx("ns-0", "pod-0", 2222)
             .expect("pod-0.ns-0 should exist");
         assert_eq!(
             rx.borrow_and_update().name,
             format!("default:{}", test.default_policy)
         );
 
-        // Update the pod to use a workload-specified default policy.
-        test.index
-            .write()
-            .apply_pod(
-                "ns-0".to_string(),
-                "pod-0".to_string(),
-                Some(("app", "app-0")).into_iter().collect(),
-                HashMap::default(),
-                PodSettings {
-                    default_policy: Some(*default),
-                    ..Default::default()
-                },
-            )
-            .expect("pod should apply");
-
-        // Ensure the change is observed.
+        // Update the annotation on the pod and check that the watch is updated
+        // with the new default.
+        pod.annotations_mut().insert(
+            "config.linkerd.io/default-inbound-policy".into(),
+            default.to_string(),
+        );
+        test.index.write().apply(pod);
         assert!(rx.has_changed().unwrap());
-        assert_eq!(rx.borrow_and_update().name, format!("default:{}", default));
+        assert_eq!(rx.borrow().name, format!("default:{}", default));
     }
+}
+
+/// Tests that an invalid workload annotation is ignored in favor of the global
+/// default.
+#[tokio::test]
+async fn default_policy_annotated_invalid() {
+    let test = TestConfig::default();
+
+    let mut p = mk_pod("ns-0", "pod-0", Some(("container-0", None)));
+    p.annotations_mut().insert(
+        "config.linkerd.io/default-inbound-policy".into(),
+        "bogus".into(),
+    );
+    test.index.write().reset(vec![p], Default::default());
+
+    // Lookup port 2222 -> default config.
+    let rx = test
+        .index
+        .write()
+        .pod_server_rx("ns-0", "pod-0", 2222)
+        .expect("pod must exist in lookups");
+    assert_eq!(*rx.borrow(), test.default_server());
 }
 
 #[test]
 fn opaque_annotated() {
-    let test = TestConfig::default();
+    for default in &DEFAULTS {
+        let test = TestConfig::from_default_policy(*default);
 
-    test.index
-        .write()
-        .apply_pod(
-            "ns-0".to_string(),
-            "pod-0".to_string(),
-            Some(("app", "app-0")).into_iter().collect(),
-            HashMap::default(),
-            PodSettings {
-                opaque_ports: Some(9090).into_iter().collect(),
-                ..Default::default()
-            },
-        )
-        .expect("pod should apply");
-    let mut rx = test
-        .index
-        .write()
-        .pod_server_rx("ns-0", "pod-0", 9090)
-        .expect("pod-0.ns-0 should exist");
+        let mut p = mk_pod("ns-0", "pod-0", Some(("container-0", None)));
+        p.annotations_mut()
+            .insert("config.linkerd.io/opaque-ports".into(), "2222".into());
+        test.index.write().reset(vec![p], Default::default());
 
-    assert_eq!(
-        *rx.borrow_and_update(),
-        InboundServer {
-            protocol: ProxyProtocol::Opaque,
-            ..test.default_server()
-        }
-    );
+        let mut server = test.default_server();
+        server.protocol = ProxyProtocol::Opaque;
+
+        let rx = test
+            .index
+            .write()
+            .pod_server_rx("ns-0", "pod-0", 2222)
+            .expect("pod-0.ns-0 should exist");
+        assert_eq!(*rx.borrow(), server);
+    }
 }
 
 #[test]
 fn authenticated_annotated() {
-    let test = TestConfig::default();
+    for default in &DEFAULTS {
+        let test = TestConfig::from_default_policy(*default);
 
-    test.index
-        .write()
-        .apply_pod(
-            "ns-0".to_string(),
-            "pod-0".to_string(),
-            Some(("app", "app-0")).into_iter().collect(),
-            HashMap::default(),
-            PodSettings {
-                require_id_ports: Some(9090).into_iter().collect(),
-                ..Default::default()
-            },
-        )
-        .expect("pod should apply");
-    let mut rx = test
-        .index
-        .write()
-        .pod_server_rx("ns-0", "pod-0", 9090)
-        .expect("pod-0.ns-0 should exist");
+        let mut p = mk_pod("ns-0", "pod-0", Some(("container-0", None)));
+        p.annotations_mut().insert(
+            "config.linkerd.io/proxy-require-identity-inbound-ports".into(),
+            "2222".into(),
+        );
+        test.index.write().reset(vec![p], Default::default());
 
-    let default = DefaultPolicy::Allow {
-        authenticated_only: true,
-        cluster_only: true,
-    };
-    assert_ne!(default, test.default_policy);
-    assert_eq!(
-        *rx.borrow_and_update(),
-        InboundServer {
-            name: format!("default:{}", default),
-            authorizations: mk_default_policy(default, test.cluster.networks.clone()),
-            protocol: ProxyProtocol::Detect {
-                timeout: test.detect_timeout,
-            },
-        },
-    );
-}
+        let config = {
+            let policy = match *default {
+                DefaultPolicy::Allow { cluster_only, .. } => DefaultPolicy::Allow {
+                    cluster_only,
+                    authenticated_only: true,
+                },
+                DefaultPolicy::Deny => DefaultPolicy::Deny,
+            };
+            InboundServer {
+                name: format!("default:{}", policy),
+                authorizations: mk_default_policy(policy, test.cluster.networks),
+                protocol: ProxyProtocol::Detect {
+                    timeout: test.detect_timeout,
+                },
+            }
+        };
 
-#[test]
-fn links_authorization_policy_with_mtls_name() {
-    let test = TestConfig::default();
-
-    test.index
-        .write()
-        .apply_pod(
-            "ns-0".to_string(),
-            "pod-0".to_string(),
-            Some(("app", "app-0")).into_iter().collect(),
-            HashMap::default(),
-            PodSettings::default(),
-        )
-        .expect("pod-0.ns-0 should not already exist");
-
-    let mut rx = test
-        .index
-        .write()
-        .pod_server_rx("ns-0", "pod-0", 8080)
-        .expect("pod-0.ns-0 should exist");
-    assert_eq!(*rx.borrow_and_update(), test.default_server());
-
-    test.index.write().apply_server(
-        "ns-0".to_string(),
-        "srv-8080".to_string(),
-        Default::default(),
-        Some(("app", "app-0")).into_iter().collect(),
-        Port::Number(8080),
-        Some(ProxyProtocol::Http1),
-    );
-    assert!(rx.has_changed().unwrap());
-    assert_eq!(
-        *rx.borrow_and_update(),
-        InboundServer {
-            name: "srv-8080".to_string(),
-            authorizations: Default::default(),
-            protocol: ProxyProtocol::Http1,
-        },
-    );
-
-    let authz = ClientAuthorization {
-        networks: vec!["10.0.0.0/8".parse::<IpNet>().unwrap().into()],
-        authentication: ClientAuthentication::TlsAuthenticated(vec![IdentityMatch::Exact(
-            "foo.bar".to_string(),
-        )]),
-    };
-    test.index.write().apply_authorization_policy(
-        "ns-0".to_string(),
-        "authz-foo".to_string(),
-        AuthorizationPolicyTarget::Server("srv-8080".to_string()),
-        vec![
-            AuthenticationTarget::Network {
-                namespace: None,
-                name: "net-foo".to_string(),
-            },
-            AuthenticationTarget::MeshTLS {
-                namespace: Some("ns-1".to_string()),
-                name: "mtls-bar".to_string(),
-            },
-        ],
-    );
-    test.index.write().apply_network_authentication(
-        "ns-0".to_string(),
-        "net-foo".to_string(),
-        vec![NetworkMatch {
-            net: "10.0.0.0/8".parse().unwrap(),
-            except: vec![],
-        }],
-    );
-    test.index.write().apply_meshtls_authentication(
-        "ns-1".to_string(),
-        "mtls-bar".to_string(),
-        vec![IdentityMatch::Exact("foo.bar".to_string())],
-    );
-    assert!(rx.has_changed().unwrap());
-    assert_eq!(
-        *rx.borrow(),
-        InboundServer {
-            name: "srv-8080".to_string(),
-            authorizations: Some(("authorizationpolicy:authz-foo".to_string(), authz))
-                .into_iter()
-                .collect(),
-            protocol: ProxyProtocol::Http1,
-        },
-    );
+        let rx = test
+            .index
+            .write()
+            .pod_server_rx("ns-0", "pod-0", 2222)
+            .expect("pod-0.ns-0 should exist");
+        assert_eq!(*rx.borrow(), config);
+    }
 }
 
 // === Helpers ===
@@ -564,6 +364,88 @@ const DEFAULTS: [DefaultPolicy; 5] = [
         cluster_only: true,
     },
 ];
+
+fn mk_pod(
+    ns: impl Into<String>,
+    name: impl Into<String>,
+    containers: impl IntoIterator<Item = (impl Into<String>, impl IntoIterator<Item = ContainerPort>)>,
+) -> k8s::Pod {
+    k8s::Pod {
+        metadata: k8s::ObjectMeta {
+            namespace: Some(ns.into()),
+            name: Some(name.into()),
+            ..Default::default()
+        },
+        spec: Some(k8s::api::core::v1::PodSpec {
+            containers: containers
+                .into_iter()
+                .map(|(name, ports)| k8s::api::core::v1::Container {
+                    name: name.into(),
+                    ports: Some(ports.into_iter().collect()),
+                    ..Default::default()
+                })
+                .collect(),
+            ..Default::default()
+        }),
+        ..k8s::Pod::default()
+    }
+}
+
+fn mk_server(
+    ns: impl Into<String>,
+    name: impl Into<String>,
+    port: Port,
+    srv_labels: impl IntoIterator<Item = (&'static str, &'static str)>,
+    pod_labels: impl IntoIterator<Item = (&'static str, &'static str)>,
+    proxy_protocol: Option<k8s::policy::server::ProxyProtocol>,
+) -> k8s::policy::Server {
+    k8s::policy::Server {
+        metadata: k8s::ObjectMeta {
+            namespace: Some(ns.into()),
+            name: Some(name.into()),
+            labels: Some(
+                srv_labels
+                    .into_iter()
+                    .map(|(k, v)| (k.to_string(), v.to_string()))
+                    .collect(),
+            ),
+            ..Default::default()
+        },
+        spec: k8s::policy::ServerSpec {
+            port,
+            pod_selector: pod_labels.into_iter().collect(),
+            proxy_protocol,
+        },
+    }
+}
+
+fn mk_server_authz(
+    ns: impl Into<String>,
+    name: impl Into<String>,
+    selector: ServerSelector,
+    client: k8s::policy::server_authorization::Client,
+) -> k8s::policy::ServerAuthorization {
+    k8s::policy::ServerAuthorization {
+        metadata: k8s::ObjectMeta {
+            namespace: Some(ns.into()),
+            name: Some(name.into()),
+            ..Default::default()
+        },
+        spec: k8s::policy::ServerAuthorizationSpec {
+            server: match selector {
+                ServerSelector::Name(n) => k8s::policy::server_authorization::Server {
+                    name: Some(n),
+                    selector: None,
+                },
+                ServerSelector::Selector(s) => k8s::policy::server_authorization::Server {
+                    selector: Some(s),
+                    name: None,
+                },
+            },
+            client,
+        },
+    }
+}
 
 fn mk_default_policy(
     da: DefaultPolicy,
@@ -652,15 +534,6 @@ impl TestConfig {
         }
     }
 
-    fn init_tracing() -> tracing::subscriber::DefaultGuard {
-        tracing::subscriber::set_default(
-            tracing_subscriber::fmt()
-                .with_test_writer()
-                .with_max_level(tracing::Level::TRACE)
-                .finish(),
-        )
-    }
-
     fn default_server(&self) -> InboundServer {
         InboundServer {
             name: format!("default:{}", self.default_policy),
@@ -669,6 +542,15 @@ impl TestConfig {
                 timeout: self.detect_timeout,
             },
         }
+    }
+
+    fn init_tracing() -> tracing::subscriber::DefaultGuard {
+        tracing::subscriber::set_default(
+            tracing_subscriber::fmt()
+                .with_test_writer()
+                .with_max_level(tracing::Level::TRACE)
+                .finish(),
+        )
     }
 }
 

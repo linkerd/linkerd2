@@ -45,3 +45,43 @@ impl fmt::Display for IdentityMatch {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_star() {
+        assert_eq!("*".parse(), Ok(IdentityMatch::Suffix(vec![])));
+
+        assert_eq!(
+            "*.example.com".parse(),
+            Ok(IdentityMatch::Suffix(vec![
+                "example".to_string(),
+                "com".to_string()
+            ]))
+        );
+        assert_eq!(
+            "*.*.example.com".parse(),
+            Ok(IdentityMatch::Suffix(vec![
+                "*".to_string(),
+                "example".to_string(),
+                "com".to_string()
+            ]))
+        );
+        assert_eq!(
+            "x.example.com".parse(),
+            Ok(IdentityMatch::Exact("x.example.com".to_string()))
+        );
+
+        assert_eq!(
+            "**.example.com".parse(),
+            Ok(IdentityMatch::Exact("**.example.com".to_string()))
+        );
+
+        assert_eq!(
+            "foo.*.example.com".parse(),
+            Ok(IdentityMatch::Exact("foo.*.example.com".to_string()))
+        );
+    }
+}
