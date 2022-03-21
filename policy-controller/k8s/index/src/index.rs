@@ -16,6 +16,7 @@ use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, Resou
 use parking_lot::RwLock;
 use std::{collections::hash_map::Entry, sync::Arc};
 use tokio::sync::watch;
+use tracing::instrument;
 
 pub type SharedIndex = Arc<RwLock<Index>>;
 
@@ -210,17 +211,27 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
         }
 
         for (namespace, Ns { added, removed }) in updates_by_ns.into_iter() {
-            self.namespaces
-                .get_or_default_with_reindex(namespace, |ns| {
-                    let mut changed = !removed.is_empty();
+            if added.is_empty() {
+                self.namespaces.get_with_reindex(namespace, |ns| {
+                    let changed = !removed.is_empty();
                     for name in removed.into_iter() {
                         ns.policy.servers.remove(&name);
                     }
-                    for (name, server) in added.into_iter() {
-                        changed = ns.policy.update_server(name, server) || changed;
-                    }
                     changed
-                })
+                });
+            } else {
+                self.namespaces
+                    .get_or_default_with_reindex(namespace, |ns| {
+                        let mut changed = !removed.is_empty();
+                        for name in removed.into_iter() {
+                            ns.policy.servers.remove(&name);
+                        }
+                        for (name, server) in added.into_iter() {
+                            changed = ns.policy.update_server(name, server) || changed;
+                        }
+                        changed
+                    });
+            }
         }
     }
 }
@@ -278,22 +289,32 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
         }
 
         for (namespace, Ns { added, removed }) in updates_by_ns.into_iter() {
-            self.namespaces
-                .get_or_default_with_reindex(namespace, |ns| {
-                    let mut changed = !removed.is_empty();
+            if added.is_empty() {
+                self.namespaces.get_with_reindex(namespace, |ns| {
+                    let changed = !removed.is_empty();
                     for name in removed.into_iter() {
                         ns.policy.server_authorizations.remove(&name);
                     }
-                    for (name, saz) in added.into_iter() {
-                        changed = ns.policy.update_server_authz(name, saz) || changed;
-                    }
                     changed
-                })
+                });
+            } else {
+                self.namespaces
+                    .get_or_default_with_reindex(namespace, |ns| {
+                        let mut changed = !removed.is_empty();
+                        for name in removed.into_iter() {
+                            ns.policy.server_authorizations.remove(&name);
+                        }
+                        for (name, saz) in added.into_iter() {
+                            changed = ns.policy.update_server_authz(name, saz) || changed;
+                        }
+                        changed
+                    });
+            }
         }
     }
 }
 
-// === impl NemspaceIndex ===
+// === impl NamespaceIndex ===
 
 impl NamespaceIndex {
     fn get_or_default(&mut self, ns: String) -> &mut Namespace {
@@ -418,23 +439,45 @@ impl PodIndex {
 
 impl Pod {
     /// Determines the policies for ports on this pod.
+    #[instrument(skip_all, name = "reindex", fields(pod = %self.name))]
     fn reindex_servers(&mut self, policy: &PolicyIndex) {
-        // Keep track of which ports were already indexed to determine whether
-        // it needs to be reset to the default policy.
-        let mut ports = self.port_servers.keys().copied().collect::<HashSet<_>>();
+        // Keep track of the ports that are already known in the pod so that, after applying server
+        // matches, we can ensure remaining ports are set to the default policy.
+        let mut orig_ports = self.port_servers.keys().copied().collect::<HashSet<_>>();
+
+        // Keep track of which ports have been matched to servers to that we can detect when
+        // multiple servers match a single port.
+        //
+        // We start with capacity for the known ports on the pod; but this can grow if servers
+        // select additional ports.
+        let mut matched_ports = HashMap::with_capacity(orig_ports.len());
 
         for (srvname, server) in policy.servers.iter() {
             if server.pod_selector.matches(&self.meta.labels) {
                 for port in self.select_ports(&server.port_ref).into_iter() {
+                    // If the port is already matched to a server, then log a warning and skip
+                    // updating it so it doesn't flap between servers.
+                    if let Some(prior) = matched_ports.get(&port) {
+                        tracing::warn!(
+                            port = %port,
+                            server = %prior,
+                            conflict = %srvname,
+                            "Port already matched by another server; skipping"
+                        );
+                        continue;
+                    }
+
                     let s = policy.inbound_server(srvname.clone(), server);
                     self.update_server(port, srvname, s);
-                    ports.remove(&port);
+
+                    matched_ports.insert(port, srvname.clone());
+                    orig_ports.remove(&port);
                 }
             }
         }
 
         // Reset all remaining ports to the default policy.
-        for port in ports.into_iter() {
+        for port in orig_ports.into_iter() {
             self.set_default_server(port, &policy.cluster_info);
         }
     }
@@ -459,6 +502,7 @@ impl Pod {
 
                 // Avoid sending redundant updates.
                 if ps.name.as_deref() == Some(name) && *ps.rx.borrow() == server {
+                    tracing::trace!(port = %port, server = %name, "Skipped redundant server update");
                     return;
                 }
 
@@ -473,6 +517,8 @@ impl Pod {
                 ps.tx.send(server).expect("a receiver is held by the index");
             }
         }
+
+        tracing::debug!(port = %port, server = %name, "Updated server");
     }
 
     /// Updates a pod-port to use the given named server.
