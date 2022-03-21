@@ -524,7 +524,7 @@ impl Pod {
     /// Updates a pod-port to use the given named server.
     fn set_default_server(&mut self, port: u16, config: &ClusterInfo) {
         let server = Self::default_inbound_server(port, &self.meta.settings, config);
-        tracing::debug!(pod = %self.name, %port, server = %config.default_policy, "Setting default server");
+        tracing::debug!(%port, server = %config.default_policy, "Setting default server");
         match self.port_servers.entry(port) {
             Entry::Vacant(entry) => {
                 let (tx, rx) = watch::channel(server);
