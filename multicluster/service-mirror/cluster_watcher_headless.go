@@ -381,7 +381,7 @@ func (rcsw *RemoteClusterServiceWatcher) createEndpointMirrorService(ctx context
 	}
 
 	rcsw.log.Infof("Creating a new endpoints object for endpoint mirror service %s", endpointMirrorInfo)
-	err = rcsw.createOrUpdateEndpoints(ctx, endpointMirrorEndpoints)
+	err = rcsw.createMirrorEndpoints(ctx, endpointMirrorEndpoints)
 	if err != nil {
 		if svcErr := rcsw.localAPIClient.Client.CoreV1().Services(endpointMirrorService.Namespace).Delete(ctx, endpointMirrorName, metav1.DeleteOptions{}); svcErr != nil {
 			rcsw.log.Errorf("Failed to delete service %s after endpoints creation failed: %s", endpointMirrorName, svcErr)
