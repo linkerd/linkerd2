@@ -511,8 +511,7 @@ impl Pod {
                 // the pod:port, or that we're in the middle of an update. We
                 // make the opportunistic choice to assume the cluster is
                 // configured coherently so we take the update. The admission
-                // controller should
-                // prevent conflicts.
+                // controller should prevent conflicts.
                 ps.name = Some(name.to_string());
                 ps.tx.send(server).expect("a receiver is held by the index");
             }
@@ -554,9 +553,9 @@ impl Pod {
             Port::Name(name) => self
                 .port_names
                 .get(name)
-                .cloned()
                 .into_iter()
                 .flatten()
+                .cloned()
                 .collect(),
         }
     }
