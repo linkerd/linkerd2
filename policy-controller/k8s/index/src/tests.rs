@@ -165,7 +165,10 @@ fn link_server_authz(selector: ServerSelector) {
     assert!(rx.has_changed().unwrap());
     assert_eq!(rx.borrow().name, "srv-8080");
     assert_eq!(rx.borrow().protocol, ProxyProtocol::Http1,);
-    assert!(rx.borrow().authorizations.contains_key("authz-foo"));
+    assert!(rx
+        .borrow()
+        .authorizations
+        .contains_key("serverauthorization:authz-foo"));
 }
 
 #[test]
@@ -198,14 +201,11 @@ fn server_update_deselects_pod() {
     assert_eq!(
         *rx.borrow_and_update(),
         InboundServer {
-            name: "srv-8080".to_string(),
-            authorizations: Some(("serverauthorization:authz-foo".to_string(), authz))
-                .into_iter()
-                .collect(),
-            protocol: ProxyProtocol::Http1,
-        },
+            name: "srv-0".into(),
+            protocol: ProxyProtocol::Http2,
+            authorizations: Default::default(),
+        }
     );
-}
 
     test.index.write().apply({
         srv.spec.pod_selector = Some(("label", "value")).into_iter().collect();

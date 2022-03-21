@@ -1,54 +1,68 @@
-use crate::index::{AuthenticationTarget, AuthorizationPolicyTarget, Index};
-use anyhow::Result;
-use linkerd_policy_controller_k8s_api::{self as k8s, policy::TargetRef, ResourceExt};
+#![allow(dead_code)]
 
-impl kubert::index::IndexNamespacedResource<k8s::policy::AuthorizationPolicy> for Index {
-    fn apply(&mut self, policy: k8s::policy::AuthorizationPolicy) {
-        let namespace = policy.namespace().unwrap();
-        let name = policy.name();
+use anyhow::{bail, Result};
+use linkerd_policy_controller_k8s_api::{self as k8s, policy::TargetRef};
 
-        let target = match target_ref(policy.spec.target_ref) {
-            Ok(t) => t,
-            Err(error) => {
-                tracing::warn!(%namespace, %name, %error, "Invalid target ref");
-                return;
-            }
-        };
+#[derive(Debug)]
+pub(crate) struct Spec {
+    pub target: Target,
+    pub authentications: Vec<AuthenticationTarget>,
+}
 
-        let authns = match policy
-            .spec
+#[derive(Debug)]
+pub(crate) enum Target {
+    Server(String),
+}
+
+#[derive(Debug)]
+pub(crate) enum AuthenticationTarget {
+    MeshTLS {
+        namespace: Option<String>,
+        name: String,
+    },
+    Network {
+        namespace: Option<String>,
+        name: String,
+    },
+}
+
+impl TryFrom<k8s::policy::AuthorizationPolicySpec> for Spec {
+    type Error = anyhow::Error;
+
+    fn try_from(ap: k8s::policy::AuthorizationPolicySpec) -> Result<Self> {
+        let target = target(ap.target_ref)?;
+
+        let authentications = ap
             .required_authentication_refs
             .into_iter()
             .map(authentication_ref)
-            .collect::<Result<Vec<_>>>()
-        {
-            Ok(a) => a,
-            Err(error) => {
-                tracing::warn!(%namespace, %name, %error, "Invalid authentication target");
-                return;
-            }
-        };
-
-        if authns.is_empty() {
-            tracing::warn!("No authentication targets");
-            return;
+            .collect::<Result<Vec<_>>>()?;
+        if authentications.is_empty() {
+            bail!("No authentication targets");
         }
 
-        self.apply_authorization_policy(namespace, name, target, authns);
-    }
-
-    fn delete(&mut self, namespace: String, name: String) {
-        self.delete_authorization_policy(namespace, &name);
+        Ok(Self {
+            target,
+            authentications,
+        })
     }
 }
 
-fn target_ref(t: TargetRef) -> Result<AuthorizationPolicyTarget> {
+impl Target {
+    pub(crate) fn server(&self) -> Option<&str> {
+        match self {
+            Self::Server(s) => Some(s),
+        }
+    }
+}
+
+fn target(t: TargetRef) -> Result<Target> {
     if let Some(name) = t.name {
         if let Some(group) = t.group {
             if group.eq_ignore_ascii_case("policy.linkerd.io")
                 && t.kind.eq_ignore_ascii_case("Server")
             {
-                return Ok(AuthorizationPolicyTarget::Server(name));
+                return Ok(Target::Server(name));
             }
 
             anyhow::bail!("unsupported authorization target: {}.{}", group, t.kind);

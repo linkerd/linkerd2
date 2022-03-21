@@ -1,14 +1,16 @@
-use crate::index::Index;
 use linkerd_policy_controller_core::NetworkMatch;
-use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
+use linkerd_policy_controller_k8s_api::policy::NetworkAuthenticationSpec;
 
-impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> for Index {
-    fn apply(&mut self, authn: k8s::policy::NetworkAuthentication) {
-        let namespace = authn.namespace().unwrap();
-        let name = authn.name();
+#[derive(Debug, PartialEq)]
+pub(crate) struct Spec {
+    pub matches: Vec<NetworkMatch>,
+}
 
-        let authns = authn
-            .spec
+impl TryFrom<NetworkAuthenticationSpec> for Spec {
+    type Error = anyhow::Error;
+
+    fn try_from(spec: NetworkAuthenticationSpec) -> anyhow::Result<Self> {
+        let matches = spec
             .networks
             .into_iter()
             .map(|n| NetworkMatch {
@@ -22,15 +24,10 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
             })
             .collect::<Vec<_>>();
 
-        if authns.is_empty() {
-            tracing::warn!("No authentication targets");
-            return;
+        if matches.is_empty() {
+            anyhow::bail!("No networks configured");
         }
 
-        self.apply_network_authentication(namespace, name, authns);
-    }
-
-    fn delete(&mut self, namespace: String, name: String) {
-        self.delete_network_authentication(namespace, &name);
+        Ok(Spec { matches })
     }
 }

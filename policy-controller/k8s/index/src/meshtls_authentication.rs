@@ -1,19 +1,29 @@
-use crate::index::Index;
-use k8s::api::core::v1::ServiceAccount;
+use crate::ClusterInfo;
 use linkerd_policy_controller_core::IdentityMatch;
-use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
+use linkerd_policy_controller_k8s_api::{
+    policy::MeshTLSAuthentication, ResourceExt, ServiceAccount,
+};
 
-impl kubert::index::IndexNamespacedResource<k8s::policy::MeshTLSAuthentication> for Index {
-    fn apply(&mut self, authn: k8s::policy::MeshTLSAuthentication) {
-        let namespace = authn.namespace().unwrap();
-        let name = authn.name();
+#[derive(Debug, PartialEq)]
+pub(crate) struct Spec {
+    pub matches: Vec<IdentityMatch>,
+}
 
-        let identities = authn.spec.identities.into_iter().flatten().map(|s| {
+impl Spec {
+    pub(crate) fn try_from_resource(
+        ma: MeshTLSAuthentication,
+        cluster: &ClusterInfo,
+    ) -> anyhow::Result<Self> {
+        let namespace = ma
+            .namespace()
+            .expect("MeshTLSAuthentication must have a namespace");
+
+        let identities = ma.spec.identities.into_iter().flatten().map(|s| {
             s.parse::<IdentityMatch>()
                 .expect("identity match parsing is infallible")
         });
 
-        let identity_refs = authn
+        let identity_refs = ma
             .spec
             .identity_refs
             .into_iter()
@@ -22,25 +32,18 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::MeshTLSAuthentication> 
                 if tgt.targets_kind::<ServiceAccount>() {
                     let ns = tgt.namespace.as_deref().unwrap_or(&namespace);
                     let name = tgt.name.as_deref()?;
-                    return Some(IdentityMatch::Exact(
-                        self.cluster_info().service_account_identity(ns, name),
-                    ));
+                    let id = cluster.service_account_identity(ns, name);
+                    Some(IdentityMatch::Exact(id))
+                } else {
+                    None
                 }
-
-                None
             });
 
-        let authns = identities.chain(identity_refs).collect::<Vec<_>>();
-
-        if authns.is_empty() {
-            tracing::warn!("No authentication targets");
-            return;
+        let matches = identities.chain(identity_refs).collect::<Vec<_>>();
+        if matches.is_empty() {
+            anyhow::bail!("No identities configured");
         }
 
-        self.apply_meshtls_authentication(namespace, name, authns);
-    }
-
-    fn delete(&mut self, namespace: String, name: String) {
-        self.delete_meshtls_authentication(namespace, &name);
+        Ok(Spec { matches })
     }
 }
