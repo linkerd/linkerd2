@@ -40,6 +40,7 @@ spec:
         - -log-level={{.Values.webhook.logLevel}}
         - -cluster-domain={{.Values.clusterDomain}}
         - -linkerd-namespace={{.Values.linkerdNamespace}}
+        - -enable-pprof={{.Values.enablePprof | default false}}
         image: {{.Values.webhook.image.name}}:{{default .Values.webhook.image.version .Values.cliVersion}}
         imagePullPolicy: {{.Values.webhook.image.pullPolicy}}
         livenessProbe:

@@ -151,6 +151,7 @@ spec:
         - -identity-issuance-lifetime={{.Values.identity.issuer.issuanceLifetime}}
         - -identity-clock-skew-allowance={{.Values.identity.issuer.clockSkewAllowance}}
         - -identity-scheme={{.Values.identity.issuer.scheme}}
+        - -enable-pprof={{.Values.enablePprof | default false}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         env:
         - name: LINKERD_DISABLED

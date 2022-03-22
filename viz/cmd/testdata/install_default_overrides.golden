@@ -488,6 +488,7 @@ spec:
         - -log-format=plain
         - -cluster-domain=cluster.local
         - -prometheus-url=http://prometheus.linkerd-viz.svc.cluster.local:9090
+        - -enable-pprof=false
         image: gcr.io/linkerd/metrics-api:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -860,6 +861,7 @@ spec:
         - -log-level=info
         - -log-format=plain
         - -identity-trust-domain=cluster.local
+        - -enable-pprof=false
         image: cr.l5d.io/linkerd/tap:stable-9.2
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1050,6 +1052,7 @@ spec:
         - -tap-service-name=tap.linkerd-viz.serviceaccount.identity.linkerd.cluster.local
         - -log-level=debug
         - -log-format=plain
+        - -enable-pprof=false
         image: gcr.io/linkerd/tap:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1189,6 +1192,7 @@ spec:
         - -log-level=debug
         - -log-format=plain
         - -enforced-host=^(localhost|127\.0\.0\.1|web\.linkerd-viz\.svc\.cluster\.local|web\.linkerd-viz\.svc|\[::1\])(:\d+)?$
+        - -enable-pprof=false
         image: gcr.io/linkerd/web:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:

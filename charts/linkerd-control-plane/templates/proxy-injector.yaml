@@ -73,6 +73,7 @@ spec:
         - -log-level={{.Values.controllerLogLevel}}
         - -log-format={{.Values.controllerLogFormat}}
         - -linkerd-namespace={{.Release.Namespace}}
+        - -enable-pprof={{.Values.enablePprof | default false}}
         image: {{.Values.controllerImage}}:{{.Values.linkerdVersion}}
         imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:
