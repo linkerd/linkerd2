@@ -10,7 +10,8 @@ use crate::{defaults::DefaultPolicy, pod, server, server_authorization, ClusterI
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{bail, Result};
 use linkerd_policy_controller_core::{
-    ClientAuthentication, ClientAuthorization, IdentityMatch, InboundServer, IpNet, ProxyProtocol,
+    ClientAuthentication, ClientAuthorization, IdentityMatch, InboundServer, Ipv4Net, Ipv6Net,
+    ProxyProtocol,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
 use parking_lot::RwLock;
@@ -55,7 +56,7 @@ struct PodIndex {
 /// or as `Server` resources select a port.
 #[derive(Debug)]
 struct Pod {
-    /// The pods name. Used for logging.
+    /// The pod's name. Used for logging.
     name: String,
 
     meta: pod::Meta,
@@ -212,14 +213,18 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
 
         for (namespace, Ns { added, removed }) in updates_by_ns.into_iter() {
             if added.is_empty() {
+                // If there are no live resources in the namespace, we do not
+                // want to create a default namespace instance, we just want to
+                // clear out all resources for the namespace (and then drop the
+                // whole namespace, if necessary).
                 self.namespaces.get_with_reindex(namespace, |ns| {
-                    let changed = !removed.is_empty();
-                    for name in removed.into_iter() {
-                        ns.policy.servers.remove(&name);
-                    }
-                    changed
+                    ns.policy.servers.clear();
+                    true
                 });
             } else {
+                // Otherwise, we take greater care to reindex only when the
+                // state actually changed. The vast majority of resets will see
+                // no actual data change.
                 self.namespaces
                     .get_or_default_with_reindex(namespace, |ns| {
                         let mut changed = !removed.is_empty();
@@ -290,14 +295,18 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
 
         for (namespace, Ns { added, removed }) in updates_by_ns.into_iter() {
             if added.is_empty() {
+                // If there are no live resources in the namespace, we do not
+                // want to create a default namespace instance, we just want to
+                // clear out all resources for the namespace (and then drop the
+                // whole namespace, if necessary).
                 self.namespaces.get_with_reindex(namespace, |ns| {
-                    let changed = !removed.is_empty();
-                    for name in removed.into_iter() {
-                        ns.policy.server_authorizations.remove(&name);
-                    }
-                    changed
+                    ns.policy.server_authorizations.clear();
+                    true
                 });
             } else {
+                // Otherwise, we take greater care to reindex only when the
+                // state actually changed. The vast majority of resets will see
+                // no actual data change.
                 self.namespaces
                     .get_or_default_with_reindex(namespace, |ns| {
                         let mut changed = !removed.is_empty();
@@ -324,9 +333,9 @@ impl NamespaceIndex {
     }
 
     /// Gets the given namespace and, if it exists, passes it to the given
-    /// function. If the function returns true, all pods in the namespace are
-    /// reindexed; or, if the function returns false and the namespace is empty,
-    /// it is removed from the index.
+    /// function. When the function returns `true`, all pods in the namespace are
+    /// reindexed or, if the namespace is empty, the namespace is removed
+    /// entirely.
     fn get_with_reindex(&mut self, namespace: String, f: impl FnOnce(&mut Namespace) -> bool) {
         if let Entry::Occupied(mut ns) = self.by_ns.entry(namespace) {
             if f(ns.get_mut()) {
@@ -615,10 +624,7 @@ impl Pod {
             let networks = if cluster_only {
                 config.networks.iter().copied().map(Into::into).collect()
             } else {
-                vec![
-                    "0.0.0.0/0".parse::<IpNet>().unwrap().into(),
-                    "::/0".parse::<IpNet>().unwrap().into(),
-                ]
+                vec![Ipv4Net::default().into(), Ipv6Net::default().into()]
             };
             authorizations.insert(
                 format!("default:{}", policy),
