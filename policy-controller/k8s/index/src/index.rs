@@ -453,7 +453,7 @@ impl PodIndex {
     }
 
     fn reindex(&mut self, policy: &PolicyIndex) {
-        let _span = info_span!("ns.reindex", ns = %self.namespace).entered();
+        let _span = info_span!("reindex", ns = %self.namespace).entered();
         for (name, pod) in self.by_name.iter_mut() {
             let _span = info_span!("pod", pod = %name).entered();
             pod.reindex_servers(policy);
