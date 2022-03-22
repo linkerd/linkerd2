@@ -27,6 +27,7 @@ parking_lot = "0.12"
 serde = "1"
 serde_json = "1"
 thiserror = "1"
+tokio-stream = { version = "0.1", features = ["sync"] }
 tracing = "0.1"
 
 [dependencies.kube]
@@ -42,6 +43,7 @@ version = "0.5"
 default-features = false
 features = [
     "clap",
+    "index",
     "runtime",
     "server",
 ]

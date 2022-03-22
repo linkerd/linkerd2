@@ -1,486 +1,216 @@
-use crate::{
-    defaults::PortDefaults, lookup, DefaultPolicy, DefaultPolicyWatches, Index, Namespace,
-    PodServerTx, ServerRx, SharedIndex, SrvIndex,
-};
-use ahash::{AHashMap as HashMap, AHashSet as HashSet};
-use anyhow::{anyhow, bail, Context, Result};
-use futures::prelude::*;
-use linkerd_policy_controller_k8s_api::{self as k8s, policy, ResourceExt};
-use std::collections::hash_map::Entry;
-use tokio::sync::watch;
-use tracing::{debug, instrument, trace, warn};
+use crate::DefaultPolicy;
+use ahash::AHashMap as HashMap;
+use anyhow::{bail, Context, Result};
+use linkerd_policy_controller_k8s_api as k8s;
 
-/// Indexes pod state (within a namespace).
-#[derive(Debug, Default)]
-pub struct PodIndex {
-    index: HashMap<String, Pod>,
+/// Holds pod metadata/config that can change.
+#[derive(Debug, PartialEq)]
+pub(crate) struct Meta {
+    /// The pod's labels. Used by `Server` pod selectors.
+    pub labels: k8s::Labels,
+
+    // Pod-specific settings (i.e., derived from annotations).
+    pub settings: Settings,
 }
 
-/// Holds the state of an individual pod.
-#[derive(Debug)]
-struct Pod {
-    /// An index of all ports in the pod spec.
-    ports: PodPorts,
-
-    /// The pod's labels.
-    labels: k8s::Labels,
-    //
-    // FIXME per-workload default policies should apply to unspecified ports:
-    //
-    // /// The workload's default allow behavior (to apply when no `Server` references a port).
-    // default_policy: DefaultPolicy,
+/// Per-pod settings, as configured by the pod's annotations.
+#[derive(Debug, Default, PartialEq)]
+pub(crate) struct Settings {
+    pub require_id_ports: PortSet,
+    pub opaque_ports: PortSet,
+    pub default_policy: Option<DefaultPolicy>,
 }
 
-/// An index of all ports in a pod spec to the
-#[derive(Debug, Default)]
-struct PodPorts {
-    /// All ports in the pod spec, by number.
-    by_port: HashMap<u16, Port>,
+/// A `HashSet` specialized for ports.
+///
+/// Because ports are `u16` values, this type avoids the overhead of actually
+/// hashing ports.
+pub(crate) type PortSet = std::collections::HashSet<u16, std::hash::BuildHasherDefault<PortHasher>>;
 
-    /// Enumerates named ports to their numeric equivalents to support by-name lookups.
-    ///
-    /// A name _usually_ maps to a single container port, however Kubernetes permits multiple
-    /// container ports to use the same name. This may be useful to have multiple ports named, e.g.
-    /// "admin-http", that have uniform policy requirements.
-    by_name: HashMap<String, Vec<u16>>,
-}
+/// A `HashMap` specialized for ports.
+///
+/// Because ports are `u16` values, this type avoids the overhead of actually
+/// hashing ports.
+pub(crate) type PortMap<V> =
+    std::collections::HashMap<u16, V, std::hash::BuildHasherDefault<PortHasher>>;
 
-#[derive(Debug, Default)]
-struct PodAnnotations {
-    require_id: HashSet<u16>,
-    opaque: HashSet<u16>,
-}
+/// A hasher for ports.
+///
+/// Because ports are single `u16` values, we don't have to hash them; we can just use
+/// the integer values as hashes directly.
+///
+/// Borrowed from the proxy.
+#[derive(Default)]
+pub(crate) struct PortHasher(u16);
 
-/// A single pod-port's state.
-#[derive(Debug)]
-struct Port {
-    default_policy_rx: ServerRx,
-
-    /// Set with the name of the `Server` resource that currently selects this port, if one exists.
-    ///
-    /// When this is `None`, a default policy currently applies.
-    server_name: Option<String>,
-
-    /// Updated with a server update receiver as servers select/deselect this port.
-    server_tx: PodServerTx,
-}
-
-#[instrument(skip_all, name = "pods")]
-pub async fn index(idx: SharedIndex, events: impl Stream<Item = k8s::WatchEvent<k8s::Pod>>) {
-    tokio::pin!(events);
-    while let Some(ev) = events.next().await {
-        match ev {
-            k8s::WatchEvent::Applied(pod) => apply(&mut *idx.write(), pod),
-            k8s::WatchEvent::Deleted(pod) => delete(&mut *idx.write(), pod),
-            k8s::WatchEvent::Restarted(pods) => restart(&mut *idx.write(), pods),
-        }
-    }
-}
-
-/// Creates or updates a `Pod`, linking it with servers.
-#[instrument(skip_all, fields(
-    ns = ?pod.metadata.namespace,
-    name = %pod.name(),
-))]
-fn apply(index: &mut Index, pod: k8s::Pod) {
-    let Namespace {
-        default_policy,
-        ref mut pods,
-        ref mut servers,
-        ..
-    } = index
-        .namespaces
-        .get_or_default(pod.namespace().expect("namespace must be set"));
-
-    if let Err(error) = pods.apply(
-        pod,
-        servers,
-        &mut index.lookups,
-        *default_policy,
-        &mut index.default_policy_watches,
-    ) {
-        warn!(%error, "failed to apply pod");
-    }
-}
-
-#[instrument(skip_all, fields(
-    ns = ?pod.metadata.namespace,
-    name = %pod.name(),
-))]
-fn delete(index: &mut Index, pod: k8s::Pod) {
-    rm_pod(
-        index,
-        &*pod.namespace().expect("namespace must be set"),
-        pod.name().as_str(),
-    );
-}
-
-#[instrument(skip_all)]
-fn restart(index: &mut Index, pods: Vec<k8s::Pod>) {
-    let mut prior_pods = index
-        .namespaces
-        .iter()
-        .map(|(name, ns)| {
-            let pods = ns.pods.index.keys().cloned().collect::<HashSet<_>>();
-            (name.clone(), pods)
-        })
-        .collect::<HashMap<_, _>>();
-
-    for pod in pods.into_iter() {
-        let ns_name = pod.namespace().unwrap();
-        if let Some(ns) = prior_pods.get_mut(ns_name.as_str()) {
-            ns.remove(pod.name().as_str());
-        }
-
-        apply(index, pod);
-    }
-
-    for (ns, pods) in prior_pods.into_iter() {
-        for pod in pods.into_iter() {
-            rm_pod(index, ns.as_str(), pod.as_str());
-        }
-    }
-}
-
-fn rm_pod(index: &mut Index, ns: &str, pod: &str) {
-    match index.namespaces.index.get_mut(ns) {
-        None => warn!(%ns, "namespace doesn't exist"),
-        Some(idx) => {
-            if idx.pods.index.remove(pod).is_none() {
-                warn!(%pod, "pod doesn't exist");
-            }
-        }
-    }
-
-    if let Err(error) = index.lookups.unset(ns, pod) {
-        warn!(%ns, %error, "failed to unset pod lookup");
-    }
-
-    debug!("Removed pod");
-}
-
-// === impl PodIndex ===
-
-impl PodIndex {
-    pub(crate) fn link_servers(&mut self, servers: &SrvIndex) {
-        for pod in self.index.values_mut() {
-            pod.link_servers(servers)
-        }
-    }
-
-    pub(crate) fn reset_server(&mut self, name: &str) {
-        for (pod_name, pod) in self.index.iter_mut() {
-            for (p, port) in pod.ports.by_port.iter_mut() {
-                if port.server_name.as_deref() == Some(name) {
-                    debug!(pod = %pod_name, port = %p, "Removing server from pod");
-                    port.server_name = None;
-                    port.server_tx
-                        .send(port.default_policy_rx.clone())
-                        .expect("pod config receiver must still be held");
-                } else {
-                    trace!(pod = %pod_name, port = %p, server = ?port.server_name, "Server does not match");
-                }
-            }
-        }
-    }
-
-    /// Processes a pod update.
-    fn apply(
-        &mut self,
-        pod: k8s::Pod,
-        servers: &SrvIndex,
-        lookups: &mut lookup::Writer,
-        default_policy: DefaultPolicy,
-        default_policy_watches: &mut DefaultPolicyWatches,
-    ) -> Result<()> {
-        let ns_name = pod.namespace().expect("pod must have a namespace");
-        let pod_name = pod.name();
-        match self.index.entry(pod_name) {
-            Entry::Vacant(pod_entry) => {
-                let spec = pod.spec.ok_or_else(|| anyhow!("pod missing spec"))?;
-
-                // Check the pod for a default-allow annotation. If it's set, use it; otherwise use
-                // the default policy from the namespace or cluster. We retain this value (and not
-                // only the policy) so that we can more conveniently de-duplicate changes
-                let default_policy = match DefaultPolicy::from_annotation(&pod.metadata) {
-                    Ok(allow) => allow.unwrap_or(default_policy),
-                    Err(error) => {
-                        tracing::info!(%error, "failed to parse default-allow annotation");
-                        default_policy
-                    }
-                };
-
-                let pod_annotations = PodAnnotations::from_annotations(&pod.metadata);
-
-                // Read the pod's ports and extract:
-                // - `ServerTx`s to be linkerd against the server index; and
-                // - lookup receivers to be returned to API clients.
-                let (ports, pod_lookups) = Self::extract_ports(
-                    spec,
-                    &pod_annotations,
-                    default_policy,
-                    default_policy_watches,
-                );
-
-                // Start tracking the pod's metadata so it can be linked against servers as they are
-                // created. Immediately link the pod's ports to the server index.
-                let mut pod = Pod {
-                    // default_policy,
-                    labels: pod.metadata.labels.into(),
-                    ports,
-                };
-                pod.link_servers(servers);
-
-                // The pod has been linked against servers and is registered for subsequent updates,
-                // so make it discoverable to API clients.
-                lookups
-                    .set(ns_name, pod_entry.key(), pod_lookups)
-                    .expect("pod must not already exist");
-
-                pod_entry.insert(pod);
-
-                Ok(())
-            }
-
-            Entry::Occupied(mut entry) => {
-                debug_assert!(
-                    lookups.contains(&ns_name, entry.key()),
-                    "pod must exist in lookups"
-                );
-
-                // Labels can be updated at runtime (even though that's kind of weird). If the
-                // labels have changed, then we relink servers to pods in case label selections have
-                // changed.
-                let p = entry.get_mut();
-                if p.labels != pod.metadata.labels {
-                    p.labels = pod.metadata.labels.into();
-                    p.link_servers(servers);
-                }
-
-                // Note that the default-allow annotation may not be changed at runtime.
-                Ok(())
-            }
-        }
-    }
-
-    /// Extracts port information from a pod spec.
-    fn extract_ports(
-        spec: k8s::PodSpec,
-        annotations: &PodAnnotations,
-        default_policy: DefaultPolicy,
-        default_policy_watches: &mut DefaultPolicyWatches,
-    ) -> (PodPorts, HashMap<u16, lookup::Rx>) {
-        let mut ports = PodPorts::default();
-        let mut lookups = HashMap::new();
-
+/// Gets the set of named TCP ports from a pod spec.
+pub(crate) fn tcp_port_names(spec: Option<k8s::PodSpec>) -> HashMap<String, PortSet> {
+    let mut port_names = HashMap::<String, PortSet>::default();
+    if let Some(spec) = spec {
         for container in spec.containers.into_iter() {
-            for p in container.ports.into_iter().flatten() {
-                if p.protocol.map(|p| p == "TCP").unwrap_or(true) {
-                    let port = p.container_port as u16;
-                    if ports.by_port.contains_key(&port) {
-                        debug!(port, "Port duplicated");
-                        continue;
+            if let Some(ports) = container.ports {
+                for port in ports.into_iter() {
+                    if let None | Some("TCP") = port.protocol.as_deref() {
+                        if let Some(name) = port.name {
+                            port_names
+                                .entry(name)
+                                .or_default()
+                                .insert(port.container_port as u16);
+                        }
                     }
-
-                    let config = annotations.get_config(port);
-                    let default_policy_rx = default_policy_watches.watch(default_policy, config);
-                    let (server_tx, rx) = watch::channel(default_policy_rx.clone());
-                    let pod_port = Port {
-                        default_policy_rx,
-                        server_name: None,
-                        server_tx,
-                    };
-
-                    trace!(%port, name = ?p.name, "Adding port");
-                    if let Some(name) = p.name {
-                        ports.by_name.entry(name).or_default().push(port);
-                    }
-
-                    ports.by_port.insert(port, pod_port);
-                    lookups.insert(port, lookup::Rx::new(rx));
                 }
             }
         }
+    }
+    port_names
+}
 
-        (ports, lookups)
+impl Meta {
+    pub(crate) fn from_metadata(meta: k8s::ObjectMeta) -> Self {
+        let settings = Settings::from_metadata(&meta);
+        tracing::trace!(?settings);
+        Self {
+            settings,
+            labels: meta.labels.into(),
+        }
     }
 }
 
-// === impl Pod ===
-
-impl Pod {
-    /// Links this pod to servers (by label selector).
-    fn link_servers(&mut self, servers: &SrvIndex) {
-        let mut remaining_ports = self.ports.by_port.keys().copied().collect::<HashSet<u16>>();
-
-        // Get all servers that match this pod.
-        let matching = servers.iter_matching_pod(self.labels.clone());
-        for (name, port_match, rx) in matching {
-            // Get all pod ports that match this server.
-            for p in self.ports.collect_port(port_match).into_iter() {
-                self.link_server_port(p, name, rx);
-                remaining_ports.remove(&p);
-            }
-        }
-
-        // Iterate through the ports that have not been matched to clear them.
-        for p in remaining_ports.into_iter() {
-            let port = self.ports.by_port.get_mut(&p).unwrap();
-            port.server_name = None;
-            port.server_tx
-                .send(port.default_policy_rx.clone())
-                .expect("pod config receiver must still be held");
-        }
-    }
-
-    fn link_server_port(&mut self, port: u16, name: &str, rx: &ServerRx) {
-        let port = match self.ports.by_port.get_mut(&port) {
-            Some(p) => p,
-            None => return,
-        };
-
-        // Either this port is using a default allow policy, and the server name is unset, or
-        // multiple servers select this pod. If there's a conflict, we panic if the controller is
-        // running in debug mode. In release mode, we log a warning and ignore the conflicting
-        // server.
-        //
-        // TODO these cases should be prevented with a validating admission controller.
-        if let Some(sn) = port.server_name.as_ref() {
-            if sn != name {
-                debug_assert!(false, "Pod port must not match multiple servers");
-                warn!("Pod port matches multiple servers: {} and {}", sn, name);
-            }
-            // If the name matched there's no use in proceeding with a redundant update
-            return;
-        }
-        port.server_name = Some(name.to_string());
-
-        port.server_tx
-            .send(rx.clone())
-            .expect("pod config receiver must be set");
-        debug!(server = %name, "Pod server updated");
-    }
-}
-
-// === impl PodAnnotations ===
-
-impl PodAnnotations {
-    const OPAQUE_PORTS_ANNOTATION: &'static str = "config.linkerd.io/opaque-ports";
-    const REQUIRE_IDENTITY_PORTS_ANNOTATION: &'static str =
-        "config.linkerd.io/proxy-require-identity-inbound-ports";
-
-    fn from_annotations(meta: &k8s::ObjectMeta) -> Self {
+impl Settings {
+    /// Reads pod settings from the pod metadata including:
+    ///
+    /// - Opaque ports
+    /// - Ports that require identity
+    /// - The pod's default policy
+    pub(crate) fn from_metadata(meta: &k8s::ObjectMeta) -> Self {
         let anns = match meta.annotations.as_ref() {
             None => return Self::default(),
             Some(anns) => anns,
         };
 
-        let opaque = Self::ports_annotation(anns, Self::OPAQUE_PORTS_ANNOTATION);
-        let require_id = Self::ports_annotation(anns, Self::REQUIRE_IDENTITY_PORTS_ANNOTATION);
+        let default_policy = default_policy(anns).unwrap_or_else(|error| {
+            tracing::warn!(%error, "invalid default policy annotation value");
+            None
+        });
 
-        Self { opaque, require_id }
-    }
+        let opaque_ports = ports_annotation(anns, "config.linkerd.io/opaque-ports");
+        let require_id_ports = ports_annotation(
+            anns,
+            "config.linkerd.io/proxy-require-identity-inbound-ports",
+        );
 
-    /// Reads `annotation` from the provided set of annotations, parsing it as a port set.  If the
-    /// annotation is not set or is invalid, the empty set is returned.
-    fn ports_annotation(
-        annotations: &std::collections::BTreeMap<String, String>,
-        annotation: &str,
-    ) -> HashSet<u16> {
-        annotations
-            .get(annotation)
-            .map(|spec| {
-                Self::parse_portset(spec).unwrap_or_else(|error| {
-                    tracing::info!(%spec, %error, %annotation, "Invalid ports list");
-                    Default::default()
-                })
-            })
-            .unwrap_or_default()
-    }
-
-    /// Read a comma-separated of ports or port ranges from the given string.
-    fn parse_portset(s: &str) -> Result<HashSet<u16>> {
-        let mut ports = HashSet::new();
-        for spec in s.split(',') {
-            match spec.split_once('-') {
-                None => {
-                    if !spec.trim().is_empty() {
-                        let port = spec.trim().parse().context("parsing port")?;
-                        if port == 0 {
-                            bail!("port must not be 0")
-                        }
-                        ports.insert(port);
-                    }
-                }
-                Some((floor, ceil)) => {
-                    let floor = floor.trim().parse::<u16>().context("parsing port")?;
-                    let ceil = ceil.trim().parse::<u16>().context("parsing port")?;
-                    if floor == 0 {
-                        bail!("port must not be 0")
-                    }
-                    if floor > ceil {
-                        bail!("Port range must be increasing");
-                    }
-                    ports.extend(floor..=ceil);
-                }
-            }
-        }
-        Ok(ports)
-    }
-
-    fn get_config(&self, port: u16) -> PortDefaults {
-        PortDefaults {
-            authenticated: self.require_id.contains(&port),
-            opaque: self.opaque.contains(&port),
+        Self {
+            default_policy,
+            opaque_ports,
+            require_id_ports,
         }
     }
 }
 
-// === impl PodPorts ===
+/// Attempts to read a default policy override from an annotation map.
+fn default_policy(
+    ann: &std::collections::BTreeMap<String, String>,
+) -> Result<Option<DefaultPolicy>> {
+    if let Some(v) = ann.get("config.linkerd.io/default-inbound-policy") {
+        let mode = v.parse()?;
+        return Ok(Some(mode));
+    }
 
-impl PodPorts {
-    /// Finds all ports on this pod that match a server's port reference.
-    ///
-    /// Numeric port matches will only return a single server, generally, while named port
-    /// references may select an arbitrary number of server ports.
-    fn collect_port(&self, port_match: &policy::server::Port) -> Vec<u16> {
-        match port_match {
-            policy::server::Port::Number(ref port) => vec![*port],
-            policy::server::Port::Name(ref name) => {
-                self.by_name.get(name).cloned().unwrap_or_default()
+    Ok(None)
+}
+
+/// Reads `annotation` from the provided set of annotations, parsing it as a port set.  If the
+/// annotation is not set or is invalid, the empty set is returned.
+fn ports_annotation(
+    annotations: &std::collections::BTreeMap<String, String>,
+    annotation: &str,
+) -> PortSet {
+    annotations
+        .get(annotation)
+        .map(|spec| {
+            parse_portset(spec).unwrap_or_else(|error| {
+                tracing::info!(%spec, %error, %annotation, "Invalid ports list");
+                Default::default()
+            })
+        })
+        .unwrap_or_default()
+}
+
+/// Read a comma-separated of ports or port ranges from the given string.
+fn parse_portset(s: &str) -> Result<PortSet> {
+    let mut ports = PortSet::default();
+
+    for spec in s.split(',') {
+        match spec.split_once('-') {
+            None => {
+                if !spec.trim().is_empty() {
+                    let port = spec.trim().parse().context("parsing port")?;
+                    if port == 0 {
+                        bail!("port must not be 0")
+                    }
+                    ports.insert(port);
+                }
+            }
+            Some((floor, ceil)) => {
+                let floor = floor.trim().parse::<u16>().context("parsing port")?;
+                let ceil = ceil.trim().parse::<u16>().context("parsing port")?;
+                if floor == 0 {
+                    bail!("port must not be 0")
+                }
+                if floor > ceil {
+                    bail!("Port range must be increasing");
+                }
+                ports.extend(floor..=ceil);
             }
         }
+    }
+
+    Ok(ports)
+}
+
+// === impl PortHasher ===
+
+impl std::hash::Hasher for PortHasher {
+    fn write(&mut self, _: &[u8]) {
+        unreachable!("hashing a `u16` calls `write_u16`");
+    }
+
+    #[inline]
+    fn write_u16(&mut self, port: u16) {
+        self.0 = port;
+    }
+
+    #[inline]
+    fn finish(&self) -> u64 {
+        self.0 as u64
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::PodAnnotations;
-
     #[test]
     fn parse_portset() {
-        assert!(
-            PodAnnotations::parse_portset("").unwrap().is_empty(),
-            "empty"
-        );
-        assert!(PodAnnotations::parse_portset("0").is_err(), "0");
+        use super::parse_portset;
+
+        assert!(parse_portset("").unwrap().is_empty(), "empty");
+        assert!(parse_portset("0").is_err(), "0");
         assert_eq!(
-            PodAnnotations::parse_portset("1").unwrap(),
+            parse_portset("1").unwrap(),
             vec![1].into_iter().collect(),
             "1"
         );
         assert_eq!(
-            PodAnnotations::parse_portset("1-2").unwrap(),
+            parse_portset("1-2").unwrap(),
             vec![1, 2].into_iter().collect(),
             "1-2"
         );
         assert_eq!(
-            PodAnnotations::parse_portset("4,1-2").unwrap(),
+            parse_portset("4,1-2").unwrap(),
             vec![1, 2, 4].into_iter().collect(),
             "4,1-2"
         );
-        assert!(PodAnnotations::parse_portset("2-1").is_err(), "2-1");
-        assert!(PodAnnotations::parse_portset("2-").is_err(), "2-");
-        assert!(PodAnnotations::parse_portset("65537").is_err(), "65537");
+        assert!(parse_portset("2-1").is_err(), "2-1");
+        assert!(parse_portset("2-").is_err(), "2-");
+        assert!(parse_portset("65537").is_err(), "65537");
     }
 }
