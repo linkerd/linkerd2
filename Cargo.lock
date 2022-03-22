@@ -814,6 +814,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8abb21c54af90b5bf415f879da73d112bfd67d75901b3d9af56667398929757"
 dependencies = [
+ "ahash",
  "clap",
  "drain",
  "futures-core",
@@ -822,6 +823,7 @@ dependencies = [
  "kube-client",
  "kube-core",
  "kube-runtime",
+ "parking_lot",
  "pin-project-lite",
  "rustls-pemfile 0.3.0",
  "serde",
@@ -875,6 +877,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokio",
+ "tokio-stream",
  "tracing",
 ]
 
@@ -925,8 +928,6 @@ version = "0.1.0"
 dependencies = [
  "ahash",
  "anyhow",
- "async-stream",
- "async-trait",
  "futures",
  "kubert",
  "linkerd-policy-controller-core",
@@ -936,6 +937,7 @@ dependencies = [
  "tokio-stream",
  "tokio-test",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -1832,6 +1834,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+ "tokio-util 0.6.9",
 ]
 
 [[package]]
