@@ -42,6 +42,7 @@ func Main(args []string) {
 	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
 	identityIssuanceLifeTime := cmd.String("identity-issuance-lifetime", "", "the amount of time for which the Identity issuer should certify identity")
 	identityClockSkewAllowance := cmd.String("identity-clock-skew-allowance", "", "the amount of time to allow for clock skew within a Linkerd cluster")
+	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
 
 	issuerPath := cmd.String("issuer",
 		"/var/run/linkerd/identity/issuer",
@@ -167,7 +168,7 @@ func Main(args []string) {
 	//
 	// Bind and serve
 	//
-	adminServer := admin.NewServer(*adminAddr)
+	adminServer := admin.NewServer(*adminAddr, *enablePprof)
 
 	go func() {
 		log.Infof("starting admin server on %s", *adminAddr)

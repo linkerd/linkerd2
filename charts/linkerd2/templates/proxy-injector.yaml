@@ -73,6 +73,7 @@ spec:
         - proxy-injector
         - -log-level={{.Values.controllerLogLevel}}
         - -log-format={{.Values.controllerLogFormat}}
+        - -enable-pprof={{.Values.enablePprof | default false}}
         image: {{.Values.controllerImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
         imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:

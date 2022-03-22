@@ -110,6 +110,7 @@ spec:
         {{- if .Values.enableHeadlessServices }}
         - -enable-headless-services
         {{- end }}
+        - -enable-pprof={{.Values.enablePprof | default false}}
         - {{.Values.targetClusterName}}
         image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion}}
         name: service-mirror
