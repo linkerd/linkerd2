@@ -17,7 +17,7 @@ use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, Resou
 use parking_lot::RwLock;
 use std::{collections::hash_map::Entry, sync::Arc};
 use tokio::sync::watch;
-use tracing::{info_span, instrument};
+use tracing::info_span;
 
 pub type SharedIndex = Arc<RwLock<Index>>;
 
@@ -137,13 +137,11 @@ impl Index {
 }
 
 impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
-    #[instrument(skip_all, name = "pod.apply", fields(
-        ns = %pod.namespace().unwrap(),
-        pod = %pod.name(),
-    ))]
     fn apply(&mut self, pod: k8s::Pod) {
         let namespace = pod.namespace().unwrap();
         let name = pod.name();
+        let _span = info_span!("apply", ns = %namespace, pod = %name).entered();
+
         let port_names = pod::tcp_port_names(pod.spec);
         let meta = pod::Meta::from_metadata(pod.metadata);
 
@@ -160,9 +158,10 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
         }
     }
 
-    #[instrument(skip(self), name = "srv.delete")]
-    fn delete(&mut self, namespace: String, pod: String) {
-        if let Entry::Occupied(mut ns) = self.namespaces.by_ns.entry(namespace) {
+    fn delete(&mut self, ns: String, pod: String) {
+        let _span = info_span!("delete", %ns, %pod).entered();
+
+        if let Entry::Occupied(mut ns) = self.namespaces.by_ns.entry(ns) {
             // Once the pod is removed, there's nothing else to update. Any open
             // watches will complete.  No other parts of the index need to be
             // updated.
@@ -177,26 +176,25 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
 }
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
-    #[instrument(skip_all, name = "srv.apply", fields(
-        ns = %srv.namespace().unwrap(),
-        srv = %srv.name(),
-    ))]
     fn apply(&mut self, srv: k8s::policy::Server) {
-        let namespace = srv.namespace().expect("server must be namespaced");
+        let ns = srv.namespace().expect("server must be namespaced");
         let name = srv.name();
+        let _span = info_span!("apply", %ns, srv = %name).entered();
+
         let server = server::Server::from_resource(srv, &self.cluster_info);
         self.namespaces
-            .get_or_default_with_reindex(namespace, |ns| ns.policy.update_server(name, server))
+            .get_or_default_with_reindex(ns, |ns| ns.policy.update_server(name, server))
     }
 
-    #[instrument(skip(self), name = "srv.delete")]
     fn delete(&mut self, ns: String, srv: String) {
+        let _span = info_span!("delete", %ns, %srv).entered();
         self.namespaces
             .get_with_reindex(ns, |ns| ns.policy.servers.remove(&srv).is_some())
     }
 
-    #[instrument(skip_all, name = "srv.reset")]
     fn reset(&mut self, srvs: Vec<k8s::policy::Server>, deleted: HashMap<String, HashSet<String>>) {
+        let _span = info_span!("reset").entered();
+
         #[derive(Default)]
         struct Ns {
             added: Vec<(String, server::Server)>,
@@ -251,36 +249,33 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
 }
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> for Index {
-    #[instrument(skip_all, name = "saz.apply", fields(
-        ns = %saz.namespace().unwrap(),
-        saz = %saz.name(),
-    ))]
     fn apply(&mut self, saz: k8s::policy::ServerAuthorization) {
-        let namespace = saz.namespace().unwrap();
+        let ns = saz.namespace().unwrap();
         let name = saz.name();
+        let _span = info_span!("apply", %ns, saz = %name).entered();
+
         match server_authorization::ServerAuthz::from_resource(saz, &self.cluster_info) {
-            Ok(meta) => self
-                .namespaces
-                .get_or_default_with_reindex(namespace, move |ns| {
-                    ns.policy.update_server_authz(name, meta)
-                }),
+            Ok(meta) => self.namespaces.get_or_default_with_reindex(ns, move |ns| {
+                ns.policy.update_server_authz(name, meta)
+            }),
             Err(error) => tracing::error!(%error, "Illegal server authorization update"),
         }
     }
 
-    #[instrument(skip(self), name = "saz.delete")]
     fn delete(&mut self, ns: String, saz: String) {
+        let _span = info_span!("delete", %ns, %saz).entered();
         self.namespaces.get_with_reindex(ns, |ns| {
             ns.policy.server_authorizations.remove(&saz).is_some()
         })
     }
 
-    #[instrument(skip_all, name = "saz.reset")]
     fn reset(
         &mut self,
         sazs: Vec<k8s::policy::ServerAuthorization>,
         deleted: HashMap<String, HashSet<String>>,
     ) {
+        let _span = info_span!("reset");
+
         #[derive(Default)]
         struct Ns {
             added: Vec<(String, server_authorization::ServerAuthz)>,
@@ -302,7 +297,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
                     .added
                     .push((name, saz)),
                 Err(error) => {
-                    tracing::error!(%namespace, saz = %name, %error, "Illegal server authorization update")
+                    tracing::error!(ns = %namespace, saz = %name, %error, "Illegal server authorization update")
                 }
             }
         }
@@ -457,10 +452,11 @@ impl PodIndex {
         Ok(Some(pod))
     }
 
-    #[instrument(skip_all, name = "ns.reindex", fields(ns = %self.namespace))]
     fn reindex(&mut self, policy: &PolicyIndex) {
+        let _span = info_span!("ns.reindex", ns = %self.namespace).entered();
         for (name, pod) in self.by_name.iter_mut() {
-            info_span!("pod.reindex", pod = %name).in_scope(|| pod.reindex_servers(policy));
+            let _span = info_span!("pod", pod = %name).entered();
+            pod.reindex_servers(policy);
         }
     }
 }
@@ -470,6 +466,8 @@ impl PodIndex {
 impl Pod {
     /// Determines the policies for ports on this pod.
     fn reindex_servers(&mut self, policy: &PolicyIndex) {
+        tracing::debug!("Indexing servers for pod");
+
         // Keep track of the ports that are already known in the pod so that, after applying server
         // matches, we can ensure remaining ports are set to the default policy.
         let mut unmatched_ports = self.port_servers.keys().copied().collect::<pod::PortSet>();
