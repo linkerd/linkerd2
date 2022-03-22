@@ -17,7 +17,7 @@ use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, Resou
 use parking_lot::RwLock;
 use std::{collections::hash_map::Entry, sync::Arc};
 use tokio::sync::watch;
-use tracing::instrument;
+use tracing::{info_span, instrument};
 
 pub type SharedIndex = Arc<RwLock<Index>>;
 
@@ -47,6 +47,7 @@ struct Namespace {
 /// Holds all pod data for a single namespace.
 #[derive(Debug, Default)]
 struct PodIndex {
+    namespace: String,
     by_name: HashMap<String, Pod>,
 }
 
@@ -56,9 +57,6 @@ struct PodIndex {
 /// or as `Server` resources select a port.
 #[derive(Debug)]
 struct Pod {
-    /// The pod's name. Used for logging.
-    name: String,
-
     meta: pod::Meta,
 
     /// The pod's named container ports. Used by `Server` port selectors.
@@ -139,6 +137,10 @@ impl Index {
 }
 
 impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
+    #[instrument(skip_all, name = "pod.apply", fields(
+        ns = %pod.namespace().unwrap(),
+        pod = %pod.name(),
+    ))]
     fn apply(&mut self, pod: k8s::Pod) {
         let namespace = pod.namespace().unwrap();
         let name = pod.name();
@@ -158,12 +160,13 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
         }
     }
 
-    fn delete(&mut self, namespace: String, name: String) {
+    #[instrument(skip(self), name = "srv.delete")]
+    fn delete(&mut self, namespace: String, pod: String) {
         if let Entry::Occupied(mut ns) = self.namespaces.by_ns.entry(namespace) {
             // Once the pod is removed, there's nothing else to update. Any open
             // watches will complete.  No other parts of the index need to be
             // updated.
-            if ns.get_mut().pods.by_name.remove(&name).is_some() && ns.get().is_empty() {
+            if ns.get_mut().pods.by_name.remove(&pod).is_some() && ns.get().is_empty() {
                 ns.remove();
             }
         }
@@ -174,6 +177,10 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
 }
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
+    #[instrument(skip_all, name = "srv.apply", fields(
+        ns = %srv.namespace().unwrap(),
+        srv = %srv.name(),
+    ))]
     fn apply(&mut self, srv: k8s::policy::Server) {
         let namespace = srv.namespace().expect("server must be namespaced");
         let name = srv.name();
@@ -182,11 +189,13 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
             .get_or_default_with_reindex(namespace, |ns| ns.policy.update_server(name, server))
     }
 
-    fn delete(&mut self, namespace: String, name: String) {
+    #[instrument(skip(self), name = "srv.delete")]
+    fn delete(&mut self, ns: String, srv: String) {
         self.namespaces
-            .get_with_reindex(namespace, |ns| ns.policy.servers.remove(&name).is_some())
+            .get_with_reindex(ns, |ns| ns.policy.servers.remove(&srv).is_some())
     }
 
+    #[instrument(skip_all, name = "srv.reset")]
     fn reset(&mut self, srvs: Vec<k8s::policy::Server>, deleted: HashMap<String, HashSet<String>>) {
         #[derive(Default)]
         struct Ns {
@@ -242,6 +251,10 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
 }
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> for Index {
+    #[instrument(skip_all, name = "saz.apply", fields(
+        ns = %saz.namespace().unwrap(),
+        saz = %saz.name(),
+    ))]
     fn apply(&mut self, saz: k8s::policy::ServerAuthorization) {
         let namespace = saz.namespace().unwrap();
         let name = saz.name();
@@ -255,12 +268,14 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
         }
     }
 
-    fn delete(&mut self, namespace: String, name: String) {
-        self.namespaces.get_with_reindex(namespace, |ns| {
-            ns.policy.server_authorizations.remove(&name).is_some()
+    #[instrument(skip(self), name = "saz.delete")]
+    fn delete(&mut self, ns: String, saz: String) {
+        self.namespaces.get_with_reindex(ns, |ns| {
+            ns.policy.server_authorizations.remove(&saz).is_some()
         })
     }
 
+    #[instrument(skip_all, name = "saz.reset")]
     fn reset(
         &mut self,
         sazs: Vec<k8s::policy::ServerAuthorization>,
@@ -281,12 +296,14 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
                 .expect("serverauthorization must be namespaced");
             let name = saz.name();
             match server_authorization::ServerAuthz::from_resource(saz, &self.cluster_info) {
-                Ok(meta) => updates_by_ns
+                Ok(saz) => updates_by_ns
                     .entry(namespace)
                     .or_default()
                     .added
-                    .push((name, meta)),
-                Err(error) => tracing::error!(%error, "Illegal server authorization update"),
+                    .push((name, saz)),
+                Err(error) => {
+                    tracing::error!(%namespace, saz = %name, %error, "Illegal server authorization update")
+                }
             }
         }
         for (ns, names) in deleted.into_iter() {
@@ -328,8 +345,8 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
 impl NamespaceIndex {
     fn get_or_default(&mut self, ns: String) -> &mut Namespace {
         self.by_ns
-            .entry(ns)
-            .or_insert_with(|| Namespace::new(self.cluster_info.clone()))
+            .entry(ns.clone())
+            .or_insert_with(|| Namespace::new(ns, self.cluster_info.clone()))
     }
 
     /// Gets the given namespace and, if it exists, passes it to the given
@@ -356,10 +373,7 @@ impl NamespaceIndex {
         namespace: String,
         f: impl FnOnce(&mut Namespace) -> bool,
     ) {
-        let ns = self
-            .by_ns
-            .entry(namespace)
-            .or_insert_with(|| Namespace::new(self.cluster_info.clone()));
+        let ns = self.get_or_default(namespace);
         if f(ns) {
             ns.reindex();
         }
@@ -369,9 +383,12 @@ impl NamespaceIndex {
 // === impl Namespace ===
 
 impl Namespace {
-    fn new(cluster_info: Arc<ClusterInfo>) -> Self {
+    fn new(namespace: String, cluster_info: Arc<ClusterInfo>) -> Self {
         Namespace {
-            pods: PodIndex::default(),
+            pods: PodIndex {
+                namespace,
+                by_name: HashMap::default(),
+            },
             policy: PolicyIndex {
                 cluster_info,
                 servers: HashMap::default(),
@@ -406,13 +423,16 @@ impl PodIndex {
         meta: pod::Meta,
         port_names: HashMap<String, pod::PortSet>,
     ) -> Result<Option<&mut Pod>> {
-        let pod = match self.by_name.entry(name.clone()) {
-            Entry::Vacant(entry) => entry.insert(Pod {
-                name,
-                meta,
-                port_names,
-                port_servers: pod::PortMap::default(),
-            }),
+        let pod = match self.by_name.entry(name) {
+            Entry::Vacant(entry) => {
+                tracing::debug!(?meta, ?port_names, "Creating");
+                let pod = Pod {
+                    meta,
+                    port_names,
+                    port_servers: pod::PortMap::default(),
+                };
+                entry.insert(pod)
+            }
 
             Entry::Occupied(entry) => {
                 let pod = entry.into_mut();
@@ -420,16 +440,16 @@ impl PodIndex {
                 // Pod labels and annotations may change at runtime, but the
                 // port list may not
                 if pod.port_names != port_names {
-                    bail!("pod {} port names must not change", name);
+                    bail!("pod port names must not change");
                 }
 
                 // If there aren't meaningful changes, then don't bother doing
                 // any more work.
                 if pod.meta == meta {
-                    tracing::debug!(pod = %name, "No changes");
+                    tracing::trace!("No changes");
                     return Ok(None);
                 }
-                tracing::debug!(pod = %name, "Updating");
+                tracing::debug!(?meta, "Updating");
                 pod.meta = meta;
                 pod
             }
@@ -437,9 +457,10 @@ impl PodIndex {
         Ok(Some(pod))
     }
 
+    #[instrument(skip_all, name = "ns.reindex", fields(ns = %self.namespace))]
     fn reindex(&mut self, policy: &PolicyIndex) {
-        for pod in self.by_name.values_mut() {
-            pod.reindex_servers(policy);
+        for (name, pod) in self.by_name.iter_mut() {
+            info_span!("pod.reindex", pod = %name).in_scope(|| pod.reindex_servers(policy));
         }
     }
 }
@@ -448,7 +469,6 @@ impl PodIndex {
 
 impl Pod {
     /// Determines the policies for ports on this pod.
-    #[instrument(skip_all, name = "reindex", fields(pod = %self.name))]
     fn reindex_servers(&mut self, policy: &PolicyIndex) {
         // Keep track of the ports that are already known in the pod so that, after applying server
         // matches, we can ensure remaining ports are set to the default policy.
