@@ -949,29 +949,21 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 		// Endpoints point to auxiliary services instead of pointing to
 		// the gateway, so they're skipped.
 		if svc.Spec.ClusterIP == corev1.ClusterIPNone {
-			rcsw.log.Debugf("Skipped repairing endpoints for %s/%s", svc.Namespace, svc.Name)
-			continue
-		}
-		// And these auxiliary services have Endpoints that point to
-		// the gateway but aren't mirroring per se any Endpoints on the
-		// target cluster, so they're also skipped.
-		if _, found := svc.Labels[consts.MirroredHeadlessSvcNameLabel]; found {
-			rcsw.log.Debugf("Skipped repairing endpoints for %s/%s", svc.Namespace, svc.Name)
+			rcsw.log.Debugf("Skipped repairing endpoints for headless mirror %s/%s", svc.Namespace, svc.Name)
 			continue
 		}
 
 		endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(svc.Namespace).Get(svc.Name)
 		if err != nil {
 			if !kerrors.IsNotFound(err) {
-				rcsw.log.Errorf("failed to list local endpoints: %s", err)
+				rcsw.log.Errorf("Failed to list local endpoints: %s", err)
 				continue
 			}
 			endpoints, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{})
 			if err != nil {
-				rcsw.log.Errorf("failed to get local endpoints %s/%s: %s", svc.Namespace, svc.Name, err)
+				rcsw.log.Errorf("Failed to get local endpoints %s/%s: %s", svc.Namespace, svc.Name, err)
 			}
 		}
-
 		updatedEndpoints := endpoints.DeepCopy()
 		updatedEndpoints.Subsets = []corev1.EndpointSubset{
 			{
@@ -980,17 +972,23 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 			},
 		}
 
-		// If the Service's Endpoints has no Subsets, use an empty Subset locally as well
-		targetService := svc.DeepCopy()
-		targetService.Name = rcsw.targetResourceName(svc.Name)
-		empty, err := rcsw.isEmptyService(targetService)
-		if err != nil {
-			rcsw.log.Errorf("could not check service emptiness: %s", err)
-			continue
-		}
-		if empty {
-			rcsw.log.Warnf("exported service %s/%s is empty", targetService.Namespace, targetService.Name)
-			updatedEndpoints.Subsets = []corev1.EndpointSubset{}
+		// We want to skip this service empty check for auxiliary services --
+		// services which are not headless but do belong to a headless
+		// mirrored service. This is because they do not have a corresponding
+		// endpoint on the target cluster, only a pod. If we attempt to find
+		// endpoints for services like this, they'll always be set to empty.
+		if _, found := svc.Labels[consts.MirroredHeadlessSvcNameLabel]; !found {
+			targetService := svc.DeepCopy()
+			targetService.Name = rcsw.targetResourceName(svc.Name)
+			empty, err := rcsw.isEmptyService(targetService)
+			if err != nil {
+				rcsw.log.Errorf("Could not check service emptiness: %s", err)
+				continue
+			}
+			if empty {
+				rcsw.log.Warnf("Exported service %s/%s is empty", targetService.Namespace, targetService.Name)
+				updatedEndpoints.Subsets = []corev1.EndpointSubset{}
+			}
 		}
 
 		if updatedEndpoints.Annotations == nil {

@@ -301,10 +301,14 @@ func (rcsw *RemoteClusterServiceWatcher) createHeadlessMirrorEndpoints(ctx conte
 	}
 
 	rcsw.log.Infof("Creating a new headless mirror endpoints object for headless mirror %s/%s", headlessMirrorServiceName, exportedService.Namespace)
-	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(exportedService.Namespace).Create(ctx, headlessMirrorEndpoints, metav1.CreateOptions{}); err != nil {
-		// we clean up after ourselves
-		rcsw.localAPIClient.Client.CoreV1().Services(exportedService.Namespace).Delete(ctx, headlessMirrorServiceName, metav1.DeleteOptions{})
-		// and retry
+	// The addresses for the headless mirror service point to the Cluster IPs
+	// of auxiliary services that are tied to gateway liveness. Therefore,
+	// these addresses should always be considered ready.
+	_, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(exportedService.Namespace).Create(ctx, headlessMirrorEndpoints, metav1.CreateOptions{})
+	if err != nil {
+		if svcErr := rcsw.localAPIClient.Client.CoreV1().Services(exportedService.Namespace).Delete(ctx, headlessMirrorServiceName, metav1.DeleteOptions{}); svcErr != nil {
+			rcsw.log.Errorf("failed to delete Service %s after Endpoints creation failed: %s", headlessMirrorServiceName, svcErr)
+		}
 		return RetryableError{[]error{err}}
 	}
 
@@ -376,21 +380,14 @@ func (rcsw *RemoteClusterServiceWatcher) createEndpointMirrorService(ctx context
 		}
 	}
 
-	// todo: The endpoints are created without checking for gateway liveness.
-	// We do this because if we do check — and the gateway is down — these endpoints are
-	// never repaired. This is because in repairEndpoints we skip local
-	// endpoints that are mirroring headless services since they may not have
-	// a matching endpoint on the remote cluster.
-	//
-	// Explained by cluster_watcher.go L943-L945.
 	rcsw.log.Infof("Creating a new endpoints object for endpoint mirror service %s", endpointMirrorInfo)
-	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpointMirrorService.Namespace).Create(ctx, endpointMirrorEndpoints, metav1.CreateOptions{}); err != nil {
+	err = rcsw.createMirrorEndpoints(ctx, endpointMirrorEndpoints)
+	if err != nil {
 		if svcErr := rcsw.localAPIClient.Client.CoreV1().Services(endpointMirrorService.Namespace).Delete(ctx, endpointMirrorName, metav1.DeleteOptions{}); svcErr != nil {
 			rcsw.log.Errorf("Failed to delete service %s after endpoints creation failed: %s", endpointMirrorName, svcErr)
 		}
 		return createdService, RetryableError{[]error{err}}
 	}
-
 	return createdService, nil
 }
 
