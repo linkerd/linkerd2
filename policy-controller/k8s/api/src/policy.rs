@@ -24,6 +24,35 @@ pub struct TargetRef {
 }
 
 impl TargetRef {
+    pub fn from_resource<T>(resource: &T) -> Self
+    where
+        T: kube::Resource,
+        T::DynamicType: Default,
+    {
+        let dt = Default::default();
+
+        let group = match T::group(&dt) {
+            g if (*g).is_empty() => None,
+            g => Some(g.to_string()),
+        };
+
+        let kind = T::kind(&dt).to_string();
+
+        let namespace = resource.meta().namespace.clone();
+        let name = resource
+            .meta()
+            .name
+            .clone()
+            .expect("resource must have a name");
+
+        Self {
+            group,
+            kind,
+            name,
+            namespace,
+        }
+    }
+
     pub fn group_kind(&self) -> String {
         if let Some(g) = self.group.as_deref() {
             format!("{}.{}", g, self.kind)

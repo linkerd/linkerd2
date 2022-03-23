@@ -4,6 +4,7 @@ use kube::{
     runtime::wait::{await_condition, conditions},
     ResourceExt,
 };
+use linkerd_policy_controller_core::{Ipv4Net, Ipv6Net};
 use linkerd_policy_controller_k8s_api as k8s;
 use linkerd_policy_test::{assert_is_default_deny, assert_protocol_detect, grpc, with_temp_ns};
 use tokio::time;
@@ -11,7 +12,7 @@ use tokio::time;
 /// Creates a pod, watches its policy, and updates policy resources that impact
 /// the watch.
 #[tokio::test(flavor = "current_thread")]
-async fn grpc_watch_updates_as_resources_change() {
+async fn server_authorization() {
     with_temp_ns(|client, ns| async move {
         // Create a pod that does nothing. It's injected with a proxy, so we can
         // attach policies to its admin server.
@@ -41,11 +42,7 @@ async fn grpc_watch_updates_as_resources_change() {
 
         // Create a server that selects the pod's proxy admin server and ensure
         // that the update now uses this server, which has no authorizations
-        let server = kube::Api::<k8s::policy::Server>::namespaced(client.clone(), &ns)
-            .create(
-                &kube::api::PostParams::default(),
-                &mk_admin_server(&ns, "linkerd-admin"),
-            )
+        let server = create(&client, mk_admin_server(&ns, "linkerd-admin"))
             .await
             .expect("server must apply");
         tracing::trace!(?server);
@@ -74,30 +71,28 @@ async fn grpc_watch_updates_as_resources_change() {
         // Create a server authorizaation that refers to the `linkerd-admin`
         // server (by name) and ensure that the update now reflects this
         // authorization.
-        let server_authz =
-            kube::Api::<k8s::policy::ServerAuthorization>::namespaced(client.clone(), &ns)
-                .create(
-                    &kube::api::PostParams::default(),
-                    &k8s::policy::ServerAuthorization {
-                        metadata: kube::api::ObjectMeta {
-                            namespace: Some(ns.clone()),
-                            name: Some("all-admin".to_string()),
-                            ..Default::default()
-                        },
-                        spec: k8s::policy::ServerAuthorizationSpec {
-                            server: k8s::policy::server_authorization::Server {
-                                name: Some("linkerd-admin".to_string()),
-                                selector: None,
-                            },
-                            client: k8s::policy::server_authorization::Client {
-                                unauthenticated: true,
-                                ..k8s::policy::server_authorization::Client::default()
-                            },
-                        },
+        let server_authz = create(
+            &client,
+            k8s::policy::ServerAuthorization {
+                metadata: kube::api::ObjectMeta {
+                    namespace: Some(ns.clone()),
+                    name: Some("all-admin".to_string()),
+                    ..Default::default()
+                },
+                spec: k8s::policy::ServerAuthorizationSpec {
+                    server: k8s::policy::server_authorization::Server {
+                        name: Some("linkerd-admin".to_string()),
+                        selector: None,
                     },
-                )
-                .await
-                .expect("serverauthorization must apply");
+                    client: k8s::policy::server_authorization::Client {
+                        unauthenticated: true,
+                        ..k8s::policy::server_authorization::Client::default()
+                    },
+                },
+            },
+        )
+        .await
+        .expect("serverauthorization must apply");
         tracing::trace!(?server_authz);
         let config = rx
             .next()
@@ -115,9 +110,12 @@ async fn grpc_watch_updates_as_resources_change() {
         );
         assert_eq!(
             config.authorizations.first().unwrap().labels,
-            Some(("name".to_string(), "all-admin".to_string()))
-                .into_iter()
-                .collect()
+            Some((
+                "name".to_string(),
+                "serverauthorization:all-admin".to_string()
+            ))
+            .into_iter()
+            .collect()
         );
         assert_eq!(
             *config
@@ -135,7 +133,7 @@ async fn grpc_watch_updates_as_resources_change() {
         );
         assert_eq!(
             config.labels,
-            Some(("name".to_string(), "linkerd-admin".to_string()))
+            Some(("name".to_string(), server.name()))
                 .into_iter()
                 .collect()
         );
@@ -158,9 +156,171 @@ async fn grpc_watch_updates_as_resources_change() {
     .await;
 }
 
+/// Creates a pod, watches its policy, and updates policy resources that impact
+/// the watch.
+#[tokio::test(flavor = "current_thread")]
+async fn server_with_authorization_policy() {
+    with_temp_ns(|client, ns| async move {
+        // Create a pod that does nothing. It's injected with a proxy, so we can
+        // attach policies to its admin server.
+        let pod = create_pod(&client, mk_pause(&ns, "pause"))
+            .await
+            .expect("failed to create pod");
+        tracing::trace!(?pod);
+
+        // Port-forward to the control plane and start watching the pod's admin
+        // server's policy and ensure that the first update uses the default
+        // policy.
+        let mut policy_api = grpc::PolicyClient::port_forwarded(&client)
+            .await
+            .expect("must establish a port-forwarded client");
+        let mut rx = policy_api
+            .watch_port(&ns, &pod.name(), 4191)
+            .await
+            .expect("failed to establish watch");
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?config);
+        assert_is_default_deny!(config);
+        assert_protocol_detect!(config);
+
+        // Create a server that selects the pod's proxy admin server and ensure
+        // that the update now uses this server, which has no authorizations
+        let server = create(&client, mk_admin_server(&ns, "linkerd-admin"))
+            .await
+            .expect("server must apply");
+        tracing::trace!(?server);
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an updated config");
+        tracing::trace!(?config);
+        assert_eq!(
+            config.protocol,
+            Some(grpc::inbound::ProxyProtocol {
+                kind: Some(grpc::inbound::proxy_protocol::Kind::Http1(
+                    grpc::inbound::proxy_protocol::Http1::default()
+                )),
+            }),
+        );
+        assert_eq!(config.authorizations, vec![]);
+        assert_eq!(
+            config.labels,
+            Some(("name".to_string(), server.name()))
+                .into_iter()
+                .collect()
+        );
+
+        let all_nets = create(
+            &client,
+            k8s::policy::NetworkAuthentication {
+                metadata: kube::api::ObjectMeta {
+                    namespace: Some(ns.clone()),
+                    name: Some("all-admin".to_string()),
+                    ..Default::default()
+                },
+                spec: k8s::policy::NetworkAuthenticationSpec {
+                    networks: vec![
+                        k8s::policy::network_authentication::Network {
+                            cidr: Ipv4Net::default().into(),
+                            except: None,
+                        },
+                        k8s::policy::network_authentication::Network {
+                            cidr: Ipv6Net::default().into(),
+                            except: None,
+                        },
+                    ],
+                },
+            },
+        )
+        .await
+        .expect("authorizationpolicy must apply");
+
+        let authz_policy = create(
+            &client,
+            k8s::policy::AuthorizationPolicy {
+                metadata: kube::api::ObjectMeta {
+                    namespace: Some(ns.clone()),
+                    name: Some("all-admin".to_string()),
+                    ..Default::default()
+                },
+                spec: k8s::policy::AuthorizationPolicySpec {
+                    target_ref: k8s::policy::TargetRef::from_resource(&server),
+                    required_authentication_refs: vec![k8s::policy::TargetRef::from_resource(
+                        &all_nets,
+                    )],
+                },
+            },
+        )
+        .await
+        .expect("authorizationpolicy must apply");
+        tracing::trace!(?authz_policy);
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an updated config");
+        tracing::trace!(?config);
+        assert_eq!(
+            config.protocol,
+            Some(grpc::inbound::ProxyProtocol {
+                kind: Some(grpc::inbound::proxy_protocol::Kind::Http1(
+                    grpc::inbound::proxy_protocol::Http1::default()
+                )),
+            }),
+        );
+        assert_eq!(
+            config.authorizations.first().unwrap().labels,
+            Some((
+                "name".to_string(),
+                format!("authorizationpolicy:{}", authz_policy.name())
+            ))
+            .into_iter()
+            .collect()
+        );
+        assert_eq!(config.authorizations.len(), 1);
+        assert_eq!(
+            *config
+                .authorizations
+                .first()
+                .unwrap()
+                .authentication
+                .as_ref()
+                .unwrap(),
+            grpc::inbound::Authn {
+                permit: Some(grpc::inbound::authn::Permit::Unauthenticated(
+                    grpc::inbound::authn::PermitUnauthenticated {}
+                )),
+            }
+        );
+        assert_eq!(
+            config.labels,
+            Some(("name".to_string(), server.name()))
+                .into_iter()
+                .collect()
+        );
+    })
+    .await;
+}
+
+async fn create<T: kube::Resource>(client: &kube::Client, obj: T) -> Result<T> {
+    kube::Api::<T>::namespaced(client.clone(), obj.namespace().unwrap())
+        .create(
+            &kube::api::PostParams {
+                field_manager: Some("linkerd-policy-test".to_string()),
+                ..Default::default()
+            },
+            &obj,
+        )
+        .await
+}
+
 async fn create_pod(client: &kube::Client, pod: k8s::Pod) -> Result<k8s::Pod> {
-    let api = kube::Api::<k8s::Pod>::namespaced(client.clone(), &pod.namespace().unwrap());
-    let pod = api.create(&kube::api::PostParams::default(), &pod).await?;
+    let pod = create(client, pod).await?;
     time::timeout(
         time::Duration::from_secs(60),
         await_condition(api, &pod.name(), conditions::is_pod_running()),
@@ -175,15 +335,9 @@ fn mk_pause(ns: &str, name: &str) -> k8s::Pod {
             namespace: Some(ns.to_string()),
             name: Some(name.to_string()),
             annotations: Some(
-                vec![
-                    ("linkerd.io/inject".to_string(), "enabled".to_string()),
-                    (
-                        "config.linkerd.io/default-inbound-policy".to_string(),
-                        "deny".to_string(),
-                    ),
-                ]
-                .into_iter()
-                .collect(),
+                vec![("linkerd.io/inject".to_string(), "enabled".to_string())]
+                    .into_iter()
+                    .collect(),
             ),
             ..Default::default()
         },

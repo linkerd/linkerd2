@@ -1008,6 +1008,7 @@ dependencies = [
  "ipnet",
  "k8s-openapi",
  "kube",
+ "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
  "linkerd2-proxy-api",
  "rand",
