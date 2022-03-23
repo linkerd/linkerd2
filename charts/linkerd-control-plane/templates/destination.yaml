@@ -96,7 +96,7 @@ spec:
   - name: policy-https
     port: 443
     targetPort: policy-https
-{{- if .Values.enablePodAntiAffinity }}
+{{- if or (.Values.enablePodAntiAffinity) (.Values.enableHA) }}
 ---
 kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
@@ -138,7 +138,7 @@ spec:
       linkerd.io/control-plane-component: destination
       linkerd.io/control-plane-ns: {{.Release.Namespace}}
       {{- include "partials.proxy.labels" $tree.Values.proxy | nindent 6}}
-  {{- if .Values.enablePodAntiAffinity }}
+  {{- if or (.Values.enablePodAntiAffinity) (.Values.enableHA) }}
   strategy:
     rollingUpdate:
       maxUnavailable: 1

@@ -149,6 +149,7 @@ Kubernetes: `>=1.20.0-0`
 | disableHeartBeat | bool | `false` | Set to true to not start the heartbeat cronjob |
 | enableEndpointSlices | bool | `true` | enables the use of EndpointSlice informers for the destination service; enableEndpointSlices should be set to true only if EndpointSlice K8s feature gate is on |
 | enableH2Upgrade | bool | `true` | Allow proxies to perform transparent HTTP/2 upgrading |
+| enableHA | bool | `false` | Enables HA PDB and RollingUpdate configuration without podAntiAffinity |
 | enablePSP | bool | `false` | Add a PSP resource and bind it to the control plane ServiceAccounts. Note PSP has been deprecated since k8s v1.21 |
 | enablePprof | bool | `false` | enables the use of pprof endpoints on control plane component's admin servers |
 | identity.externalCA | bool | `false` | If the linkerd-identity-trust-roots ConfigMap has already been created |

@@ -23,7 +23,7 @@ spec:
   selector:
     matchLabels:
       linkerd.io/control-plane-component: proxy-injector
-  {{- if .Values.enablePodAntiAffinity }}
+  {{- if or (.Values.enablePodAntiAffinity) (.Values.enableHA) }}
   strategy:
     rollingUpdate:
       maxUnavailable: 1
@@ -151,7 +151,7 @@ spec:
   - name: proxy-injector
     port: 443
     targetPort: proxy-injector
-{{- if .Values.enablePodAntiAffinity }}
+{{- if or (.Values.enablePodAntiAffinity) (.Values.enableHA) }}
 ---
 kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
