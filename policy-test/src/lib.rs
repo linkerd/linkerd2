@@ -31,13 +31,27 @@ where
     let ns = k8s::Namespace {
         metadata: k8s::ObjectMeta {
             name: Some(namespace.clone()),
+            labels: Some(
+                Some((
+                    "linkerd-policy-test".to_string(),
+                    std::thread::current().name().unwrap_or("").to_string(),
+                ))
+                .into_iter()
+                .collect(),
+            ),
             ..Default::default()
         },
         ..Default::default()
     };
-    api.create(&kube::api::PostParams::default(), &ns)
-        .await
-        .expect("failed to create Namespace");
+    api.create(
+        &kube::api::PostParams {
+            dry_run: false,
+            field_manager: Some("linkerd-policy-test".to_string()),
+        },
+        &ns,
+    )
+    .await
+    .expect("failed to create Namespace");
 
     tracing::trace!("spawning");
     let test = test(client.clone(), namespace.clone());
@@ -69,6 +83,10 @@ fn init_tracing() -> tracing::subscriber::DefaultGuard {
         tracing_subscriber::fmt()
             .with_test_writer()
             .with_max_level(tracing::Level::TRACE)
+            .with_env_filter(
+                tracing_subscriber::EnvFilter::try_from_default_env()
+                    .unwrap_or_else(|_| "linkerd=trace,debug".parse().unwrap()),
+            )
             .finish(),
     )
 }

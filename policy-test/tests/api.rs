@@ -1,12 +1,11 @@
 use anyhow::Result;
 use futures::prelude::*;
-use kube::{
-    runtime::wait::{await_condition, conditions},
-    ResourceExt,
-};
+use kube::{runtime::wait::await_condition, ResourceExt};
 use linkerd_policy_controller_core::{Ipv4Net, Ipv6Net};
 use linkerd_policy_controller_k8s_api as k8s;
-use linkerd_policy_test::{assert_is_default_deny, assert_protocol_detect, grpc, with_temp_ns};
+use linkerd_policy_test::{
+    assert_is_default_all_unauthenticated, assert_protocol_detect, grpc, with_temp_ns,
+};
 use tokio::time;
 
 /// Creates a pod, watches its policy, and updates policy resources that impact
@@ -37,7 +36,7 @@ async fn server_authorization() {
             .expect("watch must not fail")
             .expect("watch must return an initial config");
         tracing::trace!(?config);
-        assert_is_default_deny!(config);
+        assert_is_default_all_unauthenticated!(config);
         assert_protocol_detect!(config);
 
         // Create a server that selects the pod's proxy admin server and ensure
@@ -150,7 +149,7 @@ async fn server_authorization() {
             .expect("watch must not fail")
             .expect("watch must return an updated config");
         tracing::trace!(?config);
-        assert_is_default_deny!(config);
+        assert_is_default_all_unauthenticated!(config);
         assert_protocol_detect!(config);
     })
     .await;
@@ -184,7 +183,7 @@ async fn server_with_authorization_policy() {
             .expect("watch must not fail")
             .expect("watch must return an initial config");
         tracing::trace!(?config);
-        assert_is_default_deny!(config);
+        assert_is_default_all_unauthenticated!(config);
         assert_protocol_detect!(config);
 
         // Create a server that selects the pod's proxy admin server and ensure
@@ -239,6 +238,7 @@ async fn server_with_authorization_policy() {
         )
         .await
         .expect("authorizationpolicy must apply");
+        tracing::trace!(?all_nets);
 
         let authz_policy = create(
             &client,
@@ -259,9 +259,10 @@ async fn server_with_authorization_policy() {
         .await
         .expect("authorizationpolicy must apply");
         tracing::trace!(?authz_policy);
-        let config = rx
-            .next()
+
+        let config = time::timeout(time::Duration::from_secs(10), rx.next())
             .await
+            .expect("watch must update within 10s")
             .expect("watch must not fail")
             .expect("watch must return an updated config");
         tracing::trace!(?config);
@@ -307,8 +308,12 @@ async fn server_with_authorization_policy() {
     .await;
 }
 
-async fn create<T: kube::Resource>(client: &kube::Client, obj: T) -> Result<T> {
-    kube::Api::<T>::namespaced(client.clone(), obj.namespace().unwrap())
+async fn create<T>(client: &kube::Client, obj: T) -> Result<T>
+where
+    T: kube::Resource + serde::Serialize + serde::de::DeserializeOwned + Clone + std::fmt::Debug,
+    T::DynamicType: Default,
+{
+    kube::Api::<T>::namespaced(client.clone(), &obj.namespace().unwrap())
         .create(
             &kube::api::PostParams {
                 field_manager: Some("linkerd-policy-test".to_string()),
@@ -317,16 +322,34 @@ async fn create<T: kube::Resource>(client: &kube::Client, obj: T) -> Result<T> {
             &obj,
         )
         .await
+        .map_err(anyhow::Error::from)
 }
 
 async fn create_pod(client: &kube::Client, pod: k8s::Pod) -> Result<k8s::Pod> {
     let pod = create(client, pod).await?;
+
+    let api = kube::Api::namespaced(client.clone(), &pod.namespace().unwrap());
     time::timeout(
         time::Duration::from_secs(60),
-        await_condition(api, &pod.name(), conditions::is_pod_running()),
+        await_condition(api, &pod.name(), is_pod_ready()),
     )
     .await??;
+
     Ok(pod)
+}
+
+fn is_pod_ready() -> impl kube::runtime::wait::Condition<k8s::Pod> {
+    |obj: Option<&k8s::Pod>| {
+        if let Some(pod) = obj {
+            if let Some(status) = &pod.status {
+                if let Some(containers) = &status.container_statuses {
+                    return containers.iter().all(|c| c.ready);
+                }
+            }
+        }
+
+        false
+    }
 }
 
 fn mk_pause(ns: &str, name: &str) -> k8s::Pod {

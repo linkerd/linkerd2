@@ -10,15 +10,18 @@ use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
 use tokio::io;
 
 #[macro_export]
-macro_rules! assert_is_default_deny {
+macro_rules! assert_is_default_all_unauthenticated {
     ($config:expr) => {
         assert_eq!(
             $config.labels,
-            Some(("name".to_string(), "default:deny".to_string()))
-                .into_iter()
-                .collect()
+            Some((
+                "name".to_string(),
+                "default:all-unauthenticated".to_string()
+            ))
+            .into_iter()
+            .collect()
         );
-        assert!($config.authorizations.is_empty());
+        assert_eq!($config.authorizations.len(), 1);
     };
 }
 

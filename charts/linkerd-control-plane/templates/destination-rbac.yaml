@@ -193,6 +193,9 @@ rules:
   - apiGroups:
       - policy.linkerd.io
     resources:
+      - authorizationpolicies
+      - meshtlsauthentications
+      - networkauthentications
       - servers
       - serverauthorizations
     verbs:

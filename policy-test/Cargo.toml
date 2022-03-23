@@ -22,7 +22,7 @@ schemars = "0.8"
 tonic = { version = "0.6" }
 tokio = { version = "1", features = ["macros", "rt"] }
 tracing = "0.1"
-tracing-subscriber = "0.3"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]
 tokio-test = "0.4"

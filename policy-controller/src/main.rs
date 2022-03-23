@@ -125,6 +125,27 @@ async fn main() -> Result<()> {
             .instrument(info_span!("serverauthorizations")),
     );
 
+    let authz_policies =
+        runtime.watch_all::<k8s::policy::AuthorizationPolicy>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(index.clone(), authz_policies)
+            .instrument(info_span!("authorizationpolicies")),
+    );
+
+    let mtls_authns =
+        runtime.watch_all::<k8s::policy::MeshTLSAuthentication>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(index.clone(), mtls_authns)
+            .instrument(info_span!("meshtlsauthentications")),
+    );
+
+    let network_authns =
+        runtime.watch_all::<k8s::policy::NetworkAuthentication>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(index.clone(), network_authns)
+            .instrument(info_span!("networkauthentications")),
+    );
+
     // Run the gRPC server, serving results by looking up against the index handle.
     tokio::spawn(grpc(
         grpc_addr,
