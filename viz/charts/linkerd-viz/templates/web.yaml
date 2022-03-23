@@ -99,6 +99,7 @@ spec:
         {{- $hostAbbrev := replace "." "\\." (printf "web.%s.svc" .Release.Namespace) }}
         - -enforced-host=^(localhost|127\.0\.0\.1|{{ $hostFull }}|{{ $hostAbbrev }}|\[::1\])(:\d+)?$
         {{- end}}
+        - -enable-pprof={{.Values.enablePprof | default false}}
         image: {{.Values.dashboard.image.registry | default .Values.defaultRegistry}}/{{.Values.dashboard.image.name}}:{{.Values.dashboard.image.tag | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.dashboard.image.pullPolicy | default .Values.defaultImagePullPolicy}}
         livenessProbe:

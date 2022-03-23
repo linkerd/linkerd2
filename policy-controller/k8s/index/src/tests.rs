@@ -414,8 +414,8 @@ fn links_authorization_policy_with_mtls_name() {
         }],
     ));
     test.index.write().apply(mk_meshtls_authentication(
-        "ns-1".to_string(),
-        "mtls-bar".to_string(),
+        "ns-1",
+        "mtls-bar",
         Some("foo.bar".to_string()),
         None,
     ));

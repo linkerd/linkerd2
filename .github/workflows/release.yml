@@ -83,7 +83,7 @@ jobs:
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
         echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
     - name: Cache docker layers
-      uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+      uses: actions/cache@4b0cf6cc4619e737324ddfcec08fff2413359514
       with:
         path: ${{ env.DOCKER_BUILDKIT_CACHE }}
         key: policy-controller-${{ matrix.arch }}-${{ env.TAG }}
@@ -313,7 +313,7 @@ jobs:
       contents: write
     steps:
     - name: Create linkerd/website repository dispatch event
-      uses: peter-evans/repository-dispatch@ce5485de42c9b2622d2ed064be479e8ed65e76f4
+      uses: peter-evans/repository-dispatch@11ba7d3f32dc7cc919d1c43f1fec1c05260c26b5
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
         repository: linkerd/website

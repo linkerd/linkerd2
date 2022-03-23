@@ -16,21 +16,21 @@ async fn accepts_valid() {
             target_ref: TargetRef {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: "Server".to_string(),
-                name: Some("api".to_string()),
+                name: "api".to_string(),
                 ..Default::default()
             },
             required_authentication_refs: vec![
                 TargetRef {
                     group: Some("policy.linkerd.io".to_string()),
                     kind: "MeshTLSAuthentication".to_string(),
-                    name: Some("mtls-clients".to_string()),
+                    name: "mtls-clients".to_string(),
                     ..Default::default()
                 },
                 TargetRef {
                     group: Some("policy.linkerd.io".to_string()),
                     kind: "NetworkAuthentication".to_string(),
                     namespace: Some("linkerd".to_string()),
-                    name: Some("cluster-nets".to_string()),
+                    name: "cluster-nets".to_string(),
                 },
             ],
         },
@@ -63,7 +63,7 @@ async fn rejects_empty_required_authentications() {
             target_ref: TargetRef {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: "Server".to_string(),
-                name: Some("api".to_string()),
+                name: "api".to_string(),
                 ..Default::default()
             },
             required_authentication_refs: vec![],
@@ -84,14 +84,14 @@ async fn rejects_target_ref_deployment() {
             target_ref: TargetRef {
                 group: Some("apps".to_string()),
                 kind: "Deployment".to_string(),
-                name: Some("someapp".to_string()),
+                name: "someapp".to_string(),
                 ..Default::default()
             },
             required_authentication_refs: vec![TargetRef {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: "NetworkAuthentication".to_string(),
                 namespace: Some("linkerd".to_string()),
-                name: Some("cluster-nets".to_string()),
+                name: "cluster-nets".to_string(),
             }],
         },
     })

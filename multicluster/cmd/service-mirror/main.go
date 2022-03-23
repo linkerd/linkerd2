@@ -40,6 +40,7 @@ func Main(args []string) {
 	namespace := cmd.String("namespace", "", "namespace containing Link and credentials Secret")
 	repairPeriod := cmd.Duration("endpoint-refresh-period", 1*time.Minute, "frequency to refresh endpoint resolution")
 	enableHeadlessSvc := cmd.Bool("enable-headless-services", false, "toggle support for headless service mirroring")
+	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
 
 	flags.ConfigureAndParse(cmd, args)
 	linkName := cmd.Arg(0)
@@ -76,7 +77,7 @@ func Main(args []string) {
 
 	metrics := servicemirror.NewProbeMetricVecs()
 
-	adminServer := admin.NewServer(*metricsAddr)
+	adminServer := admin.NewServer(*metricsAddr, *enablePprof)
 
 	go func() {
 		log.Infof("starting admin server on %s", *metricsAddr)

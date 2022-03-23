@@ -1653,6 +1653,7 @@ spec:
         - -identity-issuance-lifetime=24h0m0s
         - -identity-clock-skew-allowance=20s
         - -identity-scheme=linkerd.io/tls
+        - -enable-pprof=false
         env:
         - name: LINKERD_DISABLED
           value: "linkerd-await cannot block the identity controller"
@@ -2115,6 +2116,7 @@ spec:
         - -cluster-domain=cluster.local
         - -identity-trust-domain=cluster.local
         - -default-opaque-ports=25,443,587,3306,5432,11211
+        - -enable-pprof=false
         image: ControllerImage:
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -2140,6 +2142,7 @@ spec:
         - sp-validator
         - -log-level=ControllerLogLevel
         - -log-format=ControllerLogFormat
+        - -enable-pprof=false
         image: ControllerImage:
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -2480,6 +2483,7 @@ spec:
         - -log-level=ControllerLogLevel
         - -log-format=ControllerLogFormat
         - -linkerd-namespace=linkerd
+        - -enable-pprof=false
         image: ControllerImage:
         imagePullPolicy: ImagePullPolicy
         livenessProbe:

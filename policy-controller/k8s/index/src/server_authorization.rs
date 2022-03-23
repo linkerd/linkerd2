@@ -5,7 +5,7 @@ use linkerd_policy_controller_core::{
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server_authorization::MeshTls};
 
-/// The parts of a `ServerAuthorization` resource that can chagne.
+/// The parts of a `ServerAuthorization` resource that can change.
 #[derive(Debug, PartialEq)]
 pub(crate) struct ServerAuthz {
     pub authz: ClientAuthorization,
