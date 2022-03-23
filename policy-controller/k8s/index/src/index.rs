@@ -389,12 +389,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::AuthorizationPolicy> fo
             }
         };
 
-        self.ns_or_default_with_reindex(ns, |ns| {
-            ns.policy
-                .authorization_policies
-                .insert(name, spec)
-                .is_some()
-        })
+        self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_authz_policy(name, spec))
     }
 
     fn delete(&mut self, ns: String, ap: String) {
@@ -862,6 +857,22 @@ impl PolicyIndex {
                     return false;
                 }
                 *saz = server_authz;
+            }
+        }
+        true
+    }
+
+    fn update_authz_policy(&mut self, name: String, spec: authorization_policy::Spec) -> bool {
+        match self.authorization_policies.entry(name) {
+            Entry::Vacant(entry) => {
+                entry.insert(spec);
+            }
+            Entry::Occupied(entry) => {
+                let ap = entry.into_mut();
+                if *ap == spec {
+                    return false;
+                }
+                *ap = spec;
             }
         }
         true

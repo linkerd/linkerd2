@@ -3,18 +3,18 @@
 use anyhow::{bail, Result};
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::TargetRef};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) struct Spec {
     pub target: Target,
     pub authentications: Vec<AuthenticationTarget>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) enum Target {
     Server(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) enum AuthenticationTarget {
     MeshTLS {
         namespace: Option<String>,
