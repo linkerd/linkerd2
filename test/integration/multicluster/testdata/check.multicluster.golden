@@ -1,8 +1,22 @@
 linkerd-multicluster
 --------------------
 √ Link CRD exists
+√ Link resources are valid
+	* {{.LinkName}}
+√ remote cluster access credentials are valid
+	* {{.LinkName}}
+√ clusters share trust anchors
+	* {{.LinkName}}
+√ service mirror controller has required permissions
+	* {{.LinkName}}
+√ service mirror controllers are running
+	* {{.LinkName}}
+√ all gateway mirrors are healthy
+	* {{.LinkName}}
 √ multicluster extension proxies are healthy
-√ multicluster extension proxies are up-to-date
+‼ multicluster extension proxies are up-to-date
+    {{.ProxyVersionErr}}
+    see {{.HintURL}}l5d-multicluster-proxy-cp-version for hints
 √ multicluster extension proxies and cli versions match
 
 Status check results are √

@@ -72,6 +72,26 @@ func (h *KubernetesHelper) CheckIfNamespaceExists(ctx context.Context, namespace
 	return err
 }
 
+// SwitchContext will re-build the clientset with the given context. Useful when
+// testing multiple clusters at the same time
+func (h *KubernetesHelper) SwitchContext(ctx string) error {
+	rules := clientcmd.NewDefaultClientConfigLoadingRules()
+	overrides := &clientcmd.ConfigOverrides{CurrentContext: ctx}
+	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, overrides)
+	config, err := kubeConfig.ClientConfig()
+	if err != nil {
+		return err
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return err
+	}
+
+	h.clientset = clientset
+	return nil
+}
+
 // GetSecret retrieves a Kubernetes Secret
 func (h *KubernetesHelper) GetSecret(ctx context.Context, namespace, name string) (*corev1.Secret, error) {
 	return h.clientset.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
@@ -144,6 +164,20 @@ func (h *KubernetesHelper) KubectlApplyWithArgs(stdin string, cmdArgs ...string)
 // Kubectl executes an arbitrary Kubectl command
 func (h *KubernetesHelper) Kubectl(stdin string, arg ...string) (string, error) {
 	withContext := append([]string{"--context=" + h.k8sContext}, arg...)
+	cmd := exec.Command("kubectl", withContext...)
+	cmd.Stdin = strings.NewReader(stdin)
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
+// KubectlApplyWithContext applies a given configuration with the given flags
+func (h *KubernetesHelper) KubectlApplyWithContext(stdin string, context string, arg ...string) (string, error) {
+	args := append([]string{"apply"}, arg...)
+	return h.KubectlWithContext(stdin, context, args...)
+}
+
+func (h *KubernetesHelper) KubectlWithContext(stdin string, context string, arg ...string) (string, error) {
+	withContext := append([]string{"--context=" + context}, arg...)
 	cmd := exec.Command("kubectl", withContext...)
 	cmd.Stdin = strings.NewReader(stdin)
 	out, err := cmd.CombinedOutput()
@@ -322,10 +356,17 @@ func (h *KubernetesHelper) URLFor(ctx context.Context, namespace, deployName str
 // WaitRollout blocks until all the given deployments have been completely
 // rolled out (and their pods are ready)
 func (h *KubernetesHelper) WaitRollout(t *testing.T, deploys map[string]DeploySpec) {
+	// Use default context
+	h.WaitRolloutWithContext(t, deploys, h.k8sContext)
+}
+
+// WaitRolloutWithContext blocks until all the given deployments in a provided
+// k8s context have been completely rolled out (and their pods are ready)
+func (h *KubernetesHelper) WaitRolloutWithContext(t *testing.T, deploys map[string]DeploySpec, context string) {
 	for deploy, deploySpec := range deploys {
-		o, err := h.Kubectl("", "--namespace="+deploySpec.Namespace, "rollout", "status", "--timeout=60m", "deploy/"+deploy)
+		o, err := h.KubectlWithContext("", context, "--namespace="+deploySpec.Namespace, "rollout", "status", "--timeout=60m", "deploy/"+deploy)
 		if err != nil {
-			oEvt, _ := h.Kubectl("", "--namespace="+deploySpec.Namespace, "get", "event", "--field-selector", "involvedObject.name="+deploy)
+			oEvt, _ := h.KubectlWithContext("", context, "--namespace="+deploySpec.Namespace, "get", "event", "--field-selector", "involvedObject.name="+deploy)
 			AnnotatedFatalf(t,
 				fmt.Sprintf("failed to wait rollout of deploy/%s", deploy),
 				"failed to wait for rollout of deploy/%s: %s: %s\nEvents:\n%s", deploy, err, o, oEvt)

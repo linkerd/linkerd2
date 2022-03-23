@@ -370,11 +370,6 @@ start_multicluster_test() {
   finish target
 }
 
-multicluster_link() {
-  lbIP=$(kubectl --context="$context" get svc -n kube-system traefik -o 'go-template={{ (index .status.loadBalancer.ingress 0).ip }}')
-  "$linkerd_path" multicluster link --log-level debug --api-server-address "https://${lbIP}:6443" --cluster-name "$1" --set "enableHeadlessServices=true"
-}
-
 run_test(){
   local filename=$1
   shift
@@ -455,26 +450,7 @@ run_uninstall_test() {
 }
 
 run_multicluster_test() {
-  tmp=$(mktemp -d -t l5dcerts.XXX)
-  pwd=$PWD
-  cd "$tmp"
-  "$bindir"/certs-openssl
-  cd "$pwd"
-  export context="k3d-target"
-  run_test "$test_directory/multicluster/install_test.go" --certs-path "$tmp"
-  run_test "$test_directory/multicluster/target1"
-  link=$(multicluster_link target)
-
-  export context="k3d-source"
-  # Create the emojivoto and multicluster-statefulset namespaces in the source
-  # cluster so that mirror services can be created there.
-  kubectl --context="$context" create namespace emojivoto
-  kubectl --context="$context" create namespace multicluster-statefulset
-  run_test "$test_directory/multicluster/install_test.go" --certs-path "$tmp"
-  echo "$link" | kubectl --context="$context" apply -f -
-  run_test "$test_directory/multicluster/source" 
-  export context="k3d-target"
-  run_test "$test_directory/multicluster/target2" 
+   run_test "$test_directory/multicluster/..." 
 }
 
 run_deep_test() {

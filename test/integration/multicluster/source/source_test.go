@@ -16,17 +16,42 @@ import (
 	"github.com/linkerd/linkerd2/testutil"
 )
 
-var TestHelper *testutil.TestHelper
+var (
+	TestHelper *testutil.TestHelper
+	contexts   map[string]string
+	sourceCtx  string
+)
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
+	// Block test execution until viz extension (last extension to be installed)
+	// is running
+	TestHelper.WaitUntilDeployReady(testutil.LinkerdVizDeployReplicas)
+	// Before starting, get source context
+	contexts = TestHelper.GetMulticlusterContexts()
+	sourceCtx = contexts["src"]
 	os.Exit(m.Run())
+}
+
+func TestInstallVoteBot(t *testing.T) {
+	o, err := TestHelper.KubectlApplyWithContext("", sourceCtx, "-f", "testdata/vote-bot.yml")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to install vote-bot", "failed to install vote-bot: %s\n%s", err, o)
+	}
+}
+
+func TestInstallSlowCooker(t *testing.T) {
+	out, err := TestHelper.KubectlApplyWithContext("", sourceCtx, "-f", "testdata/slow-cooker.yaml")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to install slow-cooker", "failed to install slow-cooker: %s\ngot: %s", err, out)
+	}
+
 }
 
 func TestGateways(t *testing.T) {
 	timeout := time.Minute
 	err := TestHelper.RetryFor(timeout, func() error {
-		out, err := TestHelper.LinkerdRun("multicluster", "gateways")
+		out, err := TestHelper.LinkerdRun("--context="+sourceCtx, "multicluster", "gateways")
 		if err != nil {
 			return err
 		}
@@ -55,40 +80,11 @@ func TestGateways(t *testing.T) {
 	}
 }
 
-func TestInstallVoteBot(t *testing.T) {
-	if err := TestHelper.CreateDataPlaneNamespaceIfNotExists(context.Background(), "emojivoto", nil); err != nil {
-		testutil.AnnotatedFatalf(t, "failed to create emojivoto namespace",
-			"failed to create emojivoto namespace: %s", err)
-	}
-	yaml, err := testutil.ReadFile("testdata/vote-bot.yml")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to read 'vote_bot.yml'", "failed to read 'vote_bot.yml': %s", err)
-	}
-	o, err := TestHelper.KubectlApply(yaml, "emojivoto")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to install vote-bot", "failed to install vote-bot: %s\n%s", err, o)
-	}
-}
-
-func TestInstallSlowCooker(t *testing.T) {
-	err := TestHelper.CreateDataPlaneNamespaceIfNotExists(context.Background(), "multicluster-statefulset", nil)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to create multicluster-statefulset namespace", "failed to create multicluster-statefulset namespace: %s", err)
-	}
-
-	slowcooker, err := TestHelper.LinkerdRun("inject", "testdata/slow-cooker.yaml")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to inject slow-cooker manifest", "failed to inject slow-cooker manifest: %s", err)
-	}
-
-	out, err := TestHelper.KubectlApply(slowcooker, "")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to install slow-cooker", "failed to install slow-cooker: %s\ngot: %s", err, out)
-	}
-
-}
-
 func TestCheck(t *testing.T) {
+	// Re-build the clientset with the source context
+	if err := TestHelper.SwitchContext(sourceCtx); err != nil {
+		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", sourceCtx, err)
+	}
 	check(t)
 }
 
@@ -101,7 +97,7 @@ func TestCheckAfterRepairEndpoints(t *testing.T) {
 }
 
 func check(t *testing.T) {
-	cmd := []string{"multicluster", "check", "--wait=10s"}
+	cmd := []string{"--context=" + sourceCtx, "multicluster", "check", "--wait=10s"}
 	timeout := 20 * time.Second
 	err := TestHelper.RetryFor(timeout, func() error {
 		out, err := TestHelper.LinkerdRun(cmd...)
@@ -123,9 +119,11 @@ func check(t *testing.T) {
 		vars := struct {
 			ProxyVersionErr string
 			HintURL         string
+			LinkName        string
 		}{
 			versionErrMsg,
 			healthcheck.HintBaseURL(TestHelper.GetVersion()),
+			"target", // name of linked cluster, not its context
 		}
 
 		var expected bytes.Buffer

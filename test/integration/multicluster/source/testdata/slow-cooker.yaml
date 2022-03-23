@@ -1,3 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    test.linkerd.io/is-test-data-plane: "true"
+  name: multicluster-statefulset
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -10,6 +17,8 @@ spec:
       app: slow-cooker
   template:
     metadata:
+      annotations:
+        linkerd.io/inject: enabled
       labels:
         app: slow-cooker
     spec:

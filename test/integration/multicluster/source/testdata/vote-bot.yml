@@ -1,3 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    test.linkerd.io/is-test-data-plane: "true"
+  name: emojivoto
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
