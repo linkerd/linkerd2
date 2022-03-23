@@ -9,6 +9,37 @@ pub use linkerd2_proxy_api::*;
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
 use tokio::io;
 
+#[macro_export]
+macro_rules! assert_is_default_deny {
+    ($config:expr) => {
+        assert_eq!(
+            $config.labels,
+            Some(("name".to_string(), "default:deny".to_string()))
+                .into_iter()
+                .collect()
+        );
+        assert!($config.authorizations.is_empty());
+    };
+}
+
+#[macro_export]
+macro_rules! assert_protocol_detect {
+    ($config:expr) => {{
+        use linkerd2_proxy_api::inbound;
+
+        assert_eq!(
+            $config.protocol,
+            Some(inbound::ProxyProtocol {
+                kind: Some(inbound::proxy_protocol::Kind::Detect(
+                    inbound::proxy_protocol::Detect {
+                        timeout: Some(time::Duration::from_secs(10).into()),
+                    }
+                )),
+            }),
+        );
+    }};
+}
+
 #[derive(Debug)]
 pub struct PolicyClient {
     client: InboundServerPoliciesClient<GrpcHttp>,

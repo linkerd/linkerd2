@@ -5,7 +5,7 @@ use kube::{
     ResourceExt,
 };
 use linkerd_policy_controller_k8s_api as k8s;
-use linkerd_policy_test::{grpc, with_temp_ns};
+use linkerd_policy_test::{assert_is_default_deny, assert_protocol_detect, grpc, with_temp_ns};
 use tokio::time;
 
 /// Creates a pod, watches its policy, and updates policy resources that impact
@@ -36,23 +36,8 @@ async fn grpc_watch_updates_as_resources_change() {
             .expect("watch must not fail")
             .expect("watch must return an initial config");
         tracing::trace!(?config);
-        assert_eq!(
-            config.protocol,
-            Some(grpc::inbound::ProxyProtocol {
-                kind: Some(grpc::inbound::proxy_protocol::Kind::Detect(
-                    grpc::inbound::proxy_protocol::Detect {
-                        timeout: Some(time::Duration::from_secs(10).into()),
-                    }
-                )),
-            }),
-        );
-        assert!(config.authorizations.is_empty());
-        assert_eq!(
-            config.labels,
-            Some(("name".to_string(), "default:deny".to_string()))
-                .into_iter()
-                .collect()
-        );
+        assert_is_default_deny!(config);
+        assert_protocol_detect!(config);
 
         // Create a server that selects the pod's proxy admin server and ensure
         // that the update now uses this server, which has no authorizations
@@ -167,12 +152,8 @@ async fn grpc_watch_updates_as_resources_change() {
             .expect("watch must not fail")
             .expect("watch must return an updated config");
         tracing::trace!(?config);
-        assert_eq!(
-            config.labels,
-            Some(("name".to_string(), "default:deny".to_string()))
-                .into_iter()
-                .collect()
-        );
+        assert_is_default_deny!(config);
+        assert_protocol_detect!(config);
     })
     .await;
 }
