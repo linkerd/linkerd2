@@ -11,7 +11,7 @@ use tokio::time;
 /// Creates a pod, watches its policy, and updates policy resources that impact
 /// the watch.
 #[tokio::test(flavor = "current_thread")]
-async fn server_authorization() {
+async fn server_with_server_authorization() {
     with_temp_ns(|client, ns| async move {
         // Create a pod that does nothing. It's injected with a proxy, so we can
         // attach policies to its admin server.
