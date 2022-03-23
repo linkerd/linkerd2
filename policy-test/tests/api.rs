@@ -237,7 +237,7 @@ async fn server_with_authorization_policy() {
             },
         )
         .await
-        .expect("authorizationpolicy must apply");
+        .expect("networkauthentication must apply");
         tracing::trace!(?all_nets);
 
         let authz_policy = create(

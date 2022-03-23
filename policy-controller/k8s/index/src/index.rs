@@ -671,6 +671,7 @@ impl Pod {
     fn update_server(&mut self, port: u16, name: &str, server: InboundServer) {
         match self.port_servers.entry(port) {
             Entry::Vacant(entry) => {
+                tracing::trace!(port = %port, server = %name, "Creating server");
                 let (tx, rx) = watch::channel(server);
                 entry.insert(PodPortServer {
                     name: Some(name.to_string()),
@@ -685,6 +686,7 @@ impl Pod {
                 // Avoid sending redundant updates.
                 if ps.name.as_deref() == Some(name) && *ps.rx.borrow() == server {
                     tracing::trace!(port = %port, server = %name, "Skipped redundant server update");
+                    tracing::trace!(?server);
                     return;
                 }
 
@@ -694,6 +696,7 @@ impl Pod {
                 // make the opportunistic choice to assume the cluster is
                 // configured coherently so we take the update. The admission
                 // controller should prevent conflicts.
+                tracing::trace!(port = %port, server = %name, "Updating server");
                 ps.name = Some(name.to_string());
                 ps.tx.send(server).expect("a receiver is held by the index");
             }
@@ -705,9 +708,9 @@ impl Pod {
     /// Updates a pod-port to use the given named server.
     fn set_default_server(&mut self, port: u16, config: &ClusterInfo) {
         let server = Self::default_inbound_server(port, &self.meta.settings, config);
-        tracing::debug!(%port, server = %config.default_policy, "Setting default server");
         match self.port_servers.entry(port) {
             Entry::Vacant(entry) => {
+                tracing::debug!(%port, server = %config.default_policy, "Creating default server");
                 let (tx, rx) = watch::channel(server);
                 entry.insert(PodPortServer { name: None, tx, rx });
             }
@@ -717,9 +720,11 @@ impl Pod {
 
                 // Avoid sending redundant updates.
                 if *ps.rx.borrow() == server {
+                    tracing::trace!(%port, server = %config.default_policy, "Default server already set");
                     return;
                 }
 
+                tracing::debug!(%port, server = %config.default_policy, "Setting default server");
                 ps.name = None;
                 ps.tx.send(server).expect("a receiver is held by the index");
             }
@@ -808,7 +813,6 @@ impl Pod {
             );
         };
 
-        tracing::trace!(port, ?settings, %policy, ?protocol, ?authorizations, "default server");
         InboundServer {
             name: format!("default:{}", policy),
             protocol,
@@ -869,6 +873,7 @@ impl PolicyIndex {
         server: &server::Server,
         authentications: &AuthenticationNsIndex,
     ) -> InboundServer {
+        tracing::trace!(%name, ?server, "Creating inbound server");
         let authorizations = self.client_authzs(&name, server, authentications);
         InboundServer {
             name,
@@ -892,59 +897,81 @@ impl PolicyIndex {
 
         for (name, ap) in self.authorization_policies.iter() {
             if ap.target.server() != Some(server_name) {
+                tracing::trace!(
+                    ns = %self.namespace,
+                    authorizationpolicy = %name,
+                    target = %ap.target.server().unwrap(),
+                    server = %server_name,
+                    "AuthorizationPolicy does not target server",
+                );
                 continue;
             }
+            tracing::trace!(
+                ns = %self.namespace,
+                authorizationpolicy = %name,
+                server = %server_name,
+                "AuthorizationPolicy targets server",
+            );
+            tracing::trace!(authns = ?ap.authentications);
 
-            let networks = ap
-                .authentications
-                .iter()
-                .filter_map(|t| {
-                    if let authorization_policy::AuthenticationTarget::Network {
-                        namespace: ns,
-                        name,
-                    } = t
-                    {
-                        let authn = authentications
-                            .by_ns
-                            .get(ns.as_deref().unwrap_or(&self.namespace))?
-                            .network
-                            .get(name)?;
-                        Some(authn.matches.clone())
-                    } else {
-                        None
+            let mut networks = vec![];
+            for t in ap.authentications.iter() {
+                if let authorization_policy::AuthenticationTarget::Network {
+                    namespace: ref ns,
+                    ref name,
+                } = t
+                {
+                    let namespace = ns.as_deref().unwrap_or(&self.namespace);
+                    tracing::trace!(ns = %namespace, %name, "Finding network");
+                    if let Some(ns) = authentications.by_ns.get(namespace) {
+                        if let Some(authn) = ns.network.get(name).as_ref() {
+                            let nets = authn.matches.clone();
+                            tracing::trace!(ns = %namespace, %name, ?nets, "Found network");
+                            networks.extend(nets);
+                            continue;
+                        }
                     }
-                })
-                .flatten()
-                .collect::<Vec<_>>();
 
-            let identities = ap
-                .authentications
-                .iter()
-                .filter_map(|t| {
-                    if let authorization_policy::AuthenticationTarget::MeshTLS {
-                        namespace: ns,
-                        name,
-                    } = t
-                    {
-                        let authn = authentications
-                            .by_ns
-                            .get(ns.as_deref().unwrap_or(&self.namespace))?
-                            .meshtls
-                            .get(name)?;
-                        Some(authn.matches.clone())
-                    } else {
-                        None
+                    tracing::info!(ns = %namespace, name = %name, "Network not found");
+                    networks = vec![];
+                    break;
+                }
+            }
+
+            let mut identities = vec![];
+            for t in ap.authentications.iter() {
+                if let authorization_policy::AuthenticationTarget::MeshTLS {
+                    namespace: ref ns,
+                    ref name,
+                } = t
+                {
+                    let namespace = ns.as_deref().unwrap_or(&self.namespace);
+                    tracing::trace!(ns = %namespace, %name, "Finding mtls");
+                    if let Some(ns) = authentications.by_ns.get(namespace) {
+                        if let Some(authn) = ns.meshtls.get(name) {
+                            let ids = authn.matches.clone();
+                            tracing::trace!(ns = %namespace, %name, ?ids, "Found mtls");
+                            identities.extend(ids);
+                        }
                     }
-                })
-                .flatten()
-                .collect::<Vec<IdentityMatch>>();
+
+                    tracing::info!(ns = %namespace, name = %name, "Mtls not found");
+                    identities = vec![];
+                    break;
+                }
+            }
 
             let authz = ClientAuthorization {
                 networks,
-                authentication: if identities.is_empty() {
-                    ClientAuthentication::Unauthenticated
-                } else {
+                authentication: if ap.authentications.iter().any(|t| {
+                    matches!(
+                        t,
+                        authorization_policy::AuthenticationTarget::MeshTLS { .. },
+                    )
+                }) {
                     ClientAuthentication::TlsAuthenticated(identities)
+                } else {
+                    ClientAuthentication::Unauthenticated
                 },
             };
             authzs.insert(format!("authorizationpolicy:{}", name), authz);
