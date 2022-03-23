@@ -2,8 +2,9 @@
 #![forbid(unsafe_code)]
 
 pub mod admission;
+pub mod grpc;
 
-use linkerd_policy_controller_k8s_api::{self as api};
+use linkerd_policy_controller_k8s_api as k8s;
 use rand::Rng;
 use tracing::Instrument;
 
@@ -17,22 +18,18 @@ where
 
     let namespace = {
         // TODO(ver) include the test name in this string?
-        let rng = &mut rand::thread_rng();
-        let sfx = (0..6)
-            .map(|_| rng.sample(LowercaseAlphanumeric) as char)
-            .collect::<String>();
-        format!("linkerd-policy-test-{}", sfx)
+        format!("linkerd-policy-test-{}", random_suffix(6))
     };
 
     tracing::debug!("initializing client");
     let client = kube::Client::try_default()
         .await
         .expect("failed to initialize k8s client");
-    let api = kube::Api::<api::Namespace>::all(client.clone());
+    let api = kube::Api::<k8s::Namespace>::all(client.clone());
 
     tracing::debug!(%namespace, "creating");
-    let ns = api::Namespace {
-        metadata: api::ObjectMeta {
+    let ns = k8s::Namespace {
+        metadata: k8s::ObjectMeta {
             name: Some(namespace.clone()),
             ..Default::default()
         },
@@ -58,6 +55,13 @@ where
     if let Err(err) = res {
         std::panic::resume_unwind(err.into_panic());
     }
+}
+
+pub fn random_suffix(len: usize) -> String {
+    let rng = &mut rand::thread_rng();
+    (0..len)
+        .map(|_| rng.sample(LowercaseAlphanumeric) as char)
+        .collect()
 }
 
 fn init_tracing() -> tracing::subscriber::DefaultGuard {
