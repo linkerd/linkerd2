@@ -4,7 +4,7 @@
 pub mod admission;
 pub mod grpc;
 
-use linkerd_policy_controller_k8s_api as k8s;
+use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
 use maplit::{btreemap, convert_args};
 use tracing::Instrument;
 
@@ -16,21 +16,15 @@ where
 {
     let _tracing = init_tracing();
 
-    let namespace = {
-        // TODO(ver) include the test name in this string?
-        format!("linkerd-policy-test-{}", random_suffix(6))
-    };
-
-    tracing::debug!("initializing client");
+    tracing::trace!("Initializing client");
     let client = kube::Client::try_default()
         .await
         .expect("failed to initialize k8s client");
     let api = kube::Api::<k8s::Namespace>::all(client.clone());
 
-    tracing::debug!(%namespace, "creating");
     let ns = k8s::Namespace {
         metadata: k8s::ObjectMeta {
-            name: Some(namespace.clone()),
+            name: Some(format!("linkerd-policy-test-{}", random_suffix(6))),
             labels: Some(convert_args!(btreemap!(
                 "linkerd-policy-test" => std::thread::current().name().unwrap_or(""),
             ))),
@@ -38,6 +32,7 @@ where
         },
         ..Default::default()
     };
+    tracing::debug!(namespace = %ns.name(), "Creating");
     api.create(
         &kube::api::PostParams {
             dry_run: false,
@@ -48,17 +43,17 @@ where
     .await
     .expect("failed to create Namespace");
 
-    tracing::trace!("spawning");
-    let test = test(client.clone(), namespace.clone());
-    let res = tokio::spawn(test.instrument(tracing::info_span!("test", %namespace))).await;
+    tracing::trace!("Spawning");
+    let test = test(client.clone(), ns.name());
+    let res = tokio::spawn(test.instrument(tracing::info_span!("test", ns = %ns.name()))).await;
     if res.is_err() {
-        // If the test failed, stop tracing so the log is not polluted with more information about
-        // cleanup after the failure was printed.
+        // If the test failed, stop tracing so the log is not polluted with more
+        // information about cleanup after the failure was printed.
         drop(_tracing);
     }
 
-    tracing::debug!(%namespace, "deleting");
-    api.delete(&namespace, &kube::api::DeleteParams::background())
+    tracing::debug!(ns = %ns.name(), "Deleting");
+    api.delete(&ns.name(), &kube::api::DeleteParams::background())
         .await
         .expect("failed to delete Namespace");
     if let Err(err) = res {
@@ -69,9 +64,10 @@ where
 pub fn random_suffix(len: usize) -> String {
     use rand::Rng;
 
-    let rng = &mut rand::thread_rng();
-    (0..len)
-        .map(|_| rng.sample(LowercaseAlphanumeric) as char)
+    rand::thread_rng()
+        .sample_iter(&LowercaseAlphanumeric)
+        .take(len)
+        .map(char::from)
         .collect()
 }
 
