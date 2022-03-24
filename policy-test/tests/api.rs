@@ -173,25 +173,22 @@ async fn create_pod(client: &kube::Client, pod: k8s::Pod) -> Result<k8s::Pod> {
     let api = kube::Api::namespaced(client.clone(), &pod.namespace().unwrap());
     time::timeout(
         time::Duration::from_secs(60),
-        await_condition(api, &pod.name(), is_pod_ready()),
+        await_condition(api, &pod.name(), condition_pod_ready),
     )
     .await??;
 
     Ok(pod)
 }
 
-fn is_pod_ready() -> impl kube::runtime::wait::Condition<k8s::Pod> {
-    |obj: Option<&k8s::Pod>| {
-        if let Some(pod) = obj {
-            if let Some(status) = &pod.status {
-                if let Some(containers) = &status.container_statuses {
-                    return containers.iter().all(|c| c.ready);
-                }
+fn condition_pod_ready(obj: Option<&k8s::Pod>) -> bool {
+    if let Some(pod) = obj {
+        if let Some(status) = &pod.status {
+            if let Some(containers) = &status.container_statuses {
+                return containers.iter().all(|c| c.ready);
             }
         }
-
-        false
     }
+    false
 }
 
 fn mk_pause(ns: &str, name: &str) -> k8s::Pod {
