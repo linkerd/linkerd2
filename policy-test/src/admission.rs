@@ -16,7 +16,7 @@ where
         let api = kube::Api::namespaced(client, &*ns);
         let obj = f(ns);
         let res = api.create(&kube::api::PostParams::default(), &obj).await;
-        assert!(res.is_ok(), "error: {}; {:?}", res.unwrap_err(), obj);
+        res.expect("resource must apply");
     })
     .await;
 }
