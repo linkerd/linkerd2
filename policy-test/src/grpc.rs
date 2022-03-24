@@ -10,15 +10,18 @@ use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
 use tokio::io;
 
 #[macro_export]
-macro_rules! assert_is_default_deny {
+macro_rules! assert_is_default_all_unauthenticated {
     ($config:expr) => {
         assert_eq!(
             $config.labels,
-            Some(("name".to_string(), "default:deny".to_string()))
-                .into_iter()
-                .collect()
+            Some((
+                "name".to_string(),
+                "default:all-unauthenticated".to_string()
+            ))
+            .into_iter()
+            .collect()
         );
-        assert!($config.authorizations.is_empty());
+        assert_eq!($config.authorizations.len(), 1);
     };
 }
 
@@ -53,13 +56,19 @@ struct GrpcHttp {
 // === impl PolicyClient ===
 
 impl PolicyClient {
-    pub async fn port_forwarded(client: &kube::Client) -> Result<Self> {
-        let pod = Self::get_policy_controller_pod(client).await?;
-        let io = Self::connect_port_forward(client, &pod).await?;
-        let http = GrpcHttp::handshake(io).await?;
-        Ok(PolicyClient {
+    pub async fn port_forwarded(client: &kube::Client) -> Self {
+        let pod = Self::get_policy_controller_pod(client)
+            .await
+            .expect("failed to find a policy controller pod");
+        let io = Self::connect_port_forward(client, &pod)
+            .await
+            .expect("failed to establish a port forward");
+        let http = GrpcHttp::handshake(io)
+            .await
+            .expect("failed to connect to the gRPC server");
+        PolicyClient {
             client: InboundServerPoliciesClient::new(http),
-        })
+        }
     }
 
     pub async fn get_port(

@@ -14,6 +14,7 @@ ipnet = "2"
 k8s-openapi = { version = "0.14", features = ["v1_20"] }
 linkerd-policy-controller-k8s-api = { path = "../policy-controller/k8s/api" }
 linkerd2-proxy-api = { version = "0.3", features = ["inbound", "client"] }
+maplit = "1"
 rand = "0.8"
 serde = "1"
 serde_json = "1"
@@ -21,7 +22,7 @@ schemars = "0.8"
 tonic = { version = "0.6" }
 tokio = { version = "1", features = ["macros", "rt"] }
 tracing = "0.1"
-tracing-subscriber = "0.3"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]
 tokio-test = "0.4"
