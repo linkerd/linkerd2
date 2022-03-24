@@ -2,9 +2,10 @@
 #![forbid(unsafe_code)]
 
 pub mod admission;
+pub mod grpc;
 
-use linkerd_policy_controller_k8s_api::{self as api};
-use rand::Rng;
+use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
+use maplit::{btreemap, convert_args};
 use tracing::Instrument;
 
 /// Runs a test with a random namespace that is deleted on test completion
@@ -15,44 +16,44 @@ where
 {
     let _tracing = init_tracing();
 
-    let namespace = {
-        // TODO(ver) include the test name in this string?
-        let rng = &mut rand::thread_rng();
-        let sfx = (0..6)
-            .map(|_| rng.sample(LowercaseAlphanumeric) as char)
-            .collect::<String>();
-        format!("linkerd-policy-test-{}", sfx)
-    };
-
-    tracing::debug!("initializing client");
+    tracing::trace!("Initializing client");
     let client = kube::Client::try_default()
         .await
         .expect("failed to initialize k8s client");
-    let api = kube::Api::<api::Namespace>::all(client.clone());
+    let api = kube::Api::<k8s::Namespace>::all(client.clone());
 
-    tracing::debug!(%namespace, "creating");
-    let ns = api::Namespace {
-        metadata: api::ObjectMeta {
-            name: Some(namespace.clone()),
+    let ns = k8s::Namespace {
+        metadata: k8s::ObjectMeta {
+            name: Some(format!("linkerd-policy-test-{}", random_suffix(6))),
+            labels: Some(convert_args!(btreemap!(
+                "linkerd-policy-test" => std::thread::current().name().unwrap_or(""),
+            ))),
             ..Default::default()
         },
         ..Default::default()
     };
-    api.create(&kube::api::PostParams::default(), &ns)
-        .await
-        .expect("failed to create Namespace");
+    tracing::debug!(namespace = %ns.name(), "Creating");
+    api.create(
+        &kube::api::PostParams {
+            dry_run: false,
+            field_manager: Some("linkerd-policy-test".to_string()),
+        },
+        &ns,
+    )
+    .await
+    .expect("failed to create Namespace");
 
-    tracing::trace!("spawning");
-    let test = test(client.clone(), namespace.clone());
-    let res = tokio::spawn(test.instrument(tracing::info_span!("test", %namespace))).await;
+    tracing::trace!("Spawning");
+    let test = test(client.clone(), ns.name());
+    let res = tokio::spawn(test.instrument(tracing::info_span!("test", ns = %ns.name()))).await;
     if res.is_err() {
-        // If the test failed, stop tracing so the log is not polluted with more information about
-        // cleanup after the failure was printed.
+        // If the test failed, stop tracing so the log is not polluted with more
+        // information about cleanup after the failure was printed.
         drop(_tracing);
     }
 
-    tracing::debug!(%namespace, "deleting");
-    api.delete(&namespace, &kube::api::DeleteParams::background())
+    tracing::debug!(ns = %ns.name(), "Deleting");
+    api.delete(&ns.name(), &kube::api::DeleteParams::background())
         .await
         .expect("failed to delete Namespace");
     if let Err(err) = res {
@@ -60,11 +61,24 @@ where
     }
 }
 
+pub fn random_suffix(len: usize) -> String {
+    use rand::Rng;
+
+    rand::thread_rng()
+        .sample_iter(&LowercaseAlphanumeric)
+        .take(len)
+        .map(char::from)
+        .collect()
+}
+
 fn init_tracing() -> tracing::subscriber::DefaultGuard {
     tracing::subscriber::set_default(
         tracing_subscriber::fmt()
             .with_test_writer()
-            .with_max_level(tracing::Level::TRACE)
+            .with_env_filter(
+                tracing_subscriber::EnvFilter::try_from_default_env()
+                    .unwrap_or_else(|_| "linkerd=trace,debug".parse().unwrap()),
+            )
             .finish(),
     )
 }
@@ -88,7 +102,7 @@ struct LowercaseAlphanumeric;
 // See the License for the specific language governing permissions and
 // limitations under the License.
 impl rand::distributions::Distribution<u8> for LowercaseAlphanumeric {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> u8 {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> u8 {
         const RANGE: u32 = 26 + 10;
         const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";
         loop {
