@@ -1,4 +1,3 @@
-use anyhow::Result;
 use futures::prelude::*;
 use kube::{runtime::wait::await_condition, ResourceExt};
 use linkerd_policy_controller_core::{Ipv4Net, Ipv6Net};
@@ -16,9 +15,7 @@ async fn server_with_server_authorization() {
     with_temp_ns(|client, ns| async move {
         // Create a pod that does nothing. It's injected with a proxy, so we can
         // attach policies to its admin server.
-        let pod = create_pod(&client, mk_pause(&ns, "pause"))
-            .await
-            .expect("failed to create pod");
+        let pod = create_pod(&client, mk_pause(&ns, "pause")).await;
         tracing::trace!(?pod);
 
         // Port-forward to the control plane and start watching the pod's admin
@@ -40,9 +37,7 @@ async fn server_with_server_authorization() {
 
         // Create a server that selects the pod's proxy admin server and ensure
         // that the update now uses this server, which has no authorizations
-        let server = create(&client, mk_admin_server(&ns, "linkerd-admin"))
-            .await
-            .expect("server must apply");
+        let server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
         tracing::trace!(?server);
         let config = rx
             .next()
@@ -87,8 +82,7 @@ async fn server_with_server_authorization() {
                 },
             },
         )
-        .await
-        .expect("serverauthorization must apply");
+        .await;
         tracing::trace!(?server_authz);
         let config = rx
             .next()
@@ -152,9 +146,7 @@ async fn server_with_authorization_policy() {
     with_temp_ns(|client, ns| async move {
         // Create a pod that does nothing. It's injected with a proxy, so we can
         // attach policies to its admin server.
-        let pod = create_pod(&client, mk_pause(&ns, "pause"))
-            .await
-            .expect("failed to create pod");
+        let pod = create_pod(&client, mk_pause(&ns, "pause")).await;
         tracing::trace!(?pod);
 
         // Port-forward to the control plane and start watching the pod's admin
@@ -176,9 +168,7 @@ async fn server_with_authorization_policy() {
 
         // Create a server that selects the pod's proxy admin server and ensure
         // that the update now uses this server, which has no authorizations
-        let server = create(&client, mk_admin_server(&ns, "linkerd-admin"))
-            .await
-            .expect("server must apply");
+        let server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
         tracing::trace!(?server);
         let config = rx
             .next()
@@ -222,8 +212,7 @@ async fn server_with_authorization_policy() {
                 },
             },
         )
-        .await
-        .expect("networkauthentication must apply");
+        .await;
         tracing::trace!(?all_nets);
 
         let authz_policy = create(
@@ -242,8 +231,7 @@ async fn server_with_authorization_policy() {
                 },
             },
         )
-        .await
-        .expect("authorizationpolicy must apply");
+        .await;
         tracing::trace!(?authz_policy);
 
         let config = time::timeout(time::Duration::from_secs(10), rx.next())
@@ -289,7 +277,7 @@ async fn server_with_authorization_policy() {
     .await;
 }
 
-async fn create<T>(client: &kube::Client, obj: T) -> Result<T>
+async fn create<T>(client: &kube::Client, obj: T) -> T
 where
     T: kube::Resource + serde::Serialize + serde::de::DeserializeOwned + Clone + std::fmt::Debug,
     T::DynamicType: Default,
@@ -303,34 +291,33 @@ where
             &obj,
         )
         .await
-        .map_err(anyhow::Error::from)
+        .expect("failed to create pod")
 }
 
-async fn create_pod(client: &kube::Client, pod: k8s::Pod) -> Result<k8s::Pod> {
-    let pod = create(client, pod).await?;
+async fn create_pod(client: &kube::Client, pod: k8s::Pod) -> k8s::Pod {
+    let pod = create(client, pod).await;
 
     let api = kube::Api::namespaced(client.clone(), &pod.namespace().unwrap());
     time::timeout(
         time::Duration::from_secs(60),
-        await_condition(api, &pod.name(), is_pod_ready()),
+        await_condition(api, &pod.name(), condition_pod_ready),
     )
-    .await??;
+    .await
+    .expect("pod failed to become ready")
+    .expect("pod failed to become ready");
 
-    Ok(pod)
+    pod
 }
 
-fn is_pod_ready() -> impl kube::runtime::wait::Condition<k8s::Pod> {
-    |obj: Option<&k8s::Pod>| {
-        if let Some(pod) = obj {
-            if let Some(status) = &pod.status {
-                if let Some(containers) = &status.container_statuses {
-                    return containers.iter().all(|c| c.ready);
-                }
+fn condition_pod_ready(obj: Option<&k8s::Pod>) -> bool {
+    if let Some(pod) = obj {
+        if let Some(status) = &pod.status {
+            if let Some(containers) = &status.container_statuses {
+                return containers.iter().all(|c| c.ready);
             }
         }
-
-        false
     }
+    false
 }
 
 fn mk_pause(ns: &str, name: &str) -> k8s::Pod {
