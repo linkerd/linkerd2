@@ -173,6 +173,34 @@ func TestLinkClusters(t *testing.T) {
 
 }
 
+// TestInstallViz will install the viz extension, needed to verify whether the
+// gateway probe succeeded.
+// TODO (matei): can the dependency on viz be removed?
+func TestInstallViz(t *testing.T) {
+	for _, ctx := range contexts {
+		cmd := []string{
+			"--context=" + ctx,
+			"viz",
+			"install",
+			"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace()),
+		}
+
+		out, err := TestHelper.LinkerdRun(cmd...)
+		if err != nil {
+			testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
+		}
+
+		out, err = TestHelper.KubectlApplyWithContext(out, ctx, "-f", "-")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+				"'kubectl apply' command failed\n%s", out)
+		}
+
+		TestHelper.WaitRolloutWithContext(t, testutil.LinkerdVizDeployReplicas, ctx)
+	}
+
+}
+
 func TestCheckMulticluster(t *testing.T) {
 	golden := "check.multicluster.golden"
 	// Check resources after link were created successfully in source cluster
@@ -190,7 +218,6 @@ func TestCheckMulticluster(t *testing.T) {
 	}
 
 	linkName := "target"
-
 	tpl := template.Must(template.ParseFiles("testdata" + "/" + golden))
 	vars := struct {
 		ProxyVersionErr string
@@ -223,34 +250,6 @@ func TestCheckMulticluster(t *testing.T) {
 	if err != nil {
 		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd multicluster check' command timed-out (%s)", timeout), err)
 	}
-}
-
-// TestInstallViz will install the viz extension, needed to verify whether the
-// gateway probe succeeded.
-// TODO (matei): can the dependency on viz be removed?
-func TestInstallViz(t *testing.T) {
-	for _, ctx := range contexts {
-		cmd := []string{
-			"--context=" + ctx,
-			"viz",
-			"install",
-			"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace()),
-		}
-
-		out, err := TestHelper.LinkerdRun(cmd...)
-		if err != nil {
-			testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
-		}
-
-		out, err = TestHelper.KubectlApplyWithContext(out, ctx, "-f", "-")
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-				"'kubectl apply' command failed\n%s", out)
-		}
-
-		TestHelper.WaitRolloutWithContext(t, testutil.LinkerdVizDeployReplicas, ctx)
-	}
-
 }
 
 //////////////////////
