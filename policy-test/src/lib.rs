@@ -5,7 +5,7 @@ pub mod admission;
 pub mod grpc;
 
 use linkerd_policy_controller_k8s_api as k8s;
-use rand::Rng;
+use maplit::{btreemap, convert_args};
 use tracing::Instrument;
 
 /// Runs a test with a random namespace that is deleted on test completion
@@ -31,14 +31,9 @@ where
     let ns = k8s::Namespace {
         metadata: k8s::ObjectMeta {
             name: Some(namespace.clone()),
-            labels: Some(
-                Some((
-                    "linkerd-policy-test".to_string(),
-                    std::thread::current().name().unwrap_or("").to_string(),
-                ))
-                .into_iter()
-                .collect(),
-            ),
+            labels: Some(convert_args!(btreemap!(
+                "linkerd-policy-test" => std::thread::current().name().unwrap_or(""),
+            ))),
             ..Default::default()
         },
         ..Default::default()
@@ -72,6 +67,8 @@ where
 }
 
 pub fn random_suffix(len: usize) -> String {
+    use rand::Rng;
+
     let rng = &mut rand::thread_rng();
     (0..len)
         .map(|_| rng.sample(LowercaseAlphanumeric) as char)
@@ -82,7 +79,6 @@ fn init_tracing() -> tracing::subscriber::DefaultGuard {
     tracing::subscriber::set_default(
         tracing_subscriber::fmt()
             .with_test_writer()
-            .with_max_level(tracing::Level::TRACE)
             .with_env_filter(
                 tracing_subscriber::EnvFilter::try_from_default_env()
                     .unwrap_or_else(|_| "linkerd=trace,debug".parse().unwrap()),
@@ -110,7 +106,7 @@ struct LowercaseAlphanumeric;
 // See the License for the specific language governing permissions and
 // limitations under the License.
 impl rand::distributions::Distribution<u8> for LowercaseAlphanumeric {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> u8 {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> u8 {
         const RANGE: u32 = 26 + 10;
         const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";
         loop {

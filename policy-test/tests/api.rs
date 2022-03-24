@@ -6,6 +6,7 @@ use linkerd_policy_controller_k8s_api as k8s;
 use linkerd_policy_test::{
     assert_is_default_all_unauthenticated, assert_protocol_detect, grpc, with_temp_ns,
 };
+use maplit::{btreemap, convert_args, hashmap};
 use tokio::time;
 
 /// Creates a pod, watches its policy, and updates policy resources that impact
@@ -23,9 +24,7 @@ async fn server_with_server_authorization() {
         // Port-forward to the control plane and start watching the pod's admin
         // server's policy and ensure that the first update uses the default
         // policy.
-        let mut policy_api = grpc::PolicyClient::port_forwarded(&client)
-            .await
-            .expect("must establish a port-forwarded client");
+        let mut policy_api = grpc::PolicyClient::port_forwarded(&client).await;
         let mut rx = policy_api
             .watch_port(&ns, &pod.name(), 4191)
             .await
@@ -62,9 +61,7 @@ async fn server_with_server_authorization() {
         assert_eq!(config.authorizations, vec![]);
         assert_eq!(
             config.labels,
-            Some(("name".to_string(), "linkerd-admin".to_string()))
-                .into_iter()
-                .collect()
+            convert_args!(hashmap!("name" => "linkerd-admin")),
         );
 
         // Create a server authorizaation that refers to the `linkerd-admin`
@@ -109,12 +106,7 @@ async fn server_with_server_authorization() {
         );
         assert_eq!(
             config.authorizations.first().unwrap().labels,
-            Some((
-                "name".to_string(),
-                "serverauthorization:all-admin".to_string()
-            ))
-            .into_iter()
-            .collect()
+            convert_args!(hashmap!("name" => "serverauthorization:all-admin")),
         );
         assert_eq!(
             *config
@@ -132,9 +124,7 @@ async fn server_with_server_authorization() {
         );
         assert_eq!(
             config.labels,
-            Some(("name".to_string(), server.name()))
-                .into_iter()
-                .collect()
+            convert_args!(hashmap!("name" => server.name()))
         );
 
         // Delete the `Server` and ensure that the update reverts to the
@@ -170,9 +160,7 @@ async fn server_with_authorization_policy() {
         // Port-forward to the control plane and start watching the pod's admin
         // server's policy and ensure that the first update uses the default
         // policy.
-        let mut policy_api = grpc::PolicyClient::port_forwarded(&client)
-            .await
-            .expect("must establish a port-forwarded client");
+        let mut policy_api = grpc::PolicyClient::port_forwarded(&client).await;
         let mut rx = policy_api
             .watch_port(&ns, &pod.name(), 4191)
             .await
@@ -209,9 +197,7 @@ async fn server_with_authorization_policy() {
         assert_eq!(config.authorizations, vec![]);
         assert_eq!(
             config.labels,
-            Some(("name".to_string(), server.name()))
-                .into_iter()
-                .collect()
+            convert_args!(hashmap!("name" => server.name()))
         );
 
         let all_nets = create(
@@ -276,12 +262,9 @@ async fn server_with_authorization_policy() {
         );
         assert_eq!(
             config.authorizations.first().unwrap().labels,
-            Some((
-                "name".to_string(),
-                format!("authorizationpolicy:{}", authz_policy.name())
+            convert_args!(hashmap!(
+                "name" => format!("authorizationpolicy:{}", authz_policy.name())
             ))
-            .into_iter()
-            .collect()
         );
         assert_eq!(config.authorizations.len(), 1);
         assert_eq!(
@@ -300,9 +283,7 @@ async fn server_with_authorization_policy() {
         );
         assert_eq!(
             config.labels,
-            Some(("name".to_string(), server.name()))
-                .into_iter()
-                .collect()
+            convert_args!(hashmap!("name" => server.name()))
         );
     })
     .await;
@@ -357,11 +338,9 @@ fn mk_pause(ns: &str, name: &str) -> k8s::Pod {
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.to_string()),
             name: Some(name.to_string()),
-            annotations: Some(
-                vec![("linkerd.io/inject".to_string(), "enabled".to_string())]
-                    .into_iter()
-                    .collect(),
-            ),
+            annotations: Some(convert_args!(btreemap!(
+                "linkerd.io/inject" => "enabled",
+            ))),
             ..Default::default()
         },
         spec: Some(k8s::PodSpec {
