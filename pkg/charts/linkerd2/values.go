@@ -31,6 +31,7 @@ type (
 		ControllerUID                int64               `json:"controllerUID"`
 		EnableH2Upgrade              bool                `json:"enableH2Upgrade"`
 		EnablePodAntiAffinity        bool                `json:"enablePodAntiAffinity"`
+	    NodeAffinity                 interface{}         `json:"nodeAffinity"`
 		WebhookFailurePolicy         string              `json:"webhookFailurePolicy"`
 		DisableHeartBeat             bool                `json:"disableHeartBeat"`
 		HeartbeatSchedule            string              `json:"heartbeatSchedule"`

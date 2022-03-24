@@ -1,6 +1,6 @@
 {{ define "linkerd.pod-affinity" -}}
 {{- if not .Values.enablePodAntiAffinity -}}
-podAntiAffinity: {}
+podAntiAffinity: null
 {{- else -}}
 podAntiAffinity:
   preferredDuringSchedulingIgnoredDuringExecution:
@@ -25,17 +25,17 @@ podAntiAffinity:
 {{- end }}
 
 {{ define "linkerd.node-affinity" -}}
-{{- if not .Values.nodeAffinityOverride -}}
-nodeAffinity: {}
+{{- if not .Values.nodeAffinity -}}
+nodeAffinity: null
 {{- else -}}
 nodeAffinity:
-{{- toYaml .Values.nodeAffinityOverride | trim | nindent 2 }}
+{{- toYaml .Values.nodeAffinity | trim | nindent 2 }}
 {{- end }}
 {{- end }}
 
 {{ define "linkerd.affinity" -}}
 {{- if not .Values.enablePodAntiAffinity -}}
-affinity: {}
+affinity: null
 {{- else -}}
 affinity:
 {{- include "linkerd.pod-affinity" . | nindent 2 }}
