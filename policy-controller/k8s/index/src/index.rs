@@ -13,7 +13,8 @@ use crate::{
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{bail, Result};
 use linkerd_policy_controller_core::{
-    ClientAuthentication, ClientAuthorization, IdentityMatch, InboundServer, IpNet, ProxyProtocol,
+    AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundServer,
+    IpNet, ProxyProtocol, ServerRef,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
 use parking_lot::RwLock;
@@ -800,7 +801,7 @@ impl Pod {
                 ]
             };
             authorizations.insert(
-                format!("default:{}", policy),
+                AuthorizationRef::Default(policy.to_string()),
                 ClientAuthorization {
                     authentication,
                     networks,
@@ -809,7 +810,7 @@ impl Pod {
         };
 
         InboundServer {
-            name: format!("default:{}", policy),
+            reference: ServerRef::Default(policy.to_string()),
             protocol,
             authorizations,
         }
@@ -887,7 +888,7 @@ impl PolicyIndex {
         tracing::trace!(%name, ?server, "Creating inbound server");
         let authorizations = self.client_authzs(&name, server, authentications);
         InboundServer {
-            name,
+            reference: ServerRef::Server(name),
             authorizations,
             protocol: server.protocol.clone(),
         }
@@ -898,11 +899,14 @@ impl PolicyIndex {
         server_name: &str,
         server: &server::Server,
         authentications: &AuthenticationNsIndex,
-    ) -> HashMap<String, ClientAuthorization> {
+    ) -> HashMap<AuthorizationRef, ClientAuthorization> {
         let mut authzs = HashMap::default();
         for (name, saz) in self.server_authorizations.iter() {
             if saz.server_selector.selects(server_name, &server.labels) {
-                authzs.insert(format!("serverauthorization:{}", name), saz.authz.clone());
+                authzs.insert(
+                    AuthorizationRef::ServerAuthorization(name.to_string()),
+                    saz.authz.clone(),
+                );
             }
         }
 
@@ -963,6 +967,7 @@ impl PolicyIndex {
                             let ids = authn.matches.clone();
                             tracing::trace!(ns = %namespace, %name, ?ids, "Found mtls");
                             identities.extend(ids);
+                            continue;
                         }
                     }
 
@@ -985,7 +990,10 @@ impl PolicyIndex {
                     ClientAuthentication::Unauthenticated
                 },
             };
-            authzs.insert(format!("authorizationpolicy:{}", name), authz);
+            authzs.insert(
+                AuthorizationRef::AuthorizationPolicy(name.to_string()),
+                authz,
+            );
         }
 
         authzs

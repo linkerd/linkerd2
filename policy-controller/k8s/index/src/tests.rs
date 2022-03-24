@@ -2,8 +2,8 @@ use crate::{defaults::DefaultPolicy, index::*, server_authorization::ServerSelec
 use ahash::AHashMap as HashMap;
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::{
-    ClientAuthentication, ClientAuthorization, IdentityMatch, InboundServer, IpNet, Ipv4Net,
-    Ipv6Net, NetworkMatch, ProxyProtocol,
+    AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundServer,
+    IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
 };
 use linkerd_policy_controller_k8s_api::{
     self as k8s,
@@ -11,6 +11,7 @@ use linkerd_policy_controller_k8s_api::{
     policy::{server::Port, TargetRef},
     ResourceExt,
 };
+use maplit::*;
 use tokio::time;
 
 #[test]
@@ -62,7 +63,7 @@ fn links_named_server_port() {
     assert_eq!(
         *rx.borrow_and_update(),
         InboundServer {
-            name: "srv-admin-http".to_string(),
+            reference: ServerRef::Server("srv-admin-http".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
         },
@@ -97,7 +98,7 @@ fn links_unnamed_server_port() {
     assert_eq!(
         *rx.borrow_and_update(),
         InboundServer {
-            name: "srv-8080".to_string(),
+            reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
         },
@@ -144,7 +145,7 @@ fn link_server_authz(selector: ServerSelector) {
     assert_eq!(
         *rx.borrow_and_update(),
         InboundServer {
-            name: "srv-8080".to_string(),
+            reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
         },
@@ -166,12 +167,17 @@ fn link_server_authz(selector: ServerSelector) {
         },
     ));
     assert!(rx.has_changed().unwrap());
-    assert_eq!(rx.borrow().name, "srv-8080");
+    assert_eq!(
+        rx.borrow().reference,
+        ServerRef::Server("srv-8080".to_string())
+    );
     assert_eq!(rx.borrow().protocol, ProxyProtocol::Http1,);
     assert!(rx
         .borrow()
         .authorizations
-        .contains_key("serverauthorization:authz-foo"));
+        .contains_key(&AuthorizationRef::ServerAuthorization(
+            "authz-foo".to_string()
+        )));
 }
 
 #[test]
@@ -204,7 +210,7 @@ fn server_update_deselects_pod() {
     assert_eq!(
         *rx.borrow_and_update(),
         InboundServer {
-            name: "srv-0".into(),
+            reference: ServerRef::Server("srv-0".to_string()),
             protocol: ProxyProtocol::Http2,
             authorizations: Default::default(),
         }
@@ -248,8 +254,8 @@ fn default_policy_annotated() {
             .pod_server_rx("ns-0", "pod-0", 2222)
             .expect("pod-0.ns-0 should exist");
         assert_eq!(
-            rx.borrow_and_update().name,
-            format!("default:{}", test.default_policy)
+            rx.borrow_and_update().reference,
+            ServerRef::Default(test.default_policy.to_string()),
         );
 
         // Update the annotation on the pod and check that the watch is updated
@@ -260,7 +266,10 @@ fn default_policy_annotated() {
         );
         test.index.write().apply(pod);
         assert!(rx.has_changed().unwrap());
-        assert_eq!(rx.borrow().name, format!("default:{}", default));
+        assert_eq!(
+            rx.borrow().reference,
+            ServerRef::Default(default.to_string())
+        );
     }
 }
 
@@ -329,7 +338,7 @@ fn authenticated_annotated() {
                 DefaultPolicy::Deny => DefaultPolicy::Deny,
             };
             InboundServer {
-                name: format!("default:{}", policy),
+                reference: ServerRef::Default(policy.to_string()),
                 authorizations: mk_default_policy(policy, test.cluster.networks),
                 protocol: ProxyProtocol::Detect {
                     timeout: test.detect_timeout,
@@ -374,7 +383,7 @@ fn links_authorization_policy_with_mtls_name() {
     assert_eq!(
         *rx.borrow_and_update(),
         InboundServer {
-            name: "srv-8080".to_string(),
+            reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
         },
@@ -423,10 +432,12 @@ fn links_authorization_policy_with_mtls_name() {
     assert_eq!(
         *rx.borrow(),
         InboundServer {
-            name: "srv-8080".to_string(),
-            authorizations: Some(("authorizationpolicy:authz-foo".to_string(), authz))
-                .into_iter()
-                .collect(),
+            reference: ServerRef::Server("srv-8080".to_string()),
+            authorizations: hashmap!(
+                AuthorizationRef::AuthorizationPolicy("authz-foo".to_string()) => authz
+            )
+            .into_iter()
+            .collect(),
             protocol: ProxyProtocol::Http1,
         },
     );
@@ -609,7 +620,7 @@ fn mk_network_authentication(
 fn mk_default_policy(
     da: DefaultPolicy,
     cluster_nets: Vec<IpNet>,
-) -> HashMap<String, ClientAuthorization> {
+) -> HashMap<AuthorizationRef, ClientAuthorization> {
     let all_nets = vec![Ipv4Net::default().into(), Ipv6Net::default().into()];
 
     let cluster_nets = cluster_nets.into_iter().map(NetworkMatch::from).collect();
@@ -622,7 +633,7 @@ fn mk_default_policy(
             authenticated_only: true,
             cluster_only: false,
         } => Some((
-            "default:all-authenticated".into(),
+            AuthorizationRef::Default("all-authenticated".to_string()),
             ClientAuthorization {
                 authentication: authed,
                 networks: all_nets,
@@ -632,7 +643,7 @@ fn mk_default_policy(
             authenticated_only: false,
             cluster_only: false,
         } => Some((
-            "default:all-unauthenticated".into(),
+            AuthorizationRef::Default("all-unauthenticated".to_string()),
             ClientAuthorization {
                 authentication: ClientAuthentication::Unauthenticated,
                 networks: all_nets,
@@ -642,7 +653,7 @@ fn mk_default_policy(
             authenticated_only: true,
             cluster_only: true,
         } => Some((
-            "default:cluster-authenticated".into(),
+            AuthorizationRef::Default("cluster-authenticated".to_string()),
             ClientAuthorization {
                 authentication: authed,
                 networks: cluster_nets,
@@ -652,7 +663,7 @@ fn mk_default_policy(
             authenticated_only: false,
             cluster_only: true,
         } => Some((
-            "default:cluster-unauthenticated".into(),
+            AuthorizationRef::Default("cluster-unauthenticated".to_string()),
             ClientAuthorization {
                 authentication: ClientAuthentication::Unauthenticated,
                 networks: cluster_nets,
@@ -695,7 +706,7 @@ impl TestConfig {
 
     fn default_server(&self) -> InboundServer {
         InboundServer {
-            name: format!("default:{}", self.default_policy),
+            reference: ServerRef::Default(self.default_policy.to_string()),
             authorizations: mk_default_policy(self.default_policy, self.cluster.networks.clone()),
             protocol: ProxyProtocol::Detect {
                 timeout: self.detect_timeout,

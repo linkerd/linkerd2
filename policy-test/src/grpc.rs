@@ -11,18 +11,18 @@ use tokio::io;
 
 #[macro_export]
 macro_rules! assert_is_default_all_unauthenticated {
-    ($config:expr) => {
+    ($config:expr) => {{
         assert_eq!(
             $config.labels,
-            Some((
-                "name".to_string(),
-                "default:all-unauthenticated".to_string()
-            ))
+            vec![
+                ("kind".to_string(), "default".to_string()),
+                ("name".to_string(), "all-unauthenticated".to_string()),
+            ]
             .into_iter()
-            .collect()
+            .collect(),
         );
         assert_eq!($config.authorizations.len(), 1);
-    };
+    }};
 }
 
 #[macro_export]

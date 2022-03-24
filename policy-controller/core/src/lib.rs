@@ -24,9 +24,23 @@ pub type InboundServerStream = Pin<Box<dyn Stream<Item = InboundServer> + Send +
 /// Inbound server configuration.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InboundServer {
-    pub name: String,
+    pub reference: ServerRef,
+
     pub protocol: ProxyProtocol,
-    pub authorizations: HashMap<String, ClientAuthorization>,
+    pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ServerRef {
+    Default(String),
+    Server(String),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum AuthorizationRef {
+    Default(String),
+    ServerAuthorization(String),
+    AuthorizationPolicy(String),
 }
 
 /// Describes how a proxy should handle inbound connections.
