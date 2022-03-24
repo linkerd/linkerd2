@@ -1,4 +1,3 @@
-use anyhow::Result;
 use futures::prelude::*;
 use kube::{runtime::wait::await_condition, ResourceExt};
 use linkerd_policy_controller_k8s_api as k8s;
@@ -15,9 +14,7 @@ async fn server_with_server_authorization() {
     with_temp_ns(|client, ns| async move {
         // Create a pod that does nothing. It's injected with a proxy, so we can
         // attach policies to its admin server.
-        let pod = create_pod(&client, mk_pause(&ns, "pause"))
-            .await
-            .expect("failed to create pod");
+        let pod = create_pod(&client, mk_pause(&ns, "pause")).await;
         tracing::trace!(?pod);
 
         // Port-forward to the control plane and start watching the pod's admin
@@ -150,7 +147,7 @@ async fn server_with_server_authorization() {
     .await;
 }
 
-async fn create<T>(client: &kube::Client, obj: T) -> Result<T>
+async fn create<T>(client: &kube::Client, obj: T) -> T
 where
     T: kube::Resource + serde::Serialize + serde::de::DeserializeOwned + Clone + std::fmt::Debug,
     T::DynamicType: Default,
@@ -164,20 +161,22 @@ where
             &obj,
         )
         .await
-        .map_err(anyhow::Error::from)
+        .expect("failed to create pod")
 }
 
-async fn create_pod(client: &kube::Client, pod: k8s::Pod) -> Result<k8s::Pod> {
-    let pod = create(client, pod).await?;
+async fn create_pod(client: &kube::Client, pod: k8s::Pod) -> k8s::Pod {
+    let pod = create(client, pod).await;
 
     let api = kube::Api::namespaced(client.clone(), &pod.namespace().unwrap());
     time::timeout(
         time::Duration::from_secs(60),
         await_condition(api, &pod.name(), condition_pod_ready),
     )
-    .await??;
+    .await
+    .expect("pod failed to become ready")
+    .expect("pod failed to become ready");
 
-    Ok(pod)
+    pod
 }
 
 fn condition_pod_ready(obj: Option<&k8s::Pod>) -> bool {
