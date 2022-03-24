@@ -212,15 +212,35 @@ impl Validate<AuthorizationPolicySpec> for Admission {
             "authorization policy targetRef namespace cannot be set (in the CRD)"
         );
 
-        if spec.required_authentication_refs.is_empty() {
-            bail!("at least one authentication reference is required");
+        let mtls_authns_count = spec
+            .required_authentication_refs
+            .iter()
+            .filter(|authn| authn.targets_kind::<MeshTLSAuthentication>())
+            .count();
+        if mtls_authns_count > 1 {
+            bail!("only a single MeshTLSAuthentication may be set");
         }
-        for authn in spec.required_authentication_refs.iter() {
-            if !authn.targets_kind::<MeshTLSAuthentication>()
-                && !authn.targets_kind::<NetworkAuthentication>()
-            {
-                bail!("unsupported authentication kind");
-            }
+
+        let net_authns_count = spec
+            .required_authentication_refs
+            .iter()
+            .filter(|authn| authn.targets_kind::<NetworkAuthentication>())
+            .count();
+        if net_authns_count > 1 {
+            bail!("only a single NetworkAuthentication may be set");
+        }
+
+        if spec.required_authentication_refs.len() > mtls_authns_count + net_authns_count {
+            let kinds = spec
+                .required_authentication_refs
+                .iter()
+                .filter(|authn| {
+                    !authn.targets_kind::<MeshTLSAuthentication>()
+                        && !authn.targets_kind::<NetworkAuthentication>()
+                })
+                .map(|authn| authn.group_kind())
+                .collect::<Vec<_>>();
+            bail!("unsupported authentication kinds: {}", kinds.join(", "));
         }
 
         Ok(())

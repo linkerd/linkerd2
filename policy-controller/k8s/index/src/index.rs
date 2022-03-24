@@ -900,6 +900,8 @@ impl PolicyIndex {
         server: &server::Server,
         authentications: &AuthenticationNsIndex,
     ) -> HashMap<AuthorizationRef, ClientAuthorization> {
+        use authorization_policy::AuthenticationTarget;
+
         let mut authzs = HashMap::default();
         for (name, saz) in self.server_authorizations.iter() {
             if saz.server_selector.selects(server_name, &server.labels) {
@@ -931,7 +933,7 @@ impl PolicyIndex {
 
             let mut networks = vec![];
             for t in ap.authentications.iter() {
-                if let authorization_policy::AuthenticationTarget::Network {
+                if let AuthenticationTarget::Network {
                     namespace: ref ns,
                     ref name,
                 } = t
@@ -942,8 +944,8 @@ impl PolicyIndex {
                         if let Some(authn) = ns.network.get(name).as_ref() {
                             let nets = authn.matches.clone();
                             tracing::trace!(ns = %namespace, %name, ?nets, "Found network");
-                            networks.extend(nets);
-                            continue;
+                            networks = nets;
+                            break;
                         }
                     }
 
@@ -955,7 +957,7 @@ impl PolicyIndex {
 
             let mut identities = vec![];
             for t in ap.authentications.iter() {
-                if let authorization_policy::AuthenticationTarget::MeshTLS {
+                if let AuthenticationTarget::MeshTLS {
                     namespace: ref ns,
                     ref name,
                 } = t
@@ -966,8 +968,8 @@ impl PolicyIndex {
                         if let Some(authn) = ns.meshtls.get(name) {
                             let ids = authn.matches.clone();
                             tracing::trace!(ns = %namespace, %name, ?ids, "Found mtls");
-                            identities.extend(ids);
-                            continue;
+                            identities = ids;
+                            break;
                         }
                     }
 
@@ -977,22 +979,21 @@ impl PolicyIndex {
                 }
             }
 
-            let authz = ClientAuthorization {
-                networks,
-                authentication: if ap.authentications.iter().any(|t| {
-                    matches!(
-                        t,
-                        authorization_policy::AuthenticationTarget::MeshTLS { .. },
-                    )
-                }) {
-                    ClientAuthentication::TlsAuthenticated(identities)
-                } else {
-                    ClientAuthentication::Unauthenticated
-                },
-            };
+            let has_identity_targets = ap
+                .authentications
+                .iter()
+                .any(|t| matches!(t, AuthenticationTarget::MeshTLS { .. },));
+
             authzs.insert(
                 AuthorizationRef::AuthorizationPolicy(name.to_string()),
-                authz,
+                ClientAuthorization {
+                    networks,
+                    authentication: if has_identity_targets {
+                        ClientAuthentication::TlsAuthenticated(identities)
+                    } else {
+                        ClientAuthentication::Unauthenticated
+                    },
+                },
             );
         }
 

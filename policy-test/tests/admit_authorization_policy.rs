@@ -52,8 +52,8 @@ async fn rejects_empty() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn rejects_empty_required_authentications() {
-    admission::rejects(|ns| AuthorizationPolicy {
+async fn accepts_empty_required_authentications() {
+    admission::accepts(|ns| AuthorizationPolicy {
         metadata: api::ObjectMeta {
             namespace: Some(ns),
             name: Some("test".to_string()),
@@ -63,7 +63,7 @@ async fn rejects_empty_required_authentications() {
             target_ref: TargetRef {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: "Server".to_string(),
-                name: "api".to_string(),
+                name: "deny".to_string(),
                 ..Default::default()
             },
             required_authentication_refs: vec![],
@@ -93,6 +93,71 @@ async fn rejects_target_ref_deployment() {
                 namespace: Some("linkerd".to_string()),
                 name: "cluster-nets".to_string(),
             }],
+        },
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn rejects_duplicate_authn_kinds() {
+    admission::rejects(|ns| AuthorizationPolicy {
+        metadata: api::ObjectMeta {
+            namespace: Some(ns),
+            name: Some("test".to_string()),
+            ..Default::default()
+        },
+        spec: AuthorizationPolicySpec {
+            target_ref: TargetRef {
+                group: Some("policy.linkerd.io".to_string()),
+                kind: "Server".to_string(),
+                name: "some-srv".to_string(),
+                ..Default::default()
+            },
+            required_authentication_refs: vec![
+                TargetRef {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: "NetworkAuthentication".to_string(),
+                    namespace: Some("some-ns".to_string()),
+                    name: "some-nets".to_string(),
+                },
+                TargetRef {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: "NetworkAuthentication".to_string(),
+                    namespace: Some("other-ns".to_string()),
+                    name: "other-nets".to_string(),
+                },
+            ],
+        },
+    })
+    .await;
+
+    admission::rejects(|ns| AuthorizationPolicy {
+        metadata: api::ObjectMeta {
+            namespace: Some(ns),
+            name: Some("test".to_string()),
+            ..Default::default()
+        },
+        spec: AuthorizationPolicySpec {
+            target_ref: TargetRef {
+                group: Some("policy.linkerd.io".to_string()),
+                kind: "Server".to_string(),
+                name: "some-srv".to_string(),
+                ..Default::default()
+            },
+            required_authentication_refs: vec![
+                TargetRef {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: "MeshTLSAuthentication".to_string(),
+                    namespace: Some("some-ns".to_string()),
+                    name: "some-ids".to_string(),
+                },
+                TargetRef {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: "MeshTLSAuthentication".to_string(),
+                    namespace: Some("other-ns".to_string()),
+                    name: "other-ids".to_string(),
+                },
+            ],
         },
     })
     .await;

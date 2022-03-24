@@ -251,6 +251,7 @@ async fn server_with_authorization_policy() {
                 )),
             }),
         );
+        assert_eq!(config.authorizations.len(), 1);
         assert_eq!(
             config.authorizations.first().unwrap().labels,
             convert_args!(hashmap!(
@@ -258,7 +259,6 @@ async fn server_with_authorization_policy() {
                 "name" => authz_policy.name(),
             ))
         );
-        assert_eq!(config.authorizations.len(), 1);
         assert_eq!(
             *config
                 .authorizations
