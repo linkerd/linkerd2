@@ -4,6 +4,8 @@
 
 enablePodAntiAffinity: true
 
+nodeAffinity: null
+
 # proxy configuration
 proxy:
   resources:
