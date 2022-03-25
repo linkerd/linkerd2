@@ -14,7 +14,7 @@ use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{bail, Result};
 use linkerd_policy_controller_core::{
     AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundServer,
-    IpNet, ProxyProtocol, ServerRef,
+    IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
 use parking_lot::RwLock;
@@ -900,8 +900,6 @@ impl PolicyIndex {
         server: &server::Server,
         authentications: &AuthenticationNsIndex,
     ) -> HashMap<AuthorizationRef, ClientAuthorization> {
-        use authorization_policy::AuthenticationTarget;
-
         let mut authzs = HashMap::default();
         for (name, saz) in self.server_authorizations.iter() {
             if saz.server_selector.selects(server_name, &server.labels) {
@@ -912,92 +910,135 @@ impl PolicyIndex {
             }
         }
 
-        for (name, ap) in self.authorization_policies.iter() {
-            if ap.target.server() != Some(server_name) {
-                tracing::trace!(
-                    ns = %self.namespace,
-                    authorizationpolicy = %name,
-                    target = %ap.target.server().unwrap(),
-                    server = %server_name,
-                    "AuthorizationPolicy does not target server",
-                );
-                continue;
+        for (name, spec) in self.authorization_policies.iter() {
+            match spec.target.server() {
+                Some(target) if target != server_name => {
+                    tracing::trace!(
+                        ns = %self.namespace,
+                        authorizationpolicy = %name,
+                        server = %server_name,
+                        %target,
+                        "AuthorizationPolicy does not target server",
+                    );
+                    continue;
+                }
+                None => continue,
+                Some(_) => {}
             }
+
             tracing::trace!(
                 ns = %self.namespace,
                 authorizationpolicy = %name,
                 server = %server_name,
                 "AuthorizationPolicy targets server",
             );
-            tracing::trace!(authns = ?ap.authentications);
+            tracing::trace!(authns = ?spec.authentications);
 
-            let mut networks = vec![];
-            for t in ap.authentications.iter() {
-                if let AuthenticationTarget::Network {
-                    namespace: ref ns,
-                    ref name,
-                } = t
-                {
-                    let namespace = ns.as_deref().unwrap_or(&self.namespace);
-                    tracing::trace!(ns = %namespace, %name, "Finding network");
-                    if let Some(ns) = authentications.by_ns.get(namespace) {
-                        if let Some(authn) = ns.network.get(name).as_ref() {
-                            let nets = authn.matches.clone();
-                            tracing::trace!(ns = %namespace, %name, ?nets, "Found network");
-                            networks = nets;
-                            break;
-                        }
-                    }
-
-                    tracing::info!(ns = %namespace, name = %name, "Network not found");
-                    networks = vec![];
-                    break;
+            let authz = match self.policy_client_authz(spec, authentications) {
+                Ok(authz) => authz,
+                Err(error) => {
+                    tracing::info!(
+                        server = %server_name,
+                        authorizationpolicy = %name,
+                        %error,
+                        "AuthorizationPolicy is missing required authentication resources; ignoring",
+                    );
+                    continue;
                 }
-            }
+            };
 
-            let mut identities = vec![];
-            for t in ap.authentications.iter() {
-                if let AuthenticationTarget::MeshTLS {
-                    namespace: ref ns,
-                    ref name,
-                } = t
-                {
-                    let namespace = ns.as_deref().unwrap_or(&self.namespace);
-                    tracing::trace!(ns = %namespace, %name, "Finding mtls");
-                    if let Some(ns) = authentications.by_ns.get(namespace) {
-                        if let Some(authn) = ns.meshtls.get(name) {
-                            let ids = authn.matches.clone();
-                            tracing::trace!(ns = %namespace, %name, ?ids, "Found mtls");
-                            identities = ids;
-                            break;
-                        }
-                    }
-
-                    tracing::info!(ns = %namespace, name = %name, "Mtls not found");
-                    identities = vec![];
-                    break;
-                }
-            }
-
-            let has_identity_targets = ap
-                .authentications
-                .iter()
-                .any(|t| matches!(t, AuthenticationTarget::MeshTLS { .. },));
-
-            authzs.insert(
-                AuthorizationRef::AuthorizationPolicy(name.to_string()),
-                ClientAuthorization {
-                    networks,
-                    authentication: if has_identity_targets {
-                        ClientAuthentication::TlsAuthenticated(identities)
-                    } else {
-                        ClientAuthentication::Unauthenticated
-                    },
-                },
-            );
+            let reference = AuthorizationRef::AuthorizationPolicy(name.to_string());
+            authzs.insert(reference, authz);
         }
 
         authzs
+    }
+
+    fn policy_client_authz(
+        &self,
+        spec: &authorization_policy::Spec,
+        all_authentications: &AuthenticationNsIndex,
+    ) -> Result<ClientAuthorization> {
+        use authorization_policy::AuthenticationTarget;
+
+        let mut identities = None;
+        for t in spec.authentications.iter() {
+            if let AuthenticationTarget::MeshTLS {
+                ref namespace,
+                ref name,
+            } = t
+            {
+                let namespace = namespace.as_deref().unwrap_or(&self.namespace);
+                tracing::trace!(ns = %namespace, %name, "Finding MeshTLSAuthentication");
+                if let Some(ns) = all_authentications.by_ns.get(namespace) {
+                    if let Some(authn) = ns.meshtls.get(name) {
+                        let ids = authn.matches.clone();
+                        tracing::trace!(ns = %namespace, %name, ?ids, "Found MeshTLSAuthentication");
+                        identities = Some(ids);
+
+                        // There can only be a single required MeshTLSAuthentication. This is
+                        // enforced by the admission controller.
+                        break;
+                    }
+                }
+
+                bail!(
+                    "could not find MeshTLSAuthentication {} in namespace {}",
+                    name,
+                    namespace
+                );
+            }
+        }
+
+        let mut networks = None;
+        for t in spec.authentications.iter() {
+            if let AuthenticationTarget::Network {
+                ref namespace,
+                ref name,
+            } = t
+            {
+                let namespace = namespace.as_deref().unwrap_or(&self.namespace);
+                tracing::trace!(ns = %namespace, %name, "Finding NetworkAuthentication");
+                if let Some(ns) = all_authentications.by_ns.get(namespace) {
+                    if let Some(authn) = ns.network.get(name).as_ref() {
+                        let nets = authn.matches.clone();
+                        tracing::trace!(ns = %namespace, %name, ?nets, "Found NetworkAuthentication");
+                        networks = Some(nets);
+
+                        // There can only be a single required NetworkAuthentication. This is
+                        // enforced by the admission controller.
+                        break;
+                    }
+                }
+
+                bail!(
+                    "could not find NetworkAuthentication {} in namespace {}",
+                    name,
+                    namespace
+                );
+            }
+        }
+
+        Ok(ClientAuthorization {
+            // If MTLS identities are configured, use them. Otherwise,
+            authentication: identities
+                .map(ClientAuthentication::TlsAuthenticated)
+                .unwrap_or(ClientAuthentication::Unauthenticated),
+
+            // If networks are configured, use them. Otherwise, this applies to all networks.
+            networks: networks.unwrap_or_else(|| {
+                vec![
+                    NetworkMatch {
+                        net: Ipv4Net::default().into(),
+                        except: vec![],
+                    },
+                    NetworkMatch {
+                        net: Ipv6Net::default().into(),
+                        except: vec![],
+                    },
+                ]
+            }),
+        })
     }
 }
 

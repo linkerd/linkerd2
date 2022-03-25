@@ -14,7 +14,7 @@ use kube::{core::DynamicObject, Resource, ResourceExt};
 use serde::de::DeserializeOwned;
 use std::task;
 use thiserror::Error;
-use tracing::{debug, info, warn};
+use tracing::{debug, info, trace, warn};
 
 #[derive(Clone)]
 pub struct Admission {
@@ -52,7 +52,7 @@ impl hyper::service::Service<Request<Body>> for Admission {
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        tracing::trace!(?req);
+        trace!(?req);
         if req.method() != http::Method::POST || req.uri().path() != "/" {
             return Box::pin(future::ok(
                 Response::builder()
@@ -72,7 +72,7 @@ impl hyper::service::Service<Request<Body>> for Admission {
                     return json_response(AdmissionResponse::invalid(error).into_review());
                 }
             };
-            tracing::trace!(?review);
+            trace!(?review);
 
             let rsp = match review.try_into() {
                 Ok(req) => {
@@ -127,18 +127,19 @@ impl Admission {
         T: DeserializeOwned,
         Self: Validate<T>,
     {
-        let kind = req.kind.kind.clone();
         let rsp = AdmissionResponse::from(&req);
+
+        let kind = req.kind.kind.clone();
         let (ns, name, spec) = match parse_spec::<T>(req) {
             Ok(spec) => spec,
             Err(error) => {
-                info!(%error, "failed to parse {} spec", kind);
+                info!(%error, "Failed to parse {} spec", kind);
                 return rsp.deny(error);
             }
         };
 
         if let Err(error) = self.validate(&ns, &name, spec).await {
-            info!(%error, %ns, %name, %kind, "denied");
+            info!(%error, %ns, %name, %kind, "Denied");
             return rsp.deny(error);
         }
 
@@ -153,20 +154,6 @@ where
 {
     let dt = Default::default();
     *req.kind.group == *T::group(&dt) && *req.kind.kind == *T::kind(&dt)
-}
-
-/// Detects whether two pod selectors can select the same pod
-//
-// TODO(ver) We can probably detect overlapping selectors more effectively. For
-// example, if `left` selects pods with 'foo=bar' and `right` selects pods with
-// 'foo', we should indicate the selectors overlap. It's a bit tricky to work
-// through all of the cases though, so we'll just punt for now.
-fn overlaps(left: &labels::Selector, right: &labels::Selector) -> bool {
-    if left.selects_all() || right.selects_all() {
-        return true;
-    }
-
-    left == right
 }
 
 fn json_response(rsp: AdmissionReview) -> Result<Response<Body>, Error> {
@@ -205,7 +192,7 @@ impl Validate<AuthorizationPolicySpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: AuthorizationPolicySpec) -> Result<()> {
         // TODO support namespace references?
         if !spec.target_ref.targets_kind::<Server>() {
-            bail!("invalid targetRef kind");
+            bail!("invalid targetRef kind: {}", spec.target_ref.group_kind());
         }
         assert!(
             spec.target_ref.namespace.is_none(),
@@ -230,7 +217,7 @@ impl Validate<AuthorizationPolicySpec> for Admission {
             bail!("only a single NetworkAuthentication may be set");
         }
 
-        if spec.required_authentication_refs.len() > mtls_authns_count + net_authns_count {
+        if mtls_authns_count + net_authns_count < spec.required_authentication_refs.len() {
             let kinds = spec
                 .required_authentication_refs
                 .iter()
@@ -240,7 +227,11 @@ impl Validate<AuthorizationPolicySpec> for Admission {
                 })
                 .map(|authn| authn.group_kind())
                 .collect::<Vec<_>>();
-            bail!("unsupported authentication kinds: {}", kinds.join(", "));
+            bail!("unsupported authentication kind(s): {}", kinds.join(", "));
+        }
+
+        if mtls_authns_count + net_authns_count == 0 {
+            bail!("at least one authentication reference must be set");
         }
 
         Ok(())
@@ -253,13 +244,8 @@ impl Validate<MeshTLSAuthenticationSpec> for Admission {
         // The CRD validates identity strings, but does not validate identity references.
 
         for id in spec.identity_refs.iter().flatten() {
-            // TODO support namespace references?
             if !id.targets_kind::<ServiceAccount>() {
-                bail!(
-                    "invalid identity target kind {}/{}",
-                    id.group.as_deref().unwrap_or("core"),
-                    id.kind
-                );
+                bail!("invalid identity target kind: {}", id.group_kind());
             }
         }
 
@@ -283,13 +269,29 @@ impl Validate<ServerSpec> for Admission {
         for server in servers.items.into_iter() {
             if server.name() != name
                 && server.spec.port == spec.port
-                && overlaps(&server.spec.pod_selector, &spec.pod_selector)
+                && Self::overlaps(&server.spec.pod_selector, &spec.pod_selector)
             {
                 bail!("identical server spec already exists");
             }
         }
 
         Ok(())
+    }
+}
+
+impl Admission {
+    /// Detects whether two pod selectors can select the same pod
+    //
+    // TODO(ver) We can probably detect overlapping selectors more effectively. For
+    // example, if `left` selects pods with 'foo=bar' and `right` selects pods with
+    // 'foo', we should indicate the selectors overlap. It's a bit tricky to work
+    // through all of the cases though, so we'll just punt for now.
+    fn overlaps(left: &labels::Selector, right: &labels::Selector) -> bool {
+        if left.selects_all() || right.selects_all() {
+            return true;
+        }
+
+        left == right
     }
 }
 
