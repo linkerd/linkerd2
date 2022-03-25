@@ -184,7 +184,13 @@ func testMetrics(t *testing.T) {
 		t.Logf("kubectl get: %s", out)
 		cmd = []string{"viz", "stat", "--namespace", testNamespace, testUpstreamDeploy}
 		out, _ = TestHelper.LinkerdRun(cmd...)
-		t.Logf("stat deploy/hello: %s", out)
+		t.Logf("stat %s: %s", testUpstreamDeploy, out)
+		cmd = []string{"viz", "stat", "--namespace", testNamespace, testDownstreamDeploy}
+		out, _ = TestHelper.LinkerdRun(cmd...)
+		t.Logf("stat %s: %s", testDownstreamDeploy, out)
+		cmd = []string{"viz", "routes", "--namespace", testNamespace, testUpstreamDeploy, "--to", testDownstreamDeploy}
+		out, _ = TestHelper.LinkerdRun(cmd...)
+		t.Logf("routes: %s", out)
 		if !(*stat.ActualSuccess > 0.00 && *stat.ActualSuccess < 100.00) {
 			return fmt.Errorf("expected Actual Success to be greater than 0%% and less than 100%% due to pre-seeded failure rate. But got %0.2f", *stat.ActualSuccess)
 		}
