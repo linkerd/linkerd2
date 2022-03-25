@@ -1,6 +1,6 @@
 use linkerd_policy_controller_k8s_api::{
     self as api,
-    policy::{MeshTLSAuthentication, MeshTLSAuthenticationSpec, TargetRef},
+    policy::{MeshTLSAuthentication, MeshTLSAuthenticationSpec, NamespacedTargetRef},
 };
 use linkerd_policy_test::admission;
 
@@ -13,7 +13,7 @@ async fn accepts_valid_ref() {
             ..Default::default()
         },
         spec: MeshTLSAuthenticationSpec {
-            identity_refs: Some(vec![TargetRef {
+            identity_refs: Some(vec![NamespacedTargetRef {
                 kind: "ServiceAccount".to_string(),
                 name: "default".to_string(),
                 ..Default::default()
@@ -63,7 +63,7 @@ async fn rejects_both_refs_and_strings() {
         },
         spec: MeshTLSAuthenticationSpec {
             identities: Some(vec!["example.id".to_string()]),
-            identity_refs: Some(vec![TargetRef {
+            identity_refs: Some(vec![NamespacedTargetRef {
                 kind: "ServiceAccount".to_string(),
                 name: "default".to_string(),
                 ..Default::default()

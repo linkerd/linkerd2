@@ -227,10 +227,10 @@ async fn server_with_authorization_policy() {
                     ..Default::default()
                 },
                 spec: k8s::policy::AuthorizationPolicySpec {
-                    target_ref: k8s::policy::TargetRef::from_resource(&server),
-                    required_authentication_refs: vec![k8s::policy::TargetRef::from_resource(
-                        &all_nets,
-                    )],
+                    target_ref: k8s::policy::LocalTargetRef::from_resource(&server),
+                    required_authentication_refs: vec![
+                        k8s::policy::NamespacedTargetRef::from_resource(&all_nets),
+                    ],
                 },
             },
         )

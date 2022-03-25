@@ -8,7 +8,7 @@ use linkerd_policy_controller_core::{
 use linkerd_policy_controller_k8s_api::{
     self as k8s,
     api::core::v1::ContainerPort,
-    policy::{server::Port, TargetRef},
+    policy::{server::Port, LocalTargetRef, NamespacedTargetRef},
     ResourceExt,
 };
 use maplit::*;
@@ -400,13 +400,13 @@ fn links_authorization_policy_with_mtls_name() {
         "authz-foo",
         "srv-8080",
         vec![
-            TargetRef {
+            NamespacedTargetRef {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: "NetworkAuthentication".to_string(),
-                namespace: None,
                 name: "net-foo".to_string(),
+                ..Default::default()
             },
-            TargetRef {
+            NamespacedTargetRef {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: "MeshTLSAuthentication".to_string(),
                 namespace: Some("ns-1".to_string()),
@@ -551,7 +551,7 @@ fn mk_authorization_policy(
     ns: impl ToString,
     name: impl ToString,
     server: impl ToString,
-    authns: impl IntoIterator<Item = TargetRef>,
+    authns: impl IntoIterator<Item = NamespacedTargetRef>,
 ) -> k8s::policy::AuthorizationPolicy {
     k8s::policy::AuthorizationPolicy {
         metadata: k8s::ObjectMeta {
@@ -560,11 +560,10 @@ fn mk_authorization_policy(
             ..Default::default()
         },
         spec: k8s::policy::AuthorizationPolicySpec {
-            target_ref: TargetRef {
+            target_ref: LocalTargetRef {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: "Server".to_string(),
                 name: server.to_string(),
-                namespace: None,
             },
             required_authentication_refs: authns.into_iter().collect(),
         },
@@ -575,7 +574,7 @@ fn mk_meshtls_authentication(
     ns: impl ToString,
     name: impl ToString,
     identities: impl IntoIterator<Item = String>,
-    refs: impl IntoIterator<Item = TargetRef>,
+    refs: impl IntoIterator<Item = NamespacedTargetRef>,
 ) -> k8s::policy::MeshTLSAuthentication {
     let identities = identities.into_iter().collect::<Vec<_>>();
     let identity_refs = refs.into_iter().collect::<Vec<_>>();

@@ -1,7 +1,10 @@
 #![allow(dead_code)]
 
 use anyhow::{bail, Result};
-use linkerd_policy_controller_k8s_api::{self as k8s, policy::TargetRef};
+use linkerd_policy_controller_k8s_api::{
+    self as k8s,
+    policy::{LocalTargetRef, NamespacedTargetRef},
+};
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct Spec {
@@ -56,7 +59,7 @@ impl Target {
     }
 }
 
-fn target(t: TargetRef) -> Result<Target> {
+fn target(t: LocalTargetRef) -> Result<Target> {
     if t.targets_kind::<k8s::policy::Server>() {
         return Ok(Target::Server(t.name));
     }
@@ -64,15 +67,15 @@ fn target(t: TargetRef) -> Result<Target> {
     anyhow::bail!("unsupported authorization target type: {}", t.kind_name());
 }
 
-fn authentication_ref(t: TargetRef) -> Result<AuthenticationTarget> {
+fn authentication_ref(t: NamespacedTargetRef) -> Result<AuthenticationTarget> {
     if t.targets_kind::<k8s::policy::MeshTLSAuthentication>() {
         Ok(AuthenticationTarget::MeshTLS {
-            namespace: t.namespace,
+            namespace: t.namespace.map(Into::into),
             name: t.name,
         })
     } else if t.targets_kind::<k8s::policy::NetworkAuthentication>() {
         Ok(AuthenticationTarget::Network {
-            namespace: t.namespace,
+            namespace: t.namespace.map(Into::into),
             name: t.name,
         })
     } else {

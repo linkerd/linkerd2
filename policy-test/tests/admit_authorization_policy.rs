@@ -1,6 +1,6 @@
 use linkerd_policy_controller_k8s_api::{
     self as api,
-    policy::{AuthorizationPolicy, AuthorizationPolicySpec, TargetRef},
+    policy::{AuthorizationPolicy, AuthorizationPolicySpec, LocalTargetRef, NamespacedTargetRef},
 };
 use linkerd_policy_test::admission;
 
@@ -13,24 +13,23 @@ async fn accepts_valid() {
             ..Default::default()
         },
         spec: AuthorizationPolicySpec {
-            target_ref: TargetRef {
+            target_ref: LocalTargetRef {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: "Server".to_string(),
                 name: "api".to_string(),
-                ..Default::default()
             },
             required_authentication_refs: vec![
-                TargetRef {
+                NamespacedTargetRef {
                     group: Some("policy.linkerd.io".to_string()),
                     kind: "MeshTLSAuthentication".to_string(),
                     name: "mtls-clients".to_string(),
                     ..Default::default()
                 },
-                TargetRef {
+                NamespacedTargetRef {
                     group: Some("policy.linkerd.io".to_string()),
                     kind: "NetworkAuthentication".to_string(),
-                    namespace: Some("linkerd".to_string()),
                     name: "cluster-nets".to_string(),
+                    namespace: Some("linkerd".to_string()),
                 },
             ],
         },
@@ -60,11 +59,10 @@ async fn accepts_empty_required_authentications() {
             ..Default::default()
         },
         spec: AuthorizationPolicySpec {
-            target_ref: TargetRef {
+            target_ref: LocalTargetRef {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: "Server".to_string(),
                 name: "deny".to_string(),
-                ..Default::default()
             },
             required_authentication_refs: vec![],
         },
@@ -81,13 +79,12 @@ async fn rejects_target_ref_deployment() {
             ..Default::default()
         },
         spec: AuthorizationPolicySpec {
-            target_ref: TargetRef {
+            target_ref: LocalTargetRef {
                 group: Some("apps".to_string()),
                 kind: "Deployment".to_string(),
                 name: "someapp".to_string(),
-                ..Default::default()
             },
-            required_authentication_refs: vec![TargetRef {
+            required_authentication_refs: vec![NamespacedTargetRef {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: "NetworkAuthentication".to_string(),
                 namespace: Some("linkerd".to_string()),
@@ -107,20 +104,19 @@ async fn rejects_duplicate_authn_kinds() {
             ..Default::default()
         },
         spec: AuthorizationPolicySpec {
-            target_ref: TargetRef {
+            target_ref: LocalTargetRef {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: "Server".to_string(),
                 name: "some-srv".to_string(),
-                ..Default::default()
             },
             required_authentication_refs: vec![
-                TargetRef {
+                NamespacedTargetRef {
                     group: Some("policy.linkerd.io".to_string()),
                     kind: "NetworkAuthentication".to_string(),
                     namespace: Some("some-ns".to_string()),
                     name: "some-nets".to_string(),
                 },
-                TargetRef {
+                NamespacedTargetRef {
                     group: Some("policy.linkerd.io".to_string()),
                     kind: "NetworkAuthentication".to_string(),
                     namespace: Some("other-ns".to_string()),
@@ -138,20 +134,19 @@ async fn rejects_duplicate_authn_kinds() {
             ..Default::default()
         },
         spec: AuthorizationPolicySpec {
-            target_ref: TargetRef {
+            target_ref: LocalTargetRef {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: "Server".to_string(),
                 name: "some-srv".to_string(),
-                ..Default::default()
             },
             required_authentication_refs: vec![
-                TargetRef {
+                NamespacedTargetRef {
                     group: Some("policy.linkerd.io".to_string()),
                     kind: "MeshTLSAuthentication".to_string(),
                     namespace: Some("some-ns".to_string()),
                     name: "some-ids".to_string(),
                 },
-                TargetRef {
+                NamespacedTargetRef {
                     group: Some("policy.linkerd.io".to_string()),
                     kind: "MeshTLSAuthentication".to_string(),
                     namespace: Some("other-ns".to_string()),

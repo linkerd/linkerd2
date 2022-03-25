@@ -1,4 +1,4 @@
-use super::TargetRef;
+use super::{LocalTargetRef, NamespacedTargetRef};
 
 #[derive(
     Clone,
@@ -17,7 +17,7 @@ use super::TargetRef;
 )]
 #[serde(rename_all = "camelCase")]
 pub struct AuthorizationPolicySpec {
-    pub target_ref: TargetRef,
+    pub target_ref: LocalTargetRef,
 
-    pub required_authentication_refs: Vec<TargetRef>,
+    pub required_authentication_refs: Vec<NamespacedTargetRef>,
 }

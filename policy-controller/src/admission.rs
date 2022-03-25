@@ -194,10 +194,6 @@ impl Validate<AuthorizationPolicySpec> for Admission {
         if !spec.target_ref.targets_kind::<Server>() {
             bail!("invalid targetRef kind: {}", spec.target_ref.kind_name());
         }
-        assert!(
-            spec.target_ref.namespace.is_none(),
-            "authorization policy targetRef namespace cannot be set (in the CRD)"
-        );
 
         let mtls_authns_count = spec
             .required_authentication_refs

@@ -1,4 +1,4 @@
-use super::TargetRef;
+use super::NamespacedTargetRef;
 
 #[derive(
     Clone,
@@ -19,5 +19,5 @@ use super::TargetRef;
 #[serde(rename_all = "camelCase")]
 pub struct MeshTLSAuthenticationSpec {
     pub identities: Option<Vec<String>>,
-    pub identity_refs: Option<Vec<TargetRef>>,
+    pub identity_refs: Option<Vec<NamespacedTargetRef>>,
 }
