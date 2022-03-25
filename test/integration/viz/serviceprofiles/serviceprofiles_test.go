@@ -42,7 +42,6 @@ func TestServiceProfiles(t *testing.T) {
 }
 
 func testProfiles(t *testing.T) {
-	t.SkipNow()
 	ctx := context.Background()
 	testNamespace := TestHelper.GetTestNamespace("serviceprofile-test")
 	out, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/tap_application.yaml")
