@@ -180,8 +180,12 @@ func testMetrics(t *testing.T) {
 	}
 
 	assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *cmd2.JSONRouteStats) error {
+		out, _ := TestHelper.Kubectl("", []string{"get", "--namespace", testNamespace, "pods"}...)
+		t.Logf("kubectl get: %s", out)
+		cmd = []string{"viz", "stat", "--namespace", testNamespace, testUpstreamDeploy}
+		out, _ = TestHelper.LinkerdRun(cmd...)
+		t.Logf("stat deploy/hello: %s", out)
 		if !(*stat.ActualSuccess > 0.00 && *stat.ActualSuccess < 100.00) {
-			t.Logf("stat.EffectiveSuccess=%f, stat.ActualSuccess=%f, stat.Route=%s", *stat.EffectiveSuccess, *stat.ActualSuccess, stat.Route)
 			return fmt.Errorf("expected Actual Success to be greater than 0%% and less than 100%% due to pre-seeded failure rate. But got %0.2f", *stat.ActualSuccess)
 		}
 		return nil
@@ -226,7 +230,7 @@ func testMetrics(t *testing.T) {
 
 func assertRouteStat(upstream, namespace, downstream string, t *testing.T, assertFn func(stat *cmd2.JSONRouteStats) error) {
 	const routePath = "GET /testpath"
-	timeout := 8 * time.Minute
+	timeout := 2 * time.Minute
 	err := TestHelper.RetryFor(timeout, func() error {
 		routes, err := getRoutes(upstream, namespace, []string{"--to", downstream})
 		if err != nil {
