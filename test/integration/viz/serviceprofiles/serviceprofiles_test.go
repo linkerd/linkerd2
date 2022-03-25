@@ -232,6 +232,8 @@ func assertRouteStat(upstream, namespace, downstream string, t *testing.T, asser
 			return fmt.Errorf("'linkerd routes' command failed: %w", err)
 		}
 
+		t.Logf("routes=%v", routes)
+
 		var testRoute *cmd2.JSONRouteStats
 		assertExpectedRoutes([]string{routePath, "[DEFAULT]"}, routes, t)
 
