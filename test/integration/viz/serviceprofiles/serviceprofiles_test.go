@@ -188,9 +188,9 @@ func testMetrics(t *testing.T) {
 		cmd = []string{"viz", "stat", "--namespace", testNamespace, testDownstreamDeploy}
 		out, _ = TestHelper.LinkerdRun(cmd...)
 		t.Logf("stat %s: %s", testDownstreamDeploy, out)
-		cmd = []string{"viz", "routes", "--namespace", testNamespace, testUpstreamDeploy, "--to", testDownstreamDeploy}
+		cmd = []string{"viz", "top", "--namespace", testNamespace, testDownstreamDeploy}
 		out, _ = TestHelper.LinkerdRun(cmd...)
-		t.Logf("routes: %s", out)
+		t.Logf("top: %s", out)
 		if !(*stat.ActualSuccess > 0.00 && *stat.ActualSuccess < 100.00) {
 			return fmt.Errorf("expected Actual Success to be greater than 0%% and less than 100%% due to pre-seeded failure rate. But got %0.2f", *stat.ActualSuccess)
 		}
