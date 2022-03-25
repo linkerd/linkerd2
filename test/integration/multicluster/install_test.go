@@ -63,7 +63,8 @@ func TestInstall(t *testing.T) {
 
 	// First, write CA to file
 	rootPath := fmt.Sprintf("%s/%s", tmpDir, "ca.crt")
-	if err = os.WriteFile(rootPath, certs.ca, 0666); err != nil {
+	// Write file with numberic mode 0444 -- ugo=r
+	if err = os.WriteFile(rootPath, certs.ca, 0444); err != nil {
 		testutil.AnnotatedFatal(t, "failed to create CA certificate", err)
 	}
 
@@ -71,11 +72,11 @@ func TestInstall(t *testing.T) {
 	issuerCertPath := fmt.Sprintf("%s/%s", tmpDir, "issuer.crt")
 	issuerKeyPath := fmt.Sprintf("%s/%s", tmpDir, "issuer.key")
 
-	if err = os.WriteFile(issuerCertPath, certs.issuerCert, 0666); err != nil {
+	if err = os.WriteFile(issuerCertPath, certs.issuerCert, 0444); err != nil {
 		testutil.AnnotatedFatal(t, "failed to create issuer certificate", err)
 	}
 
-	if err = os.WriteFile(issuerKeyPath, certs.issuerKey, 0666); err != nil {
+	if err = os.WriteFile(issuerKeyPath, certs.issuerKey, 0444); err != nil {
 		testutil.AnnotatedFatal(t, "failed to create issuer key", err)
 	}
 

@@ -176,6 +176,10 @@ func (h *KubernetesHelper) KubectlApplyWithContext(stdin string, context string,
 	return h.KubectlWithContext(stdin, context, args...)
 }
 
+// KubectlWithContext will call the kubectl binary with any optional arguments
+// provided and an arbitrary, given context. Useful when working with k8s
+// resources in a multi-cluster context. Optionally, stdin can be piped to
+// kubectl.
 func (h *KubernetesHelper) KubectlWithContext(stdin string, context string, arg ...string) (string, error) {
 	withContext := append([]string{"--context=" + context}, arg...)
 	cmd := exec.Command("kubectl", withContext...)

@@ -226,7 +226,7 @@ delete_cluster() {
 }
 
 cleanup_cluster() {
-  "$bindir"/test-cleanup --context "$context" "$linkerd_path" > /dev/null 2>&1
+  "$bindir"/test-cleanup "$context" "$linkerd_path" > /dev/null 2>&1
   exit_on_err 'error removing existing Linkerd resources'
 }
 
@@ -366,7 +366,9 @@ start_multicluster_test() {
   fi
   run_multicluster_test
   exit_on_err "error calling 'run_multicluster_test'"
+  export context="k3d-source"
   finish source
+  export context="k3d-target"
   finish target
 }
 
