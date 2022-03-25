@@ -42,6 +42,7 @@ func TestServiceProfiles(t *testing.T) {
 }
 
 func testProfiles(t *testing.T) {
+	t.SkipNow()
 	ctx := context.Background()
 	testNamespace := TestHelper.GetTestNamespace("serviceprofile-test")
 	out, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/tap_application.yaml")
@@ -181,6 +182,7 @@ func testMetrics(t *testing.T) {
 
 	assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *cmd2.JSONRouteStats) error {
 		if !(*stat.ActualSuccess > 0.00 && *stat.ActualSuccess < 100.00) {
+			t.Logf("stat.EffectiveSuccess=%f, stat.ActualSuccess=%f, stat.Route=%s", *stat.EffectiveSuccess, *stat.ActualSuccess, stat.Route)
 			return fmt.Errorf("expected Actual Success to be greater than 0%% and less than 100%% due to pre-seeded failure rate. But got %0.2f", *stat.ActualSuccess)
 		}
 		return nil
@@ -244,8 +246,6 @@ func assertRouteStat(upstream, namespace, downstream string, t *testing.T, asser
 		if testRoute == nil {
 			return errors.New("expected test route not to be nil")
 		}
-
-		t.Logf("success=%f, actualSuccess=%f, effectiveSucces=%f", *testRoute.Success, *testRoute.ActualSuccess, *testRoute.EffectiveSuccess)
 
 		return assertFn(testRoute)
 	})
