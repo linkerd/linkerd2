@@ -39,7 +39,6 @@ type TestHelper struct {
 	uninstall          bool
 	cni                bool
 	calico             bool
-	certsPath          string
 	defaultAllowPolicy string
 	httpClient         http.Client
 	KubernetesHelper
@@ -179,7 +178,7 @@ func NewTestHelper() *TestHelper {
 	vizNamespace := flag.String("viz-namespace", "linkerd-viz", "the namespace where linkerd viz extension is installed")
 	multicluster := flag.Bool("multicluster", false, "when specified the multicluster install functionality is tested")
 	multiclusterSourceCtx := flag.String("multicluster-source-context", "k3d-source", "the context belonging to source cluster in multicluster test")
-	multiclusterTargetCtx := flag.String("multicluster-target-context", "k3d-target", "the context belonging to source cluster in multicluster test")
+	multiclusterTargetCtx := flag.String("multicluster-target-context", "k3d-target", "the context belonging to target cluster in multicluster test")
 	helmPath := flag.String("helm-path", "target/helm", "path of the Helm binary")
 	helmCharts := flag.String("helm-charts", "charts/linkerd2", "path to linkerd2's Helm charts")
 	multiclusterHelmChart := flag.String("multicluster-helm-chart", "charts/linkerd-multicluster", "path to linkerd2's multicluster Helm chart")
@@ -198,7 +197,6 @@ func NewTestHelper() *TestHelper {
 	uninstall := flag.Bool("uninstall", false, "whether to run the 'linkerd uninstall' integration test")
 	cni := flag.Bool("cni", false, "whether to install linkerd with CNI enabled")
 	calico := flag.Bool("calico", false, "whether to install calico CNI plugin")
-	certsPath := flag.String("certs-path", "", "if non-empty, 'linkerd install' will use the files ca.crt, issuer.crt and issuer.key under this path in its --identity-* flags")
 	defaultAllowPolicy := flag.String("default-allow-policy", "", "if non-empty, passed to --set policyController.defaultAllowPolicy at linkerd's install time")
 	flag.Parse()
 
@@ -250,7 +248,6 @@ func NewTestHelper() *TestHelper {
 		cni:                *cni,
 		calico:             *calico,
 		uninstall:          *uninstall,
-		certsPath:          *certsPath,
 		defaultAllowPolicy: *defaultAllowPolicy,
 	}
 
@@ -372,12 +369,6 @@ func (h *TestHelper) Multicluster() bool {
 // Uninstall determines whether the "linkerd uninstall" integration test should be run
 func (h *TestHelper) Uninstall() bool {
 	return h.uninstall
-}
-
-// CertsPath returns the path for the ca.cert, issuer.crt and issuer.key files that `linkerd install`
-// will use in its --identity-* flags
-func (h *TestHelper) CertsPath() string {
-	return h.certsPath
 }
 
 // DefaultAllowPolicy returns the override value for policyController.defaultAllowPolicy

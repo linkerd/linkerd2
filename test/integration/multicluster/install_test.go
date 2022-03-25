@@ -105,9 +105,6 @@ func TestInstall(t *testing.T) {
 			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 				"'kubectl apply' command failed\n%s", out)
 		}
-		// Install and wait for pods to be ready before moving on to next
-		// context
-		TestHelper.WaitRolloutWithContext(t, testutil.LinkerdDeployReplicasEdge, ctx)
 	}
 
 }
@@ -197,9 +194,12 @@ func TestInstallViz(t *testing.T) {
 				"'kubectl apply' command failed\n%s", out)
 		}
 
-		TestHelper.WaitRolloutWithContext(t, testutil.LinkerdVizDeployReplicas, ctx)
 	}
 
+	// Allow viz to be installed in parallel and then block until viz is ready.
+	for _, ctx := range contexts {
+		TestHelper.WaitRolloutWithContext(t, testutil.LinkerdVizDeployReplicas, ctx)
+	}
 }
 
 func TestCheckMulticluster(t *testing.T) {
@@ -264,7 +264,8 @@ func createMulticlusterCertificates() (multiclusterCerts, error) {
 	}
 
 	var serialNumber int64 = 1
-	caTemplate := createCertificateTemplate(true, "root.linkerd.cluster.local", big.NewInt(serialNumber))
+	caTemplate := createCertificateTemplate("root.linkerd.cluster.local", big.NewInt(serialNumber))
+	caTemplate.KeyUsage = x509.KeyUsageCertSign | x509.KeyUsageCRLSign
 	// Create self-signed CA. Pass in its own pub key and its own private key
 	caDerBytes, err := x509.CreateCertificate(rand.Reader, &caTemplate, &caTemplate, &caKey.PublicKey, caKey)
 	if err != nil {
@@ -306,8 +307,8 @@ func createMulticlusterCertificates() (multiclusterCerts, error) {
 
 // createCertificateTemplate will bootstrap a certificate based on the arguments
 // passed in, with a validty of 24h
-func createCertificateTemplate(isCA bool, subjectCommonName string, serialNumber *big.Int) x509.Certificate {
-	crt := x509.Certificate{
+func createCertificateTemplate(subjectCommonName string, serialNumber *big.Int) x509.Certificate {
+	return x509.Certificate{
 		SerialNumber:          serialNumber,
 		Subject:               pkix.Name{CommonName: subjectCommonName},
 		NotBefore:             time.Now(),
@@ -317,10 +318,6 @@ func createCertificateTemplate(isCA bool, subjectCommonName string, serialNumber
 		MaxPathLen:            0,
 		IsCA:                  true,
 	}
-	if !isCA {
-		crt.KeyUsage = x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign | x509.KeyUsageCRLSign
-	}
-	return crt
 }
 
 // createIssuerCertificate accepts a serial number, a CA template and the CA's
@@ -334,7 +331,9 @@ func createIssuerCertificate(serialNumber int64, caTemplate *x509.Certificate, c
 	}
 
 	// Create issuer template
-	template := createCertificateTemplate(false, "identity.linkerd.cluster.local", big.NewInt(serialNumber))
+	template := createCertificateTemplate("identity.linkerd.cluster.local", big.NewInt(serialNumber))
+	template.KeyUsage = x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign | x509.KeyUsageCRLSign
+
 	// Create issuer certificate signed by CA, we pass in parent template and
 	// parent key
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, caTemplate, &key.PublicKey, caKey)
@@ -345,9 +344,8 @@ func createIssuerCertificate(serialNumber int64, caTemplate *x509.Certificate, c
 	return derBytes, key, nil
 }
 
-// derToString converts a DER encoded byte block and a DER encoded ECDSA keypair to strings
-// by first doing an intermediate conversion to PEM encoding. The key conversion
-// is optional
+// tryDerToPem converts a DER encoded byte block and a DER encoded ECDSA keypair
+// to a PEM encoded block
 func tryDerToPem(derBlock []byte, key []byte) ([]byte, []byte, error) {
 	certOut := &bytes.Buffer{}
 	certPemBlock := pem.Block{Type: "CERTIFICATE", Bytes: derBlock}
