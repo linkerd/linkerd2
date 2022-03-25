@@ -86,6 +86,7 @@ Kubernetes: `>=1.20.0-0`
 | identityTrustDomain | string | `"cluster.local"` | Identity Trust Domain of the certificate authority |
 | linkerdNamespace | string | `"linkerd"` | Namespace of linkerd installation |
 | linkerdVersion | string | `"linkerdVersionValue"` | Control plane version |
+| nodeAffinity | string | `nil` |  |
 | proxyOutboundPort | int | `4140` | The port on which the proxy accepts outbound traffic |
 | remoteMirrorServiceAccount | bool | `true` | If the remote mirror service account should be installed |
 | remoteMirrorServiceAccountName | string | `"linkerd-service-mirror-remote-access-default"` | The name of the service account used to allow remote clusters to mirror local services |
