@@ -226,7 +226,7 @@ func testMetrics(t *testing.T) {
 
 func assertRouteStat(upstream, namespace, downstream string, t *testing.T, assertFn func(stat *cmd2.JSONRouteStats) error) {
 	const routePath = "GET /testpath"
-	timeout := 4 * time.Minute
+	timeout := 8 * time.Minute
 	err := TestHelper.RetryFor(timeout, func() error {
 		routes, err := getRoutes(upstream, namespace, []string{"--to", downstream})
 		if err != nil {
