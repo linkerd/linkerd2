@@ -61,7 +61,7 @@ fn target(t: TargetRef) -> Result<Target> {
         return Ok(Target::Server(t.name));
     }
 
-    anyhow::bail!("unsupported authorization target type: {}", t.group_kind());
+    anyhow::bail!("unsupported authorization target type: {}", t.kind_name());
 }
 
 fn authentication_ref(t: TargetRef) -> Result<AuthenticationTarget> {
@@ -76,6 +76,6 @@ fn authentication_ref(t: TargetRef) -> Result<AuthenticationTarget> {
             name: t.name,
         })
     } else {
-        anyhow::bail!("unsupported authentication target: {}", t.group_kind());
+        anyhow::bail!("unsupported authentication target: {}", t.kind_name());
     }
 }

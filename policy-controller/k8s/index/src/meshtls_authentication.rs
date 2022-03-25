@@ -30,7 +30,7 @@ impl Spec {
                 let id = cluster.service_account_identity(ns, &tgt.name);
                 Ok(IdentityMatch::Exact(id))
             } else {
-                anyhow::bail!("unsupported target type: {:?}", tgt.group_kind())
+                anyhow::bail!("unsupported target type: {:?}", tgt.kind_name())
             }
         });
 

@@ -192,7 +192,7 @@ impl Validate<AuthorizationPolicySpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: AuthorizationPolicySpec) -> Result<()> {
         // TODO support namespace references?
         if !spec.target_ref.targets_kind::<Server>() {
-            bail!("invalid targetRef kind: {}", spec.target_ref.group_kind());
+            bail!("invalid targetRef kind: {}", spec.target_ref.kind_name());
         }
         assert!(
             spec.target_ref.namespace.is_none(),
@@ -225,7 +225,7 @@ impl Validate<AuthorizationPolicySpec> for Admission {
                     !authn.targets_kind::<MeshTLSAuthentication>()
                         && !authn.targets_kind::<NetworkAuthentication>()
                 })
-                .map(|authn| authn.group_kind())
+                .map(|authn| authn.kind_name())
                 .collect::<Vec<_>>();
             bail!("unsupported authentication kind(s): {}", kinds.join(", "));
         }
@@ -245,7 +245,7 @@ impl Validate<MeshTLSAuthenticationSpec> for Admission {
 
         for id in spec.identity_refs.iter().flatten() {
             if !id.targets_kind::<ServiceAccount>() {
-                bail!("invalid identity target kind: {}", id.group_kind());
+                bail!("invalid identity target kind: {}", id.kind_name());
             }
         }
 

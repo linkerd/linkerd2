@@ -53,9 +53,10 @@ impl TargetRef {
         }
     }
 
-    pub fn group_kind(&self) -> String {
-        if let Some(g) = self.group.as_deref() {
-            format!("{}.{}", g, self.kind)
+    /// Returns the target ref kind, qualified by its group, if necessary.
+    pub fn kind_name(&self) -> String {
+        if let Some(group) = self.group.as_deref() {
+            format!("{}.{}", self.kind, group)
         } else {
             self.kind.clone()
         }
