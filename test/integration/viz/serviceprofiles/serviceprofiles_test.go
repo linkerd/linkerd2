@@ -245,7 +245,7 @@ func assertRouteStat(upstream, namespace, downstream string, t *testing.T, asser
 			return errors.New("expected test route not to be nil")
 		}
 
-		t.Logf("testRoute=%v", testRoute)
+		t.Logf("success=%f, actualSuccess=%f, effectiveSucces=%f", *testRoute.Success, *testRoute.ActualSuccess, *testRoute.EffectiveSuccess)
 
 		return assertFn(testRoute)
 	})
