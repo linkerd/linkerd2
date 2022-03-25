@@ -23,6 +23,7 @@ spec:
     port: 8085
     targetPort: 8085
 ---
+{{- $tree := deepCopy . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

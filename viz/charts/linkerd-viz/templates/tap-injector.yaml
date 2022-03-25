@@ -23,6 +23,7 @@ spec:
     port: 443
     targetPort: tap-injector
 ---
+{{- $tree := deepCopy . }}
 kind: Deployment
 apiVersion: apps/v1
 metadata:

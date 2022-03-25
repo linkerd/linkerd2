@@ -1,5 +1,6 @@
 {{if .Values.gateway.enabled -}}
 ---
+{{- $tree := deepCopy . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -34,7 +35,6 @@ spec:
       labels:
         app: {{.Values.gateway.name}}
     spec:
-      {{- $local := dict "label" "app" "component" .Values.gateway.name -}}
       {{- $_ := set $tree "component" .Values.gateway.name -}}
       {{- $_ := set $tree "label" "app" -}}
       {{- include "linkerd.affinity" $tree | nindent 6 }}
