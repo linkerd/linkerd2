@@ -1,7 +1,4 @@
 {{ define "linkerd.pod-affinity" -}}
-{{- if not .Values.enablePodAntiAffinity -}}
-podAntiAffinity: null
-{{- else -}}
 podAntiAffinity:
   preferredDuringSchedulingIgnoredDuringExecution:
   - podAffinityTerm:
@@ -22,23 +19,20 @@ podAntiAffinity:
         - {{ .component }}
     topologyKey: kubernetes.io/hostname
 {{- end }}
-{{- end }}
 
 {{ define "linkerd.node-affinity" -}}
-{{- if not .Values.nodeAffinity -}}
-nodeAffinity: null
-{{- else -}}
 nodeAffinity:
 {{- toYaml .Values.nodeAffinity | trim | nindent 2 }}
 {{- end }}
-{{- end }}
 
 {{ define "linkerd.affinity" -}}
-{{- if not .Values.enablePodAntiAffinity -}}
-affinity: null
-{{- else -}}
-affinity:
+{{- if or .Values.enablePodAntiAffinity .Values.nodeAffinity -}}
+affinity: 
+{{- end }}
+{{- if .Values.enablePodAntiAffinity -}}
 {{- include "linkerd.pod-affinity" . | nindent 2 }}
+{{- end }}
+{{- if .Values.nodeAffinity -}}
 {{- include "linkerd.node-affinity" . | nindent 2 }}
 {{- end }}
 {{- end }}
