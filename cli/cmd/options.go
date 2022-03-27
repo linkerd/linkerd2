@@ -428,7 +428,7 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 
 	proxyFlags.MarkDeprecated("proxy-memory", "use --proxy-memory-request instead")
 	proxyFlags.MarkDeprecated("proxy-cpu", "use --proxy-cpu-request instead")
-	proxyFlags.MarkDeprecated("proxy-version", "use --set instead")
+	proxyFlags.MarkDeprecated("proxy-version", "use --set proxy.image.version <version>")
 
 	// Hide developer focused flags in release builds.
 	release, err := version.IsReleaseChannel(version.Version)
