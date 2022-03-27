@@ -974,6 +974,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "thiserror",
  "tokio",
  "tracing",
 ]
@@ -1006,6 +1007,7 @@ dependencies = [
  "ipnet",
  "k8s-openapi",
  "kube",
+ "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
  "linkerd2-proxy-api",
  "maplit",

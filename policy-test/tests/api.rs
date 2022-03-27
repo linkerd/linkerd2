@@ -1,8 +1,9 @@
 use futures::prelude::*;
-use kube::{runtime::wait::await_condition, ResourceExt};
+use kube::ResourceExt;
 use linkerd_policy_controller_k8s_api as k8s;
 use linkerd_policy_test::{
-    assert_is_default_all_unauthenticated, assert_protocol_detect, grpc, with_temp_ns,
+    assert_is_default_all_unauthenticated, assert_protocol_detect, create, create_ready_pod, grpc,
+    with_temp_ns,
 };
 use maplit::{btreemap, convert_args, hashmap};
 use tokio::time;
@@ -14,7 +15,7 @@ async fn server_with_server_authorization() {
     with_temp_ns(|client, ns| async move {
         // Create a pod that does nothing. It's injected with a proxy, so we can
         // attach policies to its admin server.
-        let pod = create_pod(&client, mk_pause(&ns, "pause")).await;
+        let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
         tracing::trace!(?pod);
 
         // Port-forward to the control plane and start watching the pod's admin
@@ -36,14 +37,7 @@ async fn server_with_server_authorization() {
 
         // Create a server that selects the pod's proxy admin server and ensure
         // that the update now uses this server, which has no authorizations
-        let server = kube::Api::<k8s::policy::Server>::namespaced(client.clone(), &ns)
-            .create(
-                &kube::api::PostParams::default(),
-                &mk_admin_server(&ns, "linkerd-admin"),
-            )
-            .await
-            .expect("server must apply");
-        tracing::trace!(?server);
+        let server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
         let config = rx
             .next()
             .await
@@ -67,31 +61,27 @@ async fn server_with_server_authorization() {
         // Create a server authorizaation that refers to the `linkerd-admin`
         // server (by name) and ensure that the update now reflects this
         // authorization.
-        let server_authz =
-            kube::Api::<k8s::policy::ServerAuthorization>::namespaced(client.clone(), &ns)
-                .create(
-                    &kube::api::PostParams::default(),
-                    &k8s::policy::ServerAuthorization {
-                        metadata: kube::api::ObjectMeta {
-                            namespace: Some(ns.clone()),
-                            name: Some("all-admin".to_string()),
-                            ..Default::default()
-                        },
-                        spec: k8s::policy::ServerAuthorizationSpec {
-                            server: k8s::policy::server_authorization::Server {
-                                name: Some("linkerd-admin".to_string()),
-                                selector: None,
-                            },
-                            client: k8s::policy::server_authorization::Client {
-                                unauthenticated: true,
-                                ..k8s::policy::server_authorization::Client::default()
-                            },
-                        },
+        create(
+            &client,
+            k8s::policy::ServerAuthorization {
+                metadata: kube::api::ObjectMeta {
+                    namespace: Some(ns.clone()),
+                    name: Some("all-admin".to_string()),
+                    ..Default::default()
+                },
+                spec: k8s::policy::ServerAuthorizationSpec {
+                    server: k8s::policy::server_authorization::Server {
+                        name: Some("linkerd-admin".to_string()),
+                        selector: None,
                     },
-                )
-                .await
-                .expect("serverauthorization must apply");
-        tracing::trace!(?server_authz);
+                    client: k8s::policy::server_authorization::Client {
+                        unauthenticated: true,
+                        ..k8s::policy::server_authorization::Client::default()
+                    },
+                },
+            },
+        )
+        .await;
         let config = rx
             .next()
             .await
@@ -108,7 +98,9 @@ async fn server_with_server_authorization() {
         );
         assert_eq!(
             config.authorizations.first().unwrap().labels,
-            convert_args!(hashmap!("name" => "all-admin")),
+            convert_args!(hashmap!(
+                "name" => "all-admin",
+            )),
         );
         assert_eq!(
             *config
@@ -145,49 +137,6 @@ async fn server_with_server_authorization() {
         assert_protocol_detect!(config);
     })
     .await;
-}
-
-async fn create<T>(client: &kube::Client, obj: T) -> T
-where
-    T: kube::Resource + serde::Serialize + serde::de::DeserializeOwned + Clone + std::fmt::Debug,
-    T::DynamicType: Default,
-{
-    kube::Api::<T>::namespaced(client.clone(), &obj.namespace().unwrap())
-        .create(
-            &kube::api::PostParams {
-                field_manager: Some("linkerd-policy-test".to_string()),
-                ..Default::default()
-            },
-            &obj,
-        )
-        .await
-        .expect("failed to create pod")
-}
-
-async fn create_pod(client: &kube::Client, pod: k8s::Pod) -> k8s::Pod {
-    let pod = create(client, pod).await;
-
-    let api = kube::Api::namespaced(client.clone(), &pod.namespace().unwrap());
-    time::timeout(
-        time::Duration::from_secs(60),
-        await_condition(api, &pod.name(), condition_pod_ready),
-    )
-    .await
-    .expect("pod failed to become ready")
-    .expect("pod failed to become ready");
-
-    pod
-}
-
-fn condition_pod_ready(obj: Option<&k8s::Pod>) -> bool {
-    if let Some(pod) = obj {
-        if let Some(status) = &pod.status {
-            if let Some(containers) = &status.container_statuses {
-                return containers.iter().all(|c| c.ready);
-            }
-        }
-    }
-    false
 }
 
 fn mk_pause(ns: &str, name: &str) -> k8s::Pod {
