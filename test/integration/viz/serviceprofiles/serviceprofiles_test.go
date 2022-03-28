@@ -216,8 +216,6 @@ func testMetrics(t *testing.T) {
 	}
 
 	assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *cmd2.JSONRouteStats) error {
-		out, _ := TestHelper.Kubectl("", []string{"logs", "--namespace", "linkerd-viz", "-l", "component=prometheus", "-c", "linkerd-proxy"}...)
-		t.Logf("deploy/prometheus linkerd-proxy logs: %s", out)
 		if *stat.EffectiveSuccess < 0.95 {
 			return fmt.Errorf("expected Effective Success to be at least 95%% with retries enabled. But got %.2f", *stat.EffectiveSuccess)
 		}
@@ -251,7 +249,9 @@ func assertRouteStat(upstream, namespace, downstream string, t *testing.T, asser
 	})
 
 	if err != nil {
-		out, _ := TestHelper.Kubectl("", []string{"logs", "--namespace", "linkerd-viz", "-l", "component=prometheus", "-c", "linkerd-proxy"}...)
+		out, _ := TestHelper.Kubectl("", []string{"get", "pods", "-A", "-o", "wide"}...)
+		t.Logf("pods: %s", out)
+		out, _ = TestHelper.Kubectl("", []string{"logs", "--namespace", "linkerd-viz", "-l", "component=prometheus", "-c", "linkerd-proxy"}...)
 		t.Logf("deploy/prometheus linkerd-proxy logs: %s", out)
 		testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out asserting route stat (%s)", timeout), err)
 	}
