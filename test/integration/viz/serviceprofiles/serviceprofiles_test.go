@@ -251,6 +251,8 @@ func assertRouteStat(upstream, namespace, downstream string, t *testing.T, asser
 	})
 
 	if err != nil {
+		out, _ := TestHelper.Kubectl("", []string{"logs", "--namespace", "linkerd-viz", "-l", "component=prometheus", "-c", "linkerd-proxy"}...)
+		t.Logf("deploy/prometheus linkerd-proxy logs: %s", out)
 		testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out asserting route stat (%s)", timeout), err)
 	}
 }
