@@ -69,6 +69,7 @@ var (
 //////////////////////
 
 func TestCliTap(t *testing.T) {
+	t.SkipNow()
 	out, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/tap_application.yaml")
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)

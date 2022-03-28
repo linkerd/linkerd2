@@ -55,6 +55,7 @@ func parseStatRows(out string, expectedRowCount, expectedColumnCount int) ([]*te
 }
 
 func TestTrafficSplitCliWithSP(t *testing.T) {
+	t.SkipNow()
 
 	version := "sp"
 	ctx := context.Background()

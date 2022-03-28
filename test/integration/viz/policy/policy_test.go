@@ -27,6 +27,7 @@ func TestMain(m *testing.M) {
 //////////////////////
 
 func TestPolicy(t *testing.T) {
+	t.SkipNow()
 	ctx := context.Background()
 
 	// Test authorization stats
