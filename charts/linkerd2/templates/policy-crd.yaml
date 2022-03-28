@@ -195,9 +195,6 @@ spec:
                       description: >-
                         A label query over servers on which this authorization applies.
                       type: object
-                      oneOf:
-                        - required: [matchLabels]
-                        - required: [matchExpressions]
                       properties:
                         matchLabels:
                           type: object
@@ -220,9 +217,6 @@ spec:
                 client:
                   description:  Describes clients authorized to access a server.
                   type: object
-                  oneOf:
-                    - required: [meshTLS]
-                    - required: [unauthenticated]
                   properties:
                     networks:
                       description: >-
@@ -247,10 +241,6 @@ spec:
                       type: boolean
                     meshTLS:
                       type: object
-                      oneOf:
-                        - required: [unauthenticatedTLS]
-                        - required: [identities]
-                        - required: [serviceAccounts]
                       properties:
                         unauthenticatedTLS:
                           type: boolean
@@ -325,9 +315,6 @@ spec:
                       description: >-
                         A label query over servers on which this authorization applies.
                       type: object
-                      oneOf:
-                        - required: [matchLabels]
-                        - required: [matchExpressions]
                       properties:
                         matchLabels:
                           type: object
@@ -350,9 +337,6 @@ spec:
                 client:
                   description:  Describes clients authorized to access a server.
                   type: object
-                  oneOf:
-                    - required: [meshTLS]
-                    - required: [unauthenticated]
                   properties:
                     networks:
                       description: >-
@@ -377,10 +361,6 @@ spec:
                       type: boolean
                     meshTLS:
                       type: object
-                      oneOf:
-                        - required: [unauthenticatedTLS]
-                        - required: [identities]
-                        - required: [serviceAccounts]
                       properties:
                         unauthenticatedTLS:
                           type: boolean
