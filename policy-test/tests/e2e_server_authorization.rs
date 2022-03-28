@@ -39,7 +39,7 @@ async fn meshtls() {
         let (injected_status, uninjected_status) =
             tokio::join!(injected.exit_code(), uninjected.exit_code());
         assert_eq!(injected_status, 0, "injected curl must succeed");
-        assert_eq!(uninjected_status, 22, "injected curl must contact nginx");
+        assert_eq!(uninjected_status, 22, "uninjected curl must fail");
     })
     .await;
 }
@@ -93,7 +93,7 @@ async fn network() {
 
         // The blessed pod should be able to connect to the nginx pod.
         let status = blessed.exit_code().await;
-        assert_eq!(status, 0, "blessed curl pod must succeed");
+        assert_eq!(status, 0, "blessed curl must succeed");
 
         // Create another curl pod that is not included in the authorization. It
         // should fail to connect to the nginx pod.
@@ -102,7 +102,7 @@ async fn network() {
             .await
             .exit_code()
             .await;
-        assert_eq!(status, 22, "cursed curl pod must fail");
+        assert_eq!(status, 22, "cursed curl must fail");
     })
     .await;
 }
@@ -180,12 +180,12 @@ async fn both() {
         // The blessed and injected pod should be able to connect to the nginx pod.
         assert_eq!(
             blessed_injected_status, 0,
-            "blessed injected curl pod must succeed"
+            "blessed injected curl must succeed"
         );
         // The blessed and uninjected pod should NOT be able to connect to the nginx pod.
         assert_eq!(
             blessed_uninjected_status, 22,
-            "blessed uninjected curl pod must fail"
+            "blessed uninjected curl must fail"
         );
 
         let (cursed_injected, cursed_uninjected) = tokio::join!(
@@ -202,13 +202,10 @@ async fn both() {
         );
         let (cursed_injected_status, cursed_uninjected_status) =
             tokio::join!(cursed_injected.exit_code(), cursed_uninjected.exit_code(),);
-        assert_eq!(
-            cursed_injected_status, 22,
-            "cursed injected curl pod must fail"
-        );
+        assert_eq!(cursed_injected_status, 22, "cursed injected curl must fail");
         assert_eq!(
             cursed_uninjected_status, 22,
-            "cursed uninjected curl pod must fail"
+            "cursed uninjected curl must fail"
         );
     })
     .await;
@@ -295,11 +292,11 @@ async fn either() {
             tokio::join!(blessed_injected.exit_code(), blessed_uninjected.exit_code());
         assert_eq!(
             blessed_injected_status, 0,
-            "blessed injected curl pod must succeed"
+            "blessed injected curl must succeed"
         );
         assert_eq!(
             blessed_uninjected_status, 0,
-            "blessed uninjected curl pod must succeed"
+            "blessed uninjected curl must succeed"
         );
 
         let (cursed_injected, cursed_uninjected) = tokio::join!(
@@ -318,11 +315,11 @@ async fn either() {
             tokio::join!(cursed_injected.exit_code(), cursed_uninjected.exit_code());
         assert_eq!(
             cursed_injected_status, 0,
-            "cursed injected curl pod must succeed"
+            "cursed injected curl must succeed"
         );
         assert_eq!(
             cursed_uninjected_status, 22,
-            "cursed uninjected curl pod must fail"
+            "cursed uninjected curl must fail"
         );
     })
     .await;
