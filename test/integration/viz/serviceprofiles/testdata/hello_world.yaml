@@ -79,6 +79,8 @@ metadata:
 spec:
   template:
     metadata:
+      annotations:
+        linkerd.io/inject: "disabled"
       labels:
         app: hello-slow-cooker
     spec:
