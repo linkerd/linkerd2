@@ -36,7 +36,7 @@ func TestMain(m *testing.M) {
 func TestServiceProfiles(t *testing.T) {
 	ctx := context.Background()
 	TestHelper.WithDataPlaneNamespace(ctx, "serviceprofile-test", map[string]string{}, t, func(t *testing.T, ns string) {
-		t.Run("service profiles", testProfiles)
+		//t.Run("service profiles", testProfiles)
 		t.Run("service profiles metrics", testMetrics)
 	})
 }
@@ -187,13 +187,13 @@ func testMetrics(t *testing.T) {
 
 		out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, fmt.Sprintf("deploy/%s", testUpstreamDeploy))
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to run `linkerd diagnostics proxy-metrics --namespace %s  deploy/%s`: %w", testNamespace, testUpstreamDeploy, err)
 		}
 		t.Log(out)
 
 		out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, fmt.Sprintf("deploy/%s", testDownstreamDeploy))
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to run `linkerd diagnostics proxy-metrics --namespace %s  deploy/%s`: %w", testNamespace, testDownstreamDeploy, err)
 		}
 		t.Log(out)
 
@@ -230,10 +230,23 @@ func testMetrics(t *testing.T) {
 	}
 
 	assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *cmd2.JSONRouteStats) error {
-		if *stat.EffectiveSuccess < 0.95 {
-			return fmt.Errorf("expected Effective Success to be at least 95%% with retries enabled. But got %.2f", *stat.EffectiveSuccess)
+		if 0.95 <= *stat.EffectiveSuccess {
+			return nil
 		}
-		return nil
+
+		out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, fmt.Sprintf("deploy/%s", testUpstreamDeploy))
+		if err != nil {
+			return fmt.Errorf("failed to run `linkerd diagnostics proxy-metrics --namespace %s  deploy/%s`: %w", testNamespace, testUpstreamDeploy, err)
+		}
+		t.Log(out)
+
+		out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, fmt.Sprintf("deploy/%s", testDownstreamDeploy))
+		if err != nil {
+			return fmt.Errorf("failed to run `linkerd diagnostics proxy-metrics --namespace %s  deploy/%s`: %w", testNamespace, testDownstreamDeploy, err)
+		}
+		t.Log(out)
+
+		return fmt.Errorf("expected Effective Success to be at least 95%% with retries enabled. But got %.2f", *stat.EffectiveSuccess)
 	})
 }
 
