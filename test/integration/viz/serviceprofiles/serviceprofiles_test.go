@@ -225,6 +225,7 @@ func testMetrics(t *testing.T) {
 
 	out, err = TestHelper.KubectlApply(string(bytes), testNamespace)
 	if err != nil {
+		t.Log(string(bytes))
 		testutil.AnnotatedErrorf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed:\n%s :%s", err, out)
 	}
