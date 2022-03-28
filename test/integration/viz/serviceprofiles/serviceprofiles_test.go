@@ -246,28 +246,31 @@ func assertRouteStat(upstream, namespace, downstream string, t *testing.T, asser
 			return errors.New("expected test route not to be nil")
 		}
 
-		err = assertFn(testRoute)
-		if err != nil {
-			t.Logf("Output: %+v", testRoute)
-
-			out, err := TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", namespace, upstream)
-			if err != nil {
-				t.Logf("failed to get proxy metrics for %s", upstream)
-			} else {
-				t.Log(out)
-			}
-
-			out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", namespace, downstream)
-			if err != nil {
-				t.Logf("failed to get proxy metrics for %s", downstream)
-			} else {
-				t.Log(out)
-			}
-		}
-		return err
+		return assertFn(testRoute)
 	})
 
 	if err != nil {
+		out, e := TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", namespace, upstream)
+		if e != nil {
+			t.Logf("failed to get proxy metrics for %s", upstream)
+		} else {
+			t.Log(out)
+		}
+
+		out, e = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", namespace, downstream)
+		if e != nil {
+			t.Logf("failed to get proxy metrics for %s", downstream)
+		} else {
+			t.Log(out)
+		}
+
+		out, e = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace=linkerd-viz", "deployment/prometheus")
+		if e != nil {
+			t.Logf("failed to get proxy metrics for prometheus")
+		} else {
+			t.Log(out)
+		}
+
 		testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out asserting route stat (%s)", timeout), err)
 	}
 }
