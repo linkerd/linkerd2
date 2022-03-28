@@ -55,8 +55,6 @@ func parseStatRows(out string, expectedRowCount, expectedColumnCount int) ([]*te
 }
 
 func TestTrafficSplitCliWithSP(t *testing.T) {
-	t.SkipNow()
-
 	version := "sp"
 	ctx := context.Background()
 	TestHelper.WithDataPlaneNamespace(ctx, fmt.Sprintf("trafficsplit-test-%s", version), map[string]string{}, t, func(t *testing.T, prefixedNs string) {

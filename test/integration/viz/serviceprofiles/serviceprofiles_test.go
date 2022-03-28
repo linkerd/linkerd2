@@ -280,7 +280,7 @@ func assertRouteStat(upstream, namespace, downstream string, t *testing.T, asser
 			}
 		*/
 
-		out, e = TestHelper.Kubectl("", "describe", "--namespace", namespace, "pod")
+		out, e = TestHelper.Kubectl("", "describe", "pod", "-A")
 		if e != nil {
 			t.Logf("failed to get logs for metrics-api: %s", e)
 		} else {

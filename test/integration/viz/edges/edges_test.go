@@ -29,7 +29,6 @@ func TestMain(m *testing.M) {
 // case when running this test in the context of the other integration tests.
 
 func TestEdges(t *testing.T) {
-	t.SkipNow()
 	ns := TestHelper.GetLinkerdNamespace()
 	promNs := TestHelper.GetVizNamespace()
 	vars := struct {
@@ -73,8 +72,6 @@ func TestEdges(t *testing.T) {
 // TestDirectEdges deploys a terminus and then generates a load generator which
 // sends traffic directly to the pod ip of the terminus pod.
 func TestDirectEdges(t *testing.T) {
-	t.SkipNow()
-
 	ctx := context.Background()
 	// setup
 	TestHelper.WithDataPlaneNamespace(ctx, "direct-edges-test", map[string]string{}, t, func(t *testing.T, testNamespace string) {

@@ -49,7 +49,6 @@ func TestMain(m *testing.M) {
 //////////////////////
 
 func TestTracing(t *testing.T) {
-	t.SkipNow()
 	ctx := context.Background()
 
 	// linkerd-jaeger extension

@@ -36,7 +36,6 @@ func TestMain(m *testing.M) {
 // failed attempts will eventually be recorded in the stats that we're
 // requesting, and the test will pass.
 func TestCliStatForLinkerdNamespace(t *testing.T) {
-	t.SkipNow()
 	ctx := context.Background()
 	var prometheusPod, prometheusAuthority, prometheusNamespace, prometheusDeployment, metricsPod string
 	// Get Metrics Pod

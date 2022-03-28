@@ -219,7 +219,6 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 	})
 
 	t.Run("Should return error if stream returned error", func(t *testing.T) {
-		t.SkipNow()
 		resourceType := k8s.Pod
 		params := pkg.TapRequestParams{
 			Resource:  resourceType + "/" + targetName,
