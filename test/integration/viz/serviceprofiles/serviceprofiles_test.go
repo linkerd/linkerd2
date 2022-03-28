@@ -180,26 +180,24 @@ func testMetrics(t *testing.T) {
 	}
 
 	assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *cmd2.JSONRouteStats) error {
+		if 0.00 < *stat.ActualSuccess && *stat.ActualSuccess < 100.00 {
+			return nil
+		}
 		t.Logf("Output: %+v", stat)
-		if stat.ActualSuccess == nil {
-			out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, fmt.Sprintf("deploy/%s", testUpstreamDeploy))
-			if err != nil {
-				return err
-			}
-			t.Log(out)
 
-			out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, fmt.Sprintf("deploy/%s", testDownstreamDeploy))
-			if err != nil {
-				return err
-			}
-			t.Log(out)
+		out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, fmt.Sprintf("deploy/%s", testUpstreamDeploy))
+		if err != nil {
+			return err
+		}
+		t.Log(out)
 
-			return fmt.Errorf("ActualSuccess is nil")
+		out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, fmt.Sprintf("deploy/%s", testDownstreamDeploy))
+		if err != nil {
+			return err
 		}
-		if !(*stat.ActualSuccess > 0.00 && *stat.ActualSuccess < 100.00) {
-			return fmt.Errorf("expected Actual Success to be greater than 0%% and less than 100%% due to pre-seeded failure rate. But got %0.2f", *stat.ActualSuccess)
-		}
-		return nil
+		t.Log(out)
+
+		return fmt.Errorf("expected Actual Success to be greater than 0%% and less than 100%% due to pre-seeded failure rate. But got %0.2f", *stat.ActualSuccess)
 	})
 
 	profile := &sp.ServiceProfile{}
