@@ -180,6 +180,7 @@ func testMetrics(t *testing.T) {
 	}
 
 	assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *cmd2.JSONRouteStats) error {
+		fmt.Printf("Output: %+v\n", stat)
 		if !(*stat.ActualSuccess > 0.00 && *stat.ActualSuccess < 100.00) {
 			return fmt.Errorf("expected Actual Success to be greater than 0%% and less than 100%% due to pre-seeded failure rate. But got %0.2f", *stat.ActualSuccess)
 		}
@@ -287,6 +288,7 @@ func getRoutes(deployName, namespace string, additionalArgs []string) ([]*cmd2.J
 	cmd = append(cmd, "--output", "json")
 	var results map[string][]*cmd2.JSONRouteStats
 	err := TestHelper.RetryFor(2*time.Minute, func() error {
+		fmt.Printf("Running: %+v\n", cmd)
 		out, err := TestHelper.LinkerdRun(cmd...)
 		if err != nil {
 			return err
