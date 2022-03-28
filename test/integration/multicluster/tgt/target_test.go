@@ -38,20 +38,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestInstallEmojivoto(t *testing.T) {
-	out, err := TestHelper.KubectlApplyWithContext("", targetCtx, "-f", "testdata/emojivoto-no-bot.yml")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to install emojivoto", "failed to install emojivoto: %s\n%s", err, out)
-	}
-}
-
-func TestInstallNginxSS(t *testing.T) {
-	out, err := TestHelper.KubectlApplyWithContext("", targetCtx, "-f", "testdata/nginx-ss.yml")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to install nginx-ss", "failed to install nginx-ss: %s\n%s", err, out)
-	}
-}
-
 // TestTargetTraffic inspects the target cluster's web-svc pod to see if the
 // source cluster's vote-bot has been able to hit it with requests. If it has
 // successfully issued requests, then we'll see log messages indicating that the

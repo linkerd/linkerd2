@@ -33,21 +33,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestInstallVoteBot(t *testing.T) {
-	o, err := TestHelper.KubectlApplyWithContext("", sourceCtx, "-f", "testdata/vote-bot.yml")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to install vote-bot", "failed to install vote-bot: %s\n%s", err, o)
-	}
-}
-
-func TestInstallSlowCooker(t *testing.T) {
-	out, err := TestHelper.KubectlApplyWithContext("", sourceCtx, "-f", "testdata/slow-cooker.yaml")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to install slow-cooker", "failed to install slow-cooker: %s\ngot: %s", err, out)
-	}
-
-}
-
 func TestGateways(t *testing.T) {
 	timeout := time.Minute
 	err := TestHelper.RetryFor(timeout, func() error {

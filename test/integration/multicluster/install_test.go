@@ -253,6 +253,41 @@ func TestCheckMulticluster(t *testing.T) {
 	}
 }
 
+// Install vote-bot in source cluster
+func TestInstallSourceVoteBot(t *testing.T) {
+	o, err := TestHelper.KubectlApplyWithContext("", contexts["src"], "-f", "testdata/vote-bot.yml")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to install vote-bot", "failed to install vote-bot: %s\n%s", err, o)
+	}
+}
+
+// Install slow-cooker in source cluster
+func TestInstallSourceSlowCooker(t *testing.T) {
+	out, err := TestHelper.KubectlApplyWithContext("", contexts["src"], "-f", "testdata/slow-cooker.yaml")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to install slow-cooker", "failed to install slow-cooker: %s\ngot: %s", err, out)
+	}
+
+}
+
+// Install emojivoto (without vote-bot) in target cluster to test traffic
+// between vote-bot in source and emojivoto services in target
+func TestInstallEmojivoto(t *testing.T) {
+	out, err := TestHelper.KubectlApplyWithContext("", contexts["tgt"], "-f", "testdata/emojivoto-no-bot.yml")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to install emojivoto", "failed to install emojivoto: %s\n%s", err, out)
+	}
+}
+
+// Install an nginx statefulset (headless service) jin target cluster to test traffic between
+// slow-cooker in source and statefulset in target
+func TestInstallNginxSS(t *testing.T) {
+	out, err := TestHelper.KubectlApplyWithContext("", contexts["tgt"], "-f", "testdata/nginx-ss.yml")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to install nginx-ss", "failed to install nginx-ss: %s\n%s", err, out)
+	}
+}
+
 //////////////////////
 ///   CERT UTILS   ///
 //////////////////////
