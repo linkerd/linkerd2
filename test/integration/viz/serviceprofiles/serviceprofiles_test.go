@@ -183,20 +183,6 @@ func testMetrics(t *testing.T) {
 		if 0.00 < *stat.ActualSuccess && *stat.ActualSuccess < 100.00 {
 			return nil
 		}
-		t.Logf("Output: %+v", stat)
-
-		out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, testUpstreamDeploy)
-		if err != nil {
-			return fmt.Errorf("failed to run `linkerd diagnostics proxy-metrics --namespace %s  %s`: %w", testNamespace, testUpstreamDeploy, err)
-		}
-		t.Log(out)
-
-		out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, testDownstreamDeploy)
-		if err != nil {
-			return fmt.Errorf("failed to run `linkerd diagnostics proxy-metrics --namespace %s  %s`: %w", testNamespace, testDownstreamDeploy, err)
-		}
-		t.Log(out)
-
 		return fmt.Errorf("expected Actual Success to be greater than 0%% and less than 100%% due to pre-seeded failure rate. But got %0.2f", *stat.ActualSuccess)
 	})
 
@@ -234,19 +220,6 @@ func testMetrics(t *testing.T) {
 		if 0.95 <= *stat.EffectiveSuccess {
 			return nil
 		}
-
-		out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, testUpstreamDeploy)
-		if err != nil {
-			return fmt.Errorf("failed to run `linkerd diagnostics proxy-metrics --namespace %s  %s`: %w", testNamespace, testUpstreamDeploy, err)
-		}
-		t.Log(out)
-
-		out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, testDownstreamDeploy)
-		if err != nil {
-			return fmt.Errorf("failed to run `linkerd diagnostics proxy-metrics --namespace %s  %s`: %w", testNamespace, testDownstreamDeploy, err)
-		}
-		t.Log(out)
-
 		return fmt.Errorf("expected Effective Success to be at least 95%% with retries enabled. But got %.2f", *stat.EffectiveSuccess)
 	})
 }
@@ -273,7 +246,25 @@ func assertRouteStat(upstream, namespace, downstream string, t *testing.T, asser
 			return errors.New("expected test route not to be nil")
 		}
 
-		return assertFn(testRoute)
+		err = assertFn(testRoute)
+		if err != nil {
+			t.Logf("Output: %+v", testRoute)
+
+			out, err := TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", namespace, upstream)
+			if err != nil {
+				t.Logf("failed to get proxy metrics for %s", upstream)
+			} else {
+				t.Log(out)
+			}
+
+			out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", namespace, downstream)
+			if err != nil {
+				t.Logf("failed to get proxy metrics for %s", downstream)
+			} else {
+				t.Log(out)
+			}
+		}
+		return err
 	})
 
 	if err != nil {
