@@ -393,17 +393,18 @@ latest_release_channel() {
 # Run the upgrade-edge test by upgrading the most-recent edge release to the
 # HEAD of this branch.
 run_upgrade-edge_test() {
-  run_test "$test_directory/upgrade-edge/..." 
+  run_test "$test_directory/upgrade-edge/..."
 }
 
 # Run the upgrade-stable test by upgrading the most-recent stable release to the
 # HEAD of this branch.
 run_upgrade-stable_test() {
-  run_test "$test_directory/upgrade-stable/..." 
+  run_test "$test_directory/upgrade-stable/..."
 }
 
 run_viz_test() {
-  run_test "$test_directory/viz/..."
+  run_test "$test_directory/viz/install_test.go"
+  run_test "$test_directory/viz/serviceprofiles/..."
 }
 
 setup_helm() {
@@ -472,9 +473,9 @@ run_multicluster_test() {
   kubectl --context="$context" create namespace multicluster-statefulset
   run_test "$test_directory/multicluster/install_test.go" --certs-path "$tmp"
   echo "$link" | kubectl --context="$context" apply -f -
-  run_test "$test_directory/multicluster/source" 
+  run_test "$test_directory/multicluster/source"
   export context="k3d-target"
-  run_test "$test_directory/multicluster/target2" 
+  run_test "$test_directory/multicluster/target2"
 }
 
 run_deep_test() {
@@ -483,7 +484,7 @@ run_deep_test() {
 
 run_default-policy-deny_test() {
   export default_allow_policy='deny'
-  run_test "$test_directory/install/install_test.go" 
+  run_test "$test_directory/install/install_test.go"
 }
 
 run_cni-calico-deep_test() {
@@ -495,7 +496,7 @@ run_external_test() {
 }
 
 run_cluster-domain_test() {
-  run_test "$test_directory/install/install_test.go" --cluster-domain='custom.domain' 
+  run_test "$test_directory/install/install_test.go" --cluster-domain='custom.domain'
 }
 
 # exit_on_err should be called right after a command to check the result status
