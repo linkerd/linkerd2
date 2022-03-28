@@ -263,7 +263,7 @@ func TestInstallSourceVoteBot(t *testing.T) {
 
 // Install slow-cooker in source cluster
 func TestInstallSourceSlowCooker(t *testing.T) {
-	out, err := TestHelper.KubectlApplyWithContext("", contexts["src"], "-f", "testdata/slow-cooker.yaml")
+	out, err := TestHelper.KubectlApplyWithContext("", contexts["src"], "-f", "testdata/slow-cooker.yml")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to install slow-cooker", "failed to install slow-cooker: %s\ngot: %s", err, out)
 	}
