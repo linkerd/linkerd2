@@ -69,8 +69,8 @@ fn client_authz(
         .into_iter()
         .flatten()
         .map(|net| NetworkMatch {
-            net: net.cidr,
-            except: net.except.unwrap_or_default(),
+            net: net.cidr.into(),
+            except: net.except.into_iter().flatten().map(Into::into).collect(),
         })
         .collect();
 
