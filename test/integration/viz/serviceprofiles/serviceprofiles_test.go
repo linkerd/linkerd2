@@ -264,18 +264,27 @@ func assertRouteStat(upstream, namespace, downstream string, t *testing.T, asser
 			t.Log(out)
 		}
 
-		out, e = TestHelper.Kubectl("", "logs", "--namespace=linkerd-viz", "deployment/prometheus", "-c", "linkerd-proxy")
-		if e != nil {
-			t.Logf("failed to get logs for prometheus")
-		} else {
-			t.Logf("# prometheus logs\n%s", out)
-		}
+		/*
+			out, e = TestHelper.Kubectl("", "logs", "--namespace=linkerd-viz", "deployment/prometheus", "-c", "linkerd-proxy")
+			if e != nil {
+				t.Logf("failed to get logs for prometheus")
+			} else {
+				t.Logf("# prometheus logs\n%s", out)
+			}
 
-		out, e = TestHelper.Kubectl("", "logs", "--namespace=linkerd-viz", "deployment/metrics-api", "-c", "linkerd-proxy")
+			out, e = TestHelper.Kubectl("", "logs", "--namespace=linkerd-viz", "deployment/metrics-api", "-c", "linkerd-proxy")
+			if e != nil {
+				t.Logf("failed to get logs for metrics-api")
+			} else {
+				t.Logf("# metrics-api logs\n%s", out)
+			}
+		*/
+
+		out, e = TestHelper.Kubectl("", "describe", "--namespace", namespace, "pod")
 		if e != nil {
 			t.Logf("failed to get logs for metrics-api")
 		} else {
-			t.Logf("# metrics-api logs\n%s", out)
+			t.Log(out)
 		}
 
 		testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out asserting route stat (%s)", timeout), err)
