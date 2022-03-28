@@ -185,15 +185,15 @@ func testMetrics(t *testing.T) {
 		}
 		t.Logf("Output: %+v", stat)
 
-		out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, fmt.Sprintf("deploy/%s", testUpstreamDeploy))
+		out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, testUpstreamDeploy)
 		if err != nil {
-			return fmt.Errorf("failed to run `linkerd diagnostics proxy-metrics --namespace %s  deploy/%s`: %w", testNamespace, testUpstreamDeploy, err)
+			return fmt.Errorf("failed to run `linkerd diagnostics proxy-metrics --namespace %s  %s`: %w", testNamespace, testUpstreamDeploy, err)
 		}
 		t.Log(out)
 
-		out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, fmt.Sprintf("deploy/%s", testDownstreamDeploy))
+		out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, testDownstreamDeploy)
 		if err != nil {
-			return fmt.Errorf("failed to run `linkerd diagnostics proxy-metrics --namespace %s  deploy/%s`: %w", testNamespace, testDownstreamDeploy, err)
+			return fmt.Errorf("failed to run `linkerd diagnostics proxy-metrics --namespace %s  %s`: %w", testNamespace, testDownstreamDeploy, err)
 		}
 		t.Log(out)
 
@@ -234,15 +234,15 @@ func testMetrics(t *testing.T) {
 			return nil
 		}
 
-		out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, fmt.Sprintf("deploy/%s", testUpstreamDeploy))
+		out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, testUpstreamDeploy)
 		if err != nil {
-			return fmt.Errorf("failed to run `linkerd diagnostics proxy-metrics --namespace %s  deploy/%s`: %w", testNamespace, testUpstreamDeploy, err)
+			return fmt.Errorf("failed to run `linkerd diagnostics proxy-metrics --namespace %s  %s`: %w", testNamespace, testUpstreamDeploy, err)
 		}
 		t.Log(out)
 
-		out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, fmt.Sprintf("deploy/%s", testDownstreamDeploy))
+		out, err = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", testNamespace, testDownstreamDeploy)
 		if err != nil {
-			return fmt.Errorf("failed to run `linkerd diagnostics proxy-metrics --namespace %s  deploy/%s`: %w", testNamespace, testDownstreamDeploy, err)
+			return fmt.Errorf("failed to run `linkerd diagnostics proxy-metrics --namespace %s  %s`: %w", testNamespace, testDownstreamDeploy, err)
 		}
 		t.Log(out)
 
