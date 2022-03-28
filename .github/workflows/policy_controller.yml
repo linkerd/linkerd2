@@ -198,14 +198,21 @@ jobs:
           path: image-archives
       - name: Load images
         run: |
+          docker pull -q docker.io/bitnami/kubectl:latest &
+          docker pull -q docker.io/curlimages/curl:latest &
+          docker pull -q docker.io/library/nginx:latest &
+          docker pull -q ghcr.io/linkerd/proxy-init:$PROXY_INIT_VERSION &
+          wait # Wait for pulls to complete
           docker load <image-archives/controller.tar
           docker load <image-archives/policy-controller.tar
           docker load <image-archives/proxy.tar
-          docker pull ghcr.io/linkerd/proxy-init:$PROXY_INIT_VERSION
-          docker image ls | grep ghcr.io/linkerd
+          docker image ls | grep -F -e bitnami/kubectl -e curlimages/curl -e nginx -e ghcr.io/linkerd
           tag="$(CI_FORCE_CLEAN=1 bin/root-tag)"
           # Image loading is flakey in CI, so retry!
           until k3d image import \
+                  docker.io/bitnami/kubectl:latest \
+                  docker.io/curlimages/curl:latest \
+                  docker.io/library/nginx:latest \
                   ghcr.io/linkerd/controller:$tag \
                   ghcr.io/linkerd/policy-controller:$tag \
                   ghcr.io/linkerd/proxy:$tag \
