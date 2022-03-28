@@ -36,7 +36,7 @@ func TestMain(m *testing.M) {
 func TestServiceProfiles(t *testing.T) {
 	ctx := context.Background()
 	TestHelper.WithDataPlaneNamespace(ctx, "serviceprofile-test", map[string]string{}, t, func(t *testing.T, ns string) {
-		//t.Run("service profiles", testProfiles)
+		t.Run("service profiles", testProfiles)
 		t.Run("service profiles metrics", testMetrics)
 	})
 }
@@ -252,14 +252,14 @@ func assertRouteStat(upstream, namespace, downstream string, t *testing.T, asser
 	if err != nil {
 		out, e := TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", namespace, upstream)
 		if e != nil {
-			t.Logf("failed to get proxy metrics for %s", upstream)
+			t.Logf("failed to get proxy metrics for %s: %e", upstream, e)
 		} else {
 			t.Log(out)
 		}
 
 		out, e = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", namespace, downstream)
 		if e != nil {
-			t.Logf("failed to get proxy metrics for %s", downstream)
+			t.Logf("failed to get proxy metrics for %s: %s", downstream, e)
 		} else {
 			t.Log(out)
 		}
@@ -282,7 +282,7 @@ func assertRouteStat(upstream, namespace, downstream string, t *testing.T, asser
 
 		out, e = TestHelper.Kubectl("", "describe", "--namespace", namespace, "pod")
 		if e != nil {
-			t.Logf("failed to get logs for metrics-api")
+			t.Logf("failed to get logs for metrics-api: %s", e)
 		} else {
 			t.Log(out)
 		}
