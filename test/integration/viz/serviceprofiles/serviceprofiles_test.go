@@ -264,11 +264,18 @@ func assertRouteStat(upstream, namespace, downstream string, t *testing.T, asser
 			t.Log(out)
 		}
 
-		out, e = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace=linkerd-viz", "deployment/prometheus")
+		out, e = TestHelper.Kubectl("", "logs", "--namespace=linkerd-viz", "deployment/prometheus", "-c", "linkerd-proxy")
 		if e != nil {
-			t.Logf("failed to get proxy metrics for prometheus")
+			t.Logf("failed to get logs for prometheus")
 		} else {
-			t.Log(out)
+			t.Logf("# prometheus logs\n%s", out)
+		}
+
+		out, e = TestHelper.Kubectl("", "logs", "--namespace=linkerd-viz", "deployment/metrics-api", "-c", "linkerd-proxy")
+		if e != nil {
+			t.Logf("failed to get logs for metrics-api")
+		} else {
+			t.Logf("# metrics-api logs\n%s", out)
 		}
 
 		testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out asserting route stat (%s)", timeout), err)
