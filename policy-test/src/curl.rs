@@ -28,6 +28,7 @@ impl Runner {
         runner
     }
 
+    /// Creates a configmap that prevents curl pods from executing.
     pub async fn create_lock(&self) {
         create(
             &self.client,
@@ -43,6 +44,7 @@ impl Runner {
         .await;
     }
 
+    /// Deletes the lock configmap, allowing curl pods to execute.
     pub async fn delete_lock(&self) {
         tracing::trace!(ns = %self.namespace, "Deleting curl-lock");
         kube::Api::<k8s::api::core::v1::ConfigMap>::namespaced(
@@ -58,10 +60,10 @@ impl Runner {
     /// Runs a [`k8s::Pod`] that runs curl against the provided target URL.
     ///
     /// The pod:
-    /// - has the `linkerd.io/inject` annotation set, based on he
+    /// - has the `linkerd.io/inject` annotation set, based on the
     ///   `linkerd_inject` parameter;
     /// - runs under the service account `curl`;
-    /// - does not actually execute curl until the `curl-lock` configmmap is not
+    /// - does not actually execute curl until the `curl-lock` configmap is not
     ///   present
     pub async fn run(&self, name: &str, target_url: &str, inject: LinkerdInject) -> Running {
         create(
@@ -190,28 +192,24 @@ impl Running {
         &self.name
     }
 
+    /// Waits for the pod to have an IP address and returns it.
     pub async fn ip(&self) -> std::net::IpAddr {
         super::await_pod_ip(&self.client, &self.namespace, &self.name).await
     }
 
+    /// Waits for the curl container to complete and returns its exit code.
     pub async fn exit_code(self) -> i32 {
         fn get_exit_code(pod: &k8s::Pod) -> Option<i32> {
-            if let Some(status) = &pod.status {
-                if let Some(containers) = &status.container_statuses {
-                    for c in containers.iter() {
-                        if c.name == "curl" {
-                            if let Some(state) = &c.state {
-                                if let Some(terminated) = &state.terminated {
-                                    tracing::debug!(ns = %pod.namespace().unwrap(), pod = %pod.name(), "Curl exited");
-                                    return Some(terminated.exit_code);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            tracing::debug!(ns = %pod.namespace().unwrap(), pod = %pod.name(), "Curl has not exited");
-            None
+            let c = pod
+                .status
+                .as_ref()?
+                .container_statuses
+                .as_ref()?
+                .iter()
+                .find(|c| c.name == "curl")?;
+            let code = c.state.as_ref()?.terminated.as_ref()?.exit_code;
+            tracing::debug!(ns = %pod.namespace().unwrap(), pod = %pod.name(), %code, "Curl exited");
+            Some(code)
         }
 
         tracing::debug!(ns = %self.namespace, pod = %self.name, "Waiting for exit code");
@@ -224,7 +222,7 @@ impl Running {
         match time::timeout(time::Duration::from_secs(60), finished).await {
             Ok(Ok(())) => {}
             Ok(Err(error)) => panic!("Failed to wait for exit code: {}: {}", self.name, error),
-            Err(_timeout) => panic!("Timeout waiting for exit odec: {}", self.name),
+            Err(_timeout) => panic!("Timeout waiting for exit code: {}", self.name),
         };
 
         let curl_pod = api.get(&self.name).await.expect("pod must exist");
