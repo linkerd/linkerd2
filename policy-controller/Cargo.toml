@@ -12,6 +12,7 @@ rustls-tls = ["kube/rustls-tls"]
 
 [dependencies]
 anyhow = "1"
+async-stream = "0.3"
 async-trait = "0.1"
 clap = { version = "3", default-features = false, features = ["derive", "env", "std"] }
 drain = "0.1"

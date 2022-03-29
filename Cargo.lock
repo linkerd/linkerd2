@@ -914,6 +914,7 @@ name = "linkerd-policy-controller"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-stream",
  "async-trait",
  "clap",
  "drain",
@@ -958,6 +959,7 @@ dependencies = [
  "futures",
  "linkerd-policy-controller-core",
  "linkerd2-proxy-api",
+ "maplit",
  "tokio",
  "tonic",
  "tracing",
@@ -989,6 +991,7 @@ dependencies = [
  "kubert",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
+ "maplit",
  "parking_lot",
  "tokio",
  "tokio-stream",
