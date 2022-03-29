@@ -1,5 +1,9 @@
+pub mod network;
 pub mod server;
 pub mod server_authorization;
 
-pub use self::server::{Server, ServerSpec};
-pub use self::server_authorization::{ServerAuthorization, ServerAuthorizationSpec};
+pub use self::{
+    network::Network,
+    server::{Server, ServerSpec},
+    server_authorization::{ServerAuthorization, ServerAuthorizationSpec},
+};
