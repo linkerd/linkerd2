@@ -146,12 +146,10 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 }
 
 func isPolicyResource(resource *pb.Resource) bool {
-	if resource != nil {
-		if resource.GetType() == k8s.Server || resource.GetType() == k8s.ServerAuthorization {
-			return true
-		}
+	if resource == nil {
+		return false
 	}
-	return false
+	return resource.GetType() == k8s.Server || resource.GetType() == k8s.ServerAuthorization
 }
 
 func statSummaryError(req *pb.StatSummaryRequest, message string) *pb.StatSummaryResponse {
@@ -315,7 +313,6 @@ func (s *grpcServer) getPolicyResourceKeys(req *pb.StatSummaryRequest) ([]rKey, 
 }
 
 func (s *grpcServer) policyResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
-
 	policyResources, err := s.getPolicyResourceKeys(req)
 	if err != nil {
 		return resourceResult{res: nil, err: err}
@@ -536,7 +533,7 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labe
 	return
 }
 
-func buildServiceRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labelNames model.LabelNames) {
+func buildServiceRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, groupBy model.LabelNames) {
 	// Service Request labels are always direction="outbound". If the --from or --to flags were used,
 	// we merge an additional ToResource or FromResource label. Service metrics results are
 	// always grouped by dst_service, and dst_namespace (to avoid conflicts) .
@@ -559,28 +556,32 @@ func buildServiceRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSe
 		// no extra labels needed
 	}
 
-	groupBy := model.LabelNames{model.LabelName("dst_namespace"), model.LabelName("dst_service")}
+	groupBy = model.LabelNames{model.LabelName("dst_namespace"), model.LabelName("dst_service")}
 
-	return labels, groupBy
+	return
 }
 
-func buildServerRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labelNames model.LabelNames) {
+func buildServerRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, groupBy model.LabelNames) {
 	if req.GetSelector().GetResource().GetNamespace() != "" {
 		labels = labels.Merge(model.LabelSet{
 			namespaceLabel: model.LabelValue(req.GetSelector().GetResource().GetNamespace()),
 		})
-	}
-	var resourceLabel model.LabelName
-	if req.GetSelector().GetResource().GetType() == k8s.Server {
-		resourceLabel = serverLabel
-	} else if req.GetSelector().GetResource().GetType() == k8s.ServerAuthorization {
-		resourceLabel = serverAuthorizationLabel
+		groupBy = append(groupBy, namespaceLabel)
 	}
 
-	if req.GetSelector().GetResource().GetName() != "" {
-		labels = labels.Merge(model.LabelSet{
-			resourceLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
-		})
+	name := req.GetSelector().GetResource().GetName()
+	if req.GetSelector().GetResource().GetType() == k8s.Server {
+		labels[serverKindLabel] = model.LabelValue("server")
+		if name != "" {
+			labels[serverNameLabel] = model.LabelValue(name)
+		}
+		groupBy = append(groupBy, serverKindLabel, serverNameLabel)
+	} else if req.GetSelector().GetResource().GetType() == k8s.ServerAuthorization {
+		labels[authzKindLabel] = model.LabelValue("serverauthorization")
+		if name != "" {
+			labels[authzNameLabel] = model.LabelValue(name)
+		}
+		groupBy = append(groupBy, authzKindLabel, authzNameLabel)
 	}
 
 	switch out := req.Outbound.(type) {
@@ -595,9 +596,7 @@ func buildServerRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet
 		// no extra labels needed
 	}
 
-	groupBy := model.LabelNames{namespaceLabel, resourceLabel}
-
-	return labels, groupBy
+	return
 }
 
 func buildTCPStatsRequestLabels(req *pb.StatSummaryRequest, reqLabels model.LabelSet) string {

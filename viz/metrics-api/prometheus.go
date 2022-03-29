@@ -114,25 +114,30 @@ func promDstGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 }
 
 // query a named resource
-func promQueryLabels(resource *pb.Resource) model.LabelSet {
-	set := model.LabelSet{}
-	if resource != nil {
-		if resource.Name != "" {
-			if resource.GetType() == k8s.Server {
-				set[serverKindLabel] = model.LabelValue("server")
-				set[serverNameLabel] = model.LabelValue(resource.GetName())
-			} else if resource.GetType() == k8s.ServerAuthorization {
-				set[authzKindLabel] = model.LabelValue("serverauthorization")
-				set[authzNameLabel] = model.LabelValue(resource.GetName())
-			} else if resource.GetType() != k8s.Service {
-				set[promResourceType(resource)] = model.LabelValue(resource.Name)
-			}
-		}
-		if shouldAddNamespaceLabel(resource) {
-			set[namespaceLabel] = model.LabelValue(resource.Namespace)
-		}
+func promQueryLabels(resource *pb.Resource) (labels model.LabelSet) {
+	if resource == nil {
+		return
 	}
-	return set
+
+	if shouldAddNamespaceLabel(resource) {
+		labels[namespaceLabel] = model.LabelValue(resource.Namespace)
+	}
+
+	if resource.GetType() == k8s.Server {
+		labels[serverKindLabel] = model.LabelValue("server")
+		if resource.Name != "" {
+			labels[serverNameLabel] = model.LabelValue(resource.GetName())
+		}
+	} else if resource.GetType() == k8s.ServerAuthorization {
+		labels[authzKindLabel] = model.LabelValue("serverauthorization")
+		if resource.Name != "" {
+			labels[authzNameLabel] = model.LabelValue(resource.GetName())
+		}
+	} else if resource.GetType() != k8s.Service && resource.Name != "" {
+		labels[promResourceType(resource)] = model.LabelValue(resource.Name)
+	}
+
+	return
 }
 
 // query a named resource
