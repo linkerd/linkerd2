@@ -103,4 +103,4 @@ jobs:
       env:
         LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
       run: |
-        bin/tests --images archive --cleanup-docker --name ${{ matrix.integration_test }} "$HOME/.linkerd"
+        GOMAXPROCS=2 bin/tests --images archive --cleanup-docker --name ${{ matrix.integration_test }} "$HOME/.linkerd"
