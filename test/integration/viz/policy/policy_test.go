@@ -2,7 +2,6 @@ package policy
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -149,11 +148,12 @@ func TestPolicy(t *testing.T) {
 				if err != nil {
 					// FIXME this test is flakey, and we may not get a success rate reported. If we
 					// hit that flakiness, just skip the test for now.
-					var ne noSuccess
-					if errors.As(err, &ne) {
-						t.Skipf("XXX Skipping flakey test: %s", err)
-					}
-					testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out checking stats (%s)", timeout), err)
+					// var ne noSuccess
+					// if errors.As(err, &ne) {
+					// 	t.Skipf("XXX Skipping flakey test: %s", err)
+					// }
+					// testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out checking stats (%s)", timeout), err)
+					testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out asserting policy (%s)", timeout), err)
 				}
 			})
 		}
