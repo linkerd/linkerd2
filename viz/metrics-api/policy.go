@@ -113,7 +113,7 @@ func (s *grpcServer) getPolicyResourceKeys(req *pb.StatSummaryRequest) ([]rKey, 
 		// Resource Key's type should be singular and lowercased while the kind isn't
 		resourceKeys = append(resourceKeys, rKey{
 			Namespace: resource.GetNamespace(),
-			// TODO(ver) this isn't a reliable to make a plural name singular
+			// TODO(ver) This isn't a reliable way to make a plural name singular.
 			Type: strings.ToLower(resource.GetKind()[0:len(resource.GetKind())]),
 			Name: resource.GetName(),
 		})
@@ -127,7 +127,7 @@ func (s *grpcServer) getPolicyMetrics(
 	timeWindow string,
 ) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats, map[rKey]*pb.ServerStats, error) {
 	labels, groupBy := buildServerRequestLabels(req)
-	// Server metrics are always inbound
+	// These metrics are always inbound.
 	reqLabels := labels.Merge(model.LabelSet{
 		"direction": model.LabelValue("inbound"),
 	})
