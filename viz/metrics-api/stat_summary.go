@@ -570,17 +570,27 @@ func buildServerRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet
 			namespaceLabel: model.LabelValue(req.GetSelector().GetResource().GetNamespace()),
 		})
 	}
-	var resourceLabel model.LabelName
+	var resourceGrouping model.LabelName
 	if req.GetSelector().GetResource().GetType() == k8s.Server {
-		resourceLabel = serverLabel
-	} else if req.GetSelector().GetResource().GetType() == k8s.ServerAuthorization {
-		resourceLabel = serverAuthorizationLabel
-	}
-
-	if req.GetSelector().GetResource().GetName() != "" {
+		resourceGrouping = serverNameLabel
 		labels = labels.Merge(model.LabelSet{
-			resourceLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
+			serverKindLabel: model.LabelValue("server"),
 		})
+		if req.GetSelector().GetResource().GetName() != "" {
+			labels = labels.Merge(model.LabelSet{
+				serverNameLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
+			})
+		}
+	} else if req.GetSelector().GetResource().GetType() == k8s.ServerAuthorization {
+		resourceGrouping = authorizationNameLabel
+		labels = labels.Merge(model.LabelSet{
+			authorizationKindLabel: model.LabelValue("serverauthorization"),
+		})
+		if req.GetSelector().GetResource().GetName() != "" {
+			labels = labels.Merge(model.LabelSet{
+				authorizationNameLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
+			})
+		}
 	}
 
 	switch out := req.Outbound.(type) {
@@ -595,7 +605,7 @@ func buildServerRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet
 		// no extra labels needed
 	}
 
-	groupBy := model.LabelNames{namespaceLabel, resourceLabel}
+	groupBy := model.LabelNames{namespaceLabel, resourceGrouping}
 
 	return labels, groupBy
 }
