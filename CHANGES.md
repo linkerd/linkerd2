@@ -1,5 +1,14 @@
 # Changes
 
+## edge-22.3.4
+
+* Disabled pprof endpoints on Linkerd control plane components by default
+* Fixed an issue where mirror service endpoints of headless services were always
+  ready regardless of gateway liveness
+* Added server side validation for ServerAuthorization resources
+* Fixed an "origin not allowed" issue when using the latest Grafana with the
+  Linkerd Viz extension
+
 ## edge-22.3.3
 
 This edge release ensures that in multicluster installations, mirror service

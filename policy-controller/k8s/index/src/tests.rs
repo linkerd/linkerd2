@@ -152,7 +152,7 @@ fn link_server_authz(selector: ServerSelector) {
         selector,
         k8s::policy::server_authorization::Client {
             networks: Some(vec![k8s::policy::server_authorization::Network {
-                cidr: "10.0.0.0/8".parse::<IpNet>().unwrap(),
+                cidr: "10.0.0.0/8".parse().unwrap(),
                 except: None,
             }]),
             unauthenticated: false,

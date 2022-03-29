@@ -2,11 +2,100 @@
 #![forbid(unsafe_code)]
 
 pub mod admission;
+pub mod curl;
 pub mod grpc;
+pub mod nginx;
 
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
 use maplit::{btreemap, convert_args};
+use tokio::time;
 use tracing::Instrument;
+
+#[derive(Copy, Clone, Debug)]
+pub enum LinkerdInject {
+    Enabled,
+    Disabled,
+}
+
+pub async fn create<T>(client: &kube::Client, obj: T) -> T
+where
+    T: kube::Resource + serde::Serialize + serde::de::DeserializeOwned + Clone + std::fmt::Debug,
+    T::DynamicType: Default,
+{
+    let params = kube::api::PostParams {
+        field_manager: Some("linkerd-policy-test".to_string()),
+        ..Default::default()
+    };
+    let api = match obj.namespace() {
+        Some(ns) => kube::Api::<T>::namespaced(client.clone(), &ns),
+        None => kube::Api::<T>::all(client.clone()),
+    };
+    tracing::trace!(?obj, "Creating");
+    api.create(&params, &obj)
+        .await
+        .expect("failed to create resource")
+}
+
+pub async fn await_condition<T>(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+    cond: impl kube::runtime::wait::Condition<T>,
+) where
+    T: kube::Resource + serde::Serialize + serde::de::DeserializeOwned,
+    T: Clone + std::fmt::Debug + Send + 'static,
+    T::DynamicType: Default,
+{
+    let api = kube::Api::namespaced(client.clone(), ns);
+    time::timeout(
+        time::Duration::from_secs(60),
+        kube::runtime::wait::await_condition(api, name, cond),
+    )
+    .await
+    .expect("condition timed out")
+    .expect("API call failed")
+}
+
+/// Creates a pod and waits for all of its containers to be ready.
+pub async fn create_ready_pod(client: &kube::Client, pod: k8s::Pod) -> k8s::Pod {
+    let pod_ready = |obj: Option<&k8s::Pod>| -> bool {
+        if let Some(pod) = obj {
+            if let Some(status) = &pod.status {
+                if let Some(containers) = &status.container_statuses {
+                    return containers.iter().all(|c| c.ready);
+                }
+            }
+        }
+        false
+    };
+
+    let pod = create(client, pod).await;
+    await_condition(client, &pod.namespace().unwrap(), &pod.name(), pod_ready).await;
+    pod
+}
+
+pub async fn await_pod_ip(client: &kube::Client, ns: &str, name: &str) -> std::net::IpAddr {
+    fn get_ip(pod: &k8s::Pod) -> Option<String> {
+        pod.status.as_ref()?.pod_ip.clone()
+    }
+
+    await_condition(client, ns, name, |obj: Option<&k8s::Pod>| -> bool {
+        if let Some(pod) = obj {
+            return get_ip(pod).is_some();
+        }
+        false
+    })
+    .await;
+
+    let pod = kube::Api::namespaced(client.clone(), ns)
+        .get(name)
+        .await
+        .expect("must fetch pod");
+    get_ip(&pod)
+        .expect("pod must have an IP")
+        .parse()
+        .expect("pod IP must be valid")
+}
 
 /// Runs a test with a random namespace that is deleted on test completion
 pub async fn with_temp_ns<F, Fut>(test: F)
@@ -22,26 +111,23 @@ where
         .expect("failed to initialize k8s client");
     let api = kube::Api::<k8s::Namespace>::all(client.clone());
 
-    let ns = k8s::Namespace {
-        metadata: k8s::ObjectMeta {
-            name: Some(format!("linkerd-policy-test-{}", random_suffix(6))),
-            labels: Some(convert_args!(btreemap!(
-                "linkerd-policy-test" => std::thread::current().name().unwrap_or(""),
-            ))),
+    let name = format!("linkerd-policy-test-{}", random_suffix(6));
+    tracing::debug!(namespace = %name, "Creating");
+    let ns = create(
+        &client,
+        k8s::Namespace {
+            metadata: k8s::ObjectMeta {
+                name: Some(name),
+                labels: Some(convert_args!(btreemap!(
+                    "linkerd-policy-test" => std::thread::current().name().unwrap_or(""),
+                ))),
+                ..Default::default()
+            },
             ..Default::default()
         },
-        ..Default::default()
-    };
-    tracing::debug!(namespace = %ns.name(), "Creating");
-    api.create(
-        &kube::api::PostParams {
-            dry_run: false,
-            field_manager: Some("linkerd-policy-test".to_string()),
-        },
-        &ns,
     )
-    .await
-    .expect("failed to create Namespace");
+    .await;
+    tracing::trace!(?ns);
 
     tracing::trace!("Spawning");
     let test = test(client.clone(), ns.name());
@@ -77,7 +163,7 @@ fn init_tracing() -> tracing::subscriber::DefaultGuard {
             .with_test_writer()
             .with_env_filter(
                 tracing_subscriber::EnvFilter::try_from_default_env()
-                    .unwrap_or_else(|_| "linkerd=trace,debug".parse().unwrap()),
+                    .unwrap_or_else(|_| "e2e=trace,api=trace,linkerd=trace,info".parse().unwrap()),
             )
             .finish(),
     )
@@ -110,6 +196,17 @@ impl rand::distributions::Distribution<u8> for LowercaseAlphanumeric {
             if var < RANGE {
                 return CHARSET[var as usize];
             }
+        }
+    }
+}
+
+// === imp LinkerdInject ===
+
+impl std::fmt::Display for LinkerdInject {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LinkerdInject::Enabled => write!(f, "enabled"),
+            LinkerdInject::Disabled => write!(f, "disabled"),
         }
     }
 }
