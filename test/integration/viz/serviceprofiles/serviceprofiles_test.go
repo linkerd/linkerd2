@@ -249,18 +249,6 @@ func assertRouteStat(upstream, namespace, downstream string, t *testing.T, asser
 	})
 
 	if err != nil {
-		out, _ := TestHelper.Kubectl("", []string{"get", "pods", "-A", "-o", "wide"}...)
-		t.Logf("pods: %s", out)
-
-		out, _ = TestHelper.Kubectl("", []string{"get", "pod", "--namespace=linkerd-serviceprofile-test", "-l=app=hello-slow-cooker", "-o=yaml"}...)
-		t.Logf("get pod/hello-slow-cooker: %s", out)
-
-		out, _ = TestHelper.Kubectl("", []string{"describe", "nodes"}...)
-		t.Logf("describe nodes: %s", out)
-
-		out, _ = TestHelper.Kubectl("", []string{"logs", "--namespace", "linkerd-viz", "-l", "component=prometheus", "-c", "linkerd-proxy"}...)
-		t.Logf("logs deploy/prometheus: %s", out)
-
 		testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out asserting route stat (%s)", timeout), err)
 	}
 }
