@@ -250,48 +250,6 @@ func assertRouteStat(upstream, namespace, downstream string, t *testing.T, asser
 	})
 
 	if err != nil {
-		out, e := TestHelper.Kubectl("", "describe", "pod", "-A")
-		if e != nil {
-			t.Logf("failed to get logs for metrics-api: %s", e)
-		} else {
-			t.Log(out)
-		}
-
-		out, e = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", namespace, upstream)
-		if e != nil {
-			t.Logf("failed to get proxy metrics for %s: %e", upstream, e)
-		} else {
-			t.Log(out)
-		}
-
-		out, e = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", namespace, downstream)
-		if e != nil {
-			t.Logf("failed to get proxy metrics for %s: %s", downstream, e)
-		} else {
-			t.Log(out)
-		}
-
-		out, e = TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "--namespace", namespace, "job/hello-slow-cooker")
-		if e != nil {
-			t.Logf("failed to get proxy metrics for %s: %s", downstream, e)
-		} else {
-			t.Log(out)
-		}
-
-		out, e = TestHelper.Kubectl("", "logs", "--namespace", namespace, "job/hello-slow-cooker", "-c", "hello-slow-cooker")
-		if e != nil {
-			t.Logf("failed to get logs for hello-slow-cooker: %s", e)
-		} else {
-			t.Logf("# hello-slow-cooker slow-cooker logs\n%s", out)
-		}
-
-		out, e = TestHelper.Kubectl("", "logs", "--namespace=linkerd-viz", "deployment/metrics-api", "-c", "linkerd-proxy")
-		if e != nil {
-			t.Logf("failed to get logs for hello-slow-cooker proxy: %s", e)
-		} else {
-			t.Logf("# hello-slow-cooker proxy logs\n%s", out)
-		}
-
 		testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out asserting route stat (%s)", timeout), err)
 	}
 }
