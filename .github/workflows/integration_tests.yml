@@ -1,10 +1,6 @@
 name: Integration tests
 
-on:
-  pull_request: {}
-  push:
-    branches:
-      - kleimkuhler/proxy-175
+on: [pull_reqest]
 
 permissions:
   contents: read
@@ -59,18 +55,18 @@ jobs:
     strategy:
       matrix:
         integration_test:
-        # - cluster-domain
-        # - cni-calico-deep
-        # - deep
+        - cluster-domain
+        - cni-calico-deep
+        - deep
         - viz
-        # - default-policy-deny
-        # - external
+        - default-policy-deny
+        - external
         # Skipping Helm upgrade test given chart in 2.11 is backwards-incompatible
         #- helm-upgrade
-        # - multicluster
-        # - uninstall
-        # - upgrade-edge
-        # - upgrade-stable
+        - multicluster
+        - uninstall
+        - upgrade-edge
+        - upgrade-stable
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-20.04
