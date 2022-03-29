@@ -34,6 +34,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestServiceProfiles(t *testing.T) {
+	t.SkipNow()
 	ctx := context.Background()
 	TestHelper.WithDataPlaneNamespace(ctx, "serviceprofile-test", map[string]string{}, t, func(t *testing.T, ns string) {
 		t.Run("service profiles", testProfiles)

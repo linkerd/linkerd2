@@ -35,6 +35,7 @@ type testCase struct {
 // installation and output of ServiceProfiles for both the control-plane and
 // smoke test.
 func TestRoutes(t *testing.T) {
+	t.SkipNow()
 	// control-plane routes
 	cmd := []string{"viz", "routes", "--namespace", TestHelper.GetLinkerdNamespace(), "deploy"}
 	out, err := TestHelper.LinkerdRun(cmd...)
