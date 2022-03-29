@@ -41,7 +41,7 @@ func TestInstallLinkerd(t *testing.T) {
 	cmd := []string{
 		"install",
 		"--controller-log-level", "debug",
-		"--set proxy.image.version", TestHelper.GetVersion(),
+		"--set proxy.image.version=", TestHelper.GetVersion(),
 		"--set", "heartbeatSchedule=1 2 3 4 5",
 		"--identity-issuance-lifetime=15s",
 		"--identity-external-issuer=true",
