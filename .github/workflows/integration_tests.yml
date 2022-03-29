@@ -1,6 +1,6 @@
 name: Integration tests
 
-on: [pull_reqest]
+on: [pull_request]
 
 permissions:
   contents: read
