@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    test.linkerd.io/is-test-data-plane: "true"
+  name: linkerd-multicluster-statefulset
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-statefulset-svc
+  namespace: linkerd-multicluster-statefulset
+  labels:
+    mirror.linkerd.io/exported: "true"
+spec:
+  clusterIP: None
+  clusterIPs:
+  - None
+  selector:
+    app: nginx-set
+  sessionAffinity: None
+  type: ClusterIP
+  ports:
+  - name: tcp
+    protocol: TCP
+    port: 80
+  - name: http
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nginx-statefulset
+  namespace: linkerd-multicluster-statefulset
+spec:
+  serviceName: nginx-statefulset-svc
+  selector:
+    matchLabels:
+      app: nginx-set
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+      labels:
+        app: nginx-set
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+---
