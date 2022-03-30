@@ -5,7 +5,7 @@ use linkerd_policy_controller_k8s_api::{
 use linkerd_policy_test::{create, create_ready_pod, curl, nginx, with_temp_ns, LinkerdInject};
 
 #[tokio::test(flavor = "current_thread")]
-async fn meshtls_policy() {
+async fn meshtls() {
     with_temp_ns(|client, ns| async move {
         // First create all of the policies we'll need so that the nginx pod
         // starts up with the correct policy (to prevent races).
@@ -49,7 +49,7 @@ async fn meshtls_policy() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn network_policy() {
+async fn network() {
     // In order to test the network policy, we need to create the client pod
     // before creating the authorization policy. To avoid races, we do this by
     // creating a `curl-lock` configmap that prevents curl from actually being
@@ -110,7 +110,7 @@ async fn network_policy() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn both_policies() {
+async fn both() {
     // In order to test the network policy, we need to create the client pod
     // before creating the authorization policy. To avoid races, we do this by
     // creating a `curl-lock` configmap that prevents curl from actually being
@@ -212,7 +212,7 @@ async fn both_policies() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn either_policy() {
+async fn either() {
     // In order to test the network policy, we need to create the client pod
     // before creating the authorization policy. To avoid races, we do this by
     // creating a `curl-lock` configmap that prevents curl from actually being
