@@ -115,19 +115,18 @@ func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
 // The client will receive only endpoints with the same topology label value as the source node,
 // the order of labels is based on the topological preference elicited from the K8s service.
 func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
+	filtered := make(map[watcher.ID]watcher.Address)
 	if len(et.availableEndpoints.TopologicalPref) == 0 {
-		allAvailEndpoints := make(map[watcher.ID]watcher.Address)
 		for k, v := range et.availableEndpoints.Addresses {
-			allAvailEndpoints[k] = v
+			filtered[k] = v
 		}
 		return watcher.AddressSet{
-			Addresses: allAvailEndpoints,
+			Addresses: filtered,
 			Labels:    et.availableEndpoints.Labels,
 		}
 	}
 
 	et.log.Debugf("Filtering through address set with preference %v", et.availableEndpoints.TopologicalPref)
-	filtered := make(map[watcher.ID]watcher.Address)
 	for _, pref := range et.availableEndpoints.TopologicalPref {
 		// '*' as a topology preference means all endpoints
 		if pref == "*" {
@@ -156,8 +155,14 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 		}
 	}
 
-	// if we have no filtered endpoints or the '*' preference then no topology pref is satisfied
-	return newEmptyAddressSet()
+	// If there were no filtered addresses, then fall to using all endpoints
+	for k, v := range et.availableEndpoints.Addresses {
+		filtered[k] = v
+	}
+	return watcher.AddressSet{
+		Addresses: filtered,
+		Labels:    et.availableEndpoints.Labels,
+	}
 }
 
 // diffEndpoints calculates the difference between the filtered set of endpoints in the current (Add/Remove) operation
