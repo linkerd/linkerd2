@@ -27,7 +27,7 @@ nodeAffinity:
 
 {{ define "linkerd.affinity" -}}
 {{- if or .Values.enablePodAntiAffinity .Values.nodeAffinity -}}
-affinity: 
+affinity:
 {{- end }}
 {{- if .Values.enablePodAntiAffinity -}}
 {{- include "linkerd.pod-affinity" . | nindent 2 }}
