@@ -28,7 +28,9 @@ spec:
             spec:
               description: >-
                 NetworkAuthentication defines a list of authenticated client
-                networks to be referenced by an `AuthenticationPolicy`.
+                networks to be referenced by an `AuthenticationPolicy`. If a
+                client connection originates from ANY of the of the provided
+                networks, the connection is considered authenticated.
               type: object
               required: [networks]
               properties:

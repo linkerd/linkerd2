@@ -62,7 +62,9 @@ spec:
                       type: string
                 requiredAuthenticationRefs:
                   description: >-
-                    RequiredAuthenticationRefs enumerates a set of required authentications
+                    RequiredAuthenticationRefs enumerates a set of required authentications. ALL
+                    authentications must be satisfied for the authorization to apply. If any of the
+                    referred objects cannot be found, the authorization will be ignored.
                   type: array
                   items:
                     type: object
@@ -126,7 +128,10 @@ spec:
             spec:
               description: >-
                 MeshTLSAuthentication defines a list of authenticated client IDs
-                to be referenced by an `AuthenticationPolicy`.
+                to be referenced by an `AuthenticationPolicy`. If a client
+                connection has the mutually-authenticated identity that matches ANY of
+                the of the provided identities, the connection is considered
+                authenticated.
               type: object
               oneOf:
                 - required: [identities]
@@ -210,7 +215,9 @@ spec:
             spec:
               description: >-
                 NetworkAuthentication defines a list of authenticated client
-                networks to be referenced by an `AuthenticationPolicy`.
+                networks to be referenced by an `AuthenticationPolicy`. If a
+                client connection originates from ANY of the of the provided
+                networks, the connection is considered authenticated.
               type: object
               required: [networks]
               properties:

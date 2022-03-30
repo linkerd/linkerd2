@@ -18,6 +18,5 @@ use super::{LocalTargetRef, NamespacedTargetRef};
 #[serde(rename_all = "camelCase")]
 pub struct AuthorizationPolicySpec {
     pub target_ref: LocalTargetRef,
-
     pub required_authentication_refs: Vec<NamespacedTargetRef>,
 }

@@ -60,7 +60,9 @@ spec:
                       type: string
                 requiredAuthenticationRefs:
                   description: >-
-                    RequiredAuthenticationRefs enumerates a set of required authentications
+                    RequiredAuthenticationRefs enumerates a set of required authentications. ALL
+                    authentications must be satisfied for the authorization to apply. If any of the
+                    referred objects cannot be found, the authorization will be ignored.
                   type: array
                   items:
                     type: object
