@@ -1150,7 +1150,8 @@ impl PolicyIndex {
         }
 
         Ok(ClientAuthorization {
-            // If MTLS identities are configured, use them. Otherwise,
+            // If MTLS identities are configured, use them. Otherwise, do not require
+            // authentication.
             authentication: identities
                 .map(ClientAuthentication::TlsAuthenticated)
                 .unwrap_or(ClientAuthentication::Unauthenticated),
