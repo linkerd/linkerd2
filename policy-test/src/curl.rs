@@ -155,7 +155,7 @@ impl Runner {
                     args: Some(
                         vec![
                             "wait",
-                            "--timeout=60s",
+                            "--timeout=120s",
                             "--for=delete",
                             "--namespace",
                             ns,
@@ -219,13 +219,22 @@ impl Running {
             &self.name,
             |obj: Option<&k8s::Pod>| -> bool { obj.and_then(get_exit_code).is_some() },
         );
-        match time::timeout(time::Duration::from_secs(60), finished).await {
+        match time::timeout(time::Duration::from_secs(120), finished).await {
             Ok(Ok(())) => {}
             Ok(Err(error)) => panic!("Failed to wait for exit code: {}: {}", self.name, error),
             Err(_timeout) => panic!("Timeout waiting for exit code: {}", self.name),
         };
 
         let curl_pod = api.get(&self.name).await.expect("pod must exist");
-        get_exit_code(&curl_pod).expect("curl pod must have an exit code")
+        let ex = get_exit_code(&curl_pod).expect("curl pod must have an exit code");
+
+        if let Err(error) = api
+            .delete(&self.name, &kube::api::DeleteParams::background())
+            .await
+        {
+            tracing::trace!(%error, name = %self.name, "Failed to delete pod");
+        }
+
+        ex
     }
 }
