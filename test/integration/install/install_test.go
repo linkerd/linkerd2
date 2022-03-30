@@ -144,7 +144,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		cmd  = "install"
 		args = []string{
 			"--controller-log-level", "debug",
-			"--proxy-version", TestHelper.GetVersion(),
+			"--set", fmt.Sprintf("proxy.image.version=%s", TestHelper.GetVersion()),
 			"--skip-inbound-ports", skippedInboundPorts,
 			"--set", "heartbeatSchedule=1 2 3 4 5",
 		}
