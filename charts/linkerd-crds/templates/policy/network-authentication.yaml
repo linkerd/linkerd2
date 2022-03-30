@@ -28,7 +28,7 @@ spec:
             spec:
               description: >-
                 NetworkAuthentication defines a list of authenticated client
-                networks to be referenced by an `AuthenticationPolicy`. If a
+                networks to be referenced by an `AuthorizationPolicy`. If a
                 client connection originates from ANY of the of the provided
                 networks, the connection is considered authenticated.
               type: object
@@ -46,7 +46,8 @@ spec:
                         type: string
                       except:
                         description: >-
-                          A list of IP networks/addresses not to be included in the above `cidr`.
+                          A list of IP networks/addresses not to be included in
+                          the above `cidr`.
                         type: array
                         items:
                           type: string

@@ -27,13 +27,15 @@ spec:
           properties:
             spec:
               description: >-
-                Authorizes clients to communicate with Linkerd-proxied server resources.
+                Authorizes clients to communicate with Linkerd-proxied server
+                resources.
               type: object
               required: [targetRef, requiredAuthenticationRefs]
               properties:
                 targetRef:
                   description: >-
-                    TargetRef references a resource to which the authorization policy applies.
+                    TargetRef references a resource to which the authorization
+                    policy applies.
                   type: object
                   required: [kind, name]
                   # Modified from the gateway API.
@@ -41,8 +43,8 @@ spec:
                   properties:
                     group:
                       description: >-
-                        Group is the group of the referent. When empty, the Kubernetes core API
-                        group is inferred.
+                        Group is the group of the referent. When empty, the
+                        Kubernetes core API group is inferred.
                       maxLength: 253
                       pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                       type: string
@@ -60,9 +62,10 @@ spec:
                       type: string
                 requiredAuthenticationRefs:
                   description: >-
-                    RequiredAuthenticationRefs enumerates a set of required authentications. ALL
-                    authentications must be satisfied for the authorization to apply. If any of the
-                    referred objects cannot be found, the authorization will be ignored.
+                    RequiredAuthenticationRefs enumerates a set of required
+                    authentications. ALL authentications must be satisfied for
+                    the authorization to apply. If any of the referred objects
+                    cannot be found, the authorization will be ignored.
                   type: array
                   items:
                     type: object
@@ -70,8 +73,8 @@ spec:
                     properties:
                       group:
                         description: >-
-                          Group is the group of the referent. When empty, the Kubernetes core API
-                          group is inferred."
+                          Group is the group of the referent. When empty, the
+                          Kubernetes core API group is inferred."
                         maxLength: 253
                         pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                         type: string
@@ -90,8 +93,8 @@ spec:
                         type: string
                       namespace:
                         description: >-
-                          Name is the name of the referent. When unspecified, this authentication
-                          refers to the local namespace.
+                          Name is the name of the referent. When unspecified,
+                          this authentication refers to the local namespace.
                         maxLength: 253
                         type: string
 ---
@@ -124,10 +127,10 @@ spec:
             spec:
               description: >-
                 MeshTLSAuthentication defines a list of authenticated client IDs
-                to be referenced by an `AuthenticationPolicy`. If a client
-                connection has the mutually-authenticated identity that matches ANY of
-                the of the provided identities, the connection is considered
-                authenticated.
+                to be referenced by an `AuthorizationPolicy`. If a client
+                connection has the mutually-authenticated identity that matches
+                ANY of the of the provided identities, the connection is
+                considered authenticated.
               type: object
               oneOf:
                 - required: [identities]
@@ -135,8 +138,8 @@ spec:
               properties:
                 identities:
                   description: >-
-                    Authorizes clients with the provided proxy identity strings (as provided via
-                    MTLS)
+                    Authorizes clients with the provided proxy identity strings
+                    (as provided via MTLS)
 
                     The `*` prefix can be used to match all identities in
                     a domain. An identity string of `*` indicates that
@@ -154,8 +157,8 @@ spec:
                     properties:
                       group:
                         description: >-
-                          Group is the group of the referent. When empty, the Kubernetes core API
-                          group is inferred."
+                          Group is the group of the referent. When empty, the
+                          Kubernetes core API group is inferred."
                         maxLength: 253
                         pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                         type: string
@@ -168,15 +171,16 @@ spec:
                         type: string
                       name:
                         description: >-
-                          Name is the name of the referent. When unspecified, this refers to all
-                          resources of the specified Group and Kind in the specified namespace.
+                          Name is the name of the referent. When unspecified,
+                          this refers to all resources of the specified Group
+                          and Kind in the specified namespace.
                         maxLength: 253
                         minLength: 1
                         type: string
                       namespace:
                         description: >-
-                          Name is the name of the referent. When unspecified, this authentication
-                          refers to the local namespace.
+                          Name is the name of the referent. When unspecified,
+                          this authentication refers to the local namespace.
                         maxLength: 253
                         type: string
 ---
@@ -209,7 +213,7 @@ spec:
             spec:
               description: >-
                 NetworkAuthentication defines a list of authenticated client
-                networks to be referenced by an `AuthenticationPolicy`. If a
+                networks to be referenced by an `AuthorizationPolicy`. If a
                 client connection originates from ANY of the of the provided
                 networks, the connection is considered authenticated.
               type: object
@@ -227,7 +231,8 @@ spec:
                         type: string
                       except:
                         description: >-
-                          A list of IP networks/addresses not to be included in the above `cidr`.
+                          A list of IP networks/addresses not to be included in
+                          the above `cidr`.
                         type: array
                         items:
                           type: string
