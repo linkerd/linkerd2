@@ -573,7 +573,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
       containers:
       - args:
         - api
@@ -766,7 +765,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
       containers:
       - args:
         - injector

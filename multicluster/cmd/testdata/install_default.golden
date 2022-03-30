@@ -34,7 +34,6 @@ spec:
       labels:
         app: linkerd-gateway
     spec:
-      
       containers:
         - name: pause
           image: gcr.io/google_containers/pause:3.2
