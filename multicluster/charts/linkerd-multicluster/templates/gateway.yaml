@@ -37,7 +37,7 @@ spec:
     spec:
       {{- $_ := set $tree "component" .Values.gateway.name -}}
       {{- $_ := set $tree "label" "app" -}}
-      {{- include "linkerd.affinity" $tree | nindent 6 }}
+      {{- include "linkerd.affinity" $tree | nindent 6 -}}
       containers:
         - name: pause
           image: gcr.io/google_containers/pause:3.2
