@@ -1,10 +1,15 @@
 use crate::k8s::{
     labels,
-    policy::{Server, ServerAuthorization, ServerAuthorizationSpec, ServerSpec},
+    policy::{
+        AuthorizationPolicy, AuthorizationPolicySpec, MeshTLSAuthentication,
+        MeshTLSAuthenticationSpec, NetworkAuthentication, NetworkAuthenticationSpec, Server,
+        ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
+    },
 };
 use anyhow::{anyhow, bail, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
+use k8s_openapi::api::core::v1::ServiceAccount;
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use serde::de::DeserializeOwned;
 use std::task;
@@ -91,6 +96,18 @@ impl Admission {
     }
 
     async fn admit(self, req: AdmissionRequest) -> AdmissionResponse {
+        if is_kind::<AuthorizationPolicy>(&req) {
+            return self.admit_spec::<AuthorizationPolicySpec>(req).await;
+        }
+
+        if is_kind::<MeshTLSAuthentication>(&req) {
+            return self.admit_spec::<MeshTLSAuthenticationSpec>(req).await;
+        }
+
+        if is_kind::<NetworkAuthentication>(&req) {
+            return self.admit_spec::<NetworkAuthenticationSpec>(req).await;
+        }
+
         if is_kind::<Server>(&req) {
             return self.admit_spec::<ServerSpec>(req).await;
         };
@@ -171,6 +188,71 @@ fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(String, Str
 }
 
 #[async_trait::async_trait]
+impl Validate<AuthorizationPolicySpec> for Admission {
+    async fn validate(self, _ns: &str, _name: &str, spec: AuthorizationPolicySpec) -> Result<()> {
+        // TODO support namespace references?
+        if !spec.target_ref.targets_kind::<Server>() {
+            bail!(
+                "invalid targetRef kind: {}",
+                spec.target_ref.canonical_kind()
+            );
+        }
+
+        let mtls_authns_count = spec
+            .required_authentication_refs
+            .iter()
+            .filter(|authn| authn.targets_kind::<MeshTLSAuthentication>())
+            .count();
+        if mtls_authns_count > 1 {
+            bail!("only a single MeshTLSAuthentication may be set");
+        }
+
+        let net_authns_count = spec
+            .required_authentication_refs
+            .iter()
+            .filter(|authn| authn.targets_kind::<NetworkAuthentication>())
+            .count();
+        if net_authns_count > 1 {
+            bail!("only a single NetworkAuthentication may be set");
+        }
+
+        if mtls_authns_count + net_authns_count < spec.required_authentication_refs.len() {
+            let kinds = spec
+                .required_authentication_refs
+                .iter()
+                .filter(|authn| {
+                    !authn.targets_kind::<MeshTLSAuthentication>()
+                        && !authn.targets_kind::<NetworkAuthentication>()
+                })
+                .map(|authn| authn.canonical_kind())
+                .collect::<Vec<_>>();
+            bail!("unsupported authentication kind(s): {}", kinds.join(", "));
+        }
+
+        if mtls_authns_count + net_authns_count == 0 {
+            bail!("at least one authentication reference must be set");
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl Validate<MeshTLSAuthenticationSpec> for Admission {
+    async fn validate(self, _ns: &str, _name: &str, spec: MeshTLSAuthenticationSpec) -> Result<()> {
+        // The CRD validates identity strings, but does not validate identity references.
+
+        for id in spec.identity_refs.iter().flatten() {
+            if !id.targets_kind::<ServiceAccount>() {
+                bail!("invalid identity target kind: {}", id.canonical_kind());
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
 impl Validate<ServerSpec> for Admission {
     /// Checks that `spec` doesn't select the same pod/ports as other existing Servers
     //
@@ -209,6 +291,35 @@ impl Admission {
         }
 
         left == right
+    }
+}
+
+#[async_trait::async_trait]
+impl Validate<NetworkAuthenticationSpec> for Admission {
+    async fn validate(self, _ns: &str, _name: &str, spec: NetworkAuthenticationSpec) -> Result<()> {
+        if spec.networks.is_empty() {
+            bail!("at least one network must be specified");
+        }
+        for net in spec.networks.into_iter() {
+            for except in net.except.into_iter().flatten() {
+                if except.contains(&net.cidr) {
+                    bail!(
+                        "cidr '{}' is completely negated by exception '{}'",
+                        net.cidr,
+                        except
+                    );
+                }
+                if !net.cidr.contains(&except) {
+                    bail!(
+                        "cidr '{}' does not include exception '{}'",
+                        net.cidr,
+                        except
+                    );
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 

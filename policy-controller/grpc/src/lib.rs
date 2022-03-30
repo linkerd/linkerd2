@@ -7,9 +7,11 @@ use linkerd2_proxy_api::inbound::{
     inbound_server_policies_server::{InboundServerPolicies, InboundServerPoliciesServer},
 };
 use linkerd_policy_controller_core::{
-    ClientAuthentication, ClientAuthorization, DiscoverInboundServer, IdentityMatch, InboundServer,
-    InboundServerStream, IpNet, NetworkMatch, ProxyProtocol,
+    AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer,
+    IdentityMatch, InboundServer, InboundServerStream, IpNet, NetworkMatch, ProxyProtocol,
+    ServerRef,
 };
+use maplit::*;
 use std::sync::Arc;
 use tracing::trace;
 
@@ -194,9 +196,16 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
         .collect();
     trace!(?authorizations);
 
-    let labels = vec![("name".to_string(), srv.name.to_string())]
-        .into_iter()
-        .collect();
+    let labels = match &srv.reference {
+        ServerRef::Default(name) => convert_args!(hashmap!(
+            "kind" => "default",
+            "name" => name,
+        )),
+        ServerRef::Server(name) => convert_args!(hashmap!(
+            "kind" => "server",
+            "name" => name,
+        )),
+    };
     trace!(?labels);
 
     proto::Server {
@@ -208,7 +217,7 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
 }
 
 fn to_authz(
-    name: impl ToString,
+    reference: &AuthorizationRef,
     ClientAuthorization {
         networks,
         authentication,
@@ -233,9 +242,20 @@ fn to_authz(
             .collect()
     };
 
-    let labels = vec![("name".to_string(), name.to_string())]
-        .into_iter()
-        .collect();
+    let labels = match reference {
+        AuthorizationRef::Default(name) => convert_args!(hashmap!(
+            "kind" => "default",
+            "name" => name,
+        )),
+        AuthorizationRef::ServerAuthorization(name) => convert_args!(hashmap!(
+            "kind" => "serverauthorization",
+            "name" => name,
+        )),
+        AuthorizationRef::AuthorizationPolicy(name) => convert_args!(hashmap!(
+            "kind" => "authorizationpolicy",
+            "name" => name,
+        )),
+    };
 
     let authn = match authentication {
         ClientAuthentication::Unauthenticated => proto::Authn {
