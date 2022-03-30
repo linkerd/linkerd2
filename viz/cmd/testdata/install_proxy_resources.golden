@@ -374,8 +374,8 @@ spec:
   port: admin-http
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-viz
   name: admin
@@ -384,12 +384,30 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: admin
-  client:
-    # for kubelet probes and prometheus scraping
-    unauthenticated: true
-
+  # Permits traffic from the kubelet. This could be restricted further and share
+  # a common network resource.
+  requiredAuthenticationRefs:
+  - group: policy.linkerd.io
+    kind: NetworkAuthentication
+    name: admin-unauthenticated
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  namespace: linkerd-viz
+  name: admin-unauthenticated
+  labels:
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  networks:
+  - cidr: "0.0.0.0/0"
+  - cidr: "::/0"
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
@@ -407,8 +425,8 @@ spec:
   port: linkerd-admin
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-viz
   name: proxy-admin
@@ -417,12 +435,30 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: proxy-admin
-  client:
-    # for kubelet probes
-    unauthenticated: true
-
+  # Permits traffic from the kubelet. This could be restricted further and share
+  # a common network resource.
+  requiredAuthenticationRefs:
+  - group: policy.linkerd.io
+    kind: NetworkAuthentication
+    name: proxy-admin-unauthenticated
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  namespace: linkerd-viz
+  name: proxy-admin-unauthenticated
+  labels:
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  networks:
+  - cidr: "0.0.0.0/0"
+  - cidr: "::/0"
 ---
 ###
 ### Metrics API
@@ -530,8 +566,8 @@ spec:
   port: http
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-viz
   name: metrics-api
@@ -541,13 +577,31 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: metrics-api
-  client:
-    meshTLS:
-      serviceAccounts:
-      - name: web
-      - name: prometheus
+  requiredAuthenticationRefs:
+  - group: policy.linkerd.io
+    kind: MeshTLSAuthentication
+    name: metrics-api
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: MeshTLSAuthentication
+metadata:
+  namespace: linkerd-viz
+  name: metrics-api
+  labels:
+    linkerd.io/extension: viz
+    component: metrics-api
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  identityRefs:
+  - kind: ServiceAccount
+    name: web
+  - kind: ServiceAccount
+    name: prometheus
 ---
 ###
 ### Prometheus
@@ -921,8 +975,8 @@ spec:
   port: apiserver
   proxyProtocol: TLS
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-viz
   name: tap
@@ -932,11 +986,31 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: tap-api
-  client:
-    # traffic coming from kube-api
-    unauthenticated: true
+  # Permits traffic from the kube API server. This could be restricted further
+  # and share a common network resource.
+  requiredAuthenticationRefs:
+  - group: policy.linkerd.io
+    kind: NetworkAuthentication
+    name: tap-api-unauthenticated
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  namespace: linkerd-viz
+  name: tap-api-unauthenticated
+  labels:
+    linkerd.io/extension: viz
+    component: tap
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  networks:
+  - cidr: "0.0.0.0/0"
+  - cidr: "::/0"
 ---
 ###
 ### Tap Injector RBAC
@@ -1110,8 +1184,8 @@ spec:
   port: tap-injector
   proxyProtocol: TLS
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-viz
   name: tap-injector
@@ -1121,11 +1195,31 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: tap-injector-webhook
-  client:
-    # traffic coming from kube-api
-    unauthenticated: true
+  # Permits traffic from the kube API server. This could be restricted further
+  # and share a common network resource.
+  requiredAuthenticationRefs:
+  - group: policy.linkerd.io
+    kind: NetworkAuthentication
+    name: tap-injector-unauthenticated
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  namespace: linkerd-viz
+  name: tap-injector-unauthenticated
+  labels:
+    linkerd.io/extension: viz
+    component: tap-injector
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  networks:
+  - cidr: "0.0.0.0/0"
+  - cidr: "::/0"
 ---
 ###
 ### Web

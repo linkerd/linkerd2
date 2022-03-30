@@ -15,8 +15,8 @@ spec:
   port: linkerd-admin
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   {{ include "partials.namespace" . }}
   name: proxy-admin
@@ -25,9 +25,27 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: proxy-admin
-  client:
-    # for kubelet probes
-    unauthenticated: true
-
+  # Permits traffic from the kubelet. This could be restricted further and share
+  # a common network resource.
+  requiredAuthenticationRefs:
+  - group: policy.linkerd.io
+    kind: NetworkAuthentication
+    name: proxy-admin-unauthenticated
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  {{ include "partials.namespace" . }}
+  name: proxy-admin-unauthenticated
+  labels:
+    linkerd.io/extension: viz
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  networks:
+  - cidr: "0.0.0.0/0"
+  - cidr: "::/0"
