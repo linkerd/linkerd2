@@ -4,7 +4,7 @@
 
 enablePodAntiAffinity: true
 
-nodeAffinity: null
+# nodeAffinity:
 
 resources: &ha_resources
   cpu: &ha_resources_cpu

@@ -49,7 +49,7 @@ enablePodAntiAffinity: false
 # -- NodeAffinity section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
 # for more information
-nodeAffinity: null
+# nodeAffinity:
 
 # -- Create Roles and RoleBindings to associate this extension's
 # ServiceAccounts to the control plane PSP resource. This requires that

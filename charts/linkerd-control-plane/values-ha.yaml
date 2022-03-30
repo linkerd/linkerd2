@@ -4,7 +4,7 @@
 
 enablePodAntiAffinity: true
 
-nodeAffinity: null
+# nodeAffinity: 
 
 # proxy configuration
 proxy:
