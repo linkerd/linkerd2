@@ -42,6 +42,21 @@ spec:
     - cidr: ::/0
 ---
 apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  {{ include "partials.namespace" . }}
+  name: gateway-proxy-admin
+  labels:
+    linkerd.io/extension: multicluster
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{.Values.gateway.name}}
+  port: linkerd-admin
+---
+apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
   {{ include "partials.namespace" . }}
