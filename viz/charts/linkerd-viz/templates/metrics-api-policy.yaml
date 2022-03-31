@@ -35,13 +35,13 @@ spec:
   requiredAuthenticationRefs:
   - group: policy.linkerd.io
     kind: MeshTLSAuthentication
-    name: metrics-api
+    name: metrics-api-web
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: MeshTLSAuthentication
 metadata:
   {{ include "partials.namespace" . }}
-  name: metrics-api
+  name: metrics-api-web
   labels:
     linkerd.io/extension: viz
     component: metrics-api
@@ -51,5 +51,3 @@ spec:
   identityRefs:
   - kind: ServiceAccount
     name: web
-  - kind: ServiceAccount
-    name: prometheus
