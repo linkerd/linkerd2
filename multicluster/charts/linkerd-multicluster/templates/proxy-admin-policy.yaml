@@ -1,28 +1,11 @@
 
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: Server
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
 metadata:
   {{ include "partials.namespace" . }}
-  name: service-mirror-proxy-admin
-  labels:
-    linkerd.io/extension: multicluster
+  name: kubelet
 spec:
-  podSelector:
-    matchLabels:
-      component: linkerd-service-mirror
-  port: linkerd-admin
----
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
-metadata:
-  {{ include "partials.namespace" . }}
-  name: service-mirror-proxy-admin
-  labels:
-    linkerd.io/extension: multicluster
-spec:
-  server:
-    name: service-mirror-proxy-admin
-  client:
-    # for kubelet probes
-    unauthenticated: true
+  networks:
+  - cidr: 0.0.0.0/0
+  - cidr: 0.0.0.0/0

@@ -28,23 +28,7 @@ spec:
   requiredAuthenticationRefs:
   - group: policy.linkerd.io
     kind: MeshTLSAuthentication
-    name: viz-prometheus
----
-# In order to use `linkerd mc gateways` you need viz' Prometheus instance to be
-# able to reach the service-mirror. In order to also have a separate Prometheus
-# scrape the service-mirror an additional ServerAuthorization resource should be
-# created.
-apiVersion: policy.linkerd.io/v1alpha1
-kind: MeshTLSAuthenication
-metadata:
-  {{ include "partials.namespace" . }}
-  name: viz-prometheus
-  labels:
-    component: linkerd-service-mirror
-spec:
-  identityRefs:
-  - kind: ServiceAccount
-    namespace: linkerd-viz
+    linkerd-viz: prometheus
     name: prometheus
 ---
 apiVersion: policy.linkerd.io/v1beta1
@@ -60,50 +44,19 @@ spec:
       component: linkerd-service-mirror
   port: linkerd-admin
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: AuthorizationPolicys
-metadata:
-  {{ include "partials.namespace" . }}
-  name: service-mirror-proxy-admin
-  labels:
-    linkerd.io/extension: multicluster
-spec:
-  server:
-    name: service-mirror-proxy-admin
-  client:
-    # for kubelet probes
-    unauthenticated: true
----
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
   {{ include "partials.namespace" . }}
-  name: service-mirror-admin-prometheus
+  name: service-mirror-proxy-admin-kubelet
   labels:
     component: linkerd-service-mirror
 spec:
   targetRef:
     group: policy.linkerd.io
     kind: Server
-    name: service-mirror-admin
+    name: service-mirror-proxy-admin
   requiredAuthenticationRefs:
   - group: policy.linkerd.io
     kind: MeshTLSAuthentication
-    name: prometheus
----
-# In order to use `linkerd mc gateways` you need viz' Prometheus instance to be
-# able to reach the service-mirror. In order to also have a separate Prometheus
-# scrape the service-mirror an additional ServerAuthorization resource should be
-# created.
-apiVersion: policy.linkerd.io/v1alpha1
-kind: AuthorizationPolicy
-metadata:
-  {{ include "partials.namespace" . }}
-  name: service-mirror-admin-prometheus
-  labels:
-    component: linkerd-service-mirror
-spec:
-  identityRefs:
-  - kind: ServiceAccount
-    namespace: linkerd-viz
-    name: prometheus
+    name: kubelet

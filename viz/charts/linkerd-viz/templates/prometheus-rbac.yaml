@@ -41,4 +41,16 @@ metadata:
     component: prometheus
     namespace: {{.Release.Namespace}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
+---
+# This authentication is a convenience so that other namespaces may easily
+# permit access to prometheus via mTLS.
+apiVersion: policy.linkerd.io/v1alpha1
+kind: MeshTLSAuthenication
+metadata:
+  {{ include "partials.namespace" . }}
+  name: prometheus
+spec:
+  identityRefs:
+  - kind: ServiceAccount
+    name: prometheus
 {{ end -}}

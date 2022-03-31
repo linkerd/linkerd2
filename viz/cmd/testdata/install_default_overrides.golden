@@ -103,6 +103,18 @@ metadata:
     component: prometheus
     namespace: linkerd-viz
 ---
+# This authentication is a convenience so that other namespaces may easily
+# permit access to prometheus via mTLS.
+apiVersion: policy.linkerd.io/v1alpha1
+kind: MeshTLSAuthenication
+metadata:
+  namespace: linkerd-viz
+  name: prometheus
+spec:
+  identityRefs:
+  - kind: ServiceAccount
+    name: prometheus
+---
 ###
 ### Tap RBAC
 ###
