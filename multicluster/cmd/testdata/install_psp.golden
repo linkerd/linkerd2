@@ -72,66 +72,17 @@ metadata:
   namespace: linkerd-multicluster
   labels:
     linkerd.io/extension: multicluster
+
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: Server
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
 metadata:
   namespace: linkerd-multicluster
-  name: gateway-proxy-admin
-  labels:
-    linkerd.io/extension: multicluster
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerdVersionValue
+  name: kubelet
 spec:
-  podSelector:
-    matchLabels:
-      app: linkerd-gateway
-  port: linkerd-admin
-  proxyProtocol: HTTP/1
----
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
-metadata:
-  namespace: linkerd-multicluster
-  name: proxy-admin
-  labels:
-    linkerd.io/extension: multicluster
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerdVersionValue
-spec:
-  server:
-    name: gateway-proxy-admin
-  client:
-    # for kubelet probes
-    unauthenticated: true
----
-apiVersion: policy.linkerd.io/v1beta1
-kind: Server
-metadata:
-  namespace: linkerd-multicluster
-  name: service-mirror-proxy-admin
-  labels:
-    linkerd.io/extension: multicluster
-spec:
-  podSelector:
-    matchLabels:
-      component: linkerd-service-mirror
-  port: linkerd-admin
-  proxyProtocol: HTTP/1
----
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
-metadata:
-  namespace: linkerd-multicluster
-  name: service-mirror-proxy-admin
-  labels:
-    linkerd.io/extension: multicluster
-spec:
-  server:
-    name: service-mirror-proxy-admin
-  client:
-    # for kubelet probes
-    unauthenticated: true
+  networks:
+  - cidr: 0.0.0.0/0
+  - cidr: 0.0.0.0/0
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
@@ -148,34 +99,77 @@ spec:
     matchLabels:
       app: linkerd-gateway
   port: linkerd-proxy
-  proxyProtocol: HTTP/1
 ---
 apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-multicluster
-  name: linkerd-gateway
+  name: linkerd-gateway-clients
   labels:
     linkerd.io/extension: multicluster
     app: linkerd-gateway
   annotations:
     linkerd.io/created-by: linkerd/helm linkerdVersionValue
 spec:
-  server:
+  targetRef:
+  - group: policy.linkerd.io
+    kind: Server
     name: linkerd-gateway
-  client:
-    meshTLS:
-      identities:
-      - '*'
-    networks:
-    # Change this to the source cluster cidrs pointing to this gateway.
-    # Note that the source IP in some providers (e.g. GKE) will be the local
-    # node's IP and not the source cluster's
-    - cidr: 0.0.0.0/0
-    - cidr: ::/0
+  requiredAuthenticationRefs:
+  # This policy permits access from all authenticated clients. This can be
+  # further restricted by adding a `NetworkAuthentication` requirement that
+  # enumerates the IP networks of remote source clusters.
+  - group: policy.linkerd.io
+    kind: MeshTLSAuthentication
+    name: linkerd-gateway-clients
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: MeshTLSAuthenication
+metadata:
+  namespace: linkerd-multicluster
+  name: linkerd-gateway-clients
+spec:
+  # This can be further restricted by including explicit identity domain
+  # suffixes instead of permitting all authenticated clients.
+  identities: ["*"]
 ---
 apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+kind: Server
+metadata:
+  namespace: linkerd-multicluster
+  name: linkerd-gateway-proxy-admin
+  labels:
+    linkerd.io/extension: multicluster
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerdVersionValue
+spec:
+  podSelector:
+    matchLabels:
+      app: linkerd-gateway
+  port: linkerd-admin
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  namespace: linkerd-multicluster
+  name: linkerd-gateway-proxy-admin-kubelet
+  labels:
+    linkerd.io/extension: multicluster
+    app: linkerd-gateway
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerdVersionValue
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: linkerd-gateway-proxy-admin-kubelet
+  requiredAuthenticationRefs:
+  - group: policy.linkerd.io
+    kind: NetworkAuthentication
+    name: kubelet
+ ---
+apiVersion: policy.linkerd.io/v1beta1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-multicluster
   name: linkerd-gateway-probe
@@ -185,17 +179,27 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm linkerdVersionValue
 spec:
-  server:
-    name: gateway-proxy-admin
-  client:
-    # allows probes from outside the cluster, as long as they have an identity
-    meshTLS:
-      identities:
-      - '*'
-    networks:
-    # cf note for linkerd-gateway ServerAuthorization
-    - cidr: 0.0.0.0/0
-    - cidr: ::/0
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: linkerd-gateway-proxy-admin
+  requiredAuthenticationRefs:
+  # This policy permits access from all authenticated clients. This can be
+  # further restricted by adding a `NetworkAuthentication` requirement that
+  # enumerates the IP networks of remote source clusters.
+  - group: policy.linkerd.io
+    kind: MeshTLSAuthentication
+    name: linkerd-gateway-probe-clients
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: MeshTLSAuthenication
+metadata:
+  namespace: linkerd-multicluster
+  name: linkerd-gateway-probe-clients
+spec:
+  # This can be further restricted by including explicit identities of each
+  # service mirror permitted probe this gateway.
+  identities: ["*"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -365,7 +369,7 @@ apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-multicluster
-  name: service-mirror
+  name: service-mirror-admin
   labels:
     component: linkerd-service-mirror
 spec:
@@ -375,23 +379,51 @@ spec:
   port: admin-http
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-multicluster
-  name: service-mirror
+  name: service-mirror-admin-prometheus
   labels:
     component: linkerd-service-mirror
 spec:
-  server:
-    name: service-mirror
-  client:
-    # In order to use `linkerd mc gateways` you need viz' Prometheus instance
-    # to be able to reach the service-mirror. In order to also have a separate
-    # Prometheus scrape the service-mirror an additional ServerAuthorization
-    # resource should be created.
-    meshTLS:
-      serviceAccounts:
-      - name: prometheus
-        namespace: linkerd-viz
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: service-mirror-admin
+  requiredAuthenticationRefs:
+  - group: policy.linkerd.io
+    kind: MeshTLSAuthentication
+    linkerd-viz: prometheus
+    name: prometheus
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  namespace: linkerd-multicluster
+  name: service-mirror-proxy-admin
+  labels:
+    linkerd.io/extension: multicluster
+spec:
+  podSelector:
+    matchLabels:
+      component: linkerd-service-mirror
+  port: linkerd-admin
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: linkerd-multicluster
+  name: service-mirror-proxy-admin-kubelet
+  labels:
+    component: linkerd-service-mirror
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: service-mirror-proxy-admin
+  requiredAuthenticationRefs:
+  - group: policy.linkerd.io
+    kind: MeshTLSAuthentication
+    name: kubelet
 ---
