@@ -174,22 +174,25 @@ func TestTargetTraffic(t *testing.T) {
 	ctx := context.Background()
 	// Create emojivoto in target cluster, to be deleted at the end of the test.
 	TestHelper.WithDataPlaneNamespace(ctx, "emojivoto", map[string]string{}, t, func(t *testing.T, ns string) {
-		t.Run("Wait until source workload is ready", func(t *testing.T) {
+		t.Run("Deploy resources in source and target clusters", func(t *testing.T) {
+			// Deploy vote-bot client in source-cluster
 			o, err := TestHelper.KubectlApplyWithContext("", contexts["src"], "-f", "testdata/vote-bot.yml")
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "failed to install vote-bot", "failed to install vote-bot: %s\n%s", err, o)
 			}
 
-			// Wait until client is up and running in source cluster
-			voteBotDeployReplica := map[string]testutil.DeploySpec{"vote-bot": {Namespace: ns, Replicas: 1}}
-			TestHelper.WaitRolloutWithContext(t, voteBotDeployReplica, contexts["src"])
-		})
-
-		t.Run("Wait until target workloads are ready", func(t *testing.T) {
 			out, err := TestHelper.KubectlApplyWithContext("", contexts["tgt"], "-f", "testdata/emojivoto-no-bot.yml")
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "failed to install emojivoto", "failed to install emojivoto: %s\n%s", err, out)
 			}
+
+		})
+
+		t.Run("Wait until target workloads are ready", func(t *testing.T) {
+			// Wait until client is up and running in source cluster
+			voteBotDeployReplica := map[string]testutil.DeploySpec{"vote-bot": {Namespace: ns, Replicas: 1}}
+			TestHelper.WaitRolloutWithContext(t, voteBotDeployReplica, contexts["src"])
+
 			// Wait until "target" services and replicas are up and running.
 			emojiDeployReplicas := map[string]testutil.DeploySpec{
 				"web":    {Namespace: ns, Replicas: 1},
@@ -241,22 +244,24 @@ func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
 	ctx := context.Background()
 	// Create 'multicluster-statefulset' namespace in target cluster, to be deleted at the end of the test.
 	TestHelper.WithDataPlaneNamespace(ctx, "multicluster-statefulset", map[string]string{}, t, func(t *testing.T, ns string) {
-		t.Run("Wait until source workloads are ready", func(t *testing.T) {
+		t.Run("Deploy resources in source and target clusters", func(t *testing.T) {
+			// Create slow-cooker client in source cluster
 			out, err := TestHelper.KubectlApplyWithContext("", contexts["src"], "-f", "testdata/slow-cooker.yml")
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "failed to install slow-cooker", "failed to install slow-cooker: %s\ngot: %s", err, out)
 			}
-			// Wait until client is up and running in source cluster
-			scDeployReplica := map[string]testutil.DeploySpec{"slow-cooker": {Namespace: ns, Replicas: 1}}
-			TestHelper.WaitRolloutWithContext(t, scDeployReplica, contexts["src"])
-		})
 
-		t.Run("Wait until target workloads are ready", func(t *testing.T) {
-			// Create statefulset manifests
-			out, err := TestHelper.KubectlApplyWithContext("", contexts["tgt"], "-f", "testdata/nginx-ss.yml")
+			// Create statefulset deployment in target cluster
+			out, err = TestHelper.KubectlApplyWithContext("", contexts["tgt"], "-f", "testdata/nginx-ss.yml")
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "failed to install nginx-ss", "failed to install nginx-ss: %s\n%s", err, out)
 			}
+		})
+
+		t.Run("Wait until workloads are ready", func(t *testing.T) {
+			// Wait until client is up and running in source cluster
+			scDeployReplica := map[string]testutil.DeploySpec{"slow-cooker": {Namespace: ns, Replicas: 1}}
+			TestHelper.WaitRolloutWithContext(t, scDeployReplica, contexts["src"])
 
 			// Wait until "target" statefulset is up and running.
 			nginxSpec := testutil.DeploySpec{Namespace: ns, Replicas: 1}
@@ -272,7 +277,7 @@ func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
 		t.Run("expect open outbound TCP connection from gateway to nginx", func(t *testing.T) {
 			// Use a short time window so that slow-cooker can warm-up and send
 			// requests.
-			err := TestHelper.RetryFor(30*time.Second, func() error {
+			err := TestHelper.RetryFor(1*time.Minute, func() error {
 				// Check gateway metrics
 				metrics, err := TestHelper.LinkerdRun(dgCmd...)
 				if err != nil {

@@ -13,6 +13,8 @@ linkerd-multicluster
 	* {{.LinkName}}
 √ all gateway mirrors are healthy
 	* {{.LinkName}}
+√ all mirror services have endpoints
+√ all mirror services are part of a Link
 √ multicluster extension proxies are healthy
 ‼ multicluster extension proxies are up-to-date
     {{.ProxyVersionErr}}
