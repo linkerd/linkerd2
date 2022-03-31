@@ -21,12 +21,9 @@ spec:
   sessionAffinity: None
   type: ClusterIP
   ports:
-  - name: tcp
+  - name: http
     protocol: TCP
     port: 80
-  - name: http
-    port: 8080
-    targetPort: 8080
 ---
 apiVersion: apps/v1
 kind: StatefulSet

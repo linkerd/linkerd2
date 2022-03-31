@@ -28,6 +28,6 @@ spec:
         args:
         - -qps=1
         - -metric-addr=0.0.0.0:9999
-        - http://nginx-statefulset-0.nginx-statefulset-svc-target.linkerd-multicluster-statefulset.svc.cluster.local:8080
+        - http://nginx-statefulset-0.nginx-statefulset-svc-target.linkerd-multicluster-statefulset.svc.cluster.local:80
         ports:
         - containerPort: 9999

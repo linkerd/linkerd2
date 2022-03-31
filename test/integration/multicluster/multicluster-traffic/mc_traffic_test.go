@@ -28,10 +28,8 @@ var (
 		`tcp_open_total\{direction="outbound",peer="dst",target_addr="[0-9\.]+:[0-9]+",target_ip="[0-9\.]+",target_port="[0-9]+",tls="true",server_id="default\.linkerd-multicluster-statefulset\.serviceaccount\.identity\.linkerd\.cluster\.local",dst_control_plane_ns="linkerd",dst_namespace="linkerd-multicluster-statefulset",dst_pod="nginx-statefulset-0",dst_serviceaccount="default",dst_statefulset="nginx-statefulset"\} [1-9]\d*`,
 	)
 	httpReqRE = regexp.MustCompile(
-		`request_total\{direction="outbound",target_addr="[0-9\.]+:8080",target_ip="[0-9\.]+",target_port="[0-9\.]+",tls="true",server_id="default\.linkerd-multicluster-statefulset\.serviceaccount\.identity\.linkerd\.cluster\.local",dst_control_plane_ns="linkerd",dst_namespace="linkerd-multicluster-statefulset",dst_pod="nginx-statefulset-0",dst_serviceaccount="default",dst_statefulset="nginx-statefulset"\} [1-9]\d*`,
+		`request_total\{direction="outbound",target_addr="[0-9\.]+:[0-9]+",target_ip="[0-9\.]+",target_port="[0-9]+",tls="true",server_id="default\.linkerd-multicluster-statefulset\.serviceaccount\.identity\.linkerd\.cluster\.local",dst_control_plane_ns="linkerd",dst_namespace="linkerd-multicluster-statefulset",dst_pod="nginx-statefulset-0",dst_serviceaccount="default",dst_statefulset="nginx-statefulset"\} [1-9]\d*`,
 	)
-	dgCmd = []string{"--context=" + targetCtx, "diagnostics", "proxy-metrics", "--namespace",
-		"linkerd-multicluster", "deploy/linkerd-gateway"}
 )
 
 func TestMain(m *testing.M) {
@@ -274,6 +272,8 @@ func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
 			}
 		})
 
+		dgCmd := []string{"--context=" + targetCtx, "diagnostics", "proxy-metrics", "--namespace",
+			"linkerd-multicluster", "deploy/linkerd-gateway"}
 		t.Run("expect open outbound TCP connection from gateway to nginx", func(t *testing.T) {
 			// Use a short time window so that slow-cooker can warm-up and send
 			// requests.
