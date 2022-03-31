@@ -23,7 +23,7 @@ async fn accepts_valid() {
                     group: Some("policy.linkerd.io".to_string()),
                     kind: "MeshTLSAuthentication".to_string(),
                     name: "mtls-clients".to_string(),
-                    ..Default::default()
+                    namespace: None,
                 },
                 NamespacedTargetRef {
                     group: Some("policy.linkerd.io".to_string()),
@@ -55,7 +55,7 @@ async fn accepts_valid_with_only_meshtls() {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: "MeshTLSAuthentication".to_string(),
                 name: "mtls-clients".to_string(),
-                ..Default::default()
+                namespace: None,
             }],
         },
     })
@@ -88,21 +88,8 @@ async fn accepts_valid_with_only_network() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn rejects_empty() {
-    admission::rejects(|ns| AuthorizationPolicy {
-        metadata: api::ObjectMeta {
-            namespace: Some(ns),
-            name: Some("test".to_string()),
-            ..Default::default()
-        },
-        spec: AuthorizationPolicySpec::default(),
-    })
-    .await;
-}
-
-#[tokio::test(flavor = "current_thread")]
-async fn rejects_empty_required_authentications() {
-    admission::rejects(|ns| AuthorizationPolicy {
+async fn accepts_empty_required_authentications() {
+    admission::accepts(|ns| AuthorizationPolicy {
         metadata: api::ObjectMeta {
             namespace: Some(ns),
             name: Some("test".to_string()),
@@ -115,6 +102,46 @@ async fn rejects_empty_required_authentications() {
                 name: "deny".to_string(),
             },
             required_authentication_refs: vec![],
+        },
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn rejects_missing_required_authentications() {
+    #[derive(
+        Clone,
+        Debug,
+        kube::CustomResource,
+        serde::Deserialize,
+        serde::Serialize,
+        schemars::JsonSchema,
+    )]
+    #[kube(
+        group = "policy.linkerd.io",
+        version = "v1alpha1",
+        kind = "AuthorizationPolicy",
+        namespaced
+    )]
+    #[serde(rename_all = "camelCase")]
+    pub struct FakeAuthorizationPolicySpec {
+        pub target_ref: LocalTargetRef,
+        pub required_authentication_refs: Option<Vec<NamespacedTargetRef>>,
+    }
+
+    admission::rejects(|ns| AuthorizationPolicy {
+        metadata: api::ObjectMeta {
+            namespace: Some(ns),
+            name: Some("test".to_string()),
+            ..Default::default()
+        },
+        spec: FakeAuthorizationPolicySpec {
+            target_ref: LocalTargetRef {
+                group: Some("policy.linkerd.io".to_string()),
+                kind: "Server".to_string(),
+                name: "deny".to_string(),
+            },
+            required_authentication_refs: None,
         },
     })
     .await;

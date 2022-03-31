@@ -1,24 +1,18 @@
-#[derive(
-    Clone, Debug, Default, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema,
-)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 pub struct ClusterTargetRef {
     pub group: Option<String>,
     pub kind: String,
     pub name: String,
 }
 
-#[derive(
-    Clone, Debug, Default, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema,
-)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 pub struct LocalTargetRef {
     pub group: Option<String>,
     pub kind: String,
     pub name: String,
 }
 
-#[derive(
-    Clone, Debug, Default, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema,
-)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 pub struct NamespacedTargetRef {
     pub group: Option<String>,
     pub kind: String,
@@ -242,9 +236,9 @@ mod tests {
     #[test]
     fn cluster_targets_namespace() {
         let t = ClusterTargetRef {
+            group: None,
             kind: "Namespace".to_string(),
             name: "appns".to_string(),
-            ..Default::default()
         };
         assert!(t.targets_kind::<Namespace>());
         assert!(t.targets(&Namespace {
@@ -260,10 +254,10 @@ mod tests {
     fn namespaced_targets_service_account() {
         for tgt in &[
             NamespacedTargetRef {
+                group: None,
                 kind: "ServiceAccount".to_string(),
                 name: "default".to_string(),
                 namespace: Some("appns".to_string()),
-                ..Default::default()
             },
             NamespacedTargetRef {
                 group: Some("core".to_string()),
@@ -278,9 +272,10 @@ mod tests {
                 namespace: Some("APPNS".to_string()),
             },
             NamespacedTargetRef {
+                group: None,
                 kind: "ServiceAccount".to_string(),
                 name: "default".to_string(),
-                ..Default::default()
+                namespace: None,
             },
         ] {
             assert!(tgt.targets_kind::<ServiceAccount>());
@@ -317,9 +312,10 @@ mod tests {
         }
 
         let tgt = NamespacedTargetRef {
+            group: None,
             kind: "ServiceAccount".to_string(),
             name: "default".to_string(),
-            ..Default::default()
+            namespace: None,
         };
         assert!(
             {

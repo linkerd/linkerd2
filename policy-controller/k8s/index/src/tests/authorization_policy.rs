@@ -49,7 +49,7 @@ fn links_authorization_policy_with_mtls_name() {
                 group: Some("policy.linkerd.io".to_string()),
                 kind: "NetworkAuthentication".to_string(),
                 name: "net-foo".to_string(),
-                ..Default::default()
+                namespace: None,
             },
             NamespacedTargetRef {
                 group: Some("policy.linkerd.io".to_string()),

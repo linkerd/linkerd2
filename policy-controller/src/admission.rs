@@ -229,10 +229,6 @@ impl Validate<AuthorizationPolicySpec> for Admission {
             bail!("unsupported authentication kind(s): {}", kinds.join(", "));
         }
 
-        if mtls_authns_count + net_authns_count == 0 {
-            bail!("at least one authentication reference must be set");
-        }
-
         Ok(())
     }
 }
