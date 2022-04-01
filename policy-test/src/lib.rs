@@ -141,9 +141,10 @@ where
         for p in pods.items {
             let pod = p.name();
             if let Some(status) = p.status {
-                tracing::trace!(ns = ?ns.name(), %pod, reason = ?status.reason, message = ?status.message);
+                let _span = tracing::info_span!("pod", ns = %ns.name(), name = %pod).entered();
+                tracing::trace!(reason = ?status.reason, message = ?status.message);
                 for c in status.container_statuses.into_iter().flatten() {
-                    tracing::trace!(ns = ?ns.name(), %pod, container = %c.name, ready = %c.ready, state = ?c.state);
+                    tracing::trace!(container = %c.name, ready = %c.ready, state = ?c.state);
                 }
             }
         }
