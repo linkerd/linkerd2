@@ -235,4 +235,4 @@ jobs:
 
       # Run the tests. We disable parallelism to avoid spurious timeouts caused
       # by resource contention.
-      - run: cargo test -p linkerd-policy-test --frozen --jobs=1
+      - run: cargo test -p linkerd-policy-test --frozen -- --test-threads=1
