@@ -233,5 +233,6 @@ jobs:
       - run: linkerd install | kubectl apply -f -
       - run: linkerd check --wait=1m
 
-      # Run the tests.
-      - run: cargo test -p linkerd-policy-test --frozen
+      # Run the tests. We disable parallelism to avoid spurious timeouts caused
+      # by resource contention.
+      - run: cargo test -p linkerd-policy-test --frozen -- --test-threads=1
