@@ -138,7 +138,7 @@ where
             .list(&Default::default())
             .await
             .expect("Failed to get pod status");
-        for p in pods.items.into_iter() {
+        for p in pods.items {
             let pod = p.name();
             if let Some(status) = p.status {
                 tracing::trace!(ns = ?ns.name(), %pod, reason = ?status.reason, message = ?status.message);
