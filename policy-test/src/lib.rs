@@ -163,7 +163,7 @@ fn init_tracing() -> tracing::subscriber::DefaultGuard {
             .with_test_writer()
             .with_env_filter(
                 tracing_subscriber::EnvFilter::try_from_default_env()
-                    .unwrap_or_else(|_| "e2e=trace,api=trace,linkerd=trace,info".parse().unwrap()),
+                    .unwrap_or_else(|_| "trace,hyper=info,kube=info,h2=info".parse().unwrap()),
             )
             .finish(),
     )
