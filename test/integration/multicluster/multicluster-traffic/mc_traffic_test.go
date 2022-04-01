@@ -49,9 +49,9 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// Test `linkerd multicluster gateways` command by installing three emojivoto
-// services in target cluster and asserting the output against the source
-// cluster.
+// TestGateways tests the `linkerd multicluster gateways` command by installing
+// three emojivoto services in target cluster and asserting the output against
+// the source cluster.
 func TestGateways(t *testing.T) {
 	if err := TestHelper.SwitchContext(contexts["tgt"]); err != nil {
 		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", contexts["tgt"], err)
