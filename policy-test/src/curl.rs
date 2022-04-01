@@ -1,5 +1,4 @@
 use super::{create, LinkerdInject};
-use kube::ResourceExt;
 use linkerd_policy_controller_k8s_api::{self as k8s};
 use maplit::{btreemap, convert_args};
 use tokio::time;
@@ -155,7 +154,7 @@ impl Runner {
                     args: Some(
                         vec![
                             "wait",
-                            "--timeout=60s",
+                            "--timeout=120s",
                             "--for=delete",
                             "--namespace",
                             ns,
@@ -208,7 +207,6 @@ impl Running {
                 .iter()
                 .find(|c| c.name == "curl")?;
             let code = c.state.as_ref()?.terminated.as_ref()?.exit_code;
-            tracing::debug!(ns = %pod.namespace().unwrap(), pod = %pod.name(), %code, "Curl exited");
             Some(code)
         }
 
@@ -219,13 +217,25 @@ impl Running {
             &self.name,
             |obj: Option<&k8s::Pod>| -> bool { obj.and_then(get_exit_code).is_some() },
         );
-        match time::timeout(time::Duration::from_secs(60), finished).await {
+        match time::timeout(time::Duration::from_secs(120), finished).await {
             Ok(Ok(())) => {}
             Ok(Err(error)) => panic!("Failed to wait for exit code: {}: {}", self.name, error),
-            Err(_timeout) => panic!("Timeout waiting for exit code: {}", self.name),
+            Err(_timeout) => {
+                panic!("Timeout waiting for exit code: {}", self.name);
+            }
         };
 
         let curl_pod = api.get(&self.name).await.expect("pod must exist");
-        get_exit_code(&curl_pod).expect("curl pod must have an exit code")
+        let code = get_exit_code(&curl_pod).expect("curl pod must have an exit code");
+        tracing::debug!(pod = %self.name, %code, "Curl exited");
+
+        if let Err(error) = api
+            .delete(&self.name, &kube::api::DeleteParams::foreground())
+            .await
+        {
+            tracing::trace!(%error, name = %self.name, "Failed to delete pod");
+        }
+
+        code
     }
 }
