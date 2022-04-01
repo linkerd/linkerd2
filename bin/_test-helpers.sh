@@ -304,7 +304,7 @@ image_load() {
 
 start_test() {
   local name=$1
-  local config=(--no-hostip --k3s-server-arg '--disable=local-storage,metrics-server')
+  local config=(--k3s-arg '--disable=local-storage,metrics-server@server:0')
 
   case $name in
     cluster-domain)
