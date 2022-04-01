@@ -220,7 +220,16 @@ impl Running {
         match time::timeout(time::Duration::from_secs(120), finished).await {
             Ok(Ok(())) => {}
             Ok(Err(error)) => panic!("Failed to wait for exit code: {}: {}", self.name, error),
-            Err(_timeout) => panic!("Timeout waiting for exit code: {}", self.name),
+            Err(_timeout) => {
+                let pods = api
+                    .list(&Default::default())
+                    .await
+                    .expect("Failed to get pod status");
+                for p in pods.items.iter() {
+                    tracing::debug!(name = %self.name, status = ?p.status);
+                }
+                panic!("Timeout waiting for exit code: {}", self.name);
+            }
         };
 
         let curl_pod = api.get(&self.name).await.expect("pod must exist");
