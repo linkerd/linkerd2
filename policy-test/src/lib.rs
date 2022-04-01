@@ -133,7 +133,22 @@ where
     let test = test(client.clone(), ns.name());
     let res = tokio::spawn(test.instrument(tracing::info_span!("test", ns = %ns.name()))).await;
     if res.is_err() {
-        // If the test failed, stop tracing so the log is not polluted with more
+        // If the test failed, list the state of all pods/containers in the namespace.
+        let pods = kube::Api::<k8s::Pod>::namespaced(client.clone(), &ns.name())
+            .list(&Default::default())
+            .await
+            .expect("Failed to get pod status");
+        for p in pods.items.into_iter() {
+            let pod = p.name();
+            if let Some(status) = p.status {
+                tracing::trace!(ns = ?ns.name(), %pod, reason = ?status.reason, message = ?status.message);
+                for c in status.container_statuses.into_iter().flatten() {
+                    tracing::trace!(ns = ?ns.name(), %pod, container = %c.name, ready = %c.ready, state = ?c.state);
+                }
+            }
+        }
+
+        // Then stop tracing so the log is not further polluted with more
         // information about cleanup after the failure was printed.
         drop(_tracing);
     }
