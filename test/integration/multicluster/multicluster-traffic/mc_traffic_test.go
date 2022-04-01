@@ -37,7 +37,15 @@ func TestMain(m *testing.M) {
 	// Before starting, get source context
 	contexts = TestHelper.GetMulticlusterContexts()
 	targetCtx = contexts["tgt"]
-	TestHelper.WaitUntilDeployReadyWithCtx(targetCtx, testutil.LinkerdVizDeployReplicas)
+	// Then, re-build clientset with context of target cluster instead of kube
+	// context inferred from environment.
+	if err := TestHelper.SwitchContext(targetCtx); err != nil {
+		out := fmt.Sprintf("Error running test: failed to switch Kubernetes client to context [%s]: %s\n", targetCtx, err)
+		os.Stderr.Write([]byte(out))
+		os.Exit(1)
+	}
+	// Block until viz deploy is running successfully in target cluster.
+	TestHelper.WaitUntilDeployReady(testutil.LinkerdVizDeployReplicas)
 	os.Exit(m.Run())
 }
 
