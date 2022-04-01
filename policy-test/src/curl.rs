@@ -237,7 +237,7 @@ impl Running {
         tracing::debug!(pod = %self.name, %code, "Curl exited");
 
         if let Err(error) = api
-            .delete(&self.name, &kube::api::DeleteParams::background())
+            .delete(&self.name, &kube::api::DeleteParams::foreground())
             .await
         {
             tracing::trace!(%error, name = %self.name, "Failed to delete pod");
