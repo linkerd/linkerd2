@@ -23,6 +23,7 @@
 - [Doji](https://www.doji.cn/)
 - [Expedia](https://www.expedia.com)
 - [Facelift](https://www.facelift-bbt.com/en)
+- [Favrit](https://www.favrit.com)
 - [Figure](https://www.figure.com)
 - [finleap connect](https://connect.finleap.com/)
 - [Giant Swarm](https://www.giantswarm.io)
