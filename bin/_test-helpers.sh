@@ -308,16 +308,16 @@ start_test() {
 
   case $name in
     cluster-domain)
-      config=("$name" "${config[@]}" --no-lb --k3s-server-arg --cluster-domain=custom.domain --k3s-server-arg '--disable=servicelb,traefik')
+      config=("$name" "${config[@]}" --no-lb --k3s-arg --cluster-domain=custom.domain --k3s-arg '--disable=servicelb,traefik@server:0')
       ;;
     cni-calico-deep)
-      config=("$name" "${config[@]}" --no-lb --k3s-server-arg --write-kubeconfig-mode=644 --k3s-server-arg --flannel-backend=none --k3s-server-arg --cluster-cidr=192.168.0.0/16 --k3s-server-arg '--disable=servicelb,traefik')
+      config=("$name" "${config[@]}" --no-lb --k3s-arg --write-kubeconfig-mode=644 --k3s-arg --flannel-backend=none --k3s-arg --cluster-cidr=192.168.0.0/16 --k3s-arg '--disable=servicelb,traefik@server:0')
       ;;
     multicluster)
       config=("${config[@]}" --network multicluster-test)
       ;;
     *)
-      config=("$name" "${config[@]}" --no-lb --k3s-server-arg '--disable=servicelb,traefik')
+      config=("$name" "${config[@]}" --no-lb --k3s-arg '--disable=servicelb,traefik@server:0')
       ;;
   esac
 
