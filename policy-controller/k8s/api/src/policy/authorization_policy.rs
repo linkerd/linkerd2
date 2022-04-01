@@ -1,13 +1,7 @@
 use super::{LocalTargetRef, NamespacedTargetRef};
 
 #[derive(
-    Clone,
-    Debug,
-    Default,
-    kube::CustomResource,
-    serde::Deserialize,
-    serde::Serialize,
-    schemars::JsonSchema,
+    Clone, Debug, kube::CustomResource, serde::Deserialize, serde::Serialize, schemars::JsonSchema,
 )]
 #[kube(
     group = "policy.linkerd.io",
