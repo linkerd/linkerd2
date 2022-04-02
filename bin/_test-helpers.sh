@@ -304,20 +304,20 @@ image_load() {
 
 start_test() {
   local name=$1
-  local config=(--k3s-arg '--disable=local-storage,metrics-server@server:0')
+  local config=(--no-hostip --k3s-server-arg '--disable=local-storage,metrics-server')
 
   case $name in
     cluster-domain)
-      config=("$name" "${config[@]}" --no-lb --k3s-arg --cluster-domain=custom.domain --k3s-arg '--disable=servicelb,traefik@server:0')
+      config=("$name" "${config[@]}" --no-lb --k3s-server-arg --cluster-domain=custom.domain --k3s-server-arg '--disable=servicelb,traefik')
       ;;
     cni-calico-deep)
-      config=("$name" "${config[@]}" --no-lb --k3s-arg --write-kubeconfig-mode=644 --k3s-arg --flannel-backend=none --k3s-arg --cluster-cidr=192.168.0.0/16 --k3s-arg '--disable=servicelb,traefik@server:0')
+      config=("$name" "${config[@]}" --no-lb --k3s-server-arg --write-kubeconfig-mode=644 --k3s-server-arg --flannel-backend=none --k3s-server-arg --cluster-cidr=192.168.0.0/16 --k3s-server-arg '--disable=servicelb,traefik')
       ;;
     multicluster)
       config=("${config[@]}" --network multicluster-test)
       ;;
     *)
-      config=("$name" "${config[@]}" --no-lb --k3s-arg '--disable=servicelb,traefik@server:0')
+      config=("$name" "${config[@]}" --no-lb --k3s-server-arg '--disable=servicelb,traefik')
       ;;
   esac
 
@@ -370,7 +370,7 @@ run_test(){
 # Returns the latest version for the release channel
 # $1: release channel to check
 latest_release_channel() {
-    "$bindir"/scurl https://versioncheck.linkerd.io/version.json | grep -o "$1-[0-9]*.[0-9]*.[0-9]*"
+    curl -s https://versioncheck.linkerd.io/version.json | grep -o "$1-[0-9]*.[0-9]*.[0-9]*"
 }
 
 # Install a specific Linkerd version.
@@ -382,7 +382,7 @@ install_version() {
     local install_url=$1
     local version=$2
 
-    "$bindir"/scurl "$install_url" | HOME=$tmp sh > /dev/null 2>&1
+    curl -s "$install_url" | HOME=$tmp sh > /dev/null 2>&1
 
     local linkerd_path=$tmp/.linkerd2/bin/linkerd
     local test_app_namespace=upgrade-test
