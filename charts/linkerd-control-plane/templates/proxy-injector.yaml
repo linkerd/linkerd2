@@ -51,7 +51,7 @@ spec:
       {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- $_ := set $tree "component" "proxy-injector" -}}
-      {{- include "linkerd.affinity" $tree | nindent 6 -}}
+      {{- include "linkerd.affinity" $tree | nindent 6 }}
       containers:
       {{- if not (empty .Values.proxyInjectorProxyResources) }}
       {{- $r := merge .Values.proxyInjectorProxyResources .Values.proxy.resources }}

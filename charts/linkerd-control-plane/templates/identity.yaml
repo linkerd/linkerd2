@@ -138,7 +138,7 @@ spec:
       {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- $_ := set $tree "component" "identity" -}}
-      {{- include "linkerd.affinity" $tree | nindent 6 -}}
+      {{- include "linkerd.affinity" $tree | nindent 6 }}
       containers:
       - args:
         - identity
