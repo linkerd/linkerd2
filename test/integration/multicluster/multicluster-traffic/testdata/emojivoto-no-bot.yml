@@ -1,11 +1,4 @@
 apiVersion: v1
-kind: Namespace
-metadata:
-  labels:
-    test.linkerd.io/is-test-data-plane: "true"
-  name: linkerd-emojivoto
----
-apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: emoji

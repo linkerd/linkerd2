@@ -53,10 +53,6 @@ func TestMain(m *testing.M) {
 // three emojivoto services in target cluster and asserting the output against
 // the source cluster.
 func TestGateways(t *testing.T) {
-	if err := TestHelper.SwitchContext(contexts[testutil.TargetContextKey]); err != nil {
-		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", contexts[testutil.TargetContextKey], err)
-	}
-
 	t.Run("install resources in target cluster", func(t *testing.T) {
 		// Create namespace in source cluster
 		out, err := TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], "create", "namespace", "linkerd-nginx-gateway-deploy")
