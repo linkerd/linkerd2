@@ -147,14 +147,14 @@ func TestLinkClusters(t *testing.T) {
 		"-n", "kube-system", "traefik",
 		"-o", "go-template={{ (index .status.loadBalancer.ingress 0).ip }}",
 	}
-	lbIP, err := TestHelper.KubectlWithContext("", contexts["tgt"], lbCmd...)
+	lbIP, err := TestHelper.KubectlWithContext("", contexts[testutil.TargetContextKey], lbCmd...)
 
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl get' command failed",
 			"'kubectl get' command failed\n%s", lbIP)
 	}
 	linkCmd := []string{
-		"--context=" + contexts["tgt"],
+		"--context=" + contexts[testutil.TargetContextKey],
 		"multicluster", "link",
 		"--log-level", "debug",
 		"--api-server-address", fmt.Sprintf("https://%s:6443", lbIP),
@@ -168,7 +168,7 @@ func TestLinkClusters(t *testing.T) {
 	}
 
 	// Apply Link in source
-	out, err = TestHelper.KubectlApplyWithContext(out, contexts["src"], "-f", "-")
+	out, err = TestHelper.KubectlApplyWithContext(out, contexts[testutil.SourceContextKey], "-f", "-")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
@@ -210,7 +210,7 @@ func TestInstallViz(t *testing.T) {
 func TestCheckMulticluster(t *testing.T) {
 	golden := "check.multicluster.golden"
 	// Check resources after link were created successfully in source cluster
-	ctx := contexts["src"]
+	ctx := contexts[testutil.SourceContextKey]
 	checkCmd := []string{"--context=" + ctx, "multicluster", "check", "--wait=40s"}
 
 	// First, switch context to make sure we check pods in the cluster we're

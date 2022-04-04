@@ -36,7 +36,7 @@ func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
 	// Before starting, get source context
 	contexts = TestHelper.GetMulticlusterContexts()
-	targetCtx = contexts["tgt"]
+	targetCtx = contexts[testutil.TargetContextKey]
 	// Then, re-build clientset with context of target cluster instead of kube
 	// context inferred from environment.
 	if err := TestHelper.SwitchContext(targetCtx); err != nil {
@@ -53,18 +53,18 @@ func TestMain(m *testing.M) {
 // three emojivoto services in target cluster and asserting the output against
 // the source cluster.
 func TestGateways(t *testing.T) {
-	if err := TestHelper.SwitchContext(contexts["tgt"]); err != nil {
-		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", contexts["tgt"], err)
+	if err := TestHelper.SwitchContext(contexts[testutil.TargetContextKey]); err != nil {
+		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", contexts[testutil.TargetContextKey], err)
 	}
 
 	t.Run("install resources in target cluster", func(t *testing.T) {
 		// Create namespace in source cluster
-		out, err := TestHelper.KubectlWithContext("", contexts["src"], "create", "namespace", "linkerd-nginx-gateway-deploy")
+		out, err := TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], "create", "namespace", "linkerd-nginx-gateway-deploy")
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "failed to create namespace", "failed to create namespace 'linkerd-nginx-gateway-deploy': %s\n%s", err, out)
 		}
 
-		out, err = TestHelper.KubectlApplyWithContext("", contexts["tgt"], "-n", "linkerd-nginx-gateway-deploy", "-f", "testdata/nginx-gateway-deploy.yaml")
+		out, err = TestHelper.KubectlApplyWithContext("", contexts[testutil.TargetContextKey], "-n", "linkerd-nginx-gateway-deploy", "-f", "testdata/nginx-gateway-deploy.yaml")
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "failed to install nginx deploy", "failed to install nginx deploy: %s\n%s", err, out)
 		}
@@ -75,12 +75,12 @@ func TestGateways(t *testing.T) {
 		tgtWorkloadRollouts := map[string]testutil.DeploySpec{
 			"nginx-deploy": {Namespace: "linkerd-nginx-gateway-deploy", Replicas: 1},
 		}
-		TestHelper.WaitRolloutWithContext(t, tgtWorkloadRollouts, contexts["tgt"])
+		TestHelper.WaitRolloutWithContext(t, tgtWorkloadRollouts, contexts[testutil.TargetContextKey])
 	})
 
 	timeout := time.Minute
 	err := TestHelper.RetryFor(timeout, func() error {
-		out, err := TestHelper.LinkerdRun("--context="+contexts["src"], "multicluster", "gateways")
+		out, err := TestHelper.LinkerdRun("--context="+contexts[testutil.SourceContextKey], "multicluster", "gateways")
 		if err != nil {
 			return err
 		}
@@ -116,11 +116,11 @@ func TestGateways(t *testing.T) {
 // result returns number of mirror services.
 func TestCheckGatewayAfterRepairEndpoints(t *testing.T) {
 	// Re-build the clientset with the source context
-	if err := TestHelper.SwitchContext(contexts["src"]); err != nil {
-		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", contexts["src"], err)
+	if err := TestHelper.SwitchContext(contexts[testutil.SourceContextKey]); err != nil {
+		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", contexts[testutil.SourceContextKey], err)
 	}
 	time.Sleep(time.Minute + 5*time.Second)
-	cmd := []string{"--context=" + contexts["src"], "multicluster", "check", "--wait=10s"}
+	cmd := []string{"--context=" + contexts[testutil.SourceContextKey], "multicluster", "check", "--wait=10s"}
 	timeout := 20 * time.Second
 	err := TestHelper.RetryFor(timeout, func() error {
 		out, err := TestHelper.LinkerdRun(cmd...)
@@ -173,8 +173,8 @@ func TestCheckGatewayAfterRepairEndpoints(t *testing.T) {
 // TODO it may be clearer to invoke `linkerd diagnostics proxy-metrics` to check whether we see
 // connections from the gateway pod to the web-svc?
 func TestTargetTraffic(t *testing.T) {
-	if err := TestHelper.SwitchContext(contexts["tgt"]); err != nil {
-		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", contexts["tgt"], err)
+	if err := TestHelper.SwitchContext(contexts[testutil.TargetContextKey]); err != nil {
+		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", contexts[testutil.TargetContextKey], err)
 	}
 
 	ctx := context.Background()
@@ -182,12 +182,12 @@ func TestTargetTraffic(t *testing.T) {
 	TestHelper.WithDataPlaneNamespace(ctx, "emojivoto", map[string]string{}, t, func(t *testing.T, ns string) {
 		t.Run("Deploy resources in source and target clusters", func(t *testing.T) {
 			// Deploy vote-bot client in source-cluster
-			o, err := TestHelper.KubectlApplyWithContext("", contexts["src"], "-f", "testdata/vote-bot.yml")
+			o, err := TestHelper.KubectlApplyWithContext("", contexts[testutil.SourceContextKey], "-f", "testdata/vote-bot.yml")
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "failed to install vote-bot", "failed to install vote-bot: %s\n%s", err, o)
 			}
 
-			out, err := TestHelper.KubectlApplyWithContext("", contexts["tgt"], "-f", "testdata/emojivoto-no-bot.yml")
+			out, err := TestHelper.KubectlApplyWithContext("", contexts[testutil.TargetContextKey], "-f", "testdata/emojivoto-no-bot.yml")
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "failed to install emojivoto", "failed to install emojivoto: %s\n%s", err, out)
 			}
@@ -197,7 +197,7 @@ func TestTargetTraffic(t *testing.T) {
 		t.Run("Wait until target workloads are ready", func(t *testing.T) {
 			// Wait until client is up and running in source cluster
 			voteBotDeployReplica := map[string]testutil.DeploySpec{"vote-bot": {Namespace: ns, Replicas: 1}}
-			TestHelper.WaitRolloutWithContext(t, voteBotDeployReplica, contexts["src"])
+			TestHelper.WaitRolloutWithContext(t, voteBotDeployReplica, contexts[testutil.SourceContextKey])
 
 			// Wait until "target" services and replicas are up and running.
 			emojiDeployReplicas := map[string]testutil.DeploySpec{
@@ -243,8 +243,8 @@ func TestTargetTraffic(t *testing.T) {
 // gateway to make sure our connections from the source cluster were routed
 // correctly.
 func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
-	if err := TestHelper.SwitchContext(contexts["tgt"]); err != nil {
-		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", contexts["tgt"], err)
+	if err := TestHelper.SwitchContext(contexts[testutil.TargetContextKey]); err != nil {
+		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", contexts[testutil.TargetContextKey], err)
 	}
 
 	ctx := context.Background()
@@ -252,13 +252,13 @@ func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
 	TestHelper.WithDataPlaneNamespace(ctx, "multicluster-statefulset", map[string]string{}, t, func(t *testing.T, ns string) {
 		t.Run("Deploy resources in source and target clusters", func(t *testing.T) {
 			// Create slow-cooker client in source cluster
-			out, err := TestHelper.KubectlApplyWithContext("", contexts["src"], "-f", "testdata/slow-cooker.yml")
+			out, err := TestHelper.KubectlApplyWithContext("", contexts[testutil.SourceContextKey], "-f", "testdata/slow-cooker.yml")
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "failed to install slow-cooker", "failed to install slow-cooker: %s\ngot: %s", err, out)
 			}
 
 			// Create statefulset deployment in target cluster
-			out, err = TestHelper.KubectlApplyWithContext("", contexts["tgt"], "-f", "testdata/nginx-ss.yml")
+			out, err = TestHelper.KubectlApplyWithContext("", contexts[testutil.TargetContextKey], "-f", "testdata/nginx-ss.yml")
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "failed to install nginx-ss", "failed to install nginx-ss: %s\n%s", err, out)
 			}
@@ -267,13 +267,13 @@ func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
 		t.Run("Wait until workloads are ready", func(t *testing.T) {
 			// Wait until client is up and running in source cluster
 			scDeployReplica := map[string]testutil.DeploySpec{"slow-cooker": {Namespace: ns, Replicas: 1}}
-			TestHelper.WaitRolloutWithContext(t, scDeployReplica, contexts["src"])
+			TestHelper.WaitRolloutWithContext(t, scDeployReplica, contexts[testutil.SourceContextKey])
 
 			// Wait until "target" statefulset is up and running.
 			nginxSpec := testutil.DeploySpec{Namespace: ns, Replicas: 1}
-			o, err := TestHelper.KubectlWithContext("", contexts["tgt"], "--namespace="+nginxSpec.Namespace, "rollout", "status", "--timeout=60m", "statefulset/nginx-statefulset")
+			o, err := TestHelper.KubectlWithContext("", contexts[testutil.TargetContextKey], "--namespace="+nginxSpec.Namespace, "rollout", "status", "--timeout=60m", "statefulset/nginx-statefulset")
 			if err != nil {
-				oEvt, _ := TestHelper.KubectlWithContext("", contexts["tgt"], "--namespace="+nginxSpec.Namespace, "get", "event", "--field-selector", "involvedObject.name=nginx-statefulset")
+				oEvt, _ := TestHelper.KubectlWithContext("", contexts[testutil.TargetContextKey], "--namespace="+nginxSpec.Namespace, "get", "event", "--field-selector", "involvedObject.name=nginx-statefulset")
 				testutil.AnnotatedFatalf(t,
 					fmt.Sprintf("failed to wait rollout of deploy/%s", "nginx-statefulset"),
 					"failed to wait for rollout of deploy/%s: %s: %s\nEvents:\n%s", "nginx-statefulset", err, o, oEvt)
@@ -333,8 +333,8 @@ func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
 }
 
 func TestSourceResourcesAreCleaned(t *testing.T) {
-	if err := TestHelper.SwitchContext(contexts["src"]); err != nil {
-		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", contexts["src"], err)
+	if err := TestHelper.SwitchContext(contexts[testutil.SourceContextKey]); err != nil {
+		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", contexts[testutil.SourceContextKey], err)
 	}
 
 	ctx := context.Background()
@@ -357,8 +357,8 @@ func TestSourceResourcesAreCleaned(t *testing.T) {
 // At the end of the test, we have one resource left to clean 'linkerd-nginx-gateway-deploy',
 // so we just switch the context again and delete its corresponding namespace.
 func TestTargetResourcesAreCleaned(t *testing.T) {
-	if err := TestHelper.SwitchContext(contexts["tgt"]); err != nil {
-		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", contexts["tgt"], err)
+	if err := TestHelper.SwitchContext(contexts[testutil.TargetContextKey]); err != nil {
+		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", contexts[testutil.TargetContextKey], err)
 	}
 
 	ctx := context.Background()

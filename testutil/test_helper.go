@@ -110,6 +110,14 @@ var ExternalVizDeployReplicas = map[string]DeploySpec{
 	"web":          {"linkerd-viz", 1},
 }
 
+// SourceContextKey represents the key used to get the name of the Kubernetes
+// context corresponding to a source cluster in multicluster tests
+var SourceContextKey = "source"
+
+// TargetContextKey represents the key used to get the name of the Kubernetes
+// context corresponding to a source cluster in multicluster tests
+var TargetContextKey = "target"
+
 // NewGenericTestHelper returns a new *TestHelper from the options provided as function parameters.
 // This helper was created to be able to reuse this package without hard restrictions
 // as seen in `NewTestHelper()` which is primarily used with integration tests
@@ -299,8 +307,8 @@ func (h *TestHelper) GetMulticlusterNamespace() string {
 // used in the test
 func (h *TestHelper) GetMulticlusterContexts() map[string]string {
 	return map[string]string{
-		"src": h.multiclusterSrcCtx,
-		"tgt": h.multiclusterTgtCtx,
+		"source": h.multiclusterSrcCtx,
+		"target": h.multiclusterTgtCtx,
 	}
 }
 
