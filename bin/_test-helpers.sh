@@ -226,7 +226,7 @@ delete_cluster() {
 }
 
 cleanup_cluster() {
-  "$bindir"/test-cleanup "$context" "$linkerd_path" > /dev/null 2>&1
+  "$bindir"/test-cleanup "$linkerd_path" > /dev/null 2>&1
   exit_on_err 'error removing existing Linkerd resources'
 }
 
