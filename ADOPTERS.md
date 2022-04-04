@@ -73,6 +73,7 @@
 - [Studyo](https://studyo.co)
 - [Sue](https://sue.nl)
 - [The Zebra](https://www.thezebra.com)
+- [Timescale](https://www.timescale.com)
 - [Tradeshift](https://tradeshift.com/)
 - [Transit](https://transit.app)
 - [Web Summit](https://websummit.com)
