@@ -62,7 +62,8 @@ RUN apt install -y \
     lsb-release \
     npm \
     sudo \
-    time
+    time \
+    unzip
 RUN npm install markdownlint-cli@0.23.1 --global
 
 RUN sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && locale-gen
