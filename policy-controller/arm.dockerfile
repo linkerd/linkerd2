@@ -8,6 +8,10 @@ RUN apt-get update && \
     rustup target add armv7-unknown-linux-gnueabihf
 ENV CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
 WORKDIR /build
+COPY bin/scurl bin/scurl
+COPY bin/protoc bin/protoc
+ENV PROTOC_NO_VENDOR=1
+ENV PROTOC=/build/bin/protoc
 COPY Cargo.toml Cargo.lock .
 COPY policy-controller policy-controller
 RUN cargo new policy-test --lib
