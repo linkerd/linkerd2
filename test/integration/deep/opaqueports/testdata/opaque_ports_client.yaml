@@ -16,11 +16,12 @@ spec:
         args:
         - -qps=1
         - -metric-addr=0.0.0.0:9999
-        - http://svc-opaque-service:8080
+        - http://{{ .ServiceCookerOpaqueServiceTargetHost}}:8080
         ports:
         - containerPort: 9999
       restartPolicy: OnFailure
 ---
+{{ if .ServiceCookerOpaquePodTargetHost}}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -39,11 +40,12 @@ spec:
         args:
         - -qps=1
         - -metric-addr=0.0.0.0:9999
-        - http://svc-opaque-pod:8080
+        - http://{{ .ServiceCookerOpaquePodTargetHost}}:8080
         ports:
         - containerPort: 9999
       restartPolicy: OnFailure
 ---
+{{ end }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -62,7 +64,7 @@ spec:
         args:
         - -qps=1
         - -metric-addr=0.0.0.0:9999
-        - http://svc-opaque-unmeshed:8080
+        - http://{{ .ServiceCookerOpaqueUnmeshedSVCTargetHost}}:8080
         ports:
         - containerPort: 9999
       restartPolicy: OnFailure
