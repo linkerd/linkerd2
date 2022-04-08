@@ -151,20 +151,19 @@ impl Runner {
                 init_containers: Some(vec![k8s::api::core::v1::Container {
                     name: "wait-for-nginx".to_string(),
                     image: Some("docker.io/bitnami/kubectl:latest".to_string()),
-                    args: Some(
-                        vec![
-                            "wait",
-                            "--timeout=120s",
-                            "--for=delete",
-                            "--namespace",
-                            ns,
-                            "cm",
-                            "curl-lock",
-                        ]
-                        .into_iter()
-                        .map(Into::into)
-                        .collect(),
-                    ),
+                    // In CI, we can hit failures where the watch isn't updated
+                    // after the configmap is deleted, even with a long timeout.
+                    // Instead, we use a relatively short timeout and retry the
+                    // wait to get a better chance.
+                    command: Some(vec!["sh".to_string(),   "-c".to_string()]),
+                    args: Some(vec![format!(
+                        "for i in $(seq 12) ; do \
+                            if kubectl wait --timeout=10s --for=delete --namespace={ns} cm/curl-lock ; then \
+                                exit 0 ; \
+                            fi ; \
+                        done ; \
+                        exit 1"
+                    )]),
                     ..Default::default()
                 }]),
                 containers: vec![k8s::api::core::v1::Container {
