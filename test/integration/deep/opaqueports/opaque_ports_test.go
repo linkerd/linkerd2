@@ -202,6 +202,7 @@ func TestOpaquePortsCalledByPodIP(t *testing.T) {
 		if err := deployApplications(opaquePortsNs); err != nil {
 			testutil.AnnotatedFatal(t, "failed to deploy applications", err)
 		}
+
 		tmplArgs, err := templateArgsPodIP(ctx, opaquePortsNs)
 		if err != nil {
 			testutil.AnnotatedFatal(t, "failed to fetch service IPs", err)
@@ -271,6 +272,23 @@ func TestOpaquePortsCalledByPodIP(t *testing.T) {
 	})
 }
 
+func waitForAppDeploymentReady(opaquePortsNs string) {
+	TestHelper.WaitUntilDeployReady(map[string]testutil.DeploySpec{
+		opaquePodApp: {
+			Namespace: opaquePortsNs,
+			Replicas:  1,
+		},
+		opaqueSvcApp: {
+			Namespace: opaquePortsNs,
+			Replicas:  1,
+		},
+		opaqueUnmeshedSvcPod: {
+			Namespace: opaquePortsNs,
+			Replicas:  1,
+		},
+	})
+}
+
 func templateArgsServiceIP(ctx context.Context, ns string) (clientTemplateArgs, error) {
 	opaqueSvcServiceIP, err := getServiceIP(ctx, ns, serviceName(opaqueSvcApp))
 	if err != nil {
@@ -333,6 +351,7 @@ func deployApplications(ns string) error {
 	if err != nil {
 		return fmt.Errorf("failed apply deployment file %q: %w", out, err)
 	}
+	waitForAppDeploymentReady(ns)
 	return nil
 }
 
