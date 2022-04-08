@@ -11,7 +11,7 @@ arch=$(uname -m)
 
 bindir=$( cd "${0%/*}" && pwd )
 targetbin=$( cd "$bindir"/.. && pwd )/target/bin
-protocversion=3.15.8
+protocversion=3.20.0
 protocbin=$targetbin/protoc-$protocversion
 protocurl=https://github.com/google/protobuf/releases/download/v$protocversion/protoc-$protocversion-$os-$arch.zip
 
