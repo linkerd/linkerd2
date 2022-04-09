@@ -8,7 +8,6 @@
 bin
 !bin/fetch-proxy
 !bin/install-deps
-!bin/protoc
 !bin/scurl
 !bin/web
 **/Dockerfile*

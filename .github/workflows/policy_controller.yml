@@ -21,10 +21,10 @@ env:
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
   K3D_VERSION: v5.3.0
+  PROTOC_NO_VENDOR: 1
   PROXY_INIT_VERSION: v1.5.3
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
-  PROTOC_NO_VENDOR: 1
 
 
 jobs:
@@ -67,7 +67,7 @@ jobs:
           chmod 755 /usr/local/bin/cargo-action-fmt
       - run: cargo fetch --locked
       - name: Run cargo clippy
-        run: PROTOC=$PWD/bin/protoc cargo clippy --frozen --all --no-deps --message-format=json | cargo-action-fmt
+        run: cargo clippy --frozen --all --no-deps --message-format=json | cargo-action-fmt
 
   check:
     timeout-minutes: 20
@@ -82,7 +82,6 @@ jobs:
       - run: cargo fetch --locked
       # Check each crate independently to ensure its Cargo.toml is sufficient.
       - run: |
-          export PROTOC=$PWD/bin/protoc
           for toml in $(find . -mindepth 2 -name Cargo.toml | sort -r)
           do
             d=$(dirname "$toml")
@@ -100,9 +99,9 @@ jobs:
       - uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
       - run: cargo fetch --locked
       - name: Build tests
-        run: PROTOC=$PWD/bin/protoc cargo test --workspace --exclude=linkerd-policy-test --frozen --no-run
+        run: cargo test --workspace --exclude=linkerd-policy-test --frozen --no-run
       - name: Run cargo test
-        run: PROTOC=$PWD/bin/protoc cargo test --workspace --exclude=linkerd-policy-test --frozen
+        run: cargo test --workspace --exclude=linkerd-policy-test --frozen
 
   rust-toolchain:
     name: rust toolchain
@@ -196,7 +195,7 @@ jobs:
       # before doing extra work.
       - run: cargo fetch --locked
       - name: Build tests
-        run: PROTOC=$PWD/bin/protoc cargo test -p linkerd-policy-test --frozen --no-run | cargo-action-fmt
+        run: cargo test -p linkerd-policy-test --frozen --no-run | cargo-action-fmt
 
       - name: Download image archives
         uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
@@ -243,4 +242,4 @@ jobs:
       # Run the tests. We disable parallelism to avoid spurious timeouts caused
       # by resource contention.
       - name: Run cargo test
-        run: PROTOC=$PWD/bin/protoc cargo test -p linkerd-policy-test --frozen -- --test-threads=1
+        run: cargo test -p linkerd-policy-test --frozen -- --test-threads=1

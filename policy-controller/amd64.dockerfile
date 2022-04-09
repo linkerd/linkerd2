@@ -6,9 +6,6 @@ FROM $RUST_IMAGE as build
 ARG TARGETARCH
 WORKDIR /build
 COPY bin/scurl bin/scurl
-COPY bin/protoc bin/protoc
-ENV PROTOC_NO_VENDOR=1
-ENV PROTOC=/build/bin/protoc
 COPY Cargo.toml Cargo.lock .
 COPY policy-controller policy-controller
 RUN cargo new policy-test --lib
