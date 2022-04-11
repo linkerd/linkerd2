@@ -56,7 +56,8 @@ spec:
                 operator: In
                 values:
                 - linkerd-gateway
-            topologyKey: kubernetes.io/hostnamecontainers:
+            topologyKey: kubernetes.io/hostname
+      containers:
         - name: pause
           image: gcr.io/google_containers/pause:3.2
       serviceAccountName: linkerd-gateway

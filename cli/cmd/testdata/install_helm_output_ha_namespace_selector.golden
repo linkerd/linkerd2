@@ -741,7 +741,8 @@ spec:
                 operator: In
                 values:
                 - identity
-            topologyKey: kubernetes.io/hostnamecontainers:
+            topologyKey: kubernetes.io/hostname
+      containers:
       - args:
         - identity
         - -log-level=info
@@ -1133,7 +1134,8 @@ spec:
                 operator: In
                 values:
                 - destination
-            topologyKey: kubernetes.io/hostnamecontainers:
+            topologyKey: kubernetes.io/hostname
+      containers:
       - env:
         - name: _pod_name
           valueFrom:
@@ -1540,7 +1542,8 @@ spec:
                 operator: In
                 values:
                 - proxy-injector
-            topologyKey: kubernetes.io/hostnamecontainers:
+            topologyKey: kubernetes.io/hostname
+      containers:
       - env:
         - name: _pod_name
           valueFrom:
