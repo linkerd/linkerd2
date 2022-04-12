@@ -1,6 +1,7 @@
 package opaqueports
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"html/template"
@@ -64,7 +65,7 @@ func TestOpaquePortsCalledByServiceName(t *testing.T) {
 			ServiceCookerOpaquePodTargetHost:         serviceName(opaquePodApp),
 			ServiceCookerOpaqueUnmeshedSVCTargetHost: serviceName(opaqueUnmeshedSvcApp),
 		}
-		if err := deployClients(t, opaquePortsNs, tmplArgs); err != nil {
+		if err := deployClients(opaquePortsNs, tmplArgs); err != nil {
 			testutil.AnnotatedFatal(t, "failed to deploy client pods", err)
 		}
 
@@ -140,7 +141,7 @@ func TestOpaquePortsCalledByServiceIP(t *testing.T) {
 			testutil.AnnotatedFatal(t, "failed to fetch service IPs", err)
 		}
 
-		if err := deployClients(t, opaquePortsNs, tmplArgs); err != nil {
+		if err := deployClients(opaquePortsNs, tmplArgs); err != nil {
 			testutil.AnnotatedFatal(t, "failed to deploy client pods", err)
 		}
 		tests := []struct {
@@ -208,7 +209,7 @@ func TestOpaquePortsCalledByPodIP(t *testing.T) {
 			testutil.AnnotatedFatal(t, "failed to fetch service IPs", err)
 		}
 
-		if err := deployClients(t, opaquePortsNs, tmplArgs); err != nil {
+		if err := deployClients(opaquePortsNs, tmplArgs); err != nil {
 			testutil.AnnotatedFatal(t, "failed to deploy client pods", err)
 		}
 		tests := []struct {
@@ -355,27 +356,16 @@ func deployApplications(ns string) error {
 	return nil
 }
 
-func deployClients(t *testing.T, ns string, templateArgs clientTemplateArgs) error {
-	return deployTemplate(t, ns, opaquePortsClientTemplate, templateArgs)
+func deployClients(ns string, templateArgs clientTemplateArgs) error {
+	return deployTemplate(ns, opaquePortsClientTemplate, templateArgs)
 }
 
-func deployTemplate(t *testing.T, ns string, tmpl *template.Template, templateArgs interface{}) error {
-	deploymentFile, err := os.CreateTemp("", "deployment.yaml")
-	if err != nil {
-		return fmt.Errorf("failed to create temporary file: %w", err)
-	}
-	defer func() {
-		if err := os.Remove(deploymentFile.Name()); err != nil {
-			testutil.AnnotatedWarn(t, "failed to remove temporary file", "failed to remove temporary file: %w", err)
-		}
-	}()
-	if err := tmpl.Execute(deploymentFile, templateArgs); err != nil {
+func deployTemplate(ns string, tmpl *template.Template, templateArgs interface{}) error {
+	bb := &bytes.Buffer{}
+	if err := tmpl.Execute(bb, templateArgs); err != nil {
 		return fmt.Errorf("failed to write deployment template: %w", err)
 	}
-	if err := deploymentFile.Close(); err != nil {
-		return fmt.Errorf("failed to close deployment file: %w", err)
-	}
-	out, err := TestHelper.Kubectl("", "apply", "-f", deploymentFile.Name(), "-n", ns)
+	out, err := TestHelper.KubectlApply(bb.String(), ns)
 	if err != nil {
 		return fmt.Errorf("failed apply deployment file %q: %w", out, err)
 	}
