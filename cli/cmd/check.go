@@ -97,7 +97,7 @@ code.`,
 		Example: `  # Check that the Linkerd cluster-wide resource are installed correctly
   linkerd check config`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return configureAndRunChecks(cmd, stdout, stderr, configStage, options)
+			return configureAndRunChecks(cmd, stdout, stderr, options)
 		},
 	}
 
@@ -110,7 +110,7 @@ func newCmdCheck() *cobra.Command {
 	nonConfigFlags := options.nonConfigFlagSet()
 
 	cmd := &cobra.Command{
-		Use:   fmt.Sprintf("check [%s] [flags]", configStage),
+		Use:   "check [flags]",
 		Args:  cobra.NoArgs,
 		Short: "Check the Linkerd installation for potential problems",
 		Long: `Check the Linkerd installation for potential problems.
@@ -131,7 +131,7 @@ non-zero exit code.`,
   # Check that the Linkerd data plane proxies in the "app" namespace are up and running
   linkerd check --proxy --namespace app`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return configureAndRunChecks(cmd, stdout, stderr, "", options)
+			return configureAndRunChecks(cmd, stdout, stderr, options)
 		},
 	}
 
@@ -146,7 +146,7 @@ non-zero exit code.`,
 	return cmd
 }
 
-func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, stage string, options *checkOptions) error {
+func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, options *checkOptions) error {
 	err := options.validate()
 	if err != nil {
 		return fmt.Errorf("Validation error when executing check command: %w", err)
@@ -177,22 +177,20 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, s
 	} else {
 		checks = append(checks, healthcheck.LinkerdConfigChecks)
 
-		if stage != configStage {
-			checks = append(checks, healthcheck.LinkerdControlPlaneExistenceChecks)
-			checks = append(checks, healthcheck.LinkerdIdentity)
-			checks = append(checks, healthcheck.LinkerdWebhooksAndAPISvcTLS)
-			checks = append(checks, healthcheck.LinkerdControlPlaneProxyChecks)
+		checks = append(checks, healthcheck.LinkerdControlPlaneExistenceChecks)
+		checks = append(checks, healthcheck.LinkerdIdentity)
+		checks = append(checks, healthcheck.LinkerdWebhooksAndAPISvcTLS)
+		checks = append(checks, healthcheck.LinkerdControlPlaneProxyChecks)
 
-			if options.dataPlaneOnly {
-				checks = append(checks, healthcheck.LinkerdDataPlaneChecks)
-				checks = append(checks, healthcheck.LinkerdIdentityDataPlane)
-				checks = append(checks, healthcheck.LinkerdOpaquePortsDefinitionChecks)
-			} else {
-				checks = append(checks, healthcheck.LinkerdControlPlaneVersionChecks)
-			}
-			checks = append(checks, healthcheck.LinkerdCNIPluginChecks)
-			checks = append(checks, healthcheck.LinkerdHAChecks)
+		if options.dataPlaneOnly {
+			checks = append(checks, healthcheck.LinkerdDataPlaneChecks)
+			checks = append(checks, healthcheck.LinkerdIdentityDataPlane)
+			checks = append(checks, healthcheck.LinkerdOpaquePortsDefinitionChecks)
+		} else {
+			checks = append(checks, healthcheck.LinkerdControlPlaneVersionChecks)
 		}
+		checks = append(checks, healthcheck.LinkerdCNIPluginChecks)
+		checks = append(checks, healthcheck.LinkerdHAChecks)
 	}
 
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
@@ -286,7 +284,7 @@ func renderInstallManifest(ctx context.Context) (*charts.Values, string, error) 
 	}
 
 	var b strings.Builder
-	err = install(ctx, &b, values, []flag.Flag{}, "", valuespkg.Options{})
+	err = install(ctx, &b, values, []flag.Flag{}, false, valuespkg.Options{})
 	if err != nil {
 		return values, "", err
 	}

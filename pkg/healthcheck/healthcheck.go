@@ -639,21 +639,21 @@ func (hc *HealthChecker) allCategories() []*Category {
 					description: "no ClusterRoles exist",
 					hintAnchor:  "pre-l5d-existence",
 					check: func(ctx context.Context) error {
-						return hc.checkClusterRoles(ctx, false, hc.expectedRBACNames(), hc.controlPlaneComponentsSelector())
+						return hc.checkClusterRoles(ctx, false, hc.expectedRBACNames(), controlPlaneComponentsSelector())
 					},
 				},
 				{
 					description: "no ClusterRoleBindings exist",
 					hintAnchor:  "pre-l5d-existence",
 					check: func(ctx context.Context) error {
-						return hc.checkClusterRoleBindings(ctx, false, hc.expectedRBACNames(), hc.controlPlaneComponentsSelector())
+						return hc.checkClusterRoleBindings(ctx, false, hc.expectedRBACNames(), controlPlaneComponentsSelector())
 					},
 				},
 				{
 					description: "no CustomResourceDefinitions exist",
 					hintAnchor:  "pre-l5d-existence",
 					check: func(ctx context.Context) error {
-						return hc.checkCustomResourceDefinitions(ctx, false)
+						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, false)
 					},
 				},
 				{
@@ -693,7 +693,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 						if hc.isHeartbeatDisabled() {
 							return nil
 						}
-						return hc.checkServiceAccounts(ctx, []string{"linkerd-heartbeat"}, hc.ControlPlaneNamespace, hc.controlPlaneComponentsSelector())
+						return hc.checkServiceAccounts(ctx, []string{"linkerd-heartbeat"}, hc.ControlPlaneNamespace, controlPlaneComponentsSelector())
 					},
 				},
 				{
@@ -793,7 +793,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					hintAnchor:  "l5d-existence-cr",
 					fatal:       true,
 					check: func(ctx context.Context) error {
-						return hc.checkClusterRoles(ctx, true, hc.expectedRBACNames(), hc.controlPlaneComponentsSelector())
+						return hc.checkClusterRoles(ctx, true, hc.expectedRBACNames(), controlPlaneComponentsSelector())
 					},
 				},
 				{
@@ -801,7 +801,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					hintAnchor:  "l5d-existence-crb",
 					fatal:       true,
 					check: func(ctx context.Context) error {
-						return hc.checkClusterRoleBindings(ctx, true, hc.expectedRBACNames(), hc.controlPlaneComponentsSelector())
+						return hc.checkClusterRoleBindings(ctx, true, hc.expectedRBACNames(), controlPlaneComponentsSelector())
 					},
 				},
 				{
@@ -809,7 +809,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					hintAnchor:  "l5d-existence-sa",
 					fatal:       true,
 					check: func(ctx context.Context) error {
-						return hc.checkServiceAccounts(ctx, ExpectedServiceAccountNames, hc.ControlPlaneNamespace, hc.controlPlaneComponentsSelector())
+						return hc.checkServiceAccounts(ctx, ExpectedServiceAccountNames, hc.ControlPlaneNamespace, controlPlaneComponentsSelector())
 					},
 				},
 				{
@@ -817,7 +817,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					hintAnchor:  "l5d-existence-crd",
 					fatal:       true,
 					check: func(ctx context.Context) error {
-						return hc.checkCustomResourceDefinitions(ctx, true)
+						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, true)
 					},
 				},
 				{
@@ -1676,7 +1676,7 @@ func (hc *HealthChecker) runCheck(category *Category, c *Checker, observer Check
 	}
 }
 
-func (hc *HealthChecker) controlPlaneComponentsSelector() string {
+func controlPlaneComponentsSelector() string {
 	return fmt.Sprintf("%s,!%s", k8s.ControllerNSLabel, LinkerdCNIResourceLabel)
 }
 
@@ -2051,24 +2051,6 @@ func CheckIfLinkerdExists(ctx context.Context, kubeAPI *k8s.KubernetesAPI, contr
 	return true, nil
 }
 
-func (hc *HealthChecker) checkCustomResourceDefinitions(ctx context.Context, shouldExist bool) error {
-	options := metav1.ListOptions{
-		LabelSelector: hc.controlPlaneComponentsSelector(),
-	}
-	crdList, err := hc.kubeAPI.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().List(ctx, options)
-	if err != nil {
-		return err
-	}
-
-	objects := []runtime.Object{}
-	for _, item := range crdList.Items {
-		item := item // pin
-		objects = append(objects, &item)
-	}
-
-	return checkResources("CustomResourceDefinitions", objects, []string{"serviceprofiles.linkerd.io"}, shouldExist)
-}
-
 func (hc *HealthChecker) getProxyInjectorMutatingWebhook(ctx context.Context) (*admissionRegistration.MutatingWebhook, error) {
 	mwc, err := hc.kubeAPI.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(ctx, k8s.ProxyInjectorWebhookConfigName, metav1.GetOptions{})
 	if err != nil {
@@ -2090,7 +2072,7 @@ func (hc *HealthChecker) getMutatingWebhookFailurePolicy(ctx context.Context) (*
 
 func (hc *HealthChecker) checkMutatingWebhookConfigurations(ctx context.Context, shouldExist bool) error {
 	options := metav1.ListOptions{
-		LabelSelector: hc.controlPlaneComponentsSelector(),
+		LabelSelector: controlPlaneComponentsSelector(),
 	}
 	mwc, err := hc.kubeAPI.AdmissionregistrationV1().MutatingWebhookConfigurations().List(ctx, options)
 	if err != nil {
@@ -2108,7 +2090,7 @@ func (hc *HealthChecker) checkMutatingWebhookConfigurations(ctx context.Context,
 
 func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Context, shouldExist bool) error {
 	options := metav1.ListOptions{
-		LabelSelector: hc.controlPlaneComponentsSelector(),
+		LabelSelector: controlPlaneComponentsSelector(),
 	}
 	vwc, err := hc.kubeAPI.AdmissionregistrationV1().ValidatingWebhookConfigurations().List(ctx, options)
 	if err != nil {
@@ -2122,6 +2104,33 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Contex
 	}
 
 	return checkResources("ValidatingWebhookConfigurations", objects, []string{k8s.SPValidatorWebhookConfigName}, shouldExist)
+}
+
+// CheckCustomResourceDefinitions checks that all of the Linkerd CRDs are
+// installed on the cluster.
+func CheckCustomResourceDefinitions(ctx context.Context, k8sAPI *k8s.KubernetesAPI, shouldExist bool) error {
+	options := metav1.ListOptions{
+		LabelSelector: controlPlaneComponentsSelector(),
+	}
+	crdList, err := k8sAPI.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().List(ctx, options)
+	if err != nil {
+		return err
+	}
+
+	objects := []runtime.Object{}
+	for _, item := range crdList.Items {
+		item := item // pin
+		objects = append(objects, &item)
+	}
+
+	return checkResources("CustomResourceDefinitions", objects, []string{
+		"authorizationpolicies.policy.linkerd.io",
+		"meshtlsauthentications.policy.linkerd.io",
+		"networkauthentications.policy.linkerd.io",
+		"servers.policy.linkerd.io",
+		"serverauthorizations.policy.linkerd.io",
+		"serviceprofiles.linkerd.io",
+	}, shouldExist)
 }
 
 // CheckNodesHaveNonDockerRuntime checks that each node has a non-Docker

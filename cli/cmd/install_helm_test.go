@@ -291,12 +291,6 @@ func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOut
 
 	linkerd2Chart.AddDependency(chartPartials)
 
-	for _, filepath := range templatesConfigStage {
-		linkerd2Chart.Templates = append(linkerd2Chart.Templates, &chart.File{
-			Name: filepath,
-		})
-	}
-
 	for _, filepath := range templatesControlPlaneStage {
 		linkerd2Chart.Templates = append(linkerd2Chart.Templates, &chart.File{
 			Name: filepath,
