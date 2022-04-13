@@ -111,7 +111,54 @@ control plane.`,
 The installation can be configured by using the --set, --values, --set-string and --set-file flags.
 A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return install(cmd.Context(), os.Stdout, values, flags, crds, options)
+			// Create values override
+			valuesOverrides, err := options.MergeValues(nil)
+			if err != nil {
+				return err
+			}
+			var k8sAPI *k8s.KubernetesAPI
+			if !ignoreCluster {
+				// Ensure k8s is reachable
+				if err := errAfterRunningChecks(values.CNIEnabled); err != nil {
+					if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
+						fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
+					}
+					os.Exit(1)
+				}
+
+				// Ensure there is not already an existing Linkerd installation.
+				k8sAPI, err = k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 30*time.Second)
+				if err != nil {
+					return err
+				}
+
+				// We just want to check if `linkerd-configmap` exists
+				_, err := k8sAPI.CoreV1().ConfigMaps(controlPlaneNamespace).Get(cmd.Context(), k8s.ConfigConfigMapName, metav1.GetOptions{})
+				if err == nil {
+					fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, "ConfigMap/linkerd-config already exists")
+					os.Exit(1)
+				}
+				if !kerrors.IsNotFound(err) {
+					return err
+				}
+
+				if !isRunAsRoot(valuesOverrides) {
+					err = healthcheck.CheckNodesHaveNonDockerRuntime(cmd.Context(), k8sAPI)
+					if err != nil {
+						fmt.Fprintln(os.Stderr, err)
+						os.Exit(1)
+					}
+				}
+
+				if !crds {
+					err = healthcheck.CheckCustomResourceDefinitions(cmd.Context(), k8sAPI, true)
+					if err != nil {
+						fmt.Fprintln(os.Stderr, "Linkerd CRDs must be installed first. Run linkerd install with the --crds flag.")
+						os.Exit(1)
+					}
+				}
+			}
+			return install(cmd.Context(), k8sAPI, os.Stdout, values, flags, crds, valuesOverrides)
 		},
 	}
 
@@ -127,59 +174,10 @@ A full list of configurable values can be found at https://www.github.com/linker
 	return cmd
 }
 
-func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, crds bool, options valuespkg.Options) error {
+func install(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, crds bool, valuesOverrides map[string]interface{}) error {
 	err := flag.ApplySetFlags(values, flags)
 	if err != nil {
 		return err
-	}
-
-	// Create values override
-	valuesOverrides, err := options.MergeValues(nil)
-	if err != nil {
-		return err
-	}
-
-	var k8sAPI *k8s.KubernetesAPI
-	if !ignoreCluster {
-		// Ensure k8s is reachable
-		if err := errAfterRunningChecks(values.CNIEnabled); err != nil {
-			if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
-				fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
-			}
-			os.Exit(1)
-		}
-
-		// Ensure there is not already an existing Linkerd installation.
-		k8sAPI, err = k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 30*time.Second)
-		if err != nil {
-			return err
-		}
-
-		// We just want to check if `linkerd-configmap` exists
-		_, err := k8sAPI.CoreV1().ConfigMaps(controlPlaneNamespace).Get(ctx, k8s.ConfigConfigMapName, metav1.GetOptions{})
-		if err == nil {
-			fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, "ConfigMap/linkerd-config already exists")
-			os.Exit(1)
-		}
-		if !kerrors.IsNotFound(err) {
-			return err
-		}
-
-		if !isRunAsRoot(valuesOverrides) {
-			err = healthcheck.CheckNodesHaveNonDockerRuntime(ctx, k8sAPI)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
-			}
-		}
-
-		if !crds {
-			err = healthcheck.CheckCustomResourceDefinitions(ctx, k8sAPI, true)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "Linkerd CRDs must be installed first. Run linkerd install with the --crds flag.")
-				os.Exit(1)
-			}
-		}
 	}
 
 	err = initializeIssuerCredentials(ctx, k8sAPI, values)

@@ -17,7 +17,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	valuespkg "helm.sh/helm/v3/pkg/cli/values"
 )
 
 type checkOptions struct {
@@ -283,8 +282,14 @@ func renderInstallManifest(ctx context.Context) (*charts.Values, string, error) 
 		return nil, "", err
 	}
 
+	// Ensure there is not already an existing Linkerd installation.
+	k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 30*time.Second)
+	if err != nil {
+		return values, "", err
+	}
+
 	var b strings.Builder
-	err = install(ctx, &b, values, []flag.Flag{}, false, valuespkg.Options{})
+	err = install(ctx, k8sAPI, &b, values, []flag.Flag{}, false, nil)
 	if err != nil {
 		return values, "", err
 	}
