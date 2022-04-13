@@ -181,36 +181,10 @@ func TestUpgradeCli(t *testing.T) {
 		"--controller-log-level", "debug",
 		"--set", "proxyInit.ignoreInboundPorts=1234\\,5678",
 		"--set", "heartbeatSchedule=1 2 3 4 5",
+		"--set", "proxyInit.ignoreOutboundPorts=1234\\,5678",
 	}
-
-	// test 2-stage install during upgrade
-	out, err := TestHelper.LinkerdRun(cmd, "config")
-	if err != nil {
-		testutil.AnnotatedFatal(t, "'linkerd upgrade config' command failed", err)
-	}
-
-	// apply stage 1
-	// Limit the pruning only to known resources
-	// that we intend to be delete in this stage to prevent it
-	// from deleting other resources that have the
-	// label
-	out, err = TestHelper.KubectlApplyWithArgs(out, []string{
-		"--prune",
-		"-l", "linkerd.io/control-plane-ns=linkerd",
-		"--prune-whitelist", "rbac.authorization.k8s.io/v1/clusterrole",
-		"--prune-whitelist", "rbac.authorization.k8s.io/v1/clusterrolebinding",
-		"--prune-whitelist", "apiregistration.k8s.io/v1/apiservice",
-	}...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-			"kubectl apply command failed\n%s", out)
-	}
-
-	// prepare for stage 2
-	args = append([]string{"control-plane"}, args...)
-	args = append(args, "--set", "proxyInit.ignoreOutboundPorts=1234\\,5678")
 	exec := append([]string{cmd}, args...)
-	out, err = TestHelper.LinkerdRun(exec...)
+	out, err := TestHelper.LinkerdRun(exec...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd upgrade' command failed", err)
 	}
