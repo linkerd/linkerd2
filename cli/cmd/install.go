@@ -41,17 +41,6 @@ const (
 
 You can use the --ignore-cluster flag if you just want to generate the installation config.`
 
-	errMsgGlobalResourcesExist = `Unable to install the Linkerd control plane. It appears that there is an existing installation:
-
-%s
-
-If you are sure you'd like to have a fresh install, remove these resources with:
-
-    linkerd install --ignore-cluster | kubectl delete -f -
-
-Otherwise, you can use the --ignore-cluster flag to overwrite the existing global resources.
-`
-
 	errMsgLinkerdConfigResourceConflict = "Can't install the Linkerd control plane in the '%s' namespace. Reason: %s.\nRun the command `linkerd upgrade`, if you are looking to upgrade Linkerd.\n"
 )
 
@@ -152,12 +141,10 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 
 	var k8sAPI *k8s.KubernetesAPI
 	if !ignoreCluster {
-		// Ensure k8s is reachable and that Linkerd is not already installed.
+		// Ensure k8s is reachable
 		if err := errAfterRunningChecks(values.CNIEnabled); err != nil {
 			if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
 				fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
-			} else {
-				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, err)
 			}
 			os.Exit(1)
 		}
@@ -379,7 +366,6 @@ func renderOverrides(values chartutil.Values, stringData bool) ([]byte, error) {
 func errAfterRunningChecks(cniEnabled bool) error {
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
-		healthcheck.LinkerdPreInstallGlobalResourcesChecks,
 	}
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
@@ -396,21 +382,8 @@ func errAfterRunningChecks(cniEnabled bool) error {
 	hc.RunChecks(func(result *healthcheck.CheckResult) {
 		if result.Err != nil {
 			var ce healthcheck.CategoryError
-			if errors.As(result.Err, &ce) {
-				if ce.Category == healthcheck.KubernetesAPIChecks {
-					k8sAPIError = ce
-				} else {
-					var re healthcheck.ResourceError
-					if errors.As(ce.Err, &re) {
-						// resource error, print in kind.group/name format
-						for _, res := range re.Resources {
-							errMsgs = append(errMsgs, res.String())
-						}
-					} else {
-						// unknown category error, just print it
-						errMsgs = append(errMsgs, result.Err.Error())
-					}
-				}
+			if errors.As(result.Err, &ce) && ce.Category == healthcheck.KubernetesAPIChecks {
+				k8sAPIError = ce
 			} else {
 				// unknown error, just print it
 				errMsgs = append(errMsgs, result.Err.Error())
