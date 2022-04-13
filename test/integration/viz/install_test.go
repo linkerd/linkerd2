@@ -36,8 +36,10 @@ func TestMain(m *testing.M) {
 // TestInstallLinkerd will install the linkerd control plane to be used in the rest of
 // the deep suite tests
 func TestInstallLinkerd(t *testing.T) {
+	// Install CRDs
 	cmd := []string{
 		"install",
+		"--crds",
 		"--controller-log-level", "debug",
 		"--set", fmt.Sprintf("proxy.image.version=%s", TestHelper.GetVersion()),
 		"--set", "heartbeatSchedule=1 2 3 4 5",
@@ -45,6 +47,26 @@ func TestInstallLinkerd(t *testing.T) {
 
 	// Pipe cmd & args to `linkerd`
 	out, err := TestHelper.LinkerdRun(cmd...)
+	if err != nil {
+		testutil.AnnotatedFatal(t, "'linkerd install --crds' command failed", err)
+	}
+
+	out, err = TestHelper.KubectlApplyWithArgs(out)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", out)
+	}
+
+	// Install control-plane
+	cmd = []string{
+		"install",
+		"--controller-log-level", "debug",
+		"--set", fmt.Sprintf("proxy.image.version=%s", TestHelper.GetVersion()),
+		"--set", "heartbeatSchedule=1 2 3 4 5",
+	}
+
+	// Pipe cmd & args to `linkerd`
+	out, err = TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd install' command failed", err)
 	}
