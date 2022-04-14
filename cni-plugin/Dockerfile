@@ -22,6 +22,7 @@ FROM debian:buster-20210208-slim
 WORKDIR /linkerd
 RUN apt-get update && apt-get install -y --no-install-recommends \
     iptables \
+    inotify-tools \
     jq && \
     rm -rf /var/lib/apt/lists/*
 

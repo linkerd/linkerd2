@@ -218,3 +218,9 @@ while [ "${should_sleep}" = 'true'  ]; do
   sleep infinity &
   wait $!
 done
+# inotifywait -e close_write,moved_to,create -m . |
+# while read -r directory events filename; do
+#  if [ "$filename" == "myfile.py" ]; then
+#   execute_command
+#  fi
+#  done
