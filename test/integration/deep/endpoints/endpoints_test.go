@@ -49,6 +49,7 @@ func TestGoodEndpoints(t *testing.T) {
 
 		endpointCases := createTestCaseTable(controlNs, ns)
 		for _, endpointCase := range endpointCases {
+			endpointCase := endpointCase // pin
 			testName := fmt.Sprintf("expect endpoints created for %s", endpointCase.name)
 
 			t.Run(testName, func(t *testing.T) {
