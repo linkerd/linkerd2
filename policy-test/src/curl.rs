@@ -23,7 +23,10 @@ impl Runner {
             namespace: ns.to_string(),
             client: client.clone(),
         };
-        runner.create_rbac().await;
+        tokio::time::timeout(tokio::time::Duration::from_secs(60), runner.create_rbac())
+            .await
+            .expect("must create RBAC within a minute");
+
         runner
     }
 
@@ -92,6 +95,7 @@ impl Runner {
             },
         )
         .await;
+        super::await_service_account(&self.client, &self.namespace, "curl").await;
 
         create(
             &self.client,
