@@ -762,9 +762,6 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 		} else {
 			golden = "check.proxy.golden"
 		}
-	} else if stage == "config" {
-		cmd = []string{"check", "config", "--expected-version", expectedVersion, "--wait=60m"}
-		golden = "check.config.golden"
 	} else {
 		cmd = []string{"check", "--expected-version", expectedVersion, "--wait=60m"}
 		if TestHelper.CNI() {
@@ -852,11 +849,6 @@ func getCheckOutput(t *testing.T, goldenFile string, namespace string) string {
 	}
 
 	return expected.String()
-}
-
-// TODO: run this after a `linkerd install config`
-func TestCheckConfigPostInstall(t *testing.T) {
-	testCheckCommand(t, "config", TestHelper.GetVersion(), "", "")
 }
 
 func TestCheckPostInstall(t *testing.T) {

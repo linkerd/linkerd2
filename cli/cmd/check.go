@@ -80,29 +80,6 @@ func (options *checkOptions) validate() error {
 	return nil
 }
 
-// newCmdCheckConfig is a subcommand for `linkerd check config`
-func newCmdCheckConfig(options *checkOptions) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "config [flags]",
-		Args:  cobra.NoArgs,
-		Short: "Check the Linkerd cluster-wide resources for potential problems",
-		Long: `Check the Linkerd cluster-wide resources for potential problems.
-
-The check command will perform a series of checks to validate that the Linkerd
-cluster-wide resources are configured correctly. It is intended to validate that
-"linkerd install config" succeeded. If the command encounters a failure it will
-print additional information about the failure and exit with a non-zero exit
-code.`,
-		Example: `  # Check that the Linkerd cluster-wide resource are installed correctly
-  linkerd check config`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return configureAndRunChecks(cmd, stdout, stderr, options)
-		},
-	}
-
-	return cmd
-}
-
 func newCmdCheck() *cobra.Command {
 	options := newCheckOptions()
 	checkFlags := options.checkFlagSet()
@@ -136,8 +113,6 @@ non-zero exit code.`,
 
 	cmd.PersistentFlags().AddFlagSet(checkFlags)
 	cmd.Flags().AddFlagSet(nonConfigFlags)
-
-	cmd.AddCommand(newCmdCheckConfig(options))
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(cmd, []string{"namespace"},
 		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
