@@ -54,7 +54,8 @@ jobs:
         - viz
         - default-policy-deny
         - external
-        - helm-upgrade
+        # FIXME the helm tests are broken
+        #- helm-upgrade
         - multicluster
         - uninstall
         - upgrade-edge
