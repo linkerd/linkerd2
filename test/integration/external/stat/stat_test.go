@@ -136,6 +136,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			{
 				args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetVizNamespace()},
 				expectedRows: map[string]string{
+					"grafana":      "1/1",
 					"metrics-api":  "1/1",
 					"tap":          "1/1",
 					"web":          "1/1",
@@ -145,7 +146,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			{
 				args: []string{"viz", "stat", "ns", TestHelper.GetVizNamespace()},
 				expectedRows: map[string]string{
-					TestHelper.GetVizNamespace(): "4/4",
+					TestHelper.GetVizNamespace(): "5/5",
 				},
 			},
 			{
@@ -167,6 +168,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			{
 				args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetVizNamespace()},
 				expectedRows: map[string]string{
+					"grafana":      "1/1",
 					"metrics-api":  "1/1",
 					"tap":          "1/1",
 					"web":          "1/1",
@@ -176,7 +178,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			{
 				args: []string{"viz", "stat", "ns", TestHelper.GetVizNamespace()},
 				expectedRows: map[string]string{
-					TestHelper.GetVizNamespace(): "4/4",
+					TestHelper.GetVizNamespace(): "5/5",
 				},
 			},
 		}...,
