@@ -189,45 +189,6 @@ func TestUpgradeCli(t *testing.T) {
 		testutil.AnnotatedFatal(t, "'linkerd upgrade' command failed", err)
 	}
 
-	// test `linkerd upgrade --from-manifests`
-	kubeArgs := append([]string{"--namespace", TestHelper.GetLinkerdNamespace(), "get"}, "configmaps", "-oyaml")
-	configManifests, err := TestHelper.Kubectl("", kubeArgs...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl get' command failed",
-			"'kubectl get' command failed with %s\n%s\n%s", err, configManifests, kubeArgs)
-	}
-
-	kubeArgs = append([]string{"--namespace", TestHelper.GetLinkerdNamespace(), "get"}, "secrets", "-oyaml")
-	secretManifests, err := TestHelper.Kubectl("", kubeArgs...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl get' command failed",
-			"'kubectl get' command failed with %s\n%s\n%s", err, secretManifests, kubeArgs)
-	}
-
-	manifests := configManifests + "---\n" + secretManifests
-
-	exec = append(exec, "--from-manifests", "-")
-	upgradeFromManifests, stderr, err := TestHelper.PipeToLinkerdRun(manifests, exec...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd upgrade --from-manifests' command failed",
-			"'linkerd upgrade --from-manifests' command failed with %s\n%s\n%s\n%s", err, stderr, upgradeFromManifests, manifests)
-	}
-
-	if out != upgradeFromManifests {
-		// retry in case it's just a discrepancy in the heartbeat cron schedule
-		exec := append([]string{cmd}, args...)
-		out, err := TestHelper.LinkerdRun(exec...)
-		if err != nil {
-			testutil.AnnotatedFatalf(t, fmt.Sprintf("command failed: %v", exec),
-				"command failed: %v\n%s\n%s", exec, out, stderr)
-		}
-
-		if out != upgradeFromManifests {
-			testutil.AnnotatedFatalf(t, "manifest upgrade differs from k8s upgrade",
-				"manifest upgrade differs from k8s upgrade.\nk8s upgrade:\n%s\nmanifest upgrade:\n%s", out, upgradeFromManifests)
-		}
-	}
-
 	// Limit the pruning only to known resources
 	// that we intend to be delete in this stage to prevent it
 	// from deleting other resources that have the
