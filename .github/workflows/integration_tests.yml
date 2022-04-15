@@ -51,11 +51,11 @@ jobs:
         integration_test:
         - cluster-domain
         - deep
-        - external-issuer
-        - external-prometheus-deep
-        - external-resources
-        - helm-deep
-        - helm-upgrade
+        - viz
+        - default-policy-deny
+        - external
+        # FIXME the helm tests are broken
+        #- helm-upgrade
         - multicluster
         - uninstall
         - upgrade-edge

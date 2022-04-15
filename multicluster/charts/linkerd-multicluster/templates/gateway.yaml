@@ -9,16 +9,21 @@ metadata:
     app.kubernetes.io/name: gateway
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{.Values.linkerdVersion}}
-    linkerd.io/control-plane-component: gateway
+    component: gateway
     app: {{.Values.gateway.name}}
     linkerd.io/extension: multicluster
   name: {{.Values.gateway.name}}
   namespace: {{.Values.namespace}}
 spec:
-  replicas: 1
+  replicas: {{.Values.gateway.replicas}}
   selector:
     matchLabels:
       app: {{.Values.gateway.name}}
+  {{- if .Values.enablePodAntiAffinity }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+  {{- end }}
   template:
     metadata:
       annotations:
@@ -29,10 +34,31 @@ spec:
       labels:
         app: {{.Values.gateway.name}}
     spec:
+      {{- if .Values.enablePodAntiAffinity -}}
+      {{- $local := dict "label" "app" "component" .Values.gateway.name -}}
+      {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
+      {{- end }}
       containers:
         - name: pause
-          image: gcr.io/google_containers/pause
+          image: gcr.io/google_containers/pause:3.2
       serviceAccountName: {{.Values.gateway.name}}
+{{- if .Values.enablePodAntiAffinity }}
+---
+kind: PodDisruptionBudget
+apiVersion: policy/v1
+metadata:
+  name: {{.Values.gateway.name}}
+  namespace: {{.Values.namespace}}
+  labels:
+    app: {{.Values.gateway.name}}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: {{.Values.gateway.name}}
+{{- end }}
 ---
 apiVersion: v1
 kind: Service
@@ -46,7 +72,7 @@ metadata:
     mirror.linkerd.io/probe-period: "{{.Values.gateway.probe.seconds}}"
     mirror.linkerd.io/probe-path: {{.Values.gateway.probe.path}}
     mirror.linkerd.io/multicluster-gateway: "true"
-    linkerd.io/control-plane-component: gateway
+    component: gateway
     {{ include "partials.annotations.created-by" . }}
     {{- with .Values.gateway.serviceAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:

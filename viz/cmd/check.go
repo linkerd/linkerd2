@@ -92,7 +92,8 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	if options.proxy {
 		hc.AppendCategories(hc.VizDataPlaneCategory())
 	}
-	success := healthcheck.RunChecks(wout, werr, hc, options.output)
+	success, warning := healthcheck.RunChecks(wout, werr, hc, options.output)
+	healthcheck.PrintChecksResult(wout, options.output, success, warning)
 
 	if !success {
 		os.Exit(1)

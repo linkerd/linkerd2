@@ -1197,6 +1197,13 @@ webhooks:
       operator: NotIn
       values:
       - disabled
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+      - kube-system
+      - cert-manager
+  objectSelector:
+    null
   clientConfig:
     service:
       name: linkerd-proxy-injector
@@ -1291,7 +1298,7 @@ data:
     linkerdVersion: linkerd-version
     namespace: linkerd
     nodeSelector:
-      beta.kubernetes.io/os: linux
+      kubernetes.io/os: linux
     podAnnotations:
       asda: fasda
       bingo: bongo
@@ -1387,6 +1394,7 @@ data:
         memory:
           limit: 50Mi
           request: 10Mi
+      runAsRoot: false
       saMountPath: null
       skipSubnets: ""
       xtMountPath:
@@ -1403,6 +1411,11 @@ data:
           operator: NotIn
           values:
           - disabled
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+          - kube-system
+          - cert-manager
     proxyInjectorProxyResources: null
     proxyInjectorResources:
       cpu:
@@ -1547,7 +1560,7 @@ spec:
         foo: bar
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -1578,6 +1591,7 @@ spec:
         - -identity-issuance-lifetime=24h0m0s
         - -identity-clock-skew-allowance=20s
         - -identity-scheme=linkerd.io/tls
+        - -enable-pprof=false
         env:
         - name: LINKERD_DISABLED
           value: "linkerd-await cannot block the identity controller"
@@ -1938,7 +1952,7 @@ spec:
         foo: bar
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -2094,6 +2108,7 @@ spec:
         - -cluster-domain=cluster.local
         - -identity-trust-domain=test.trust.domain
         - -default-opaque-ports=25,587,3306,4444,5432,6379,9300,11211
+        - -enable-pprof=false
         image: cr.l5d.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2124,6 +2139,7 @@ spec:
         - sp-validator
         - -log-level=info
         - -log-format=plain
+        - -enable-pprof=false
         image: cr.l5d.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2273,7 +2289,7 @@ spec:
             bingo: bongo
         spec:
           nodeSelector:
-            beta.kubernetes.io/os: linux
+            kubernetes.io/os: linux
           serviceAccountName: linkerd-heartbeat
           restartPolicy: Never
           containers:
@@ -2327,7 +2343,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: cf6b4520e0ad2b0010db5a18443bd632c87ac0216f8f118e723e0f33f5842d7e
+        checksum/config: 4dbc476a3ebb9d5d79b839057027dfb470df94d7126384c78efd6e15161be8c1
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
@@ -2344,7 +2360,7 @@ spec:
         foo: bar
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -2493,6 +2509,7 @@ spec:
         - proxy-injector
         - -log-level=info
         - -log-format=plain
+        - -enable-pprof=false
         image: cr.l5d.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

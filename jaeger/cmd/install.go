@@ -38,6 +38,7 @@ var (
 func newCmdInstall() *cobra.Command {
 	var registry string
 	var skipChecks bool
+	var ignoreCluster bool
 	var wait time.Duration
 	var options values.Options
 
@@ -55,7 +56,7 @@ The installation can be configured by using the --set, --values, --set-string an
 A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/jaeger/charts/linkerd-jaeger/README.md
   `,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !skipChecks {
+			if !skipChecks && !ignoreCluster {
 				// Wait for the core control-plane to be up and running
 				api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
 					ControlPlaneNamespace: controlPlaneNamespace,
@@ -75,6 +76,8 @@ A full list of configurable values can be found at https://www.github.com/linker
 	cmd.Flags().StringVar(&registry, "registry", "cr.l5d.io/linkerd",
 		fmt.Sprintf("Docker registry to pull jaeger-webhook image from ($%s)", flags.EnvOverrideDockerRegistry))
 	cmd.Flags().BoolVar(&skipChecks, "skip-checks", false, `Skip checks for linkerd core control-plane existence`)
+	cmd.Flags().BoolVar(&ignoreCluster, "ignore-cluster", false,
+		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)")
 	cmd.Flags().DurationVar(&wait, "wait", 300*time.Second, "Wait for core control-plane components to be available")
 
 	flags.AddValueOptionsFlags(cmd.Flags(), &options)

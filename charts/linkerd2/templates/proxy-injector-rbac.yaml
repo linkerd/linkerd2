@@ -83,6 +83,8 @@ webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:
     {{- toYaml .Values.proxyInjector.namespaceSelector | trim | nindent 4 }}
+  objectSelector:
+    {{- toYaml .Values.proxyInjector.objectSelector | trim | nindent 4 }}
   clientConfig:
     service:
       name: linkerd-proxy-injector

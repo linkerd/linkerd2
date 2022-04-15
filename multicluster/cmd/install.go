@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"time"
@@ -38,8 +39,10 @@ type (
 
 func newMulticlusterInstallCommand() *cobra.Command {
 	options, err := newMulticlusterInstallOptionsWithDefault()
+	var ha bool
 	var wait time.Duration
 	var valuesOptions valuespkg.Options
+	var ignoreCluster bool
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err)
@@ -57,100 +60,19 @@ The installation can be configured by using the --set, --values, --set-string an
 A full list of configurable values can be found at https://github.com/linkerd/linkerd2/blob/main/multicluster/charts/linkerd-multicluster/README.md
   `,
 		RunE: func(cmd *cobra.Command, args []string) error {
-
-			// Wait for the core control-plane to be up and running
-			api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
-				ControlPlaneNamespace: controlPlaneNamespace,
-				KubeConfig:            kubeconfigPath,
-				KubeContext:           kubeContext,
-				Impersonate:           impersonate,
-				ImpersonateGroup:      impersonateGroup,
-				APIAddr:               apiAddr,
-				RetryDeadline:         time.Now().Add(wait),
-			})
-
-			values, err := buildMulticlusterInstallValues(cmd.Context(), options)
-
-			if err != nil {
-				return err
+			if !ignoreCluster {
+				// Wait for the core control-plane to be up and running
+				api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
+					ControlPlaneNamespace: controlPlaneNamespace,
+					KubeConfig:            kubeconfigPath,
+					KubeContext:           kubeContext,
+					Impersonate:           impersonate,
+					ImpersonateGroup:      impersonateGroup,
+					APIAddr:               apiAddr,
+					RetryDeadline:         time.Now().Add(wait),
+				})
 			}
-
-			// Render raw values and create chart config
-			rawValues, err := yaml.Marshal(values)
-			if err != nil {
-				return err
-			}
-
-			files := []*chartloader.BufferedFile{
-				{Name: chartutil.ChartfileName},
-				{Name: "templates/namespace.yaml"},
-				{Name: "templates/gateway.yaml"},
-				{Name: "templates/proxy-admin-policy.yaml"},
-				{Name: "templates/gateway-policy.yaml"},
-				{Name: "templates/psp.yaml"},
-				{Name: "templates/remote-access-service-mirror-rbac.yaml"},
-				{Name: "templates/link-crd.yaml"},
-				{Name: "templates/service-mirror-policy.yaml"},
-			}
-
-			var partialFiles []*loader.BufferedFile
-			for _, template := range charts.L5dPartials {
-				partialFiles = append(partialFiles,
-					&loader.BufferedFile{Name: template},
-				)
-			}
-
-			// Load all multicluster install chart files into buffer
-			if err := charts.FilesReader(static.Templates, helmMulticlusterDefaultChartName+"/", files); err != nil {
-				return err
-			}
-
-			// Load all partial chart files into buffer
-			if err := charts.FilesReader(partials.Templates, "", partialFiles); err != nil {
-				return err
-			}
-
-			// Create a Chart obj from the files
-			chart, err := loader.LoadFiles(append(files, partialFiles...))
-			if err != nil {
-				return err
-			}
-
-			// Store final Values generated from values.yaml and CLI flags
-			err = yaml.Unmarshal(rawValues, &chart.Values)
-			if err != nil {
-				return err
-			}
-
-			// Create values override
-			valuesOverrides, err := valuesOptions.MergeValues(nil)
-			if err != nil {
-				return err
-			}
-
-			vals, err := chartutil.CoalesceValues(chart, valuesOverrides)
-			if err != nil {
-				return err
-			}
-
-			// Attach the final values into the `Values` field for rendering to work
-			renderedTemplates, err := engine.Render(chart, map[string]interface{}{"Values": vals})
-			if err != nil {
-				return err
-			}
-
-			// Merge templates and inject
-			var buf bytes.Buffer
-			for _, tmpl := range chart.Templates {
-				t := path.Join(chart.Metadata.Name, tmpl.Name)
-				if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
-					return err
-				}
-			}
-			stdout.Write(buf.Bytes())
-			stdout.Write([]byte("---\n"))
-
-			return nil
+			return install(cmd.Context(), stdout, options, valuesOptions, ha, ignoreCluster)
 		},
 	}
 
@@ -162,7 +84,10 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().Uint32Var(&options.gateway.Probe.Port, "gateway-probe-port", options.gateway.Probe.Port, "The liveness check port of the gateway")
 	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "service-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the service account which can be used by service mirror components in source clusters to discover exported services")
 	cmd.Flags().StringVar(&options.gateway.ServiceType, "gateway-service-type", options.gateway.ServiceType, "Overwrite Service type for gateway service")
+	cmd.Flags().BoolVar(&ha, "ha", false, `Install multicluster extension in High Availability mode.`)
 	cmd.Flags().DurationVar(&wait, "wait", 300*time.Second, "Wait for core control-plane components to be available")
+	cmd.Flags().BoolVar(&ignoreCluster, "ignore-cluster", false,
+		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)")
 
 	// Hide developer focused flags in release builds.
 	release, err := version.IsReleaseChannel(version.Version)
@@ -178,6 +103,101 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	return cmd
 }
 
+func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptions, valuesOptions valuespkg.Options, ha, ignoreCluster bool) error {
+	values, err := buildMulticlusterInstallValues(ctx, options, ignoreCluster)
+	if err != nil {
+		return err
+	}
+
+	// Create values override
+	valuesOverrides, err := valuesOptions.MergeValues(nil)
+	if err != nil {
+		return err
+	}
+
+	if ha {
+		valuesOverrides, err = charts.OverrideFromFile(valuesOverrides, static.Templates, helmMulticlusterDefaultChartName, "values-ha.yaml")
+		if err != nil {
+			return err
+		}
+	}
+
+	return render(w, values, valuesOverrides)
+}
+
+func render(w io.Writer, values *multicluster.Values, valuesOverrides map[string]interface{}) error {
+	files := []*chartloader.BufferedFile{
+		{Name: chartutil.ChartfileName},
+		{Name: chartutil.ValuesfileName},
+		{Name: "templates/namespace.yaml"},
+		{Name: "templates/gateway.yaml"},
+		{Name: "templates/proxy-admin-policy.yaml"},
+		{Name: "templates/gateway-policy.yaml"},
+		{Name: "templates/psp.yaml"},
+		{Name: "templates/remote-access-service-mirror-rbac.yaml"},
+		{Name: "templates/link-crd.yaml"},
+		{Name: "templates/service-mirror-policy.yaml"},
+	}
+
+	var partialFiles []*loader.BufferedFile
+	for _, template := range charts.L5dPartials {
+		partialFiles = append(partialFiles,
+			&loader.BufferedFile{Name: template},
+		)
+	}
+
+	// Load all multicluster install chart files into buffer
+	if err := charts.FilesReader(static.Templates, helmMulticlusterDefaultChartName+"/", files); err != nil {
+		return err
+	}
+
+	// Load all partial chart files into buffer
+	if err := charts.FilesReader(partials.Templates, "", partialFiles); err != nil {
+		return err
+	}
+
+	// Create a Chart obj from the files
+	chart, err := loader.LoadFiles(append(files, partialFiles...))
+	if err != nil {
+		return err
+	}
+
+	// Render raw values and create chart config
+	rawValues, err := yaml.Marshal(values)
+	if err != nil {
+		return err
+	}
+	// Store final Values generated from values.yaml and CLI flags
+	err = yaml.Unmarshal(rawValues, &chart.Values)
+	if err != nil {
+		return err
+	}
+
+	vals, err := chartutil.CoalesceValues(chart, valuesOverrides)
+	if err != nil {
+		return err
+	}
+
+	// Attach the final values into the `Values` field for rendering to work
+	renderedTemplates, err := engine.Render(chart, map[string]interface{}{"Values": vals})
+	if err != nil {
+		return err
+	}
+
+	// Merge templates and inject
+	var buf bytes.Buffer
+	for _, tmpl := range chart.Templates {
+		t := path.Join(chart.Metadata.Name, tmpl.Name)
+		if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
+			return err
+		}
+	}
+	w.Write(buf.Bytes())
+	w.Write([]byte("---\n"))
+
+	return nil
+}
+
 func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, error) {
 	defaults, err := multicluster.NewInstallValues()
 	if err != nil {
@@ -191,24 +211,7 @@ func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, er
 	}, nil
 }
 
-func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInstallOptions) (*multicluster.Values, error) {
-
-	values, err := getLinkerdConfigMap(ctx)
-	if err != nil {
-		if kerrors.IsNotFound(err) {
-			return nil, errors.New("you need Linkerd to be installed in order to install multicluster addons")
-		}
-		return nil, err
-	}
-
-	if opts.namespace == "" {
-		return nil, errors.New("you need to specify a namespace")
-	}
-
-	if opts.namespace == controlPlaneNamespace {
-		return nil, errors.New("you need to setup the multicluster addons in a namespace different than the Linkerd one")
-	}
-
+func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInstallOptions, ignoreCluster bool) (*multicluster.Values, error) {
 	defaults, err := multicluster.NewInstallValues()
 	if err != nil {
 		return nil, err
@@ -219,12 +222,24 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 	defaults.Gateway.Port = opts.gateway.Port
 	defaults.Gateway.Probe.Seconds = opts.gateway.Probe.Seconds
 	defaults.Gateway.Probe.Port = opts.gateway.Probe.Port
-	defaults.IdentityTrustDomain = values.IdentityTrustDomain
 	defaults.LinkerdNamespace = controlPlaneNamespace
-	defaults.ProxyOutboundPort = uint32(values.Proxy.Ports.Outbound)
 	defaults.LinkerdVersion = version.Version
 	defaults.RemoteMirrorServiceAccount = opts.remoteMirrorCredentials
 	defaults.Gateway.ServiceType = opts.gateway.ServiceType
+
+	if ignoreCluster {
+		return defaults, nil
+	}
+
+	values, err := getLinkerdConfigMap(ctx)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return nil, errors.New("you need Linkerd to be installed in order to install multicluster addons")
+		}
+		return nil, err
+	}
+	defaults.ProxyOutboundPort = uint32(values.Proxy.Ports.Outbound)
+	defaults.IdentityTrustDomain = values.IdentityTrustDomain
 
 	return defaults, nil
 }

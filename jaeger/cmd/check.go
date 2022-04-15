@@ -11,7 +11,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -57,29 +56,6 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			}))
 
 	checkers = append(checkers,
-		*healthcheck.NewChecker("collector and jaeger service account exists").
-			WithHintAnchor("l5d-jaeger-sc-exists").
-			Fatal().
-			Warning().
-			WithCheck(func(ctx context.Context) error {
-				// Check for Collector Service Account
-				return healthcheck.CheckServiceAccounts(ctx, hc.KubeAPIClient(), []string{"collector", "jaeger"}, jaegerNamespace, "")
-			}))
-
-	checkers = append(checkers,
-		*healthcheck.NewChecker("collector config map exists").
-			WithHintAnchor("l5d-jaeger-oc-cm-exists").
-			Warning().
-			WithCheck(func(ctx context.Context) error {
-				// Check for Jaeger Service Account
-				_, err := hc.KubeAPIClient().CoreV1().ConfigMaps(jaegerNamespace).Get(ctx, "collector-config", metav1.GetOptions{})
-				if err != nil {
-					return err
-				}
-				return nil
-			}))
-
-	checkers = append(checkers,
 		*healthcheck.NewChecker("jaeger extension pods are injected").
 			WithHintAnchor("l5d-jaeger-pods-injection").
 			Warning().
@@ -93,9 +69,9 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			}))
 
 	checkers = append(checkers,
-		*healthcheck.NewChecker("jaeger extension pods are running").
+		*healthcheck.NewChecker("jaeger injector pods are running").
 			WithHintAnchor("l5d-jaeger-pods-running").
-			Fatal().
+			Warning().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
@@ -105,19 +81,18 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 				}
 
 				// Check for relevant pods to be present
-				err = healthcheck.CheckForPods(pods, []string{"collector", "jaeger", "jaeger-injector"})
+				err = healthcheck.CheckForPods(pods, []string{"jaeger-injector"})
 				if err != nil {
 					return err
 				}
 
-				return healthcheck.CheckPodsRunning(pods, "")
-
+				return healthcheck.CheckPodsRunning(pods, jaegerNamespace)
 			}))
 
 	checkers = append(checkers,
 		*healthcheck.NewChecker("jaeger extension proxies are healthy").
 			WithHintAnchor("l5d-jaeger-proxy-healthy").
-			Fatal().
+			Warning().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
@@ -240,7 +215,8 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 
 	hc.AppendCategories(jaegerCategory(hc))
 
-	success := healthcheck.RunChecks(wout, werr, hc, options.output)
+	success, warning := healthcheck.RunChecks(wout, werr, hc, options.output)
+	healthcheck.PrintChecksResult(wout, options.output, success, warning)
 
 	if !success {
 		os.Exit(1)

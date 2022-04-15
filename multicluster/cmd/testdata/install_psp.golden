@@ -1,0 +1,397 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: linkerd-multicluster
+  labels:
+    linkerd.io/extension: multicluster
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerdVersionValue
+  labels:
+    app.kubernetes.io/name: gateway
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: linkerdVersionValue
+    component: gateway
+    app: linkerd-gateway
+    linkerd.io/extension: multicluster
+  name: linkerd-gateway
+  namespace: linkerd-multicluster
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: linkerd-gateway
+  template:
+    metadata:
+      annotations:
+        linkerd.io/created-by: linkerd/helm linkerdVersionValue
+        linkerd.io/inject: enabled
+        config.linkerd.io/proxy-require-identity-inbound-ports: "4143"
+        config.linkerd.io/enable-gateway: "true"
+      labels:
+        app: linkerd-gateway
+    spec:
+      containers:
+        - name: pause
+          image: gcr.io/google_containers/pause:3.2
+      serviceAccountName: linkerd-gateway
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: linkerd-gateway
+  namespace: linkerd-multicluster
+  labels:
+    linkerd.io/extension: multicluster
+  annotations:
+    mirror.linkerd.io/gateway-identity: linkerd-gateway.linkerd-multicluster.serviceaccount.identity.linkerd.cluster.local
+    mirror.linkerd.io/probe-period: "3"
+    mirror.linkerd.io/probe-path: /ready
+    mirror.linkerd.io/multicluster-gateway: "true"
+    component: gateway
+    linkerd.io/created-by: linkerd/helm linkerdVersionValue
+spec:
+  ports:
+  - name: mc-gateway
+    port: 4143
+    protocol: TCP
+  - name: mc-probe
+    port: 4191
+    protocol: TCP
+  selector:
+    app: linkerd-gateway
+  type: LoadBalancer
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-gateway
+  namespace: linkerd-multicluster
+  labels:
+    linkerd.io/extension: multicluster
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  namespace: linkerd-multicluster
+  name: gateway-proxy-admin
+  labels:
+    linkerd.io/extension: multicluster
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerdVersionValue
+spec:
+  podSelector:
+    matchLabels:
+      app: linkerd-gateway
+  port: linkerd-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: ServerAuthorization
+metadata:
+  namespace: linkerd-multicluster
+  name: proxy-admin
+  labels:
+    linkerd.io/extension: multicluster
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerdVersionValue
+spec:
+  server:
+    name: gateway-proxy-admin
+  client:
+    # for kubelet probes
+    unauthenticated: true
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  namespace: linkerd-multicluster
+  name: service-mirror-proxy-admin
+  labels:
+    linkerd.io/extension: multicluster
+spec:
+  podSelector:
+    matchLabels:
+      component: linkerd-service-mirror
+  port: linkerd-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: ServerAuthorization
+metadata:
+  namespace: linkerd-multicluster
+  name: service-mirror-proxy-admin
+  labels:
+    linkerd.io/extension: multicluster
+spec:
+  server:
+    name: service-mirror-proxy-admin
+  client:
+    # for kubelet probes
+    unauthenticated: true
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  namespace: linkerd-multicluster
+  name: linkerd-gateway
+  labels:
+    linkerd.io/extension: multicluster
+    app: linkerd-gateway
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerdVersionValue
+spec:
+  podSelector:
+    matchLabels:
+      app: linkerd-gateway
+  port: linkerd-proxy
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: ServerAuthorization
+metadata:
+  namespace: linkerd-multicluster
+  name: linkerd-gateway
+  labels:
+    linkerd.io/extension: multicluster
+    app: linkerd-gateway
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerdVersionValue
+spec:
+  server:
+    name: linkerd-gateway
+  client:
+    meshTLS:
+      identities:
+      - '*'
+    networks:
+    # Change this to the source cluster cidrs pointing to this gateway.
+    # Note that the source IP in some providers (e.g. GKE) will be the local
+    # node's IP and not the source cluster's
+    - cidr: 0.0.0.0/0
+    - cidr: ::/0
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: ServerAuthorization
+metadata:
+  namespace: linkerd-multicluster
+  name: linkerd-gateway-probe
+  labels:
+    linkerd.io/extension: multicluster
+    app: linkerd-gateway
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerdVersionValue
+spec:
+  server:
+    name: gateway-proxy-admin
+  client:
+    # allows probes from outside the cluster, as long as they have an identity
+    meshTLS:
+      identities:
+      - '*'
+    networks:
+    # cf note for linkerd-gateway ServerAuthorization
+    - cidr: 0.0.0.0/0
+    - cidr: ::/0
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: psp
+  namespace: linkerd-multicluster
+  labels:
+    linkerd.io/extension: multicluster
+rules:
+- apiGroups: ['policy', 'extensions']
+  resources: ['podsecuritypolicies']
+  verbs: ['use']
+  resourceNames:
+  - linkerd-linkerd-control-plane
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: linkerd-multicluster-psp
+  namespace: linkerd-multicluster
+  labels:
+    linkerd.io/extension: multicluster
+    namespace: linkerd-multicluster
+roleRef:
+  kind: Role
+  name: psp
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: linkerd-gateway
+  namespace: linkerd-multicluster
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: linkerd-service-mirror-remote-access-default
+  namespace: linkerd-multicluster
+  labels:
+    linkerd.io/extension: multicluster
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerdVersionValue
+rules:
+- apiGroups: [""]
+  resources: ["services", "endpoints"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get"]
+  resourceNames: ["linkerd-config"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: linkerd-service-mirror-remote-access-default
+  namespace: linkerd-multicluster
+  labels:
+    linkerd.io/extension: multicluster
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerdVersionValue
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: linkerd-service-mirror-remote-access-default
+  namespace: linkerd-multicluster
+  labels:
+    linkerd.io/extension: multicluster
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerdVersionValue
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-service-mirror-remote-access-default
+subjects:
+- kind: ServiceAccount
+  name: linkerd-service-mirror-remote-access-default
+  namespace: linkerd-multicluster
+---
+###
+### Link CRD
+###
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: links.multicluster.linkerd.io
+  labels:
+    linkerd.io/extension: multicluster
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerdVersionValue
+spec:
+  group: multicluster.linkerd.io
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              clusterCredentialsSecret:
+                description: Kubernetes secret of target cluster
+                type: string
+              gatewayAddress:
+                description: Gateway address of target cluster
+                type: string
+              gatewayIdentity:
+                description: Gateway Identity FQDN
+                type: string
+              gatewayPort:
+                description: Gateway Port
+                type: string
+              probeSpec:
+                description: Spec for gateway health probe
+                type: object
+                properties:
+                  path:
+                    description: Path of remote gateway health endpoint
+                    type: string
+                  period:
+                    description: Interval in between probe requests
+                    type: string
+                  port:
+                    description: Port of remote gateway health endpoint
+                    type: string
+              selector:
+                description: Kubernetes Label Selector
+                type: object
+                properties:
+                  matchExpressions:
+                    description: List of selector requirements
+                    type: array
+                    items:
+                      description: A selector item requires a key and an operator
+                      type: object
+                      required:
+                      - key
+                      - operator
+                      properties:
+                        key:
+                          description: Label key that selector should apply to
+                          type: string
+                        operator:
+                          description: Evaluation of a label in relation to set
+                          type: string
+              targetClusterName:
+                description: Name of target cluster to link to
+                type: string
+              targetClusterDomain:
+                description: Domain name of target cluster to link to
+                type: string
+              targetClusterLinkerdNamespace:
+                description: Name of namespace Linkerd control plane is installed in on target cluster
+                type: string
+  scope: Namespaced
+  names:
+    plural: links
+    singular: link
+    kind: Link
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  namespace: linkerd-multicluster
+  name: service-mirror
+  labels:
+    component: linkerd-service-mirror
+spec:
+  podSelector:
+    matchLabels:
+      component: linkerd-service-mirror
+  port: admin-http
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: ServerAuthorization
+metadata:
+  namespace: linkerd-multicluster
+  name: service-mirror
+  labels:
+    component: linkerd-service-mirror
+spec:
+  server:
+    name: service-mirror
+  client:
+    # In order to use `linkerd mc gateways` you need viz' Prometheus instance
+    # to be able to reach the service-mirror. In order to also have a separate
+    # Prometheus scrape the service-mirror an additional ServerAuthorization
+    # resource should be created.
+    meshTLS:
+      serviceAccounts:
+      - name: prometheus
+        namespace: linkerd-viz
+---

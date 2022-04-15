@@ -232,8 +232,12 @@ func TestRender(t *testing.T) {
 	for i, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, tc.goldenFileName), func(t *testing.T) {
+			valuesOverrides, err := tc.options.MergeValues(nil)
+			if err != nil {
+				t.Fatalf("Failed to get values overrides: %v", err)
+			}
 			var buf bytes.Buffer
-			if err := render(&buf, tc.values, "", tc.options); err != nil {
+			if err := render(&buf, tc.values, "", valuesOverrides); err != nil {
 				t.Fatalf("Failed to render templates: %v", err)
 			}
 			testDataDiffer.DiffTestdata(t, tc.goldenFileName, buf.String())

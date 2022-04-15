@@ -1,9 +1,0 @@
-==> deployment/smoke-test-gateway <==
-ROUTE                      SERVICE   SUCCESS   RPS   LATENCY_P50   LATENCY_P95   LATENCY_P99
-[DEFAULT]   smoke-test-gateway-svc         -     -             -             -             -
-
-==> deployment/smoke-test-terminus <==
-ROUTE                         SERVICE   SUCCESS   RPS   LATENCY_P50   LATENCY_P95   LATENCY_P99
-[DEFAULT]     smoke-test-terminus-svc         -     -             -             -             -
-theFunction   smoke-test-terminus-svc         -     -             -             -             -
-

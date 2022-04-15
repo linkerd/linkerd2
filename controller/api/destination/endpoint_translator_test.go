@@ -125,7 +125,7 @@ metadata:
     node.alpha.kubernetes.io/ttl: "0"
   labels:
     beta.kubernetes.io/arch: amd64
-    beta.kubernetes.io/os: linux
+    kubernetes.io/os: linux
     kubernetes.io/arch: amd64
     kubernetes.io/hostname: kind-worker
     kubernetes.io/os: linux

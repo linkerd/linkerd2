@@ -22,6 +22,7 @@ func main() {
 		"collector service address for the proxies to send trace data")
 	collectorSvcAccount := cmd.String("collector-svc-account", "",
 		"service account associated with the collector instance")
+	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
 
 	flags.ConfigureAndParse(cmd, os.Args[1:])
 
@@ -33,5 +34,6 @@ func main() {
 		*metricsAddr,
 		*addr,
 		*kubeconfig,
+		*enablePprof,
 	)
 }

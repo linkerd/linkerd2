@@ -75,8 +75,9 @@ var LinkerdDeployReplicasEdge = map[string]DeploySpec{
 	"linkerd-proxy-injector": {"linkerd", 1},
 }
 
-// LinkerdDeployReplicasStable is a map containing the number of replicas for each Deployment and the main
-// container name. Override whenever edge deviates from stable.
+// LinkerdDeployReplicasStable is a map containing the number of replicas for
+// each Deployment and the main container name. Override whenever edge deviates
+// from stable.
 var LinkerdDeployReplicasStable = LinkerdDeployReplicasEdge
 
 // LinkerdVizDeployReplicas is a map containing the number of replicas for
@@ -86,6 +87,22 @@ var LinkerdVizDeployReplicas = map[string]DeploySpec{
 	"prometheus":   {"linkerd-viz", 1},
 	"metrics-api":  {"linkerd-viz", 1},
 	"grafana":      {"linkerd-viz", 1},
+	"tap":          {"linkerd-viz", 1},
+	"tap-injector": {"linkerd-viz", 1},
+	"web":          {"linkerd-viz", 1},
+}
+
+// MulticlusterDeployReplicas is a map containing the number of replicas for
+// each Deployment and the main container name for multicluster components
+var MulticlusterDeployReplicas = map[string]DeploySpec{
+	"linkerd-gateway": {"linkerd-multicluster", 1},
+}
+
+// ExternalVizDeployReplicas has an external prometheus instance that's in a
+// separate namespace
+var ExternalVizDeployReplicas = map[string]DeploySpec{
+	"prometheus":   {"external-prometheus", 1},
+	"metrics-api":  {"linkerd-viz", 1},
 	"tap":          {"linkerd-viz", 1},
 	"tap-injector": {"linkerd-viz", 1},
 	"web":          {"linkerd-viz", 1},
@@ -144,12 +161,6 @@ func NewGenericTestHelper(
 	}
 }
 
-// MulticlusterDeployReplicas is a map containing the number of replicas for each Deployment and the main
-// container name for multicluster components
-var MulticlusterDeployReplicas = map[string]DeploySpec{
-	"linkerd-gateway": {"linkerd-multicluster", 1},
-}
-
 // NewTestHelper creates a new instance of TestHelper for the current test run.
 // The new TestHelper can be configured via command line flags.
 func NewTestHelper() *TestHelper {
@@ -158,6 +169,7 @@ func NewTestHelper() *TestHelper {
 		os.Exit(code)
 	}
 
+	// TODO (matei): clean-up flags
 	k8sContext := flag.String("k8s-context", "", "kubernetes context associated with the test cluster")
 	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
 	namespace := flag.String("linkerd-namespace", "linkerd", "the namespace where linkerd is installed")

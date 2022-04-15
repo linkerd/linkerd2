@@ -215,7 +215,7 @@ func TestHealthChecker(t *testing.T) {
 		hc.AppendCategories(passingCheck1)
 		hc.AppendCategories(passingCheck2)
 
-		success := hc.RunChecks(nullObserver)
+		success, _ := hc.RunChecks(nullObserver)
 
 		if !success {
 			t.Fatalf("Expecting checks to be successful, but got [%t]", success)
@@ -231,7 +231,7 @@ func TestHealthChecker(t *testing.T) {
 		hc.AppendCategories(failingCheck)
 		hc.AppendCategories(passingCheck2)
 
-		success := hc.RunChecks(nullObserver)
+		success, _ := hc.RunChecks(nullObserver)
 
 		if success {
 			t.Fatalf("Expecting checks to not be successful, but got [%t]", success)
@@ -1495,14 +1495,14 @@ func TestValidateDataPlaneNamespace(t *testing.T) {
 	}
 }
 
-func TestValidateDataPlanePods(t *testing.T) {
+func TestCheckDataPlanePods(t *testing.T) {
 
 	t.Run("Returns an error if no inject pods were found", func(t *testing.T) {
-		err := validateDataPlanePods([]corev1.Pod{}, "emojivoto")
+		err := CheckPodsRunning([]corev1.Pod{}, "emojivoto")
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "No \"linkerd-proxy\" containers found in the \"emojivoto\" namespace" {
+		if err.Error() != "no \"linkerd-proxy\" containers found in the \"emojivoto\" namespace" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -1559,11 +1559,11 @@ func TestValidateDataPlanePods(t *testing.T) {
 			},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := CheckPodsRunning(pods, "emojivoto")
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "The \"voting-65b9fffd77-rlwsd\" pod is not running" {
+		if err.Error() != "pod \"voting-65b9fffd77-rlwsd\" status is Failed" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -1584,7 +1584,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 			},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := CheckPodsRunning(pods, "emojivoto")
 		if err != nil {
 			t.Fatalf("Expected no error, got %s", err)
 		}
@@ -1601,7 +1601,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 			},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := CheckPodsRunning(pods, "emojivoto")
 		if err != nil {
 			t.Fatalf("Expected no error, got %s", err)
 		}
@@ -1659,11 +1659,11 @@ func TestValidateDataPlanePods(t *testing.T) {
 			},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := CheckPodsRunning(pods, "emojivoto")
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "The \"linkerd-proxy\" container in the \"vote-bot-644b8cb6b4-g8nlr\" pod is not ready" {
+		if err.Error() != "container \"linkerd-proxy\" in pod \"vote-bot-644b8cb6b4-g8nlr\" is not ready" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -1720,7 +1720,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 			},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := CheckPodsRunning(pods, "emojivoto")
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
@@ -1781,7 +1781,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 			},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := CheckPodsRunning(pods, "emojivoto")
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
@@ -1995,7 +1995,8 @@ func TestLinkerdPreInstallGlobalResourcesChecks(t *testing.T) {
 		}
 
 		observer := newObserver()
-		if !hc.RunChecks(observer.resultFn) {
+		success, _ := hc.RunChecks(observer.resultFn)
+		if !success {
 			t.Errorf("Expect RunChecks to return true")
 		}
 
@@ -2053,7 +2054,8 @@ metadata:
 		}
 
 		observer := newObserver()
-		if hc.RunChecks(observer.resultFn) {
+		success, _ := hc.RunChecks(observer.resultFn)
+		if success {
 			testutil.Error(t, "Expect RunChecks to return false")
 		}
 
@@ -2408,7 +2410,7 @@ data:
     identityResources: null
     installNamespace: true
     nodeSelector:
-      beta.kubernetes.io/os: linux
+      kubernetes.io/os: linux
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     stage: ""
@@ -2569,7 +2571,7 @@ data:
     identityResources: null
     installNamespace: true
     nodeSelector:
-      beta.kubernetes.io/os: linux
+      kubernetes.io/os: linux
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     stage: ""
@@ -3034,7 +3036,7 @@ spec:
         linkerd.io/created-by: linkerd/cli git-b4266c93
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       hostNetwork: true
       serviceAccountName: linkerd-cni
       containers:

@@ -497,7 +497,7 @@ spec:
         component: metrics-api
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - args:
         - -controller-namespace=linkerd
@@ -505,6 +505,7 @@ spec:
         - -log-format=plain
         - -cluster-domain=cluster.local
         - -prometheus-url=http://prometheus.linkerd-viz.svc.cluster.local:9090
+        - -enable-pprof=false
         image: cr.l5d.io/linkerd/metrics-api:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -644,7 +645,7 @@ data:
       - role: pod
       relabel_configs:
       - source_labels:
-        - __meta_kubernetes_pod_label_linkerd_io_control_plane_component
+        - __meta_kubernetes_pod_label_component
         - __meta_kubernetes_pod_container_port_name
         action: keep
         regex: linkerd-service-mirror;admin-http$
@@ -756,7 +757,7 @@ spec:
         namespace: linkerd-viz
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       securityContext:
         fsGroup: 65534
       containers:
@@ -863,7 +864,7 @@ spec:
         namespace: linkerd-viz
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - args:
         - api
@@ -871,6 +872,7 @@ spec:
         - -log-level=info
         - -log-format=plain
         - -identity-trust-domain=cluster.local
+        - -enable-pprof=false
         image: cr.l5d.io/linkerd/tap:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1062,13 +1064,14 @@ spec:
         component: tap-injector
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - args:
         - injector
         - -tap-service-name=tap.linkerd-viz.serviceaccount.identity.linkerd.cluster.local
         - -log-level=info
         - -log-format=plain
+        - -enable-pprof=false
         image: cr.l5d.io/linkerd/tap:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1193,7 +1196,7 @@ spec:
         namespace: linkerd-viz
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - args:
         - -linkerd-metrics-api-addr=metrics-api.linkerd-viz.svc.cluster.local:8085
@@ -1204,6 +1207,7 @@ spec:
         - -log-level=info
         - -log-format=plain
         - -enforced-host=^(localhost|127\.0\.0\.1|web\.linkerd-viz\.svc\.cluster\.local|web\.linkerd-viz\.svc|\[::1\])(:\d+)?$
+        - -enable-pprof=false
         image: cr.l5d.io/linkerd/web:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:

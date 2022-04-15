@@ -71,12 +71,13 @@ spec:
         component: jaeger-injector
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - args:
         - -collector-svc-addr=collector.linkerd-jaeger:55678
         - -collector-svc-account=collector
         - -log-level=info
+        - -enable-pprof=false
         image: cr.l5d.io/linkerd/jaeger-webhook:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -308,11 +309,11 @@ spec:
         component: jaeger
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - args:
         - --query.base-path=/jaeger
-        image: jaegertracing/all-in-one:1.19.2
+        image: jaegertracing/all-in-one:1.31
         imagePullPolicy: Always
         name: jaeger
         ports:

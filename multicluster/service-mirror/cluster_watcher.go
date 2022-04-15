@@ -25,7 +25,10 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
-const eventTypeSkipped = "ServiceMirroringSkipped"
+const (
+	eventTypeSkipped = "ServiceMirroringSkipped"
+	kubeSystem       = "kube-system"
+)
 
 type (
 	// RemoteClusterServiceWatcher is a watcher instantiated for every cluster that is being watched
@@ -46,6 +49,8 @@ type (
 		eventsQueue             workqueue.RateLimitingInterface
 		requeueLimit            int
 		repairPeriod            time.Duration
+		gatewayAlive            bool
+		liveness                chan bool
 		headlessServicesEnabled bool
 	}
 
@@ -124,6 +129,13 @@ type (
 	// endpoints should be resolved based on the remote gateway and updated.
 	RepairEndpoints struct{}
 
+	// OnLocalNamespaceAdded is issued when when a new namespace is added to
+	// the local cluster. This means that we should check the remote cluster
+	// for exported service in that namespace.
+	OnLocalNamespaceAdded struct {
+		ns *corev1.Namespace
+	}
+
 	// RetryableError is an error that should be retried through requeuing events
 	RetryableError struct{ Inner []error }
 )
@@ -145,6 +157,7 @@ func NewRemoteClusterServiceWatcher(
 	link *multicluster.Link,
 	requeueLimit int,
 	repairPeriod time.Duration,
+	liveness chan bool,
 	enableHeadlessSvc bool,
 ) (*RemoteClusterServiceWatcher, error) {
 	remoteAPI, err := k8s.InitializeAPIForConfig(ctx, cfg, false, k8s.Svc, k8s.Endpoint)
@@ -180,12 +193,17 @@ func NewRemoteClusterServiceWatcher(
 		eventsQueue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
 		requeueLimit:            requeueLimit,
 		repairPeriod:            repairPeriod,
+		liveness:                liveness,
 		headlessServicesEnabled: enableHeadlessSvc,
 	}, nil
 }
 
 func (rcsw *RemoteClusterServiceWatcher) mirroredResourceName(remoteName string) string {
 	return fmt.Sprintf("%s-%s", remoteName, rcsw.link.TargetClusterName)
+}
+
+func (rcsw *RemoteClusterServiceWatcher) targetResourceName(mirrorName string) string {
+	return strings.TrimSuffix(mirrorName, "-"+rcsw.link.TargetClusterName)
 }
 
 func (rcsw *RemoteClusterServiceWatcher) originalResourceName(mirroredName string) string {
@@ -233,35 +251,6 @@ func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceAnnotations(remoteSer
 	}
 
 	return annotations
-}
-
-func (rcsw *RemoteClusterServiceWatcher) mirrorNamespaceIfNecessary(ctx context.Context, namespace string) error {
-	// if the namespace is already present we do not need to change it.
-	// if we are creating it we want to put a label indicating this is a
-	// mirrored resource
-	if _, err := rcsw.localAPIClient.NS().Lister().Get(namespace); err != nil {
-		if kerrors.IsNotFound(err) {
-			// if the namespace is not found, we can just create it
-			ns := &corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						consts.MirroredResourceLabel:  "true",
-						consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
-					},
-					Name: namespace,
-				},
-			}
-			_, err := rcsw.localAPIClient.Client.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
-			if err != nil {
-				// something went wrong with the create, we can just retry as well
-				return RetryableError{[]error{err}}
-			}
-		} else {
-			// something else went wrong, so we can just retry
-			return RetryableError{[]error{err}}
-		}
-	}
-	return nil
 }
 
 // This method takes care of port remapping. What it does essentially is get the one gateway port
@@ -448,7 +437,8 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ctx context.
 	}
 	copiedEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
 
-	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(copiedEndpoints.Namespace).Update(ctx, copiedEndpoints, metav1.UpdateOptions{}); err != nil {
+	err = rcsw.updateMirrorEndpoints(ctx, copiedEndpoints)
+	if err != nil {
 		return RetryableError{[]error{err}}
 	}
 
@@ -486,8 +476,15 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 	serviceInfo := fmt.Sprintf("%s/%s", remoteService.Namespace, remoteService.Name)
 	localServiceName := rcsw.mirroredResourceName(remoteService.Name)
 
-	if err := rcsw.mirrorNamespaceIfNecessary(ctx, remoteService.Namespace); err != nil {
-		return err
+	// Ensure the namespace exists, and skip mirroring if it doesn't
+	if _, err := rcsw.localAPIClient.Client.CoreV1().Namespaces().Get(ctx, remoteService.Namespace, metav1.GetOptions{}); err != nil {
+		if kerrors.IsNotFound(err) {
+			rcsw.recorder.Event(remoteService, v1.EventTypeNormal, eventTypeSkipped, "Skipped mirroring service: namespace does not exist")
+			rcsw.log.Warnf("Skipping mirroring of service %s: namespace %s does not exist", serviceInfo, remoteService.Namespace)
+			return nil
+		}
+		// something else went wrong, so we can just retry
+		return RetryableError{[]error{err}}
 	}
 
 	serviceToCreate := &corev1.Service{
@@ -513,7 +510,64 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 	return rcsw.createGatewayEndpoints(ctx, remoteService)
 }
 
+func (rcsw *RemoteClusterServiceWatcher) handleLocalNamespaceAdded(ns *corev1.Namespace) error {
+	// When a local namespace is added, we issue a create event for all the services in the corresponding namespace in
+	// case any of them are exported and need to be mirrored.
+	svcs, err := rcsw.remoteAPIClient.Svc().Lister().Services(ns.Name).List(labels.Everything())
+	if err != nil {
+		return RetryableError{[]error{err}}
+	}
+	for _, svc := range svcs {
+		rcsw.eventsQueue.Add(&OnAddCalled{
+			svc: svc,
+		})
+	}
+	return nil
+}
+
+// isEmptyService returns true if any of these conditions are true:
+// - svc's Endpoint is not found
+// - svc's Endpoint has no Subsets (happens when there's no associated Pod)
+// - svc's Endpoint has Subsets, but none have addresses (only notReadyAddresses,
+// when the pod is not ready yet)
+func (rcsw *RemoteClusterServiceWatcher) isEmptyService(svc *corev1.Service) (bool, error) {
+	ep, err := rcsw.remoteAPIClient.Endpoint().Lister().Endpoints(svc.Namespace).Get(svc.Name)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			rcsw.log.Debugf("target endpoint %s/%s not found", svc.Namespace, svc.Name)
+			return true, nil
+		}
+
+		return true, err
+	}
+	return rcsw.isEmptyEndpoints(ep), nil
+}
+
+// isEmptyEndpoints returns true if any of these conditions are true:
+// - The Endpoint is not found
+// - The Endpoint has no Subsets (happens when there's no associated Pod)
+// - The Endpoint has Subsets, but none have addresses (only notReadyAddresses,
+// when the pod is not ready yet)
+func (rcsw *RemoteClusterServiceWatcher) isEmptyEndpoints(ep *corev1.Endpoints) bool {
+	if len(ep.Subsets) == 0 {
+		rcsw.log.Debugf("endpoint %s/%s has no Subsets", ep.Namespace, ep.Name)
+		return true
+	}
+	for _, subset := range ep.Subsets {
+		if len(subset.Addresses) > 0 {
+			return false
+		}
+	}
+	rcsw.log.Debugf("endpoint %s/%s has no ready addresses", ep.Namespace, ep.Name)
+	return true
+}
+
 func (rcsw *RemoteClusterServiceWatcher) createGatewayEndpoints(ctx context.Context, exportedService *corev1.Service) error {
+	empty, err := rcsw.isEmptyService(exportedService)
+	if err != nil {
+		return RetryableError{[]error{err}}
+	}
+
 	gatewayAddresses, err := rcsw.resolveGatewayAddress()
 	if err != nil {
 		return err
@@ -537,15 +591,23 @@ func (rcsw *RemoteClusterServiceWatcher) createGatewayEndpoints(ctx context.Cont
 
 	rcsw.log.Infof("Resolved gateway [%v:%d] for %s", gatewayAddresses, rcsw.link.GatewayPort, serviceInfo)
 
-	if len(gatewayAddresses) > 0 {
+	if !empty && len(gatewayAddresses) > 0 {
 		endpointsToCreate.Subsets = []corev1.EndpointSubset{
 			{
 				Addresses: gatewayAddresses,
 				Ports:     rcsw.getEndpointsPorts(exportedService),
 			},
 		}
+	} else if !empty {
+		endpointsToCreate.Subsets = []corev1.EndpointSubset{
+			{
+				NotReadyAddresses: gatewayAddresses,
+				Ports:             rcsw.getEndpointsPorts(exportedService),
+			},
+		}
+		rcsw.log.Warnf("could not resolve gateway addresses for %s; setting endpoint subsets to not ready", serviceInfo)
 	} else {
-		rcsw.log.Warnf("gateway for %s does not have ready addresses, skipping subsets", serviceInfo)
+		rcsw.log.Warnf("exported service %s is empty", serviceInfo)
 	}
 
 	if rcsw.link.GatewayIdentity != "" {
@@ -553,10 +615,11 @@ func (rcsw *RemoteClusterServiceWatcher) createGatewayEndpoints(ctx context.Cont
 	}
 
 	rcsw.log.Infof("Creating a new endpoints for %s", serviceInfo)
-	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(exportedService.Namespace).Create(ctx, endpointsToCreate, metav1.CreateOptions{}); err != nil {
-		// we clean up after ourselves
-		rcsw.localAPIClient.Client.CoreV1().Services(exportedService.Namespace).Delete(ctx, localServiceName, metav1.DeleteOptions{})
-		// and retry
+	err = rcsw.createMirrorEndpoints(ctx, endpointsToCreate)
+	if err != nil {
+		if svcErr := rcsw.localAPIClient.Client.CoreV1().Services(exportedService.Namespace).Delete(ctx, localServiceName, metav1.DeleteOptions{}); svcErr != nil {
+			rcsw.log.Errorf("Failed to delete service %s after endpoints creation failed: %s", localServiceName, svcErr)
+		}
 		return RetryableError{[]error{err}}
 	}
 	return nil
@@ -621,13 +684,12 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 	return nil
 }
 
-func (rcsw *RemoteClusterServiceWatcher) getMirrorServices() ([]*corev1.Service, error) {
+func (rcsw *RemoteClusterServiceWatcher) getMirrorServices() (*corev1.ServiceList, error) {
 	matchLabels := map[string]string{
 		consts.MirroredResourceLabel:  "true",
 		consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
 	}
-
-	services, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
+	services, err := rcsw.localAPIClient.Client.CoreV1().Services("").List(context.Background(), metav1.ListOptions{LabelSelector: labels.SelectorFromSet(matchLabels).String()})
 	if err != nil {
 		return nil, err
 	}
@@ -660,11 +722,11 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent(ctx context.Context) (
 	case *OnAddCalled:
 		err = rcsw.createOrUpdateService(ev.svc)
 	case *OnAddEndpointsCalled:
-		err = rcsw.createOrUpdateHeadlessEndpoints(ctx, ev.ep)
+		err = rcsw.handleCreateOrUpdateEndpoints(ctx, ev.ep)
 	case *OnUpdateCalled:
 		err = rcsw.createOrUpdateService(ev.svc)
 	case *OnUpdateEndpointsCalled:
-		err = rcsw.createOrUpdateHeadlessEndpoints(ctx, ev.ep)
+		err = rcsw.handleCreateOrUpdateEndpoints(ctx, ev.ep)
 	case *OnDeleteCalled:
 		rcsw.handleOnDelete(ev.svc)
 	case *RemoteServiceCreated:
@@ -679,6 +741,8 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent(ctx context.Context) (
 		err = rcsw.cleanupOrphanedServices(ctx)
 	case *RepairEndpoints:
 		err = rcsw.repairEndpoints(ctx)
+	case *OnLocalNamespaceAdded:
+		err = rcsw.handleLocalNamespaceAdded(ev.ns)
 	default:
 		if ev != nil || !done { // we get a nil in case we are shutting down...
 			rcsw.log.Warnf("Received unknown event: %v", ev)
@@ -756,34 +820,48 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 			},
 		},
 	)
-	if rcsw.headlessServicesEnabled {
-		rcsw.remoteAPIClient.Endpoint().Informer().AddEventHandler(
-			cache.ResourceEventHandlerFuncs{
-				AddFunc: func(obj interface{}) {
-					if obj.(metav1.Object).GetNamespace() == "kube-system" {
-						return
-					}
 
-					if ok := isExportedHeadlessEndpoints(obj, rcsw.log); !ok {
-						return
-					}
+	rcsw.remoteAPIClient.Endpoint().Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			// AddFunc only relevant for exported headless endpoints
+			AddFunc: func(obj interface{}) {
+				if obj.(metav1.Object).GetNamespace() == kubeSystem {
+					return
+				}
 
-					rcsw.eventsQueue.Add(&OnAddEndpointsCalled{obj.(*corev1.Endpoints)})
-				},
-				UpdateFunc: func(old, new interface{}) {
-					if new.(metav1.Object).GetNamespace() == "kube-system" {
-						return
-					}
+				if !isExportedEndpoints(obj, rcsw.log) || !isHeadlessEndpoints(obj, rcsw.log) {
+					return
+				}
 
-					if ok := isExportedHeadlessEndpoints(new, rcsw.log); !ok {
-						return
-					}
-
-					rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{new.(*corev1.Endpoints)})
-				},
+				rcsw.eventsQueue.Add(&OnAddEndpointsCalled{obj.(*corev1.Endpoints)})
 			},
-		)
-	}
+			// AddFunc relevant for all kind of exported endpoints
+			UpdateFunc: func(old, new interface{}) {
+				if new.(metav1.Object).GetNamespace() == kubeSystem {
+					return
+				}
+
+				if !isExportedEndpoints(old, rcsw.log) {
+					return
+				}
+
+				rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{new.(*corev1.Endpoints)})
+			},
+		},
+	)
+
+	rcsw.localAPIClient.NS().Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				if obj.(metav1.Object).GetName() == kubeSystem {
+					return
+				}
+
+				rcsw.eventsQueue.Add(&OnLocalNamespaceAdded{obj.(*corev1.Namespace)})
+			},
+		},
+	)
+
 	go rcsw.processEvents(ctx)
 
 	// We need to issue a RepairEndpoints immediately to populate the gateway
@@ -796,6 +874,11 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 		for {
 			select {
 			case <-ticker.C:
+				ev := RepairEndpoints{}
+				rcsw.eventsQueue.Add(&ev)
+			case alive := <-rcsw.liveness:
+				rcsw.log.Debugf("gateway liveness change from %t to %t", rcsw.gatewayAlive, alive)
+				rcsw.gatewayAlive = alive
 				ev := RepairEndpoints{}
 				rcsw.eventsQueue.Add(&ev)
 			case <-rcsw.stopper:
@@ -839,19 +922,96 @@ func (rcsw *RemoteClusterServiceWatcher) resolveGatewayAddress() ([]corev1.Endpo
 }
 
 func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) error {
-	gatewayAddresses, err := rcsw.resolveGatewayAddress()
-	if err != nil {
-		return err
-	}
-
 	endpointRepairCounter.With(prometheus.Labels{
 		gatewayClusterName: rcsw.link.TargetClusterName,
 	}).Inc()
 
-	// Create or update gateway mirror endpoints.
-	gatewayMirrorName := fmt.Sprintf("probe-gateway-%s", rcsw.link.TargetClusterName)
+	// Create or update the gateway mirror endpoints responsible for driving
+	// the cluster watcher's gateway liveness status.
+	gatewayAddresses, err := rcsw.resolveGatewayAddress()
+	if err != nil {
+		return err
+	}
+	err = rcsw.createOrUpdateGatewayEndpoints(ctx, gatewayAddresses)
+	if err != nil {
+		rcsw.log.Errorf("Failed to create/update gateway mirror endpoints: %s", err)
+	}
 
-	gatewayMirrorEndpoints := &corev1.Endpoints{
+	// Repair mirror service endpoints.
+	mirrorServices, err := rcsw.getMirrorServices()
+	if err != nil {
+		rcsw.log.Errorf("Failed to list mirror services: %s", err)
+	}
+	for _, svc := range mirrorServices.Items {
+		svc := svc
+
+		// Mirrors for headless services are also headless, and their
+		// Endpoints point to auxiliary services instead of pointing to
+		// the gateway, so they're skipped.
+		if svc.Spec.ClusterIP == corev1.ClusterIPNone {
+			rcsw.log.Debugf("Skipped repairing endpoints for headless mirror %s/%s", svc.Namespace, svc.Name)
+			continue
+		}
+
+		endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(svc.Namespace).Get(svc.Name)
+		if err != nil {
+			if !kerrors.IsNotFound(err) {
+				rcsw.log.Errorf("Failed to list local endpoints: %s", err)
+				continue
+			}
+			endpoints, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{})
+			if err != nil {
+				rcsw.log.Errorf("Failed to get local endpoints %s/%s: %s", svc.Namespace, svc.Name, err)
+			}
+		}
+		updatedEndpoints := endpoints.DeepCopy()
+		updatedEndpoints.Subsets = []corev1.EndpointSubset{
+			{
+				Addresses: gatewayAddresses,
+				Ports:     rcsw.getEndpointsPorts(&svc),
+			},
+		}
+
+		// We want to skip this service empty check for auxiliary services --
+		// services which are not headless but do belong to a headless
+		// mirrored service. This is because they do not have a corresponding
+		// endpoint on the target cluster, only a pod. If we attempt to find
+		// endpoints for services like this, they'll always be set to empty.
+		if _, found := svc.Labels[consts.MirroredHeadlessSvcNameLabel]; !found {
+			targetService := svc.DeepCopy()
+			targetService.Name = rcsw.targetResourceName(svc.Name)
+			empty, err := rcsw.isEmptyService(targetService)
+			if err != nil {
+				rcsw.log.Errorf("Could not check service emptiness: %s", err)
+				continue
+			}
+			if empty {
+				rcsw.log.Warnf("Exported service %s/%s is empty", targetService.Namespace, targetService.Name)
+				updatedEndpoints.Subsets = []corev1.EndpointSubset{}
+			}
+		}
+
+		if updatedEndpoints.Annotations == nil {
+			updatedEndpoints.Annotations = make(map[string]string)
+		}
+		updatedEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
+
+		err = rcsw.updateMirrorEndpoints(ctx, updatedEndpoints)
+		if err != nil {
+			rcsw.log.Error(err)
+		}
+	}
+
+	return nil
+}
+
+// createOrUpdateGatewayEndpoints will create or update the gateway mirror
+// endpoints for a remote cluster. These endpoints are required for the probe
+// worker responsible for probing gateway liveness, so these endpoints are
+// never in a not ready state.
+func (rcsw *RemoteClusterServiceWatcher) createOrUpdateGatewayEndpoints(ctx context.Context, addressses []v1.EndpointAddress) error {
+	gatewayMirrorName := fmt.Sprintf("probe-gateway-%s", rcsw.link.TargetClusterName)
+	endpoints := &corev1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      gatewayMirrorName,
 			Namespace: rcsw.serviceMirrorNamespace,
@@ -864,7 +1024,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 		},
 		Subsets: []corev1.EndpointSubset{
 			{
-				Addresses: gatewayAddresses,
+				Addresses: addressses,
 				Ports: []corev1.EndpointPort{
 					{
 						Name:     "mc-probe",
@@ -875,494 +1035,123 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 			},
 		},
 	}
-
-	err = rcsw.createOrUpdateEndpoints(ctx, gatewayMirrorEndpoints)
-	if err != nil {
-		rcsw.log.Errorf("Failed to create/update gateway mirror endpoints: %s", err)
-	}
-
-	// Repair mirror service endpoints.
-	mirrorServices, err := rcsw.getMirrorServices()
-	if err != nil {
-		rcsw.log.Errorf("Failed to list mirror services: %s", err)
-	}
-	for _, svc := range mirrorServices {
-		updatedService := svc.DeepCopy()
-
-		// If the Service is headless we should skip repairing its Endpoints.
-		// Headless Services that are mirrored on a remote cluster will have
-		// their Endpoints created with hostnames and nested clusterIP services,
-		// we should avoid replacing these with the gateway address.
-		if svc.Spec.ClusterIP == corev1.ClusterIPNone {
-			rcsw.log.Debugf("Skipped repairing endpoints for %s/%s", svc.Namespace, svc.Name)
-			continue
-		}
-		endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(svc.Namespace).Get(svc.Name)
-		if err != nil {
-			rcsw.log.Errorf("Could not get endpoints: %s", err)
-			continue
-		}
-
-		updatedEndpoints := endpoints.DeepCopy()
-		updatedEndpoints.Subsets = []corev1.EndpointSubset{
-			{
-				Addresses: gatewayAddresses,
-				Ports:     rcsw.getEndpointsPorts(updatedService),
-			},
-		}
-
-		if updatedEndpoints.Annotations == nil {
-			updatedEndpoints.Annotations = make(map[string]string)
-		}
-		updatedEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
-
-		_, err = rcsw.localAPIClient.Client.CoreV1().Services(updatedService.Namespace).Update(ctx, updatedService, metav1.UpdateOptions{})
-		if err != nil {
-			rcsw.log.Error(err)
-			continue
-		}
-
-		_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(updatedService.Namespace).Update(ctx, updatedEndpoints, metav1.UpdateOptions{})
-		if err != nil {
-			rcsw.log.Error(err)
-		}
-	}
-
-	return nil
-}
-
-func (rcsw *RemoteClusterServiceWatcher) createOrUpdateEndpoints(ctx context.Context, ep *corev1.Endpoints) error {
-	_, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(ep.Namespace).Get(ctx, ep.Name, metav1.GetOptions{})
-	if err != nil {
-		if kerrors.IsNotFound(err) {
-			// Does not exist so we should create it.
-			_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(ep.Namespace).Create(ctx, ep, metav1.CreateOptions{})
-			if err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	}
-	// Exists so we should update it.
-	_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(ep.Namespace).Update(ctx, ep, metav1.UpdateOptions{})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// createOrUpdateHeadlessEndpoints processes endpoints objects for exported
-// headless services. When an endpoints object is created or updated in the
-// remote cluster, it will be processed here in order to reconcile the local
-// cluster state with the remote cluster state.
-//
-// createOrUpdateHeadlessEndpoints is also responsible for creating the service
-// mirror in the source cluster. In order for an exported headless service to be
-// mirrored as headless, it must have at least one port defined and at least one
-// named address in its endpoints object (e.g a deployment would not work since
-// pods may not have arbitrary hostnames). As such, when an endpoints object is
-// first processed, if there is no mirror service, we create one, by looking at
-// the endpoints object itself. If the exported service is deemed to be valid
-// for headless mirroring, then the function will create the headless mirror and
-// then create an endpoints object for it in the source cluster. If it is not
-// valid, the exported service will be mirrored as clusterIP and its endpoints
-// will point to the gateway.
-//
-// When creating endpoints for a headless mirror, we also create an endpoint
-// mirror (clusterIP) service for each of the endpoints' named addresses. If the
-// headless mirror exists and has an endpoints object, we simply update by
-// either creating or deleting endpoint mirror services.
-func (rcsw *RemoteClusterServiceWatcher) createOrUpdateHeadlessEndpoints(ctx context.Context, exportedEndpoints *corev1.Endpoints) error {
-	exportedService, err := rcsw.remoteAPIClient.Svc().Lister().Services(exportedEndpoints.Namespace).Get(exportedEndpoints.Name)
-	if err != nil {
-		rcsw.log.Debugf("failed to retrieve exported service %s/%s when updating its headless mirror endpoints: %v", exportedEndpoints.Namespace, exportedEndpoints.Name, err)
-		return fmt.Errorf("error retrieving exported service %s/%s: %v", exportedEndpoints.Namespace, exportedEndpoints.Name, err)
-	}
-
-	// Check whether the endpoints should be processed for a headless exported
-	// service. If the exported service does not have any ports exposed, then
-	// neither will its corresponding endpoint mirrors, it should not be created
-	// as a headless mirror. If the service does not have any named addresses in
-	// its Endpoints object, then the endpoints should not be processed.
-	if len(exportedService.Spec.Ports) == 0 {
-		rcsw.recorder.Event(exportedService, v1.EventTypeNormal, eventTypeSkipped, "Skipped mirroring service: object spec has no exposed ports")
-		rcsw.log.Infof("Skipped creating headless mirror for %s/%s: service object spec has no exposed ports", exportedService.Namespace, exportedService.Name)
-		return nil
-	}
-
-	mirrorServiceName := rcsw.mirroredResourceName(exportedService.Name)
-	mirrorService, err := rcsw.localAPIClient.Svc().Lister().Services(exportedService.Namespace).Get(mirrorServiceName)
+	_, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoints.Namespace).Get(ctx, endpoints.Name, metav1.GetOptions{})
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
 			return err
 		}
 
-		// If the mirror service does not exist, create it, either as clusterIP
-		// or as headless.
-		mirrorService, err = rcsw.createRemoteHeadlessService(ctx, exportedService, exportedEndpoints)
+		// Mirror endpoints for the gateway do not exist so they need to be
+		// created. As mentioned above, these endpoints are required for the
+		// probe worker and therefore should never be put in a not ready
+		// state.
+		_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoints.Namespace).Create(ctx, endpoints, metav1.CreateOptions{})
 		if err != nil {
 			return err
 		}
-	}
-
-	headlessMirrorEpName := rcsw.mirroredResourceName(exportedEndpoints.Name)
-	headlessMirrorEndpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(exportedEndpoints.Namespace).Get(headlessMirrorEpName)
-	if err != nil {
-		if !kerrors.IsNotFound(err) {
-			return err
-		}
-
-		if mirrorService.Spec.ClusterIP != corev1.ClusterIPNone {
-			return rcsw.createGatewayEndpoints(ctx, exportedService)
-		}
-
-		// Create endpoint mirrors for headless mirror
-		if err := rcsw.createHeadlessMirrorEndpoints(ctx, exportedService, exportedEndpoints); err != nil {
-			rcsw.log.Debugf("failed to create headless mirrors for endpoints %s/%s: %v", exportedEndpoints.Namespace, exportedEndpoints.Name, err)
-			return err
-		}
-
 		return nil
 	}
 
-	// Past this point, we do not want to process a mirror service that is not
-	// headless. We want to process only endpoints for headless mirrors; before
-	// this point it would have been possible to have a clusterIP mirror, since
-	// we are creating the mirror service in the scope of the function.
-	if mirrorService.Spec.ClusterIP != corev1.ClusterIPNone {
+	// Mirror endpoints for the gateway already exist so they need to be
+	// updated. As mentioned above, these endpoints are required for the probe
+	// worker and therefore should never be put in a not ready state.
+	_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoints.Namespace).Update(ctx, endpoints, metav1.UpdateOptions{})
+	return err
+}
+
+// handleCreateOrUpdateEndpoints forwards the call to
+// createOrUpdateHeadlessEndpoints when adding/updating exported headless
+// endpoints. Otherwise, it handles updates to endpoints to check if they've
+// become empty/filled since their creation, in order to empty/fill the
+// mirrored endpoints as well
+func (rcsw *RemoteClusterServiceWatcher) handleCreateOrUpdateEndpoints(
+	ctx context.Context,
+	exportedEndpoints *corev1.Endpoints,
+) error {
+	if isHeadlessEndpoints(exportedEndpoints, rcsw.log) {
+		if rcsw.headlessServicesEnabled {
+			return rcsw.createOrUpdateHeadlessEndpoints(ctx, exportedEndpoints)
+		}
 		return nil
 	}
 
-	mirrorEndpoints := headlessMirrorEndpoints.DeepCopy()
-	endpointMirrors := make(map[string]struct{})
-	newSubsets := make([]corev1.EndpointSubset, 0, len(exportedEndpoints.Subsets))
-	for _, subset := range exportedEndpoints.Subsets {
-		newAddresses := make([]corev1.EndpointAddress, 0, len(subset.Addresses))
-		for _, address := range subset.Addresses {
-			if address.Hostname == "" {
-				continue
-			}
-
-			endpointMirrorName := rcsw.mirroredResourceName(address.Hostname)
-			endpointMirrorService, err := rcsw.localAPIClient.Svc().Lister().Services(exportedEndpoints.Namespace).Get(endpointMirrorName)
-			if err != nil {
-				if !kerrors.IsNotFound(err) {
-					return err
-				}
-				// If the error is 'NotFound' then the Endpoint Mirror service
-				// does not exist, so create it.
-				endpointMirrorService, err = rcsw.createEndpointMirrorService(ctx, address.Hostname, exportedEndpoints.ResourceVersion, endpointMirrorName, exportedService)
-				if err != nil {
-					return err
-				}
-			}
-
-			endpointMirrors[endpointMirrorName] = struct{}{}
-			newAddresses = append(newAddresses, corev1.EndpointAddress{
-				Hostname: address.Hostname,
-				IP:       endpointMirrorService.Spec.ClusterIP,
-			})
-		}
-
-		if len(newAddresses) == 0 {
-			continue
-		}
-
-		// copy ports, create subset
-		newSubsets = append(newSubsets, corev1.EndpointSubset{
-			Addresses: newAddresses,
-			Ports:     subset.DeepCopy().Ports,
-		})
-	}
-
-	headlessMirrorName := rcsw.mirroredResourceName(exportedService.Name)
-	matchLabels := map[string]string{
-		consts.MirroredHeadlessSvcNameLabel: headlessMirrorName,
-	}
-
-	// Fetch all Endpoint Mirror services that belong to the same Headless Mirror
-	endpointMirrorServices, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
-	if err != nil {
-		return err
-	}
-
-	var errors []error
-	for _, service := range endpointMirrorServices {
-		// If the service's name does not show up in the up-to-date map of
-		// Endpoint Mirror names, then we should delete it.
-		if _, found := endpointMirrors[service.Name]; found {
-			continue
-		}
-		err := rcsw.localAPIClient.Client.CoreV1().Services(service.Namespace).Delete(ctx, service.Name, metav1.DeleteOptions{})
-		if err != nil {
-			if !kerrors.IsNotFound(err) {
-				errors = append(errors, fmt.Errorf("error deleting Endpoint Mirror service %s/%s: %v", service.Namespace, service.Name, err))
-			}
-		}
-	}
-
-	if len(errors) > 0 {
-		return RetryableError{errors}
-	}
-
-	// Update
-	mirrorEndpoints.Subsets = newSubsets
-	_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(mirrorEndpoints.Namespace).Update(ctx, mirrorEndpoints, metav1.UpdateOptions{})
+	localServiceName := rcsw.mirroredResourceName(exportedEndpoints.Name)
+	ep, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(exportedEndpoints.Namespace).Get(localServiceName)
 	if err != nil {
 		return RetryableError{[]error{err}}
 	}
 
-	return nil
-}
-
-// createRemoteHeadlessService creates a mirror service for an exported headless
-// service. Whether the mirror will be created as a headless or clusterIP
-// service depends on the endpoints object associated with the exported service.
-// If there is at least one named address, then the service will be mirrored as
-// headless.
-//
-// Note: we do not check for any exposed ports because it was previously done
-// when the service was picked up by the service mirror. We also do not need to
-// check if the exported service is headless; its endpoints will be processed
-// only if it is headless so we are certain at this point that is the case.
-func (rcsw *RemoteClusterServiceWatcher) createRemoteHeadlessService(ctx context.Context, exportedService *corev1.Service, exportedEndpoints *corev1.Endpoints) (*corev1.Service, error) {
-	// If we don't have any subsets to process then avoid creating the service.
-	// We need at least one address to be make a decision (whether we should
-	// create as clusterIP or headless), rely on the endpoints being eventually
-	// consistent, will likely receive an update with subsets.
-	if len(exportedEndpoints.Subsets) == 0 {
-		return &corev1.Service{}, nil
+	if (rcsw.isEmptyEndpoints(ep) && rcsw.isEmptyEndpoints(exportedEndpoints)) ||
+		(!rcsw.isEmptyEndpoints(ep) && !rcsw.isEmptyEndpoints(exportedEndpoints)) {
+		return nil
 	}
 
-	remoteService := exportedService.DeepCopy()
-	serviceInfo := fmt.Sprintf("%s/%s", remoteService.Namespace, remoteService.Name)
-	localServiceName := rcsw.mirroredResourceName(remoteService.Name)
-
-	if err := rcsw.mirrorNamespaceIfNecessary(ctx, remoteService.Namespace); err != nil {
-		return &corev1.Service{}, err
-	}
-
-	serviceToCreate := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        localServiceName,
-			Namespace:   remoteService.Namespace,
-			Annotations: rcsw.getMirroredServiceAnnotations(remoteService),
-			Labels:      rcsw.getMirroredServiceLabels(remoteService),
-		},
-		Spec: corev1.ServiceSpec{
-			Ports: remapRemoteServicePorts(remoteService.Spec.Ports),
-		},
-	}
-
-	if shouldExportAsHeadlessService(exportedEndpoints, rcsw.log) {
-		serviceToCreate.Spec.ClusterIP = corev1.ClusterIPNone
-		rcsw.log.Infof("Creating a new headless service mirror for %s", serviceInfo)
+	rcsw.log.Infof("Updating subsets for mirror endpoint %s/%s", exportedEndpoints.Namespace, exportedEndpoints.Name)
+	if rcsw.isEmptyEndpoints(exportedEndpoints) {
+		ep.Subsets = []corev1.EndpointSubset{}
 	} else {
-		rcsw.log.Infof("Creating a new service mirror for %s", serviceInfo)
-	}
-
-	svc, err := rcsw.localAPIClient.Client.CoreV1().Services(remoteService.Namespace).Create(ctx, serviceToCreate, metav1.CreateOptions{})
-	if err != nil {
-		if !kerrors.IsAlreadyExists(err) {
-			// we might have created it during earlier attempt, if that is not the case, we retry
-			return &corev1.Service{}, RetryableError{[]error{err}}
+		exportedService, err := rcsw.remoteAPIClient.Svc().Lister().Services(exportedEndpoints.Namespace).Get(exportedEndpoints.Name)
+		if err != nil {
+			return RetryableError{[]error{
+				fmt.Errorf("error retrieving exported service %s/%s: %v", exportedEndpoints.Namespace, exportedEndpoints.Name, err),
+			}}
 		}
-	}
-
-	return svc, err
-}
-
-// createHeadlessMirrorEndpoints creates an endpoints object for a Headless
-// Mirror service. The endpoints object will contain the same subsets and hosts
-// as the endpoints object of the exported headless service. Each host in the
-// Headless Mirror's endpoints object will point to an Endpoint Mirror service.
-func (rcsw *RemoteClusterServiceWatcher) createHeadlessMirrorEndpoints(ctx context.Context, exportedService *corev1.Service, exportedEndpoints *corev1.Endpoints) error {
-	exportedServiceInfo := fmt.Sprintf("%s/%s", exportedService.Namespace, exportedService.Name)
-	endpointsHostnames := make(map[string]struct{})
-	subsetsToCreate := make([]corev1.EndpointSubset, 0, len(exportedEndpoints.Subsets))
-	for _, subset := range exportedEndpoints.Subsets {
-		newAddresses := make([]corev1.EndpointAddress, 0, len(subset.Addresses))
-		for _, addr := range subset.Addresses {
-			if addr.Hostname == "" {
-				continue
-			}
-
-			endpointMirrorName := rcsw.mirroredResourceName(addr.Hostname)
-			createdService, err := rcsw.createEndpointMirrorService(ctx, addr.Hostname, exportedEndpoints.ResourceVersion, endpointMirrorName, exportedService)
-			if err != nil {
-				rcsw.log.Errorf("error creating endpoint mirror service %s/%s for exported headless service %s: %v", endpointMirrorName, exportedService.Namespace, exportedServiceInfo, err)
-				continue
-			}
-
-			endpointsHostnames[addr.Hostname] = struct{}{}
-			newAddresses = append(newAddresses, corev1.EndpointAddress{
-				Hostname: addr.TargetRef.Name,
-				IP:       createdService.Spec.ClusterIP,
-			})
-
+		gatewayAddresses, err := rcsw.resolveGatewayAddress()
+		if err != nil {
+			return err
 		}
-
-		if len(newAddresses) == 0 {
-			continue
-		}
-
-		subsetsToCreate = append(subsetsToCreate, corev1.EndpointSubset{
-			Addresses: newAddresses,
-			Ports:     subset.DeepCopy().Ports,
-		})
-	}
-
-	headlessMirrorServiceName := rcsw.mirroredResourceName(exportedService.Name)
-	headlessMirrorEndpoints := &corev1.Endpoints{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      headlessMirrorServiceName,
-			Namespace: exportedService.Namespace,
-			Labels: map[string]string{
-				consts.MirroredResourceLabel:  "true",
-				consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
-			},
-			Annotations: map[string]string{
-				consts.RemoteServiceFqName: fmt.Sprintf("%s.%s.svc.%s", exportedService.Name, exportedService.Namespace, rcsw.link.TargetClusterDomain),
-			},
-		},
-		Subsets: subsetsToCreate,
-	}
-
-	if rcsw.link.GatewayIdentity != "" {
-		headlessMirrorEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
-	}
-
-	rcsw.log.Infof("Creating a new headless mirror endpoints object for headless mirror %s/%s", headlessMirrorServiceName, exportedService.Namespace)
-	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(exportedService.Namespace).Create(ctx, headlessMirrorEndpoints, metav1.CreateOptions{}); err != nil {
-		// we clean up after ourselves
-		rcsw.localAPIClient.Client.CoreV1().Services(exportedService.Namespace).Delete(ctx, headlessMirrorServiceName, metav1.DeleteOptions{})
-		// and retry
-		return RetryableError{[]error{err}}
-	}
-
-	return nil
-}
-
-// createEndpointMirrorService creates a new Endpoint Mirror service and its
-// corresponding endpoints object. It returns the newly created Endpoint Mirror
-// service object. When a headless service is exported, we create a Headless
-// Mirror service in the source cluster and then for each hostname in the
-// exported service's endpoints object, we also create an Endpoint Mirror
-// service (and its corresponding endpoints object).
-func (rcsw *RemoteClusterServiceWatcher) createEndpointMirrorService(ctx context.Context, endpointHostname, resourceVersion, endpointMirrorName string, exportedService *corev1.Service) (*corev1.Service, error) {
-	gatewayAddresses, err := rcsw.resolveGatewayAddress()
-	if err != nil {
-		return nil, err
-	}
-
-	endpointMirrorAnnotations := map[string]string{
-		consts.RemoteResourceVersionAnnotation: resourceVersion, // needed to detect real changes
-		consts.RemoteServiceFqName:             fmt.Sprintf("%s.%s.%s.svc.%s", endpointHostname, exportedService.Name, exportedService.Namespace, rcsw.link.TargetClusterDomain),
-	}
-
-	endpointMirrorLabels := rcsw.getMirroredServiceLabels(nil)
-	mirrorServiceName := rcsw.mirroredResourceName(exportedService.Name)
-	endpointMirrorLabels[consts.MirroredHeadlessSvcNameLabel] = mirrorServiceName
-
-	// Create service spec, clusterIP
-	endpointMirrorService := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        endpointMirrorName,
-			Namespace:   exportedService.Namespace,
-			Annotations: endpointMirrorAnnotations,
-			Labels:      endpointMirrorLabels,
-		},
-		Spec: corev1.ServiceSpec{
-			Ports: remapRemoteServicePorts(exportedService.Spec.Ports),
-		},
-	}
-	endpointMirrorEndpoints := &corev1.Endpoints{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      endpointMirrorService.Name,
-			Namespace: endpointMirrorService.Namespace,
-			Labels:    endpointMirrorLabels,
-			Annotations: map[string]string{
-				consts.RemoteServiceFqName: endpointMirrorService.Annotations[consts.RemoteServiceFqName],
-			},
-		},
-		Subsets: []corev1.EndpointSubset{
+		ep.Subsets = []corev1.EndpointSubset{
 			{
 				Addresses: gatewayAddresses,
 				Ports:     rcsw.getEndpointsPorts(exportedService),
 			},
-		},
+		}
 	}
+	return rcsw.updateMirrorEndpoints(ctx, ep)
+}
 
-	if rcsw.link.GatewayIdentity != "" {
-		endpointMirrorEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
-	}
-
-	exportedServiceInfo := fmt.Sprintf("%s/%s", exportedService.Namespace, exportedService.Name)
-	endpointMirrorInfo := fmt.Sprintf("%s/%s", endpointMirrorService.Namespace, endpointMirrorName)
-	rcsw.log.Infof("Creating a new endpoint mirror service %s for exported headless service %s", endpointMirrorInfo, exportedServiceInfo)
-	createdService, err := rcsw.localAPIClient.Client.CoreV1().Services(endpointMirrorService.Namespace).Create(ctx, endpointMirrorService, metav1.CreateOptions{})
+// createMirrorEndpoints will create endpoints based off gateway liveness. If
+// the gateway is not alive, then the addresses in each subset will be set to
+// not ready.
+func (rcsw *RemoteClusterServiceWatcher) createMirrorEndpoints(ctx context.Context, endpoints *corev1.Endpoints) error {
+	rcsw.updateReadiness(endpoints)
+	_, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoints.Namespace).Create(ctx, endpoints, metav1.CreateOptions{})
 	if err != nil {
-		if !kerrors.IsAlreadyExists(err) {
-			// we might have created it during earlier attempt, if that is not the case, we retry
-			return createdService, RetryableError{[]error{err}}
-		}
+		return fmt.Errorf("Failed to create mirror endpoints for %s/%s: %w", endpoints.Namespace, endpoints.Name, err)
 	}
-
-	rcsw.log.Infof("Creating a new endpoints object for endpoint mirror service %s", endpointMirrorInfo)
-	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpointMirrorService.Namespace).Create(ctx, endpointMirrorEndpoints, metav1.CreateOptions{}); err != nil {
-		// If we cannot create an Endpoints object for the Endpoint Mirror
-		// service, then delete the Endpoint Mirror service we just created
-		rcsw.localAPIClient.Client.CoreV1().Services(endpointMirrorService.Namespace).Delete(ctx, endpointMirrorName, metav1.DeleteOptions{})
-		// and retry
-		return createdService, RetryableError{[]error{err}}
-	}
-
-	return createdService, nil
+	return nil
 }
 
-// shouldExportAsHeadlessService checks if an exported service should be
-// mirrored as a headless service or as a clusterIP service, based on its
-// endpoints object. For an exported service to be a headless mirror, it needs
-// to have at least one named address in its endpoints (that is, a pod with a
-// `hostname`). If the endpoints object does not contain at least one named
-// address, it should be exported as clusterIP.
-func shouldExportAsHeadlessService(endpoints *corev1.Endpoints, log *logging.Entry) bool {
-	for _, subset := range endpoints.Subsets {
-		for _, addr := range subset.Addresses {
-			if addr.Hostname != "" {
-				return true
-			}
-		}
-
-		for _, addr := range subset.NotReadyAddresses {
-			if addr.Hostname != "" {
-				return true
-			}
-		}
+// updateMirrorEndpoints will update endpoints based off gateway liveness. If
+// the gateway is not alive, then the addresses in each subset will be set to
+// not ready. Future calls to updateMirrorEndpoints can set the addresses back
+// to ready if the gateway is alive.
+func (rcsw *RemoteClusterServiceWatcher) updateMirrorEndpoints(ctx context.Context, endpoints *corev1.Endpoints) error {
+	rcsw.updateReadiness(endpoints)
+	_, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoints.Namespace).Update(ctx, endpoints, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("Failed to update mirror endpoints for %s/%s: %w", endpoints.Namespace, endpoints.Name, err)
 	}
-	log.Infof("Service %s/%s should not be exported as headless: no named addresses in its endpoints object", endpoints.Namespace, endpoints.Name)
-	return false
+	return err
 }
 
-// isExportedHeadlessEndpoints checks if an endpoints object belongs to a
-// headless exported service.
-func isExportedHeadlessEndpoints(obj interface{}, log *logging.Entry) bool {
+func (rcsw *RemoteClusterServiceWatcher) updateReadiness(endpoints *corev1.Endpoints) {
+	if !rcsw.gatewayAlive {
+		rcsw.log.Warnf("gateway for %s/%s does not have ready addresses; setting addresses to not ready", endpoints.Namespace, endpoints.Name)
+		for i := range endpoints.Subsets {
+			endpoints.Subsets[i].NotReadyAddresses = append(endpoints.Subsets[i].NotReadyAddresses, endpoints.Subsets[i].Addresses...)
+			endpoints.Subsets[i].Addresses = nil
+		}
+	}
+}
+
+func isExportedEndpoints(obj interface{}, log *logging.Entry) bool {
 	ep, ok := obj.(*corev1.Endpoints)
 	if !ok {
 		log.Errorf("error processing endpoints object: got %#v, expected *corev1.Endpoints", ep)
 		return false
 	}
 
-	if _, found := ep.Labels[corev1.IsHeadlessService]; !found {
-		// Not an Endpoints object for a headless service? Then we likely don't want
-		// to update anything.
-		log.Debugf("skipped processing endpoints object %s/%s: missing %s label", ep.Namespace, ep.Name, corev1.IsHeadlessService)
-		return false
-	}
-
-	// If Endpoints belong to an unexported service, ignore.
 	if _, found := ep.Labels[consts.DefaultExportedServiceSelector]; !found {
 		log.Debugf("skipped processing endpoints object %s/%s: missing %s label", ep.Namespace, ep.Name, consts.DefaultExportedServiceSelector)
 		return false

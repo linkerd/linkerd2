@@ -114,7 +114,7 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 	} else if len(path) == 10 {
 		resource = path[7]
 	} else {
-		err := fmt.Errorf("invalid path: %s", req.URL.Path)
+		err := fmt.Errorf("invalid path: %q", req.URL.Path)
 		h.log.Error(err)
 		renderJSONError(w, err, http.StatusBadRequest)
 		return
@@ -140,7 +140,7 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 		req.Header.Values(h.groupHeader),
 	)
 	if err != nil {
-		err = fmt.Errorf("tap authorization failed (%s), visit %s for more information", err, pkg.TapRbacURL)
+		err = fmt.Errorf("tap authorization failed (%w), visit %s for more information", err, pkg.TapRbacURL)
 		h.log.Error(err)
 		renderJSONError(w, err, http.StatusForbidden)
 		return
@@ -149,7 +149,7 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 	tapReq := pb.TapByResourceRequest{}
 	err = protohttp.HTTPRequestToProto(req, &tapReq)
 	if err != nil {
-		err = fmt.Errorf("Error decoding Tap Request proto: %s", err)
+		err = fmt.Errorf("Error decoding Tap Request proto: %w", err)
 		h.log.Error(err)
 		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
@@ -157,7 +157,7 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 
 	url := pkg.TapReqToURL(&tapReq)
 	if url != req.URL.Path {
-		err = fmt.Errorf("tap request body did not match APIServer URL: %+v != %+v", url, req.URL.Path)
+		err = fmt.Errorf("tap request body did not match APIServer URL: %+v != %q", url, req.URL.Path)
 		h.log.Error(err)
 		protohttp.WriteErrorToHTTPResponse(w, err)
 		return

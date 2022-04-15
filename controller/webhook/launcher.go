@@ -22,6 +22,7 @@ func Launch(
 	metricsAddr string,
 	addr string,
 	kubeconfig string,
+	enablePprof bool,
 ) {
 	stop := make(chan os.Signal, 1)
 	defer close(stop)
@@ -41,7 +42,7 @@ func Launch(
 
 	k8sAPI.Sync(nil)
 
-	adminServer := admin.NewServer(metricsAddr)
+	adminServer := admin.NewServer(metricsAddr, enablePprof)
 
 	go func() {
 		log.Infof("starting admin server on %s", metricsAddr)

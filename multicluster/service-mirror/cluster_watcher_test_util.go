@@ -62,6 +62,7 @@ func (te *testEnvironment) runEnvironment(watcherQueue workqueue.RateLimitingInt
 		log:                     logging.WithFields(logging.Fields{"cluster": clusterName}),
 		eventsQueue:             watcherQueue,
 		requeueLimit:            0,
+		gatewayAlive:            true,
 		headlessServicesEnabled: true,
 	}
 
@@ -101,6 +102,9 @@ var createExportedService = &testEnvironment{
 	remoteResources: []string{
 		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "mc-gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod),
 		endpointsAsYaml("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{}),
+	},
+	localResources: []string{
+		namespaceAsYaml("ns1"),
 	},
 	link: multicluster.Link{
 		TargetClusterName:   clusterName,
@@ -173,6 +177,9 @@ var createExportedHeadlessService = &testEnvironment{
 				Port:     666,
 			},
 		}),
+	},
+	localResources: []string{
+		namespaceAsYaml("ns2"),
 	},
 	link: multicluster.Link{
 		TargetClusterName:   clusterName,
@@ -733,7 +740,9 @@ func remoteHeadlessEndpointsUpdate(name, namespace, resourceVersion, address str
 }
 
 func remoteServiceAsYaml(name, namespace, resourceVersion string, ports []corev1.ServicePort) string {
-	svc := remoteService(name, namespace, resourceVersion, nil, ports)
+	svc := remoteService(name, namespace, resourceVersion, map[string]string{
+		consts.DefaultExportedServiceSelector: "true",
+	}, ports)
 
 	bytes, err := yaml.Marshal(svc)
 	if err != nil {
@@ -1028,6 +1037,24 @@ func headlessMirrorEndpointsUpdated(name, namespace string, hostnames, hostIPs [
 	}
 
 	return endpoints
+}
+
+func namespaceAsYaml(name string) string {
+	ns := &corev1.Namespace{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Namespace",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
+
+	bytes, err := yaml.Marshal(ns)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return string(bytes)
 }
 
 func endpointsAsYaml(name, namespace, gatewayIP, gatewayIdentity string, ports []corev1.EndpointPort) string {

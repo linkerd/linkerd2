@@ -194,6 +194,7 @@ spec:
         - -cluster-domain={{.Values.clusterDomain}}
         - -identity-trust-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
         - -default-opaque-ports={{.Values.proxy.opaquePorts}}
+        - -enable-pprof={{.Values.enablePprof | default false}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.controllerImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
         imagePullPolicy: {{.Values.imagePullPolicy}}
@@ -222,6 +223,7 @@ spec:
         - sp-validator
         - -log-level={{.Values.controllerLogLevel}}
         - -log-format={{.Values.controllerLogFormat}}
+        - -enable-pprof={{.Values.enablePprof | default false}}
         image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:

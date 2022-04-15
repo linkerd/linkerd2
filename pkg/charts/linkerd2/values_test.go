@@ -17,15 +17,22 @@ func TestNewValues(t *testing.T) {
 
 	testVersion := "linkerd-dev"
 
-	namespaceSelector := &metav1.LabelSelector{
-		MatchExpressions: []metav1.LabelSelectorRequirement{
-			{
-				Key:      "config.linkerd.io/admission-webhooks",
-				Operator: "NotIn",
-				Values:   []string{"disabled"},
-			},
+	matchExpressionsSimple := []metav1.LabelSelectorRequirement{
+		{
+			Key:      "config.linkerd.io/admission-webhooks",
+			Operator: "NotIn",
+			Values:   []string{"disabled"},
 		},
 	}
+	matchExpressionsInjector := append(matchExpressionsSimple, metav1.LabelSelectorRequirement{
+		Key:      "kubernetes.io/metadata.name",
+		Operator: "NotIn",
+		Values:   []string{"kube-system", "cert-manager"},
+	},
+	)
+
+	namespaceSelectorSimple := &metav1.LabelSelector{MatchExpressions: matchExpressionsSimple}
+	namespaceSelectorInjector := &metav1.LabelSelector{MatchExpressions: matchExpressionsInjector}
 
 	expected := &Values{
 		ControllerImage:              "cr.l5d.io/linkerd/controller",
@@ -134,7 +141,7 @@ func TestNewValues(t *testing.T) {
 			},
 		},
 		NodeSelector: map[string]string{
-			"beta.kubernetes.io/os": "linux",
+			"kubernetes.io/os": "linux",
 		},
 		DebugContainer: &DebugContainer{
 			Image: &Image{
@@ -143,9 +150,9 @@ func TestNewValues(t *testing.T) {
 			},
 		},
 
-		ProxyInjector:    &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
-		ProfileValidator: &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
-		PolicyValidator:  &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
+		ProxyInjector:    &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelectorInjector},
+		ProfileValidator: &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelectorSimple},
+		PolicyValidator:  &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelectorSimple},
 	}
 
 	// pin the versions to ensure consistent test result.

@@ -102,7 +102,7 @@ func (s *GRPCTapServer) TapByResource(req *tapPb.TapByResourceRequest, stream ta
 
 	if len(pods) == 0 {
 		var errs strings.Builder
-		fmt.Fprintf(&errs, "no pods to tap for %s/%s\n", res.GetType(), res.GetName())
+		fmt.Fprintf(&errs, "no pods to tap for type=%q name=%q\n", res.GetType(), res.GetName())
 		if len(tapDisabled) > 0 {
 			fmt.Fprintf(&errs, "%d pods found with tap disabled via the %s annotation:\n", len(tapDisabled), vizLabels.VizTapDisabled)
 			for _, pod := range tapDisabled {
@@ -120,7 +120,7 @@ func (s *GRPCTapServer) TapByResource(req *tapPb.TapByResourceRequest, stream ta
 		return status.Errorf(codes.NotFound, errs.String())
 	}
 
-	log.Infof("Tapping %d pods for target: %s", len(pods), res.String())
+	log.Infof("Tapping %d pods for target: %q", len(pods), res.String())
 
 	events := make(chan *tapPb.TapEvent)
 

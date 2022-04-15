@@ -71,12 +71,13 @@ spec:
         component: jaeger-injector
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - args:
         - -collector-svc-addr=collector.linkerd-jaeger:55678
         - -collector-svc-account=collector
         - -log-level=info
+        - -enable-pprof=false
         image: cr.l5d.io/linkerd/jaeger-webhook:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -291,7 +292,8 @@ data:
     exporters:
       jaeger:
         endpoint: jaeger.${POD_NAMESPACE}:14250
-        insecure: true
+        tls:
+          insecure: true
     service:
       extensions: [health_check]
       pipelines:
@@ -362,7 +364,7 @@ spec:
         component: collector
     spec:
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux
       containers:
       - command:
         - /otelcol
@@ -375,7 +377,7 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.namespace
-        image: otel/opentelemetry-collector:0.27.0
+        image: otel/opentelemetry-collector:0.43.0
         imagePullPolicy: Always
         livenessProbe:
           httpGet:

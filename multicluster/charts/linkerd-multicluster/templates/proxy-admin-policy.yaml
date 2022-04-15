@@ -41,7 +41,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      linkerd.io/control-plane-component: linkerd-service-mirror
+      component: linkerd-service-mirror
   port: linkerd-admin
   proxyProtocol: HTTP/1
 ---

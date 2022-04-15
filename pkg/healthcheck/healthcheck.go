@@ -149,7 +149,8 @@ const (
 	linkerdCNIResourceName       = "linkerd-cni"
 	linkerdCNIConfigMapName      = "linkerd-cni-config"
 
-	podCIDRUnavailableSkipReason = "skipping check because the nodes aren't exposing podCIDR"
+	podCIDRUnavailableSkipReason    = "skipping check because the nodes aren't exposing podCIDR"
+	configMapDoesNotExistSkipReason = "skipping check because ConigMap does not exist"
 
 	proxyInjectorOldTLSSecretName = "linkerd-proxy-injector-tls"
 	proxyInjectorTLSSecretName    = "linkerd-proxy-injector-k8s-tls"
@@ -385,6 +386,7 @@ func (c *Category) WithHintBaseURL(hintBaseURL string) *Category {
 
 // Options specifies configuration for a HealthChecker.
 type Options struct {
+	IsMainCheckCommand    bool
 	ControlPlaneNamespace string
 	CNINamespace          string
 	DataPlaneNamespace    string
@@ -397,6 +399,7 @@ type Options struct {
 	RetryDeadline         time.Time
 	CNIEnabled            bool
 	InstallManifest       string
+	ChartValues           *l5dcharts.Values
 }
 
 // HealthChecker encapsulates all health check checkers, and clients required to
@@ -420,7 +423,7 @@ type HealthChecker struct {
 
 // Runner is implemented by any health-checkers that can be triggered with RunChecks()
 type Runner interface {
-	RunChecks(observer CheckObserver) bool
+	RunChecks(observer CheckObserver) (bool, bool)
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -736,6 +739,27 @@ func (hc *HealthChecker) allCategories() []*Category {
 					},
 				},
 				{
+					description: "cluster networks can be verified",
+					hintAnchor:  "l5d-cluster-networks-verified",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						nodes, err := hc.kubeAPI.GetNodes(ctx)
+						if err != nil {
+							return err
+						}
+						var warningNodes []string
+						for _, node := range nodes {
+							if node.Spec.PodCIDR == "" {
+								warningNodes = append(warningNodes, node.Name)
+							}
+						}
+						if len(warningNodes) > 0 {
+							return fmt.Errorf("the following nodes do not expose a podCIDR:\n\t%s", strings.Join(warningNodes, "\n\t"))
+						}
+						return nil
+					},
+				},
+				{
 					description: "cluster networks contains all node podCIDRs",
 					hintAnchor:  "l5d-cluster-networks-cidr",
 					check: func(ctx context.Context) error {
@@ -808,6 +832,28 @@ func (hc *HealthChecker) allCategories() []*Category {
 					fatal:       true,
 					check: func(ctx context.Context) error {
 						return hc.checkValidatingWebhookConfigurations(ctx, true)
+					},
+				},
+				{
+					description: "proxy-init container runs as root user if docker container runtime is used",
+					hintAnchor:  "l5d-proxy-init-run-as-root",
+					fatal:       false,
+					check: func(ctx context.Context) error {
+						// We explicitly initialize the config here so that we dont rely on the "l5d-existence-linkerd-config"
+						// check to set the clusterNetworks value, since `linkerd check config` will skip that check.
+						err := hc.InitializeLinkerdGlobalConfig(ctx)
+						if err != nil {
+							if kerrors.IsNotFound(err) {
+								return &SkipError{Reason: configMapDoesNotExistSkipReason}
+							}
+							return err
+						}
+						config := hc.LinkerdConfig()
+						runAsRoot := config != nil && config.ProxyInit != nil && config.ProxyInit.RunAsRoot
+						if !runAsRoot {
+							return CheckNodesHaveNonDockerRuntime(ctx, hc.KubeAPIClient())
+						}
+						return nil
 					},
 				},
 			},
@@ -1285,8 +1331,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 						if err != nil {
 							return err
 						}
-
-						return validateDataPlanePods(pods, hc.DataPlaneNamespace)
+						return CheckPodsRunning(pods, hc.DataPlaneNamespace)
 					},
 				},
 				{
@@ -1415,6 +1460,9 @@ func CheckProxyVersionsUpToDate(pods []corev1.Pod, versions version.Channels) er
 		status := k8s.GetPodStatus(pod)
 		if status == string(corev1.PodRunning) && containsProxy(pod) {
 			proxyVersion := k8s.GetProxyVersion(pod)
+			if proxyVersion == "" {
+				continue
+			}
 			if err := versions.Match(proxyVersion); err != nil {
 				outdatedPods = append(outdatedPods, fmt.Sprintf("\t* %s (%s)", pod.Name, proxyVersion))
 			}
@@ -1432,7 +1480,7 @@ func CheckProxyVersionsUpToDate(pods []corev1.Pod, versions version.Channels) er
 func CheckIfProxyVersionsMatchWithCLI(pods []corev1.Pod) error {
 	for _, pod := range pods {
 		proxyVersion := k8s.GetProxyVersion(pod)
-		if proxyVersion != version.Version {
+		if proxyVersion != "" && proxyVersion != version.Version {
 			return fmt.Errorf("%s running %s but cli running %s", pod.Name, proxyVersion, version.Version)
 		}
 	}
@@ -1474,18 +1522,13 @@ func (hc *HealthChecker) CheckProxyHealth(ctx context.Context, controlPlaneNames
 	}
 
 	// Validate the status of the pods
-	err = validateDataPlanePods(podList.Items, controlPlaneNamespace)
+	err = CheckPodsRunning(podList.Items, controlPlaneNamespace)
 	if err != nil {
 		return err
 	}
 
 	// Check proxy certificates
-	err = checkPodsProxiesCertificate(ctx, *hc.kubeAPI, namespace, controlPlaneNamespace)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return checkPodsProxiesCertificate(ctx, *hc.kubeAPI, namespace, controlPlaneNamespace)
 }
 
 // CheckCertAndAnchorsExpiringSoon checks if the given cert and anchors expire soon, and returns an
@@ -1559,8 +1602,9 @@ func (hc *HealthChecker) checkMinReplicasAvailable(ctx context.Context) error {
 // remaining checks are skipped. If at least one check fails, RunChecks returns
 // false; if all checks passed, RunChecks returns true.  Checks which are
 // designated as warnings will not cause RunCheck to return false, however.
-func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
+func (hc *HealthChecker) RunChecks(observer CheckObserver) (bool, bool) {
 	success := true
+	warning := false
 	for _, c := range hc.categories {
 		if c.enabled {
 			for _, checker := range c.checkers {
@@ -1569,9 +1613,11 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 					if !hc.runCheck(c, &checker, observer) {
 						if !checker.warning {
 							success = false
+						} else {
+							warning = true
 						}
 						if checker.fatal {
-							return success
+							return success, warning
 						}
 					}
 				}
@@ -1579,7 +1625,7 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 		}
 	}
 
-	return success
+	return success, warning
 }
 
 // LinkerdConfig gets the Linkerd configuration values.
@@ -1867,6 +1913,7 @@ func (hc *HealthChecker) checkClusterNetworks(ctx context.Context) error {
 			badPodCIDRS = append(badPodCIDRS, podCIDR)
 		}
 	}
+	// If none of the nodes exposed a podCIDR then we cannot verify the clusterNetworks.
 	if !podCIDRExists {
 		// DigitalOcean for example, doesn't expose spec.podCIDR (#6398)
 		return &SkipError{Reason: podCIDRUnavailableSkipReason}
@@ -2087,6 +2134,35 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Contex
 	}
 
 	return checkResources("ValidatingWebhookConfigurations", objects, []string{k8s.SPValidatorWebhookConfigName}, shouldExist)
+}
+
+// CheckNodesHaveNonDockerRuntime checks that each node has a non-Docker
+// runtime. This check is only called if proxyInit is not running as root
+// which is a problem for clusters with a Docker container runtime.
+func CheckNodesHaveNonDockerRuntime(ctx context.Context, k8sAPI *k8s.KubernetesAPI) error {
+	hasDockerNodes := false
+	continueToken := ""
+	for {
+		nodes, err := k8sAPI.CoreV1().Nodes().List(ctx, metav1.ListOptions{Continue: continueToken})
+		if err != nil {
+			return err
+		}
+		continueToken = nodes.Continue
+		for _, node := range nodes.Items {
+			crv := node.Status.NodeInfo.ContainerRuntimeVersion
+			if strings.HasPrefix(crv, "docker:") {
+				hasDockerNodes = true
+				break
+			}
+		}
+		if continueToken == "" {
+			break
+		}
+	}
+	if hasDockerNodes {
+		return fmt.Errorf("there are nodes using the docker container runtime and proxy-init container must run as root user.\ntry installing linkerd via --set proxyInit.runAsRoot=true")
+	}
+	return nil
 }
 
 // MeshedPodIdentityData contains meshed pod details + trust anchors of the proxy
@@ -2671,36 +2747,6 @@ func validateControlPlanePods(pods []corev1.Pod) error {
 	return nil
 }
 
-func validateDataPlanePods(pods []corev1.Pod, targetNamespace string) error {
-	if len(pods) == 0 {
-		msg := fmt.Sprintf("No \"%s\" containers found", k8s.ProxyContainerName)
-		if targetNamespace != "" {
-			msg += fmt.Sprintf(" in the \"%s\" namespace", targetNamespace)
-		}
-		return fmt.Errorf(msg)
-	}
-
-	for _, pod := range pods {
-		status := k8s.GetPodStatus(pod)
-		// Skip validating meshed pods that are in the `Completed` or `Shutdown` state
-		// as they do not have a running proxy
-		if status == "Completed" || status == "Shutdown" {
-			continue
-		}
-
-		if status != string(corev1.PodRunning) && status != "Evicted" {
-			return fmt.Errorf("The \"%s\" pod is not running", pod.Name)
-		}
-
-		if !k8s.GetProxyReady(pod) {
-			return fmt.Errorf("The \"%s\" container in the \"%s\" pod is not ready",
-				k8s.ProxyContainerName, pod.Name)
-		}
-	}
-
-	return nil
-}
-
 func checkUnschedulablePods(pods []corev1.Pod) error {
 	for _, pod := range pods {
 		for _, condition := range pod.Status.Conditions {
@@ -2752,20 +2798,25 @@ func CheckForPods(pods []corev1.Pod, deployNames []string) error {
 
 // CheckPodsRunning checks if the given pods are in running state
 // along with containers to be in ready state
-func CheckPodsRunning(pods []corev1.Pod, podsNotFoundMsg string) error {
-	if len(pods) == 0 && podsNotFoundMsg != "" {
-		return fmt.Errorf(podsNotFoundMsg)
+func CheckPodsRunning(pods []corev1.Pod, namespace string) error {
+	if len(pods) == 0 {
+		msg := fmt.Sprintf("no \"%s\" containers found", k8s.ProxyContainerName)
+		if namespace != "" {
+			msg += fmt.Sprintf(" in the \"%s\" namespace", namespace)
+		}
+		return fmt.Errorf(msg)
 	}
 	for _, pod := range pods {
-		if pod.Status.Phase != corev1.PodRunning {
-			return fmt.Errorf("%s status is %s", pod.Name, pod.Status.Phase)
-		}
+		status := k8s.GetPodStatus(pod)
 
-		// check for container readiness
-		for _, containerStatus := range pod.Status.ContainerStatuses {
-			if !containerStatus.Ready {
-				return fmt.Errorf("container %s in pod %s is not ready ", pod.Name, containerStatus.Name)
-			}
+		// Skip validating meshed pods that are in the `Completed` or
+		// `Shutdown` state as they do not have a running proxy
+		if status == "Completed" || status == "Shutdown" {
+			continue
+		} else if status != string(corev1.PodRunning) && status != "Evicted" {
+			return fmt.Errorf("pod \"%s\" status is %s", pod.Name, pod.Status.Phase)
+		} else if !k8s.GetProxyReady(pod) {
+			return fmt.Errorf("container \"%s\" in pod \"%s\" is not ready", k8s.ProxyContainerName, pod.Name)
 		}
 	}
 	return nil

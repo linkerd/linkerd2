@@ -156,7 +156,8 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	hc := newHealthChecker(linkerdHC)
 	category := multiclusterCategory(hc)
 	hc.AppendCategories(category)
-	success := healthcheck.RunChecks(wout, werr, hc, options.output)
+	success, warning := healthcheck.RunChecks(wout, werr, hc, options.output)
+	healthcheck.PrintChecksResult(wout, options.output, success, warning)
 	if !success {
 		os.Exit(1)
 	}
@@ -226,7 +227,7 @@ func multiclusterCategory(hc *healthChecker) *healthcheck.Category {
 	checkers = append(checkers,
 		*healthcheck.NewChecker("multicluster extension proxies are healthy").
 			WithHintAnchor("l5d-multicluster-proxy-healthy").
-			Fatal().
+			Warning().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
@@ -678,7 +679,7 @@ func joinErrors(errs []error, tabDepth int) error {
 }
 
 func serviceMirrorComponentsSelector(targetCluster string) string {
-	return fmt.Sprintf("%s=%s,%s=%s",
-		k8s.ControllerComponentLabel, linkerdServiceMirrorComponentName,
+	return fmt.Sprintf("component=%s,%s=%s",
+		linkerdServiceMirrorComponentName,
 		k8s.RemoteClusterNameLabel, targetCluster)
 }
