@@ -70,12 +70,14 @@ docker_build() {
       cache_params="--cache-from type=local,src=${DOCKER_BUILDKIT_CACHE} --cache-to type=local,dest=${DOCKER_BUILDKIT_CACHE},mode=max"
     fi
 
-    output_params="--load"
+    if [ -n "$DOCKER_PUSH" ]; then
+      output_params="--push"
+    else
+      output_params="--load"
+    fi
     if [ "$DOCKER_TARGET" = 'multi-arch' ]; then
-      output_params="--platform $SUPPORTED_ARCHS"
-      if [ -n "$DOCKER_PUSH" ]; then
-        output_params+=" --push"
-      else
+      output_params+=" --platform $SUPPORTED_ARCHS"
+      if [ -z "$DOCKER_PUSH" ]; then
         echo "Error: env DOCKER_PUSH=1 is missing"
         echo "When building the multi-arch images it is required to push the images to the registry"
         echo "See https://github.com/docker/buildx/issues/59 for more details"
