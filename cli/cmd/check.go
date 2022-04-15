@@ -101,9 +101,6 @@ non-zero exit code.`,
   # Check that the Linkerd control plane can be installed in the "test" namespace
   linkerd check --pre --linkerd-namespace test
 
-  # Check that "linkerd install config" succeeded
-  linkerd check config
-
   # Check that the Linkerd data plane proxies in the "app" namespace are up and running
   linkerd check --proxy --namespace app`,
 		RunE: func(cmd *cobra.Command, args []string) error {

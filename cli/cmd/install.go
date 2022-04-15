@@ -105,9 +105,6 @@ control plane.`,
   # Install Linkerd into a non-default namespace.
   linkerd install -l linkerdtest | kubectl apply -f -
 
-  # Installation may also be broken up into two stages by user privilege, via
-  # subcommands.
-
 The installation can be configured by using the --set, --values, --set-string and --set-file flags.
 A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -298,7 +295,7 @@ func render(w io.Writer, values *l5dcharts.Values, crds bool, valuesOverrides ma
 
 	_, err = w.Write(buf.Bytes())
 	if err == nil {
-		fmt.Fprintln(os.Stderr, "Installing Linkerd CRDs...")
+		fmt.Fprintln(os.Stderr, "Rendering Linkerd CRDs...")
 		fmt.Fprintln(os.Stderr, "Next, run `linkerd install | kubectl apply -f -` to install the control plane.")
 		fmt.Fprintln(os.Stderr)
 	}
