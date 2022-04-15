@@ -149,6 +149,9 @@ where
             if let Some(status) = p.status {
                 let _span = tracing::info_span!("pod", ns = %ns.name(), name = %pod).entered();
                 tracing::trace!(reason = ?status.reason, message = ?status.message);
+                for c in status.init_container_statuses.into_iter().flatten() {
+                    tracing::trace!(init_container = %c.name, ready = %c.ready, state = ?c.state);
+                }
                 for c in status.container_statuses.into_iter().flatten() {
                     tracing::trace!(container = %c.name, ready = %c.ready, state = ?c.state);
                 }

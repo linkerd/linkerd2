@@ -162,7 +162,9 @@ impl Runner {
                     command: Some(vec!["sh".to_string(),   "-c".to_string()]),
                     args: Some(vec![format!(
                         "for i in $(seq 12) ; do \
+                            echo waiting 10s for curl-lock to be deleted ; \
                             if kubectl wait --timeout=10s --for=delete --namespace={ns} cm/curl-lock ; then \
+                                echo curl-lock deleted ; \
                                 exit 0 ; \
                             fi ; \
                         done ; \
@@ -201,6 +203,8 @@ impl Running {
 
     /// Waits for the curl container to complete and returns its exit code.
     pub async fn exit_code(self) -> i32 {
+        self.inits_complete().await;
+
         fn get_exit_code(pod: &k8s::Pod) -> Option<i32> {
             let c = pod
                 .status
@@ -220,7 +224,7 @@ impl Running {
             &self.name,
             |obj: Option<&k8s::Pod>| -> bool { obj.and_then(get_exit_code).is_some() },
         );
-        match time::timeout(time::Duration::from_secs(120), finished).await {
+        match time::timeout(time::Duration::from_secs(30), finished).await {
             Ok(Ok(())) => {}
             Ok(Err(error)) => panic!("Failed to wait for exit code: {}: {}", self.name, error),
             Err(_timeout) => {
@@ -240,5 +244,37 @@ impl Running {
         }
 
         code
+    }
+
+    async fn inits_complete(&self) {
+        let api = kube::Api::namespaced(self.client.clone(), &self.namespace);
+        let init_complete = kube::runtime::wait::await_condition(
+            api.clone(),
+            &self.name,
+            |pod: Option<&k8s::Pod>| -> bool {
+                if let Some(pod) = pod {
+                    if let Some(status) = pod.status.as_ref() {
+                        return status.init_container_statuses.iter().flatten().all(|init| {
+                            init.state
+                                .as_ref()
+                                .map(|s| s.terminated.is_some())
+                                .unwrap_or(false)
+                        });
+                    }
+                }
+                false
+            },
+        );
+
+        match time::timeout(time::Duration::from_secs(120), init_complete).await {
+            Ok(Ok(())) => {}
+            Ok(Err(error)) => panic!("Failed to watch pod status: {}: {}", self.name, error),
+            Err(_timeout) => {
+                panic!(
+                    "Timeout waiting for init containers to complete: {}",
+                    self.name
+                );
+            }
+        };
     }
 }
