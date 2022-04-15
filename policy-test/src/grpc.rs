@@ -123,7 +123,7 @@ impl PolicyClient {
         let mut pf = kube::Api::<k8s::Pod>::namespaced(client.clone(), "linkerd")
             .portforward(pod, &[8090])
             .await?;
-        let io = pf.ports()[0].stream().expect("must have a stream");
+        let io = pf.take_stream(8090).expect("must have a stream");
         Ok(io)
     }
 }

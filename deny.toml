@@ -46,8 +46,8 @@ deny = []
 skip = [
     # Waiting on h2, tonic, etc
     { name = "tokio-util", version = "0.6" },
-    # Waiting on hyper-rustls, etc
-    { name = "rustls-pemfile", version = "0.2" },
+    # Waiting on kube-client
+    { name = "rustls-pemfile", version = "0.3" },
 ]
 
 [sources]
