@@ -1544,6 +1544,7 @@ func TestEndpointsWatcherServiceMirrors(t *testing.T) {
 		expectedAddresses                []string
 		expectedNoEndpoints              bool
 		expectedNoEndpointsServiceExists bool
+		enableEndpointSlices             bool
 	}{
 		{
 			k8sConfigs: []string{`
@@ -1581,6 +1582,45 @@ subsets:
 			},
 			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
+		},
+		{
+			k8sConfigs: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1-remote
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`,
+				`
+apiVersion: discovery.k8s.io/v1beta1
+kind: EndpointSlice
+metadata:
+  name: name1-remote-xxxx
+  namespace: ns
+  annotations:
+    mirror.linkerd.io/remote-gateway-identity: "gateway-identity-1"
+    mirror.linkerd.io/remote-svc-fq-name: "name1-remote-fq"
+  labels:
+    mirror.linkerd.io/mirrored-service: "true"
+    kubernetes.io/service-name: name1-remote
+endpoints:
+- addresses:
+  - 172.17.0.12
+ports:
+- port: 8989`,
+			},
+			serviceType: "mirrored service with identity and endpoint slices",
+			id:          ServiceID{Name: "name1-remote", Namespace: "ns"},
+			port:        8989,
+			expectedAddresses: []string{
+				"172.17.0.12:8989/gateway-identity-1/name1-remote-fq:8989",
+			},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
+			enableEndpointSlices:             true,
 		},
 		{
 			k8sConfigs: []string{`
@@ -1701,7 +1741,7 @@ subsets:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), tt.enableEndpointSlices)
 
 			k8sAPI.Sync(nil)
 

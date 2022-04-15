@@ -168,6 +168,20 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 		}
 	})
 
+	t.Run("Recovers after emptying address et", func(t *testing.T) {
+		mockGetServer, translator := makeEndpointTranslator(t)
+
+		translator.Add(mkAddressSetForServices(remoteGatewayWithNoTLS))
+		translator.Remove(mkAddressSetForServices(remoteGatewayWithNoTLS))
+		translator.Add(mkAddressSetForServices(remoteGatewayWithNoTLS))
+
+		expectedNumUpdates := 3
+		actualNumUpdates := len(mockGetServer.updatesReceived)
+		if actualNumUpdates != expectedNumUpdates {
+			t.Fatalf("Expecting [%d] updates, got [%d]. Updates: %v", expectedNumUpdates, actualNumUpdates, mockGetServer.updatesReceived)
+		}
+	})
+
 	t.Run("Sends TlsIdentity when enabled", func(t *testing.T) {
 		expectedTLSIdentity := &pb.TlsIdentity_DnsLikeIdentity{
 			Name: "some-identity",

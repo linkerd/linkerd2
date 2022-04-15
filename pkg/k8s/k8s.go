@@ -28,6 +28,9 @@ const (
 	Server                = "server"
 	ServerAuthorization   = "serverauthorization"
 
+	PolicyAPIGroup   = "policy.linkerd.io"
+	PolicyAPIVersion = "v1beta1"
+
 	ServiceProfileAPIVersion = "linkerd.io/v1alpha2"
 	ServiceProfileKind       = "ServiceProfile"
 

@@ -2,6 +2,7 @@ package destination
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -114,19 +115,18 @@ func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
 // The client will receive only endpoints with the same topology label value as the source node,
 // the order of labels is based on the topological preference elicited from the K8s service.
 func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
+	filtered := make(map[watcher.ID]watcher.Address)
 	if len(et.availableEndpoints.TopologicalPref) == 0 {
-		allAvailEndpoints := make(map[watcher.ID]watcher.Address)
 		for k, v := range et.availableEndpoints.Addresses {
-			allAvailEndpoints[k] = v
+			filtered[k] = v
 		}
 		return watcher.AddressSet{
-			Addresses: allAvailEndpoints,
+			Addresses: filtered,
 			Labels:    et.availableEndpoints.Labels,
 		}
 	}
 
 	et.log.Debugf("Filtering through address set with preference %v", et.availableEndpoints.TopologicalPref)
-	filtered := make(map[watcher.ID]watcher.Address)
 	for _, pref := range et.availableEndpoints.TopologicalPref {
 		// '*' as a topology preference means all endpoints
 		if pref == "*" {
@@ -155,8 +155,14 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 		}
 	}
 
-	// if we have no filtered endpoints or the '*' preference then no topology pref is satisfied
-	return newEmptyAddressSet()
+	// If there were no filtered addresses, then fall to using all endpoints
+	for k, v := range et.availableEndpoints.Addresses {
+		filtered[k] = v
+	}
+	return watcher.AddressSet{
+		Addresses: filtered,
+		Labels:    et.availableEndpoints.Labels,
+	}
 }
 
 // diffEndpoints calculates the difference between the filtered set of endpoints in the current (Add/Remove) operation
@@ -166,9 +172,14 @@ func (et *endpointTranslator) diffEndpoints(filtered watcher.AddressSet) (watche
 	add := make(map[watcher.ID]watcher.Address)
 	remove := make(map[watcher.ID]watcher.Address)
 
-	for id, address := range filtered.Addresses {
-		if _, ok := et.filteredSnapshot.Addresses[id]; !ok {
-			add[id] = address
+	for id, new := range filtered.Addresses {
+		old, ok := et.filteredSnapshot.Addresses[id]
+		if !ok {
+			add[id] = new
+		} else {
+			if !reflect.DeepEqual(old, new) {
+				add[id] = new
+			}
 		}
 	}
 
@@ -212,26 +223,16 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 	addrs := []*pb.WeightedAddr{}
 	for _, address := range set.Addresses {
 		var (
-			wa  *pb.WeightedAddr
-			err error
+			wa          *pb.WeightedAddr
+			opaquePorts map[uint32]struct{}
+			err         error
 		)
 		if address.Pod != nil {
-			opaquePorts, ok, getErr := getPodOpaquePortsAnnotations(address.Pod)
-			if getErr != nil {
-				et.log.Errorf("failed getting opaque ports annotation for pod: %s", getErr)
+			opaquePorts, err = getAnnotatedOpaquePorts(address.Pod, et.defaultOpaquePorts)
+			if err != nil {
+				et.log.Errorf("failed to get opaque ports for pod %s/%s: %s", address.Pod.Namespace, address.Pod.Name, err)
 			}
-			// If the opaque ports annotation was not set, then set the
-			// endpoint's opaque ports to the default value.
-			if !ok {
-				opaquePorts = et.defaultOpaquePorts
-			}
-
-			skippedInboundPorts, skippedErr := getPodSkippedInboundPortsAnnotations(address.Pod)
-			if skippedErr != nil {
-				et.log.Errorf("failed getting ignored inbound ports annotation for pod: %s", err)
-			}
-
-			wa, err = toWeightedAddr(address, opaquePorts, skippedInboundPorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
+			wa, err = createWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 		} else {
 			var authOverride *pb.AuthorityOverride
 			if address.AuthorityOverride != "" {
@@ -321,27 +322,55 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 	}, nil
 }
 
-func toWeightedAddr(address watcher.Address, opaquePorts, skippedInboundPorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
+func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
+
+	tcpAddr, err := toAddr(address)
+	if err != nil {
+		return nil, err
+	}
+
+	weightedAddr := pb.WeightedAddr{
+		Addr:         tcpAddr,
+		Weight:       defaultWeight,
+		MetricLabels: map[string]string{},
+	}
+
+	// If the address is not backed by a pod, there is no additional metadata
+	// to add.
+	if address.Pod == nil {
+		return &weightedAddr, nil
+	}
+
+	skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(address.Pod)
+	if err != nil {
+		log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
+	}
+
 	controllerNSLabel := address.Pod.Labels[k8s.ControllerNSLabel]
 	sa, ns := k8s.GetServiceAccountAndNS(address.Pod)
-	labels := k8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
+	weightedAddr.MetricLabels = k8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
 	_, isSkippedInboundPort := skippedInboundPorts[address.Port]
+
 	// If the pod is controlled by any Linkerd control plane, then it can be
 	// hinted that this destination knows H2 (and handles our orig-proto
 	// translation)
-	hint := &pb.ProtocolHint{}
+	weightedAddr.ProtocolHint = &pb.ProtocolHint{}
 	if controllerNSLabel != "" && !isSkippedInboundPort {
 		if enableH2Upgrade {
-			hint.Protocol = &pb.ProtocolHint_H2_{
+			weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_H2_{
 				H2: &pb.ProtocolHint_H2{},
 			}
 		}
-		if _, ok := opaquePorts[address.Port]; ok {
+		// If address is set as opaque by a Server, or its port is set as
+		// opaque by annotation or default value, then hint its proxy's
+		// inbound port.
+		_, opaquePort := opaquePorts[address.Port]
+		if address.OpaqueProtocol || opaquePort {
 			port, err := getInboundPort(&address.Pod.Spec)
 			if err != nil {
 				log.Error(err)
 			} else {
-				hint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
+				weightedAddr.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
 					InboundPort: port,
 				}
 			}
@@ -353,14 +382,13 @@ func toWeightedAddr(address watcher.Address, opaquePorts, skippedInboundPorts ma
 	//
 	// TODO this should be relaxed to match a trust domain annotation so that
 	// multiple meshes can participate in identity if they share trust roots.
-	var identity *pb.TlsIdentity
 	if identityTrustDomain != "" &&
 		controllerNSLabel == controllerNS &&
 		address.Pod.Annotations[k8s.IdentityModeAnnotation] == k8s.IdentityModeDefault &&
 		!isSkippedInboundPort {
 
 		id := fmt.Sprintf("%s.%s.serviceaccount.identity.%s.%s", sa, ns, controllerNSLabel, identityTrustDomain)
-		identity = &pb.TlsIdentity{
+		weightedAddr.TlsIdentity = &pb.TlsIdentity{
 			Strategy: &pb.TlsIdentity_DnsLikeIdentity_{
 				DnsLikeIdentity: &pb.TlsIdentity_DnsLikeIdentity{
 					Name: id,
@@ -369,18 +397,7 @@ func toWeightedAddr(address watcher.Address, opaquePorts, skippedInboundPorts ma
 		}
 	}
 
-	tcpAddr, err := toAddr(address)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pb.WeightedAddr{
-		Addr:         tcpAddr,
-		Weight:       defaultWeight,
-		MetricLabels: labels,
-		TlsIdentity:  identity,
-		ProtocolHint: hint,
-	}, nil
+	return &weightedAddr, nil
 }
 
 func getK8sNodeTopology(nodes coreinformers.NodeInformer, srcNode string) (map[string]string, error) {

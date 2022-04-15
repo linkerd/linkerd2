@@ -25,7 +25,7 @@ func (c *MockAPIClient) Get(ctx context.Context, in *destinationPb.GetDestinatio
 // GetProfile provides a mock of a destination API method
 func (c *MockAPIClient) GetProfile(ctx context.Context, _ *destinationPb.GetDestination, _ ...grpc.CallOption) (destinationPb.Destination_GetProfileClient, error) {
 	// Not implemented through this client. The proxies use the gRPC server directly instead.
-	return nil, errors.New("Not implemented")
+	return nil, errors.New("not implemented")
 }
 
 // MockDestinationGetClient satisfies the Destination_GetClient gRPC interface.
