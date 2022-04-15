@@ -163,7 +163,7 @@ impl Runner {
                     // after the configmap is deleted, even with a long timeout.
                     // Instead, we use a relatively short timeout and retry the
                     // wait to get a better chance.
-                    command: Some(vec!["sh".to_string(),   "-c".to_string()]),
+                    command: Some(vec!["sh".to_string(), "-c".to_string()]),
                     args: Some(vec![format!(
                         "for i in $(seq 12) ; do \
                             echo waiting 10s for curl-lock to be deleted ; \
@@ -180,7 +180,7 @@ impl Runner {
                     name: "curl".to_string(),
                     image: Some("docker.io/curlimages/curl:latest".to_string()),
                     args: Some(
-                        vec!["curl", "-sSfv", target_url]
+                        vec!["curl", "-sSfv", "--max-time", "10", "--retry", "12", target_url]
                             .into_iter()
                             .map(Into::into)
                             .collect(),
