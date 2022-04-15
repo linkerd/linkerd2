@@ -25,11 +25,12 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dependencies.kube]
-version = "0.70"
+version = "0.71"
 default-features = false
 features = [
     "client",
-    "native-tls",
+    "openssl-tls",
+    "runtime",
     "ws",
 ]
 
