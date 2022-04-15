@@ -52,6 +52,7 @@ jobs:
         path: /home/runner/archives
 
   integration_tests:
+    needs: [docker_build]
     strategy:
       matrix:
         integration_test:
@@ -67,8 +68,12 @@ jobs:
         - uninstall
         - upgrade-edge
         - upgrade-stable
-    needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
+
+    # If a single test fails, allow other tests to run. This is mostly to
+    # account for the fact that CI is flakey and failed workflows may need to be
+    # rerun.
+    continue-on-error: true
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     steps:
