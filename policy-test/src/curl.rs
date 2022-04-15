@@ -49,11 +49,15 @@ impl Runner {
     /// Deletes the lock configmap, allowing curl pods to execute.
     pub async fn delete_lock(&self) {
         tracing::trace!(ns = %self.namespace, "Deleting curl-lock");
-        kube::Api::<k8s::api::core::v1::ConfigMap>::namespaced(
+        let api = kube::Api::<k8s::api::core::v1::ConfigMap>::namespaced(
             self.client.clone(),
             &self.namespace,
+        );
+        kube::runtime::wait::delete::delete_and_finalize(
+            api,
+            "curl-lock",
+            &kube::api::DeleteParams::foreground(),
         )
-        .delete("curl-lock", &kube::api::DeleteParams::foreground())
         .await
         .expect("curl-lock must be deleted");
         tracing::debug!(ns = %self.namespace, "Deleted curl-lock");
