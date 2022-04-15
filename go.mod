@@ -82,7 +82,7 @@ require (
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/emicklei/go-restful v2.9.5+incompatible // indirect
 	github.com/go-errors/errors v1.0.1 // indirect
-	github.com/go-logr/logr v1.2.0 // indirect
+	github.com/go-logr/logr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
@@ -92,7 +92,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
-	github.com/google/gofuzz v1.1.0 // indirect
+	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/googleapis/gnostic v0.5.5 // indirect
@@ -169,7 +169,7 @@ replace github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc
 replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.3
 
 // Addresses https://github.com/advisories/GHSA-crp2-qrr5-8pq7
-replace github.com/containerd/containerd => github.com/containerd/containerd v1.5.10
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.1
 
 // Addresses https://github.com/advisories/GHSA-qq97-vm5h-rrhg
 replace github.com/docker/distribution => github.com/docker/distribution v2.8.1+incompatible
