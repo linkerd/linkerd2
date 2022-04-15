@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Checkout code
-      uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
     - uses: ./.github/actions/docker-build
       with:
         docker-registry: ${{ env.DOCKER_REGISTRY }}
@@ -77,7 +77,7 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@94ab11c41e45d028884a99163086648e898eed25
     - name: Checkout code
-      uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
     - run: |
         . bin/_tag.sh
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
@@ -109,7 +109,7 @@ jobs:
     name: Policy controller manifest
     steps:
     - name: Checkout code
-      uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
     - run: |
         . bin/_tag.sh
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
@@ -139,7 +139,7 @@ jobs:
     needs: [docker_build]
     steps:
     - name: Checkout code
-      uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
     - uses: actions/setup-go@f6164bd8c8acb4a71fb2791a8b6c4024ff038dab
       with:
         go-version: '1.17'
@@ -172,7 +172,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
     - uses: actions/setup-go@f6164bd8c8acb4a71fb2791a8b6c4024ff038dab
       with:
         go-version: '1.17'
@@ -198,7 +198,7 @@ jobs:
     needs: [docker_build, policy_controller_manifest]
     steps:
     - name: Checkout code
-      uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
     - uses: actions/setup-go@f6164bd8c8acb4a71fb2791a8b6c4024ff038dab
       with:
         go-version: '1.17'
@@ -242,7 +242,7 @@ jobs:
     steps:
     - name: Checkout code
       if: startsWith(github.ref, 'refs/tags/stable')
-      uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
     - name: Chocolatey - update nuspec
       if: startsWith(github.ref, 'refs/tags/stable')
       run: |
@@ -270,7 +270,7 @@ jobs:
       contents: write
     steps:
     - name: Checkout code
-      uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -327,7 +327,7 @@ jobs:
     needs: [website_publish]
     steps:
     - name: Checkout code
-      uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -357,7 +357,7 @@ jobs:
     needs: [gh_release]
     steps:
     - name: Checkout code
-      uses: actions/checkout@a12a3943b4bdde767164f792f33f40b04645d846
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
     - name: Log into GCP
       uses: 'google-github-actions/auth@50dbfd0907520dcccbd51e965728eb32e592b8fa'
       with:
