@@ -73,35 +73,14 @@ func TestInstallResourcesPreUpgrade(t *testing.T) {
 	// Nest all pre-upgrade tests here so they can install and check resources
 	// using the latest stable CLI
 	t.Run(fmt.Sprintf("installing Linkerd %s control plane", linkerdBaseStableVersion), func(t *testing.T) {
-		// Install CRDs.
 		args := []string{
 			"install",
-			"--crds",
 			"--controller-log-level", "debug",
 			"--set", "proxyInit.ignoreInboundPorts=1234\\,5678",
 		}
 
 		// Pipe cmd & args to `linkerd`
 		out, err := TestHelper.CmdRun(cliPath, args...)
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "'linkerd install' command failed", "'linkerd install' command failed:\n%v", err)
-		}
-
-		out, err = TestHelper.KubectlApply(out, "")
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-				"'kubectl apply' command failed\n%s", out)
-		}
-
-		// Install control plane
-		args = []string{
-			"install",
-			"--controller-log-level", "debug",
-			"--set", "proxyInit.ignoreInboundPorts=1234\\,5678",
-		}
-
-		// Pipe cmd & args to `linkerd`
-		out, err = TestHelper.CmdRun(cliPath, args...)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'linkerd install' command failed", "'linkerd install' command failed:\n%v", err)
 		}
