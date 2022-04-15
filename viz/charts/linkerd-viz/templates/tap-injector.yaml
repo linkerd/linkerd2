@@ -23,6 +23,7 @@ spec:
     port: 443
     targetPort: tap-injector
 ---
+{{- $tree := deepCopy . }}
 kind: Deployment
 apiVersion: apps/v1
 metadata:
@@ -68,10 +69,9 @@ spec:
       {{- include "linkerd.tolerations" . | nindent 6 }}
       {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
-      {{- if .Values.enablePodAntiAffinity -}}
-      {{- $local := dict "component" "tap-injector" "label" "component" -}}
-      {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
-      {{- end }}
+      {{- $_ := set $tree "component" "tap-injector" -}}
+      {{- $_ := set $tree "label" "component" -}}
+      {{- include "linkerd.affinity" $tree | nindent 6 }}
       containers:
       - args:
         - injector
