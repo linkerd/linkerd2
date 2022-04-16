@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/name: gateway
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{.Values.linkerdVersion}}
-    component: gateway
+    linkerd.io/control-plane-component: gateway
     app: {{.Values.gateway.name}}
     linkerd.io/extension: multicluster
   name: {{.Values.gateway.name}}
@@ -72,7 +72,7 @@ metadata:
     mirror.linkerd.io/probe-period: "{{.Values.gateway.probe.seconds}}"
     mirror.linkerd.io/probe-path: {{.Values.gateway.probe.path}}
     mirror.linkerd.io/multicluster-gateway: "true"
-    component: gateway
+    linkerd.io/control-plane-component: gateway
     {{ include "partials.annotations.created-by" . }}
     {{- with .Values.gateway.serviceAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:

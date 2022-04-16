@@ -14,7 +14,7 @@ metadata:
     app.kubernetes.io/name: gateway
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: linkerdVersionValue
-    component: gateway
+    linkerd.io/control-plane-component: gateway
     app: linkerd-gateway
     linkerd.io/extension: multicluster
   name: linkerd-gateway
@@ -51,7 +51,7 @@ metadata:
     mirror.linkerd.io/probe-period: "3"
     mirror.linkerd.io/probe-path: /ready
     mirror.linkerd.io/multicluster-gateway: "true"
-    component: gateway
+    linkerd.io/control-plane-component: gateway
     linkerd.io/created-by: linkerd/helm linkerdVersionValue
 spec:
   ports:
@@ -115,7 +115,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      component: linkerd-service-mirror
+      linkerd.io/control-plane-component: linkerd-service-mirror
   port: linkerd-admin
   proxyProtocol: HTTP/1
 ---
@@ -367,11 +367,11 @@ metadata:
   namespace: linkerd-multicluster
   name: service-mirror
   labels:
-    component: linkerd-service-mirror
+    linkerd.io/control-plane-component: linkerd-service-mirror
 spec:
   podSelector:
     matchLabels:
-      component: linkerd-service-mirror
+      linkerd.io/control-plane-component: linkerd-service-mirror
   port: admin-http
   proxyProtocol: HTTP/1
 ---
@@ -381,7 +381,7 @@ metadata:
   namespace: linkerd-multicluster
   name: service-mirror
   labels:
-    component: linkerd-service-mirror
+    linkerd.io/control-plane-component: linkerd-service-mirror
 spec:
   server:
     name: service-mirror

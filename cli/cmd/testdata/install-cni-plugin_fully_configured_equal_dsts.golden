@@ -2,6 +2,8 @@ kind: Namespace
 apiVersion: v1
 metadata:
   name: other
+  annotations:
+    linkerd.io/inject: disabled
   labels:
     linkerd.io/cni-resource: "true"
     config.linkerd.io/admission-webhooks: disabled
@@ -100,8 +102,6 @@ spec:
         k8s-app: linkerd-cni
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
-        linkerd.io/cni-resource: "true"
-        linkerd.io/inject: disabled
     spec:
       nodeSelector:
         kubernetes.io/os: linux
