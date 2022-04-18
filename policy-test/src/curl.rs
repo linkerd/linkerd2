@@ -253,7 +253,7 @@ impl Running {
     async fn inits_complete(&self) {
         let api = kube::Api::namespaced(self.client.clone(), &self.namespace);
         let init_complete = kube::runtime::wait::await_condition(
-            api.clone(),
+            api,
             &self.name,
             |pod: Option<&k8s::Pod>| -> bool {
                 if let Some(pod) = pod {
