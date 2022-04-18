@@ -8,15 +8,18 @@ import (
 
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/version"
 	vizHealthCheck "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
 	"github.com/spf13/cobra"
 )
 
 type checkOptions struct {
-	proxy     bool
-	wait      time.Duration
-	namespace string
-	output    string
+	versionOverride    string
+	proxy              bool
+	wait               time.Duration
+	namespace          string
+	output             string
+	cliVersionOverride string
 }
 
 func newCheckOptions() *checkOptions {
@@ -54,6 +57,8 @@ code.`,
 		},
 	}
 
+	cmd.Flags().StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
+	cmd.Flags().StringVar(&options.cliVersionOverride, "cli-version-override", "", "Used to override the version of the cli (mostly for testing)")
 	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
 	cmd.Flags().BoolVar(&options.proxy, "proxy", options.proxy, "Also run data-plane checks, to determine if the data plane is healthy")
 	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
@@ -71,6 +76,10 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		return fmt.Errorf("Validation error when executing check command: %v", err)
 	}
 
+	if options.cliVersionOverride != "" {
+		version.Version = options.cliVersionOverride
+	}
+
 	hc := vizHealthCheck.NewHealthChecker([]healthcheck.CategoryID{}, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
@@ -78,6 +87,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		Impersonate:           impersonate,
 		ImpersonateGroup:      impersonateGroup,
 		APIAddr:               apiAddr,
+		VersionOverride:       options.versionOverride,
 		RetryDeadline:         time.Now().Add(options.wait),
 		DataPlaneNamespace:    options.namespace,
 	})
