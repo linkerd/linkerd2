@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 # Copyright (c) 2018 Tigera, Inc. All rights reserved.
 # Copyright 2018 Istio Authors
 # Modifications copyright (c) Linkerd authors
@@ -115,8 +115,8 @@ install_cni_bin() {
 
     echo "Wrote linkerd CNI binaries to ${dir}"
 }
-install_cni_bin
 
+create_cni_config() {
 # Create temp configuration and kubeconfig files
 #
 TMP_CONF='/tmp/linkerd-cni.conf.default'
@@ -192,7 +192,6 @@ fi
 # Insert any of the supported "auto" parameters.
 grep '__KUBERNETES_SERVICE_HOST__' ${TMP_CONF} && sed -i s/__KUBERNETES_SERVICE_HOST__/"${KUBERNETES_SERVICE_HOST}"/g ${TMP_CONF}
 grep '__KUBERNETES_SERVICE_PORT__' ${TMP_CONF} && sed -i s/__KUBERNETES_SERVICE_PORT__/"${KUBERNETES_SERVICE_PORT}"/g ${TMP_CONF}
-# TODO (matei): how accurate will hostname be? Should we switch to downward API?
 # Check in container
 sed -i s/__KUBERNETES_NODE_NAME__/"${KUBERNETES_NODE_NAME:-$(hostname)}"/g ${TMP_CONF}
 sed -i s/__KUBECONFIG_FILENAME__/"${KUBECONFIG_FILE_NAME}"/g ${TMP_CONF}
@@ -207,26 +206,19 @@ sed -i s~__KUBECONFIG_FILEPATH__~"${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"~g
 echo "CNI config: $(cat ${TMP_CONF})"
 
 sed -i s/__SERVICEACCOUNT_TOKEN__/"${SERVICEACCOUNT_TOKEN:-}"/g ${TMP_CONF}
-install_cni_conf
+}
 
-# Start looping and watching fs events
-HOST_CNI_NET="${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}"
-inotifywait -e close_write,moved_to,create -m "${HOST_CNI_NET}" |
- echo "Watching 'close_write', 'moved_to', and 'create' events in: ${HOST_CNI_NET}"
- while read -r directory events filename; do
-  echo "Detected change in ${directory}: ${filename} appeared via ${events}"
-  echo "Re-installing CNI configuration..."
-   install_cni_conf
- done
 
 install_cni_conf() {
+  create_cni_config
   # Things might have changed since the last time we set the variable (e.g new
   # CNI plugin installed) so find the relevant conf path again.
   #CNI_OLD_CONF_PATH="${CNI_OLD_CONF_PATH:-${CNI_CONF_PATH}}"
   CNI_OLD_CONF_PATH="${CNI_CONF_PATH}"
-  CNI_CONF_PATH=${CNI_CONF_PATH:-$(find "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | grep -v "linkerd" | sort | head -n 1)}
+  CNI_CONF_PATH=$(find "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | grep -v "linkerd" | sort | head -n 1)
   # If no files have been found, create our own.
-  CNI_CONF_FILE="${CNI_CONF_PATH:-"${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/01-linkerd-cni.conf"}"
+  CNI_CONF_PATH=${CNI_CONF_PATH:-"${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/01-linkerd-cni.conf"}
+  CNI_CONF_FILE="${CNI_CONF_PATH}"
   if [ -e "${CNI_CONF_FILE}" ]; then
     # Add the linkerd-cni plugin to the existing list
     CNI_TMP_CONF_DATA=$(cat "${TMP_CONF}")
@@ -254,3 +246,25 @@ install_cni_conf() {
   echo "Created CNI config ${CNI_CONF_PATH}"
 
 }
+
+install_cni_bin
+
+install_cni_conf
+
+# Start looping and watching fs events
+HOST_CNI_NET="${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}"
+inotifywait -m ${HOST_CNI_NET} -e moved_to -e create -e delete |
+ while read -r directory action filename; do
+   if [[ "$filename" =~ .*.(conflist|conf) ]]; then 
+    filepath="$directory$filename"
+    if [ "$action" = "DELETE" ] && [ $filepath = "${CNI_CONF_PATH}" ]; then
+      echo "Detected change in $directory: $action $filename"
+      echo "Configuration file: ${CNI_CONF_PATH} removed; re-installing..."
+      install_cni_conf
+    elif [ $filepath != "${CNI_OLD_CONF_PATH}" ]; then
+      echo "Detected change in $directory: $action $filename"
+      echo "Detected new configuration file: $filepath; re-installing..."
+      install_cni_conf
+    fi
+  fi
+ done
