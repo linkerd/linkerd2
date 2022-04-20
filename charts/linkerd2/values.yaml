@@ -186,8 +186,8 @@ proxyInit:
       # -- Amount of memory that the proxy-init container requests
       request: 10Mi
   closeWaitTimeoutSecs: 0
-  # -- Allow overriding the runAsNonRoot behaviour (<https://github.com/linkerd/linkerd2/issues/7308>)
-  runAsRoot: false
+  # -- Allow overriding the runAsNonRoot behaviour
+  runAsRoot: true
   xtMountPath:
     mountPath: /run
     name: linkerd-proxy-init-xtables-lock
