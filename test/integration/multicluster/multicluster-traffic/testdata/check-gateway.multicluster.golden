@@ -2,17 +2,17 @@ linkerd-multicluster
 --------------------
 √ Link CRD exists
 √ Link resources are valid
-	* target
+	* {{.LinkName}}
 √ remote cluster access credentials are valid
-	* target
+	* {{.LinkName}}
 √ clusters share trust anchors
-	* target
+	* {{.LinkName}}
 √ service mirror controller has required permissions
-	* target
+	* {{.LinkName}}
 √ service mirror controllers are running
-	* target
+	* {{.LinkName}}
 √ all gateway mirrors are healthy
-	* target
+	* {{.LinkName}}
 √ all mirror services have endpoints
 √ all mirror services are part of a Link
 √ multicluster extension proxies are healthy
