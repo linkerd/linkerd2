@@ -40,10 +40,15 @@ where
         self,
         addr: std::net::SocketAddr,
         shutdown: impl std::future::Future<Output = ()>,
-    ) -> Result<(), tonic::transport::Error> {
-        tonic::transport::Server::builder()
-            .add_service(InboundServerPoliciesServer::new(self))
-            .serve_with_shutdown(addr, shutdown)
+    ) -> hyper::Result<()> {
+        let svc = InboundServerPoliciesServer::new(self);
+        hyper::Server::bind(&addr)
+            .http2_only(true)
+            .tcp_nodelay(true)
+            .serve(hyper::service::make_service_fn(move |_| {
+                future::ok::<_, std::convert::Infallible>(svc.clone())
+            }))
+            .with_graceful_shutdown(shutdown)
             .await
     }
 

@@ -1,9 +1,8 @@
-
 apiVersion: v1
 kind: Service
 metadata:
   name: nginx-statefulset-svc
-  namespace: multicluster-statefulset
+  namespace: linkerd-multicluster-statefulset
   labels:
     mirror.linkerd.io/exported: "true"
 spec:
@@ -15,18 +14,15 @@ spec:
   sessionAffinity: None
   type: ClusterIP
   ports:
-  - name: tcp
+  - name: http
     protocol: TCP
     port: 80
-  - name: http
-    port: 8080
-    targetPort: 8080
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: nginx-statefulset
-  namespace: multicluster-statefulset
+  namespace: linkerd-multicluster-statefulset
 spec:
   serviceName: nginx-statefulset-svc
   selector:

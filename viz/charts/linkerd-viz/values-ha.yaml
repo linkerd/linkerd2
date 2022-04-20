@@ -4,6 +4,8 @@
 
 enablePodAntiAffinity: true
 
+# nodeAffinity:
+
 resources: &ha_resources
   cpu: &ha_resources_cpu
     limit: ""

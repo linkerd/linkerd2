@@ -128,6 +128,12 @@ where
     )
     .await;
     tracing::trace!(?ns);
+    tokio::time::timeout(
+        tokio::time::Duration::from_secs(60),
+        await_service_account(&client, &ns.name(), "default"),
+    )
+    .await
+    .expect("Timed out waiting for a serviceaccount");
 
     tracing::trace!("Spawning");
     let test = test(client.clone(), ns.name());
@@ -143,6 +149,9 @@ where
             if let Some(status) = p.status {
                 let _span = tracing::info_span!("pod", ns = %ns.name(), name = %pod).entered();
                 tracing::trace!(reason = ?status.reason, message = ?status.message);
+                for c in status.init_container_statuses.into_iter().flatten() {
+                    tracing::trace!(init_container = %c.name, ready = %c.ready, state = ?c.state);
+                }
                 for c in status.container_statuses.into_iter().flatten() {
                     tracing::trace!(container = %c.name, ready = %c.ready, state = ?c.state);
                 }
@@ -160,6 +169,70 @@ where
         .expect("failed to delete Namespace");
     if let Err(err) = res {
         std::panic::resume_unwind(err.into_panic());
+    }
+}
+
+pub async fn await_service_account(client: &kube::Client, ns: &str, name: &str) {
+    use futures::StreamExt;
+    let secret_name = await_service_account_secret(client, ns, name).await;
+
+    tracing::trace!(name = %secret_name, "Waiting for secret");
+    tokio::pin! {
+        let secrets = kube::runtime::watcher(
+            kube::Api::<k8s::api::core::v1::Secret>::namespaced(client.clone(), ns),
+            kube::api::ListParams::default().fields(&format!("metadata.name={}", secret_name)),
+        );
+    }
+    loop {
+        match secrets
+            .next()
+            .await
+            .expect("secret watch must not end")
+            .expect("secret watch must not fail")
+        {
+            kube::runtime::watcher::Event::Restarted(secrets) if !secrets.is_empty() => break,
+            kube::runtime::watcher::Event::Applied(_) => break,
+            _ => {}
+        }
+    }
+}
+
+async fn await_service_account_secret(client: &kube::Client, ns: &str, name: &str) -> String {
+    use futures::StreamExt;
+
+    tracing::trace!(%name, "Waiting for serviceaccount");
+    tokio::pin! {
+        let sas = kube::runtime::watcher(
+            kube::Api::<k8s::ServiceAccount>::namespaced(client.clone(), ns),
+            kube::api::ListParams::default().fields(&format!("metadata.name={}", name)),
+        );
+    }
+    loop {
+        let ev = sas
+            .next()
+            .await
+            .expect("serviceaccounts watch must not end")
+            .expect("serviceaccounts watch must not fail");
+        tracing::info!(?ev);
+        match ev {
+            kube::runtime::watcher::Event::Restarted(sas) => {
+                if let Some(sa) = sas.get(0) {
+                    if let Some(sec) = sa.secrets.iter().flatten().next() {
+                        if let Some(name) = sec.name.as_ref() {
+                            return name.clone();
+                        }
+                    }
+                }
+            }
+            kube::runtime::watcher::Event::Applied(sa) => {
+                if let Some(sec) = sa.secrets.iter().flatten().next() {
+                    if let Some(name) = sec.name.as_ref() {
+                        return name.clone();
+                    }
+                }
+            }
+            _ => {}
+        }
     }
 }
 

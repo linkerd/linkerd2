@@ -7,8 +7,8 @@
 **/node_modules
 bin
 !bin/fetch-proxy
-!bin/scurl
 !bin/install-deps
+!bin/scurl
 !bin/web
 **/Dockerfile*
 Dockerfile*
