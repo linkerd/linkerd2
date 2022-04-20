@@ -55,23 +55,36 @@ CONTAINER_CNI_BIN_DIR=${CONTAINER_CNI_BIN_DIR:-/opt/cni/bin}
 # Default to the first file following a find | sort since the Kubernetes CNI runtime is going
 # to look for the lexicographically first file. If the directory is empty, then use a name
 # of our choosing.
+# TODO: grep -v linkerd
 CNI_CONF_PATH=${CNI_CONF_PATH:-$(find "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | sort | head -n 1)}
 CNI_CONF_PATH=${CNI_CONF_PATH:-"${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/01-linkerd-cni.conf"}
 
 KUBECONFIG_FILE_NAME=${KUBECONFIG_FILE_NAME:-ZZZ-linkerd-cni-kubeconfig}
 
+# Cleanup will remove any installed configuration from the host
+# If CNI_CONF_PATH is set, then linkerd-cni configuration parameters will be
+# removed from the cni conf file. If linkerd-cni is running in chained mode, the
+# new configuration file will be written out to host fs atomically; otherwise,
+# if linkerd-cni is the only plugin, the configuration file will be removed.
 cleanup() {
   echo 'Removing linkerd-cni artifacts.'
 
   if [ -e "${CNI_CONF_PATH}" ]; then
     echo "Removing linkerd-cni config: ${CNI_CONF_PATH}"
     CNI_CONF_DATA=$(jq 'del( .plugins[]? | select( .type == "linkerd-cni" ))' "${CNI_CONF_PATH}")
+    # TODO (matei): we should write this out to a temp file and then do a `mv`
+    # to be atomic. 
     echo "${CNI_CONF_DATA}" > "${CNI_CONF_PATH}"
 
+    # Check whether configuration file has been created by our own cni plugin
+    # and if so, rm it.
     if [ "${CNI_CONF_PATH}" = "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/01-linkerd-cni.conf" ]; then
       rm -f "${CNI_CONF_PATH}"
     fi
   fi
+  #
+  # Remove binary and kubeconfig file
+  #
   if [ -e "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}" ]; then
     echo "Removing linkerd-cni kubeconfig: ${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
     rm -f "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
@@ -89,6 +102,8 @@ trap 'echo "SIGINT received, simply exiting..."; cleanup' INT
 trap 'echo "SIGTERM received, simply exiting..."; cleanup' TERM
 trap 'echo "SIGHUP received, simply exiting..."; cleanup' HUP
 
+# Install CNI bin will copy the linkerd-cni binary on the host's filesystem
+install_cni_bin() {
 # Place the new binaries if the mounted directory is writeable.
 dir="${CONTAINER_MOUNT_PREFIX}${DEST_CNI_BIN_DIR}"
 if [ ! -w "${dir}" ]; then
@@ -99,6 +114,7 @@ for path in "${CONTAINER_CNI_BIN_DIR}"/*; do
 done
 
 echo "Wrote linkerd CNI binaries to ${dir}"
+}
 
 TMP_CONF='/tmp/linkerd-cni.conf.default'
 # If specified, overwrite the network configuration file.
