@@ -55,7 +55,7 @@ CONTAINER_CNI_BIN_DIR=${CONTAINER_CNI_BIN_DIR:-/opt/cni/bin}
 # Default to the first file following a find | sort since the Kubernetes CNI runtime is going
 # to look for the lexicographically first file. If the directory is empty, then use a name
 # of our choosing.
-# TODO: grep -v linkerd
+# TODO (matei): grep -v linkerd
 CNI_CONF_PATH=${CNI_CONF_PATH:-$(find "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | sort | head -n 1)}
 CNI_CONF_PATH=${CNI_CONF_PATH:-"${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/01-linkerd-cni.conf"}
 
@@ -104,22 +104,28 @@ trap 'echo "SIGHUP received, simply exiting..."; cleanup' HUP
 
 # Install CNI bin will copy the linkerd-cni binary on the host's filesystem
 install_cni_bin() {
-# Place the new binaries if the mounted directory is writeable.
-dir="${CONTAINER_MOUNT_PREFIX}${DEST_CNI_BIN_DIR}"
-if [ ! -w "${dir}" ]; then
-  exit_with_error "${dir} is non-writeable, failure"
-fi
-for path in "${CONTAINER_CNI_BIN_DIR}"/*; do
-  cp "${path}" "${dir}"/ || exit_with_error "Failed to copy ${path} to ${dir}."
-done
+    # Place the new binaries if the mounted directory is writeable.
+    dir="${CONTAINER_MOUNT_PREFIX}${DEST_CNI_BIN_DIR}"
+    if [ ! -w "${dir}" ]; then
+      exit_with_error "${dir} is non-writeable, failure"
+    fi
+    for path in "${CONTAINER_CNI_BIN_DIR}"/*; do
+      cp "${path}" "${dir}"/ || exit_with_error "Failed to copy ${path} to ${dir}."
+    done
 
-echo "Wrote linkerd CNI binaries to ${dir}"
+    echo "Wrote linkerd CNI binaries to ${dir}"
 }
+install_cni_bin
 
+# Create temp configuration and kubeconfig files
+#
 TMP_CONF='/tmp/linkerd-cni.conf.default'
 # If specified, overwrite the network configuration file.
+# We are only interested in the side effect of parameter expansion here, hence ':'
 : "${CNI_NETWORK_CONFIG_FILE:=}"
 : "${CNI_NETWORK_CONFIG:=}"
+
+# If the CNI Network Config has ben overwridden, then use template from file
 if [ -e "${CNI_NETWORK_CONFIG_FILE}" ]; then
   echo "Using CNI config template from ${CNI_NETWORK_CONFIG_FILE}."
   cp "${CNI_NETWORK_CONFIG_FILE}" "${TMP_CONF}"
@@ -137,8 +143,10 @@ SKIP_TLS_VERIFY=${SKIP_TLS_VERIFY:-false}
 SERVICEACCOUNT_TOKEN=$(cat ${SERVICE_ACCOUNT_PATH}/token)
 
 # Check if we're running as a k8s pod.
+# The check will assert whether token exists and is a regular file
 if [ -f "${SERVICE_ACCOUNT_PATH}/token" ]; then
   # We're running as a k8d pod - expect some variables.
+  # If the variables are null, exit
   if [ -z "${KUBERNETES_SERVICE_HOST}" ]; then
     echo 'KUBERNETES_SERVICE_HOST not set'; exit 1;
   fi
@@ -184,6 +192,8 @@ fi
 # Insert any of the supported "auto" parameters.
 grep '__KUBERNETES_SERVICE_HOST__' ${TMP_CONF} && sed -i s/__KUBERNETES_SERVICE_HOST__/"${KUBERNETES_SERVICE_HOST}"/g ${TMP_CONF}
 grep '__KUBERNETES_SERVICE_PORT__' ${TMP_CONF} && sed -i s/__KUBERNETES_SERVICE_PORT__/"${KUBERNETES_SERVICE_PORT}"/g ${TMP_CONF}
+# TODO (matei): how accurate will hostname be? Should we switch to downward API?
+# Check in container
 sed -i s/__KUBERNETES_NODE_NAME__/"${KUBERNETES_NODE_NAME:-$(hostname)}"/g ${TMP_CONF}
 sed -i s/__KUBECONFIG_FILENAME__/"${KUBECONFIG_FILE_NAME}"/g ${TMP_CONF}
 sed -i s/__CNI_MTU__/"${CNI_MTU:-1500}"/g ${TMP_CONF}
@@ -191,52 +201,56 @@ sed -i s/__CNI_MTU__/"${CNI_MTU:-1500}"/g ${TMP_CONF}
 # Use alternative command character "~", since these include a "/".
 sed -i s~__KUBECONFIG_FILEPATH__~"${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"~g ${TMP_CONF}
 
-CNI_OLD_CONF_PATH="${CNI_OLD_CONF_PATH:-${CNI_CONF_PATH}}"
 
 # Log the config file before inserting service account token.
 # This way auth token is not visible in the logs.
 echo "CNI config: $(cat ${TMP_CONF})"
 
 sed -i s/__SERVICEACCOUNT_TOKEN__/"${SERVICEACCOUNT_TOKEN:-}"/g ${TMP_CONF}
+install_cni_conf
 
-CNI_CONF_FILE="${CNI_CONF_PATH}"
-if [ -e "${CNI_CONF_FILE}" ]; then
-  # Add the linkerd-cni plugin to the existing list
-  CNI_TMP_CONF_DATA=$(cat "${TMP_CONF}")
-  CNI_CONF_DATA=$(jq --argjson CNI_TMP_CONF_DATA "$CNI_TMP_CONF_DATA" -f /linkerd/filter.jq "${CNI_CONF_FILE}")
-  echo "${CNI_CONF_DATA}" > ${TMP_CONF}
-fi
+# Start looping and watching fs events
+HOST_CNI_NET="${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}"
+inotifywait -e close_write,moved_to,create -m "${HOST_CNI_NET}" |
+ echo "Watching 'close_write', 'moved_to', and 'create' events in: ${HOST_CNI_NET}"
+ while read -r directory events filename; do
+  echo "Detected change in ${directory}: ${filename} appeared via ${events}"
+  echo "Re-installing CNI configuration..."
+   install_cni_conf
+ done
 
-# If the old config filename ends with .conf, rename it to .conflist, because it has changed to be a list
-filename=${CNI_CONF_PATH##*/}
-extension="${filename##*.}"
-if [ "${filename}" != '01-linkerd-cni.conf' ] && [ "${extension}" = 'conf' ]; then
-  echo "Renaming ${CNI_CONF_PATH} extension to .conflist"
-  CNI_CONF_PATH="${CNI_CONF_PATH}list"
-fi
+install_cni_conf() {
+  # Things might have changed since the last time we set the variable (e.g new
+  # CNI plugin installed) so find the relevant conf path again.
+  #CNI_OLD_CONF_PATH="${CNI_OLD_CONF_PATH:-${CNI_CONF_PATH}}"
+  CNI_OLD_CONF_PATH="${CNI_CONF_PATH}"
+  CNI_CONF_PATH=${CNI_CONF_PATH:-$(find "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | grep -v "linkerd" | sort | head -n 1)}
+  # If no files have been found, create our own.
+  CNI_CONF_FILE="${CNI_CONF_PATH:-"${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/01-linkerd-cni.conf"}"
+  if [ -e "${CNI_CONF_FILE}" ]; then
+    # Add the linkerd-cni plugin to the existing list
+    CNI_TMP_CONF_DATA=$(cat "${TMP_CONF}")
+    CNI_CONF_DATA=$(jq --argjson CNI_TMP_CONF_DATA "$CNI_TMP_CONF_DATA" -f /linkerd/filter.jq "${CNI_CONF_FILE}")
+    echo "${CNI_CONF_DATA}" > ${TMP_CONF}
+  fi
 
-# Delete old CNI config files for upgrades.
-if [ "${CNI_CONF_PATH}" != "${CNI_OLD_CONF_PATH}" ]; then
-  echo "Removing CNI_OLD_CONF_PATH: ${CNI_OLD_CONF_PATH}"
-  rm -f "${CNI_OLD_CONF_PATH}"
-fi
+  # If the old config filename ends with .conf, rename it to .conflist, because it has changed to be a list
+  filename=${CNI_CONF_PATH##*/}
+  extension="${filename##*.}"
+  if [ "${filename}" != '01-linkerd-cni.conf' ] && [ "${extension}" = 'conf' ]; then
+    echo "Renaming ${CNI_CONF_PATH} extension to .conflist"
+    CNI_CONF_PATH="${CNI_CONF_PATH}list"
+  fi
 
-# Move the temporary CNI config into place.
-mv "${TMP_CONF}" "${CNI_CONF_PATH}" || exit_with_error 'Failed to mv files.'
+  # Delete old CNI config files for upgrades.
+  if [ "${CNI_CONF_PATH}" != "${CNI_OLD_CONF_PATH}" ]; then
+    echo "Removing CNI_OLD_CONF_PATH: ${CNI_OLD_CONF_PATH}"
+    rm -f "${CNI_OLD_CONF_PATH}"
+  fi
 
-echo "Created CNI config ${CNI_CONF_PATH}"
+  # Move the temporary CNI config into place.
+  mv "${TMP_CONF}" "${CNI_CONF_PATH}" || exit_with_error 'Failed to mv files.'
 
-# Unless told otherwise, sleep forever.
-# This prevents Kubernetes from restarting the pod repeatedly.
-should_sleep=${SLEEP:-"true"}
-echo "Done configuring CNI. Sleep=$should_sleep"
-while [ "${should_sleep}" = 'true'  ]; do
-  sleep infinity &
-  wait $!
-done
-# inotifywait -e close_write,moved_to,create -m . |
-# while read -r directory events filename; do
-#  if [ "$filename" == "myfile.py" ]; then
-#   execute_command
-#  fi
-#  done
+  echo "Created CNI config ${CNI_CONF_PATH}"
+
+}
