@@ -37,8 +37,8 @@ development branch.
   * Updated the `Server` CRD to relax OpenAPI schema validation requirements
   * Updated the policy controller webhook server to enforce validation of
     `Server` and `ServerAuthorization` resources
-  * Add a `proxyInit.runAsRoot` helm variable that may be set to false to run
-    the proxy-init container to run as a non-root user
+  * Added a `proxyInit.runAsRoot` helm variable that may be set to false to run
+    the proxy-init container as a non-root user
   * Updated controller servers to limit the amount of data that may be buffered
     to guard against malicious clients
   * Removed use of the deprecated `beta.kubernetes.io/node` label
