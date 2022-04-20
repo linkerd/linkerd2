@@ -1,5 +1,74 @@
 # Changes
 
+## stable-2.11.2
+
+This release pulls in many small fixes and improvements from the main
+development branch.
+
+* CLI
+  * Updated `check` to avoid checking the proxy version of uninjected pods
+  * Updated `check` to skip evicted pods
+  * Updated extension `install` commands to support the `--ignore-cluster` flag
+
+* Core
+  * Fixed a bug in the destination controller that could prevent service
+    endpoint updates from being sent to the proxy
+  * Updated the `destination` controller to honor `Server` resources when
+    determining an endpoint's opaqueness
+  * Updated the proxy to correctly honor opaque protocol hints for
+    non-Kubernetes targets, i.e., when a workload's
+    `config.linkerd.io/enable-external-profiles` annotation is set to true
+  * Updated controller webhook servers to ensure that TLS v1.2 or greater is
+    used
+  * Disabled pprof in control plane admin endpoints by default
+  * Updated controllers to ensure that user input is quoted & escaped
+    in log messages
+  * Updated the proxy's `linkerd-await` post-start hook to timeout after 2
+    minutes. This makes it easier to debug proxies that fail to become ready
+  * Updated the proxy init container to support JSON log formatting
+  * Added a `config.linkerd.io/skip-subnets` workload annotation that can be
+    used to configure the proxy-init to skip rewriting all traffic to a given
+    subnet. This is primarily intended to support docker-in-docker deployments
+  * Updated the policy controller to use an `openssl` backend for its admission
+    controller server on x86_64 to improve interopability with more exotic
+    Kubernetes server configurations
+  * Updated the policy controller to dynamically reload its webhook server
+    credentials without restarting
+  * Updated the `Server` CRD to relax OpenAPI schema validation requirements
+  * Updated the policy controller webhook server to enforce validation of
+    `Server` and `ServerAuthorization` resources
+  * Add a `proxyInit.runAsRoot` helm variable that may be set to false to run
+    the proxy-init container to run as a non-root user
+  * Updated controller servers to limit the amount of data that may be buffered
+    to guard against malicious clients
+  * Removed use of the deprecated `beta.kubernetes.io/node` label
+
+* Jaeger
+  * Upgraded `jaeger` to v1.31 and `opentelemetry-collector` to v0.43 to support
+    ARM
+
+* Multicluster
+  * Updated multicluster service mirrors so that local services reflect the
+    readiness of the remote service. When the remote service has no ready
+    endpoints or when its gateway is unavailable, the mirrored local service
+    will also have no ready endpoints. This facilitates automatic failover with
+    the [new `linkerd-failover` extension][failover]
+  * Fixed a bug in the multcluster service mirror that caused mirrored headless
+    services to incorrectly lose endpoints
+  * Fixed a configuration issue that prevented multicluster gateways from
+    running on ARM nodes
+  * Updated multicluster service mirrors to only create mirrored services when
+    the service's namespace already exists in the local cluster
+  * Fixed a bug in multicluster gateways that prevented WebSocket requests from
+    being handled by
+  * Updated the linkerd-multicluster-link Helm chart so that a `RoleBinding` is
+    created for each target cluster. This role binding is now only created when
+    the `enablePSP` helm value is set to true
+  * Added a `linkerd multicluster install --ha` flag to run gateways with
+    multiple replicas, pod disruption budgets, anti-affinity settings, etc
+
+[failover]: https://github.com/linkerd/linkerd-failover
+
 ## stable-2.11.1
 
 This release relaxes the policy on the identity controller, allowing it to work
@@ -2801,7 +2870,7 @@ resolutions](https://github.com/linkerd/linkerd2/pull/3848) are released when
 the associated balancer becomes idle.
 
 Finally, an update to follow best practices in the Helm charts has caused a
-*breaking change*. Users who have installed Linkerd using Helm must be certain
+_breaking change_. Users who have installed Linkerd using Helm must be certain
 to read the details of
 [#3822](https://github.com/linkerd/linkerd2/issues/3822)
 
@@ -4866,7 +4935,7 @@ you are upgrading from the `stable-2.0.0` release.
 **Full release notes**:
 
 * CLI
-  * `linkerd routes` command displays per-route stats for *any resource*
+  * `linkerd routes` command displays per-route stats for _any resource_
   * Service profiles are now supported for external authorities
   * `linkerd routes --open-api` flag generates a service profile based on an
     OpenAPI specification (swagger) file
