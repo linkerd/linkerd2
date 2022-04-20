@@ -82,7 +82,7 @@
         }
       },
       "securityContext": {
-        "allowPrivilegeEscalation": false,
+        "allowPrivilegeEscalation": true,
         "capabilities": {
           "add": [
             "NET_ADMIN",
@@ -90,8 +90,9 @@
           ]
         },
         "privileged": false,
-        "runAsNonRoot": true,
-        "readOnlyRootFilesystem": true
+        "readOnlyRootFilesystem": true,
+        "runAsNonRoot": false,
+        "runAsUser": 0
       },
       "terminationMessagePolicy": "FallbackToLogsOnError",
       "volumeMounts": [

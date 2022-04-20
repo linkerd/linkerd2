@@ -1300,7 +1300,7 @@ data:
         memory:
           limit: 50Mi
           request: 10Mi
-      runAsRoot: false
+      runAsRoot: true
       saMountPath: null
       skipSubnets: ""
       xtMountPath:
@@ -1614,13 +1614,14 @@ spec:
             cpu: "10m"
             memory: "10Mi"
         securityContext:
-          allowPrivilegeEscalation: false
+          allowPrivilegeEscalation: true
           capabilities:
             add:
             - NET_ADMIN
             - NET_RAW
           privileged: false
-          runAsNonRoot: true
+          runAsNonRoot: false
+          runAsUser: 0
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -2016,13 +2017,14 @@ spec:
             cpu: "10m"
             memory: "10Mi"
         securityContext:
-          allowPrivilegeEscalation: false
+          allowPrivilegeEscalation: true
           capabilities:
             add:
             - NET_ADMIN
             - NET_RAW
           privileged: false
-          runAsNonRoot: true
+          runAsNonRoot: false
+          runAsUser: 0
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -2256,13 +2258,14 @@ spec:
             cpu: "10m"
             memory: "10Mi"
         securityContext:
-          allowPrivilegeEscalation: false
+          allowPrivilegeEscalation: true
           capabilities:
             add:
             - NET_ADMIN
             - NET_RAW
           privileged: false
-          runAsNonRoot: true
+          runAsNonRoot: false
+          runAsUser: 0
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:

@@ -173,14 +173,15 @@ spec:
             cpu: 10m
             memory: 10Mi
         securityContext:
-          allowPrivilegeEscalation: false
+          allowPrivilegeEscalation: true
           capabilities:
             add:
             - NET_ADMIN
             - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
-          runAsNonRoot: true
+          runAsNonRoot: false
+          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /run
