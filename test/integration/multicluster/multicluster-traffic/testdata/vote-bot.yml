@@ -1,3 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    test.linkerd.io/is-test-data-plane: "true"
+  name: linkerd-emojivoto
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,7 +13,7 @@ metadata:
     app.kubernetes.io/part-of: emojivoto
     app.kubernetes.io/version: v10
   name: vote-bot
-  namespace: emojivoto
+  namespace: linkerd-emojivoto
 spec:
   replicas: 1
   selector:
@@ -26,7 +33,7 @@ spec:
         - emojivoto-vote-bot
         env:
         - name: WEB_HOST
-          value: web-svc-target.emojivoto:80
+          value: web-svc-target:80
         image: buoyantio/emojivoto-web:v10
         name: vote-bot
         resources:

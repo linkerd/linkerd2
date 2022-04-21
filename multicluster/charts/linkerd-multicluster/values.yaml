@@ -50,3 +50,8 @@ enablePSP: false
 # across hosts and zones for High Availability.
 # Enable this only when you have multiple replicas of components.
 enablePodAntiAffinity: false
+
+# -- NodeAffinity section, See the
+# [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
+# for more information
+# nodeAffinity:

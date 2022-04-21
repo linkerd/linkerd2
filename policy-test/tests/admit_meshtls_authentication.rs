@@ -14,9 +14,10 @@ async fn accepts_valid_ref() {
         },
         spec: MeshTLSAuthenticationSpec {
             identity_refs: Some(vec![NamespacedTargetRef {
+                group: None,
                 kind: "ServiceAccount".to_string(),
                 name: "default".to_string(),
-                ..Default::default()
+                namespace: None,
             }]),
             ..Default::default()
         },
@@ -64,9 +65,10 @@ async fn rejects_both_refs_and_strings() {
         spec: MeshTLSAuthenticationSpec {
             identities: Some(vec!["example.id".to_string()]),
             identity_refs: Some(vec![NamespacedTargetRef {
+                group: None,
                 kind: "ServiceAccount".to_string(),
                 name: "default".to_string(),
-                ..Default::default()
+                namespace: None,
             }]),
         },
     })
