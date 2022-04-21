@@ -2,7 +2,7 @@
 
 set -eu
 
-helmversion=v3.2.1
+helmversion=v3.8.0
 bindir=$( cd "${0%/*}" && pwd )
 targetbin=$( cd "$bindir"/.. && pwd )/target/bin
 helmbin=$targetbin/helm-$helmversion
@@ -24,7 +24,7 @@ if [ ! -f "$helmbin" ]; then
     mkdir -p "$targetbin"
     (
         cd "$tmp"
-        curl -Lsf -o "./helm.tar.gz" "$helmcurl"
+        "$bindir"/scurl -o "./helm.tar.gz" "$helmcurl"
         tar zf "./helm.tar.gz" -x "$targetdir"
         chmod +x "$targetdir/helm"
     )

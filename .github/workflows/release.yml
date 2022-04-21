@@ -24,7 +24,6 @@ jobs:
         - cni-plugin
         - controller
         - debug
-        - grafana
         - jaeger-webhook
         - metrics-api
         - proxy
@@ -34,7 +33,7 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Checkout code
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
     - uses: ./.github/actions/docker-build
       with:
         docker-registry: ${{ env.DOCKER_REGISTRY }}
@@ -59,7 +58,7 @@ jobs:
     # https://github.com/actions/upload-artifact/issues/8
     - name: Upload artifact
       if: matrix.component == 'cli-bin'
-      uses: actions/upload-artifact@27121b0bdffd731efa15d66772be8dc71245d074
+      uses: actions/upload-artifact@6673cd052c4cd6fcf4b4e6e60ea986c889389535
       with:
         name: image-archives
         path: /home/runner/archives
@@ -78,13 +77,13 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@94ab11c41e45d028884a99163086648e898eed25
     - name: Checkout code
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
     - run: |
         . bin/_tag.sh
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
         echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
     - name: Cache docker layers
-      uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+      uses: actions/cache@48af2dc4a9e8278b89d7fa154b955c30c6aaab09
       with:
         path: ${{ env.DOCKER_BUILDKIT_CACHE }}
         key: policy-controller-${{ matrix.arch }}-${{ env.TAG }}
@@ -110,7 +109,7 @@ jobs:
     name: Policy controller manifest
     steps:
     - name: Checkout code
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
     - run: |
         . bin/_tag.sh
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
@@ -140,12 +139,12 @@ jobs:
     needs: [docker_build]
     steps:
     - name: Checkout code
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
-    - uses: actions/setup-go@331ce1d993939866bb63c32c6cbbfd48fa76fc57
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+    - uses: actions/setup-go@f6164bd8c8acb4a71fb2791a8b6c4024ff038dab
       with:
         go-version: '1.17'
     - name: Download image archives
-      uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
+      uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
       with:
         name: image-archives
         path: image-archives
@@ -159,12 +158,11 @@ jobs:
         - cluster-domain
         - cni-calico-deep
         - deep
+        - viz
         - default-policy-deny
-        - external-issuer
-        - external-prometheus-deep
-        - external-resources
-        - helm-deep
-        - helm-upgrade
+        - external
+        # Skipping Helm upgrade test given chart in 2.11 is backwards-incompatible
+        #- helm-upgrade
         - uninstall
         - upgrade-edge
         - upgrade-stable
@@ -174,8 +172,8 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
-    - uses: actions/setup-go@331ce1d993939866bb63c32c6cbbfd48fa76fc57
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+    - uses: actions/setup-go@f6164bd8c8acb4a71fb2791a8b6c4024ff038dab
       with:
         go-version: '1.17'
     - name: Set environment variables from scripts
@@ -200,8 +198,8 @@ jobs:
     needs: [docker_build, policy_controller_manifest]
     steps:
     - name: Checkout code
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
-    - uses: actions/setup-go@331ce1d993939866bb63c32c6cbbfd48fa76fc57
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+    - uses: actions/setup-go@f6164bd8c8acb4a71fb2791a8b6c4024ff038dab
       with:
         go-version: '1.17'
     - name: Install linkerd CLI
@@ -244,7 +242,7 @@ jobs:
     steps:
     - name: Checkout code
       if: startsWith(github.ref, 'refs/tags/stable')
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
     - name: Chocolatey - update nuspec
       if: startsWith(github.ref, 'refs/tags/stable')
       run: |
@@ -257,7 +255,7 @@ jobs:
         args: pack bin/win/linkerd.nuspec
     - name: Chocolatey - upload package
       if: startsWith(github.ref, 'refs/tags/stable')
-      uses: actions/upload-artifact@27121b0bdffd731efa15d66772be8dc71245d074
+      uses: actions/upload-artifact@6673cd052c4cd6fcf4b4e6e60ea986c889389535
       with:
         name: choco
         path: ./linkerd.*.nupkg
@@ -272,7 +270,7 @@ jobs:
       contents: write
     steps:
     - name: Checkout code
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -281,7 +279,7 @@ jobs:
         extract_release_notes NOTES.md
     - name: Download choco package
       if: startsWith(github.ref, 'refs/tags/stable')
-      uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
+      uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
       with:
         name: choco
         path: choco
@@ -315,7 +313,7 @@ jobs:
       contents: write
     steps:
     - name: Create linkerd/website repository dispatch event
-      uses: peter-evans/repository-dispatch@ce5485de42c9b2622d2ed064be479e8ed65e76f4
+      uses: peter-evans/repository-dispatch@11ba7d3f32dc7cc919d1c43f1fec1c05260c26b5
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
         repository: linkerd/website
@@ -329,7 +327,7 @@ jobs:
     needs: [website_publish]
     steps:
     - name: Checkout code
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -342,7 +340,7 @@ jobs:
       run: echo "INSTALL=install-edge" >> $GITHUB_ENV
     - name: Check published version
       run: |
-        until RES=$(curl -sL https://run.linkerd.io/$INSTALL | grep "LINKERD2_VERSION=\${LINKERD2_VERSION:-$TAG}") \
+        until RES=$(bin/scurl https://run.linkerd.io/$INSTALL | grep "LINKERD2_VERSION=\${LINKERD2_VERSION:-$TAG}") \
           || (( count++ >= 10 ))
         do
           sleep 30
@@ -359,13 +357,11 @@ jobs:
     needs: [gh_release]
     steps:
     - name: Checkout code
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
-    - name: Configure gsutils
-      uses: linkerd/linkerd2-action-gcloud@f01c9de238d33e87029fddb7f2f9a1fb93903b8f
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+    - name: Log into GCP
+      uses: 'google-github-actions/auth@50dbfd0907520dcccbd51e965728eb32e592b8fa'
       with:
-        cloud_sdk_service_account_key: ${{ secrets.LINKERD_SITE_TOKEN }}
-        gcp_project: ${{ secrets.LINKERD_SITE_PROJECT }}
-        gcp_zone: ${{ secrets.LINKERD_SITE_ZONE }}
+        credentials_json: ${{ secrets.LINKERD_SITE_TOKEN }}
     - name: Edge Helm chart creation and upload
       if: startsWith(github.ref, 'refs/tags/edge')
       uses: ./.github/actions/helm-publish

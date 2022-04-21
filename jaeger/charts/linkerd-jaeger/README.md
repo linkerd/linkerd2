@@ -3,7 +3,7 @@
 The Linkerd-Jaeger extension adds distributed tracing to Linkerd using
 OpenCensus and Jaeger.
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square)
+![Version: 30.2.8-edge](https://img.shields.io/badge/Version-30.2.8--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -26,9 +26,9 @@ Guide](https://linkerd.io/2/tasks/install/).
 ## Adding Linkerd's Helm repository
 
 ```bash
-# To add the repo for Linkerd2 stable releases:
+# To add the repo for Linkerd stable releases:
 helm repo add linkerd https://helm.linkerd.io/stable
-# To add the repo for Linkerd2 edge releases:
+# To add the repo for Linkerd edge releases:
 helm repo add linkerd-edge https://helm.linkerd.io/edge
 ```
 
@@ -40,13 +40,7 @@ release, just replace with `linkerd-edge`.
 ### Helm v3
 
 ```bash
-helm install linkerd-jaeger linkerd/linkerd-jaeger
-```
-
-### Helm v2
-
-```bash
-helm install --name linkerd-jaeger linkerd/linkerd-jaeger
+helm install linkerd-jaeger -n linkerd-jaeger --create-namespace linkerd/linkerd-jaeger
 ```
 
 ## Get involved
@@ -79,11 +73,12 @@ Kubernetes: `>=1.20.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use |
 | collector.config | string | see `value.yaml` for actual configuration | OpenTelemetry Collector config, See the [Configuration docs](https://opentelemetry.io/docs/collector/configuration/) for more information |
 | collector.enabled | bool | `true` | Set to false to exclude collector installation |
 | collector.image.name | string | `"otel/opentelemetry-collector"` |  |
 | collector.image.pullPolicy | string | `"Always"` |  |
-| collector.image.version | string | `"0.27.0"` |  |
+| collector.image.version | string | `"0.43.0"` |  |
 | collector.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | collector.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the collector container can use |
 | collector.resources.cpu.request | string | `nil` | Amount of CPU units that the collector container requests |
@@ -93,12 +88,12 @@ Kubernetes: `>=1.20.0-0`
 | collector.resources.memory.request | string | `nil` | Amount of memory that the collector container requests |
 | collector.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
-| installNamespace | bool | `true` | Set to false when installing in a custom namespace. |
+| imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
 | jaeger.args | list | `["--query.base-path=/jaeger"]` | CLI arguments for Jaeger, See [Jaeger AIO Memory CLI reference](https://www.jaegertracing.io/docs/1.24/cli/#jaeger-all-in-one-memory) |
 | jaeger.enabled | bool | `true` | Set to false to exclude all-in-one Jaeger installation |
 | jaeger.image.name | string | `"jaegertracing/all-in-one"` |  |
 | jaeger.image.pullPolicy | string | `"Always"` |  |
-| jaeger.image.version | string | `"1.19.2"` |  |
+| jaeger.image.version | float | `1.31` |  |
 | jaeger.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | jaeger.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the jaeger container can use |
 | jaeger.resources.cpu.request | string | `nil` | Amount of CPU units that the jaeger container requests |
@@ -109,23 +104,28 @@ Kubernetes: `>=1.20.0-0`
 | jaeger.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | linkerdNamespace | string | `"linkerd"` | Namespace of the Linkerd core control-plane install |
 | linkerdVersion | string | `"linkerdVersionValue"` |  |
-| namespace | string | `"linkerd-jaeger"` |  |
 | nodeSelector | object | `{"kubernetes.io/os":"linux"}` | Default nodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | tolerations | string | `nil` | Default tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
-| webhook.caBundle | string | `""` | if empty, Helm will auto-generate this field, unless externalSecret is set to true. |
+| webhook.caBundle | string | `""` | Bundle of CA certificates for webhook. If not provided nor injected with cert-manager, then Helm will use the certificate generated for `webhook.crtPEM`. If `webhook.externalSecret` is set to true, this value, injectCaFrom, or injectCaFromSecret must be set, as no certificate will be generated. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information. |
 | webhook.collectorSvcAccount | string | `"collector"` | service account associated with the collector instance |
 | webhook.collectorSvcAddr | string | `"collector.linkerd-jaeger:55678"` | collector service address for the proxies to send trace data. Points by default to the the linkerd-jaeger collector |
-| webhook.crtPEM | string | `""` | if empty, Helm will auto-generate these fields |
-| webhook.externalSecret | bool | `false` |  |
+| webhook.crtPEM | string | `""` | Certificate for the webhook. If not provided and not using an external secret then Helm will generate one. |
+| webhook.externalSecret | bool | `false` | Do not create a secret resource for the webhook. If this is set to `true`, the value `webhook.caBundle` must be set or the ca bundle must injected with cert-manager ca injector using `webhook.injectCaFrom` or `webhook.injectCaFromSecret` (see below). |
 | webhook.failurePolicy | string | `"Ignore"` |  |
 | webhook.image.name | string | `"cr.l5d.io/linkerd/jaeger-webhook"` |  |
 | webhook.image.pullPolicy | string | `"IfNotPresent"` |  |
 | webhook.image.version | string | `"linkerdVersionValue"` |  |
-| webhook.keyPEM | string | `""` |  |
+| webhook.injectCaFrom | string | `""` | Inject the CA bundle from a cert-manager Certificate. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-certificate-resource) for more information. |
+| webhook.injectCaFromSecret | string | `""` | Inject the CA bundle from a Secret. If set, the `cert-manager.io/inject-ca-from-secret` annotation will be added to the webhook. The Secret must have the CA Bundle stored in the `ca.crt` key and have the `cert-manager.io/allow-direct-injection` annotation set to `true`. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource) for more information. |
+| webhook.keyPEM | string | `""` | Certificate key for the webhook. If not provided and not using an external secret then Helm will generate one. |
 | webhook.logLevel | string | `"info"` |  |
 | webhook.namespaceSelector | string | `nil` |  |
 | webhook.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | webhook.objectSelector | string | `nil` |  |
+| webhook.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the jaeger-injector container can use |
+| webhook.resources.cpu.request | string | `nil` | Amount of CPU units that the jaeger-injector container requests |
+| webhook.resources.memory.limit | string | `nil` | Maximum amount of memory that jaeger-injector container can use |
+| webhook.resources.memory.request | string | `nil` | Amount of memory that the jaeger-injector container requests |
 | webhook.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 
 ----------------------------------------------

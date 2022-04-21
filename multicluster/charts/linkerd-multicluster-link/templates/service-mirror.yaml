@@ -5,7 +5,7 @@ metadata:
   name: linkerd-service-mirror-access-local-resources-{{.Values.targetClusterName}}
   labels:
     linkerd.io/extension: multicluster
-    linkerd.io/control-plane-component: service-mirror
+    component: service-mirror
     mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 rules:
 - apiGroups: [""]
@@ -13,7 +13,7 @@ rules:
   verbs: ["list", "get", "watch", "create", "delete", "update"]
 - apiGroups: [""]
   resources: ["namespaces"]
-  verbs: ["create","list", "get", "watch"]
+  verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -21,7 +21,7 @@ metadata:
   name: linkerd-service-mirror-access-local-resources-{{.Values.targetClusterName}}
   labels:
     linkerd.io/extension: multicluster
-    linkerd.io/control-plane-component: service-mirror
+    component: service-mirror
     mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -30,16 +30,16 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-service-mirror-{{.Values.targetClusterName}}
-  namespace: {{.Values.namespace}}
+  namespace: {{.Release.Namespace}}
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-service-mirror-read-remote-creds-{{.Values.targetClusterName}}
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
       linkerd.io/extension: multicluster
-      linkerd.io/control-plane-component: service-mirror
+      component: service-mirror
       mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 rules:
   - apiGroups: [""]
@@ -54,10 +54,10 @@ kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-service-mirror-read-remote-creds-{{.Values.targetClusterName}}
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
       linkerd.io/extension: multicluster
-      linkerd.io/control-plane-component: service-mirror
+      component: service-mirror
       mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -66,16 +66,16 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: linkerd-service-mirror-{{.Values.targetClusterName}}
-    namespace: {{.Values.namespace}}
+    namespace: {{.Release.Namespace}}
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-service-mirror-{{.Values.targetClusterName}}
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/extension: multicluster
-    linkerd.io/control-plane-component: service-mirror
+    component: service-mirror
     mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 ---
 apiVersion: apps/v1
@@ -83,22 +83,22 @@ kind: Deployment
 metadata:
   labels:
     linkerd.io/extension: multicluster
-    linkerd.io/control-plane-component: service-mirror
+    component: service-mirror
     mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
   name: linkerd-service-mirror-{{.Values.targetClusterName}}
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      linkerd.io/control-plane-component: linkerd-service-mirror
+      component: linkerd-service-mirror
       mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
   template:
     metadata:
       annotations:
         linkerd.io/inject: enabled
       labels:
-        linkerd.io/control-plane-component: linkerd-service-mirror
+        component: linkerd-service-mirror
         mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
     spec:
       containers:
@@ -106,10 +106,11 @@ spec:
         - service-mirror
         - -log-level={{.Values.logLevel}}
         - -event-requeue-limit={{.Values.serviceMirrorRetryLimit}}
-        - -namespace={{.Values.namespace}}
+        - -namespace={{.Release.Namespace}}
         {{- if .Values.enableHeadlessServices }}
         - -enable-headless-services
         {{- end }}
+        - -enable-pprof={{.Values.enablePprof | default false}}
         - {{.Values.targetClusterName}}
         image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion}}
         name: service-mirror

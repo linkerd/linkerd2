@@ -1,11 +1,11 @@
 [workspace]
-resolver = "2"
 members = [
     "policy-controller",
     "policy-controller/core",
     "policy-controller/grpc",
     "policy-controller/k8s/api",
-    "policy-controller/k8s/index"
+    "policy-controller/k8s/index",
+    "policy-test",
 ]
 
 [profile.release]

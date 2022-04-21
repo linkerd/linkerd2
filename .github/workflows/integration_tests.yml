@@ -1,18 +1,14 @@
 name: Integration tests
-on:
-  pull_request: {}
-  push:
-    paths-ignore:
-    - '*.md'
-    - '**/*.md'
-    - 'web/app/package.json'
-    branches:
-    - main
+
+on: [pull_request]
+
 permissions:
   contents: read
+
 env:
   GH_ANNOTATION: true
   DOCKER_REGISTRY: ghcr.io/linkerd
+
 jobs:
 
   docker_build:
@@ -24,7 +20,6 @@ jobs:
         - cni-plugin
         - controller
         - debug
-        - grafana
         - jaeger-webhook
         - metrics-api
         - policy-controller
@@ -35,7 +30,7 @@ jobs:
     timeout-minutes: 30
     steps:
     - name: Checkout code
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
     - uses: ./.github/actions/docker-build
       with:
         docker-registry: ${{ env.DOCKER_REGISTRY }}
@@ -51,43 +46,47 @@ jobs:
     # absolute path is used here.
     # https://github.com/actions/upload-artifact/issues/8
     - name: Upload artifact
-      uses: actions/upload-artifact@27121b0bdffd731efa15d66772be8dc71245d074
+      uses: actions/upload-artifact@6673cd052c4cd6fcf4b4e6e60ea986c889389535
       with:
         name: image-archives
         path: /home/runner/archives
 
   integration_tests:
+    needs: [docker_build]
     strategy:
       matrix:
         integration_test:
         - cluster-domain
         - cni-calico-deep
         - deep
+        - viz
         - default-policy-deny
-        - external-issuer
-        - external-prometheus-deep
-        - external-resources
-        - helm-deep
-        - helm-upgrade
+        - external
+        # Skipping Helm upgrade test given chart in 2.11 is backwards-incompatible
+        #- helm-upgrade
         - multicluster
         - uninstall
         - upgrade-edge
         - upgrade-stable
-    needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
+
+    # If a single test fails, allow other tests to run. This is mostly to
+    # account for the fact that CI is flakey and failed workflows may need to be
+    # rerun.
+    continue-on-error: true
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     steps:
     - name: Checkout code
-      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
-    - uses: actions/setup-go@331ce1d993939866bb63c32c6cbbfd48fa76fc57
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+    - uses: actions/setup-go@f6164bd8c8acb4a71fb2791a8b6c4024ff038dab
       with:
         go-version: '1.17'
     - name: Set environment variables from scripts
       run: |
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
     - name: Download image archives
-      uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
+      uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
       with:
         name: image-archives
         path: image-archives

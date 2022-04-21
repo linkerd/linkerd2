@@ -1,9 +1,3 @@
-# -- Set to false when installing in a custom namespace.
-installNamespace: true
-# Default values for tracing.
-
-namespace: linkerd-jaeger
-
 # -- Namespace of the Linkerd core control-plane install
 linkerdNamespace: linkerd
 
@@ -11,6 +5,11 @@ linkerdNamespace: linkerd
 # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
 nodeSelector: &default_node_selector
   kubernetes.io/os: linux
+
+# -- For Private docker registries, authentication is needed.
+#  Registry secrets are applied to the respective service accounts
+imagePullSecrets: []
+# - name: my-private-docker-registry-login-secret
 
 # -- Default tolerations section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
@@ -23,12 +22,14 @@ tolerations: &default_tolerations
 # deprecated since k8s v1.21
 enablePSP: false
 
+# -- Kubernetes DNS Domain name to use
+clusterDomain: cluster.local
 collector:
   # -- Set to false to exclude collector installation
   enabled: true
   image:
     name: otel/opentelemetry-collector
-    version: 0.27.0
+    version: 0.43.0
     pullPolicy: Always
 
   resources:
@@ -81,7 +82,8 @@ collector:
     exporters:
       jaeger:
         endpoint: jaeger.${POD_NAMESPACE}:14250
-        insecure: true
+        tls:
+          insecure: true
     service:
       extensions: [health_check]
       pipelines:
@@ -95,7 +97,7 @@ jaeger:
   enabled: true
   image:
     name: jaegertracing/all-in-one
-    version: 1.19.2
+    version: 1.31
     pullPolicy: Always
 
   # -- CLI arguments for Jaeger, See [Jaeger AIO Memory CLI reference](https://www.jaegertracing.io/docs/1.24/cli/#jaeger-all-in-one-memory)
@@ -130,14 +132,40 @@ jaeger:
 linkerdVersion: &linkerd_version linkerdVersionValue
 
 webhook:
+  # -- Do not create a secret resource for the webhook.
+  # If this is set to `true`, the value `webhook.caBundle` must be set
+  # or the ca bundle must injected with cert-manager ca injector using
+  # `webhook.injectCaFrom` or `webhook.injectCaFromSecret` (see below).
   externalSecret: false
-  # -- if empty, Helm will auto-generate these fields
+
+  # -- Certificate for the webhook. If not provided and not using an external secret
+  # then Helm will generate one.
   crtPEM: |
 
+  # -- Certificate key for the webhook. If not provided and not using an external secret
+  # then Helm will generate one.
   keyPEM: |
 
-  # -- if empty, Helm will auto-generate this field, unless externalSecret is set to true.
+  # -- Bundle of CA certificates for webhook.
+  # If not provided nor injected with cert-manager,
+  # then Helm will use the certificate generated for `webhook.crtPEM`.
+  # If `webhook.externalSecret` is set to true, this value, injectCaFrom, or
+  # injectCaFromSecret must be set, as no certificate will be generated.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information.
   caBundle: |
+
+  # -- Inject the CA bundle from a cert-manager Certificate.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-certificate-resource)
+  # for more information.
+  injectCaFrom: ""
+
+  # -- Inject the CA bundle from a Secret.
+  # If set, the `cert-manager.io/inject-ca-from-secret` annotation will be added to the webhook.
+  # The Secret must have the CA Bundle stored in the `ca.crt` key and have
+  # the `cert-manager.io/allow-direct-injection` annotation set to `true`.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource)
+  # for more information.
+  injectCaFromSecret: ""
 
   # -- collector service address for the proxies to send trace data.
   # Points by default to the the linkerd-jaeger collector
@@ -160,6 +188,18 @@ webhook:
   objectSelector:
     #matchLabels:
     #  foo: bar
+
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the jaeger-injector container can use
+      limit:
+      # -- Amount of CPU units that the jaeger-injector container requests
+      request:
+    memory:
+      # -- Maximum amount of memory that jaeger-injector container can use
+      limit:
+      # -- Amount of memory that the jaeger-injector container requests
+      request:
 
   # -- NodeSelector section, See the
   # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information

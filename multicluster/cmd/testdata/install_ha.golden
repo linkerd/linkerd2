@@ -14,7 +14,7 @@ metadata:
     app.kubernetes.io/name: gateway
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: linkerdVersionValue
-    linkerd.io/control-plane-component: gateway
+    component: gateway
     app: linkerd-gateway
     linkerd.io/extension: multicluster
   name: linkerd-gateway
@@ -59,7 +59,7 @@ spec:
             topologyKey: kubernetes.io/hostname
       containers:
         - name: pause
-          image: gcr.io/google_containers/pause
+          image: gcr.io/google_containers/pause:3.2
       serviceAccountName: linkerd-gateway
 ---
 kind: PodDisruptionBudget
@@ -89,7 +89,7 @@ metadata:
     mirror.linkerd.io/probe-period: "3"
     mirror.linkerd.io/probe-path: /ready
     mirror.linkerd.io/multicluster-gateway: "true"
-    linkerd.io/control-plane-component: gateway
+    component: gateway
     linkerd.io/created-by: linkerd/helm linkerdVersionValue
 spec:
   ports:
@@ -153,7 +153,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      linkerd.io/control-plane-component: linkerd-service-mirror
+      component: linkerd-service-mirror
   port: linkerd-admin
   proxyProtocol: HTTP/1
 ---
@@ -252,7 +252,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: multicluster-psp
+  name: linkerd-multicluster-psp
   namespace: linkerd-multicluster
   labels:
     linkerd.io/extension: multicluster
@@ -405,11 +405,11 @@ metadata:
   namespace: linkerd-multicluster
   name: service-mirror
   labels:
-    linkerd.io/control-plane-component: linkerd-service-mirror
+    component: linkerd-service-mirror
 spec:
   podSelector:
     matchLabels:
-      linkerd.io/control-plane-component: linkerd-service-mirror
+      component: linkerd-service-mirror
   port: admin-http
   proxyProtocol: HTTP/1
 ---
@@ -419,7 +419,7 @@ metadata:
   namespace: linkerd-multicluster
   name: service-mirror
   labels:
-    linkerd.io/control-plane-component: linkerd-service-mirror
+    component: linkerd-service-mirror
 spec:
   server:
     name: service-mirror

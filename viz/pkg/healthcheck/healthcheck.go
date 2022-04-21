@@ -164,11 +164,11 @@ func (hc *HealthChecker) VizCategory() *healthcheck.Category {
 					return err
 				}
 
-				return healthcheck.CheckPodsRunning(pods, "")
+				return healthcheck.CheckPodsRunning(pods, hc.vizNamespace)
 			}),
 		*healthcheck.NewChecker("viz extension proxies are healthy").
 			WithHintAnchor("l5d-viz-proxy-healthy").
-			Fatal().
+			Warning().
 			WithCheck(func(ctx context.Context) (err error) {
 				return hc.CheckProxyHealth(ctx, hc.ControlPlaneNamespace, hc.vizNamespace)
 			}),
@@ -213,7 +213,7 @@ func (hc *HealthChecker) VizCategory() *healthcheck.Category {
 			Warning().
 			WithCheck(func(ctx context.Context) error {
 				if hc.externalPrometheusURL != "" {
-					return &healthcheck.SkipError{Reason: "prometheus is disabled"}
+					return healthcheck.SkipError{Reason: "prometheus is disabled"}
 				}
 
 				// Check for ClusterRoles
@@ -240,12 +240,7 @@ func (hc *HealthChecker) VizCategory() *healthcheck.Category {
 					return err
 				}
 
-				err = healthcheck.CheckForPods(pods, []string{"prometheus"})
-				if err != nil {
-					return err
-				}
-
-				return nil
+				return healthcheck.CheckForPods(pods, []string{"prometheus"})
 			}),
 		*healthcheck.NewChecker("can initialize the client").
 			WithHintAnchor("l5d-viz-existence-client").

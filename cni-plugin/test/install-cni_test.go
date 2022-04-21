@@ -95,7 +95,7 @@ func cp(src, dest string, t *testing.T) {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to read file %v", src),
 			"failed to read file %v: %v", src, err)
 	}
-	if err = ioutil.WriteFile(dest, data, 0644); err != nil {
+	if err = ioutil.WriteFile(dest, data, 0600); err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to write file %v", dest),
 			"failed to write file %v: %v", dest, err)
 	}
@@ -141,7 +141,7 @@ func startDocker(testNum int, wd string, testWorkRootDir string, tempCNINetDir s
 		"-v", tempCNINetDir + ":" + hostCniNetDir,
 		"-v", tempCNIBinDir + ":/host/opt/cni/bin",
 		"-v", tempK8sSvcAcctDir + ":/var/run/secrets/kubernetes.io/serviceaccount",
-		"--env-file", wd + "/data/env_vars.sh",
+		"--env-file", wd + "/data/env_vars.list",
 		"-e", cniNetworkConfigName,
 		"-e", "SLEEP=true",
 	}

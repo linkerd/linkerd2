@@ -5,10 +5,11 @@ mod identity_match;
 mod network_match;
 
 pub use self::{identity_match::IdentityMatch, network_match::NetworkMatch};
+use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use futures::prelude::*;
 pub use ipnet::{IpNet, Ipv4Net, Ipv6Net};
-use std::{collections::HashMap, hash::Hash, pin::Pin, time::Duration};
+use std::{hash::Hash, pin::Pin, time::Duration};
 
 /// Models inbound server configuration discovery.
 #[async_trait::async_trait]
@@ -23,9 +24,23 @@ pub type InboundServerStream = Pin<Box<dyn Stream<Item = InboundServer> + Send +
 /// Inbound server configuration.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InboundServer {
-    pub name: String,
+    pub reference: ServerRef,
+
     pub protocol: ProxyProtocol,
-    pub authorizations: HashMap<String, ClientAuthorization>,
+    pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ServerRef {
+    Default(String),
+    Server(String),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum AuthorizationRef {
+    Default(String),
+    ServerAuthorization(String),
+    AuthorizationPolicy(String),
 }
 
 /// Describes how a proxy should handle inbound connections.
@@ -62,7 +77,7 @@ pub enum ClientAuthentication {
     /// Indicates that clients need not be authenticated.
     Unauthenticated,
 
-    /// Indicates that clients must use TLS bu need not provide a client identity.
+    /// Indicates that clients must use TLS but need not provide a client identity.
     TlsUnauthenticated,
 
     /// Indicates that clients must use mutually-authenticated TLS.

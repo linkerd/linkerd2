@@ -8,11 +8,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -32,10 +34,11 @@ type TestHelper struct {
 	externalIssuer     bool
 	externalPrometheus bool
 	multicluster       bool
+	multiclusterSrcCtx string
+	multiclusterTgtCtx string
 	uninstall          bool
 	cni                bool
 	calico             bool
-	certsPath          string
 	defaultAllowPolicy string
 	httpClient         http.Client
 	KubernetesHelper
@@ -45,7 +48,7 @@ type TestHelper struct {
 
 type helm struct {
 	path                    string
-	chart                   string
+	charts                  string
 	multiclusterChart       string
 	vizChart                string
 	vizStableChart          string
@@ -75,8 +78,9 @@ var LinkerdDeployReplicasEdge = map[string]DeploySpec{
 	"linkerd-proxy-injector": {"linkerd", 1},
 }
 
-// LinkerdDeployReplicasStable is a map containing the number of replicas for each Deployment and the main
-// container name. Override whenever edge deviates from stable.
+// LinkerdDeployReplicasStable is a map containing the number of replicas for
+// each Deployment and the main container name. Override whenever edge deviates
+// from stable.
 var LinkerdDeployReplicasStable = LinkerdDeployReplicasEdge
 
 // LinkerdVizDeployReplicas is a map containing the number of replicas for
@@ -85,11 +89,34 @@ var LinkerdDeployReplicasStable = LinkerdDeployReplicasEdge
 var LinkerdVizDeployReplicas = map[string]DeploySpec{
 	"prometheus":   {"linkerd-viz", 1},
 	"metrics-api":  {"linkerd-viz", 1},
-	"grafana":      {"linkerd-viz", 1},
 	"tap":          {"linkerd-viz", 1},
 	"tap-injector": {"linkerd-viz", 1},
 	"web":          {"linkerd-viz", 1},
 }
+
+// MulticlusterDeployReplicas is a map containing the number of replicas for
+// each Deployment and the main container name for multicluster components
+var MulticlusterDeployReplicas = map[string]DeploySpec{
+	"linkerd-gateway": {"linkerd-multicluster", 1},
+}
+
+// ExternalVizDeployReplicas has an external prometheus instance that's in a
+// separate namespace
+var ExternalVizDeployReplicas = map[string]DeploySpec{
+	"prometheus":   {"external-prometheus", 1},
+	"metrics-api":  {"linkerd-viz", 1},
+	"tap":          {"linkerd-viz", 1},
+	"tap-injector": {"linkerd-viz", 1},
+	"web":          {"linkerd-viz", 1},
+}
+
+// SourceContextKey represents the key used to get the name of the Kubernetes
+// context corresponding to a source cluster in multicluster tests
+var SourceContextKey = "source"
+
+// TargetContextKey represents the key used to get the name of the Kubernetes
+// context corresponding to a source cluster in multicluster tests
+var TargetContextKey = "target"
 
 // NewGenericTestHelper returns a new *TestHelper from the options provided as function parameters.
 // This helper was created to be able to reuse this package without hard restrictions
@@ -103,7 +130,7 @@ func NewGenericTestHelper(
 	upgradeFromVersion,
 	clusterDomain,
 	helmPath,
-	helmChart,
+	helmCharts,
 	helmStableChart,
 	helmReleaseName,
 	helmMulticlusterReleaseName,
@@ -125,7 +152,7 @@ func NewGenericTestHelper(
 		upgradeFromVersion: upgradeFromVersion,
 		helm: helm{
 			path:                    helmPath,
-			chart:                   helmChart,
+			charts:                  helmCharts,
 			multiclusterChart:       helmMulticlusterChart,
 			multiclusterReleaseName: helmMulticlusterReleaseName,
 			stableChart:             helmStableChart,
@@ -144,12 +171,6 @@ func NewGenericTestHelper(
 	}
 }
 
-// MulticlusterDeployReplicas is a map containing the number of replicas for each Deployment and the main
-// container name for multicluster components
-var MulticlusterDeployReplicas = map[string]DeploySpec{
-	"linkerd-gateway": {"linkerd-multicluster", 1},
-}
-
 // NewTestHelper creates a new instance of TestHelper for the current test run.
 // The new TestHelper can be configured via command line flags.
 func NewTestHelper() *TestHelper {
@@ -158,13 +179,16 @@ func NewTestHelper() *TestHelper {
 		os.Exit(code)
 	}
 
+	// TODO (matei): clean-up flags
 	k8sContext := flag.String("k8s-context", "", "kubernetes context associated with the test cluster")
 	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
 	namespace := flag.String("linkerd-namespace", "linkerd", "the namespace where linkerd is installed")
 	vizNamespace := flag.String("viz-namespace", "linkerd-viz", "the namespace where linkerd viz extension is installed")
 	multicluster := flag.Bool("multicluster", false, "when specified the multicluster install functionality is tested")
+	multiclusterSourceCtx := flag.String("multicluster-source-context", "k3d-source", "the context belonging to source cluster in multicluster test")
+	multiclusterTargetCtx := flag.String("multicluster-target-context", "k3d-target", "the context belonging to target cluster in multicluster test")
 	helmPath := flag.String("helm-path", "target/helm", "path of the Helm binary")
-	helmChart := flag.String("helm-chart", "charts/linkerd2", "path to linkerd2's Helm chart")
+	helmCharts := flag.String("helm-charts", "charts/linkerd2", "path to linkerd2's Helm charts")
 	multiclusterHelmChart := flag.String("multicluster-helm-chart", "charts/linkerd-multicluster", "path to linkerd2's multicluster Helm chart")
 	vizHelmChart := flag.String("viz-helm-chart", "charts/linkerd-viz", "path to linkerd2's viz extension Helm chart")
 	vizHelmStableChart := flag.String("viz-helm-stable-chart", "charts/linkerd-viz", "path to linkerd2's viz extension stable Helm chart")
@@ -181,7 +205,6 @@ func NewTestHelper() *TestHelper {
 	uninstall := flag.Bool("uninstall", false, "whether to run the 'linkerd uninstall' integration test")
 	cni := flag.Bool("cni", false, "whether to install linkerd with CNI enabled")
 	calico := flag.Bool("calico", false, "whether to install calico CNI plugin")
-	certsPath := flag.String("certs-path", "", "if non-empty, 'linkerd install' will use the files ca.crt, issuer.crt and issuer.key under this path in its --identity-* flags")
 	defaultAllowPolicy := flag.String("default-allow-policy", "", "if non-empty, passed to --set policyController.defaultAllowPolicy at linkerd's install time")
 	flag.Parse()
 
@@ -214,9 +237,11 @@ func NewTestHelper() *TestHelper {
 		vizNamespace:       *vizNamespace,
 		upgradeFromVersion: *upgradeFromVersion,
 		multicluster:       *multicluster,
+		multiclusterSrcCtx: *multiclusterSourceCtx,
+		multiclusterTgtCtx: *multiclusterTargetCtx,
 		helm: helm{
 			path:                    *helmPath,
-			chart:                   *helmChart,
+			charts:                  *helmCharts,
 			multiclusterChart:       *multiclusterHelmChart,
 			vizChart:                *vizHelmChart,
 			vizStableChart:          *vizHelmStableChart,
@@ -231,7 +256,6 @@ func NewTestHelper() *TestHelper {
 		cni:                *cni,
 		calico:             *calico,
 		uninstall:          *uninstall,
-		certsPath:          *certsPath,
 		defaultAllowPolicy: *defaultAllowPolicy,
 	}
 
@@ -279,6 +303,15 @@ func (h *TestHelper) GetMulticlusterNamespace() string {
 	return fmt.Sprintf("%s-multicluster", h.GetLinkerdNamespace())
 }
 
+// GetMulticlusterContexts returns a map with the context names for the clusters
+// used in the test
+func (h *TestHelper) GetMulticlusterContexts() map[string]string {
+	return map[string]string{
+		"source": h.multiclusterSrcCtx,
+		"target": h.multiclusterTgtCtx,
+	}
+}
+
 // GetTestNamespace returns the namespace for the given test. The test namespace
 // is prefixed with the linkerd namespace.
 func (h *TestHelper) GetTestNamespace(testName string) string {
@@ -295,9 +328,9 @@ func (h *TestHelper) GetMulticlusterHelmReleaseName() string {
 	return h.helm.multiclusterReleaseName
 }
 
-// GetHelmChart returns the path to the Linkerd Helm chart
-func (h *TestHelper) GetHelmChart() string {
-	return h.helm.chart
+// GetHelmCharts returns the path to the Linkerd Helm chart
+func (h *TestHelper) GetHelmCharts() string {
+	return h.helm.charts
 }
 
 // GetMulticlusterHelmChart returns the path to the Linkerd multicluster Helm chart
@@ -344,12 +377,6 @@ func (h *TestHelper) Multicluster() bool {
 // Uninstall determines whether the "linkerd uninstall" integration test should be run
 func (h *TestHelper) Uninstall() bool {
 	return h.uninstall
-}
-
-// CertsPath returns the path for the ca.cert, issuer.crt and issuer.key files that `linkerd install`
-// will use in its --identity-* flags
-func (h *TestHelper) CertsPath() string {
-	return h.certsPath
 }
 
 // DefaultAllowPolicy returns the override value for policyController.defaultAllowPolicy
@@ -406,11 +433,21 @@ type: kubernetes.io/tls`, base64.StdEncoding.EncodeToString([]byte(root)), base6
 	return err
 }
 
+// CmdRun executes an arbitrary command by calling the binary and return its
+// output
+func (h *TestHelper) CmdRun(cmd string, arg ...string) (string, error) {
+	out, stderr, err := combinedOutput("", cmd, arg...)
+	if err != nil {
+		return out, fmt.Errorf("command failed: '%s %s'\n%w\n%s", cmd, strings.Join(arg, " "), err, stderr)
+	}
+	return out, nil
+}
+
 // LinkerdRun executes a linkerd command returning its stdout.
 func (h *TestHelper) LinkerdRun(arg ...string) (string, error) {
 	out, stderr, err := h.PipeToLinkerdRun("", arg...)
 	if err != nil {
-		return out, fmt.Errorf("command failed: linkerd %s\n%s\n%s", strings.Join(arg, " "), err, stderr)
+		return out, fmt.Errorf("command failed: linkerd %s\n%w\n%s", strings.Join(arg, " "), err, stderr)
 	}
 	return out, nil
 }
@@ -493,7 +530,7 @@ func (h *TestHelper) HelmUpgrade(chart string, arg ...string) (string, string, e
 		"upgrade",
 		h.helm.releaseName,
 		"--kube-context", h.k8sContext,
-		"--set", "namespace=" + h.namespace,
+		"--namespace", h.namespace,
 		"--timeout", "60m",
 		"--wait",
 		chart,
@@ -502,13 +539,14 @@ func (h *TestHelper) HelmUpgrade(chart string, arg ...string) (string, string, e
 }
 
 // HelmInstall runs the helm install subcommand, with the provided arguments
-func (h *TestHelper) HelmInstall(chart string, arg ...string) (string, string, error) {
+func (h *TestHelper) HelmInstall(chart, releaseName string, arg ...string) (string, string, error) {
 	withParams := append([]string{
 		"install",
-		h.helm.releaseName,
+		releaseName,
 		chart,
 		"--kube-context", h.k8sContext,
-		"--set", "namespace=" + h.namespace,
+		"--namespace", h.namespace,
+		"--create-namespace",
 		"--timeout", "60m",
 		"--wait",
 	}, arg...)
@@ -534,7 +572,8 @@ func (h *TestHelper) HelmInstallMulticluster(chart string, arg ...string) (strin
 		h.helm.multiclusterReleaseName,
 		chart,
 		"--kube-context", h.k8sContext,
-		"--set", "namespace=" + h.GetMulticlusterNamespace(),
+		"--namespace", h.GetMulticlusterNamespace(),
+		"--create-namespace",
 		"--set", "linkerdNamespace=" + h.GetLinkerdNamespace(),
 	}, arg...)
 	return combinedOutput("", h.helm.path, withParams...)
@@ -590,14 +629,16 @@ func (h *TestHelper) RetryFor(timeout time.Duration, fn func() error) error {
 		return nil
 	}
 
-	timeoutAfter := time.After(timeout)
-	retryAfter := time.Tick(time.Second)
+	timeoutAfter := time.NewTimer(timeout)
+	defer timeoutAfter.Stop()
+	retryAfter := time.NewTicker(time.Second)
+	defer retryAfter.Stop()
 
 	for {
 		select {
-		case <-timeoutAfter:
+		case <-timeoutAfter.C:
 			return err
-		case <-retryAfter:
+		case <-retryAfter.C:
 			err = fn()
 			if err == nil {
 				return nil
@@ -621,12 +662,12 @@ func (h *TestHelper) HTTPGetURL(url string) (string, error) {
 		defer resp.Body.Close()
 		bytes, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return fmt.Errorf("Error reading response body: %v", err)
+			return fmt.Errorf("Error reading response body: %w", err)
 		}
 		body = string(bytes)
 
 		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("GET request to [%s] returned status [%d]\n%s", url, resp.StatusCode, body)
+			return fmt.Errorf("GET request to %s returned status code %d with body %q", url, resp.StatusCode, body)
 		}
 
 		return nil
@@ -647,6 +688,48 @@ func (h *TestHelper) WithDataPlaneNamespace(ctx context.Context, testName string
 		AnnotatedFatalf(t, fmt.Sprintf("failed to delete %s namespace", prefixedNs),
 			"failed to delete %s namespace: %s", prefixedNs, err)
 	}
+}
+
+// GetReleaseChannelVersions is used to fetch the latest versions for Linkerd's
+// release channels: edge and stable
+func (h *TestHelper) GetReleaseChannelVersions() (map[string]string, error) {
+	url := "https://versioncheck.linkerd.io/version.json"
+	resp, err := h.httpClient.Get(url)
+	if err != nil {
+		return map[string]string{}, err
+	}
+	defer resp.Body.Close()
+
+	var versions map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&versions); err != nil {
+		return map[string]string{}, err
+	}
+
+	return versions, nil
+}
+
+// DownloadCLIBinary is used to download the Linkerd CLI from GitHub Releases
+// page. The method takes the version to download and a filepath where to save
+// the binary.
+func (h *TestHelper) DownloadCLIBinary(filepath, version string) error {
+	url := fmt.Sprintf("https://github.com/linkerd/linkerd2/releases/download/%[1]s/linkerd2-cli-%[1]s-%s-%s", version, runtime.GOOS, runtime.GOARCH)
+	resp, err := h.httpClient.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Create if it doesn't already exist
+	out, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE, 0555)
+	if err != nil {
+		return err
+	}
+	// This is a test and we don't care about errors that can occur here.
+	//nolint:gosec
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	return err
 }
 
 // ReadFile reads a file from disk and returns the contents as a string.
@@ -685,19 +768,18 @@ type RowStat struct {
 
 // CheckRowCount checks that expectedRowCount rows have been returned
 func CheckRowCount(out string, expectedRowCount int) ([]string, error) {
-	out = strings.TrimSuffix(out, "\n")
-	rows := strings.Split(out, "\n")
+	rows := strings.Split(strings.TrimSuffix(out, "\n"), "\n")
 	if len(rows) < 2 {
 		return nil, fmt.Errorf(
-			"Error stripping header and trailing newline; full output:\n%s",
-			strings.Join(rows, "\n"),
+			"Expected at least 2 lines in %q",
+			out,
 		)
 	}
 	rows = rows[1:] // strip header
 	if len(rows) != expectedRowCount {
 		return nil, fmt.Errorf(
-			"Expected [%d] rows in stat output, got [%d]; full output:\n%s",
-			expectedRowCount, len(rows), strings.Join(rows, "\n"))
+			"Expected %d rows in stat output but got %d in %q",
+			expectedRowCount, len(rows), out)
 	}
 
 	return rows, nil
@@ -719,7 +801,7 @@ func ParseRows(out string, expectedRowCount, expectedColumnCount int) (map[strin
 		}
 		if len(fields) != expectedColumnCount {
 			return nil, fmt.Errorf(
-				"Expected [%d] columns in stat output, got [%d]; full output:\n%s",
+				"Expected %d columns in stat output but got %d in %q",
 				expectedColumnCount, len(fields), row)
 		}
 
@@ -751,7 +833,7 @@ func ParseRows(out string, expectedRowCount, expectedColumnCount int) (map[strin
 func ParseEvents(out string) ([]*corev1.Event, error) {
 	var list corev1.List
 	if err := json.Unmarshal([]byte(out), &list); err != nil {
-		return nil, fmt.Errorf("error unmarshaling list from `kubectl get events`: %s", err)
+		return nil, fmt.Errorf("error unmarshaling list from `kubectl get events`: %w", err)
 	}
 
 	if len(list.Items) == 0 {
@@ -762,7 +844,7 @@ func ParseEvents(out string) ([]*corev1.Event, error) {
 	for _, i := range list.Items {
 		var e corev1.Event
 		if err := json.Unmarshal(i.Raw, &e); err != nil {
-			return nil, fmt.Errorf("error unmarshaling list event from `kubectl get events`: %s", err)
+			return nil, fmt.Errorf("error unmarshaling list event from `kubectl get events`: %w", err)
 		}
 		events = append(events, &e)
 	}

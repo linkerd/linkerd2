@@ -2,13 +2,14 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/prometheus/common/model"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -50,10 +51,8 @@ spec:
   containers:
   - name: linkerd-proxy
     env:
-    - name: _l5d_ns
-      value: linkerd
-    - name: _l5d_trustdomain
-      value: cluster.local
+    - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
+      value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.linkerd.cluster.local
   serviceAccountName: %s
 status:
   phase: Running
@@ -68,7 +67,7 @@ func testEdges(t *testing.T, expectations []edgesExpected) {
 		}
 
 		rsp, err := fakeGrpcServer.Edges(context.TODO(), exp.req)
-		if err != exp.err {
+		if !errors.Is(err, exp.err) {
 			t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
 		}
 

@@ -9,13 +9,17 @@ multicluster link` CLI command, which also produces the
 chart. Therefore this chart is not a replacement for that command, and
 shouldn't be used as-is unless you really know what you're doing ;-)
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square)
+![Version: 0.1.1](https://img.shields.io/badge/Version-0.1.1-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
 ## Requirements
 
 Kubernetes: `>=1.20.0-0`
+
+| Repository | Name | Version |
+|------------|------|---------|
+| file://../../../charts/partials | partials | 0.1.0 |
 
 ## Values
 
@@ -24,9 +28,9 @@ Kubernetes: `>=1.20.0-0`
 | controllerImage | string | `"cr.l5d.io/linkerd/controller"` | Docker image for the Service mirror component (uses the Linkerd controller image) |
 | controllerImageVersion | string | `"linkerdVersionValue"` | Tag for the Service Mirror container Docker image |
 | enableHeadlessServices | bool | `false` | Toggle support for mirroring headless services |
+| enablePSP | bool | `false` | Create RoleBindings to associate ServiceAccount of target cluster Service Mirror to the control plane PSP resource. This requires that `enabledPSP` is set to true on the extension and control plane install. Note PSP has been deprecated since k8s v1.21 |
 | gateway.probe.port | int | `4191` | The port used for liveliness probing |
 | logLevel | string | `"info"` | Log level for the Multicluster components |
-| namespace | string | `"linkerd-multicluster"` | Service Mirror component namespace |
 | serviceMirrorRetryLimit | int | `3` | Number of times update from the remote cluster is allowed to be requeued (retried) |
 | serviceMirrorUID | int | `2103` | User id under which the Service Mirror shall be ran |
 

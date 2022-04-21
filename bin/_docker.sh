@@ -35,7 +35,6 @@ export DOCKER_IMAGES=(${DOCKER_IMAGES:-
     policy-controller
     metrics-api
     debug
-    grafana
     proxy
     web
     jaeger-webhook

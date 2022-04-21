@@ -2,7 +2,7 @@ package identity
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/hex"
 	"errors"
@@ -15,13 +15,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/golang/protobuf/ptypes"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/identity"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -119,12 +119,12 @@ func (svc *Service) loadCredentials() (tls.Issuer, error) {
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to read CA from disk: %s", err)
+		return nil, fmt.Errorf("failed to read CA from disk: %w", err)
 	}
 
 	// Don't verify with dns name as this is not a leaf certificate
 	if err := creds.Crt.Verify(svc.trustAnchors, "", time.Time{}); err != nil {
-		return nil, fmt.Errorf("failed to verify issuer credentials for '%s' with trust anchors: %s", svc.expectedName, err)
+		return nil, fmt.Errorf("failed to verify issuer credentials for '%s' with trust anchors: %w", svc.expectedName, err)
 	}
 
 	if !creds.Certificate.IsCA {
@@ -202,18 +202,20 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 	log.Debugf("Validating token for %s", reqIdentity)
 	tokIdentity, err := svc.validator.Validate(ctx, tok)
 	if err != nil {
-		switch e := err.(type) {
-		case NotAuthenticated:
-			log.Infof("authentication failed for %s: %s", reqIdentity, e)
-			return nil, status.Error(codes.FailedPrecondition, e.Error())
-		case InvalidToken:
-			log.Debugf("invalid token provided for %s: %s", reqIdentity, e)
-			return nil, status.Error(codes.InvalidArgument, e.Error())
-		default:
-			msg := fmt.Sprintf("error validating token for %s: %s", reqIdentity, e)
-			log.Error(msg)
-			return nil, status.Error(codes.Internal, msg)
+		var nae NotAuthenticated
+		if errors.As(err, &nae) {
+			log.Infof("authentication failed for %s: %s", reqIdentity, nae)
+			return nil, status.Error(codes.FailedPrecondition, nae.Error())
 		}
+		var ite InvalidToken
+		if errors.As(err, &ite) {
+			log.Debugf("invalid token provided for %s: %s", reqIdentity, ite)
+			return nil, status.Error(codes.InvalidArgument, ite.Error())
+		}
+
+		msg := fmt.Sprintf("error validating token for %s: %s", reqIdentity, err)
+		log.Error(msg)
+		return nil, status.Error(codes.Internal, msg)
 	}
 
 	// Ensure the requested identity matches the token's identity.
@@ -232,16 +234,12 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 	}
 	crts := crt.ExtractRaw()
 	if len(crts) == 0 {
+		//nolint:gocritic
 		log.Fatal("the issuer provided a certificate without key material")
 	}
+	validUntil := timestamppb.New(crt.Certificate.NotAfter)
 
-	validUntil, err := ptypes.TimestampProto(crt.Certificate.NotAfter)
-	if err != nil {
-		log.Errorf("invalid expiry time: %s", err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	hasher := md5.New()
+	hasher := sha256.New()
 	hasher.Write(crts[0])
 	hash := hex.EncodeToString(hasher.Sum(nil))
 	identitySegments := strings.Split(tokIdentity, ".")

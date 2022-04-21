@@ -41,7 +41,6 @@ type cniPluginOptions struct {
 	destCNIBinDir       string
 	useWaitFlag         bool
 	priorityClassName   string
-	installNamespace    bool
 }
 
 func (options *cniPluginOptions) validate() error {
@@ -81,7 +80,7 @@ func (options *cniPluginOptions) pluginImage() string {
 func newCmdInstallCNIPlugin() *cobra.Command {
 	options, err := newCNIInstallOptionsWithDefaults()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
@@ -116,7 +115,6 @@ assumes that the 'linkerd install' command will be executed with the
 	cmd.PersistentFlags().StringVar(&options.destCNINetDir, "dest-cni-net-dir", options.destCNINetDir, "Directory on the host where the CNI configuration will be placed")
 	cmd.PersistentFlags().StringVar(&options.destCNIBinDir, "dest-cni-bin-dir", options.destCNIBinDir, "Directory on the host where the CNI binary will be placed")
 	cmd.PersistentFlags().StringVar(&options.priorityClassName, "priority-class-name", options.priorityClassName, "Pod priorityClassName for CNI daemonset's pods")
-	cmd.PersistentFlags().BoolVar(&options.installNamespace, "install-namespace", options.installNamespace, "Whether to create the CNI namespace or not")
 	cmd.PersistentFlags().BoolVar(
 		&options.useWaitFlag,
 		"use-wait-flag",
@@ -147,7 +145,6 @@ func newCNIInstallOptionsWithDefaults() (*cniPluginOptions, error) {
 		destCNIBinDir:       defaults.DestCNIBinDir,
 		useWaitFlag:         defaults.UseWaitFlag,
 		priorityClassName:   defaults.PriorityClassName,
-		installNamespace:    defaults.InstallNamespace,
 	}
 
 	if defaults.IgnoreInboundPorts != "" {
@@ -184,9 +181,7 @@ func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
 	installValues.DestCNINetDir = options.destCNINetDir
 	installValues.DestCNIBinDir = options.destCNIBinDir
 	installValues.UseWaitFlag = options.useWaitFlag
-	installValues.Namespace = cniNamespace
 	installValues.PriorityClassName = options.priorityClassName
-	installValues.InstallNamespace = options.installNamespace
 	return installValues, nil
 }
 
@@ -215,7 +210,7 @@ func renderCNIPlugin(w io.Writer, config *cniPluginOptions) error {
 	chart := &charts.Chart{
 		Name:      helmCNIDefaultChartName,
 		Dir:       helmCNIDefaultChartDir,
-		Namespace: controlPlaneNamespace,
+		Namespace: defaultCNINamespace,
 		RawValues: rawValues,
 		Files:     files,
 		Fs:        static.Templates,

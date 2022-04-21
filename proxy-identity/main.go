@@ -21,19 +21,11 @@ import (
 
 const (
 	envDir          = "LINKERD2_PROXY_IDENTITY_DIR"
-	envDisabled     = "LINKERD2_PROXY_IDENTITY_DISABLED"
 	envLocalName    = "LINKERD2_PROXY_IDENTITY_LOCAL_NAME"
 	envTrustAnchors = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
 )
 
 func main() {
-	defer runProxy()
-
-	if os.Getenv(envDisabled) != "" {
-		log.Debug("Identity disabled.")
-		return
-	}
-
 	dir := os.Getenv(envDir)
 	keyPath, csrPath, err := checkEndEntityDir(dir)
 	if err != nil {
@@ -53,6 +45,8 @@ func main() {
 	if _, err := generateAndStoreCSR(csrPath, name, key); err != nil {
 		log.Fatal(err.Error())
 	}
+
+	runProxy()
 }
 
 func loadVerifier(pem string) (verify x509.VerifyOptions, err error) {
@@ -141,17 +135,19 @@ func generateAndStoreCSR(p, id string, key *ecdsa.PrivateKey) ([]byte, error) {
 	}
 	csrb, err := x509.CreateCertificateRequest(rand.Reader, &csr, key)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create CSR: %s", err)
+		return nil, fmt.Errorf("failed to create CSR: %w", err)
 	}
 
 	if err = ioutil.WriteFile(p, csrb, 0600); err != nil {
-		return nil, fmt.Errorf("failed to write CSR: %s", err)
+		return nil, fmt.Errorf("failed to write CSR: %w", err)
 	}
 
 	return csrb, nil
 }
 
 func runProxy() {
+	// The input arguments are static.
+	//nolint:gosec
 	err := syscall.Exec("/usr/lib/linkerd/linkerd2-proxy", []string{}, os.Environ())
 	if err != nil {
 		log.Fatalf("Failed to run proxy: %s", err)

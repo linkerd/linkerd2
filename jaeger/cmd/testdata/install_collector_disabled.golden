@@ -5,9 +5,6 @@ metadata:
   name: linkerd-jaeger
   labels:
     linkerd.io/extension: jaeger
-  annotations:
-    linkerd.io/inject: enabled
-    config.linkerd.io/proxy-await: "enabled"
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
@@ -65,7 +62,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 7cd13a5efac387ff6fffe14bdce45a64b0b462af3e55e8b0532c65a3140914d7
+        checksum/config: c7e6fd0e7aad8fbcdf4f47b4d05c8e6b7e0e489cf9afc2026d4b6accd590ea71
+        linkerd.io/inject: enabled
+        config.linkerd.io/proxy-await: "enabled"
       labels:
         linkerd.io/extension: jaeger
         component: jaeger-injector
@@ -77,6 +76,9 @@ spec:
         - -collector-svc-addr=collector.linkerd-jaeger:55678
         - -collector-svc-account=collector
         - -log-level=info
+        - -cluster-domain=cluster.local
+        - -linkerd-namespace=linkerd
+        - -enable-pprof=false
         image: cr.l5d.io/linkerd/jaeger-webhook:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -99,6 +101,7 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+        resources:
       serviceAccountName: jaeger-injector
       volumes:
       - name: tls
@@ -215,16 +218,6 @@ metadata:
   name: jaeger-injector
   namespace: linkerd-jaeger
 ---
-kind: Secret
-apiVersion: v1
-metadata:
-  name: jaeger-injector-k8s-tls
-  namespace: linkerd-jaeger
-type: kubernetes.io/tls
-data:
-  tls.crt: dGVzdC13ZWJob29rLWNydC1wZW0=
-  tls.key: dGVzdC13ZWJob29rLWtleS1wZW0=
----
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
@@ -299,6 +292,7 @@ spec:
   template:
     metadata:
       annotations:
+        linkerd.io/inject: enabled
         config.linkerd.io/proxy-await: "enabled"
         prometheus.io/path: /metrics
         prometheus.io/port: "14269"
@@ -312,7 +306,7 @@ spec:
       containers:
       - args:
         - --query.base-path=/jaeger
-        image: jaegertracing/all-in-one:1.19.2
+        image: jaegertracing/all-in-one:1.31
         imagePullPolicy: Always
         name: jaeger
         ports:

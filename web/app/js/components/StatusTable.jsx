@@ -124,7 +124,12 @@ const StatusTable = function({ classes, statusColumnTitle, data }) {
 StatusTable.propTypes = {
   data: PropTypes.arrayOf(PropTypes.shape({
     name: PropTypes.string.isRequired,
-    pods: PropTypes.arrayOf(PropTypes.object).isRequired, // TODO: What's the real shape here.
+    pods: PropTypes.shape({
+      name: PropTypes.string.isRequired,
+      value: PropTypes.string.isRequired,
+      uptime: PropTypes.string.isRequired,
+      uptimeSec: PropTypes.number.isRequired,
+    }).isRequired,
     added: PropTypes.bool,
   })).isRequired,
   statusColumnTitle: PropTypes.string.isRequired,

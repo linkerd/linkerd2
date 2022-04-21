@@ -3,7 +3,7 @@
 The Linkerd-Viz extension contains observability and visualization
 components for Linkerd.
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square)
+![Version: 30.1.0-edge](https://img.shields.io/badge/Version-30.1.0--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -26,9 +26,9 @@ Guide](https://linkerd.io/2/tasks/install/).
 ## Adding Linkerd's Helm repository
 
 ```bash
-# To add the repo for Linkerd2 stable releases:
+# To add the repo for Linkerd stable releases:
 helm repo add linkerd https://helm.linkerd.io/stable
-# To add the repo for Linkerd2 edge releases:
+# To add the repo for Linkerd edge releases:
 helm repo add linkerd-edge https://helm.linkerd.io/edge
 ```
 
@@ -37,16 +37,8 @@ release, just replace with `linkerd-edge`.
 
 ## Installing the Viz Extension Chart
 
-### Helm v3
-
 ```bash
-helm install linkerd-viz linkerd/linkerd-viz
-```
-
-### Helm v2
-
-```bash
-helm install --name linkerd-viz linkerd/linkerd-viz
+helm install linkerd-viz -n linkerd-viz --create-namespace linkerd/linkerd-viz
 ```
 
 ## Get involved
@@ -102,28 +94,13 @@ Kubernetes: `>=1.20.0-0`
 | defaultLogLevel | string | `"info"` | Log level for all the viz components |
 | defaultRegistry | string | `"cr.l5d.io/linkerd"` | Docker registry for all viz components |
 | defaultUID | int | `2103` | UID for all the viz components |
-| enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
+| enablePSP | bool | `false` | NodeAffinity section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity) for more information nodeAffinity: -- Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
 | enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
-| grafana.enabled | bool | `true` | toggle field to enable or disable grafana |
-| grafana.image.name | string | `"grafana"` | Docker image name for the grafana instance |
-| grafana.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the grafana instance |
-| grafana.image.registry | string | defaultRegistry | Docker registry for the grafana instance |
-| grafana.image.tag | string | linkerdVersion | Docker image tag for the grafana instance |
-| grafana.logFormat | string | defaultLogFormat | log format (plain, json) of the grafana instance |
-| grafana.logLevel | string | defaultLogLevel | log level of the grafana instance |
-| grafana.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
-| grafana.proxy | string | `nil` |  |
-| grafana.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the grafana container can use |
-| grafana.resources.cpu.request | string | `nil` | Amount of CPU units that the grafana container requests |
-| grafana.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the grafana container can use |
-| grafana.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the grafana container requests |
-| grafana.resources.memory.limit | string | `nil` | Maximum amount of memory that grafana container can use |
-| grafana.resources.memory.request | string | `nil` | Amount of memory that the grafana container requests |
-| grafana.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
-| grafanaUrl | string | `""` | url of external grafana instance with reverse proxy configured. |
+| grafana.externalUrl | string | `nil` | url of a Grafana instance hosted off-cluster. Cannot be set if grafana.url is set. The reverse proxy will not be used for this URL. |
+| grafana.uidPrefix | string | `nil` | prefix for Grafana dashboard UID's, used when grafana.externalUrl is set. |
+| grafana.url | string | `nil` | url of an in-cluster Grafana instance with reverse proxy configured, used by the Linkerd viz web dashboard to provide direct links to specific Grafana dashboards. Cannot be set if grafana.externalUrl is set. See the [Linkerd documentation](https://linkerd.io/2/tasks/grafana) for more information |
 | identityTrustDomain | string | clusterDomain | Trust domain used for identity |
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
-| installNamespace | bool | `true` | Set to false when installing in a custom namespace. |
 | jaegerUrl | string | `""` | url of external jaeger instance Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>` if you plan to use jaeger extension |
 | linkerdNamespace | string | `"linkerd"` | Namespace of the Linkerd core control-plane install |
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
@@ -144,7 +121,6 @@ Kubernetes: `>=1.20.0-0`
 | metricsAPI.resources.memory.limit | string | `nil` | Maximum amount of memory that metrics-api container can use |
 | metricsAPI.resources.memory.request | string | `nil` | Amount of memory that the metrics-api container requests |
 | metricsAPI.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
-| namespace | string | `"linkerd-viz"` | Namespace in which the Linkerd Viz extension has to be installed |
 | nodeSelector | object | `{"kubernetes.io/os":"linux"}` | Default nodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | prometheus.alertRelabelConfigs | string | `nil` | Alert relabeling is applied to alerts before they are sent to the Alertmanager. |
 | prometheus.alertmanagers | string | `nil` | Alertmanager instances the Prometheus server sends alerts to configured via the static_configs parameter. |
@@ -172,14 +148,16 @@ Kubernetes: `>=1.20.0-0`
 | prometheus.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | prometheusUrl | string | `""` | url of external prometheus instance |
 | tap.UID | string | `nil` | UID for the dashboard resource |
-| tap.caBundle | string | `""` | Bundle of CA certificates for Tap component. If not provided then Helm will use the certificate generated  for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
-| tap.crtPEM | string | `""` | Certificate for the Tap component. If not provided then Helm will generate one. |
-| tap.externalSecret | bool | `false` | Do not create a secret resource for the Tap component. If this is set to `true`, the value `tap.caBundle` must be set (see below). |
+| tap.caBundle | string | `""` | Bundle of CA certificates for tap. If not provided nor injected with cert-manager, then Helm will use the certificate generated for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value, injectCaFrom, or injectCaFromSecret must be set, as no certificate will be generated. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information. |
+| tap.crtPEM | string | `""` | Certificate for the Tap component. If not provided and not using an external secret then Helm will generate one. |
+| tap.externalSecret | bool | `false` | Do not create a secret resource for the Tap component. If this is set to `true`, the value `tap.caBundle` must be set or the ca bundle must injected with cert-manager ca injector using `tap.injectCaFrom` or `tap.injectCaFromSecret` (see below). |
 | tap.image.name | string | `"tap"` | Docker image name for the tap instance |
 | tap.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the tap component |
 | tap.image.registry | string | defaultRegistry | Docker registry for the tap instance |
 | tap.image.tag | string | linkerdVersion | Docker image tag for the tap instance |
-| tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided then Helm will generate one. |
+| tap.injectCaFrom | string | `""` | Inject the CA bundle from a cert-manager Certificate. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-certificate-resource) for more information. |
+| tap.injectCaFromSecret | string | `""` | Inject the CA bundle from a Secret. If set, the `cert-manager.io/inject-ca-from-secret` annotation will be added to the webhook. The Secret must have the CA Bundle stored in the `ca.crt` key and have the `cert-manager.io/allow-direct-injection` annotation set to `true`. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource) for more information. |
+| tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided and not using an external secret then Helm will generate one. |
 | tap.logFormat | string | defaultLogFormat | log format of the tap component |
 | tap.logLevel | string | defaultLogLevel | log level of the tap component |
 | tap.proxy | string | `nil` |  |
@@ -191,15 +169,17 @@ Kubernetes: `>=1.20.0-0`
 | tap.resources.memory.limit | string | `nil` | Maximum amount of memory that tap container can use |
 | tap.resources.memory.request | string | `nil` | Amount of memory that the tap container requests |
 | tapInjector.UID | string | `nil` |  |
-| tapInjector.caBundle | string | `""` | Bundle of CA certificates for the tapInjector. If not provided then Helm will use the certificate generated  for `tapInjector.crtPEM`. If `tapInjector.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
-| tapInjector.crtPEM | string | `""` | Certificate for the tapInjector. If not provided then Helm will generate one. |
-| tapInjector.externalSecret | bool | `false` | Do not create a secret resource for the tapInjector webhook. If this is set to `true`, the value `tapInjector.caBundle` must be set (see below) |
+| tapInjector.caBundle | string | `""` | Bundle of CA certificates for the tapInjector. If not provided nor injected with cert-manager, then Helm will use the certificate generated for `tapInjector.crtPEM`. If `tapInjector.externalSecret` is set to true, this value, injectCaFrom, or injectCaFromSecret must be set, as no certificate will be generated. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information. |
+| tapInjector.crtPEM | string | `""` | Certificate for the tapInjector. If not provided and not using an external secret then Helm will generate one. |
+| tapInjector.externalSecret | bool | `false` | Do not create a secret resource for the tapInjector webhook. If this is set to `true`, the value `tapInjector.caBundle` must be set or the ca bundle must injected with cert-manager ca injector using `tapInjector.injectCaFrom` or `tapInjector.injectCaFromSecret` (see below). |
 | tapInjector.failurePolicy | string | `"Ignore"` |  |
 | tapInjector.image.name | string | `"tap"` | Docker image name for the tapInjector instance |
 | tapInjector.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the tapInjector component |
 | tapInjector.image.registry | string | defaultRegistry | Docker registry for the tapInjector instance |
 | tapInjector.image.tag | string | linkerdVersion | Docker image tag for the tapInjector instance |
-| tapInjector.keyPEM | string | `""` | Certificate key for the tapInjector. If not provided then Helm will generate one. |
+| tapInjector.injectCaFrom | string | `""` | Inject the CA bundle from a cert-manager Certificate. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-certificate-resource) for more information. |
+| tapInjector.injectCaFromSecret | string | `""` | Inject the CA bundle from a Secret. If set, the `cert-manager.io/inject-ca-from-secret` annotation will be added to the webhook. The Secret must have the CA Bundle stored in the `ca.crt` key and have the `cert-manager.io/allow-direct-injection` annotation set to `true`. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource) for more information. |
+| tapInjector.keyPEM | string | `""` | Certificate key for the tapInjector. If not provided and not using an external secret then Helm will generate one. |
 | tapInjector.logFormat | string | defaultLogFormat | log format of the tapInjector component |
 | tapInjector.logLevel | string | defaultLogLevel | log level of the tapInjector |
 | tapInjector.namespaceSelector | string | `nil` |  |

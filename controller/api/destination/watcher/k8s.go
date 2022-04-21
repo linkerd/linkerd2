@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"fmt"
+	"net"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -62,7 +63,7 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 	}})
 
 	if err != nil {
-		return fmt.Errorf("could not create an indexer for services: %s", err)
+		return fmt.Errorf("could not create an indexer for services: %w", err)
 	}
 
 	err = k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{PodIPIndex: func(obj interface{}) ([]string, error) {
@@ -80,7 +81,7 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 	}})
 
 	if err != nil {
-		return fmt.Errorf("could not create an indexer for pods: %s", err)
+		return fmt.Errorf("could not create an indexer for pods: %w", err)
 	}
 
 	err = k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{HostIPIndex: func(obj interface{}) ([]string, error) {
@@ -93,7 +94,7 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 				for _, c := range pod.Spec.Containers {
 					for _, p := range c.Ports {
 						if p.HostPort != 0 {
-							addr := fmt.Sprintf("%s:%d", pod.Status.HostIP, p.HostPort)
+							addr := net.JoinHostPort(pod.Status.HostIP, fmt.Sprintf("%d", p.HostPort))
 							hostIPPods = append(hostIPPods, addr)
 						}
 					}
@@ -105,7 +106,7 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 	}})
 
 	if err != nil {
-		return fmt.Errorf("could not create an indexer for pods: %s", err)
+		return fmt.Errorf("could not create an indexer for pods: %w", err)
 	}
 
 	return nil

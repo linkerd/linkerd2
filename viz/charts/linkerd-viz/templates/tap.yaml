@@ -6,13 +6,14 @@ kind: Service
 apiVersion: v1
 metadata:
   name: tap
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/extension: viz
     component: tap
-    namespace: {{.Values.namespace}}
+    namespace: {{.Release.Namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    linkerd.io/inject: enabled
 spec:
   type: ClusterIP
   selector:
@@ -26,27 +27,30 @@ spec:
     port: 443
     targetPort: apiserver
 ---
+{{- $tree := deepCopy . }}
 kind: Deployment
 apiVersion: apps/v1
 metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: tap
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
     component: tap
-    namespace: {{.Values.namespace}}
+    namespace: {{.Release.Namespace}}
   name: tap
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
 spec:
   replicas: {{.Values.tap.replicas}}
   selector:
     matchLabels:
       linkerd.io/extension: viz
       component: tap
-      namespace: {{.Values.namespace}}
+      namespace: {{.Release.Namespace}}
   {{- if .Values.enablePodAntiAffinity }}
   strategy:
     rollingUpdate:
@@ -63,20 +67,20 @@ spec:
         {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        linkerd.io/inject: enabled
       labels:
         linkerd.io/extension: viz
         component: tap
-        namespace: {{.Values.namespace}}
+        namespace: {{.Release.Namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.tolerations -}}
       {{- include "linkerd.tolerations" . | nindent 6 }}
       {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
-      {{- if .Values.enablePodAntiAffinity -}}
-      {{- $local := dict "component" "tap" "label" "component" -}}
-      {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
-      {{- end }}
+      {{- $_ := set $tree "component" "tap" -}}
+      {{- $_ := set $tree "label" "component" -}}
+      {{- include "linkerd.affinity" $tree | nindent 6 }}
       containers:
       - args:
         - api
@@ -84,6 +88,7 @@ spec:
         - -log-level={{.Values.tap.logLevel | default .Values.defaultLogLevel}}
         - -log-format={{.Values.tap.logFormat | default .Values.defaultLogFormat}}
         - -identity-trust-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
+        - -enable-pprof={{.Values.enablePprof | default false}}
         image: {{.Values.tap.image.registry | default .Values.defaultRegistry}}/{{.Values.tap.image.name}}:{{.Values.tap.image.tag | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.tap.image.pullPolicy | default .Values.defaultImagePullPolicy}}
         livenessProbe:

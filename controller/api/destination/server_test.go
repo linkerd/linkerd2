@@ -25,7 +25,9 @@ const podIP1 = "172.17.0.12"
 const podIP2 = "172.17.0.13"
 const podIPOpaque = "172.17.0.14"
 const podIPSkipped = "172.17.0.15"
+const podIPPolicy = "172.17.0.16"
 const podIPStatefulSet = "172.17.13.15"
+const externalIP = "192.168.1.20"
 const port uint32 = 8989
 const opaquePort uint32 = 4242
 const skippedPort uint32 = 24224
@@ -313,12 +315,52 @@ status:
   podIP: 172.17.13.15`,
 	}
 
+	policyResources := []string{
+		`
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+    app: policy-test
+  name: pod-policyResources
+  namespace: ns
+status:
+  phase: Running
+  podIP: 172.17.0.16
+spec:
+  containers:
+    - name: linkerd-proxy
+      env:
+      - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
+        value: 0.0.0.0:4143
+    - name: app
+      image: nginx
+      ports:
+      - containerPort: 80
+        name: http
+        protocol: TCP`,
+		`
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: srv
+  namespace: ns
+spec:
+  podSelector:
+    matchLabels:
+      app: policy-test
+  port: 80
+  proxyProtocol: opaque`,
+	}
+
 	res := append(meshedPodResources, clientSP...)
 	res = append(res, unmeshedPod)
 	res = append(res, meshedOpaquePodResources...)
 	res = append(res, meshedOpaqueServiceResources...)
 	res = append(res, meshedSkippedPodResource...)
 	res = append(res, meshedStatefulSetPodResource...)
+	res = append(res, policyResources...)
 	k8sAPI, err := k8s.NewFakeAPI(res...)
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
@@ -341,6 +383,7 @@ status:
 	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log, false)
 	opaquePorts := watcher.NewOpaquePortsWatcher(k8sAPI, log, defaultOpaquePorts)
 	profiles := watcher.NewProfileWatcher(k8sAPI, log)
+	servers := watcher.NewServerWatcher(k8sAPI, log)
 
 	// Sync after creating watchers so that the the indexers added get updated
 	// properly
@@ -351,6 +394,7 @@ status:
 		endpoints,
 		opaquePorts,
 		profiles,
+		servers,
 		k8sAPI.Node(),
 		true,
 		"linkerd",
@@ -915,7 +959,7 @@ func TestGetProfiles(t *testing.T) {
 		if first.Endpoint.ProtocolHint == nil {
 			t.Fatalf("Expected protocol hint but found none")
 		}
-		if first.Endpoint.ProtocolHint.GetOpaqueTransport().InboundPort != 4143 {
+		if first.Endpoint.ProtocolHint.GetOpaqueTransport().GetInboundPort() != 4143 {
 			t.Fatalf("Expected pod to support opaque traffic on port 4143")
 		}
 		if first.Endpoint.Addr.String() != epAddr.String() {
@@ -984,6 +1028,108 @@ func TestGetProfiles(t *testing.T) {
 
 		if addr.TlsIdentity != nil {
 			t.Fatalf("Expected TLS identity for %s to be nil but got %+v", path, addr.TlsIdentity)
+		}
+	})
+
+	t.Run("Return profile with opaque protocol when using Pod IP selected by a Server", func(t *testing.T) {
+		server := makeServer(t)
+		stream := &bufferingGetProfileStream{
+			updates:          []*pb.DestinationProfile{},
+			MockServerStream: util.NewMockServerStream(),
+		}
+		stream.Cancel()
+
+		_, err := toAddress(podIPPolicy, 80)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+		err = server.GetProfile(&pb.GetDestination{
+			Scheme: "k8s",
+			Path:   fmt.Sprintf("%s:%d", podIPPolicy, 80),
+		}, stream)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		// Test that the first update has a destination profile with an
+		// opaque protocol and opaque transport.
+		if len(stream.updates) == 0 {
+			t.Fatalf("Expected at least 1 update but got 0")
+		}
+		update := stream.updates[0]
+		if update.Endpoint == nil {
+			t.Fatalf("Expected response to have endpoint field")
+		}
+		if !update.OpaqueProtocol {
+			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", 80)
+		}
+		if update.Endpoint.ProtocolHint == nil {
+			t.Fatalf("Expected protocol hint but found none")
+		}
+		if update.Endpoint.ProtocolHint.GetOpaqueTransport().GetInboundPort() != 4143 {
+			t.Fatalf("Expected pod to support opaque traffic on port 4143")
+		}
+	})
+
+	t.Run("Return profile with opaque protocol when using an opaque port with an external IP", func(t *testing.T) {
+		server := makeServer(t)
+		stream := &bufferingGetProfileStream{
+			updates:          []*pb.DestinationProfile{},
+			MockServerStream: util.NewMockServerStream(),
+		}
+		stream.Cancel()
+
+		_, err := toAddress(externalIP, 3306)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+		err = server.GetProfile(&pb.GetDestination{
+			Scheme: "k8s",
+			Path:   fmt.Sprintf("%s:%d", externalIP, 3306),
+		}, stream)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		// Test that the first update has a destination profile with an
+		// opaque protocol and opaque transport.
+		if len(stream.updates) == 0 {
+			t.Fatalf("Expected at least 1 update but got 0")
+		}
+		update := stream.updates[0]
+		if !update.OpaqueProtocol {
+			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", 3306)
+		}
+	})
+
+	t.Run("Return profile with non-opaque protocol when using an arbitrary port with an external IP", func(t *testing.T) {
+		server := makeServer(t)
+		stream := &bufferingGetProfileStream{
+			updates:          []*pb.DestinationProfile{},
+			MockServerStream: util.NewMockServerStream(),
+		}
+		stream.Cancel()
+
+		_, err := toAddress(externalIP, 80)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+		err = server.GetProfile(&pb.GetDestination{
+			Scheme: "k8s",
+			Path:   fmt.Sprintf("%s:%d", externalIP, 80),
+		}, stream)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		// Test that the first update has a destination profile with an
+		// opaque protocol and opaque transport.
+		if len(stream.updates) == 0 {
+			t.Fatalf("Expected at least 1 update but got 0")
+		}
+		update := stream.updates[0]
+		if update.OpaqueProtocol {
+			t.Fatalf("Expected port %d to be a non-opaque protocol, but it was opaque", 80)
 		}
 	})
 }

@@ -142,6 +142,10 @@ func newPortForward(
 
 	var err error
 	if localPort == 0 {
+		if host != "localhost" {
+			return nil, fmt.Errorf("local port must be specified when host is not localhost")
+		}
+
 		localPort, err = getEphemeralPort()
 		if err != nil {
 			return nil, err
@@ -188,7 +192,7 @@ func (pf *PortForward) run() error {
 
 	err = fw.ForwardPorts()
 	if err != nil {
-		err = fmt.Errorf("%s for %s/%s", err, pf.namespace, pf.podName)
+		err = fmt.Errorf("%w for %s/%s", err, pf.namespace, pf.podName)
 		return err
 	}
 	return nil
@@ -200,7 +204,7 @@ func (pf *PortForward) run() error {
 func (pf *PortForward) Init() error {
 	log.Debugf("Starting port forward to %s %d:%d", pf.url, pf.localPort, pf.remotePort)
 
-	failure := make(chan error)
+	failure := make(chan error, 1)
 
 	go func() {
 		if err := pf.run(); err != nil {
@@ -247,7 +251,7 @@ func (pf *PortForward) AddressAndPort() string {
 // getEphemeralPort selects a port for the port-forwarding. It binds to a free
 // ephemeral port and returns the port number.
 func getEphemeralPort() (int, error) {
-	ln, err := net.Listen("tcp", ":0")
+	ln, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		return 0, err
 	}

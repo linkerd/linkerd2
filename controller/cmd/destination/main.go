@@ -26,12 +26,12 @@ func Main(args []string) {
 	metricsAddr := cmd.String("metrics-addr", ":9996", "address to serve scrapable metrics on")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 	enableH2Upgrade := cmd.Bool("enable-h2-upgrade", true, "Enable transparently upgraded HTTP2 connections among pods in the service mesh")
-	disableIdentity := cmd.Bool("disable-identity", false, "Disable identity configuration")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", true, "Enable the usage of EndpointSlice informers and resources")
 	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
 	clusterDomain := cmd.String("cluster-domain", "", "kubernetes cluster domain")
 	defaultOpaquePorts := cmd.String("default-opaque-ports", "", "configures the default opaque ports")
+	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 
@@ -47,13 +47,9 @@ func Main(args []string) {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
-	if *disableIdentity {
-		log.Info("Identity is disabled")
-	} else {
-		if *trustDomain == "" {
-			*trustDomain = "cluster.local"
-			log.Warnf(" expected trust domain through args (falling back to %s)", *trustDomain)
-		}
+	if *trustDomain == "" {
+		*trustDomain = "cluster.local"
+		log.Warnf(" expected trust domain through args (falling back to %s)", *trustDomain)
 	}
 
 	if *clusterDomain == "" {
@@ -128,14 +124,18 @@ func Main(args []string) {
 
 	go func() {
 		log.Infof("starting gRPC server on %s", *addr)
-		server.Serve(lis)
+		if err := server.Serve(lis); err != nil {
+			log.Errorf("failed to start destination gRPC server: %s", err)
+		}
 	}()
 
-	adminServer := admin.NewServer(*metricsAddr)
+	adminServer := admin.NewServer(*metricsAddr, *enablePprof)
 
 	go func() {
 		log.Infof("starting admin server on %s", *metricsAddr)
-		adminServer.ListenAndServe()
+		if err := adminServer.ListenAndServe(); err != nil {
+			log.Errorf("failed to start destination admin server: %s", err)
+		}
 	}()
 
 	<-stop

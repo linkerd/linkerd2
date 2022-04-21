@@ -40,6 +40,7 @@ func Main(args []string) {
 	namespace := cmd.String("namespace", "", "namespace containing Link and credentials Secret")
 	repairPeriod := cmd.Duration("endpoint-refresh-period", 1*time.Minute, "frequency to refresh endpoint resolution")
 	enableHeadlessSvc := cmd.Bool("enable-headless-services", false, "toggle support for headless service mirroring")
+	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
 
 	flags.ConfigureAndParse(cmd, args)
 	linkName := cmd.Arg(0)
@@ -76,11 +77,13 @@ func Main(args []string) {
 
 	metrics := servicemirror.NewProbeMetricVecs()
 
-	adminServer := admin.NewServer(*metricsAddr)
+	adminServer := admin.NewServer(*metricsAddr, *enablePprof)
 
 	go func() {
 		log.Infof("starting admin server on %s", *metricsAddr)
-		adminServer.ListenAndServe()
+		if err := adminServer.ListenAndServe(); err != nil {
+			log.Errorf("failed to start service mirror admin server: %s", err)
+		}
 	}()
 
 	controllerK8sAPI.Sync(nil)
@@ -155,7 +158,7 @@ func loadCredentials(ctx context.Context, link multicluster.Link, namespace stri
 	// Load the credentials secret
 	secret, err := k8sAPI.Interface.CoreV1().Secrets(namespace).Get(ctx, link.ClusterCredentialsSecret, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("Failed to load credentials secret %s: %s", link.ClusterCredentialsSecret, err)
+		return nil, fmt.Errorf("failed to load credentials secret %s: %w", link.ClusterCredentialsSecret, err)
 	}
 	return sm.ParseRemoteClusterSecret(secret)
 }
@@ -178,11 +181,19 @@ func restartClusterWatcher(
 		probeWorker.Stop()
 	}
 
+	// Start probe worker
+	workerMetrics, err := metrics.NewWorkerMetrics(link.TargetClusterName)
+	if err != nil {
+		return fmt.Errorf("failed to create metrics for cluster watcher: %w", err)
+	}
+	probeWorker = servicemirror.NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.TargetClusterName), &link.ProbeSpec, workerMetrics, link.TargetClusterName)
+	probeWorker.Start()
+
+	// Start cluster watcher
 	cfg, err := clientcmd.RESTConfigFromKubeConfig(creds)
 	if err != nil {
-		return fmt.Errorf("Unable to parse kube config: %s", err)
+		return fmt.Errorf("unable to parse kube config: %w", err)
 	}
-
 	clusterWatcher, err = servicemirror.NewRemoteClusterServiceWatcher(
 		ctx,
 		namespace,
@@ -191,22 +202,16 @@ func restartClusterWatcher(
 		&link,
 		requeueLimit,
 		repairPeriod,
+		probeWorker.Liveness,
 		enableHeadlessSvc,
 	)
 	if err != nil {
-		return fmt.Errorf("Unable to create cluster watcher: %s", err)
+		return fmt.Errorf("unable to create cluster watcher: %w", err)
 	}
-
 	err = clusterWatcher.Start(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to start cluster watcher: %s", err)
+		return fmt.Errorf("failed to start cluster watcher: %w", err)
 	}
 
-	workerMetrics, err := metrics.NewWorkerMetrics(link.TargetClusterName)
-	if err != nil {
-		return fmt.Errorf("Failed to create metrics for cluster watcher: %s", err)
-	}
-	probeWorker = servicemirror.NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.TargetClusterName), &link.ProbeSpec, workerMetrics, link.TargetClusterName)
-	probeWorker.Start()
 	return nil
 }

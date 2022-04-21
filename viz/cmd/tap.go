@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
+	vizutil "github.com/linkerd/linkerd2/viz/pkg/util"
 	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	"github.com/linkerd/linkerd2/viz/tap/pkg"
 	log "github.com/sirupsen/logrus"
@@ -229,24 +231,24 @@ func NewCmdTap() *cobra.Command {
 
 			err := options.validate()
 			if err != nil {
-				return fmt.Errorf("validation error when executing tap command: %v", err)
+				return fmt.Errorf("validation error when executing tap command: %w", err)
 			}
 
 			req, err := pkg.BuildTapByResourceRequest(requestParams)
 			if err != nil {
-				fmt.Fprint(os.Stderr, err.Error())
+				fmt.Fprintln(os.Stderr, err.Error())
 				os.Exit(1)
 			}
 
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 			if err != nil {
-				fmt.Fprint(os.Stderr, err.Error())
+				fmt.Fprintln(os.Stderr, err.Error())
 				os.Exit(1)
 			}
 
 			err = requestTapByResourceFromAPI(cmd.Context(), os.Stdout, k8sAPI, req, options)
 			if err != nil {
-				fmt.Fprint(os.Stderr, err.Error())
+				fmt.Fprintln(os.Stderr, err.Error())
 				os.Exit(1)
 			}
 
@@ -292,21 +294,17 @@ func requestTapByResourceFromAPI(ctx context.Context, w io.Writer, k8sAPI *k8s.K
 }
 
 func writeTapEventsToBuffer(w io.Writer, tapByteStream *bufio.Reader, req *tapPb.TapByResourceRequest, options *tapOptions) error {
-	var err error
 	switch options.output {
 	case "":
-		err = renderTapEvents(tapByteStream, w, renderTapEvent, "")
+		return renderTapEvents(tapByteStream, w, renderTapEvent, "")
 	case wideOutput:
 		resource := req.GetTarget().GetResource().GetType()
-		err = renderTapEvents(tapByteStream, w, renderTapEvent, resource)
+		return renderTapEvents(tapByteStream, w, renderTapEvent, resource)
 	case jsonOutput:
-		err = renderTapEvents(tapByteStream, w, renderTapEventJSON, "")
+		return renderTapEvents(tapByteStream, w, renderTapEventJSON, "")
+	default:
+		return fmt.Errorf("unknown output format: %q", options.output)
 	}
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func renderTapEvents(tapByteStream *bufio.Reader, w io.Writer, render renderTapEventFunc, resource string) error {
@@ -314,10 +312,10 @@ func renderTapEvents(tapByteStream *bufio.Reader, w io.Writer, render renderTapE
 		log.Debug("Waiting for data...")
 		event := tapPb.TapEvent{}
 		err := protohttp.FromByteStreamToProtocolBuffers(tapByteStream, &event)
-		if err == io.EOF {
-			break
-		}
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
 			fmt.Fprintln(os.Stderr, err)
 			break
 		}
@@ -372,7 +370,7 @@ func renderTapEvent(event *tapPb.TapEvent, resource string) string {
 			ev.RequestInit.GetId().GetBase(),
 			ev.RequestInit.GetId().GetStream(),
 			flow,
-			ev.RequestInit.GetMethod().GetRegistered().String(),
+			vizutil.HTTPMethodToString(ev.RequestInit.GetMethod()),
 			ev.RequestInit.GetAuthority(),
 			ev.RequestInit.GetPath(),
 			resources,
@@ -437,7 +435,7 @@ func renderTapEventJSON(event *tapPb.TapEvent, _ string) string {
 	if err != nil {
 		return fmt.Sprintf("{\"error marshalling JSON\": \"%s\"}", err)
 	}
-	return string(e[:])
+	return string(e)
 }
 
 // Map public API `TapEvent`s to `displayTapEvent`s

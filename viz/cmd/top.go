@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -10,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -19,6 +19,7 @@ import (
 	metricsAPI "github.com/linkerd/linkerd2/viz/metrics-api"
 	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
+	vizutil "github.com/linkerd/linkerd2/viz/pkg/util"
 	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	"github.com/linkerd/linkerd2/viz/tap/pkg"
 	runewidth "github.com/mattn/go-runewidth"
@@ -477,7 +478,7 @@ func recvEvents(tapByteStream *bufio.Reader, eventCh chan<- *tapPb.TapEvent, clo
 		event := &tapPb.TapEvent{}
 		err := protohttp.FromByteStreamToProtocolBuffers(tapByteStream, event)
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				fmt.Println("Tap stream terminated")
 			} else if !strings.HasSuffix(err.Error(), pkg.ErrClosedResponseBody) {
 				fmt.Println(err.Error())
@@ -573,7 +574,7 @@ func renderTable(table *topTable, requestCh <-chan topRequest, done <-chan struc
 			termbox.Flush()
 		case offset := <-horizontalScroll:
 			if (offset > 0 && scrollpos < 0) || (offset < 0 && scrollpos > (width-tablewidth)) {
-				scrollpos = scrollpos + offset
+				scrollpos += offset
 			}
 		}
 	}
@@ -585,7 +586,7 @@ func newRow(req topRequest) (tableRow, error) {
 	if route == "" {
 		route = metricsAPI.DefaultRouteName
 	}
-	method := req.reqInit.GetMethod().GetRegistered().String()
+
 	source := stripPort(addr.PublicAddressToString(req.event.GetSource()))
 	if pod := req.event.SourceMeta.Labels["pod"]; pod != "" {
 		source = pod
@@ -595,10 +596,12 @@ func newRow(req topRequest) (tableRow, error) {
 		destination = pod
 	}
 
-	latency, err := ptypes.Duration(req.rspEnd.GetSinceRequestInit())
+	err := req.rspEnd.GetSinceRequestInit().CheckValid()
 	if err != nil {
-		return tableRow{}, fmt.Errorf("error parsing duration %v: %s", req.rspEnd.GetSinceRequestInit(), err)
+		return tableRow{}, fmt.Errorf("error parsing duration %v: %w", req.rspEnd.GetSinceRequestInit(), err)
 	}
+	latency := req.rspEnd.GetSinceRequestInit().AsDuration()
+
 	// TODO: Once tap events have a classification field, we should use that field
 	// instead of determining success here.
 	success := req.rspInit.GetHttpStatus() < 500
@@ -631,7 +634,7 @@ func newRow(req topRequest) (tableRow, error) {
 
 	return tableRow{
 		path:        path,
-		method:      method,
+		method:      vizutil.HTTPMethodToString(req.reqInit.GetMethod()),
 		route:       route,
 		source:      source,
 		destination: destination,

@@ -1,0 +1,22 @@
+apiVersion: "v2"
+description: |
+  Linkerd gives you observability, reliability, and security
+  for your microservices — with no code change required.
+type: application
+home: https://linkerd.io
+keywords:
+- service-mesh
+kubeVersion: ">=1.20.0-0"
+name: "linkerd-crds"
+sources:
+- https://github.com/linkerd/linkerd2/
+dependencies:
+- name: partials
+  version: 0.1.0
+  repository: file://../partials
+version: 1.1.0-edge
+icon: https://linkerd.io/images/logo-only-200h.png
+maintainers:
+  - name: Linkerd authors
+    email: cncf-linkerd-dev@lists.cncf.io
+    url: https://linkerd.io/

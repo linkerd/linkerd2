@@ -16,6 +16,8 @@ const httpGatewayTimeoutMillis = 50000
 // ProbeWorker is responsible for monitoring gateways using a probe specification
 type ProbeWorker struct {
 	localGatewayName string
+	alive            bool
+	Liveness         chan bool
 	*sync.RWMutex
 	probeSpec *multicluster.ProbeSpec
 	stopCh    chan struct{}
@@ -27,6 +29,7 @@ type ProbeWorker struct {
 func NewProbeWorker(localGatewayName string, spec *multicluster.ProbeSpec, metrics *ProbeMetrics, probekey string) *ProbeWorker {
 	return &ProbeWorker{
 		localGatewayName: localGatewayName,
+		Liveness:         make(chan bool, 10),
 		RWMutex:          &sync.RWMutex{},
 		probeSpec:        spec,
 		stopCh:           make(chan struct{}),
@@ -97,16 +100,29 @@ func (pw *ProbeWorker) doProbe() {
 		pw.log.Warnf("Problem connecting with gateway. Marking as unhealthy %s", err)
 		pw.metrics.alive.Set(0)
 		pw.metrics.probes.With(notSuccessLabel).Inc()
+		if pw.alive {
+			pw.alive = false
+			pw.Liveness <- false
+		}
 		return
-	} else if resp.StatusCode != 200 {
+	}
+	if resp.StatusCode != 200 {
 		pw.log.Warnf("Gateway returned unexpected status %d. Marking as unhealthy", resp.StatusCode)
 		pw.metrics.alive.Set(0)
 		pw.metrics.probes.With(notSuccessLabel).Inc()
+		if pw.alive {
+			pw.alive = false
+			pw.Liveness <- false
+		}
 	} else {
 		pw.log.Debug("Gateway is healthy")
 		pw.metrics.alive.Set(1)
 		pw.metrics.latencies.Observe(float64(end.Milliseconds()))
 		pw.metrics.probes.With(successLabel).Inc()
+		if !pw.alive {
+			pw.alive = true
+			pw.Liveness <- true
+		}
 	}
 
 	if err := resp.Body.Close(); err != nil {

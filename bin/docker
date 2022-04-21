@@ -22,7 +22,7 @@ if [ ! -f "$dockerbin" ]; then
   mkdir -p "$targetbin"
   (
       cd "$tmp"
-      curl -Lsf -o ./docker.tar.gz "$url"
+      "$bindir"/scurl -o ./docker.tar.gz "$url"
       tar zf ./docker.tar.gz -x docker/docker
   )
   mv "$tmp/docker/docker" "$dockerbin"

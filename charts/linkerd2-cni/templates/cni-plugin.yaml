@@ -17,13 +17,11 @@ limitations under the License.
 This file was inspired by
 1) https://github.com/istio/cni/blob/c63a509539b5ed165a6617548c31b686f13c2133/deployments/kubernetes/install/manifests/istio-cni.yaml
 */ -}}
-{{- if .Values.installNamespace -}}
+{{- if eq .Release.Service "CLI" -}}
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: {{.Values.namespace}}
-  annotations:
-    linkerd.io/inject: disabled
+  name: {{.Release.Namespace}}
   labels:
     linkerd.io/cni-resource: "true"
     config.linkerd.io/admission-webhooks: disabled
@@ -33,7 +31,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: linkerd-cni
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/cni-resource: "true"
 {{- if .Values.imagePullSecrets }}
@@ -45,11 +43,13 @@ imagePullSecrets:
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
-  name: linkerd-{{.Values.namespace}}-cni
+  name: linkerd-{{.Release.Namespace}}-cni
   labels:
     linkerd.io/cni-resource: "true"
 spec:
+  {{- if not .Values.privileged }}
   allowPrivilegeEscalation: false
+  {{- end }}
   fsGroup:
     rule: RunAsAny
   hostNetwork: true
@@ -68,21 +68,21 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-cni
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/cni-resource: "true"
 rules:
 - apiGroups: ['extensions', 'policy']
   resources: ['podsecuritypolicies']
   resourceNames:
-  - linkerd-{{.Values.namespace}}-cni
+  - linkerd-{{.Release.Namespace}}-cni
   verbs: ['use']
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: linkerd-cni
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/cni-resource: "true"
 roleRef:
@@ -92,7 +92,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-cni
-  namespace: {{.Values.namespace}}
+  namespace: {{.Release.Namespace}}
 {{ end -}}
 ---
 kind: ClusterRole
@@ -119,13 +119,13 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-cni
-  namespace: {{.Values.namespace}}
+  namespace: {{.Release.Namespace}}
 ---
 kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-cni-config
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/cni-resource: "true"
 data:
@@ -167,7 +167,7 @@ kind: DaemonSet
 apiVersion: apps/v1
 metadata:
   name: linkerd-cni
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     k8s-app: linkerd-cni
     linkerd.io/cni-resource: "true"
@@ -187,12 +187,18 @@ spec:
         k8s-app: linkerd-cni
       annotations:
         {{ include "partials.annotations.created-by" . }}
+        linkerd.io/cni-resource: "true"
+        linkerd.io/inject: disabled
     spec:
       {{- if .Values.tolerations }}
       {{- include "linkerd.tolerations" . | nindent 6 }}
       {{- end }}
       nodeSelector:
         kubernetes.io/os: linux
+      {{- if .Values.nodeAffinity }}
+      affinity:
+      {{- include "linkerd.node-affinity" . | nindent 8 }}
+      {{- end }}
       hostNetwork: true
       serviceAccountName: linkerd-cni
       {{- if .Values.priorityClassName }}
@@ -250,6 +256,7 @@ spec:
           name: linkerd-tmp-dir
         securityContext:
           readOnlyRootFilesystem: true
+          privileged: {{.Values.privileged}}
       volumes:
       {{- if ne .Values.destCNIBinDir .Values.destCNINetDir }}
       - name: cni-bin-dir

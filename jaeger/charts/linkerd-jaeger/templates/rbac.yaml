@@ -7,7 +7,8 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: collector
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
+{{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 {{ end -}}
 ---
 ###
@@ -33,7 +34,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: jaeger-injector
-  namespace: {{.Values.namespace}}
+  namespace: {{.Release.Namespace}}
   apiGroup: ""
 roleRef:
   kind: ClusterRole
@@ -44,26 +45,37 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: jaeger-injector
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
+{{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 ---
-{{- $host := printf "jaeger-injector.%s.svc" .Values.namespace }}
+{{- $host := printf "jaeger-injector.%s.svc" .Release.Namespace }}
 {{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
 {{- if (not .Values.webhook.externalSecret) }}
 kind: Secret
 apiVersion: v1
 metadata:
   name: jaeger-injector-k8s-tls
-  namespace: {{ .Values.namespace }}
+  {{ include "partials.namespace" . }}
 type: kubernetes.io/tls
 data:
   tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.webhook.crtPEM)) (empty .Values.webhook.crtPEM) }}
   tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.webhook.keyPEM)) (empty .Values.webhook.keyPEM) }}
 ---
 {{- end }}
+{{- include "linkerd.webhook.validation" .Values.webhook }}
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-jaeger-injector-webhook-config
+  {{- if or (.Values.webhook.injectCaFrom) (.Values.webhook.injectCaFromSecret) }}
+  annotations:
+  {{- if .Values.webhook.injectCaFrom }}
+    cert-manager.io/inject-ca-from: {{ .Values.webhook.injectCaFrom }}
+  {{- end }}
+  {{- if .Values.webhook.injectCaFromSecret }}
+    cert-manager.io/inject-ca-from-secret: {{ .Values.webhook.injectCaFromSecret }}
+  {{- end }}
+  {{- end }}
   labels:
     linkerd.io/extension: jaeger
 webhooks:
@@ -79,12 +91,11 @@ webhooks:
   clientConfig:
     service:
       name: jaeger-injector
-      namespace: {{ .Values.namespace }}
+      namespace: {{ .Release.Namespace }}
       path: "/"
-{{- if and (.Values.webhook.externalSecret) (empty .Values.webhook.caBundle) }}
-  {{- fail "If webhook.externalSecret is true then you need to provide webhook.caBundle" }}
-{{- end }}
+    {{- if and (empty .Values.webhook.injectCaFrom) (empty .Values.webhook.injectCaFromSecret) }}
     caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.webhook.caBundle)) (empty .Values.webhook.caBundle) }}
+    {{- end }}
   failurePolicy: {{.Values.webhook.failurePolicy}}
   admissionReviewVersions: ["v1", "v1beta1"]
   reinvocationPolicy: IfNeeded
@@ -103,5 +114,6 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: jaeger
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
+{{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 {{ end -}}

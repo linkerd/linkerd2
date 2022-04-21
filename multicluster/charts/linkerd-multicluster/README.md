@@ -3,7 +3,7 @@
 The Linkerd-Multicluster extension contains resources to support multicluster
 linking to remote clusters
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square)
+![Version: 30.0.11-edge](https://img.shields.io/badge/Version-30.0.11--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -26,9 +26,9 @@ Guide](https://linkerd.io/2/tasks/install/).
 ## Adding Linkerd's Helm repository
 
 ```bash
-# To add the repo for Linkerd2 stable releases:
+# To add the repo for Linkerd stable releases:
 helm repo add linkerd https://helm.linkerd.io/stable
-# To add the repo for Linkerd2 edge releases:
+# To add the repo for Linkerd edge releases:
 helm repo add linkerd-edge https://helm.linkerd.io/edge
 ```
 
@@ -37,16 +37,8 @@ release, just replace with `linkerd-edge`.
 
 ## Installing the Multicluster Extension Chart
 
-### Helm v3
-
 ```bash
-helm install linkerd-multicluster linkerd/linkerd-multicluster
-```
-
-### Helm v2
-
-```bash
-helm install --name linkerd-multicluster linkerd/linkerd-multicluster
+helm install linkerd-multicluster -n linkerd-multicluster --create-namespace linkerd/linkerd-multicluster
 ```
 
 ## Get involved
@@ -92,10 +84,8 @@ Kubernetes: `>=1.20.0-0`
 | gateway.serviceAnnotations | object | `{}` | Annotations to add to the gateway service |
 | gateway.serviceType | string | `"LoadBalancer"` | Service Type of gateway Service |
 | identityTrustDomain | string | `"cluster.local"` | Identity Trust Domain of the certificate authority |
-| installNamespace | bool | `true` | If the namespace should be installed |
 | linkerdNamespace | string | `"linkerd"` | Namespace of linkerd installation |
 | linkerdVersion | string | `"linkerdVersionValue"` | Control plane version |
-| namespace | string | `"linkerd-multicluster"` | Service Mirror component namespace |
 | proxyOutboundPort | int | `4140` | The port on which the proxy accepts outbound traffic |
 | remoteMirrorServiceAccount | bool | `true` | If the remote mirror service account should be installed |
 | remoteMirrorServiceAccountName | string | `"linkerd-service-mirror-remote-access-default"` | The name of the service account used to allow remote clusters to mirror local services |

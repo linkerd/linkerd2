@@ -10,15 +10,17 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
 
 const (
-	helmDefaultChartDir     = "linkerd2"
-	helmDefaultHAValuesFile = "values-ha.yaml"
+	// HelmChartDirCrds is the directory name for the linkerd-crds chart
+	HelmChartDirCrds = "linkerd-crds"
+
+	// HelmChartDirCP is the directory name for the linkerd-control-plane chart
+	HelmChartDirCP = "linkerd-control-plane"
 )
 
 type (
@@ -29,17 +31,15 @@ type (
 		ControllerUID                int64               `json:"controllerUID"`
 		EnableH2Upgrade              bool                `json:"enableH2Upgrade"`
 		EnablePodAntiAffinity        bool                `json:"enablePodAntiAffinity"`
+		NodeAffinity                 map[string]string   `json:"nodeAffinity"`
 		WebhookFailurePolicy         string              `json:"webhookFailurePolicy"`
 		DisableHeartBeat             bool                `json:"disableHeartBeat"`
 		HeartbeatSchedule            string              `json:"heartbeatSchedule"`
-		InstallNamespace             bool                `json:"installNamespace"`
 		Configs                      ConfigJSONs         `json:"configs"`
-		Namespace                    string              `json:"namespace"`
 		ClusterDomain                string              `json:"clusterDomain"`
 		ClusterNetworks              string              `json:"clusterNetworks"`
 		ImagePullPolicy              string              `json:"imagePullPolicy"`
 		CliVersion                   string              `json:"cliVersion"`
-		ControllerImageVersion       string              `json:"controllerImageVersion"`
 		ControllerLogLevel           string              `json:"controllerLogLevel"`
 		ControllerLogFormat          string              `json:"controllerLogFormat"`
 		ProxyContainerName           string              `json:"proxyContainerName"`
@@ -51,7 +51,6 @@ type (
 		IdentityTrustAnchorsPEM      string              `json:"identityTrustAnchorsPEM"`
 		IdentityTrustDomain          string              `json:"identityTrustDomain"`
 		PrometheusURL                string              `json:"prometheusUrl"`
-		GrafanaURL                   string              `json:"grafanaUrl"`
 		ImagePullSecrets             []map[string]string `json:"imagePullSecrets"`
 		LinkerdVersion               string              `json:"linkerdVersion"`
 
@@ -93,7 +92,6 @@ type (
 		Capabilities *Capabilities `json:"capabilities"`
 		// This should match .Resources.CPU.Limit, but must be a whole number
 		Cores                         int64            `json:"cores,omitempty"`
-		DisableIdentity               bool             `json:"disableIdentity"`
 		EnableExternalProfiles        bool             `json:"enableExternalProfiles"`
 		Image                         *Image           `json:"image"`
 		LogLevel                      string           `json:"logLevel"`
@@ -112,6 +110,7 @@ type (
 		OpaquePorts                   string           `json:"opaquePorts"`
 		Await                         bool             `json:"await"`
 		DefaultInboundPolicy          string           `json:"defaultInboundPolicy"`
+		AccessLog                     string           `json:"accessLog"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container
@@ -119,6 +118,7 @@ type (
 		Capabilities         *Capabilities    `json:"capabilities"`
 		IgnoreInboundPorts   string           `json:"ignoreInboundPorts"`
 		IgnoreOutboundPorts  string           `json:"ignoreOutboundPorts"`
+		SkipSubnets          string           `json:"skipSubnets"`
 		LogLevel             string           `json:"logLevel"`
 		LogFormat            string           `json:"logFormat"`
 		Image                *Image           `json:"image"`
@@ -209,10 +209,12 @@ type (
 	// TLS has a pair of PEM-encoded key and certificate variables used in the
 	// Helm templates
 	TLS struct {
-		ExternalSecret bool   `json:"externalSecret"`
-		KeyPEM         string `json:"keyPEM"`
-		CrtPEM         string `json:"crtPEM"`
-		CaBundle       string `json:"caBundle"`
+		ExternalSecret     bool   `json:"externalSecret"`
+		KeyPEM             string `json:"keyPEM"`
+		CrtPEM             string `json:"crtPEM"`
+		CaBundle           string `json:"caBundle"`
+		InjectCaFrom       string `json:"injectCaFrom"`
+		InjectCaFromSecret string `json:"injectCaFromSecret"`
 	}
 
 	// IssuerTLS is a stripped down version of TLS that lacks the integral caBundle.
@@ -225,12 +227,19 @@ type (
 
 // NewValues returns a new instance of the Values type.
 func NewValues() (*Values, error) {
-	v, err := readDefaults(false)
+	v, err := readDefaults(HelmChartDirCrds + "/values.yaml")
+	if err != nil {
+		return nil, err
+	}
+	vCP, err := readDefaults(HelmChartDirCP + "/values.yaml")
+	if err != nil {
+		return nil, err
+	}
+	*v, err = v.Merge(*vCP)
 	if err != nil {
 		return nil, err
 	}
 
-	v.ControllerImageVersion = version.Version
 	v.Proxy.Image.Version = version.Version
 	v.DebugContainer.Image.Version = version.Version
 	v.CliVersion = k8s.CreatedByAnnotationValue()
@@ -255,7 +264,7 @@ func ValuesFromConfigMap(cm *corev1.ConfigMap) (*Values, error) {
 
 // MergeHAValues retrieves the default HA values and merges them into the received values
 func MergeHAValues(values *Values) error {
-	haValues, err := readDefaults(true)
+	haValues, err := readDefaults(HelmChartDirCP + "/values-ha.yaml")
 	if err != nil {
 		return err
 	}
@@ -263,17 +272,10 @@ func MergeHAValues(values *Values) error {
 	return err
 }
 
-// readDefaults read all the default variables from the values.yaml file.
-func readDefaults(ha bool) (*Values, error) {
-	var valuesFile *loader.BufferedFile
-	if ha {
-		valuesFile = &loader.BufferedFile{Name: helmDefaultHAValuesFile}
-	} else {
-		valuesFile = &loader.BufferedFile{Name: chartutil.ValuesfileName}
-	}
-
-	chartDir := fmt.Sprintf("%s/", helmDefaultChartDir)
-	if err := charts.ReadFile(static.Templates, chartDir, valuesFile); err != nil {
+// readDefaults read all the default variables from filename.
+func readDefaults(filename string) (*Values, error) {
+	valuesFile := &loader.BufferedFile{Name: filename}
+	if err := charts.ReadFile(static.Templates, "/", valuesFile); err != nil {
 		return nil, err
 	}
 
@@ -303,12 +305,12 @@ func (v *Values) ToMap() (map[string]interface{}, error) {
 	var valuesMap map[string]interface{}
 	rawValues, err := yaml.Marshal(v)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to marshal the values struct: %s", err)
+		return nil, fmt.Errorf("Failed to marshal the values struct: %w", err)
 	}
 
 	err = yaml.Unmarshal(rawValues, &valuesMap)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to Unmarshal Values into a map: %s", err)
+		return nil, fmt.Errorf("Failed to Unmarshal Values into a map: %w", err)
 	}
 
 	return valuesMap, nil

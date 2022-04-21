@@ -27,7 +27,8 @@ pub enum Operator {
     DoesNotExist,
 }
 
-/// Selects a set of pods that expose a server.
+/// Selects a set of pods that expose a server. The result of `match_labels` and
+/// `match_expressions` are ANDed.
 #[derive(Clone, Debug, Eq, PartialEq, Default, Deserialize, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Selector {
@@ -38,17 +39,35 @@ pub struct Selector {
 // === Selector ===
 
 impl Selector {
-    pub fn from_expressions(exprs: Expressions) -> Self {
+    #[cfg(test)]
+    fn new(labels: Map, exprs: Expressions) -> Self {
+        Self {
+            match_labels: Some(labels),
+            match_expressions: Some(exprs),
+        }
+    }
+
+    fn from_expressions(exprs: Expressions) -> Self {
         Self {
             match_labels: None,
             match_expressions: Some(exprs),
         }
     }
 
-    pub fn from_map(map: Map) -> Self {
+    fn from_map(map: Map) -> Self {
         Self {
             match_labels: Some(map),
             match_expressions: None,
+        }
+    }
+
+    /// Indicates whether this label selector matches all pods
+    pub fn selects_all(&self) -> bool {
+        match (self.match_labels.as_ref(), self.match_expressions.as_ref()) {
+            (None, None) => true,
+            (Some(l), None) => l.is_empty(),
+            (None, Some(e)) => e.is_empty(),
+            (Some(l), Some(e)) => l.is_empty() && e.is_empty(),
         }
     }
 
@@ -200,6 +219,32 @@ mod tests {
                 Labels::from_iter(vec![("foo", "bar"), ("bah", "baz")]),
                 true,
                 "expression match",
+            ),
+            (
+                Selector::new(
+                    Map::from([("foo".to_string(), "bar".to_string())]),
+                    vec![Expression {
+                        key: "bah".into(),
+                        operator: Operator::In,
+                        values: Some(Some("bar".to_string()).into_iter().collect()),
+                    }],
+                ),
+                Labels::from_iter(vec![("foo", "bar"), ("bah", "baz")]),
+                false,
+                "matches labels but not expressions",
+            ),
+            (
+                Selector::new(
+                    Map::from([("foo".to_string(), "bar".to_string())]),
+                    vec![Expression {
+                        key: "bah".into(),
+                        operator: Operator::In,
+                        values: Some(Some("bar".to_string()).into_iter().collect()),
+                    }],
+                ),
+                Labels::from_iter(vec![("foo", "bar"), ("bah", "bar")]),
+                true,
+                "matches both labels and expressions",
             ),
         ] {
             assert_eq!(selector.matches(labels), *matches, "{}", msg);

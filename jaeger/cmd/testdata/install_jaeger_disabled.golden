@@ -5,9 +5,6 @@ metadata:
   name: linkerd-jaeger
   labels:
     linkerd.io/extension: jaeger
-  annotations:
-    linkerd.io/inject: enabled
-    config.linkerd.io/proxy-await: "enabled"
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
@@ -65,7 +62,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 0cf88aabfdb59ab401cb17b59e26b57277ca6c039ec4837e2523759802565c1b
+        checksum/config: d10abe745e0df2e543fb40fcfecf1df813afc2259991761174790f0735959752
+        linkerd.io/inject: enabled
+        config.linkerd.io/proxy-await: "enabled"
       labels:
         linkerd.io/extension: jaeger
         component: jaeger-injector
@@ -77,6 +76,9 @@ spec:
         - -collector-svc-addr=collector.linkerd-jaeger:55678
         - -collector-svc-account=collector
         - -log-level=info
+        - -cluster-domain=cluster.local
+        - -linkerd-namespace=linkerd
+        - -enable-pprof=false
         image: cr.l5d.io/linkerd/jaeger-webhook:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -99,6 +101,7 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+        resources:
       serviceAccountName: jaeger-injector
       volumes:
       - name: tls
@@ -224,16 +227,6 @@ metadata:
   name: jaeger-injector
   namespace: linkerd-jaeger
 ---
-kind: Secret
-apiVersion: v1
-metadata:
-  name: jaeger-injector-k8s-tls
-  namespace: linkerd-jaeger
-type: kubernetes.io/tls
-data:
-  tls.crt: dGVzdC13ZWJob29rLWNydC1wZW0=
-  tls.key: dGVzdC13ZWJob29rLWtleS1wZW0=
----
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
@@ -291,7 +284,8 @@ data:
     exporters:
       jaeger:
         endpoint: jaeger.${POD_NAMESPACE}:14250
-        insecure: true
+        tls:
+          insecure: true
     service:
       extensions: [health_check]
       pipelines:
@@ -354,6 +348,8 @@ spec:
   template:
     metadata:
       annotations:
+        linkerd.io/inject: enabled
+        config.linkerd.io/proxy-await: "enabled"
         prometheus.io/path: /metrics
         prometheus.io/port: "8888"
         prometheus.io/scrape: "true"
@@ -375,7 +371,7 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.namespace
-        image: otel/opentelemetry-collector:0.27.0
+        image: otel/opentelemetry-collector:0.43.0
         imagePullPolicy: Always
         livenessProbe:
           httpGet:

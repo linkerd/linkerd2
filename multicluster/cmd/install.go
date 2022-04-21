@@ -32,7 +32,6 @@ import (
 type (
 	multiclusterInstallOptions struct {
 		gateway                 multicluster.Gateway
-		namespace               string
 		remoteMirrorCredentials bool
 	}
 )
@@ -42,9 +41,10 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	var ha bool
 	var wait time.Duration
 	var valuesOptions valuespkg.Options
+	var ignoreCluster bool
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
@@ -59,23 +59,23 @@ The installation can be configured by using the --set, --values, --set-string an
 A full list of configurable values can be found at https://github.com/linkerd/linkerd2/blob/main/multicluster/charts/linkerd-multicluster/README.md
   `,
 		RunE: func(cmd *cobra.Command, args []string) error {
-
-			// Wait for the core control-plane to be up and running
-			api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
-				ControlPlaneNamespace: controlPlaneNamespace,
-				KubeConfig:            kubeconfigPath,
-				KubeContext:           kubeContext,
-				Impersonate:           impersonate,
-				ImpersonateGroup:      impersonateGroup,
-				APIAddr:               apiAddr,
-				RetryDeadline:         time.Now().Add(wait),
-			})
-			return install(cmd.Context(), stdout, options, valuesOptions, ha)
+			if !ignoreCluster {
+				// Wait for the core control-plane to be up and running
+				api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
+					ControlPlaneNamespace: controlPlaneNamespace,
+					KubeConfig:            kubeconfigPath,
+					KubeContext:           kubeContext,
+					Impersonate:           impersonate,
+					ImpersonateGroup:      impersonateGroup,
+					APIAddr:               apiAddr,
+					RetryDeadline:         time.Now().Add(wait),
+				})
+			}
+			return install(cmd.Context(), stdout, options, valuesOptions, ha, ignoreCluster)
 		},
 	}
 
 	flags.AddValueOptionsFlags(cmd.Flags(), &valuesOptions)
-	cmd.Flags().StringVar(&options.namespace, "namespace", options.namespace, "The namespace in which the multicluster add-on is to be installed. Must not be the control plane namespace. ")
 	cmd.Flags().BoolVar(&options.gateway.Enabled, "gateway", options.gateway.Enabled, "If the gateway component should be installed")
 	cmd.Flags().Uint32Var(&options.gateway.Port, "gateway-port", options.gateway.Port, "The port on the gateway used for all incoming traffic")
 	cmd.Flags().Uint32Var(&options.gateway.Probe.Seconds, "gateway-probe-seconds", options.gateway.Probe.Seconds, "The interval at which the gateway will be checked for being alive in seconds")
@@ -84,6 +84,8 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().StringVar(&options.gateway.ServiceType, "gateway-service-type", options.gateway.ServiceType, "Overwrite Service type for gateway service")
 	cmd.Flags().BoolVar(&ha, "ha", false, `Install multicluster extension in High Availability mode.`)
 	cmd.Flags().DurationVar(&wait, "wait", 300*time.Second, "Wait for core control-plane components to be available")
+	cmd.Flags().BoolVar(&ignoreCluster, "ignore-cluster", false,
+		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)")
 
 	// Hide developer focused flags in release builds.
 	release, err := version.IsReleaseChannel(version.Version)
@@ -99,8 +101,8 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	return cmd
 }
 
-func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptions, valuesOptions valuespkg.Options, ha bool) error {
-	values, err := buildMulticlusterInstallValues(ctx, options)
+func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptions, valuesOptions valuespkg.Options, ha, ignoreCluster bool) error {
+	values, err := buildMulticlusterInstallValues(ctx, options, ignoreCluster)
 	if err != nil {
 		return err
 	}
@@ -174,8 +176,16 @@ func render(w io.Writer, values *multicluster.Values, valuesOverrides map[string
 		return err
 	}
 
+	fullValues := map[string]interface{}{
+		"Values": vals,
+		"Release": map[string]interface{}{
+			"Namespace": defaultMulticlusterNamespace,
+			"Service":   "CLI",
+		},
+	}
+
 	// Attach the final values into the `Values` field for rendering to work
-	renderedTemplates, err := engine.Render(chart, map[string]interface{}{"Values": vals})
+	renderedTemplates, err := engine.Render(chart, fullValues)
 	if err != nil {
 		return err
 	}
@@ -202,12 +212,28 @@ func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, er
 
 	return &multiclusterInstallOptions{
 		gateway:                 *defaults.Gateway,
-		namespace:               defaults.Namespace,
 		remoteMirrorCredentials: true,
 	}, nil
 }
 
-func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInstallOptions) (*multicluster.Values, error) {
+func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInstallOptions, ignoreCluster bool) (*multicluster.Values, error) {
+	defaults, err := multicluster.NewInstallValues()
+	if err != nil {
+		return nil, err
+	}
+
+	defaults.Gateway.Enabled = opts.gateway.Enabled
+	defaults.Gateway.Port = opts.gateway.Port
+	defaults.Gateway.Probe.Seconds = opts.gateway.Probe.Seconds
+	defaults.Gateway.Probe.Port = opts.gateway.Probe.Port
+	defaults.LinkerdNamespace = controlPlaneNamespace
+	defaults.LinkerdVersion = version.Version
+	defaults.RemoteMirrorServiceAccount = opts.remoteMirrorCredentials
+	defaults.Gateway.ServiceType = opts.gateway.ServiceType
+
+	if ignoreCluster {
+		return defaults, nil
+	}
 
 	values, err := getLinkerdConfigMap(ctx)
 	if err != nil {
@@ -216,31 +242,8 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 		}
 		return nil, err
 	}
-
-	if opts.namespace == "" {
-		return nil, errors.New("you need to specify a namespace")
-	}
-
-	if opts.namespace == controlPlaneNamespace {
-		return nil, errors.New("you need to setup the multicluster addons in a namespace different than the Linkerd one")
-	}
-
-	defaults, err := multicluster.NewInstallValues()
-	if err != nil {
-		return nil, err
-	}
-
-	defaults.Namespace = opts.namespace
-	defaults.Gateway.Enabled = opts.gateway.Enabled
-	defaults.Gateway.Port = opts.gateway.Port
-	defaults.Gateway.Probe.Seconds = opts.gateway.Probe.Seconds
-	defaults.Gateway.Probe.Port = opts.gateway.Probe.Port
-	defaults.IdentityTrustDomain = values.IdentityTrustDomain
-	defaults.LinkerdNamespace = controlPlaneNamespace
 	defaults.ProxyOutboundPort = uint32(values.Proxy.Ports.Outbound)
-	defaults.LinkerdVersion = version.Version
-	defaults.RemoteMirrorServiceAccount = opts.remoteMirrorCredentials
-	defaults.Gateway.ServiceType = opts.gateway.ServiceType
+	defaults.IdentityTrustDomain = values.IdentityTrustDomain
 
 	return defaults, nil
 }

@@ -1,132 +1,167 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-use anyhow::{bail, Context, Error, Result};
-use futures::{future, prelude::*};
-use linkerd_policy_controller::k8s::DefaultPolicy;
-use linkerd_policy_controller::{admin, admission};
-use linkerd_policy_controller_core::IpNet;
+use anyhow::{bail, Result};
+use clap::Parser;
+use futures::prelude::*;
+use kube::api::ListParams;
+use linkerd_policy_controller::{
+    grpc, k8s, Admission, ClusterInfo, DefaultPolicy, Index, IndexDiscover, IpNet, SharedIndex,
+};
 use std::net::SocketAddr;
-use structopt::StructOpt;
-use tokio::{sync::watch, time};
-use tracing::{debug, info, info_span, instrument, Instrument};
-use tracing_subscriber::{fmt::format, prelude::*, EnvFilter};
+use tokio::time;
+use tracing::{info, info_span, instrument, Instrument};
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu"))]
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "policy", about = "A policy resource prototype")]
+const DETECT_TIMEOUT: time::Duration = time::Duration::from_secs(10);
+
+#[derive(Debug, Parser)]
+#[clap(name = "policy", about = "A policy resource prototype")]
 struct Args {
-    #[structopt(
+    #[clap(
         parse(try_from_str),
         long,
         default_value = "linkerd=info,warn",
         env = "LINKERD_POLICY_CONTROLLER_LOG"
     )]
-    log_level: EnvFilter,
+    log_level: kubert::LogFilter,
 
-    #[structopt(long, default_value = "plain")]
-    log_format: LogFormat,
+    #[clap(long, default_value = "plain")]
+    log_format: kubert::LogFormat,
 
-    #[structopt(long, default_value = "0.0.0.0:8080")]
-    admin_addr: SocketAddr,
+    #[clap(flatten)]
+    client: kubert::ClientArgs,
 
-    #[structopt(long, default_value = "0.0.0.0:8090")]
+    #[clap(flatten)]
+    server: kubert::ServerArgs,
+
+    #[clap(flatten)]
+    admin: kubert::AdminArgs,
+
+    /// Disables the admission controller server.
+    #[clap(long)]
+    admission_controller_disabled: bool,
+
+    #[clap(long, default_value = "0.0.0.0:8090")]
     grpc_addr: SocketAddr,
-
-    #[structopt(long)]
-    admission_addr: Option<SocketAddr>,
 
     /// Network CIDRs of pod IPs.
     ///
     /// The default includes all private networks.
-    #[structopt(
+    #[clap(
         long,
         default_value = "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
     )]
     cluster_networks: IpNets,
 
-    #[structopt(long, default_value = "cluster.local")]
+    #[clap(long, default_value = "cluster.local")]
     identity_domain: String,
 
-    #[structopt(long, default_value = "all-unauthenticated")]
+    #[clap(long, default_value = "all-unauthenticated")]
     default_policy: DefaultPolicy,
 
-    #[structopt(long, default_value = "linkerd")]
+    #[clap(long, default_value = "linkerd")]
     control_plane_namespace: String,
-}
-
-#[derive(Clone, Debug)]
-enum LogFormat {
-    Json,
-    Plain,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let Args {
-        admin_addr,
+        admin,
+        client,
+        log_level,
+        log_format,
+        server,
         grpc_addr,
-        admission_addr,
+        admission_controller_disabled,
         identity_domain,
         cluster_networks: IpNets(cluster_networks),
         default_policy,
-        log_level,
-        log_format,
         control_plane_namespace,
-    } = Args::from_args();
+    } = Args::parse();
 
-    log_init(log_level, log_format)?;
-
-    let (drain_tx, drain_rx) = drain::channel();
-
-    // Load a Kubernetes client from the environment (check for in-cluster configuration first).
-    //
-    // TODO support --kubeconfig and --context command-line arguments.
-    let client = kube::Client::try_default()
-        .await
-        .context("failed to initialize kubernetes client")?;
-
-    // Spawn an admin server, failing readiness checks until the index is updated.
-    let (ready_tx, ready_rx) = watch::channel(false);
-    tokio::spawn(admin::serve(admin_addr, ready_rx));
-
-    // Index cluster resources, returning a handle that supports lookups for the gRPC server.
-    let handle = {
-        const DETECT_TIMEOUT: time::Duration = time::Duration::from_secs(10);
-        let cluster = linkerd_policy_controller::k8s::ClusterInfo {
-            networks: cluster_networks.clone(),
-            identity_domain,
-            control_plane_ns: control_plane_namespace,
-        };
-        let (handle, index) =
-            linkerd_policy_controller::k8s::Index::new(cluster, default_policy, DETECT_TIMEOUT);
-
-        tokio::spawn(index.run(client.clone(), ready_tx));
-        handle
+    let server = if admission_controller_disabled {
+        None
+    } else {
+        Some(server)
     };
 
-    // Run the gRPC server, serving results by looking up against the index handle.
-    tokio::spawn(grpc(grpc_addr, cluster_networks, handle, drain_rx.clone()));
+    let mut runtime = kubert::Runtime::builder()
+        .with_log(log_level, log_format)
+        .with_admin(admin)
+        .with_client(client)
+        .with_optional_server(server)
+        .build()
+        .await?;
 
-    // Run the admission controller
-    if let Some(bind_addr) = admission_addr {
-        let (listen_addr, serve) = warp::serve(admission::routes(client))
-            .tls()
-            .cert_path("/var/run/linkerd/tls/tls.crt")
-            .key_path("/var/run/linkerd/tls/tls.key")
-            .bind_with_graceful_shutdown(bind_addr, async move {
-                let _ = drain_rx.signaled().await;
-            });
-        info!(addr = %listen_addr, "Admission controller server listening");
-        tokio::spawn(serve.instrument(info_span!("admission")));
-    }
+    // Build the index data structure, which will be used to process events from all watches
+    // The lookup handle is used by the gRPC server.
+    let index = Index::shared(ClusterInfo {
+        networks: cluster_networks.clone(),
+        identity_domain,
+        control_plane_ns: control_plane_namespace,
+        default_policy,
+        default_detect_timeout: DETECT_TIMEOUT,
+    });
+
+    // Spawn resource indexers that update the index and publish lookups for the gRPC server.
+
+    let pods =
+        runtime.watch_all::<k8s::Pod>(ListParams::default().labels("linkerd.io/control-plane-ns"));
+    tokio::spawn(kubert::index::namespaced(index.clone(), pods).instrument(info_span!("pods")));
+
+    let servers = runtime.watch_all::<k8s::policy::Server>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(index.clone(), servers).instrument(info_span!("servers")),
+    );
+
+    let server_authzs =
+        runtime.watch_all::<k8s::policy::ServerAuthorization>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(index.clone(), server_authzs)
+            .instrument(info_span!("serverauthorizations")),
+    );
+
+    let authz_policies =
+        runtime.watch_all::<k8s::policy::AuthorizationPolicy>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(index.clone(), authz_policies)
+            .instrument(info_span!("authorizationpolicies")),
+    );
+
+    let mtls_authns =
+        runtime.watch_all::<k8s::policy::MeshTLSAuthentication>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(index.clone(), mtls_authns)
+            .instrument(info_span!("meshtlsauthentications")),
+    );
+
+    let network_authns =
+        runtime.watch_all::<k8s::policy::NetworkAuthentication>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(index.clone(), network_authns)
+            .instrument(info_span!("networkauthentications")),
+    );
+
+    // Run the gRPC server, serving results by looking up against the index handle.
+    tokio::spawn(grpc(
+        grpc_addr,
+        cluster_networks,
+        index,
+        runtime.shutdown_handle(),
+    ));
+
+    let client = runtime.client();
+    let runtime = runtime.spawn_server(|| Admission::new(client));
 
     // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
     // complete before exiting.
-    shutdown(drain_tx).await;
+    if runtime.run().await.is_err() {
+        bail!("Aborted");
+    }
 
     Ok(())
 }
@@ -144,15 +179,15 @@ impl std::str::FromStr for IpNets {
     }
 }
 
-#[instrument(skip(handle, drain))]
+#[instrument(skip_all, fields(port = %addr.port()))]
 async fn grpc(
     addr: SocketAddr,
     cluster_networks: Vec<IpNet>,
-    handle: linkerd_policy_controller_k8s_index::Reader,
+    index: SharedIndex,
     drain: drain::Watch,
 ) -> Result<()> {
-    let server =
-        linkerd_policy_controller_grpc::Server::new(handle, cluster_networks, drain.clone());
+    let discover = IndexDiscover::new(index);
+    let server = grpc::Server::new(discover, cluster_networks, drain.clone());
     let (close_tx, close_rx) = tokio::sync::oneshot::channel();
     tokio::pin! {
         let srv = server.serve(addr, close_rx.map(|_| {}));
@@ -166,69 +201,4 @@ async fn grpc(
         }
     }
     Ok(())
-}
-
-async fn shutdown(drain: drain::Signal) {
-    tokio::select! {
-        _ = tokio::signal::ctrl_c() => {
-            debug!("Received ctrl-c");
-        },
-        _ = sigterm() => {
-            debug!("Received SIGTERM");
-        }
-    }
-    info!("Shutting down");
-    drain.drain().await;
-}
-
-async fn sigterm() {
-    use tokio::signal::unix::{signal, SignalKind};
-    match signal(SignalKind::terminate()) {
-        Ok(mut term) => term.recv().await,
-        _ => future::pending().await,
-    };
-}
-
-fn log_init(filter: EnvFilter, format: LogFormat) -> Result<()> {
-    let registry = tracing_subscriber::registry().with(filter);
-
-    match format {
-        LogFormat::Plain => registry.with(tracing_subscriber::fmt::layer()).try_init()?,
-
-        LogFormat::Json => {
-            let event_fmt = tracing_subscriber::fmt::format()
-                // Configure the formatter to output JSON logs.
-                .json()
-                // Output the current span context as a JSON list.
-                .with_span_list(true)
-                // Don't output a field for the current span, since this
-                // would duplicate information already in the span list.
-                .with_current_span(false);
-
-            // Use the JSON event formatter and the JSON field formatter.
-            let fmt = tracing_subscriber::fmt::layer()
-                .event_format(event_fmt)
-                .fmt_fields(format::JsonFields::default());
-
-            registry.with(fmt).try_init()?
-        }
-    };
-
-    Ok(())
-}
-
-// === impl LogFormat ===
-
-impl std::str::FromStr for LogFormat {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self> {
-        if s == "json" {
-            Ok(Self::Json)
-        } else if s == "plain" {
-            Ok(Self::Plain)
-        } else {
-            bail!("invalid log format: {}", s)
-        }
-    }
 }

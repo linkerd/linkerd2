@@ -2,8 +2,10 @@
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
-  name: metrics-api.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}
-  namespace: {{.Values.namespace}}
+  name: metrics-api.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}
+  {{ include "partials.namespace" . }}
+  labels:
+    linkerd.io/extension: viz
 spec:
   routes:
   - name: POST /api/v1/StatSummary
@@ -39,8 +41,10 @@ spec:
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
-  name: prometheus.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}
-  namespace: {{.Values.namespace}}
+  name: prometheus.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}
+  {{ include "partials.namespace" . }}
+  labels:
+    linkerd.io/extension: viz
 spec:
   routes:
   - name: POST /api/v1/query
@@ -55,58 +59,4 @@ spec:
     condition:
       method: GET
       pathRegex: /api/v1/series
-{{ end -}}
-{{ if .Values.grafana.enabled -}}
----
-apiVersion: linkerd.io/v1alpha2
-kind: ServiceProfile
-metadata:
-  name: grafana.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}
-  namespace: {{.Values.namespace}}
-spec:
-  routes:
-  - name: GET /api/annotations
-    condition:
-      method: GET
-      pathRegex: /api/annotations
-  - name: GET /api/dashboards/tags
-    condition:
-      method: GET
-      pathRegex: /api/dashboards/tags
-  - name: GET /api/dashboards/uid/{uid}
-    condition:
-      method: GET
-      pathRegex: /api/dashboards/uid/.*
-  - name: GET /api/dashboard/{dashboard}
-    condition:
-      method: GET
-      pathRegex: /api/dashboard/.*
-  - name: GET /api/datasources/proxy/1/api/v1/series
-    condition:
-      method: GET
-      pathRegex: /api/datasources/proxy/1/api/v1/series
-  - name: GET /api/datasources/proxy/1/api/v1/query_range
-    condition:
-      method: GET
-      pathRegex: /api/datasources/proxy/1/api/v1/query_range
-  - name: GET /api/search
-    condition:
-      method: GET
-      pathRegex: /api/search
-  - name: GET /d/{uid}/{dashboard-name}
-    condition:
-      method: GET
-      pathRegex: /d/[^/]*/.*
-  - name: GET /public/build/{style}.css
-    condition:
-      method: GET
-      pathRegex: /public/build/.*\.css
-  - name: GET /public/fonts/{font}
-    condition:
-      method: GET
-      pathRegex: /public/fonts/.*
-  - name: GET /public/img/{img}
-    condition:
-      method: GET
-      pathRegex: /public/img/.*
 {{ end -}}

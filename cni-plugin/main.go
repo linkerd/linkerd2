@@ -101,23 +101,23 @@ func parseConfig(stdin []byte) (*PluginConf, error) {
 
 	logrus.Debugf("linkerd-cni: stdin to plugin: %v", string(stdin))
 	if err := json.Unmarshal(stdin, &conf); err != nil {
-		return nil, fmt.Errorf("linkerd-cni: failed to parse network configuration: %v", err)
+		return nil, fmt.Errorf("linkerd-cni: failed to parse network configuration: %w", err)
 	}
 
 	if conf.RawPrevResult != nil {
 		resultBytes, err := json.Marshal(conf.RawPrevResult)
 		if err != nil {
-			return nil, fmt.Errorf("linkerd-cni: could not serialize prevResult: %v", err)
+			return nil, fmt.Errorf("linkerd-cni: could not serialize prevResult: %w", err)
 		}
 
 		res, err := version.NewResult(conf.CNIVersion, resultBytes)
 		if err != nil {
-			return nil, fmt.Errorf("linkerd-cni: could not parse prevResult: %v", err)
+			return nil, fmt.Errorf("linkerd-cni: could not parse prevResult: %w", err)
 		}
 		conf.RawPrevResult = nil
 		conf.PrevResult, err = cniv1.NewResultFromResult(res)
 		if err != nil {
-			return nil, fmt.Errorf("linkerd-cni: could not convert result to version 1.0: %v", err)
+			return nil, fmt.Errorf("linkerd-cni: could not convert result to version 1.0: %w", err)
 		}
 		logrus.Debugf("linkerd-cni: prevResult: %v", conf.PrevResult)
 	}
@@ -206,7 +206,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 			// Check if there are any overridden ports to be skipped
 			outboundSkipOverride, err := getAnnotationOverride(ctx, client, pod, k8s.ProxyIgnoreOutboundPortsAnnotation)
 			if err != nil {
-				logEntry.Errorf("linkerd-cni: could not retrieve overridden annotations: %v", err)
+				logEntry.Errorf("linkerd-cni: could not retrieve overridden annotations: %s", err)
 				return err
 			}
 
@@ -217,7 +217,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 
 			inboundSkipOverride, err := getAnnotationOverride(ctx, client, pod, k8s.ProxyIgnoreInboundPortsAnnotation)
 			if err != nil {
-				logEntry.Errorf("linkerd-cni: could not retrieve overridden annotations: %v", err)
+				logEntry.Errorf("linkerd-cni: could not retrieve overridden annotations: %s", err)
 				return err
 			}
 
@@ -240,7 +240,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 
 			err = iptables.ConfigureFirewall(*firewallConfiguration)
 			if err != nil {
-				logEntry.Errorf("linkerd-cni: could not configure firewall: %v", err)
+				logEntry.Errorf("linkerd-cni: could not configure firewall: %s", err)
 				return err
 			}
 		} else {

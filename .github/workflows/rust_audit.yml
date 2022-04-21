@@ -1,0 +1,49 @@
+name: RUSTSEC audit
+
+# This audits *all* of our Rust repositories and opens issues for any new
+# security advisories.  This action depends on cargo-deny, so if advisories are
+# ignored in the repo's `deny.toml`, an issue may not be flagged.
+
+on:
+
+  # Run when the Cargo.lock changes or when this workflow changes.
+  push:
+    branches:
+      - main
+    paths:
+      - Cargo.lock
+      - deny.toml
+      - .github/workflows/rust_audit.yml
+
+  # Run at 00:00 UTC every day
+  schedule:
+    - cron: '0 0 * * *'
+
+permissions:
+  issues: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+
+          - repo: linkerd2
+            labels: area/controller,rust,security
+
+          - repo: linkerd2-proxy
+            labels: area/proxy,rust,security
+
+          - repo: linkerd-await
+            labels: area/await,rust,security
+
+    name: RUSTSEC audit (${{ matrix.repo }})
+    steps:
+      - uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+        with:
+          repository: linkerd/${{ matrix.repo }}
+      - uses: olix0r/rustsecbot@560c817c7a019e1f0c2318721b55156409be7f8c
+        with:
+          labels: ${{ matrix.labels }}

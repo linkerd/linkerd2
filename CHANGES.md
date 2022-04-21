@@ -1,5 +1,313 @@
 # Changes
 
+## edge-22.3.5
+
+This edge release introduces new policy CRDs that allow for more generalized
+authorization policies.
+
+The `AuthorizationPolicy` CRD authorizes clients that satisfy all the required
+authentications to communicate with the Linkerd `Server` that it targets.
+Required authentications are specified through the new `MeshTLSAuthentication`
+and `NetworkAuthentication` CRDs.
+
+A `MeshTLSAuthentication` defines a list of authenticated client IDs—specified
+directly by proxy identity strings or referencing resources such as
+`ServiceAccount`s.
+
+A `NetworkAuthentication` defines a list of client networks that will be
+authenticated.
+
+Additionally, to support the new CRDs, policy-related labels have been changed
+to better categorize policy metrics. A `srv_kind` label has been introduced
+which splits the current `srv_name` value—formatted as `kind:name`—into separate
+labels. The `saz_name` label has been removed and is replaced by the new
+`authz_kind` and `authz_name` labels.
+
+* Introduced the `srv_kind` label which allowed splitting the value of the
+  current `srv_name` label
+* Removed the `saz_name` label and replaced it with the new `authz_kind` and
+  `authz_name` labels
+* Fixed an issue in the destination controller where an update would not be sent
+  after an endpoint was discovered for a currently empty service
+* Introduced the following custom resource types to support generalized
+  authorization policies: `AuthorizationPolicy`, `MeshTLSAuthentication`,
+  `NetworkAuthentication`
+* Deprecated the `--proxy-version` flag (thanks @importhuman!)
+* Updated linkerd-viz to use new policy CRDs
+
+## edge-22.3.4
+
+* Disabled pprof endpoints on Linkerd control plane components by default
+* Fixed an issue where mirror service endpoints of headless services were always
+  ready regardless of gateway liveness
+* Added server side validation for ServerAuthorization resources
+* Fixed an "origin not allowed" issue when using the latest Grafana with the
+  Linkerd Viz extension
+
+## edge-22.3.3
+
+This edge release ensures that in multicluster installations, mirror service
+endpoints have their readiness tied to gateway liveness. When the gateway for a
+target cluster is not alive, the endpoints that point to it on a source cluster
+will properly indicate that they are not ready.
+
+* Fixed tap controller logging errors that were succeptible to log forgery by
+  ensuring special characters are escaped
+* Fixed issue where mirror service endpoints were always ready regardless of
+  gateway liveness
+* Removed unused `namespace` entry in `linkerd-control-plane` chart
+
+## edge-22.3.2
+
+This edge release includes a few fixes and quality of life improvements. An
+issue has been fixed in the proxy allowing HTTP Upgrade requests to work
+through multi-cluster gateways, and the init container's resource limits and
+requests have been revised. Additionally, more Go linters have been enabled and
+improvements have been made to the devcontainer.
+
+* Changed `linkerd-init` resource (CPU/memory) limits and requests to ensure by
+  default the init container does not break a pod's `Guaranteed` QOS class
+* Added a new check condition to skip pods whose status is `NodeShutdown`
+  during validation as they will not have a proxy container
+* Fixed an issue that would prevent proxies from sending HTTP Upgrade requests
+  (used in websockets) through multi-cluster gateways
+
+## edge-22.3.1
+
+This edge release includes updates to dependencies, CI, and rust 1.59.0. It also
+includes changes to the `linkerd-jaeger` chart to ensure that namespace labels
+are preserved and adds support for `imagePullSecrets`, along with improvements
+to the multicluster and policy functionality.
+
+* Added note to `multicluster link` command to clarify that the link is
+  one-direction
+* Introduced `imagePullSecrets` to Jaeger Helm chart
+* Updated Rust to v1.59.0
+* Fixed a bug where labels can be overwritten in the `linkerd-jaeger` chart
+* Fix broken mirrored headles services after `repairEndpoints` runs
+* Updated `Server` CRD to handle an empty `PodSelector`
+
+## edge-22.2.4
+
+This edge release continues to address several security related lints and
+ensures they are checked by CI.
+
+* Add `linkerd check` warning for clusters that cannot verify their
+  `clusterNetworks` due to Nodes missing the `podCIDR` field
+* Changed `Server` CRD to allow having an empty `PodSelector`
+* Modified `linkerd inject` to only support `https` URLs to mitigate security
+  risks
+* Fixed potential goroutine leak in the port forwarding used by several CLI
+  commands and control plane components
+* Fixed timeouts in the policiy validator which could lead to failures if
+  `failurePolicy` was set to `Fail`
+
+## edge-22.2.3
+
+This edge release fixes some `Instant`-related proxy panics that occur on Amazon
+Linux. It also includes many behind the scenes improvements to the project's
+CI and linting.
+
+* Removed the `--controller-image-version` install flag to simplify the way that
+  image versions are handled. The controller image version can be set using the
+  `--set linkerdVersion` flag or Helm value
+* Lowercased logs and removed redundant lines from the Linkerd2 proxy init
+  container
+* Prevented the proxy from logging spurious errors when its pod does not define
+  any container ports
+* Added workarounds to reduce the likelihood of `Instant`-related proxy panics
+  that occur on Amazon Linux
+
+## edge-22.2.2
+
+This edge release updates the jaeger extension to be available in ARM
+architectures and applies some security-oriented amendments.
+
+* Upgraded jaeger and the opentelemetry-collector to their latest versions,
+  which now support ARM architectures
+* Fixed `linkerd multicluster check` which was reporting false warnings
+* Started enforcing TLS v1.2 as a minimum in the webhook servers
+* Had the identity controller emit SHA256 certificate fingerprints in its
+  logs/events, instead of MD5
+
+## edge-22.2.1
+
+This edge release removed the `disableIdentity` configuration now that the proxy
+no longer supports running without identity.
+
+* Added a `privileged` configuration to linkerd-cni which is required by some
+  environments
+* Fixed an issue where the TLS credentials used by the policy validator were not
+  updated when the credentials were rotated
+* Removed the `disableIdentity` configurations now that the proxy no longer
+  supports running without identity
+* Fixed an issue where `linkerd jaeger check` would needlessly fail for BYO
+  Jaeger or collector installations
+* Fixed a Helm HA installation race condition introduced by the stoppage of
+  namespace creation
+
+## edge-22.1.5
+
+This edge release adds support for per-request Access Logging for HTTP inbound
+requests in Linkerd. A new annotation i.e. `config.linkerd.io/access-log` is added,
+which configures the proxies to emit access logs to stderr. `apache` and `json`
+are the supported configuration options, emitting access logs in Apache Common
+Log Format and JSON respectively.
+
+Special thanks to @tustvold for all the initial work around this!
+
+* Updated injector to support the new `config.linkerd.io/access-log` annotation
+* Added a new `LINKERD2_PROXY_ACCESS_LOG` proxy environment variable to configure
+  the access log format (thanks @tustvold)
+* Updated service mirror controller to emit relevant events when
+  mirroring is skipped for a service
+* Updated various dependencies across the project (thanks @dependabot)
+
+## edge-22.1.4
+
+This edge release features a new configuration annotation, support for
+externally hosted Grafana instances, and other improvements in the CLI,
+dashboard and Helm charts. To learn more about using an external Grafana
+instance with Linkerd, you can refer to our
+[docs](https://github.com/linkerd/website/blob/0c3c5cd5ae329cd7dbcca18534f3bc8ec7d57859/linkerd.io/content/2.12/tasks/grafana.md).
+
+* Added a new annotation to configure skipping subnets in the init container
+  (`config.linkerd.io/skip-subnets`). This configuration option is ideal for
+  Docker-in-Docker (dind) workloads (thanks @michaellzc!)
+* Added support in the dashboard for externally hosted Grafana instances
+  (thanks @jackgill!)
+* Introduced resource block to `linkerd-jaeger` Helm chart (thanks
+  @yuriydzobak!)
+* Introduced parametrized datasource (`DS_PROMETHEUS`) in all Grafana
+  dashboards. This allows pointing to the right Prometheus datasource when
+  importing a dashboard
+* Introduced a consistent `--ignore-cluster` flag in the CLI for the base
+  installation and extensions; manifests will now be rendered even if there is
+  an existing installation in the current Kubernetes context (thanks
+  @krzysztofdrys!)
+* Updated the service mirror controller to skip mirroring services whose
+  namespaces do not yet exist in the source cluster; previously, the service
+  mirror would create the namespace itself.
+
+## edge-22.1.3
+
+This release removes the Grafana component in the linkerd-viz extension.
+Users can now import linkerd dashboards into Grafana from the [Linkerd org](https://grafana.com/orgs/linkerd)
+in Grafana. Users can also follow the instructions in the [docs](https://github.com/linkerd/website/blob/f687a04ee43c90bd804b04af287bc80c9366db98/linkerd.io/content/2.12/tasks/grafana.md)
+to install a separate Grafana that can be integrated with the Linkerd Dashboard.
+
+* Stopped shipping grafana-based image in the linkerd-viz extension
+* Removed `repair` sub-command in the CLI
+* Updated various dependencies across the project (thanks @dependabot)
+
+## edge-22.1.2
+
+This release sets the version of the extension Helm charts to 30.0.0-edge to
+ensure that previous versions of these charts can be upgraded properly.
+
+* Reset extensions Helm chart versions at 30.0.0-edge
+* Pin multicluster extension pause container version to 3.2 so that it will work
+  on Arm architectures
+* Create a unique PSP `RoleBinding` for each multicluster link to prevent
+  conflicts when PSP is enabled
+
+## edge-22.1.1
+
+This release adds support for using the cert-manager CA Injector to configure
+Linkerd's webhooks.
+
+* Fixed a rare issue when a Service's opaque ports annotation does not match
+  that of the pods in the service
+* Disallowed privilege escalation in control plane containers (thanks @kichristensen!)
+* Updated the multicluster extension's service mirror controller to make mirror
+  services empty when the exported service is empty
+* Added support for injecting Webhook CA bundles with cert-manager CA Injector
+  (thanks @bdun1013!)
+
+## edge-21.12.4
+
+This release adds support for custom HTTP methods in the viz stats
+(i.e CLI and Dashboard). Additionally, it also includes various
+smaller improvements.
+
+* Added support for custom HTTP methods in the `linkerd-viz` stats
+* Updated the health checker to pull trust root from the `linkerd-identity-trust-roots`
+  configmap to support cases where they are generated externally (thanks @wim-de-groot)
+* Removed unnecessary `installNamespace` bool flag from the
+  `linkerd-control-plane` chart (thanks @mikutas)
+* Updated the `install` command to error if container runtime check fails
+* Updated various dependencies across the project (thanks @dependabot)
+
+## edge-21.12.3
+
+This edge release contains a few improvements to the CLI commands and a major
+change around Helm charts.
+
+* **Breaking change**
+
+The `linkerd2` chart has been deprecated in favor of the `linkerd-crds` and
+`linkerd-control-plane` charts. The former takes care of installing all the
+required CRDs and the latter everything else. Of important note is that, as per
+Helm best practice, we're no longer creating the linkerd namespace. Users
+require to do that manually, or have the Helm tool do it explicitly. So the
+install procedure would look something like this:
+
+```bash
+helm install linkerd-crds -n linkerd --create-namespace linkerd/linkerd-crds
+
+helm install linkerd-control-plane -n linkerd \
+  --set-file identityTrustAnchorsPEM=ca.crt \
+  --set-file identity.issuer.tls.crtPEM=issuer.crt \
+  --set-file identity.issuer.tls.keyPEM=issuer.key \
+  linkerd/linkerd-control-plane
+```
+
+In order to upgrade, please delete your previously installed `linkerd2` chart
+and install the new charts as explained above.
+
+Although the charts for the main extensions (viz, multicluster, jaeger,
+linkerd2-cni) were not deprecated, they also stopped creating their namespace
+and users are required to uninstall and reinstall them anew, e.g:
+
+```bash
+helm install linkerd-viz -n linkerd-viz --create-namespace linkerd/linkerd-viz
+```
+
+* Added a new `--obfuscate` flag to `linkerd diagnostics proxy-metrics` to
+  obfuscate potentially private information in the output (thanks
+  @ahmedalhulaibi!)
+* Fixed formatting of the recommended value for `--set clusterNetworks` in the
+  `linkerd check` output when that parameter doesn't contain all the node
+  podCIDRs (thanks @ElvinEfendi!)
+* Skipped evicted pods in `linkerd viz check` and `linkerd jaeger check`, to
+  avoid the checks fail unnecessarily
+* Removed some no longer used environment variables from the proxy's manifest
+
+## edge-21.12.2
+
+This edge removes the default SMI functionality that is included in
+installations now that the linkerd-smi extension provides these resources. It
+also relaxes the `proxy-init`'s `privileged` value to only be set to `true` when
+needed by certain installation configurations.
+
+Along with some bug fixes, the repository's issue and feature request templates
+have been updated to forms; check them when opening a [new
+issue](https://github.com/linkerd/linkerd2/issues/new/choose)! (thanks
+@mikutas).
+
+* Removed SMI functionality in the default Linkerd installation; this is now
+  part of the linkerd-smi extension
+* Fixed autocompletion of the `--context` flag (thanks @mikutas!)
+* Added support for conditionally setting `proxy-init`'s `privileged: true` only
+  when needed (thanks @alex-berger!)
+* Added support for controlling opaque ports through the Server resource
+* Fixed an issue where `linkerd check` would compare proxy versions of
+  uninjected pods leading to incorrect errors
+* Relaxed extension checks so that the CLI still works when not all extension
+  proxies are healthy
+* Added the `--default-inbound-policy` flag to `linkerd inject` for setting a
+  non-default inbound policy on injected workloads (thanks @ahmedalhulaibi!)
+
 ## edge-21.12.1
 
 This edge release enables by default `EndpointSlices` in the destination
@@ -2936,7 +3244,7 @@ resolutions](https://github.com/linkerd/linkerd2/pull/3848) are released when
 the associated balancer becomes idle.
 
 Finally, an update to follow best practices in the Helm charts has caused a
-*breaking change*. Users who have installed Linkerd using Helm must be certain
+_breaking change_. Users who have installed Linkerd using Helm must be certain
 to read the details of
 [#3822](https://github.com/linkerd/linkerd2/issues/3822)
 
@@ -5001,7 +5309,7 @@ you are upgrading from the `stable-2.0.0` release.
 **Full release notes**:
 
 * CLI
-  * `linkerd routes` command displays per-route stats for *any resource*
+  * `linkerd routes` command displays per-route stats for _any resource_
   * Service profiles are now supported for external authorities
   * `linkerd routes --open-api` flag generates a service profile based on an
     OpenAPI specification (swagger) file

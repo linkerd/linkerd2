@@ -3,7 +3,6 @@ package heartbeat
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"net/http"
 	"net/url"
@@ -13,6 +12,7 @@ import (
 	pkgK8s "github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/util"
 	"github.com/linkerd/linkerd2/pkg/version"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
@@ -190,8 +190,7 @@ func promQuery(promAPI promv1.API, query string, precision int) (string, error) 
 		log.Warnf("%v", warn)
 	}
 
-	switch result := res.(type) {
-	case model.Vector:
+	if result, ok := res.(model.Vector); ok {
 		if len(result) != 1 {
 			return "", fmt.Errorf("unexpected result Prometheus result vector length: %d", len(result))
 		}
@@ -226,19 +225,19 @@ func Send(v url.Values) error {
 func send(client *http.Client, baseURL string, v url.Values) error {
 	req, err := http.NewRequest("GET", baseURL, nil)
 	if err != nil {
-		return fmt.Errorf("failed to create HTTP request for base URL [%s]: %s", baseURL, err)
+		return fmt.Errorf("failed to create HTTP request for base URL [%s]: %w", baseURL, err)
 	}
 	req.URL.RawQuery = v.Encode()
 
 	log.Infof("Sending heartbeat: %s", req.URL.String())
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("Check URL [%s] request failed with: %s", req.URL.String(), err)
+		return fmt.Errorf("check URL [%s] request failed with: %w", req.URL.String(), err)
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := util.ReadAllLimit(resp.Body, util.MB)
 	if err != nil {
-		return fmt.Errorf("failed to read response body: %s", err)
+		return fmt.Errorf("failed to read response body: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("request failed with code %d; response body: %s", resp.StatusCode, string(body))

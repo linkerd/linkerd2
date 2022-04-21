@@ -36,14 +36,16 @@ const (
 	promLatencyP95      = promType("0.95")
 	promLatencyP99      = promType("0.99")
 
-	namespaceLabel           = model.LabelName("namespace")
-	dstNamespaceLabel        = model.LabelName("dst_namespace")
-	gatewayNameLabel         = model.LabelName("gateway_name")
-	gatewayNamespaceLabel    = model.LabelName("gateway_namespace")
-	remoteClusterNameLabel   = model.LabelName("target_cluster_name")
-	authorityLabel           = model.LabelName("authority")
-	serverLabel              = model.LabelName("srv_name")
-	serverAuthorizationLabel = model.LabelName("saz_name")
+	namespaceLabel         = model.LabelName("namespace")
+	dstNamespaceLabel      = model.LabelName("dst_namespace")
+	gatewayNameLabel       = model.LabelName("gateway_name")
+	gatewayNamespaceLabel  = model.LabelName("gateway_namespace")
+	remoteClusterNameLabel = model.LabelName("target_cluster_name")
+	authorityLabel         = model.LabelName("authority")
+	serverKindLabel        = model.LabelName("srv_kind")
+	serverNameLabel        = model.LabelName("srv_name")
+	authorizationKindLabel = model.LabelName("authz_kind")
+	authorizationNameLabel = model.LabelName("authz_name")
 )
 
 var (
@@ -60,7 +62,7 @@ func extractSampleValue(sample *model.Sample) uint64 {
 }
 
 func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector, error) {
-	log.Debugf("Query request:\n\t%+v", query)
+	log.Debugf("Query request: %q", query)
 
 	_, span := trace.StartSpan(ctx, "query.prometheus")
 	defer span.End()
@@ -73,8 +75,7 @@ func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector,
 	// single data point (aka summary) query
 	res, warn, err := s.prometheusAPI.Query(ctx, query, time.Time{})
 	if err != nil {
-		log.Errorf("Query(%+v) failed with: %+v", query, err)
-		return nil, err
+		return nil, fmt.Errorf("Query failed: %q: %w", query, err)
 	}
 	if warn != nil {
 		log.Warnf("%v", warn)
@@ -82,9 +83,7 @@ func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector,
 	log.Debugf("Query response:\n\t%+v", res)
 
 	if res.Type() != model.ValVector {
-		err = fmt.Errorf("Unexpected query result type (expected Vector): %s", res.Type())
-		log.Error(err)
-		return nil, err
+		return nil, fmt.Errorf("Unexpected query result type (expected Vector): %s", res.Type())
 	}
 
 	return res.(model.Vector), nil
@@ -120,9 +119,11 @@ func promQueryLabels(resource *pb.Resource) model.LabelSet {
 	if resource != nil {
 		if resource.Name != "" {
 			if resource.GetType() == k8s.Server {
-				set[serverLabel] = model.LabelValue(resource.GetName())
+				set[serverKindLabel] = model.LabelValue("server")
+				set[serverNameLabel] = model.LabelValue(resource.GetName())
 			} else if resource.GetType() == k8s.ServerAuthorization {
-				set[serverAuthorizationLabel] = model.LabelValue(resource.GetName())
+				set[authorizationKindLabel] = model.LabelValue("serverauthorization")
+				set[authorizationNameLabel] = model.LabelValue(resource.GetName())
 			} else if resource.GetType() != k8s.Service {
 				set[promResourceType(resource)] = model.LabelValue(resource.Name)
 			}

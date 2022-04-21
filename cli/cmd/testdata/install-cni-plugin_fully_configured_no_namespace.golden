@@ -1,8 +1,16 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: linkerd-cni
+  labels:
+    linkerd.io/cni-resource: "true"
+    config.linkerd.io/admission-webhooks: disabled
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: linkerd-cni
-  namespace: other
+  namespace: linkerd-cni
   labels:
     linkerd.io/cni-resource: "true"
 ---
@@ -30,13 +38,13 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-cni
-  namespace: other
+  namespace: linkerd-cni
 ---
 kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-cni-config
-  namespace: other
+  namespace: linkerd-cni
   labels:
     linkerd.io/cni-resource: "true"
 data:
@@ -72,7 +80,7 @@ kind: DaemonSet
 apiVersion: apps/v1
 metadata:
   name: linkerd-cni
-  namespace: other
+  namespace: linkerd-cni
   labels:
     k8s-app: linkerd-cni
     linkerd.io/cni-resource: "true"
@@ -92,6 +100,8 @@ spec:
         k8s-app: linkerd-cni
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/cni-resource: "true"
+        linkerd.io/inject: disabled
     spec:
       nodeSelector:
         kubernetes.io/os: linux
@@ -141,6 +151,7 @@ spec:
           name: linkerd-tmp-dir
         securityContext:
           readOnlyRootFilesystem: true
+          privileged: 
       volumes:
       - name: cni-bin-dir
         hostPath:

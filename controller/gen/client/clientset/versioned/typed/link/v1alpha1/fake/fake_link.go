@@ -105,7 +105,7 @@ func (c *FakeLinks) Update(ctx context.Context, link *v1alpha1.Link, opts v1.Upd
 // Delete takes name of the link and deletes it. Returns an error if one occurs.
 func (c *FakeLinks) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(linksResource, c.ns, name), &v1alpha1.Link{})
+		Invokes(testing.NewDeleteActionWithOptions(linksResource, c.ns, name, opts), &v1alpha1.Link{})
 
 	return err
 }

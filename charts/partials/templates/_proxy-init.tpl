@@ -24,6 +24,10 @@ args:
 - --log-level
 - {{ .Values.proxyInit.logLevel }}
 {{- end }}
+{{- if .Values.proxyInit.skipSubnets }}
+- --subnets-to-ignore
+- {{ .Values.proxyInit.skipSubnets | quote }}
+{{- end }}
 image: {{.Values.proxyInit.image.name}}:{{.Values.proxyInit.image.version}}
 imagePullPolicy: {{.Values.proxyInit.image.pullPolicy | default .Values.imagePullPolicy}}
 name: linkerd-init
@@ -47,7 +51,11 @@ securityContext:
     {{- end }}
     {{- end }}
   {{- if or .Values.proxyInit.closeWaitTimeoutSecs .Values.proxyInit.runAsRoot }}
+  {{- if .Values.proxyInit.closeWaitTimeoutSecs }}
   privileged: true
+  {{- else }}
+  privileged: false
+  {{- end }}
   runAsNonRoot: false
   runAsUser: 0
   {{- else }}

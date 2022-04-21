@@ -53,6 +53,8 @@ type (
 		PathPrefix          string
 		Jaeger              string
 		Grafana             string
+		GrafanaExternalURL  string
+		GrafanaPrefix       string
 	}
 
 	healthChecker interface {
@@ -83,6 +85,8 @@ Please see https://linkerd.io/dns-rebinding for an explanation of what is happen
 func NewServer(
 	addr string,
 	grafanaAddr string,
+	grafanaExternalAddr string,
+	grafanaPrefix string,
 	jaegerAddr string,
 	templateDir string,
 	staticDir string,
@@ -117,12 +121,18 @@ func NewServer(
 		version:             version,
 		controllerNamespace: controllerNamespace,
 		clusterDomain:       clusterDomain,
-		grafanaProxy:        newReverseProxy(grafanaAddr, "/grafana"),
 		jaegerProxy:         newReverseProxy(jaegerAddr, ""),
 		grafana:             grafanaAddr,
+		grafanaExternalURL:  grafanaExternalAddr,
+		grafanaPrefix:       grafanaPrefix,
 		jaeger:              jaegerAddr,
 		hc:                  hc,
 		statCache:           cache.New(statExpiration, statCleanupInterval),
+	}
+
+	// Only create the grafana reverse proxy if we aren't using external grafana
+	if grafanaExternalAddr == "" {
+		handler.grafanaProxy = newReverseProxy(grafanaAddr, "/grafana")
 	}
 
 	httpServer := &http.Server{
@@ -201,8 +211,10 @@ func NewServer(
 	server.router.GET("/api/gateways", handler.handleAPIGateways)
 	server.router.GET("/api/extensions", handler.handleGetExtensions)
 
-	// grafana proxy
-	server.handleAllOperationsForPath("/grafana/*grafanapath", handler.handleGrafana)
+	// grafana proxy, only used if external grafana is not in use
+	if grafanaExternalAddr == "" {
+		server.handleAllOperationsForPath("/grafana/*grafanapath", handler.handleGrafana)
+	}
 
 	// jaeger proxy
 	server.handleAllOperationsForPath("/jaeger/*jaegerpath", handler.handleJaeger)

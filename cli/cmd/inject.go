@@ -70,7 +70,7 @@ sub-folders, or coming from stdin.`,
   kubectl get deploy -o yaml | linkerd inject - | kubectl apply -f -
 
   # Injecting a file from a remote URL
-  linkerd inject http://url.to/yml | kubectl apply -f -
+  linkerd inject https://url.to/yml | kubectl apply -f -
 
   # Inject all the resources inside a folder and its sub-folders.
   linkerd inject <folder> | kubectl apply -f -`,
@@ -149,7 +149,7 @@ func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, trans
 }
 
 func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Report, error) {
-	conf := inject.NewResourceConfig(rt.values, inject.OriginCLI)
+	conf := inject.NewResourceConfig(rt.values, inject.OriginCLI, controlPlaneNamespace)
 
 	if rt.enableDebugSidecar {
 		conf.AppendPodAnnotation(k8s.ProxyEnableDebugAnnotation, "true")
@@ -191,7 +191,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 
 	if ok, _ := report.Injectable(); !ok {
 		if errs := report.ThrowInjectError(); len(errs) > 0 {
-			return bytes, reports, fmt.Errorf("failed to inject %s%s%s: %v", report.Kind, slash, report.Name, concatErrors(errs, ", "))
+			return bytes, reports, fmt.Errorf("failed to inject %s%s%s: %w", report.Kind, slash, report.Name, concatErrors(errs, ", "))
 		}
 		return bytes, reports, nil
 	}
@@ -446,10 +446,6 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 		overrideAnnotations[k8s.ProxyLogFormatAnnotation] = proxy.LogFormat
 	}
 
-	if proxy.DisableIdentity != baseProxy.DisableIdentity {
-		overrideAnnotations[k8s.ProxyDisableIdentityAnnotation] = strconv.FormatBool(proxy.DisableIdentity)
-	}
-
 	if proxy.RequireIdentityOnInboundPorts != baseProxy.RequireIdentityOnInboundPorts {
 		overrideAnnotations[k8s.ProxyRequireIdentityOnInboundPortsAnnotation] = proxy.RequireIdentityOnInboundPorts
 	}
@@ -486,8 +482,13 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 		}
 	}
 
-	// Set fields that can't be converted into annotations
-	values.Namespace = controlPlaneNamespace
+	if proxy.DefaultInboundPolicy != baseProxy.DefaultInboundPolicy {
+		overrideAnnotations[k8s.ProxyDefaultInboundPolicyAnnotation] = proxy.DefaultInboundPolicy
+	}
+
+	if proxy.AccessLog != baseProxy.AccessLog {
+		overrideAnnotations[k8s.ProxyAccessLogAnnotation] = proxy.AccessLog
+	}
 
 	return overrideAnnotations
 }

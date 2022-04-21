@@ -75,24 +75,18 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 	// report from that instance and its process start time
 	reports := make(map[string]podReport)
 
-	if req.GetNamespace() != "" && req.GetSelector() != nil {
-		return nil, errors.New("cannot set both namespace and resource in the request. These are mutually exclusive")
-	}
-
 	labelSelector := labels.Everything()
 	if s := req.GetSelector().GetLabelSelector(); s != "" {
 		var err error
 		labelSelector, err = labels.Parse(s)
 		if err != nil {
-			return nil, fmt.Errorf("invalid label selector \"%s\": %s", s, err)
+			return nil, fmt.Errorf("invalid label selector %q: %w", s, err)
 		}
 	}
 
 	nsQuery := ""
 	namespace := ""
-	if req.GetNamespace() != "" {
-		namespace = req.GetNamespace()
-	} else if targetOwner.GetNamespace() != "" {
+	if targetOwner.GetNamespace() != "" {
 		namespace = targetOwner.GetNamespace()
 	} else if targetOwner.GetType() == pkgK8s.Namespace {
 		namespace = targetOwner.GetName()

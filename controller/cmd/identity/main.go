@@ -42,6 +42,7 @@ func Main(args []string) {
 	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
 	identityIssuanceLifeTime := cmd.String("identity-issuance-lifetime", "", "the amount of time for which the Identity issuer should certify identity")
 	identityClockSkewAllowance := cmd.String("identity-clock-skew-allowance", "", "the amount of time to allow for clock skew within a Linkerd cluster")
+	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
 
 	issuerPath := cmd.String("issuer",
 		"/var/run/linkerd/identity/issuer",
@@ -66,6 +67,7 @@ func Main(args []string) {
 
 	if *identityScheme == "" || *trustDomain == "" {
 		log.Infof("Identity disabled in control plane configuration.")
+		//nolint:gocritic
 		os.Exit(0)
 	}
 
@@ -79,11 +81,13 @@ func Main(args []string) {
 
 	dom, err := idctl.NewTrustDomain(*controllerNS, *trustDomain)
 	if err != nil {
+		//nolint:gocritic
 		log.Fatalf("Invalid trust domain: %s", err.Error())
 	}
 
 	trustAnchors, err := tls.DecodePEMCertPool(string(identityTrustAnchorPEM))
 	if err != nil {
+		//nolint:gocritic
 		log.Fatalf("Failed to read trust anchors: %s", err)
 	}
 
@@ -118,6 +122,7 @@ func Main(args []string) {
 	watcher := tls.NewFsCredsWatcher(*issuerPath, issuerEvent, issuerError)
 	go func() {
 		if err := watcher.StartWatching(ctx); err != nil {
+			//nolint:gocritic
 			log.Fatalf("Failed to start creds watcher: %s", err)
 		}
 	}()
@@ -158,6 +163,7 @@ func Main(args []string) {
 	//
 	svc := identity.NewService(v, trustAnchors, &validity, recordEventFunc, expectedName, issuerPathCrt, issuerPathKey)
 	if err = svc.Initialize(); err != nil {
+		//nolint:gocritic
 		log.Fatalf("Failed to initialize identity service: %s", err)
 	}
 	go func() {
@@ -167,15 +173,18 @@ func Main(args []string) {
 	//
 	// Bind and serve
 	//
-	adminServer := admin.NewServer(*adminAddr)
+	adminServer := admin.NewServer(*adminAddr, *enablePprof)
 
 	go func() {
 		log.Infof("starting admin server on %s", *adminAddr)
-		adminServer.ListenAndServe()
+		if err := adminServer.ListenAndServe(); err != nil {
+			log.Errorf("failed to start identity admin server: %s", err)
+		}
 	}()
 
 	lis, err := net.Listen("tcp", *addr)
 	if err != nil {
+		//nolint:gocritic
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
@@ -188,7 +197,9 @@ func Main(args []string) {
 	identity.Register(srv, svc)
 	go func() {
 		log.Infof("starting gRPC server on %s", *addr)
-		srv.Serve(lis)
+		if err := srv.Serve(lis); err != nil {
+			log.Errorf("failed to start identity gRPC server: %s", err)
+		}
 	}()
 	<-stop
 	log.Infof("shutting down gRPC server on %s", *addr)

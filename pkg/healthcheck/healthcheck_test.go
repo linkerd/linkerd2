@@ -142,7 +142,7 @@ func TestHealthChecker(t *testing.T) {
 			{
 				description: "skip",
 				check: func(context.Context) error {
-					return &SkipError{Reason: "needs skipping"}
+					return SkipError{Reason: "needs skipping"}
 				},
 				retryDeadline: time.Time{},
 			},
@@ -156,7 +156,7 @@ func TestHealthChecker(t *testing.T) {
 			{
 				description: "skipRpc",
 				check: func(context.Context) error {
-					return &SkipError{Reason: "needs skipping"}
+					return SkipError{Reason: "needs skipping"}
 				},
 				retryDeadline: time.Time{},
 			},
@@ -1164,6 +1164,14 @@ spec:
   podCIDR: 90.10.90.24/24
 `,
 				`
+apiVersion: v1
+kind: Node
+metadata:
+  name: linkerd-test-ns-identity2
+spec:
+  podCIDR: 242.3.64.0/25
+`,
+				`
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -1177,7 +1185,7 @@ data:
 `,
 			},
 			expected: []string{
-				"linkerd-existence cluster networks contains all node podCIDRs: node has podCIDR(s) [90.10.90.24/24] which are not contained in the Linkerd clusterNetworks.\n\tTry installing linkerd via --set clusterNetworks=90.10.90.24/24",
+				"linkerd-existence cluster networks contains all node podCIDRs: node has podCIDR(s) [242.3.64.0/25 90.10.90.24/24] which are not contained in the Linkerd clusterNetworks.\n\tTry installing linkerd via --set clusterNetworks=\"242.3.64.0/25\\,90.10.90.24/24\"",
 			},
 		},
 		{
@@ -1268,16 +1276,15 @@ func TestCheckDataPlaneProxiesCertificate(t *testing.T) {
 	const currentCertificate = "current-certificate"
 	const oldCertificate = "old-certificate"
 
-	linkerdConfigMap := fmt.Sprintf(`
+	linkerdIdentityTrustRoots := fmt.Sprintf(`
 kind: ConfigMap
 apiVersion: v1
 metadata:
   name: %s
 data:
-  values: |
-    identityTrustAnchorsPEM: %s
+  ca-bundle.crt: %s
 
-`, k8s.ConfigConfigMapName, currentCertificate)
+`, "linkerd-identity-trust-roots", currentCertificate)
 
 	var testCases = []struct {
 		checkDescription string
@@ -1330,7 +1337,7 @@ data:
 			hc.DataPlaneNamespace = testCase.namespace
 
 			var err error
-			hc.kubeAPI, err = k8s.NewFakeAPI(append(testCase.resources, linkerdConfigMap)...)
+			hc.kubeAPI, err = k8s.NewFakeAPI(append(testCase.resources, linkerdIdentityTrustRoots)...)
 			if err != nil {
 				t.Fatalf("Unexpected error: %q", err)
 			}
@@ -1361,7 +1368,6 @@ func TestValidateControlPlanePods(t *testing.T) {
 
 	t.Run("Returns an error if not all pods are running", func(t *testing.T) {
 		pods := []corev1.Pod{
-			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
 			pod("linkerd-destination-9849948665-37082", corev1.PodFailed, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodFailed, true),
 		}
@@ -1491,14 +1497,14 @@ func TestValidateDataPlaneNamespace(t *testing.T) {
 	}
 }
 
-func TestValidateDataPlanePods(t *testing.T) {
+func TestCheckDataPlanePods(t *testing.T) {
 
 	t.Run("Returns an error if no inject pods were found", func(t *testing.T) {
-		err := validateDataPlanePods([]corev1.Pod{}, "emojivoto")
+		err := CheckPodsRunning([]corev1.Pod{}, "emojivoto")
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "No \"linkerd-proxy\" containers found in the \"emojivoto\" namespace" {
+		if err.Error() != "no \"linkerd-proxy\" containers found in the \"emojivoto\" namespace" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -1555,11 +1561,11 @@ func TestValidateDataPlanePods(t *testing.T) {
 			},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := CheckPodsRunning(pods, "emojivoto")
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "The \"voting-65b9fffd77-rlwsd\" pod is not running" {
+		if err.Error() != "pod \"voting-65b9fffd77-rlwsd\" status is Failed" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -1580,7 +1586,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 			},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := CheckPodsRunning(pods, "emojivoto")
 		if err != nil {
 			t.Fatalf("Expected no error, got %s", err)
 		}
@@ -1597,7 +1603,24 @@ func TestValidateDataPlanePods(t *testing.T) {
 			},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := CheckPodsRunning(pods, "emojivoto")
+		if err != nil {
+			t.Fatalf("Expected no error, got %s", err)
+		}
+	})
+
+	t.Run("Does not return an error if the pod is in NodeShutdown state", func(t *testing.T) {
+		pods := []corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "emoji-d9c7866bb-7v74n"},
+				Status: corev1.PodStatus{
+					Phase:  "Failed",
+					Reason: "NodeShutdown",
+				},
+			},
+		}
+
+		err := CheckPodsRunning(pods, "emojivoto")
 		if err != nil {
 			t.Fatalf("Expected no error, got %s", err)
 		}
@@ -1655,11 +1678,11 @@ func TestValidateDataPlanePods(t *testing.T) {
 			},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := CheckPodsRunning(pods, "emojivoto")
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "The \"linkerd-proxy\" container in the \"vote-bot-644b8cb6b4-g8nlr\" pod is not ready" {
+		if err.Error() != "container \"linkerd-proxy\" in pod \"vote-bot-644b8cb6b4-g8nlr\" is not ready" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -1716,7 +1739,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 			},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := CheckPodsRunning(pods, "emojivoto")
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
@@ -1777,7 +1800,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 			},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := CheckPodsRunning(pods, "emojivoto")
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
@@ -1846,7 +1869,7 @@ func TestDataPlanePodLabels(t *testing.T) {
 				expectedErrorMsg: "Some labels on data plane pods should be annotations:\n\t* /emoji-d9c7866bb-7v74n\n\t\tlinkerd.io/inject",
 			},
 		} {
-			tc := tc //pin
+			tc := tc // pin
 			t.Run(tc.description, func(t *testing.T) {
 				err := checkMisconfiguredPodsLabels(tc.pods)
 
@@ -1912,7 +1935,7 @@ func TestServicesLabels(t *testing.T) {
 				expectedErrorMsg: "Some labels on data plane services should be annotations:\n\t* /emoji-d9c7866bb-7v74n\n\t\tconfig.alpha.linkerd.io/alpha-setting",
 			},
 		} {
-			tc := tc //pin
+			tc := tc // pin
 			t.Run(tc.description, func(t *testing.T) {
 				err := checkMisconfiguredServiceLabels(tc.services)
 				if err == nil {
@@ -1964,7 +1987,7 @@ func TestServicesAnnotations(t *testing.T) {
 				expectedErrorMsg: "Some annotations on data plane services should be labels:\n\t* /emoji-d9c7866bb-7v74n\n\t\tmirror.linkerd.io/exported",
 			},
 		} {
-			tc := tc //pin
+			tc := tc // pin
 			t.Run(tc.description, func(t *testing.T) {
 				err := checkMisconfiguredServiceAnnotations(tc.services)
 				if err == nil {
@@ -2191,7 +2214,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.5.1","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.5.3","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
   values: |
@@ -2204,25 +2227,22 @@ data:
     disableHeartBeat: false
     enableH2Upgrade: true
     enablePodAntiAffinity: false
+    nodeAffinity: null
     cliVersion: CliVersion
     clusterDomain: cluster.local
     clusterNetworks: ClusterNetworks
     cniEnabled: false
     controlPlaneTracing: false
-    controllerImageVersion: ControllerImageVersion
     controllerLogLevel: ControllerLogLevel
     enableEndpointSlices: false
-    grafanaUrl: ""
     highAvailability: false
     imagePullPolicy: ImagePullPolicy
     imagePullSecrets: null
     linkerdVersion: ""
-    namespace: Namespace
     prometheusUrl: ""
     proxy:
       capabilities: null
       component: linkerd-controller
-      disableIdentity: false
       disableTap: false
       enableExternalProfiles: false
       image:
@@ -2272,7 +2292,6 @@ data:
     heartbeatSchedule: ""
     identityProxyResources: null
     identityResources: null
-    installNamespace: true
     nodeSelector:
       kubernetes.io/os: linux
     proxyInjectorProxyResources: null
@@ -2283,22 +2302,19 @@ data:
 `,
 			},
 			&linkerd2.Values{
-				ControllerImage:        "ControllerImage",
-				ControllerUID:          2103,
-				EnableH2Upgrade:        true,
-				WebhookFailurePolicy:   "WebhookFailurePolicy",
-				InstallNamespace:       true,
-				NodeSelector:           defaultValues.NodeSelector,
-				Tolerations:            defaultValues.Tolerations,
-				Namespace:              "Namespace",
-				ClusterDomain:          "cluster.local",
-				ClusterNetworks:        "ClusterNetworks",
-				ImagePullPolicy:        "ImagePullPolicy",
-				CliVersion:             "CliVersion",
-				ControllerLogLevel:     "ControllerLogLevel",
-				ControllerImageVersion: "ControllerImageVersion",
-				ProxyContainerName:     "ProxyContainerName",
-				CNIEnabled:             false,
+				ControllerImage:      "ControllerImage",
+				ControllerUID:        2103,
+				EnableH2Upgrade:      true,
+				WebhookFailurePolicy: "WebhookFailurePolicy",
+				NodeSelector:         defaultValues.NodeSelector,
+				Tolerations:          defaultValues.Tolerations,
+				ClusterDomain:        "cluster.local",
+				ClusterNetworks:      "ClusterNetworks",
+				ImagePullPolicy:      "ImagePullPolicy",
+				CliVersion:           "CliVersion",
+				ControllerLogLevel:   "ControllerLogLevel",
+				ProxyContainerName:   "ProxyContainerName",
+				CNIEnabled:           false,
 				Proxy: &linkerd2.Proxy{
 					Image: &linkerd2.Image{
 						Name:       "ProxyImageName",
@@ -2351,7 +2367,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.5.1","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.5.3","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
   values: |
@@ -2370,20 +2386,16 @@ data:
       clusterNetworks: ClusterNetworks
       cniEnabled: false
       controlPlaneTracing: false
-      controllerImageVersion: ControllerImageVersion
       controllerLogLevel: ControllerLogLevel
       enableEndpointSlices: false
-      grafanaUrl: ""
       highAvailability: false
       imagePullPolicy: ImagePullPolicy
       imagePullSecrets: null
       linkerdVersion: ""
-      namespace: Namespace
       prometheusUrl: ""
       proxy:
         capabilities: null
         component: linkerd-controller
-        disableIdentity: false
         disableTap: false
         enableExternalProfiles: false
         image:
@@ -2433,7 +2445,6 @@ data:
     heartbeatSchedule: ""
     identityProxyResources: null
     identityResources: null
-    installNamespace: true
     nodeSelector:
       kubernetes.io/os: linux
     proxyInjectorProxyResources: null
@@ -2444,22 +2455,19 @@ data:
 `,
 			},
 			&linkerd2.Values{
-				ControllerImage:        "ControllerImage",
-				ControllerUID:          2103,
-				EnableH2Upgrade:        true,
-				WebhookFailurePolicy:   "WebhookFailurePolicy",
-				InstallNamespace:       true,
-				NodeSelector:           defaultValues.NodeSelector,
-				Tolerations:            defaultValues.Tolerations,
-				Namespace:              "Namespace",
-				ClusterDomain:          "cluster.local",
-				ClusterNetworks:        "ClusterNetworks",
-				ImagePullPolicy:        "ImagePullPolicy",
-				CliVersion:             "CliVersion",
-				ControllerLogLevel:     "ControllerLogLevel",
-				ControllerImageVersion: "ControllerImageVersion",
-				ProxyContainerName:     "ProxyContainerName",
-				CNIEnabled:             false,
+				ControllerImage:      "ControllerImage",
+				ControllerUID:        2103,
+				EnableH2Upgrade:      true,
+				WebhookFailurePolicy: "WebhookFailurePolicy",
+				NodeSelector:         defaultValues.NodeSelector,
+				Tolerations:          defaultValues.Tolerations,
+				ClusterDomain:        "cluster.local",
+				ClusterNetworks:      "ClusterNetworks",
+				ImagePullPolicy:      "ImagePullPolicy",
+				CliVersion:           "CliVersion",
+				ControllerLogLevel:   "ControllerLogLevel",
+				ProxyContainerName:   "ProxyContainerName",
+				CNIEnabled:           false,
 				Proxy: &linkerd2.Proxy{
 					Image: &linkerd2.Image{
 						Name:       "ProxyImageName",
@@ -2674,7 +2682,7 @@ func TestLinkerdIdentityCheckCertConfig(t *testing.T) {
 			schemeInConfig:   string(corev1.SecretTypeTLS),
 			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid: not a PEM certificate"},
 			tlsSecretIssuerDataModifier: func(issuerData issuercerts.IssuerCertData) issuercerts.IssuerCertData {
-				issuerData.TrustAnchors = issuerData.TrustAnchors + "\n"
+				issuerData.TrustAnchors += "\n"
 				return issuerData
 			},
 		},
@@ -3057,7 +3065,7 @@ func TestMinReplicaCheck(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		tc := tc //pin
+		tc := tc // pin
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			hc.kubeAPI, err = k8s.NewFakeAPI(tc.controlPlaneResourceDefs...)
 			if err != nil {
@@ -3484,7 +3492,7 @@ subsets:
 	}
 
 	for i, tc := range testCases {
-		tc := tc //pin
+		tc := tc // pin
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			hc.kubeAPI, err = k8s.NewFakeAPI(tc.resources...)
 			if err != nil {

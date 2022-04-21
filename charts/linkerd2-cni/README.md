@@ -6,7 +6,7 @@ Linkerd [CNI plugin](https://linkerd.io/2/features/cni/) takes care of setting
 up your pod's network so  incoming and outgoing traffic is proxied through the
 data plane.
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square)
+![Version: 30.0.12-edge](https://img.shields.io/badge/Version-30.0.12--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -32,12 +32,11 @@ Kubernetes: `>=1.20.0-0`
 | ignoreOutboundPorts | string | `""` | Default set of outbound ports to skip via iptables |
 | imagePullSecrets | string | `nil` |  |
 | inboundProxyPort | int | `4143` | Inbound port for the proxy container |
-| installNamespace | bool | `true` | Whether to create the CNI plugin plane namespace or not |
 | logLevel | string | `"info"` | Log level for the CNI plugin |
-| namespace | string | `"linkerd-cni"` | CNI plugin plane namespace |
 | outboundProxyPort | int | `4140` | Outbound port for the proxy container |
 | portsToRedirect | string | `""` | Ports to redirect to proxy |
 | priorityClassName | string | `""` | Kubernetes priorityClassName for the CNI plugin's Pods |
+| privileged | bool | `false` | Run the install-cni container in privileged mode |
 | proxyAdminPort | int | `4191` | Admin port for the proxy container |
 | proxyControlPort | int | `4190` | Control port for the proxy container |
 | proxyUID | int | `2102` | User id under which the proxy shall be ran |

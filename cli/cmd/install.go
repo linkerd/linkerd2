@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/linkerd/linkerd2/cli/flag"
@@ -34,8 +35,8 @@ const (
 	configStage       = "config"
 	controlPlaneStage = "control-plane"
 
-	helmDefaultChartName = "linkerd2"
-	helmDefaultChartDir  = "linkerd2"
+	helmDefaultChartNameCrds = "linkerd-crds"
+	helmDefaultChartNameCP   = "linkerd-control-plane"
 
 	errMsgCannotInitializeClient = `Unable to install the Linkerd control plane. Cannot connect to the Kubernetes cluster:
 
@@ -59,13 +60,20 @@ Otherwise, you can use the --ignore-cluster flag to overwrite the existing globa
 )
 
 var (
+	templatesCrdFiles = []string{
+		"templates/policy/authorization-policy.yaml",
+		"templates/policy/meshtls-authentication.yaml",
+		"templates/policy/network-authentication.yaml",
+		"templates/policy/server.yaml",
+		"templates/policy/server-authorization.yaml",
+		"templates/serviceprofile.yaml",
+	}
+
 	templatesConfigStage = []string{
 		"templates/namespace.yaml",
 		"templates/identity-rbac.yaml",
 		"templates/destination-rbac.yaml",
 		"templates/heartbeat-rbac.yaml",
-		"templates/policy-crd.yaml",
-		"templates/serviceprofile-crd.yaml",
 		"templates/proxy-injector-rbac.yaml",
 		"templates/psp.yaml",
 	}
@@ -119,6 +127,13 @@ A full list of configurable values can be found at https://www.github.com/linker
 			if err != nil {
 				return err
 			}
+
+			// Create values override
+			valuesOverrides, err := options.MergeValues(nil)
+			if err != nil {
+				return err
+			}
+
 			if !ignoreCluster {
 				// Ensure k8s is reachable and that Linkerd is not already installed.
 				if err := errAfterRunningChecks(values.CNIEnabled); err != nil {
@@ -129,9 +144,22 @@ A full list of configurable values can be found at https://www.github.com/linker
 					}
 					os.Exit(1)
 				}
-			}
 
-			return render(os.Stdout, values, configStage, options)
+				// Initialize the k8s API which is used for the proxyInit
+				// runAsRoot check.
+				k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 30*time.Second)
+				if err != nil {
+					return err
+				}
+				if !isRunAsRoot(valuesOverrides) {
+					err = healthcheck.CheckNodesHaveNonDockerRuntime(cmd.Context(), k8sAPI)
+					if err != nil {
+						fmt.Fprintln(os.Stderr, err)
+						os.Exit(1)
+					}
+				}
+			}
+			return render(os.Stdout, values, configStage, valuesOverrides)
 		},
 	}
 	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
@@ -149,7 +177,7 @@ func newCmdInstallControlPlane(values *l5dcharts.Values) *cobra.Command {
 	installOnlyFlags, installOnlyFlagSet := makeInstallFlags(values)
 	installUpgradeFlags, installUpgradeFlagSet, err := makeInstallUpgradeFlags(values)
 	if err != nil {
-		fmt.Fprint(os.Stderr, err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 	proxyFlags, proxyFlagSet := makeProxyFlags(values)
@@ -174,25 +202,25 @@ The installation can be configured by using the --set, --values, --set-string an
 A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md
   `,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !skipChecks {
-				// check if global resources exist to determine if the `install config`
-				// stage succeeded
-				if err := errAfterRunningChecks(values.CNIEnabled); err == nil {
-					if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
-						fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
-					} else {
-						fmt.Fprintf(os.Stderr, errMsgGlobalResourcesMissing, controlPlaneNamespace)
-					}
-					os.Exit(1)
-				}
-			}
 			if !ignoreCluster {
+				if !skipChecks {
+					// check if global resources exist to determine if the `install config`
+					// stage succeeded
+					if err := errAfterRunningChecks(values.CNIEnabled); err == nil {
+						if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
+							fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
+						} else {
+							fmt.Fprintf(os.Stderr, errMsgGlobalResourcesMissing, controlPlaneNamespace)
+						}
+						os.Exit(1)
+					}
+				}
+
 				// Ensure there is not already an existing Linkerd installation.
 				if err := errIfLinkerdConfigConfigMapExists(cmd.Context()); err != nil {
 					fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, err.Error())
 					os.Exit(1)
 				}
-
 			}
 
 			return install(cmd.Context(), os.Stdout, values, flags, controlPlaneStage, options)
@@ -277,8 +305,13 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 		return err
 	}
 
-	var k8sAPI *k8s.KubernetesAPI
+	// Create values override
+	valuesOverrides, err := options.MergeValues(nil)
+	if err != nil {
+		return err
+	}
 
+	var k8sAPI *k8s.KubernetesAPI
 	if !ignoreCluster {
 		// Ensure there is not already an existing Linkerd installation.
 		k8sAPI, err = k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 30*time.Second)
@@ -295,6 +328,14 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 		if !kerrors.IsNotFound(err) {
 			return err
 		}
+
+		if !isRunAsRoot(valuesOverrides) {
+			err = healthcheck.CheckNodesHaveNonDockerRuntime(ctx, k8sAPI)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+		}
 	}
 
 	err = initializeIssuerCredentials(ctx, k8sAPI, values)
@@ -307,32 +348,65 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 		return err
 	}
 
-	return render(w, values, stage, options)
+	return render(w, values, stage, valuesOverrides)
 }
 
-func render(w io.Writer, values *l5dcharts.Values, stage string, options valuespkg.Options) error {
+func isRunAsRoot(values map[string]interface{}) bool {
+	if proxyInit, ok := values["proxyInit"]; ok {
+		if val, ok := proxyInit.(map[string]interface{})["runAsRoot"]; ok {
+			if truth, ok := template.IsTrue(val); ok {
+				return truth
+			}
+		}
+	}
+	return false
+}
 
-	// Set any global flags if present, common with install and upgrade
-	values.Namespace = controlPlaneNamespace
+func render(w io.Writer, values *l5dcharts.Values, stage string, valuesOverrides map[string]interface{}) error {
+
 	values.Stage = stage
 
-	files := []*loader.BufferedFile{
+	crdFiles := []*loader.BufferedFile{
+		{Name: chartutil.ChartfileName},
+	}
+	configFiles := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
 
 	if stage == "" || stage == configStage {
-		for _, template := range templatesConfigStage {
-			files = append(files,
+		for _, template := range templatesCrdFiles {
+			crdFiles = append(crdFiles,
 				&loader.BufferedFile{Name: template},
 			)
 		}
+		if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirCrds+"/", crdFiles); err != nil {
+			return err
+		}
+
+		for _, template := range templatesConfigStage {
+			configFiles = append(configFiles,
+				&loader.BufferedFile{Name: template},
+			)
+		}
+		if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirCP+"/", configFiles); err != nil {
+			return err
+		}
+
+	}
+
+	var cpFiles []*loader.BufferedFile
+	if stage == controlPlaneStage {
+		cpFiles = append(cpFiles, &loader.BufferedFile{Name: chartutil.ChartfileName})
 	}
 
 	if stage == "" || stage == controlPlaneStage {
 		for _, template := range templatesControlPlaneStage {
-			files = append(files,
+			cpFiles = append(cpFiles,
 				&loader.BufferedFile{Name: template},
 			)
+		}
+		if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirCP+"/", cpFiles); err != nil {
+			return err
 		}
 	}
 
@@ -343,18 +417,16 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 		)
 	}
 
-	// Load all chart files into buffer
-	if err := charts.FilesReader(static.Templates, helmDefaultChartDir+"/", files); err != nil {
-		return err
-	}
-
 	// Load all partial chart files into buffer
 	if err := charts.FilesReader(static.Templates, "", partialFiles); err != nil {
 		return err
 	}
 
 	// Create a Chart obj from the files
-	chart, err := loader.LoadFiles(append(files, partialFiles...))
+	configStageFiles := append(crdFiles, configFiles...)
+	files := append(configStageFiles, cpFiles...)
+	files = append(files, partialFiles...)
+	chart, err := loader.LoadFiles(files)
 	if err != nil {
 		return err
 	}
@@ -365,21 +437,23 @@ func render(w io.Writer, values *l5dcharts.Values, stage string, options valuesp
 		return err
 	}
 
-	// Create values override
-	valuesOverrides, err := options.MergeValues(nil)
-	if err != nil {
-		return err
-	}
-
 	vals, err := chartutil.CoalesceValues(chart, valuesOverrides)
 	if err != nil {
 		return err
 	}
 
+	fullValues := map[string]interface{}{
+		"Values": vals,
+		"Release": map[string]interface{}{
+			"Namespace": controlPlaneNamespace,
+			"Service":   "CLI",
+		},
+	}
+
 	// Attach the final values into the `Values` field for rendering to work
-	renderedTemplates, err := engine.Render(chart, map[string]interface{}{"Values": vals})
+	renderedTemplates, err := engine.Render(chart, fullValues)
 	if err != nil {
-		return fmt.Errorf("Failed to render the template: %s", err)
+		return fmt.Errorf("failed to render the template: %w", err)
 	}
 
 	// Merge templates and inject
@@ -425,16 +499,6 @@ func renderOverrides(values chartutil.Values, stringData bool) ([]byte, error) {
 	delete(values, "partials")
 	delete(values, "stage")
 
-	// Get Namespace from values
-	valuesTree, err := tree.MarshalToTree(values)
-	if err != nil {
-		return nil, err
-	}
-	namespace, err := valuesTree.GetString("namespace")
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve global.namespace from values: %v", err)
-	}
-
 	overrides, err := tree.Diff(defaults, values)
 	if err != nil {
 		return nil, err
@@ -449,9 +513,9 @@ func renderOverrides(values chartutil.Values, stringData bool) ([]byte, error) {
 		TypeMeta: metav1.TypeMeta{Kind: "Secret", APIVersion: "v1"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "linkerd-config-overrides",
-			Namespace: namespace,
+			Namespace: controlPlaneNamespace,
 			Labels: map[string]string{
-				k8s.ControllerNSLabel: namespace,
+				k8s.ControllerNSLabel: controlPlaneNamespace,
 			},
 		},
 	}
@@ -490,17 +554,21 @@ func errAfterRunningChecks(cniEnabled bool) error {
 	errMsgs := []string{}
 	hc.RunChecks(func(result *healthcheck.CheckResult) {
 		if result.Err != nil {
-			if ce, ok := result.Err.(*healthcheck.CategoryError); ok {
+			var ce healthcheck.CategoryError
+			if errors.As(result.Err, &ce) {
 				if ce.Category == healthcheck.KubernetesAPIChecks {
 					k8sAPIError = ce
-				} else if re, ok := ce.Err.(*healthcheck.ResourceError); ok {
-					// resource error, print in kind.group/name format
-					for _, res := range re.Resources {
-						errMsgs = append(errMsgs, res.String())
-					}
 				} else {
-					// unknown category error, just print it
-					errMsgs = append(errMsgs, result.Err.Error())
+					var re healthcheck.ResourceError
+					if errors.As(ce.Err, &re) {
+						// resource error, print in kind.group/name format
+						for _, res := range re.Resources {
+							errMsgs = append(errMsgs, res.String())
+						}
+					} else {
+						// unknown category error, just print it
+						errMsgs = append(errMsgs, result.Err.Error())
+					}
 				}
 			} else {
 				// unknown error, just print it

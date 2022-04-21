@@ -6,12 +6,13 @@ kind: Service
 apiVersion: v1
 metadata:
   name: metrics-api
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/extension: viz
     component: metrics-api
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    linkerd.io/inject: enabled
 spec:
   type: ClusterIP
   selector:
@@ -22,11 +23,14 @@ spec:
     port: 8085
     targetPort: 8085
 ---
+{{- $tree := deepCopy . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: metrics-api
@@ -34,7 +38,7 @@ metadata:
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
     component: metrics-api
   name: metrics-api
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
 spec:
   replicas: {{.Values.metricsAPI.replicas}}
   selector:
@@ -52,6 +56,7 @@ spec:
         {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        linkerd.io/inject: enabled
       labels:
         linkerd.io/extension: viz
         component: metrics-api
@@ -61,10 +66,9 @@ spec:
       {{- include "linkerd.tolerations" (dict "Values" .Values.metricsAPI) | nindent 6 }}
       {{- end -}}
       {{- include "linkerd.node-selector" (dict "Values" .Values.metricsAPI) | nindent 6 }}
-      {{- if .Values.enablePodAntiAffinity -}}
-      {{- $local := dict "component" "metrics-api" "label" "component" -}}
-      {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
-      {{- end }}
+      {{- $_ := set $tree "component" "metrics-api" -}}
+      {{- $_ := set $tree "label" "component" -}}
+      {{- include "linkerd.affinity" $tree | nindent 6 -}}
       containers:
       - args:
         - -controller-namespace={{.Values.linkerdNamespace}}
@@ -74,10 +78,11 @@ spec:
         {{- if .Values.prometheusUrl }}
         - -prometheus-url={{.Values.prometheusUrl}}
         {{- else if .Values.prometheus.enabled }}
-        - -prometheus-url=http://prometheus.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:9090
+        - -prometheus-url=http://prometheus.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}:9090
         {{- else }}
         {{ fail "Please enable `linkerd-prometheus` or provide `prometheusUrl` for the viz extension to function properly"}}
         {{- end }}
+        - -enable-pprof={{.Values.enablePprof | default false}}
         image: {{.Values.metricsAPI.image.registry | default .Values.defaultRegistry}}/{{.Values.metricsAPI.image.name}}:{{.Values.metricsAPI.image.tag | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.metricsAPI.image.pullPolicy | default .Values.defaultImagePullPolicy}}
         livenessProbe:

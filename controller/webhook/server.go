@@ -4,13 +4,15 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"io/ioutil"
+	"errors"
+	"fmt"
 	"net/http"
 	"sync/atomic"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
 	pkgTls "github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/pkg/util"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
@@ -59,8 +61,10 @@ func NewServer(
 	}()
 
 	server := &http.Server{
-		Addr:      addr,
-		TLSConfig: &tls.Config{},
+		Addr: addr,
+		TLSConfig: &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		},
 	}
 
 	eventBroadcaster := record.NewBroadcaster()
@@ -103,7 +107,7 @@ func getConfiguredServer(
 func (s *Server) Start() {
 	log.Infof("listening at %s", s.Server.Addr)
 	if err := s.ListenAndServeTLS("", ""); err != nil {
-		if err == http.ErrServerClosed {
+		if errors.Is(err, http.ErrServerClosed) {
 			return
 		}
 		log.Fatal(err)
@@ -121,7 +125,7 @@ func (s *Server) serve(res http.ResponseWriter, req *http.Request) {
 		err  error
 	)
 	if req.Body != nil {
-		data, err = ioutil.ReadAll(req.Body)
+		data, err = util.ReadAllLimit(req.Body, 10*util.MB)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -133,7 +137,12 @@ func (s *Server) serve(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	response := s.processReq(req.Context(), data)
+	response, err := s.processReq(req.Context(), data)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	responseJSON, err := json.Marshal(response)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -146,20 +155,15 @@ func (s *Server) serve(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *Server) processReq(ctx context.Context, data []byte) *admissionv1beta1.AdmissionReview {
+func (s *Server) processReq(ctx context.Context, data []byte) (*admissionv1beta1.AdmissionReview, error) {
 	admissionReview, err := decode(data)
 	if err != nil {
-		log.Errorf("failed to decode data. Reason: %s", err)
-		admissionReview.Response = &admissionv1beta1.AdmissionResponse{
-			UID:     admissionReview.Request.UID,
-			Allowed: false,
-			Result: &metav1.Status{
-				Message: err.Error(),
-			},
-		}
-		return admissionReview
+		return nil, fmt.Errorf("failed to decode admission review request: %w", err)
 	}
-	log.Infof("received admission review request %s", admissionReview.Request.UID)
+	if admissionReview.Request == nil || admissionReview.Request.UID == "" {
+		return nil, fmt.Errorf("invalid admission review request")
+	}
+	log.Infof("received admission review request %q", admissionReview.Request.UID)
 	log.Debugf("admission request: %+v", admissionReview.Request)
 
 	admissionResponse, err := s.handler(ctx, s.api, admissionReview.Request, s.recorder)
@@ -172,11 +176,11 @@ func (s *Server) processReq(ctx context.Context, data []byte) *admissionv1beta1.
 				Message: err.Error(),
 			},
 		}
-		return admissionReview
+		return admissionReview, nil
 	}
 	admissionReview.Response = admissionResponse
 
-	return admissionReview
+	return admissionReview, nil
 }
 
 // Shutdown initiates a graceful shutdown of the underlying HTTP server.

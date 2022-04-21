@@ -13,9 +13,8 @@ func TestRender(t *testing.T) {
 	// pin values that are changed by render functions on each test run
 	defaultValues := map[string]interface{}{
 		"webhook": map[string]interface{}{
-			"keyPEM":   "test-webhook-key-pem",
-			"crtPEM":   "test-webhook-crt-pem",
-			"caBundle": "test-webhook-ca-bundle",
+			"externalSecret": true,
+			"caBundle":       "test-webhook-ca-bundle",
 		},
 	}
 

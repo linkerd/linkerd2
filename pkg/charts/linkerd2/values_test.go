@@ -17,15 +17,22 @@ func TestNewValues(t *testing.T) {
 
 	testVersion := "linkerd-dev"
 
-	namespaceSelector := &metav1.LabelSelector{
-		MatchExpressions: []metav1.LabelSelectorRequirement{
-			{
-				Key:      "config.linkerd.io/admission-webhooks",
-				Operator: "NotIn",
-				Values:   []string{"disabled"},
-			},
+	matchExpressionsSimple := []metav1.LabelSelectorRequirement{
+		{
+			Key:      "config.linkerd.io/admission-webhooks",
+			Operator: "NotIn",
+			Values:   []string{"disabled"},
 		},
 	}
+	matchExpressionsInjector := append(matchExpressionsSimple, metav1.LabelSelectorRequirement{
+		Key:      "kubernetes.io/metadata.name",
+		Operator: "NotIn",
+		Values:   []string{"kube-system", "cert-manager"},
+	},
+	)
+
+	namespaceSelectorSimple := &metav1.LabelSelector{MatchExpressions: matchExpressionsSimple}
+	namespaceSelectorInjector := &metav1.LabelSelector{MatchExpressions: matchExpressionsInjector}
 
 	expected := &Values{
 		ControllerImage:              "cr.l5d.io/linkerd/controller",
@@ -36,15 +43,12 @@ func TestNewValues(t *testing.T) {
 		WebhookFailurePolicy:         "Ignore",
 		DisableHeartBeat:             false,
 		HeartbeatSchedule:            "",
-		InstallNamespace:             true,
-		Namespace:                    "linkerd",
 		ClusterDomain:                "cluster.local",
 		ClusterNetworks:              "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16",
 		ImagePullPolicy:              "IfNotPresent",
 		CliVersion:                   "linkerd/cli dev-undefined",
 		ControllerLogLevel:           "info",
 		ControllerLogFormat:          "plain",
-		ControllerImageVersion:       testVersion,
 		LinkerdVersion:               version.Version,
 		ProxyContainerName:           "linkerd-proxy",
 		CNIEnabled:                   false,
@@ -114,11 +118,11 @@ func TestNewValues(t *testing.T) {
 			Resources: &Resources{
 				CPU: Constraints{
 					Limit:   "100m",
-					Request: "10m",
+					Request: "100m",
 				},
 				Memory: Constraints{
-					Limit:   "50Mi",
-					Request: "10Mi",
+					Limit:   "20Mi",
+					Request: "20Mi",
 				},
 			},
 			XTMountPath: &VolumeMountPath{
@@ -145,15 +149,14 @@ func TestNewValues(t *testing.T) {
 			},
 		},
 
-		ProxyInjector:    &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
-		ProfileValidator: &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
-		PolicyValidator:  &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
+		ProxyInjector:    &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelectorInjector},
+		ProfileValidator: &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelectorSimple},
+		PolicyValidator:  &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelectorSimple},
 	}
 
 	// pin the versions to ensure consistent test result.
 	// in non-test environment, the default versions are read from the
 	// values.yaml.
-	actual.ControllerImageVersion = testVersion
 	actual.ProxyInit.Image.Version = testVersion
 
 	// Make Add-On Values nil to not have to check for their defaults
@@ -212,7 +215,6 @@ func TestNewValues(t *testing.T) {
 		// pin the versions to ensure consistent test result.
 		// in non-test environment, the default versions are read from the
 		// values.yaml.
-		actual.ControllerImageVersion = testVersion
 		actual.ProxyInit.Image.Version = testVersion
 
 		if !reflect.DeepEqual(expected, actual) {

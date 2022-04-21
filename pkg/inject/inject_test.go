@@ -40,7 +40,6 @@ func TestGetOverriddenValues(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
-							k8s.ProxyDisableIdentityAnnotation:               "true",
 							k8s.ProxyImageAnnotation:                         "cr.l5d.io/linkerd/proxy",
 							k8s.ProxyImagePullPolicyAnnotation:               pullPolicy,
 							k8s.ProxyInitImageAnnotation:                     "cr.l5d.io/linkerd/proxy-init",
@@ -68,6 +67,8 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxyInboundConnectTimeout:                   "600ms",
 							k8s.ProxyOpaquePortsAnnotation:                   "4320-4325,3306",
 							k8s.ProxyAwait:                                   "enabled",
+							k8s.ProxySkipSubnetsAnnotation:                   "172.17.0.0/16",
+							k8s.ProxyAccessLogAnnotation:                     "apache",
 						},
 					},
 					Spec: corev1.PodSpec{},
@@ -77,7 +78,6 @@ func TestGetOverriddenValues(t *testing.T) {
 				values, _ := l5dcharts.NewValues()
 
 				values.Proxy.Cores = 2
-				values.Proxy.DisableIdentity = true
 				values.Proxy.Image.Name = "cr.l5d.io/linkerd/proxy"
 				values.Proxy.Image.PullPolicy = pullPolicy
 				values.Proxy.Image.Version = proxyVersionOverride
@@ -109,11 +109,13 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.ProxyInit.Image.Version = version.ProxyInitVersion
 				values.ProxyInit.IgnoreInboundPorts = "4222,6222"
 				values.ProxyInit.IgnoreOutboundPorts = "8079,8080"
+				values.ProxyInit.SkipSubnets = "172.17.0.0/16"
 				values.Proxy.RequireIdentityOnInboundPorts = "8888,9999"
 				values.Proxy.OutboundConnectTimeout = "6000ms"
 				values.Proxy.InboundConnectTimeout = "600ms"
 				values.Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
 				values.Proxy.Await = true
+				values.Proxy.AccessLog = "apache"
 				return values
 			},
 		},
@@ -132,7 +134,6 @@ func TestGetOverriddenValues(t *testing.T) {
 		},
 		{id: "use namespace overrides",
 			nsAnnotations: map[string]string{
-				k8s.ProxyDisableIdentityAnnotation:        "true",
 				k8s.ProxyImageAnnotation:                  "cr.l5d.io/linkerd/proxy",
 				k8s.ProxyImagePullPolicyAnnotation:        pullPolicy,
 				k8s.ProxyInitImageAnnotation:              "cr.l5d.io/linkerd/proxy-init",
@@ -157,6 +158,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				k8s.ProxyInboundConnectTimeout:            "600ms",
 				k8s.ProxyOpaquePortsAnnotation:            "4320-4325,3306",
 				k8s.ProxyAwait:                            "enabled",
+				k8s.ProxyAccessLogAnnotation:              "apache",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -167,7 +169,6 @@ func TestGetOverriddenValues(t *testing.T) {
 				values, _ := l5dcharts.NewValues()
 
 				values.Proxy.Cores = 2
-				values.Proxy.DisableIdentity = true
 				values.Proxy.Image.Name = "cr.l5d.io/linkerd/proxy"
 				values.Proxy.Image.PullPolicy = pullPolicy
 				values.Proxy.Image.Version = proxyVersionOverride
@@ -199,6 +200,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Proxy.InboundConnectTimeout = "600ms"
 				values.Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
 				values.Proxy.Await = true
+				values.Proxy.AccessLog = "apache"
 				return values
 			},
 		},
@@ -277,7 +279,8 @@ func TestGetOverriddenValues(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			resourceConfig := NewResourceConfig(testConfig, OriginUnknown).WithKind("Deployment").WithNsAnnotations(testCase.nsAnnotations)
+			resourceConfig := NewResourceConfig(testConfig, OriginUnknown, "linkerd").
+				WithKind("Deployment").WithNsAnnotations(testCase.nsAnnotations)
 			if err := resourceConfig.parse(data); err != nil {
 				t.Fatal(err)
 			}

@@ -6,14 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/util"
 	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
@@ -45,7 +45,7 @@ func (e HTTPError) Error() string {
 
 // HTTPRequestToProto converts an HTTP Request to a protobuf request.
 func HTTPRequestToProto(req *http.Request, protoRequestOut proto.Message) error {
-	bytes, err := ioutil.ReadAll(req.Body)
+	bytes, err := util.ReadAllLimit(req.Body, 100*util.MB)
 	if err != nil {
 		return HTTPError{
 			Code:         http.StatusBadRequest,
@@ -69,9 +69,10 @@ func WriteErrorToHTTPResponse(w http.ResponseWriter, errorObtained error) {
 	statusCode := defaultHTTPErrorStatusCode
 	errorToReturn := errorObtained
 
-	if httpErr, ok := errorObtained.(HTTPError); ok {
-		statusCode = httpErr.Code
-		errorToReturn = httpErr.WrappedError
+	var he HTTPError
+	if errors.As(errorObtained, &he) {
+		statusCode = he.Code
+		errorToReturn = he.WrappedError
 	}
 
 	w.Header().Set(errorHeader, http.StatusText(statusCode))
@@ -158,7 +159,7 @@ func CheckIfResponseHasError(rsp *http.Response) error {
 
 		err := FromByteStreamToProtocolBuffers(reader, &apiError)
 		if err != nil {
-			return fmt.Errorf("Response has %s header [%s], but response body didn't contain protobuf error: %v", errorHeader, errorMsg, err)
+			return fmt.Errorf("response has %s header [%s], but response body didn't contain protobuf error: %w", errorHeader, errorMsg, err)
 		}
 
 		return errors.New(apiError.Error)
@@ -167,7 +168,7 @@ func CheckIfResponseHasError(rsp *http.Response) error {
 	// check for JSON-encoded error
 	if rsp.StatusCode != http.StatusOK {
 		if rsp.Body != nil {
-			bytes, err := ioutil.ReadAll(rsp.Body)
+			bytes, err := util.ReadAllLimit(rsp.Body, 100*util.MB)
 			if err == nil && len(bytes) > 0 {
 				body := string(bytes)
 				obj, err := k8s.ToRuntimeObject(body)

@@ -25,10 +25,6 @@ defaultUID: 2103
 
 # -- Namespace of the Linkerd core control-plane install
 linkerdNamespace: linkerd
-# -- Set to false when installing in a custom namespace.
-installNamespace: true
-# -- Namespace in which the Linkerd Viz extension has to be installed
-namespace: linkerd-viz
 
 # -- Default nodeSelector section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
@@ -50,6 +46,11 @@ tolerations: &default_tolerations
 # Enable this only when you have multiple replicas of components.
 enablePodAntiAffinity: false
 
+# -- NodeAffinity section, See the
+# [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
+# for more information
+# nodeAffinity:
+
 # -- Create Roles and RoleBindings to associate this extension's
 # ServiceAccounts to the control plane PSP resource. This requires that
 # `enabledPSP` is set to true on the control plane install. Note PSP has been
@@ -58,9 +59,6 @@ enablePSP: false
 
 # -- url of external prometheus instance
 prometheusUrl: ""
-
-# -- url of external grafana instance with reverse proxy configured.
-grafanaUrl: ""
 
 # -- url of external jaeger instance
 # Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>` if you plan to use jaeger extension
@@ -144,22 +142,41 @@ tap:
     # -- Pull policy for the tap component
     # @default -- defaultImagePullPolicy
     pullPolicy: ""
-  # -- Do not create a secret resource for the Tap component. If this is set to
-  # `true`, the value `tap.caBundle` must be set (see below).
+
+  # -- Do not create a secret resource for the Tap component.
+  # If this is set to `true`, the value `tap.caBundle` must be set
+  # or the ca bundle must injected with cert-manager ca injector using
+  # `tap.injectCaFrom` or `tap.injectCaFromSecret` (see below).
   externalSecret: false
-  # -- Certificate for the Tap component. If not provided then Helm will
-  # generate one.
+
+  # -- Certificate for the Tap component. If not provided and not using an external secret
+  # then Helm will generate one.
   crtPEM: |
 
-  # -- Certificate key for Tap component. If not provided then Helm will
-  # generate one.
+  # -- Certificate key for Tap component. If not provided and not using an external secret
+  # then Helm will generate one.
   keyPEM: |
 
-  # -- Bundle of CA certificates for Tap component. If not provided then Helm
-  # will use the certificate generated  for `tap.crtPEM`. If
-  # `tap.externalSecret` is set to true, this value must be set, as no
-  # certificate will be generated.
+  # -- Bundle of CA certificates for tap.
+  # If not provided nor injected with cert-manager,
+  # then Helm will use the certificate generated for `tap.crtPEM`.
+  # If `tap.externalSecret` is set to true, this value, injectCaFrom, or
+  # injectCaFromSecret must be set, as no certificate will be generated.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information.
   caBundle: |
+
+  # -- Inject the CA bundle from a cert-manager Certificate.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-certificate-resource)
+  # for more information.
+  injectCaFrom: ""
+
+  # -- Inject the CA bundle from a Secret.
+  # If set, the `cert-manager.io/inject-ca-from-secret` annotation will be added to the webhook.
+  # The Secret must have the CA Bundle stored in the `ca.crt` key and have
+  # the `cert-manager.io/allow-direct-injection` annotation set to `true`.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource)
+  # for more information.
+  injectCaFromSecret: ""
 
   resources:
     cpu:
@@ -241,22 +258,40 @@ tapInjector:
     # into the tapInjector component
     # resources:
 
-  # -- Do not create a secret resource for the tapInjector webhook. If this is
-  # set to `true`, the value `tapInjector.caBundle` must be set (see below)
+  # -- Do not create a secret resource for the tapInjector webhook.
+  # If this is set to `true`, the value `tapInjector.caBundle` must be set
+  # or the ca bundle must injected with cert-manager ca injector using
+  # `tapInjector.injectCaFrom` or `tapInjector.injectCaFromSecret` (see below).
   externalSecret: false
-  # -- Certificate for the tapInjector. If not provided then Helm will
-  # generate one.
+
+  # -- Certificate for the tapInjector. If not provided and not using an external secret
+  # then Helm will generate one.
   crtPEM: |
 
-  # -- Certificate key for the tapInjector. If not provided then Helm will
-  # generate one.
+  # -- Certificate key for the tapInjector. If not provided and not using an external secret
+  # then Helm will generate one.
   keyPEM: |
 
-  # -- Bundle of CA certificates for the tapInjector. If not provided then
-  # Helm will use the certificate generated  for `tapInjector.crtPEM`. If
-  # `tapInjector.externalSecret` is set to true, this value must be set, as no
-  # certificate will be generated.
+  # -- Bundle of CA certificates for the tapInjector.
+  # If not provided nor injected with cert-manager,
+  # then Helm will use the certificate generated for `tapInjector.crtPEM`.
+  # If `tapInjector.externalSecret` is set to true, this value, injectCaFrom, or
+  # injectCaFromSecret must be set, as no certificate will be generated.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information.
   caBundle: |
+
+  # -- Inject the CA bundle from a cert-manager Certificate.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-certificate-resource)
+  # for more information.
+  injectCaFrom: ""
+
+  # -- Inject the CA bundle from a Secret.
+  # If set, the `cert-manager.io/inject-ca-from-secret` annotation will be added to the webhook.
+  # The Secret must have the CA Bundle stored in the `ca.crt` key and have
+  # the `cert-manager.io/allow-direct-injection` annotation set to `true`.
+  # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource)
+  # for more information.
+  injectCaFromSecret: ""
 
 # web dashboard configuration
 dashboard:
@@ -314,56 +349,17 @@ dashboard:
     # resources:
 
 grafana:
-  # -- toggle field to enable or disable grafana
-  enabled: true
-  # -- log level of the grafana instance
-  # @default -- defaultLogLevel
-  logLevel: ""
-  # -- log format (plain, json) of the grafana instance
-  # @default -- defaultLogFormat
-  logFormat: ""
-  image:
-    # -- Docker registry for the grafana instance
-    # @default -- defaultRegistry
-    registry: ""
-    # -- Docker image name for the grafana instance
-    name: grafana
-    # -- Docker image tag for the grafana instance
-    # @default -- linkerdVersion
-    tag: ""
-    # -- Pull policy for the grafana instance
-    # @default -- defaultImagePullPolicy
-    pullPolicy: ""
-
-  resources:
-    cpu:
-      # -- Maximum amount of CPU units that the grafana container can use
-      limit:
-      # -- Amount of CPU units that the grafana container requests
-      request:
-    memory:
-      # -- Maximum amount of memory that grafana container can use
-      limit:
-      # -- Amount of memory that the grafana container requests
-      request:
-    ephemeral-storage:
-      # -- Maximum amount of ephemeral storage that the grafana container can use
-      limit: ""
-      # -- Amount of ephemeral storage that the grafana container requests
-      request: ""
-
-  proxy:
-    # -- If set, overrides default proxy resources for the proxy injected
-    # into the grafana component
-    # resources:
-
-  # -- NodeSelector section, See the
-  # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
-  nodeSelector: *default_node_selector
-  # -- Tolerations section, See the
-  # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
-  # for more information
-  tolerations: *default_tolerations
+  # -- url of an in-cluster Grafana instance with reverse proxy configured, used by the
+  # Linkerd viz web dashboard to provide direct links to specific Grafana
+  # dashboards. Cannot be set if grafana.externalUrl is set. See the [Linkerd
+  # documentation](https://linkerd.io/2/tasks/grafana) for more information
+  url:
+  # -- url of a Grafana instance hosted off-cluster. Cannot be set if
+  # grafana.url is set. The reverse proxy will not be used for this URL.
+  externalUrl:
+  # -- prefix for Grafana dashboard UID's, used when grafana.externalUrl is
+  # set.
+  uidPrefix:
 
 prometheus:
   # -- toggle field to enable or disable prometheus

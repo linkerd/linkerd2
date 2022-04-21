@@ -3,6 +3,7 @@ package watcher
 import (
 	"encoding/json"
 	"reflect"
+	"sync"
 	"testing"
 
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
@@ -24,7 +25,7 @@ func NewDeletingProfileListener() *DeletingProfileListener {
 // Update registers a deletion
 func (dpl *DeletingProfileListener) Update(profile *sp.ServiceProfile) {
 	if profile == nil {
-		dpl.NumDeletes = dpl.NumDeletes + 1
+		dpl.NumDeletes++
 	}
 }
 
@@ -32,6 +33,7 @@ func (dpl *DeletingProfileListener) Update(profile *sp.ServiceProfile) {
 // in a slice.  Useful for unit tests.
 type BufferingProfileListener struct {
 	Profiles []*sp.ServiceProfile
+	mu       sync.RWMutex
 }
 
 // NewBufferingProfileListener creates a new BufferingProfileListener.
@@ -43,6 +45,8 @@ func NewBufferingProfileListener() *BufferingProfileListener {
 
 // Update stores the update in the internal buffer.
 func (bpl *BufferingProfileListener) Update(profile *sp.ServiceProfile) {
+	bpl.mu.Lock()
+	defer bpl.mu.Unlock()
 	bpl.Profiles = append(bpl.Profiles, profile)
 }
 

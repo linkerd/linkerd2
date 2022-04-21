@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 	"sync"
@@ -416,6 +417,8 @@ func (ew *EndpointsWatcher) getServicePublisher(id ServiceID) (sp *servicePublis
 }
 
 func (ew *EndpointsWatcher) addServer(obj interface{}) {
+	ew.Lock()
+	defer ew.Unlock()
 	server := obj.(*v1beta1.Server)
 	for _, sp := range ew.publishers {
 		sp.updateServer(server, true)
@@ -423,6 +426,8 @@ func (ew *EndpointsWatcher) addServer(obj interface{}) {
 }
 
 func (ew *EndpointsWatcher) deleteServer(obj interface{}) {
+	ew.Lock()
+	defer ew.Unlock()
 	server := obj.(*v1beta1.Server)
 	for _, sp := range ew.publishers {
 		sp.updateServer(server, false)
@@ -746,7 +751,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 			for _, IPAddr := range endpoint.Addresses {
 				var authorityOverride string
 				if fqName, ok := es.Annotations[consts.RemoteServiceFqName]; ok {
-					authorityOverride = fmt.Sprintf("%s:%d", fqName, pp.srcPort)
+					authorityOverride = net.JoinHostPort(fqName, fmt.Sprintf("%d", pp.srcPort))
 				}
 
 				identity := es.Annotations[consts.RemoteGatewayIdentity]
@@ -770,7 +775,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
-				err = setToServerProtocol(pp.k8sAPI, &address, resolvedPort)
+				err = SetToServerProtocol(pp.k8sAPI, &address, resolvedPort)
 				if err != nil {
 					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
 					continue
@@ -823,7 +828,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
-				err = setToServerProtocol(pp.k8sAPI, &address, resolvedPort)
+				err = SetToServerProtocol(pp.k8sAPI, &address, resolvedPort)
 				if err != nil {
 					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
 					continue
@@ -858,7 +863,7 @@ func (pp *portPublisher) newPodRefAddress(endpointPort Port, endpointIP, podName
 	}
 	pod, err := pp.k8sAPI.Pod().Lister().Pods(id.Namespace).Get(id.Name)
 	if err != nil {
-		return Address{}, PodID{}, fmt.Errorf("unable to fetch pod %v:%v", id, err)
+		return Address{}, PodID{}, fmt.Errorf("unable to fetch pod %v: %w", id, err)
 	}
 	ownerKind, ownerName := pp.k8sAPI.GetOwnerKindAndName(context.Background(), pod, false)
 	addr := Address{
@@ -1142,10 +1147,12 @@ func isValidSlice(es *discovery.EndpointSlice) bool {
 	return true
 }
 
-func setToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
+// SetToServerProtocol sets the address's OpaqueProtocol field based off any
+// Servers that select it and override the expected protocol.
+func SetToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
 	servers, err := k8sAPI.Srv().Lister().Servers("").List(labels.Everything())
 	if err != nil {
-		return fmt.Errorf("failed to list Servers: %s", err)
+		return fmt.Errorf("failed to list Servers: %w", err)
 	}
 	if address.Pod == nil {
 		return fmt.Errorf("endpoint not backed by Pod: %s:%d", address.IP, address.Port)
@@ -1153,7 +1160,7 @@ func setToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
 	for _, server := range servers {
 		selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
 		if err != nil {
-			return fmt.Errorf("failed to create Selector: %s", err)
+			return fmt.Errorf("failed to create Selector: %w", err)
 		}
 		if server.Spec.ProxyProtocol == opaqueProtocol && selector.Matches(labels.Set(address.Pod.Labels)) {
 			var portMatch bool

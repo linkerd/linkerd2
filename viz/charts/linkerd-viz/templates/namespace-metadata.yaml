@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+  labels:
+    app.kubernetes.io/name: namespace-metadata
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
+  name: namespace-metadata
+spec:
+  template:
+    metadata:
+      annotations:
+        {{ include "partials.annotations.created-by" . }}
+      labels:
+        app.kubernetes.io/name: namespace-metadata
+        app.kubernetes.io/part-of: Linkerd
+        app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: namespace-metadata
+      containers:
+      - name: namespace-metadata
+        image: curlimages/curl:7.78.0
+        imagePullPolicy: {{.Values.defaultImagePullPolicy}}
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          ops=''
+          token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+          ns=$(curl -kfv -H "Authorization: Bearer $token" \
+            "https://kubernetes.default.svc/api/v1/namespaces/{{.Release.Namespace}}")
+
+          if ! echo "$ns" | grep -q 'labels'; then
+            ops="$ops{\"op\": \"add\",\"path\": \"/metadata/labels\",\"value\": {}},"
+          fi
+          if ! echo "$ns" | grep -q 'annotations'; then
+            ops="$ops{\"op\": \"add\", \"path\": \"/metadata/annotations\", \"value\": {}},"
+          fi
+
+          {{- if .Values.prometheusUrl }}
+          ops="$ops{\"op\": \"add\", \"path\": \"/metadata/annotations/viz.linkerd.io~1external-prometheus\", \"value\": \"{{.Values.prometheusUrl}}\"},"
+          {{- end }}
+          ops="$ops{\"op\": \"add\", \"path\": \"/metadata/labels/linkerd.io~1extension\", \"value\": \"viz\"}"
+
+          curl -kfv -XPATCH -H "Content-Type: application/json-patch+json" -H "Authorization: Bearer $token" \
+            -d "[$ops]" \
+            "https://kubernetes.default.svc/api/v1/namespaces/{{.Release.Namespace}}?fieldManager=kubectl-label"

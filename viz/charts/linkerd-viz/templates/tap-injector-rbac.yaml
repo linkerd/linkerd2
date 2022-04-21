@@ -22,7 +22,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: tap-injector
-  namespace: {{.Values.namespace}}
+  namespace: {{.Release.Namespace}}
 roleRef:
   kind: ClusterRole
   name: linkerd-tap-injector
@@ -32,17 +32,19 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: tap-injector
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
+  labels:
+    linkerd.io/extension: viz
 ---
-{{- $host := printf "tap-injector.%s.svc" .Values.namespace }}
+{{- $host := printf "tap-injector.%s.svc" .Release.Namespace }}
 {{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
 {{- if (not .Values.tapInjector.externalSecret) }}
 kind: Secret
 apiVersion: v1
 metadata:
   name: tap-injector-k8s-tls
-  namespace: {{ .Values.namespace }}
+  {{ include "partials.namespace" . }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
   labels:
@@ -53,10 +55,20 @@ data:
   tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.tapInjector.keyPEM)) (empty .Values.tapInjector.keyPEM) }}
 ---
 {{- end }}
+{{- include "linkerd.webhook.validation" .Values.tapInjector }}
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-tap-injector-webhook-config
+  {{- if or (.Values.tapInjector.injectCaFrom) (.Values.tapInjector.injectCaFromSecret) }}
+  annotations:
+  {{- if .Values.tapInjector.injectCaFrom }}
+    cert-manager.io/inject-ca-from: {{ .Values.tapInjector.injectCaFrom }}
+  {{- end }}
+  {{- if .Values.tapInjector.injectCaFromSecret }}
+    cert-manager.io/inject-ca-from-secret: {{ .Values.tapInjector.injectCaFromSecret }}
+  {{- end }}
+  {{- end }}
   labels:
     linkerd.io/extension: viz
 webhooks:
@@ -72,12 +84,11 @@ webhooks:
   clientConfig:
     service:
       name: tap-injector
-      namespace: {{ .Values.namespace }}
+      namespace: {{ .Release.Namespace }}
       path: "/"
-{{- if and (.Values.tapInjector.externalSecret) (empty .Values.tapInjector.caBundle) }}
-  {{- fail "If tapInjector.externalSecret is true then you need to provide tapInjector.caBundle" }}
-{{- end }}
+    {{- if and (empty .Values.tapInjector.injectCaFrom) (empty .Values.tapInjector.injectCaFromSecret) }}
     caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tapInjector.caBundle)) (empty .Values.tapInjector.caBundle) }}
+    {{- end }}
   failurePolicy: {{.Values.tapInjector.failurePolicy}}
   admissionReviewVersions: ["v1", "v1beta1"]
   reinvocationPolicy: IfNeeded

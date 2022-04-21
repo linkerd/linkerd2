@@ -82,6 +82,8 @@ func (c *Chart) render(partialsFiles []*loader.BufferedFile) (bytes.Buffer, erro
 	if err != nil {
 		return bytes.Buffer{}, err
 	}
+	release, _ := valuesToRender["Release"].(map[string]interface{})
+	release["Service"] = "CLI"
 
 	renderedTemplates, err := engine.Render(chart, valuesToRender)
 	if err != nil {
@@ -124,11 +126,6 @@ func (c *Chart) RenderCNI() (bytes.Buffer, error) {
 	return c.render(cniPartials)
 }
 
-// RenderNoPartials returns a bytes buffer with the result of rendering a Helm chart with no partials
-func (c *Chart) RenderNoPartials() (bytes.Buffer, error) {
-	return c.render([]*loader.BufferedFile{})
-}
-
 // ReadFile updates the buffered file with the data read from disk
 func ReadFile(fs http.FileSystem, dir string, f *loader.BufferedFile) error {
 	filename := dir + f.Name
@@ -163,7 +160,7 @@ func FilesReader(fs http.FileSystem, dir string, files []*loader.BufferedFile) e
 // InsertVersion returns the chart values file contents passed in
 // with the version placeholder replaced with the current version
 func InsertVersion(data []byte) []byte {
-	dataWithVersion := strings.Replace(string(data), versionPlaceholder, version.Version, -1)
+	dataWithVersion := strings.ReplaceAll(string(data), versionPlaceholder, version.Version)
 	return []byte(dataWithVersion)
 }
 

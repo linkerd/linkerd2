@@ -47,11 +47,11 @@ func ServiceProfileYamlEquals(actual, expected v1alpha2.ServiceProfile) error {
 	if !reflect.DeepEqual(actual, expected) {
 		actualYaml, err := yaml.Marshal(actual)
 		if err != nil {
-			return fmt.Errorf("Service profile mismatch but failed to marshal actual service profile: %v", err)
+			return fmt.Errorf("Service profile mismatch but failed to marshal actual service profile: %w", err)
 		}
 		expectedYaml, err := yaml.Marshal(expected)
 		if err != nil {
-			return fmt.Errorf("Service profile mismatch but failed to marshal expected service profile: %v", err)
+			return fmt.Errorf("Service profile mismatch but failed to marshal expected service profile: %w", err)
 		}
 		return fmt.Errorf("Expected [%s] but got [%s]", string(expectedYaml), string(actualYaml))
 	}

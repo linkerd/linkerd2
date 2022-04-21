@@ -20,6 +20,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
+	vizutil "github.com/linkerd/linkerd2/viz/pkg/util"
 	pb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	"github.com/linkerd/linkerd2/viz/tap/pkg"
 	log "github.com/sirupsen/logrus"
@@ -164,7 +165,7 @@ func renderTapOutputProfile(ctx context.Context, k8sAPI *k8s.KubernetesAPI, tapR
 	}
 	output, err := yaml.Marshal(profile)
 	if err != nil {
-		return fmt.Errorf("Error writing Service Profile: %s", err)
+		return fmt.Errorf("Error writing Service Profile: %w", err)
 	}
 	w.Write(output)
 	return nil
@@ -200,7 +201,7 @@ func routeSpecFromTap(tapByteStream *bufio.Reader, routeLimit int) []*sp.RouteSp
 		if err != nil {
 			// expected errors when hitting the tapDuration deadline
 			var e net.Error
-			if err != io.EOF &&
+			if !errors.Is(err, io.EOF) &&
 				!(errors.As(err, &e) && e.Timeout()) &&
 				!errors.Is(err, context.DeadlineExceeded) &&
 				!strings.HasSuffix(err.Error(), pkg.ErrClosedResponseBody) {
@@ -245,7 +246,7 @@ func getPathDataFromTap(event *pb.TapEvent) *sp.RouteSpec {
 		return profiles.MkRouteSpec(
 			path,
 			profiles.PathToRegex(path), // for now, no path consolidation
-			ev.RequestInit.GetMethod().GetRegistered().String(),
+			vizutil.HTTPMethodToString(ev.RequestInit.GetMethod()),
 			nil)
 	default:
 		return nil

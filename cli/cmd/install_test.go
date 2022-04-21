@@ -36,18 +36,15 @@ func TestRender(t *testing.T) {
 		EnableH2Upgrade:         true,
 		WebhookFailurePolicy:    "WebhookFailurePolicy",
 		HeartbeatSchedule:       "1 2 3 4 5",
-		InstallNamespace:        true,
 		Identity:                defaultValues.Identity,
 		NodeSelector:            defaultValues.NodeSelector,
 		Tolerations:             defaultValues.Tolerations,
-		Namespace:               "Namespace",
 		ClusterDomain:           "cluster.local",
 		ClusterNetworks:         "ClusterNetworks",
 		ImagePullPolicy:         "ImagePullPolicy",
 		CliVersion:              "CliVersion",
 		ControllerLogLevel:      "ControllerLogLevel",
 		ControllerLogFormat:     "ControllerLogFormat",
-		ControllerImageVersion:  "ControllerImageVersion",
 		ProxyContainerName:      "ProxyContainerName",
 		CNIEnabled:              false,
 		IdentityTrustDomain:     defaultValues.IdentityTrustDomain,
@@ -226,7 +223,7 @@ func TestRender(t *testing.T) {
 		{withControlPlaneTracingValues, "install_controlplane_tracing_output.golden", values.Options{}},
 		{withCustomRegistryValues, "install_custom_registry.golden", values.Options{}},
 		{withCustomDestinationGetNetsValues, "install_default_override_dst_get_nets.golden", values.Options{}},
-		{defaultValues, "install_custom_domain.golden", values.Options{Values: []string{"namespace=l5d"}}},
+		{defaultValues, "install_custom_domain.golden", values.Options{}},
 		{defaultValues, "install_values_file.golden", values.Options{ValueFiles: []string{filepath.Join("testdata", "install_config.yaml")}}},
 		{defaultValues, "install_default_token.golden", values.Options{Values: []string{"identity.serviceAccountTokenProjection=false"}}},
 	}
@@ -234,8 +231,12 @@ func TestRender(t *testing.T) {
 	for i, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, tc.goldenFileName), func(t *testing.T) {
+			valuesOverrides, err := tc.options.MergeValues(nil)
+			if err != nil {
+				t.Fatalf("Failed to get values overrides: %v", err)
+			}
 			var buf bytes.Buffer
-			if err := render(&buf, tc.values, "", tc.options); err != nil {
+			if err := render(&buf, tc.values, "", valuesOverrides); err != nil {
 				t.Fatalf("Failed to render templates: %v", err)
 			}
 			testDataDiffer.DiffTestdata(t, tc.goldenFileName, buf.String())
@@ -318,8 +319,7 @@ func testInstallOptionsNoCerts(ha bool) (*charts.Values, error) {
 
 	values.Proxy.Image.Version = installProxyVersion
 	values.DebugContainer.Image.Version = installDebugVersion
-	values.ControllerImageVersion = installControlPlaneVersion
-	values.PolicyController.Image.Version = installControlPlaneVersion
+	values.LinkerdVersion = installControlPlaneVersion
 	values.HeartbeatSchedule = fakeHeartbeatSchedule()
 
 	return values, nil
@@ -334,7 +334,6 @@ func testInstallValues() (*charts.Values, error) {
 	values.Proxy.Image.Version = installProxyVersion
 	values.DebugContainer.Image.Version = installDebugVersion
 	values.LinkerdVersion = installControlPlaneVersion
-	values.ControllerImageVersion = installControlPlaneVersion
 	values.PolicyController.Image.Version = installControlPlaneVersion
 	values.HeartbeatSchedule = fakeHeartbeatSchedule()
 
@@ -492,10 +491,8 @@ func TestValidate(t *testing.T) {
 				if err.Error() != tc.expectedError {
 					t.Fatalf("Expected error string\"%s\", got \"%s\"", tc.expectedError, err)
 				}
-			} else {
-				if err != nil {
-					t.Fatalf("Expected no error bu got \"%s\"", err)
-				}
+			} else if err != nil {
+				t.Fatalf("Expected no error bu got \"%s\"", err)
 			}
 		}
 	})
@@ -536,11 +533,8 @@ func TestValidate(t *testing.T) {
 				if err.Error() != tc.expectedError {
 					t.Fatalf("Expected error string\"%s\", got \"%s\"", tc.expectedError, err)
 				}
-			} else {
-				if err != nil {
-					t.Fatalf("Expected no error but got \"%s\"", err)
-
-				}
+			} else if err != nil {
+				t.Fatalf("Expected no error but got \"%s\"", err)
 			}
 		}
 	})
@@ -551,13 +545,16 @@ func fakeHeartbeatSchedule() string {
 }
 
 func addFakeTLSSecrets(values *charts.Values) {
-	values.ProxyInjector.CrtPEM = "proxy injector crt"
-	values.ProxyInjector.KeyPEM = "proxy injector key"
+	values.ProxyInjector.ExternalSecret = true
 	values.ProxyInjector.CaBundle = "proxy injector CA bundle"
-	values.ProfileValidator.CrtPEM = "profile validator crt"
-	values.ProfileValidator.KeyPEM = "profile validator key"
+	values.ProxyInjector.InjectCaFrom = ""
+	values.ProxyInjector.InjectCaFromSecret = ""
+	values.ProfileValidator.ExternalSecret = true
 	values.ProfileValidator.CaBundle = "profile validator CA bundle"
-	values.PolicyValidator.CrtPEM = "policy validator crt"
-	values.PolicyValidator.KeyPEM = "policy validator key"
+	values.ProfileValidator.InjectCaFrom = ""
+	values.ProfileValidator.InjectCaFromSecret = ""
+	values.PolicyValidator.ExternalSecret = true
 	values.PolicyValidator.CaBundle = "policy validator CA bundle"
+	values.PolicyValidator.InjectCaFrom = ""
+	values.PolicyValidator.InjectCaFromSecret = ""
 }

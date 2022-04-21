@@ -26,6 +26,7 @@ import (
 	versioned "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	internalinterfaces "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/internalinterfaces"
 	link "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/link"
+	policy "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/policy"
 	server "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/server"
 	serverauthorization "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serverauthorization"
 	serviceprofile "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile"
@@ -176,6 +177,7 @@ type SharedInformerFactory interface {
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
 	Link() link.Interface
+	Policy() policy.Interface
 	Server() server.Interface
 	Serverauthorization() serverauthorization.Interface
 	Linkerd() serviceprofile.Interface
@@ -183,6 +185,10 @@ type SharedInformerFactory interface {
 
 func (f *sharedInformerFactory) Link() link.Interface {
 	return link.New(f, f.namespace, f.tweakListOptions)
+}
+
+func (f *sharedInformerFactory) Policy() policy.Interface {
+	return policy.New(f, f.namespace, f.tweakListOptions)
 }
 
 func (f *sharedInformerFactory) Server() server.Interface {

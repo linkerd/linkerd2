@@ -13,14 +13,12 @@ func TestRender(t *testing.T) {
 	// pin values that are changed by render functions on each test run
 	defaultValues := map[string]interface{}{
 		"tap": map[string]interface{}{
-			"keyPEM":   "test-tap-key-pem",
-			"crtPEM":   "test-tap-crt-pem",
-			"caBundle": "test-tap-ca-bundle",
+			"externalSecret": true,
+			"caBundle":       "test-tap-ca-bundle",
 		},
 		"tapInjector": map[string]interface{}{
-			"keyPEM":   "test-tap-key-pem",
-			"crtPEM":   "test-tap-crt-pem",
-			"caBundle": "test-tap-ca-bundle",
+			"externalSecret": true,
+			"caBundle":       "test-tap-ca-bundle",
 		},
 	}
 
@@ -67,7 +65,6 @@ func TestRender(t *testing.T) {
 			map[string]interface{}{
 				"prometheus": proxyResources,
 				"tap":        proxyResources,
-				"grafana":    proxyResources,
 				"dashboard":  proxyResources,
 			},
 			"install_proxy_resources.golden",
@@ -85,15 +82,9 @@ func TestRender(t *testing.T) {
 						"tag":      "stable-9.2",
 					},
 				},
+				"grafana": map[string]interface{}{"url": "grafana.grafana:3000"},
 			},
 			"install_default_overrides.golden",
-		},
-		{
-			map[string]interface{}{
-				"grafana":    map[string]interface{}{"enabled": false},
-				"grafanaUrl": "external-grafana.com",
-			},
-			"install_grafana_disabled.golden",
 		},
 	}
 

@@ -6,10 +6,10 @@ set +e
 
 ##### Test setup helpers #####
 
-export default_test_names=(deep external-issuer external-prometheus-deep helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable default-policy-deny)
+export default_test_names=(deep viz external helm-upgrade uninstall upgrade-edge upgrade-stable default-policy-deny)
 export external_resource_test_names=(external-resources)
 export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}" "${external_resource_test_names[*]}")
-images_load_default=(proxy controller policy-controller web metrics-api grafana tap)
+images_load_default=(proxy controller policy-controller web metrics-api tap)
 
 tests_usage() {
   progname="${0##*/}"
@@ -226,7 +226,7 @@ delete_cluster() {
 }
 
 cleanup_cluster() {
-  "$bindir"/test-cleanup --context "$context" "$linkerd_path" > /dev/null 2>&1
+  "$bindir"/test-cleanup "$linkerd_path" > /dev/null 2>&1
   exit_on_err 'error removing existing Linkerd resources'
 }
 
@@ -293,7 +293,7 @@ Help:
 image_load() {
   cluster_name=$1
   images_load=("${images_load_default[@]}")
-  if [[ "$cluster_name" = *deep ]]; then
+  if [[ "$cluster_name" = *viz ]]; then
     images_load+=(jaeger-webhook)
   fi
   if [ "$cluster_name" = "cni-calico-deep" ]; then
@@ -366,13 +366,10 @@ start_multicluster_test() {
   fi
   run_multicluster_test
   exit_on_err "error calling 'run_multicluster_test'"
+  export context="k3d-source"
   finish source
+  export context="k3d-target"
   finish target
-}
-
-multicluster_link() {
-  lbIP=$(kubectl --context="$context" get svc -n kube-system traefik -o 'go-template={{ (index .status.loadBalancer.ingress 0).ip }}')
-  "$linkerd_path" multicluster link --api-server-address "https://${lbIP}:6443" --cluster-name "$1" --set "enableHeadlessServices=true"
 }
 
 run_test(){
@@ -387,95 +384,29 @@ run_test(){
 # Returns the latest version for the release channel
 # $1: release channel to check
 latest_release_channel() {
-    curl -s https://versioncheck.linkerd.io/version.json | grep -o "$1-[0-9]*.[0-9]*.[0-9]*"
-}
-
-# Install a specific Linkerd version.
-# $1 - URL to use to download specific Linkerd version
-# $2 - Linkerd version
-install_version() {
-    tmp=$(mktemp -d -t l5dbin.XXX)
-
-    local install_url=$1
-    local version=$2
-
-    curl -s "$install_url" | HOME=$tmp sh > /dev/null 2>&1
-
-    local linkerd_path=$tmp/.linkerd2/bin/linkerd
-    local test_app_namespace=upgrade-test
-
-    (
-        set -x
-        # TODO: Use a mix of helm override flags and CLI flags and remove this condition
-        # once stable-2.10 is out
-        edge_regex='(edge)-([0-9]+\.[0-9]+\.[0-9]+)'
-        if [[ "$version" =~ $edge_regex ]]; then
-          "$linkerd_path" install --set proxyInit.ignoreInboundPorts="1234\,5678" --controller-log-level debug | kubectl --context="$context" apply -f - 2>&1
-        else
-          "$linkerd_path" install --skip-inbound-ports '1234,5678' --controller-log-level debug | kubectl --context="$context" apply -f - 2>&1
-        fi
-    )
-    exit_on_err "install_version() - installing $version failed"
-
-    (
-        set -x
-        "$linkerd_path" check --wait 60m 2>&1
-    )
-    exit_on_err 'install_version() - linkerd check failed'
-
-    #Now we need to install the app that will be used to verify that upgrade does not break anything
-    kubectl --context="$context" create namespace "$test_app_namespace" > /dev/null 2>&1
-    kubectl --context="$context" label namespaces "$test_app_namespace" 'test.linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
-    (
-        set -x
-        "$linkerd_path" inject "$test_directory/testdata/upgrade_test.yaml" | kubectl --context="$context" apply --namespace="$test_app_namespace" -f - 2>&1
-    )
-    exit_on_err 'install_version() - linkerd inject failed'
-}
-
-upgrade_test() {
-  local release_channel=$1
-  local install_url=$2
-
-  local upgrade_version
-  upgrade_version=$(latest_release_channel "$release_channel")
-
-  if [ -z "$upgrade_version" ]; then
-    echo 'error getting upgrade_version'
-    exit 1
-  fi
-
-  install_version "$install_url" "$upgrade_version"
-
-  # Install viz extension
-  local tmp_linkerd_path=$tmp/.linkerd2/bin/linkerd
-  (
-      set -x
-      "$tmp_linkerd_path" viz install | kubectl --context="$context" apply -f - 2>&1
-  )
-  exit_on_err "upgrade_test() - installing viz extension in $upgrade_version failed"
-
-  run_test "$test_directory/install_test.go" --upgrade-from-version="$upgrade_version"
+    "$bindir"/scurl https://versioncheck.linkerd.io/version.json | grep -o "$1-[0-9]*.[0-9]*.[0-9]*"
 }
 
 # Run the upgrade-edge test by upgrading the most-recent edge release to the
 # HEAD of this branch.
 run_upgrade-edge_test() {
-  edge_install_url="https://run.linkerd.io/install-edge"
-  upgrade_test "edge" "$edge_install_url"
+  run_test "$test_directory/upgrade-edge/..." 
 }
 
 # Run the upgrade-stable test by upgrading the most-recent stable release to the
 # HEAD of this branch.
 run_upgrade-stable_test() {
-  stable_install_url="https://run.linkerd.io/install"
-  upgrade_test "stable" "$stable_install_url"
+  run_test "$test_directory/upgrade-stable/..." 
+}
+
+run_viz_test() {
+  run_test "$test_directory/viz/..."
 }
 
 setup_helm() {
   export helm_path="$bindir"/helm
-  helm_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2
-  export helm_chart
+  helm_charts="$( cd "$bindir"/.. && pwd )"/charts
+  export helm_charts
   export helm_release_name='helm-test'
   export helm_multicluster_release_name="multicluster-test"
   "$bindir"/helm-build
@@ -486,9 +417,11 @@ setup_helm() {
 helm_cleanup() {
   (
     set -e
-    "$helm_path" --kube-context="$context" delete "$helm_release_name" || true
-    "$helm_path" --kube-context="$context" delete "$helm_multicluster_release_name" || true
-    # `helm delete` doesn't wait for resources to be deleted, so we wait explicitly.
+    "$helm_path" --kube-context="$context" --namespace linkerd delete "$helm_release_name-crds" || true
+    "$helm_path" --kube-context="$context" --namespace linkerd delete "$helm_release_name-control-plane" || true
+    kubectl delete ns/linkerd
+    "$helm_path" --kube-context="$context" --namespace linkerd-multicluster delete "$helm_multicluster_release_name" || true
+    kubectl delete ns/linkerd-multicluster
     # We wait for the namespace to be gone so the following call to `cleanup` doesn't fail when it attempts to delete
     # the same namespace that is already being deleted here (error thrown by the NamespaceLifecycle controller).
     # We don't have that problem with global resources, so no need to wait for them to be gone.
@@ -509,98 +442,38 @@ run_helm-upgrade_test() {
 
   setup_helm
   helm_viz_chart="$( cd "$bindir"/.. && pwd )"/viz/charts/linkerd-viz
-  run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
+  run_test "$test_directory/install/install_test.go" --helm-path="$helm_path" --helm-charts="$helm_charts" \
   --viz-helm-chart="$helm_viz_chart" --helm-stable-chart='linkerd/linkerd2' --viz-helm-stable-chart="linkerd/linkerd-viz" --helm-release="$helm_release_name" --upgrade-helm-from-version="$stable_version"
   helm_cleanup
 }
 
 run_uninstall_test() {
-  run_test "$test_directory/uninstall/uninstall_test.go" --uninstall=true
+  run_test "$test_directory/install/uninstall/uninstall_test.go" --uninstall=true
 }
 
 run_multicluster_test() {
-  tmp=$(mktemp -d -t l5dcerts.XXX)
-  pwd=$PWD
-  cd "$tmp"
-  "$bindir"/certs-openssl
-  cd "$pwd"
-  export context="k3d-target"
-  run_test "$test_directory/install_test.go" --multicluster --certs-path "$tmp"
-  run_test "$test_directory/multicluster/target1" --multicluster
-  link=$(multicluster_link target)
-
-  export context="k3d-source"
-  run_test "$test_directory/install_test.go" --multicluster --certs-path "$tmp"
-  echo "$link" | kubectl --context="$context" apply -f -
-  run_test "$test_directory/multicluster/source" --multicluster
-
-  export context="k3d-target"
-  run_test "$test_directory/multicluster/target2" --multicluster
-
-  export context="k3d-target"
-  run_test "$test_directory/multicluster/target-statefulset" --multicluster
+   run_test "$test_directory/multicluster/..." 
 }
 
 run_deep_test() {
-  local tests=()
-  run_test "$test_directory/install_test.go"
-  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
-  for test in "${tests[@]}"; do
-    run_test "$test"
-  done
+  run_test "$test_directory/deep/..."
 }
 
 run_default-policy-deny_test() {
-  local tests=()
   export default_allow_policy='deny'
-  run_test "$test_directory/install_test.go"
+  run_test "$test_directory/install/install_test.go" 
 }
 
 run_cni-calico-deep_test() {
-  local tests=()
-  run_test "$test_directory/install_test.go" --cni --calico
-  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
-  for test in "${tests[@]}"; do
-    run_test "$test" --cni
-  done
+  run_test "$test_directory/deep/..." --cni
 }
 
-run_helm-deep_test() {
-  local tests=()
-  setup_helm
-  helm_multicluster_chart="$( cd "$bindir"/.. && pwd )"/multicluster/charts/linkerd-multicluster
-  helm_viz_chart="$( cd "$bindir"/.. && pwd )"/viz/charts/linkerd-viz
-  run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
-  --helm-release="$helm_release_name" --multicluster-helm-chart="$helm_multicluster_chart" \
-  --viz-helm-chart="$helm_viz_chart" --multicluster-helm-release="$helm_multicluster_release_name"
-  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
-  for test in "${tests[@]}"; do
-    run_test "$test"
-  done
-  helm_cleanup
-}
-
-run_external-issuer_test() {
-  run_test "$test_directory/install_test.go" --external-issuer=true
-  run_test "$test_directory/externalissuer/external_issuer_test.go" --external-issuer=true
-}
-
-run_external-prometheus-deep_test() {
-  run_test "$test_directory/install_test.go" --external-prometheus=true
-  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
-  for test in "${tests[@]}"; do
-    run_test "$test" --external-prometheus=true
-  done
+run_external_test() {
+  run_test "$test_directory/external/..."
 }
 
 run_cluster-domain_test() {
-  run_test "$test_directory/install_test.go" --cluster-domain='custom.domain'
-}
-
-# wrapper to implement external tests
-run_external-resources_test(){
-   run_test "$test_directory/install_test.go"
-   run_test "$test_directory/externalresources/rabbitmq_test.go"
+  run_test "$test_directory/install/install_test.go" --cluster-domain='custom.domain' 
 }
 
 # exit_on_err should be called right after a command to check the result status

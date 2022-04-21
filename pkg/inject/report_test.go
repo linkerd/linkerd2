@@ -371,7 +371,7 @@ func TestDisableByAnnotation(t *testing.T) {
 				resourceConfig := &ResourceConfig{origin: OriginWebhook}
 				resourceConfig.WithNsAnnotations(testCase.nsAnnotations)
 				resourceConfig.pod.meta = testCase.podMeta
-				resourceConfig.pod.spec = &corev1.PodSpec{} //initialize empty spec to prevent test from failing
+				resourceConfig.pod.spec = &corev1.PodSpec{} // initialize empty spec to prevent test from failing
 
 				report := newReport(resourceConfig)
 				if actual, _, _ := report.disabledByAnnotation(resourceConfig); testCase.expected != actual {
@@ -413,7 +413,7 @@ func TestDisableByAnnotation(t *testing.T) {
 			t.Run(fmt.Sprintf("test case #%d", i), func(t *testing.T) {
 				resourceConfig := &ResourceConfig{origin: OriginCLI}
 				resourceConfig.pod.meta = testCase.podMeta
-				resourceConfig.pod.spec = &corev1.PodSpec{} //initialize empty spec to prevent test from failing
+				resourceConfig.pod.spec = &corev1.PodSpec{} // initialize empty spec to prevent test from failing
 
 				report := newReport(resourceConfig)
 				if actual, _, _ := report.disabledByAnnotation(resourceConfig); testCase.expected != actual {

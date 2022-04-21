@@ -47,4 +47,25 @@ describe('GrafanaLink', () => {
     expect(href).not.toContain("namespace");
     expect(href).toContain(expectedVarNameStr);
   });
+
+  it('Use grafana.externalUrl', () => {
+    let grafanaPrefix = "test-prefix";
+    let grafanaExternalUrl = "https://example.com";
+    let api = ApiHelpers('');
+    let linkProps = {
+      resource: "replicationcontroller",
+      name: "aldksf-3409823049823",
+      namespace: "myns",
+      grafanaPrefix: grafanaPrefix,
+      grafanaExternalUrl: grafanaExternalUrl,
+    };
+    let component = mount(routerWrap(GrafanaLink, linkProps));
+
+    expect(component.find("GrafanaLink")).toHaveLength(1);
+
+    const href = component.find('a').props().href;
+
+    expect(href).toContain(grafanaPrefix);
+    expect(href).toContain(grafanaExternalUrl);
+  });
 });

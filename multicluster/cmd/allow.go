@@ -60,12 +60,12 @@ func newAllowCommand() *cobra.Command {
 			chart := &charts.Chart{
 				Name:      helmMulticlusterDefaultChartName,
 				Dir:       helmMulticlusterDefaultChartName,
-				Namespace: controlPlaneNamespace,
+				Namespace: opts.namespace,
 				RawValues: rawValues,
 				Files:     files,
 				Fs:        static.Templates,
 			}
-			buf, err := chart.RenderNoPartials()
+			buf, err := chart.Render()
 			if err != nil {
 				return err
 			}
@@ -102,16 +102,11 @@ func buildMulticlusterAllowValues(ctx context.Context, opts *allowOptions) (*mcc
 		return nil, errors.New("you need to specify a service account name")
 	}
 
-	if opts.namespace == controlPlaneNamespace {
-		return nil, errors.New("you need to setup the multicluster addons in a namespace different than the Linkerd one")
-	}
-
 	defaults, err := mccharts.NewInstallValues()
 	if err != nil {
 		return nil, err
 	}
 
-	defaults.Namespace = opts.namespace
 	defaults.LinkerdVersion = version.Version
 	defaults.Gateway.Enabled = false
 	defaults.ServiceMirror = false
@@ -119,7 +114,7 @@ func buildMulticlusterAllowValues(ctx context.Context, opts *allowOptions) (*mcc
 	defaults.RemoteMirrorServiceAccountName = opts.serviceAccountName
 
 	if !opts.ignoreCluster {
-		acc, err := kubeAPI.CoreV1().ServiceAccounts(defaults.Namespace).Get(ctx, defaults.RemoteMirrorServiceAccountName, metav1.GetOptions{})
+		acc, err := kubeAPI.CoreV1().ServiceAccounts(opts.namespace).Get(ctx, defaults.RemoteMirrorServiceAccountName, metav1.GetOptions{})
 		if err == nil && acc != nil {
 			return nil, fmt.Errorf("Service account with name %s already exists, use --ignore-cluster for force operation", defaults.RemoteMirrorServiceAccountName)
 		}

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -168,25 +169,6 @@ spec:
 						},
 					},
 				},
-			},
-			{
-				err: fmt.Errorf("cannot set both namespace and resource in the request. These are mutually exclusive"),
-				promRes: model.Vector{
-					&model.Sample{
-						Metric:    model.Metric{"pod": "emojivoto-meshed"},
-						Timestamp: 456,
-					},
-				},
-				k8sRes: []string{},
-				req: &pb.ListPodsRequest{
-					Namespace: "test",
-					Selector: &pb.ResourceSelection{
-						Resource: &pb.Resource{
-							Type: pkgK8s.Pod,
-						},
-					},
-				},
-				res: nil,
 			},
 			{
 				err: nil,
@@ -509,7 +491,7 @@ metadata:
 			k8sAPI.Sync(nil)
 
 			rsp, err := fakeGrpcServer.ListServices(context.TODO(), &pb.ListServicesRequest{})
-			if err != exp.err {
+			if !errors.Is(err, exp.err) {
 				t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
 			}
 

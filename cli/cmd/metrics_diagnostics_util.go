@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -10,6 +12,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/prometheus/common/expfmt"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -34,6 +37,9 @@ func (s byResult) Less(i, j int) bool {
 
 // getResponse makes a http Get request to the passed url and returns the response/error
 func getResponse(url string) ([]byte, error) {
+	// url has been constructed by k8s.newPortForward and is not passed in by
+	// the user.
+	//nolint:gosec
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -125,12 +131,15 @@ func getMetrics(
 		}(pod)
 	}
 
+	timeout := time.NewTimer(waitingTime)
+	defer timeout.Stop()
+wait:
 	for {
 		select {
 		case result := <-resultChan:
 			results = append(results, result)
-		case <-time.After(waitingTime):
-			break // timed out
+		case <-timeout.C:
+			break wait // timed out
 		}
 		if atomic.LoadInt32(&activeRoutines) == 0 {
 			break
@@ -140,4 +149,46 @@ func getMetrics(
 	sort.Sort(byResult(results))
 
 	return results
+}
+
+var obfuscationMap = map[string]struct{}{
+	"authority":     {},
+	"client_id":     {},
+	"server_id":     {},
+	"target_addr":   {},
+	"dst_service":   {},
+	"dst_namespace": {},
+}
+
+func obfuscateMetrics(metrics []byte) ([]byte, error) {
+	reader := bytes.NewReader(metrics)
+
+	var metricsParser expfmt.TextParser
+
+	parsedMetrics, err := metricsParser.TextToMetricFamilies(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	var writer bytes.Buffer
+	for _, v := range parsedMetrics {
+		for _, m := range v.Metric {
+			for _, l := range m.Label {
+				if _, ok := obfuscationMap[l.GetName()]; ok {
+					obfuscatedValue := obfuscate(l.GetValue())
+					l.Value = &obfuscatedValue
+				}
+			}
+		}
+		// We'll assume MetricFamilyToText errors are insignificant
+		//nolint:errcheck
+		expfmt.MetricFamilyToText(&writer, v)
+	}
+
+	return writer.Bytes(), nil
+}
+
+func obfuscate(s string) string {
+	hash := sha256.Sum256([]byte(s))
+	return fmt.Sprintf("%x", hash[:4])
 }

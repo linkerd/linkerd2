@@ -262,7 +262,7 @@ That is equivalent to running `linkerd check` using the code on your branch.
 To analyze and lint the Go code using golangci-lint, run:
 
 ```bash
-bin/lint
+golangci-lint run
 ```
 
 #### Formatting
@@ -311,14 +311,13 @@ You can send test requests to the destination service using the
 bin/go-run controller/script/destination-client -path hello.default.svc.cluster.local:80
 ```
 
-##### Running the Tap APIService for development
+##### Debugging the Tap APIService for development
 
-```bash
-openssl req -nodes -x509 -newkey rsa:4096 -keyout $HOME/key.pem -out $HOME/crt.pem -subj "/C=US"
-bin/go-run controller/cmd tap --disable-common-names --tls-cert=$HOME/crt.pem --tls-key=$HOME/key.pem
-
-curl -k https://localhost:8089/apis/tap.linkerd.io/v1alpha1
-```
+The Tap APIService is a Kubernetes extension API server, so it can be
+challenging to run outside the cluster. The most straightforward workflow is to
+simply test changes by building and loading the container image as explained in
+the [comprehensive configuration](#comprehensive) section above (in order to
+just build this component use `bin/docker-build-tap`).
 
 #### Generating CLI docs
 
@@ -367,8 +366,6 @@ To develop with a webpack dev server:
     - `web` on :7777. This is the golang process that serves the dashboard.
     - `webpack-dev-server` on :8080 to manage rebuilding/reloading of the
       javascript.
-    - `grafana` is port-forwarded from the Kubernetes cluster via `kubectl` on
-      :3000
     - `metrics-api` is port-forwarded from the Kubernetes cluster via `kubectl`
       on :8085
 

@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
@@ -208,17 +209,11 @@ func PodIdentity(pod *corev1.Pod) (string, error) {
 	podns := pod.ObjectMeta.Namespace
 	for _, c := range pod.Spec.Containers {
 		if c.Name == ProxyContainerName {
-			var l5dns string
-			var l5dtrustdomain string
 			for _, env := range c.Env {
-				if env.Name == "_l5d_ns" {
-					l5dns = env.Value
-				}
-				if env.Name == "_l5d_trustdomain" {
-					l5dtrustdomain = env.Value
+				if env.Name == "LINKERD2_PROXY_IDENTITY_LOCAL_NAME" {
+					return strings.ReplaceAll(env.Value, "$(_pod_sa).$(_pod_ns)", fmt.Sprintf("%s.%s", podsa, podns)), nil
 				}
 			}
-			return fmt.Sprintf("%s.%s.serviceaccount.identity.%s.%s", podsa, podns, l5dns, l5dtrustdomain), nil
 		}
 	}
 	return "", nil

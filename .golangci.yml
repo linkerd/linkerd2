@@ -9,21 +9,26 @@ run:
   deadline: 5m
   skip-dirs:
   - controller/gen
-issues:
-  exclude-use-default: false
+
 linters:
   enable:
   - bodyclose
   - deadcode
   - depguard
+  - errcheck
+  - errorlint
+  - exportloopref
   - goconst
-  - golint
+  - gocritic
+  - gosec
   - gosimple
   - govet
   - ineffassign
   - misspell
   - nakedret
-  - scopelint
+  - revive
+  - staticcheck
+  - structcheck
   - typecheck
   - unconvert
   - unparam
@@ -34,13 +39,96 @@ linters:
   # - gochecknoglobals
   # - gochecknoinits
   # - gocyclo
-  # - gosec
   # - interfacer
   # - lll
   # - maligned
   # - prealloc
   # - stylecheck
-  disable:
-  - errcheck
-  - staticcheck
-  - structcheck
+
+issues:
+  exclude-use-default: false
+  exclude-rules:
+  # Ignore errors when performing the following file operations. If these are
+  # not handled separately already, they tend to be insignificant.
+  - linters:
+    - errcheck
+    text: Error return value of `.*\.(Copy|Flush|Write|WriteTo)` is not checked
+
+  # Ignore error values when closing file or HTTP response bodies. These
+  # generally happen as cleanup and are part of defer statements.
+  - linters:
+    - errcheck
+    text: Error return value of `.*\.Close` is not checked
+
+  # Ignore error checks for CLI output.
+  - linters:
+    - errcheck
+    text: Error return value of `(plugin|spin|termbox)\.(Clear|Color|Flush|Run)` is not checked
+
+  # The errcheck linter catches these instances and we exclude them with the
+  # rule above; therefore we'll ignore redundant warnings through gosec.
+  - linters:
+    - gosec
+    text: "G104: Errors unhandled."
+
+  # This gives false negatives if a variable name is too close to the pattern
+  # used to determine if a variable is a credential.
+  - linters:
+    - gosec
+    text: "G101: Potential hardcoded credentials"
+
+  # Flag operations are fallible if the flag does not exist. We assume these
+  # exist as they are generally flags we are deprecating or use only for
+  # development.
+  - linters:
+    - errcheck
+    text: Error return value of `(.*)\.(MarkDeprecated|MarkHidden|Set)` is not checked
+
+  # Flag completion is not critical to the CLI and errors are ignored if
+  # registration fails.
+  - linters:
+    - errcheck
+    text: Error return value of `.*\.RegisterFlagCompletionFunc` is not checked
+
+  # Errors that occur when gracefully shutting down control plane components
+  # are insignificant.
+  - linters:
+    - errcheck
+    text: Error return value of `(adminServer|apiServer|server)\.Shutdown` is not checked
+
+  # Append should be able to assign to a different var/slice.
+  - linters:
+    - gocritic
+    text: "appendAssign: append result not assigned to the same slice"
+
+  # This does not always result in more readable code.
+  - linters:
+    - gocritic
+    text: "singleCaseSwitch: should rewrite switch statement to if statement"
+
+  # This does not always result in more readable code.
+  - linters:
+    - gocritic
+    text: "ifElseChain: rewrite if-else to switch statement"
+
+  # Test files do not need to be linted by gosec since all OS operations are
+  # not dynamic.
+  - linters:
+    - gosec
+    path: .*test.*
+    text: "G204: Subprocess launched with .*"
+
+  # In tests we are usually mocking components or have a good idea about the
+  # errors that we expect. For this reason, we ignore unchecked errors in
+  # all test files.
+  - path: .*test.*\.go
+    text: Error return value of `.*` is not checked
+
+  # In tests we'll ignore unchecked filename operations because the values
+  # are not dynamic.
+  - path: (.*test.*\.go|fake)
+    text: "G304: Potential file inclusion via variable"
+
+  # This ignores the errors returned from AddToScheme operations.
+  - path: pkg/k8s/fake.go
+    text: Error return value is not checked

@@ -9,8 +9,6 @@ gateway:
   probe:
     # -- The port used for liveliness probing
     port: 4191
-# -- Service Mirror component namespace
-namespace: linkerd-multicluster
 # -- Log level for the Multicluster components
 logLevel: info
 # -- Number of times update from the remote cluster is allowed to be requeued
@@ -18,3 +16,9 @@ logLevel: info
 serviceMirrorRetryLimit: 3
 # -- User id under which the Service Mirror shall be ran
 serviceMirrorUID: 2103
+
+# -- Create RoleBindings to associate ServiceAccount of target cluster Service
+# Mirror to the control plane PSP resource. This requires that `enabledPSP` is
+# set to true on the extension and control plane install. Note PSP has been
+# deprecated since k8s v1.21
+enablePSP: false 

@@ -134,6 +134,17 @@ func TestUninjectAndInject(t *testing.T) {
 			}(),
 		},
 		{
+			inputFileName:  "inject_emojivoto_deployment.input.yml",
+			goldenFileName: "inject_emojivoto_deployment_access_log.golden.yml",
+			reportFileName: "inject_emojivoto_deployment.report",
+			injectProxy:    true,
+			testInjectConfig: func() *linkerd2.Values {
+				values := defaultConfig()
+				values.Proxy.AccessLog = "apache"
+				return values
+			}(),
+		},
+		{
 			inputFileName:    "inject_emojivoto_list.input.yml",
 			goldenFileName:   "inject_emojivoto_list.golden.yml",
 			reportFileName:   "inject_emojivoto_list.report",
@@ -309,6 +320,28 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_pod_ingress.report",
 			injectProxy:      true,
 			testInjectConfig: ingressConfig,
+		},
+		{
+			inputFileName:  "inject_emojivoto_deployment.input.yml",
+			goldenFileName: "inject_emojivoto_deployment_default_inbound_policy.golden.yml",
+			reportFileName: "inject_emojivoto_deployment_default_inbound_policy.golden.report",
+			injectProxy:    false,
+			testInjectConfig: func() *linkerd2.Values {
+				values := defaultConfig()
+				values.Proxy.DefaultInboundPolicy = k8s.AllAuthenticated
+				return values
+			}(),
+		},
+		{
+			inputFileName:  "inject_emojivoto_pod.input.yml",
+			goldenFileName: "inject_emojivoto_pod_default_inbound_policy.golden.yml",
+			reportFileName: "inject_emojivoto_pod_default_inbound_policy.golden.report",
+			injectProxy:    false,
+			testInjectConfig: func() *linkerd2.Values {
+				values := defaultConfig()
+				values.Proxy.DefaultInboundPolicy = k8s.AllAuthenticated
+				return values
+			}(),
 		},
 	}
 
@@ -544,7 +577,7 @@ func TestInjectFilePath(t *testing.T) {
 	})
 }
 
-func TestValidURL(t *testing.T) {
+func TestToURL(t *testing.T) {
 	// if the string follows a URL pattern, true has to be returned
 	// if not false is returned
 
@@ -560,9 +593,9 @@ func TestValidURL(t *testing.T) {
 	}
 
 	for url, expectedValue := range tests {
-		value := isValidURL(url)
-		if value != expectedValue {
-			t.Errorf("Result mismatch for %s. expected %v, but got %v", url, expectedValue, value)
+		_, ok := toURL(url)
+		if ok != expectedValue {
+			t.Errorf("Result mismatch for %s. expected %v, but got %v", url, expectedValue, ok)
 		}
 	}
 
@@ -591,10 +624,10 @@ func TestWalk(t *testing.T) {
 		file1 = filepath.Join(tmpFolderRoot, "root.txt")
 		file2 = filepath.Join(tmpFolderData, "data.txt")
 	)
-	if err := ioutil.WriteFile(file1, data, 0644); err != nil {
+	if err := ioutil.WriteFile(file1, data, 0600); err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
-	if err := ioutil.WriteFile(file2, data, 0644); err != nil {
+	if err := ioutil.WriteFile(file2, data, 0600); err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
 
@@ -631,7 +664,6 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 	values.Proxy.UID = 999
 	values.Proxy.LogLevel = "debug"
 	values.Proxy.LogFormat = "cool"
-	values.Proxy.DisableIdentity = true
 	values.Proxy.EnableExternalProfiles = true
 	values.Proxy.Resources.CPU.Request = "10m"
 	values.Proxy.Resources.CPU.Limit = "100m"
@@ -639,6 +671,7 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 	values.Proxy.Resources.Memory.Limit = "50Mi"
 	values.Proxy.WaitBeforeExitSeconds = 10
 	values.Proxy.Await = false
+	values.Proxy.AccessLog = "apache"
 
 	expectedOverrides := map[string]string{
 		k8s.ProxyIgnoreInboundPortsAnnotation:  "8500-8505",
@@ -650,7 +683,6 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 		k8s.ProxyUIDAnnotation:                 "999",
 		k8s.ProxyLogLevelAnnotation:            "debug",
 		k8s.ProxyLogFormatAnnotation:           "cool",
-		k8s.ProxyDisableIdentityAnnotation:     "true",
 
 		k8s.ProxyEnableExternalProfilesAnnotation: "true",
 		k8s.ProxyCPURequestAnnotation:             "10m",
@@ -659,6 +691,7 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 		k8s.ProxyMemoryLimitAnnotation:            "50Mi",
 		k8s.ProxyWaitBeforeExitSecondsAnnotation:  "10",
 		k8s.ProxyAwait:                            "disabled",
+		k8s.ProxyAccessLogAnnotation:              "apache",
 	}
 
 	overrides := getOverrideAnnotations(values, baseValues)

@@ -28,12 +28,6 @@ func TestTreeGetString(t *testing.T) {
 	}{
 		{
 			values,
-			[]string{"namespace"},
-			"linkerd",
-			nil,
-		},
-		{
-			values,
 			[]string{"global", "namespace"},
 			"",
 			fmt.Errorf("could not find node global"),
@@ -55,12 +49,6 @@ func TestTreeGetString(t *testing.T) {
 			[]string{"proxy", "logFormat"},
 			"plain",
 			nil,
-		},
-		{
-			values,
-			[]string{"namespace", "proxy"},
-			"",
-			fmt.Errorf("expected Tree at node namespace but found a different type"),
 		},
 	}
 

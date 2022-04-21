@@ -7,11 +7,11 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: prometheus-config
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/extension: viz
     component: prometheus
-    namespace: {{.Values.namespace}}
+    namespace: {{.Release.Namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 data:
@@ -29,19 +29,6 @@ data:
     - job_name: 'prometheus'
       static_configs:
       - targets: ['localhost:9090']
-
-    {{ if .Values.grafana.enabled -}}
-    - job_name: 'grafana'
-      kubernetes_sd_configs:
-      - role: pod
-        namespaces:
-          names: ['{{.Values.namespace}}']
-      relabel_configs:
-      - source_labels:
-        - __meta_kubernetes_pod_container_name
-        action: keep
-        regex: ^grafana$
-    {{- end }}
 
     #  Required for: https://grafana.com/grafana/dashboards/315
     - job_name: 'kubernetes-nodes-cadvisor'
@@ -75,7 +62,7 @@ data:
         namespaces:
           names:
           - '{{.Values.linkerdNamespace}}'
-          - '{{.Values.namespace}}'
+          - '{{.Release.Namespace}}'
       relabel_configs:
       - source_labels:
         - __meta_kubernetes_pod_container_port_name
@@ -90,7 +77,7 @@ data:
       - role: pod
       relabel_configs:
       - source_labels:
-        - __meta_kubernetes_pod_label_linkerd_io_control_plane_component
+        - __meta_kubernetes_pod_label_component
         - __meta_kubernetes_pod_container_port_name
         action: keep
         regex: linkerd-service-mirror;admin-http$
@@ -175,13 +162,14 @@ kind: Service
 apiVersion: v1
 metadata:
   name: prometheus
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
   labels:
     linkerd.io/extension: viz
     component: prometheus
-    namespace: {{.Values.namespace}}
+    namespace: {{.Release.Namespace}}
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    linkerd.io/inject: enabled
 spec:
   type: ClusterIP
   selector:
@@ -197,15 +185,17 @@ kind: Deployment
 metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
     component: prometheus
-    namespace: {{.Values.namespace}}
+    namespace: {{.Release.Namespace}}
   name: prometheus
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
 spec:
   replicas: 1
   {{- if .Values.prometheus.persistence }}
@@ -216,7 +206,7 @@ spec:
     matchLabels:
       linkerd.io/extension: viz
       component: prometheus
-      namespace: {{.Values.namespace}}
+      namespace: {{.Release.Namespace}}
   template:
     metadata:
       annotations:
@@ -225,10 +215,11 @@ spec:
         {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        linkerd.io/inject: enabled
       labels:
         linkerd.io/extension: viz
         component: prometheus
-        namespace: {{.Values.namespace}}
+        namespace: {{.Release.Namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.prometheus.tolerations -}}
@@ -318,7 +309,7 @@ metadata:
     app.kubernetes.io/version: {{default .Values.linkerdVersion}}
     component: prometheus
   name: prometheus
-  namespace: {{.Values.namespace}}
+  {{ include "partials.namespace" . }}
 spec:
   accessModes:
     - {{ .Values.prometheus.persistence.accessMode | quote }}

@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/inject"
 	corev1 "k8s.io/api/core/v1"
@@ -61,10 +62,10 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 	for {
 		// Read a single YAML object
 		bytes, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
 			return []error{err}
 		}
 
@@ -142,17 +143,19 @@ func processList(bytes []byte, rt resourceTransformer) ([]byte, []inject.Report,
 // Read all the resource files found in path into a slice of readers.
 // path can be either a file, directory or stdin.
 func read(path string) ([]io.Reader, error) {
-	var (
-		in  []io.Reader
-		err error
-	)
 	if path == "-" {
-		in = append(in, os.Stdin)
-	} else if isValidURL(path) {
-		resp, err := http.Get(path)
+		return []io.Reader{os.Stdin}, nil
+	}
+
+	if url, ok := toURL(path); ok {
+		if strings.ToLower(url.Scheme) != "https" {
+			return nil, fmt.Errorf("only HTTPS URLs are allowed")
+		}
+		resp, err := http.Get(url.String())
 		if err != nil {
 			return nil, err
 		}
+		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
 			return nil, fmt.Errorf("unable to read URL %q, server reported %s, status code=%d", path, resp.Status, resp.StatusCode)
@@ -164,38 +167,34 @@ func read(path string) ([]io.Reader, error) {
 		if err != nil {
 			return nil, err
 		}
-		resp.Body.Close()
-		in = append(in, buf)
-	} else {
-		in, err = walk(path)
-		if err != nil {
-			return nil, err
-		}
+
+		return []io.Reader{buf}, nil
 	}
 
-	return in, nil
+	return walk(path)
 }
 
 // checks if the given string is a valid URL
-func isValidURL(path string) bool {
+func toURL(path string) (*url.URL, bool) {
 	u, err := url.ParseRequestURI(path)
-	if err != nil {
-		return false
+	if err == nil && u.Host != "" && u.Scheme != "" {
+		return u, true
 	}
 
-	return u.Host != "" && u.Scheme != ""
+	return nil, false
 }
 
 // walk walks the file tree rooted at path. path may be a file or a directory.
 // Creates a reader for each file found.
 func walk(path string) ([]io.Reader, error) {
-	stat, err := os.Stat(path)
+	p := filepath.Clean(path)
+	stat, err := os.Stat(p)
 	if err != nil {
 		return nil, err
 	}
 
 	if !stat.IsDir() {
-		file, err := os.Open(path)
+		file, err := os.Open(p)
 		if err != nil {
 			return nil, err
 		}
@@ -204,7 +203,7 @@ func walk(path string) ([]io.Reader, error) {
 	}
 
 	var in []io.Reader
-	werr := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+	werr := filepath.Walk(p, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -213,7 +212,7 @@ func walk(path string) ([]io.Reader, error) {
 			return nil
 		}
 
-		file, err := os.Open(path)
+		file, err := os.Open(filepath.Clean(path))
 		if err != nil {
 			return err
 		}

@@ -41,7 +41,6 @@ var (
 	ProxyAnnotations = []string{
 		k8s.ProxyAdminPortAnnotation,
 		k8s.ProxyControlPortAnnotation,
-		k8s.ProxyDisableIdentityAnnotation,
 		k8s.ProxyEnableDebugAnnotation,
 		k8s.ProxyEnableExternalProfilesAnnotation,
 		k8s.ProxyImagePullPolicyAnnotation,
@@ -69,6 +68,8 @@ var (
 		k8s.ProxyInboundConnectTimeout,
 		k8s.ProxyAwait,
 		k8s.ProxyDefaultInboundPolicyAnnotation,
+		k8s.ProxySkipSubnetsAnnotation,
+		k8s.ProxyAccessLogAnnotation,
 	}
 	// ProxyAlphaConfigAnnotations is the list of all alpha configuration
 	// (config.alpha prefix) that can be applied to a pod or namespace.
@@ -105,6 +106,9 @@ type ResourceConfig struct {
 	// overridden by the annotations on the resource or the resource's
 	// namespace.
 	values *l5dcharts.Values
+
+	namespace string
+
 	// These annotations from the resources's namespace are used as a base.
 	// The resources's annotations will be applied on top of these, which
 	// allows the nsAnnotations to act as a default.
@@ -152,8 +156,9 @@ type annotationPatch struct {
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
-func NewResourceConfig(values *l5dcharts.Values, origin Origin) *ResourceConfig {
+func NewResourceConfig(values *l5dcharts.Values, origin Origin, ns string) *ResourceConfig {
 	config := &ResourceConfig{
+		namespace:     ns,
 		nsAnnotations: make(map[string]string),
 		values:        values,
 		origin:        origin,
@@ -162,11 +167,6 @@ func NewResourceConfig(values *l5dcharts.Values, origin Origin) *ResourceConfig 
 	config.workload.Meta = &metav1.ObjectMeta{}
 	config.pod.meta = &metav1.ObjectMeta{}
 
-	// Values can be nil for commands like Uninject
-	var ns string
-	if values != nil {
-		ns = values.Namespace
-	}
 	config.pod.labels = map[string]string{k8s.ControllerNSLabel: ns}
 	config.pod.annotations = map[string]string{}
 	return config
@@ -276,17 +276,13 @@ func (conf *ResourceConfig) GetPodPatch(injectProxy bool) ([]byte, error) {
 
 	values, err := conf.GetOverriddenValues()
 	if err != nil {
-		return nil, fmt.Errorf("could not generate Overridden Values: %s", err)
-	}
-
-	if values.Proxy.RequireIdentityOnInboundPorts != "" && values.Proxy.DisableIdentity {
-		return nil, fmt.Errorf("%s cannot be set when identity is disabled", k8s.ProxyRequireIdentityOnInboundPortsAnnotation)
+		return nil, fmt.Errorf("could not generate Overridden Values: %w", err)
 	}
 
 	if values.ClusterNetworks != "" {
 		for _, network := range strings.Split(strings.Trim(values.ClusterNetworks, ","), ",") {
 			if _, _, err := net.ParseCIDR(network); err != nil {
-				return nil, fmt.Errorf("cannot parse destination get networks: %s", err)
+				return nil, fmt.Errorf("cannot parse destination get networks: %w", err)
 			}
 		}
 	}
@@ -329,7 +325,7 @@ func (conf *ResourceConfig) GetPodPatch(injectProxy bool) ([]byte, error) {
 	chart := &charts.Chart{
 		Name:      "patch",
 		Dir:       "patch",
-		Namespace: conf.values.Namespace,
+		Namespace: conf.namespace,
 		RawValues: rawValues,
 		Files:     files,
 		Fs:        static.Templates,
@@ -803,12 +799,6 @@ func (conf *ResourceConfig) injectObjectMeta(values *podPatch) {
 
 	values.Annotations[k8s.ProxyVersionAnnotation] = values.Proxy.Image.Version
 
-	if values.Identity == nil || values.Proxy.DisableIdentity {
-		values.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeDisabled
-	} else {
-		values.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeDefault
-	}
-
 	if len(conf.pod.labels) > 0 {
 		values.AddRootLabels = len(conf.pod.meta.Labels) == 0
 		for _, k := range sortedKeys(conf.pod.labels) {
@@ -911,13 +901,6 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 
 	if override, ok := annotations[k8s.ProxyLogFormatAnnotation]; ok {
 		values.Proxy.LogFormat = override
-	}
-
-	if override, ok := annotations[k8s.ProxyDisableIdentityAnnotation]; ok {
-		value, err := strconv.ParseBool(override)
-		if err == nil {
-			values.Proxy.DisableIdentity = value
-		}
 	}
 
 	if override, ok := annotations[k8s.ProxyRequireIdentityOnInboundPortsAnnotation]; ok {
@@ -1081,6 +1064,14 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 			values.Proxy.DefaultInboundPolicy = override
 		}
 	}
+
+	if override, ok := annotations[k8s.ProxySkipSubnetsAnnotation]; ok {
+		values.ProxyInit.SkipSubnets = override
+	}
+
+	if override, ok := annotations[k8s.ProxyAccessLogAnnotation]; ok {
+		values.Proxy.AccessLog = override
+	}
 }
 
 // GetOverriddenConfiguration returns a map of the overridden proxy annotations
@@ -1110,7 +1101,7 @@ func sortedKeys(m map[string]string) []string {
 	return keys
 }
 
-//IsNamespace checks if a given config is a workload of Kind namespace
+// IsNamespace checks if a given config is a workload of Kind namespace
 func (conf *ResourceConfig) IsNamespace() bool {
 	return strings.ToLower(conf.workload.metaType.Kind) == k8s.Namespace
 }
@@ -1167,10 +1158,10 @@ func (conf *ResourceConfig) AnnotateService(annotations map[string]string) ([]by
 	return yaml.JSONToYAML(j)
 }
 
-//getFilteredJSON method performs JSON marshaling such that zero values of
-//empty structs are respected by `omitempty` tags. We make use of a drop-in
-//replacement of the standard json/encoding library, without which empty struct values
-//present in workload objects would make it into the marshaled JSON.
+// getFilteredJSON method performs JSON marshaling such that zero values of
+// empty structs are respected by `omitempty` tags. We make use of a drop-in
+// replacement of the standard json/encoding library, without which empty struct values
+// present in workload objects would make it into the marshaled JSON.
 func getFilteredJSON(conf runtime.Object) ([]byte, error) {
 	return jsonfilter.Marshal(&conf)
 }

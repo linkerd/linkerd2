@@ -22,16 +22,20 @@ func main() {
 		"collector service address for the proxies to send trace data")
 	collectorSvcAccount := cmd.String("collector-svc-account", "",
 		"service account associated with the collector instance")
+	clusterDomain := cmd.String("cluster-domain", "cluster.local", "kubernetes cluster domain")
+	linkerdNamespace := cmd.String("linkerd-namespace", "linkerd", "namespace in which Linkerd control-plane is installed")
+	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
 
 	flags.ConfigureAndParse(cmd, os.Args[1:])
 
 	webhook.Launch(
 		context.Background(),
 		[]k8s.APIResource{k8s.NS},
-		mutator.Mutate(*collectorSvcAddr, *collectorSvcAccount),
+		mutator.Mutate(*collectorSvcAddr, *collectorSvcAccount, *clusterDomain, *linkerdNamespace),
 		"linkerd-jaeger-injector",
 		*metricsAddr,
 		*addr,
 		*kubeconfig,
+		*enablePprof,
 	)
 }

@@ -27,6 +27,7 @@ func main() {
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	ignoredNamespaces := cmd.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
 	clusterDomain := cmd.String("cluster-domain", "cluster.local", "kubernetes cluster domain")
+	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 
@@ -76,14 +77,18 @@ func main() {
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)
-		server.ListenAndServe()
+		if err := server.ListenAndServe(); err != nil {
+			log.Errorf("failed to start metrics API HTTP server: %s", err)
+		}
 	}()
 
-	adminServer := admin.NewServer(*metricsAddr)
+	adminServer := admin.NewServer(*metricsAddr, *enablePprof)
 
 	go func() {
 		log.Infof("starting admin server on %s", *metricsAddr)
-		adminServer.ListenAndServe()
+		if err := adminServer.ListenAndServe(); err != nil {
+			log.Errorf("failed to start metrics API admin server: %s", err)
+		}
 	}()
 
 	<-stop

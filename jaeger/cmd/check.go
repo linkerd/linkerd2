@@ -11,7 +11,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -57,29 +56,6 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			}))
 
 	checkers = append(checkers,
-		*healthcheck.NewChecker("collector and jaeger service account exists").
-			WithHintAnchor("l5d-jaeger-sc-exists").
-			Fatal().
-			Warning().
-			WithCheck(func(ctx context.Context) error {
-				// Check for Collector Service Account
-				return healthcheck.CheckServiceAccounts(ctx, hc.KubeAPIClient(), []string{"collector", "jaeger"}, jaegerNamespace, "")
-			}))
-
-	checkers = append(checkers,
-		*healthcheck.NewChecker("collector config map exists").
-			WithHintAnchor("l5d-jaeger-oc-cm-exists").
-			Warning().
-			WithCheck(func(ctx context.Context) error {
-				// Check for Jaeger Service Account
-				_, err := hc.KubeAPIClient().CoreV1().ConfigMaps(jaegerNamespace).Get(ctx, "collector-config", metav1.GetOptions{})
-				if err != nil {
-					return err
-				}
-				return nil
-			}))
-
-	checkers = append(checkers,
 		*healthcheck.NewChecker("jaeger extension pods are injected").
 			WithHintAnchor("l5d-jaeger-pods-injection").
 			Warning().
@@ -93,9 +69,9 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			}))
 
 	checkers = append(checkers,
-		*healthcheck.NewChecker("jaeger extension pods are running").
+		*healthcheck.NewChecker("jaeger injector pods are running").
 			WithHintAnchor("l5d-jaeger-pods-running").
-			Fatal().
+			Warning().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
@@ -105,19 +81,18 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 				}
 
 				// Check for relevant pods to be present
-				err = healthcheck.CheckForPods(pods, []string{"collector", "jaeger", "jaeger-injector"})
+				err = healthcheck.CheckForPods(pods, []string{"jaeger-injector"})
 				if err != nil {
 					return err
 				}
 
-				return healthcheck.CheckPodsRunning(pods, "")
-
+				return healthcheck.CheckPodsRunning(pods, jaegerNamespace)
 			}))
 
 	checkers = append(checkers,
 		*healthcheck.NewChecker("jaeger extension proxies are healthy").
 			WithHintAnchor("l5d-jaeger-proxy-healthy").
-			Fatal().
+			Warning().
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
@@ -217,7 +192,7 @@ code.`,
 func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions) error {
 	err := options.validate()
 	if err != nil {
-		return fmt.Errorf("Validation error when executing check command: %v", err)
+		return fmt.Errorf("Validation error when executing check command: %w", err)
 	}
 
 	hc := healthcheck.NewHealthChecker([]healthcheck.CategoryID{}, &healthcheck.Options{
@@ -233,8 +208,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 
 	err = hc.InitializeKubeAPIClient()
 	if err != nil {
-		err = fmt.Errorf("Error initializing k8s API client: %s", err)
-		fmt.Fprintln(werr, err)
+		fmt.Fprintf(werr, "Error initializing k8s API client: %s\n", err)
 		os.Exit(1)
 	}
 
