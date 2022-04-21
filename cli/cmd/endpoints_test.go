@@ -4,13 +4,13 @@ import (
 	"testing"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	"github.com/linkerd/linkerd2/controller/api/destination"
+	"github.com/linkerd/linkerd2/controller/api/util"
 )
 
 type endpointsExp struct {
 	options     *endpointsOptions
 	authorities []string
-	endpoints   []destination.AuthorityEndpoints
+	endpoints   []util.AuthorityEndpoints
 	file        string
 }
 
@@ -21,11 +21,11 @@ func TestEndpoints(t *testing.T) {
 		testEndpointsCall(endpointsExp{
 			options:     options,
 			authorities: []string{"emoji-svc.emojivoto.svc.cluster.local:8080", "voting-svc.emojivoto.svc.cluster.local:8080"},
-			endpoints: []destination.AuthorityEndpoints{
+			endpoints: []util.AuthorityEndpoints{
 				{
 					Namespace: "emojivoto",
 					ServiceID: "emoji-svc",
-					Pods: []destination.PodDetails{
+					Pods: []util.PodDetails{
 						{
 							Name: "emoji-6bf9f47bd5-jjcrl",
 							IP:   16909060,
@@ -36,7 +36,7 @@ func TestEndpoints(t *testing.T) {
 				{
 					Namespace: "emojivoto",
 					ServiceID: "voting-svc",
-					Pods: []destination.PodDetails{
+					Pods: []util.PodDetails{
 						{
 							Name: "voting-7bf9f47bd5-jjdrl",
 							IP:   84281096,
@@ -53,11 +53,11 @@ func TestEndpoints(t *testing.T) {
 		testEndpointsCall(endpointsExp{
 			options:     options,
 			authorities: []string{"emoji-svc.emojivoto.svc.cluster.local:8080", "voting-svc.emojivoto2.svc.cluster.local:8080"},
-			endpoints: []destination.AuthorityEndpoints{
+			endpoints: []util.AuthorityEndpoints{
 				{
 					Namespace: "emojivoto",
 					ServiceID: "emoji-svc",
-					Pods: []destination.PodDetails{
+					Pods: []util.PodDetails{
 						{
 							Name: "emoji-6bf9f47bd5-jjcrl",
 							IP:   16909060,
@@ -68,7 +68,7 @@ func TestEndpoints(t *testing.T) {
 				{
 					Namespace: "emojivoto2",
 					ServiceID: "voting-svc",
-					Pods: []destination.PodDetails{
+					Pods: []util.PodDetails{
 						{
 							Name: "voting-7bf9f47bd5-jjdrl",
 							IP:   84281096,
@@ -86,11 +86,11 @@ func TestEndpoints(t *testing.T) {
 		testEndpointsCall(endpointsExp{
 			options:     options,
 			authorities: []string{"emoji-svc.emojivoto.svc.cluster.local:8080", "voting-svc.emojivoto.svc.cluster.local:8080"},
-			endpoints: []destination.AuthorityEndpoints{
+			endpoints: []util.AuthorityEndpoints{
 				{
 					Namespace: "emojivoto",
 					ServiceID: "emoji-svc",
-					Pods: []destination.PodDetails{
+					Pods: []util.PodDetails{
 						{
 							Name: "emoji-6bf9f47bd5-jjcrl",
 							IP:   16909060,
@@ -101,7 +101,7 @@ func TestEndpoints(t *testing.T) {
 				{
 					Namespace: "emojivoto",
 					ServiceID: "voting-svc",
-					Pods: []destination.PodDetails{
+					Pods: []util.PodDetails{
 						{
 							Name: "voting-7bf9f47bd5-jjdrl",
 							IP:   84281096,
@@ -118,12 +118,12 @@ func TestEndpoints(t *testing.T) {
 func testEndpointsCall(exp endpointsExp, t *testing.T) {
 	updates := make([]pb.Update, 0)
 	for _, endpoint := range exp.endpoints {
-		addrSet := destination.BuildAddrSet(endpoint)
+		addrSet := util.BuildAddrSet(endpoint)
 		updates = append(updates, pb.Update{Update: &pb.Update_Add{Add: addrSet}})
 	}
 
-	mockClient := &destination.MockAPIClient{
-		DestinationGetClientToReturn: &destination.MockDestinationGetClient{
+	mockClient := &util.MockAPIClient{
+		DestinationGetClientToReturn: &util.MockDestinationGetClient{
 			UpdatesToReturn: updates,
 		},
 	}

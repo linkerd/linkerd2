@@ -15,6 +15,7 @@ func init() {
 	testing.Init()
 }
 
+// FuzzAdd fuzzes the Add method of the destination server.
 func FuzzAdd(data []byte) int {
 	f := fuzz.NewConsumer(data)
 	set := watcher.AddressSet{}
@@ -29,6 +30,7 @@ func FuzzAdd(data []byte) int {
 	return 1
 }
 
+// FuzzGet fuzzes the Get method of the destination server.
 func FuzzGet(data []byte) int {
 	f := fuzz.NewConsumer(data)
 	dest1 := &pb.GetDestination{}
@@ -59,6 +61,7 @@ func FuzzGet(data []byte) int {
 	return 1
 }
 
+// FuzzGetProfile fuzzes the GetProfile method of the destination server.
 func FuzzGetProfile(data []byte) int {
 	f := fuzz.NewConsumer(data)
 	dest := &pb.GetDestination{}
@@ -77,6 +80,7 @@ func FuzzGetProfile(data []byte) int {
 	return 1
 }
 
+// FuzzProfileTranslatorUpdate fuzzes the Update method of the profile translator.
 func FuzzProfileTranslatorUpdate(data []byte) int {
 	f := fuzz.NewConsumer(data)
 	profile := &sp.ServiceProfile{}
