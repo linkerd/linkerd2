@@ -11,14 +11,22 @@ gateway:
     port: 4191
 # -- Log level for the Multicluster components
 logLevel: info
+# -- Node selectors for the Service mirror pod
+nodeSelector: {}
+# -- Resources for the Service mirror container
+resources: {}
 # -- Number of times update from the remote cluster is allowed to be requeued
 # (retried)
 serviceMirrorRetryLimit: 3
 # -- User id under which the Service Mirror shall be ran
 serviceMirrorUID: 2103
+# -- Name of the target cluster that's going to be linked
+targetClusterName: ""
+# -- Tolerations for the Service mirror pod
+tolerations: {}
 
 # -- Create RoleBindings to associate ServiceAccount of target cluster Service
 # Mirror to the control plane PSP resource. This requires that `enabledPSP` is
 # set to true on the extension and control plane install. Note PSP has been
 # deprecated since k8s v1.21
-enablePSP: false 
+enablePSP: false
