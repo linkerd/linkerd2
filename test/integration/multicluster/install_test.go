@@ -112,7 +112,6 @@ func TestInstall(t *testing.T) {
 	// Install control-plane
 	cmd = []string{
 		"install",
-		"--crds",
 		"--controller-log-level", "debug",
 		"--set", fmt.Sprintf("proxy.image.version=%s", TestHelper.GetVersion()),
 		"--set", "heartbeatSchedule=1 2 3 4 5",
