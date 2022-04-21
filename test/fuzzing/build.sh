@@ -1,3 +1,7 @@
+#!/usr/bin/env sh
+
+set -eu
+
 export FUZZER_DIR=$SRC/linkerd2/test/fuzzing
 
 compile_go_fuzzer github.com/linkerd/linkerd2/pkg/profiles FuzzProfilesValidate FuzzProfilesValidate
