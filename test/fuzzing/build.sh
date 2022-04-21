@@ -1,19 +1,5 @@
 export FUZZER_DIR=$SRC/linkerd2/test/fuzzing
 
-mkdir $SRC/linkerd2/test/fuzzing
-
-mv $FUZZER_DIR/inject_fuzzer.go $SRC/linkerd2/pkg/inject/
-mv $FUZZER_DIR/destination_fuzzer.go $SRC/linkerd2/controller/api/destination/
-mv $SRC/linkerd2/controller/api/destination/endpoint_translator_test.go \
-   $SRC/linkerd2/controller/api/destination/endpoint_translator_fuzz.go
-mv $SRC/linkerd2/controller/api/destination/server_test.go \
-   $SRC/linkerd2/controller/api/destination/server_fuzz.go
-mv $FUZZER_DIR/healthcheck_fuzzer.go $SRC/linkerd2/pkg/healthcheck/
-mv $FUZZER_DIR/identity_fuzzer.go $SRC/linkerd2/pkg/identity/
-mv $SRC/linkerd2/pkg/identity/service_test.go \
-   $SRC/linkerd2/pkg/identity/service_fuzz.go
-mv $FUZZER_DIR/profiles_fuzzer.go $SRC/linkerd2/pkg/profiles/
-
 compile_go_fuzzer github.com/linkerd/linkerd2/pkg/profiles FuzzProfilesValidate FuzzProfilesValidate
 compile_go_fuzzer github.com/linkerd/linkerd2/pkg/profiles FuzzRenderProto FuzzRenderProto
 compile_go_fuzzer github.com/linkerd/linkerd2/controller/api/destination FuzzAdd FuzzAdd

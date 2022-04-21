@@ -2,12 +2,14 @@ package identity
 
 import (
 	"context"
+
 	pb "github.com/linkerd/linkerd2-proxy-api/go/identity"
 	"github.com/linkerd/linkerd2/pkg/tls"
 
 	fuzz "github.com/AdaLogics/go-fuzz-headers"
 )
 
+// FuzzServiceCertify fuzzes the Service.Certify method.
 func FuzzServiceCertify(data []byte) int {
 	f := fuzz.NewConsumer(data)
 	req := &pb.CertifyRequest{}
