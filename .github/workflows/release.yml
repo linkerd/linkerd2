@@ -2,12 +2,15 @@ name: Release
 on:
   push:
     tags:
-    - "*"
+    - stable-2.11.*
+
 permissions:
   contents: read
+
 env:
   GH_ANNOTATION: true
   DOCKER_REGISTRY: ghcr.io/linkerd
+
 jobs:
 
   docker_build:
@@ -125,17 +128,15 @@ jobs:
       matrix:
         integration_test:
         - cluster-domain
+        - cni-calico-deep
         - deep
-        - external-issuer
-        - external-prometheus-deep
-        - external-resources
-        - helm-deep
+        - viz
+        - default-policy-deny
+        - external
         - helm-upgrade
         - uninstall
         - upgrade-edge
         - upgrade-stable
-        - cni-calico-deep
-        - default-policy-deny
     needs: [docker_build, policy_controller_manifest]
     name: Integration tests (${{ matrix.integration_test }})
     timeout-minutes: 60
