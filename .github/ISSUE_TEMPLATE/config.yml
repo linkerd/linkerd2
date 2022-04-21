@@ -2,4 +2,4 @@ blank_issues_enabled: false
 contact_links:
 - name: 🙋🏾 Question
   url: https://github.com/linkerd/linkerd2/discussions/new
-  about: Use this link to submit your ❓ to GitHub Discussions.
+  about: If you need help debugging something or have a general question about Linkerd
