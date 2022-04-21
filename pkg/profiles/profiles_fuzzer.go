@@ -1,15 +1,18 @@
 package profiles
 
 import (
-	fuzz "github.com/AdaLogics/go-fuzz-headers"
 	"os"
+
+	fuzz "github.com/AdaLogics/go-fuzz-headers"
 )
 
+// FuzzProfilesValidate fuzzes the ProfilesValidate function.
 func FuzzProfilesValidate(data []byte) int {
 	_ = Validate(data)
 	return 1
 }
 
+// FuzzRenderProto fuzzes the RenderProto function.
 func FuzzRenderProto(data []byte) int {
 	f := fuzz.NewConsumer(data)
 	protodata, err := f.GetBytes()
@@ -39,7 +42,7 @@ func FuzzRenderProto(data []byte) int {
 	if err != nil {
 		return 0
 	}
-	w, err := os.OpenFile("/dev/null", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	w, err := os.OpenFile("/dev/null", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return 0
 	}

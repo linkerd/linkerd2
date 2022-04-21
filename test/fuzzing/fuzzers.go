@@ -7,11 +7,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// FuzzParsePorts fuzzes the ParsePorts function.
 func FuzzParsePorts(data []byte) int {
 	_, _ = util.ParsePorts(string(data))
 	return 1
 }
 
+// FuzzParseContainerOpaquePorts fuzzes the ParseContainerOpaquePorts function.
 func FuzzParseContainerOpaquePorts(data []byte) int {
 	f := fuzz.NewConsumer(data)
 
@@ -37,6 +39,7 @@ func FuzzParseContainerOpaquePorts(data []byte) int {
 	return 1
 }
 
+// FuzzHealthCheck fuzzes the HealthCheck method for the healthchecker.
 func FuzzHealthCheck(data []byte) int {
 	f := fuzz.NewConsumer(data)
 	options := &healthcheck.Options{}

@@ -6,6 +6,7 @@ import (
 	fuzz "github.com/AdaLogics/go-fuzz-headers"
 )
 
+// FuzzInject fuzzes Pod injection.
 func FuzzInject(data []byte) int {
 	f := fuzz.NewConsumer(data)
 	yamlBytes, err := f.GetBytes()
