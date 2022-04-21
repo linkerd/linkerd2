@@ -64,13 +64,6 @@ const (
 	// checks must be added first.
 	LinkerdPreInstallChecks CategoryID = "pre-kubernetes-setup"
 
-	// LinkerdPreInstallGlobalResourcesChecks adds a series of checks to determine
-	// the existence of the global resources like cluster roles, cluster role
-	// bindings, mutating webhook configuration validating webhook configuration
-	// and pod security policies during the pre-install phase. This check is used
-	// to determine if a control plane is already installed.
-	LinkerdPreInstallGlobalResourcesChecks CategoryID = "pre-linkerd-global-resources"
-
 	// LinkerdConfigChecks enabled by `linkerd check config`
 
 	// LinkerdConfigChecks adds a series of checks to validate that the Linkerd
@@ -627,47 +620,6 @@ func (hc *HealthChecker) allCategories() []*Category {
 					warning:     true,
 					check: func(ctx context.Context) error {
 						return hc.checkClockSkew(ctx)
-					},
-				},
-			},
-			false,
-		),
-		NewCategory(
-			LinkerdPreInstallGlobalResourcesChecks,
-			[]Checker{
-				{
-					description: "no ClusterRoles exist",
-					hintAnchor:  "pre-l5d-existence",
-					check: func(ctx context.Context) error {
-						return hc.checkClusterRoles(ctx, false, hc.expectedRBACNames(), controlPlaneComponentsSelector())
-					},
-				},
-				{
-					description: "no ClusterRoleBindings exist",
-					hintAnchor:  "pre-l5d-existence",
-					check: func(ctx context.Context) error {
-						return hc.checkClusterRoleBindings(ctx, false, hc.expectedRBACNames(), controlPlaneComponentsSelector())
-					},
-				},
-				{
-					description: "no CustomResourceDefinitions exist",
-					hintAnchor:  "pre-l5d-existence",
-					check: func(ctx context.Context) error {
-						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, false)
-					},
-				},
-				{
-					description: "no MutatingWebhookConfigurations exist",
-					hintAnchor:  "pre-l5d-existence",
-					check: func(ctx context.Context) error {
-						return hc.checkMutatingWebhookConfigurations(ctx, false)
-					},
-				},
-				{
-					description: "no ValidatingWebhookConfigurations exist",
-					hintAnchor:  "pre-l5d-existence",
-					check: func(ctx context.Context) error {
-						return hc.checkValidatingWebhookConfigurations(ctx, false)
 					},
 				},
 			},

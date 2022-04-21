@@ -3,12 +3,10 @@ package cmd
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path"
-	"strings"
 	"text/template"
 	"time"
 
@@ -103,7 +101,7 @@ control plane.`,
   linkerd install | kubectl apply -f -
 
   # Install Linkerd into a non-default namespace.
-  linkerd install -l linkerdtest | kubectl apply -f -
+  linkerd install -L linkerdtest | kubectl apply -f -
 
 The installation can be configured by using the --set, --values, --set-string and --set-file flags.
 A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md`,
@@ -117,9 +115,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 			if !ignoreCluster {
 				// Ensure k8s is reachable
 				if err := errAfterRunningChecks(values.CNIEnabled); err != nil {
-					if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
-						fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
-					}
+					fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
 					os.Exit(1)
 				}
 
@@ -372,28 +368,12 @@ func errAfterRunningChecks(cniEnabled bool) error {
 		CNIEnabled:            cniEnabled,
 	})
 
-	var k8sAPIError error
-	errMsgs := []string{}
+	var err error
 	hc.RunChecks(func(result *healthcheck.CheckResult) {
 		if result.Err != nil {
-			var ce healthcheck.CategoryError
-			if errors.As(result.Err, &ce) && ce.Category == healthcheck.KubernetesAPIChecks {
-				k8sAPIError = ce
-			} else {
-				// unknown error, just print it
-				errMsgs = append(errMsgs, result.Err.Error())
-			}
+			err = result.Err
 		}
 	})
 
-	// errors from the KubernetesAPIChecks category take precedence
-	if k8sAPIError != nil {
-		return k8sAPIError
-	}
-
-	if len(errMsgs) > 0 {
-		return errors.New(strings.Join(errMsgs, "\n"))
-	}
-
-	return nil
+	return err
 }

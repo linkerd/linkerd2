@@ -29,9 +29,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
-// makeInstallUpgradeFlags builds the set of flags which are used during the
-// "control-plane" stage of install and upgrade.  These flags control the
-// majority of how the control plane is configured.
+// makeInstallUpgradeFlags builds the set of flags which are by install and
+// upgrade.  These flags control the majority of how the control plane is
+// configured.
 func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet, error) {
 	installUpgradeFlags := pflag.NewFlagSet("install", pflag.ExitOnError)
 
@@ -210,9 +210,9 @@ func loadKeyPEM(path string) (string, error) {
 	return cred.EncodePrivateKeyPEM(), nil
 }
 
-// makeInstallFlags builds the set of flags which are used during the
-// "control-plane" stage of install.  These flags should not be changed during
-// an upgrade and are not available to the upgrade command.
+// makeInstallFlags builds the set of flags which are used by install.  These
+// flags should not be changed during an upgrade and are not available to the
+// upgrade command.
 func makeInstallFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 
 	installOnlyFlags := pflag.NewFlagSet("install-only", pflag.ExitOnError)
@@ -252,7 +252,7 @@ func makeInstallFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) 
 
 // makeProxyFlags builds the set of flags which affect how the proxy is
 // configured.  These flags are available to the inject command and to the
-// install and upgrade commands in the "control-plane" stage.
+// install and upgrade commands.
 func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 
 	proxyFlags := pflag.NewFlagSet("proxy", pflag.ExitOnError)

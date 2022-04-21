@@ -79,17 +79,17 @@ The upgrade can be configured by using the --set, --values, --set-string and --s
 A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md
 `,
 
-		Example: `  # Default upgrade - also removes linkerd resources that no longer exist in the current version
+		Example: `  # Upgrade CRDs first
+  linkerd upgrade --crds | kubectl apply --prune --prune-whitelist=apiextensions.k8s.io/v1/customresourcedefinitions
+
+  # Then upgrade the controle-plane - also removes linkerd resources that no longer exist in the current version
   linkerd upgrade | kubectl apply --prune -l linkerd.io/control-plane-ns=linkerd -f -
 
   # Then run this again to make sure that certain cluster-scoped resources are correctly pruned
   linkerd upgrade | kubectl apply --prune -l linkerd.io/control-plane-ns=linkerd \
   --prune-whitelist=rbac.authorization.k8s.io/v1/clusterrole \
   --prune-whitelist=rbac.authorization.k8s.io/v1/clusterrolebinding \
-  --prune-whitelist=apiregistration.k8s.io/v1/apiservice -f -
-
-  # Similar to install, upgrade may also be broken up into two stages, by user
-  # privilege.`,
+  --prune-whitelist=apiregistration.k8s.io/v1/apiservice -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			k, err := k8sClient(manifests)
 			if err != nil {
