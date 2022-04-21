@@ -3,7 +3,9 @@
 ## stable-2.11.2
 
 This release pulls in many small fixes and improvements from the main
-development branch.
+development branch. It features changes to the `multicluster` extension to
+support the [new `linkerd-failover` extension][failover] so that clients can
+failover across services hosted on remote clusters.
 
 * CLI
   * Updated `check` to avoid checking the proxy version of uninjected pods
@@ -48,22 +50,18 @@ development branch.
     ARM
 
 * Multicluster
-  * Updated multicluster service mirrors so that local services reflect the
+  * Updated service mirrors so that local services reflect the
     readiness of the remote service. When the remote service has no ready
     endpoints or when its gateway is unavailable, the mirrored local service
-    will also have no ready endpoints. This facilitates automatic failover with
-    the [new `linkerd-failover` extension][failover]
-  * Fixed a bug in the multcluster service mirror that caused mirrored headless
-    services to incorrectly lose endpoints
+    will also have no ready endpoints
   * Fixed a configuration issue that prevented multicluster gateways from
     running on ARM nodes
   * Updated multicluster service mirrors to only create mirrored services when
     the service's namespace already exists in the local cluster
-  * Fixed a bug in multicluster gateways that prevented WebSocket requests from
-    being handled by
-  * Updated the linkerd-multicluster-link Helm chart so that a `RoleBinding` is
-    created for each target cluster. This role binding is now only created when
-    the `enablePSP` helm value is set to true
+  * Fixed a bug that prevented WebSocket requests from being routed by gateways
+  * Updated the `linkerd-multicluster-link` Helm chart so that a `RoleBinding`
+    is created for each target cluster. This role binding is now only created
+    when the `enablePSP` helm value is set to true
   * Added a `linkerd multicluster install --ha` flag to run gateways with
     multiple replicas, pod disruption budgets, anti-affinity settings, etc
 
