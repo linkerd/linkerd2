@@ -10,7 +10,7 @@ require (
 	github.com/emicklei/proto v1.10.0
 	github.com/evanphx/json-patch v5.6.0+incompatible
 	github.com/fatih/color v1.13.0
-	github.com/fsnotify/fsnotify v1.5.2
+	github.com/fsnotify/fsnotify v1.5.3
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.20.5
 	github.com/golang/protobuf v1.5.2
