@@ -208,54 +208,67 @@ echo "CNI config: $(cat ${TMP_CONF})"
 sed -i s/__SERVICEACCOUNT_TOKEN__/"${SERVICEACCOUNT_TOKEN:-}"/g ${TMP_CONF}
 }
 
-
-install_cni_conf() {
-  create_cni_config
-  # Things might have changed since the last time we set the variable (e.g new
-  # CNI plugin installed) so find the relevant conf path again.
-  #CNI_OLD_CONF_PATH="${CNI_OLD_CONF_PATH:-${CNI_CONF_PATH}}"
-  CNI_OLD_CONF_PATH="${CNI_CONF_PATH}"
-  CNI_CONF_PATH=$(find "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | grep -v "linkerd" | sort | head -n 1)
-  # If no files have been found, create our own.
-  CNI_CONF_PATH=${CNI_CONF_PATH:-"${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/01-linkerd-cni.conf"}
-  CNI_CONF_FILE="${CNI_CONF_PATH}"
-  if [ -e "${CNI_CONF_FILE}" ]; then
-    # Add the linkerd-cni plugin to the existing list
-    CNI_TMP_CONF_DATA=$(cat "${TMP_CONF}")
-    CNI_CONF_DATA=$(jq --argjson CNI_TMP_CONF_DATA "$CNI_TMP_CONF_DATA" -f /linkerd/filter.jq "${CNI_CONF_FILE}")
-    echo "${CNI_CONF_DATA}" > ${TMP_CONF}
-  fi
-
-  # If the old config filename ends with .conf, rename it to .conflist, because it has changed to be a list
-  filename=${CNI_CONF_PATH##*/}
-  extension="${filename##*.}"
-  if [ "${filename}" != '01-linkerd-cni.conf' ] && [ "${extension}" = 'conf' ]; then
-    echo "Renaming ${CNI_CONF_PATH} extension to .conflist"
-    CNI_CONF_PATH="${CNI_CONF_PATH}list"
-  fi
-
-  # Delete old CNI config files for upgrades.
-  if [ "${CNI_CONF_PATH}" != "${CNI_OLD_CONF_PATH}" ]; then
-    echo "Removing CNI_OLD_CONF_PATH: ${CNI_OLD_CONF_PATH}"
-    rm -f "${CNI_OLD_CONF_PATH}"
-  fi
-
-  # Move the temporary CNI config into place.
-  mv "${TMP_CONF}" "${CNI_CONF_PATH}" || exit_with_error 'Failed to mv files.'
-
-  echo "Created CNI config ${CNI_CONF_PATH}"
-
-}
-
 install_cni_bin
+create_cni_config
 
-install_cni_conf
+# Things might have changed since the last time we set the variable (e.g new
+# CNI plugin installed) so find the relevant conf path again.
+#CNI_OLD_CONF_PATH="${CNI_OLD_CONF_PATH:-${CNI_CONF_PATH}}"
+CNI_OLD_CONF_PATH="${CNI_OLD_CONF_PATH:-${CNI_CONF_PATH}}"
+CNI_CONF_FILE="${CNI_CONF_PATH}"
+if [ -e "${CNI_CONF_FILE}" ]; then
+ # Add the linkerd-cni plugin to the existing list
+ CNI_TMP_CONF_DATA=$(cat "${TMP_CONF}")
+ CNI_CONF_DATA=$(jq --argjson CNI_TMP_CONF_DATA "$CNI_TMP_CONF_DATA" -f /linkerd/filter.jq "${CNI_CONF_FILE}")
+ echo "${CNI_CONF_DATA}" > ${TMP_CONF}
+fi
+
+# If the old config filename ends with .conf, rename it to .conflist, because it has changed to be a list
+filename=${CNI_CONF_PATH##*/}
+extension="${filename##*.}"
+if [ "${filename}" != '01-linkerd-cni.conf' ] && [ "${extension}" = 'conf' ]; then
+ echo "Renaming ${CNI_CONF_PATH} extension to .conflist"
+ CNI_CONF_PATH="${CNI_CONF_PATH}list"
+fi
+
+# Delete old CNI config files for upgrades.
+if [ "${CNI_CONF_PATH}" != "${CNI_OLD_CONF_PATH}" ]; then
+ echo "Removing CNI_OLD_CONF_PATH: ${CNI_OLD_CONF_PATH}"
+ rm -f "${CNI_OLD_CONF_PATH}"
+fi
+
+# Move the temporary CNI config into place.
+mv "${TMP_CONF}" "${CNI_CONF_PATH}" || exit_with_error 'Failed to mv files.'
+
+echo "Created CNI config ${CNI_CONF_PATH}"
+
+# Can we keep a SHA to know whether file has been changed?
+sync() {
+  # if we get a filepath that's "new", go through the re-install process
+  # if we have a delete, check the directory for conflists -- empty? create our
+  # own, not empty? what should we do? nothing if our old "active" config still
+  # exists.
+  local filename=$1
+  local ev=$2
+  local filepath="${HOST_CNI_NET}/$filename"
+  
+  if [ "$ev" = "DELETE" ]; then
+    echo "Detected change in ${HOST_CNI_NET}: $ev $filename"
+    # find all config files; if we have 0, then re-install using our own plugin
+    # file
+    local active_cfg=$(find "${HOST_CNI_NET}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | sort | head -n 1)
+    if [ -z "$active_cfg" ]; then
+      echo "No active CNI configuration file found after $ev event"
+      echo "Re-installing in \"interface\" mode"
+    fi
+  fi
+}
 
 # Start looping and watching fs events
 HOST_CNI_NET="${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}"
 inotifywait -m ${HOST_CNI_NET} -e moved_to -e create -e delete |
  while read -r directory action filename; do
-   if [[ "$filename" =~ .*.(conflist|conf) ]]; then 
+   if [[ "$filename" =~ .*.(conflist|conf)$ ]]; then 
     filepath="$directory$filename"
     if [ "$action" = "DELETE" ] && [ $filepath = "${CNI_CONF_PATH}" ]; then
       echo "Detected change in $directory: $action $filename"
