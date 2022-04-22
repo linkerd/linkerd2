@@ -985,6 +985,7 @@ dependencies = [
  "ipnet",
  "k8s-openapi",
  "kube",
+ "pathscheme",
  "schemars",
  "serde",
  "serde_json",
@@ -1263,6 +1264,18 @@ dependencies = [
  "redox_syscall",
  "smallvec",
  "windows-sys",
+]
+
+[[package]]
+name = "pathscheme"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fc624da7fb9fe6b488092de1d849b1f3a176932ae08de4c5d041dedb123eb93"
+dependencies = [
+ "indexmap",
+ "schemars",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]
