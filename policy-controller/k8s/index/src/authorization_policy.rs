@@ -13,6 +13,7 @@ pub(crate) struct Spec {
 #[derive(Debug, PartialEq)]
 pub(crate) enum Target {
     Server(String),
+    Namespace,
 }
 
 #[derive(Debug, PartialEq)]
@@ -53,6 +54,7 @@ impl Target {
     pub(crate) fn server(&self) -> Option<&str> {
         match self {
             Self::Server(s) => Some(s),
+            Self::Namespace => None,
         }
     }
 }
@@ -60,6 +62,9 @@ impl Target {
 fn target(t: LocalTargetRef) -> Result<Target> {
     if t.targets_kind::<k8s::policy::Server>() {
         return Ok(Target::Server(t.name));
+    }
+    if t.targets_kind::<k8s::Namespace>() {
+        return Ok(Target::Namespace);
     }
 
     anyhow::bail!(

@@ -1050,8 +1050,7 @@ impl PolicyIndex {
                     );
                     continue;
                 }
-                None => continue,
-                Some(_) => {}
+                None | Some(_) => {}
             }
 
             tracing::trace!(
