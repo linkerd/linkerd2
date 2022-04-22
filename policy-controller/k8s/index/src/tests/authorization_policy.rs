@@ -191,16 +191,16 @@ fn mk_authorization_policy(
         spec: k8s::policy::AuthorizationPolicySpec {
             target_ref: match server {
                 Some(server) => LocalTargetRef {
-                group: Some("policy.linkerd.io".to_string()),
-                kind: "Server".to_string(),
-                name: server.to_string(),
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: "Server".to_string(),
+                    name: server.to_string(),
+                },
+                None => LocalTargetRef {
+                    group: Some("core".to_string()),
+                    kind: "Namespace".to_string(),
+                    name: ns.to_string(),
+                },
             },
-            None =>LocalTargetRef {
-                group: Some("core".to_string()),
-                kind: "Namespace".to_string(),
-                name: ns.to_string(),
-            },
-        },
             required_authentication_refs: authns.into_iter().collect(),
         },
     }
