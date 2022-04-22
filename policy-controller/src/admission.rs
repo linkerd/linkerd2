@@ -9,7 +9,7 @@ use crate::k8s::{
 use anyhow::{anyhow, bail, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
-use k8s_openapi::api::core::v1::ServiceAccount;
+use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use serde::de::DeserializeOwned;
 use std::task;
@@ -189,9 +189,13 @@ fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(String, Str
 
 #[async_trait::async_trait]
 impl Validate<AuthorizationPolicySpec> for Admission {
-    async fn validate(self, _ns: &str, _name: &str, spec: AuthorizationPolicySpec) -> Result<()> {
-        // TODO support namespace references?
-        if !spec.target_ref.targets_kind::<Server>() {
+    async fn validate(self, ns: &str, _name: &str, spec: AuthorizationPolicySpec) -> Result<()> {
+        if spec.target_ref.targets_kind::<Server>() {
+        } else if spec.target_ref.targets_kind::<Namespace>() {
+            if spec.target_ref.name != ns {
+                bail!("cannot target another namespace: {}", spec.target_ref.name);
+            }
+        } else {
             bail!(
                 "invalid targetRef kind: {}",
                 spec.target_ref.canonical_kind()
