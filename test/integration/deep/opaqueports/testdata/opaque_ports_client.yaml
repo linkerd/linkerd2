@@ -21,7 +21,6 @@ spec:
         - containerPort: 9999
       restartPolicy: OnFailure
 ---
-{{ if .ServiceCookerOpaquePodTargetHost}}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -45,7 +44,6 @@ spec:
         - containerPort: 9999
       restartPolicy: OnFailure
 ---
-{{ end }}
 apiVersion: batch/v1
 kind: Job
 metadata:

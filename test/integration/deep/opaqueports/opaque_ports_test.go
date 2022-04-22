@@ -52,7 +52,7 @@ func serviceName(n string) string {
 /// TEST EXECUTION ///
 //////////////////////
 
-func TestOpaquePortsCalledByServiceName(t *testing.T) {
+func TestOpaquePortsCalledByServiceTarget(t *testing.T) {
 	ctx := context.Background()
 	TestHelper.WithDataPlaneNamespace(ctx, "opaque-ports-called-by-service-name-test", map[string]string{}, t, func(t *testing.T, opaquePortsNs string) {
 		checks := func(c ...check) []check { return c }
@@ -128,74 +128,7 @@ func TestOpaquePortsCalledByServiceName(t *testing.T) {
 	})
 }
 
-func TestOpaquePortsCalledByServiceIP(t *testing.T) {
-	ctx := context.Background()
-	TestHelper.WithDataPlaneNamespace(ctx, "opaque-ports-called-by-service-ip-test", map[string]string{}, t, func(t *testing.T, opaquePortsNs string) {
-		checks := func(c ...check) []check { return c }
-
-		if err := deployApplications(opaquePortsNs); err != nil {
-			testutil.AnnotatedFatal(t, "failed to deploy applications", err)
-		}
-		tmplArgs, err := templateArgsServiceIP(ctx, opaquePortsNs)
-		if err != nil {
-			testutil.AnnotatedFatal(t, "failed to fetch service IPs", err)
-		}
-
-		if err := deployClients(opaquePortsNs, tmplArgs); err != nil {
-			testutil.AnnotatedFatal(t, "failed to deploy client pods", err)
-		}
-		tests := []struct {
-			name      string
-			appName   string
-			appChecks []check
-			scName    string
-			scChecks  []check
-		}{
-			// There is no test "calling a meshed service when opaque annotation is on receiving pod" in this
-			// scenario, because the service is created with `clusterIP: None`.
-			{
-				name:   "calling a meshed service when opaque annotation is on calling pod",
-				scName: opaqueSvcSC,
-				scChecks: checks(
-					hashNoOutbondHTTPRequest,
-					hasOutboundTCPWithTLSAndAuthority,
-				),
-				appName:   opaqueSvcApp,
-				appChecks: checks(hasInboundTCPTraffic),
-			},
-			{
-				name:   "calling an unmeshed service",
-				scName: opaqueUnmeshedSvcSC,
-				scChecks: checks(
-					hashNoOutbondHTTPRequest,
-					hasOutboundTCPWithAuthorityAndNoTLS,
-				),
-			},
-		}
-
-		for _, tc := range tests {
-			t.Run(tc.name, func(t *testing.T) {
-				err := TestHelper.RetryFor(30*time.Second, func() error {
-					if err := checkPodMetrics(ctx, opaquePortsNs, tc.scName, tc.scChecks); err != nil {
-						return fmt.Errorf("failed to check metrics for client pod:%w", err)
-					}
-					if tc.appName == "" {
-						return nil
-					}
-					if err := checkPodMetrics(ctx, opaquePortsNs, tc.appName, tc.appChecks); err != nil {
-						return fmt.Errorf("failed to check metrics for app pod:%w", err)
-					}
-					return nil
-				})
-				if err != nil {
-					testutil.AnnotatedFatalf(t, "unexpected metric for client pod", "unexpected metric for client pod: %s", err)
-				}
-			})
-		}
-	})
-}
-
-func TestOpaquePortsCalledByPodIP(t *testing.T) {
+func TestOpaquePortsCalledByPodTarget(t *testing.T) {
 	ctx := context.Background()
 	TestHelper.WithDataPlaneNamespace(ctx, "opaque-ports-called-by-pod-ip-test", map[string]string{}, t, func(t *testing.T, opaquePortsNs string) {
 		checks := func(c ...check) []check { return c }
@@ -290,23 +223,6 @@ func waitForAppDeploymentReady(opaquePortsNs string) {
 	})
 }
 
-func templateArgsServiceIP(ctx context.Context, ns string) (clientTemplateArgs, error) {
-	opaqueSvcServiceIP, err := getServiceIP(ctx, ns, serviceName(opaqueSvcApp))
-	if err != nil {
-		return clientTemplateArgs{}, fmt.Errorf("failed to fetch service IP for %q: %w", opaqueSvcApp, err)
-	}
-	opaqueUnmeshedSvcServiceP, err := getServiceIP(ctx, ns, serviceName(opaqueUnmeshedSvcApp))
-	if err != nil {
-		return clientTemplateArgs{}, fmt.Errorf("failed to fetch service IP for %q: %w", opaqueUnmeshedSvcApp, err)
-	}
-	return clientTemplateArgs{
-		// Field ServiceCookerOpaqueServiceTargetHost is skipped, because the corresponding service does
-		// not have the IP.
-		ServiceCookerOpaqueServiceTargetHost:     opaqueSvcServiceIP,
-		ServiceCookerOpaqueUnmeshedSVCTargetHost: opaqueUnmeshedSvcServiceP,
-	}, nil
-}
-
 func templateArgsPodIP(ctx context.Context, ns string) (clientTemplateArgs, error) {
 	opaquePodSCPodIP, err := getPodIPByAppLabel(ctx, ns, opaquePodApp)
 	if err != nil {
@@ -380,14 +296,6 @@ func getPodMetrics(pod v1.Pod, ns string) (string, error) {
 		return "", err
 	}
 	return metrics, nil
-}
-
-func getServiceIP(ctx context.Context, ns string, serviceName string) (string, error) {
-	svc, err := TestHelper.GetService(ctx, ns, serviceName)
-	if err != nil {
-		return "", fmt.Errorf("failed to get service %q: %w", serviceName, err)
-	}
-	return svc.Spec.ClusterIP, nil
 }
 
 func getPodIPByAppLabel(ctx context.Context, ns string, app string) (string, error) {
