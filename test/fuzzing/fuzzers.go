@@ -21,9 +21,10 @@ func FuzzParseContainerOpaquePorts(data []byte) int {
 	if err != nil {
 		return 0
 	}
+	qtyOfContainers %= 20
 
 	containers := make([]corev1.Container, 0)
-	for i := 0; i < qtyOfContainers%20; i++ {
+	for i := 0; i < qtyOfContainers; i++ {
 		newContainer := corev1.Container{}
 		err = f.GenerateStruct(&newContainer)
 		if err != nil {
