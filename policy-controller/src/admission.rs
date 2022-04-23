@@ -3,7 +3,7 @@ use crate::k8s::{
     policy::{
         AuthorizationPolicy, AuthorizationPolicySpec, MeshTLSAuthentication,
         MeshTLSAuthenticationSpec, NetworkAuthentication, NetworkAuthenticationSpec, Server,
-        ServerAuthorization, ServerAuthorizationSpec, ServerSpec
+        ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
     },
 };
 use anyhow::{anyhow, bail, Result};
@@ -368,14 +368,14 @@ impl Validate<ServerAuthorizationSpec> for Admission {
 
 #[cfg(test)]
 mod test {
-    use crate::k8s::policy::LocalTargetRef;
-    use hyper::{Body, Error, Response, Request, service::Service};
     use super::*;
+    use crate::k8s::policy::LocalTargetRef;
+    use hyper::{service::Service, Body, Error, Request, Response};
 
-    fn unimplemented_service() -> impl Service<Request<Body>, Response = Response<Body>, Error = Error, Future = impl Send>{
-        hyper::service::service_fn(|_| async {
-            unimplemented!()
-        })
+    fn unimplemented_service(
+    ) -> impl Service<Request<Body>, Response = Response<Body>, Error = Error, Future = impl Send>
+    {
+        hyper::service::service_fn(|_| async { unimplemented!() })
     }
 
     #[tokio::test]
@@ -383,14 +383,21 @@ mod test {
         let service = unimplemented_service();
         let client = kube::Client::new(service, "default");
         let admission = Admission::new(client);
-        admission.validate("default", "authz_policy", AuthorizationPolicySpec {
-            required_authentication_refs: vec![],
-            target_ref: LocalTargetRef {
-                group: Some("policy.linkerd.io".to_string()),
-                kind: "Server".to_string(),
-                name: "my_server".to_string(),
-            },
-        }).await.expect("AuthorizationPolicy which targets Server should be valid");
+        admission
+            .validate(
+                "default",
+                "authz_policy",
+                AuthorizationPolicySpec {
+                    required_authentication_refs: vec![],
+                    target_ref: LocalTargetRef {
+                        group: Some("policy.linkerd.io".to_string()),
+                        kind: "Server".to_string(),
+                        name: "my_server".to_string(),
+                    },
+                },
+            )
+            .await
+            .expect("AuthorizationPolicy which targets Server should be valid");
     }
 
     #[tokio::test]
@@ -398,14 +405,21 @@ mod test {
         let service = unimplemented_service();
         let client = kube::Client::new(service, "default");
         let admission = Admission::new(client);
-        admission.validate("default", "authz_policy", AuthorizationPolicySpec {
-            required_authentication_refs: vec![],
-            target_ref: LocalTargetRef {
-                group: Some("core".to_string()),
-                kind: "Namespace".to_string(),
-                name: "default".to_string(),
-            },
-        }).await.expect("AuthorizationPolicy which targets own Namespace should be valid");
+        admission
+            .validate(
+                "default",
+                "authz_policy",
+                AuthorizationPolicySpec {
+                    required_authentication_refs: vec![],
+                    target_ref: LocalTargetRef {
+                        group: Some("core".to_string()),
+                        kind: "Namespace".to_string(),
+                        name: "default".to_string(),
+                    },
+                },
+            )
+            .await
+            .expect("AuthorizationPolicy which targets own Namespace should be valid");
     }
 
     #[tokio::test]
@@ -413,13 +427,20 @@ mod test {
         let service = unimplemented_service();
         let client = kube::Client::new(service, "default");
         let admission = Admission::new(client);
-        admission.validate("default", "authz_policy", AuthorizationPolicySpec {
-            required_authentication_refs: vec![],
-            target_ref: LocalTargetRef {
-                group: Some("core".to_string()),
-                kind: "Namespace".to_string(),
-                name: "foobar".to_string(),
-            },
-        }).await.expect_err("AuthorizationPolicy which targets other Namespace should be invalid");
+        admission
+            .validate(
+                "default",
+                "authz_policy",
+                AuthorizationPolicySpec {
+                    required_authentication_refs: vec![],
+                    target_ref: LocalTargetRef {
+                        group: Some("core".to_string()),
+                        kind: "Namespace".to_string(),
+                        name: "foobar".to_string(),
+                    },
+                },
+            )
+            .await
+            .expect_err("AuthorizationPolicy which targets other Namespace should be invalid");
     }
 }
