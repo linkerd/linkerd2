@@ -26,6 +26,18 @@ func TestMain(m *testing.M) {
 //////////////////////
 
 func TestPolicy(t *testing.T) {
+	for _, policyManifestPath := range []string{
+		"testdata/emoji-policy.yaml",
+		"testdata/emoji-policy-authorization-policy.yaml",
+		"testdata/emoji-policy-authorize-all.yaml",
+	} {
+		t.Run(policyManifestPath, func(t *testing.T) {
+			runWithPolicyManifests(t, policyManifestPath)
+		})
+	}
+}
+
+func runWithPolicyManifests(t *testing.T, policyManifestsPath string) {
 	ctx := context.Background()
 
 	// Test authorization stats
@@ -48,7 +60,7 @@ func TestPolicy(t *testing.T) {
 				"failed to apply emojivoto resources: %s\n %s", err, out)
 		}
 
-		emojivotoPolicy, err := testutil.ReadFile("testdata/emoji-policy.yaml")
+		emojivotoPolicy, err := testutil.ReadFile(policyManifestsPath)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "failed to read emoji-policy yaml",
 				"failed to read emoji-policy yaml\n%s\n", err)
