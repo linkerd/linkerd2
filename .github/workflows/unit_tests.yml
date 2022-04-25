@@ -14,7 +14,7 @@ jobs:
       image: golang:1.17.3
     steps:
     - name: Checkout code
-      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+      uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
     - run: go mod download
     - run: go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
     - run: go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
@@ -32,7 +32,7 @@ jobs:
       image: node:14-stretch
     steps:
     - name: Checkout code
-      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+      uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
     - name: Yarn setup
       run: bin/scurl --retry=2 https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
     - name: JS unit tests
