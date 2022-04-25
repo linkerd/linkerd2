@@ -50,7 +50,7 @@
     "@lingui/cli": "3.13.3",
     "babel-core": "^7.0.0-bridge.0",
     "babel-jest": "^27.5.1",
-    "babel-loader": "^8.2.4",
+    "babel-loader": "^8.2.5",
     "babel-plugin-import": "^1.13.5",
     "babel-plugin-macros": "^3.1.0",
     "babel-plugin-transform-react-remove-prop-types": "0.4.24",
