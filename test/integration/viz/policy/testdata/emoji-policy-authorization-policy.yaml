@@ -114,7 +114,7 @@ metadata:
     app.kubernetes.io/version: v11
 spec:
   targetRef:
-  - group: policy.linkerd.io
+    group: policy.linkerd.io
     kind: Server
     name: web-http
   # Allow all clients to access the web HTTP port without regard for
