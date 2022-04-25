@@ -1392,7 +1392,7 @@
     pseudolocale "^1.1.0"
     ramda "^0.27.1"
 
-"@lingui/conf@^3.13.2", "@lingui/conf@^3.13.3":
+"@lingui/conf@^3.13.3":
   version "3.13.3"
   resolved "https://registry.yarnpkg.com/@lingui/conf/-/conf-3.13.3.tgz#fa5d27f0c63b1320458e2308d5d069678306c28f"
   integrity sha512-UmGx/5rtSvb2S+RFYjQGiux5Xh5xvVICss4ONf8eU4Xm8jUvjtErTXVSF3GAhCI2aC/R3bZJZf0uSj7LbsrOiw==
@@ -1413,13 +1413,13 @@
     make-plural "^6.2.2"
     messageformat-parser "^4.1.3"
 
-"@lingui/macro@3.13.2":
-  version "3.13.2"
-  resolved "https://registry.yarnpkg.com/@lingui/macro/-/macro-3.13.2.tgz#d62c02cf3fb7391962163a22b33c66d79df2873b"
-  integrity sha512-0BdybZkBq8bl4NrT8txX7k8BodyJ/4uQbMIK0ucPJvQ/6Lhj824CodBq5KuMWpcXoMSxUWjQIkIGr1Fi1ckLGg==
+"@lingui/macro@3.13.3":
+  version "3.13.3"
+  resolved "https://registry.yarnpkg.com/@lingui/macro/-/macro-3.13.3.tgz#699b60e6676c3c9e3c9eed6564155fc9e23d6aa8"
+  integrity sha512-nPldmgPGNfGTVW3TTkSZiaPI5jDQKwv/Hfmjzwo/VzfXpcjxoqz0oDGQBx8mbdKcMgpq+g6fV2Y5aCosTazdqg==
   dependencies:
     "@babel/runtime" "^7.11.2"
-    "@lingui/conf" "^3.13.2"
+    "@lingui/conf" "^3.13.3"
     ramda "^0.27.1"
 
 "@lingui/react@3.13.3":
