@@ -26,22 +26,22 @@ func TestMain(m *testing.M) {
 //////////////////////
 
 func TestPolicy(t *testing.T) {
-	for _, policyManifestPath := range []string{
-		"testdata/emoji-policy.yaml",
-		"testdata/emoji-policy-authorization-policy.yaml",
-		"testdata/emoji-policy-authorize-all.yaml",
+	for _, policy := range []string{
+		"emoji-policy",
+		"emoji-policy-authorization-policy",
+		"emoji-policy-authorize-all",
 	} {
-		t.Run(policyManifestPath, func(t *testing.T) {
-			runWithPolicyManifests(t, policyManifestPath)
+		t.Run(policy, func(t *testing.T) {
+			runWithPolicyManifests(t, policy)
 		})
 	}
 }
 
-func runWithPolicyManifests(t *testing.T, policyManifestsPath string) {
+func runWithPolicyManifests(t *testing.T, policy string) {
 	ctx := context.Background()
 
 	// Test authorization stats
-	TestHelper.WithDataPlaneNamespace(ctx, "stat-authz-test", map[string]string{}, t, func(t *testing.T, prefixedNs string) {
+	TestHelper.WithDataPlaneNamespace(ctx, "stat-authz-test"+policy, map[string]string{}, t, func(t *testing.T, prefixedNs string) {
 		emojivotoYaml, err := testutil.ReadFile("testdata/emojivoto.yaml")
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "failed to read emojivoto yaml",
@@ -60,6 +60,7 @@ func runWithPolicyManifests(t *testing.T, policyManifestsPath string) {
 				"failed to apply emojivoto resources: %s\n %s", err, out)
 		}
 
+		policyManifestsPath := fmt.Sprintf("testdata/%s.yaml", policy)
 		emojivotoPolicy, err := testutil.ReadFile(policyManifestsPath)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "failed to read emoji-policy yaml",
