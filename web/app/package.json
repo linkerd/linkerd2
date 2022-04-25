@@ -33,7 +33,7 @@
     "react": "16.14.0",
     "react-dom": "16.14.0",
     "react-linkify": "1.0.0-alpha",
-    "react-page-visibility": "^6.1.0",
+    "react-page-visibility": "^7.0.0",
     "react-router-dom": "5.3.1",
     "react-router-prop-types": "1.0.5",
     "regenerator-runtime": "^0.13.9",
