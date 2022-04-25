@@ -55,11 +55,11 @@ CONTAINER_CNI_BIN_DIR=${CONTAINER_CNI_BIN_DIR:-/opt/cni/bin}
 # Default to the first file following a find | sort since the Kubernetes CNI runtime is going
 # to look for the lexicographically first file. If the directory is empty, then use a name
 # of our choosing.
-CNI_CONF_PATH=${CNI_CONF_PATH:-$(find "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | sort | head -n 1)}
-CNI_CONF_PATH=${CNI_CONF_PATH:-"${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/01-linkerd-cni.conf"}
-KUBECONFIG_FILE_NAME=${KUBECONFIG_FILE_NAME:-ZZZ-linkerd-cni-kubeconfig}
 HOST_CNI_NET="${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}"
-DEFAULT_CNI_CONF_PATH="${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/01-linkerd-cni.conf"}
+DEFAULT_CNI_CONF_PATH="${HOST_CNI_NET}/01-linkerd-cni.conf"
+CNI_CONF_PATH=${CNI_CONF_PATH:-$(find "${HOST_CNI_NET}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | sort | head -n 1)}
+CNI_CONF_PATH=${CNI_CONF_PATH:-"${DEFAULT_CNI_CONF_PATH}"}
+KUBECONFIG_FILE_NAME=${KUBECONFIG_FILE_NAME:-ZZZ-linkerd-cni-kubeconfig}
 
 ############################
 ### Function definitions ###
@@ -78,20 +78,23 @@ cleanup() {
     CNI_CONF_DATA=$(jq 'del( .plugins[]? | select( .type == "linkerd-cni" ))' "${CNI_CONF_PATH}")
     # TODO (matei): we should write this out to a temp file and then do a `mv`
     # to be atomic. 
+    # TODO (matei): instead of using CNI_CONF_PATH, we should make sure any
+    # *conflist file is checked for linkerd-cni cfg
     echo "${CNI_CONF_DATA}" > "${CNI_CONF_PATH}"
 
     # Check whether configuration file has been created by our own cni plugin
     # and if so, rm it.
-    if [ "${CNI_CONF_PATH}" = "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/01-linkerd-cni.conf" ]; then
-      rm -f "${CNI_CONF_PATH}"
+    if [ -e "${DEFAULT_CNI_CONF_PATH}" ]; then
+      echo "Cleaning up ${DEFAULT_CNI_CONF_PATH}"
+      rm -f "${DEFAULT_CNI_CONF_PATH}"
     fi
   fi
   #
   # Remove binary and kubeconfig file
   #
-  if [ -e "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}" ]; then
-    echo "Removing linkerd-cni kubeconfig: ${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
-    rm -f "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
+  if [ -e "${HOST_CNI_NET}/${KUBECONFIG_FILE_NAME}" ]; then
+    echo "Removing linkerd-cni kubeconfig: ${HOST_CNI_NET}/${KUBECONFIG_FILE_NAME}"
+    rm -f "${HOST_CNI_NET}/${KUBECONFIG_FILE_NAME}"
   fi
   if [ -e "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_BIN_DIR}"/linkerd-cni ]; then
     echo "Removing linkerd-cni binary: ${CONTAINER_MOUNT_PREFIX}${DEST_CNI_BIN_DIR}/linkerd-cni"
@@ -210,7 +213,6 @@ sed -i s/__SERVICEACCOUNT_TOKEN__/"${SERVICEACCOUNT_TOKEN:-}"/g ${TMP_CONF}
 
 install_cni_conf() {
   local cni_conf_path="$1"
-  local old_conf_path="${2:-$1}"
  
   create_cni_conf
   if [ -e ${cni_conf_path} ]; then
@@ -228,51 +230,57 @@ install_cni_conf() {
    cni_conf_path="${cni_conf_path}list"
   fi
 
-  # Delete old CNI config files for upgrades.
-  if [ "${cni_conf_path}" != "${old_conf_path}" ]; then
-   echo "Removing CNI_OLD_CONF_PATH: ${old_conf_path}"
-   rm -f "${old_conf_path}"
+  if [ -e "${DEFAULT_CNI_CONF_PATH}" ] && [ "$cni_conf_path" != "${DEFAULT_CNI_CONF_PATH}" ]; then
+   echo "Removing Linkerd's configuration file: ${DEFAULT_CNI_CONF_PATH}"
+   rm -f "${DEFAULT_CNI_CONF_PATH}"
   fi
 
   # Move the temporary CNI config into place.
   mv "${TMP_CONF}" "${cni_conf_path}" || exit_with_error 'Failed to mv files.'
 
   echo "Created CNI config ${cni_conf_path}"
-  CNI_CONF_PATH="${cni_conf_path}"
 }
 
+# Sync() is responsible for reacting to file system changes. It is used in
+# conjunction with inotify events; sync() is called with the name of the file that
+# has changed, the event type (which can be either 'CREATE' or 'DELETE'), and
+# the previously observed SHA of the configuration file.
+#
+# Based on the changed file and event type, sync() might re-install the CNI
+# plugin's configuration file.
 sync() {
-  # if we get a filepath that's "new", go through the re-install process
-  # if we have a delete, check the directory for conflists -- empty? create our
-  # own, not empty? what should we do? nothing if our old "active" config still
-  # exists.
   local filename="$1"
   local ev="$2"
-  local active_cni_conf="${CNI_CONF_PATH:-$1}"
-  local active_cni_sha="$3"
   local filepath="${HOST_CNI_NET}/$filename"
 
+  local prev_sha="$3"
+
   if [ "$ev" = "DELETE" ]; then
-    # find all config files; if we have 0, then re-install using our own plugin
-    # file
-    if [ -z "$active_cni_conf" ]; then
+    # When the event type is 'DELETE', we check to see if there are any `*conf` or `*conflist`
+    # files on the host's filesystem. If none are present, we install in
+    # 'interface' mode, using our own CNI config file.
+    local config_file_count=$(find "${HOST_CNI_NET}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | sort | wc -l)
+    if [ $config_file_count -eq 0 ]; then
       echo "No active CNI configuration file found after $ev event; re-installing in \"interface\" mode"
       install_cni_conf ${DEFAULT_CNI_CONF_PATH}
     fi
-  elif [ "$ev" = "CREATE" ] && [ $filepath != $active_cni_conf ]; then
-    # Create but don't rm old one since we don't know if this will be configured
-    # to run as _the_ cni plugin
-    echo "New file [$filename] detected; re-installing in \"chained\" mode"
-    install_cni_conf $filepath $active_cni_conf
-  else
-    # Filepath == active_cni_conf, this is a bit trickier. File could be
-    # updated, compute updated hash and compare to old one
-    # Calculate sha for observed file
+  elif [ "$ev" = "CREATE" ]; then
+    # When the event type is 'CREATE', we check the previously observed SHA (updated
+    # with each file watch) and compare it against the new file's SHA. If they
+    # differ, it means something has changed.
     local new_sha=$(sha256sum ${filepath} | awk '{print $1}')
-    if [ $new_sha != $active_cni_sha ]; then
-      echo "Found difference in SHA; re-installing config in same file [$filename]"
+    if [ "$new_sha" != "$prev_sha" ]; then
+      # Create but don't rm old one since we don't know if this will be configured
+      # to run as _the_ cni plugin.
+      echo "New file [$filename] detected; re-installing in \"chained\" mode"
       install_cni_conf $filepath
     fi
+  else
+    # If the SHA hasn't changed or we get an unrecognised event, ignore it.
+    # When the SHA is the same, we can get into infinite loops whereby a file has
+    # been created and after re-install the watch keeps triggering CREATE events
+    # that never end.
+    echo "Ignoring event: $ev $filepath; no real changes detected"
   fi
 }
 
@@ -287,15 +295,26 @@ trap 'echo "SIGTERM received, simply exiting..."; cleanup' TERM
 trap 'echo "SIGHUP received, simply exiting..."; cleanup' HUP
 
 install_cni_bin
+# Install for the first time using whatever path we have chosen at the start.
 install_cni_conf ${CNI_CONF_PATH}
 
-# Start looping and watching fs events
+# Compute SHA for first config file; this will be updated after every iteration.
 cni_conf_sha="$(sha256sum ${CNI_CONF_PATH} | awk '{print $1}')"
-inotifywait -m ${HOST_CNI_NET} -e moved_to,create,delete |
+
+# Start watch on host's CNI config directory. Although files are mostly `mv'd`,
+# because they are moved from the container's filesystem, the events logged will
+# typically be a DELETED followed by a CREATE. When we are on the same system
+# partition, `mv` simply renames, however, that won't be the case so we don't
+# watch any "moved_to" or "moved_from" events.
+inotifywait -m ${HOST_CNI_NET} -e create,delete |
  while read -r directory action filename; do
    if [[ "$filename" =~ .*.(conflist|conf)$ ]]; then 
-    echo "Detected change in ${HOST_CNI_NET}: $action $filename"
-    sync $filename $action $cni_conf_sha
-    cni_conf_sha="$(sha256sum ${CNI_CONF_PATH} | awk '{print $1}')"
+    echo "Detected change in $directory: $action $filename"
+    sync "$filename" "$action" "$cni_conf_sha"
+    # When file exists (i.e we didn't deal with a DELETE ev)
+    # then calculate its sha to be used the next turn.
+    if [ -e "$directory/$filename" ]; then
+      cni_conf_sha="$(sha256sum "$directory/$filename" | awk '{print $1}')"
+    fi
    fi
  done
