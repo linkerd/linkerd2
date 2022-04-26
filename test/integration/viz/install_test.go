@@ -39,7 +39,7 @@ func TestInstallLinkerd(t *testing.T) {
 	cmd := []string{
 		"install",
 		"--controller-log-level", "debug",
-		"--proxy-version", TestHelper.GetVersion(),
+		"--set", fmt.Sprintf("proxy.image.version=%s", TestHelper.GetVersion()),
 		"--set", "heartbeatSchedule=1 2 3 4 5",
 	}
 

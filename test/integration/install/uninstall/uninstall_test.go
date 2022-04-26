@@ -25,7 +25,7 @@ func TestInstall(t *testing.T) {
 		"install",
 		"--controller-log-level", "debug",
 		"--proxy-log-level", "warn,linkerd=debug",
-		"--proxy-version", TestHelper.GetVersion(),
+		"--set", fmt.Sprintf("proxy.image.version=%s", TestHelper.GetVersion()),
 	}
 
 	out, err := TestHelper.LinkerdRun(args...)

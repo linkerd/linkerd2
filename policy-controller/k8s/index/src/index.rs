@@ -6,12 +6,15 @@
 //! implements `kubert::index::IndexNamespacedResource` for the indexed
 //! kubernetes resources.
 
-use crate::{defaults::DefaultPolicy, pod, server, server_authorization, ClusterInfo};
+use crate::{
+    authorization_policy, defaults::DefaultPolicy, meshtls_authentication, network_authentication,
+    pod, server, server_authorization, ClusterInfo,
+};
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{bail, Result};
 use linkerd_policy_controller_core::{
-    ClientAuthentication, ClientAuthorization, IdentityMatch, InboundServer, Ipv4Net, Ipv6Net,
-    ProxyProtocol,
+    AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundServer,
+    IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
 use parking_lot::RwLock;
@@ -28,6 +31,7 @@ pub type SharedIndex = Arc<RwLock<Index>>;
 pub struct Index {
     cluster_info: Arc<ClusterInfo>,
     namespaces: NamespaceIndex,
+    authentications: AuthenticationNsIndex,
 }
 
 /// Holds all `Pod`, `Server`, and `ServerAuthorization` indices by-namespace.
@@ -35,6 +39,15 @@ pub struct Index {
 struct NamespaceIndex {
     cluster_info: Arc<ClusterInfo>,
     by_ns: HashMap<String, Namespace>,
+}
+
+/// Holds all `NetworkAuthentication` and `MeshTLSAuthentication` indices by-namespace.
+///
+/// This is separate from `NamespaceIndex` because authorization policies may reference
+/// authentication resources across namespaces.
+#[derive(Debug, Default)]
+struct AuthenticationNsIndex {
+    by_ns: HashMap<String, AuthenticationIndex>,
 }
 
 /// Holds `Pod`, `Server`, and `ServerAuthorization` indices for a single namespace.
@@ -45,7 +58,7 @@ struct Namespace {
 }
 
 /// Holds all pod data for a single namespace.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct PodIndex {
     namespace: String,
     by_name: HashMap<String, Pod>,
@@ -90,9 +103,24 @@ struct PodPortServer {
 /// Holds the state of policy resources for a single namespace.
 #[derive(Debug)]
 struct PolicyIndex {
+    namespace: String,
     cluster_info: Arc<ClusterInfo>,
+
     servers: HashMap<String, server::Server>,
     server_authorizations: HashMap<String, server_authorization::ServerAuthz>,
+
+    authorization_policies: HashMap<String, authorization_policy::Spec>,
+}
+
+#[derive(Debug, Default)]
+struct AuthenticationIndex {
+    meshtls: HashMap<String, meshtls_authentication::Spec>,
+    network: HashMap<String, network_authentication::Spec>,
+}
+
+struct NsUpdate<T> {
+    added: Vec<(String, T)>,
+    removed: HashSet<String>,
 }
 
 // === impl Index ===
@@ -104,8 +132,9 @@ impl Index {
             cluster_info: cluster_info.clone(),
             namespaces: NamespaceIndex {
                 cluster_info,
-                by_ns: HashMap::new(),
+                by_ns: HashMap::default(),
             },
+            authentications: AuthenticationNsIndex::default(),
         }))
     }
 
@@ -134,13 +163,34 @@ impl Index {
             .rx
             .clone())
     }
+
+    fn ns_with_reindex(&mut self, namespace: String, f: impl FnOnce(&mut Namespace) -> bool) {
+        self.namespaces
+            .get_with_reindex(namespace, &self.authentications, f)
+    }
+
+    fn ns_or_default_with_reindex(
+        &mut self,
+        namespace: String,
+        f: impl FnOnce(&mut Namespace) -> bool,
+    ) {
+        self.namespaces
+            .get_or_default_with_reindex(namespace, &self.authentications, f)
+    }
+
+    fn reindex_all(&mut self) {
+        tracing::debug!("Reindexing all namespaces");
+        for ns in self.namespaces.by_ns.values_mut() {
+            ns.reindex(&self.authentications);
+        }
+    }
 }
 
 impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
     fn apply(&mut self, pod: k8s::Pod) {
         let namespace = pod.namespace().unwrap();
         let name = pod.name();
-        let _span = info_span!("apply", ns = %namespace, pod = %name).entered();
+        let _span = info_span!("apply", ns = %namespace, %name).entered();
 
         let port_names = pod::tcp_port_names(pod.spec);
         let meta = pod::Meta::from_metadata(pod.metadata);
@@ -151,21 +201,20 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
         let ns = self.namespaces.get_or_default(namespace);
         match ns.pods.update(name, meta, port_names) {
             Ok(None) => {}
-            Ok(Some(pod)) => pod.reindex_servers(&ns.policy),
+            Ok(Some(pod)) => pod.reindex_servers(&ns.policy, &self.authentications),
             Err(error) => {
                 tracing::error!(%error, "Illegal pod update");
             }
         }
     }
 
-    fn delete(&mut self, ns: String, pod: String) {
-        let _span = info_span!("delete", %ns, %pod).entered();
-
+    fn delete(&mut self, ns: String, name: String) {
+        tracing::debug!(%ns, %name, "delete");
         if let Entry::Occupied(mut ns) = self.namespaces.by_ns.entry(ns) {
             // Once the pod is removed, there's nothing else to update. Any open
             // watches will complete.  No other parts of the index need to be
             // updated.
-            if ns.get_mut().pods.by_name.remove(&pod).is_some() && ns.get().is_empty() {
+            if ns.get_mut().pods.by_name.remove(&name).is_some() && ns.get().is_empty() {
                 ns.remove();
             }
         }
@@ -179,30 +228,23 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
     fn apply(&mut self, srv: k8s::policy::Server) {
         let ns = srv.namespace().expect("server must be namespaced");
         let name = srv.name();
-        let _span = info_span!("apply", %ns, srv = %name).entered();
+        let _span = info_span!("apply", %ns, %name).entered();
 
         let server = server::Server::from_resource(srv, &self.cluster_info);
-        self.namespaces
-            .get_or_default_with_reindex(ns, |ns| ns.policy.update_server(name, server))
+        self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_server(name, server))
     }
 
-    fn delete(&mut self, ns: String, srv: String) {
-        let _span = info_span!("delete", %ns, %srv).entered();
-        self.namespaces
-            .get_with_reindex(ns, |ns| ns.policy.servers.remove(&srv).is_some())
+    fn delete(&mut self, ns: String, name: String) {
+        let _span = info_span!("delete", %ns, %name).entered();
+        self.ns_with_reindex(ns, |ns| ns.policy.servers.remove(&name).is_some())
     }
 
     fn reset(&mut self, srvs: Vec<k8s::policy::Server>, deleted: HashMap<String, HashSet<String>>) {
         let _span = info_span!("reset").entered();
 
-        #[derive(Default)]
-        struct Ns {
-            added: Vec<(String, server::Server)>,
-            removed: HashSet<String>,
-        }
-
         // Aggregate all of the updates by namespace so that we only reindex
         // once per namespace.
+        type Ns = NsUpdate<server::Server>;
         let mut updates_by_ns = HashMap::<String, Ns>::default();
         for srv in srvs.into_iter() {
             let namespace = srv.namespace().expect("server must be namespaced");
@@ -224,7 +266,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
                 // want to create a default namespace instance, we just want to
                 // clear out all resources for the namespace (and then drop the
                 // whole namespace, if necessary).
-                self.namespaces.get_with_reindex(namespace, |ns| {
+                self.ns_with_reindex(namespace, |ns| {
                     ns.policy.servers.clear();
                     true
                 });
@@ -232,17 +274,16 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
                 // Otherwise, we take greater care to reindex only when the
                 // state actually changed. The vast majority of resets will see
                 // no actual data change.
-                self.namespaces
-                    .get_or_default_with_reindex(namespace, |ns| {
-                        let mut changed = !removed.is_empty();
-                        for name in removed.into_iter() {
-                            ns.policy.servers.remove(&name);
-                        }
-                        for (name, server) in added.into_iter() {
-                            changed = ns.policy.update_server(name, server) || changed;
-                        }
-                        changed
-                    });
+                self.ns_or_default_with_reindex(namespace, |ns| {
+                    let mut changed = !removed.is_empty();
+                    for name in removed.into_iter() {
+                        ns.policy.servers.remove(&name);
+                    }
+                    for (name, server) in added.into_iter() {
+                        changed = ns.policy.update_server(name, server) || changed;
+                    }
+                    changed
+                });
             }
         }
     }
@@ -252,20 +293,20 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
     fn apply(&mut self, saz: k8s::policy::ServerAuthorization) {
         let ns = saz.namespace().unwrap();
         let name = saz.name();
-        let _span = info_span!("apply", %ns, saz = %name).entered();
+        let _span = info_span!("apply", %ns, %name).entered();
 
         match server_authorization::ServerAuthz::from_resource(saz, &self.cluster_info) {
-            Ok(meta) => self.namespaces.get_or_default_with_reindex(ns, move |ns| {
+            Ok(meta) => self.ns_or_default_with_reindex(ns, move |ns| {
                 ns.policy.update_server_authz(name, meta)
             }),
             Err(error) => tracing::error!(%error, "Illegal server authorization update"),
         }
     }
 
-    fn delete(&mut self, ns: String, saz: String) {
-        let _span = info_span!("delete", %ns, %saz).entered();
-        self.namespaces.get_with_reindex(ns, |ns| {
-            ns.policy.server_authorizations.remove(&saz).is_some()
+    fn delete(&mut self, ns: String, name: String) {
+        let _span = info_span!("delete", %ns, %name).entered();
+        self.ns_with_reindex(ns, |ns| {
+            ns.policy.server_authorizations.remove(&name).is_some()
         })
     }
 
@@ -276,14 +317,9 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
     ) {
         let _span = info_span!("reset");
 
-        #[derive(Default)]
-        struct Ns {
-            added: Vec<(String, server_authorization::ServerAuthz)>,
-            removed: HashSet<String>,
-        }
-
         // Aggregate all of the updates by namespace so that we only reindex
         // once per namespace.
+        type Ns = NsUpdate<server_authorization::ServerAuthz>;
         let mut updates_by_ns = HashMap::<String, Ns>::default();
         for saz in sazs.into_iter() {
             let namespace = saz
@@ -297,7 +333,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
                     .added
                     .push((name, saz)),
                 Err(error) => {
-                    tracing::error!(ns = %namespace, saz = %name, %error, "Illegal server authorization update")
+                    tracing::error!(ns = %namespace, %name, %error, "Illegal server authorization update")
                 }
             }
         }
@@ -311,7 +347,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
                 // want to create a default namespace instance, we just want to
                 // clear out all resources for the namespace (and then drop the
                 // whole namespace, if necessary).
-                self.namespaces.get_with_reindex(namespace, |ns| {
+                self.ns_with_reindex(namespace, |ns| {
                     ns.policy.server_authorizations.clear();
                     true
                 });
@@ -319,23 +355,261 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
                 // Otherwise, we take greater care to reindex only when the
                 // state actually changed. The vast majority of resets will see
                 // no actual data change.
-                self.namespaces
-                    .get_or_default_with_reindex(namespace, |ns| {
-                        let mut changed = !removed.is_empty();
-                        for name in removed.into_iter() {
-                            ns.policy.server_authorizations.remove(&name);
-                        }
-                        for (name, saz) in added.into_iter() {
-                            changed = ns.policy.update_server_authz(name, saz) || changed;
-                        }
-                        changed
-                    });
+                self.ns_or_default_with_reindex(namespace, |ns| {
+                    let mut changed = !removed.is_empty();
+                    for name in removed.into_iter() {
+                        ns.policy.server_authorizations.remove(&name);
+                    }
+                    for (name, saz) in added.into_iter() {
+                        changed = ns.policy.update_server_authz(name, saz) || changed;
+                    }
+                    changed
+                });
             }
         }
     }
 }
 
-// === impl NamespaceIndex ===
+impl kubert::index::IndexNamespacedResource<k8s::policy::AuthorizationPolicy> for Index {
+    fn apply(&mut self, policy: k8s::policy::AuthorizationPolicy) {
+        let ns = policy.namespace().unwrap();
+        let name = policy.name();
+        let _span = info_span!("apply", %ns, saz = %name).entered();
+
+        let spec = match authorization_policy::Spec::try_from(policy.spec) {
+            Ok(spec) => spec,
+            Err(error) => {
+                tracing::warn!(%error, "Invalid authorization policy");
+                return;
+            }
+        };
+
+        self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_authz_policy(name, spec))
+    }
+
+    fn delete(&mut self, ns: String, ap: String) {
+        let _span = info_span!("delete", %ns, %ap).entered();
+        self.ns_with_reindex(ns, |ns| {
+            ns.policy.authorization_policies.remove(&ap).is_some()
+        })
+    }
+
+    fn reset(
+        &mut self,
+        policies: Vec<k8s::policy::AuthorizationPolicy>,
+        deleted: HashMap<String, HashSet<String>>,
+    ) {
+        let _span = info_span!("reset");
+
+        // Aggregate all of the updates by namespace so that we only reindex
+        // once per namespace.
+        type Ns = NsUpdate<authorization_policy::Spec>;
+        let mut updates_by_ns = HashMap::<String, Ns>::default();
+        for policy in policies.into_iter() {
+            let namespace = policy
+                .namespace()
+                .expect("authorizationpolicy must be namespaced");
+            let name = policy.name();
+            match authorization_policy::Spec::try_from(policy.spec) {
+                Ok(spec) => updates_by_ns
+                    .entry(namespace)
+                    .or_default()
+                    .added
+                    .push((name, spec)),
+                Err(error) => {
+                    tracing::error!(ns = %namespace, %name, %error, "Illegal server authorization update")
+                }
+            }
+        }
+        for (ns, names) in deleted.into_iter() {
+            updates_by_ns.entry(ns).or_default().removed = names;
+        }
+
+        for (namespace, Ns { added, removed }) in updates_by_ns.into_iter() {
+            if added.is_empty() {
+                // If there are no live resources in the namespace, we do not
+                // want to create a default namespace instance, we just want to
+                // clear out all resources for the namespace (and then drop the
+                // whole namespace, if necessary).
+                self.ns_with_reindex(namespace, |ns| {
+                    ns.policy.authorization_policies.clear();
+                    true
+                });
+            } else {
+                // Otherwise, we take greater care to reindex only when the
+                // state actually changed. The vast majority of resets will see
+                // no actual data change.
+                self.ns_or_default_with_reindex(namespace, |ns| {
+                    let mut changed = !removed.is_empty();
+                    for name in removed.into_iter() {
+                        ns.policy.authorization_policies.remove(&name);
+                    }
+                    for (name, spec) in added.into_iter() {
+                        changed = ns.policy.update_authz_policy(name, spec) || changed;
+                    }
+                    changed
+                });
+            }
+        }
+    }
+}
+
+impl kubert::index::IndexNamespacedResource<k8s::policy::MeshTLSAuthentication> for Index {
+    fn apply(&mut self, authn: k8s::policy::MeshTLSAuthentication) {
+        let ns = authn
+            .namespace()
+            .expect("MeshTLSAuthentication must have a namespace");
+        let name = authn.name();
+        let _span = info_span!("apply", %ns, %name).entered();
+
+        let spec = match meshtls_authentication::Spec::try_from_resource(authn, &self.cluster_info)
+        {
+            Ok(spec) => spec,
+            Err(error) => {
+                tracing::warn!(%error, "Invalid MeshTLSAuthentication");
+                return;
+            }
+        };
+
+        if self.authentications.update_meshtls(ns, name, spec) {
+            self.reindex_all();
+        }
+    }
+
+    fn delete(&mut self, ns: String, name: String) {
+        let _span = info_span!("delete", %ns, %name).entered();
+
+        if let Entry::Occupied(mut ns) = self.authentications.by_ns.entry(ns) {
+            tracing::debug!("Deleting MeshTLSAuthentication");
+            ns.get_mut().network.remove(&name);
+            if ns.get().is_empty() {
+                ns.remove();
+            }
+            self.reindex_all();
+        } else {
+            tracing::warn!("Namespace already deleted!");
+        }
+    }
+
+    fn reset(
+        &mut self,
+        authns: Vec<k8s::policy::MeshTLSAuthentication>,
+        deleted: HashMap<String, HashSet<String>>,
+    ) {
+        let _span = info_span!("reset");
+
+        let mut changed = false;
+
+        for authn in authns.into_iter() {
+            let namespace = authn
+                .namespace()
+                .expect("meshtlsauthentication must be namespaced");
+            let name = authn.name();
+            let spec = match meshtls_authentication::Spec::try_from_resource(
+                authn,
+                &self.cluster_info,
+            ) {
+                Ok(spec) => spec,
+                Err(error) => {
+                    tracing::warn!(ns = %namespace, %name, %error, "Invalid MeshTLSAuthentication");
+                    return;
+                }
+            };
+            changed = self.authentications.update_meshtls(namespace, name, spec) || changed;
+        }
+        for (namespace, names) in deleted.into_iter() {
+            if let Entry::Occupied(mut ns) = self.authentications.by_ns.entry(namespace) {
+                for name in names.into_iter() {
+                    ns.get_mut().meshtls.remove(&name);
+                }
+                if ns.get().is_empty() {
+                    ns.remove();
+                }
+            }
+        }
+
+        if changed {
+            self.reindex_all();
+        }
+    }
+}
+
+impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> for Index {
+    fn apply(&mut self, authn: k8s::policy::NetworkAuthentication) {
+        let ns = authn.namespace().unwrap();
+        let name = authn.name();
+        let _span = info_span!("apply", %ns, %name).entered();
+
+        let spec = match network_authentication::Spec::try_from(authn.spec) {
+            Ok(spec) => spec,
+            Err(error) => {
+                tracing::warn!(%error, "Invalid NetworkAuthentication");
+                return;
+            }
+        };
+
+        if self.authentications.update_network(ns, name, spec) {
+            self.reindex_all();
+        }
+    }
+
+    fn delete(&mut self, ns: String, name: String) {
+        let _span = info_span!("delete", %ns, %name).entered();
+
+        if let Entry::Occupied(mut ns) = self.authentications.by_ns.entry(ns) {
+            tracing::debug!("Deleting MeshTLSAuthentication");
+
+            ns.get_mut().network.remove(&name);
+            if ns.get().is_empty() {
+                ns.remove();
+            }
+            self.reindex_all();
+        } else {
+            tracing::warn!("Namespace already deleted!");
+        }
+    }
+
+    fn reset(
+        &mut self,
+        authns: Vec<k8s::policy::NetworkAuthentication>,
+        deleted: HashMap<String, HashSet<String>>,
+    ) {
+        let _span = info_span!("reset");
+
+        let mut changed = false;
+
+        for authn in authns.into_iter() {
+            let namespace = authn
+                .namespace()
+                .expect("meshtlsauthentication must be namespaced");
+            let name = authn.name();
+            let spec = match network_authentication::Spec::try_from(authn.spec) {
+                Ok(spec) => spec,
+                Err(error) => {
+                    tracing::warn!(ns = %namespace, %name, %error, "Invalid NetworkAuthentication");
+                    return;
+                }
+            };
+            changed = self.authentications.update_network(namespace, name, spec) || changed;
+        }
+        for (namespace, names) in deleted.into_iter() {
+            if let Entry::Occupied(mut ns) = self.authentications.by_ns.entry(namespace) {
+                for name in names.into_iter() {
+                    ns.get_mut().meshtls.remove(&name);
+                }
+                if ns.get().is_empty() {
+                    ns.remove();
+                }
+            }
+        }
+
+        if changed {
+            self.reindex_all();
+        }
+    }
+}
+
+// === impl NemspaceIndex ===
 
 impl NamespaceIndex {
     fn get_or_default(&mut self, ns: String) -> &mut Namespace {
@@ -345,16 +619,21 @@ impl NamespaceIndex {
     }
 
     /// Gets the given namespace and, if it exists, passes it to the given
-    /// function. When the function returns `true`, all pods in the namespace are
-    /// reindexed or, if the namespace is empty, the namespace is removed
-    /// entirely.
-    fn get_with_reindex(&mut self, namespace: String, f: impl FnOnce(&mut Namespace) -> bool) {
+    /// function. If the function returns true, all pods in the namespace are
+    /// reindexed; or, if the function returns false and the namespace is empty,
+    /// it is removed from the index.
+    fn get_with_reindex(
+        &mut self,
+        namespace: String,
+        authns: &AuthenticationNsIndex,
+        f: impl FnOnce(&mut Namespace) -> bool,
+    ) {
         if let Entry::Occupied(mut ns) = self.by_ns.entry(namespace) {
             if f(ns.get_mut()) {
                 if ns.get().is_empty() {
                     ns.remove();
                 } else {
-                    ns.get_mut().reindex();
+                    ns.get_mut().reindex(authns);
                 }
             }
         }
@@ -366,11 +645,12 @@ impl NamespaceIndex {
     fn get_or_default_with_reindex(
         &mut self,
         namespace: String,
+        authns: &AuthenticationNsIndex,
         f: impl FnOnce(&mut Namespace) -> bool,
     ) {
         let ns = self.get_or_default(namespace);
         if f(ns) {
-            ns.reindex();
+            ns.reindex(authns);
         }
     }
 }
@@ -381,13 +661,15 @@ impl Namespace {
     fn new(namespace: String, cluster_info: Arc<ClusterInfo>) -> Self {
         Namespace {
             pods: PodIndex {
-                namespace,
+                namespace: namespace.clone(),
                 by_name: HashMap::default(),
             },
             policy: PolicyIndex {
+                namespace,
                 cluster_info,
                 servers: HashMap::default(),
                 server_authorizations: HashMap::default(),
+                authorization_policies: HashMap::default(),
             },
         }
     }
@@ -399,8 +681,8 @@ impl Namespace {
     }
 
     #[inline]
-    fn reindex(&mut self) {
-        self.pods.reindex(&self.policy);
+    fn reindex(&mut self, authns: &AuthenticationNsIndex) {
+        self.pods.reindex(&self.policy, authns);
     }
 }
 
@@ -418,16 +700,12 @@ impl PodIndex {
         meta: pod::Meta,
         port_names: HashMap<String, pod::PortSet>,
     ) -> Result<Option<&mut Pod>> {
-        let pod = match self.by_name.entry(name) {
-            Entry::Vacant(entry) => {
-                tracing::debug!(?meta, ?port_names, "Creating");
-                let pod = Pod {
-                    meta,
-                    port_names,
-                    port_servers: pod::PortMap::default(),
-                };
-                entry.insert(pod)
-            }
+        let pod = match self.by_name.entry(name.clone()) {
+            Entry::Vacant(entry) => entry.insert(Pod {
+                meta,
+                port_names,
+                port_servers: pod::PortMap::default(),
+            }),
 
             Entry::Occupied(entry) => {
                 let pod = entry.into_mut();
@@ -435,16 +713,16 @@ impl PodIndex {
                 // Pod labels and annotations may change at runtime, but the
                 // port list may not
                 if pod.port_names != port_names {
-                    bail!("pod port names must not change");
+                    bail!("pod {} port names must not change", name);
                 }
 
                 // If there aren't meaningful changes, then don't bother doing
                 // any more work.
                 if pod.meta == meta {
-                    tracing::trace!("No changes");
+                    tracing::debug!(pod = %name, "No changes");
                     return Ok(None);
                 }
-                tracing::debug!(?meta, "Updating");
+                tracing::debug!(pod = %name, "Updating");
                 pod.meta = meta;
                 pod
             }
@@ -452,11 +730,11 @@ impl PodIndex {
         Ok(Some(pod))
     }
 
-    fn reindex(&mut self, policy: &PolicyIndex) {
+    fn reindex(&mut self, policy: &PolicyIndex, authns: &AuthenticationNsIndex) {
         let _span = info_span!("reindex", ns = %self.namespace).entered();
         for (name, pod) in self.by_name.iter_mut() {
             let _span = info_span!("pod", pod = %name).entered();
-            pod.reindex_servers(policy);
+            pod.reindex_servers(policy, authns);
         }
     }
 }
@@ -465,9 +743,7 @@ impl PodIndex {
 
 impl Pod {
     /// Determines the policies for ports on this pod.
-    fn reindex_servers(&mut self, policy: &PolicyIndex) {
-        tracing::debug!("Indexing servers for pod");
-
+    fn reindex_servers(&mut self, policy: &PolicyIndex, authentications: &AuthenticationNsIndex) {
         // Keep track of the ports that are already known in the pod so that, after applying server
         // matches, we can ensure remaining ports are set to the default policy.
         let mut unmatched_ports = self.port_servers.keys().copied().collect::<pod::PortSet>();
@@ -497,7 +773,7 @@ impl Pod {
                         continue;
                     }
 
-                    let s = policy.inbound_server(srvname.clone(), server);
+                    let s = policy.inbound_server(srvname.clone(), server, authentications);
                     self.update_server(port, srvname, s);
 
                     matched_ports.insert(port, srvname.clone());
@@ -519,6 +795,7 @@ impl Pod {
     fn update_server(&mut self, port: u16, name: &str, server: InboundServer) {
         match self.port_servers.entry(port) {
             Entry::Vacant(entry) => {
+                tracing::trace!(port = %port, server = %name, "Creating server");
                 let (tx, rx) = watch::channel(server);
                 entry.insert(PodPortServer {
                     name: Some(name.to_string()),
@@ -533,6 +810,7 @@ impl Pod {
                 // Avoid sending redundant updates.
                 if ps.name.as_deref() == Some(name) && *ps.rx.borrow() == server {
                     tracing::trace!(port = %port, server = %name, "Skipped redundant server update");
+                    tracing::trace!(?server);
                     return;
                 }
 
@@ -542,6 +820,7 @@ impl Pod {
                 // make the opportunistic choice to assume the cluster is
                 // configured coherently so we take the update. The admission
                 // controller should prevent conflicts.
+                tracing::trace!(port = %port, server = %name, "Updating server");
                 ps.name = Some(name.to_string());
                 ps.tx.send(server).expect("a receiver is held by the index");
             }
@@ -553,9 +832,9 @@ impl Pod {
     /// Updates a pod-port to use the given named server.
     fn set_default_server(&mut self, port: u16, config: &ClusterInfo) {
         let server = Self::default_inbound_server(port, &self.meta.settings, config);
-        tracing::debug!(%port, server = %config.default_policy, "Setting default server");
         match self.port_servers.entry(port) {
             Entry::Vacant(entry) => {
+                tracing::debug!(%port, server = %config.default_policy, "Creating default server");
                 let (tx, rx) = watch::channel(server);
                 entry.insert(PodPortServer { name: None, tx, rx });
             }
@@ -565,9 +844,11 @@ impl Pod {
 
                 // Avoid sending redundant updates.
                 if *ps.rx.borrow() == server {
+                    tracing::trace!(%port, server = %config.default_policy, "Default server already set");
                     return;
                 }
 
+                tracing::debug!(%port, server = %config.default_policy, "Setting default server");
                 ps.name = None;
                 ps.tx.send(server).expect("a receiver is held by the index");
             }
@@ -642,10 +923,13 @@ impl Pod {
             let networks = if cluster_only {
                 config.networks.iter().copied().map(Into::into).collect()
             } else {
-                vec![Ipv4Net::default().into(), Ipv6Net::default().into()]
+                vec![
+                    "0.0.0.0/0".parse::<IpNet>().unwrap().into(),
+                    "::/0".parse::<IpNet>().unwrap().into(),
+                ]
             };
             authorizations.insert(
-                format!("default:{}", policy),
+                AuthorizationRef::Default(policy.to_string()),
                 ClientAuthorization {
                     authentication,
                     networks,
@@ -653,9 +937,8 @@ impl Pod {
             );
         };
 
-        tracing::trace!(port, ?settings, %policy, ?protocol, ?authorizations, "default server");
         InboundServer {
-            name: format!("default:{}", policy),
+            reference: ServerRef::Default(policy.to_string()),
             protocol,
             authorizations,
         }
@@ -708,10 +991,32 @@ impl PolicyIndex {
         true
     }
 
-    fn inbound_server(&self, name: String, server: &server::Server) -> InboundServer {
-        let authorizations = self.client_authzs(&name, server);
+    fn update_authz_policy(&mut self, name: String, spec: authorization_policy::Spec) -> bool {
+        match self.authorization_policies.entry(name) {
+            Entry::Vacant(entry) => {
+                entry.insert(spec);
+            }
+            Entry::Occupied(entry) => {
+                let ap = entry.into_mut();
+                if *ap == spec {
+                    return false;
+                }
+                *ap = spec;
+            }
+        }
+        true
+    }
+
+    fn inbound_server(
+        &self,
+        name: String,
+        server: &server::Server,
+        authentications: &AuthenticationNsIndex,
+    ) -> InboundServer {
+        tracing::trace!(%name, ?server, "Creating inbound server");
+        let authorizations = self.client_authzs(&name, server, authentications);
         InboundServer {
-            name,
+            reference: ServerRef::Server(name),
             authorizations,
             protocol: server.protocol.clone(),
         }
@@ -721,16 +1026,215 @@ impl PolicyIndex {
         &self,
         server_name: &str,
         server: &server::Server,
-    ) -> HashMap<String, ClientAuthorization> {
-        self.server_authorizations
-            .iter()
-            .filter_map(|(name, saz)| {
-                if saz.server_selector.selects(server_name, &server.labels) {
-                    Some((name.to_string(), saz.authz.clone()))
-                } else {
-                    None
+        authentications: &AuthenticationNsIndex,
+    ) -> HashMap<AuthorizationRef, ClientAuthorization> {
+        let mut authzs = HashMap::default();
+        for (name, saz) in self.server_authorizations.iter() {
+            if saz.server_selector.selects(server_name, &server.labels) {
+                authzs.insert(
+                    AuthorizationRef::ServerAuthorization(name.to_string()),
+                    saz.authz.clone(),
+                );
+            }
+        }
+
+        for (name, spec) in self.authorization_policies.iter() {
+            match spec.target.server() {
+                Some(target) if target != server_name => {
+                    tracing::trace!(
+                        ns = %self.namespace,
+                        authorizationpolicy = %name,
+                        server = %server_name,
+                        %target,
+                        "AuthorizationPolicy does not target server",
+                    );
+                    continue;
                 }
-            })
-            .collect()
+                None => continue,
+                Some(_) => {}
+            }
+
+            tracing::trace!(
+                ns = %self.namespace,
+                authorizationpolicy = %name,
+                server = %server_name,
+                "AuthorizationPolicy targets server",
+            );
+            tracing::trace!(authns = ?spec.authentications);
+
+            let authz = match self.policy_client_authz(spec, authentications) {
+                Ok(authz) => authz,
+                Err(error) => {
+                    tracing::info!(
+                        server = %server_name,
+                        authorizationpolicy = %name,
+                        %error,
+                        "Illegal AuthorizationPolicy; ignoring",
+                    );
+                    continue;
+                }
+            };
+
+            let reference = AuthorizationRef::AuthorizationPolicy(name.to_string());
+            authzs.insert(reference, authz);
+        }
+
+        authzs
+    }
+
+    fn policy_client_authz(
+        &self,
+        spec: &authorization_policy::Spec,
+        all_authentications: &AuthenticationNsIndex,
+    ) -> Result<ClientAuthorization> {
+        use authorization_policy::AuthenticationTarget;
+
+        let mut identities = None;
+        for tgt in spec.authentications.iter() {
+            if let AuthenticationTarget::MeshTLS {
+                ref namespace,
+                ref name,
+            } = tgt
+            {
+                let namespace = namespace.as_deref().unwrap_or(&self.namespace);
+                tracing::trace!(ns = %namespace, %name, "Finding MeshTLSAuthentication");
+                if let Some(ns) = all_authentications.by_ns.get(namespace) {
+                    if let Some(authn) = ns.meshtls.get(name) {
+                        tracing::trace!(ns = %namespace, %name, ids = ?authn.matches, "Found MeshTLSAuthentication");
+                        // There can only be a single required MeshTLSAuthentication. This is
+                        // enforced by the admission controller.
+                        if identities.is_some() {
+                            bail!("policy must not include multiple MeshTLSAuthentications");
+                        }
+                        let ids = authn.matches.clone();
+                        identities = Some(ids);
+                        continue;
+                    }
+                }
+                bail!(
+                    "could not find MeshTLSAuthentication {} in namespace {}",
+                    name,
+                    namespace
+                );
+            }
+        }
+
+        let mut networks = None;
+        for tgt in spec.authentications.iter() {
+            if let AuthenticationTarget::Network {
+                ref namespace,
+                ref name,
+            } = tgt
+            {
+                let namespace = namespace.as_deref().unwrap_or(&self.namespace);
+                tracing::trace!(ns = %namespace, %name, "Finding NetworkAuthentication");
+                if let Some(ns) = all_authentications.by_ns.get(namespace) {
+                    if let Some(authn) = ns.network.get(name).as_ref() {
+                        tracing::trace!(ns = %namespace, %name, nets = ?authn.matches, "Found NetworkAuthentication");
+                        // There can only be a single required NetworkAuthentication. This is
+                        // enforced by the admission controller.
+                        if networks.is_some() {
+                            bail!("policy must not include multiple NetworkAuthentications");
+                        }
+                        let nets = authn.matches.clone();
+                        networks = Some(nets);
+                        continue;
+                    }
+                }
+                bail!(
+                    "could not find NetworkAuthentication {} in namespace {}",
+                    name,
+                    namespace
+                );
+            }
+        }
+
+        Ok(ClientAuthorization {
+            // If MTLS identities are configured, use them. Otherwise, do not require
+            // authentication.
+            authentication: identities
+                .map(ClientAuthentication::TlsAuthenticated)
+                .unwrap_or(ClientAuthentication::Unauthenticated),
+
+            // If networks are configured, use them. Otherwise, this applies to all networks.
+            networks: networks.unwrap_or_else(|| {
+                vec![
+                    NetworkMatch {
+                        net: Ipv4Net::default().into(),
+                        except: vec![],
+                    },
+                    NetworkMatch {
+                        net: Ipv6Net::default().into(),
+                        except: vec![],
+                    },
+                ]
+            }),
+        })
+    }
+}
+
+// === impl AuthenticationNsIndex ===
+
+impl AuthenticationNsIndex {
+    fn update_meshtls(
+        &mut self,
+        namespace: String,
+        name: String,
+        spec: meshtls_authentication::Spec,
+    ) -> bool {
+        match self.by_ns.entry(namespace).or_default().meshtls.entry(name) {
+            Entry::Vacant(entry) => {
+                entry.insert(spec);
+            }
+            Entry::Occupied(mut entry) => {
+                if *entry.get() == spec {
+                    return false;
+                }
+                entry.insert(spec);
+            }
+        }
+
+        true
+    }
+
+    fn update_network(
+        &mut self,
+        namespace: String,
+        name: String,
+        spec: network_authentication::Spec,
+    ) -> bool {
+        match self.by_ns.entry(namespace).or_default().network.entry(name) {
+            Entry::Vacant(entry) => {
+                entry.insert(spec);
+            }
+            Entry::Occupied(mut entry) => {
+                if *entry.get() == spec {
+                    return false;
+                }
+                entry.insert(spec);
+            }
+        }
+
+        true
+    }
+}
+
+// === impl AuthenticationIndex ===
+
+impl AuthenticationIndex {
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.meshtls.is_empty() && self.network.is_empty()
+    }
+}
+
+// === imp NsUpdate ===
+
+impl<T> Default for NsUpdate<T> {
+    fn default() -> Self {
+        Self {
+            added: vec![],
+            removed: Default::default(),
+        }
     }
 }

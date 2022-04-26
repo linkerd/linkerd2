@@ -144,7 +144,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		cmd  = "install"
 		args = []string{
 			"--controller-log-level", "debug",
-			"--proxy-version", TestHelper.GetVersion(),
+			"--set", fmt.Sprintf("proxy.image.version=%s", TestHelper.GetVersion()),
 			"--skip-inbound-ports", skippedInboundPorts,
 			"--set", "heartbeatSchedule=1 2 3 4 5",
 		}
@@ -153,14 +153,6 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace()),
 		}
 	)
-
-	if certsPath := TestHelper.CertsPath(); certsPath != "" {
-		args = append(args,
-			"--identity-trust-anchors-file", certsPath+"/ca.crt",
-			"--identity-issuer-certificate-file", certsPath+"/issuer.crt",
-			"--identity-issuer-key-file", certsPath+"/issuer.key",
-		)
-	}
 
 	if TestHelper.GetClusterDomain() != "cluster.local" {
 		args = append(args, "--cluster-domain", TestHelper.GetClusterDomain())

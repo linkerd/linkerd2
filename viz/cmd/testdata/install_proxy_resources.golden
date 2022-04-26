@@ -374,8 +374,8 @@ spec:
   port: admin-http
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-viz
   name: admin
@@ -384,12 +384,30 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: admin
-  client:
-    # for kubelet probes and prometheus scraping
-    unauthenticated: true
-
+  requiredAuthenticationRefs:
+  - group: policy.linkerd.io
+    kind: NetworkAuthentication
+    name: kubelet
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  namespace: linkerd-viz
+  name: kubelet
+  labels:
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  # Ideally, this should be restricted to the actual set of IPs kubelet uses in
+  # a cluster. This can't easily be discovered.
+  networks:
+  - cidr: "0.0.0.0/0"
+  - cidr: "::/0"
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
@@ -407,8 +425,8 @@ spec:
   port: linkerd-admin
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-viz
   name: proxy-admin
@@ -417,12 +435,14 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: proxy-admin
-  client:
-    # for kubelet probes
-    unauthenticated: true
-
+  requiredAuthenticationRefs:
+  - group: policy.linkerd.io
+    kind: NetworkAuthentication
+    name: kubelet
 ---
 ###
 ### Metrics API
@@ -530,8 +550,8 @@ spec:
   port: http
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-viz
   name: metrics-api
@@ -541,13 +561,29 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: metrics-api
-  client:
-    meshTLS:
-      serviceAccounts:
-      - name: web
-      - name: prometheus
+  requiredAuthenticationRefs:
+  - group: policy.linkerd.io
+    kind: MeshTLSAuthentication
+    name: metrics-api-web
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: MeshTLSAuthentication
+metadata:
+  namespace: linkerd-viz
+  name: metrics-api-web
+  labels:
+    linkerd.io/extension: viz
+    component: metrics-api
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  identityRefs:
+  - kind: ServiceAccount
+    name: web
 ---
 ###
 ### Prometheus
@@ -862,6 +898,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - args:
         - api
@@ -921,8 +958,8 @@ spec:
   port: apiserver
   proxyProtocol: TLS
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-viz
   name: tap
@@ -932,11 +969,14 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: tap-api
-  client:
-    # traffic coming from kube-api
-    unauthenticated: true
+  requiredAuthenticationRefs:
+  - group: policy.linkerd.io
+    kind: NetworkAuthentication
+    name: kube-api-server
 ---
 ###
 ### Tap Injector RBAC
@@ -1054,6 +1094,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - args:
         - injector
@@ -1110,8 +1151,8 @@ spec:
   port: tap-injector
   proxyProtocol: TLS
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-viz
   name: tap-injector
@@ -1121,11 +1162,30 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: tap-injector-webhook
-  client:
-    # traffic coming from kube-api
-    unauthenticated: true
+  requiredAuthenticationRefs:
+  - group: policy.linkerd.io
+    kind: NetworkAuthentication
+    name: kube-api-server
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  namespace: linkerd-viz
+  name: kube-api-server
+  labels:
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  # Ideally, this should be restricted to the actual set of IPs the kubelet API
+  # server uses for webhooks in a cluster. This can't easily be discovered.
+  networks:
+  - cidr: "0.0.0.0/0"
+  - cidr: "::/0"
 ---
 ###
 ### Web

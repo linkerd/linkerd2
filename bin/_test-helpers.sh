@@ -226,7 +226,7 @@ delete_cluster() {
 }
 
 cleanup_cluster() {
-  "$bindir"/test-cleanup --context "$context" "$linkerd_path" > /dev/null 2>&1
+  "$bindir"/test-cleanup "$linkerd_path" > /dev/null 2>&1
   exit_on_err 'error removing existing Linkerd resources'
 }
 
@@ -366,13 +366,10 @@ start_multicluster_test() {
   fi
   run_multicluster_test
   exit_on_err "error calling 'run_multicluster_test'"
+  export context="k3d-source"
   finish source
+  export context="k3d-target"
   finish target
-}
-
-multicluster_link() {
-  lbIP=$(kubectl --context="$context" get svc -n kube-system traefik -o 'go-template={{ (index .status.loadBalancer.ingress 0).ip }}')
-  "$linkerd_path" multicluster link --log-level debug --api-server-address "https://${lbIP}:6443" --cluster-name "$1" --set "enableHeadlessServices=true"
 }
 
 run_test(){
@@ -455,26 +452,7 @@ run_uninstall_test() {
 }
 
 run_multicluster_test() {
-  tmp=$(mktemp -d -t l5dcerts.XXX)
-  pwd=$PWD
-  cd "$tmp"
-  "$bindir"/certs-openssl
-  cd "$pwd"
-  export context="k3d-target"
-  run_test "$test_directory/multicluster/install_test.go" --certs-path "$tmp"
-  run_test "$test_directory/multicluster/target1"
-  link=$(multicluster_link target)
-
-  export context="k3d-source"
-  # Create the emojivoto and multicluster-statefulset namespaces in the source
-  # cluster so that mirror services can be created there.
-  kubectl --context="$context" create namespace emojivoto
-  kubectl --context="$context" create namespace multicluster-statefulset
-  run_test "$test_directory/multicluster/install_test.go" --certs-path "$tmp"
-  echo "$link" | kubectl --context="$context" apply -f -
-  run_test "$test_directory/multicluster/source" 
-  export context="k3d-target"
-  run_test "$test_directory/multicluster/target2" 
+   run_test "$test_directory/multicluster/..." 
 }
 
 run_deep_test() {

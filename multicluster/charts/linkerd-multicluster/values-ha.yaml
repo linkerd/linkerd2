@@ -2,3 +2,5 @@ gateway:
   replicas: 3
 
 enablePodAntiAffinity: true
+
+# nodeAffinity:

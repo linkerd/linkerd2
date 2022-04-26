@@ -2,11 +2,249 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  name: authorizationpolicies.policy.linkerd.io
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+  labels:
+    helm.sh/chart: linkerd-control-plane-1.2.0-edge
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  group: policy.linkerd.io
+  scope: Namespaced
+  names:
+    kind: AuthorizationPolicy
+    plural: authorizationpolicies
+    singular: authorizationpolicy
+    shortNames: []
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              description: >-
+                Authorizes clients to communicate with Linkerd-proxied server
+                resources.
+              type: object
+              required: [targetRef, requiredAuthenticationRefs]
+              properties:
+                targetRef:
+                  description: >-
+                    TargetRef references a resource to which the authorization
+                    policy applies.
+                  type: object
+                  required: [kind, name]
+                  # Modified from the gateway API.
+                  # Copyright 2020 The Kubernetes Authors
+                  properties:
+                    group:
+                      description: >-
+                        Group is the group of the referent. When empty, the
+                        Kubernetes core API group is inferred.
+                      maxLength: 253
+                      pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                      type: string
+                    kind:
+                      description: >-
+                        Kind is the kind of the referent.
+                      maxLength: 63
+                      minLength: 1
+                      pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                      type: string
+                    name:
+                      description: Name is the name of the referent.
+                      maxLength: 253
+                      minLength: 1
+                      type: string
+                requiredAuthenticationRefs:
+                  description: >-
+                    RequiredAuthenticationRefs enumerates a set of required
+                    authentications. ALL authentications must be satisfied for
+                    the authorization to apply. If any of the referred objects
+                    cannot be found, the authorization will be ignored.
+                  type: array
+                  items:
+                    type: object
+                    required: [kind, name]
+                    properties:
+                      group:
+                        description: >-
+                          Group is the group of the referent. When empty, the
+                          Kubernetes core API group is inferred."
+                        maxLength: 253
+                        pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                        type: string
+                      kind:
+                        description: >-
+                          Kind is the kind of the referent.
+                        maxLength: 63
+                        minLength: 1
+                        pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                        type: string
+                      name:
+                        description: >-
+                          Name is the name of the referent.
+                        maxLength: 253
+                        minLength: 1
+                        type: string
+                      namespace:
+                        description: >-
+                          Name is the name of the referent. When unspecified,
+                          this authentication refers to the local namespace.
+                        maxLength: 253
+                        type: string
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: meshtlsauthentications.policy.linkerd.io
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+  labels:
+    helm.sh/chart: linkerd-control-plane-1.2.0-edge
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  group: policy.linkerd.io
+  scope: Namespaced
+  names:
+    kind: MeshTLSAuthentication
+    plural: meshtlsauthentications
+    singular: meshtlsauthentication
+    shortNames: []
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              description: >-
+                MeshTLSAuthentication defines a list of authenticated client IDs
+                to be referenced by an `AuthorizationPolicy`. If a client
+                connection has the mutually-authenticated identity that matches
+                ANY of the of the provided identities, the connection is
+                considered authenticated.
+              type: object
+              oneOf:
+                - required: [identities]
+                - required: [identityRefs]
+              properties:
+                identities:
+                  description: >-
+                    Authorizes clients with the provided proxy identity strings
+                    (as provided via MTLS)
+
+                    The `*` prefix can be used to match all identities in
+                    a domain. An identity string of `*` indicates that
+                    all authentication clients are authorized.
+                  type: array
+                  items:
+                    type: string
+                    pattern: '^(\*|[a-z0-9]([-a-z0-9]*[a-z0-9])?)(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$'
+                identityRefs:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - kind
+                    properties:
+                      group:
+                        description: >-
+                          Group is the group of the referent. When empty, the
+                          Kubernetes core API group is inferred."
+                        maxLength: 253
+                        pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                        type: string
+                      kind:
+                        description: >-
+                          Kind is the kind of the referent.
+                        maxLength: 63
+                        minLength: 1
+                        pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                        type: string
+                      name:
+                        description: >-
+                          Name is the name of the referent. When unspecified,
+                          this refers to all resources of the specified Group
+                          and Kind in the specified namespace.
+                        maxLength: 253
+                        minLength: 1
+                        type: string
+                      namespace:
+                        description: >-
+                          Name is the name of the referent. When unspecified,
+                          this authentication refers to the local namespace.
+                        maxLength: 253
+                        type: string
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: networkauthentications.policy.linkerd.io
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+  labels:
+    helm.sh/chart: linkerd-control-plane-1.2.0-edge
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  group: policy.linkerd.io
+  scope: Namespaced
+  names:
+    kind: NetworkAuthentication
+    plural: networkauthentications
+    singular: networkauthentication
+    shortNames: []
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              description: >-
+                NetworkAuthentication defines a list of authenticated client
+                networks to be referenced by an `AuthorizationPolicy`. If a
+                client connection originates from ANY of the of the provided
+                networks, the connection is considered authenticated.
+              type: object
+              required: [networks]
+              properties:
+                networks:
+                  type: array
+                  items:
+                    type: object
+                    required: [cidr]
+                    properties:
+                      cidr:
+                        description: >-
+                          The CIDR of the network to be authorized.
+                        type: string
+                      except:
+                        description: >-
+                          A list of IP networks/addresses not to be included in
+                          the above `cidr`.
+                        type: array
+                        items:
+                          type: string
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
   name: servers.policy.linkerd.io
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-control-plane-1.1.10-edge
+    helm.sh/chart: linkerd-control-plane-1.2.0-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -152,7 +390,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-control-plane-1.1.10-edge
+    helm.sh/chart: linkerd-control-plane-1.2.0-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -198,9 +436,6 @@ spec:
                       description: >-
                         A label query over servers on which this authorization applies.
                       type: object
-                      oneOf:
-                        - required: [matchLabels]
-                        - required: [matchExpressions]
                       properties:
                         matchLabels:
                           type: object
@@ -223,9 +458,6 @@ spec:
                 client:
                   description:  Describes clients authorized to access a server.
                   type: object
-                  oneOf:
-                    - required: [meshTLS]
-                    - required: [unauthenticated]
                   properties:
                     networks:
                       description: >-
@@ -250,10 +482,6 @@ spec:
                       type: boolean
                     meshTLS:
                       type: object
-                      oneOf:
-                        - required: [unauthenticatedTLS]
-                        - required: [identities]
-                        - required: [serviceAccounts]
                       properties:
                         unauthenticatedTLS:
                           type: boolean
@@ -328,9 +556,6 @@ spec:
                       description: >-
                         A label query over servers on which this authorization applies.
                       type: object
-                      oneOf:
-                        - required: [matchLabels]
-                        - required: [matchExpressions]
                       properties:
                         matchLabels:
                           type: object
@@ -353,9 +578,6 @@ spec:
                 client:
                   description:  Describes clients authorized to access a server.
                   type: object
-                  oneOf:
-                    - required: [meshTLS]
-                    - required: [unauthenticated]
                   properties:
                     networks:
                       description: >-
@@ -380,10 +602,6 @@ spec:
                       type: boolean
                     meshTLS:
                       type: object
-                      oneOf:
-                        - required: [unauthenticatedTLS]
-                        - required: [identities]
-                        - required: [serviceAccounts]
                       properties:
                         unauthenticatedTLS:
                           type: boolean
@@ -441,7 +659,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-control-plane-1.1.10-edge
+    helm.sh/chart: linkerd-control-plane-1.2.0-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: linkerd.io
@@ -879,6 +1097,9 @@ webhooks:
     apiGroups: ["policy.linkerd.io"]
     apiVersions: ["v1alpha1", "v1beta1"]
     resources:
+    - authorizationpolicies
+    - networkauthentications
+    - meshtlsauthentications
     - serverauthorizations
     - servers
   sideEffects: None
@@ -903,6 +1124,9 @@ rules:
   - apiGroups:
       - policy.linkerd.io
     resources:
+      - authorizationpolicies
+      - meshtlsauthentications
+      - networkauthentications
       - servers
       - serverauthorizations
     verbs:
@@ -1170,6 +1394,7 @@ data:
     imagePullPolicy: IfNotPresent
     imagePullSecrets: []
     linkerdVersion: install-control-plane-version
+    nodeAffinity: null
     nodeSelector:
       kubernetes.io/os: linux
     podAnnotations: {}
@@ -1425,6 +1650,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - args:
         - identity
@@ -1769,6 +1995,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - env:
         - name: _pod_name
@@ -2136,6 +2363,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - env:
         - name: _pod_name

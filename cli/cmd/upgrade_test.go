@@ -413,7 +413,7 @@ func testUpgradeOptions() (flagOptions, error) {
 	flagspkg.AddValueOptionsFlags(flagSet, templateOpts)
 	flagSet.Set("set", fmt.Sprintf("policyController.image.version=%[1]s,linkerdVersion=%[1]s", upgradeControlPlaneVersion))
 
-	flagSet.Set("proxy-version", upgradeProxyVersion)
+	flagSet.Set("set", fmt.Sprintf("proxy.image.version=%s", upgradeProxyVersion))
 
 	return flagOptions{flags, flagSet, templateOpts}, nil
 }

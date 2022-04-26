@@ -7,7 +7,9 @@ pub mod policy;
 pub use self::labels::Labels;
 pub use k8s_openapi::api::{
     self,
-    core::v1::{Namespace, Node, NodeSpec, Pod, PodSpec, PodStatus},
+    core::v1::{Namespace, Node, NodeSpec, Pod, PodSpec, PodStatus, ServiceAccount},
 };
-pub use kube::api::{ObjectMeta, Resource, ResourceExt};
-pub use kube::runtime::watcher::Event as WatchEvent;
+pub use kube::{
+    api::{ObjectMeta, Resource, ResourceExt},
+    runtime::watcher::Event as WatchEvent,
+};

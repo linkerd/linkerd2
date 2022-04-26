@@ -26,7 +26,7 @@ with:
 :; bin/docker-build-policy-controller &; \
     bin/docker-build-controller &; \
     bin/docker-build-proxy &; \
-    wait && wait && wait && \
+    wait && \
     bin/image-load --k3d policy-controller controller proxy && \
     rm -rf target/cli && \
     bin/linkerd install --set 'policyController.logLevel=info\,linkerd=trace\,kubert=trace' \

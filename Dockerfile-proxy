@@ -18,7 +18,7 @@ COPY .proxy-version proxy-version
 ARG TARGETARCH
 RUN (proxy=$(bin/fetch-proxy $(cat proxy-version) $TARGETARCH) && \
     mv "$proxy" linkerd2-proxy)
-ARG LINKERD_AWAIT_VERSION=v0.2.5
+ARG LINKERD_AWAIT_VERSION=v0.2.6
 RUN bin/scurl -o linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-${TARGETARCH} && chmod +x linkerd-await
 
 ## compile proxy-identity agent
@@ -39,7 +39,7 @@ COPY --from=fetch /build/proxy-version /usr/lib/linkerd/linkerd2-proxy-version.t
 COPY --from=fetch /build/linkerd2-proxy /usr/lib/linkerd/linkerd2-proxy
 COPY --from=fetch /build/linkerd-await /usr/lib/linkerd/linkerd-await
 COPY --from=golang /out/proxy-identity /usr/lib/linkerd/linkerd2-proxy-identity
-COPY --from=debian:buster-20210208-slim /bin/sleep /bin/sleep
+COPY --from=debian:bullseye-slim /bin/sleep /bin/sleep
 ARG LINKERD_VERSION
 ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}
 ENV LINKERD2_PROXY_LOG=warn,linkerd=info

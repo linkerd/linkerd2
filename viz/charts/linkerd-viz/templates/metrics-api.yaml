@@ -23,6 +23,7 @@ spec:
     port: 8085
     targetPort: 8085
 ---
+{{- $tree := deepCopy . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -65,10 +66,9 @@ spec:
       {{- include "linkerd.tolerations" (dict "Values" .Values.metricsAPI) | nindent 6 }}
       {{- end -}}
       {{- include "linkerd.node-selector" (dict "Values" .Values.metricsAPI) | nindent 6 }}
-      {{- if .Values.enablePodAntiAffinity -}}
-      {{- $local := dict "component" "metrics-api" "label" "component" -}}
-      {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
-      {{- end }}
+      {{- $_ := set $tree "component" "metrics-api" -}}
+      {{- $_ := set $tree "label" "component" -}}
+      {{- include "linkerd.affinity" $tree | nindent 6 -}}
       containers:
       - args:
         - -controller-namespace={{.Values.linkerdNamespace}}

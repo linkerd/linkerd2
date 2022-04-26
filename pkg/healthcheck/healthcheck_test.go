@@ -2227,6 +2227,7 @@ data:
     disableHeartBeat: false
     enableH2Upgrade: true
     enablePodAntiAffinity: false
+    nodeAffinity: null
     cliVersion: CliVersion
     clusterDomain: cluster.local
     clusterNetworks: ClusterNetworks

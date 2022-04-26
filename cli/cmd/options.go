@@ -270,12 +270,6 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 	proxyFlags := pflag.NewFlagSet("proxy", pflag.ExitOnError)
 
 	flags := []flag.Flag{
-		flag.NewStringFlagP(proxyFlags, "proxy-version", "v", defaults.Proxy.Image.Version, "Tag to be used for the Linkerd proxy images",
-			func(values *l5dcharts.Values, value string) error {
-				values.Proxy.Image.Version = value
-				return nil
-			}),
-
 		flag.NewStringFlag(proxyFlags, "proxy-image", defaults.Proxy.Image.Name, "Linkerd proxy container image name",
 			func(values *l5dcharts.Values, value string) error {
 				values.Proxy.Image.Name = value
@@ -409,6 +403,12 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 				values.Proxy.Resources.CPU.Request = value
 				return nil
 			}),
+
+		flag.NewStringFlagP(proxyFlags, "proxy-version", "v", defaults.Proxy.Image.Version, "Tag to be used for the Linkerd proxy images",
+			func(values *l5dcharts.Values, value string) error {
+				values.Proxy.Image.Version = value
+				return nil
+			}),
 	}
 
 	registryFlag := flag.NewStringFlag(proxyFlags, "registry", defaultDockerRegistry,
@@ -428,6 +428,7 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 
 	proxyFlags.MarkDeprecated("proxy-memory", "use --proxy-memory-request instead")
 	proxyFlags.MarkDeprecated("proxy-cpu", "use --proxy-cpu-request instead")
+	proxyFlags.MarkDeprecated("proxy-version", "use --set proxy.image.version=<version>")
 
 	// Hide developer focused flags in release builds.
 	release, err := version.IsReleaseChannel(version.Version)

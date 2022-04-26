@@ -1,15 +1,20 @@
 use crate::k8s::{
     labels,
-    policy::{Server, ServerAuthorization, ServerAuthorizationSpec, ServerSpec},
+    policy::{
+        AuthorizationPolicy, AuthorizationPolicySpec, MeshTLSAuthentication,
+        MeshTLSAuthenticationSpec, NetworkAuthentication, NetworkAuthenticationSpec, Server,
+        ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
+    },
 };
 use anyhow::{anyhow, bail, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
+use k8s_openapi::api::core::v1::ServiceAccount;
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use serde::de::DeserializeOwned;
 use std::task;
 use thiserror::Error;
-use tracing::{debug, info, warn};
+use tracing::{debug, info, trace, warn};
 
 #[derive(Clone)]
 pub struct Admission {
@@ -47,7 +52,7 @@ impl hyper::service::Service<Request<Body>> for Admission {
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        tracing::trace!(?req);
+        trace!(?req);
         if req.method() != http::Method::POST || req.uri().path() != "/" {
             return Box::pin(future::ok(
                 Response::builder()
@@ -67,7 +72,7 @@ impl hyper::service::Service<Request<Body>> for Admission {
                     return json_response(AdmissionResponse::invalid(error).into_review());
                 }
             };
-            tracing::trace!(?review);
+            trace!(?review);
 
             let rsp = match review.try_into() {
                 Ok(req) => {
@@ -91,6 +96,18 @@ impl Admission {
     }
 
     async fn admit(self, req: AdmissionRequest) -> AdmissionResponse {
+        if is_kind::<AuthorizationPolicy>(&req) {
+            return self.admit_spec::<AuthorizationPolicySpec>(req).await;
+        }
+
+        if is_kind::<MeshTLSAuthentication>(&req) {
+            return self.admit_spec::<MeshTLSAuthenticationSpec>(req).await;
+        }
+
+        if is_kind::<NetworkAuthentication>(&req) {
+            return self.admit_spec::<NetworkAuthenticationSpec>(req).await;
+        }
+
         if is_kind::<Server>(&req) {
             return self.admit_spec::<ServerSpec>(req).await;
         };
@@ -110,18 +127,19 @@ impl Admission {
         T: DeserializeOwned,
         Self: Validate<T>,
     {
-        let kind = req.kind.kind.clone();
         let rsp = AdmissionResponse::from(&req);
+
+        let kind = req.kind.kind.clone();
         let (ns, name, spec) = match parse_spec::<T>(req) {
             Ok(spec) => spec,
             Err(error) => {
-                info!(%error, "failed to parse {} spec", kind);
+                info!(%error, "Failed to parse {} spec", kind);
                 return rsp.deny(error);
             }
         };
 
         if let Err(error) = self.validate(&ns, &name, spec).await {
-            info!(%error, %ns, %name, %kind, "denied");
+            info!(%error, %ns, %name, %kind, "Denied");
             return rsp.deny(error);
         }
 
@@ -136,20 +154,6 @@ where
 {
     let dt = Default::default();
     *req.kind.group == *T::group(&dt) && *req.kind.kind == *T::kind(&dt)
-}
-
-/// Detects whether two pod selectors can select the same pod
-//
-// TODO(ver) We can probably detect overlapping selectors more effectively. For
-// example, if `left` selects pods with 'foo=bar' and `right` selects pods with
-// 'foo', we should indicate the selectors overlap. It's a bit tricky to work
-// through all of the cases though, so we'll just punt for now.
-fn overlaps(left: &labels::Selector, right: &labels::Selector) -> bool {
-    if left.selects_all() || right.selects_all() {
-        return true;
-    }
-
-    left == right
 }
 
 fn json_response(rsp: AdmissionReview) -> Result<Response<Body>, Error> {
@@ -184,6 +188,67 @@ fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(String, Str
 }
 
 #[async_trait::async_trait]
+impl Validate<AuthorizationPolicySpec> for Admission {
+    async fn validate(self, _ns: &str, _name: &str, spec: AuthorizationPolicySpec) -> Result<()> {
+        // TODO support namespace references?
+        if !spec.target_ref.targets_kind::<Server>() {
+            bail!(
+                "invalid targetRef kind: {}",
+                spec.target_ref.canonical_kind()
+            );
+        }
+
+        let mtls_authns_count = spec
+            .required_authentication_refs
+            .iter()
+            .filter(|authn| authn.targets_kind::<MeshTLSAuthentication>())
+            .count();
+        if mtls_authns_count > 1 {
+            bail!("only a single MeshTLSAuthentication may be set");
+        }
+
+        let net_authns_count = spec
+            .required_authentication_refs
+            .iter()
+            .filter(|authn| authn.targets_kind::<NetworkAuthentication>())
+            .count();
+        if net_authns_count > 1 {
+            bail!("only a single NetworkAuthentication may be set");
+        }
+
+        if mtls_authns_count + net_authns_count < spec.required_authentication_refs.len() {
+            let kinds = spec
+                .required_authentication_refs
+                .iter()
+                .filter(|authn| {
+                    !authn.targets_kind::<MeshTLSAuthentication>()
+                        && !authn.targets_kind::<NetworkAuthentication>()
+                })
+                .map(|authn| authn.canonical_kind())
+                .collect::<Vec<_>>();
+            bail!("unsupported authentication kind(s): {}", kinds.join(", "));
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl Validate<MeshTLSAuthenticationSpec> for Admission {
+    async fn validate(self, _ns: &str, _name: &str, spec: MeshTLSAuthenticationSpec) -> Result<()> {
+        // The CRD validates identity strings, but does not validate identity references.
+
+        for id in spec.identity_refs.iter().flatten() {
+            if !id.targets_kind::<ServiceAccount>() {
+                bail!("invalid identity target kind: {}", id.canonical_kind());
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
 impl Validate<ServerSpec> for Admission {
     /// Checks that `spec` doesn't select the same pod/ports as other existing Servers
     //
@@ -199,9 +264,54 @@ impl Validate<ServerSpec> for Admission {
         for server in servers.items.into_iter() {
             if server.name() != name
                 && server.spec.port == spec.port
-                && overlaps(&server.spec.pod_selector, &spec.pod_selector)
+                && Self::overlaps(&server.spec.pod_selector, &spec.pod_selector)
             {
                 bail!("identical server spec already exists");
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl Admission {
+    /// Detects whether two pod selectors can select the same pod
+    //
+    // TODO(ver) We can probably detect overlapping selectors more effectively. For
+    // example, if `left` selects pods with 'foo=bar' and `right` selects pods with
+    // 'foo', we should indicate the selectors overlap. It's a bit tricky to work
+    // through all of the cases though, so we'll just punt for now.
+    fn overlaps(left: &labels::Selector, right: &labels::Selector) -> bool {
+        if left.selects_all() || right.selects_all() {
+            return true;
+        }
+
+        left == right
+    }
+}
+
+#[async_trait::async_trait]
+impl Validate<NetworkAuthenticationSpec> for Admission {
+    async fn validate(self, _ns: &str, _name: &str, spec: NetworkAuthenticationSpec) -> Result<()> {
+        if spec.networks.is_empty() {
+            bail!("at least one network must be specified");
+        }
+        for net in spec.networks.into_iter() {
+            for except in net.except.into_iter().flatten() {
+                if except.contains(&net.cidr) {
+                    bail!(
+                        "cidr '{}' is completely negated by exception '{}'",
+                        net.cidr,
+                        except
+                    );
+                }
+                if !net.cidr.contains(&except) {
+                    bail!(
+                        "cidr '{}' does not include exception '{}'",
+                        net.cidr,
+                        except
+                    );
+                }
             }
         }
 
@@ -212,6 +322,23 @@ impl Validate<ServerSpec> for Admission {
 #[async_trait::async_trait]
 impl Validate<ServerAuthorizationSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: ServerAuthorizationSpec) -> Result<()> {
+        if let Some(mtls) = spec.client.mesh_tls.as_ref() {
+            if spec.client.unauthenticated {
+                bail!("`unauthenticated` must be false if `mesh_tls` is specified");
+            }
+            if mtls.unauthenticated_tls {
+                let ids = mtls.identities.as_ref().map(|ids| ids.len()).unwrap_or(0);
+                let sas = mtls
+                    .service_accounts
+                    .as_ref()
+                    .map(|sas| sas.len())
+                    .unwrap_or(0);
+                if ids + sas > 0 {
+                    bail!("`unauthenticatedTLS` be false if any `identities` or `service_accounts` is specified");
+                }
+            }
+        }
+
         for net in spec.client.networks.into_iter().flatten() {
             for except in net.except.into_iter().flatten() {
                 if except.contains(&net.cidr) {

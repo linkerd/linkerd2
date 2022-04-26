@@ -115,17 +115,17 @@ func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
 // consumption zone as the node. An endpoints consumption zone is set
 // by its Hints field and can be different than its actual Topology zone.
 func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
+	filtered := make(map[watcher.ID]watcher.Address)
 	// If any address does not have a hint, then all hints are ignored and all
 	// available addresses are returned. This replicates kube-proxy behavior
 	// documented in the KEP: https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/2433-topology-aware-hints/README.md#kube-proxy
 	for _, address := range et.availableEndpoints.Addresses {
 		if len(address.ForZones) == 0 {
-			allAvailEndpoints := make(map[watcher.ID]watcher.Address)
 			for k, v := range et.availableEndpoints.Addresses {
-				allAvailEndpoints[k] = v
+				filtered[k] = v
 			}
 			return watcher.AddressSet{
-				Addresses: allAvailEndpoints,
+				Addresses: filtered,
 				Labels:    et.availableEndpoints.Labels,
 			}
 		}
@@ -134,7 +134,6 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 	// Each address that has a hint matching the node's zone should be added
 	// to the set of addresses that will be returned.
 	et.log.Debugf("Filtering through addresses that should be consumed by zone %s", et.nodeTopologyZone)
-	filtered := make(map[watcher.ID]watcher.Address)
 	for id, address := range et.availableEndpoints.Addresses {
 		for _, zone := range address.ForZones {
 			if zone.Name == et.nodeTopologyZone {
@@ -152,7 +151,13 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 
 	// If there were no filtered addresses, then fall to using endpoints from
 	// all zones.
-	return et.availableEndpoints
+	for k, v := range et.availableEndpoints.Addresses {
+		filtered[k] = v
+	}
+	return watcher.AddressSet{
+		Addresses: filtered,
+		Labels:    et.availableEndpoints.Labels,
+	}
 }
 
 // diffEndpoints calculates the difference between the filtered set of

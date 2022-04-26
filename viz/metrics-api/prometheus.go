@@ -36,14 +36,16 @@ const (
 	promLatencyP95      = promType("0.95")
 	promLatencyP99      = promType("0.99")
 
-	namespaceLabel           = model.LabelName("namespace")
-	dstNamespaceLabel        = model.LabelName("dst_namespace")
-	gatewayNameLabel         = model.LabelName("gateway_name")
-	gatewayNamespaceLabel    = model.LabelName("gateway_namespace")
-	remoteClusterNameLabel   = model.LabelName("target_cluster_name")
-	authorityLabel           = model.LabelName("authority")
-	serverLabel              = model.LabelName("srv_name")
-	serverAuthorizationLabel = model.LabelName("saz_name")
+	namespaceLabel         = model.LabelName("namespace")
+	dstNamespaceLabel      = model.LabelName("dst_namespace")
+	gatewayNameLabel       = model.LabelName("gateway_name")
+	gatewayNamespaceLabel  = model.LabelName("gateway_namespace")
+	remoteClusterNameLabel = model.LabelName("target_cluster_name")
+	authorityLabel         = model.LabelName("authority")
+	serverKindLabel        = model.LabelName("srv_kind")
+	serverNameLabel        = model.LabelName("srv_name")
+	authorizationKindLabel = model.LabelName("authz_kind")
+	authorizationNameLabel = model.LabelName("authz_name")
 )
 
 var (
@@ -117,9 +119,11 @@ func promQueryLabels(resource *pb.Resource) model.LabelSet {
 	if resource != nil {
 		if resource.Name != "" {
 			if resource.GetType() == k8s.Server {
-				set[serverLabel] = model.LabelValue(resource.GetName())
+				set[serverKindLabel] = model.LabelValue("server")
+				set[serverNameLabel] = model.LabelValue(resource.GetName())
 			} else if resource.GetType() == k8s.ServerAuthorization {
-				set[serverAuthorizationLabel] = model.LabelValue(resource.GetName())
+				set[authorizationKindLabel] = model.LabelValue("serverauthorization")
+				set[authorizationNameLabel] = model.LabelValue(resource.GetName())
 			} else if resource.GetType() != k8s.Service {
 				set[promResourceType(resource)] = model.LabelValue(resource.Name)
 			}

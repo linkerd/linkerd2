@@ -1,5 +1,5 @@
-name: 💡 Feature Request"
-description: I have a suggestion (and may want to implement it 🙂)!
+name: "💡 Feature Request"
+description: If you have a suggestion for how to improve Linkerd
 labels: ["enhancement"]
 body:
   - type: markdown

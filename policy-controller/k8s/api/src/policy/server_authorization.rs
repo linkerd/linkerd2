@@ -1,5 +1,5 @@
-use super::super::labels;
-use ipnet::IpNet;
+pub use super::Network;
+use crate::labels;
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -53,12 +53,6 @@ pub struct MeshTls {
 
     /// Identifies a `ServiceAccount` authorized to access a server.
     pub service_accounts: Option<Vec<ServiceAccountRef>>,
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
-pub struct Network {
-    pub cidr: IpNet,
-    pub except: Option<Vec<IpNet>>,
 }
 
 /// References a Kubernetes `ServiceAccount` instance.

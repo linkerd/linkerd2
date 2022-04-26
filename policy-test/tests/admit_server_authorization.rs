@@ -65,6 +65,91 @@ async fn rejects_except_whole_cidr() {
 }
 
 #[tokio::test(flavor = "current_thread")]
+async fn rejects_unauthenciated_and_mtls() {
+    admission::rejects(|ns| ServerAuthorization {
+        metadata: api::ObjectMeta {
+            namespace: Some(ns),
+            name: Some("test".to_string()),
+            ..Default::default()
+        },
+        spec: ServerAuthorizationSpec {
+            server: Server {
+                name: Some("test".to_string()),
+                selector: None,
+            },
+            client: Client {
+                unauthenticated: true,
+                mesh_tls: Some(MeshTls {
+                    identities: Some(vec!["*".to_string()]),
+                    ..Default::default()
+                }),
+                networks: None,
+            },
+        },
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn rejects_unauthenciated_tls_and_identities() {
+    admission::rejects(|ns| ServerAuthorization {
+        metadata: api::ObjectMeta {
+            namespace: Some(ns),
+            name: Some("test".to_string()),
+            ..Default::default()
+        },
+        spec: ServerAuthorizationSpec {
+            server: Server {
+                name: Some("test".to_string()),
+                selector: None,
+            },
+            client: Client {
+                mesh_tls: Some(MeshTls {
+                    unauthenticated_tls: true,
+                    identities: Some(vec!["*".to_string()]),
+                    ..Default::default()
+                }),
+                networks: None,
+                ..Default::default()
+            },
+        },
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn accepts_network_as_ip() {
+    admission::accepts(|ns| ServerAuthorization {
+        metadata: api::ObjectMeta {
+            namespace: Some(ns),
+            name: Some("test".to_string()),
+            ..Default::default()
+        },
+        spec: ServerAuthorizationSpec {
+            server: Server {
+                name: Some("test".to_string()),
+                selector: None,
+            },
+            client: Client {
+                networks: Some(vec![
+                    Network {
+                        cidr: "10.1.0.2".parse().unwrap(),
+                        except: None,
+                    },
+                    Network {
+                        cidr: "10.1.1.0/24".parse().unwrap(),
+                        except: Some(vec!["10.1.1.3".parse().unwrap()]),
+                    },
+                ]),
+                unauthenticated: true,
+                mesh_tls: None,
+            },
+        },
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
 async fn rejects_except_not_in_cidr() {
     admission::rejects(|ns| ServerAuthorization {
         metadata: api::ObjectMeta {

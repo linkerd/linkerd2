@@ -1,5 +1,5 @@
 ARG GO_VERSION=1.17
-ARG RUST_TOOLCHAIN=1.59.0
+ARG RUST_TOOLCHAIN=1.60.0
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as go
 ARG GOLANGCI_LINT_VERSION=v1.44.2
@@ -13,6 +13,8 @@ RUN for p in \
     github.com/go-delve/delve/cmd/dlv@latest \
     github.com/golangci/golangci-lint/cmd/golangci-lint@${GOLANGCI_LINT_VERSION} \
     golang.org/x/tools/gopls@latest \
+    google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2 \
+    google.golang.org/protobuf/cmd/protoc-gen-go@v1.28 \
     ; do go install "$p" ; done
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as cargo-deny
@@ -62,7 +64,8 @@ RUN apt install -y \
     lsb-release \
     npm \
     sudo \
-    time
+    time \
+    unzip
 RUN npm install markdownlint-cli@0.23.1 --global
 
 RUN sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && locale-gen

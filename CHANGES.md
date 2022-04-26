@@ -1,5 +1,49 @@
 # Changes
 
+## edge-22.3.5
+
+This edge release introduces new policy CRDs that allow for more generalized
+authorization policies.
+
+The `AuthorizationPolicy` CRD authorizes clients that satisfy all the required
+authentications to communicate with the Linkerd `Server` that it targets.
+Required authentications are specified through the new `MeshTLSAuthentication`
+and `NetworkAuthentication` CRDs.
+
+A `MeshTLSAuthentication` defines a list of authenticated client IDs—specified
+directly by proxy identity strings or referencing resources such as
+`ServiceAccount`s.
+
+A `NetworkAuthentication` defines a list of client networks that will be
+authenticated.
+
+Additionally, to support the new CRDs, policy-related labels have been changed
+to better categorize policy metrics. A `srv_kind` label has been introduced
+which splits the current `srv_name` value—formatted as `kind:name`—into separate
+labels. The `saz_name` label has been removed and is replaced by the new
+`authz_kind` and `authz_name` labels.
+
+* Introduced the `srv_kind` label which allowed splitting the value of the
+  current `srv_name` label
+* Removed the `saz_name` label and replaced it with the new `authz_kind` and
+  `authz_name` labels
+* Fixed an issue in the destination controller where an update would not be sent
+  after an endpoint was discovered for a currently empty service
+* Introduced the following custom resource types to support generalized
+  authorization policies: `AuthorizationPolicy`, `MeshTLSAuthentication`,
+  `NetworkAuthentication`
+* Deprecated the `--proxy-version` flag (thanks @importhuman!)
+* Updated linkerd-viz to use new policy CRDs
+
+## edge-22.3.4
+
+* Disabled pprof endpoints on Linkerd control plane components by default
+* Fixed an issue where mirror service endpoints of headless services were always
+  ready regardless of gateway liveness
+* Added server side validation for ServerAuthorization resources
+* Fixed an "origin not allowed" issue when using the latest Grafana with the
+  Linkerd Viz extension
+
 ## edge-22.3.3
 
 This edge release ensures that in multicluster installations, mirror service

@@ -1,6 +1,6 @@
 {
     "name": "linkerd2",
-    "image": "ghcr.io/linkerd/dev:v9",
+    "image": "ghcr.io/linkerd/dev:v12",
     // "dockerFile": "./Dockerfile",
     // "context": "..",
     "extensions": [
@@ -17,6 +17,9 @@
     },
     "runArgs": [
         "--init",
+        // Limit container memory usage.
+        "--memory=8g",
+        "--memory-swap=8g",
         // Use the host network so we can access k3d, etc.
         "--net=host",
         // For lldb

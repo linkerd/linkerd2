@@ -41,6 +41,11 @@ privileged: false
 # for more information
 #tolerations:
 
+# -|- NodeAffinity section, See the
+# [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
+# for more information
+#nodeAffinity:
+
 #
 ## For Private docker registries, authentication is needed.
 # If the control plane service images are pulled from a

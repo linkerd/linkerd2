@@ -10,7 +10,7 @@ codegen_pkg=${GOPATH}/pkg/mod/k8s.io/code-generator@${gen_ver}
 # ROOT_PACKAGE :: the package that is the target for code generation
 ROOT_PACKAGE=github.com/linkerd/linkerd2
 
-crds=(serviceprofile:v1alpha2 server:v1beta1 serverauthorization:v1beta1 link:v1alpha1)
+crds=(serviceprofile:v1alpha2 server:v1beta1 serverauthorization:v1beta1 link:v1alpha1 policy:v1alpha1)
 
 # remove previously generated code
 rm -rf "${rootdir}/controller/gen/client"
@@ -39,3 +39,6 @@ cp -R "${GOPATH}/src/${ROOT_PACKAGE}/controller/gen" 'controller/'
 sed -i 's/Group: \"server\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/server/v1beta1/fake/fake_server.go"
 sed -i 's/Group: \"serverauthorization\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/serverauthorization/v1beta1/fake/fake_serverauthorization.go"
 sed -i 's/Group: \"link\"/Group: \"multicluster.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/link/v1alpha1/fake/fake_link.go"
+sed -i 's/Group: \"policy\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/policy/v1alpha1/fake/fake_authorizationpolicy.go"
+sed -i 's/Group: \"policy\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/policy/v1alpha1/fake/fake_meshtlsauthentication.go"
+sed -i 's/Group: \"policy\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/policy/v1alpha1/fake/fake_networkauthentication.go"

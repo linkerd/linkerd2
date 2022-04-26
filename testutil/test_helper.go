@@ -34,10 +34,11 @@ type TestHelper struct {
 	externalIssuer     bool
 	externalPrometheus bool
 	multicluster       bool
+	multiclusterSrcCtx string
+	multiclusterTgtCtx string
 	uninstall          bool
 	cni                bool
 	calico             bool
-	certsPath          string
 	defaultAllowPolicy string
 	httpClient         http.Client
 	KubernetesHelper
@@ -109,6 +110,14 @@ var ExternalVizDeployReplicas = map[string]DeploySpec{
 	"web":          {"linkerd-viz", 1},
 }
 
+// SourceContextKey represents the key used to get the name of the Kubernetes
+// context corresponding to a source cluster in multicluster tests
+var SourceContextKey = "source"
+
+// TargetContextKey represents the key used to get the name of the Kubernetes
+// context corresponding to a source cluster in multicluster tests
+var TargetContextKey = "target"
+
 // NewGenericTestHelper returns a new *TestHelper from the options provided as function parameters.
 // This helper was created to be able to reuse this package without hard restrictions
 // as seen in `NewTestHelper()` which is primarily used with integration tests
@@ -176,6 +185,8 @@ func NewTestHelper() *TestHelper {
 	namespace := flag.String("linkerd-namespace", "linkerd", "the namespace where linkerd is installed")
 	vizNamespace := flag.String("viz-namespace", "linkerd-viz", "the namespace where linkerd viz extension is installed")
 	multicluster := flag.Bool("multicluster", false, "when specified the multicluster install functionality is tested")
+	multiclusterSourceCtx := flag.String("multicluster-source-context", "k3d-source", "the context belonging to source cluster in multicluster test")
+	multiclusterTargetCtx := flag.String("multicluster-target-context", "k3d-target", "the context belonging to target cluster in multicluster test")
 	helmPath := flag.String("helm-path", "target/helm", "path of the Helm binary")
 	helmCharts := flag.String("helm-charts", "charts/linkerd2", "path to linkerd2's Helm charts")
 	multiclusterHelmChart := flag.String("multicluster-helm-chart", "charts/linkerd-multicluster", "path to linkerd2's multicluster Helm chart")
@@ -194,7 +205,6 @@ func NewTestHelper() *TestHelper {
 	uninstall := flag.Bool("uninstall", false, "whether to run the 'linkerd uninstall' integration test")
 	cni := flag.Bool("cni", false, "whether to install linkerd with CNI enabled")
 	calico := flag.Bool("calico", false, "whether to install calico CNI plugin")
-	certsPath := flag.String("certs-path", "", "if non-empty, 'linkerd install' will use the files ca.crt, issuer.crt and issuer.key under this path in its --identity-* flags")
 	defaultAllowPolicy := flag.String("default-allow-policy", "", "if non-empty, passed to --set policyController.defaultAllowPolicy at linkerd's install time")
 	flag.Parse()
 
@@ -227,6 +237,8 @@ func NewTestHelper() *TestHelper {
 		vizNamespace:       *vizNamespace,
 		upgradeFromVersion: *upgradeFromVersion,
 		multicluster:       *multicluster,
+		multiclusterSrcCtx: *multiclusterSourceCtx,
+		multiclusterTgtCtx: *multiclusterTargetCtx,
 		helm: helm{
 			path:                    *helmPath,
 			charts:                  *helmCharts,
@@ -244,7 +256,6 @@ func NewTestHelper() *TestHelper {
 		cni:                *cni,
 		calico:             *calico,
 		uninstall:          *uninstall,
-		certsPath:          *certsPath,
 		defaultAllowPolicy: *defaultAllowPolicy,
 	}
 
@@ -290,6 +301,15 @@ func (h *TestHelper) GetVizNamespace() string {
 // components are installed.
 func (h *TestHelper) GetMulticlusterNamespace() string {
 	return fmt.Sprintf("%s-multicluster", h.GetLinkerdNamespace())
+}
+
+// GetMulticlusterContexts returns a map with the context names for the clusters
+// used in the test
+func (h *TestHelper) GetMulticlusterContexts() map[string]string {
+	return map[string]string{
+		"source": h.multiclusterSrcCtx,
+		"target": h.multiclusterTgtCtx,
+	}
 }
 
 // GetTestNamespace returns the namespace for the given test. The test namespace
@@ -357,12 +377,6 @@ func (h *TestHelper) Multicluster() bool {
 // Uninstall determines whether the "linkerd uninstall" integration test should be run
 func (h *TestHelper) Uninstall() bool {
 	return h.uninstall
-}
-
-// CertsPath returns the path for the ca.cert, issuer.crt and issuer.key files that `linkerd install`
-// will use in its --identity-* flags
-func (h *TestHelper) CertsPath() string {
-	return h.certsPath
 }
 
 // DefaultAllowPolicy returns the override value for policyController.defaultAllowPolicy

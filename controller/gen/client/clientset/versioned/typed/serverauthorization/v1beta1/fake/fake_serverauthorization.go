@@ -105,7 +105,7 @@ func (c *FakeServerAuthorizations) Update(ctx context.Context, serverAuthorizati
 // Delete takes name of the serverAuthorization and deletes it. Returns an error if one occurs.
 func (c *FakeServerAuthorizations) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(serverauthorizationsResource, c.ns, name), &v1beta1.ServerAuthorization{})
+		Invokes(testing.NewDeleteActionWithOptions(serverauthorizationsResource, c.ns, name, opts), &v1beta1.ServerAuthorization{})
 
 	return err
 }

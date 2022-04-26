@@ -105,7 +105,7 @@ func (c *FakeServiceProfiles) Update(ctx context.Context, serviceProfile *v1alph
 // Delete takes name of the serviceProfile and deletes it. Returns an error if one occurs.
 func (c *FakeServiceProfiles) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(serviceprofilesResource, c.ns, name), &v1alpha2.ServiceProfile{})
+		Invokes(testing.NewDeleteActionWithOptions(serviceprofilesResource, c.ns, name, opts), &v1alpha2.ServiceProfile{})
 
 	return err
 }

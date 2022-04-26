@@ -14,6 +14,8 @@ deploymentStrategy:
 # -- add PodAntiAffinity to each control plane workload
 enablePodAntiAffinity: true
 
+# nodeAffinity: 
+
 # proxy configuration
 proxy:
   resources:

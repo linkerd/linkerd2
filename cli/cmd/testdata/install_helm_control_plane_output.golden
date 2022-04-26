@@ -161,6 +161,9 @@ webhooks:
     apiGroups: ["policy.linkerd.io"]
     apiVersions: ["v1alpha1", "v1beta1"]
     resources:
+    - authorizationpolicies
+    - networkauthentications
+    - meshtlsauthentications
     - serverauthorizations
     - servers
   sideEffects: None
@@ -185,6 +188,9 @@ rules:
   - apiGroups:
       - policy.linkerd.io
     resources:
+      - authorizationpolicies
+      - meshtlsauthentications
+      - networkauthentications
       - servers
       - serverauthorizations
     verbs:
@@ -436,6 +442,7 @@ data:
     imagePullPolicy: IfNotPresent
     imagePullSecrets: []
     linkerdVersion: linkerd-version
+    nodeAffinity: null
     nodeSelector:
       kubernetes.io/os: linux
     podAnnotations: {}
@@ -685,6 +692,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - args:
         - identity
@@ -1032,6 +1040,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - env:
         - name: _pod_name
@@ -1404,6 +1413,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - env:
         - name: _pod_name

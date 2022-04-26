@@ -5,16 +5,15 @@ edition = "2021"
 license = "Apache-2.0"
 publish = false
 
-[features]
-rustfmt = ["linkerd2-proxy-api/rustfmt"]
-
 [dependencies]
 async-stream = "0.3"
 async-trait = "0.1"
 drain = "0.1"
+hyper = { version = "0.14", features = ["http2", "server", "tcp"] }
 futures = { version = "0.3", default-features = false }
-linkerd2-proxy-api = { version = "0.3", features = ["inbound", "server"] }
+linkerd2-proxy-api = { version = "0.5", features = ["inbound"] }
 linkerd-policy-controller-core = { path = "../core" }
+maplit = "1"
 tokio = { version = "1", features = ["macros"] }
-tonic = { version = "0.6", default-features = false, features = ["transport"] }
+tonic = { version = "0.7", default-features = false }
 tracing = "0.1"
