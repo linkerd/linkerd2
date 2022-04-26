@@ -31,6 +31,8 @@ jobs:
         - web
     name: Docker build (${{ matrix.component }})
     timeout-minutes: 30
+    permissions:
+      package: write
     steps:
     - name: Checkout code
       uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
@@ -39,8 +41,6 @@ jobs:
         docker-registry: ${{ env.DOCKER_REGISTRY }}
         docker-target: multi-arch
         docker-push: 1
-        docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
-        docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
         component: ${{ matrix.component }}
     - name: Create artifact with CLI
       # windows_static_cli_tests below needs this because it can't create linux containers
@@ -65,6 +65,8 @@ jobs:
 
   policy_controller_build:
     runs-on: ubuntu-20.04
+    permisisons:
+      package: write
     timeout-minutes: 30
     strategy:
       matrix:
@@ -76,6 +78,11 @@ jobs:
     steps:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@94ab11c41e45d028884a99163086648e898eed25
+    - uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     - name: Checkout code
       uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
     - run: |
@@ -90,7 +97,6 @@ jobs:
         restore-keys: policy-controller-
     - name: Build ${{ matrix.arch }}
       run: |
-        echo "${{ secrets.DOCKER_GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.DOCKER_GHCR_USERNAME }}" --password-stdin
         docker buildx build --push . \
           -f ./policy-controller/${{ matrix.arch }}.dockerfile \
           -t $DOCKER_REGISTRY/policy-controller:$TAG-${{ matrix.arch }} \
@@ -107,6 +113,8 @@ jobs:
     timeout-minutes: 30
     needs: [policy_controller_build]
     name: Policy controller manifest
+    permissions:
+      package: write
     steps:
     - name: Checkout code
       uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
@@ -127,9 +135,13 @@ jobs:
             $DOCKER_REGISTRY/policy-controller:${TAG}-arm64 --os=linux --arch=arm64
         docker manifest annotate $DOCKER_REGISTRY/policy-controller:$TAG \
             $DOCKER_REGISTRY/policy-controller:${TAG}-arm --os=linux --arch=arm
+    - uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     - name: Push multiarch manifest
       run: |
-        echo "${{ secrets.DOCKER_GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.DOCKER_GHCR_USERNAME }}" --password-stdin
         docker manifest push $DOCKER_REGISTRY/policy-controller:$TAG
 
   windows_static_cli_tests:
