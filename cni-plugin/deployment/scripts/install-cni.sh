@@ -65,33 +65,40 @@ KUBECONFIG_FILE_NAME=${KUBECONFIG_FILE_NAME:-ZZZ-linkerd-cni-kubeconfig}
 ### Function definitions ###
 ############################
 
-# Cleanup will remove any installed configuration from the host
-# If CNI_CONF_PATH is set, then linkerd-cni configuration parameters will be
-# removed from the cni conf file. If linkerd-cni is running in chained mode, the
-# new configuration file will be written out to host fs atomically; otherwise,
-# if linkerd-cni is the only plugin, the configuration file will be removed.
+# Cleanup will remove any installed configuration from the host If there are any
+# *conflist files, then linkerd-cni configuration parameters will be removed
+# from them; otherwise, if linkerd-cni is the only plugin, the configuration
+# file will be removed.
 cleanup() {
+  # Watch is started as a bg process, before cleaning up kill 'inotifywait'
+  is_watch_running=$(ps -o pid= -p ${WATCH_PID})
+  if [ ! -z "$is_watch_running" ]; then
+    echo 'Stopping watch.'
+    kill -s KILL ${WATCH_PID}
+  fi
+
   echo 'Removing linkerd-cni artifacts.'
 
-  if [ -e "${CNI_CONF_PATH}" ]; then
-    echo "Removing linkerd-cni config: ${CNI_CONF_PATH}"
-    CNI_CONF_DATA=$(jq 'del( .plugins[]? | select( .type == "linkerd-cni" ))' "${CNI_CONF_PATH}")
-    # TODO (matei): we should write this out to a temp file and then do a `mv`
-    # to be atomic. 
-    # TODO (matei): instead of using CNI_CONF_PATH, we should make sure any
-    # *conflist file is checked for linkerd-cni cfg
-    echo "${CNI_CONF_DATA}" > "${CNI_CONF_PATH}"
+  # Find all conflist files and print them out using a NULL separator instead of
+  # writing each file in a new line. We will subsequently read each string and
+  # attempt to rm linkerd config from it using jq helper.
+  find "${HOST_CNI_NET}" -maxdepth 1 -type f \( -iname '*conflist' \) -print0 |
+    while read -d $'\0' file; do
+      echo "Removing linkerd-cni config from $file"
+      local cni_data=$(jq 'del( .plugins[]? | select( .type == "linkerd-cni" ))' "$file")
+      # TODO (matei): we should write this out to a temp file and then do a `mv`
+      # to be atomic. 
+      echo "$cni_data" > "$file"
+    done
 
-    # Check whether configuration file has been created by our own cni plugin
-    # and if so, rm it.
-    if [ -e "${DEFAULT_CNI_CONF_PATH}" ]; then
-      echo "Cleaning up ${DEFAULT_CNI_CONF_PATH}"
-      rm -f "${DEFAULT_CNI_CONF_PATH}"
-    fi
+  # Check whether configuration file has been created by our own cni plugin
+  # and if so, rm it.
+  if [ -e "${DEFAULT_CNI_CONF_PATH}" ]; then
+    echo "Cleaning up ${DEFAULT_CNI_CONF_PATH}"
+    rm -f "${DEFAULT_CNI_CONF_PATH}"
   fi
-  #
+
   # Remove binary and kubeconfig file
-  #
   if [ -e "${HOST_CNI_NET}/${KUBECONFIG_FILE_NAME}" ]; then
     echo "Removing linkerd-cni kubeconfig: ${HOST_CNI_NET}/${KUBECONFIG_FILE_NAME}"
     rm -f "${HOST_CNI_NET}/${KUBECONFIG_FILE_NAME}"
@@ -103,7 +110,11 @@ cleanup() {
   echo 'Exiting.'
 }
 
-
+# Capture the usual signals and exit from the script
+trap cleanup EXIT
+trap 'echo "SIGINT received, simply exiting..."; cleanup' INT
+trap 'echo "SIGTERM received, simply exiting..."; cleanup' TERM
+trap 'echo "SIGHUP received, simply exiting..."; cleanup' HUP
 
 # Install CNI bin will copy the linkerd-cni binary on the host's filesystem
 install_cni_bin() {
@@ -284,28 +295,12 @@ sync() {
   fi
 }
 
-################################
-### CNI Plugin Install Logic ###
-################################
-
-# Capture the usual signals and exit from the script
-trap cleanup EXIT
-trap 'echo "SIGINT received, simply exiting..."; cleanup' INT
-trap 'echo "SIGTERM received, simply exiting..."; cleanup' TERM
-trap 'echo "SIGHUP received, simply exiting..."; cleanup' HUP
-
-install_cni_bin
-# Install for the first time using whatever path we have chosen at the start.
-install_cni_conf ${CNI_CONF_PATH}
-
-# Compute SHA for first config file; this will be updated after every iteration.
-cni_conf_sha="$(sha256sum ${CNI_CONF_PATH} | awk '{print $1}')"
-
-# Start watch on host's CNI config directory. Although files are mostly `mv'd`,
-# because they are moved from the container's filesystem, the events logged will
-# typically be a DELETED followed by a CREATE. When we are on the same system
-# partition, `mv` simply renames, however, that won't be the case so we don't
-# watch any "moved_to" or "moved_from" events.
+# Monitor will start a watch on host's CNI config directory. Although files are
+# mostly `mv'd`, because they are moved from the container's filesystem, the
+# events logged will typically be a DELETED followed by a CREATE. When we are on
+# the same system partition, `mv` simply renames, however, that won't be the
+# case so we don't watch any "moved_to" or "moved_from" events.
+monitor() {
 inotifywait -m ${HOST_CNI_NET} -e create,delete |
  while read -r directory action filename; do
    if [[ "$filename" =~ .*.(conflist|conf)$ ]]; then 
@@ -318,3 +313,30 @@ inotifywait -m ${HOST_CNI_NET} -e create,delete |
     fi
    fi
  done
+}
+
+################################
+### CNI Plugin Install Logic ###
+################################
+
+install_cni_bin
+# Install for the first time using whatever path we have chosen at the start.
+install_cni_conf ${CNI_CONF_PATH}
+
+# Compute SHA for first config file; this will be updated after every iteration.
+cni_conf_sha="$(sha256sum ${CNI_CONF_PATH} | awk '{print $1}')"
+
+# Watch in bg so we can receive interrupt signals through 'trap'. From 'man
+# bash': 
+# "If  bash  is  waiting  for a command to complete and receives a signal
+# for which a trap has been set, the trap will not be executed until the command
+# completes. When bash is waiting for an asynchronous command via the wait
+# builtin, the reception of a signal for which a trap has been set will cause
+# the wait builtin to return immediately with an exit status greater than 128,
+# immediately after which the trap is executed."
+monitor &
+WATCH_PID=$!
+while true; do
+  sleep infinity &
+  wait $!
+done
