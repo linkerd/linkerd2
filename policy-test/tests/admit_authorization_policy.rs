@@ -38,6 +38,72 @@ async fn accepts_valid() {
 }
 
 #[tokio::test(flavor = "current_thread")]
+async fn accepts_targets_namespace() {
+    admission::accepts(|ns| AuthorizationPolicy {
+        metadata: api::ObjectMeta {
+            namespace: Some(ns.clone()),
+            name: Some("test".to_string()),
+            ..Default::default()
+        },
+        spec: AuthorizationPolicySpec {
+            target_ref: LocalTargetRef {
+                group: Some("core".to_string()),
+                kind: "Namespace".to_string(),
+                name: ns,
+            },
+            required_authentication_refs: vec![
+                NamespacedTargetRef {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: "MeshTLSAuthentication".to_string(),
+                    name: "mtls-clients".to_string(),
+                    namespace: None,
+                },
+                NamespacedTargetRef {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: "NetworkAuthentication".to_string(),
+                    name: "cluster-nets".to_string(),
+                    namespace: Some("linkerd".to_string()),
+                },
+            ],
+        },
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn rejects_targets_other_namespace() {
+    admission::rejects(|ns| AuthorizationPolicy {
+        metadata: api::ObjectMeta {
+            namespace: Some(ns.clone()),
+            name: Some("test".to_string()),
+            ..Default::default()
+        },
+        spec: AuthorizationPolicySpec {
+            target_ref: LocalTargetRef {
+                group: Some("core".to_string()),
+                kind: "Namespace".to_string(),
+                name: "foobar".to_string(),
+            },
+            required_authentication_refs: vec![
+                NamespacedTargetRef {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: "MeshTLSAuthentication".to_string(),
+                    name: "mtls-clients".to_string(),
+                    namespace: None,
+                },
+                NamespacedTargetRef {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: "NetworkAuthentication".to_string(),
+                    name: "cluster-nets".to_string(),
+                    namespace: Some("linkerd".to_string()),
+                },
+            ],
+        },
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
 async fn accepts_valid_with_only_meshtls() {
     admission::accepts(|ns| AuthorizationPolicy {
         metadata: api::ObjectMeta {

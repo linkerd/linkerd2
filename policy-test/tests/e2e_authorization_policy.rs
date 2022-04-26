@@ -20,7 +20,55 @@ async fn meshtls() {
             authz_policy(
                 &ns,
                 "nginx",
-                &srv,
+                LocalTargetRef::from_resource(&srv),
+                Some(NamespacedTargetRef::from_resource(&all_mtls)),
+            ),
+        )
+        .await;
+
+        // Create the nginx pod and wait for it to be ready.
+        tokio::join!(
+            create(&client, nginx::service(&ns)),
+            create_ready_pod(&client, nginx::pod(&ns))
+        );
+
+        let curl = curl::Runner::init(&client, &ns).await;
+        let (injected, uninjected) = tokio::join!(
+            curl.run("curl-injected", "http://nginx", LinkerdInject::Enabled),
+            curl.run("curl-uninjected", "http://nginx", LinkerdInject::Disabled),
+        );
+        let (injected_status, uninjected_status) =
+            tokio::join!(injected.exit_code(), uninjected.exit_code());
+        assert_eq!(
+            injected_status, 0,
+            "uninjected curl must fail to contact nginx"
+        );
+        assert_ne!(uninjected_status, 0, "injected curl must contact nginx");
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn targets_namespace() {
+    with_temp_ns(|client, ns| async move {
+        // First create all of the policies we'll need so that the nginx pod
+        // starts up with the correct policy (to prevent races).
+        //
+        // The policy requires that all connections are authenticated with MeshTLS.
+        let (_srv, all_mtls) = tokio::join!(
+            create(&client, nginx::server(&ns)),
+            create(&client, all_authenticated(&ns))
+        );
+        create(
+            &client,
+            authz_policy(
+                &ns,
+                "nginx",
+                LocalTargetRef{
+                    group: Some("core".to_string()),
+                    kind: "Namespace".to_string(),
+                    name: ns.clone(),
+                },
                 Some(NamespacedTargetRef::from_resource(&all_mtls)),
             ),
         )
@@ -77,7 +125,7 @@ async fn network() {
             authz_policy(
                 &ns,
                 "nginx",
-                &srv,
+                LocalTargetRef::from_resource(&srv),
                 Some(NamespacedTargetRef::from_resource(&allow_ips)),
             ),
         )
@@ -152,7 +200,7 @@ async fn both() {
             authz_policy(
                 &ns,
                 "nginx",
-                &srv,
+                LocalTargetRef::from_resource(&srv),
                 vec![
                     NamespacedTargetRef::from_resource(&allow_ips),
                     NamespacedTargetRef::from_resource(&all_mtls),
@@ -252,7 +300,7 @@ async fn either() {
                 authz_policy(
                     &ns,
                     "nginx-from-ip",
-                    &srv,
+                    LocalTargetRef::from_resource(&srv),
                     vec![NamespacedTargetRef::from_resource(&allow_ips)],
                 ),
             ),
@@ -261,7 +309,7 @@ async fn either() {
                 authz_policy(
                     &ns,
                     "nginx-from-id",
-                    &srv,
+                    LocalTargetRef::from_resource(&srv),
                     vec![NamespacedTargetRef::from_resource(&all_mtls)],
                 ),
             )
@@ -322,7 +370,7 @@ async fn either() {
 fn authz_policy(
     ns: &str,
     name: &str,
-    target: &k8s::policy::Server,
+    target: LocalTargetRef,
     authns: impl IntoIterator<Item = NamespacedTargetRef>,
 ) -> k8s::policy::AuthorizationPolicy {
     k8s::policy::AuthorizationPolicy {
@@ -332,7 +380,7 @@ fn authz_policy(
             ..Default::default()
         },
         spec: k8s::policy::AuthorizationPolicySpec {
-            target_ref: LocalTargetRef::from_resource(target),
+            target_ref: target,
             required_authentication_refs: authns.into_iter().collect(),
         },
     }
