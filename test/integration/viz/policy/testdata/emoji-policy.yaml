@@ -29,7 +29,7 @@ spec:
   client:
     meshTLS:
       identities:
-        - "*.linkerd-stat-authz-test.serviceaccount.identity.linkerd.cluster.local"
+        - "*.___NS___.serviceaccount.identity.linkerd.cluster.local"
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server

@@ -43,7 +43,7 @@ metadata:
     app.kubernetes.io/version: v11
 spec:
   identities:
-  - "*.linkerd-stat-authz-test.serviceaccount.identity.linkerd.cluster.local"
+  - "*.___NS___.serviceaccount.identity.linkerd.cluster.local"
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
@@ -87,7 +87,7 @@ metadata:
     app.kubernetes.io/version: v11
 spec:
   identities:
-  - "web.linkerd-stat-authz-test.serviceaccount.identity.linkerd.cluster.local"
+  - "web.___NS___.serviceaccount.identity.linkerd.cluster.local"
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server

@@ -62,6 +62,7 @@ func runWithPolicyManifests(t *testing.T, policy string) {
 
 		policyManifestsPath := fmt.Sprintf("testdata/%s.yaml", policy)
 		emojivotoPolicy, err := testutil.ReadFile(policyManifestsPath)
+		emojivotoPolicy = strings.ReplaceAll(emojivotoPolicy, "___NS___", prefixedNs)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "failed to read emoji-policy yaml",
 				"failed to read emoji-policy yaml\n%s\n", err)
