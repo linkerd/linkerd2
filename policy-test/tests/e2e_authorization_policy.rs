@@ -64,7 +64,7 @@ async fn targets_namespace() {
             authz_policy(
                 &ns,
                 "nginx",
-                LocalTargetRef{
+                LocalTargetRef {
                     group: Some("core".to_string()),
                     kind: "Namespace".to_string(),
                     name: ns.clone(),
