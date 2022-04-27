@@ -70,11 +70,10 @@ KUBECONFIG_FILE_NAME=${KUBECONFIG_FILE_NAME:-ZZZ-linkerd-cni-kubeconfig}
 # from them; otherwise, if linkerd-cni is the only plugin, the configuration
 # file will be removed.
 cleanup() {
-  # Watch is started as a bg process, before cleaning up kill 'inotifywait'
-  is_watch_running=$(ps -o pid= -p "${WATCH_PID}")
-  if [ -n "$is_watch_running" ]; then
-    echo 'Stopping watch.'
-    kill -s KILL "${WATCH_PID}"
+  # First, kill 'inotifywait' so we don't process any DELETE/CREATE events
+  if [ -n "$(pgrep inotifywait)" ]; then
+    echo "Sending SIGKILL to inotifywait"
+    kill -s KILL "$(pgrep inotifywait)"
   fi
 
   echo 'Removing linkerd-cni artifacts.'
@@ -108,11 +107,12 @@ cleanup() {
     echo "Removing linkerd-cni binary: ${CONTAINER_MOUNT_PREFIX}${DEST_CNI_BIN_DIR}/linkerd-cni"
     rm -f "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_BIN_DIR}/linkerd-cni"
   fi
+
   echo 'Exiting.'
+  exit 0
 }
 
 # Capture the usual signals and exit from the script
-trap cleanup EXIT
 trap 'echo "SIGINT received, simply exiting..."; cleanup' INT
 trap 'echo "SIGTERM received, simply exiting..."; cleanup' TERM
 trap 'echo "SIGHUP received, simply exiting..."; cleanup' HUP
@@ -147,8 +147,8 @@ create_cni_conf() {
   elif [ "${CNI_NETWORK_CONFIG}" != "" ]; then
     echo 'Using CNI config template from CNI_NETWORK_CONFIG environment variable.'
     cat >"${TMP_CONF}" <<EOF
-  ${CNI_NETWORK_CONFIG}
-  EOF
+${CNI_NETWORK_CONFIG}
+EOF
   fi
 
   SERVICE_ACCOUNT_PATH=/var/run/secrets/kubernetes.io/serviceaccount
@@ -340,7 +340,6 @@ cni_conf_sha="$(sha256sum "${CNI_CONF_PATH}" | awk '{print $1}')"
 # the wait builtin to return immediately with an exit status greater than 128,
 # immediately after which the trap is executed."
 monitor &
-WATCH_PID=$!
 while true; do
   # sleep so script never finishes
   # we start sleep in bg so we can trap signals
