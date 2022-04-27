@@ -29,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
-// makeInstallUpgradeFlags builds the set of flags which are by install and
+// makeInstallUpgradeFlags builds the set of flags which are used by install and
 // upgrade.  These flags control the majority of how the control plane is
 // configured.
 func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet, error) {

@@ -52,7 +52,7 @@ var (
 		"templates/serviceprofile.yaml",
 	}
 
-	templatesControlPlaneStage = []string{
+	templatesControlPlane = []string{
 		"templates/namespace.yaml",
 		"templates/identity-rbac.yaml",
 		"templates/destination-rbac.yaml",
@@ -106,11 +106,6 @@ control plane.`,
 The installation can be configured by using the --set, --values, --set-string and --set-file flags.
 A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create values override
-			valuesOverrides, err := options.MergeValues(nil)
-			if err != nil {
-				return err
-			}
 			var k8sAPI *k8s.KubernetesAPI
 			if !ignoreCluster {
 				// Ensure k8s is reachable
@@ -125,24 +120,6 @@ A full list of configurable values can be found at https://www.github.com/linker
 					return err
 				}
 
-				// We just want to check if `linkerd-configmap` exists
-				_, err := k8sAPI.CoreV1().ConfigMaps(controlPlaneNamespace).Get(cmd.Context(), k8s.ConfigConfigMapName, metav1.GetOptions{})
-				if err == nil {
-					fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, "ConfigMap/linkerd-config already exists")
-					os.Exit(1)
-				}
-				if !kerrors.IsNotFound(err) {
-					return err
-				}
-
-				if !isRunAsRoot(valuesOverrides) {
-					err = healthcheck.CheckNodesHaveNonDockerRuntime(cmd.Context(), k8sAPI)
-					if err != nil {
-						fmt.Fprintln(os.Stderr, err)
-						os.Exit(1)
-					}
-				}
-
 				if !crds {
 					err = healthcheck.CheckCustomResourceDefinitions(cmd.Context(), k8sAPI, true)
 					if err != nil {
@@ -151,7 +128,13 @@ A full list of configurable values can be found at https://www.github.com/linker
 					}
 				}
 			}
-			return install(cmd.Context(), k8sAPI, os.Stdout, values, flags, crds, valuesOverrides)
+			err = install(cmd.Context(), k8sAPI, os.Stdout, values, flags, crds, options)
+			if crds && err != nil {
+				fmt.Fprintln(os.Stderr, "Rendering Linkerd CRDs...")
+				fmt.Fprintln(os.Stderr, "Next, run `linkerd install | kubectl apply -f -` to install the control plane.")
+				fmt.Fprintln(os.Stderr)
+			}
+			return err
 		},
 	}
 
@@ -167,10 +150,34 @@ A full list of configurable values can be found at https://www.github.com/linker
 	return cmd
 }
 
-func install(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, crds bool, valuesOverrides map[string]interface{}) error {
+func install(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, crds bool, options valuespkg.Options) error {
 	err := flag.ApplySetFlags(values, flags)
 	if err != nil {
 		return err
+	}
+
+	// We just want to check if `linkerd-configmap` exists
+	_, err = k8sAPI.CoreV1().ConfigMaps(controlPlaneNamespace).Get(ctx, k8s.ConfigConfigMapName, metav1.GetOptions{})
+	if err == nil {
+		fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, "ConfigMap/linkerd-config already exists")
+		os.Exit(1)
+	}
+	if !kerrors.IsNotFound(err) {
+		return err
+	}
+
+	// Create values override
+	valuesOverrides, err := options.MergeValues(nil)
+	if err != nil {
+		return err
+	}
+
+	if !isRunAsRoot(valuesOverrides) {
+		err = healthcheck.CheckNodesHaveNonDockerRuntime(ctx, k8sAPI)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
 
 	err = initializeIssuerCredentials(ctx, k8sAPI, values)
@@ -216,7 +223,7 @@ func render(w io.Writer, values *l5dcharts.Values, crds bool, valuesOverrides ma
 			return err
 		}
 	} else {
-		for _, template := range templatesControlPlaneStage {
+		for _, template := range templatesControlPlane {
 			cpFiles = append(cpFiles,
 				&loader.BufferedFile{Name: template},
 			)
@@ -290,11 +297,6 @@ func render(w io.Writer, values *l5dcharts.Values, crds bool, valuesOverrides ma
 	}
 
 	_, err = w.Write(buf.Bytes())
-	if err == nil {
-		fmt.Fprintln(os.Stderr, "Rendering Linkerd CRDs...")
-		fmt.Fprintln(os.Stderr, "Next, run `linkerd install | kubectl apply -f -` to install the control plane.")
-		fmt.Fprintln(os.Stderr)
-	}
 	return err
 }
 

@@ -82,7 +82,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 		Example: `  # Upgrade CRDs first
   linkerd upgrade --crds | kubectl apply --prune --prune-whitelist=apiextensions.k8s.io/v1/customresourcedefinitions
 
-  # Then upgrade the controle-plane - also removes linkerd resources that no longer exist in the current version
+  # Then upgrade the controle-plane and remove linkerd resources that no longer exist in the current version
   linkerd upgrade | kubectl apply --prune -l linkerd.io/control-plane-ns=linkerd -f -
 
   # Then run this again to make sure that certain cluster-scoped resources are correctly pruned
@@ -108,7 +108,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 	cmd.Flags().AddFlagSet(proxyFlagSet)
 	cmd.PersistentFlags().AddFlagSet(upgradeFlagSet)
 	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
-	cmd.Flags().BoolVar(&crds, "crds", false, "Install Linkerd CRDs")
+	cmd.Flags().BoolVar(&crds, "crds", false, "Upgrade Linkerd CRDs")
 
 	return cmd
 }
