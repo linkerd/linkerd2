@@ -56,7 +56,12 @@ func ParseContainerOpaquePorts(override string, containers []corev1.Container) [
 
 // GetPortRanges gets port ranges from an override annotation
 func GetPortRanges(override string) []string {
-	return strings.Split(strings.TrimSuffix(override, ","), ",")
+	var ports []string
+	for _, port := range strings.Split(strings.TrimSuffix(override, ","), ",") {
+		ports = append(ports, strings.TrimSpace(port))
+	}
+
+	return ports
 }
 
 // isNamed checks if a port range is actually a container named port (e.g.
