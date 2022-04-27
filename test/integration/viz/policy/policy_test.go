@@ -25,7 +25,7 @@ func TestMain(m *testing.M) {
 /// TEST EXECUTION ///
 //////////////////////
 
-func TestServerAuthorization(t *testing.T) {
+func TestPolicy(t *testing.T) {
 	ctx := context.Background()
 
 	// Test authorization stats
