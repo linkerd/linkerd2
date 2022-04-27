@@ -132,56 +132,56 @@ install_cni_bin() {
 }
 
 create_cni_conf() {
-# Create temp configuration and kubeconfig files
-#
-TMP_CONF='/tmp/linkerd-cni.conf.default'
-# If specified, overwrite the network configuration file.
-# We are only interested in the side effect of parameter expansion here, hence ':'
-: "${CNI_NETWORK_CONFIG_FILE:=}"
-: "${CNI_NETWORK_CONFIG:=}"
+  # Create temp configuration and kubeconfig files
+  #
+  TMP_CONF='/tmp/linkerd-cni.conf.default'
+  # If specified, overwrite the network configuration file.
+  # We are only interested in the side effect of parameter expansion here, hence ':'
+  : "${CNI_NETWORK_CONFIG_FILE:=}"
+  : "${CNI_NETWORK_CONFIG:=}"
 
-# If the CNI Network Config has ben overwridden, then use template from file
-if [ -e "${CNI_NETWORK_CONFIG_FILE}" ]; then
-  echo "Using CNI config template from ${CNI_NETWORK_CONFIG_FILE}."
-  cp "${CNI_NETWORK_CONFIG_FILE}" "${TMP_CONF}"
-elif [ "${CNI_NETWORK_CONFIG}" != "" ]; then
-  echo 'Using CNI config template from CNI_NETWORK_CONFIG environment variable.'
-  cat >"${TMP_CONF}" <<EOF
-${CNI_NETWORK_CONFIG}
-EOF
-fi
-
-SERVICE_ACCOUNT_PATH=/var/run/secrets/kubernetes.io/serviceaccount
-KUBE_CA_FILE=${KUBE_CA_FILE:-${SERVICE_ACCOUNT_PATH}/ca.crt}
-SKIP_TLS_VERIFY=${SKIP_TLS_VERIFY:-false}
-# Pull out service account token.
-SERVICEACCOUNT_TOKEN=$(cat ${SERVICE_ACCOUNT_PATH}/token)
-
-# Check if we're running as a k8s pod.
-# The check will assert whether token exists and is a regular file
-if [ -f "${SERVICE_ACCOUNT_PATH}/token" ]; then
-  # We're running as a k8d pod - expect some variables.
-  # If the variables are null, exit
-  if [ -z "${KUBERNETES_SERVICE_HOST}" ]; then
-    echo 'KUBERNETES_SERVICE_HOST not set'; exit 1;
-  fi
-  if [ -z "${KUBERNETES_SERVICE_PORT}" ]; then
-    echo 'KUBERNETES_SERVICE_PORT not set'; exit 1;
+  # If the CNI Network Config has ben overwridden, then use template from file
+  if [ -e "${CNI_NETWORK_CONFIG_FILE}" ]; then
+    echo "Using CNI config template from ${CNI_NETWORK_CONFIG_FILE}."
+    cp "${CNI_NETWORK_CONFIG_FILE}" "${TMP_CONF}"
+  elif [ "${CNI_NETWORK_CONFIG}" != "" ]; then
+    echo 'Using CNI config template from CNI_NETWORK_CONFIG environment variable.'
+    cat >"${TMP_CONF}" <<EOF
+  ${CNI_NETWORK_CONFIG}
+  EOF
   fi
 
-  if [ "${SKIP_TLS_VERIFY}" = 'true' ]; then
-    TLS_CFG='insecure-skip-tls-verify: true'
-  elif [ -f "${KUBE_CA_FILE}" ]; then
-    TLS_CFG="certificate-authority-data: $(base64 "${KUBE_CA_FILE}" | tr -d '\n')"
-  fi
+  SERVICE_ACCOUNT_PATH=/var/run/secrets/kubernetes.io/serviceaccount
+  KUBE_CA_FILE=${KUBE_CA_FILE:-${SERVICE_ACCOUNT_PATH}/ca.crt}
+  SKIP_TLS_VERIFY=${SKIP_TLS_VERIFY:-false}
+  # Pull out service account token.
+  SERVICEACCOUNT_TOKEN=$(cat ${SERVICE_ACCOUNT_PATH}/token)
 
-  # Write a kubeconfig file for the CNI plugin. Do this
-  # to skip TLS verification for now. We should eventually support
-  # writing more complete kubeconfig files. This is only used
-  # if the provided CNI network config references it.
-  touch "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
-  chmod "${KUBECONFIG_MODE:-600}" "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
-  cat > "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}" <<EOF
+  # Check if we're running as a k8s pod.
+  # The check will assert whether token exists and is a regular file
+  if [ -f "${SERVICE_ACCOUNT_PATH}/token" ]; then
+    # We're running as a k8d pod - expect some variables.
+    # If the variables are null, exit
+    if [ -z "${KUBERNETES_SERVICE_HOST}" ]; then
+      echo 'KUBERNETES_SERVICE_HOST not set'; exit 1;
+    fi
+    if [ -z "${KUBERNETES_SERVICE_PORT}" ]; then
+      echo 'KUBERNETES_SERVICE_PORT not set'; exit 1;
+    fi
+
+    if [ "${SKIP_TLS_VERIFY}" = 'true' ]; then
+      TLS_CFG='insecure-skip-tls-verify: true'
+    elif [ -f "${KUBE_CA_FILE}" ]; then
+      TLS_CFG="certificate-authority-data: $(base64 "${KUBE_CA_FILE}" | tr -d '\n')"
+    fi
+
+    # Write a kubeconfig file for the CNI plugin. Do this
+    # to skip TLS verification for now. We should eventually support
+    # writing more complete kubeconfig files. This is only used
+    # if the provided CNI network config references it.
+    touch "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
+    chmod "${KUBECONFIG_MODE:-600}" "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
+    cat > "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}" <<EOF
 # Kubeconfig file for linkerd CNI plugin.
 apiVersion: v1
 kind: Config
@@ -202,25 +202,25 @@ contexts:
 current-context: linkerd-cni-context
 EOF
 
-fi
+  fi
 
-# Insert any of the supported "auto" parameters.
-grep '__KUBERNETES_SERVICE_HOST__' ${TMP_CONF} && sed -i s/__KUBERNETES_SERVICE_HOST__/"${KUBERNETES_SERVICE_HOST}"/g ${TMP_CONF}
-grep '__KUBERNETES_SERVICE_PORT__' ${TMP_CONF} && sed -i s/__KUBERNETES_SERVICE_PORT__/"${KUBERNETES_SERVICE_PORT}"/g ${TMP_CONF}
-# Check in container
-sed -i s/__KUBERNETES_NODE_NAME__/"${KUBERNETES_NODE_NAME:-$(hostname)}"/g ${TMP_CONF}
-sed -i s/__KUBECONFIG_FILENAME__/"${KUBECONFIG_FILE_NAME}"/g ${TMP_CONF}
-sed -i s/__CNI_MTU__/"${CNI_MTU:-1500}"/g ${TMP_CONF}
+  # Insert any of the supported "auto" parameters.
+  grep '__KUBERNETES_SERVICE_HOST__' ${TMP_CONF} && sed -i s/__KUBERNETES_SERVICE_HOST__/"${KUBERNETES_SERVICE_HOST}"/g ${TMP_CONF}
+  grep '__KUBERNETES_SERVICE_PORT__' ${TMP_CONF} && sed -i s/__KUBERNETES_SERVICE_PORT__/"${KUBERNETES_SERVICE_PORT}"/g ${TMP_CONF}
+  # Check in container
+  sed -i s/__KUBERNETES_NODE_NAME__/"${KUBERNETES_NODE_NAME:-$(hostname)}"/g ${TMP_CONF}
+  sed -i s/__KUBECONFIG_FILENAME__/"${KUBECONFIG_FILE_NAME}"/g ${TMP_CONF}
+  sed -i s/__CNI_MTU__/"${CNI_MTU:-1500}"/g ${TMP_CONF}
 
-# Use alternative command character "~", since these include a "/".
-sed -i s~__KUBECONFIG_FILEPATH__~"${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"~g ${TMP_CONF}
+  # Use alternative command character "~", since these include a "/".
+  sed -i s~__KUBECONFIG_FILEPATH__~"${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"~g ${TMP_CONF}
 
 
-# Log the config file before inserting service account token.
-# This way auth token is not visible in the logs.
-echo "CNI config: $(cat ${TMP_CONF})"
+  # Log the config file before inserting service account token.
+  # This way auth token is not visible in the logs.
+  echo "CNI config: $(cat ${TMP_CONF})"
 
-sed -i s/__SERVICEACCOUNT_TOKEN__/"${SERVICEACCOUNT_TOKEN:-}"/g ${TMP_CONF}
+  sed -i s/__SERVICEACCOUNT_TOKEN__/"${SERVICEACCOUNT_TOKEN:-}"/g ${TMP_CONF}
 }
 
 install_cni_conf() {
@@ -306,18 +306,18 @@ sync() {
 # the same system partition, `mv` simply renames, however, that won't be the
 # case so we don't watch any "moved_to" or "moved_from" events.
 monitor() {
-inotifywait -m "${HOST_CNI_NET}" -e create,delete |
- while read -r directory action filename; do
-   if [[ "$filename" =~ .*.(conflist|conf)$ ]]; then 
-    echo "Detected change in $directory: $action $filename"
-    sync "$filename" "$action" "$cni_conf_sha"
-    # When file exists (i.e we didn't deal with a DELETE ev)
-    # then calculate its sha to be used the next turn.
-    if [ -e "$directory/$filename" ]; then
-      cni_conf_sha="$(sha256sum "$directory/$filename" | awk '{print $1}')"
-    fi
-   fi
- done
+  inotifywait -m "${HOST_CNI_NET}" -e create,delete |
+    while read -r directory action filename; do
+      if [[ "$filename" =~ .*.(conflist|conf)$ ]]; then 
+        echo "Detected change in $directory: $action $filename"
+        sync "$filename" "$action" "$cni_conf_sha"
+        # When file exists (i.e we didn't deal with a DELETE ev)
+        # then calculate its sha to be used the next turn.
+        if [ -e "$directory/$filename" ]; then
+          cni_conf_sha="$(sha256sum "$directory/$filename" | awk '{print $1}')"
+        fi
+      fi
+    done
 }
 
 ################################
@@ -342,6 +342,9 @@ cni_conf_sha="$(sha256sum "${CNI_CONF_PATH}" | awk '{print $1}')"
 monitor &
 WATCH_PID=$!
 while true; do
+  # sleep so script never finishes
+  # we start sleep in bg so we can trap signals
   sleep infinity &
+  # block
   wait $!
 done
