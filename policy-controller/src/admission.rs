@@ -11,6 +11,7 @@ use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
 use k8s_openapi::api::core::v1::ServiceAccount;
 use kube::{core::DynamicObject, Resource, ResourceExt};
+use linkerd_policy_controller_k8s_api::Namespace;
 use serde::de::DeserializeOwned;
 use std::task;
 use thiserror::Error;
@@ -239,7 +240,12 @@ impl Validate<MeshTLSAuthenticationSpec> for Admission {
         // The CRD validates identity strings, but does not validate identity references.
 
         for id in spec.identity_refs.iter().flatten() {
-            if !id.targets_kind::<ServiceAccount>() {
+            if id.targets_kind::<ServiceAccount>() {
+            } else if id.targets_kind::<Namespace>() {
+                if id.namespace.is_some() {
+                    bail!("Namespace identity_ref is cluster-scoped and cannot have a namespace");
+                }
+            } else {
                 bail!("invalid identity target kind: {}", id.canonical_kind());
             }
         }

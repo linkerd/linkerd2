@@ -41,9 +41,54 @@ async fn meshtls() {
             tokio::join!(injected.exit_code(), uninjected.exit_code());
         assert_eq!(
             injected_status, 0,
-            "uninjected curl must fail to contact nginx"
+            "injected curl must contact nginx"
         );
-        assert_ne!(uninjected_status, 0, "injected curl must contact nginx");
+        assert_ne!(uninjected_status, 0, "uninjected curl must fail to contact nginx");
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn meshtls_namespace() {
+    with_temp_ns(|client, ns| async move {
+        // First create all of the policies we'll need so that the nginx pod
+        // starts up with the correct policy (to prevent races).
+        //
+        // The policy requires that all connections are authenticated with MeshTLS
+        // and come from service accounts in the given namespace.
+        let (srv, mtls_ns) = tokio::join!(
+            create(&client, nginx::server(&ns)),
+            create(&client, ns_authenticated(&ns))
+        );
+        create(
+            &client,
+            authz_policy(
+                &ns,
+                "nginx",
+                &srv,
+                Some(NamespacedTargetRef::from_resource(&mtls_ns)),
+            ),
+        )
+        .await;
+
+        // Create the nginx pod and wait for it to be ready.
+        tokio::join!(
+            create(&client, nginx::service(&ns)),
+            create_ready_pod(&client, nginx::pod(&ns))
+        );
+
+        let curl = curl::Runner::init(&client, &ns).await;
+        let (injected, uninjected) = tokio::join!(
+            curl.run("curl-injected", "http://nginx", LinkerdInject::Enabled),
+            curl.run("curl-uninjected", "http://nginx", LinkerdInject::Disabled),
+        );
+        let (injected_status, uninjected_status) =
+            tokio::join!(injected.exit_code(), uninjected.exit_code());
+        assert_eq!(
+            injected_status, 0,
+            "injected curl must contact nginx"
+        );
+        assert_ne!(uninjected_status, 0, "uninjected curl must fail to contact nginx");
     })
     .await;
 }
@@ -348,6 +393,25 @@ fn all_authenticated(ns: &str) -> k8s::policy::MeshTLSAuthentication {
         spec: k8s::policy::MeshTLSAuthenticationSpec {
             identity_refs: None,
             identities: Some(vec!["*".to_string()]),
+        },
+    }
+}
+
+fn ns_authenticated(ns: &str) -> k8s::policy::MeshTLSAuthentication {
+    k8s::policy::MeshTLSAuthentication {
+        metadata: k8s::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some("all-authenticated".to_string()),
+            ..Default::default()
+        },
+        spec: k8s::policy::MeshTLSAuthenticationSpec {
+            identity_refs: Some(vec![NamespacedTargetRef{
+                group: Some("core".to_string()),
+                kind: "Namespace".to_string(),
+                name: ns.to_string(),
+                namespace: None,
+            }]),
+            identities: None,
         },
     }
 }

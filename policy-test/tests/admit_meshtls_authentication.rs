@@ -26,6 +26,27 @@ async fn accepts_valid_ref() {
 }
 
 #[tokio::test(flavor = "current_thread")]
+async fn accepts_ns_ref() {
+    admission::accepts(|ns| MeshTLSAuthentication {
+        metadata: api::ObjectMeta {
+            namespace: Some(ns),
+            name: Some("test".to_string()),
+            ..Default::default()
+        },
+        spec: MeshTLSAuthenticationSpec {
+            identity_refs: Some(vec![NamespacedTargetRef {
+                group: Some("core".to_string()),
+                kind: "Namespace".to_string(),
+                name: "default".to_string(),
+                namespace: None,
+            }]),
+            ..Default::default()
+        },
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
 async fn accepts_strings() {
     admission::accepts(|ns| MeshTLSAuthentication {
         metadata: api::ObjectMeta {
