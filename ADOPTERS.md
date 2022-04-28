@@ -78,6 +78,7 @@
 - [Tradeshift](https://tradeshift.com/)
 - [Transit](https://transit.app)
 - [Web Summit](https://websummit.com)
+- [Wiz Security](https://www.wiz.io/)
 - [xCloud](https://www.xbox.com/en-US/xbox-game-streaming/project-xcloud)
 - [YouMail](https://www.youmail.com)
 - [ZeroFlucs](https://zeroflucs.io/)
