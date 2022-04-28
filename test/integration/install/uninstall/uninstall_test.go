@@ -23,12 +23,30 @@ func TestMain(m *testing.M) {
 func TestInstall(t *testing.T) {
 	args := []string{
 		"install",
+		"--crds",
 		"--controller-log-level", "debug",
 		"--proxy-log-level", "warn,linkerd=debug",
 		"--set", fmt.Sprintf("proxy.image.version=%s", TestHelper.GetVersion()),
 	}
 
 	out, err := TestHelper.LinkerdRun(args...)
+	if err != nil {
+		testutil.AnnotatedFatal(t, "'linkerd install --crds' command failed", err)
+	}
+	out, err = TestHelper.KubectlApply(out, "")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", out)
+	}
+
+	args = []string{
+		"install",
+		"--controller-log-level", "debug",
+		"--proxy-log-level", "warn,linkerd=debug",
+		"--set", fmt.Sprintf("proxy.image.version=%s", TestHelper.GetVersion()),
+	}
+
+	out, err = TestHelper.LinkerdRun(args...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd install' command failed", err)
 	}
