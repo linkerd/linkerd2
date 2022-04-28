@@ -27,7 +27,6 @@ import (
 )
 
 const (
-	controlPlaneMessage    = "Don't forget to run `linkerd upgrade control-plane`!"
 	failMessage            = "For troubleshooting help, visit: https://linkerd.io/upgrade/#troubleshooting\n"
 	trustRootChangeMessage = "Rotating the trust anchors will affect existing proxies\nSee https://linkerd.io/2/tasks/rotating_identity_certificates/ for more information"
 )
@@ -47,87 +46,6 @@ var (
  * differ in which flags are available to each, what pre-check validations
  * are done, and which subset of the chart is rendered.
  */
-
-// newCmdUpgradeConfig is a subcommand for `linkerd upgrade config`
-func newCmdUpgradeConfig(values *l5dcharts.Values) *cobra.Command {
-	allStageFlags, allStageFlagSet := makeAllStageFlags(values)
-	var options valuespkg.Options
-
-	cmd := &cobra.Command{
-		Use:   "config [flags]",
-		Args:  cobra.NoArgs,
-		Short: "Output Kubernetes cluster-wide resources to upgrade an existing Linkerd",
-		Long: `Output Kubernetes cluster-wide resources to upgrade an existing Linkerd.
-
-Note that this command should be followed by "linkerd upgrade control-plane".
-
-The upgrade can be configured by using the --set, --values, --set-string and --set-file flags.
-A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md
-`,
-		Example: `  # Default upgrade.
-  linkerd upgrade config | kubectl apply -f -`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-
-			k, err := k8sClient(manifests)
-			if err != nil {
-				return err
-			}
-			return upgradeRunE(cmd.Context(), k, allStageFlags, configStage, options)
-		},
-	}
-
-	cmd.Flags().AddFlagSet(allStageFlagSet)
-	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
-
-	return cmd
-}
-
-// newCmdUpgradeControlPlane is a subcommand for `linkerd upgrade control-plane`
-func newCmdUpgradeControlPlane(values *l5dcharts.Values) *cobra.Command {
-	var options valuespkg.Options
-
-	allStageFlags, allStageFlagSet := makeAllStageFlags(values)
-	installUpgradeFlags, installUpgradeFlagSet, err := makeInstallUpgradeFlags(values)
-	if err != nil {
-		fmt.Fprint(os.Stderr, err.Error())
-		os.Exit(1)
-	}
-	proxyFlags, proxyFlagSet := makeProxyFlags(values)
-
-	flags := flattenFlags(allStageFlags, installUpgradeFlags, proxyFlags)
-
-	cmd := &cobra.Command{
-		Use:   "control-plane [flags]",
-		Args:  cobra.NoArgs,
-		Short: "Output Kubernetes control plane resources to upgrade an existing Linkerd",
-		Long: `Output Kubernetes control plane resources to upgrade an existing Linkerd.
-
-Note that the default flag values for this command come from the Linkerd control
-plane. The default values displayed in the Flags section below only apply to the
-install command. It should be run after "linkerd upgrade config".
-
-The upgrade can be configured by using the --set, --values, --set-string and --set-file flags.
-A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md
-`,
-		Example: `  # Default upgrade.
-  linkerd upgrade control-plane | kubectl apply -f -`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			k, err := k8sClient(manifests)
-			if err != nil {
-				return err
-			}
-			return upgradeRunE(cmd.Context(), k, flags, controlPlaneStage, options)
-		},
-	}
-
-	cmd.Flags().AddFlagSet(allStageFlagSet)
-	cmd.Flags().AddFlagSet(installUpgradeFlagSet)
-	cmd.Flags().AddFlagSet(proxyFlagSet)
-	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
-
-	return cmd
-}
-
 func newCmdUpgrade() *cobra.Command {
 	values, err := l5dcharts.NewValues()
 	if err != nil {
@@ -135,15 +53,15 @@ func newCmdUpgrade() *cobra.Command {
 		os.Exit(1)
 	}
 
+	var crds bool
 	var options valuespkg.Options
-	allStageFlags, allStageFlagSet := makeAllStageFlags(values)
 	installUpgradeFlags, installUpgradeFlagSet, err := makeInstallUpgradeFlags(values)
 	if err != nil {
 		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 	proxyFlags, proxyFlagSet := makeProxyFlags(values)
-	flags := flattenFlags(allStageFlags, installUpgradeFlags, proxyFlags)
+	flags := flattenFlags(installUpgradeFlags, proxyFlags)
 
 	upgradeFlagSet := makeUpgradeFlags()
 
@@ -161,23 +79,23 @@ The upgrade can be configured by using the --set, --values, --set-string and --s
 A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md
 `,
 
-		Example: `  # Default upgrade - also removes linkerd resources that no longer exist in the current version
+		Example: `  # Upgrade CRDs first
+  linkerd upgrade --crds | kubectl apply --prune --prune-whitelist=apiextensions.k8s.io/v1/customresourcedefinitions
+
+  # Then upgrade the controle-plane and remove linkerd resources that no longer exist in the current version
   linkerd upgrade | kubectl apply --prune -l linkerd.io/control-plane-ns=linkerd -f -
 
   # Then run this again to make sure that certain cluster-scoped resources are correctly pruned
   linkerd upgrade | kubectl apply --prune -l linkerd.io/control-plane-ns=linkerd \
   --prune-whitelist=rbac.authorization.k8s.io/v1/clusterrole \
   --prune-whitelist=rbac.authorization.k8s.io/v1/clusterrolebinding \
-  --prune-whitelist=apiregistration.k8s.io/v1/apiservice -f -
-
-  # Similar to install, upgrade may also be broken up into two stages, by user
-  # privilege.`,
+  --prune-whitelist=apiregistration.k8s.io/v1/apiservice -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			k, err := k8sClient(manifests)
 			if err != nil {
 				return err
 			}
-			err = upgradeRunE(cmd.Context(), k, flags, "", options)
+			err = upgradeRunE(cmd.Context(), k, flags, crds, options)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
 				os.Exit(1)
@@ -186,14 +104,11 @@ A full list of configurable values can be found at https://www.github.com/linker
 		},
 	}
 
-	cmd.Flags().AddFlagSet(allStageFlagSet)
 	cmd.Flags().AddFlagSet(installUpgradeFlagSet)
 	cmd.Flags().AddFlagSet(proxyFlagSet)
 	cmd.PersistentFlags().AddFlagSet(upgradeFlagSet)
 	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
-
-	cmd.AddCommand(newCmdUpgradeConfig(values))
-	cmd.AddCommand(newCmdUpgradeControlPlane(values))
+	cmd.Flags().BoolVar(&crds, "crds", false, "Upgrade Linkerd CRDs")
 
 	return cmd
 }
@@ -239,9 +154,9 @@ func makeUpgradeFlags() *pflag.FlagSet {
 	return upgradeFlags
 }
 
-func upgradeRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, stage string, options valuespkg.Options) error {
+func upgradeRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, crds bool, options valuespkg.Options) error {
 
-	buf, err := upgrade(ctx, k, flags, stage, options)
+	buf, err := upgrade(ctx, k, flags, crds, options)
 	if err != nil {
 		return err
 	}
@@ -251,16 +166,13 @@ func upgradeRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, s
 			fmt.Fprintf(os.Stderr, "\n%s %s\n\n", warnStatus, trustRootChangeMessage)
 		}
 	}
-	if stage == configStage {
-		fmt.Fprintf(os.Stderr, "%s\n\n", controlPlaneMessage)
-	}
 
 	buf.WriteTo(os.Stdout)
 
 	return nil
 }
 
-func upgrade(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, stage string, options valuespkg.Options) (bytes.Buffer, error) {
+func upgrade(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, crds bool, options valuespkg.Options) (bytes.Buffer, error) {
 	values, err := loadStoredValues(ctx, k)
 	if err != nil {
 		return bytes.Buffer{}, fmt.Errorf("failed to load stored values: %w", err)
@@ -315,7 +227,7 @@ the 'linkerd repair' command to repair the Linkerd config`)
 	// rendering to a buffer and printing full contents of buffer after
 	// render is complete, to ensure that okStatus prints separately
 	var buf bytes.Buffer
-	if err = render(&buf, values, stage, valuesOverrides); err != nil {
+	if err = render(&buf, values, crds, valuesOverrides); err != nil {
 		upgradeErrorf("Could not render upgrade configuration: %s", err)
 	}
 

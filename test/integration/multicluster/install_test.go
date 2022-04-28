@@ -80,7 +80,37 @@ func TestInstall(t *testing.T) {
 		testutil.AnnotatedFatal(t, "failed to create issuer key", err)
 	}
 
+	// Install CRDs
 	cmd := []string{
+		"install",
+		"--crds",
+		"--controller-log-level", "debug",
+		"--set", fmt.Sprintf("proxy.image.version=%s", TestHelper.GetVersion()),
+		"--set", "heartbeatSchedule=1 2 3 4 5",
+		"--identity-trust-anchors-file", rootPath,
+		"--identity-issuer-certificate-file", issuerCertPath,
+		"--identity-issuer-key-file", issuerKeyPath,
+	}
+
+	// Global state to keep track of clusters
+	contexts = TestHelper.GetMulticlusterContexts()
+	for _, ctx := range contexts {
+		// Pipe cmd & args to `linkerd`
+		cmd := append([]string{"--context=" + ctx}, cmd...)
+		out, err := TestHelper.LinkerdRun(cmd...)
+		if err != nil {
+			testutil.AnnotatedFatal(t, "'linkerd install' command failed", err)
+		}
+		// Apply manifest from stdin
+		out, err = TestHelper.KubectlApplyWithContext(out, ctx, "-f", "-")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+				"'kubectl apply' command failed\n%s", out)
+		}
+	}
+
+	// Install control-plane
+	cmd = []string{
 		"install",
 		"--controller-log-level", "debug",
 		"--set", fmt.Sprintf("proxy.image.version=%s", TestHelper.GetVersion()),
