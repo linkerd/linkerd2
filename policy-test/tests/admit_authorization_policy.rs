@@ -47,7 +47,7 @@ async fn accepts_targets_namespace() {
         },
         spec: AuthorizationPolicySpec {
             target_ref: LocalTargetRef {
-                group: Some("core".to_string()),
+                group: None,
                 kind: "Namespace".to_string(),
                 name: ns,
             },
@@ -74,13 +74,13 @@ async fn accepts_targets_namespace() {
 async fn rejects_targets_other_namespace() {
     admission::rejects(|ns| AuthorizationPolicy {
         metadata: api::ObjectMeta {
-            namespace: Some(ns.clone()),
+            namespace: Some(ns),
             name: Some("test".to_string()),
             ..Default::default()
         },
         spec: AuthorizationPolicySpec {
             target_ref: LocalTargetRef {
-                group: Some("core".to_string()),
+                group: None,
                 kind: "Namespace".to_string(),
                 name: "foobar".to_string(),
             },

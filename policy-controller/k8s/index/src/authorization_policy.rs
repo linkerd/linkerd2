@@ -50,15 +50,6 @@ impl TryFrom<k8s::policy::AuthorizationPolicySpec> for Spec {
     }
 }
 
-impl Target {
-    pub(crate) fn server(&self) -> Option<&str> {
-        match self {
-            Self::Server(s) => Some(s),
-            Self::Namespace => None,
-        }
-    }
-}
-
 fn target(t: LocalTargetRef) -> Result<Target> {
     if t.targets_kind::<k8s::policy::Server>() {
         return Ok(Target::Server(t.name));

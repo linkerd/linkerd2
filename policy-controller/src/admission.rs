@@ -1,7 +1,7 @@
 use crate::k8s::{
     labels,
     policy::{
-        AuthorizationPolicy, AuthorizationPolicySpec, MeshTLSAuthentication,
+        AuthorizationPolicy, AuthorizationPolicySpec, LocalTargetRef, MeshTLSAuthentication,
         MeshTLSAuthenticationSpec, NetworkAuthentication, NetworkAuthenticationSpec, Server,
         ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
     },
@@ -187,20 +187,26 @@ fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(String, Str
     Ok((ns, name, spec))
 }
 
+/// Validates the target of an `AuthorizationPolicy`.
+fn validate_policy_target(ns: &str, tgt: &LocalTargetRef) -> Result<()> {
+    if tgt.targets_kind::<Server>() {
+        return Ok(());
+    }
+
+    if tgt.targets_kind::<Namespace>() {
+        if tgt.name != ns {
+            bail!("cannot target another namespace: {}", tgt.name);
+        }
+        return Ok(());
+    }
+
+    bail!("invalid targetRef kind: {}", tgt.canonical_kind());
+}
+
 #[async_trait::async_trait]
 impl Validate<AuthorizationPolicySpec> for Admission {
     async fn validate(self, ns: &str, _name: &str, spec: AuthorizationPolicySpec) -> Result<()> {
-        if spec.target_ref.targets_kind::<Server>() {
-        } else if spec.target_ref.targets_kind::<Namespace>() {
-            if spec.target_ref.name != ns {
-                bail!("cannot target another namespace: {}", spec.target_ref.name);
-            }
-        } else {
-            bail!(
-                "invalid targetRef kind: {}",
-                spec.target_ref.canonical_kind()
-            );
-        }
+        validate_policy_target(ns, &spec.target_ref)?;
 
         let mtls_authns_count = spec
             .required_authentication_refs
