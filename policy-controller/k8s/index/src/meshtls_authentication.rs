@@ -2,7 +2,7 @@ use crate::ClusterInfo;
 use anyhow::Result;
 use linkerd_policy_controller_core::IdentityMatch;
 use linkerd_policy_controller_k8s_api::{
-    policy::MeshTLSAuthentication, ResourceExt, ServiceAccount, Namespace,
+    policy::MeshTLSAuthentication, Namespace, ResourceExt, ServiceAccount,
 };
 
 #[derive(Debug, PartialEq)]

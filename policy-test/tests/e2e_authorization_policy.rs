@@ -39,11 +39,11 @@ async fn meshtls() {
         );
         let (injected_status, uninjected_status) =
             tokio::join!(injected.exit_code(), uninjected.exit_code());
-        assert_eq!(
-            injected_status, 0,
-            "injected curl must contact nginx"
+        assert_eq!(injected_status, 0, "injected curl must contact nginx");
+        assert_ne!(
+            uninjected_status, 0,
+            "uninjected curl must fail to contact nginx"
         );
-        assert_ne!(uninjected_status, 0, "uninjected curl must fail to contact nginx");
     })
     .await;
 }
@@ -84,11 +84,11 @@ async fn meshtls_namespace() {
         );
         let (injected_status, uninjected_status) =
             tokio::join!(injected.exit_code(), uninjected.exit_code());
-        assert_eq!(
-            injected_status, 0,
-            "injected curl must contact nginx"
+        assert_eq!(injected_status, 0, "injected curl must contact nginx");
+        assert_ne!(
+            uninjected_status, 0,
+            "uninjected curl must fail to contact nginx"
         );
-        assert_ne!(uninjected_status, 0, "uninjected curl must fail to contact nginx");
     })
     .await;
 }
@@ -405,7 +405,7 @@ fn ns_authenticated(ns: &str) -> k8s::policy::MeshTLSAuthentication {
             ..Default::default()
         },
         spec: k8s::policy::MeshTLSAuthenticationSpec {
-            identity_refs: Some(vec![NamespacedTargetRef{
+            identity_refs: Some(vec![NamespacedTargetRef {
                 group: Some("core".to_string()),
                 kind: "Namespace".to_string(),
                 name: ns.to_string(),
