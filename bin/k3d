@@ -2,9 +2,11 @@
 
 set -eu
 
+K3D_VERSION=v5.4.1
+
 bindir=$( cd "${0%/*}" && pwd )
 targetbin=$( cd "$bindir"/.. && pwd )/target/bin
-k3dbin=$targetbin/.k3d
+k3dbin="$targetbin/k3d-${K3D_VERSION}"
 
 if [ ! -f "$k3dbin" ]; then
   if [ "$(uname -s)" = Darwin ]; then
@@ -22,7 +24,7 @@ if [ ! -f "$k3dbin" ]; then
   fi
 
   mkdir -p "$targetbin"
-  "$bindir"/scurl -o "$k3dbin" https://github.com/rancher/k3d/releases/latest/download/k3d-$os-$arch
+  "$bindir"/scurl -o "$k3dbin" "https://github.com/k3d-io/k3d/releases/download/${K3D_VERSION}/k3d-$os-$arch"
   chmod +x "$k3dbin"
 fi
 
