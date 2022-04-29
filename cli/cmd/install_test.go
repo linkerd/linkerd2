@@ -244,6 +244,19 @@ func TestRender(t *testing.T) {
 	}
 }
 
+func TestIgnoreClutster(t *testing.T) {
+	defaultValues, err := testInstallOptions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	addFakeTLSSecrets(defaultValues)
+
+	var buf bytes.Buffer
+	if err := install(context.Background(), nil, &buf, defaultValues, nil, false, values.Options{}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestRenderCRDs(t *testing.T) {
 	defaultValues, err := testInstallOptions()
 	if err != nil {
