@@ -73,14 +73,34 @@ func TestInstallResourcesPreUpgrade(t *testing.T) {
 	// Nest all pre-upgrade tests here so they can install and check resources
 	// using the latest edge CLI
 	t.Run(fmt.Sprintf("installing Linkerd %s control plane", linkerdBaseEdgeVersion), func(t *testing.T) {
-		args := []string{
-			"install",
-			"--controller-log-level", "debug",
-			"--set", "proxyInit.ignoreInboundPorts=1234\\,5678",
+		out, err := TestHelper.CmdRun(cliPath, "install", "--crds")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'linkerd install --crds' command failed", "'linkerd install --crds' command failed:\n%v", err)
 		}
 
-		// Pipe cmd & args to `linkerd`
-		out, err := TestHelper.CmdRun(cliPath, args...)
+		out, err = TestHelper.KubectlApply(out, "")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+				"'kubectl apply' command failed\n%s", out)
+		}
+
+		waitArgs := []string{
+			"wait", "--for", "condition=established", "--timeout=60s", "crd",
+			"authorizationpolicies.policy.linkerd.io",
+			"meshtlsauthentications.policy.linkerd.io",
+			"networkauthentications.policy.linkerd.io",
+			"servers.policy.linkerd.io",
+			"serverauthorizations.policy.linkerd.io",
+		}
+		if _, err := TestHelper.Kubectl("", waitArgs...); err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl wait crd' command failed", "'kubectl wait crd' command failed:\n%v", err)
+		}
+
+		out, err = TestHelper.CmdRun(cliPath,
+			"install",
+			"--controller-log-level=debug",
+			"--set=proxyInit.ignoreInboundPorts=1234\\,5678",
+		)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'linkerd install' command failed", "'linkerd install' command failed:\n%v", err)
 		}
@@ -97,13 +117,7 @@ func TestInstallResourcesPreUpgrade(t *testing.T) {
 	// TestInstallViz will install the viz extension to be used by the rest of the
 	// tests in the viz suite
 	t.Run(fmt.Sprintf("installing Linkerd %s viz extension", linkerdBaseEdgeVersion), func(t *testing.T) {
-		args := []string{
-			"viz",
-			"install",
-			"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace()),
-		}
-
-		out, err := TestHelper.CmdRun(cliPath, args...)
+		out, err := TestHelper.CmdRun(cliPath, "viz", "install", "--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace()))
 		if err != nil {
 			testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
 		}
