@@ -74,7 +74,16 @@ func TestInstallResourcesPreUpgrade(t *testing.T) {
 	// using the latest edge CLI
 	t.Run(fmt.Sprintf("installing Linkerd %s control plane", linkerdBaseEdgeVersion), func(t *testing.T) {
 		if _, err := TestHelper.CmdRun(cliPath, "install", "--crds"); err != nil {
-			testutil.AnnotatedFatalf(t, "'linkerd install' command failed", "'linkerd install --crds' command failed:\n%v", err)
+			testutil.AnnotatedFatalf(t, "'linkerd install --crds' command failed", "'linkerd install --crds' command failed:\n%v", err)
+		}
+
+		if _, err := TestHelper.Kubectl("", "wait", "--for", "condition=established", "--timeout=60s", "crd",
+			"authorizationpolicies.policy.linkerd.io",
+			"meshtlsauthentications.policy.linkerd.io",
+			"networkauthentications.policy.linkerd.io",
+			"servers.policy.linkerd.io",
+			"serverauthorizations.policy.linkerd.io"); err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl wait crd' command failed", "'kubectl wait crd' command failed:\n%v", err)
 		}
 
 		out, err := TestHelper.CmdRun(cliPath,
