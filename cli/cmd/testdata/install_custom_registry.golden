@@ -460,12 +460,14 @@ data:
     identityTrustDomain: cluster.local
     imagePullPolicy: IfNotPresent
     imagePullSecrets: []
+    kubeletIPs: []
     linkerdVersion: install-control-plane-version
     nodeAffinity: null
     nodeSelector:
       kubernetes.io/os: linux
     podAnnotations: {}
     podLabels: {}
+    podNetworks: []
     policyController:
       defaultAllowPolicy: all-unauthenticated
       image:
@@ -597,6 +599,37 @@ data:
     proxyInjectorResources: null
     tolerations: null
     webhookFailurePolicy: Ignore
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  name: pod-networks
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+spec:
+  networks:
+  - cidr: "10.0.0.0/8"
+  - cidr: "100.64.0.0/10"
+  - cidr: "172.16.0.0/12"
+  - cidr: "192.168.0.0/16"
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  name: kubelet-ips
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+spec:
+  networks:
+  - cidr: "0.0.0.0/0"
 ---
 ###
 ### Identity Controller Service

@@ -38,6 +38,8 @@ type (
 		Configs                      ConfigJSONs         `json:"configs"`
 		ClusterDomain                string              `json:"clusterDomain"`
 		ClusterNetworks              string              `json:"clusterNetworks"`
+		PodNetworks                  []string            `json:"podNetworks"`
+		KubeletIPs                   []string            `json:"kubeletIPs"`
 		ImagePullPolicy              string              `json:"imagePullPolicy"`
 		CliVersion                   string              `json:"cliVersion"`
 		ControllerLogLevel           string              `json:"controllerLogLevel"`

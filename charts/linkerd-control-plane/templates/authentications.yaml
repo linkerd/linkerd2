@@ -1,0 +1,37 @@
+{{- /* Global default authentications, not specific to the linkerd control plane */ -}}
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  name: pod-networks
+  {{ include "partials.namespace" . }}
+  labels:
+    linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  networks:
+  {{- range .Values.podNetworks | default (.Values.clusterNetworks | split ",") }}
+  - cidr: "{{ . }}"
+  {{- end }}
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  name: kubelet-ips
+  {{ include "partials.namespace" . }}
+  labels:
+    linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  networks:
+  {{- if .Values.kubeletIPs }}
+  {{-   range .Values.kubeletIPs }}
+  - cidr: "{{ . }}"
+  {{-   end }}
+  {{- else }}
+  - cidr: "0.0.0.0/0"
+  {{- end }}

@@ -10,7 +10,17 @@ clusterDomain: cluster.local
 #
 # By default, all private networks are specified so that resolution works in
 # typical Kubernetes environments.
+#
+# XXX this should really be a list, but that change is backwards-incompatible
 clusterNetworks: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
+# -- The pod networks for the cluster, from which intra-cluster traffic is expected.
+#
+# If this is empty, `clusterNetworks` is used.
+podNetworks: []
+# -- The kubelet IPs for the cluster, from which probes are expected.
+#
+# If this is empty, `0.0.0.0/0` is used.
+kubeletIPs: []
 # -- Docker image pull policy
 imagePullPolicy: IfNotPresent
 # -- Log level for the control plane components

@@ -60,6 +60,7 @@ var (
 		"templates/proxy-injector-rbac.yaml",
 		"templates/psp.yaml",
 		"templates/config.yaml",
+		"templates/authentications.yaml",
 		"templates/identity.yaml",
 		"templates/destination.yaml",
 		"templates/heartbeat.yaml",

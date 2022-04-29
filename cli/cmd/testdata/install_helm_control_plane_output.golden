@@ -436,12 +436,14 @@ data:
     identityTrustDomain: test.trust.domain
     imagePullPolicy: IfNotPresent
     imagePullSecrets: []
+    kubeletIPs: []
     linkerdVersion: linkerd-version
     nodeAffinity: null
     nodeSelector:
       kubernetes.io/os: linux
     podAnnotations: {}
     podLabels: {}
+    podNetworks: []
     policyController:
       defaultAllowPolicy: all-unauthenticated
       image:
@@ -576,6 +578,39 @@ data:
       externalSecret: true
     tolerations: null
     webhookFailurePolicy: Ignore
+---
+# Source: linkerd-control-plane/templates/authentications.yaml
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  name: pod-networks
+  
+  labels:
+    linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: linkerd-dev
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+spec:
+  networks:
+  - cidr: "10.0.0.0/8"
+  - cidr: "100.64.0.0/10"
+  - cidr: "172.16.0.0/12"
+  - cidr: "192.168.0.0/16"
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  name: kubelet-ips
+  
+  labels:
+    linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: linkerd-dev
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+spec:
+  networks:
+  - cidr: "0.0.0.0/0"
 ---
 # Source: linkerd-control-plane/templates/identity.yaml
 ---
