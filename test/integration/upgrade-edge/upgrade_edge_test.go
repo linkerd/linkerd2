@@ -84,12 +84,15 @@ func TestInstallResourcesPreUpgrade(t *testing.T) {
 				"'kubectl apply' command failed\n%s", out)
 		}
 
-		if _, err := TestHelper.Kubectl("", "wait", "--for", "condition=established", "--timeout=60s", "crd",
+		waitArgs := []string{
+			"wait", "--for", "condition=established", "--timeout=60s", "crd",
 			"authorizationpolicies.policy.linkerd.io",
 			"meshtlsauthentications.policy.linkerd.io",
 			"networkauthentications.policy.linkerd.io",
 			"servers.policy.linkerd.io",
-			"serverauthorizations.policy.linkerd.io"); err != nil {
+			"serverauthorizations.policy.linkerd.io",
+		}
+		if _, err := TestHelper.Kubectl("", waitArgs...); err != nil {
 			testutil.AnnotatedFatalf(t, "'kubectl wait crd' command failed", "'kubectl wait crd' command failed:\n%v", err)
 		}
 
