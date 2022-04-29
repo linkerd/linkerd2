@@ -53,6 +53,24 @@ metadata:
 			Ports: []corev1.ServicePort{{Port: 3306}},
 		},
 	}
+	opaqueServiceMultiPort = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+  namespace: ns
+  annotations:
+    config.linkerd.io/opaque-ports: "3306, 665"`
+	opaqueServiceMultiPortObject = corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "svc",
+			Namespace:   "ns",
+			Annotations: map[string]string{"config.linkerd.io/opaque-ports": "3306, 665"},
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{{Port: 3306}, {Port: 665}},
+		},
+	}
 	explicitlyNotOpaqueService = `
 apiVersion: v1
 kind: Service
@@ -134,6 +152,21 @@ func TestOpaquePortsWatcher(t *testing.T) {
 			// 2: svc deleted: update with default ports
 			// 3. svc created: update with port 3306
 			expectedOpaquePorts: []map[uint32]struct{}{{3306: {}}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {3306: {}}},
+		},
+		{
+			name:         "namespace with multi port opaque service",
+			initialState: []string{testNS, opaqueServiceMultiPort},
+			nsObject:     &testNSObject,
+			svcObject:    &opaqueServiceMultiPortObject,
+			service: ServiceID{
+				Name:      "svc",
+				Namespace: "ns",
+			},
+			// 1: svc annotation 3306, 665 (with whitespace)
+			// 2: svc updated: no update
+			// 2: svc deleted: update with default ports
+			// 3. svc created: update with port 3306, 665
+			expectedOpaquePorts: []map[uint32]struct{}{{3306: {}, 665: {}}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {3306: {}, 665: {}}},
 		},
 		{
 			name:         "namespace and service, create opaque service",
