@@ -156,27 +156,29 @@ func install(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, values
 		return err
 	}
 
-	// We just want to check if `linkerd-configmap` exists
-	_, err = k8sAPI.CoreV1().ConfigMaps(controlPlaneNamespace).Get(ctx, k8s.ConfigConfigMapName, metav1.GetOptions{})
-	if err == nil {
-		fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, "ConfigMap/linkerd-config already exists")
-		os.Exit(1)
-	}
-	if !kerrors.IsNotFound(err) {
-		return err
-	}
-
 	// Create values override
 	valuesOverrides, err := options.MergeValues(nil)
 	if err != nil {
 		return err
 	}
 
-	if !isRunAsRoot(valuesOverrides) {
-		err = healthcheck.CheckNodesHaveNonDockerRuntime(ctx, k8sAPI)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+	if k8sAPI != nil {
+		// We just want to check if `linkerd-configmap` exists
+		_, err = k8sAPI.CoreV1().ConfigMaps(controlPlaneNamespace).Get(ctx, k8s.ConfigConfigMapName, metav1.GetOptions{})
+		if err == nil {
+			fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, "ConfigMap/linkerd-config already exists")
 			os.Exit(1)
+		}
+		if !kerrors.IsNotFound(err) {
+			return err
+		}
+
+		if !isRunAsRoot(valuesOverrides) {
+			err = healthcheck.CheckNodesHaveNonDockerRuntime(ctx, k8sAPI)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
 		}
 	}
 
