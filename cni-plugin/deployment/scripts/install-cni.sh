@@ -57,8 +57,6 @@ CONTAINER_CNI_BIN_DIR=${CONTAINER_CNI_BIN_DIR:-/opt/cni/bin}
 # of our choosing.
 HOST_CNI_NET="${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}"
 DEFAULT_CNI_CONF_PATH="${HOST_CNI_NET}/01-linkerd-cni.conf"
-CNI_CONF_PATH=${CNI_CONF_PATH:-$(find "${HOST_CNI_NET}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | sort | head -n 1)}
-CNI_CONF_PATH=${CNI_CONF_PATH:-"${DEFAULT_CNI_CONF_PATH}"}
 KUBECONFIG_FILE_NAME=${KUBECONFIG_FILE_NAME:-ZZZ-linkerd-cni-kubeconfig}
 
 ############################
@@ -290,13 +288,13 @@ sync() {
       # to run as _the_ cni plugin.
       echo "New file [$filename] detected; re-installing in \"chained\" mode"
       install_cni_conf "$filepath"
+    else
+      # If the SHA hasn't changed or we get an unrecognised event, ignore it.
+      # When the SHA is the same, we can get into infinite loops whereby a file has
+      # been created and after re-install the watch keeps triggering CREATE events
+      # that never end.
+      echo "Ignoring event: $ev $filepath; no real changes detected"
     fi
-  else
-    # If the SHA hasn't changed or we get an unrecognised event, ignore it.
-    # When the SHA is the same, we can get into infinite loops whereby a file has
-    # been created and after re-install the watch keeps triggering CREATE events
-    # that never end.
-    echo "Ignoring event: $ev $filepath; no real changes detected"
   fi
 }
 
@@ -325,11 +323,26 @@ monitor() {
 ################################
 
 install_cni_bin
-# Install for the first time using whatever path we have chosen at the start.
-install_cni_conf "${CNI_CONF_PATH}"
 
-# Compute SHA for first config file; this will be updated after every iteration.
-cni_conf_sha="$(sha256sum "${CNI_CONF_PATH}" | awk '{print $1}')"
+# Install CNI configuration. If we have an existing CNI configuration file (*.conflist or *.conf) that is not linkerd's,
+# then append our configuration to that file. Otherwise, if no CNI config files
+# are present, install our stand-alone config file.
+config_file_count=$(find "${HOST_CNI_NET}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | grep -v "linkerd" | sort | wc -l)
+if [ "$config_file_count" -eq 0 ]; then
+  echo "No active CNI configuration files found; installing in \"interface\" mode in ${DEFAULT_CNI_CONF_PATH}"
+  install_cni_conf "${DEFAULT_CNI_CONF_PATH}"
+else
+  find "${HOST_CNI_NET}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) -print0 |
+    while read -r -d $'\0' file; do
+      echo "Installing CNI configuration in \"chained\" mode for $file"
+      install_cni_conf "$file"
+    done
+fi
+
+# Compute SHA for first config file found; this will be updated after every iteration.
+# First config file is likely to be chosen as the de facto CNI config by the
+# host.
+cni_conf_sha="$(sha256sum "$(find "${HOST_CNI_NET}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | sort | head -n 1)" | awk '{print $1}')"
 
 # Watch in bg so we can receive interrupt signals through 'trap'. From 'man
 # bash': 
