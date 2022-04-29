@@ -35,10 +35,31 @@ async fn accepts_ns_ref() {
         },
         spec: MeshTLSAuthenticationSpec {
             identity_refs: Some(vec![NamespacedTargetRef {
-                group: Some("core".to_string()),
+                group: None,
                 kind: "Namespace".to_string(),
                 name: "default".to_string(),
                 namespace: None,
+            }]),
+            ..Default::default()
+        },
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn rejects_namespaced_namespace() {
+    admission::rejects(|ns| MeshTLSAuthentication {
+        metadata: api::ObjectMeta {
+            namespace: Some(ns),
+            name: Some("test".to_string()),
+            ..Default::default()
+        },
+        spec: MeshTLSAuthenticationSpec {
+            identity_refs: Some(vec![NamespacedTargetRef {
+                group: None,
+                kind: "Namespace".to_string(),
+                name: "default".to_string(),
+                namespace: Some("default".to_string()),
             }]),
             ..Default::default()
         },

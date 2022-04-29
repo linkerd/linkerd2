@@ -30,11 +30,8 @@ impl Spec {
                 let id = cluster.service_account_identity(ns, &tgt.name);
                 Ok(IdentityMatch::Exact(id))
             } else if tgt.targets_kind::<Namespace>() {
-                let identity_suffix = format!(
-                    "{}.serviceaccount.identity.{}.{}",
-                    tgt.name, cluster.control_plane_ns, cluster.identity_domain
-                );
-                Ok(IdentityMatch::Suffix(vec![identity_suffix]))
+                let id = cluster.namespace_identity(tgt.name.as_str());
+                Ok(id.parse::<IdentityMatch>()?)
             } else {
                 anyhow::bail!("unsupported target type: {:?}", tgt.canonical_kind())
             }

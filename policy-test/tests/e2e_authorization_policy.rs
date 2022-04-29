@@ -406,7 +406,7 @@ fn ns_authenticated(ns: &str) -> k8s::policy::MeshTLSAuthentication {
         },
         spec: k8s::policy::MeshTLSAuthenticationSpec {
             identity_refs: Some(vec![NamespacedTargetRef {
-                group: Some("core".to_string()),
+                group: None,
                 kind: "Namespace".to_string(),
                 name: ns.to_string(),
                 namespace: None,
