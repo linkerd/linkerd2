@@ -65,7 +65,7 @@ async fn targets_namespace() {
                 &ns,
                 "nginx",
                 LocalTargetRef {
-                    group: Some("core".to_string()),
+                    group: None,
                     kind: "Namespace".to_string(),
                     name: ns.clone(),
                 },

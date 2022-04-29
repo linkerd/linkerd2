@@ -1039,18 +1039,21 @@ impl PolicyIndex {
         }
 
         for (name, spec) in self.authorization_policies.iter() {
-            match spec.target.server() {
-                Some(target) if target != server_name => {
-                    tracing::trace!(
-                        ns = %self.namespace,
-                        authorizationpolicy = %name,
-                        server = %server_name,
-                        %target,
-                        "AuthorizationPolicy does not target server",
-                    );
-                    continue;
+            // Skip the policy if it doesn't apply to the server.
+            match &spec.target {
+                authorization_policy::Target::Server(name) => {
+                    if name != server_name {
+                        tracing::trace!(
+                            ns = %self.namespace,
+                            authorizationpolicy = %name,
+                            server = %server_name,
+                            target = %name,
+                            "AuthorizationPolicy does not target server",
+                        );
+                        continue;
+                    }
                 }
-                None | Some(_) => {}
+                authorization_policy::Target::Namespace => {}
             }
 
             tracing::trace!(
