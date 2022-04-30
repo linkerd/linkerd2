@@ -31,7 +31,7 @@ impl Spec {
                 Ok(IdentityMatch::Exact(id))
             } else if tgt.targets_kind::<Namespace>() {
                 let id = cluster.namespace_identity(tgt.name.as_str());
-                Ok(id.parse::<IdentityMatch>()?)
+                id.parse::<IdentityMatch>()
             } else {
                 anyhow::bail!("unsupported target type: {:?}", tgt.canonical_kind())
             }
