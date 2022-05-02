@@ -249,7 +249,10 @@ func isRunAsRoot(values map[string]interface{}) bool {
 	return false
 }
 
-func bufferChart(files []*loader.BufferedFile, values *l5dcharts.Values, valuesOverrides map[string]interface{}) (*bytes.Buffer, chartutil.Values, error) {
+// renderChartToBuffer takes a slice of loaded template files and configuration values and renders
+// them into a buffer. The coalesced values are also returned so that they may be rendered via
+// `renderOverrides` if appropriate.
+func renderChartToBuffer(files []*loader.BufferedFile, values *l5dcharts.Values, valuesOverrides map[string]interface{}) (*bytes.Buffer, chartutil.Values, error) {
 	// Load the partials in addition to the main chart.
 	var partials []*loader.BufferedFile
 	for _, template := range charts.L5dPartials {
@@ -311,7 +314,7 @@ func renderCRDs(w io.Writer, values *l5dcharts.Values, valuesOverrides map[strin
 		return err
 	}
 
-	buf, _, err := bufferChart(files, values, valuesOverrides)
+	buf, _, err := renderChartToBuffer(files, values, valuesOverrides)
 	if err != nil {
 		return err
 	}
@@ -331,7 +334,7 @@ func renderControlPlane(w io.Writer, values *l5dcharts.Values, valuesOverrides m
 		return err
 	}
 
-	buf, vals, err := bufferChart(files, values, valuesOverrides)
+	buf, vals, err := renderChartToBuffer(files, values, valuesOverrides)
 	if err != nil {
 		return err
 	}
