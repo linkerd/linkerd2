@@ -11,7 +11,7 @@ use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
-use linkerd_policy_controller_k8s_api::{policy::NamespacedTargetRef, Namespace};
+use linkerd_policy_controller_k8s_api::policy::NamespacedTargetRef;
 use serde::de::DeserializeOwned;
 use std::task;
 use thiserror::Error;
