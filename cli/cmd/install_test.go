@@ -244,7 +244,7 @@ func TestRender(t *testing.T) {
 	}
 }
 
-func TestIgnoreClutster(t *testing.T) {
+func TestIgnoreCluster(t *testing.T) {
 	defaultValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatal(err)
