@@ -60,6 +60,8 @@ func TestOpaquePortsCalledByServiceTarget(t *testing.T) {
 		if err := deployApplications(opaquePortsNs); err != nil {
 			testutil.AnnotatedFatal(t, "failed to deploy applications", err)
 		}
+		waitForAppDeploymentReady(t, opaquePortsNs)
+
 		tmplArgs := clientTemplateArgs{
 			ServiceCookerOpaqueServiceTargetHost:     serviceName(opaqueSvcApp),
 			ServiceCookerOpaquePodTargetHost:         serviceName(opaquePodApp),
@@ -136,6 +138,7 @@ func TestOpaquePortsCalledByPodTarget(t *testing.T) {
 		if err := deployApplications(opaquePortsNs); err != nil {
 			testutil.AnnotatedFatal(t, "failed to deploy applications", err)
 		}
+		waitForAppDeploymentReady(t, opaquePortsNs)
 
 		tmplArgs, err := templateArgsPodIP(ctx, opaquePortsNs)
 		if err != nil {
@@ -206,8 +209,8 @@ func TestOpaquePortsCalledByPodTarget(t *testing.T) {
 	})
 }
 
-func waitForAppDeploymentReady(opaquePortsNs string) {
-	TestHelper.WaitUntilDeployReady(map[string]testutil.DeploySpec{
+func waitForAppDeploymentReady(t *testing.T, opaquePortsNs string) {
+	TestHelper.WaitRollout(t, map[string]testutil.DeploySpec{
 		opaquePodApp: {
 			Namespace: opaquePortsNs,
 			Replicas:  1,
@@ -268,7 +271,6 @@ func deployApplications(ns string) error {
 	if err != nil {
 		return fmt.Errorf("failed apply deployment file %q: %w", out, err)
 	}
-	waitForAppDeploymentReady(ns)
 	return nil
 }
 
