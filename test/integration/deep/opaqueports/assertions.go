@@ -29,7 +29,7 @@ var (
 	)
 )
 
-func hashNoOutbondHTTPRequest(metrics string) error {
+func hasNoOutbondHTTPRequest(metrics string) error {
 	if httpRequestTotalMetricRE.MatchString(metrics) {
 		return fmt.Errorf("expected not to find HTTP outbound requests when pod is opaque\n%s", metrics)
 	}

@@ -80,7 +80,7 @@ func TestOpaquePortsCalledByServiceTarget(t *testing.T) {
 				name:   "calling a meshed service when opaque annotation is on receiving pod",
 				scName: opaquePodSC,
 				scChecks: checks(
-					hashNoOutbondHTTPRequest,
+					hasNoOutbondHTTPRequest,
 					hasOutboundTCPWithTLSAndNoAuthority,
 				),
 				appName:   opaquePodApp,
@@ -90,7 +90,7 @@ func TestOpaquePortsCalledByServiceTarget(t *testing.T) {
 				name:   "calling a meshed service when opaque annotation is on calling pod",
 				scName: opaqueSvcSC,
 				scChecks: checks(
-					hashNoOutbondHTTPRequest,
+					hasNoOutbondHTTPRequest,
 					hasOutboundTCPWithTLSAndAuthority,
 				),
 				appName:   opaqueSvcApp,
@@ -100,7 +100,7 @@ func TestOpaquePortsCalledByServiceTarget(t *testing.T) {
 				name:   "calling an unmeshed service",
 				scName: opaqueUnmeshedSvcSC,
 				scChecks: checks(
-					hashNoOutbondHTTPRequest,
+					hasNoOutbondHTTPRequest,
 					hasOutboundTCPWithAuthorityAndNoTLS,
 				),
 			},
@@ -156,7 +156,7 @@ func TestOpaquePortsCalledByPodTarget(t *testing.T) {
 				name:   "calling a meshed service when opaque annotation is on receiving pod",
 				scName: opaquePodSC,
 				scChecks: checks(
-					hashNoOutbondHTTPRequest,
+					hasNoOutbondHTTPRequest,
 					hasOutboundTCPWithTLSAndNoAuthority,
 				),
 				appName:   opaquePodApp,
@@ -166,7 +166,7 @@ func TestOpaquePortsCalledByPodTarget(t *testing.T) {
 				name:   "calling a meshed service when opaque annotation is on calling pod",
 				scName: opaqueSvcSC,
 				scChecks: checks(
-					hashNoOutbondHTTPRequest,
+					hasNoOutbondHTTPRequest,
 					// No authority here, because we are calling the pod directly.
 					hasOutboundTCPWithTLSAndNoAuthority,
 				),
@@ -177,7 +177,7 @@ func TestOpaquePortsCalledByPodTarget(t *testing.T) {
 				name:   "calling an unmeshed service",
 				scName: opaqueUnmeshedSvcSC,
 				scChecks: checks(
-					hashNoOutbondHTTPRequest,
+					hasNoOutbondHTTPRequest,
 					// No authority here, because we are calling the pod directly.
 					hasOutboundTCPWithNoTLSAndNoAuthority,
 				),
