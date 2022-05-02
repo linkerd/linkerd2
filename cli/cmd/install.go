@@ -249,48 +249,29 @@ func isRunAsRoot(values map[string]interface{}) bool {
 	return false
 }
 
-func renderCRDs(w io.Writer, values *l5dcharts.Values, valuesOverrides map[string]interface{}) error {
-	files := []*loader.BufferedFile{
-		{Name: chartutil.ChartfileName},
-	}
-
-	for _, template := range templatesCrdFiles {
-		files = append(files,
-			&loader.BufferedFile{Name: template},
-		)
-	}
-	if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirCrds+"/", files); err != nil {
-		return err
-	}
-
-	var partialFiles []*loader.BufferedFile
+func bufferChart(files []*loader.BufferedFile, values *l5dcharts.Values, valuesOverrides map[string]interface{}) (*bytes.Buffer, chartutil.Values, error) {
+	// Load the partials in addition to the main chart.
+	var partials []*loader.BufferedFile
 	for _, template := range charts.L5dPartials {
-		partialFiles = append(partialFiles,
-			&loader.BufferedFile{Name: template},
-		)
+		partials = append(partials, &loader.BufferedFile{Name: template})
 	}
-
-	// Load all partial chart files into buffer
-	if err := charts.FilesReader(static.Templates, "", partialFiles); err != nil {
-		return err
+	if err := charts.FilesReader(static.Templates, "", partials); err != nil {
+		return nil, nil, err
 	}
-
-	// Create a Chart obj from the files
-	files = append(files, partialFiles...)
-	chart, err := loader.LoadFiles(files)
+	chart, err := loader.LoadFiles(append(files, partials...))
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	// Store final Values generated from values.yaml and CLI flags
 	chart.Values, err = values.ToMap()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	vals, err := chartutil.CoalesceValues(chart, valuesOverrides)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	fullValues := map[string]interface{}{
@@ -304,7 +285,7 @@ func renderCRDs(w io.Writer, values *l5dcharts.Values, valuesOverrides map[strin
 	// Attach the final values into the `Values` field for rendering to work
 	renderedTemplates, err := engine.Render(chart, fullValues)
 	if err != nil {
-		return fmt.Errorf("failed to render the template: %w", err)
+		return nil, nil, fmt.Errorf("failed to render the template: %w", err)
 	}
 
 	// Merge templates and inject
@@ -312,8 +293,27 @@ func renderCRDs(w io.Writer, values *l5dcharts.Values, valuesOverrides map[strin
 	for _, tmpl := range chart.Templates {
 		t := path.Join(chart.Metadata.Name, tmpl.Name)
 		if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
-			return err
+			return nil, nil, err
 		}
+	}
+
+	return &buf, vals, nil
+}
+
+func renderCRDs(w io.Writer, values *l5dcharts.Values, valuesOverrides map[string]interface{}) error {
+	files := []*loader.BufferedFile{
+		{Name: chartutil.ChartfileName},
+	}
+	for _, template := range templatesCrdFiles {
+		files = append(files, &loader.BufferedFile{Name: template})
+	}
+	if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirCrds+"/", files); err != nil {
+		return err
+	}
+
+	buf, _, err := bufferChart(files, values, valuesOverrides)
+	if err != nil {
+		return err
 	}
 
 	_, err = w.Write(buf.Bytes())
@@ -324,67 +324,16 @@ func renderControlPlane(w io.Writer, values *l5dcharts.Values, valuesOverrides m
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
-
 	for _, template := range templatesControlPlane {
-		files = append(files,
-			&loader.BufferedFile{Name: template},
-		)
+		files = append(files, &loader.BufferedFile{Name: template})
 	}
 	if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirCP+"/", files); err != nil {
 		return err
 	}
 
-	var partialFiles []*loader.BufferedFile
-	for _, template := range charts.L5dPartials {
-		partialFiles = append(partialFiles,
-			&loader.BufferedFile{Name: template},
-		)
-	}
-
-	// Load all partial chart files into buffer
-	if err := charts.FilesReader(static.Templates, "", partialFiles); err != nil {
-		return err
-	}
-
-	// Create a Chart obj from the files
-	files = append(files, partialFiles...)
-	chart, err := loader.LoadFiles(files)
+	buf, vals, err := bufferChart(files, values, valuesOverrides)
 	if err != nil {
 		return err
-	}
-
-	// Store final Values generated from values.yaml and CLI flags
-	chart.Values, err = values.ToMap()
-	if err != nil {
-		return err
-	}
-
-	vals, err := chartutil.CoalesceValues(chart, valuesOverrides)
-	if err != nil {
-		return err
-	}
-
-	fullValues := map[string]interface{}{
-		"Values": vals,
-		"Release": map[string]interface{}{
-			"Namespace": controlPlaneNamespace,
-			"Service":   "CLI",
-		},
-	}
-
-	// Attach the final values into the `Values` field for rendering to work
-	renderedTemplates, err := engine.Render(chart, fullValues)
-	if err != nil {
-		return fmt.Errorf("failed to render the template: %w", err)
-	}
-
-	// Merge templates and inject
-	var buf bytes.Buffer
-	for _, tmpl := range chart.Templates {
-		t := path.Join(chart.Metadata.Name, tmpl.Name)
-		if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
-			return err
-		}
 	}
 
 	overrides, err := renderOverrides(vals, false)
