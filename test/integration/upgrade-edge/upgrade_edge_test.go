@@ -73,14 +73,34 @@ func TestInstallResourcesPreUpgrade(t *testing.T) {
 	// Nest all pre-upgrade tests here so they can install and check resources
 	// using the latest edge CLI
 	t.Run(fmt.Sprintf("installing Linkerd %s control plane", linkerdBaseEdgeVersion), func(t *testing.T) {
-		args := []string{
-			"install",
-			"--controller-log-level", "debug",
-			"--set", "proxyInit.ignoreInboundPorts=1234\\,5678",
+		out, err := TestHelper.CmdRun(cliPath, "install", "--crds")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'linkerd install --crds' command failed", "'linkerd install --crds' command failed:\n%v", err)
 		}
 
-		// Pipe cmd & args to `linkerd`
-		out, err := TestHelper.CmdRun(cliPath, args...)
+		out, err = TestHelper.KubectlApply(out, "")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+				"'kubectl apply' command failed\n%s", out)
+		}
+
+		waitArgs := []string{
+			"wait", "--for", "condition=established", "--timeout=60s", "crd",
+			"authorizationpolicies.policy.linkerd.io",
+			"meshtlsauthentications.policy.linkerd.io",
+			"networkauthentications.policy.linkerd.io",
+			"servers.policy.linkerd.io",
+			"serverauthorizations.policy.linkerd.io",
+		}
+		if _, err := TestHelper.Kubectl("", waitArgs...); err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl wait crd' command failed", "'kubectl wait crd' command failed:\n%v", err)
+		}
+
+		out, err = TestHelper.CmdRun(cliPath,
+			"install",
+			"--controller-log-level=debug",
+			"--set=proxyInit.ignoreInboundPorts=1234\\,5678",
+		)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'linkerd install' command failed", "'linkerd install' command failed:\n%v", err)
 		}
@@ -97,13 +117,7 @@ func TestInstallResourcesPreUpgrade(t *testing.T) {
 	// TestInstallViz will install the viz extension to be used by the rest of the
 	// tests in the viz suite
 	t.Run(fmt.Sprintf("installing Linkerd %s viz extension", linkerdBaseEdgeVersion), func(t *testing.T) {
-		args := []string{
-			"viz",
-			"install",
-			"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace()),
-		}
-
-		out, err := TestHelper.CmdRun(cliPath, args...)
+		out, err := TestHelper.CmdRun(cliPath, "viz", "install", "--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace()))
 		if err != nil {
 			testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
 		}
@@ -181,77 +195,12 @@ func TestUpgradeCli(t *testing.T) {
 		"--controller-log-level", "debug",
 		"--set", "proxyInit.ignoreInboundPorts=1234\\,5678",
 		"--set", "heartbeatSchedule=1 2 3 4 5",
+		"--set", "proxyInit.ignoreOutboundPorts=1234\\,5678",
 	}
-
-	// test 2-stage install during upgrade
-	out, err := TestHelper.LinkerdRun(cmd, "config")
-	if err != nil {
-		testutil.AnnotatedFatal(t, "'linkerd upgrade config' command failed", err)
-	}
-
-	// apply stage 1
-	// Limit the pruning only to known resources
-	// that we intend to be delete in this stage to prevent it
-	// from deleting other resources that have the
-	// label
-	out, err = TestHelper.KubectlApplyWithArgs(out, []string{
-		"--prune",
-		"-l", "linkerd.io/control-plane-ns=linkerd",
-		"--prune-whitelist", "rbac.authorization.k8s.io/v1/clusterrole",
-		"--prune-whitelist", "rbac.authorization.k8s.io/v1/clusterrolebinding",
-		"--prune-whitelist", "apiregistration.k8s.io/v1/apiservice",
-	}...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-			"kubectl apply command failed\n%s", out)
-	}
-
-	// prepare for stage 2
-	args = append([]string{"control-plane"}, args...)
-	args = append(args, "--set", "proxyInit.ignoreOutboundPorts=1234\\,5678")
 	exec := append([]string{cmd}, args...)
-	out, err = TestHelper.LinkerdRun(exec...)
+	out, err := TestHelper.LinkerdRun(exec...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd upgrade' command failed", err)
-	}
-
-	// test `linkerd upgrade --from-manifests`
-	kubeArgs := append([]string{"--namespace", TestHelper.GetLinkerdNamespace(), "get"}, "configmaps", "-oyaml")
-	configManifests, err := TestHelper.Kubectl("", kubeArgs...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl get' command failed",
-			"'kubectl get' command failed with %s\n%s\n%s", err, configManifests, kubeArgs)
-	}
-
-	kubeArgs = append([]string{"--namespace", TestHelper.GetLinkerdNamespace(), "get"}, "secrets", "-oyaml")
-	secretManifests, err := TestHelper.Kubectl("", kubeArgs...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl get' command failed",
-			"'kubectl get' command failed with %s\n%s\n%s", err, secretManifests, kubeArgs)
-	}
-
-	manifests := configManifests + "---\n" + secretManifests
-
-	exec = append(exec, "--from-manifests", "-")
-	upgradeFromManifests, stderr, err := TestHelper.PipeToLinkerdRun(manifests, exec...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd upgrade --from-manifests' command failed",
-			"'linkerd upgrade --from-manifests' command failed with %s\n%s\n%s\n%s", err, stderr, upgradeFromManifests, manifests)
-	}
-
-	if out != upgradeFromManifests {
-		// retry in case it's just a discrepancy in the heartbeat cron schedule
-		exec := append([]string{cmd}, args...)
-		out, err := TestHelper.LinkerdRun(exec...)
-		if err != nil {
-			testutil.AnnotatedFatalf(t, fmt.Sprintf("command failed: %v", exec),
-				"command failed: %v\n%s\n%s", exec, out, stderr)
-		}
-
-		if out != upgradeFromManifests {
-			testutil.AnnotatedFatalf(t, "manifest upgrade differs from k8s upgrade",
-				"manifest upgrade differs from k8s upgrade.\nk8s upgrade:\n%s\nmanifest upgrade:\n%s", out, upgradeFromManifests)
-		}
 	}
 
 	// Limit the pruning only to known resources
