@@ -113,7 +113,7 @@ async fn meshtls_namespace() {
             authz_policy(
                 &ns,
                 "nginx",
-                &srv,
+                LocalTargetRef::from_resource(&srv),
                 Some(NamespacedTargetRef::from_resource(&mtls_ns)),
             ),
         )
