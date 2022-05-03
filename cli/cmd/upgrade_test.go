@@ -393,7 +393,6 @@ func testUpgradeOptions() (flagOptions, error) {
 		return flagOptions{}, err
 	}
 
-	allStageFlags, allStageFlagSet := makeAllStageFlags(defaults)
 	installUpgradeFlags, installUpgradeFlagSet, err := makeInstallUpgradeFlags(defaults)
 	if err != nil {
 		return flagOptions{}, err
@@ -401,9 +400,8 @@ func testUpgradeOptions() (flagOptions, error) {
 	proxyFlags, proxyFlagSet := makeProxyFlags(defaults)
 	upgradeFlagSet := makeUpgradeFlags()
 
-	flags := flattenFlags(allStageFlags, installUpgradeFlags, proxyFlags)
+	flags := flattenFlags(installUpgradeFlags, proxyFlags)
 	flagSet := pflag.NewFlagSet("upgrade", pflag.ExitOnError)
-	flagSet.AddFlagSet(allStageFlagSet)
 	flagSet.AddFlagSet(installUpgradeFlagSet)
 	flagSet.AddFlagSet(proxyFlagSet)
 	flagSet.AddFlagSet(upgradeFlagSet)
@@ -568,7 +566,7 @@ func pathMatch(path []string, template []string) bool {
 
 func renderInstall(t *testing.T, values *linkerd2.Values) bytes.Buffer {
 	var installBuf bytes.Buffer
-	if err := render(&installBuf, values, "", nil); err != nil {
+	if err := render(&installBuf, values, false, nil); err != nil {
 		t.Fatalf("could not render install manifests: %s", err)
 	}
 	return installBuf
@@ -579,7 +577,7 @@ func renderUpgrade(installManifest string, upgradeOpts []flag.Flag, templateOpts
 	if err != nil {
 		return bytes.Buffer{}, fmt.Errorf("failed to initialize fake API: %w\n\n%s", err, installManifest)
 	}
-	return upgrade(context.Background(), k, upgradeOpts, "", templateOpts)
+	return upgrade(context.Background(), k, upgradeOpts, false, templateOpts)
 }
 
 func renderInstallAndUpgrade(t *testing.T, installOpts *charts.Values, upgradeOpts []flag.Flag, templateOpts valuespkg.Options) (bytes.Buffer, bytes.Buffer, error) {
