@@ -2062,18 +2062,21 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Contex
 // CheckCustomResourceDefinitions checks that all of the Linkerd CRDs are
 // installed on the cluster.
 func CheckCustomResourceDefinitions(ctx context.Context, k8sAPI *k8s.KubernetesAPI) error {
-	crdVersions := map[string]string{
-		"authorizationpolicies.policy.linkerd.io":  "v1alpha1",
-		"meshtlsauthentications.policy.linkerd.io": "v1alpha1",
-		"networkauthentications.policy.linkerd.io": "v1alpha1",
-		"servers.policy.linkerd.io":                "v1beta1",
-		"serverauthorizations.policy.linkerd.io":   "v1beta1",
-		"serviceprofiles.linkerd.io":               "v1alpha2",
+	crdVersions := []struct{ name, version string }{
+		{name: "authorizationpolicies.policy.linkerd.io", version: "v1alpha1"},
+		{name: "meshtlsauthentications.policy.linkerd.io", version: "v1alpha1"},
+		{name: "networkauthentications.policy.linkerd.io", version: "v1alpha1"},
+		{name: "servers.policy.linkerd.io", version: "v1beta1"},
+		{name: "serverauthorizations.policy.linkerd.io", version: "v1beta1"},
+		{name: "serviceprofiles.linkerd.io", version: "v1alpha2"},
 	}
 
 	errMsgs := []string{}
 
-	for name, version := range crdVersions {
+	for _, crdVersion := range crdVersions {
+		name := crdVersion.name
+		version := crdVersion.version
+
 		crd, err := k8sAPI.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, name, metav1.GetOptions{})
 		if err != nil && kerrors.IsNotFound(err) {
 			errMsgs = append(errMsgs, fmt.Sprintf("missing %s", name))
