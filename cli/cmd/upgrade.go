@@ -156,6 +156,15 @@ func makeUpgradeFlags() *pflag.FlagSet {
 
 func upgradeRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, crds bool, options valuespkg.Options) error {
 
+	if !crds {
+		err := healthcheck.CheckCustomResourceDefinitions(ctx, k)
+		if err != nil {
+			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, "Linkerd CRDs must be installed first. Run linkerd upgrade with the --crds flag.")
+			os.Exit(1)
+		}
+	}
+
 	buf, err := upgrade(ctx, k, flags, crds, options)
 	if err != nil {
 		return err
