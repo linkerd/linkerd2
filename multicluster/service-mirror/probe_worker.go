@@ -18,6 +18,7 @@ type ProbeWorker struct {
 	localGatewayName string
 	alive            bool
 	Liveness         chan bool
+	gatewayUpdates   chan GatewayStatus
 	*sync.RWMutex
 	probeSpec *multicluster.ProbeSpec
 	stopCh    chan struct{}
@@ -26,10 +27,11 @@ type ProbeWorker struct {
 }
 
 // NewProbeWorker creates a new probe worker associated with a particular gateway
-func NewProbeWorker(localGatewayName string, spec *multicluster.ProbeSpec, metrics *ProbeMetrics, probekey string) *ProbeWorker {
+func NewProbeWorker(localGatewayName string, spec *multicluster.ProbeSpec, metrics *ProbeMetrics, probekey string, gatewayUpdates chan GatewayStatus) *ProbeWorker {
 	return &ProbeWorker{
 		localGatewayName: localGatewayName,
 		Liveness:         make(chan bool, 10),
+		gatewayUpdates:   gatewayUpdates,
 		RWMutex:          &sync.RWMutex{},
 		probeSpec:        spec,
 		stopCh:           make(chan struct{}),
@@ -103,6 +105,10 @@ func (pw *ProbeWorker) doProbe() {
 		if pw.alive {
 			pw.alive = false
 			pw.Liveness <- false
+			pw.gatewayUpdates <- GatewayStatus{
+				alive:   pw.alive,
+				latency: 0,
+			}
 		}
 		return
 	}
@@ -113,6 +119,10 @@ func (pw *ProbeWorker) doProbe() {
 		if pw.alive {
 			pw.alive = false
 			pw.Liveness <- false
+			pw.gatewayUpdates <- GatewayStatus{
+				alive:   pw.alive,
+				latency: 0,
+			}
 		}
 	} else {
 		pw.log.Debug("Gateway is healthy")
@@ -122,6 +132,14 @@ func (pw *ProbeWorker) doProbe() {
 		if !pw.alive {
 			pw.alive = true
 			pw.Liveness <- true
+			pw.gatewayUpdates <- GatewayStatus{
+				alive:   pw.alive,
+				latency: uint64(end.Milliseconds()),
+			}
+		}
+		pw.gatewayUpdates <- GatewayStatus{
+			alive:   pw.alive,
+			latency: uint64(end.Milliseconds()),
 		}
 	}
 

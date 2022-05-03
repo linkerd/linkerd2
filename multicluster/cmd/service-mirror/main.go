@@ -34,6 +34,7 @@ var (
 func Main(args []string) {
 	cmd := flag.NewFlagSet("service-mirror", flag.ExitOnError)
 
+	addr := cmd.String("addr", ":8083", "address to serve on")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to the local kube config")
 	requeueLimit := cmd.Int("event-requeue-limit", 3, "requeue limit for events")
 	metricsAddr := cmd.String("metrics-addr", ":9999", "address to serve scrapable metrics on")
@@ -77,6 +78,17 @@ func Main(args []string) {
 
 	metrics := servicemirror.NewProbeMetricVecs()
 
+	gatewayUpdates := make(chan servicemirror.GatewayStatus, 10)
+	clusterNameUpdates := make(chan string, 10)
+	server := servicemirror.NewServer(*addr, controllerK8sAPI, clusterNameUpdates, gatewayUpdates)
+
+	go func() {
+		log.Infof("starting service mirror server on %s", *addr)
+		if err := server.ListenAndServe(); err != nil {
+			log.Errorf("failed to start service mirror server: %s", err)
+		}
+	}()
+
 	adminServer := admin.NewServer(*metricsAddr, *enablePprof)
 
 	go func() {
@@ -119,11 +131,12 @@ main:
 								continue
 							}
 							log.Infof("Got updated link %s: %+v", linkName, link)
+							clusterNameUpdates <- link.TargetClusterName
 							creds, err := loadCredentials(ctx, link, *namespace, k8sAPI)
 							if err != nil {
 								log.Errorf("Failed to load remote cluster credentials: %s", err)
 							}
-							err = restartClusterWatcher(ctx, link, *namespace, creds, controllerK8sAPI, *requeueLimit, *repairPeriod, metrics, *enableHeadlessSvc)
+							err = restartClusterWatcher(ctx, link, *namespace, creds, controllerK8sAPI, *requeueLimit, *repairPeriod, metrics, *enableHeadlessSvc, gatewayUpdates)
 							if err != nil {
 								// failed to restart cluster watcher; give a bit of slack
 								// and restart the link watch to give it another try
@@ -173,6 +186,7 @@ func restartClusterWatcher(
 	repairPeriod time.Duration,
 	metrics servicemirror.ProbeMetricVecs,
 	enableHeadlessSvc bool,
+	gatewayUpdates chan servicemirror.GatewayStatus,
 ) error {
 	if clusterWatcher != nil {
 		clusterWatcher.Stop(false)
@@ -186,7 +200,7 @@ func restartClusterWatcher(
 	if err != nil {
 		return fmt.Errorf("failed to create metrics for cluster watcher: %w", err)
 	}
-	probeWorker = servicemirror.NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.TargetClusterName), &link.ProbeSpec, workerMetrics, link.TargetClusterName)
+	probeWorker = servicemirror.NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.TargetClusterName), &link.ProbeSpec, workerMetrics, link.TargetClusterName, gatewayUpdates)
 	probeWorker.Start()
 
 	// Start cluster watcher
