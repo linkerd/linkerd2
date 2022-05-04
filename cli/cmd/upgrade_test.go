@@ -575,14 +575,15 @@ func pathMatch(path []string, template []string) bool {
 }
 
 func renderInstall(t *testing.T, values *linkerd2.Values) *bytes.Buffer {
-	var installBuf bytes.Buffer
-	if err := renderCRDs(&installBuf); err != nil {
+	var buf bytes.Buffer
+	if err := renderCRDs(&buf); err != nil {
 		t.Fatalf("could not render install manifests: %s", err)
 	}
-	if err := renderControlPlane(&installBuf, values, nil); err != nil {
+	buf.WriteString("---\n")
+	if err := renderControlPlane(&buf, values, nil); err != nil {
 		t.Fatalf("could not render install manifests: %s", err)
 	}
-	return &installBuf
+	return &buf
 }
 
 func renderUpgrade(installManifest string, upgradeOpts []flag.Flag, templateOpts valuespkg.Options) (*bytes.Buffer, error) {
@@ -590,7 +591,14 @@ func renderUpgrade(installManifest string, upgradeOpts []flag.Flag, templateOpts
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize fake API: %w\n\n%s", err, installManifest)
 	}
-	return upgradeControlPlane(context.Background(), k, upgradeOpts, templateOpts)
+	buf := upgradeCRDs()
+	buf.WriteString("---\n")
+	cpbuf, err := upgradeControlPlane(context.Background(), k, upgradeOpts, templateOpts)
+	if err != nil {
+		return nil, err
+	}
+	buf.Write(cpbuf.Bytes())
+	return buf, nil
 }
 
 func renderInstallAndUpgrade(t *testing.T, installOpts *charts.Values, upgradeOpts []flag.Flag, templateOpts valuespkg.Options) (*bytes.Buffer, *bytes.Buffer, error) {

@@ -183,24 +183,17 @@ func upgradeControlPlaneRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []
 }
 
 func upgradeCRDsRunE() error {
-	buf, err := upgradeCRDs()
-	if err != nil {
-		return err
-	}
-
-	if _, err = buf.WriteTo(os.Stdout); err != nil {
-		return err
-	}
-
-	return nil
+	buf := upgradeCRDs()
+	_, err := buf.WriteTo(os.Stdout)
+	return err
 }
 
-func upgradeCRDs() (*bytes.Buffer, error) {
+func upgradeCRDs() *bytes.Buffer {
 	var buf bytes.Buffer
 	if err := renderCRDs(&buf); err != nil {
 		upgradeErrorf("Could not render upgrade configuration: %s", err)
 	}
-	return &buf, nil
+	return &buf
 }
 
 func upgradeControlPlane(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, options valuespkg.Options) (*bytes.Buffer, error) {
