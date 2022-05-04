@@ -294,10 +294,9 @@ func (v Values) Merge(src Values) (Values, error) {
 	// in its first argument. So in HA mode, we are merging values.yaml into
 	// values-ha.yaml, instead of the other way round (like Helm). This ensures
 	// that all the HA values take precedence.
-	if err := mergo.Merge(&src, v); err != nil {
+	if err := mergo.Merge(&src, v, mergo.WithOverrideEmptySlice); err != nil {
 		return Values{}, err
 	}
-
 	return src, nil
 }
 

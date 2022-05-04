@@ -1,9 +1,9 @@
 package linkerd2
 
 import (
-	"reflect"
 	"testing"
 
+	"github.com/go-test/deep"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -28,8 +28,7 @@ func TestNewValues(t *testing.T) {
 		Key:      "kubernetes.io/metadata.name",
 		Operator: "NotIn",
 		Values:   []string{"kube-system", "cert-manager"},
-	},
-	)
+	})
 
 	namespaceSelectorSimple := &metav1.LabelSelector{MatchExpressions: matchExpressionsSimple}
 	namespaceSelectorInjector := &metav1.LabelSelector{MatchExpressions: matchExpressionsInjector}
@@ -162,13 +161,12 @@ func TestNewValues(t *testing.T) {
 	// Make Add-On Values nil to not have to check for their defaults
 	actual.ImagePullSecrets = nil
 
-	if !reflect.DeepEqual(expected, actual) {
-		t.Errorf("Mismatch Helm values.\nExpected: %+v\nActual: %+v", expected, actual)
+	if diff := deep.Equal(expected, actual); diff != nil {
+		t.Errorf("Mismatch Helm values:\n%v", diff)
 	}
 
 	t.Run("HA", func(t *testing.T) {
 		err := MergeHAValues(actual)
-
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
@@ -217,8 +215,8 @@ func TestNewValues(t *testing.T) {
 		// values.yaml.
 		actual.ProxyInit.Image.Version = testVersion
 
-		if !reflect.DeepEqual(expected, actual) {
-			t.Errorf("Mismatch Helm HA defaults.\nExpected: %+v\nActual: %+v", expected, actual)
+		if diff := deep.Equal(expected, actual); diff != nil {
+			t.Errorf("Mismatch Helm HA defaults:\n%+v", diff)
 		}
 	})
 }
