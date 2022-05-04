@@ -51,11 +51,9 @@ CONTAINER_MOUNT_PREFIX=${CONTAINER_MOUNT_PREFIX:-/host}
 # overridden by setting CONTAINER_CNI_BIN_DIR. The binary in this directory
 # will be copied over to the host DEST_CNI_BIN_DIR through the mount point.
 CONTAINER_CNI_BIN_DIR=${CONTAINER_CNI_BIN_DIR:-/opt/cni/bin}
-
-# Default to the first file following a find | sort since the Kubernetes CNI runtime is going
-# to look for the lexicographically first file. If the directory is empty, then use a name
-# of our choosing.
+# Directory path where CNI configuration should live on the host
 HOST_CNI_NET="${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}"
+# Default path for when linkerd runs as a standalone CNI plugin
 DEFAULT_CNI_CONF_PATH="${HOST_CNI_NET}/01-linkerd-cni.conf"
 KUBECONFIG_FILE_NAME=${KUBECONFIG_FILE_NAME:-ZZZ-linkerd-cni-kubeconfig}
 
@@ -117,16 +115,16 @@ trap 'echo "SIGHUP received, simply exiting..."; cleanup' HUP
 
 # Install CNI bin will copy the linkerd-cni binary on the host's filesystem
 install_cni_bin() {
-    # Place the new binaries if the mounted directory is writeable.
-    dir="${CONTAINER_MOUNT_PREFIX}${DEST_CNI_BIN_DIR}"
-    if [ ! -w "${dir}" ]; then
-      exit_with_error "${dir} is non-writeable, failure"
-    fi
-    for path in "${CONTAINER_CNI_BIN_DIR}"/*; do
-      cp "${path}" "${dir}"/ || exit_with_error "Failed to copy ${path} to ${dir}."
-    done
+  # Place the new binaries if the mounted directory is writeable.
+  dir="${CONTAINER_MOUNT_PREFIX}${DEST_CNI_BIN_DIR}"
+  if [ ! -w "${dir}" ]; then
+    exit_with_error "${dir} is non-writeable, failure"
+  fi
+  for path in "${CONTAINER_CNI_BIN_DIR}"/*; do
+    cp "${path}" "${dir}"/ || exit_with_error "Failed to copy ${path} to ${dir}."
+  done
 
-    echo "Wrote linkerd CNI binaries to ${dir}"
+  echo "Wrote linkerd CNI binaries to ${dir}"
 }
 
 create_cni_conf() {
@@ -134,9 +132,8 @@ create_cni_conf() {
   #
   TMP_CONF='/tmp/linkerd-cni.conf.default'
   # If specified, overwrite the network configuration file.
-  # We are only interested in the side effect of parameter expansion here, hence ':'
-  : "${CNI_NETWORK_CONFIG_FILE:=}"
-  : "${CNI_NETWORK_CONFIG:=}"
+  CNI_NETWORK_CONFIG_FILE="${CNI_NETWORK_CONFIG_FILE:-}"
+  CNI_NETWORK_CONFIG="${CNI_NETWORK_CONFIG:-}"
 
   # If the CNI Network Config has been overwritten, then use template from file
   if [ -e "${CNI_NETWORK_CONFIG_FILE}" ]; then
