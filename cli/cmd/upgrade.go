@@ -227,10 +227,16 @@ the 'linkerd repair' command to repair the Linkerd config`)
 	// rendering to a buffer and printing full contents of buffer after
 	// render is complete, to ensure that okStatus prints separately
 	var buf bytes.Buffer
-	if err = render(&buf, values, crds, valuesOverrides); err != nil {
-		upgradeErrorf("Could not render upgrade configuration: %s", err)
+	if crds {
+		if err = renderCRDs(&buf, values, valuesOverrides); err != nil {
+			upgradeErrorf("Could not render upgrade configuration: %s", err)
+		}
+		return buf, nil
 	}
 
+	if err = renderControlPlane(&buf, values, valuesOverrides); err != nil {
+		upgradeErrorf("Could not render upgrade configuration: %s", err)
+	}
 	return buf, nil
 }
 
