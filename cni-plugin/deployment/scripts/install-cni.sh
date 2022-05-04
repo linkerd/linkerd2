@@ -138,7 +138,7 @@ create_cni_conf() {
   : "${CNI_NETWORK_CONFIG_FILE:=}"
   : "${CNI_NETWORK_CONFIG:=}"
 
-  # If the CNI Network Config has ben overwridden, then use template from file
+  # If the CNI Network Config has been overwritten, then use template from file
   if [ -e "${CNI_NETWORK_CONFIG_FILE}" ]; then
     echo "Using CNI config template from ${CNI_NETWORK_CONFIG_FILE}."
     cp "${CNI_NETWORK_CONFIG_FILE}" "${TMP_CONF}"
