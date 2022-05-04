@@ -1,9 +1,9 @@
 package k8s
 
 import (
-	"reflect"
 	"testing"
 
+	"github.com/go-test/deep"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,8 +38,8 @@ func TestGetPodLabels(t *testing.T) {
 
 		podLabels := GetPodLabels(ownerKind, ownerName, pod)
 
-		if !reflect.DeepEqual(podLabels, expectedLabels) {
-			t.Fatalf("Expected pod labels [%v] but got [%v]", expectedLabels, podLabels)
+		if diff := deep.Equal(podLabels, expectedLabels); diff != nil {
+			t.Errorf("labels %+v", diff)
 		}
 	})
 }

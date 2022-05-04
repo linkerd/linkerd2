@@ -1,11 +1,10 @@
 package watcher
 
 import (
-	"encoding/json"
-	"reflect"
 	"sync"
 	"testing"
 
+	"github.com/go-test/deep"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 )
 
@@ -51,9 +50,7 @@ func (bpl *BufferingProfileListener) Update(profile *sp.ServiceProfile) {
 }
 
 func testCompare(t *testing.T, expected interface{}, actual interface{}) {
-	if !reflect.DeepEqual(expected, actual) {
-		expectedBytes, _ := json.Marshal(expected)
-		actualBytes, _ := json.Marshal(actual)
-		t.Fatalf("Expected %s but got %s", string(expectedBytes), string(actualBytes))
+	if diff := deep.Equal(expected, actual); diff != nil {
+		t.Fatalf("%v", diff)
 	}
 }

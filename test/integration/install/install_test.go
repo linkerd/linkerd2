@@ -5,13 +5,13 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"reflect"
 	"regexp"
 	"strings"
 	"testing"
 	"text/template"
 	"time"
 
+	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -664,11 +664,8 @@ func TestOverridesSecret(t *testing.T) {
 		}
 
 		// Check if the keys in overridesTree match with knownKeys
-		if !reflect.DeepEqual(overridesTree.String(), knownKeys.String()) {
-			testutil.AnnotatedFatalf(t, "Overrides and knownKeys are different",
-				"Expected overrides to be [%s] but found [%s]",
-				knownKeys.String(), overridesTree.String(),
-			)
+		if diff := deep.Equal(overridesTree.String(), knownKeys.String()); diff != nil {
+			testutil.AnnotatedFatalf(t, "Overrides and knownKeys are different", "%+v", diff)
 		}
 	})
 }

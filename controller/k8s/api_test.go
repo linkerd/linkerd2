@@ -9,6 +9,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -275,8 +276,8 @@ metadata:
 					t.Fatalf("api.GetObjects() unexpected error, expected [%s] got: [%s]", exp.err, err)
 				}
 			} else {
-				if !reflect.DeepEqual(pods, k8sResults) {
-					t.Fatalf("Expected: %+v, Got: %+v", k8sResults, pods)
+				if diff := deep.Equal(pods, k8sResults); diff != nil {
+					t.Fatalf("Expected: %+v", diff)
 				}
 			}
 		}
@@ -334,8 +335,8 @@ status:
 					t.Fatalf("api.GetObjects() unexpected error %s", err)
 				}
 
-				if !reflect.DeepEqual(pods, k8sResults) {
-					t.Fatalf("Expected: %+v, Got: %+v", k8sResults, pods)
+				if diff := deep.Equal(pods, k8sResults); diff != nil {
+					t.Fatalf("%+v", diff)
 				}
 			}
 		})

@@ -9,9 +9,9 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"reflect"
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	k8sutils "github.com/linkerd/linkerd2/pkg/k8s"
 )
@@ -77,8 +77,8 @@ data:
 			if clientCAPem != exp.clientCAPem {
 				t.Errorf("apiServerAuth returned unexpected clientCAPem: %q, expected: %q", clientCAPem, exp.clientCAPem)
 			}
-			if !reflect.DeepEqual(allowedNames, exp.allowedNames) {
-				t.Errorf("apiServerAuth returned unexpected allowedNames: %q, expected: %q", allowedNames, exp.allowedNames)
+			if diff := deep.Equal(allowedNames, exp.allowedNames); diff != nil {
+				t.Errorf("%v", diff)
 			}
 			if usernameHeader != exp.usernameHeader {
 				t.Errorf("apiServerAuth returned unexpected usernameHeader: %q, expected: %q", usernameHeader, exp.usernameHeader)

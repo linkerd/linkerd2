@@ -1,9 +1,9 @@
 package inject
 
 import (
-	"reflect"
 	"testing"
 
+	"github.com/go-test/deep"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -291,10 +291,9 @@ func TestGetOverriddenValues(t *testing.T) {
 				t.Fatal(err)
 			}
 			expected := testCase.expected()
-			if !reflect.DeepEqual(actual, expected) {
-				t.Fatalf("Expected values to be \n%v\n but was \n%v", expected.String(), actual.String())
+			if diff := deep.Equal(actual, expected); diff != nil {
+				t.Errorf("%+v", diff)
 			}
-
 		})
 	}
 }
