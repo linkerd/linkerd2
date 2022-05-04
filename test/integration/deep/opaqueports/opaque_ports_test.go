@@ -27,7 +27,17 @@ var (
 	opaqueUnmeshedSvcSC  = "slow-cooker-opaque-unmeshed-svc"
 )
 
+type testCase struct {
+	name      string
+	appName   string
+	appChecks []check
+	scName    string
+	scChecks  []check
+}
+
 type check func(metrics string) error
+
+func checks(c ...check) []check { return c }
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
@@ -71,13 +81,7 @@ func TestOpaquePortsCalledByServiceTarget(t *testing.T) {
 			testutil.AnnotatedFatal(t, "failed to deploy client pods", err)
 		}
 
-		tests := []struct {
-			name      string
-			appName   string
-			appChecks []check
-			scName    string
-			scChecks  []check
-		}{
+		runTests(ctx, t, opaquePortsNs, []testCase{
 			{
 				name:   "calling a meshed service when opaque annotation is on receiving pod",
 				scName: opaquePodSC,
@@ -106,34 +110,13 @@ func TestOpaquePortsCalledByServiceTarget(t *testing.T) {
 					hasOutboundTCPWithAuthorityAndNoTLS,
 				),
 			},
-		}
-
-		for _, tc := range tests {
-			t.Run(tc.name, func(t *testing.T) {
-				err := TestHelper.RetryFor(30*time.Second, func() error {
-					if err := checkPodMetrics(ctx, opaquePortsNs, tc.scName, tc.scChecks); err != nil {
-						return fmt.Errorf("failed to check metrics for client pod:%w", err)
-					}
-					if tc.appName == "" {
-						return nil
-					}
-					if err := checkPodMetrics(ctx, opaquePortsNs, tc.appName, tc.appChecks); err != nil {
-						return fmt.Errorf("failed to check metrics for app pod:%w", err)
-					}
-					return nil
-				})
-				if err != nil {
-					testutil.AnnotatedFatalf(t, "unexpected metric for client pod", "unexpected metric for client pod: %s", err)
-				}
-			})
-		}
+		})
 	})
 }
 
 func TestOpaquePortsCalledByPodTarget(t *testing.T) {
 	ctx := context.Background()
 	TestHelper.WithDataPlaneNamespace(ctx, "opaque-ports-called-by-pod-ip-test", map[string]string{}, t, func(t *testing.T, opaquePortsNs string) {
-		checks := func(c ...check) []check { return c }
 
 		if err := deployApplications(opaquePortsNs); err != nil {
 			testutil.AnnotatedFatal(t, "failed to deploy applications", err)
@@ -148,13 +131,7 @@ func TestOpaquePortsCalledByPodTarget(t *testing.T) {
 		if err := deployClients(opaquePortsNs, tmplArgs); err != nil {
 			testutil.AnnotatedFatal(t, "failed to deploy client pods", err)
 		}
-		tests := []struct {
-			name      string
-			appName   string
-			appChecks []check
-			scName    string
-			scChecks  []check
-		}{
+		runTests(ctx, t, opaquePortsNs, []testCase{
 			{
 				name:   "calling a meshed service when opaque annotation is on receiving pod",
 				scName: opaquePodSC,
@@ -185,27 +162,7 @@ func TestOpaquePortsCalledByPodTarget(t *testing.T) {
 					hasOutboundTCPWithNoTLSAndNoAuthority,
 				),
 			},
-		}
-
-		for _, tc := range tests {
-			t.Run(tc.name, func(t *testing.T) {
-				err := TestHelper.RetryFor(30*time.Second, func() error {
-					if err := checkPodMetrics(ctx, opaquePortsNs, tc.scName, tc.scChecks); err != nil {
-						return fmt.Errorf("failed to check metrics for client pod:%w", err)
-					}
-					if tc.appName == "" {
-						return nil
-					}
-					if err := checkPodMetrics(ctx, opaquePortsNs, tc.appName, tc.appChecks); err != nil {
-						return fmt.Errorf("failed to check metrics for app pod:%w", err)
-					}
-					return nil
-				})
-				if err != nil {
-					testutil.AnnotatedFatalf(t, "unexpected metric for client pod", "unexpected metric for client pod: %s", err)
-				}
-			})
-		}
+		})
 	})
 }
 
@@ -244,6 +201,29 @@ func templateArgsPodIP(ctx context.Context, ns string) (clientTemplateArgs, erro
 		ServiceCookerOpaqueServiceTargetHost:     opaqueSvcSCPodIP,
 		ServiceCookerOpaqueUnmeshedSVCTargetHost: opaqueUnmeshedSvcPodIP,
 	}, nil
+}
+
+func runTests(ctx context.Context, t *testing.T, ns string, tcs []testCase) {
+	t.Helper()
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			err := TestHelper.RetryFor(30*time.Second, func() error {
+				if err := checkPodMetrics(ctx, ns, tc.scName, tc.scChecks); err != nil {
+					return fmt.Errorf("failed to check metrics for client pod:%w", err)
+				}
+				if tc.appName == "" {
+					return nil
+				}
+				if err := checkPodMetrics(ctx, ns, tc.appName, tc.appChecks); err != nil {
+					return fmt.Errorf("failed to check metrics for app pod:%w", err)
+				}
+				return nil
+			})
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "unexpected metric for pod", "unexpected metric for pod: %s", err)
+			}
+		})
+	}
 }
 
 func checkPodMetrics(ctx context.Context, opaquePortsNs string, podAppLabel string, checks []check) error {
