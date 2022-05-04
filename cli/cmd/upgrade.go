@@ -175,11 +175,8 @@ func upgradeControlPlaneRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []
 		}
 	}
 
-	if _, err = buf.WriteTo(os.Stdout); err != nil {
-		return err
-	}
-
-	return nil
+	_, err = buf.WriteTo(os.Stdout)
+	return err
 }
 
 func upgradeCRDsRunE() error {
