@@ -94,7 +94,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 			if crds {
 				// The CRD chart is not configurable.
 				// TODO(ver): Error if values have been configured?
-				if err := upgradeCRDsRunE(); err != nil {
+				if _, err := upgradeCRDs().WriteTo(os.Stdout); err != nil {
 					fmt.Fprintln(os.Stderr, err.Error())
 					os.Exit(1)
 				}
@@ -175,16 +175,7 @@ func upgradeControlPlaneRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []
 		}
 	}
 
-	if _, err = buf.WriteTo(os.Stdout); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func upgradeCRDsRunE() error {
-	buf := upgradeCRDs()
-	_, err := buf.WriteTo(os.Stdout)
+	_, err = buf.WriteTo(os.Stdout)
 	return err
 }
 
