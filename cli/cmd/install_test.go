@@ -265,7 +265,7 @@ func TestRenderCRDs(t *testing.T) {
 	addFakeTLSSecrets(defaultValues)
 
 	var buf bytes.Buffer
-	if err := renderCRDs(&buf, defaultValues, map[string]interface{}{}); err != nil {
+	if err := renderCRDs(&buf); err != nil {
 		t.Fatalf("Failed to render templates: %v", err)
 	}
 	testDataDiffer.DiffTestdata(t, "install_crds.golden", buf.String())

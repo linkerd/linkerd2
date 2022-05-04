@@ -91,12 +91,21 @@ A full list of configurable values can be found at https://www.github.com/linker
   --prune-whitelist=rbac.authorization.k8s.io/v1/clusterrolebinding \
   --prune-whitelist=apiregistration.k8s.io/v1/apiservice -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if crds {
+				// The CRD chart is not configurable.
+				// TODO(ver): Error if values have been configured?
+				if _, err := upgradeCRDs().WriteTo(os.Stdout); err != nil {
+					fmt.Fprintln(os.Stderr, err.Error())
+					os.Exit(1)
+				}
+				return nil
+			}
+
 			k, err := k8sClient(manifests)
 			if err != nil {
 				return err
 			}
-			err = upgradeRunE(cmd.Context(), k, flags, crds, options)
-			if err != nil {
+			if err = upgradeControlPlaneRunE(cmd.Context(), k, flags, options); err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
 				os.Exit(1)
 			}
@@ -154,9 +163,8 @@ func makeUpgradeFlags() *pflag.FlagSet {
 	return upgradeFlags
 }
 
-func upgradeRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, crds bool, options valuespkg.Options) error {
-
-	buf, err := upgrade(ctx, k, flags, crds, options)
+func upgradeControlPlaneRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, options valuespkg.Options) error {
+	buf, err := upgradeControlPlane(ctx, k, flags, options)
 	if err != nil {
 		return err
 	}
@@ -167,22 +175,29 @@ func upgradeRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, c
 		}
 	}
 
-	buf.WriteTo(os.Stdout)
-
-	return nil
+	_, err = buf.WriteTo(os.Stdout)
+	return err
 }
 
-func upgrade(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, crds bool, options valuespkg.Options) (bytes.Buffer, error) {
+func upgradeCRDs() *bytes.Buffer {
+	var buf bytes.Buffer
+	if err := renderCRDs(&buf); err != nil {
+		upgradeErrorf("Could not render upgrade configuration: %s", err)
+	}
+	return &buf
+}
+
+func upgradeControlPlane(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, options valuespkg.Options) (*bytes.Buffer, error) {
 	values, err := loadStoredValues(ctx, k)
 	if err != nil {
-		return bytes.Buffer{}, fmt.Errorf("failed to load stored values: %w", err)
+		return nil, fmt.Errorf("failed to load stored values: %w", err)
 	}
 
 	// If values is still nil, then the linkerd-config-overrides secret was not found.
 	// This means either means that Linkerd was installed with Helm or that the installation
 	// needs to be repaired.
 	if values == nil {
-		return bytes.Buffer{}, errors.New(
+		return nil, errors.New(
 			`Could not find the Linkerd config. If Linkerd was installed with Helm, please
 use Helm to perform upgrades. If Linkerd was not installed with Helm, please use
 the 'linkerd repair' command to repair the Linkerd config`)
@@ -190,54 +205,45 @@ the 'linkerd repair' command to repair the Linkerd config`)
 
 	err = flag.ApplySetFlags(values, flags)
 	if err != nil {
-		return bytes.Buffer{}, err
+		return nil, err
 	}
 
 	if values.Identity.Issuer.Scheme == string(corev1.SecretTypeTLS) {
 		for _, flag := range flags {
 			if (flag.Name() == "identity-issuer-certificate-file" || flag.Name() == "identity-issuer-key-file") && flag.IsSet() {
-				return bytes.Buffer{}, errors.New("cannot update issuer certificates if you are using external cert management solution")
+				return nil, errors.New("cannot update issuer certificates if you are using external cert management solution")
 			}
 		}
 	}
 
 	err = validateValues(ctx, k, values)
 	if err != nil {
-		return bytes.Buffer{}, err
+		return nil, err
 	}
 	if !force && values.Identity.Issuer.Scheme == k8s.IdentityIssuerSchemeLinkerd {
 		err = ensureIssuerCertWorksWithAllProxies(ctx, k, values)
 		if err != nil {
-			return bytes.Buffer{}, err
+			return nil, err
 		}
 	}
 
 	// Create values override
 	valuesOverrides, err := options.MergeValues(nil)
 	if err != nil {
-		return bytes.Buffer{}, err
+		return nil, err
 	}
 	if !isRunAsRoot(valuesOverrides) {
 		err = healthcheck.CheckNodesHaveNonDockerRuntime(ctx, k)
 		if err != nil {
-			return bytes.Buffer{}, err
+			return nil, err
 		}
 	}
 
-	// rendering to a buffer and printing full contents of buffer after
-	// render is complete, to ensure that okStatus prints separately
 	var buf bytes.Buffer
-	if crds {
-		if err = renderCRDs(&buf, values, valuesOverrides); err != nil {
-			upgradeErrorf("Could not render upgrade configuration: %s", err)
-		}
-		return buf, nil
-	}
-
 	if err = renderControlPlane(&buf, values, valuesOverrides); err != nil {
 		upgradeErrorf("Could not render upgrade configuration: %s", err)
 	}
-	return buf, nil
+	return &buf, nil
 }
 
 func loadStoredValues(ctx context.Context, k *k8s.KubernetesAPI) (*charts.Values, error) {
