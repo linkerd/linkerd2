@@ -128,13 +128,19 @@ A full list of configurable values can be found at https://www.github.com/linker
 					}
 				}
 			}
-			err = install(cmd.Context(), k8sAPI, os.Stdout, values, flags, crds, options)
-			if crds && err != nil {
+
+			if crds {
+				if err = installCRDs(cmd.Context(), k8sAPI, os.Stdout, values, options); err != nil {
+					return err
+				}
+
 				fmt.Fprintln(os.Stderr, "Rendering Linkerd CRDs...")
 				fmt.Fprintln(os.Stderr, "Next, run `linkerd install | kubectl apply -f -` to install the control plane.")
 				fmt.Fprintln(os.Stderr)
+				return nil
 			}
-			return err
+
+			return installControlPlane(cmd.Context(), k8sAPI, os.Stdout, values, flags, options)
 		},
 	}
 
@@ -150,9 +156,46 @@ A full list of configurable values can be found at https://www.github.com/linker
 	return cmd
 }
 
-func install(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, crds bool, options valuespkg.Options) error {
+func checkNoConfig(ctx context.Context, k8sAPI *k8s.KubernetesAPI) error {
+	if k8sAPI == nil {
+		// When `ingoreCluster` is set, there is no k8sAPI.
+		return nil
+	}
+
+	// We just want to check if `linkerd-configmap` exists
+	_, err := k8sAPI.CoreV1().ConfigMaps(controlPlaneNamespace).Get(ctx, k8s.ConfigConfigMapName, metav1.GetOptions{})
+	if err == nil {
+		fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, "ConfigMap/linkerd-config already exists")
+		os.Exit(1)
+	}
+	if !kerrors.IsNotFound(err) {
+		return err
+	}
+
+	return nil
+}
+
+func installCRDs(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, values *l5dcharts.Values, options valuespkg.Options) error {
+	if err := checkNoConfig(ctx, k8sAPI); err != nil {
+		return err
+	}
+
+	// Create values override
+	valuesOverrides, err := options.MergeValues(nil)
+	if err != nil {
+		return err
+	}
+
+	return renderCRDs(w, values, valuesOverrides)
+}
+
+func installControlPlane(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, options valuespkg.Options) error {
 	err := flag.ApplySetFlags(values, flags)
 	if err != nil {
+		return err
+	}
+
+	if err := checkNoConfig(ctx, k8sAPI); err != nil {
 		return err
 	}
 
@@ -192,7 +235,7 @@ func install(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, values
 		return err
 	}
 
-	return render(w, values, crds, valuesOverrides)
+	return renderControlPlane(w, values, valuesOverrides)
 }
 
 func isRunAsRoot(values map[string]interface{}) bool {
@@ -206,64 +249,32 @@ func isRunAsRoot(values map[string]interface{}) bool {
 	return false
 }
 
-func render(w io.Writer, values *l5dcharts.Values, crds bool, valuesOverrides map[string]interface{}) error {
-
-	crdFiles := []*loader.BufferedFile{
-		{Name: chartutil.ChartfileName},
-	}
-	cpFiles := []*loader.BufferedFile{
-		{Name: chartutil.ChartfileName},
-	}
-
-	if crds {
-		for _, template := range templatesCrdFiles {
-			crdFiles = append(crdFiles,
-				&loader.BufferedFile{Name: template},
-			)
-		}
-		if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirCrds+"/", crdFiles); err != nil {
-			return err
-		}
-	} else {
-		for _, template := range templatesControlPlane {
-			cpFiles = append(cpFiles,
-				&loader.BufferedFile{Name: template},
-			)
-		}
-		if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirCP+"/", cpFiles); err != nil {
-			return err
-		}
-	}
-
-	var partialFiles []*loader.BufferedFile
+// renderChartToBuffer takes a slice of loaded template files and configuration values and renders
+// them into a buffer. The coalesced values are also returned so that they may be rendered via
+// `renderOverrides` if appropriate.
+func renderChartToBuffer(files []*loader.BufferedFile, values *l5dcharts.Values, valuesOverrides map[string]interface{}) (*bytes.Buffer, chartutil.Values, error) {
+	// Load the partials in addition to the main chart.
+	var partials []*loader.BufferedFile
 	for _, template := range charts.L5dPartials {
-		partialFiles = append(partialFiles,
-			&loader.BufferedFile{Name: template},
-		)
+		partials = append(partials, &loader.BufferedFile{Name: template})
 	}
-
-	// Load all partial chart files into buffer
-	if err := charts.FilesReader(static.Templates, "", partialFiles); err != nil {
-		return err
+	if err := charts.FilesReader(static.Templates, "", partials); err != nil {
+		return nil, nil, err
 	}
-
-	// Create a Chart obj from the files
-	files := append(crdFiles, cpFiles...)
-	files = append(files, partialFiles...)
-	chart, err := loader.LoadFiles(files)
+	chart, err := loader.LoadFiles(append(files, partials...))
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	// Store final Values generated from values.yaml and CLI flags
 	chart.Values, err = values.ToMap()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	vals, err := chartutil.CoalesceValues(chart, valuesOverrides)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	fullValues := map[string]interface{}{
@@ -277,7 +288,7 @@ func render(w io.Writer, values *l5dcharts.Values, crds bool, valuesOverrides ma
 	// Attach the final values into the `Values` field for rendering to work
 	renderedTemplates, err := engine.Render(chart, fullValues)
 	if err != nil {
-		return fmt.Errorf("failed to render the template: %w", err)
+		return nil, nil, fmt.Errorf("failed to render the template: %w", err)
 	}
 
 	// Merge templates and inject
@@ -285,18 +296,55 @@ func render(w io.Writer, values *l5dcharts.Values, crds bool, valuesOverrides ma
 	for _, tmpl := range chart.Templates {
 		t := path.Join(chart.Metadata.Name, tmpl.Name)
 		if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
-			return err
+			return nil, nil, err
 		}
 	}
 
-	if !crds {
-		overrides, err := renderOverrides(vals, false)
-		if err != nil {
-			return err
-		}
-		buf.WriteString(yamlSep)
-		buf.WriteString(string(overrides))
+	return &buf, vals, nil
+}
+
+func renderCRDs(w io.Writer, values *l5dcharts.Values, valuesOverrides map[string]interface{}) error {
+	files := []*loader.BufferedFile{
+		{Name: chartutil.ChartfileName},
 	}
+	for _, template := range templatesCrdFiles {
+		files = append(files, &loader.BufferedFile{Name: template})
+	}
+	if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirCrds+"/", files); err != nil {
+		return err
+	}
+
+	buf, _, err := renderChartToBuffer(files, values, valuesOverrides)
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write(buf.Bytes())
+	return err
+}
+
+func renderControlPlane(w io.Writer, values *l5dcharts.Values, valuesOverrides map[string]interface{}) error {
+	files := []*loader.BufferedFile{
+		{Name: chartutil.ChartfileName},
+	}
+	for _, template := range templatesControlPlane {
+		files = append(files, &loader.BufferedFile{Name: template})
+	}
+	if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirCP+"/", files); err != nil {
+		return err
+	}
+
+	buf, vals, err := renderChartToBuffer(files, values, valuesOverrides)
+	if err != nil {
+		return err
+	}
+
+	overrides, err := renderOverrides(vals, false)
+	if err != nil {
+		return err
+	}
+	buf.WriteString(yamlSep)
+	buf.WriteString(string(overrides))
 
 	_, err = w.Write(buf.Bytes())
 	return err

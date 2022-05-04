@@ -261,7 +261,7 @@ func renderInstallManifest(ctx context.Context) (*charts.Values, string, error) 
 	}
 
 	var b strings.Builder
-	err = install(ctx, k8sAPI, &b, values, []flag.Flag{}, false, valuespkg.Options{})
+	err = installControlPlane(ctx, k8sAPI, &b, values, []flag.Flag{}, valuespkg.Options{})
 	if err != nil {
 		return values, "", err
 	}

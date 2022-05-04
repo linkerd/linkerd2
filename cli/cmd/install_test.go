@@ -236,7 +236,7 @@ func TestRender(t *testing.T) {
 				t.Fatalf("Failed to get values overrides: %v", err)
 			}
 			var buf bytes.Buffer
-			if err := render(&buf, tc.values, false, valuesOverrides); err != nil {
+			if err := renderControlPlane(&buf, tc.values, valuesOverrides); err != nil {
 				t.Fatalf("Failed to render templates: %v", err)
 			}
 			testDataDiffer.DiffTestdata(t, tc.goldenFileName, buf.String())
@@ -252,7 +252,7 @@ func TestIgnoreCluster(t *testing.T) {
 	addFakeTLSSecrets(defaultValues)
 
 	var buf bytes.Buffer
-	if err := install(context.Background(), nil, &buf, defaultValues, nil, false, values.Options{}); err != nil {
+	if err := installControlPlane(context.Background(), nil, &buf, defaultValues, nil, values.Options{}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -265,7 +265,7 @@ func TestRenderCRDs(t *testing.T) {
 	addFakeTLSSecrets(defaultValues)
 
 	var buf bytes.Buffer
-	if err := render(&buf, defaultValues, true, map[string]interface{}{}); err != nil {
+	if err := renderCRDs(&buf, defaultValues, map[string]interface{}{}); err != nil {
 		t.Fatalf("Failed to render templates: %v", err)
 	}
 	testDataDiffer.DiffTestdata(t, "install_crds.golden", buf.String())

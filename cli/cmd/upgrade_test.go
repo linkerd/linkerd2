@@ -566,7 +566,7 @@ func pathMatch(path []string, template []string) bool {
 
 func renderInstall(t *testing.T, values *linkerd2.Values) bytes.Buffer {
 	var installBuf bytes.Buffer
-	if err := render(&installBuf, values, false, nil); err != nil {
+	if err := renderControlPlane(&installBuf, values, nil); err != nil {
 		t.Fatalf("could not render install manifests: %s", err)
 	}
 	return installBuf
