@@ -142,7 +142,7 @@ func TestOpaquePortsCalledByPodTarget(t *testing.T) {
 
 		tmplArgs, err := templateArgsPodIP(ctx, opaquePortsNs)
 		if err != nil {
-			testutil.AnnotatedFatal(t, "failed to fetch service IPs", err)
+			testutil.AnnotatedFatal(t, "failed to fetch pod IPs", err)
 		}
 
 		if err := deployClients(opaquePortsNs, tmplArgs); err != nil {
