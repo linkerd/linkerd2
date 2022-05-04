@@ -98,11 +98,11 @@ func newCmdInstall() *cobra.Command {
 
 This command provides all Kubernetes configs necessary to install the Linkerd
 control plane.`,
-		Example: `  # Default install.
-  linkerd install | kubectl apply -f -
+		Example: `  # Install CRDs first.
+  linkerd install --crds | kubectl apply -f -
 
-  # Install Linkerd into a non-default namespace.
-  linkerd install -L linkerdtest | kubectl apply -f -
+  # Install the core control plane.
+  linkerd install | kubectl apply -f -
 
 The installation can be configured by using the --set, --values, --set-string and --set-file flags.
 A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/charts/linkerd2/README.md`,
@@ -131,7 +131,9 @@ A full list of configurable values can be found at https://www.github.com/linker
 			}
 
 			if crds {
-				if err = installCRDs(cmd.Context(), k8sAPI, os.Stdout, values, options); err != nil {
+				// The CRD chart is not configurable.
+				// TODO(ver): Error if values have been configured?
+				if err = installCRDs(cmd.Context(), k8sAPI, os.Stdout); err != nil {
 					return err
 				}
 
@@ -176,18 +178,12 @@ func checkNoConfig(ctx context.Context, k8sAPI *k8s.KubernetesAPI) error {
 	return nil
 }
 
-func installCRDs(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, values *l5dcharts.Values, options valuespkg.Options) error {
+func installCRDs(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer) error {
 	if err := checkNoConfig(ctx, k8sAPI); err != nil {
 		return err
 	}
 
-	// Create values override
-	valuesOverrides, err := options.MergeValues(nil)
-	if err != nil {
-		return err
-	}
-
-	return renderCRDs(w, values, valuesOverrides)
+	return renderCRDs(w)
 }
 
 func installControlPlane(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, options valuespkg.Options) error {
@@ -304,7 +300,7 @@ func renderChartToBuffer(files []*loader.BufferedFile, values *l5dcharts.Values,
 	return &buf, vals, nil
 }
 
-func renderCRDs(w io.Writer, values *l5dcharts.Values, valuesOverrides map[string]interface{}) error {
+func renderCRDs(w io.Writer) error {
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
@@ -315,7 +311,12 @@ func renderCRDs(w io.Writer, values *l5dcharts.Values, valuesOverrides map[strin
 		return err
 	}
 
-	buf, _, err := renderChartToBuffer(files, values, valuesOverrides)
+	// The CRD chart does not take any value configuration.
+	values, err := l5dcharts.NewValues()
+	if err != nil {
+		return err
+	}
+	buf, _, err := renderChartToBuffer(files, values, map[string]interface{}{})
 	if err != nil {
 		return err
 	}

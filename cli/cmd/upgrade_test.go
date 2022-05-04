@@ -574,27 +574,29 @@ func pathMatch(path []string, template []string) bool {
 	return true
 }
 
-func renderInstall(t *testing.T, values *linkerd2.Values) bytes.Buffer {
+func renderInstall(t *testing.T, values *linkerd2.Values) *bytes.Buffer {
 	var installBuf bytes.Buffer
+	if err := renderCRDs(&installBuf); err != nil {
+		t.Fatalf("could not render install manifests: %s", err)
+	}
 	if err := renderControlPlane(&installBuf, values, nil); err != nil {
 		t.Fatalf("could not render install manifests: %s", err)
 	}
-	return installBuf
+	return &installBuf
 }
 
-func renderUpgrade(installManifest string, upgradeOpts []flag.Flag, templateOpts valuespkg.Options) (bytes.Buffer, error) {
+func renderUpgrade(installManifest string, upgradeOpts []flag.Flag, templateOpts valuespkg.Options) (*bytes.Buffer, error) {
 	k, err := k8s.NewFakeAPIFromManifests([]io.Reader{strings.NewReader(installManifest)})
 	if err != nil {
-		return bytes.Buffer{}, fmt.Errorf("failed to initialize fake API: %w\n\n%s", err, installManifest)
+		return nil, fmt.Errorf("failed to initialize fake API: %w\n\n%s", err, installManifest)
 	}
-	return upgrade(context.Background(), k, upgradeOpts, false, templateOpts)
+	return upgradeControlPlane(context.Background(), k, upgradeOpts, templateOpts)
 }
 
-func renderInstallAndUpgrade(t *testing.T, installOpts *charts.Values, upgradeOpts []flag.Flag, templateOpts valuespkg.Options) (bytes.Buffer, bytes.Buffer, error) {
-
+func renderInstallAndUpgrade(t *testing.T, installOpts *charts.Values, upgradeOpts []flag.Flag, templateOpts valuespkg.Options) (*bytes.Buffer, *bytes.Buffer, error) {
 	err := validateValues(context.Background(), nil, installOpts)
 	if err != nil {
-		return bytes.Buffer{}, bytes.Buffer{}, fmt.Errorf("failed to validate values: %w", err)
+		return nil, nil, fmt.Errorf("failed to validate values: %w", err)
 	}
 	installBuf := renderInstall(t, installOpts)
 	upgradeBuf, err := renderUpgrade(installBuf.String(), upgradeOpts, templateOpts)
