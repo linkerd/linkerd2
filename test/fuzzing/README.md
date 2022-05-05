@@ -22,5 +22,5 @@ repository locally and running the commands outlined in the instructions.
   being the `oss-fuzz-base` image which provides the `compile_go_fuzzer`
   funtions seen in this directory's `build.sh`.
 - [build.sh](https://github.com/google/oss-fuzz/blob/master/projects/linkerd2/build.sh)
-  is responsible for calling this directory's `build.sh` once the Docker image
-  is running.
+  is responsible for calling the fuzzing functions for each fuzzer in the
+  linkerd2 project.
