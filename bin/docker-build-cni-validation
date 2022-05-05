@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+set -eu
+
+if [ $# -ne 0 ]; then
+    echo "no arguments allowed for ${0##*/}, given: $*" >&2
+    exit 64
+fi
+
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+rootdir=$( cd "$bindir"/../cni-plugin/linkerd-cni-validation && pwd)
+
+# shellcheck source=_docker.sh
+. "$bindir"/_docker.sh
+# shellcheck source=_tag.sh
+. "$bindir"/_tag.sh
+# shellcheck source=_os.sh
+. "$bindir"/_os.sh
+
+tag="${TAG:-$(head_root_tag)}"
+
+arch=$(architecture)
+dockerfile=$rootdir/$arch.dockerfile
+docker_build linkerd-cni-validation "$tag" "$dockerfile"

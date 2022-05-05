@@ -1,0 +1,17 @@
+[package]
+name = "linkerd-cni-validation"
+version = "0.1.0"
+authors = ["Linkerd Authors <cncf-linkerd-dev@lists.cncf.io>"]
+edition = "2018"
+license = "Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.57"
+drain = "0.1.1"
+rand = "0.8.5"
+clap = { version = "3.1.16", features = ["derive", "env"]}
+tokio = { version = "1", features = ["full"]}
+tracing = "0.1"
+tracing-subscriber = "0.2"
