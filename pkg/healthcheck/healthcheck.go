@@ -26,6 +26,7 @@ import (
 	admissionRegistration "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -395,6 +396,7 @@ type Options struct {
 	RetryDeadline         time.Time
 	CNIEnabled            bool
 	InstallManifest       string
+	CRDManifest           string
 	ChartValues           *l5dcharts.Values
 }
 
@@ -770,7 +772,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					hintAnchor:  "l5d-existence-crd",
 					fatal:       true,
 					check: func(ctx context.Context) error {
-						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI)
+						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, hc.CRDManifest)
 					},
 				},
 				{
@@ -2061,14 +2063,24 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Contex
 
 // CheckCustomResourceDefinitions checks that all of the Linkerd CRDs are
 // installed on the cluster.
-func CheckCustomResourceDefinitions(ctx context.Context, k8sAPI *k8s.KubernetesAPI) error {
-	crdVersions := []struct{ name, version string }{
-		{name: "authorizationpolicies.policy.linkerd.io", version: "v1alpha1"},
-		{name: "meshtlsauthentications.policy.linkerd.io", version: "v1alpha1"},
-		{name: "networkauthentications.policy.linkerd.io", version: "v1alpha1"},
-		{name: "servers.policy.linkerd.io", version: "v1beta1"},
-		{name: "serverauthorizations.policy.linkerd.io", version: "v1beta1"},
-		{name: "serviceprofiles.linkerd.io", version: "v1alpha2"},
+func CheckCustomResourceDefinitions(ctx context.Context, k8sAPI *k8s.KubernetesAPI, expectedCRDManifests string) error {
+
+	crdYamls := strings.Split(expectedCRDManifests, "---")
+	crdVersions := []struct{ name, version string }{}
+	for _, crdYaml := range crdYamls {
+		var crd apiextv1.CustomResourceDefinition
+		err := yaml.Unmarshal([]byte(crdYaml), &crd)
+		if err != nil {
+			return err
+		}
+		if len(crd.Spec.Versions) == 0 {
+			continue
+		}
+		versionIndex := len(crd.Spec.Versions) - 1
+		crdVersions = append(crdVersions, struct{ name, version string }{
+			name:    crd.Name,
+			version: crd.Spec.Versions[versionIndex].Name,
+		})
 	}
 
 	errMsgs := []string{}
