@@ -1,5 +1,24 @@
 # Changes
 
+## edge-22.5.1
+
+This edge release adds more flexibility to the MeshTLSAuthentication and
+AuthorizationPolicy policy resources by allowing them to target entire
+namespaces. It also fixes a race condition when multiple CNI plugins are
+installed together as well as a number of other bug fixes.
+
+* Added support for MeshTLSAuthentication resources to target an entire
+  namespace, authenticating all ServiceAccounts in that namespace
+* Fixed a panic in `linkerd install` when the `--ignore-cluster` flag is passed
+* Fixed issue where pods would fail to start when `enablePSP` and
+  `proxyInit.runAsRoot` are set
+* Added support for AuthorizationPolicy resources to target namespaces, applying
+  to all Servers in that namespace
+* Fixed a race condition where the Linkerd CNI configuration could be
+  overwritten when multiple CNI plugins are installed
+* Added test for opaque ports using Service and Pod IPs (thanks @krzysztofdrys!)
+* Fixed an error in the linkerd-viz Helm chart in HA mode
+
 ## edge-22.4.1
 
 In order to support having custom resources in the default Linkerd installation,
