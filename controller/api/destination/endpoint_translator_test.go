@@ -10,10 +10,8 @@ import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
-	pkgk8s "github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/api/discovery/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -103,45 +101,6 @@ var (
 		},
 	}
 )
-
-func makeEndpointTranslator(t *testing.T) (*mockDestinationGetServer, *endpointTranslator) {
-	k8sAPI, err := pkgk8s.NewFakeAPI(`
-apiVersion: v1
-kind: Node
-metadata:
-  annotations:
-    kubeadm.alpha.kubernetes.io/cri-socket: /run/containerd/containerd.sock
-    node.alpha.kubernetes.io/ttl: "0"
-  labels:
-    beta.kubernetes.io/arch: amd64
-    kubernetes.io/os: linux
-    kubernetes.io/arch: amd64
-    kubernetes.io/hostname: kind-worker
-    kubernetes.io/os: linux
-    topology.kubernetes.io/region: west
-    topology.kubernetes.io/zone: west-1a
-  name: test-123
-`,
-	)
-	if err != nil {
-		t.Fatalf("NewFakeAPI returned an error: %s", err)
-	}
-	k8sAPI.Sync(nil)
-
-	mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
-	translator := newEndpointTranslator(
-		"linkerd",
-		"trust.domain",
-		true,
-		"service-name.service-ns",
-		"test-123",
-		map[uint32]struct{}{},
-		k8sAPI.Node(),
-		mockGetServer,
-		logging.WithField("test", t.Name()),
-	)
-	return mockGetServer, translator
-}
 
 func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
