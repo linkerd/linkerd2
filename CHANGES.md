@@ -14,8 +14,8 @@ installed together as well as a number of other bug fixes.
   `proxyInit.runAsRoot` are set
 * Added support for AuthorizationPolicy resources to target namespaces, applying
   to all Servers in that namespace
-* Fixed a race condition where the Linkerd CNI configuration could be overwriten
-  when multiple CNI plugins are installed
+* Fixed a race condition where the Linkerd CNI configuration could be
+  overwritten when multiple CNI plugins are installed
 * Added test for opaque ports using Service and Pod IPs (thanks @krzysztofdrys!)
 * Fixed an error in the linkerd-viz Helm chart in HA mode
 
