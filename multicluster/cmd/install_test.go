@@ -51,7 +51,9 @@ func TestRender(t *testing.T) {
 			if err := render(&buf, tc.multiclusterValues, charts.MergeMaps(defaultValues, tc.values)); err != nil {
 				t.Fatalf("Failed to render templates: %v", err)
 			}
-			testDataDiffer.DiffTestdata(t, tc.goldenFileName, buf.String())
+			if err := testDataDiffer.DiffTestYAML(tc.goldenFileName, buf.String()); err != nil {
+				t.Error(err)
+			}
 		})
 	}
 }
