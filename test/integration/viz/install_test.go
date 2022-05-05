@@ -80,6 +80,27 @@ func TestInstallLinkerd(t *testing.T) {
 	TestHelper.WaitRollout(t, testutil.LinkerdDeployReplicasEdge)
 }
 
+// TestInstallVizHA tests a dry run of installing viz in HA mode.
+func TestInstallVizHA(t *testing.T) {
+	cmd := []string{
+		"viz",
+		"install",
+		"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace()),
+		"--ha",
+	}
+
+	out, err := TestHelper.LinkerdRun(cmd...)
+	if err != nil {
+		testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
+	}
+
+	out, err = TestHelper.KubectlApplyWithArgs(out, "--dry-run")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", out)
+	}
+}
+
 // TestInstallViz will install the viz extension to be used by the rest of the
 // tests in the viz suite
 func TestInstallViz(t *testing.T) {
