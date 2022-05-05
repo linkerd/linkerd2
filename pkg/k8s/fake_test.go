@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/go-test/deep"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -71,8 +71,8 @@ spec:
 		Version: "v1",
 		Kind:    "Deployment",
 	}
-	if !reflect.DeepEqual(deploy.GroupVersionKind(), gvk) {
-		t.Fatalf("Expected: %s Got: %s", gvk, deploy.GroupVersionKind())
+	if diff := deep.Equal(deploy.GroupVersionKind(), gvk); diff != nil {
+		t.Errorf("%+v", diff)
 	}
 
 	crd, err := api.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().Get(ctx, "fakecrd.linkerd.io", metav1.GetOptions{})
@@ -84,8 +84,8 @@ spec:
 		Version: "v1beta1",
 		Kind:    "CustomResourceDefinition",
 	}
-	if !reflect.DeepEqual(crd.GroupVersionKind(), gvk) {
-		t.Fatalf("Expected: %s Got: %s", gvk, crd.GroupVersionKind())
+	if diff := deep.Equal(crd.GroupVersionKind(), gvk); diff != nil {
+		t.Errorf("%+v", diff)
 	}
 }
 
@@ -151,8 +151,8 @@ spec:
 		Version: "v1",
 		Kind:    "Deployment",
 	}
-	if !reflect.DeepEqual(deploy.GroupVersionKind(), gvk) {
-		t.Fatalf("Expected: %s Got: %s", gvk, deploy.GroupVersionKind())
+	if diff := deep.Equal(deploy.GroupVersionKind(), gvk); diff != nil {
+		t.Errorf("%+v", diff)
 	}
 
 	crd, err := api.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().Get(ctx, "fakecrd.linkerd.io", metav1.GetOptions{})
@@ -164,8 +164,8 @@ spec:
 		Version: "v1beta1",
 		Kind:    "CustomResourceDefinition",
 	}
-	if !reflect.DeepEqual(crd.GroupVersionKind(), gvk) {
-		t.Fatalf("Expected: %s Got: %s", gvk, crd.GroupVersionKind())
+	if diff := deep.Equal(crd.GroupVersionKind(), gvk); diff != nil {
+		t.Errorf("%+v", diff)
 	}
 }
 
@@ -232,8 +232,8 @@ spec:
 
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			_, _, _, _, err := NewFakeClientSets(tc.k8sConfigs...)
-			if !reflect.DeepEqual(err, tc.err) {
-				t.Fatalf("Expected error: %s, Got: %s", tc.err, err)
+			if diff := deep.Equal(err, tc.err); diff != nil {
+				t.Errorf("%+v", diff)
 			}
 		})
 	}
@@ -331,8 +331,8 @@ spec:
 			}
 
 			_, _, _, _, err := newFakeClientSetsFromManifests(readers)
-			if !reflect.DeepEqual(err, tc.err) {
-				t.Fatalf("Expected error: %s, Got: %s", tc.err, err)
+			if diff := deep.Equal(err, tc.err); diff != nil {
+				t.Errorf("%+v", diff)
 			}
 		})
 	}
@@ -429,8 +429,8 @@ spec:
 
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			_, err := ToRuntimeObject(tc.config)
-			if !reflect.DeepEqual(err, tc.err) {
-				t.Fatalf("Expected error: %s, Got: %s", tc.err, err)
+			if diff := deep.Equal(err, tc.err); diff != nil {
+				t.Errorf("%+v", diff)
 			}
 		})
 	}

@@ -1,9 +1,9 @@
 package util
 
 import (
-	"reflect"
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	corev1 "k8s.io/api/core/v1"
@@ -245,8 +245,8 @@ func TestK8sPodToPublicPod(t *testing.T) {
 
 		for _, exp := range expectations {
 			res := K8sPodToPublicPod(exp.k8sPod, exp.ownerKind, exp.ownerName)
-			if !reflect.DeepEqual(exp.publicPod, res) {
-				t.Fatalf("Expected pod to be [%+v] but was [%+v]", exp.publicPod, res)
+			if diff := deep.Equal(exp.publicPod, res); diff != nil {
+				t.Errorf("%v", diff)
 			}
 		}
 	})

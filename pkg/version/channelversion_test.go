@@ -1,8 +1,9 @@
 package version
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/go-test/deep"
 )
 
 func TestIsReleaseChannel(t *testing.T) {
@@ -46,8 +47,8 @@ func TestIsReleaseChannel(t *testing.T) {
 			if (err != nil) != c.expectedError {
 				t.Errorf("got unexpected error: %v", err)
 			}
-			if !reflect.DeepEqual(c.expected, got) {
-				t.Errorf("expected: %v, got: %v", c.expected, got)
+			if diff := deep.Equal(c.expected, got); diff != nil {
+				t.Errorf("%v", diff)
 			}
 		})
 	}
