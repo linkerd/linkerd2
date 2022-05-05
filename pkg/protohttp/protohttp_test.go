@@ -9,10 +9,10 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/go-test/deep"
 	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -402,8 +402,8 @@ func TestCheckIfResponseHasError(t *testing.T) {
 		err = CheckIfResponseHasError(response)
 		expectedErr := HTTPError{Code: http.StatusForbidden, WrappedError: statusError}
 
-		if !reflect.DeepEqual(err, expectedErr) {
-			t.Fatalf("Expected %s, got %s", expectedErr, err)
+		if diff := deep.Equal(err, expectedErr); diff != nil {
+			t.Fatalf("%v", diff)
 		}
 	})
 

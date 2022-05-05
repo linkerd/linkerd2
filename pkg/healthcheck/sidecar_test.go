@@ -1,9 +1,9 @@
 package healthcheck
 
 import (
-	"reflect"
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -115,8 +115,8 @@ func TestHasExistingSidecars(t *testing.T) {
 			expected: true,
 		},
 	} {
-		if !reflect.DeepEqual(HasExistingSidecars(tc.podSpec), tc.expected) {
-			t.Errorf("expected: %v, got: %v", tc.expected, HasExistingSidecars(tc.podSpec))
+		if diff := deep.Equal(tc.expected, HasExistingSidecars(tc.podSpec)); diff != nil {
+			t.Errorf("%+v", diff)
 		}
 	}
 }

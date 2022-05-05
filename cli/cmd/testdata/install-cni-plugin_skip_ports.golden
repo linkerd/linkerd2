@@ -141,7 +141,7 @@ spec:
               command:
               - /bin/sh
               - -c
-              - kill -15 1
+              - kill -15 1; sleep 15s
         volumeMounts:
         - mountPath: /host/opt/cni/bin
           name: cni-bin-dir

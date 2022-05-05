@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"testing"
+
+	"github.com/go-test/deep"
 )
 
 func TestResourceAuthz(t *testing.T) {
@@ -91,7 +92,7 @@ resources:
 
 	err = ServiceProfilesAccess(context.Background(), api)
 	// RBAC SSAR request failed, but the Discovery lookup succeeded
-	if !reflect.DeepEqual(err, errors.New("not authorized to access serviceprofiles.linkerd.io")) {
-		t.Fatalf("unexpected error: %s", err)
+	if diff := deep.Equal(err, errors.New("not authorized to access serviceprofiles.linkerd.io")); diff != nil {
+		t.Errorf("%+v", diff)
 	}
 }

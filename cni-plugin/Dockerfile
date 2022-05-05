@@ -22,6 +22,8 @@ FROM debian:bullseye-slim
 WORKDIR /linkerd
 RUN apt-get update && apt-get install -y --no-install-recommends \
     iptables \
+    inotify-tools \
+    procps \
     jq && \
     rm -rf /var/lib/apt/lists/*
 

@@ -3,9 +3,9 @@ package servicemirror
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/multicluster"
@@ -83,8 +83,8 @@ func (tc *mirroringTestCase) run(t *testing.T) {
 
 		for _, ev := range tc.expectedEventsInQueue {
 			evInQueue, _ := q.Get()
-			if !reflect.DeepEqual(ev, evInQueue) {
-				t.Fatalf("was expecting to see event %s but got %s", ev, evInQueue)
+			if diff := deep.Equal(ev, evInQueue); diff != nil {
+				t.Errorf("%v", diff)
 			}
 		}
 	})

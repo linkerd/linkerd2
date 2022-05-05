@@ -1,9 +1,9 @@
 package util
 
 import (
-	"reflect"
 	"testing"
 
+	"github.com/go-test/deep"
 	httpPb "github.com/linkerd/linkerd2-proxy-api/go/http_types"
 )
 
@@ -42,8 +42,8 @@ func TestParseScheme(t *testing.T) {
 		c := c
 		t.Run(c.scheme, func(t *testing.T) {
 			got := ParseScheme(c.scheme)
-			if !reflect.DeepEqual(c.expected, got) {
-				t.Errorf("expected: %v, got: %v", c.expected, got)
+			if diff := deep.Equal(c.expected, got); diff != nil {
+				t.Errorf("%v", diff)
 			}
 		})
 	}
@@ -140,8 +140,8 @@ func TestParseMethod(t *testing.T) {
 		c := c
 		t.Run(c.method, func(t *testing.T) {
 			got := ParseMethod(c.method)
-			if !reflect.DeepEqual(c.expected, got) {
-				t.Errorf("expected: %v, got: %v", c.expected, got)
+			if diff := deep.Equal(c.expected, got); diff != nil {
+				t.Errorf("%v", diff)
 			}
 		})
 	}

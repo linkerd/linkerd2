@@ -34,7 +34,7 @@ jobs:
     container:
       image: docker://rust:1.60.0
     steps:
-      - uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: rustup component add rustfmt
       - run: cargo fmt --all -- --check
 
@@ -49,7 +49,7 @@ jobs:
     # Prevent sudden announcement of a new advisory from failing Ci.
     continue-on-error: ${{ matrix.checks == 'advisories' }}
     steps:
-    - uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+    - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
     - uses: EmbarkStudios/cargo-deny-action@ccfac4e084d1dedad50125be4550f87a21ba181e
       with:
         command: check ${{ matrix.checks }}
@@ -61,7 +61,7 @@ jobs:
       image: docker://rust:1.60.0
     steps:
       - run: rustup component add clippy
-      - uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: |
           bin/scurl -o /usr/local/bin/cargo-action-fmt "https://github.com/olix0r/cargo-action-fmt/releases/download/release%2F${CARGO_ACTION_FMT_VERSION}/cargo-action-fmt-x86_64-unknown-linux-gnu"
           chmod 755 /usr/local/bin/cargo-action-fmt
@@ -75,7 +75,7 @@ jobs:
     container:
       image: docker://rust:1.60.0
     steps:
-      - uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: |
           bin/scurl -o /usr/local/bin/cargo-action-fmt "https://github.com/olix0r/cargo-action-fmt/releases/download/release%2F${CARGO_ACTION_FMT_VERSION}/cargo-action-fmt-x86_64-unknown-linux-gnu"
           chmod 755 /usr/local/bin/cargo-action-fmt
@@ -96,7 +96,7 @@ jobs:
     container:
       image: docker://rust:1.60.0
     steps:
-      - uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: cargo fetch --locked
       - name: Build tests
         run: cargo test --workspace --exclude=linkerd-policy-test --frozen --no-run
@@ -108,7 +108,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: |
           ex=0
 
@@ -144,7 +144,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout code
-        uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+        uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - uses: ./.github/actions/docker-build
         with:
           docker-registry: ghcr.io/linkerd
@@ -169,7 +169,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout code
-        uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+        uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
 
       - name: Install rust
         run: |
@@ -215,7 +215,7 @@ jobs:
       LINKERD_DOCKER_REGISTRY: ghcr.io/linkerd
     steps:
       - name: Checkout code
-        uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+        uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
 
       - name: Install rust
         run: |
@@ -276,6 +276,14 @@ jobs:
           docker cp "$container_id":/out/linkerd-linux-amd64 /usr/local/bin/linkerd
           docker rm "$container_id"
       - run: linkerd check --pre --wait=1m
+      - run: linkerd install --crds | kubectl apply -f -
+      - run: |
+          kubectl wait --for condition=established --timeout=60s crd \
+            authorizationpolicies.policy.linkerd.io \
+            meshtlsauthentications.policy.linkerd.io \
+            networkauthentications.policy.linkerd.io \
+            servers.policy.linkerd.io \
+            serverauthorizations.policy.linkerd.io
       - run: linkerd install | kubectl apply -f -
       - run: linkerd check --wait=1m
 
