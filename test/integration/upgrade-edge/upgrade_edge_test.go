@@ -197,7 +197,16 @@ func TestUpgradeCli(t *testing.T) {
 		"--set", "heartbeatSchedule=1 2 3 4 5",
 		"--set", "proxyInit.ignoreOutboundPorts=1234\\,5678",
 	}
-	exec := append([]string{cmd}, args...)
+
+	// Upgrade CRDs.
+	exec := append([]string{cmd}, append(args, "--crds")...)
+	_, err := TestHelper.LinkerdRun(exec...)
+	if err != nil {
+		testutil.AnnotatedFatal(t, "'linkerd upgrade --crds' command failed", err)
+	}
+
+	// Upgrade control plane.
+	exec = append([]string{cmd}, args...)
 	out, err := TestHelper.LinkerdRun(exec...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd upgrade' command failed", err)
