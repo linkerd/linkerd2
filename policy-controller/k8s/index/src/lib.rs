@@ -71,4 +71,11 @@ impl ClusterInfo {
             sa, ns, self.control_plane_ns, self.identity_domain
         )
     }
+
+    fn namespace_identity(&self, ns: &str) -> String {
+        format!(
+            "*.{}.serviceaccount.identity.{}.{}",
+            ns, self.control_plane_ns, self.identity_domain
+        )
+    }
 }

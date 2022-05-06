@@ -3,9 +3,9 @@ package util
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"google.golang.org/grpc/codes"
@@ -124,9 +124,8 @@ func TestBuildResource(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Unexpected error from BuildResource(%s) => %s", exp.String(), err)
 			}
-
-			if !reflect.DeepEqual(exp.resource, res) {
-				t.Fatalf("Expected resource to be [%+v] but was [%+v]", exp.resource, res)
+			if diff := deep.Equal(exp.resource, res); diff != nil {
+				t.Errorf("%+v", diff)
 			}
 		}
 	})
@@ -239,9 +238,8 @@ func TestBuildResources(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Unexpected error from BuildResources(%+v) => %s", exp, err)
 			}
-
-			if !reflect.DeepEqual(exp.resource, res[0]) {
-				t.Fatalf("Expected resource to be [%+v] but was [%+v]", exp.resource, res[0])
+			if diff := deep.Equal(exp.resource, res[0]); diff != nil {
+				t.Errorf("%+v", diff)
 			}
 		}
 	})

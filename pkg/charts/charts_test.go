@@ -1,8 +1,9 @@
 package charts
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/go-test/deep"
 )
 
 func TestMergeMaps(t *testing.T) {
@@ -30,8 +31,8 @@ func TestMergeMaps(t *testing.T) {
 			expected: map[string]interface{}{"aaa": "foo", "bbb": map[string]interface{}{"aaa": "bar", "ccc": "foo"}},
 		},
 	} {
-		if !reflect.DeepEqual(MergeMaps(tc.a, tc.b), tc.expected) {
-			t.Errorf("expected: %v, got: %v", tc.expected, MergeMaps(tc.a, tc.b))
+		if diff := deep.Equal(MergeMaps(tc.a, tc.b), tc.expected); diff != nil {
+			t.Errorf("mismatch: %+v", diff)
 		}
 	}
 }

@@ -1,5 +1,59 @@
 # Changes
 
+## edge-22.5.1
+
+This edge release adds more flexibility to the MeshTLSAuthentication and
+AuthorizationPolicy policy resources by allowing them to target entire
+namespaces. It also fixes a race condition when multiple CNI plugins are
+installed together as well as a number of other bug fixes.
+
+* Added support for MeshTLSAuthentication resources to target an entire
+  namespace, authenticating all ServiceAccounts in that namespace
+* Fixed a panic in `linkerd install` when the `--ignore-cluster` flag is passed
+* Fixed issue where pods would fail to start when `enablePSP` and
+  `proxyInit.runAsRoot` are set
+* Added support for AuthorizationPolicy resources to target namespaces, applying
+  to all Servers in that namespace
+* Fixed a race condition where the Linkerd CNI configuration could be
+  overwritten when multiple CNI plugins are installed
+* Added test for opaque ports using Service and Pod IPs (thanks @krzysztofdrys!)
+* Fixed an error in the linkerd-viz Helm chart in HA mode
+
+## edge-22.4.1
+
+In order to support having custom resources in the default Linkerd installation,
+the CLI install flow is now always a 2-step process where `linkerd install
+--crds` must be run first to install CRDs only and then `linkerd install` is run
+to install everything else. This more closely aligns the CLI install flow with
+the Helm install flow where the CRDs are a separate chart. This also applies to
+`linkerd upgrade`. Also, the `config` and `control-plane` sub-commands have been
+removed from both `linkerd install` and `linkerd upgrade`.
+
+On the proxy side, this release fixes an issue where proxies would not honor the
+cluster's opaqueness settings for non-pod/service addresses. This could cause
+protocol detection to be peformed, for instance, when using off-cluster
+databases.
+
+This release also disables the use of regexes in Linkerd log filters (i.e., as
+set by `LINKERD2_PROXY_LOG`). Malformed log directives could, in theory, cause a
+proxy to stop responding.
+
+The `helm.sh/chart` label in some of the CRDs had its formatting fixed, which
+avoids issues when installing/upgrading through external tools that make use of
+it, such as recent versions of Flux.
+
+* Added `--crds` flag to install/upgrade and remove config/control-plane stages
+* Allowed the `AuthorizationPolicy` CRD to have an empty
+  `requiredAuthenticationRefs` entry that allows all traffic
+* Introduced `nodeAffinity` config in all the charts for enhanced control on the
+  pods scheduling (thanks @michalrom089!)
+* Introduced `resources`, `nodeSelector` and `tolerations` configs in the
+  `linkerd-multicluster-link` chart for enhanced control on the service mirror
+  deployment (thanks @utay!)
+* Fixed formatting of the `helm.sh/chart` label in CRDs
+* Updated container base images from buster to bullseye
+* Added support for spaces in the `config.linkerd.io/opaque-ports` annotation
+
 ## edge-22.3.5
 
 This edge release introduces new policy CRDs that allow for more generalized

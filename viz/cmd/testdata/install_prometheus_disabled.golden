@@ -461,6 +461,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - args:
         - -controller-namespace=linkerd

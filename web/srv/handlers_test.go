@@ -3,10 +3,10 @@ package srv
 import (
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	helpers "github.com/linkerd/linkerd2/pkg/profiles"
@@ -35,9 +35,8 @@ func TestHandleIndex(t *testing.T) {
 	header := http.Header{
 		"Content-Type": []string{"text/html"},
 	}
-	if !reflect.DeepEqual(recorder.Header(), header) {
-		t.Errorf("Incorrect headers: %+v", recorder.Header())
-		t.Errorf("Expected:          %+v", header)
+	if diff := deep.Equal(recorder.Header(), header); diff != nil {
+		t.Errorf("Unexpected header: %v", diff)
 	}
 
 	actualBody := recorder.Body.String()
@@ -82,9 +81,8 @@ func TestHandleConfigDownload(t *testing.T) {
 			"attachment; filename=authors-profile.yml",
 		},
 	}
-	if !reflect.DeepEqual(recorder.Header(), header) {
-		t.Errorf("Incorrect headers: %+v", recorder.Header())
-		t.Errorf("Expected:          %+v", header)
+	if diff := deep.Equal(recorder.Header(), header); diff != nil {
+		t.Errorf("Unexpected header: %v", diff)
 	}
 
 	var serviceProfile v1alpha2.ServiceProfile

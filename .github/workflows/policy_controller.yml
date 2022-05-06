@@ -276,6 +276,14 @@ jobs:
           docker cp "$container_id":/out/linkerd-linux-amd64 /usr/local/bin/linkerd
           docker rm "$container_id"
       - run: linkerd check --pre --wait=1m
+      - run: linkerd install --crds | kubectl apply -f -
+      - run: |
+          kubectl wait --for condition=established --timeout=60s crd \
+            authorizationpolicies.policy.linkerd.io \
+            meshtlsauthentications.policy.linkerd.io \
+            networkauthentications.policy.linkerd.io \
+            servers.policy.linkerd.io \
+            serverauthorizations.policy.linkerd.io
       - run: linkerd install | kubectl apply -f -
       - run: linkerd check --wait=1m
 

@@ -2,7 +2,7 @@ use crate::ClusterInfo;
 use anyhow::Result;
 use linkerd_policy_controller_core::IdentityMatch;
 use linkerd_policy_controller_k8s_api::{
-    policy::MeshTLSAuthentication, ResourceExt, ServiceAccount,
+    policy::MeshTLSAuthentication, Namespace, ResourceExt, ServiceAccount,
 };
 
 #[derive(Debug, PartialEq)]
@@ -29,6 +29,9 @@ impl Spec {
                 let ns = tgt.namespace.as_deref().unwrap_or(&namespace);
                 let id = cluster.service_account_identity(ns, &tgt.name);
                 Ok(IdentityMatch::Exact(id))
+            } else if tgt.targets_kind::<Namespace>() {
+                let id = cluster.namespace_identity(tgt.name.as_str());
+                Ok(id.parse::<IdentityMatch>()?)
             } else {
                 anyhow::bail!("unsupported target type: {:?}", tgt.canonical_kind())
             }

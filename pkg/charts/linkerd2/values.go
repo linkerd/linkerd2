@@ -70,7 +70,6 @@ type (
 		PolicyValidator  *Webhook          `json:"policyValidator"`
 		NodeSelector     map[string]string `json:"nodeSelector"`
 		Tolerations      []interface{}     `json:"tolerations"`
-		Stage            string            `json:"stage"`
 
 		DestinationResources   *Resources `json:"destinationResources"`
 		HeartbeatResources     *Resources `json:"heartbeatResources"`

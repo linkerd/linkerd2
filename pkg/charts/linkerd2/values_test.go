@@ -1,11 +1,11 @@
 package linkerd2
 
 import (
-	"reflect"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/pkg/version"
 )
 
@@ -172,8 +172,8 @@ func TestNewValues(t *testing.T) {
 	// Make Add-On Values nil to not have to check for their defaults
 	actual.ImagePullSecrets = nil
 
-	if !reflect.DeepEqual(expected, actual) {
-		t.Errorf("Mismatch Helm values.\nExpected: %+v\nActual: %+v", expected, actual)
+	if diff := deep.Equal(expected, actual); diff != nil {
+		t.Errorf("Helm values\n%+v", diff)
 	}
 
 	t.Run("HA", func(t *testing.T) {
@@ -237,8 +237,8 @@ func TestNewValues(t *testing.T) {
 		// values.yaml.
 		actual.ProxyInit.Image.Version = testVersion
 
-		if !reflect.DeepEqual(expected, actual) {
-			t.Errorf("Mismatch Helm HA defaults.\nExpected: %+v\nActual: %+v", expected, actual)
+		if diff := deep.Equal(expected, actual); diff != nil {
+			t.Errorf("HA Helm values\n%+v", diff)
 		}
 	})
 }

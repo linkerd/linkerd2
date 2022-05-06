@@ -35,7 +35,7 @@ RUN scurl -vo /usr/local/bin/kubectl "https://dl.k8s.io/release/$(scurl https://
     && chmod 755 /usr/local/bin/kubectl
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as k3d
-ARG K3D_VERSION=v5.3.0
+ARG K3D_VERSION=v5.4.1
 COPY bin/scurl /usr/local/bin/scurl
 RUN scurl -v https://raw.githubusercontent.com/rancher/k3d/$K3D_VERSION/install.sh \
     | USE_SUDO=false K3D_INSTALL_DIR=/usr/local/bin bash

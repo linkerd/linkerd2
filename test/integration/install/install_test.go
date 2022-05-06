@@ -5,13 +5,13 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"reflect"
 	"regexp"
 	"strings"
 	"testing"
 	"text/template"
 	"time"
 
+	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -166,13 +166,13 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	if TestHelper.UpgradeFromVersion() != "" {
 
 		cmd = "upgrade"
-		// test 2-stage install during upgrade
-		out, err := TestHelper.LinkerdRun(cmd, "config")
+		// upgrade CRDs and then control-plane
+		out, err := TestHelper.LinkerdRun(cmd, "--crds")
 		if err != nil {
 			testutil.AnnotatedFatal(t, "'linkerd upgrade config' command failed", err)
 		}
 
-		// apply stage 1
+		// apply CRDs
 		// Limit the pruning only to known resources
 		// that we intend to be delete in this stage to prevent it
 		// from deleting other resources that have the
@@ -189,8 +189,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 				"kubectl apply command failed\n%s", out)
 		}
 
-		// prepare for stage 2
-		args = append([]string{"control-plane"}, args...)
+		// prepare for upgrade of control-plane
 		edge, err := regexp.Match(`(edge)-([0-9]+\.[0-9]+\.[0-9]+)`, []byte(TestHelper.UpgradeFromVersion()))
 		if err != nil {
 			testutil.AnnotatedFatal(t, "could not match regex", err)
@@ -200,6 +199,18 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			args = append(args, []string{"--set", fmt.Sprintf("proxyInit.ignoreOutboundPorts=%s", strings.Replace(skippedOutboundPorts, ",", "\\,", 1))}...)
 		} else {
 			args = append(args, []string{"--skip-outbound-ports", skippedOutboundPorts}...)
+		}
+	} else {
+		// install CRDs first
+		exec := append([]string{cmd}, append(args, "--crds")...)
+		out, err := TestHelper.LinkerdRun(exec...)
+		if err != nil {
+			testutil.AnnotatedFatal(t, "'linkerd install' command failed", err)
+		}
+		out, err = TestHelper.KubectlApply(out, "")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+				"kubectl apply command failed\n%s", out)
 		}
 	}
 
@@ -653,11 +664,8 @@ func TestOverridesSecret(t *testing.T) {
 		}
 
 		// Check if the keys in overridesTree match with knownKeys
-		if !reflect.DeepEqual(overridesTree.String(), knownKeys.String()) {
-			testutil.AnnotatedFatalf(t, "Overrides and knownKeys are different",
-				"Expected overrides to be [%s] but found [%s]",
-				knownKeys.String(), overridesTree.String(),
-			)
+		if diff := deep.Equal(overridesTree.String(), knownKeys.String()); diff != nil {
+			testutil.AnnotatedFatalf(t, "Overrides and knownKeys are different", "%+v", diff)
 		}
 	})
 }
@@ -743,9 +751,6 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 		} else {
 			golden = "check.proxy.golden"
 		}
-	} else if stage == "config" {
-		cmd = []string{"check", "config", "--expected-version", expectedVersion, "--wait=60m"}
-		golden = "check.config.golden"
 	} else {
 		cmd = []string{"check", "--expected-version", expectedVersion, "--wait=60m"}
 		if TestHelper.CNI() {
@@ -833,11 +838,6 @@ func getCheckOutput(t *testing.T, goldenFile string, namespace string) string {
 	}
 
 	return expected.String()
-}
-
-// TODO: run this after a `linkerd install config`
-func TestCheckConfigPostInstall(t *testing.T) {
-	testCheckCommand(t, "config", TestHelper.GetVersion(), "", "")
 }
 
 func TestCheckPostInstall(t *testing.T) {

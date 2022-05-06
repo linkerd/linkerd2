@@ -1,7 +1,7 @@
 use crate::k8s::{
     labels,
     policy::{
-        AuthorizationPolicy, AuthorizationPolicySpec, MeshTLSAuthentication,
+        AuthorizationPolicy, AuthorizationPolicySpec, LocalTargetRef, MeshTLSAuthentication,
         MeshTLSAuthenticationSpec, NetworkAuthentication, NetworkAuthenticationSpec, Server,
         ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
     },
@@ -9,8 +9,9 @@ use crate::k8s::{
 use anyhow::{anyhow, bail, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
-use k8s_openapi::api::core::v1::ServiceAccount;
+use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
+use linkerd_policy_controller_k8s_api::policy::NamespacedTargetRef;
 use serde::de::DeserializeOwned;
 use std::task;
 use thiserror::Error;
@@ -187,16 +188,26 @@ fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(String, Str
     Ok((ns, name, spec))
 }
 
+/// Validates the target of an `AuthorizationPolicy`.
+fn validate_policy_target(ns: &str, tgt: &LocalTargetRef) -> Result<()> {
+    if tgt.targets_kind::<Server>() {
+        return Ok(());
+    }
+
+    if tgt.targets_kind::<Namespace>() {
+        if tgt.name != ns {
+            bail!("cannot target another namespace: {}", tgt.name);
+        }
+        return Ok(());
+    }
+
+    bail!("invalid targetRef kind: {}", tgt.canonical_kind());
+}
+
 #[async_trait::async_trait]
 impl Validate<AuthorizationPolicySpec> for Admission {
-    async fn validate(self, _ns: &str, _name: &str, spec: AuthorizationPolicySpec) -> Result<()> {
-        // TODO support namespace references?
-        if !spec.target_ref.targets_kind::<Server>() {
-            bail!(
-                "invalid targetRef kind: {}",
-                spec.target_ref.canonical_kind()
-            );
-        }
+    async fn validate(self, ns: &str, _name: &str, spec: AuthorizationPolicySpec) -> Result<()> {
+        validate_policy_target(ns, &spec.target_ref)?;
 
         let mtls_authns_count = spec
             .required_authentication_refs
@@ -233,15 +244,27 @@ impl Validate<AuthorizationPolicySpec> for Admission {
     }
 }
 
+fn validate_identity_ref(id: &NamespacedTargetRef) -> Result<()> {
+    if id.targets_kind::<ServiceAccount>() {
+        return Ok(());
+    }
+
+    if id.targets_kind::<Namespace>() {
+        if id.namespace.is_some() {
+            bail!("Namespace identity_ref is cluster-scoped and cannot have a namespace");
+        }
+        return Ok(());
+    }
+
+    bail!("invalid identity target kind: {}", id.canonical_kind());
+}
+
 #[async_trait::async_trait]
 impl Validate<MeshTLSAuthenticationSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: MeshTLSAuthenticationSpec) -> Result<()> {
         // The CRD validates identity strings, but does not validate identity references.
-
         for id in spec.identity_refs.iter().flatten() {
-            if !id.targets_kind::<ServiceAccount>() {
-                bail!("invalid identity target kind: {}", id.canonical_kind());
-            }
+            validate_identity_ref(id)?;
         }
 
         Ok(())

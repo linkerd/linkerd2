@@ -29,9 +29,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
-// makeInstallUpgradeFlags builds the set of flags which are used during the
-// "control-plane" stage of install and upgrade.  These flags control the
-// majority of how the control plane is configured.
+// makeInstallUpgradeFlags builds the set of flags which are used by install and
+// upgrade.  These flags control the majority of how the control plane is
+// configured.
 func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet, error) {
 	installUpgradeFlags := pflag.NewFlagSet("install", pflag.ExitOnError)
 
@@ -45,6 +45,13 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 	}
 
 	flags := []flag.Flag{
+		flag.NewBoolFlag(installUpgradeFlags, "linkerd-cni-enabled", defaults.CNIEnabled,
+			"Omit the NET_ADMIN capability in the PSP and the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed",
+			func(values *l5dcharts.Values, value bool) error {
+				values.CNIEnabled = value
+				return nil
+			}),
+
 		flag.NewStringFlag(installUpgradeFlags, "controller-log-level", defaults.ControllerLogLevel,
 			"Log level for the controller and web components", func(values *l5dcharts.Values, value string) error {
 				values.ControllerLogLevel = value
@@ -203,28 +210,9 @@ func loadKeyPEM(path string) (string, error) {
 	return cred.EncodePrivateKeyPEM(), nil
 }
 
-// makeAllStageFlags builds the set of flags which are used during all stages
-// of install and upgrade.  These flags influence cluster level configuration
-// and therefore are available during the "config" stage.
-func makeAllStageFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
-
-	allStageFlags := pflag.NewFlagSet("all-stage", pflag.ExitOnError)
-
-	flags := []flag.Flag{
-		flag.NewBoolFlag(allStageFlags, "linkerd-cni-enabled", defaults.CNIEnabled,
-			"Omit the NET_ADMIN capability in the PSP and the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed",
-			func(values *l5dcharts.Values, value bool) error {
-				values.CNIEnabled = value
-				return nil
-			}),
-	}
-
-	return flags, allStageFlags
-}
-
-// makeInstallFlags builds the set of flags which are used during the
-// "control-plane" stage of install.  These flags should not be changed during
-// an upgrade and are not available to the upgrade command.
+// makeInstallFlags builds the set of flags which are used by install.  These
+// flags should not be changed during an upgrade and are not available to the
+// upgrade command.
 func makeInstallFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 
 	installOnlyFlags := pflag.NewFlagSet("install-only", pflag.ExitOnError)
@@ -264,7 +252,7 @@ func makeInstallFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) 
 
 // makeProxyFlags builds the set of flags which affect how the proxy is
 // configured.  These flags are available to the inject command and to the
-// install and upgrade commands in the "control-plane" stage.
+// install and upgrade commands.
 func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 
 	proxyFlags := pflag.NewFlagSet("proxy", pflag.ExitOnError)
