@@ -49,13 +49,14 @@ require (
 	k8s.io/code-generator v0.24.0
 	k8s.io/klog/v2 v2.60.1
 	k8s.io/kube-aggregator v0.23.5
-	sigs.k8s.io/gateway-api v0.4.2
+	sigs.k8s.io/gateway-api v0.4.3
 	sigs.k8s.io/yaml v1.3.0
 )
 
+require github.com/AdaLogics/go-fuzz-headers v0.0.0-20220408101031-f1761e18c0c6
+
 require (
 	cloud.google.com/go v0.99.0 // indirect
-	github.com/AdaLogics/go-fuzz-headers v0.0.0-20220408101031-f1761e18c0c6 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest v0.11.20 // indirect
