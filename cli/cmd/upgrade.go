@@ -181,12 +181,6 @@ func upgradeControlPlaneRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []
 		return err
 	}
 
-	if err = healthcheck.CheckCustomResourceDefinitions(ctx, k, buf.String()); err != nil {
-		fmt.Println(err)
-		fmt.Fprintln(os.Stderr, "Linkerd CRDs must be installed first. Run linkerd upgrade with the --crds flag.")
-		os.Exit(1)
-	}
-
 	for _, flag := range flags {
 		if flag.Name() == "identity-trust-anchors-file" && flag.IsSet() {
 			fmt.Fprintf(os.Stderr, "\n%s %s\n\n", warnStatus, trustRootChangeMessage)
