@@ -34,12 +34,10 @@ func TestNewValues(t *testing.T) {
 	namespaceSelectorSimple := &metav1.LabelSelector{MatchExpressions: matchExpressionsSimple}
 	namespaceSelectorInjector := &metav1.LabelSelector{MatchExpressions: matchExpressionsInjector}
 
-	defaultUnavailable := "25%"
-	defaultSurge := "25%"
-	defaultDeploymentStrategy := &map[string]interface{}{
-		"RollingUpdate": &map[string]interface{}{
-			"MaxUnavailable": &defaultUnavailable,
-			"MaxSurge":       &defaultSurge,
+	defaultDeploymentStrategy := map[string]interface{}{
+		"rollingUpdate": map[string]interface{}{
+			"maxUnavailable": "25%",
+			"maxSurge":       "25%",
 		},
 	}
 	expected := &Values{
@@ -184,10 +182,10 @@ func TestNewValues(t *testing.T) {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
 
-		haUnavailable := "1"
-		haDeploymentStrategy := &map[string]interface{}{
-			"RollingUpdate": &map[string]interface{}{
-				"MaxUnavailable": &haUnavailable,
+		haDeploymentStrategy := map[string]interface{}{
+			"rollingUpdate": map[string]interface{}{
+				"maxUnavailable": 1.0,
+				"maxSurge":       "25%",
 			},
 		}
 
