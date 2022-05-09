@@ -50,7 +50,7 @@ jobs:
     continue-on-error: ${{ matrix.checks == 'advisories' }}
     steps:
     - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-    - uses: EmbarkStudios/cargo-deny-action@ccfac4e084d1dedad50125be4550f87a21ba181e
+    - uses: EmbarkStudios/cargo-deny-action@9b350011b9d68c51a7ad7c2e7ec04bcc15dd0644
       with:
         command: check ${{ matrix.checks }}
 
