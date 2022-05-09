@@ -415,3 +415,15 @@ func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
 
 	return defaults, nil
 }
+
+func extractGatewayPort(gateway *corev1.Service) (uint32, error) {
+	for _, port := range gateway.Spec.Ports {
+		if port.Name == k8s.GatewayPortName {
+			if gateway.Spec.Type == "NodePort" {
+				return uint32(port.NodePort), nil
+			}
+			return uint32(port.Port), nil
+		}
+	}
+	return 0, fmt.Errorf("gateway service %s has no gateway port named %s", gateway.Name, k8s.GatewayPortName)
+}
