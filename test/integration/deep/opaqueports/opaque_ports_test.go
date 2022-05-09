@@ -77,9 +77,10 @@ func TestOpaquePortsCalledByServiceTarget(t *testing.T) {
 			ServiceCookerOpaquePodTargetHost:         serviceName(opaquePodApp),
 			ServiceCookerOpaqueUnmeshedSVCTargetHost: serviceName(opaqueUnmeshedSvcApp),
 		}
-		if err := deployClients(opaquePortsNs, tmplArgs); err != nil {
+		if err := deployTemplate(opaquePortsNs, opaquePortsClientTemplate, tmplArgs); err != nil {
 			testutil.AnnotatedFatal(t, "failed to deploy client pods", err)
 		}
+		waitForClientDeploymentReady(t, opaquePortsNs)
 
 		runTests(ctx, t, opaquePortsNs, []testCase{
 			{
@@ -128,9 +129,11 @@ func TestOpaquePortsCalledByPodTarget(t *testing.T) {
 			testutil.AnnotatedFatal(t, "failed to fetch pod IPs", err)
 		}
 
-		if err := deployClients(opaquePortsNs, tmplArgs); err != nil {
+		if err := deployTemplate(opaquePortsNs, opaquePortsClientTemplate, tmplArgs); err != nil {
 			testutil.AnnotatedFatal(t, "failed to deploy client pods", err)
 		}
+		waitForClientDeploymentReady(t, opaquePortsNs)
+
 		runTests(ctx, t, opaquePortsNs, []testCase{
 			{
 				name:   "calling a meshed service when opaque annotation is on receiving pod",
@@ -177,6 +180,23 @@ func waitForAppDeploymentReady(t *testing.T, opaquePortsNs string) {
 			Replicas:  1,
 		},
 		opaqueUnmeshedSvcPod: {
+			Namespace: opaquePortsNs,
+			Replicas:  1,
+		},
+	})
+}
+
+func waitForClientDeploymentReady(t *testing.T, opaquePortsNs string) {
+	TestHelper.WaitRollout(t, map[string]testutil.DeploySpec{
+		opaquePodSC: {
+			Namespace: opaquePortsNs,
+			Replicas:  1,
+		},
+		opaqueSvcSC: {
+			Namespace: opaquePortsNs,
+			Replicas:  1,
+		},
+		opaqueUnmeshedSvcSC: {
 			Namespace: opaquePortsNs,
 			Replicas:  1,
 		},
@@ -252,10 +272,6 @@ func deployApplications(ns string) error {
 		return fmt.Errorf("failed apply deployment file %q: %w", out, err)
 	}
 	return nil
-}
-
-func deployClients(ns string, templateArgs clientTemplateArgs) error {
-	return deployTemplate(ns, opaquePortsClientTemplate, templateArgs)
 }
 
 func deployTemplate(ns string, tmpl *template.Template, templateArgs interface{}) error {

@@ -1,5 +1,5 @@
-apiVersion: batch/v1
-kind: Job
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: slow-cooker-opaque-service
 spec:
@@ -21,8 +21,8 @@ spec:
         - containerPort: 9999
       restartPolicy: OnFailure
 ---
-apiVersion: batch/v1
-kind: Job
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: slow-cooker-opaque-pod
 spec:
@@ -44,8 +44,8 @@ spec:
         - containerPort: 9999
       restartPolicy: OnFailure
 ---
-apiVersion: batch/v1
-kind: Job
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: slow-cooker-opaque-unmeshed-svc
 spec:
