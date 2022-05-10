@@ -34,6 +34,12 @@ func TestNewValues(t *testing.T) {
 	namespaceSelectorSimple := &metav1.LabelSelector{MatchExpressions: matchExpressionsSimple}
 	namespaceSelectorInjector := &metav1.LabelSelector{MatchExpressions: matchExpressionsInjector}
 
+	defaultDeploymentStrategy := map[string]interface{}{
+		"rollingUpdate": map[string]interface{}{
+			"maxUnavailable": "25%",
+			"maxSurge":       "25%",
+		},
+	}
 	expected := &Values{
 		ControllerImage:              "cr.l5d.io/linkerd/controller",
 		ControllerReplicas:           1,
@@ -42,6 +48,7 @@ func TestNewValues(t *testing.T) {
 		EnablePodAntiAffinity:        false,
 		WebhookFailurePolicy:         "Ignore",
 		DisableHeartBeat:             false,
+		DeploymentStrategy:           defaultDeploymentStrategy,
 		HeartbeatSchedule:            "",
 		ClusterDomain:                "cluster.local",
 		ClusterNetworks:              "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16",
@@ -58,6 +65,7 @@ func TestNewValues(t *testing.T) {
 		PodAnnotations:               map[string]string{},
 		PodLabels:                    map[string]string{},
 		EnableEndpointSlices:         true,
+		EnablePodDisruptionBudget:    false,
 		PolicyController: &PolicyController{
 			Image: &Image{
 				Name: "cr.l5d.io/linkerd/policy-controller",
@@ -167,14 +175,24 @@ func TestNewValues(t *testing.T) {
 	}
 
 	t.Run("HA", func(t *testing.T) {
+
 		err := MergeHAValues(actual)
 
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
 
+		haDeploymentStrategy := map[string]interface{}{
+			"rollingUpdate": map[string]interface{}{
+				"maxUnavailable": 1.0,
+				"maxSurge":       "25%",
+			},
+		}
+
 		expected.ControllerReplicas = 3
 		expected.EnablePodAntiAffinity = true
+		expected.EnablePodDisruptionBudget = true
+		expected.DeploymentStrategy = haDeploymentStrategy
 		expected.WebhookFailurePolicy = "Fail"
 
 		controllerResources := &Resources{

@@ -412,6 +412,10 @@ data:
         name: cr.l5d.io/linkerd/debug
         pullPolicy: ""
         version: test-debug-version
+    deploymentStrategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 1
     destinationProxyResources: null
     destinationResources:
       cpu:
@@ -427,6 +431,7 @@ data:
     enableEndpointSlices: true
     enableH2Upgrade: true
     enablePodAntiAffinity: true
+    enablePodDisruptionBudget: true
     heartbeatResources:
       cpu:
         limit: ""
@@ -727,6 +732,7 @@ spec:
       linkerd.io/proxy-deployment: linkerd-identity
   strategy:
     rollingUpdate:
+      maxSurge: 25%
       maxUnavailable: 1
   template:
     metadata:
@@ -1123,6 +1129,7 @@ spec:
       linkerd.io/proxy-deployment: linkerd-destination
   strategy:
     rollingUpdate:
+      maxSurge: 25%
       maxUnavailable: 1
   template:
     metadata:
@@ -1538,6 +1545,7 @@ spec:
       linkerd.io/control-plane-component: proxy-injector
   strategy:
     rollingUpdate:
+      maxSurge: 25%
       maxUnavailable: 1
   template:
     metadata:

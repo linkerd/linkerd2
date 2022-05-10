@@ -154,6 +154,7 @@ func TestRender(t *testing.T) {
 	haWithOverridesValues.ControllerReplicas = 2
 	haWithOverridesValues.Proxy.Resources.CPU.Request = "400m"
 	haWithOverridesValues.Proxy.Resources.Memory.Request = "300Mi"
+	haWithOverridesValues.EnablePodDisruptionBudget = true
 	addFakeTLSSecrets(haWithOverridesValues)
 
 	cniEnabledValues, err := testInstallOptions()

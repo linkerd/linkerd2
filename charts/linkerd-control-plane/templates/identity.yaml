@@ -72,7 +72,7 @@ spec:
   - name: grpc
     port: 8080
     targetPort: 8080
-{{- if .Values.enablePodAntiAffinity }}
+{{- if .Values.enablePodDisruptionBudget }}
 ---
 kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
@@ -114,10 +114,9 @@ spec:
       linkerd.io/control-plane-component: identity
       linkerd.io/control-plane-ns: {{.Release.Namespace}}
       {{- include "partials.proxy.labels" $tree.Values.proxy | nindent 6}}
-  {{- if .Values.enablePodAntiAffinity }}
+  {{- if .Values.deploymentStrategy }}
   strategy:
-    rollingUpdate:
-      maxUnavailable: 1
+    {{- with .Values.deploymentStrategy }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   {{- end }}
   template:
     metadata:

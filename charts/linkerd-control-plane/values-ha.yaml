@@ -2,6 +2,16 @@
 # Usage:
 #   helm install -f values.yaml -f values-ha.yaml
 
+# -- Create PodDisruptionBudget resources for each control plane workload
+enablePodDisruptionBudget: true
+
+# -- Specify a deployment strategy for each control plane workload
+deploymentStrategy:
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 25%
+
+# -- add PodAntiAffinity to each control plane workload
 enablePodAntiAffinity: true
 
 # nodeAffinity: 
