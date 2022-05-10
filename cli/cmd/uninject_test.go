@@ -113,10 +113,12 @@ func TestUninjectYAML(t *testing.T) {
 
 			exitCode := runUninjectCmd(read, report, output, values)
 			if exitCode != 0 {
-				t.Errorf("Failed to uninject %s\n", tc.inputFileName)
+				t.Errorf("Failed to uninject %s", tc.inputFileName)
 			}
 
-			testDataDiffer.DiffTestdata(t, tc.goldenFileName, output.String())
+			if err := testDataDiffer.DiffTestYAML(tc.goldenFileName, output.String()); err != nil {
+				t.Error(err)
+			}
 			testDataDiffer.DiffTestdata(t, tc.reportFileName, report.String())
 		})
 	}
