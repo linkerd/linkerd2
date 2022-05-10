@@ -2,7 +2,6 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
-use rand::RngCore;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
@@ -29,6 +28,8 @@ struct Args {
     target_port: u16,
 }
 
+static REDIRECT_RESPONSE: &str = "REDIRECTION SUCCESSFUL";
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let Args {
@@ -45,13 +46,11 @@ async fn main() -> anyhow::Result<()> {
 
     let target_addr = &format!("{}:{}", target_host, target_port);
     info!(original_dst = %target_addr, outbound_redirect = %outbound_port, "validating outbound traffic is redirected to proxy outbound port");
-    let bytes = mk_random_bytes()?;
 
     let (shutdown_tx, shutdown_rx) = drain::channel();
     let (ready_tx, ready_rx) = tokio::sync::oneshot::channel::<Result<()>>();
 
     let srv_handle = tokio::spawn(async move {
-        let rng_bytes = bytes.clone();
         let listen_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), outbound_port);
         let listener = TcpListener::bind(listen_addr)
             .await
@@ -74,8 +73,9 @@ async fn main() -> anyhow::Result<()> {
                     .expect("failed to establish connection");
                 info!(%client_addr, "accepted connection");
                 tokio::spawn(async move {
-                    match stream.write_all(&rng_bytes).await {
-                        Ok(_) => debug!(%client_addr, "wrote {:?} bytes", &rng_bytes.len()),
+                    let bytes = REDIRECT_RESPONSE.as_bytes();
+                    match stream.write_all(&bytes).await {
+                        Ok(_) => debug!(%client_addr, "wrote {:?} bytes", &bytes.len()),
                         Err(e) => error!(%client_addr, "failed to write bytes to client: {:?}", e),
                     }
                 });
@@ -125,15 +125,18 @@ async fn main() -> anyhow::Result<()> {
             }
         };
 
-        let mut buf = [0u8; 8];
-        stream.read_exact(&mut buf).await?;
-        if &buf == &bytes {
+        let mut buf = [0u8; 100];
+        let read_sz = stream.read(&mut buf[..REDIRECT_RESPONSE.len()]).await?;
+        let resp = String::from_utf8(buf[..REDIRECT_RESPONSE.len()].to_vec())?;
+        debug!(redirect_response=%resp, "read {} bytes", read_sz);
+
+        if resp == REDIRECT_RESPONSE {
             return Ok(());
         } else {
             anyhow::bail!(
                 "expected client to receive {:?}, got {:?} instead",
-                &buf,
-                &bytes
+                REDIRECT_RESPONSE,
+                resp,
             );
         }
     })
@@ -164,14 +167,4 @@ async fn main() -> anyhow::Result<()> {
 async fn shutdown_server(shutdown_tx: drain::Signal) {
     info!("sending shutdown signal to server");
     shutdown_tx.drain().await
-}
-
-fn mk_random_bytes() -> anyhow::Result<[u8; 8]> {
-    let mut buf = [0u8; 8];
-    let mut rng_handle = rand::rngs::ThreadRng::default();
-    rng_handle
-        .try_fill_bytes(&mut buf)
-        .with_context(|| format!("Failed to fill in byte buffer with random data"))?;
-    debug!("generated random bytes: {:?}", buf);
-    Ok(buf)
 }
