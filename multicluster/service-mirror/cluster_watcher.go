@@ -626,22 +626,13 @@ func (rcsw *RemoteClusterServiceWatcher) createGatewayEndpoints(ctx context.Cont
 	return nil
 }
 
-func (rcsw *RemoteClusterServiceWatcher) isExportedService(service *corev1.Service) bool {
-	selector, err := metav1.LabelSelectorAsSelector(&rcsw.link.Selector)
-	if err != nil {
-		rcsw.log.Errorf("Invalid service selector: %s", err)
-		return false
-	}
-	return selector.Matches(labels.Set(service.Labels))
-}
-
 // this method is common to both CREATE and UPDATE because if we have been
 // offline for some time due to a crash a CREATE for a service that we have
 // observed before is simply a case of UPDATE
 func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.Service) error {
 	localName := rcsw.mirroredResourceName(service.Name)
 
-	if rcsw.isExportedService(service) {
+	if rcsw.isExported(service.Labels) {
 		localService, err := rcsw.localAPIClient.Svc().Lister().Services(service.Namespace).Get(localName)
 		if err != nil {
 			if kerrors.IsNotFound(err) {
@@ -698,7 +689,7 @@ func (rcsw *RemoteClusterServiceWatcher) getMirrorServices() (*corev1.ServiceLis
 }
 
 func (rcsw *RemoteClusterServiceWatcher) handleOnDelete(service *corev1.Service) {
-	if rcsw.isExportedService(service) {
+	if rcsw.isExported(service.Labels) {
 		rcsw.eventsQueue.Add(&RemoteServiceDeleted{
 			Name:      service.Name,
 			Namespace: service.Namespace,
@@ -831,7 +822,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 					return
 				}
 
-				if !isExportedEndpoints(ep) {
+				if !rcsw.isExported(ep.Labels) {
 					rcsw.log.Debugf("skipped processing endpoints object %s/%s: missing %s label", ep.Namespace, ep.Name, consts.DefaultExportedServiceSelector)
 					return
 				}
@@ -860,7 +851,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 					return
 				}
 
-				if !isExportedEndpoints(epOld) && !isExportedEndpoints(epNew) {
+				if !rcsw.isExported(epOld.Labels) && !rcsw.isExported(epNew.Labels) {
 					rcsw.log.Debugf("skipped processing endpoints object %s/%s: missing %s label", epNew.Namespace, epNew.Name, consts.DefaultExportedServiceSelector)
 					return
 				}
@@ -1165,7 +1156,11 @@ func (rcsw *RemoteClusterServiceWatcher) updateReadiness(endpoints *corev1.Endpo
 	}
 }
 
-func isExportedEndpoints(ep *corev1.Endpoints) bool {
-	_, found := ep.Labels[consts.DefaultExportedServiceSelector]
-	return found
+func (rcsw *RemoteClusterServiceWatcher) isExported(l map[string]string) bool {
+	selector, err := metav1.LabelSelectorAsSelector(&rcsw.link.Selector)
+	if err != nil {
+		rcsw.log.Errorf("Invalid selector: %s", err)
+		return false
+	}
+	return selector.Matches(labels.Set(l))
 }
