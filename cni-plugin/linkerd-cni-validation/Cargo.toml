@@ -4,13 +4,12 @@ version = "0.1.0"
 authors = ["Linkerd Authors <cncf-linkerd-dev@lists.cncf.io>"]
 edition = "2018"
 license = "Apache-2.0"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+publish = false
 
 [dependencies]
 anyhow = "1.0.57"
 drain = "0.1.1"
-clap = { version = "3.1.16", features = ["derive", "env"]}
-tokio = { version = "1", features = ["full"]}
+clap = { version = "3.1.16", features = ["derive", "env"] }
+tokio = { version = "1", features = ["rt", "macros", "net", "sync"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"
