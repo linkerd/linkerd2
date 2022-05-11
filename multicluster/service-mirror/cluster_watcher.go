@@ -811,7 +811,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 				}
 				rcsw.eventsQueue.Add(&OnDeleteCalled{service})
 			},
-			UpdateFunc: func(old, new interface{}) {
+			UpdateFunc: func(_, new interface{}) {
 				rcsw.eventsQueue.Add(&OnUpdateCalled{new.(*corev1.Service)})
 			},
 		},
@@ -825,7 +825,18 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 					return
 				}
 
-				if !isExportedEndpoints(obj, rcsw.log) || !isHeadlessEndpoints(obj, rcsw.log) {
+				ep, ok := obj.(*corev1.Endpoints)
+				if !ok {
+					rcsw.log.Errorf("error processing endpoints object: got %#v, expected *corev1.Endpoints", ep)
+					return
+				}
+
+				if !isExportedEndpoints(ep) {
+					rcsw.log.Debugf("skipped processing endpoints object %s/%s: missing %s label", ep.Namespace, ep.Name, consts.DefaultExportedServiceSelector)
+					return
+				}
+
+				if !isHeadlessEndpoints(ep, rcsw.log) {
 					return
 				}
 
@@ -837,11 +848,24 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 					return
 				}
 
-				if !isExportedEndpoints(old, rcsw.log) {
+				epOld, ok := old.(*corev1.Endpoints)
+				if !ok {
+					rcsw.log.Errorf("error processing endpoints object: got %#v, expected *corev1.Endpoints", epOld)
 					return
 				}
 
-				rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{new.(*corev1.Endpoints)})
+				epNew, ok := new.(*corev1.Endpoints)
+				if !ok {
+					rcsw.log.Errorf("error processing endpoints object: got %#v, expected *corev1.Endpoints", epNew)
+					return
+				}
+
+				if !isExportedEndpoints(epOld) && !isExportedEndpoints(epNew) {
+					rcsw.log.Debugf("skipped processing endpoints object %s/%s: missing %s label", epNew.Namespace, epNew.Name, consts.DefaultExportedServiceSelector)
+					return
+				}
+
+				rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{epNew})
 			},
 		},
 	)
@@ -1113,7 +1137,7 @@ func (rcsw *RemoteClusterServiceWatcher) createMirrorEndpoints(ctx context.Conte
 	rcsw.updateReadiness(endpoints)
 	_, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoints.Namespace).Create(ctx, endpoints, metav1.CreateOptions{})
 	if err != nil {
-		return fmt.Errorf("Failed to create mirror endpoints for %s/%s: %w", endpoints.Namespace, endpoints.Name, err)
+		return fmt.Errorf("failed to create mirror endpoints for %s/%s: %w", endpoints.Namespace, endpoints.Name, err)
 	}
 	return nil
 }
@@ -1126,7 +1150,7 @@ func (rcsw *RemoteClusterServiceWatcher) updateMirrorEndpoints(ctx context.Conte
 	rcsw.updateReadiness(endpoints)
 	_, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoints.Namespace).Update(ctx, endpoints, metav1.UpdateOptions{})
 	if err != nil {
-		return fmt.Errorf("Failed to update mirror endpoints for %s/%s: %w", endpoints.Namespace, endpoints.Name, err)
+		return fmt.Errorf("failed to update mirror endpoints for %s/%s: %w", endpoints.Namespace, endpoints.Name, err)
 	}
 	return err
 }
@@ -1141,17 +1165,7 @@ func (rcsw *RemoteClusterServiceWatcher) updateReadiness(endpoints *corev1.Endpo
 	}
 }
 
-func isExportedEndpoints(obj interface{}, log *logging.Entry) bool {
-	ep, ok := obj.(*corev1.Endpoints)
-	if !ok {
-		log.Errorf("error processing endpoints object: got %#v, expected *corev1.Endpoints", ep)
-		return false
-	}
-
-	if _, found := ep.Labels[consts.DefaultExportedServiceSelector]; !found {
-		log.Debugf("skipped processing endpoints object %s/%s: missing %s label", ep.Namespace, ep.Name, consts.DefaultExportedServiceSelector)
-		return false
-	}
-
-	return true
+func isExportedEndpoints(ep *corev1.Endpoints) bool {
+	_, found := ep.Labels[consts.DefaultExportedServiceSelector]
+	return found
 }

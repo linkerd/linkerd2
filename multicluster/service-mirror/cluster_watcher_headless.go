@@ -417,13 +417,7 @@ func shouldExportAsHeadlessService(endpoints *corev1.Endpoints, log *logging.Ent
 
 // isHeadlessEndpoints checks if an endpoints object belongs to a
 // headless service.
-func isHeadlessEndpoints(obj interface{}, log *logging.Entry) bool {
-	ep, ok := obj.(*corev1.Endpoints)
-	if !ok {
-		log.Errorf("error processing endpoints object: got %#v, expected *corev1.Endpoints", ep)
-		return false
-	}
-
+func isHeadlessEndpoints(ep *corev1.Endpoints, log *logging.Entry) bool {
 	if _, found := ep.Labels[corev1.IsHeadlessService]; !found {
 		// Not an Endpoints object for a headless service? Then we likely don't want
 		// to update anything.
