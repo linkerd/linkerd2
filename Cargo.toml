@@ -6,8 +6,8 @@ members = [
     "policy-controller/k8s/api",
     "policy-controller/k8s/index",
     "policy-test",
+    "cni-plugin/linkerd-cni-validator"
 ]
-exclude = ["cni-plugin/linkerd-cni-validation"]
 
 [profile.release]
 lto = true
