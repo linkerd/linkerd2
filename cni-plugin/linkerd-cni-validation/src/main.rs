@@ -30,7 +30,7 @@ struct Args {
 
 static REDIRECT_RESPONSE: &str = "REDIRECTION SUCCESSFUL";
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
     let Args {
         outbound_port,
