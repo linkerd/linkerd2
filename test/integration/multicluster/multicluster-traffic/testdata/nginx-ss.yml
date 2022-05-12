@@ -3,8 +3,6 @@ kind: Service
 metadata:
   name: nginx-statefulset-svc
   namespace: linkerd-multicluster-statefulset
-  labels:
-    mirror.linkerd.io/exported: "true"
 spec:
   clusterIP: None
   clusterIPs:
