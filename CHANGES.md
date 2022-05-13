@@ -1,5 +1,24 @@
 # Changes
 
+## edge-22.5.2
+
+This edge release ships a few changes to the chart values, a fix for
+multicluster headless services, and notable proxy features. HA functionality,
+such as PDBs, deployment strategies, and pod anti-affinity, have been split
+from the HA values and are now configurable for the control plane. On the proxy
+side, non-HTTP traffic will now be forwarded on the outbound side within the
+cluster when the proxy runs in ingress mode.
+
+* Updated `ingress-mode` proxies to forward non-HTTP traffic within the cluster
+  (protocol detection will always be attempted for outbound connections)
+* Added a new proxy metric `process_uptime_seconds_total` to keep track of the
+  number of seconds since the proxy started
+* Fixed an issue with multicluster headless service mirroring, where exported
+  endpoints would be mirrored with a delay, or when changes to the export label
+  would be ignored
+* Split HA functionality, such as PodDisruptionBudgets, into multiple
+  configurable values (thanks @evan-hines-firebolt for the initial work)
+
 ## edge-22.5.1
 
 This edge release adds more flexibility to the MeshTLSAuthentication and
