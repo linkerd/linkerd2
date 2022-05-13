@@ -99,9 +99,9 @@ jobs:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: cargo fetch --locked
       - name: Build tests
-        run: cargo test --workspace --exclude=linkerd-policy-test --frozen --no-run
+        run: cargo test --workspace --exclude=linkerd-policy-test linkerd-cni-validator --frozen --no-run
       - name: Run cargo test
-        run: cargo test --workspace --exclude=linkerd-policy-test --frozen
+        run: cargo test --workspace --exclude=linkerd-policy-test linkerd-cni-validator --frozen
 
   rust-toolchain:
     name: rust toolchain

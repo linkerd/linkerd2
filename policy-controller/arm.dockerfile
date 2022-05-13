@@ -10,7 +10,7 @@ ENV CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
 WORKDIR /build
 COPY bin/scurl bin/scurl
 COPY Cargo.toml Cargo.lock .
-COPY policy-controller policy-controller
+COPY policy-controller /build/
 RUN cargo new policy-test --lib
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.60.0,source=/usr/local/cargo,target=/usr/local/cargo \
