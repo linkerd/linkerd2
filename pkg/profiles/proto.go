@@ -54,19 +54,13 @@ func protoToServiceProfile(parser *proto.Parser, namespace, name, clusterDomain 
 					path = fmt.Sprintf("/%s.%s/%s", pkg, service.Name, typed.Name)
 				}
 
-				rpc, ok := visitee.(*proto.RPC)
-				isRetryable := false
-				if ok {
-					isRetryable = isMethodRetryable(rpc)
-				}
-
 				route := &sp.RouteSpec{
 					Name: typed.Name,
 					Condition: &sp.RequestMatch{
 						Method:    http.MethodPost,
 						PathRegex: regexp.QuoteMeta(path),
 					},
-					IsRetryable: isRetryable,
+					IsRetryable: isMethodRetryable(typed),
 				}
 				routes = append(routes, route)
 			}
