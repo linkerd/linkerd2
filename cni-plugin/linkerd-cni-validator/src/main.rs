@@ -1,6 +1,6 @@
 use std::net::{IpAddr, SocketAddr};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::Parser;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -87,12 +87,9 @@ async fn validate_outbound_redirect(
     ready_rx: tokio::sync::oneshot::Receiver<Result<()>>,
 ) -> Result<()> {
     let timeout = std::time::Duration::from_secs(120);
-    if let Err(_) = tokio::time::timeout(timeout, ready_rx).await {
-        return Err::<(), anyhow::Error>(anyhow!(
-            "timed-out ({:?}) waiting for server to be ready",
-            timeout
-        ));
-    };
+    if (tokio::time::timeout(timeout, ready_rx).await).is_err() {
+        anyhow::bail!("timed-out ({:?}) waiting for server to be ready", timeout);
+    }
 
     let mut stream = {
         debug!(original_dst = %target_addr, "Building validation client");
@@ -120,7 +117,7 @@ async fn validate_outbound_redirect(
     debug!(redirect_response = %resp, bytes_read = %read_sz);
 
     if resp == REDIRECT_RESPONSE {
-        return Ok(());
+        Ok(())
     } else {
         anyhow::bail!(
             "expected client to receive {:?}, got {:?} instead",
@@ -140,12 +137,9 @@ async fn outbound_serve(
         .expect("Failed to bind server");
     info!(%listen_addr, "Listening for incoming connections");
 
-    if let Err(_) = ready_tx.send(Ok(())) {
+    if ready_tx.send(Ok(())).is_err() {
         error!("Failed to send 'ready' signal, receiver dropped");
-        return Err(anyhow!(
-            "Failed to bind server: outbound_proxy_addr={}",
-            listen_addr
-        ));
+        anyhow::bail!("Failed to bind server");
     }
 
     let resp_bytes = REDIRECT_RESPONSE.as_bytes();
