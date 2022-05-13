@@ -9,11 +9,6 @@ from the HA values and are now configurable for the control plane. On the proxy
 side, non-HTTP traffic will now be forwarded on the outbound side within the
 cluster when the proxy runs in ingress mode.
 
-a multicluster fix for headless services, 
-This release updates "ingress-mode" proxies to be able to forward
-non-HTTP traffic within the cluster. Protocol detection is always
-attempted for outbound connections, however, when in ingress mode.
-
 * Updated `ingress-mode` proxies to forward non-HTTP traffic within the cluster
   (protocol detection will always be attempted for outbound connections)
 * Added a new proxy metric `process_uptime_seconds_total` to keep track of the
