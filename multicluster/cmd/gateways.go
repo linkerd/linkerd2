@@ -66,6 +66,9 @@ func newGatewaysCommand() *cobra.Command {
 				return fmt.Errorf("make sure the linkerd-multicluster extension is installed, using 'linkerd multicluster install' (%w)", err)
 			}
 			selector := fmt.Sprintf("component=%s", "linkerd-service-mirror")
+			if opts.clusterName != "" {
+				selector = fmt.Sprintf("%s,mirror.linkerd.io/cluster-name=%s", selector, opts.clusterName)
+			}
 			pods, err := k8sAPI.CoreV1().Pods(multiclusterNs.Name).List(cmd.Context(), metav1.ListOptions{LabelSelector: selector})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "failed to list pods in namespace %s: %s", multiclusterNs.Name, err)
@@ -77,9 +80,6 @@ func newGatewaysCommand() *cobra.Command {
 			for _, gateway := range gatewayMetrics {
 				if gateway.err != nil {
 					fmt.Fprintf(os.Stderr, "Failed to get gateway status for %s: %s\n", gateway.clusterName, gateway.err)
-					continue
-				}
-				if opts.clusterName != "" && gateway.clusterName != opts.clusterName {
 					continue
 				}
 				gatewayStatus := gatewayStatus{
