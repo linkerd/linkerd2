@@ -25,7 +25,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dependencies.kube]
-version = "0.71"
+version = "0.72"
 default-features = false
 features = [
     "client",
