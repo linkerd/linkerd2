@@ -197,8 +197,22 @@ func TestUpgradeCli(t *testing.T) {
 		"--set", "heartbeatSchedule=1 2 3 4 5",
 		"--set", "proxyInit.ignoreOutboundPorts=1234\\,5678",
 	}
-	exec := append([]string{cmd}, args...)
+
+	// Upgrade CRDs.
+	exec := append([]string{cmd}, append(args, "--crds")...)
 	out, err := TestHelper.LinkerdRun(exec...)
+	if err != nil {
+		testutil.AnnotatedFatal(t, "'linkerd upgrade --crds' command failed", err)
+	}
+	cmdOut, err := TestHelper.KubectlApply(out, "")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", cmdOut)
+	}
+
+	// Upgrade control plane.
+	exec = append([]string{cmd}, args...)
+	out, err = TestHelper.LinkerdRun(exec...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd upgrade' command failed", err)
 	}
@@ -207,7 +221,7 @@ func TestUpgradeCli(t *testing.T) {
 	// that we intend to be delete in this stage to prevent it
 	// from deleting other resources that have the
 	// label
-	cmdOut, err := TestHelper.KubectlApplyWithArgs(out, []string{
+	cmdOut, err = TestHelper.KubectlApplyWithArgs(out, []string{
 		"--prune",
 		"-l", "linkerd.io/control-plane-ns=linkerd",
 		"--prune-whitelist", "apps/v1/deployment",

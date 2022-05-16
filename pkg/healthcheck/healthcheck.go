@@ -26,6 +26,8 @@ import (
 	admissionRegistration "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -399,6 +401,7 @@ type Options struct {
 	RetryDeadline         time.Time
 	CNIEnabled            bool
 	InstallManifest       string
+	CRDManifest           string
 	ChartValues           *l5dcharts.Values
 }
 
@@ -789,7 +792,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					hintAnchor:  "l5d-existence-crd",
 					fatal:       true,
 					check: func(ctx context.Context) error {
-						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, true)
+						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, hc.CRDManifest)
 					},
 				},
 				{
@@ -2080,29 +2083,56 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Contex
 
 // CheckCustomResourceDefinitions checks that all of the Linkerd CRDs are
 // installed on the cluster.
-func CheckCustomResourceDefinitions(ctx context.Context, k8sAPI *k8s.KubernetesAPI, shouldExist bool) error {
-	options := metav1.ListOptions{
-		LabelSelector: controlPlaneComponentsSelector(),
-	}
-	crdList, err := k8sAPI.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().List(ctx, options)
-	if err != nil {
-		return err
+func CheckCustomResourceDefinitions(ctx context.Context, k8sAPI *k8s.KubernetesAPI, expectedCRDManifests string) error {
+
+	crdYamls := strings.Split(expectedCRDManifests, "---")
+	crdVersions := []struct{ name, version string }{}
+	for _, crdYaml := range crdYamls {
+		var crd apiextv1.CustomResourceDefinition
+		err := yaml.Unmarshal([]byte(crdYaml), &crd)
+		if err != nil {
+			return err
+		}
+		if len(crd.Spec.Versions) == 0 {
+			continue
+		}
+		versionIndex := len(crd.Spec.Versions) - 1
+		crdVersions = append(crdVersions, struct{ name, version string }{
+			name:    crd.Name,
+			version: crd.Spec.Versions[versionIndex].Name,
+		})
 	}
 
-	objects := []runtime.Object{}
-	for _, item := range crdList.Items {
-		item := item // pin
-		objects = append(objects, &item)
-	}
+	errMsgs := []string{}
 
-	return checkResources("CustomResourceDefinitions", objects, []string{
-		"authorizationpolicies.policy.linkerd.io",
-		"meshtlsauthentications.policy.linkerd.io",
-		"networkauthentications.policy.linkerd.io",
-		"servers.policy.linkerd.io",
-		"serverauthorizations.policy.linkerd.io",
-		"serviceprofiles.linkerd.io",
-	}, shouldExist)
+	for _, crdVersion := range crdVersions {
+		name := crdVersion.name
+		version := crdVersion.version
+
+		crd, err := k8sAPI.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, name, metav1.GetOptions{})
+		if err != nil && kerrors.IsNotFound(err) {
+			errMsgs = append(errMsgs, fmt.Sprintf("missing %s", name))
+			continue
+		} else if err != nil {
+			return err
+		}
+		if !crdHasVersion(crd, version) {
+			errMsgs = append(errMsgs, fmt.Sprintf("CRD %s is missing version %s", name, version))
+		}
+	}
+	if len(errMsgs) > 0 {
+		return errors.New(strings.Join(errMsgs, ", "))
+	}
+	return nil
+}
+
+func crdHasVersion(crd *v1.CustomResourceDefinition, version string) bool {
+	for _, crdVersion := range crd.Spec.Versions {
+		if crdVersion.Name == version {
+			return true
+		}
+	}
+	return false
 }
 
 // CheckNodesHaveNonDockerRuntime checks that each node has a non-Docker
