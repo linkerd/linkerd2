@@ -550,13 +550,13 @@ metadata:
     linkerd.io/control-plane-ns: test-ns
 `}
 	crds := []string{}
-	for _, name := range []string{
-		"authorizationpolicies.policy.linkerd.io",
-		"meshtlsauthentications.policy.linkerd.io",
-		"networkauthentications.policy.linkerd.io",
-		"serverauthorizations.policy.linkerd.io",
-		"servers.policy.linkerd.io",
-		"serviceprofiles.linkerd.io",
+	for _, crd := range []struct{ name, version string }{
+		{name: "authorizationpolicies.policy.linkerd.io", version: "v1alpha1"},
+		{name: "meshtlsauthentications.policy.linkerd.io", version: "v1alpha1"},
+		{name: "networkauthentications.policy.linkerd.io", version: "v1alpha1"},
+		{name: "serverauthorizations.policy.linkerd.io", version: "v1beta1"},
+		{name: "servers.policy.linkerd.io", version: "v1beta1"},
+		{name: "serviceprofiles.linkerd.io", version: "v1alpha2"},
 	} {
 		crds = append(crds, fmt.Sprintf(`
 apiVersion: apiextensions.k8s.io/v1
@@ -565,7 +565,9 @@ metadata:
   name: %s
   labels:
     linkerd.io/control-plane-ns: test-ns
-`, name))
+spec:
+  versions:
+  - name: %s`, crd.name, crd.version))
 	}
 	mutatingWebhooks := []string{`
 apiVersion: admissionregistration.k8s.io/v1
@@ -622,7 +624,7 @@ metadata:
 				"linkerd-config control plane ClusterRoles exist",
 				"linkerd-config control plane ClusterRoleBindings exist",
 				"linkerd-config control plane ServiceAccounts exist",
-				"linkerd-config control plane CustomResourceDefinitions exist: missing CustomResourceDefinitions: authorizationpolicies.policy.linkerd.io, meshtlsauthentications.policy.linkerd.io, networkauthentications.policy.linkerd.io, serverauthorizations.policy.linkerd.io, servers.policy.linkerd.io, serviceprofiles.linkerd.io",
+				"linkerd-config control plane CustomResourceDefinitions exist: missing authorizationpolicies.policy.linkerd.io, missing meshtlsauthentications.policy.linkerd.io, missing networkauthentications.policy.linkerd.io, missing serverauthorizations.policy.linkerd.io, missing servers.policy.linkerd.io, missing serviceprofiles.linkerd.io",
 			},
 		},
 		{
@@ -690,6 +692,7 @@ metadata:
 				[]CategoryID{LinkerdConfigChecks},
 				&Options{
 					ControlPlaneNamespace: "test-ns",
+					CRDManifest:           strings.Join(crds, "\n---\n"),
 				},
 			)
 
