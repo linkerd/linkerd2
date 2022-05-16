@@ -642,7 +642,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					fatal:         true,
 					retryDeadline: hc.RetryDeadline,
 					check: func(ctx context.Context) error {
-						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, true)
+						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, hc.CRDManifest)
 					},
 				},
 			},
