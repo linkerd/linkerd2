@@ -23,6 +23,7 @@ import (
 type checkOptions struct {
 	versionOverride    string
 	preInstallOnly     bool
+	crdsOnly           bool
 	dataPlaneOnly      bool
 	wait               time.Duration
 	namespace          string
@@ -35,6 +36,7 @@ func newCheckOptions() *checkOptions {
 	return &checkOptions{
 		versionOverride:    "",
 		preInstallOnly:     false,
+		crdsOnly:           false,
 		dataPlaneOnly:      false,
 		wait:               300 * time.Second,
 		namespace:          "",
@@ -51,6 +53,7 @@ func (options *checkOptions) nonConfigFlagSet() *pflag.FlagSet {
 	flags.BoolVar(&options.cniEnabled, "linkerd-cni-enabled", options.cniEnabled, "When running pre-installation checks (--pre), assume the linkerd-cni plugin is already installed, and a NET_ADMIN check is not needed")
 	flags.StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	flags.BoolVar(&options.preInstallOnly, "pre", options.preInstallOnly, "Only run pre-installation checks, to determine if the control plane can be installed")
+	flags.BoolVar(&options.crdsOnly, "crds", options.crdsOnly, "Only run checks, to determine if the Linkerd CRDs have been installed")
 	flags.BoolVar(&options.dataPlaneOnly, "proxy", options.dataPlaneOnly, "Only run data-plane checks, to determine if the data plane is healthy")
 
 	return flags
@@ -71,6 +74,9 @@ func (options *checkOptions) checkFlagSet() *pflag.FlagSet {
 func (options *checkOptions) validate() error {
 	if options.preInstallOnly && options.dataPlaneOnly {
 		return errors.New("--pre and --proxy flags are mutually exclusive")
+	}
+	if options.preInstallOnly && options.crdsOnly {
+		return errors.New("--pre and --crds flags are mutually exclusive")
 	}
 	if !options.preInstallOnly && options.cniEnabled {
 		return errors.New("--linkerd-cni-enabled can only be used with --pre")
@@ -146,6 +152,8 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 			fmt.Fprintf(os.Stderr, "Error rendering install manifest: %s\n", err)
 			os.Exit(1)
 		}
+	} else if options.crdsOnly {
+		checks = append(checks, healthcheck.LinkerdCRDChecks)
 	} else {
 		checks = append(checks, healthcheck.LinkerdConfigChecks)
 
