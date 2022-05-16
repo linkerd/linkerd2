@@ -38,7 +38,7 @@ require (
 	go.opencensus.io v0.23.0
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
 	golang.org/x/tools v0.1.10
-	google.golang.org/grpc v1.46.0
+	google.golang.org/grpc v1.46.2
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
 	google.golang.org/protobuf v1.28.0
 	helm.sh/helm/v3 v3.8.2
@@ -53,7 +53,10 @@ require (
 	sigs.k8s.io/yaml v1.3.0
 )
 
-require github.com/AdaLogics/go-fuzz-headers v0.0.0-20220408101031-f1761e18c0c6
+require (
+	github.com/AdaLogics/go-fuzz-headers v0.0.0-20220408101031-f1761e18c0c6
+	gopkg.in/yaml.v2 v2.4.0
+)
 
 require (
 	cloud.google.com/go v0.99.0 // indirect
@@ -154,7 +157,6 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220107163113-42d7afdf6368 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	k8s.io/cli-runtime v0.24.0 // indirect
 	k8s.io/gengo v0.0.0-20211129171323-c02415ce4185 // indirect
