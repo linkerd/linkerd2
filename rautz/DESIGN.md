@@ -4,7 +4,7 @@
 
 Linkerd supports an `AuthorizationPolicy` type, which expresses a set of
 required authentications for a target. Targets are always resources in the local
-namespace. Curently, targets are coarse: `Namespace` and `Server` resources.
+namespace. Currently, targets are coarse: `Namespace` and `Server` resources.
 
 ```text
         ,-----------------------,
@@ -28,12 +28,12 @@ authorize all servers in that namespace to be accessed by meshed clients:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  namespace: myns
+  namespace: my-ns
   name: authenticated
 spec:
   targetRef:
     kind: Namespace
-    name: myns
+    name: my-ns
   requiredAuthenticationRefs:
     - group: policy.linkerd.io
       kind: MeshTLSAuthentication
@@ -52,14 +52,14 @@ To address this, we want to extend `AuthorizationPolicy` to be able to target
 individual routes, so that a policy can relax authentication requirements on
 only a subset of HTTP routes.
 
-Furthermore, we may wish to express other types of policies--timeouts or
-header-rewriting rules, for instance--on a per-route basis. And we will want to
-be able to express a similar set of configurations on outbound traffic.
+Furthermore, we may wish to express other types of policies--timeouts, retries,
+or header-rewriting rules, for instance--on a per-route basis. And we will want
+to be able to express a similar set of configurations on outbound traffic.
 
 ## Goals
 
 1. Support per-route authorization policies
-2. Communicate a roadmap for Linkerd's policy/configuration ecosystem
+2. Specify a roadmap for Linkerd's policy/configuration ecosystem
 
 ## Prior art: `ServiceProfiles`
 
@@ -71,7 +71,7 @@ goals:
 * Per-route timeout configuration
 * Per-service retry budgets
 * Per-route error classification/retryability
-* Per-service destination overrides (for TrafficSplit).
+* Per-service destination overrides (i.e., TrafficSplit).
 
 There's obvious utility here, but we've learned a lot about the problems of the
 `ServiceProfile` approach since the resource type was introduced:
@@ -82,7 +82,7 @@ There's obvious utility here, but we've learned a lot about the problems of the
 and are not strictly associated with any in-cluster resources. This decision
 reflects the state of the Linkerd proxy at the time that the resource was
 introduced: all outbound routing decisions were made based on host headers.
-This approach has changed over time. Now, host are almost always _ignored_.
+This approach has changed over time. Now, host are almost always *ignored*.
 
 The use of DNS names severely limits the utility of `ServiceProfiles` on the
 inbound/server-side. Because the client controls setting this--and clients may
@@ -107,9 +107,9 @@ either the client or server's namespace.
 When a proxy receives an outbound connection, it looks up the profile by the
 target IP. If the target IP matches the clusterIP of a Kubernetes service, this
 service's FQDN is used to lookup a `ServiceProfile` resource. The controller
-watches for a profile named `<svc>.<svcns>.svc.<cluster-domain>` in the
-_client's namespace_. If no such resource exists, the controller looks for a
-profile named `<svc>.<svcns>.svc.<cluster-domain>` in _`svcns`_.  If no profile
+watches for a profile named `<svc>.<svc-ns>.svc.<cluster-domain>` in the
+*client's namespace*. If no such resource exists, the controller looks for a
+profile named `<svc>.<svc-ns>.svc.<cluster-domain>` in *`svc-ns`*.  If no profile
 resources exists for the server, a default profile is returned.
 
 Note that service profiles only apply for `clusterIP` services. If the service
@@ -140,19 +140,427 @@ profiles with that name in the local namespace. The client's namespace is
 ignored.
 
 This means that requests from unmeshed clients with relative hostnames like
-`<svc>` or `<svc>.<svcns>` are not resolved to profiles. It also means a profile
+`<svc>` or `<svc>.<svc-ns>` are not resolved to profiles. It also means a profile
 will never be resolved for requests that target the pod IP, etc.
 
 ### Problem: Ingresses <a id="sp-ingress"></a>
 
-Proxies may be configured in _ingress mode_. When the proxy is configured in this mode, the outbound
-proxy supports ONLY HTTP traffic.  destination address of outbound connections. Instead, the proxy
+Proxies may be configured in *ingress mode*. In this mode, the proxy uses
+per-request headers to route requests, ignoring the original destination address
+of the connection.  When the proxy is configured in this mode, the outbound
+proxy ONLY supports HTTP traffic[^1].
 
-### Problem: Regexes
+This mode exists so that the proxy can ignore the endpoint decisions made by an
+ingress, effectively ignoring its load balancing decisions. This allows the
+proxy to perform discovery for the (named) logical service so that a profile
+(and traffic splitting, in particular) may apply. Without it, the proxy would
+handle the connection as targeting an individual pod and would not apply any
+service-level configuration.
+
+### Problem: Regular Expressions
+
+An OpenAPI spec like:
+
+```yaml
+openapi: 3.0.1
+paths:
+  /:
+    get: {}
+
+  /books:
+    post: {}
+
+  /books/{id}:
+    get:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+
+  /books/{id}/edit:
+    post:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+
+  /books/{id}/delete:
+    post:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+
+  /authors:
+    post: {}
+
+  /authors/{id}:
+    get:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+
+  /authors/{id}/edit:
+    post:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64          
+
+  /authors/{id}/delete:
+    post:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+```
+
+turns into the `ServiceProfile`:
+
+```yaml
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  creationTimestamp: null
+  name: web.booksapp.svc.cluster.local
+  namespace: booksapp
+spec:
+  routes:
+  - condition:
+      method: GET
+      pathRegex: /
+    name: GET /
+  - condition:
+      method: POST
+      pathRegex: /authors
+    name: POST /authors
+  - condition:
+      method: GET
+      pathRegex: /authors/[^/]*
+    name: GET /authors/{id}
+  - condition:
+      method: POST
+      pathRegex: /authors/[^/]*/delete
+    name: POST /authors/{id}/delete
+  - condition:
+      method: POST
+      pathRegex: /authors/[^/]*/edit
+    name: POST /authors/{id}/edit
+  - condition:
+      method: POST
+      pathRegex: /books
+    name: POST /books
+  - condition:
+      method: GET
+      pathRegex: /books/[^/]*
+    name: GET /books/{id}
+  - condition:
+      method: POST
+      pathRegex: /books/[^/]*/delete
+    name: POST /books/{id}/delete
+  - condition:
+      method: POST
+      pathRegex: /books/[^/]*/edit
+    name: POST /books/{id}/edit
+```
+
+Regexes are a crude tool for the job: we see almost every route expression
+library/framework (including OpenAPI) use a simpler syntax that avoids:
+
+* require escaping (e.g. `\.json`)
+* awkward path component matching (`[^/]+`)
+* a whole class of [denial-of-service vectors][redos]
+* the need to handle trailing slashes explicitly (e.g. `/books/?`). None of the
+  above service profiles routes will match when a trailing slash is present!
+  subtle!
+
+It seems preferable to use a less flexible tool that is specifically designed
+for path matching. There's a ton of prior art here. We like Go's
+[`httprouter`][gojshr] library, for instance. It's simple and principled.
 
 ### Problem: Coupling route descriptions with policies
 
-## Route-targeted inbound policies
+One of the bigger problems with `ServiceProfile` is that they couples route
+definitions with policies about those routes. As a single service profile
+resource may apply on both the inbound (server-side) and outbound (client-side)
+proxies, there can be ambiguity about where a policy applies. For instance, a
+retry policy may be set, even though retry policies may only apply to an
+outbound (client-side) proxy.
+
+Furthermore, since these rules are added to individual routes, they may need to
+be duplicated many many times. It would be preferable to define a policy once
+and have it apply to an arbitrary number of routes.
+
+## Exploration
+
+Abstractly, we could imagine a *policy* targeting a *request selector*, which is
+bound to a specific *proxy scope* (like a `Server`):
+
+```text
+        ,----------,
+        |  Policy  |
+        '--,-------'
+           | targetRef
+         ,-V------------------,
+         |  Request Selector  |
+         '--,-----------------'
+            | targetRef
+          ,-V-------------,
+          |  Proxy Scope  |
+          '---------------'
+             | podSelector
+           ,-V-----,
+           |  Pod  |
+           '-------'
+```
+
+```yaml
+kind: ExamplePolicy
+metadata:
+  name: example-policy
+spec:
+  targetRef:
+    kind: ExampleRequestSelector
+    name: example-requests
+  policy: ...
+---
+kind: ExampleRequestSelector
+metadata:
+  name: example-requests
+spec:
+  targetRef:
+    kind: Server
+    name: example-server
+  requests:
+    - ...
+```
+
+When a policy applies to all requests in a given scope, we could omit the
+selector (i.e. as `AuthorizationPolicies` are used today):
+
+```text
+        ,----------,
+        |  Policy  |
+        '--,-------'
+           | targetRef
+         ,-V-------------,
+         |  Proxy Scope  |
+         '---------------'
+            | podSelector
+          ,-V-----,
+          |  Pod  |
+          '-------'
+```
+
+This works well when an arbitrary number of policies may apply to a single
+request. For instance, any number of `AuthorizationPolicy`s may apply to a
+single request, since it doesn't really matter which authorization applies to
+the request: the request is either authorized or it isn't. Similarly, timeout
+policies could be composable in this way since the proxy would honor the
+shortest timeout that applies to a request. This approach is flexible and
+allows for composable, additive configurations
+
+But what about when only a single policy may apply? In these cases, we want some
+deterministic ordering, otherwise policy application can be incoherent. Let's
+consider header-rewriting policies:
+
+```yaml
+# Clear the `x-foobar` header when a request has `host: example.com`
+kind: HeaderRewritePolicy
+metadata:
+  name: clear-foobar
+spec:
+  clear:
+    - x-foobar
+  targetRef:
+    kind: HeaderRequestSelector
+    name: example-dot-com
+---
+kind: HeaderRequestSelector
+metadata:
+  name: example-dot-com
+spec:
+  headers:
+    host: example.com
+  targetRef:
+    kind: Server
+    name: example-server
+```
+
+```yaml
+# Set the `x-foobar` header when a request has `content-type: application/json`
+kind: HeaderRewritePolicy
+metadata:
+  name: set-foobar
+spec:
+  set:
+    x-foobar: yahoo
+  targetRef:
+    kind: HeaderRequestSelector
+    name: json
+---
+kind: HeaderRequestSelector
+metadata:
+  name: json
+spec:
+  targetRef:
+    kind: Server
+    name: example-server
+  headers:
+    content-type: application/json
+```
+
+If a request has both `host: example.com` and `content-type: application/json`,
+what should happen? We have a few options:
+
+1. Enforce a deterministic ordering so that we can apply both policies
+   predictably and reproducibly; or
+2. Restructure the resources so that only one policy applies to a request; or
+3. Prevent the creation of such policies with an admission controller.
+
+It's not trivial to write an admission controller policy that could detect all
+overlapping request selectors. For instance, in the prior case, it could be
+totally plausible that requests to example.com practically never have requests
+with `content-type: application/json`. It would be tiresome to require explicit
+negations that eliminate all possible overlaps.
+
+We could create a `HeaderRewritePolicy` that only applies to a `Server` and
+describes all possible rewrites on resource:
+
+```yaml
+# Rules apply in order so that `x-foobar` is **always** cleared when
+# `host: example.com` is set.
+kind: HeaderRewritePolicy
+metadata:
+  name: example-headers
+spec:
+  targetRef:
+    kind: Server
+    name: example-server
+  rules:
+    - set:
+        x-foobar: yahoo
+      match:
+        - kind: header
+          header:
+            key: content-type
+            op: In
+            values:
+              - application/json
+    - clear:
+        - x-foobar
+      match:
+        - kind: header
+          expression:
+            key: host
+              op: In
+              values:
+                - example.com
+```
+
+This would still require that an admission controller attempts to reject
+policies that would conflict, but it's a step towards deterministic behavior.
+
+## Approach 1: Route definitions
+
+### `HttpRouteGroup.http.linkerd.io`
+
+Labels defined on all routes:
+
+* `http.linkerd.io/method`: the request's method. E.g. `GET`, `POST`, `PUT`;
+* `http.linkerd.io/version`: the HTTP version of the request. E.g. `HTTP/1.1`,
+  `HTTP/2`;
+* `http.linkerd.io/path`: the `path` value of the route. E.g. `/`,
+  `/books/:book-id`;
+  * `path.http.linkerd.io/<param>`: matched path parameters. For example, a
+    path of `/authors/:book-id` would produce a label
+    `path.http.linkerd.io/book-id`.
+
+```yaml
+apiVersion: http.linkerd.io/v1alpha1
+kind: HttpRouteGroup
+metadata:
+  name: web
+  namespace: booksapp
+spec:
+  routes:
+    - methods: ["GET"]
+      path: /
+      labels:
+        http.linkerd.io/idempotent: "true"
+    - routeGroupRef:
+        name: authors
+      labels:
+        group: authors
+    - routeGroupRef:
+        name: books
+      labels:
+        group: books
+---
+apiVersion: http.linkerd.io/v1alpha1
+kind: HttpRouteGroup
+metadata:
+  name: authors
+  namespace: booksapp
+spec:
+  routes:
+    - methods: ["POST"]
+      path: /authors
+    - methods: ["HEAD", "GET"]
+      path: /authors/:author-id
+      labels:
+        http.linkerd.io/idempotent: "true"
+    - methods: ["POST"]
+      path: /authors/:author-id/delete
+    - methods: ["POST"]
+      path: /authors/:author-id/edit
+---
+apiVersion: http.linkerd.io/v1alpha1
+kind: HttpRouteGroup
+metadata:
+  name: books
+  namespace: booksapp
+spec:
+  routes:
+    - methods: ["POST"]
+      path: /books
+    - methods: ["GET"]
+      path: /books/:book-id
+      labels:
+        http.linkerd.io/idempotent: "true"
+    - methods: ["POST"]
+      path: /books/:book/delete
+    - methods: ["POST"]
+      path: /books/:book-id/edit
+```
+
+#### TODO
+
+* Query parameters?
+* Header matching?
+  * Should not be exclusively per-route. We may want to extract a header across
+    all routes.
+
+#### `GRPCService.grpc.linkerd.io`
 
 ### `HttpRouteBinding`
 
@@ -160,7 +568,7 @@ proxy supports ONLY HTTP traffic.  destination address of outbound connections. 
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  namespace: myns
+  namespace: my-ns
   name: healthchecks-unauthenticated
 spec:
   targetRef:
@@ -264,7 +672,7 @@ spec:
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
-  namespace: myns
+  namespace: my-ns
   name: admin
 spec:
   podSelector:
@@ -272,5 +680,14 @@ spec:
   port: admin-http
   proxyProtocol: HTTP/1
 ```
+
+[^1]: There is now a [PR](https://github.com/linkerd/linkerd2-proxy/pull/1649)
+      to change this behavior. This will permit non-HTTP traffic outbound to
+      fallback to doing profile resolution based on the target IP address. Note,
+      however, that we cannot honor opaque-port protocol detection settings when
+      ingress mode is enabled.
+
+[gojshr]: https://github.com/julienschmidt/httprouter
+[redos]: https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS
 
 <!-- markdownlint-configure-file {"MD033": {"allowed_elements": ["a"]}} -->
