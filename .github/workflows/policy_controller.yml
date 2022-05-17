@@ -17,7 +17,6 @@ permissions:
   contents: read
 
 env:
-  CARGO_ACTION_FMT_VERSION: v0.1.3
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
   K3D_VERSION: v5.4.1
@@ -62,9 +61,7 @@ jobs:
     steps:
       - run: rustup component add clippy
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - run: |
-          bin/scurl -o /usr/local/bin/cargo-action-fmt "https://github.com/olix0r/cargo-action-fmt/releases/download/release%2F${CARGO_ACTION_FMT_VERSION}/cargo-action-fmt-x86_64-unknown-linux-gnu"
-          chmod 755 /usr/local/bin/cargo-action-fmt
+      - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
       - run: cargo fetch --locked
       - name: Run cargo clippy
         run: cargo clippy --frozen --all --no-deps --message-format=json | cargo-action-fmt
@@ -76,9 +73,7 @@ jobs:
       image: docker://rust:1.60.0
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - run: |
-          bin/scurl -o /usr/local/bin/cargo-action-fmt "https://github.com/olix0r/cargo-action-fmt/releases/download/release%2F${CARGO_ACTION_FMT_VERSION}/cargo-action-fmt-x86_64-unknown-linux-gnu"
-          chmod 755 /usr/local/bin/cargo-action-fmt
+      - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
       - run: cargo fetch --locked
       # Check each crate independently to ensure its Cargo.toml is sufficient.
       - run: |
@@ -177,12 +172,10 @@ jobs:
           bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain $(cat rust-toolchain)
           source $HOME/.cargo/env
           echo "PATH=$PATH" >> $GITHUB_ENV
-          bin/scurl -o /usr/local/bin/cargo-action-fmt "https://github.com/olix0r/cargo-action-fmt/releases/download/release%2F${CARGO_ACTION_FMT_VERSION}/cargo-action-fmt-x86_64-unknown-linux-gnu"
-          chmod 755 /usr/local/bin/cargo-action-fmt
           bin/scurl -L https://get.nexte.st/latest/linux | tar xzf - -C /usr/local/bin
           cargo version
-          cargo-action-fmt --version
           cargo nextest --version
+      - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
 
       - run: mkdir target
       - run: cargo fetch --locked
@@ -223,12 +216,10 @@ jobs:
           bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain $(cat rust-toolchain)
           source $HOME/.cargo/env
           echo "PATH=$PATH" >> $GITHUB_ENV
-          bin/scurl -o /usr/local/bin/cargo-action-fmt "https://github.com/olix0r/cargo-action-fmt/releases/download/release%2F${CARGO_ACTION_FMT_VERSION}/cargo-action-fmt-x86_64-unknown-linux-gnu"
-          chmod 755 /usr/local/bin/cargo-action-fmt
           bin/scurl -L https://get.nexte.st/latest/linux | tar xzf - -C /usr/local/bin
           cargo version
-          cargo-action-fmt --version
           cargo nextest --version
+      - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
 
       - run: bin/scurl -v https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh | bash
       - run: k3d --version
