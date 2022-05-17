@@ -89,7 +89,8 @@ func isMethodRetryable(rpc *proto.RPC) bool {
 			continue
 		}
 
-		if !strings.Contains(option.Name, "idempotency_level") {
+		// method options can be wrapped in parentheses so we trim them away
+		if strings.Trim(option.Name, "()") != "idempotency_level" {
 			// Not an idempotency option
 			continue
 		}
