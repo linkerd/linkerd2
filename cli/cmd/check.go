@@ -202,17 +202,20 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 	}
 	success, warning := healthcheck.RunChecks(wout, werr, hc, options.output)
 
-	extensionSuccess, extensionWarning, err := runExtensionChecks(cmd, wout, werr, options)
-	if err != nil {
-		fmt.Fprintf(werr, "Failed to run extensions checks: %s\n", err)
-		os.Exit(1)
+	if !options.preInstallOnly && !options.crdsOnly {
+		extensionSuccess, extensionWarning, err := runExtensionChecks(cmd, wout, werr, options)
+		if err != nil {
+			fmt.Fprintf(werr, "Failed to run extensions checks: %s\n", err)
+			os.Exit(1)
+		}
+
+		success = success && extensionSuccess
+		warning = warning || extensionWarning
 	}
 
-	totalSuccess := success && extensionSuccess
-	totalWarning := warning || extensionWarning
-	healthcheck.PrintChecksResult(wout, options.output, totalSuccess, totalWarning)
+	healthcheck.PrintChecksResult(wout, options.output, success, warning)
 
-	if !totalSuccess {
+	if !success {
 		os.Exit(1)
 	}
 
