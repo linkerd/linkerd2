@@ -1,8 +1,8 @@
-# Route Authorization
+# Request-oriented Policies for Linkerd
 
-## Overview
+## Background
 
-Linkerd supports an `AuthorizationPolicy` type, which expresses a set of
+Linkerd now supports an `AuthorizationPolicy` type, which expresses a set of
 required authentications for a target. Targets are always resources in the local
 namespace. Currently, targets are coarse: `Namespace` and `Server` resources.
 
@@ -19,6 +19,17 @@ namespace. Currently, targets are coarse: `Namespace` and `Server` resources.
         ,-V-----,
         |  Pod  |
         '-------'
+```
+
+```text
+        ,-----------------------,
+        |  AuthorizationPolicy  |
+        '--,-----------------,--'
+           |                 | requiredAuthenticationRefs
+           | targetRef     ,-V---------------------------------,,,
+  ,--------V----,          |  {MeshTLS,Network}Authentication  |||
+  |  Namespace  |          '-----------------------------------'''
+  '-------------'
 ```
 
 For example, by setting an `AuthorizationPolicy` on a `Namespace`, we can
@@ -42,11 +53,13 @@ spec:
 ```
 
 This is a great default, but it's a little impractical. Kubelet, for instance,
-needs unauthenticated access to probe endpoints. How do we express that a few
-HTTP endpoints are unauthenticated while otherwise requiring authentication?
-It's not feasible to expect users to separate authentication requirements by
-port. There needs to be a way to override the coarser namespace- or server-wide
-default policy to grant unauthenticated access to a few HTTP endpoints.
+needs unauthenticated access to probe endpoints.
+
+**How do we express that a few HTTP endpoints are unauthenticated while
+otherwise requiring authentication?** It's not feasible to expect users to
+separate authentication requirements by port. There needs to be a way to
+override the coarser namespace- or server-wide default policy to grant
+unauthenticated access to a few HTTP endpoints.
 
 To address this, we want to extend `AuthorizationPolicy` to be able to target
 individual routes, so that a policy can relax authentication requirements on
@@ -310,7 +323,7 @@ Furthermore, since these rules are added to individual routes, they may need to
 be duplicated many many times. It would be preferable to define a policy once
 and have it apply to an arbitrary number of routes.
 
-## Exploration
+## Brain Dump
 
 Abstractly, we could imagine a *policy* targeting a *request selector*, which is
 bound to a specific *proxy scope* (like a `Server`):
@@ -444,7 +457,7 @@ with `content-type: application/json`. It would be tiresome to require explicit
 negations that eliminate all possible overlaps.
 
 We could create a `HeaderRewritePolicy` that only applies to a `Server` and
-describes all possible rewrites on resource:
+describes all possible rewrites on a resource:
 
 ```yaml
 # Rules apply in order so that `x-foobar` is **always** cleared when
@@ -460,8 +473,7 @@ spec:
     - set:
         x-foobar: yahoo
       match:
-        - kind: header
-          header:
+        - header:
             key: content-type
             op: In
             values:
@@ -469,18 +481,25 @@ spec:
     - clear:
         - x-foobar
       match:
-        - kind: header
-          expression:
+        - header:
             key: host
-              op: In
-              values:
-                - example.com
+            op: In
+            values:
+              - example.com
 ```
 
 This would still require that an admission controller attempts to reject
 policies that would conflict, but it's a step towards deterministic behavior.
 
-## Approach 1: Route definitions
+***Maybe we don't really care?*** This trivial example seems pretty easy to
+*avoid. But there may be other examples where this ambiguity is more
+problematic. On the other hand, there are other places in the Kubernetes API
+where this ambiguity is punted to the user: for instance `Deployment` (and
+`Server`) pod selectors must not overlap.
+
+---
+
+## Other approaches: route types
 
 ### `HttpRouteGroup.http.linkerd.io`
 
@@ -496,7 +515,6 @@ Labels defined on all routes:
     `path.http.linkerd.io/book-id`.
 
 ```yaml
-apiVersion: http.linkerd.io/v1alpha1
 kind: HttpRouteGroup
 metadata:
   name: web
@@ -516,7 +534,6 @@ spec:
       labels:
         group: books
 ---
-apiVersion: http.linkerd.io/v1alpha1
 kind: HttpRouteGroup
 metadata:
   name: authors
@@ -534,7 +551,6 @@ spec:
     - methods: ["POST"]
       path: /authors/:author-id/edit
 ---
-apiVersion: http.linkerd.io/v1alpha1
 kind: HttpRouteGroup
 metadata:
   name: books
@@ -565,19 +581,16 @@ spec:
 ### `HttpRouteBinding`
 
 ```yaml
-apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
   namespace: my-ns
   name: healthchecks-unauthenticated
 spec:
   targetRef:
-    group: policy.linkerd.io
     kind: HttpRouteBinding
     name: healthchecks
   requiredAuthenticationRefs:
-    - group: policy.linkerd.io
-      kind: NetworkAuthentication
+    - kind: NetworkAuthentication
       name: kubelet
 ```
 
@@ -665,27 +678,10 @@ spec:
     '---------------'
 ```
 
-## Etc
-
-```yaml
----
-apiVersion: policy.linkerd.io/v1beta1
-kind: Server
-metadata:
-  namespace: my-ns
-  name: admin
-spec:
-  podSelector:
-    matchLabels: {}
-  port: admin-http
-  proxyProtocol: HTTP/1
-```
-
-[^1]: There is now a [PR](https://github.com/linkerd/linkerd2-proxy/pull/1649)
-      to change this behavior. This will permit non-HTTP traffic outbound to
-      fallback to doing profile resolution based on the target IP address. Note,
-      however, that we cannot honor opaque-port protocol detection settings when
-      ingress mode is enabled.
+[^1]: This behavior has been changed in Linkerd 2.12.  Ingress mode will permit
+      non-HTTP outbound traffic to fallback to doing profile resolution based on
+      the target IP address. Note, however, that we cannot honor opaque-port
+      protocol detection settings when ingress mode is enabled.
 
 [gojshr]: https://github.com/julienschmidt/httprouter
 [redos]: https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS
