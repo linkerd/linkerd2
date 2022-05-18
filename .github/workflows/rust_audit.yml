@@ -44,6 +44,6 @@ jobs:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
         with:
           repository: linkerd/${{ matrix.repo }}
-      - uses: olix0r/rustsecbot@560c817c7a019e1f0c2318721b55156409be7f8c
+      - uses: olix0r/rustsecbot@2d95b50b8ecabf23af6f4fd9ef5707630b8e916a
         with:
           labels: ${{ matrix.labels }}
