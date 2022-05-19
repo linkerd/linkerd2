@@ -1,4 +1,28 @@
-# Request-oriented Policies for Linkerd
+# Linkerd Policy Design Roadmap
+
+## Goals
+
+1. Support per-route authorization policies
+2. Specify a roadmap for Linkerd's policy/configuration ecosystem
+
+## Types of Policies
+
+* Inbound
+  * Authorization
+  * Rate limiting
+  * Header rewriting
+  * Telemetry
+* Outbound
+  * Circuit Breakers
+  * Failure injection
+  * Header rewriting
+  * Telemetry
+  * Retries
+    * Hedges
+  * Logical Routing
+    * Alternates
+    * Unions
+  * Proxy transport (HTTP/2 upgrading, etc)
 
 ## Background
 
@@ -69,30 +93,7 @@ Furthermore, we may wish to express other types of policies--timeouts, retries,
 or header-rewriting rules, for instance--on a per-route basis. And we will want
 to be able to express a similar set of configurations on outbound traffic.
 
-## Goals
-
-1. Support per-route authorization policies
-2. Specify a roadmap for Linkerd's policy/configuration ecosystem
-
-### Roadmap: HTTP/gRPC Policies
-
-* Inbound
-  * Authorization
-  * Rate limiting
-  * Header rewriting
-  * Telemetry
-* Outbound
-  * Circuit Breakers
-  * Failure injection
-  * Header rewriting
-  * Telemetry
-  * Retries
-    * Hedges
-  * Logical Routing
-    * Alternates
-    * Unions
-
-## Prior art: `ServiceProfiles`
+### Prior art: `ServiceProfiles`
 
 Linkerd already includes a resource type that describes per-route configuration:
 `ServiceProfiles`. The `ServiceProfile` custom resource type accomplishes a few
@@ -107,7 +108,7 @@ goals:
 There's obvious utility here, but we've learned a lot about the problems of the
 `ServiceProfile` approach since the resource type was introduced:
 
-### Problem: DNS names
+#### Problem: DNS names
 
 `ServiceProfiles` are fundamentally associated with a fully-qualified DNS name
 and are not strictly associated with any in-cluster resources. This decision
@@ -127,13 +128,13 @@ as these requests target the pod's IP address with no additional metadata.
 Furthermore, a `ServiceProfile` does not differentiate between multiple ports on
 a service. A single profile resource applies to all ports for a given DNS name.
 
-### Problem: Resolution rules
+#### Problem: Resolution rules
 
 `ServiceProfiles` can apply on either outbound (client-side) or inbound
 (server-side) of a meshed connection and a `ServiceProfile` may be defined in
 either the client or server's namespace.
 
-#### Outbound profile resolution
+##### Outbound profile resolution
 
 When a proxy receives an outbound connection, it looks up the profile by the
 target IP. If the target IP matches the clusterIP of a Kubernetes service, this
@@ -150,7 +151,7 @@ communication.
 Outbound proxies can also resolve profiles by-name when the proxy is configured
 in "ingress mode". This is discussed [below](#sp-ingress).
 
-#### Inbound profile resolution
+##### Inbound profile resolution
 
 On the inbound side, the profile name is determined as follows:
 
@@ -174,7 +175,7 @@ This means that requests from unmeshed clients with relative hostnames like
 `<svc>` or `<svc>.<svc-ns>` are not resolved to profiles. It also means a profile
 will never be resolved for requests that target the pod IP, etc.
 
-### Problem: Ingresses <a id="sp-ingress"></a>
+#### Problem: Ingresses <a id="sp-ingress"></a>
 
 Proxies may be configured in *ingress mode*. In this mode, the proxy uses
 per-request headers to route requests, ignoring the original destination address
@@ -188,7 +189,7 @@ proxy to perform discovery for the (named) logical service so that a profile
 handle the connection as targeting an individual pod and would not apply any
 service-level configuration.
 
-### Problem: Regular Expressions
+#### Problem: Regular Expressions
 
 An OpenAPI spec like:
 
@@ -328,12 +329,12 @@ It seems preferable to use a less flexible tool that is specifically designed
 for path matching. There's a ton of prior art here. We like Go's
 [`httprouter`][gojshr] library, for instance. It's simple and principled.
 
-### Problem: Only method & path oriented
+#### Problem: Only method & path oriented
 
 Service profiles may only match on methods and paths. There is no way to use
 other request metadata--like query parameters or headers--to influence routing.
 
-### Problem: Coupling route descriptions with policies
+#### Problem: Coupling route descriptions with policies
 
 One of the bigger problems with `ServiceProfile` is that they couples route
 definitions with policies about those routes. As a single service profile
@@ -345,6 +346,8 @@ outbound (client-side) proxy.
 Furthermore, since these rules are added to individual routes, they may need to
 be duplicated many many times. It would be preferable to define a policy once
 and have it apply to an arbitrary number of routes.
+
+### Prior art: Gateway API
 
 ## Brain Dump
 
