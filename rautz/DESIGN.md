@@ -74,6 +74,24 @@ to be able to express a similar set of configurations on outbound traffic.
 1. Support per-route authorization policies
 2. Specify a roadmap for Linkerd's policy/configuration ecosystem
 
+### Roadmap: HTTP/gRPC Policies
+
+* Inbound
+  * Authorization
+  * Rate limiting
+  * Header rewriting
+  * Telemetry
+* Outbound
+  * Circuit Breakers
+  * Failure injection
+  * Header rewriting
+  * Telemetry
+  * Retries
+    * Hedges
+  * Logical Routing
+    * Alternates
+    * Unions
+
 ## Prior art: `ServiceProfiles`
 
 Linkerd already includes a resource type that describes per-route configuration:
@@ -309,6 +327,11 @@ library/framework (including OpenAPI) use a simpler syntax that avoids:
 It seems preferable to use a less flexible tool that is specifically designed
 for path matching. There's a ton of prior art here. We like Go's
 [`httprouter`][gojshr] library, for instance. It's simple and principled.
+
+### Problem: Only method & path oriented
+
+Service profiles may only match on methods and paths. There is no way to use
+other request metadata--like query parameters or headers--to influence routing.
 
 ### Problem: Coupling route descriptions with policies
 
