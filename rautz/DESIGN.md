@@ -3,28 +3,61 @@
 ## Goals
 
 1. Support per-route authorization policies
-2. Specify a roadmap for Linkerd's policy/configuration ecosystem
+2. Determine a roadmap for Linkerd's policy/configuration ecosystem
 
 ## Types of Policies
 
-* Inbound
-  * Authorization
-  * Rate limiting
-  * Header rewriting
-  * Telemetry
-* Outbound
-  * Circuit Breakers
-  * Failure injection
-  * Header rewriting
-  * Telemetry
-  * Retries
-    * Hedges
-  * Logical Routing
-    * Alternates
-    * Unions
-  * Proxy transport (HTTP/2 upgrading, etc)
+Meshed traffic policies can apply in one of two ways:
+
+### Inbound policies
+
+_Inbound_ policies are enforced on the server-side of a connection. These
+policies apply regardless of whether the connection originates from a meshed or
+unmeshed client. They _protect_ a server from receiving unwanted traffic by
+configuring:
+
+* Authorization
+* Rate limiting
+* Header rewriting
+* Telemetry
+
+#### Kubelet probes
+
+Kubelet probes are of special concern because they are critical to Kubernetes'
+pod & service lifecycle management.
+
+Kubelet probes are always unmeshed and cannot be configured to use HTTPS. There
+is no standardized way to identify the set of expected Kubelet IPs in a cluster
+and this configuration is highly environment-specific. It is therefore
+challenging to construct policies based on source IP address.
+
+Furthermore, though it is broadly considered to be an anti-pattern, we have
+found that many applications comingle application endpoints with administrative
+health-checking endpoints on a single HTTP server that otherwise requires
+authorization. It is therefore necessary to be able to be able to target
+authorization policies at individual HTTP routes.
+
+### Outbound policies
+
+_Outbound_ policies are enforced on the client-side of a connection and apply to
+both meshed and unmeshed traffic. They generally address _reliability_ concerns
+by configuring:
+
+* Circuit Breakers
+* Failure injection
+* Header rewriting
+* Retries
+  * Hedges
+* Logical Routing
+  * Alternates
+  * Unions
+  * Load balancing configuration
+* Meshed transport (HTTP/2 upgrading, etc)
+* Telemetry
 
 ## Background
+
+### `AuthorizationPolicy`
 
 Linkerd now supports an `AuthorizationPolicy` type, which expresses a set of
 required authentications for a target. Targets are always resources in the local
@@ -79,8 +112,8 @@ spec:
 This is a great default, but it's a little impractical. Kubelet, for instance,
 needs unauthenticated access to probe endpoints.
 
-**How do we express that a few HTTP endpoints are unauthenticated while
-otherwise requiring authentication?** It's not feasible to expect users to
+__How do we express that a few HTTP endpoints are unauthenticated while
+otherwise requiring authentication?__ It's not feasible to expect users to
 separate authentication requirements by port. There needs to be a way to
 override the coarser namespace- or server-wide default policy to grant
 unauthenticated access to a few HTTP endpoints.
@@ -114,7 +147,7 @@ There's obvious utility here, but we've learned a lot about the problems of the
 and are not strictly associated with any in-cluster resources. This decision
 reflects the state of the Linkerd proxy at the time that the resource was
 introduced: all outbound routing decisions were made based on host headers.
-This approach has changed over time. Now, host are almost always *ignored*.
+This approach has changed over time. Now, host are almost always _ignored_.
 
 The use of DNS names severely limits the utility of `ServiceProfiles` on the
 inbound/server-side. Because the client controls setting this--and clients may
@@ -140,7 +173,7 @@ When a proxy receives an outbound connection, it looks up the profile by the
 target IP. If the target IP matches the clusterIP of a Kubernetes service, this
 service's FQDN is used to lookup a `ServiceProfile` resource. The controller
 watches for a profile named `<svc>.<svc-ns>.svc.<cluster-domain>` in the
-*client's namespace*. If no such resource exists, the controller looks for a
+_client's namespace_. If no such resource exists, the controller looks for a
 profile named `<svc>.<svc-ns>.svc.<cluster-domain>` in *`svc-ns`*.  If no profile
 resources exists for the server, a default profile is returned.
 
@@ -177,7 +210,7 @@ will never be resolved for requests that target the pod IP, etc.
 
 #### Problem: Ingresses <a id="sp-ingress"></a>
 
-Proxies may be configured in *ingress mode*. In this mode, the proxy uses
+Proxies may be configured in _ingress mode_. In this mode, the proxy uses
 per-request headers to route requests, ignoring the original destination address
 of the connection.  When the proxy is configured in this mode, the outbound
 proxy ONLY supports HTTP traffic[^1].
@@ -347,12 +380,22 @@ Furthermore, since these rules are added to individual routes, they may need to
 be duplicated many many times. It would be preferable to define a policy once
 and have it apply to an arbitrary number of routes.
 
-### Prior art: Gateway API
+### The Gateway API
+
+There's a new set of APIs being implemented to replace the `Ingress` APIs.
+We'll want to be at least able to adapt resources in the gateway API to be used
+by Linkerd; but perhaps they can be used natively?
+
+#### `HTTPRoute`
+
+Each `HttpRoute` has a `parentRef` that is used to bind
+
+[gwapi]: https://gateway-api.sigs.k8s.io/v1alpha2/references/spec/
 
 ## Brain Dump
 
-Abstractly, we could imagine a *policy* targeting a *request selector*, which is
-bound to a specific *proxy scope* (like a `Server`):
+Abstractly, we could imagine a _policy_ targeting a _request selector_, which is
+bound to a specific _proxy scope_ (like a `Server`):
 
 ```text
         ,----------,
@@ -486,7 +529,7 @@ We could create a `HeaderRewritePolicy` that only applies to a `Server` and
 describes all possible rewrites on a resource:
 
 ```yaml
-# Rules apply in order so that `x-foobar` is **always** cleared when
+# Rules apply in order so that `x-foobar` is __always__ cleared when
 # `host: example.com` is set.
 kind: HeaderRewritePolicy
 metadata:
@@ -517,7 +560,7 @@ spec:
 This would still require that an admission controller attempts to reject
 policies that would conflict, but it's a step towards deterministic behavior.
 
-***Maybe we don't really care?*** This trivial example seems pretty easy to
+___Maybe we don't really care?___ This trivial example seems pretty easy to
 *avoid. But there may be other examples where this ambiguity is more
 problematic. On the other hand, there are other places in the Kubernetes API
 where this ambiguity is punted to the user: for instance `Deployment` (and
