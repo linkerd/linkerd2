@@ -135,7 +135,7 @@ async fn outbound_serve(
     let listener = TcpListener::bind(listen_addr)
         .await
         .expect("Failed to bind server");
-    info!(%listen_addr, "Listening for incoming connections");
+    info!("Listening for incoming connections");
 
     if ready_tx.send(Ok(())).is_err() {
         error!("Failed to send 'ready' signal, receiver dropped");
