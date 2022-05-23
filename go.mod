@@ -173,5 +173,8 @@ require (
 // this should be removed when helm upgrades that dependency on runc
 replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.3
 
+// Addresses https://github.com/advisories/GHSA-crp2-qrr5-8pq7
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.1
+
 // Addresses https://github.com/advisories/GHSA-qq97-vm5h-rrhg
 replace github.com/docker/distribution => github.com/docker/distribution v2.8.1+incompatible
