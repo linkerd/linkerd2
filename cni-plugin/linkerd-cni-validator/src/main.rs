@@ -73,10 +73,10 @@ async fn main() -> Result<()> {
         _ = shutdown_tx.signaled() => {
             if let Err(e) = server_task.await.expect("Failed to run outbound server task") {
                 error!(error = %e, "Failed to validate outbound routing configuration");
-                std::process::exit(UNSUCCESSFUL_EXIT_CODE);
+            } else {
+                error!("Failed to validate due to server terminating early");
             }
-
-            error!("Failed to validate due to server terminating early");
+            
             std::process::exit(UNSUCCESSFUL_EXIT_CODE);
         }
     }
