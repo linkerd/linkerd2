@@ -12,9 +12,15 @@ ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
 WORKDIR /build
 COPY Cargo.toml Cargo.lock .
 COPY cni-plugin/linkerd-cni-validator /build/
+RUN cargo new policy-controller --lib
+RUN cargo new policy-controller/core --lib
+RUN cargo new policy-controller/grpc --lib
+RUN cargo new policy-controller/k8s/api --lib
+RUN cargo new policy-controller/k8s/index --lib
+RUN cargo new policy-test --lib
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.60.0,source=/usr/local/cargo,target=/usr/local/cargo \
-    cargo fetch --locked
+    cargo fetch
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.60.0,source=/usr/local/cargo,target=/usr/local/cargo \
     cargo build --locked --target=aarch64-unknown-linux-gnu --release --package=linkerd-cni-validator && \

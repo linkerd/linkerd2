@@ -12,9 +12,15 @@ ENV CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
 WORKDIR /build
 COPY Cargo.toml Cargo.lock .
 COPY cni-plugin/linkerd-cni-validator /build/
+RUN cargo new policy-controller --lib
+RUN cargo new policy-controller/core --lib
+RUN cargo new policy-controller/grpc --lib
+RUN cargo new policy-controller/k8s/api --lib
+RUN cargo new policy-controller/k8s/index --lib
+RUN cargo new policy-test --lib
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.60.0,source=/usr/local/cargo,target=/usr/local/cargo \
-    cargo fetch --locked
+    cargo fetch
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.60.0,source=/usr/local/cargo,target=/usr/local/cargo \
     cargo build --locked --target=armv7-unknown-linux-gnueabihf --release --package=linkerd-cni-validator && \
