@@ -5,7 +5,7 @@
 1. Support per-route authorization policies
 2. Determine a roadmap for Linkerd's policy/configuration ecosystem
 
-## Types of Policies
+## Policies
 
 Meshed traffic policies can apply in one of two ways:
 
@@ -18,6 +18,7 @@ configuring:
 
 * Authorization
 * Rate limiting
+* Timeouts
 * Header rewriting
 * Telemetry
 
@@ -32,7 +33,7 @@ and this configuration is highly environment-specific. It is therefore
 challenging to construct policies based on source IP address.
 
 Furthermore, though it is broadly considered to be an anti-pattern, we have
-found that many applications comingle application endpoints with administrative
+found that many applications commingle application endpoints with administrative
 health-checking endpoints on a single HTTP server that otherwise requires
 authorization. It is therefore necessary to be able to be able to target
 authorization policies at individual HTTP routes.
@@ -53,11 +54,30 @@ by configuring:
   * Unions
   * Load balancing configuration
 * Meshed transport (HTTP/2 upgrading, etc)
+* Timeouts
 * Telemetry
+
+### Who controls policies?
+
+Let's consider what happens when a pod in the `client` namespace sends requests
+to a pod in the `server` namespace.
+
+The `server` namespace may advertise a `Service` so that clients can discover
+a set of pods over which traffic should be distributed. The server owner
+obviously controls the inbound policies that protect the service; but both the
+server owner and the client owner may be interested in influencing outbound
+policies that impact reliability. For instance, load balancing concerns--while
+implemented on the client-side of a connection--are almost entirely a server
+owner's concern. The set of routes exposed by a service is almost definitely a
+server-owner concern.
+
+However, clients may have differing retry requirements, or they may wish to
+enforce timeouts more aggressively than the server. Similarly, failure injection
+is also controlled on the client side.
 
 ## Background
 
-### `AuthorizationPolicy`
+### Linkerd `AuthorizationPolicies`
 
 Linkerd now supports an `AuthorizationPolicy` type, which expresses a set of
 required authentications for a target. Targets are always resources in the local
@@ -126,7 +146,7 @@ Furthermore, we may wish to express other types of policies--timeouts, retries,
 or header-rewriting rules, for instance--on a per-route basis. And we will want
 to be able to express a similar set of configurations on outbound traffic.
 
-### Prior art: `ServiceProfiles`
+### Linkerd `ServiceProfiles`
 
 Linkerd already includes a resource type that describes per-route configuration:
 `ServiceProfiles`. The `ServiceProfile` custom resource type accomplishes a few
@@ -388,7 +408,9 @@ by Linkerd; but perhaps they can be used natively?
 
 #### `HTTPRoute`
 
-Each `HttpRoute` has a `parentRef` that is used to bind
+Each `HttpRoute` has a `parentRef`. This field generally references a `Gateway`
+resource; but it could potentially bind to other resources (such as `Server`)
+resources.
 
 [gwapi]: https://gateway-api.sigs.k8s.io/v1alpha2/references/spec/
 
