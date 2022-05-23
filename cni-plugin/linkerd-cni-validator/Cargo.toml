@@ -10,5 +10,5 @@ publish = false
 anyhow = "1.0.57"
 clap = { version = "3.1.16", features = ["derive", "env"] }
 tokio = { version = "1", features = ["rt", "macros", "net", "sync", "time", "io-util"] }
-kubert = { version = "0.6.0", features = ["log", "shutdown"] }
+kubert = { version = "0.7.0", features = ["log", "shutdown"] }
 tracing = "0.1"

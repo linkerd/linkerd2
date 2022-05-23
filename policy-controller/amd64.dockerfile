@@ -8,8 +8,8 @@ WORKDIR /build
 COPY bin/scurl bin/scurl
 COPY Cargo.toml Cargo.lock .
 COPY policy-controller policy-controller
-RUN cargo new linkerd-cni-validator --lib
 RUN cargo new policy-test --lib
+RUN cargo new cni-plugin/linkerd-cni-validator --lib
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.60.0,source=/usr/local/cargo,target=/usr/local/cargo \
     cargo fetch
