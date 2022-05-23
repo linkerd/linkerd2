@@ -42,6 +42,12 @@ jobs:
         docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
         docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
         component: ${{ matrix.component }}
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@main
+    - name: Sign the images with Cosign
+      env:
+        COSIGN_EXPERIMENTAL: 1
+      run: cosign sign $DOCKER_REGISTRY/${{ matrix.component }}:$TAG
     - name: Create artifact with CLI
       # windows_static_cli_tests below needs this because it can't create linux containers
       # inside windows
@@ -96,6 +102,12 @@ jobs:
           -t $DOCKER_REGISTRY/policy-controller:$TAG-${{ matrix.arch }} \
           --cache-from type=local,src=${DOCKER_BUILDKIT_CACHE} \
           --cache-to type=local,dest=${DOCKER_BUILDKIT_CACHE},mode=max
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@main
+    - name: Sign the image with Cosign
+      env:
+        COSIGN_EXPERIMENTAL: 1
+      run: cosign sign $DOCKER_REGISTRY/policy-controller:$TAG-${{ matrix.arch }}
     - name: Prune docker layers cache
       # changes generate new images while the existing ones don't get removed
       # so we manually do that to avoid bloating the cache
