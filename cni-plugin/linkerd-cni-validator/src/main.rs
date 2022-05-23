@@ -1,10 +1,14 @@
-use std::net::{IpAddr, SocketAddr};
+use std::{
+    net::{IpAddr, SocketAddr},
+    process::exit,
+};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::Parser;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
+    sync::oneshot,
 };
 use tracing::{debug, error, info, Instrument};
 
@@ -52,7 +56,7 @@ async fn main() -> Result<()> {
     info!(%outbound_proxy_addr, %target_addr, "Validating outbound traffic is redirected to proxy's outbound port");
 
     let (shutdown_tx, shutdown_rx) = kubert::shutdown::sigint_or_sigterm()?;
-    let (ready_tx, ready_rx) = tokio::sync::oneshot::channel::<Result<()>>();
+    let (ready_tx, ready_rx) = oneshot::channel::<Result<()>>();
 
     let server_task = tokio::spawn(outbound_serve(outbound_proxy_addr, ready_tx, shutdown_rx));
 
@@ -63,7 +67,7 @@ async fn main() -> Result<()> {
             let validation_result = task.expect("Failed to run validator task");
             if let Err(err) = validation_result {
                 error!(error = %err, "Failed validation");
-                std::process::exit(UNSUCCESSFUL_EXIT_CODE);
+                exit(UNSUCCESSFUL_EXIT_CODE);
             }
 
             info!("Validation passed successfully...exiting");
@@ -76,34 +80,37 @@ async fn main() -> Result<()> {
             } else {
                 error!("Failed to validate due to server terminating early");
             }
-            
-            std::process::exit(UNSUCCESSFUL_EXIT_CODE);
+
+            exit(UNSUCCESSFUL_EXIT_CODE);
         }
     }
 }
 
+#[tracing::instrument(
+    level = "debug",
+    skip(ready_rx),
+    fields(original_dst = %target_addr),
+    )]
 async fn validate_outbound_redirect(
     target_addr: SocketAddr,
-    ready_rx: tokio::sync::oneshot::Receiver<Result<()>>,
+    ready_rx: oneshot::Receiver<Result<()>>,
 ) -> Result<()> {
     let timeout = std::time::Duration::from_secs(120);
-    if (tokio::time::timeout(timeout, ready_rx).await).is_err() {
+    if tokio::time::timeout(timeout, ready_rx).await.is_err() {
         anyhow::bail!("timed-out ({:?}) waiting for server to be ready", timeout);
     }
 
     let mut stream = {
-        debug!(original_dst = %target_addr, "Building validation client");
+        debug!("Building validation client");
         let socket = TcpStream::connect(target_addr).await?;
-        let peer = socket.peer_addr()?;
-        debug!(original_dst = %peer, "Client connected to validation server");
+        assert_eq!(target_addr, socket.peer_addr().unwrap());
+        debug!("Client connected to validation server");
         socket
     };
 
     tokio::select! {
         is_readable = stream.readable() => {
-            if let Err(e) = is_readable {
-                anyhow::bail!("cannot read off client socket {}", e);
-            }
+            is_readable.context("cannot read off client socket")?;
         }
 
         () = tokio::time::sleep(timeout) => {
@@ -115,21 +122,19 @@ async fn validate_outbound_redirect(
     let read_sz = stream.read(&mut buf[..REDIRECT_RESPONSE.len()]).await?;
     let resp = String::from_utf8(buf[..REDIRECT_RESPONSE.len()].to_vec())?;
     debug!(redirect_response = %resp, bytes_read = %read_sz);
-
-    if resp == REDIRECT_RESPONSE {
-        Ok(())
-    } else {
-        anyhow::bail!(
-            "expected client to receive {:?}, got {:?} instead",
-            REDIRECT_RESPONSE,
-            resp,
-        );
-    }
+    anyhow::ensure!(
+        resp == REDIRECT_RESPONSE,
+        "expected client to receive {:?}, got {:?} instead",
+        REDIRECT_RESPONSE,
+        resp
+    );
+    Ok(())
 }
+
 #[tracing::instrument(name = "outbound_server", skip(ready_tx, shutdown))]
 async fn outbound_serve(
     listen_addr: SocketAddr,
-    ready_tx: tokio::sync::oneshot::Sender<Result<()>>,
+    ready_tx: oneshot::Sender<Result<()>>,
     shutdown: kubert::shutdown::Watch,
 ) -> Result<()> {
     let listener = TcpListener::bind(listen_addr)
@@ -143,15 +148,15 @@ async fn outbound_serve(
     }
 
     let resp_bytes = REDIRECT_RESPONSE.as_bytes();
-    tokio::spawn(handle_conn(listener, resp_bytes));
+    tokio::spawn(accept(listener, resp_bytes));
 
     let _handle = shutdown.signaled().await;
     debug!("Received shutdown signal");
     Ok(())
 }
 
-#[tracing::instrument(name = "outbound_handler", skip_all)]
-async fn handle_conn(listener: TcpListener, resp_bytes: &'static [u8]) {
+#[tracing::instrument(name = "outbound_accept", skip_all)]
+async fn accept(listener: TcpListener, resp_bytes: &'static [u8]) {
     loop {
         let (mut stream, client_addr) = listener
             .accept()

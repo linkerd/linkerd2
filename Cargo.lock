@@ -910,6 +910,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "kubert"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26e7528462e3f48d9a5693e7c27ecb6c7e1615829cd6ff542def596afdd9e944"
+dependencies = [
+ "drain",
+ "futures-core",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -942,7 +956,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "kubert",
+ "kubert 0.7.0",
  "tokio",
  "tracing",
 ]
@@ -961,7 +975,7 @@ dependencies = [
  "jemallocator",
  "k8s-openapi",
  "kube",
- "kubert",
+ "kubert 0.6.0",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-grpc",
  "linkerd-policy-controller-k8s-api",
@@ -1026,7 +1040,7 @@ dependencies = [
  "ahash",
  "anyhow",
  "futures",
- "kubert",
+ "kubert 0.6.0",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
  "maplit",

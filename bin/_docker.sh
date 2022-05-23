@@ -33,7 +33,7 @@ export DOCKER_IMAGES=(${DOCKER_IMAGES:-
     cni-plugin
     controller
     policy-controller
-    linkerd-cni-validation
+    linkerd-cni-validator
     metrics-api
     debug
     proxy
