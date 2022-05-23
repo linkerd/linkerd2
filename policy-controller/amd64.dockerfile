@@ -12,7 +12,7 @@ RUN cargo new linkerd-cni-validator --lib
 RUN cargo new policy-test --lib
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.60.0,source=/usr/local/cargo,target=/usr/local/cargo \
-    cargo fetch --locked
+    cargo fetch
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.60.0,source=/usr/local/cargo,target=/usr/local/cargo \
     cargo build --frozen --target=x86_64-unknown-linux-gnu --release --package=linkerd-policy-controller && \
