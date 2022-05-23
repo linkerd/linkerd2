@@ -153,7 +153,7 @@ jobs:
           docker save "ghcr.io/linkerd/${{ matrix.component }}:$TAG" \
             >/home/runner/archives/${{ matrix.component }}.tar
       - name: Upload artifact
-        uses: actions/upload-artifact@6673cd052c4cd6fcf4b4e6e60ea986c889389535
+        uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8
         with:
           name: image-archives
           path: /home/runner/archives
@@ -187,7 +187,7 @@ jobs:
           jq -r '.["rust-binaries"] | to_entries | .[].value | .["binary-path"]' target/nextest.json | sed -e "s,^$PWD/,," \
             | xargs tar -czvf /home/runner/archives/nextest.tar.gz target/nextest.json target/metadata.json
       - name: Upload artifact
-        uses: actions/upload-artifact@6673cd052c4cd6fcf4b4e6e60ea986c889389535
+        uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8
         with:
           name: image-archives
           path: /home/runner/archives
