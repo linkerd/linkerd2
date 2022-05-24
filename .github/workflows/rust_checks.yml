@@ -1,4 +1,4 @@
-name: Rust Static Checks
+name: Rust Static checks
 
 on:
   pull_request:
