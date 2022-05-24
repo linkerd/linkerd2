@@ -43,15 +43,15 @@ fi
 
 # Commit message
 (
-    echo "proxy: ${new_proxy_version}"
-    echo ""
+    echo "proxy: ${new_proxy_version}
+"
     # Include the log message, stripping the version header and GPG trailer.
     git tag -l --format='%(contents)' "$new_proxy_rev" | \
         sed -e 1,2d -e '/^---*BEGIN /,$d'
-    echo ""
+    echo ''
     # Include the history, with references to pull requests.
-    echo "---"
-    echo ""
+    echo "---
+"
     refs="${old_proxy_rev}..${new_proxy_rev}"
     git log --pretty=oneline --abbrev-commit --reverse "$refs" | \
         sed -Ee 's,^[a-f0-9]{7} ,* ,' \

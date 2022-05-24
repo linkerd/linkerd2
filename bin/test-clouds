@@ -43,7 +43,7 @@ check_linkerd_binary() {
         printf '\nFailed to run linkerd version command\n'
         exit $exit_code
     fi
-    printf '[ok]\n'
+    echo '[ok]'
 }
 
 if [ "$#" -ne 1 ]; then

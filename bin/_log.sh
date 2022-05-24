@@ -5,12 +5,12 @@ set -eu
 # shell trace logging is disabled by default; enable with TRACE=1
 
 export TRACE="${TRACE:-}"
-if [ -n "$TRACE" ]; then
+if [ "$TRACE" ]; then
     set -x
 fi
 
 log_debug() {
-    if [ -z "$TRACE" ] && [ -n "${BUILD_DEBUG:-}" ]; then
+    if [ -z "$TRACE" ] && [ "${BUILD_DEBUG:-}" ]; then
         echo "$@" >&2
     fi
 }

@@ -11,7 +11,7 @@
 
 set -eo pipefail
 
-cluster=""
+cluster=''
 is_kind=false
 is_k3d=false
 
@@ -20,22 +20,22 @@ while :
 do
   case $1 in
     -h|--help)
-      echo "Install Linkerd with the changes made in a GitHub Pull Request."
-      echo ""
-      echo "Usage:"
-      echo "    --cluster: The name of the cluster to use"
-      echo ""
-      echo "    # Install Linkerd into the current cluster"
-      echo "    bin/install-pr 1234"
-      echo ""
-      echo "    # Install Linkerd into the current k3d cluster"
-      echo "    bin/install-pr --k3d 1234"
-      echo ""
-      echo "    # Install Linkerd into the current KinD cluster"
-      echo "    bin/install-pr --kind 1234"
-      echo ""
-      echo "    # Install Linkerd into the 'pr-1234' k3d cluster"
-      echo "    bin/install-pr --k3d --cluster pr-1234 1234"
+      echo "Install Linkerd with the changes made in a GitHub Pull Request.
+
+Usage:
+    --cluster: The name of the cluster to use
+
+    # Install Linkerd into the current cluster
+    bin/install-pr 1234
+
+    # Install Linkerd into the current k3d cluster
+    bin/install-pr --k3d 1234
+
+    # Install Linkerd into the current KinD cluster
+    bin/install-pr --kind 1234
+
+    # Install Linkerd into the 'pr-1234' k3d cluster
+    bin/install-pr --k3d --cluster pr-1234 1234"
       exit 0
       ;;
     --cluster)
@@ -62,9 +62,9 @@ pr=$1
 
 if [ -z "$pr" ]
 then
-  echo "Error: ${0##*/} accepts 1 argument" >&2
-  echo "Usage:" >&2
-  echo "    ${0##*/} ####" >&2
+  echo "Error: ${0##*/} accepts 1 argument
+Usage:
+    ${0##*/} ####" >&2
   exit 1
 fi
 
@@ -75,8 +75,8 @@ then
   exit 1
 fi
 
-linkerd2_pulls_url="https://api.github.com/repos/linkerd/linkerd2/pulls"
-linkerd2_integration_url="https://api.github.com/repos/linkerd/linkerd2/actions/workflows/integration_tests.yml"
+linkerd2_pulls_url='https://api.github.com/repos/linkerd/linkerd2/pulls'
+linkerd2_integration_url='https://api.github.com/repos/linkerd/linkerd2/actions/workflows/integration_tests.yml'
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
@@ -93,12 +93,12 @@ dir=$(mktemp -d -t "linkerd-pr-$pr.XXXXXXXXXX")
 
 cd "$dir" || exit
 
-echo "### Downloading images ###"
+echo '### Downloading images ###'
 
 "$bindir"/scurl -o archive.zip -H "$auth" "$archive"
 unzip -o archive.zip -d image-archives/
 
-echo "### Loading images into Docker ###"
+echo '### Loading images into Docker ###'
 
 image=$(docker load -i image-archives/cli-bin.tar | sed 's/Loaded image: //')
 tag=$(echo "$image" | cut -f 2 -d ":")
@@ -113,11 +113,11 @@ then
   # When importing into k3d or kind, the images must be renamed to use the
   # proper registry so that users don't have to change the default install
   # output.
-  docker_rename_registry "$tag" "ghcr.io/linkerd" "cr.l5d.io/linkerd"
-  distro="k3d"
+  docker_rename_registry "$tag" 'ghcr.io/linkerd' 'cr.l5d.io/linkerd'
+  distro=k3d
   if [ "$is_kind" = true ]
   then
-    distro="kind"
+    distro=kind
   fi
   export TAG="$tag"
   "$bindir"/image-load --"$distro" --cluster "$cluster"
@@ -136,13 +136,13 @@ rm -rf "$dir"
 
 case $(uname) in
   Darwin)
-    platform="darwin"
+    platform=darwin
     ;;
   Linux)
-    platform="linux"
+    platform=linux
     ;;
   *)
-    platform="windows"
+    platform=windows
     ;;
 esac
 
@@ -151,6 +151,6 @@ esac
 export DOCKER_REGISTRY=ghcr.io/linkerd
 linkerd=$("$bindir"/docker-pull-binaries "$tag" | awk -v platform=$platform '$0 ~ platform')
 
-echo ""
-echo "Linkerd CLI available:"
-echo "$linkerd"
+echo "
+Linkerd CLI available:
+$linkerd"

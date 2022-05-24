@@ -45,7 +45,7 @@ docker_repo() {
     repo=$1
 
     name=$repo
-    if [ -n "${DOCKER_REGISTRY:-}" ]; then
+    if [ "${DOCKER_REGISTRY:-}" ]; then
         name="$DOCKER_REGISTRY/$name"
     fi
 
@@ -65,19 +65,19 @@ docker_build() {
     rootdir=${ROOTDIR:-$( cd "$bindir"/.. && pwd )}
     cache_params=""
 
-    if [ -n "$DOCKER_BUILDKIT_CACHE" ]; then
+    if [ "$DOCKER_BUILDKIT_CACHE" ]; then
       cache_params="--cache-from type=local,src=${DOCKER_BUILDKIT_CACHE} --cache-to type=local,dest=${DOCKER_BUILDKIT_CACHE},mode=max"
     fi
 
     output_params="--load"
     if [ "$DOCKER_TARGET" = 'multi-arch' ]; then
       output_params="--platform $SUPPORTED_ARCHS"
-      if [ -n "$DOCKER_PUSH" ]; then
+      if [ "$DOCKER_PUSH" ]; then
         output_params+=" --push"
       else
-        echo "Error: env DOCKER_PUSH=1 is missing"
-        echo "When building the multi-arch images it is required to push the images to the registry"
-        echo "See https://github.com/docker/buildx/issues/59 for more details"
+        echo 'Error: env DOCKER_PUSH=1 is missing
+When building the multi-arch images it is required to push the images to the registry
+See https://github.com/docker/buildx/issues/59 for more details'
         exit 1
       fi
     fi
