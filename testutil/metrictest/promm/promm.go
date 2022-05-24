@@ -84,7 +84,8 @@ type LabelMatcher func(string) bool
 // Labels is used for selecting series with matching labels.
 type Labels map[string]LabelMatcher
 
-var _ Expression = &Labels{}
+// Make sure Labels implement Expression.
+var _ Expression = Labels{}
 
 func (l Labels) matches(s *model.Sample) bool {
 	for k, m := range l {
