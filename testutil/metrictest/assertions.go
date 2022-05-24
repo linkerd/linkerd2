@@ -92,7 +92,7 @@ func HasOutboundHTTPRequestNoTLS(metrics, ns string) error {
 	return nil
 }
 
-// HasInboundSecureTCPTraffic checks there is a series matching:
+// HasInboundTCPTrafficWithTLS checks there is a series matching:
 // tcp_open_total{
 //   direction="inbound",
 //   peer="src",
@@ -103,7 +103,7 @@ func HasOutboundHTTPRequestNoTLS(metrics, ns string) error {
 //   target_addr=~"[0-9\.]+:[0-9]+",
 //   target_ip=~"[0-9\.]+"
 // }
-func HasInboundSecureTCPTraffic(metrics, ns string) error {
+func HasInboundTCPTrafficWithTLS(metrics, ns string) error {
 	m := promm.NewMatcher(
 		"tcp_open_total",
 		promm.Labels{

@@ -93,7 +93,7 @@ func TestOpaquePortsCalledByServiceTarget(t *testing.T) {
 					metrictest.HasOutboundTCPWithTLSAndNoAuthority,
 				),
 				appName:   opaquePodApp,
-				appChecks: checks(metrictest.HasInboundSecureTCPTraffic),
+				appChecks: checks(metrictest.HasInboundTCPTrafficWithTLS),
 			},
 			{
 				name:   "calling a meshed service when opaque annotation is on receiving service",
@@ -103,7 +103,7 @@ func TestOpaquePortsCalledByServiceTarget(t *testing.T) {
 					metrictest.HasOutboundTCPWithTLSAndAuthority,
 				),
 				appName:   opaqueSvcApp,
-				appChecks: checks(metrictest.HasInboundSecureTCPTraffic),
+				appChecks: checks(metrictest.HasInboundTCPTrafficWithTLS),
 			},
 			{
 				name:   "calling an unmeshed service when opaque annotation is on service",
@@ -145,7 +145,7 @@ func TestOpaquePortsCalledByPodTarget(t *testing.T) {
 					metrictest.HasOutboundTCPWithTLSAndNoAuthority,
 				),
 				appName:   opaquePodApp,
-				appChecks: checks(metrictest.HasInboundSecureTCPTraffic),
+				appChecks: checks(metrictest.HasInboundTCPTrafficWithTLS),
 			},
 			{
 				name:   "calling a meshed service when opaque annotation is on receiving service",
@@ -157,7 +157,7 @@ func TestOpaquePortsCalledByPodTarget(t *testing.T) {
 					metrictest.HasOutboundTCPWithTLSAndNoAuthority,
 				),
 				appName:   opaqueSvcApp,
-				appChecks: checks(metrictest.HasInboundSecureTCPTraffic),
+				appChecks: checks(metrictest.HasInboundTCPTrafficWithTLS),
 			},
 			{
 				name:   "calling an unmeshed service",
