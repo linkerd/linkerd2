@@ -200,7 +200,7 @@ func HasOutboundTCPWithTLSAndAuthority(metrics, ns string) error {
 		promm.HasPositiveValue())
 	ok, err := m.HasMatchInString(metrics)
 	if err != nil {
-		return fmt.Errorf("failed to run a check of against the provided metrics: %w", err)
+		return fmt.Errorf("failed to run a check against the provided metrics: %w", err)
 	}
 	if !ok {
 		return fmt.Errorf("failed to find expected metric for outbound TLS TCP traffic\n%s", metrics)
