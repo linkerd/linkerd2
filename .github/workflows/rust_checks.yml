@@ -1,4 +1,4 @@
-name: Policy Controller
+name: Rust Static Checks
 
 on:
   pull_request:
