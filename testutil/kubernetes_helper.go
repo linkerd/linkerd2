@@ -219,7 +219,7 @@ func (h *KubernetesHelper) GetResources(ctx context.Context, containerName, depl
 func (h *KubernetesHelper) CheckPods(ctx context.Context, namespace string, deploymentName string, replicas int) error {
 	var checkedPods []corev1.Pod
 
-	f := func() error {
+	err := h.retryFor(60*time.Minute, func() error {
 		checkedPods = []corev1.Pod{}
 		pods, err := h.GetPodsForDeployment(ctx, namespace, deploymentName)
 		if err != nil {
@@ -249,14 +249,6 @@ func (h *KubernetesHelper) CheckPods(ctx context.Context, namespace string, depl
 		}
 
 		return nil
-	}
-
-	err := h.retryFor(60*time.Minute, func() error {
-		err := f()
-		if err != nil {
-			fmt.Println(err)
-		}
-		return err
 	})
 
 	if err != nil {
