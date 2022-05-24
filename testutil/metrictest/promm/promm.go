@@ -36,9 +36,6 @@ func (fc funcMatcher) matches(sp *model.Sample) bool {
 	return fc(sp)
 }
 
-// LabelMatcher can match or reject a label's value.
-type LabelMatcher func(string) bool
-
 // NewMatcher will match series name (exactly) and all the additional matchers.
 func NewMatcher(name string, ms ...Expression) *Matcher {
 	return &Matcher{
@@ -80,6 +77,9 @@ func (e *Matcher) sampleMatches(s *model.Sample) bool {
 	}
 	return true
 }
+
+// LabelMatcher can match or reject a label's value.
+type LabelMatcher func(string) bool
 
 // Labels is used for selecting series with matching labels.
 type Labels map[string]LabelMatcher
