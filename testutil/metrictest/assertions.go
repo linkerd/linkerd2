@@ -56,7 +56,7 @@ func HasOutboundHTTPRequestWithTLS(metrics, ns string) error {
 		return fmt.Errorf("failed to run a check of against the provided metrics: %w", err)
 	}
 	if !ok {
-		return fmt.Errorf("expected to find HTTP outbound requests \n%s", metrics)
+		return fmt.Errorf("expected to find HTTP TLS outbound requests \n%s", metrics)
 	}
 	return nil
 }
@@ -87,7 +87,7 @@ func HasOutboundHTTPRequestNoTLS(metrics, ns string) error {
 		return fmt.Errorf("failed to run a check of against the provided metrics: %w", err)
 	}
 	if !ok {
-		return fmt.Errorf("expected to find HTTP outbound requests \n%s", metrics)
+		return fmt.Errorf("expected to find HTTP non-TLS outbound requests\n%s", metrics)
 	}
 	return nil
 }
