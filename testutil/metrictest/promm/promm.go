@@ -4,11 +4,11 @@
 // It tries to give a similar look and feel as time series in PromQL.
 // So where in PromQL one would write this:
 //
-//	request_total{direction="outbound", target_port~="8\d\d\d"} 30
+//	request_total{direction="outbound", target_port=~"8\d\d\d"} 30
 //
 // In promm, one can write this:
 //
-//	portRE := regex.MustCompile(`8\d\d\d`)
+//	portRE := regex.MustCompile(`^8\d\d\d$`)
 //	promm.NewMatcher("request_total", promm.Labels{
 //		"direction": promm.Equals("outbound"),
 //		"target_port": promm.Like(portRE),
@@ -25,8 +25,8 @@ import (
 	"github.com/prometheus/common/model"
 )
 
-// expression can match or reject one time series.
-type expression interface {
+// Expression can match or reject one time series.
+type Expression interface {
 	matches(sp *model.Sample) bool
 }
 
@@ -36,19 +36,26 @@ func (fc funcMatcher) matches(sp *model.Sample) bool {
 	return fc(sp)
 }
 
-type labelMatcher func(string) bool
+// LabelMatcher can match or reject a label's value.
+type LabelMatcher func(string) bool
 
-func NewMatcher(name string, ms ...expression) *matcher {
-	return &matcher{
-		expressions: append([]expression{hasName(name)}, ms...),
+// NewMatcher will match series name (exactly) and all the additional matchers.
+func NewMatcher(name string, ms ...Expression) *Matcher {
+	return &Matcher{
+		expressions: append([]Expression{hasName(name)}, ms...),
 	}
 }
 
-type matcher struct {
-	expressions []expression
+// Matcher contains a list of expressions, which will be checked against each series.
+type Matcher struct {
+	expressions []Expression
 }
 
-func (e *matcher) HasMatchInString(s string) (bool, error) {
+// HasMatchInString will return:
+// - true, if the provided metrics have a series which matches all expressions,
+// - false, if none of the series matches,
+// - error, if the provided string is not valid Prometheus metrics,
+func (e *Matcher) HasMatchInString(s string) (bool, error) {
 	v, err := extractSamplesVectorFromString(s)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse input string as vector of samples: %w", err)
@@ -56,7 +63,7 @@ func (e *matcher) HasMatchInString(s string) (bool, error) {
 	return e.hasMatchInVector(v), nil
 }
 
-func (e *matcher) hasMatchInVector(v model.Vector) bool {
+func (e *Matcher) hasMatchInVector(v model.Vector) bool {
 	for _, s := range v {
 		if e.sampleMatches(s) {
 			return true
@@ -65,7 +72,7 @@ func (e *matcher) hasMatchInVector(v model.Vector) bool {
 	return false
 }
 
-func (e *matcher) sampleMatches(s *model.Sample) bool {
+func (e *Matcher) sampleMatches(s *model.Sample) bool {
 	for _, m := range e.expressions {
 		if !m.matches(s) {
 			return false
@@ -74,9 +81,10 @@ func (e *matcher) sampleMatches(s *model.Sample) bool {
 	return true
 }
 
-type Labels map[string]labelMatcher
+// Labels is used for selecting series with matching labels.
+type Labels map[string]LabelMatcher
 
-var _ expression = &Labels{}
+var _ Expression = &Labels{}
 
 func (l Labels) matches(s *model.Sample) bool {
 	for k, m := range l {
@@ -88,40 +96,45 @@ func (l Labels) matches(s *model.Sample) bool {
 	return true
 }
 
-func Equals(expected string) labelMatcher {
+// Equals is when you want label value to have an exact value.
+func Equals(expected string) LabelMatcher {
 	return func(s string) bool {
 		return expected == s
 	}
 }
 
-func Like(re *regexp.Regexp) labelMatcher {
+// Like is when you want label value to match a regular expression.
+func Like(re *regexp.Regexp) LabelMatcher {
 	return func(s string) bool {
 		return re.MatchString(s)
 	}
 }
 
-func HasValueLike(f func(float64) bool) funcMatcher {
-	return func(sp *model.Sample) bool {
-		return f(float64(sp.Value))
-	}
-}
-
-func Absent() labelMatcher {
+// Absent is when you want to match series MISSING a specific label.
+func Absent() LabelMatcher {
 	return func(s string) bool {
 		return s == ""
 	}
 }
 
-func HasPositiveValue() expression {
+// HasValueLike is used for selecting time series based on value.
+func HasValueLike(f func(float64) bool) Expression {
+	return funcMatcher(func(sp *model.Sample) bool {
+		return f(float64(sp.Value))
+	})
+}
+
+// HasPositiveValue is used to select time series with a positive value.
+func HasPositiveValue() Expression {
 	return HasValueLike(func(f float64) bool {
 		return f > 0
 	})
 }
 
-func hasName(metricName string) funcMatcher {
-	return func(sp *model.Sample) bool {
+func hasName(metricName string) Expression {
+	return funcMatcher(func(sp *model.Sample) bool {
 		return sp.Metric[model.MetricNameLabel] == model.LabelValue(metricName)
-	}
+	})
 }
 
 func extractSamplesVectorFromString(s string) (model.Vector, error) {

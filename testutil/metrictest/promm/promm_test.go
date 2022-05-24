@@ -12,7 +12,7 @@ var sampleMetrics string
 func TestMatchingString(t *testing.T) {
 	tests := []struct {
 		name    string
-		matcher *matcher
+		matcher *Matcher
 		result  bool
 	}{
 		{
@@ -57,7 +57,7 @@ func TestMatchingString(t *testing.T) {
 			matcher: NewMatcher(
 				"control_response_latency_ms_sum",
 				Labels{
-					"addr": Like(regexp.MustCompile("linkerd-identity-headless.linkerd.svc.cluster.local:[\\d]{4}")),
+					"addr": Like(regexp.MustCompile(`linkerd-identity-headless.linkerd.svc.cluster.local:[\d]{4}`)),
 				}),
 			result: true,
 		},
@@ -66,7 +66,7 @@ func TestMatchingString(t *testing.T) {
 			matcher: NewMatcher(
 				"control_response_latency_ms_sum",
 				Labels{
-					"addr": Like(regexp.MustCompile("linkerd-identity-headless.linkerd.svc.cluster.local:[\\d]{5}")),
+					"addr": Like(regexp.MustCompile(`linkerd-identity-headless.linkerd.svc.cluster.local:[\d]{5}`)),
 				}),
 			result: false,
 		},
