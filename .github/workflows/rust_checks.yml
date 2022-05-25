@@ -32,9 +32,8 @@ jobs:
       image: docker://rust:1.60.0
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
       - run: rustup component add rustfmt
-      - run: cargo fmt --all -- --check | cargo-action-fmt
+      - run: cargo fmt --all -- --check
 
   audit:
     timeout-minutes: 10
