@@ -65,7 +65,7 @@ jobs:
       - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
       - run: cargo fetch --locked
       - name: Run cargo clippy
-        run: cargo clippy --frozen --all --no-deps --message-format=json | cargo-action-fmt
+        run: cargo clippy --frozen --workspace --all-targets --message-format=json | cargo-action-fmt
 
   check:
     timeout-minutes: 20
