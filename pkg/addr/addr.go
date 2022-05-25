@@ -21,11 +21,8 @@ const DefaultWeight = 1
 // string, the IP address should be enclosed in square brackets followed by
 // the port.
 func PublicAddressToString(addr *l5dNetPb.TcpAddress) string {
-	var strIP, strPort string
-	if addr != nil {
-		strIP = PublicIPToString(addr.GetIp())
-		strPort = fmt.Sprint(addr.GetPort())
-	}
+	strIP := PublicIPToString(addr.GetIp())
+	strPort := strconv.Itoa(int(addr.GetPort()))
 	return net.JoinHostPort(strIP, strPort)
 }
 
