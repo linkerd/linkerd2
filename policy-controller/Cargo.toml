@@ -59,4 +59,4 @@ features = [
 ]
 
 [target.x86_64-unknown-linux-gnu.dependencies]
-jemallocator = "0.3"
+jemallocator = "0.5"
