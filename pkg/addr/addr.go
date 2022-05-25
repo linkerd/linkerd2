@@ -21,13 +21,12 @@ const DefaultWeight = 1
 // string, the IP address should be enclosed in square brackets followed by
 // the port.
 func PublicAddressToString(addr *l5dNetPb.TcpAddress) string {
-	var s string
-	if addr.GetIp().GetIpv6() != nil {
-		s = "[%s]:%d"
-	} else {
-		s = "%s:%d"
+	var strIP, strPort string
+	if addr != nil {
+		strIP = PublicIPToString(addr.GetIp())
+		strPort = fmt.Sprint(addr.GetPort())
 	}
-	return fmt.Sprintf(s, PublicIPToString(addr.GetIp()), addr.GetPort())
+	return net.JoinHostPort(strIP, strPort)
 }
 
 // PublicIPToString formats a Viz API IPAddress as a string.
