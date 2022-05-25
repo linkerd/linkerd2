@@ -3,7 +3,7 @@ name: Rust Static checks
 on:
   pull_request:
     paths:
-      - .github/workflows/policy_controller.yml
+      - .github/workflows/rust_checks.yml
       - Cargo.lock
       - Cargo.toml
       - charts/linkerd-control-plane/templates/destination-rbac.yaml
