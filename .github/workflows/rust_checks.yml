@@ -24,8 +24,6 @@ env:
   PROXY_INIT_VERSION: v1.5.3
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
-
-
 jobs:
   fmt:
     timeout-minutes: 5
