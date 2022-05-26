@@ -20,7 +20,7 @@ architecture() {
       arch=arm
       ;;
     amd64|arm64)
-      arch=$arch
+      # keep arch as is
       ;;
     *)
       echo "unsupported architecture: $arch" >&2
@@ -50,7 +50,7 @@ os() {
       ;;
   esac
 
-  if [ -n "$arch" ]; then
+  if [ "$arch" ]; then
     echo "$os-$arch"
   else
     echo "$os"

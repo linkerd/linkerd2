@@ -7,7 +7,7 @@ git_sha_head() {
 }
 
 clean_head() {
-    [ -n "${CI_FORCE_CLEAN:-}" ] || git diff-index --quiet HEAD --
+    [ "${CI_FORCE_CLEAN:-}" ] || git diff-index --quiet HEAD --
 }
 
 named_tag() {
