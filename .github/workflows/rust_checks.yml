@@ -7,8 +7,8 @@ on:
       - Cargo.lock
       - '**/Cargo.toml'
       - deny.toml
-      - policy-controller/**
-      - policy-test/**
+      - '**/*.rs'
+      - policy-*/*.dockerfile
       - rust-toolchain
 
 permissions:
