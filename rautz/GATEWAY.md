@@ -50,9 +50,9 @@ metadata:
   namespace: emojivoto
 spec:
     targetRef:
-      - group: gateway.networking.k8s.io
-        kind: HTTPRoute
-        name: linkerd-admin-probe
+      group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: linkerd-admin-probe
     requiredAuthenticationRefs: []
 ```
 
@@ -87,9 +87,9 @@ metadata:
   namespace: emojivoto
 spec:
     targetRef:
-      - group: gateway.networking.k8s.io
-        kind: HTTPRoute
-        name: linkerd-admin-metrics
+      group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: linkerd-admin-metrics
     requiredAuthenticationRefs:
       - kind: ServiceAccount
         name: prometheus
