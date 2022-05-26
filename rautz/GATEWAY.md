@@ -134,9 +134,9 @@ metadata:
   namespace: emojivoto
 spec:
   targetRef:
-    - group: policy.linkerd.io
-      kind: Server
-      name: linkerd-admin
+    group: policy.linkerd.io
+    kind: Server
+    name: linkerd-admin
   requiredAuthenticationRefs:
     - group: policy.linkerd.io
       kind: NetworkAuthentication
@@ -160,9 +160,9 @@ metadata:
   namespace: emojivoto
 spec:
   targetRef:
-    - group: policy.linkerd.io
-      kind: Server
-      name: linkerd-admin
+    group: policy.linkerd.io
+    kind: Server
+    name: linkerd-admin
   requiredAuthenticationRefs:
     - group: policy.linkerd.io
       kind: MeshTLSAuthentication
