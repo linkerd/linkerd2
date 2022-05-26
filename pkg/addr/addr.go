@@ -67,7 +67,7 @@ func ProxyIPToString(ip *pb.IPAddress) string {
 func ParseProxyIPV4(ip string) (*pb.IPAddress, error) {
 	netIP := net.ParseIP(ip)
 	if netIP != nil {
-		oBigInt := IpToInt(netIP.To4())
+		oBigInt := IPToInt(netIP.To4())
 		netIPAddress := &pb.IPAddress{
 			Ip: &pb.IPAddress_Ipv4{
 				Ipv4: uint32(oBigInt.Uint64()),
@@ -82,7 +82,7 @@ func ParseProxyIPV4(ip string) (*pb.IPAddress, error) {
 func ParsePublicIPV4(ip string) (*l5dNetPb.IPAddress, error) {
 	netIP := net.ParseIP(ip)
 	if netIP != nil {
-		oBigInt := IpToInt(netIP.To4())
+		oBigInt := IPToInt(netIP.To4())
 		netIPAddress := &l5dNetPb.IPAddress{
 			Ip: &l5dNetPb.IPAddress_Ipv4{
 				Ipv4: uint32(oBigInt.Uint64()),
@@ -128,9 +128,9 @@ func decodeIPv4ToNetIP(ip uint32) net.IP {
 	return IntToIPv4(oBigInt)
 }
 
-// IpToInt converts net.IP to bigInt
+// IPToInt converts net.IP to bigInt
 // It can support both IPv4 and IPv6
-func IpToInt(ip net.IP) *big.Int {
+func IPToInt(ip net.IP) *big.Int {
 	oBigInt := big.NewInt(0)
 	oBigInt.SetBytes(ip)
 	return oBigInt
