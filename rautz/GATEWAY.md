@@ -171,7 +171,7 @@ spec:
 ```
 
 In this case, this policy would obviate the need for the `linkerd-admin-metrics`
-authorization (though we would still need the `linkerd-admin-probe`
+authorization (though we would still need the `linkerd-admin-metrics`
 `HTTPRoute`).
 
 ## Installation
