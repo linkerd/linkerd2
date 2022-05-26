@@ -6,8 +6,8 @@
     "extensions": [
         "DavidAnson.vscode-markdownlint",
         "golang.go",
-        "matklad.rust-analyzer",
         "NathanRidley.autotrim",
+        "rust-lang.rust-analyzer",
         "samverschueren.final-newline",
         "tamasfe.even-better-toml",
         "zxh404.vscode-proto3"

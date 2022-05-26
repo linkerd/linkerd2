@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
@@ -390,8 +390,8 @@ status:
 			k8sAPI.Sync(nil)
 
 			rsp, err := fakeGrpcServer.ListPods(context.TODO(), exp.req)
-			if !reflect.DeepEqual(err, exp.err) {
-				t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
+			if diff := deep.Equal(err, exp.err); diff != nil {
+				t.Fatalf("%+v", diff)
 			}
 
 			if !listPodResponsesEqual(exp.res, rsp) {

@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
@@ -196,8 +196,8 @@ func TestHealthChecker(t *testing.T) {
 		obs := newObserver()
 		hc.RunChecks(obs.resultFn)
 
-		if !reflect.DeepEqual(obs.results, expectedResults) {
-			t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
+		if diff := deep.Equal(obs.results, expectedResults); diff != nil {
+			t.Fatalf("%+v", diff)
 		}
 	})
 
@@ -246,8 +246,8 @@ func TestHealthChecker(t *testing.T) {
 		obs := newObserver()
 		hc.RunChecks(obs.resultWithHintFn)
 
-		if !reflect.DeepEqual(obs.results, expectedResults) {
-			t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
+		if diff := deep.Equal(obs.results, expectedResults); diff != nil {
+			t.Fatalf("%+v", diff)
 		}
 	})
 
@@ -268,8 +268,8 @@ func TestHealthChecker(t *testing.T) {
 		obs := newObserver()
 		hc.RunChecks(obs.resultFn)
 
-		if !reflect.DeepEqual(obs.results, expectedResults) {
-			t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
+		if diff := deep.Equal(obs.results, expectedResults); diff != nil {
+			t.Fatalf("%+v", diff)
 		}
 	})
 
@@ -319,8 +319,8 @@ func TestHealthChecker(t *testing.T) {
 
 		hc.RunChecks(observer)
 
-		if !reflect.DeepEqual(observedResults, expectedResults) {
-			t.Fatalf("Expected results %v, but got %v", expectedResults, observedResults)
+		if diff := deep.Equal(observedResults, expectedResults); diff != nil {
+			t.Fatalf("%+v", diff)
 		}
 	})
 
@@ -340,8 +340,8 @@ func TestHealthChecker(t *testing.T) {
 		obs := newObserver()
 		hc.RunChecks(obs.resultFn)
 
-		if !reflect.DeepEqual(obs.results, expectedResults) {
-			t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
+		if diff := deep.Equal(obs.results, expectedResults); diff != nil {
+			t.Fatalf("%+v", diff)
 		}
 	})
 }
@@ -550,13 +550,13 @@ metadata:
     linkerd.io/control-plane-ns: test-ns
 `}
 	crds := []string{}
-	for _, name := range []string{
-		"authorizationpolicies.policy.linkerd.io",
-		"meshtlsauthentications.policy.linkerd.io",
-		"networkauthentications.policy.linkerd.io",
-		"serverauthorizations.policy.linkerd.io",
-		"servers.policy.linkerd.io",
-		"serviceprofiles.linkerd.io",
+	for _, crd := range []struct{ name, version string }{
+		{name: "authorizationpolicies.policy.linkerd.io", version: "v1alpha1"},
+		{name: "meshtlsauthentications.policy.linkerd.io", version: "v1alpha1"},
+		{name: "networkauthentications.policy.linkerd.io", version: "v1alpha1"},
+		{name: "serverauthorizations.policy.linkerd.io", version: "v1beta1"},
+		{name: "servers.policy.linkerd.io", version: "v1beta1"},
+		{name: "serviceprofiles.linkerd.io", version: "v1alpha2"},
 	} {
 		crds = append(crds, fmt.Sprintf(`
 apiVersion: apiextensions.k8s.io/v1
@@ -565,7 +565,9 @@ metadata:
   name: %s
   labels:
     linkerd.io/control-plane-ns: test-ns
-`, name))
+spec:
+  versions:
+  - name: %s`, crd.name, crd.version))
 	}
 	mutatingWebhooks := []string{`
 apiVersion: admissionregistration.k8s.io/v1
@@ -622,7 +624,7 @@ metadata:
 				"linkerd-config control plane ClusterRoles exist",
 				"linkerd-config control plane ClusterRoleBindings exist",
 				"linkerd-config control plane ServiceAccounts exist",
-				"linkerd-config control plane CustomResourceDefinitions exist: missing CustomResourceDefinitions: authorizationpolicies.policy.linkerd.io, meshtlsauthentications.policy.linkerd.io, networkauthentications.policy.linkerd.io, serverauthorizations.policy.linkerd.io, servers.policy.linkerd.io, serviceprofiles.linkerd.io",
+				"linkerd-config control plane CustomResourceDefinitions exist: missing authorizationpolicies.policy.linkerd.io, missing meshtlsauthentications.policy.linkerd.io, missing networkauthentications.policy.linkerd.io, missing serverauthorizations.policy.linkerd.io, missing servers.policy.linkerd.io, missing serviceprofiles.linkerd.io",
 			},
 		},
 		{
@@ -690,6 +692,7 @@ metadata:
 				[]CategoryID{LinkerdConfigChecks},
 				&Options{
 					ControlPlaneNamespace: "test-ns",
+					CRDManifest:           strings.Join(crds, "\n---\n"),
 				},
 			)
 
@@ -701,8 +704,8 @@ metadata:
 
 			obs := newObserver()
 			hc.RunChecks(obs.resultFn)
-			if !reflect.DeepEqual(obs.results, tc.results) {
-				t.Fatalf("Expected results\n%s,\nbut got:\n%s", strings.Join(tc.results, "\n"), strings.Join(obs.results, "\n"))
+			if diff := deep.Equal(obs.results, tc.results); diff != nil {
+				t.Fatalf("%+v", diff)
 			}
 		})
 	}
@@ -754,8 +757,8 @@ data:
 
 			obs := newObserver()
 			hc.RunChecks(obs.resultFn)
-			if !reflect.DeepEqual(obs.results, testCase.expected) {
-				t.Fatalf("Expected results %v, but got %v", testCase.expected, obs.results)
+			if diff := deep.Equal(obs.results, testCase.expected); diff != nil {
+				t.Fatalf("%+v", diff)
 			}
 		})
 	}
@@ -863,8 +866,8 @@ data:
 			hc.addCheckAsCategory("linkerd-existence", LinkerdControlPlaneExistenceChecks,
 				tc.checkDescription)
 			hc.RunChecks(obs.resultFn)
-			if !reflect.DeepEqual(obs.results, tc.expected) {
-				t.Fatalf("Expected results\n%s,\nbut got:\n%s", strings.Join(tc.expected, "\n"), strings.Join(obs.results, "\n"))
+			if diff := deep.Equal(obs.results, tc.expected); diff != nil {
+				t.Fatalf("%+v", diff)
 			}
 		})
 	}
@@ -963,8 +966,8 @@ data:
 			}
 
 			err = hc.checkDataPlaneProxiesCertificate(context.Background())
-			if !reflect.DeepEqual(err, testCase.expectedErr) {
-				t.Fatalf("Error %q does not match expected error: %q", err, testCase.expectedErr)
+			if diff := deep.Equal(err, testCase.expectedErr); diff != nil {
+				t.Fatalf("%+v", diff)
 			}
 		})
 	}
@@ -1110,8 +1113,8 @@ func TestValidateDataPlaneNamespace(t *testing.T) {
 			}
 			obs := newObserver()
 			hc.RunChecks(obs.resultFn)
-			if !reflect.DeepEqual(obs.results, expectedResults) {
-				t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
+			if diff := deep.Equal(obs.results, expectedResults); diff != nil {
+				t.Fatalf("%+v", diff)
 			}
 		})
 	}
@@ -1711,9 +1714,8 @@ func TestKubeSystemNamespaceInHA(t *testing.T) {
 				expectedResults := []string{
 					tc.expectedOutput,
 				}
-
-				if !reflect.DeepEqual(obs.results, expectedResults) {
-					t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
+				if diff := deep.Equal(obs.results, expectedResults); diff != nil {
+					t.Fatalf("%+v", diff)
 				}
 			}
 		})
@@ -2050,12 +2052,11 @@ data:
 			}
 
 			_, values, err := FetchCurrentConfiguration(context.Background(), clientset, "linkerd")
-			if !reflect.DeepEqual(err, tc.err) {
-				t.Fatalf("Expected \"%+v\", got \"%+v\"", tc.err, err)
+			if diff := deep.Equal(err, tc.err); diff != nil {
+				t.Fatalf("%+v", diff)
 			}
-
-			if !reflect.DeepEqual(values, tc.expected) {
-				t.Fatalf("Unexpected values:\nExpected:\n%+v\nGot:\n%+v", tc.expected, values)
+			if diff := deep.Equal(values, tc.expected); diff != nil {
+				t.Fatalf("%+v", diff)
 			}
 		})
 	}
@@ -2155,8 +2156,8 @@ func runIdentityCheckTestCase(ctx context.Context, t *testing.T, testID int, tes
 
 		obs := newObserver()
 		hc.RunChecks(obs.resultFn)
-		if !reflect.DeepEqual(obs.results, expectedOutput) {
-			t.Fatalf("Expected results %v, but got %v", expectedOutput, obs.results)
+		if diff := deep.Equal(obs.results, expectedOutput); diff != nil {
+			t.Fatalf("%+v", diff)
 		}
 	})
 }
@@ -2543,8 +2544,8 @@ func TestCniChecks(t *testing.T) {
 
 			obs := newObserver()
 			hc.RunChecks(obs.resultFn)
-			if !reflect.DeepEqual(obs.results, tc.results) {
-				t.Fatalf("Expected results\n%s,\nbut got:\n%s", strings.Join(tc.results, "\n"), strings.Join(obs.results, "\n"))
+			if diff := deep.Equal(obs.results, tc.results); diff != nil {
+				t.Fatalf("%+v", diff)
 			}
 		})
 	}

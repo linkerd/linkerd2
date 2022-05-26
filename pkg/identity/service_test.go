@@ -2,30 +2,11 @@ package identity
 
 import (
 	"context"
-	"crypto/x509"
 	"testing"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/identity"
 	"github.com/linkerd/linkerd2/pkg/tls"
 )
-
-type fakeValidator struct {
-	result string
-	err    error
-}
-
-type fakeIssuer struct {
-	result tls.Crt
-	err    error
-}
-
-func (fi *fakeIssuer) IssueEndEntityCrt(*x509.CertificateRequest) (tls.Crt, error) {
-	return fi.result, fi.err
-}
-
-func (fk *fakeValidator) Validate(context.Context, []byte) (string, error) {
-	return fk.result, fk.err
-}
 
 func TestServiceNotReady(t *testing.T) {
 	// ch := make(chan tls.Issuer, 1)

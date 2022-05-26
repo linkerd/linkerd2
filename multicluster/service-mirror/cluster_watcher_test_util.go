@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"reflect"
 	"strings"
 	"time"
 
 	"github.com/ghodss/yaml"
+	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/multicluster"
@@ -593,12 +593,12 @@ func diffServices(expected, actual *corev1.Service) error {
 		return fmt.Errorf("was expecting service with namespace %s but was %s", expected.Namespace, actual.Namespace)
 	}
 
-	if !reflect.DeepEqual(expected.Annotations, actual.Annotations) {
-		return fmt.Errorf("was expecting service with annotations %v but got %v", expected.Annotations, actual.Annotations)
+	if diff := deep.Equal(expected.Annotations, actual.Annotations); diff != nil {
+		return fmt.Errorf("annotation mismatch %+v", diff)
 	}
 
-	if !reflect.DeepEqual(expected.Labels, actual.Labels) {
-		return fmt.Errorf("was expecting service with labels %v but got %v", expected.Labels, actual.Labels)
+	if diff := deep.Equal(expected.Labels, actual.Labels); diff != nil {
+		return fmt.Errorf("label mismatch %+v", diff)
 	}
 
 	return nil
@@ -613,16 +613,16 @@ func diffEndpoints(expected, actual *corev1.Endpoints) error {
 		return fmt.Errorf("was expecting endpoints with namespace %s but was %s", expected.Namespace, actual.Namespace)
 	}
 
-	if !reflect.DeepEqual(expected.Annotations, actual.Annotations) {
-		return fmt.Errorf("was expecting endpoints with annotations %v but got %v", expected.Annotations, actual.Annotations)
+	if diff := deep.Equal(expected.Annotations, actual.Annotations); diff != nil {
+		return fmt.Errorf("annotation mismatch %+v", diff)
 	}
 
-	if !reflect.DeepEqual(expected.Labels, actual.Labels) {
-		return fmt.Errorf("was expecting endpoints with labels %v but got %v", expected.Labels, actual.Labels)
+	if diff := deep.Equal(expected.Labels, actual.Labels); diff != nil {
+		return fmt.Errorf("label mismatch %+v", diff)
 	}
 
-	if !reflect.DeepEqual(expected.Subsets, actual.Subsets) {
-		return fmt.Errorf("was expecting endpoints with subsets %v but got %v", expected.Subsets, actual.Subsets)
+	if diff := deep.Equal(expected.Subsets, actual.Subsets); diff != nil {
+		return fmt.Errorf("subsets mismatch %+v", diff)
 	}
 
 	return nil

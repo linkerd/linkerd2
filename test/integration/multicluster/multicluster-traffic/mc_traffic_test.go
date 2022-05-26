@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
 )
@@ -275,6 +276,11 @@ func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
 					"failed to wait for rollout of deploy/%s: %s: %s\nEvents:\n%s", "nginx-statefulset", err, o, oEvt)
 			}
 		})
+
+		_, err := TestHelper.KubectlWithContext("", contexts[testutil.TargetContextKey], "--namespace="+ns, "label", "svc", "nginx-statefulset-svc", k8s.DefaultExportedServiceSelector+"=true")
+		if err != nil {
+			testutil.AnnotatedFatal(t, "failed to label nginx-statefulset-svc service", err)
+		}
 
 		dgCmd := []string{"--context=" + targetCtx, "diagnostics", "proxy-metrics", "--namespace",
 			"linkerd-multicluster", "deploy/linkerd-gateway"}

@@ -121,7 +121,13 @@ A full list of configurable values can be found at https://www.github.com/linker
 				}
 
 				if !crds {
-					err = healthcheck.CheckCustomResourceDefinitions(cmd.Context(), k8sAPI, true)
+					crds := bytes.Buffer{}
+					err := renderCRDs(&crds)
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "%q", err)
+						os.Exit(1)
+					}
+					err = healthcheck.CheckCustomResourceDefinitions(cmd.Context(), k8sAPI, crds.String())
 					if err != nil {
 						fmt.Fprintln(os.Stderr, "Linkerd CRDs must be installed first. Run linkerd install with the --crds flag.")
 						os.Exit(1)

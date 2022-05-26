@@ -90,7 +90,9 @@ func TestRenderCNIPlugin(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			testDataDiffer.DiffTestdata(t, tc.goldenFileName, buf.String())
+			if err = testDataDiffer.DiffTestYAML(tc.goldenFileName, buf.String()); err != nil {
+				t.Error(err)
+			}
 		})
 	}
 }

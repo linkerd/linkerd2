@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -134,6 +135,11 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 		healthcheck.LinkerdVersionChecks,
 	}
 
+	crdManifest := bytes.Buffer{}
+	err = renderCRDs(&crdManifest)
+	if err != nil {
+		return err
+	}
 	var installManifest string
 	var values *charts.Values
 	if options.preInstallOnly {
@@ -179,6 +185,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 		RetryDeadline:         time.Now().Add(options.wait),
 		CNIEnabled:            options.cniEnabled,
 		InstallManifest:       installManifest,
+		CRDManifest:           crdManifest.String(),
 		ChartValues:           values,
 	})
 

@@ -88,7 +88,9 @@ func testRenderCniHelm(t *testing.T, chart *chart.Chart, overrideConfig *chartut
 		buf.WriteString(v)
 	}
 
-	testDataDiffer.DiffTestdata(t, goldenFileName, buf.String())
+	if err := testDataDiffer.DiffTestYAML(goldenFileName, buf.String()); err != nil {
+		t.Error(err)
+	}
 }
 
 func chartCniPlugin(t *testing.T) *chart.Chart {
@@ -102,7 +104,7 @@ func chartCniPlugin(t *testing.T) *chart.Chart {
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}
-	chartPartials := chartPartials(t, []string{
+	chartPartials := chartPartials([]string{
 		"templates/_helpers.tpl",
 		"templates/_metadata.tpl",
 	})
@@ -125,7 +127,7 @@ func chartCniPlugin(t *testing.T) *chart.Chart {
 
 	for _, template := range cniChart.Templates {
 		filepath := filepath.Join(cniChart.Metadata.Sources[0], template.Name)
-		template.Data = []byte(testutil.ReadTestdata(t, filepath))
+		template.Data = []byte(testutil.ReadTestdata(filepath))
 	}
 
 	return cniChart

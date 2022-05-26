@@ -1,11 +1,11 @@
 package linkerd2
 
 import (
-	"reflect"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/pkg/version"
 )
 
@@ -34,6 +34,12 @@ func TestNewValues(t *testing.T) {
 	namespaceSelectorSimple := &metav1.LabelSelector{MatchExpressions: matchExpressionsSimple}
 	namespaceSelectorInjector := &metav1.LabelSelector{MatchExpressions: matchExpressionsInjector}
 
+	defaultDeploymentStrategy := map[string]interface{}{
+		"rollingUpdate": map[string]interface{}{
+			"maxUnavailable": "25%",
+			"maxSurge":       "25%",
+		},
+	}
 	expected := &Values{
 		ControllerImage:              "cr.l5d.io/linkerd/controller",
 		ControllerReplicas:           1,
@@ -42,6 +48,7 @@ func TestNewValues(t *testing.T) {
 		EnablePodAntiAffinity:        false,
 		WebhookFailurePolicy:         "Ignore",
 		DisableHeartBeat:             false,
+		DeploymentStrategy:           defaultDeploymentStrategy,
 		HeartbeatSchedule:            "",
 		ClusterDomain:                "cluster.local",
 		ClusterNetworks:              "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16",
@@ -58,6 +65,7 @@ func TestNewValues(t *testing.T) {
 		PodAnnotations:               map[string]string{},
 		PodLabels:                    map[string]string{},
 		EnableEndpointSlices:         true,
+		EnablePodDisruptionBudget:    false,
 		PolicyController: &PolicyController{
 			Image: &Image{
 				Name: "cr.l5d.io/linkerd/policy-controller",
@@ -162,19 +170,29 @@ func TestNewValues(t *testing.T) {
 	// Make Add-On Values nil to not have to check for their defaults
 	actual.ImagePullSecrets = nil
 
-	if !reflect.DeepEqual(expected, actual) {
-		t.Errorf("Mismatch Helm values.\nExpected: %+v\nActual: %+v", expected, actual)
+	if diff := deep.Equal(expected, actual); diff != nil {
+		t.Errorf("Helm values\n%+v", diff)
 	}
 
 	t.Run("HA", func(t *testing.T) {
+
 		err := MergeHAValues(actual)
 
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
 
+		haDeploymentStrategy := map[string]interface{}{
+			"rollingUpdate": map[string]interface{}{
+				"maxUnavailable": 1.0,
+				"maxSurge":       "25%",
+			},
+		}
+
 		expected.ControllerReplicas = 3
 		expected.EnablePodAntiAffinity = true
+		expected.EnablePodDisruptionBudget = true
+		expected.DeploymentStrategy = haDeploymentStrategy
 		expected.WebhookFailurePolicy = "Fail"
 
 		controllerResources := &Resources{
@@ -217,8 +235,8 @@ func TestNewValues(t *testing.T) {
 		// values.yaml.
 		actual.ProxyInit.Image.Version = testVersion
 
-		if !reflect.DeepEqual(expected, actual) {
-			t.Errorf("Mismatch Helm HA defaults.\nExpected: %+v\nActual: %+v", expected, actual)
+		if diff := deep.Equal(expected, actual); diff != nil {
+			t.Errorf("HA Helm values\n%+v", diff)
 		}
 	})
 }

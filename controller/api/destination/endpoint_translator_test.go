@@ -2,18 +2,16 @@ package destination
 
 import (
 	"fmt"
-	"reflect"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/go-test/deep"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
-	pkgk8s "github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/api/discovery/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -104,45 +102,6 @@ var (
 	}
 )
 
-func makeEndpointTranslator(t *testing.T) (*mockDestinationGetServer, *endpointTranslator) {
-	k8sAPI, err := pkgk8s.NewFakeAPI(`
-apiVersion: v1
-kind: Node
-metadata:
-  annotations:
-    kubeadm.alpha.kubernetes.io/cri-socket: /run/containerd/containerd.sock
-    node.alpha.kubernetes.io/ttl: "0"
-  labels:
-    beta.kubernetes.io/arch: amd64
-    kubernetes.io/os: linux
-    kubernetes.io/arch: amd64
-    kubernetes.io/hostname: kind-worker
-    kubernetes.io/os: linux
-    topology.kubernetes.io/region: west
-    topology.kubernetes.io/zone: west-1a
-  name: test-123
-`,
-	)
-	if err != nil {
-		t.Fatalf("NewFakeAPI returned an error: %s", err)
-	}
-	k8sAPI.Sync(nil)
-
-	mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
-	translator := newEndpointTranslator(
-		"linkerd",
-		"trust.domain",
-		true,
-		"service-name.service-ns",
-		"test-123",
-		map[uint32]struct{}{},
-		k8sAPI.Node(),
-		mockGetServer,
-		logging.WithField("test", t.Name()),
-	)
-	return mockGetServer, translator
-}
-
 func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
@@ -192,13 +151,13 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 		}
 
 		actualTLSIdentity := addrs[0].GetTlsIdentity().GetDnsLikeIdentity()
-		if !reflect.DeepEqual(actualTLSIdentity, expectedTLSIdentity) {
-			t.Fatalf("Expected TlsIdentity to be [%v] but was [%v]", expectedTLSIdentity, actualTLSIdentity)
+		if diff := deep.Equal(actualTLSIdentity, expectedTLSIdentity); diff != nil {
+			t.Fatalf("TlsIdentity: %v", diff)
 		}
 
 		actualProtocolHint := addrs[0].GetProtocolHint()
-		if !reflect.DeepEqual(actualProtocolHint, expectedProtocolHint) {
-			t.Fatalf("Expected ProtocolHint to be [%v] but was [%v]", expectedProtocolHint, actualProtocolHint)
+		if diff := deep.Equal(actualProtocolHint, expectedProtocolHint); diff != nil {
+			t.Fatalf("ProtocolHint: %v", diff)
 		}
 	})
 
@@ -227,18 +186,18 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 		}
 
 		actualTLSIdentity := addrs[0].GetTlsIdentity().GetDnsLikeIdentity()
-		if !reflect.DeepEqual(actualTLSIdentity, expectedTLSIdentity) {
-			t.Fatalf("Expected TlsIdentity to be [%v] but was [%v]", expectedTLSIdentity, actualTLSIdentity)
+		if diff := deep.Equal(actualTLSIdentity, expectedTLSIdentity); diff != nil {
+			t.Fatalf("TlsIdentity %v", diff)
 		}
 
 		actualProtocolHint := addrs[0].GetProtocolHint()
-		if !reflect.DeepEqual(actualProtocolHint, expectedProtocolHint) {
-			t.Fatalf("Expected ProtocolHint to be [%v] but was [%v]", expectedProtocolHint, actualProtocolHint)
+		if diff := deep.Equal(actualProtocolHint, expectedProtocolHint); diff != nil {
+			t.Fatalf("ProtocolHint %v", diff)
 		}
 
 		actualAuthOverride := addrs[0].GetAuthorityOverride()
-		if !reflect.DeepEqual(actualProtocolHint, expectedProtocolHint) {
-			t.Fatalf("Expected AuthOverride to be [%v] but was [%v]", expectedAuthOverride, actualAuthOverride)
+		if diff := deep.Equal(actualAuthOverride, expectedAuthOverride); diff != nil {
+			t.Fatalf("AuthOverride %v", diff)
 		}
 	})
 
@@ -311,7 +270,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 		actualGlobalMetricLabels := mockGetServer.updatesReceived[0].GetAdd().MetricLabels
 		expectedGlobalMetricLabels := map[string]string{"namespace": "service-ns", "service": "service-name"}
-		if !reflect.DeepEqual(actualGlobalMetricLabels, expectedGlobalMetricLabels) {
+		if diff := deep.Equal(actualGlobalMetricLabels, expectedGlobalMetricLabels); diff != nil {
 			t.Fatalf("Expected global metric labels sent to be [%v] but was [%v]", expectedGlobalMetricLabels, actualGlobalMetricLabels)
 		}
 
@@ -322,7 +281,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 			"serviceaccount":        "serviceaccount-name",
 			"control_plane_ns":      "linkerd",
 		}
-		if !reflect.DeepEqual(actualAddedAddress1MetricLabels, expectedAddedAddress1MetricLabels) {
+		if diff := deep.Equal(actualAddedAddress1MetricLabels, expectedAddedAddress1MetricLabels); diff != nil {
 			t.Fatalf("Expected global metric labels sent to be [%v] but was [%v]", expectedAddedAddress1MetricLabels, actualAddedAddress1MetricLabels)
 		}
 	})
@@ -342,7 +301,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		}
 
 		actualTLSIdentity := addrs[0].GetTlsIdentity().GetDnsLikeIdentity()
-		if !reflect.DeepEqual(actualTLSIdentity, expectedTLSIdentity) {
+		if diff := deep.Equal(actualTLSIdentity, expectedTLSIdentity); diff != nil {
 			t.Fatalf("Expected TlsIdentity to be [%v] but was [%v]", expectedTLSIdentity, actualTLSIdentity)
 		}
 	})

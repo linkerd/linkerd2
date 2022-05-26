@@ -17,7 +17,6 @@ permissions:
   contents: read
 
 env:
-  CARGO_ACTION_FMT_VERSION: v0.1.3
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
   K3D_VERSION: v5.4.1
@@ -28,109 +27,6 @@ env:
 
 
 jobs:
-  fmt:
-    timeout-minutes: 5
-    runs-on: ubuntu-latest
-    container:
-      image: docker://rust:1.60.0
-    steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - run: rustup component add rustfmt
-      - run: cargo fmt --all -- --check
-
-  audit:
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        checks:
-          - advisories
-          - bans licenses sources
-    # Prevent sudden announcement of a new advisory from failing Ci.
-    continue-on-error: ${{ matrix.checks == 'advisories' }}
-    steps:
-    - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-    - uses: EmbarkStudios/cargo-deny-action@ccfac4e084d1dedad50125be4550f87a21ba181e
-      with:
-        command: check ${{ matrix.checks }}
-
-  clippy:
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-    container:
-      image: docker://rust:1.60.0
-    steps:
-      - run: rustup component add clippy
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - run: |
-          bin/scurl -o /usr/local/bin/cargo-action-fmt "https://github.com/olix0r/cargo-action-fmt/releases/download/release%2F${CARGO_ACTION_FMT_VERSION}/cargo-action-fmt-x86_64-unknown-linux-gnu"
-          chmod 755 /usr/local/bin/cargo-action-fmt
-      - run: cargo fetch --locked
-      - name: Run cargo clippy
-        run: cargo clippy --frozen --all --no-deps --message-format=json | cargo-action-fmt
-
-  check:
-    timeout-minutes: 20
-    runs-on: ubuntu-latest
-    container:
-      image: docker://rust:1.60.0
-    steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - run: |
-          bin/scurl -o /usr/local/bin/cargo-action-fmt "https://github.com/olix0r/cargo-action-fmt/releases/download/release%2F${CARGO_ACTION_FMT_VERSION}/cargo-action-fmt-x86_64-unknown-linux-gnu"
-          chmod 755 /usr/local/bin/cargo-action-fmt
-      - run: cargo fetch --locked
-      # Check each crate independently to ensure its Cargo.toml is sufficient.
-      - run: |
-          for toml in $(find . -mindepth 2 -name Cargo.toml | sort -r)
-          do
-            d=$(dirname "$toml")
-            echo "# $d"
-            (cd $d ; cargo check --all-targets --frozen --message-format=json | cargo-action-fmt)
-          done
-
-  test:
-    name: test
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    container:
-      image: docker://rust:1.60.0
-    steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - run: cargo fetch --locked
-      - name: Build tests
-        run: cargo test --workspace --exclude=linkerd-policy-test linkerd-cni-validator --frozen --no-run
-      - name: Run cargo test
-        run: cargo test --workspace --exclude=linkerd-policy-test linkerd-cni-validator --frozen
-
-  rust-toolchain:
-    name: rust toolchain
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - run: |
-          ex=0
-
-          # Check this workflow against the version in rust-toolchain.
-          versions=$(sed -nE 's|.*docker://(.*/)?rust:([^ #]+).*|\2|p' .github/workflows/policy_controller.yml)
-          for mismatch in $(echo "$versions" | grep -vF "$(cat rust-toolchain)" || true) ; do
-            echo "::error file=.github/workflows/policy_controller.yml::Workflow uses incorrect rust version(s): $mismatch"
-            ex=$((ex + 1))
-          done
-
-          # Check the policy-controller dockerfiles workflow against the version
-          # in rust-toolchain.
-          for f in policy-controller/*.dockerfile ; do
-            versions=$(sed -nE 's|ARG RUST_IMAGE=(.*/)?rust:([^ #]+).*|\2|p' "$f")
-            for mismatch in $(echo "$versions" | grep -vF "$(cat rust-toolchain)" || true) ; do
-              echo "::error file=\"$f\"::$f uses incorrect rust version(s): $mismatch"
-              ex=$((ex + 1))
-            done
-          done
-
-          exit $ex
-
   docker-build:
     runs-on: ubuntu-20.04
     strategy:
@@ -158,7 +54,7 @@ jobs:
           docker save "ghcr.io/linkerd/${{ matrix.component }}:$TAG" \
             >/home/runner/archives/${{ matrix.component }}.tar
       - name: Upload artifact
-        uses: actions/upload-artifact@6673cd052c4cd6fcf4b4e6e60ea986c889389535
+        uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8
         with:
           name: image-archives
           path: /home/runner/archives
@@ -177,12 +73,10 @@ jobs:
           bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain $(cat rust-toolchain)
           source $HOME/.cargo/env
           echo "PATH=$PATH" >> $GITHUB_ENV
-          bin/scurl -o /usr/local/bin/cargo-action-fmt "https://github.com/olix0r/cargo-action-fmt/releases/download/release%2F${CARGO_ACTION_FMT_VERSION}/cargo-action-fmt-x86_64-unknown-linux-gnu"
-          chmod 755 /usr/local/bin/cargo-action-fmt
           bin/scurl -L https://get.nexte.st/latest/linux | tar xzf - -C /usr/local/bin
           cargo version
-          cargo-action-fmt --version
           cargo nextest --version
+      - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
 
       - run: mkdir target
       - run: cargo fetch --locked
@@ -194,7 +88,7 @@ jobs:
           jq -r '.["rust-binaries"] | to_entries | .[].value | .["binary-path"]' target/nextest.json | sed -e "s,^$PWD/,," \
             | xargs tar -czvf /home/runner/archives/nextest.tar.gz target/nextest.json target/metadata.json
       - name: Upload artifact
-        uses: actions/upload-artifact@6673cd052c4cd6fcf4b4e6e60ea986c889389535
+        uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8
         with:
           name: image-archives
           path: /home/runner/archives
@@ -223,12 +117,10 @@ jobs:
           bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain $(cat rust-toolchain)
           source $HOME/.cargo/env
           echo "PATH=$PATH" >> $GITHUB_ENV
-          bin/scurl -o /usr/local/bin/cargo-action-fmt "https://github.com/olix0r/cargo-action-fmt/releases/download/release%2F${CARGO_ACTION_FMT_VERSION}/cargo-action-fmt-x86_64-unknown-linux-gnu"
-          chmod 755 /usr/local/bin/cargo-action-fmt
           bin/scurl -L https://get.nexte.st/latest/linux | tar xzf - -C /usr/local/bin
           cargo version
-          cargo-action-fmt --version
           cargo nextest --version
+      - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
 
       - run: bin/scurl -v https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh | bash
       - run: k3d --version

@@ -7,9 +7,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	vizApi "github.com/linkerd/linkerd2/viz/metrics-api"
@@ -80,8 +80,8 @@ func TestHandleApiCheck(t *testing.T) {
 	expectedHeaders := http.Header{
 		"Content-Type": []string{"application/json"},
 	}
-	if !reflect.DeepEqual(resp.Header, expectedHeaders) {
-		t.Errorf("expecting headers to be\n %v\n but got\n %v", expectedHeaders, resp.Header)
+	if diff := deep.Equal(resp.Header, expectedHeaders); diff != nil {
+		t.Errorf("Unexpected header: %v", diff)
 	}
 	apiCheckOutputGolden, err := ioutil.ReadFile("testdata/api_check_output.json")
 	if err != nil {
@@ -142,10 +142,10 @@ func TestHandleApiGateway(t *testing.T) {
 		header := http.Header{
 			"Content-Type": []string{"application/json"},
 		}
-		if !reflect.DeepEqual(recorder.Header(), header) {
-			t.Errorf("Incorrect headers: %+v", recorder.Header())
-			t.Errorf("Expected:          %+v", header)
+		if diff := deep.Equal(recorder.Header(), header); diff != nil {
+			t.Errorf("Unexpected header: %v", diff)
 		}
+
 		apiGatewayOutputGolden, err := ioutil.ReadFile("testdata/api_gateway_output.json")
 		if err != nil {
 			t.Fatalf("not expecting error reading api check output golden file but got: %v", err)

@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -497,8 +497,8 @@ func TestInjectAutoPod(t *testing.T) {
 			}
 			// Removed token volume name from comparison because it contains a random string
 			initContainer.VolumeMounts[1].Name = ""
-			if !reflect.DeepEqual(expectedInitContainer, initContainer) {
-				testutil.AnnotatedFatalf(t, "malformed init container", "malformed init container:\nexpected:\n%#v\nactual:\n%#v", expectedInitContainer, initContainer)
+			if diff := deep.Equal(expectedInitContainer, initContainer); diff != nil {
+				testutil.AnnotatedFatalf(t, "malformed init container", "malformed init container:\n%v", diff)
 			}
 		}
 	})
