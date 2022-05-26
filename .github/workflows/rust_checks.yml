@@ -6,8 +6,6 @@ on:
       - .github/workflows/rust_checks.yml
       - Cargo.lock
       - Cargo.toml
-      - charts/linkerd-control-plane/templates/destination-rbac.yaml
-      - charts/linkerd-crds/templates/policy/**
       - deny.toml
       - policy-controller/**
       - policy-test/**
