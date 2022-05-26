@@ -267,11 +267,11 @@ func TestEventToString(t *testing.T) {
 		return &tapPb.TapEvent{
 			ProxyDirection: tapPb.TapEvent_OUTBOUND,
 			Source: &netPb.TcpAddress{
-				Ip:   addr.PublicIPV4(1, 2, 3, 4),
+				Ip:   addr.PublicIPV4("1.2.3.4"),
 				Port: 5555,
 			},
 			Destination: &netPb.TcpAddress{
-				Ip:   addr.PublicIPV4(2, 3, 4, 5),
+				Ip:   addr.PublicIPV4("2.3.4.5"),
 				Port: 6666,
 			},
 			Event: &tapPb.TapEvent_Http_{Http: httpEvent},
