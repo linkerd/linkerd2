@@ -5,7 +5,7 @@ on:
     paths:
       - .github/workflows/rust_checks.yml
       - Cargo.lock
-      - Cargo.toml
+      - '**/Cargo.toml'
       - deny.toml
       - policy-controller/**
       - policy-test/**
