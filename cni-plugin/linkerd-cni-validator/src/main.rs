@@ -7,6 +7,7 @@ use std::{
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
+use rand::distributions::{Alphanumeric, DistString};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
@@ -40,8 +41,6 @@ struct Args {
     timeout: std::time::Duration,
 }
 
-static REDIRECT_RESPONSE: &str = "REDIRECTION SUCCESSFUL";
-
 // ERRNO 95: Operation not supported
 const UNSUCCESSFUL_EXIT_CODE: i32 = 95;
 
@@ -59,6 +58,7 @@ async fn main() -> Result<()> {
     log_format.try_init(log_level)?;
     let target_addr = SocketAddr::new(target_ip, target_port);
 
+    let rng_resp = Alphanumeric.sample_string(&mut rand::thread_rng(), 8);
     info!(%outbound_proxy_addr, %target_addr, "Validating outbound traffic is redirected to proxy's outbound port");
 
     let (shutdown_tx, shutdown_rx) = kubert::shutdown::sigint_or_sigterm()?;
@@ -68,12 +68,14 @@ async fn main() -> Result<()> {
         outbound_proxy_addr,
         notify_ready.clone(),
         shutdown_rx,
+        rng_resp.clone(),
     ));
 
     let validation_task = tokio::spawn(validate_outbound_redirect(
         target_addr,
         notify_ready,
         timeout,
+        rng_resp,
     ));
 
     tokio::select! {
@@ -104,6 +106,7 @@ async fn validate_outbound_redirect(
     target_addr: SocketAddr,
     ready: Arc<Notify>,
     timeout: time::Duration,
+    expected_resp: String,
 ) -> Result<()> {
     if tokio::time::timeout(timeout, ready.notified())
         .await
@@ -130,14 +133,14 @@ async fn validate_outbound_redirect(
         }
     };
 
-    let mut buf = [0u8; 100];
-    let read_sz = stream.read(&mut buf[..REDIRECT_RESPONSE.len()]).await?;
-    let resp = String::from_utf8(buf[..REDIRECT_RESPONSE.len()].to_vec())?;
+    let mut buf = [0u8; 8];
+    let read_sz = stream.read_exact(&mut buf).await?;
+    let resp = String::from_utf8(buf[..expected_resp.len()].to_vec())?;
     debug!(redirect_response = %resp, bytes_read = %read_sz);
     anyhow::ensure!(
-        resp == REDIRECT_RESPONSE,
+        resp == expected_resp,
         "expected client to receive {:?}, got {:?} instead",
-        REDIRECT_RESPONSE,
+        expected_resp,
         resp
     );
     Ok(())
@@ -148,6 +151,7 @@ async fn outbound_serve(
     listen_addr: SocketAddr,
     ready: Arc<Notify>,
     shutdown: kubert::shutdown::Watch,
+    resp: String,
 ) -> Result<()> {
     let listener = TcpListener::bind(listen_addr)
         .await
@@ -156,8 +160,7 @@ async fn outbound_serve(
 
     ready.notify_one();
 
-    let resp_bytes = REDIRECT_RESPONSE.as_bytes();
-    let accept_task = tokio::spawn(accept(listener, resp_bytes)).in_current_span();
+    let accept_task = tokio::spawn(accept(listener, resp)).in_current_span();
 
     let _handle = shutdown.signaled().await;
     accept_task.inner().abort();
@@ -165,14 +168,16 @@ async fn outbound_serve(
     Ok(())
 }
 
-async fn accept(listener: TcpListener, resp_bytes: &'static [u8]) {
+async fn accept(listener: TcpListener, resp: String) {
     loop {
         let (mut stream, client_addr) = listener
             .accept()
             .await
             .expect("Failed to establish connection");
         info!("Accepted connection");
+        let rng_resp = resp.clone();
         let _ = tokio::spawn(async move {
+            let resp_bytes = rng_resp.as_bytes();
             // We expect this write to complete instantaneously,
             // a timeout is not needed here.
             match stream.write_all(resp_bytes).await {
@@ -188,7 +193,7 @@ pub fn parse_timeout(s: &str) -> Result<time::Duration> {
     let s = s.trim();
     let (magnitude, unit) = if let Some(offset) = s.rfind(|c: char| c.is_digit(10)) {
         let (magnitude, unit) = s.split_at(offset + 1);
-        let magnitude = u64::from_str_radix(magnitude, 10)?;
+        let magnitude = magnitude.parse::<u64>()?;
         (magnitude, unit)
     } else {
         anyhow::bail!("{} does not contain a timeout duration value", s);
@@ -199,12 +204,14 @@ pub fn parse_timeout(s: &str) -> Result<time::Duration> {
         "ms" => 1,
         "s" => 1000,
         "m" => 1000 * 60,
+        "h" => 1000 * 60 * 60,
+        "d" => 1000 * 60 * 60 * 24,
         _ => anyhow::bail!("invalid duration unit {}", unit),
     };
 
     let ms = magnitude
         .checked_mul(mul)
-        .ok_or(anyhow!("{} has an invalid duration time", s))?;
+        .ok_or_else(|| anyhow!("{} has an invalid duration time", s))?;
     Ok(time::Duration::from_millis(ms))
 }
 
@@ -237,5 +244,13 @@ mod tests {
             parse_timeout("120000ms").unwrap()
         );
         assert_eq!(time::Duration::from_secs(120), parse_timeout("2m").unwrap());
+        assert_eq!(
+            time::Duration::from_secs(7200),
+            parse_timeout("2h").unwrap()
+        );
+        assert_eq!(
+            time::Duration::from_secs(172800),
+            parse_timeout("2d").unwrap()
+        );
     }
 }

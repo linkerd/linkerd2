@@ -943,6 +943,7 @@ dependencies = [
  "anyhow",
  "clap",
  "kubert",
+ "rand",
  "tokio",
  "tracing",
 ]
