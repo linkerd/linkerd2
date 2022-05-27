@@ -10,14 +10,14 @@ RUN apt-get update && \
     rustup target add armv7-unknown-linux-gnueabihf
 ENV CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
 WORKDIR /build
+RUN cargo new policy-controller --lib && \
+    cargo new policy-controller/core --lib && \
+    cargo new policy-controller/grpc --lib && \
+    cargo new policy-controller/k8s/api --lib && \
+    cargo new policy-controller/k8s/index --lib && \
+    cargo new policy-test --lib
 COPY Cargo.toml Cargo.lock .
 COPY cni-plugin/linkerd-cni-validator /build/
-RUN cargo new policy-controller --lib
-RUN cargo new policy-controller/core --lib
-RUN cargo new policy-controller/grpc --lib
-RUN cargo new policy-controller/k8s/api --lib
-RUN cargo new policy-controller/k8s/index --lib
-RUN cargo new policy-test --lib
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.60.0,source=/usr/local/cargo,target=/usr/local/cargo \
     cargo fetch

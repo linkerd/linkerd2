@@ -9,10 +9,10 @@ RUN apt-get update && \
 ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
 WORKDIR /build
 COPY bin/scurl bin/scurl
+RUN cargo new policy-test --lib && \
+    cargo new cni-plugin/linkerd-cni-validator --lib
 COPY Cargo.toml Cargo.lock .
 COPY policy-controller policy-controller
-RUN cargo new policy-test --lib
-RUN cargo new cni-plugin/linkerd-cni-validator --lib
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.60.0,source=/usr/local/cargo,target=/usr/local/cargo \
     cargo fetch
