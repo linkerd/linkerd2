@@ -1,5 +1,23 @@
 # Changes
 
+## edge-22.5.3
+
+This edge release fixes a few proxy issues, improves the upgrade process, and
+introduces proto retries to Service Profiles. Also included are updates to the
+bash scripts to ensure that they follow best practices.
+
+* Polished the shell scripts (thanks @joakimr-axis)
+* Introduced retries to Service Profiles by adding an isRetryable function to
+  the proto definition (thanks @mahlunar)
+* Fixed proxy responses to CONNECT requests by removing the content-length
+  and/or transfer-encoding headers from the response
+* Fixed DNS lookups in the proxy to consistently use A records when SRV records
+  cannot be resolved
+* Added dynamic policy discovery to the proxy by evaluating traffic on ports
+  not included in the LINKERD2_PROXY_INBOUND_PORTS environment variable
+* Added logic to require that the linkerd CRDs are installed when running
+  the `linkerd upgrade` command
+
 ## edge-22.5.2
 
 This edge release ships a few changes to the chart values, a fix for
