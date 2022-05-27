@@ -18,20 +18,21 @@ RUN for p in \
     ; do go install "$p" ; done
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as cargo-deny
-ARG CARGO_DENY_VERSION=0.11.3
+ARG CARGO_DENY_VERSION=0.12.1
 COPY bin/scurl /usr/local/bin/scurl
 RUN scurl "https://github.com/EmbarkStudios/cargo-deny/releases/download/${CARGO_DENY_VERSION}/cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
     | tar zvxf - --strip-components=1 -C /usr/local/bin "cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl/cargo-deny"
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as yq
-ARG YQ_VERSION=v4.2.0
+ARG YQ_VERSION=v4.25.1
 COPY bin/scurl /usr/local/bin/scurl
 RUN scurl -vo /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" \
     && chmod +x /usr/local/bin/yq
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as kubectl
+ARG KUBECTL_VERSION=v1.23.6
 COPY bin/scurl /usr/local/bin/scurl
-RUN scurl -vo /usr/local/bin/kubectl "https://dl.k8s.io/release/$(scurl https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+RUN scurl -vo /usr/local/bin/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" \
     && chmod 755 /usr/local/bin/kubectl
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as k3d
@@ -39,6 +40,16 @@ ARG K3D_VERSION=v5.4.1
 COPY bin/scurl /usr/local/bin/scurl
 RUN scurl -v https://raw.githubusercontent.com/rancher/k3d/$K3D_VERSION/install.sh \
     | USE_SUDO=false K3D_INSTALL_DIR=/usr/local/bin bash
+
+FROM docker.io/rust:${RUST_TOOLCHAIN}-bullseye as just
+ARG JUST_VERSION=1.1.3
+RUN curl --proto '=https' --tlsv1.3 -vsSfL "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
+    | tar zvxf - -C /usr/local/bin just
+
+FROM docker.io/rust:${RUST_TOOLCHAIN}-bullseye as nextest
+ARG NEXTEST_VERSION=0.9.14
+RUN curl --proto '=https' --tlsv1.3 -vsSfL "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${NEXTEST_VERSION}/cargo-nextest-${NEXTEST_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
+    | tar zvxf - -C /usr/local/bin cargo-nextest
 
 FROM docker.io/rust:${RUST_TOOLCHAIN}-bullseye as rust
 RUN rustup component add rustfmt clippy rls
@@ -63,6 +74,7 @@ RUN apt install -y \
     locales \
     lsb-release \
     npm \
+    shellcheck \
     sudo \
     time \
     unzip
@@ -97,6 +109,8 @@ COPY --from=cargo-deny /usr/local/bin/cargo-deny /usr/local/bin/cargo-deny
 COPY --from=k3d /usr/local/bin/k3d /usr/local/bin/k3d
 COPY --from=kubectl /usr/local/bin/kubectl /usr/local/bin/kubectl
 COPY --from=yq /usr/local/bin/yq /usr/local/bin/yq
+COPY --from=just /usr/local/bin/just /usr/local/bin/just
+COPY --from=nextest /usr/local/bin/cargo-nextest /usr/local/bin/cargo-nextest
 
 COPY --from=rust /usr/local/cargo /usr/local/cargo
 COPY --from=rust /usr/local/rustup /usr/local/rustup
