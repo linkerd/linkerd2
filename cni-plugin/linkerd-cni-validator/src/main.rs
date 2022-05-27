@@ -1,6 +1,7 @@
 use std::{
     net::{IpAddr, SocketAddr},
     process::exit,
+    sync::Arc,
     time,
 };
 
@@ -9,7 +10,7 @@ use clap::Parser;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
-    sync::oneshot,
+    sync::Notify,
 };
 use tracing::{debug, error, info, Instrument};
 
@@ -61,16 +62,23 @@ async fn main() -> Result<()> {
     info!(%outbound_proxy_addr, %target_addr, "Validating outbound traffic is redirected to proxy's outbound port");
 
     let (shutdown_tx, shutdown_rx) = kubert::shutdown::sigint_or_sigterm()?;
-    let (ready_tx, ready_rx) = oneshot::channel::<Result<()>>();
+    let notify_ready = Arc::new(Notify::new());
 
-    let server_task = tokio::spawn(outbound_serve(outbound_proxy_addr, ready_tx, shutdown_rx));
+    let server_task = tokio::spawn(outbound_serve(
+        outbound_proxy_addr,
+        notify_ready.clone(),
+        shutdown_rx,
+    ));
 
-    let validation_task = tokio::spawn(validate_outbound_redirect(target_addr, ready_rx, timeout));
+    let validation_task = tokio::spawn(validate_outbound_redirect(
+        target_addr,
+        notify_ready,
+        timeout,
+    ));
 
     tokio::select! {
         task = validation_task => {
-            let validation_result = task.expect("Failed to run validator task");
-            if let Err(err) = validation_result {
+            if let Err(err) = task.expect("Failed to run validator task") {
                 error!(error = %err, "Failed validation");
                 exit(UNSUCCESSFUL_EXIT_CODE);
             }
@@ -91,25 +99,24 @@ async fn main() -> Result<()> {
     }
 }
 
-#[tracing::instrument(
-    level = "debug",
-    skip(ready_rx),
-    fields(original_dst = %target_addr),
-    )]
+#[tracing::instrument(level = "debug", skip_all)]
 async fn validate_outbound_redirect(
     target_addr: SocketAddr,
-    ready_rx: oneshot::Receiver<Result<()>>,
+    ready: Arc<Notify>,
     timeout: time::Duration,
 ) -> Result<()> {
-    if tokio::time::timeout(timeout, ready_rx).await.is_err() {
+    if tokio::time::timeout(timeout, ready.notified())
+        .await
+        .is_err()
+    {
         anyhow::bail!("timed-out ({:?}) waiting for server to be ready", timeout);
     }
 
     let mut stream = {
         debug!("Building validation client");
         let socket = TcpStream::connect(target_addr).await?;
-        assert_eq!(target_addr, socket.peer_addr().unwrap());
-        debug!("Client connected to validation server");
+        debug_assert_eq!(target_addr, socket.peer_addr().unwrap());
+        debug!(original_dst = %target_addr, "Client connected to validation server");
         socket
     };
 
@@ -136,10 +143,10 @@ async fn validate_outbound_redirect(
     Ok(())
 }
 
-#[tracing::instrument(name = "outbound_server", skip(ready_tx, shutdown))]
+#[tracing::instrument(name = "outbound_server", skip(ready, shutdown))]
 async fn outbound_serve(
     listen_addr: SocketAddr,
-    ready_tx: oneshot::Sender<Result<()>>,
+    ready: Arc<Notify>,
     shutdown: kubert::shutdown::Watch,
 ) -> Result<()> {
     let listener = TcpListener::bind(listen_addr)
@@ -147,20 +154,17 @@ async fn outbound_serve(
         .expect("Failed to bind server");
     info!("Listening for incoming connections");
 
-    if ready_tx.send(Ok(())).is_err() {
-        error!("Failed to send 'ready' signal, receiver dropped");
-        anyhow::bail!("Failed to bind server");
-    }
+    ready.notify_one();
 
     let resp_bytes = REDIRECT_RESPONSE.as_bytes();
-    tokio::spawn(accept(listener, resp_bytes));
+    let accept_task = tokio::spawn(accept(listener, resp_bytes)).in_current_span();
 
     let _handle = shutdown.signaled().await;
+    accept_task.inner().abort();
     debug!("Received shutdown signal");
     Ok(())
 }
 
-#[tracing::instrument(name = "outbound_accept", skip_all)]
 async fn accept(listener: TcpListener, resp_bytes: &'static [u8]) {
     loop {
         let (mut stream, client_addr) = listener
@@ -169,6 +173,8 @@ async fn accept(listener: TcpListener, resp_bytes: &'static [u8]) {
             .expect("Failed to establish connection");
         info!("Accepted connection");
         let _ = tokio::spawn(async move {
+            // We expect this write to complete instantaneously,
+            // a timeout is not needed here.
             match stream.write_all(resp_bytes).await {
                 Ok(()) => debug!(written_bytes = resp_bytes.len()),
                 Err(error) => error!(%error, "Failed to write bytes to client"),
@@ -177,6 +183,7 @@ async fn accept(listener: TcpListener, resp_bytes: &'static [u8]) {
         .instrument(tracing::info_span!("conn", %client_addr));
     }
 }
+
 pub fn parse_timeout(s: &str) -> Result<time::Duration> {
     let s = s.trim();
     let (magnitude, unit) = if let Some(offset) = s.rfind(|c: char| c.is_digit(10)) {
@@ -209,6 +216,8 @@ mod tests {
     #[test]
     fn test_parse_timeout_invalid() {
         assert!(parse_timeout("120").is_err());
+        assert!(parse_timeout("s").is_err());
+        assert!(parse_timeout("foobars").is_err());
         assert!(parse_timeout("18446744073709551615s").is_err())
     }
 
