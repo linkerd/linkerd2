@@ -1,9 +1,10 @@
 use std::{
     net::{IpAddr, SocketAddr},
     process::exit,
+    time,
 };
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -33,6 +34,9 @@ struct Args {
 
     #[clap(parse(try_from_str), long, env = "KUBERNETES_SERVICE_PORT")]
     target_port: u16,
+
+    #[clap(parse(try_from_str = parse_timeout), long, default_value = "120s")]
+    timeout: std::time::Duration,
 }
 
 static REDIRECT_RESPONSE: &str = "REDIRECTION SUCCESSFUL";
@@ -48,6 +52,7 @@ async fn main() -> Result<()> {
         outbound_proxy_addr,
         target_ip,
         target_port,
+        timeout,
     } = Args::parse();
 
     log_format.try_init(log_level)?;
@@ -60,7 +65,7 @@ async fn main() -> Result<()> {
 
     let server_task = tokio::spawn(outbound_serve(outbound_proxy_addr, ready_tx, shutdown_rx));
 
-    let validation_task = tokio::spawn(validate_outbound_redirect(target_addr, ready_rx));
+    let validation_task = tokio::spawn(validate_outbound_redirect(target_addr, ready_rx, timeout));
 
     tokio::select! {
         task = validation_task => {
@@ -94,8 +99,8 @@ async fn main() -> Result<()> {
 async fn validate_outbound_redirect(
     target_addr: SocketAddr,
     ready_rx: oneshot::Receiver<Result<()>>,
+    timeout: time::Duration,
 ) -> Result<()> {
-    let timeout = std::time::Duration::from_secs(120);
     if tokio::time::timeout(timeout, ready_rx).await.is_err() {
         anyhow::bail!("timed-out ({:?}) waiting for server to be ready", timeout);
     }
@@ -170,5 +175,58 @@ async fn accept(listener: TcpListener, resp_bytes: &'static [u8]) {
             }
         })
         .instrument(tracing::info_span!("conn", %client_addr));
+    }
+}
+pub fn parse_timeout(s: &str) -> Result<time::Duration> {
+    let s = s.trim();
+    let (magnitude, unit) = if let Some(offset) = s.rfind(|c: char| c.is_digit(10)) {
+        let (magnitude, unit) = s.split_at(offset + 1);
+        let magnitude = u64::from_str_radix(magnitude, 10)?;
+        (magnitude, unit)
+    } else {
+        anyhow::bail!("{} does not contain a timeout duration value", s);
+    };
+
+    let mul = match unit {
+        "" if magnitude == 0 => 0,
+        "ms" => 1,
+        "s" => 1000,
+        "m" => 1000 * 60,
+        _ => anyhow::bail!("invalid duration unit {}", unit),
+    };
+
+    let ms = magnitude
+        .checked_mul(mul)
+        .ok_or(anyhow!("{} has an invalid duration time", s))?;
+    Ok(time::Duration::from_millis(ms))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::parse_timeout;
+    use std::time;
+
+    #[test]
+    fn test_parse_timeout_invalid() {
+        assert!(parse_timeout("120").is_err());
+        assert!(parse_timeout("18446744073709551615s").is_err())
+    }
+
+    #[test]
+    fn test_parse_timeout_seconds() {
+        assert_eq!(time::Duration::from_secs(0), parse_timeout("0").unwrap());
+        assert_eq!(time::Duration::from_secs(0), parse_timeout("0ms").unwrap());
+        assert_eq!(time::Duration::from_secs(0), parse_timeout("0s").unwrap());
+        assert_eq!(time::Duration::from_secs(0), parse_timeout("0m").unwrap());
+
+        assert_eq!(
+            time::Duration::from_secs(120),
+            parse_timeout("120s").unwrap()
+        );
+        assert_eq!(
+            time::Duration::from_secs(120),
+            parse_timeout("120000ms").unwrap()
+        );
+        assert_eq!(time::Duration::from_secs(120), parse_timeout("2m").unwrap());
     }
 }
