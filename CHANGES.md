@@ -7,8 +7,9 @@ introduces proto retries to Service Profiles. Also included are updates to the
 bash scripts to ensure that they follow best practices.
 
 * Polished the shell scripts (thanks @joakimr-axis)
-* Introduced retries to Service Profiles by adding an isRetryable function to
-  the proto definition (thanks @mahlunar)
+* Introduced retries to Service Profiles based on the idempotency option of the
+  method by adding an isRetryable function to the proto definition
+ (thanks @mahlunar)
 * Fixed proxy responses to CONNECT requests by removing the content-length
   and/or transfer-encoding headers from the response
 * Fixed DNS lookups in the proxy to consistently use A records when SRV records
