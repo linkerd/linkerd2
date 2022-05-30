@@ -66,16 +66,16 @@ func ProxyIPToString(ip *pb.IPAddress) string {
 // ParseProxyIPV4 parses an IP Address string into a Proxy API IPAddress.
 func ParseProxyIPV4(ip string) (*pb.IPAddress, error) {
 	netIP := net.ParseIP(ip)
-	if netIP != nil {
-		oBigInt := IPToInt(netIP.To4())
-		netIPAddress := &pb.IPAddress{
-			Ip: &pb.IPAddress_Ipv4{
-				Ipv4: uint32(oBigInt.Uint64()),
-			},
-		}
-		return netIPAddress, nil
+	if netIP == nil {
+		return nil, fmt.Errorf("Invalid IP address: %s", ip)
 	}
-	return nil, fmt.Errorf("Invalid IP address: %s", ip)
+
+	oBigInt := IPToInt(netIP.To4())
+	return &pb.IPAddress{
+		Ip: &pb.IPAddress_Ipv4{
+			Ipv4: uint32(oBigInt.Uint64()),
+		},
+	}, nil
 }
 
 // ParsePublicIPV4 parses an IP Address string into a Viz API IPAddress.
