@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"html/template"
 	"os"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
+	"github.com/linkerd/linkerd2/testutil/prommatch"
 )
 
 var (
@@ -25,11 +25,29 @@ var (
 )
 
 var (
-	tcpConnRE = regexp.MustCompile(
-		`tcp_open_total\{direction="outbound",peer="dst",target_addr="[0-9\.]+:[0-9]+",target_ip="[0-9\.]+",target_port="[0-9]+",tls="true",server_id="default\.linkerd-multicluster-statefulset\.serviceaccount\.identity\.linkerd\.cluster\.local",dst_control_plane_ns="linkerd",dst_namespace="linkerd-multicluster-statefulset",dst_pod="nginx-statefulset-0",dst_serviceaccount="default",dst_statefulset="nginx-statefulset"\} [1-9]\d*`,
+	nginxTargetLabels = prommatch.Labels{
+		"direction":            prommatch.Equals("outbound"),
+		"tls":                  prommatch.Equals("true"),
+		"server_id":            prommatch.Equals("default.linkerd-multicluster-statefulset.serviceaccount.identity.linkerd.cluster.local"),
+		"dst_control_plane_ns": prommatch.Equals("linkerd"),
+		"dst_namespace":        prommatch.Equals("linkerd-multicluster-statefulset"),
+		"dst_pod":              prommatch.Equals("nginx-statefulset-0"),
+		"dst_serviceaccount":   prommatch.Equals("default"),
+		"dst_statefulset":      prommatch.Equals("nginx-statefulset"),
+	}
+
+	tcpConnMatcher = prommatch.NewMatcher("tcp_open_total",
+		prommatch.Labels{
+			"peer": prommatch.Equals("dst"),
+		},
+		prommatch.TargetAddrLabels(),
+		nginxTargetLabels,
+		prommatch.HasPositiveValue(),
 	)
-	httpReqRE = regexp.MustCompile(
-		`request_total\{direction="outbound",target_addr="[0-9\.]+:[0-9]+",target_ip="[0-9\.]+",target_port="[0-9]+",tls="true",server_id="default\.linkerd-multicluster-statefulset\.serviceaccount\.identity\.linkerd\.cluster\.local",dst_control_plane_ns="linkerd",dst_namespace="linkerd-multicluster-statefulset",dst_pod="nginx-statefulset-0",dst_serviceaccount="default",dst_statefulset="nginx-statefulset"\} [1-9]\d*`,
+	httpReqMatcher = prommatch.NewMatcher("request_total",
+		prommatch.TargetAddrLabels(),
+		nginxTargetLabels,
+		prommatch.HasPositiveValue(),
 	)
 )
 
@@ -294,36 +312,14 @@ func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
 					return fmt.Errorf("failed to get metrics for gateway deployment: %w", err)
 				}
 
-				// If no match, it means there are no open tcp conns from gateway to
-				// nginx pod.
-				if !tcpConnRE.MatchString(metrics) {
-					return fmt.Errorf("failed to find expected TCP connection open outbound metric from gateway to nginx")
+				s := prommatch.Suite{}.
+					MustContain("TCP connection from gateway to nginx", tcpConnMatcher).
+					MustContain("HTTP requests from gateway to nginx", httpReqMatcher)
+
+				if err := s.CheckString(metrics); err != nil {
+					return fmt.Errorf("invalid metrics for gateway deployment: %w", err)
 				}
 
-				return nil
-			})
-
-			if err != nil {
-				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v", err)
-			}
-
-		})
-
-		t.Run("expect non-empty HTTP request metric from gateway to nginx", func(t *testing.T) {
-			// Use a short time window so that slow-cooker can warm-up and send
-			// requests.
-			err := TestHelper.RetryFor(30*time.Second, func() error {
-				// Check gateway metrics
-				metrics, err := TestHelper.LinkerdRun(dgCmd...)
-				if err != nil {
-					return fmt.Errorf("failed to get metrics for gateway deployment: %w", err)
-				}
-
-				// If no match, it means there are no outbound HTTP requests from
-				// gateway to nginx pod.
-				if !httpReqRE.MatchString(metrics) {
-					return fmt.Errorf("failed to find expected outbound HTTP request metric from gateway to nginx\nexpected: %s, got: %s", httpReqRE, metrics)
-				}
 				return nil
 			})
 
