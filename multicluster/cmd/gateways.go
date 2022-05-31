@@ -139,7 +139,7 @@ func newGatewaysCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "the name of the target cluster")
-	cmd.Flags().DurationVarP(&opts.wait, "wait", "w", opts.wait, "Time allowed to fetch diagnostics")
+	cmd.Flags().DurationVarP(&opts.wait, "wait", "w", opts.wait, "time allowed to fetch diagnostics")
 
 	return cmd
 }
