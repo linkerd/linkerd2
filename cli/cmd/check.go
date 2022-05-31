@@ -54,7 +54,7 @@ func (options *checkOptions) nonConfigFlagSet() *pflag.FlagSet {
 	flags.BoolVar(&options.cniEnabled, "linkerd-cni-enabled", options.cniEnabled, "When running pre-installation checks (--pre), assume the linkerd-cni plugin is already installed, and a NET_ADMIN check is not needed")
 	flags.StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	flags.BoolVar(&options.preInstallOnly, "pre", options.preInstallOnly, "Only run pre-installation checks, to determine if the control plane can be installed")
-	flags.BoolVar(&options.crdsOnly, "crds", options.crdsOnly, "Only run checks, to determine if the Linkerd CRDs have been installed")
+	flags.BoolVar(&options.crdsOnly, "crds", options.crdsOnly, "Only run checks which determine if the Linkerd CRDs have been installed")
 	flags.BoolVar(&options.dataPlaneOnly, "proxy", options.dataPlaneOnly, "Only run data-plane checks, to determine if the data plane is healthy")
 
 	return flags
