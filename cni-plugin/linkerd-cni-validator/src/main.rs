@@ -80,8 +80,8 @@ async fn main() -> Result<()> {
 
     tokio::select! {
         task = validation_task => {
-            if let Err(err) = task.expect("Failed to run validator task") {
-                error!(error = %err, "Failed validation");
+            if let Err(error) = task.expect("Failed to run validator task") {
+                error!(%error, "Failed to validate");
                 exit(UNSUCCESSFUL_EXIT_CODE);
             }
 
@@ -90,8 +90,8 @@ async fn main() -> Result<()> {
         }
 
         _ = shutdown_tx.signaled() => {
-            if let Err(e) = server_task.await.expect("Failed to run outbound server task") {
-                error!(error = %e, "Failed to validate outbound routing configuration");
+            if let Err(error) = server_task.await.expect("Failed to run outbound server task") {
+                error!(%error, "Failed to validate outbound routing configuration");
             } else {
                 error!("Failed to validate due to server terminating early");
             }
@@ -160,11 +160,11 @@ async fn outbound_serve(
 
     ready.notify_one();
 
-    let accept_task = tokio::spawn(accept(listener, resp)).in_current_span();
+    tokio::select! {
+        _ = accept(listener, resp).in_current_span() => unreachable!("`accept` function never returns"),
+        _ = shutdown.signaled() => debug!("Received shutdown signal")
+    }
 
-    let _handle = shutdown.signaled().await;
-    accept_task.inner().abort();
-    debug!("Received shutdown signal");
     Ok(())
 }
 
@@ -176,16 +176,18 @@ async fn accept(listener: TcpListener, resp: String) {
             .expect("Failed to establish connection");
         info!("Accepted connection");
         let rng_resp = resp.clone();
-        let _ = tokio::spawn(async move {
-            let resp_bytes = rng_resp.as_bytes();
-            // We expect this write to complete instantaneously,
-            // a timeout is not needed here.
-            match stream.write_all(resp_bytes).await {
-                Ok(()) => debug!(written_bytes = resp_bytes.len()),
-                Err(error) => error!(%error, "Failed to write bytes to client"),
+        let _ = tokio::spawn(
+            async move {
+                let resp_bytes = rng_resp.as_bytes();
+                // We expect this write to complete instantaneously,
+                // a timeout is not needed here.
+                match stream.write_all(resp_bytes).await {
+                    Ok(()) => debug!(written_bytes = resp_bytes.len()),
+                    Err(error) => error!(%error, "Failed to write bytes to client"),
+                }
             }
-        })
-        .instrument(tracing::info_span!("conn", %client_addr));
+            .instrument(tracing::info_span!("conn", %client_addr)),
+        );
     }
 }
 

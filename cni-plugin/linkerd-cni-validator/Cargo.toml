@@ -9,7 +9,7 @@ publish = false
 [dependencies]
 anyhow = "1.0.57"
 clap = { version = "3.1.16", features = ["derive", "env"] }
-tokio = { version = "1", features = ["rt", "macros", "net", "sync", "time", "io-util"] }
 kubert = { version = "0.8", features = ["log", "shutdown"] }
-tracing = "0.1"
 rand = "0.8.5"
+tokio = { version = "1", features = ["rt", "macros", "net", "sync", "time", "io-util"] }
+tracing = "0.1"
