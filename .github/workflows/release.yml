@@ -73,6 +73,8 @@ jobs:
 
   policy_controller_build:
     runs-on: ubuntu-20.04
+    permissions:
+      id-token: write # needed for signing the images with GitHub OIDC Token
     timeout-minutes: 30
     strategy:
       matrix:
