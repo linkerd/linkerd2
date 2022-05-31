@@ -37,6 +37,7 @@ spec:
         - path:
             type: Exact
             value: /live
+    - matches:
         - path:
             type: Exact
             value: /ready
