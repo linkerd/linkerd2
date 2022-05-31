@@ -117,6 +117,7 @@ func (pw *ProbeWorker) doProbe() {
 	} else {
 		pw.log.Debug("Gateway is healthy")
 		pw.metrics.alive.Set(1)
+		pw.metrics.latency.Set(float64(end.Milliseconds()))
 		pw.metrics.latencies.Observe(float64(end.Milliseconds()))
 		pw.metrics.probes.With(successLabel).Inc()
 		if !pw.alive {

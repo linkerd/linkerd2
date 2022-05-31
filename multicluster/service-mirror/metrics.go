@@ -16,6 +16,7 @@ const (
 // workers.
 type ProbeMetricVecs struct {
 	alive     *prometheus.GaugeVec
+	latency   *prometheus.GaugeVec
 	latencies *prometheus.HistogramVec
 	enqueues  *prometheus.CounterVec
 	dequeues  *prometheus.CounterVec
@@ -26,6 +27,7 @@ type ProbeMetricVecs struct {
 // probe worker.
 type ProbeMetrics struct {
 	alive      prometheus.Gauge
+	latency    prometheus.Gauge
 	latencies  prometheus.Observer
 	probes     *prometheus.CounterVec
 	unregister func()
@@ -79,6 +81,14 @@ func NewProbeMetricVecs() ProbeMetricVecs {
 		labelNames,
 	)
 
+	latency := promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "gateway_latency",
+			Help: "A gauge which is the latency of the last probe to the gateway.",
+		},
+		labelNames,
+	)
+
 	latencies := promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name: "gateway_probe_latency_ms",
@@ -95,6 +105,7 @@ func NewProbeMetricVecs() ProbeMetricVecs {
 
 	return ProbeMetricVecs{
 		alive:     alive,
+		latency:   latency,
 		latencies: latencies,
 		enqueues:  enqueues,
 		dequeues:  dequeues,
@@ -116,6 +127,7 @@ func (mv ProbeMetricVecs) NewWorkerMetrics(remoteClusterName string) (*ProbeMetr
 	}
 	return &ProbeMetrics{
 		alive:     mv.alive.With(labels),
+		latency:   mv.latency.With(labels),
 		latencies: mv.latencies.With(labels),
 		probes:    curriedProbes,
 		unregister: func() {

@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"os"
 	"sort"
 	"sync/atomic"
 	"time"
@@ -33,42 +30,6 @@ func (s byResult) Swap(i, j int) {
 }
 func (s byResult) Less(i, j int) bool {
 	return s[i].pod < s[j].pod || ((s[i].pod == s[j].pod) && s[i].container < s[j].container)
-}
-
-// getResponse makes a http Get request to the passed url and returns the response/error
-func getResponse(url string) ([]byte, error) {
-	// url has been constructed by k8s.newPortForward and is not passed in by
-	// the user.
-	//nolint:gosec
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	return ioutil.ReadAll(resp.Body)
-}
-
-// getContainerMetrics returns the metrics exposed by a container on the passed in portName
-func getContainerMetrics(
-	k8sAPI *k8s.KubernetesAPI,
-	pod corev1.Pod,
-	container corev1.Container,
-	emitLogs bool,
-	portName string,
-) ([]byte, error) {
-	portForward, err := k8s.NewContainerMetricsForward(k8sAPI, pod, container, emitLogs, portName)
-	if err != nil {
-		return nil, err
-	}
-
-	defer portForward.Stop()
-	if err = portForward.Init(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error running port-forward: %s", err)
-		return nil, err
-	}
-
-	metricsURL := portForward.URLFor("/metrics")
-	return getResponse(metricsURL)
 }
 
 // getAllContainersWithPort returns all the containers within
@@ -119,7 +80,7 @@ func getMetrics(
 			}
 
 			for _, c := range containers {
-				bytes, err := getContainerMetrics(k8sAPI, p, c, emitLogs, portName)
+				bytes, err := k8s.GetContainerMetrics(k8sAPI, p, c, emitLogs, portName)
 
 				resultChan <- metricsResult{
 					pod:       p.GetName(),
