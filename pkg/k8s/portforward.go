@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -240,12 +241,15 @@ func (pf *PortForward) GetStop() <-chan struct{} {
 
 // URLFor returns the URL for the port-forward connection.
 func (pf *PortForward) URLFor(path string) string {
-	return fmt.Sprintf("http://%s:%d%s", pf.host, pf.localPort, path)
+	strPort := strconv.Itoa(int(pf.localPort))
+	urlAddress := net.JoinHostPort(pf.host, strPort)
+	return fmt.Sprintf("http://%s%s", urlAddress, path)
 }
 
 // AddressAndPort returns the address and port for the port-forward connection.
 func (pf *PortForward) AddressAndPort() string {
-	return fmt.Sprintf("%s:%d", pf.host, pf.localPort)
+	strPort := strconv.Itoa(int(pf.localPort))
+	return net.JoinHostPort(pf.host, strPort)
 }
 
 // getEphemeralPort selects a port for the port-forwarding. It binds to a free
