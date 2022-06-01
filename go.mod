@@ -38,7 +38,7 @@ require (
 	go.opencensus.io v0.23.0
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
 	golang.org/x/tools v0.1.10
-	google.golang.org/grpc v1.46.2
+	google.golang.org/grpc v1.47.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
 	google.golang.org/protobuf v1.28.0
 	helm.sh/helm/v3 v3.9.0
@@ -55,6 +55,7 @@ require (
 
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20220408101031-f1761e18c0c6
+	github.com/prometheus/client_model v0.2.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -131,7 +132,6 @@ require (
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
