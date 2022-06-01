@@ -66,6 +66,11 @@ const (
 	// checks must be added first.
 	LinkerdPreInstallChecks CategoryID = "pre-kubernetes-setup"
 
+	// LinkerdCRDChecks adds checks to validate that the control plane CRDs
+	// exist. These checks can be run after installing the control plane CRDs
+	// but before installing the control plane itself.
+	LinkerdCRDChecks CategoryID = "linkerd-crd"
+
 	// LinkerdConfigChecks enabled by `linkerd check config`
 
 	// LinkerdConfigChecks adds a series of checks to validate that the Linkerd
@@ -623,6 +628,21 @@ func (hc *HealthChecker) allCategories() []*Category {
 					warning:     true,
 					check: func(ctx context.Context) error {
 						return hc.checkClockSkew(ctx)
+					},
+				},
+			},
+			false,
+		),
+		NewCategory(
+			LinkerdCRDChecks,
+			[]Checker{
+				{
+					description:   "control plane CustomResourceDefinitions exist",
+					hintAnchor:    "l5d-existence-crd",
+					fatal:         true,
+					retryDeadline: hc.RetryDeadline,
+					check: func(ctx context.Context) error {
+						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, hc.CRDManifest)
 					},
 				},
 			},
