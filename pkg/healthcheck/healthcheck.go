@@ -708,6 +708,13 @@ func (hc *HealthChecker) allCategories() []*Category {
 						return hc.checkClusterNetworks(ctx)
 					},
 				},
+				{
+					description: "cluster networks contains all pods",
+					hintAnchor:  "l5d-cluster-networks-pods",
+					check: func(ctx context.Context) error {
+						return hc.checkClusterNetworksContainAllPods(ctx)
+					},
+				},
 			},
 			false,
 		),
@@ -1855,6 +1862,37 @@ func cluterNetworksContainCIDR(clusterIPNets []*net.IPNet, podIPNet *net.IPNet, 
 		}
 	}
 	return false
+}
+
+func clusterNetworksContainPod(clusterIPNets []*net.IPNet, pod corev1.Pod) bool {
+	for _, clusterIPNet := range clusterIPNets {
+		if clusterIPNet.Contains(net.ParseIP(pod.Status.PodIP)) {
+			return true
+		}
+	}
+	return false
+}
+
+func (hc *HealthChecker) checkClusterNetworksContainAllPods(ctx context.Context) error {
+	clusterNetworks := strings.Split(hc.linkerdConfig.ClusterNetworks, ",")
+	clusterIPNets := make([]*net.IPNet, len(clusterNetworks))
+	var err error
+	for i, clusterNetwork := range clusterNetworks {
+		_, clusterIPNets[i], err = net.ParseCIDR(clusterNetwork)
+		if err != nil {
+			return err
+		}
+	}
+	pods, err := hc.kubeAPI.CoreV1().Pods(corev1.NamespaceAll).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	for _, pod := range pods.Items {
+		if !clusterNetworksContainPod(clusterIPNets, pod) {
+			return fmt.Errorf("the Linkerd clusterNetworks do not include pod %s/%s", pod.Namespace, pod.Name)
+		}
+	}
+	return nil
 }
 
 func (hc *HealthChecker) expectedRBACNames() []string {
