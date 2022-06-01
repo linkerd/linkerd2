@@ -93,7 +93,7 @@ jobs:
         echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
         echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
     - name: Cache docker layers
-      uses: actions/cache@48af2dc4a9e8278b89d7fa154b955c30c6aaab09
+      uses: actions/cache@30f413bfed0a2bc738fdfd409e5a9e96b24545fd
       with:
         path: ${{ env.DOCKER_BUILDKIT_CACHE }}
         key: policy-controller-${{ matrix.arch }}-${{ env.TAG }}
