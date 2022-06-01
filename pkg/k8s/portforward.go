@@ -241,14 +241,14 @@ func (pf *PortForward) GetStop() <-chan struct{} {
 
 // URLFor returns the URL for the port-forward connection.
 func (pf *PortForward) URLFor(path string) string {
-	strPort := strconv.Itoa(int(pf.localPort))
+	strPort := strconv.Itoa(pf.localPort)
 	urlAddress := net.JoinHostPort(pf.host, strPort)
 	return fmt.Sprintf("http://%s%s", urlAddress, path)
 }
 
 // AddressAndPort returns the address and port for the port-forward connection.
 func (pf *PortForward) AddressAndPort() string {
-	strPort := strconv.Itoa(int(pf.localPort))
+	strPort := strconv.Itoa(pf.localPort)
 	return net.JoinHostPort(pf.host, strPort)
 }
 
