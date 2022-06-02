@@ -1888,8 +1888,11 @@ func (hc *HealthChecker) checkClusterNetworksContainAllPods(ctx context.Context)
 		return err
 	}
 	for _, pod := range pods.Items {
+		if pod.Spec.HostNetwork {
+			continue
+		}
 		if !clusterNetworksContainPod(clusterIPNets, pod) {
-			return fmt.Errorf("the Linkerd clusterNetworks do not include pod %s/%s", pod.Namespace, pod.Name)
+			return fmt.Errorf("the Linkerd clusterNetworks [%q] do not include pod %s/%s (%s)", hc.linkerdConfig.ClusterNetworks, pod.Namespace, pod.Name, pod.Status.PodIP)
 		}
 	}
 	return nil
