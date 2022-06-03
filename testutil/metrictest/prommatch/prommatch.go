@@ -1,4 +1,4 @@
-// Package promm provides means of checking whether a prometheus metrics
+// Package prommatch provides means of checking whether a prometheus metrics
 // contain a specific series.
 //
 // It tries to give a similar look and feel as time series in PromQL.
@@ -6,14 +6,14 @@
 //
 //	request_total{direction="outbound", target_port=~"8\d\d\d"} 30
 //
-// In promm, one can write this:
+// In prommatch, one can write this:
 //
 //	portRE := regex.MustCompile(`^8\d\d\d$`)
-//	promm.NewMatcher("request_total", promm.Labels{
-//		"direction": promm.Equals("outbound"),
-//		"target_port": promm.Like(portRE),
+//	prommatch.NewMatcher("request_total", prommatch.Labels{
+//		"direction": prommatch.Equals("outbound"),
+//		"target_port": prommatch.Like(portRE),
 //	})
-package promm
+package prommatch
 
 import (
 	"bytes"

@@ -1,4 +1,4 @@
-package promm
+package prommatch
 
 import (
 	_ "embed"
