@@ -86,7 +86,7 @@ RUN apt update && \
         time \
         unzip && \
     rm -rf /var/lib/apt/lists/*
-RUN npm install markdownlint-cli@0.23.1 --global
+RUN npm install markdownlint-cli2@0.4.0 --global
 
 RUN sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && locale-gen
 
