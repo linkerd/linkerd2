@@ -9,9 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/linkerd/linkerd2/testutil/metrictest"
-
 	"github.com/linkerd/linkerd2/testutil"
+	"github.com/linkerd/linkerd2/testutil/metrictest"
 	v1 "k8s.io/api/core/v1"
 )
 
