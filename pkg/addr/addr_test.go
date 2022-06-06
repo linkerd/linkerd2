@@ -77,7 +77,7 @@ func TestPublicIPToString(t *testing.T) {
 			expected: "192.168.0.1",
 		},
 		{
-			name: "ipv6",
+			name: "narmal ipv6",
 			addr:&l5dNetPb.IPAddress{
 				Ip: &l5dNetPb.IPAddress_Ipv6{
 					Ipv6: &l5dNetPb.IPv6{
@@ -89,7 +89,7 @@ func TestPublicIPToString(t *testing.T) {
 			expected: "2001:db8:85a3::8a2e:370:7334",
 		},
 		{
-			name: "ipv6",
+			name: "ipv6 with zero as prefix",
 			addr:&l5dNetPb.IPAddress{
 				Ip: &l5dNetPb.IPAddress_Ipv6{
 					Ipv6: &l5dNetPb.IPv6{

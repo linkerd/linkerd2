@@ -155,7 +155,7 @@ func IntToIPv4(intip *big.Int) net.IP {
 func IntToIPv6(intip *big.Int) net.IP {
 	result := net.IPv6zero
 	ipv6Bytes := intip.Bytes()
-	// It's possibe for ipv6Bytes to be less than IPv6len bytes in size
+	// It's possible for ipv6Bytes to be less than IPv6len bytes in size
 	if len(ipv6Bytes) < net.IPv6len {
 		buf := new(bytes.Buffer)
 		buf.Grow(net.IPv6len)
