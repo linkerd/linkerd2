@@ -1,6 +1,7 @@
 package addr
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"math/big"
@@ -29,16 +30,21 @@ func PublicAddressToString(addr *l5dNetPb.TcpAddress) string {
 
 // PublicIPToString formats a Viz API IPAddress as a string.
 func PublicIPToString(ip *l5dNetPb.IPAddress) string {
-	var b []byte
+	var netIP net.IP
 	if ip.GetIpv6() != nil {
-		b = make([]byte, 16)
+		b := make([]byte, 16)
 		binary.BigEndian.PutUint64(b[:8], ip.GetIpv6().GetFirst())
 		binary.BigEndian.PutUint64(b[8:], ip.GetIpv6().GetLast())
+		oBigInt := big.NewInt(0)
+		oBigInt.SetBytes(b)
+		netIP = IntToIPv6(oBigInt)
 	} else if ip.GetIpv4() != 0 {
-		b = make([]byte, 4)
-		binary.BigEndian.PutUint32(b, ip.GetIpv4())
+		netIP =decodeIPv4ToNetIP(ip.GetIpv4())
 	}
-	return net.IP(b).String()
+	if netIP == nil {
+		return ""
+	}
+	return netIP.String()
 }
 
 // ProxyAddressToString formats a Proxy API TCPAddress as a string.
@@ -136,10 +142,38 @@ func IPToInt(ip net.IP) *big.Int {
 	return oBigInt
 }
 
-// IntToIPv4 converts bigInt to an IPv4 net.IP
+// IntToIPv4 converts IPv4 bigInt into an IPv4 net.IP
 func IntToIPv4(intip *big.Int) net.IP {
-	ipByte := make([]byte, 4)
+	ipByte := make([]byte, net.IPv4len)
 	uint32IP := intip.Uint64()
 	binary.BigEndian.PutUint32(ipByte, uint32(uint32IP))
 	return net.IP(ipByte)
+}
+
+// IntToIPv6 converts IPv6 bigInt into an IPv6 net.IP
+// This function can fix the bug if there is 0/: as the prefix of ipv6, such as ::1
+func IntToIPv6(intip *big.Int) net.IP {
+	result := net.IPv6zero
+	ipv6Bytes := intip.Bytes()
+	// It's possibe for ipv6Bytes to be less than IPv6len bytes in size
+	if len(ipv6Bytes) < net.IPv6len {
+		buf := new(bytes.Buffer)
+		buf.Grow(net.IPv6len)
+		for i := len(ipv6Bytes); i < net.IPv6len; i++ {
+			if err := binary.Write(buf, binary.BigEndian, byte(0)); err != nil {
+				return nil
+			}
+		}
+		for _, b := range ipv6Bytes {
+			if err := binary.Write(buf, binary.BigEndian, b); err != nil {
+				return nil
+			}
+		}
+		ipv6Bytes = buf.Bytes()
+	}
+	index := copy(result, ipv6Bytes)
+	if index != net.IPv6len {
+		return nil
+	}
+	return result
 }
