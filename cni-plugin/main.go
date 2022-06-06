@@ -92,12 +92,7 @@ func configureLogging(logLevel string) {
 	}
 
 	// Must log to Stderr because the CNI runtime uses Stdout as its state
-	// logrus.SetOutput(os.Stderr)
-	f, err := os.OpenFile("/tmp/linkerd.log", os.O_RDWR|os.O_APPEND|os.O_CREATE, 777)
-	if err != nil {
-		logrus.Fatalln(err)
-	}
-	logrus.SetOutput(f)
+	logrus.SetOutput(os.Stderr)
 }
 
 // parseConfig parses the supplied configuration (and prevResult) from stdin.
