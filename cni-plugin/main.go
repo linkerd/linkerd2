@@ -92,7 +92,12 @@ func configureLogging(logLevel string) {
 	}
 
 	// Must log to Stderr because the CNI runtime uses Stdout as its state
-	logrus.SetOutput(os.Stderr)
+	// logrus.SetOutput(os.Stderr)
+	f, err := os.OpenFile("/tmp/linkerd.log", os.O_RDWR|os.O_APPEND|os.O_CREATE, 777)
+	if err != nil {
+		logrus.Fatalln(err)
+	}
+	logrus.SetOutput(f)
 }
 
 // parseConfig parses the supplied configuration (and prevResult) from stdin.
@@ -260,8 +265,9 @@ func cmdAdd(args *skel.CmdArgs) error {
 		return types.PrintResult(conf.PrevResult, conf.CNIVersion)
 	}
 
-	logrus.Debug("linkerd-cni: no previous result to pass through, emptying stdout")
-	return nil
+	logrus.Debug("linkerd-cni: no previous result to pass through, sending a dummy ok")
+
+	return types.PrintResult(&cniv1.Result{CNIVersion: cniv1.ImplementedSpecVersion}, conf.CNIVersion)
 }
 
 func cmdCheck(args *skel.CmdArgs) error {
