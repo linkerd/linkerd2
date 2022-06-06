@@ -1,12 +1,10 @@
-// Package metrictest is used for making assertions on metrics
-// produced by linkerd proxy.
-package metrictest
+package opaqueports
 
 import (
 	"fmt"
 	"regexp"
 
-	"github.com/linkerd/linkerd2/testutil/metrictest/prommatch"
+	"github.com/linkerd/linkerd2/testutil/prommatch"
 )
 
 var (
@@ -15,9 +13,9 @@ var (
 	authorityRE = regexp.MustCompile(`[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:[0-9]+`)
 )
 
-// HasNoOutboundHTTPRequest returns error if there is any
+// hasNoOutboundHTTPRequest returns error if there is any
 // series matching request_total{direction="outbound"}
-func HasNoOutboundHTTPRequest(metrics, ns string) error {
+func hasNoOutboundHTTPRequest(metrics, ns string) error {
 	m := prommatch.NewMatcher("request_total", prommatch.Labels{
 		"direction": prommatch.Equals("outbound"),
 	})
@@ -31,7 +29,7 @@ func HasNoOutboundHTTPRequest(metrics, ns string) error {
 	return nil
 }
 
-// HasOutboundHTTPRequestWithTLS checks there is a series matching:
+// hasOutboundHTTPRequestWithTLS checks there is a series matching:
 // request_total{
 //   direction="outbound",
 //   target_addr=~"[0-9\.]+:[0-9]+",
@@ -40,7 +38,7 @@ func HasNoOutboundHTTPRequest(metrics, ns string) error {
 //   dst_namespace="default.${ns}.serviceaccount.identity.linkerd.cluster.local",
 //   dst_serviceaccount="default"
 // }
-func HasOutboundHTTPRequestWithTLS(metrics, ns string) error {
+func hasOutboundHTTPRequestWithTLS(metrics, ns string) error {
 	m := prommatch.NewMatcher("request_total", prommatch.Labels{
 		"direction":          prommatch.Equals("outbound"),
 		"target_addr":        prommatch.Like(addrRE),
@@ -61,7 +59,7 @@ func HasOutboundHTTPRequestWithTLS(metrics, ns string) error {
 	return nil
 }
 
-// HasOutboundHTTPRequestNoTLS checks there is a series matching:
+// hasOutboundHTTPRequestNoTLS checks there is a series matching:
 // request_total{
 //   direction="outbound",
 //   target_addr=~"[0-9\.]+:[0-9]+",
@@ -71,7 +69,7 @@ func HasOutboundHTTPRequestWithTLS(metrics, ns string) error {
 //   dst_namespace="default.${ns}.serviceaccount.identity.linkerd.cluster.local",
 //   dst_serviceaccount="default"
 // }
-func HasOutboundHTTPRequestNoTLS(metrics, ns string) error {
+func hasOutboundHTTPRequestNoTLS(metrics, ns string) error {
 	m := prommatch.NewMatcher("request_total", prommatch.Labels{
 		"direction":          prommatch.Equals("outbound"),
 		"target_addr":        prommatch.Like(addrRE),
@@ -92,7 +90,7 @@ func HasOutboundHTTPRequestNoTLS(metrics, ns string) error {
 	return nil
 }
 
-// HasInboundTCPTrafficWithTLS checks there is a series matching:
+// hasInboundTCPTrafficWithTLS checks there is a series matching:
 // tcp_open_total{
 //   direction="inbound",
 //   peer="src",
@@ -103,7 +101,7 @@ func HasOutboundHTTPRequestNoTLS(metrics, ns string) error {
 //   target_addr=~"[0-9\.]+:[0-9]+",
 //   target_ip=~"[0-9\.]+"
 // }
-func HasInboundTCPTrafficWithTLS(metrics, ns string) error {
+func hasInboundTCPTrafficWithTLS(metrics, ns string) error {
 	m := prommatch.NewMatcher(
 		"tcp_open_total",
 		prommatch.Labels{
@@ -128,7 +126,7 @@ func HasInboundTCPTrafficWithTLS(metrics, ns string) error {
 	return nil
 }
 
-// HasOutboundTCPWithAuthorityAndNoTLS checks there is a series matching:
+// hasOutboundTCPWithAuthorityAndNoTLS checks there is a series matching:
 // tcp_open_total{
 //   direction="outbound",
 //   peer="dst",
@@ -136,7 +134,7 @@ func HasInboundTCPTrafficWithTLS(metrics, ns string) error {
 //   no_tls_reason="not_provided_by_service_discovery",
 //   authority=~"[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:[0-9]+"
 // }
-func HasOutboundTCPWithAuthorityAndNoTLS(metrics, ns string) error {
+func hasOutboundTCPWithAuthorityAndNoTLS(metrics, ns string) error {
 	m := prommatch.NewMatcher("tcp_open_total", prommatch.Labels{
 		"direction":     prommatch.Equals("outbound"),
 		"peer":          prommatch.Equals("dst"),
@@ -155,7 +153,7 @@ func HasOutboundTCPWithAuthorityAndNoTLS(metrics, ns string) error {
 	return nil
 }
 
-// HasOutboundTCPWithNoTLSAndNoAuthority checks there is a series matching:
+// hasOutboundTCPWithNoTLSAndNoAuthority checks there is a series matching:
 // tcp_open_total{
 //   direction="outbound",
 //   peer="dst",
@@ -163,7 +161,7 @@ func HasOutboundTCPWithAuthorityAndNoTLS(metrics, ns string) error {
 //   no_tls_reason="not_provided_by_service_discovery",
 //   authority=""
 // }
-func HasOutboundTCPWithNoTLSAndNoAuthority(metrics, ns string) error {
+func hasOutboundTCPWithNoTLSAndNoAuthority(metrics, ns string) error {
 	m := prommatch.NewMatcher("tcp_open_total", prommatch.Labels{
 		"direction":     prommatch.Equals("outbound"),
 		"peer":          prommatch.Equals("dst"),
@@ -181,7 +179,7 @@ func HasOutboundTCPWithNoTLSAndNoAuthority(metrics, ns string) error {
 	return nil
 }
 
-// HasOutboundTCPWithTLSAndAuthority checks there is a series matching:
+// hasOutboundTCPWithTLSAndAuthority checks there is a series matching:
 // tcp_open_total{
 //   direction="outbound",
 //   peer="dst",
@@ -189,7 +187,7 @@ func HasOutboundTCPWithNoTLSAndNoAuthority(metrics, ns string) error {
 //   target_addr=~"[0-9\.]+:[0-9]+",
 //   authority=~"[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:[0-9]+"
 // }
-func HasOutboundTCPWithTLSAndAuthority(metrics, ns string) error {
+func hasOutboundTCPWithTLSAndAuthority(metrics, ns string) error {
 	m := prommatch.NewMatcher("tcp_open_total", prommatch.Labels{
 		"direction":   prommatch.Equals("outbound"),
 		"peer":        prommatch.Equals("dst"),
@@ -208,7 +206,7 @@ func HasOutboundTCPWithTLSAndAuthority(metrics, ns string) error {
 	return nil
 }
 
-// HasOutboundTCPWithTLSAndNoAuthority checks there is a series matching:
+// hasOutboundTCPWithTLSAndNoAuthority checks there is a series matching:
 // tcp_open_total{
 //   direction="outbound",
 //   peer="dst",
@@ -216,7 +214,7 @@ func HasOutboundTCPWithTLSAndAuthority(metrics, ns string) error {
 //   target_addr=~"[0-9\.]+:[0-9]+",
 //   authority=""
 // }
-func HasOutboundTCPWithTLSAndNoAuthority(metrics, ns string) error {
+func hasOutboundTCPWithTLSAndNoAuthority(metrics, ns string) error {
 	m := prommatch.NewMatcher("tcp_open_total", prommatch.Labels{
 		"direction":   prommatch.Equals("outbound"),
 		"peer":        prommatch.Equals("dst"),

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/testutil"
-	"github.com/linkerd/linkerd2/testutil/metrictest"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -88,28 +87,28 @@ func TestOpaquePortsCalledByServiceTarget(t *testing.T) {
 				name:   "calling a meshed service when opaque annotation is on receiving pod",
 				scName: opaquePodSC,
 				scChecks: checks(
-					metrictest.HasNoOutboundHTTPRequest,
-					metrictest.HasOutboundTCPWithTLSAndNoAuthority,
+					hasNoOutboundHTTPRequest,
+					hasOutboundTCPWithTLSAndNoAuthority,
 				),
 				appName:   opaquePodApp,
-				appChecks: checks(metrictest.HasInboundTCPTrafficWithTLS),
+				appChecks: checks(hasInboundTCPTrafficWithTLS),
 			},
 			{
 				name:   "calling a meshed service when opaque annotation is on receiving service",
 				scName: opaqueSvcSC,
 				scChecks: checks(
-					metrictest.HasNoOutboundHTTPRequest,
-					metrictest.HasOutboundTCPWithTLSAndAuthority,
+					hasNoOutboundHTTPRequest,
+					hasOutboundTCPWithTLSAndAuthority,
 				),
 				appName:   opaqueSvcApp,
-				appChecks: checks(metrictest.HasInboundTCPTrafficWithTLS),
+				appChecks: checks(hasInboundTCPTrafficWithTLS),
 			},
 			{
 				name:   "calling an unmeshed service when opaque annotation is on service",
 				scName: opaqueUnmeshedSvcSC,
 				scChecks: checks(
-					metrictest.HasNoOutboundHTTPRequest,
-					metrictest.HasOutboundTCPWithAuthorityAndNoTLS,
+					hasNoOutboundHTTPRequest,
+					hasOutboundTCPWithAuthorityAndNoTLS,
 				),
 			},
 		})
@@ -140,32 +139,32 @@ func TestOpaquePortsCalledByPodTarget(t *testing.T) {
 				name:   "calling a meshed service when opaque annotation is on receiving pod",
 				scName: opaquePodSC,
 				scChecks: checks(
-					metrictest.HasNoOutboundHTTPRequest,
-					metrictest.HasOutboundTCPWithTLSAndNoAuthority,
+					hasNoOutboundHTTPRequest,
+					hasOutboundTCPWithTLSAndNoAuthority,
 				),
 				appName:   opaquePodApp,
-				appChecks: checks(metrictest.HasInboundTCPTrafficWithTLS),
+				appChecks: checks(hasInboundTCPTrafficWithTLS),
 			},
 			{
 				name:   "calling a meshed service when opaque annotation is on receiving service",
 				scName: opaqueSvcSC,
 				scChecks: checks(
 					// We call pods directly, so annotation on a service is ignored.
-					metrictest.HasOutboundHTTPRequestWithTLS,
+					hasOutboundHTTPRequestWithTLS,
 					// No authority here, because we are calling the pod directly.
-					metrictest.HasOutboundTCPWithTLSAndNoAuthority,
+					hasOutboundTCPWithTLSAndNoAuthority,
 				),
 				appName:   opaqueSvcApp,
-				appChecks: checks(metrictest.HasInboundTCPTrafficWithTLS),
+				appChecks: checks(hasInboundTCPTrafficWithTLS),
 			},
 			{
 				name:   "calling an unmeshed service",
 				scName: opaqueUnmeshedSvcSC,
 				scChecks: checks(
 					// We call pods directly, so annotation on a service is ignored.
-					metrictest.HasOutboundHTTPRequestNoTLS,
+					hasOutboundHTTPRequestNoTLS,
 					// No authority here, because we are calling the pod directly.
-					metrictest.HasOutboundTCPWithNoTLSAndNoAuthority,
+					hasOutboundTCPWithNoTLSAndNoAuthority,
 				),
 			},
 		})
